@@ -528,6 +528,17 @@ function publishAsteroidFieldInteractQuiet(state, latched) {
   rt.quietLatched = !!latched;
 }
 
+function normalizeCourtRulings(raw) {
+  const out = Object.create(null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [id, row] of Object.entries(raw).slice(0, 24)) {
+    if (!/^wc_[a-z0-9_]+_ruling$/.test(id) || typeof row?.value !== 'string'
+      || typeof row.receiptId !== 'string' || typeof row.caseId !== 'string') continue;
+    out[id] = { value: row.value.slice(0, 200), receiptId: row.receiptId.slice(0, 160), caseId: row.caseId.slice(0, 80) };
+  }
+  return out;
+}
+
 export const world = {
   name: 'world',
   // records/embodiment serializers already return owned trees; the remaining live overlays are
@@ -542,6 +553,16 @@ export const world = {
 
     const state = this.state;
     const bus = this.bus;
+    state.world.wreckCourtRulings = normalizeCourtRulings(state.world.wreckCourtRulings);
+    bus.on('wreckCourt:worldFact', payload => {
+      if (this.registry?.get('wreckCourt')?.verifyRulingFact?.(payload)?.ok !== true) return;
+      const row = normalizeCourtRulings({ [payload.id]: payload })[payload.id];
+      if (!row) return;
+      const previous = state.world.wreckCourtRulings[payload.id];
+      if (previous?.receiptId === row.receiptId && previous.value === row.value && previous.caseId === row.caseId) return;
+      state.world.wreckCourtRulings[payload.id] = row;
+      this.bus.emit('world:courtRulingRecorded', { id: payload.id, ...row });
+    });
 
     // Generation policy is save-versioned, never inferred from browser/headless environment.
     state.world.arrangementVersion = readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION);
@@ -6958,6 +6979,7 @@ export const world = {
     return {
       currentSectorId: unfiledCommitted ? UNFILED_JUMP_RETURN : state.world.currentSectorId,
       discovery: cloneSaveTree(state.world.discovery || {}),
+      wreckCourtRulings: normalizeCourtRulings(state.world.wreckCourtRulings),
       scanPings: cloneSaveTree(state.world.scanPings || {}),
       pendingSpawns: cloneSaveTree(state.world.pendingSpawns || {}),
       frontierRumors: cloneSaveTree(this._frontierRumorState()),
@@ -7021,6 +7043,7 @@ export const world = {
     resetWorldPresentationTables(state);
     restoreFarActorTable(state, data.farActors);
     if (data.discovery) state.world.discovery = data.discovery;
+    state.world.wreckCourtRulings = normalizeCourtRulings(data.wreckCourtRulings);
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
     state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
@@ -7092,6 +7115,7 @@ export const world = {
       state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
     }
     state.world.discovery = {};
+    state.world.wreckCourtRulings = normalizeCourtRulings(null);
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(null);

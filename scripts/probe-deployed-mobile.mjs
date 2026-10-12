@@ -123,6 +123,9 @@ try {
     }
     if (report.console.some(entry => /\[SpaceFace\] new game startup failed/.test(entry.text)))
       throw new Error('Game reported a startup-readiness failure; see console and failed asset URLs');
+    if (/SimulationRunner is closed/.test(state.runtime?.frame?.lastFrameError || '')
+        || report.console.some(entry => /SimulationRunner is closed|PRESENTATION STALLED/.test(entry.text)))
+      throw new Error('Game reported a terminal simulation or presentation failure; see runtime and console');
     if (!state.loading.length && state.launchButton && !state.launchButton.disabled
         && state.alerts.some(text => /could not finish loading|did not finish preparing|could not start/i.test(text)))
       throw new Error(`Game refused mobile startup: ${state.alerts.filter(Boolean).join(' ')}`);

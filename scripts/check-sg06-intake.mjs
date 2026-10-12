@@ -1,3 +1,4 @@
+import { hasLegacyFireIntentMutation } from './lib/aiIntentOwnership.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -129,7 +130,7 @@ function assertNoPrivilegedAiMutation() {
     const text = stripComments(read(rel));
     assert(!/\brouteDamage\s*\(/.test(text), `${rel} must not call combat damage routing directly`);
     assert(!/\.(?:hp|hull|shield|armor|cap)\s*(?:=|\+=|-=|--|\+\+)/.test(text), `${rel} must not mutate combat resources directly`);
-    assert(!/\bintent\s*\.\s*(?:fire|fireGroup)\s*=/.test(text), `${rel} must not use legacy intent fire shortcuts`);
+    assert(!hasLegacyFireIntentMutation(text), `${rel} must not use legacy intent fire shortcuts`);
     assert(!/\bstate\s*\.\s*player\b/.test(text), `${rel} must not read hidden player state directly`);
   }
 }

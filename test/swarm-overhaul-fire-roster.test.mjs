@@ -19,7 +19,7 @@ function world(n, { wave = 1, simTime = 10 } = {}) {
 }
 const held = (sys, id) => {
   const ai = sys.state.entities.get(id).data.ai;
-  return Number(ai.arrivalHoldUntil) > sys.state.simTime;
+  return Math.max(Number(ai.arrivalHoldUntil) || 0, Number(ai.swarmFireHoldUntil) || 0) > sys.state.simTime;
 };
 
 test('a fresh arrival holds its guns for the arrival beat', () => {

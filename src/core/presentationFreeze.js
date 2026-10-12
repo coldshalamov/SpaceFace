@@ -12,6 +12,14 @@
  */
 
 export function shouldFreezeFlightSubmit(state) {
+  // Loading owns a real opening-scene cook. A retained launch screen must not
+  // prevent prepareFrame from admitting the actors its visual gate awaits.
+  // Simulation pause is evaluated separately below; the loading veil owns input.
+  if (state?.mode === 'loading' && state.render?.sectorShellAdmission !== true) return false;
+  return hasFlightFreeze(state);
+}
+
+function hasFlightFreeze(state) {
   const ui = state && state.ui;
   if (ui && ui.docked === true) return true;
   const stack = ui && ui.screenStack;
@@ -40,7 +48,7 @@ export function isHiddenKeepaliveSystem(name) {
  * forced step cannot keep simulating an ambush behind a menu.
  */
 export function shouldSkipFullTickSystems(state) {
-  return shouldFreezeFlightSubmit(state);
+  return hasFlightFreeze(state);
 }
 
 /**

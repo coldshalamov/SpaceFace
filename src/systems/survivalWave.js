@@ -17,6 +17,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { SWARM_ARRIVAL_GRACE_S, SWARM_SPAWN_RETRY_TICKS } from './swarmSafety.js';
 import { catalogQuestionIssues } from '../data/survivalWaves.js';
 import {
   SWARM_BOSS_ENEMY_ID,
@@ -52,10 +53,9 @@ const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
 const OPENING_ARRIVAL_GAP_TICKS = 80;
 // Swarm fire shaping. A new pilot reads one or two guns, not ten: only the nearest few cohort
 // hulls are cleared to shoot at once (more each wave), a fresh arrival holds its guns for a beat,
-// and a hull the pilot just hit may always answer. Uses the AI's own arrival-hold marker.
+// and a hull the pilot just hit is prioritised within that cap. Independent of encounter holds.
 const SWARM_SHOOTERS_BY_WAVE = Object.freeze([2, 2, 3, 4, 5, 6, 6, 7, 8]);
-const SWARM_ARRIVAL_HOLD_S = 2.5;
-const SWARM_ROSTER_EVERY_TICKS = 30;
+const SWARM_ARRIVAL_HOLD_S = SWARM_ARRIVAL_GRACE_S;
 const SWARM_RETURN_FIRE_S = 2;
 
 /**
@@ -203,9 +203,14 @@ export const survivalWave = {
   _onWavePlanned(payload) {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
-    const plan = payload && payload.plan;
+    const sourcePlan = payload && payload.plan;
+    const plan = sourcePlan && { ...sourcePlan,
+      swarm: sourcePlan.swarm ? { ...sourcePlan.swarm } : sourcePlan.swarm,
+      schedule: Array.isArray(sourcePlan.schedule) ? sourcePlan.schedule.map(entry => ({ ...entry })) : sourcePlan.schedule,
+    };
     if (!plan || plan.ok === false || !Array.isArray(plan.schedule)) return;
     const wave = Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    if (this._wave === wave && this._plan && (this._sourcePlan === sourcePlan || this._started)) return;
     const swarm = plan.swarm && typeof plan.swarm === 'object' ? plan.swarm : null;
     // A swarm wave INHERITS the survivors of the last one. They were never chased down, they still
     // hold their budget slots, and their deaths still count — so the new wave opens under the
@@ -219,6 +224,7 @@ export const survivalWave = {
     if (carriedBosses && carriedBosses.size > 0) this._bossIds = carriedBosses;
     this._wave = wave;
     this._plan = plan;
+    this._sourcePlan = sourcePlan;
     this._swarm = swarm;
     this._pending = plan.schedule.map((entry, index) => ({ entry, index }));
     // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
@@ -273,7 +279,8 @@ export const survivalWave = {
     const run = liveSurvivalRun(this.state);
     if (!run || run.phase !== 'active') return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
-    if (this._plan == null || this._wave !== wave) return;
+    if (this._plan == null || this._wave !== wave || this._started) return;
+    this._started = true;
     this._active = true;
     this._admittedTotal = 0;
     this._requestedTotal = 0;
@@ -290,6 +297,7 @@ export const survivalWave = {
     this._lastReinforceTick = 0;
     this._reinforceIndex = 0;
     this._dispatchDue();
+    this._shapeSwarmFire();
     this._publishWaveProgress({ force: true });
     this._checkCleared(run);
   },
@@ -336,6 +344,7 @@ export const survivalWave = {
       : null;
     if (live && live !== entry.entity && live.alive !== false
       && live.data && live.data.runCohort === 'survival') return;
+    if (live && live === entry.entity && live.alive !== false) return;
     this._resolveCohort(id);
   },
 
@@ -433,17 +442,10 @@ export const survivalWave = {
         continue;
       }
       const holding = this._swarm && swarmPressureIsHolding();
-      const emptyBoard = this._cohort.size === 0;
-      // A carried reservoir hold is a protected hole. Ordinary opening packages must not refill
-      // it. Champions stay owed — they defer until the hold finishes rather than being dropped.
-      // Debuts, wall heavies, and the lesson rock's body carry the same debt: a staged arrival
-      // that is DROPPED here simply never happens. An empty board is the emergency exception.
-      if (this._swarm && holding && !emptyBoard) {
-        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID
-          || entry.debut === true || entry.wall === true || entry.lesson === true) {
-          this._pending[write++] = item;
-          continue;
-        }
+      // A wipe is an earned breath, including when no hull survives. Keep scheduled
+      // bodies owed instead of silently dropping them or refilling through the hold.
+      if (this._swarm && holding) {
+        this._pending[write++] = item;
         continue;
       }
       // A swarm wave's opening burst is bounded by the SAME concurrency target the stream uses.
@@ -530,9 +532,10 @@ export const survivalWave = {
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
       // The same is true of a staged debut, a wall's heavies, or an act round's staged body: a
       // staged body must land, not vanish.
-      if (this._swarm?.killTarget && (entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true)
+      if (this._swarm?.killTarget && (receipt.deferred > 0 || entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true)
         && receipt.admitted < count) {
-        this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted } };
+        this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted,
+          atTick: this._cursor + SWARM_SPAWN_RETRY_TICKS } };
       }
       // A refused swarm batch must never shrink the planned figure — the stream will bring
       // those bodies later, up to the finite quota.
@@ -588,45 +591,36 @@ export const survivalWave = {
   },
 
   _shapeSwarmFire() {
-    if (!this._swarm || !this._cohort || this._cohort.size === 0) return;
+    if (!this._swarm || !this._cohort?.size) return;
     const state = this.state;
-    const entities = state && state.entities;
-    if (!entities || typeof entities.get !== 'function') return;
-    const player = entities.get(state.playerId);
+    const player = state?.entities?.get?.(state.playerId);
     if (!player || player.alive === false || !player.pos) return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    const live = [];
-    for (const [id, member] of this._cohort.entries()) {
-      const e = this._resolveCohortEntity(id, member);
-      if (!e || e.alive === false || !e.pos || !e.data || !e.data.ai) continue;
-      if (!Number.isFinite(member.armedAt)) {
-        member.armedAt = now + SWARM_ARRIVAL_HOLD_S;
-        e.data.ai.arrivalHoldUntil = Math.max(Number(e.data.ai.arrivalHoldUntil) || 0, member.armedAt);
-      }
-      live.push({ id, e, member });
-    }
-    if (this._cursor % SWARM_ROSTER_EVERY_TICKS !== 0) return;
-    const waveIdx = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
-    const cap = SWARM_SHOOTERS_BY_WAVE[waveIdx];
     const rank = [];
-    for (const row of live) {
-      if (row.member.armedAt > now) continue;
-      const boss = this._bossIds && this._bossIds.has(row.id);
-      const answering = Number.isFinite(row.e.lastDamageT) && now - row.e.lastDamageT < SWARM_RETURN_FIRE_S;
-      const d = Math.hypot(row.e.pos.x - player.pos.x, row.e.pos.z - player.pos.z);
-      rank.push({ row, key: (boss ? 0 : answering ? 1 : 2), d });
-    }
-    rank.sort((a, b) => (a.key - b.key) || (a.d - b.d) || (a.row.id - b.row.id));
-    const holdUntil = now + (SWARM_ROSTER_EVERY_TICKS + 6) / 60;
-    for (let i = 0; i < rank.length; i++) {
-      const ai = rank[i].row.e.data.ai;
-      if (i < cap || rank[i].key === 0) {
-        if (Number(ai.arrivalHoldUntil) > now && ai.swarmFireHeld === true) delete ai.arrivalHoldUntil;
-        ai.swarmFireHeld = false;
-      } else {
-        ai.arrivalHoldUntil = Math.max(Number(ai.arrivalHoldUntil) || 0, holdUntil);
-        ai.swarmFireHeld = true;
+    for (const [id, member] of this._cohort) {
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
+      const ai = entity.data.ai;
+      if (!Number.isFinite(member.armedAt)) {
+        member.armedAt = Number.isFinite(ai.swarmArmedAt) ? ai.swarmArmedAt : now + SWARM_ARRIVAL_HOLD_S;
       }
+      // A separate lease: never erase an arrival/encounter hold owned by another system.
+      // Refresh every tick so the warmup cannot expire between half-second roster updates.
+      ai.swarmFireHoldUntil = Math.max(member.armedAt, now + 2 / 60);
+      ai.swarmFireHeld = true;
+      if (member.armedAt > now) continue;
+      const boss = this._bossIds?.has(id);
+      const answering = Number.isFinite(entity.lastDamageT) && now - entity.lastDamageT < SWARM_RETURN_FIRE_S;
+      const distance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+      rank.push({ id, ai, key: boss ? 0 : answering ? 1 : 2, distance });
+    }
+    const index = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
+    const cap = SWARM_SHOOTERS_BY_WAVE[index];
+    rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
+    for (let i = 0; i < rank.length; i++) {
+      if (i >= cap && rank[i].key !== 0) continue; // authored champions keep their own attack score
+      rank[i].ai.swarmFireHoldUntil = now;
+      rank[i].ai.swarmFireHeld = false;
     }
   },
 
@@ -947,12 +941,14 @@ export const survivalWave = {
 
   _resetWave() {
     this._plan = null;
+    this._sourcePlan = null;
     this._wave = 0;
     this._pending = [];
     this._cohort = new Map();
     this._blockingRoles = new Set();
     this._cursor = -1;
     this._active = false;
+    this._started = false;
     this._cleared = false;
     this._admittedTotal = 0;
     this._requestedTotal = 0;

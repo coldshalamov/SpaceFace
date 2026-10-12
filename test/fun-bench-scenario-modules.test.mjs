@@ -4,21 +4,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { VERB_BENCH_SCENARIOS, listVerbScenarios, discoverScenarioModules } from '../scripts/lib/bench/verbBench.mjs';
+import { listVerbScenarios, discoverScenarioModules } from '../scripts/lib/bench/verbBench.mjs';
 import { evaluateBars, FEEL_BARS } from '../scripts/lib/bench/feelBars.mjs';
 
-test('listVerbScenarios keeps every inline scenario and only adds well-formed modules', async () => {
+test('listVerbScenarios is exactly the discovered module set — no inline stand-ins remain', async () => {
   const merged = await listVerbScenarios();
-  for (const inline of VERB_BENCH_SCENARIOS) {
-    assert.ok(merged.some((s) => s.id === inline.id), `inline scenario ${inline.id} must survive discovery`);
-  }
   const discovered = await discoverScenarioModules();
+  assert.equal(merged.length, discovered.size, 'the list is the discovery table, not a merged fallback');
   for (const [id, spec] of discovered) {
     assert.equal(typeof spec.run, 'function', `module ${spec.module} for ${id} must export run(seed)`);
     assert.ok(merged.some((s) => s.id === id && s.run === spec.run), `discovered ${id} must be dispatched by its module`);
   }
   const ids = merged.map((s) => s.id);
-  assert.equal(new Set(ids).size, ids.length, 'scenario ids are unique after merge');
+  assert.equal(new Set(ids).size, ids.length, 'scenario ids are unique');
 });
 
 test('metrics.bars from any run feeds the matching FEEL_CONTRACT bar (single-writer seam)', () => {

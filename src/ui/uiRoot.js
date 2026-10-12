@@ -36,6 +36,9 @@ import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 import { completeRacingLaunch, noteRacingNewGame } from './racingLaunch.js';
 import { mountRacingHud } from './racingHud.js';
+import { installPhysicsVenueHooks, mountPhysicsVenueHud } from './physicsVenues.js';
+import { mountSpectrumOverlay } from '../render/spectrum/overlay.js';
+import { createPhysicalJobsPrompt } from './physicalJobsPrompt.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -189,6 +192,7 @@ const SCREEN_MODULES = [
   // Wave B11 — Physics lab / Sandbox toy on front door.
   { path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' },
   { path: './screens/raceBoard.js', load: () => import('./screens/raceBoard.js'), name: 'raceBoardScreen' },
+  { path: './screens/physicsVenues.js', load: () => import('./screens/physicsVenues.js'), name: 'physicsVenuesScreen' },
 ];
 
 // Title / pause / death must win the first parse wave. Galaxy map, station, and shipworks
@@ -639,6 +643,10 @@ export const ui = {
     if (IS_DEV) {
       installSandboxGameStartedHook(this.bus, () => this.ctx);
     }
+    this._physicsVenueHooks?.();
+    this._physicsVenueHooks = installPhysicsVenueHooks(this.bus, () => this.ctx);
+    this.physicalJobsPrompt?.dispose();
+    this.physicalJobsPrompt = createPhysicalJobsPrompt(this.ctx);
     if (typeof this._racingArmOff === 'function') {
       try { this._racingArmOff(); } catch (_) { /* previous init */ }
     }
@@ -746,6 +754,8 @@ export const ui = {
       try { this.racingHud.dispose(); } catch (_) { /* remount */ }
     }
     this.racingHud = null;
+    this.physicsVenueHud?.dispose();
+    this.spectrumOverlay?.dispose();
     try {
       const uiRootEl = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
       this.racingHud = mountRacingHud({
@@ -754,6 +764,8 @@ export const ui = {
         state: this.state,
         screens: this.screenManager,
       });
+      this.physicsVenueHud = mountPhysicsVenueHud({ root: uiRootEl, bus: this.bus, state: this.state, screens: this.screenManager });
+      this.spectrumOverlay = mountSpectrumOverlay({ root: uiRootEl, state: this.state, helpers: this.helpers, screens: this.screenManager });
     } catch (e) { console.warn('[ui] racing tape mount failed', e); }
 
     this.worldObject = createWorldObjectInteraction(ctx, this.screenManager);
@@ -1736,6 +1748,9 @@ export const ui = {
       }
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
       if (this.racingHud && typeof this.racingHud.frame === 'function') this.racingHud.frame(st);
+      this.physicsVenueHud?.frame(st);
+      this.spectrumOverlay?.frame(st);
+      this.physicalJobsPrompt?.frame();
       // Authored capital warnings draw over the flight picture and hold still while the sim is
       // frozen; the mount clears its canvas outside flight so menus never inherit a stale warning.
       if (this.capitalBossOverlay && typeof this.capitalBossOverlay.draw === 'function') {

@@ -30,6 +30,9 @@ const SHA256_RE = /^[a-f0-9]{64}$/;
 
 let defaultDecoderModules = null;
 
+const VERIFIED_METADATA_CACHE_MAX = 512;
+const VERIFIED_METADATA_CACHE_MAX_BYTES = 16 * 1024 * 1024;
+
 export function createRenderPackageLoader(options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const decodeGlb = typeof options.loadGlb === 'function'
@@ -59,6 +62,8 @@ export function createRenderPackageLoader(options = {}) {
   const cache = new Map();
   let ownerSequence = 0;
   let disposed = false;
+  const verifiedMetadataCache = new Map();
+  let verifiedMetadataBytes = 0;
 
   // Admission ledger: each decode generation rides one async-admission token. An evicted or
   // superseded generation's token aborts so a late decode fails its assertActive instead of
@@ -105,7 +110,39 @@ export function createRenderPackageLoader(options = {}) {
     assertValidRenderPackage(metadataValue);
     const expectedHash = normalizeExpectedContentHash(expectedContentHash);
     const expectedRuntime = normalizeExpectedRuntimeHash(expectedRuntimeHash);
-    const metadata = deepFreeze(stableJsonValue(metadataValue));
+    // Re-loads of an already verified package (same URL, same declared and expected trust anchors)
+    // reuse the verified canonical metadata instead of re-canonicalizing and re-hashing the whole
+    // table on the main thread — that work recurred on every in-flight admission (perf: steady
+    // flight paid ~0.35 s/45 s in stableJsonValue + SHA-256 for packages it had already proven).
+    const verifiedKey = typeof metadataUrl === 'string' && metadataValue && typeof metadataValue === 'object'
+      ? `${metadataUrl}|${metadataValue.contentHash}|${metadataValue.runtimeHash || ''}|${expectedHash || ''}|${expectedRuntime || ''}`
+      : null;
+    // Declared hashes are claims, not evidence that a new response has identical bytes.
+    // JSON serialization is cheaper than canonicalization + hashing, but a changed payload
+    // must take the complete verification path even when its declarations stay unchanged.
+    const payload = verifiedKey ? JSON.stringify(metadataValue) : null;
+    const prior = verifiedKey ? verifiedMetadataCache.get(verifiedKey) : null;
+    const verifiedHit = prior && prior.payload === payload ? prior.metadata : null;
+    const metadata = verifiedHit || deepFreeze(stableJsonValue(metadataValue));
+    if (!verifiedHit) await verifyMetadataTrustAnchors(metadata, expectedHash, expectedRuntime, requestAdmission);
+    if (verifiedKey && !verifiedHit) {
+      const bytes = payload.length * 2;
+      if (prior) { verifiedMetadataBytes -= prior.bytes; verifiedMetadataCache.delete(verifiedKey); }
+      while (verifiedMetadataCache.size && (verifiedMetadataCache.size >= VERIFIED_METADATA_CACHE_MAX
+          || verifiedMetadataBytes + bytes > VERIFIED_METADATA_CACHE_MAX_BYTES)) {
+        const oldest = verifiedMetadataCache.keys().next().value;
+        verifiedMetadataBytes -= verifiedMetadataCache.get(oldest).bytes;
+        verifiedMetadataCache.delete(oldest);
+      }
+      if (bytes <= VERIFIED_METADATA_CACHE_MAX_BYTES) {
+        verifiedMetadataCache.set(verifiedKey, { metadata, payload, bytes });
+        verifiedMetadataBytes += bytes;
+      }
+    }
+    return loadVerified(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl);
+  }
+
+  async function verifyMetadataTrustAnchors(metadata, expectedHash, expectedRuntime, requestAdmission) {
     const computedHash = await computeRenderPackageContentHash(metadata, {
       ...(contentDigest ? { digest: contentDigest } : {}),
     });
@@ -142,6 +179,9 @@ export function createRenderPackageLoader(options = {}) {
       }
     }
 
+  }
+
+  async function loadVerified(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl) {
     const signature = runtimePackageSignature(metadata);
     const contentHash = metadata.contentHash;
     // The consumer's presentation owner lands on the entry synchronously — at commit for fresh
@@ -462,6 +502,7 @@ export function createRenderPackageLoader(options = {}) {
   function dispose(reason = 'render-package-loader-disposed') {
     if (disposed) return false;
     disposed = true;
+    verifiedMetadataCache.clear(); verifiedMetadataBytes = 0;
     for (const entry of cache.values()) {
       releasePackageOwner(entry, reason);
       dropPackageDetachManifest(entry.metadata.contentHash);
@@ -1088,7 +1129,21 @@ function normalizeExpectedRuntimeHash(value) {
   return value;
 }
 
+// Metadata reaching the signature is deep-frozen canonical output, so the signature of one object
+// never changes; verified re-loads hand back the same object and hit this cache.
+const runtimePackageSignatures = new WeakMap();
 function runtimePackageSignature(metadata) {
+  const frozen = metadata && typeof metadata === 'object' && Object.isFrozen(metadata);
+  if (frozen) {
+    const cached = runtimePackageSignatures.get(metadata);
+    if (cached !== undefined) return cached;
+  }
+  const signature = computeRuntimePackageSignature(metadata);
+  if (frozen) runtimePackageSignatures.set(metadata, signature);
+  return signature;
+}
+
+function computeRuntimePackageSignature(metadata) {
   return stableJsonStringify({
     content: renderPackageContentIdentity(metadata),
     runtimeHash: metadata.runtimeHash || null,

@@ -92,7 +92,7 @@ export const raceBoardScreen={
       const cur=normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView);
       setSteeringView(ctx?.state,ctx?.bus,STEERING_VIEWS[(STEERING_VIEWS.indexOf(cur)+1)%STEERING_VIEWS.length]);viewLabel();
     });
-    const back=el('button','k-word','Back');back.type='button';back.addEventListener('click',()=>{cue('back');pop(ctx);});
+    const back=el('button','k-word','Back');back.type='button';back.addEventListener('click',()=>{cue('close');pop(ctx);});
     tools.append(view,back);rootEl.appendChild(tools);
     rootEl.appendChild(el('p','k-sentence',RACING_MODES.find(row=>row.id===fit.raceMode).description+' Temporary flights lend your selected fit. Sprint accelerates harder; Endurance favors long straights. Solo runs in your campaign sector use your current ship.'));
     if(fit.raceMode==='cup'){

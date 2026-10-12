@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { publishMaterialFields } from '../vfx/materialEnvironment.js';
 import { fieldSignature, SURFACE_MATERIALS } from './catalog.js';
 import { SweptSurfaceBatch, SURFACE_FLOATS } from './sweptSurfaceBatch.js';
 import { FIELD_LIFECYCLES, FIELD_ROLE, sampleFieldLifecycle } from './effectLifecycle.js';
@@ -97,7 +98,7 @@ function familyReadAwake(state){
 export class FieldForcePresentation {
   constructor(scene,{toLocal=null}={}){
     this.batch=new SweptSurfaceBatch(scene,{capacity:224,name:'SF_FieldForceLanguage',fieldVolume:true});
-    this.mesh=this.batch.mesh;this.toLocal=toLocal;
+    this.mesh=this.batch.mesh;this.toLocal=toLocal;this.scene=scene;
     this.particles=new ForceParticleFlow(this.mesh,{capacity:360});
     this.particleOptions={reducedMotion:false,reducedFlash:false};
     this.particleBurst={kind:'well',x:0,z:0,y:.7,dx:1,dz:0,radius:1,seed:0,count:6,life:.65,strength:1,halfAngle:.56,halfWidth:52};
@@ -174,6 +175,7 @@ export class FieldForcePresentation {
   }
   update(dt,state={}){
     if(this.disposed)return this.stats;
+    publishMaterialFields(this.scene,state,this.toLocal);
     // Quiet settled flight: empty field-force still paid frustum rebuild +
     // slot reserved walk + batch.begin/end commit(0) every tick with no live
     // surfaces. Latch after first empty publish; cheap active/slot wake.
@@ -259,19 +261,20 @@ export class FieldForcePresentation {
         case 'cone':this._cone(s);break;
         case 'sheet':this._sheet(s);break;
       }
-      const pulse=Math.floor((this.time-s.born)/(.16+s.character*.045));
+      const pulse=Math.floor((this.time-s.born)/(.12+s.character*.037));
       if(!motion && !this.releasing && pulse>s.particlePulse){
         const p=this.particleBurst;s.particlePulse=pulse;
         p.kind=shapeOfFieldKind(s.kind)==='sheet'?'skim':shapeOfFieldKind(s.kind);p.x=this.local.x;p.z=this.local.z;
         p.dx=Math.cos(s.angle);p.dz=Math.sin(s.angle);p.radius=s.kind==='seed'?Math.min(s.radius*.33,14):s.radius;
         p.halfAngle=s.field.halfAngleRad;p.halfWidth=s.field.halfWidth;
         p.seed=s.character+Math.imul(pulse,2654435761)/4294967296;
-        p.count=s.field.engaged?8:5;p.strength=s.field.engaged?1.12:.85;
+        p.count=Math.max(7,Math.floor(28/Math.sqrt(Math.max(1,stats.active))));p.strength=s.field.engaged?1.12:.85;
         p.life=Math.min(.8,this.cycle.release*.85);
-        p.environment=s.environment;
+        p.environment=s.environment;p.deferUpload=true;
         this.particles.emit(p);
       }
     }
+    this.particles.publish();
     this._paintFamilyRead(state);
     this.batch.end();stats.surfaces=this.batch.count;stats.dropped+=this.batch.dropped;
     if(!stats.active&&!stats.releasing)this.particles.clear();
@@ -420,15 +423,16 @@ export class FieldForcePresentation {
     const r=this.radius;this.orientation=0;
     // Reach comes from the force record; material thickness comes from ship scale.
     // A large radius must never turn the same current into a 50-WU cloth hose.
-    const channel=Math.min(6.5,r*.048),underflow=Math.min(2.7,r*.022);
+    const channel=Math.min(10.0,r*.052),underflow=Math.min(3.6,r*.024);
     const throat=Math.min(10,r*.075),collar=Math.min(18,r*.17);
     // Outer edge is exactly the physics radius. Width lies INSIDE it, never outside the range.
     this._rim(r-r*0.009,r*0.009,4,0.68,true);
     // Five deep accretion channels with overlapping lower currents, not ten wire spirals.
     this._member('membrane');
     for(let i=0;i<5;i++){
-      const a=i*TAU/5;this.phaseOffset=i/5;
-      this._surface(0,a,a+1.8+(i%2)*0.3,r*0.90,r*0.082,channel*(.86+(i%2)*.14),Math.min(5,r*.04),0,i*0.193,0,1,0.88);
+      const variation=((this.slot.character*7.13+i*.381966)%1);
+      const a=i*TAU/5+(variation-.5)*.32;this.phaseOffset=i/5+variation*.13;
+      this._surface(0,a,a+1.55+variation*.75,r*(.84+variation*.12),r*0.082,channel*(.70+variation*.40),Math.min(5,r*.04),0,i*0.193,0,1,0.88);
       this._member('filament');
       this._surface(0,a+0.16,a+2.00,r*0.66,r*0.12,underflow,-Math.min(2,r*.018),0,i*.19,0,1,0.78);
       this._member('membrane');

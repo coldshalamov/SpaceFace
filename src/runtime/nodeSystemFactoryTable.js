@@ -21,6 +21,12 @@ import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
 import { physics } from '../core/physics.js';
+import { orbitalGallery } from '../gallery/orbital/system.js';
+import { createKineticLeague } from '../sports/kineticLeague/system.js';
+import { reactiveMatter } from '../systems/reactiveMatter.js';
+import { spectrum } from '../systems/spectrum/index.js';
+import { createLiveMercyServiceSystem } from '../response/mercyService/live.js';
+import { createWreckCourtSystem } from '../systems/wreckCourt.js';
 import { input } from '../systems/input.js';
 import { autoTargetAssist } from '../systems/autoTargetAssist.js';
 import { flybyFocus } from '../systems/flybyFocus.js';
@@ -255,6 +261,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['bulletTime', bulletTime],
     ['cloak', cloak],
     ['scanner', scanner],
+    ['spectrum', spectrum],
     ['scanReveal', scanReveal],
     ['buildIdentity', buildIdentity],
     ['lawSecurity', lawSecurity],
@@ -265,6 +272,11 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['barkDirector', barkDirector],
     ['dockingCorridor', dockingCorridor],
     ['physics', physics],
+    ['reactiveMatter', reactiveMatter],
+    ['orbitalGallery', orbitalGallery],
+    ['kineticLeague', createKineticLeague()],
+    ['mercyService', createLiveMercyServiceSystem()],
+    ['wreckCourt', createWreckCourtSystem()],
     ['aiPorts', aiPorts],
     ['tumbleStates', tumbleStates],
     ['collisionConsequences', collisionConsequences],

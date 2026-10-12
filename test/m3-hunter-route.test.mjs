@@ -131,8 +131,11 @@ test('independent 30/60/90 Hunter public-route cells stay inside the healthy ban
     // writ (and its one extra rng draw shifts the board's later rolls). The crossing moved to
     // 65.51 min — the 60-minute cell honestly reports null because the wallet never reaches
     // 15k inside its window (ends 14,015). Cells stay independent runs sharing a prefix.
+    // Re-pinned for 89a814104: live convoy/hunter transit casts now pin mission-critical so
+    // they physically complete their runs — arrivals land, market pressure fires, and the
+    // route's wallet crosses 15k at 62.82 min instead of 65.51.
     assert.equal(report.cells[60].first15kAtMin, null);
-    assert.equal(report.cells[90].first15kAtMin, 65.51);
+    assert.equal(report.cells[90].first15kAtMin, 62.82);
   } finally {
     restoreNondeterminism();
   }

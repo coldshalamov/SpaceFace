@@ -76,7 +76,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const st = liveState || state;
       const inFlight = st?.mode === 'flight' && !st.ui?.docked && !screens?.isOpen?.()
         && !st.render?.photoMode?.active && st.entities?.get?.(st.playerId)?.alive !== false;
-      panel.hidden=!inFlight;
+      panel.hidden=!inFlight || st.physicsVenuePublic?.active === true;
       if(!inFlight)return;
       const now=st.simTime||0;
       if(now>=lastTick&&now-lastTick<0.1)return;

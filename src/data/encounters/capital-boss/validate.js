@@ -1,8 +1,10 @@
+import { SUBSYSTEM_DEFS } from '../../combatDefs.js';
+
 const finite = (v, min=0) => Number.isFinite(v) && v>=min;
 const integer = (v,min=0) => Number.isSafeInteger(v)&&v>=min;
-const SUBSYSTEMS = new Set(['subsystem_drive','subsystem_weapon','subsystem_tether_spool','subsystem_power','subsystem_sensor']);
+const SUBSYSTEMS = new Set(SUBSYSTEM_DEFS.map(def => def.id));
 const CHANNELS = new Set(['kinetic','thermal','ion','plasma','phase']);
-const REQUIREMENTS = new Set(['weapon','drive','tether_spool']);
+const REQUIREMENTS = new Set([...SUBSYSTEMS].map(id => id.replace(/^subsystem_/, '')));
 const IDS = /^[a-z][a-z0-9_]*$/;
 export function validateCapitalBossEncounter(e, vocabulary={}) {
   const errors=[];
@@ -16,7 +18,7 @@ export function validateCapitalBossEncounter(e, vocabulary={}) {
   check(Array.isArray(s.beats)&&s.beats.length>0,'nonempty score');
   for(const key of ['introTicks','transitionTicks','resumeTicks','voiceGapTicks']) check(integer(s[key],1),key);
   check(finite(s.engageRadius,1)&&s.suspendRadius>s.engageRadius,'engagement hysteresis');
-  check(s.maxWingMembers===2,'two-wing-member ceiling');
+  check(integer(s.maxWingMembers)&&s.maxWingMembers<=2,'two-wing-member ceiling');
   const beats=new Set();
   for(const b of s.beats||[]) {
     const id=`${e.id}/${b.id}`;

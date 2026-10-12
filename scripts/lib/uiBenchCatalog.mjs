@@ -19,6 +19,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'new-game', screen: 'newGame', backdrop: 'title' },
   { id: 'newGame', screen: 'newGame', backdrop: 'title' },
   { id: 'pause', screen: 'pause', backdrop: 'title' },
+  { id: 'physicsVenues', screen: 'physicsVenues', backdrop: 'space' },
   { id: 'settings', screen: 'settings', backdrop: 'title' },
   // `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js); -empty is a fresh machine.
   { id: 'save-load', screen: 'saveLoad', backdrop: 'title', saves: 'filed' },

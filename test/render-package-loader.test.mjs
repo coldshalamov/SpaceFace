@@ -17,6 +17,25 @@ import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 
 const HASH = '1'.repeat(64);
+
+test('verified URL cache rejects changed metadata that reuses declared trust anchors', async () => {
+  let current = packageMetadata();
+  const decoded = decodedFixture();
+  let digests = 0;
+  const loader = createRenderPackageLoader({ fetchImpl: async () => ({ ok: true, json: async () => current }),
+    loadGlb: async () => ({ scene: decoded.scene }),
+    contentDigest: async bytes => { digests++; return createHash('sha256').update(bytes).digest('hex'); } });
+  const url = 'https://assets.example/fixture/render-package.json';
+  try {
+    await loader.load(url);
+    const verifiedDigests = digests;
+    current = structuredClone(current); await loader.load(url);
+    assert.equal(digests, verifiedDigests, 'identical verified metadata keeps the fast reload path');
+    current = structuredClone(current);
+    current.nodes[0].localTransform[12] = 47;
+    await assert.rejects(loader.load(url), /content hash mismatch/);
+  } finally { loader.dispose(); }
+});
 const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
 function packageMetadata() {

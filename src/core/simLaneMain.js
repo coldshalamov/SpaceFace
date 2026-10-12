@@ -75,9 +75,11 @@ import {
 
 const SIM_LANE = Object.freeze({ MAIN: 'main', WORKER: 'worker' });
 
-// A tick directive has this long to come back before the lane is dead. Confirm after a task
-// turn: a main-thread GL stall can delay dispatch of a healthy worker's already queued reply.
+// A tick directive has this much responsive main-thread time to come back. Timers and worker
+// messages use different task sources: yielding one timer turn does not prove that WebKit had
+// a chance to dispatch a queued reply after a cold-start GL/DOM task.
 const LANE_STALL_MS = 5000;
+const LANE_WATCHDOG_SAMPLE_MS = 100;
 // Replies can never outpace posts (one outstanding directive), but the ring
 // keeps the production bound — an overflow is an impossible-state failure,
 // not a silent drop.
@@ -312,8 +314,8 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   const tokenCounter = { value: 0 };
   const pending = new Map();            // seq -> { kind, resolve, reject }
   const pendingRpcs = new Map();        // rpc id -> { resolve, reject }
-  let inFlight = null;                  // { seq, sentMs, steps }
-  let stallConfirmationTimer = null;
+  let inFlight = null;                  // { seq, sentMs, steps, mainThreadDelayedMs }
+  let stallWatchdogTimer = null;
   let sabEnv = null;                    // armed SAB envelope channel (layout v2)
   let laneClosed = false;
   let laneClosedComplete = false;
@@ -388,9 +390,9 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   }
 
   function releaseFlight(msg, flight) {
-    if (stallConfirmationTimer !== null) {
-      clearTimeout(stallConfirmationTimer);
-      stallConfirmationTimer = null;
+    if (stallWatchdogTimer !== null) {
+      clearTimeout(stallWatchdogTimer);
+      stallWatchdogTimer = null;
     }
     inFlightSteps = Math.max(0, inFlightSteps - (flight ? flight.steps : 0));
     inFlight = null;
@@ -711,26 +713,34 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   const advanceResult = { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
   let pendingSteps = 0;
 
+  function watchFlight(flight, delayMs = LANE_WATCHDOG_SAMPLE_MS, confirm = false) {
+    const dueMs = nowMs() + delayMs;
+    stallWatchdogTimer = setTimeout(() => {
+      stallWatchdogTimer = null;
+      if (laneClosed || inFlight !== flight) return;
+      const observedMs = nowMs();
+      // A delayed watchdog callback documents unavailable dispatch time. Neither it nor a
+      // worker message can run during that interval; do not charge it to worker silence.
+      flight.mainThreadDelayedMs += Math.max(0, observedMs - dueMs);
+      drainSabRepliesNow();
+      if (laneClosed || inFlight !== flight) return;
+      const responsiveMs = observedMs - flight.sentMs - flight.mainThreadDelayedMs;
+      const remainingMs = LANE_STALL_MS - responsiveMs;
+      if (remainingMs <= 0) {
+        if (confirm) {
+          failLane(`sim worker tick directive stalled >${LANE_STALL_MS}ms (seq ${flight.seq})`);
+        } else {
+          watchFlight(flight, 0, true);
+        }
+      } else {
+        watchFlight(flight, Math.min(LANE_WATCHDOG_SAMPLE_MS, remainingMs));
+      }
+    }, delayMs);
+  }
+
   function flushDirectives() {
     if (laneClosed || !ready) return;
-    if (inFlight) {
-      if (nowMs() - inFlight.sentMs > LANE_STALL_MS && stallConfirmationTimer === null) {
-        const suspectFlight = inFlight;
-        // RAF can resume ahead of postMessage after a long GL/init task. Yield once so queued
-        // replies can land, then fail only the same still-outstanding directive. This does not
-        // widen the watchdog or forgive a worker that really stopped responding.
-        stallConfirmationTimer = setTimeout(() => {
-          stallConfirmationTimer = null;
-          if (laneClosed || inFlight !== suspectFlight) return;
-          drainSabRepliesNow();
-          if (!laneClosed && inFlight === suspectFlight
-              && nowMs() - suspectFlight.sentMs > LANE_STALL_MS) {
-            failLane(`sim worker tick directive stalled >${LANE_STALL_MS}ms (seq ${suspectFlight.seq})`);
-          }
-        }, 0);
-      }
-      return;
-    }
+    if (inFlight) return;
     const commands = envelopeRing.drain();
     if (pendingSteps <= 0 && commands.length === 0 && pendingAckEnd === 0) return;
 
@@ -749,8 +759,9 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     inFlightSteps += msg.steps;
     postedDirectives++;
     postedSteps += msg.steps;
-    inFlight = { seq, sentMs: nowMs(), steps: msg.steps };
+    inFlight = { seq, sentMs: nowMs(), steps: msg.steps, mainThreadDelayedMs: 0 };
     pending.set(seq, { kind: 'tick' });
+    watchFlight(inFlight);
     postLaneDirective(msg);
   }
 
@@ -1020,6 +1031,10 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         postedDirectives,
         postedSteps,
         inFlight: inFlight != null,
+        inFlightWallMs: inFlight ? Math.max(0, nowMs() - inFlight.sentMs) : null,
+        inFlightMainThreadDelayedMs: inFlight ? inFlight.mainThreadDelayedMs : null,
+        inFlightResponsiveMs: inFlight
+          ? Math.max(0, nowMs() - inFlight.sentMs - inFlight.mainThreadDelayedMs) : null,
         pendingRpcs: pendingRpcs.size,
         boundaryCaptureCount,
         boundaryErrorCount,
@@ -1079,9 +1094,9 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   function close() {
     if (laneClosed) return false;
     laneClosed = true;
-    if (stallConfirmationTimer !== null) {
-      clearTimeout(stallConfirmationTimer);
-      stallConfirmationTimer = null;
+    if (stallWatchdogTimer !== null) {
+      clearTimeout(stallWatchdogTimer);
+      stallWatchdogTimer = null;
     }
     try { uninstallSink(); } catch (_) {}
     try { if (busForward && typeof busForward.restore === 'function') busForward.restore(); } catch (_) {}

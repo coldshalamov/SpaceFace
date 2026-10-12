@@ -7,7 +7,7 @@ import { gateCounterplayFire } from './authorityGate.js';
 import { getCombatKernel } from '../../combat/kernel.js';
 import { steerToward } from './steer.js';
 import { createSG03ActionPort } from '../sg03ActionPort.js';
-import { applyAIFiringIntent } from '../../systems/aiFireIntent.js';
+import { applyAIFiringIntent, clearAIFiringIntent } from '../../systems/aiFireIntent.js';
 
 let repairCatalog = null;
 const actionPorts = new WeakMap();
@@ -53,8 +53,7 @@ export function applyCounterplayIntent({
   const data = entity.data || (entity.data = {});
   if (!data.intent) data.intent = { fire: false, aimAngle: entity.rot || 0 };
   if (Object.isFrozen(data.intent)) data.intent = { ...data.intent };
-  data.intent.fire = false;
-  data.intent.fireGroup = null;
+  clearAIFiringIntent(data.intent);
   if (!decision.attack || decision.attack.wantFire !== true) return result;
   result.fire.requested = true;
   const gate = gateCounterplayFire({ state, self: entity, target, decision, tick });

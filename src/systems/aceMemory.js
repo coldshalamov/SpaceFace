@@ -1090,11 +1090,16 @@ export const aceMemory = {
       t: now,
     });
     this._completeTransition('fled', pseudoAce, rec);
-    emit(this.bus, 'toast', {
-      text: `${identity.name} got away — that transponder will come back around.`,
-      kind: 'info',
-      ttl: 4,
-    });
+    // The opening raid's deadline leaves these hulls in front of the player. The disengage
+    // toast would say they got away while they are still on the guns. The name, the record,
+    // and the news line are the facts a later visit can read.
+    if (payload.source !== 'opening_hauler_raid') {
+      emit(this.bus, 'toast', {
+        text: `${identity.name} got away — that transponder will come back around.`,
+        kind: 'info',
+        ttl: 4,
+      });
+    }
   },
 
   _noteSparedPilot(payload) {
@@ -1190,6 +1195,19 @@ export const aceMemory = {
 
   _spawnReturn(ace, rec, now) {
     if (ace && ace.lifecycleOwner === 'nemesis') return;
+    // A deadline can name a raider without despawning them. A return is a later meeting,
+    // so do not field another copy while that person is still physically present.
+    // Identity stamps survive save/load; a recycled numeric entity id is never sufficient.
+    if (rec.promoted === true) {
+      const entities = this.state.entities;
+      const live = entities && typeof entities.values === 'function' ? entities.values() : this.state.entityList || [];
+      for (const entity of live) {
+        if (entity && entity.alive !== false && promotedPilotRefOf(entity) === rec.id) {
+          rec.nextReturnAttemptAt = now + 10;
+          return;
+        }
+      }
+    }
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     const budget = this.helpers && this.helpers.spawnBudget;
     const stance = stanceForRecord(rec);

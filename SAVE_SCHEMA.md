@@ -23,6 +23,12 @@ Current save version: `15`
 - `economyContracts`
 - `factions`
 - `environmentMaterials`
+- `reactiveMatter`
+- `spectrum`
+- `orbitalGalleryLedger`
+- `kineticLeague`
+- `mercyService`
+- `wreckCourt`
 - `world`
 - `entities`
 - `combat`
@@ -244,11 +250,13 @@ Current save version: `15`
 | `$.formations` | object | {} |
 | `$.ilexArk` | null | null |
 | `$.kilnback` | null | null |
+| `$.kineticLeague` | null | null |
 | `$.lastShift` | null | null |
 | `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
+| `$.mercyService` | null | null |
 | `$.meta` | object | {} |
 | `$.meta.createdAt` | string | schema-fixture |
 | `$.meta.lastSavedAt` | string | <iso8601> |
@@ -294,6 +302,7 @@ Current save version: `15`
 | `$.nemesisDeployment` | null | null |
 | `$.npcJobs` | object | {} |
 | `$.onboarding` | null | null |
+| `$.orbitalGalleryLedger` | null | null |
 | `$.palletJack` | null | null |
 | `$.physics` | null | null |
 | `$.player` | object | {} |
@@ -365,6 +374,7 @@ Current save version: `15`
 | `$.player.targetId` | null | null |
 | `$.provenance` | object | {} |
 | `$.ravel` | object | {} |
+| `$.reactiveMatter` | null | null |
 | `$.recoveryEncounters` | object | {} |
 | `$.redKite` | null | null |
 | `$.regionalEcology` | object | {} |
@@ -478,6 +488,7 @@ Current save version: `15`
 | `$.sites` | object | {} |
 | `$.snares` | null | null |
 | `$.solstice` | object | {} |
+| `$.spectrum` | null | null |
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
@@ -491,3 +502,4 @@ Current save version: `15`
 | `$.v2Flavor` | object | {} |
 | `$.vesper` | object | {} |
 | `$.world` | object | {} |
+| `$.wreckCourt` | null | null |

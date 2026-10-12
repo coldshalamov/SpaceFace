@@ -30,6 +30,21 @@ import { el, settle, cue } from '../kit/index.js';
 import { wrapCanvasLines } from '../../localization/layout.js';
 import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 
+
+/** Keep the hour-verb curve under the title; full string belongs on title=. */
+function clipHourVerbCurve(line, maxChars) {
+  const s = String(line || '');
+  if (s.length <= maxChars) return s;
+  const parts = s.split(' · ');
+  let out = '';
+  for (const part of parts) {
+    const next = out ? out + ' · ' + part : part;
+    if (next.length > maxChars) break;
+    out = next;
+  }
+  return out || parts[0].slice(0, maxChars);
+}
+
 // Branch -> sector, clockwise from the tier spoke at the top of the dial. Colour is by MEANING
 // (researched / open / locked), never by branch. Combat, the largest, takes the left of the dial so its
 // names read into the open margin; the smaller branches face the reading.
@@ -220,6 +235,9 @@ export const techTreeScreen = {
     injectConstellationScreens();
     this._ctx = ctx;
     this._root = rootEl;
+    // Resource readings belong to this DOM mount. A retained singleton may be
+    // mounted into fresh elements with unchanged balances.
+    this._held = null;
     rootEl.id = 'sf-techtree';
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-techtree', 'of-research', 'fh-shell');
@@ -234,8 +252,12 @@ export const techTreeScreen = {
     head.appendChild(heading);
     const branchLine = el('p', 'k-t-emph k-62 con-sub', 'Select a node');
     head.appendChild(branchLine);
-    const curveLine = el('p', 'k-t-fine con-curve', hourVerbCurveLine());
+    // Full ladder stays on title for hover/a11y; the painted line is clipped so Range-based
+    // layout measure (and the eye) never run it across rim labels on the dial.
+    const curveFull = hourVerbCurveLine();
+    const curveLine = el('p', 'k-t-fine con-curve', clipHourVerbCurve(curveFull, 42));
     curveLine.dataset.hourVerbCurve = '1';
+    if (curveFull) curveLine.title = curveFull;
     head.appendChild(curveLine);
     rootEl.appendChild(head);
 

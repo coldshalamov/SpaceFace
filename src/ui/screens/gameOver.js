@@ -23,6 +23,7 @@ import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { injectSaveLayouts } from '../orrery/saveLayouts.js';
+import { injectGameOverLayouts } from '../orrery/gameOverLayouts.js';
 import { svg, arcD, polar, ticksD } from '../orrery/svg.js';
 import { decrypt, rollTo } from '../orrery/text.js';
 import { createSortieTape, fmtSortieTime } from '../orrery/saveSortieTape.js';
@@ -368,6 +369,7 @@ export const gameOverScreen = {
 
     injectDeckplate();
     injectSaveLayouts();
+    injectGameOverLayouts();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-gameover');
     // k-screen--cold: the one screen that deepens the menu scrim to the wanted blue (Task B §1.5).

@@ -5,6 +5,7 @@ import { escapeMarkup as escapeHtml } from './identity.js';
 import { commodityGlyphHtml } from './commodityGlyphs.js';
 import { AGE_BAND_FRESH_S } from '../marketIntelligence.js';
 const fmt = n => Math.round(Number(n) || 0).toLocaleString('en-US');
+const quoteFmt = n => n == null || !Number.isFinite(Number(n)) ? '—' : fmt(n);
 export const MARKET_FILTERS = Object.freeze([
   { id: 'all', label: 'All stock' }, { id: 'hold', label: 'In hold' },
   { id: 'raw', label: 'Raw & rare' }, { id: 'industry', label: 'Industry' },
@@ -165,8 +166,8 @@ export function buildChart(history, average, gradientId, label, extras = {}) {
   const forecast = forecastPts.map((p) => p.mid);
   const W = 1000, H = 240, pad = 10;
   const avg = Number.isFinite(Number(average)) ? Number(average) : hist[0];
-  const buyQ = Number(extras && extras.buy);
-  const sellQ = Number(extras && extras.sell);
+  const buyQ = extras && extras.buy != null ? Number(extras.buy) : NaN;
+  const sellQ = extras && extras.sell != null ? Number(extras.sell) : NaN;
   const refs = [avg, ...(Number.isFinite(buyQ) ? [buyQ] : []), ...(Number.isFinite(sellQ) ? [sellQ] : [])];
   const bandPrices = [];
   for (const point of forecastPts) {
@@ -259,9 +260,9 @@ export function marketRowHtml({ id, name, category = '', buy, sell, stock, held 
     ? `<span class="sx-mkt-row__profit" title="Local sell price beats your cost basis by ${Math.round(profitPct)}%">+${Math.round(profitPct)}% PROFIT</span>`
     : '';
   return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument" data-family="${family}"
-    aria-label="${escapeHtml(name)}, ${fmt(buy)} credits, ${escapeHtml(demandWord)} demand${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
+    aria-label="${escapeHtml(name)}, ${quoteFmt(buy)} credits, ${escapeHtml(demandWord)} demand${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
     <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}</td>
-    <td class="k-num sx-mkt-row__price">${fmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${fmt(sell)}</td><td class="k-num sx-mkt-row__stock">${held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
+    <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
 }
 export function statRow(k, v, sub) {
   return `<li class="k-row k-row--static sx-stat"><span class="sx-stat__k">${escapeHtml(k)}${sub ? ` <span class="k-row__sub">${escapeHtml(sub)}</span>` : ''}</span><span class="k-row__num sx-stat__v">${escapeHtml(v)}</span></li>`;
@@ -381,7 +382,7 @@ export function rememberedSurveyFreshness(state, commodityId) {
 
 export function saleLineHtml({ sell, saleQty, saleQuote }) {
   // no amount on the dial yet: the line says what a unit fetches instead of inventing a sale of one
-  if (Number(saleQty) === 0 && Number.isFinite(Number(sell))) {
+  if (Number(saleQty) === 0 && sell != null && Number.isFinite(Number(sell))) {
     return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="0" data-sale-credits="0">A unit sells here for ${fmt(Number(sell))} cr</p>`;
   }
   const qty = Math.max(1, Math.floor(Number(saleQty) || 1));
@@ -449,7 +450,7 @@ function driverLineHtml(primary) {
 function readoutsHtml({ buy, sell, avg, demandWord }) {
   const item = (key, cls, value, sub) =>
     `<div class="sx-mkt-readouts__item sx-mkt-readouts__item--${cls}"><dt><i class="sx-mkt-readouts__mark" aria-hidden="true"></i>${escapeHtml(key)}${sub ? ` <span class="sx-mkt-readouts__sub">${escapeHtml(sub)}</span>` : ''}</dt><dd>${escapeHtml(value)}</dd></div>`;
-  return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${fmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${fmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Margin', 'margin', `${fmt(Math.max(0, (Number(buy) || 0) - (Number(sell) || 0)))} cr`, 'buy \u2212 sell')}</dl>`;
+  return `<dl class="sx-mkt-readouts">${item('Buy', 'buy', `${quoteFmt(buy)} cr`, 'you pay')}${item('Sell', 'sell', `${quoteFmt(sell)} cr`, 'station pays')}${item('Galactic average', 'avg', `${fmt(avg)} cr`)}${item('Demand', 'demand', demandWord)}${item('Local spread', 'margin', `${quoteFmt(buy == null || sell == null ? null : Math.max(0, Number(buy) - Number(sell)))} cr`, 'buy \u2212 sell')}</dl>`;
 }
 
 export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', drivers = [], hist = [], forecast = [], now, regime = '', quoteAge = '', quoteSource = '', survey = null, saleQty = 1, saleQuote = null, trackedGuidance = null, producedBy, consumedBy, stationType, cause = null }) {
@@ -464,7 +465,7 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
   return (trackedGuidance ? `<p class="k-sentence k-signal sx-mkt-tracked" data-tracked-state="${escapeHtml(trackedGuidance.state)}"><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</p>` : '') +
     `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : legal === 'restricted' ? 'k-signal' : ''}">${escapeHtml(legalText)}</span></p>
     <h2 class="k-display k-t-title sx-mkt-title">${titleHtml || escapeHtml(name)}</h2>
-    <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero"><div class="k-hero__n">${fmt(mode === 'sell' ? sell : buy)}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · per unit</div></div>
+    <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero"><div class="k-hero__n">${quoteFmt(mode === 'sell' ? sell : buy)}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · one unit now</div></div>
     ${driverLineHtml(drivers)}
     <p class="k-sentence sx-mkt-essay" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}

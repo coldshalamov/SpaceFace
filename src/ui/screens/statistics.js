@@ -5,6 +5,7 @@ import { careerStats } from '../../systems/achievements.js';
 import { statisticsModel } from '../../core/statistics.js';
 import { wantedTierInfo } from '../../systems/heat.js';
 import { el, words, cue } from '../kit/index.js';
+import { injectStatisticsLayouts } from '../orrery/statisticsLayouts.js';
 
 export const STATISTICS_LABEL = 'Statistics';
 
@@ -70,8 +71,10 @@ export const statisticsScreen = {
     if (options.periodic) return; // This modal pauses the simulation; refresh on each arrival.
     const rootEl = this._root;
     if (!rootEl) return;
+    injectStatisticsLayouts();
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.classList.remove('panel', 'sf-menu');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'orr-statistics');
     rootEl.setAttribute('aria-label', STATISTICS_LABEL);
     const player = ctx && ctx.state && ctx.state.player;
     const fine = ctx && ctx.state && ctx.state.lawSecurity && ctx.state.lawSecurity.fineOffer;
@@ -86,12 +89,13 @@ export const statisticsScreen = {
     });
     rootEl.appendChild(statisticsTitle());
     rootEl.appendChild(renderStatistics(model, { withTitle: false }));
-    const back = words([{ label: 'Back', action: 'back', primary: true }], {
+    const back = words([{ label: 'Back', action: 'back' }], {
       row: true,
       size: 'emph',
       ariaLabel: 'Statistics actions',
       onPick: () => { cue('confirm'); close(ctx); },
     });
+    back.querySelector('.k-word')?.classList.add('sf-back');
     const foot = el('footer', 'k-foot');
     foot.appendChild(back);
     rootEl.appendChild(foot);

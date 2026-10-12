@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import {
   applyEntityMeshVisibility,
+  retainShownSurvivalGlass,
   shouldSubmitEntityMesh,
 } from '../src/render/entityMeshVisibility.js';
 
@@ -98,6 +99,34 @@ test('a root inside the live glass submits even when the sim frame still classes
     'a root outside the query bounds entirely stays hidden');
 });
 
+test('a shown survival body stays up while the frustum still holds it', () => {
+  const shown = {
+    survival: true,
+    alreadyVisible: true,
+    onFrustum: true,
+    snapshotMissing: false,
+    alive: true,
+  };
+  assert.equal(retainShownSurvivalGlass(shown), true);
+  assert.equal(retainShownSurvivalGlass({ ...shown, survival: false }), false);
+  assert.equal(retainShownSurvivalGlass({ ...shown, alreadyVisible: false }), false,
+    'a root that has not been shown still waits on the first-submit rule');
+  assert.equal(retainShownSurvivalGlass({ ...shown, onFrustum: false }), false,
+    'off the frustum the ordinary rule releases the picture');
+  assert.equal(retainShownSurvivalGlass({ ...shown, snapshotMissing: true }), false);
+  assert.equal(retainShownSurvivalGlass({ ...shown, alive: false }), false);
+  // The pending latches still hide an ordinary root. The caller ORs the retain
+  // so an already-drawn survival body does not blank and reveal in view.
+  assert.equal(shouldSubmitEntityMesh({
+    hidden: true,
+    onLiveGlass: false,
+    pipelinesPending: true,
+    authoredPending: true,
+    geometryPending: true,
+  }), false);
+  assert.equal(retainShownSurvivalGlass(shown), true);
+});
+
 test('visibility helper only writes when the flag changes', () => {
   const mesh = { visible: true };
   assert.equal(applyEntityMeshVisibility(mesh, false), true);
@@ -159,9 +188,12 @@ test('default video settings still request full picture quality', async () => {
 
 test('live entity view sync hides off-runway roots through the helper', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(_submitVisibilityOptions\)/);
-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)/,
+  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*retainShown \|\| shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)/);
+  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*retainShown \|\| \(posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)\)/,
     'the hidden-boundary site submits through the same scratch');
+  assert.match(source, /retainShownSurvivalGlass\(\{/);
+  assert.match(source, /if \(!retainShown\) this\._queueHiddenSubtreeFreeze\(mesh\)/,
+    'a retained survival body stays on the live compose path');
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*true/);
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*false/);
   assert.match(source, /_submitVisibilityOptions\.snapshotMissing\s*=\s*!posed/);

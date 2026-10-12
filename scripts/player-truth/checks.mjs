@@ -45,19 +45,43 @@ export function playSamples(trace) {
 
 function keyName(trace, k) { return k >= 0 ? (trace.keys[k] || String(k)) : null; }
 
+// Mesh keys are `uuid|model|lod|authoredAssetState` (reader.js). A visible swap into or out of
+// awaiting / loading / compiling is pop-in the player sees. It is reported on its own line and
+// still counted; it is not dropped from the FAIL threshold.
+export function assetKeyParts(name) {
+  const parts = String(name || '').split('|');
+  if (parts.length < 4) return { id: parts[0] || '', model: '', lod: '', state: '' };
+  return { id: parts[0], model: parts[1], lod: parts[2], state: parts.slice(3).join('|') };
+}
+
+export function isLoadingAssetState(state) {
+  const s = String(state || '');
+  return s === 'loading' || s.startsWith('awaiting') || s.startsWith('compiling');
+}
+
+export function swapIsLoading(fromName, toName) {
+  return isLoadingAssetState(assetKeyParts(fromName).state) || isLoadingAssetState(assetKeyParts(toName).state);
+}
+
 // Reader life ids are id + 1e6·n for recycled slots; show the game's own entity id.
 const bodyId = (id) => id % 1e6;
 
 export function checkLodChurn(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('lod_churn', 'LOD / model swap churn', 'UNKNOWN', null, T.lodSwapsPer10s, 'too few play frames sampled');
-  const last = new Map(); const swaps = new Map(); let total = 0; let measured = 0; let unseen = 0;
+  const last = new Map(); const swaps = new Map(); let measured = 0; let unseen = 0;
+  let lodN = 0; let loadN = 0;
   const playerSwaps = [];
+  const tally = (fromName, toName) => { if (swapIsLoading(fromName, toName)) loadN++; else lodN++; };
   for (const s of samples) {
     if (s.p && s.p.meshId) {
       const pk = `${s.p.meshId}|${s.p.model}|${s.p.lod}|${s.p.state}`;
       const prev = last.get('P');
-      if (prev && prev.k !== pk) playerSwaps.push({ t: s.t, sim: s.sim, from: prev.k, to: pk, box: s.p.box });
+      if (prev && prev.k !== pk) {
+        const loading = swapIsLoading(prev.k, pk);
+        tally(prev.k, pk);
+        playerSwaps.push({ t: s.t, sim: s.sim, from: prev.k, to: pk, box: s.p.box, loading });
+      }
       last.set('P', { k: pk });
     }
     for (const e of s.e) {
@@ -68,8 +92,10 @@ export function checkLodChurn(trace) {
       // Only a swap the player can see counts: a body re-keying off screen (or while hidden) is not churn on screen.
       if (prev && prev.k !== k) {
         if (on || prev.on) {
-          total++;
-          const list = swaps.get(e[E.id]) || []; list.push({ sim: s.sim, t: s.t, from: prev.k, to: k, cls: e[E.cls], box: boxOf(e), on });
+          const fromName = keyName(trace, prev.k); const toName = keyName(trace, k);
+          const loading = swapIsLoading(fromName, toName);
+          tally(fromName, toName);
+          const list = swaps.get(e[E.id]) || []; list.push({ sim: s.sim, t: s.t, from: prev.k, to: k, cls: e[E.cls], box: boxOf(e), on, loading });
           swaps.set(e[E.id], list);
         } else unseen++;
       }
@@ -85,17 +111,19 @@ export function checkLodChurn(trace) {
     worst.push({ id, per10: best, n: list.length, at });
   }
   worst.sort((a, b) => b.per10 - a.per10 || b.n - a.n);
-  const totalRate = (total + playerSwaps.length) / span;
+  const total = lodN + loadN;
+  const totalRate = total / span;
   const maxPer10 = worst.length ? worst[0].per10 : 0;
   const fail = maxPer10 > T.lodSwapsPer10s || totalRate > T.lodTotalPerSec;
+  const splitOf = (list) => { const load = list.filter((x) => x.loading).length; return `${list.length - load} real LOD, ${load} loading-state`; };
   const offenders = worst.slice(0, 4).map((w) => ({
-    line: `entity ${bodyId(w.id)} (${PLAYER_TRUTH_CLASSES[w.at.cls]}) ${w.per10} swaps in 10 s (${w.n} total) — last ${shortKey(keyName(trace, w.at.from))} → ${shortKey(keyName(trace, w.at.to))} at sim ${fmt(w.at.sim, 1)} s`,
+    line: `entity ${bodyId(w.id)} (${PLAYER_TRUTH_CLASSES[w.at.cls]}) ${w.per10} swaps in 10 s (${splitOf(swaps.get(w.id))}) — last ${shortKey(keyName(trace, w.at.from))} → ${shortKey(keyName(trace, w.at.to))} at sim ${fmt(w.at.sim, 1)} s`,
     t: w.at.t, sim: w.at.sim, box: w.at.on ? w.at.box : null,
   }));
-  if (playerSwaps.length) offenders.unshift({ line: `player ship swapped model/LOD ${playerSwaps.length}× (first sim ${fmt(playerSwaps[0].sim, 1)} s: ${playerSwaps[0].from} → ${playerSwaps[0].to})`, t: playerSwaps[0].t, sim: playerSwaps[0].sim, box: playerSwaps[0].box });
+  if (playerSwaps.length) offenders.unshift({ line: `player ship swapped model/LOD ${playerSwaps.length}× (${splitOf(playerSwaps)}; first sim ${fmt(playerSwaps[0].sim, 1)} s: ${playerSwaps[0].from} → ${playerSwaps[0].to})`, t: playerSwaps[0].t, sim: playerSwaps[0].sim, box: playerSwaps[0].box });
   return result('lod_churn', 'LOD / model swap churn', fail ? 'FAIL' : 'PASS',
-    `max ${maxPer10}/10s per entity · ${fmt(totalRate)}/s total`, `≤${T.lodSwapsPer10s}/10s per entity · ≤${T.lodTotalPerSec}/s total`,
-    `${total + playerSwaps.length} on-screen swaps over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
+    `max ${maxPer10}/10s per entity · ${fmt(totalRate)}/s total · ${lodN} real LOD · ${loadN} loading`, `≤${T.lodSwapsPer10s}/10s per entity · ≤${T.lodTotalPerSec}/s total`,
+    `${lodN} real LOD/model swaps · ${loadN} visible loading-state swaps (awaiting/loading/compiling, still counted) over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
 }
 
 function shortKey(k) { if (!k) return '?'; const [, model, lod, st] = k.split('|'); return `${(model || '').replace(/^GLTFKIT_/, '').slice(0, 28)}@${lod || '-'}${st && st !== 'authored' ? '/' + st : ''}`; }
@@ -160,13 +188,14 @@ export function checkPopping(trace) {
         if (!p) { if (e[E.vis] === VIS.onscreen && inner(e, s) && e[E.cls] !== CLS.projectile && e[E.cls] !== CLS.fx) births++; continue; }
         const toggled = (p[E.vis] === VIS.onscreen && e[E.vis] === VIS.hidden) || (p[E.vis] === VIS.hidden && e[E.vis] === VIS.onscreen);
         if (toggled && inner(e, s)) {
-          pops.push({ id, kind: e[E.vis] === VIS.onscreen ? 'appeared' : 'vanished', s, e });
+          const loading = entityLoading(trace, e) || entityLoading(trace, p);
+          pops.push({ id, kind: e[E.vis] === VIS.onscreen ? 'appeared' : 'vanished', s, e, loading });
           flaps.set(id, (flaps.get(id) || 0) + 1);
         }
       }
       for (const [id, p] of prev.map) {
         if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || killedIds.has(id) || !REMOVAL_CLASSES.has(p[E.cls])) continue;
-        pops.push({ id, kind: 'removed without death', s: prev.s, e: p });
+        pops.push({ id, kind: 'removed without death', s: prev.s, e: p, loading: entityLoading(trace, p) });
       }
     }
     prev = { s, map: cur };
@@ -175,13 +204,20 @@ export function checkPopping(trace) {
   const span = Math.max(1e-3, samples[samples.length - 1].sim - samples[0].sim) / 60;
   const rate = pops.length / span;
   const maxFlap = Math.max(0, ...flaps.values());
-  const byId = new Map(); for (const p of pops) { const r = byId.get(p.id) || { n: 0, p }; r.n++; byId.set(p.id, r); }
+  const loadPops = pops.filter((p) => p.loading).length;
+  const realPops = pops.length - loadPops;
+  const byId = new Map(); for (const p of pops) { const r = byId.get(p.id) || { n: 0, load: 0, p }; r.n++; if (p.loading) r.load++; byId.set(p.id, r); }
   const offenders = [...byId.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((r) => ({
-    line: `entity ${bodyId(r.p.id)} (${PLAYER_TRUTH_CLASSES[r.p.e[E.cls]]}) ${r.p.kind} on screen ${r.n}× — first sim ${fmt(r.p.s.sim, 1)} s`, t: r.p.s.t, sim: r.p.s.sim, box: boxOf(r.p.e),
+    line: `entity ${bodyId(r.p.id)} (${PLAYER_TRUTH_CLASSES[r.p.e[E.cls]]}) ${r.p.kind} on screen ${r.n}× (${r.n - r.load} visibility, ${r.load} loading-state) — first sim ${fmt(r.p.s.sim, 1)} s`, t: r.p.s.t, sim: r.p.s.sim, box: boxOf(r.p.e),
   }));
   return result('popping', 'Pop-in / pop-out on screen', rate > T.popsPerMin || maxFlap > T.popFlapsPerEntity ? 'FAIL' : 'PASS',
-    `${fmt(rate, 1)}/min · worst entity ${maxFlap} toggle${maxFlap === 1 ? '' : 's'}`, `≤${T.popsPerMin}/min · ≤${T.popFlapsPerEntity} toggles`,
-    `${pops.length} pops inside the inner 80% of the view; ${births} non-projectile bodies born on screen (info)`, offenders, offenders.slice(0, 3));
+    `${fmt(rate, 1)}/min · worst entity ${maxFlap} toggle${maxFlap === 1 ? '' : 's'} · ${realPops} visibility · ${loadPops} loading`, `≤${T.popsPerMin}/min · ≤${T.popFlapsPerEntity} toggles`,
+    `${realPops} visibility pops · ${loadPops} visible loading-state pops (awaiting/loading/compiling, still counted) inside the inner 80% of the view; ${births} non-projectile bodies born on screen (info)`, offenders, offenders.slice(0, 3));
+}
+
+function entityLoading(trace, e) {
+  if (!e || e[E.key] < 0) return false;
+  return isLoadingAssetState(assetKeyParts(keyName(trace, e[E.key])).state);
 }
 
 /** Rounds as the harness saw them: [{ wave, startSim, startT, endSim, endT, endPhase }]. */

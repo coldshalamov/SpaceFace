@@ -736,7 +736,7 @@ test('renderRunMarkdown with no pooled bars says so instead of listing stale per
 
 test('integration: knock scenario through evaluateBars + deriveFunMetrics once the parallel PQ-173.01 leaves land', async (t) => {
   const verbBench = await import('../scripts/lib/bench/verbBench.mjs');
-  const hasKnock = verbBench.VERB_BENCH_SCENARIOS.some((s) => s.id === 'feel.knock_budget');
+  const hasKnock = (await verbBench.listVerbScenarios()).some((s) => s.id === 'feel.knock_budget');
   const hasBars = await import('../scripts/lib/bench/feelBars.mjs').then(() => true, () => false);
   if (!hasKnock || !hasBars) {
     t.skip(`parallel PQ-173.01 leaves not present yet (feel.knock_budget scenario: ${hasKnock}, feelBars.mjs: ${hasBars})`);

@@ -70,7 +70,13 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
   if (held || flight) return false;
   const material = environmentMaterialOf(entity);
   const impactThreshold = material === 'rock' ? 110 : 60;
-  if (!entity || entity.alive === false || !(closingSpeed >= impactThreshold) || !['rock', 'crystal', 'volatile', 'debris'].includes(material)) return false;
+  // Debris (wrecks) detonates through heat cook-off only, never from a kinetic impact. A fresh
+  // kill's companion shard shares the victim's momentum and grazes the new wreck above the
+  // impact bar, which erased the wreck — and its salvage — within a tenth of a second of the
+  // kill (PQ-138.03: the wreck keeps the victim's momentum; wrecks are terrain and ammunition
+  // to ricochet off, not ordnance that pops on the first bump). Heat weapons and blasts still
+  // cook residual fuel off.
+  if (!entity || entity.alive === false || !(closingSpeed >= impactThreshold) || !['rock', 'crystal', 'volatile'].includes(material)) return false;
   stampEnvironmentMaterial(entity, material);
   if (material !== 'rock' && threshold(entity, material) === Infinity) return false;
   queueReaction(state, entity, material, origin);

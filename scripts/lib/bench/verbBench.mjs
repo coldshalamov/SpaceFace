@@ -1,17 +1,13 @@
 // scripts/lib/bench/verbBench.mjs — Verb benches for the Fun Convergence Loop.
-import { createGameState } from '../../../src/core/gameState.js';
-import { createBus } from '../../../src/core/eventBus.js';
-import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthoritativeRuntime.js';
-import { makeShipEntitySpec } from '../../../src/systems/ships.js';
-import { resolveWeaponImpulseForHit } from '../../../src/combat/impulseKernel.js';
 import { computeRunHash } from './runHash.mjs';
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // Scenario modules are auto-discovered from ./scenarios/*.mjs (see scenarios/README.md for the
-// contract). A module whose id matches an inline scenario below REPLACES it, so a real-path port of
-// an inline stand-in lands in its own file and never edits this one.
+// contract). The directory is the ONLY scenario source: every stand-in that used to live inline
+// here was replaced by a real-path module with the same id and then deleted — a module can no
+// longer "replace" an inline case because there is nothing left to replace.
 const SCENARIOS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'scenarios');
 let discoveredScenarioCache = null;
 
@@ -39,24 +35,13 @@ export async function discoverScenarioModules() {
   return found;
 }
 
-/** Inline scenarios merged with discovered modules (modules override by id; new ids append, sorted by file name). */
+/** The discovered module set, sorted by file name. There are no inline scenarios left. */
 export async function listVerbScenarios() {
-  const discovered = await discoverScenarioModules();
-  const merged = VERB_BENCH_SCENARIOS.map((s) => (discovered.has(s.id) ? { ...s, ...discovered.get(s.id) } : s));
-  for (const [id, spec] of discovered) if (!merged.some((s) => s.id === id)) merged.push(spec);
-  return merged;
+  return [...(await discoverScenarioModules()).values()];
 }
 
-export const VERB_BENCH_SCENARIOS = [
-  { id: 'feel.rope_swing_release', label: 'B7 Rope Swing & Tangential Speed Retention' },
-  { id: 'feel.shove_magnitude', label: 'B4/B5 Shove Weapon Impulse & Displacement' },
-  { id: 'feel.stroke_speed', label: 'B8 Draw-to-Fly Stroke Velocity Preservation' },
-  { id: 'feel.terrain_slam', label: 'B6 Terrain Slam Lethality & Helm Loss' },
-  { id: 'feel.knock_budget', label: 'B13 Player Knock Budget — contact-sourced velocity changes on the player hull' },
-];
-
 /**
- * Runs the 6 verb benches headlessly on fixed seeds.
+ * Runs the verb benches headlessly on fixed seeds.
  *
  * @param {object} [options]
  * @param {number[]} [options.seeds] List of seeds to evaluate (default: [4242])
@@ -85,9 +70,7 @@ export async function runVerbBench({
       // was written for anyone). A failed scenario is recorded as a run with runError and no metrics.
       let runResult;
       try {
-        runResult = typeof scenario.run === 'function'
-          ? await scenario.run(seed)
-          : await executeVerbScenario(scenario.id, seed);
+        runResult = await scenario.run(seed);
       } catch (error) {
         const message = error && error.message ? String(error.message) : String(error);
         console.error(`[verb-bench] ${scenario.id} (seed ${seed}) FAILED: ${message}`);
@@ -142,210 +125,3 @@ export async function runVerbBench({
   };
 }
 
-async function executeVerbScenario(id, seed) {
-  switch (id) {
-    case 'feel.rope_swing_release':
-      return runRopeSwingScenario(seed);
-    case 'feel.shove_magnitude':
-      return runShoveScenario(seed);
-    case 'feel.stroke_speed':
-      return runStrokeSpeedScenario(seed);
-    case 'feel.terrain_slam':
-      return runTerrainSlamScenario(seed);
-    default:
-      throw new Error(`unknown verb scenario: ${id}`);
-  }
-}
-
-/** B7: Rope swing & release — tangent speed retention via numerical integration */
-async function runRopeSwingScenario(seed) {
-  const dt = 1 / 60;
-  const mass = 24; // medium hull (Drifter)
-  const anchor = { x: 0, z: 0 };
-  const restLength = 80;
-  const springK = 2400; // massline tether stiffness
-  const initialSpeed = 195; // cruise speed
-
-  let pos = { x: restLength, z: 0 };
-  let vel = { x: 0, z: initialSpeed };
-  const eventTrace = [];
-  let lineHeld = true;
-  let maxStretchRatio = 0;
-
-  // Simulate 300 ticks (5.0s): swing for 60 ticks (1.0s), then release at apex
-  for (let tick = 0; tick < 300; tick++) {
-    if (tick < 60) {
-      // Tether attached: compute spring force
-      const dx = pos.x - anchor.x;
-      const dz = pos.z - anchor.z;
-      const dist = Math.sqrt(dx * dx + dz * dz) || 1;
-      const stretch = Math.max(0, dist - restLength);
-      const stretchRatio = stretch / restLength;
-      if (stretchRatio > maxStretchRatio) maxStretchRatio = stretchRatio;
-
-      const tension = springK * stretch;
-      const fx = -tension * (dx / dist);
-      const fz = -tension * (dz / dist);
-
-      vel.x += (fx / mass) * dt;
-      vel.z += (fz / mass) * dt;
-    } else if (tick === 60) {
-      lineHeld = false;
-      eventTrace.push({ tick, type: 'tether:released', data: { speed: Math.hypot(vel.x, vel.z) } });
-    }
-    // Post-release: pure unbraked inertial flight (SpaceFace earned-speed contract: 0 drag)
-    pos.x += vel.x * dt;
-    pos.z += vel.z * dt;
-
-    if (tick % 30 === 0) {
-      eventTrace.push({ tick, type: 'flight_sample', data: { x: pos.x, z: pos.z, speed: Math.hypot(vel.x, vel.z) } });
-    }
-  }
-
-  const finalSpeed = Math.hypot(vel.x, vel.z);
-  const speedRetainedFraction = finalSpeed / initialSpeed;
-
-  return {
-    metrics: {
-      initialSpeed,
-      finalSpeed,
-      speedRetainedFraction,
-      maxStretchRatio,
-      lineHeld: false,
-      barMet: speedRetainedFraction >= 0.95 && maxStretchRatio <= 0.10,
-    },
-    eventTrace,
-  };
-}
-
-/** B4 & B5: Shove weapon impulse & 2.0s displacement via numerical integration */
-async function runShoveScenario(seed) {
-  const dt = 1 / 60;
-  const victimMass = 14; // wasp light hull
-  const cruiseSpeed = 195;
-
-  const weapon = {
-    dmg: 45,
-    impulsePerHit: 420, // wpn_concussion_cannon_m
-    tumbleTorque: 8.5,
-    impulseProvenance: 'concussion',
-  };
-
-  const impulseResult = resolveWeaponImpulseForHit(weapon, 45) || { magnitude: 420, tumbleTorque: 8.5 };
-  const deltaV = impulseResult.magnitude / victimMass;
-  const deltaVFractionOfCruise = deltaV / cruiseSpeed;
-
-  let pos = { x: 0, z: 0 };
-  let vel = { x: deltaV, z: 0 }; // shove along X
-  const eventTrace = [
-    { tick: 0, type: 'shove_impact', data: { deltaV, torque: impulseResult.tumbleTorque } },
-  ];
-
-  // Integrate 120 ticks (2.0s) of unbraked victim displacement
-  for (let tick = 1; tick <= 120; tick++) {
-    pos.x += vel.x * dt;
-    pos.z += vel.z * dt;
-    if (tick % 30 === 0) {
-      eventTrace.push({ tick, type: 'displacement_sample', data: { x: pos.x, z: pos.z } });
-    }
-  }
-
-  const displacement2s = Math.hypot(pos.x, pos.z);
-  const screenDepths = displacement2s / 115; // screen depth ~115 WU
-
-  return {
-    metrics: {
-      deltaV,
-      deltaVFractionOfCruise,
-      displacement2s,
-      screenDepths,
-      helmLossDurationS: 1.5,
-      barB4Met: deltaVFractionOfCruise >= 0.15,
-      barB5Met: screenDepths >= 0.5,
-    },
-    eventTrace,
-  };
-}
-
-/** B8: Draw-to-fly stroke speed preservation envelope */
-async function runStrokeSpeedScenario(seed) {
-  const cruiseSpeed = 195;
-  const cornerFloor = 14;
-  const dt = 1 / 60;
-
-  // Waypoints with sharp 90-degree corner
-  const waypoints = [
-    { x: 0, z: 0 },
-    { x: 150, z: 0 },
-    { x: 150, z: 150 },
-    { x: 300, z: 150 },
-  ];
-
-  let currentSpeed = cruiseSpeed;
-  const recordedSpeeds = [];
-  const eventTrace = [{ tick: 0, type: 'stroke_start', data: { speed: cruiseSpeed } }];
-
-  for (let tick = 0; tick < 180; tick++) {
-    if (tick >= 50 && tick <= 70) {
-      // Negotiating hairpin turn: speed slows toward apex
-      const t = (tick - 50) / 20;
-      currentSpeed = cruiseSpeed - (cruiseSpeed - cornerFloor * 5) * Math.sin(t * Math.PI);
-    } else {
-      currentSpeed = Math.min(cruiseSpeed, currentSpeed + 45 * dt);
-    }
-    recordedSpeeds.push(currentSpeed);
-    if (tick === 60) {
-      eventTrace.push({ tick, type: 'hairpin_apex', data: { speed: currentSpeed } });
-    }
-  }
-
-  const minSpeed = Math.min(...recordedSpeeds);
-  const meanSpeed = recordedSpeeds.reduce((a, b) => a + b, 0) / recordedSpeeds.length;
-
-  return {
-    metrics: {
-      cruiseSpeed,
-      meanSpeed,
-      meanSpeedFraction: meanSpeed / cruiseSpeed,
-      minSpeed,
-      minSpeedFraction: minSpeed / cruiseSpeed,
-      barMet: (meanSpeed / cruiseSpeed >= 0.70) && (minSpeed / cruiseSpeed >= 0.35),
-    },
-    eventTrace,
-  };
-}
-
-/** B6: Terrain slam lethality & helm loss via kinetic energy scale */
-async function runTerrainSlamScenario(seed) {
-  const cruiseSpeed = 195;
-  const closingSpeed = cruiseSpeed * 0.76; // 76% cruise
-  const shipMass = 16; // light fighter
-
-  // Calculate kinetic impact damage
-  const kineticEnergy = 0.5 * shipMass * closingSpeed * closingSpeed;
-  const energyDamageScale = 0.007; // COLLISION_CONSEQUENCE_LIMITS.energyDamageScale
-  const terrainMultiplier = 1.15; // SURFACE_DAMAGE_MULTIPLIER.terrain
-  const impactDamage = kineticEnergy * energyDamageScale * terrainMultiplier;
-
-  const hullMax = 80;
-  const hullLost = Math.min(hullMax, impactDamage);
-  const hullLostFraction = hullLost / hullMax;
-  const isLethal = hullLost >= hullMax;
-  const lostHelm = closingSpeed >= 18; // tumbleDeltaV
-
-  return {
-    metrics: {
-      closingSpeed,
-      closingRatio: closingSpeed / cruiseSpeed,
-      impactDamage,
-      hullLostFraction,
-      lostHelm,
-      isLethal,
-      barMet: isLethal && lostHelm,
-    },
-    eventTrace: [
-      { tick: 0, type: 'pre_impact', data: { closingSpeed, shipMass } },
-      { tick: 1, type: 'terrain_slam', data: { impactDamage, hullLostFraction, lostHelm, isLethal } },
-    ],
-  };
-}

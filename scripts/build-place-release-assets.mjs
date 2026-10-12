@@ -27,7 +27,7 @@ import {
 import { publishFileSetTransaction } from '../tools/art/lib/multiFileTransaction.mjs';
 import { parseStrictEmbeddedGlb } from '../tools/art/lib/strictGlbValidation.mjs';
 import { releasePlaceGeometryCompression } from './lib/releaseStrictClearancePrecision.mjs';
-import { shadingRepair } from './lib/glbShadingRepair.mjs';
+import { EXACT_ANATOMY_PART_IDS, shadingRepair } from './lib/glbShadingRepair.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -228,7 +228,10 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
         );
       }
       // Graphics bar: rebuild lost smooth-by-angle normals, fix flipped normals, drop zero-area triangles.
-      if (asset.id !== 'place_ceres_second_measure') transforms.push(shadingRepair());
+      // Exact-anatomy places skip it: their admission contracts freeze the authored triangle set
+      // (PQ-018's cathedral census; Second Measure's measured colliders), and the repair's
+      // zero-area drop plus coincident-face dedup rewrite the index buffer (D187).
+      if (!EXACT_ANATOMY_PART_IDS.has(asset.id)) transforms.push(shadingRepair());
       transforms.push(releasePlaceGeometryCompression({
         assetId: asset.id,
         certificate: document.getRoot().getAsset().extras?.ceresSecondMeasure,

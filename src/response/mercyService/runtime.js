@@ -178,7 +178,7 @@ export function beginIncident(rt, id, opts = {}) {
     });
     return { ok: true, queued: true };
   }
-  const uid = `${id}#${rt.serial}`;
+  const uid = `${rt.liveNamespace ? `${rt.liveNamespace}:` : ''}${id}#${rt.serial}`;
   rt.serial += 1;
   const origin = opts.origin || { x: 0, z: 0 };
   const inc = {
@@ -676,6 +676,7 @@ export function snapshotMercy(rt) {
     rng: rt.rng.getState(),
     shelved: rt.shelved,
     sectorId: rt.sectorId,
+    liveNamespace: rt.liveNamespace || null,
     serial: rt.serial,
     player: {
       alive: rt.player.alive,
@@ -742,6 +743,7 @@ export function restoreMercy(rt, snap) {
   rt.rng = mulberry32FromContinuation(snap.rng);
   rt.shelved = !!snap.shelved;
   rt.sectorId = snap.sectorId;
+  rt.liveNamespace = snap.liveNamespace || null;
   rt.serial = snap.serial;
   rt.player = {
     ...rt.player,

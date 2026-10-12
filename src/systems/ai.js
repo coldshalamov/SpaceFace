@@ -280,7 +280,9 @@ export const ai = {
     // INF-028: a fresh reinforcement arrival holds fire for its ingress beat even when the
     // attack telegraph resolves first. The marker is data (save-safe) and self-clearing.
     const arrivalHoldUntil = Number(ai.arrivalHoldUntil);
-    const arrivalHoldingFire = Number.isFinite(arrivalHoldUntil) && simTime(state) < arrivalHoldUntil;
+    const swarmHoldUntil = Number(ai.swarmFireHoldUntil);
+    const arrivalHoldingFire = (Number.isFinite(arrivalHoldUntil) && simTime(state) < arrivalHoldUntil)
+      || (Number.isFinite(swarmHoldUntil) && simTime(state) < swarmHoldUntil);
     if (Number.isFinite(arrivalHoldUntil) && simTime(state) >= arrivalHoldUntil) delete ai.arrivalHoldUntil;
 
     switch (effectiveFsm) {

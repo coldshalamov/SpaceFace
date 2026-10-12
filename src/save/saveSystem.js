@@ -503,7 +503,7 @@ export const save = {
     // Registered during system init, before main installs its new-game bootstrap listener, so old
     // run work is invalidated synchronously at the route boundary.
     bus.on('game:new', (opts) => {
-      this._ephemeralRacing = opts?.racingSession === true;
+      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._epochOpenedByNew = true;
       this._beginRunEpoch('game:new');
     });
@@ -512,11 +512,12 @@ export const save = {
       // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
       // orphan the autosave generation started by `game:new`.
       if (this._epochOpenedByNew) return;
-      this._ephemeralRacing = opts?.racingSession === true;
+      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._beginRunEpoch('game:newGame');
     });
     bus.on('game:started', () => { this._epochOpenedByNew = false; });
-    bus.on('save:loaded', () => { this._epochOpenedByNew = false; this._ephemeralRacing = false; });
+    bus.on('save:loaded', () => { this._epochOpenedByNew = false; this._ephemeralRacing = false; this.state.physicsVenueSession = false; });
+    bus.on('save:restoring', () => { this.state.physicsVenueSession = false; });
     bus.on('race:launchFailed', () => {
       if (!this._ephemeralRacing || this.state?.mode !== 'menu') return;
       this._epochOpenedByNew = false;
@@ -813,6 +814,12 @@ export const save = {
       ['factions', () => this._callSerialize('factions') || {}],
       // Material heat must persist resource records before the world snapshot is copied.
       ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
+      ['reactiveMatter', () => this._callSerialize('reactiveMatter')],
+      ['spectrum', () => this._callSerialize('spectrum')],
+      ['orbitalGalleryLedger', () => this._callSerialize('orbitalGallery')],
+      ['kineticLeague', () => this._callSerialize('kineticLeague')],
+      ['mercyService', () => this._callSerialize('mercyService')],
+      ['wreckCourt', () => this._callSerialize('wreckCourt')],
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
@@ -935,6 +942,13 @@ export const save = {
     yield 'serialize:factions';
     data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
     yield 'serialize:environmentMaterials';
+    data.reactiveMatter = this._callSerialize('reactiveMatter');
+    data.spectrum = this._callSerialize('spectrum');
+    data.orbitalGalleryLedger = this._callSerialize('orbitalGallery');
+    data.kineticLeague = this._callSerialize('kineticLeague');
+    data.mercyService = this._callSerialize('mercyService');
+    data.wreckCourt = this._callSerialize('wreckCourt');
+    yield 'serialize:physical-play';
     data.world = this._callSerialize('world') || {};
     yield 'serialize:world';
     data.entities = this._serializeEntities();
@@ -3276,7 +3290,7 @@ export const save = {
    * `lab` counts too: a Combat Lab session is the same ephemeral state by another name.
    */
   _campaignSaveSuppressed() {
-    if (this._ephemeralRacing === true) return true;
+    if (this._ephemeralRacing === true || this.state?.physicsVenue?.active === true) return true;
     const run = this.state && this.state.run;
     if (!run || run.phase === 'inactive') return false;
     return run.kind === 'survival' || run.kind === 'lab';
@@ -6254,6 +6268,13 @@ export const save = {
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
+      this._callDeserialize('reactiveMatter', data.reactiveMatter);
+      this._callDeserialize('spectrum', data.spectrum);
+      this._callDeserialize('orbitalGallery', data.orbitalGalleryLedger);
+      this._callDeserialize('kineticLeague', data.kineticLeague);
+      this._callDeserialize('mercyService', data.mercyService);
+      this._callDeserialize('wreckCourt', data.wreckCourt);
+      yield 'deserialized-physical-play';
       // Stash the SG-02 world snapshot: a fresh backend owner adopts it (boot-load, harness
       // reset); a live owner keeps its own world and the stash is dropped.
       this.registry?.get?.('physics')?.deserialize?.(data.physics, { deferNative: true });
@@ -6666,12 +6687,28 @@ export const save = {
       // ones paint between batches (the driver's own 16ms gate dedupes any extra yield).
       let saveLoadedDrainSince = nowMs();
       let saveLoadedDrainGuard = 0;
-      while (typeof this.bus.pendingEmitSliceCount === 'function'
-          && this.bus.pendingEmitSliceCount() > 0
-          && saveLoadedDrainGuard++ <= 64) { // a listener re-arming sliced emits can't wedge the restore
+      let saveLoadedRearms = 0;
+      while (typeof this.bus.pendingEmitSliceCount === 'function') {
+        const pendingBefore = this.bus.pendingEmitSliceCount();
+        if (!Number.isSafeInteger(pendingBefore) || pendingBefore < 0) {
+          throw this._annotateRegion(new Error('save_loaded_drain_invalid'), 'saveLoaded');
+        }
+        if (pendingBefore === 0) break;
+        // A paced drain may run only one listener. Listener count grows with the game,
+        // so an iteration limit must never silently declare a partial restore complete.
+        // Bound pathological re-arming/stalled buses separately and fail before physics.
+        if (++saveLoadedDrainGuard > 65536 || saveLoadedRearms >= 64) {
+          throw this._annotateRegion(new Error('save_loaded_drain_incomplete'), 'saveLoaded');
+        }
         // Count AND wall-clock budget: one heavyweight listener would otherwise stretch a
         // count-only slice past the paint deadline — stop the batch after it instead.
-        this.bus.drainEmitSlice(4, RESTORE_YIELD_SLICE_MS);
+        const ran = this.bus.drainEmitSlice(4, RESTORE_YIELD_SLICE_MS);
+        const pendingAfter = this.bus.pendingEmitSliceCount();
+        if (!Number.isSafeInteger(pendingAfter) || pendingAfter < 0
+            || (pendingAfter > 0 && (!Number.isFinite(ran) || ran <= 0))) {
+          throw this._annotateRegion(new Error('save_loaded_drain_stalled'), 'saveLoaded');
+        }
+        if (pendingAfter >= pendingBefore) saveLoadedRearms += 1;
         if (nowMs() - saveLoadedDrainSince >= RESTORE_YIELD_SLICE_MS) {
           yield 'save-loaded-drained';
           saveLoadedDrainSince = nowMs();
@@ -6742,6 +6779,9 @@ export const save = {
     let drainedRunTransition = null;
     let hadPendingRunTransition = false;
     if (restoreError == null && s.chunkError != null) restoreError = s.chunkError;
+    // A failed restore must not leak old save:loaded/sector:enter callbacks into
+    // rollback or a queued newer route. Cancel before releasing the exclusive freeze.
+    if (restoreError) this.bus.cancelSlicedEmits?.();
     if (restoreError) this._cancelCeresAttachmentRestore();
     if (restoreError) this._cancelCeresEntityReferenceRestore();
     // The epilogue always runs (the old finally{}): a failed chunk still releases the restore

@@ -53,7 +53,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -295,6 +295,7 @@ import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
 import {
   shouldPresentShieldBubble,
+  swarmCombatShieldRadius,
   updateEntityShieldBubblePresentation,
 } from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -325,6 +326,7 @@ import {
   applyEntityMeshVisibility,
   isAuthoredPendingStatus,
   isProtectedEntityMesh,
+  retainShownSurvivalGlass,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
 import {
@@ -25775,9 +25777,16 @@ export const render = {
       // instead of first-linking inside a presented frame.
       if (this._postOpeningPipelinesInFlight) this._postOpeningRescanRequested = true;
       this._bindPresentationMesh(e, m);
+      // A body already inside the readable glass must not be inserted hidden and then
+      // revealed: that hidden→onscreen pair is the pop the player and the harness both see.
+      // Off-glass builds keep the residency latch. On-glass builds stay submitted; the lane
+      // still uploads, it just does not blank the picture first.
+      const linkOnGlass = this.state.mode === 'flight'
+        && entityIsOnReadableGlassScan(e, this.state, drainScan);
       const holdFirstFlightBuffers = (e.type === 'asteroid' || e.type === 'payload')
         && !(m.userData && m.userData.spacefaceGeometryResident === true)
-        && !isFirstFlightProtectedEntity(e);
+        && !isFirstFlightProtectedEntity(e)
+        && !linkOnGlass;
       // compile() never uploads vertex buffers: a live-built mesh with unuploaded geometry used to
       // attach drawable-immediately and pay its upload inside the presented bloomScene (the 129 ms
       // multi-primitive structure brick). Hold every unready live build behind the same latch the
@@ -25786,7 +25795,8 @@ export const render = {
       // still appear instantly.
       const holdLiveBuildBuffers = this.state.mode === 'flight'
         && !isFirstFlightProtectedEntity(e)
-        && hasUnresidentGeometry(m);
+        && hasUnresidentGeometry(m)
+        && !linkOnGlass;
       if (holdFirstFlightBuffers || holdLiveBuildBuffers) {
         const data = m.userData || (m.userData = {});
         data.geometryPending = true;
@@ -25804,8 +25814,6 @@ export const render = {
       } else {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       }
-      const linkOnGlass = this.state.mode === 'flight'
-        && entityIsOnReadableGlassScan(e, this.state, drainScan);
       // Do not compile or 1x1-upload held first-flight rocks during the live
       // frame. That was the leftover Intel context-loss: several residency
       // prepares stacked on the first present. Cooked roots are stamped behind
@@ -25826,12 +25834,16 @@ export const render = {
           // closure, not this class method.
           const markPending = this.state.render
             && this.state.render.markSubjectPipelinesPending;
-          if (typeof markPending === 'function') {
-            markPending(subject, true, 'mesh-build-compile');
-          } else {
-            const ud = subject.userData || (subject.userData = {});
-            ud.pipelinesPending = true;
-            ud.pipelinesPendingBy = 'mesh-build-compile';
+          // On-glass: do not latch pipelinesPending. That latch hides the root until
+          // compile returns, and the reveal is an in-view pop. The compile still runs.
+          if (!linkOnGlass) {
+            if (typeof markPending === 'function') {
+              markPending(subject, true, 'mesh-build-compile');
+            } else {
+              const ud = subject.userData || (subject.userData = {});
+              ud.pipelinesPending = true;
+              ud.pipelinesPendingBy = 'mesh-build-compile';
+            }
           }
           const capturedState = this.state;
           const capturedRender = capturedState.render;
@@ -25854,6 +25866,10 @@ export const render = {
               urgent: entityIsOnDeadlineGlass(e, capturedState), isActive,
             });
           }).finally(() => {
+            // On-glass builds never took the hold above. Releasing anyway would
+            // decrement another lane's counted hold (bloom-unready, residency) and
+            // reveal that root before its own admission finished.
+            if (linkOnGlass) return;
             if (typeof markPending === 'function') {
               markPending(subject, false);
             } else if (subject && subject.userData) {
@@ -26637,6 +26653,27 @@ export const render = {
       ? performance.now() : Date.now());
     let viewSweepStrideAt = viewSweepNow();
 
+    const innerView = viewHalfExtents(
+      this.state.camera && this.state.camera.zoom,
+      this.cam && this.cam.obj && this.cam.obj.fov,
+      this.cam && this.cam.obj && this.cam.obj.aspect,
+      INNER_VIEW_BAND_SCALE,
+    );
+
+    // Visibility means the camera's real view, not only the requested-zoom rectangle: a body
+    // whose centre leaves the rectangle while a limb is still drawn stays on-glass. Built once
+    // per pass from the live camera; no camera -> the rectangle below decides alone.
+    let liveViewFrustum = null;
+    const liveCam = this.cam && this.cam.obj;
+    if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
+      liveCam.updateMatrixWorld();
+      _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
+      _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
+      liveViewFrustum = _liveViewFrustum;
+    }
+    const survivalRun = !!(this.state.run && this.state.run.kind === 'survival');
+    globalAsteroidMotion.beginVeinFrame(survivalRun ? 'survival' : null);
+
     // A root crossing out of the retained visible set receives one final authoritative current pose.
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
@@ -26671,8 +26708,11 @@ export const render = {
           transformed++;
           continue;
         }
+        const cullRadius = (entity && entity.alive !== false)
+          ? entityVisualCullRadius(entity, mesh)
+          : 0;
         if (entity && entity.alive !== false) {
-          world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
+          world.refreshVisibleEntity(slot, entity, cullRadius);
         }
         const posed = this._applyPresentationPose(slot, mesh, alpha, true);
         const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER) || entityId === this.state.playerId;
@@ -26707,19 +26747,32 @@ export const render = {
         _submitVisibilityOptions.projectedPx = 0;
         _submitVisibilityOptions.allowShadowCast = false;
         _submitVisibilityOptions.onLiveGlass = false;
+        // The query dropped this row, but a limb can still be inside the camera.
+        // Blanking a picture that is already on that glass, then revealing it when
+        // the query takes the row back, is the in-view pop. The hold does not
+        // reveal a root that has not been shown, and it does not keep a root
+        // whose pose is missing. Off the frustum the ordinary rule releases it.
+        const retainShown = retainShownSurvivalGlass({
+          survival: survivalRun,
+          alreadyVisible: mesh.visible !== false,
+          onFrustum: isOnLiveCameraView(liveViewFrustum, mesh.position, cullRadius),
+          snapshotMissing: !posed,
+          alive: !entity || entity.alive !== false,
+        });
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh(_submitVisibilityOptions));
+          && applyEntityMeshVisibility(mesh, retainShown || (posed && shouldSubmitEntityMesh(_submitVisibilityOptions)));
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
-        if (mesh.userData && mesh.userData.asteroidInstanceBody) {
+        if (!retainShown && mesh.userData && mesh.userData.asteroidInstanceBody) {
           mesh.userData.asteroidInstanceViewCulled = true;
         }
         world.clearDirty(slot);
         // Out of the visible set the root's local transform is never rewritten (the pose above
         // was its final write until re-entry), so the walk's per-frame updateMatrix compose and
-        // the force it propagates through the subtree are dead work. Frozen roots still refresh
+        // the force it propagates through the subtree are dead work. A retained survival body
+        // is still being drawn, so it keeps the live compose. Frozen roots still refresh
         // their matrixWorld when a moved ancestor forces the walk, and hidden pose writers all
         // run the matrixAutoUpdate === false hook — output is identical, the compose is gone.
-        this._queueHiddenSubtreeFreeze(mesh);
+        if (!retainShown) this._queueHiddenSubtreeFreeze(mesh);
         transformed++;
         } catch (rowError) {
           notePresentationRowFault(this, mesh, entityId, rowError);
@@ -26733,25 +26786,6 @@ export const render = {
     // Deferral is correctness-safe: an unfrozen culled subtree keeps paying
     // the updateMatrixWorld compose it always paid.
     this._drainHiddenFreezeQueue();
-
-    const innerView = viewHalfExtents(
-      this.state.camera && this.state.camera.zoom,
-      this.cam && this.cam.obj && this.cam.obj.fov,
-      this.cam && this.cam.obj && this.cam.obj.aspect,
-      INNER_VIEW_BAND_SCALE,
-    );
-
-    // Visibility means the camera's real view, not only the requested-zoom rectangle: a body
-    // whose centre leaves the rectangle while a limb is still drawn stays on-glass. Built once
-    // per pass from the live camera; no camera -> the rectangle below decides alone.
-    let liveViewFrustum = null;
-    const liveCam = this.cam && this.cam.obj;
-    if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
-      liveCam.updateMatrixWorld();
-      _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
-      _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
-      liveViewFrustum = _liveViewFrustum;
-    }
 
     for (let index = 0; index < query.visibleCount; index++) {
       if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
@@ -26900,6 +26934,10 @@ export const render = {
         // real screen. The presented pose inside the live glass extents wins over the runway deny.
         const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
         const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
+        if (entity && entity.type === 'ship' && !isPlayer
+            && this.state.run && this.state.run.kind === 'survival') {
+          syncSwarmThreatPlate(mesh, entity, this.cam && this.cam.obj);
+        }
         const glassSpan = Math.max(bounds.glassHalfX || 0, bounds.glassHalfZ || 0, 1);
         let planarSpeed = 0;
         if (entity) {
@@ -26969,8 +27007,19 @@ export const render = {
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
         _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
         _submitVisibilityOptions.onLiveGlass = onLiveGlass;
+        // Pending latches hide an ordinary root until compile finishes. On a body
+        // the camera is already drawing, that blank and the later reveal are the
+        // in-view pop. The hold is not a first-show skip: a root that is not
+        // already visible still waits on shouldSubmitEntityMesh.
+        const retainShown = retainShownSurvivalGlass({
+          survival: survivalRun,
+          alreadyVisible: mesh.visible !== false,
+          onFrustum: onLiveGlass === true,
+          snapshotMissing: !posed,
+          alive: !entity || entity.alive !== false,
+        });
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
+          && applyEntityMeshVisibility(mesh, retainShown || shouldSubmitEntityMesh(_submitVisibilityOptions));
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
         // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
         // its compile/residency while it was still off-glass must not finish under ambient FIFO
@@ -27146,6 +27195,14 @@ export const render = {
             _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
             presFrameDt,
           );
+          if (this.state.run && this.state.run.kind === 'survival') {
+            const shell = swarmCombatShieldRadius(entity.radius);
+            if (Math.abs(shieldBubble.scale.x - shell) > 0.01
+                || Math.abs(shieldBubble.scale.y - shell) > 0.01
+                || Math.abs(shieldBubble.scale.z - shell) > 0.01) {
+              shieldBubble.scale.setScalar(shell);
+            }
+          }
         }
 
         const hlod = userData.hlod;

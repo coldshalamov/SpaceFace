@@ -259,7 +259,7 @@ assert.match(onboardingSrc, /FLIGHT_DRILL_DISENGAGE_RANGE_WU/, 'disengagement mu
 assert.match(onboardingSrc, /_spawnDerelict/, 'B1 must spawn a derelict wreck for the tether trio');
 assert.match(onboardingSrc, /_spawnTrainer/, 'flight drill must spawn an inert trainer');
 assert.match(onboardingSrc, /_openChoice/, 'B5 must surface three side-by-side offers');
-assert.match(onboardingSrc, /recommendedCompleted/, 'B4 must wait for the recommended contract to complete');
+assert.match(onboardingSrc, /choiceStationId/, 'B4 resolves at the berth: the choice opens at the station the pilot is standing in, not after Ceres');
 assert.match(missionsSrc, /ensureOnboardingChoiceOffers/, 'missions authority must post the B5 choice offers');
 assert.match(missionsSrc, /choiceOfferTypes/, 'B5 must persist the three loop types on tutorial state');
 assert.match(missionsSrc, /bulk_trade.*bounty_hunt.*recon_scan/s, 'B5 must offer haul (trade) / bounty / survey');

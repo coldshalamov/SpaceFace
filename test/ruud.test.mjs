@@ -157,12 +157,12 @@ test('a decent release only counts on the buoy and never boards or flies the pla
   const pull = impulse(suit);
   assert.ok(pull.x < 0, 'suit returns toward the buoy, not the departed hull');
   assert.deepEqual(f.sacred(), before);
-  assert.equal(suit.data.scanLabel, 'HOOK-LEFT · plate Ruud · on the lane buoy');
+  assert.equal(suit.data.scanLabel, 'HOOK-LEFT · plate Ruud · berthed at lane buoy');
   f.events.length = 0;
   f.state.simTime = 30;
   f.step();
   assert.equal(f.events.some(e => e[0] === 'audio:cue'), false);
-  f.bus.emit('combat:damage', { targetId: suit.id, attackerId: f.player.id, applied: 5 });
+  f.bus.emit('combat:damage', { targetId: suit.id, attackerId: f.player.id, applied: 5, origin: { kind: 'weapon' } });
   const shot = f.events.find(e => e[1]?.key === 'weapon');
   assert.equal(shot[1].text.includes('Cold face'), false);
   assert.equal(shot[1].text.includes('filing is closed'), true);
@@ -363,7 +363,8 @@ test('the suit, fin, buoy, and bladder are authored and the cold face has no fea
   const breath = suit.getObjectByName('ANIM_breath');
   assert.equal(breath.visible, true);
   const puff = breath.children[0];
-  assert.ok(Math.abs(puff.rotation.x + Math.PI / 2) < 1e-6);
+  assert.equal(puff.geometry.type, 'CylinderGeometry', 'cold breath occupies space at the oblique flight camera');
+  assert.ok(Math.abs(puff.rotation.z + Math.PI / 2) < 1e-6);
   assert.ok(puff.position.x < -0.8);
   const buoy = buildRuudVisual(ruudEntitySpec(freshRuudMemory(), 'buoy'));
   const barL = buoy.getObjectByName('bar_left');

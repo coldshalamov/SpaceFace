@@ -103,13 +103,12 @@ export function runCampaign(options = {}) {
       baseCommit: BASE_COMMIT,
       reviewedHead: REVIEWED_HEAD,
       publishHead: null,
-      publishHeadNote: 'This checkout must not commit. The parent republishes cursor/economic-redteam-28d1.',
+      publishHeadNote: 'Production owners are integrated; this is a fresh runtime observation.',
       commands: [
         'node --test tools/economic-redteam/test.mjs',
         'node tools/economic-redteam/cli.mjs --seed 1845 --sequences 500',
       ],
-      testCount: 7,
-      testResult: '7 pass, 0 fail',
+      testResult: 'not_run_by_cli',
       search: {
         seed: search.seed,
         sequences: search.sequences,

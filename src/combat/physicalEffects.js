@@ -2,7 +2,7 @@
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { resolvePhysicsBodySpec, queuePhysicsImpulse, prepareExternalPhysicsImpulse } from '../core/physicsAuthority.js';
-import { environmentResponse, isEnvironmentalBody, isAnchoredPhysicalBody, PHYSICAL_REFERENCE_MASS } from '../core/physicalResponse.js';
+import { environmentResponse, isEnvironmentalBody, isAnchoredPhysicalBody, isPhysicalMissionBody, PHYSICAL_REFERENCE_MASS } from '../core/physicalResponse.js';
 import { queryAsteroidField, getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 
 export { environmentResponse, isEnvironmentalBody } from '../core/physicalResponse.js';
@@ -17,7 +17,7 @@ function runtime(state) {
 }
 const finite = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 function eligible(entity, includeAnchored = true) {
-  if (!entity || entity.alive === false || !entity.pos || entity.physicsBody === false || entity.type === 'fx') return false;
+  if (!entity || entity.alive === false || !entity.pos || entity.physicsBody === false || (entity.type === 'fx' && !isPhysicalMissionBody(entity))) return false;
   if (entity.type === 'planet') return false;
   if (isAnchoredPhysicalBody(entity)) return includeAnchored;
   const spec = resolvePhysicsBodySpec(entity);

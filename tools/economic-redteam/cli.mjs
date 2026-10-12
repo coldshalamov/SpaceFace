@@ -24,14 +24,15 @@ function arg(name, fallback) {
 const smoke = process.argv.includes('--smoke');
 const seed = Number(arg('seed', '1845')) >>> 0;
 const sequences = smoke ? 12 : Number(arg('sequences', '500'));
-const outPath = resolve(arg('out', resolve(here, 'artifacts/report.json')));
+const outputDir = resolve(here, '../../.devshots/economic-redteam');
+const outPath = resolve(arg('out', resolve(outputDir, 'report.json')));
 
 mkdirSync(dirname(outPath), { recursive: true });
 const report = runCampaign({
   seed,
   sequences,
   outPath,
-  receiptPath: resolve(here, 'artifacts/search-receipt.json'),
+  receiptPath: resolve(outputDir, 'search-receipt.json'),
 });
 
 const lines = [
@@ -44,6 +45,6 @@ const lines = [
   `critique ${report.critique.holds ? 'holds' : 'FAILED'}`,
   `wrote ${outPath}`,
 ];
-writeFileSync(resolve(here, 'artifacts/summary.txt'), `${lines.join('\n')}\n`);
+writeFileSync(resolve(outputDir, 'summary.txt'), `${lines.join('\n')}\n`);
 console.log(lines.join('\n'));
 if (!report.critique.holds) process.exitCode = 1;

@@ -29,6 +29,10 @@ function safeRecord(payload) {
     manualInvestigation: !!row.manualInvestigation,
     detail: String(row.detail || 'Scanner return logged.'),
     meta: signalMetaText(row),
+    tracks: Array.isArray(row.spectrum?.tracks) ? row.spectrum.tracks.slice(0, 7).map(track => ({
+      key: String(track.key || ''), motionClass: String(track.motionClass || 'UNKNOWN'),
+      chartLabel: String(track.chartLabel || ''),
+    })).filter(track => track.key) : [],
   };
 }
 
@@ -87,15 +91,20 @@ export function createSignalInvestigationPrompt(ctx = {}) {
       headline: record.classification.toUpperCase(),
       detail: [record.meta, record.detail].filter(Boolean).join(' — '),
       ttlAt: Number(state.simTime || 0) + RESULT_TTL_S,
-      choices: record.trackable ? [{
+      choices: [...record.tracks.map(track => ({ id: `focus:${track.key}`,
+        label: `${track.key} · ${track.motionClass}${track.chartLabel ? ` · ${track.chartLabel}` : ''}`,
+        title: 'Compare this return with your next pulse.',
+      })), ...(record.trackable ? [{
         id: 'track',
         label: record.manualInvestigation ? 'INVESTIGATE MANUALLY' : 'TRACK / INVESTIGATE',
         title: record.manualInvestigation
           ? 'Fly this return manually · no course set'
           : 'Track the return and investigate.',
-      }] : [],
+      }] : [])],
       onExpire: () => {},
       onChoose: (choiceId, source) => {
+        const focus = record.tracks.find(track => choiceId === `focus:${track.key}`);
+        if (focus) return bus.emit('spectrum:focus', { key: focus.key, source });
         if (choiceId !== 'track') return false;
         deck.updateDecision(DECK_ID_RESULT, { choices: [] });
         return bus.emit(record.manualInvestigation ? 'signal:investigate' : 'signal:track',

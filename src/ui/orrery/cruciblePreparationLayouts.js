@@ -1,6 +1,8 @@
 // One composition sheet for the Crucible preparation family. Materials and typography inherit
 // Deckplate/ORRERY; no new token root, runtime filter, full-screen canvas or animation loop.
 import { injectOrrery } from './tokens.js';
+const BONE = '236 230 216';
+const VOID = '5 7 10';
 const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-preparation[data-prep-step]';
 const A = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory.orr-visual-armory';
 const CSS = `
@@ -8,17 +10,19 @@ const CSS = `
 ${D} { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows:auto auto minmax(0,1fr) auto !important; gap:18px 40px !important; padding:30px 48px 22px !important; width:100% !important; height:100dvh !important; max-width:none !important; max-height:none !important; margin:0 !important; overflow:hidden !important; }
 ${D} > .k-title { grid-column:1 / -1 !important; grid-row:1 !important; margin:0 !important; padding:0 !important; }
 ${D} > .k-title h1 { font-size:54px !important; line-height:1 !important; letter-spacing:-.025em !important; }
-${D} .sf-crd-sub { font-family:var(--dp-face-body, 'Instrument Sans'),sans-serif !important; text-transform:none !important; letter-spacing:0 !important; font-size:15px !important; line-height:1.5 !important; margin:6px 0 0 !important; color:var(--dp-ink-dim) !important; }
+${D} .sf-crd-sub { font-family:var(--dp-face-body, 'Instrument Sans'),sans-serif !important; text-transform:none !important; letter-spacing:0 !important; font-size:15px !important; line-height:1.5 !important; margin:6px 0 0 !important; color:rgb(${BONE} / .82) !important; }
 ${D} .orr-prep-nav { grid-column:1 / -1; grid-row:2; display:flex; align-items:center; gap:30px; border-bottom:1px solid var(--dp-line); min-width:0; }
 ${D} .orr-prep-tabs { display:flex; gap:28px; }
-${D} .orr-prep-tab { display:flex; gap:10px; align-items:center; border:0; border-radius:0; background:none; color:var(--dp-ink-dim); font:600 16px var(--dp-face-label); padding:14px 0; min-height:48px; cursor:pointer; position:relative; }
-${D} .orr-prep-tab::after { content:''; position:absolute; left:0; bottom:-1px; height:2px; width:100%; background:var(--dp-hand); opacity:0; }
-${D} .orr-prep-tab[aria-selected=true] { color:var(--dp-ink); }
+${D} .orr-prep-tab { display:flex; gap:10px; align-items:center; border:0 !important; border-radius:0; background:none !important; box-shadow:none !important; color:rgb(${BONE} / .72); font:600 16px var(--dp-face-label); letter-spacing:.12em; text-transform:uppercase; padding:14px 0; min-height:48px; cursor:pointer; position:relative; outline:none; }
+${D} .orr-prep-tab::after { content:''; position:absolute; left:0; bottom:-1px; height:2px; width:100%; background:var(--dp-hand); opacity:0; transform:none; }
+${D} .orr-prep-tab[aria-selected=true] { color:rgb(${BONE} / .96); background:none !important; box-shadow:none !important; border:0 !important; outline:none; }
 ${D} .orr-prep-tab[aria-selected=true]::after { opacity:1; }
-${D} .orr-prep-step { font-size:12px; font-variant-numeric:tabular-nums; color:var(--dp-ink-dim); }
+${D} .orr-prep-tab:focus:not(:focus-visible) { outline:none !important; }
+${D} .orr-prep-tab:focus-visible { outline:2px solid var(--dp-hand-hot) !important; outline-offset:3px !important; }
+${D} .orr-prep-step { font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.08em; color:rgb(${BONE} / .55); }
 ${D} .orr-prep-tab[aria-selected=true] .orr-prep-step { color:var(--dp-hand); }
-${D} .orr-prep-nextstep { color:var(--dp-ink-dim); font-size:13px; }
-${D} .orr-prep-summary { margin-left:auto; color:var(--dp-ink-dim); font-size:13px; text-align:right; }
+${D} .orr-prep-nextstep { display:inline-flex; align-items:center; gap:10px; margin:0; padding:14px 0; min-height:48px; font:600 16px var(--dp-face-label); letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .42); pointer-events:none; user-select:none; }
+${D} .orr-prep-summary { margin-left:auto; color:rgb(${BONE} / .78); font-size:13px; text-align:right; }
 ${D} > .k-stage { grid-column:1 !important; grid-row:3 !important; position:relative !important; inset:auto !important; width:100% !important; max-width:none !important; min-height:0 !important; height:100% !important; padding:0 12px 0 0 !important; margin:0 !important; overflow:auto !important; mask-image:none !important; }
 ${D} > .k-stage::before { display:none !important; }
 ${D} .orr-prep-panel { padding:4px 0 12px; }
@@ -56,12 +60,12 @@ ${D} .orr-prep-challenges { gap:20px; margin-bottom:16px; }
 ${D} .sf-crd-anyhull-ships { flex-wrap:wrap !important; }
 ${D} :is(.sf-crd-anyhull-ship,.sf-crd-records > summary) { min-height:40px !important; font-size:13px !important; }
 ${D} .orr-door-hero, ${D} .orr-prep-ship { position:relative !important; grid-column:2 !important; grid-row:3 !important; inset:auto !important; width:100% !important; height:100% !important; min-height:0; margin:0; overflow:hidden !important; pointer-events:auto !important; }
-${D} .orr-door-hero { isolation:isolate; }
-${D} .orr-door-hero__art { inset:0 !important; width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; mask-image:linear-gradient(0deg,transparent, black 40%,black 92%, transparent) !important; }
-${D} .orr-door-hero__words { position:absolute !important; left:24px !important; right:24px !important; bottom:138px !important; text-align:left !important; max-width:none !important; }
-${D} .orr-door-hero__name { font:800 clamp(26px,3vw,44px)/1.03 var(--dp-face-display,'Archivo') !important; letter-spacing:-.02em !important; }
-${D} .orr-door-hero__line { max-width:40ch !important; margin-top:12px !important; font:400 14px/1.5 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink-dim) !important; }
-${D} .orr-prep-brief { position:absolute; bottom:10px; left:24px; right:24px; border-top:1px solid var(--dp-line); padding-top:16px; }
+${D} .orr-door-hero { isolation:isolate; z-index:0; overflow:hidden !important; }
+${D} .orr-door-hero__art { inset:0 !important; width:100% !important; height:100% !important; object-fit:cover !important; object-position:center !important; -webkit-mask-image:linear-gradient(0deg,transparent 0%, transparent 8%, black 36%, black 90%, transparent 100%) !important; mask-image:linear-gradient(0deg,transparent 0%, transparent 8%, black 36%, black 90%, transparent 100%) !important; }
+${D} .orr-door-hero__words { position:absolute !important; left:24px !important; right:24px !important; bottom:138px !important; text-align:left !important; max-width:none !important; z-index:2; }
+${D} .orr-door-hero__name { font:800 clamp(26px,3vw,44px)/1.03 var(--dp-face-display,'Archivo') !important; letter-spacing:-.02em !important; color:rgb(${BONE} / .98) !important; text-shadow:0 1px 18px rgb(${VOID} / .55); }
+${D} .orr-door-hero__line { max-width:40ch !important; margin-top:12px !important; font:400 14px/1.5 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:rgb(${BONE} / .88) !important; }
+${D} .orr-prep-brief { position:absolute; bottom:10px; left:24px; right:24px; border-top:1px solid rgb(${BONE} / .18); padding-top:16px; z-index:2; }
 ${D} .orr-prep-purse { font:300 36px/1 var(--dp-face-numeral); color:var(--dp-ink); }
 ${D} .orr-prep-cadence { white-space:pre-line; font-size:13px; line-height:1.65; color:var(--dp-ink-dim); margin:8px 0 0; }
 ${D} .orr-prep-ship { display:flex; flex-direction:column; overflow:auto !important; padding:8px 8px 8px 24px; }
@@ -83,11 +87,17 @@ ${D} .orr-prep-fitting small { display:block; color:var(--dp-ink-dim); font:500 
 ${D} .orr-prep-fitting strong { font:500 13px/1.3 var(--dp-face-body,'Instrument Sans'),sans-serif; display:block; overflow-wrap:anywhere; }
 ${D} .orr-prep-fitting[aria-pressed=true] { border-bottom-color:var(--dp-hand); }
 ${D} .orr-prep-fitting.is-empty .orr-equipment-glyph { opacity:.35; }
-${D} > .k-foot { grid-column:1 / -1 !important; grid-row:4 !important; display:block !important; position:relative !important; inset:auto !important; width:auto !important; margin:0 !important; padding:14px 0 0 !important; border-top:1px solid var(--dp-line-faint); }
-${D} .k-foot .k-words { display:flex !important; justify-content:flex-end; align-items:center; gap:26px !important; padding:0 !important; flex-wrap:wrap; }
-${D} .k-foot .sf-back { font-size:14px !important; }
+${D} > .k-foot { grid-column:1 / -1 !important; grid-row:4 !important; display:block !important; position:relative !important; z-index:6 !important; inset:auto !important; width:auto !important; margin:0 !important; padding:14px 0 0 !important; border-top:1px solid rgb(${BONE} / .16); background:rgb(${VOID}); box-shadow:0 -28px 40px 12px rgb(${VOID}); isolation:isolate; }
+${D} .k-foot .k-words { display:flex !important; justify-content:flex-end; align-items:center; gap:26px !important; padding:0 !important; flex-wrap:wrap; position:relative; z-index:1; }
 ${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard { font:650 19px var(--dp-face-label) !important; min-height:48px !important; min-width:240px !important; text-align:center !important; padding:10px 24px !important; letter-spacing:0 !important; color:var(--dp-void) !important; background:var(--dp-hand) !important; clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%); }
-${D} .k-foot .orr-door-hint { text-align:right; font:400 12px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; letter-spacing:0 !important; margin:9px 0 0 !important; }
+${D} .k-foot .orr-door-hint { text-align:right; font:400 12px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; letter-spacing:0 !important; margin:9px 0 0 !important; color:rgb(${BONE} / .78) !important; position:relative; z-index:1; }
+/* foot rail: ‹ BACK + ESC keycap (matches new-game / save / tech-tree) */
+${D} .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important; padding:10px 0 12px !important; min-height:44px !important; font:600 13.5px var(--dp-face-label) !important; font-stretch:112% !important; letter-spacing:.22em !important; text-transform:uppercase !important; color:rgb(255 253 248) !important; background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${D} .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important; font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important; line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${D} .k-foot .sf-back.k-word :is(.k-kbd, .dp-kbd, kbd) { display:none !important; }
+${D} .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
+${D} .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 ${D} :is(button,summary,input):focus-visible, ${A} :is(button,input,summary):focus-visible { outline:2px solid var(--dp-hand-hot) !important; outline-offset:3px !important; }
 /* The armory's three planes: catalog, object/ship, transaction. */
 ${A} { display:grid !important; grid-template-columns:minmax(320px,.9fr) minmax(0,1.55fr) !important; grid-template-rows:auto minmax(0,1fr) auto !important; gap:24px 38px !important; padding:30px 48px 22px !important; width:100% !important; height:100dvh !important; max-width:none !important; max-height:none !important; margin:0 !important; overflow:hidden !important; }
@@ -168,7 +178,7 @@ ${A} .orr-armory-reading.is-unavailable .orr-armory-reading__name { color:var(--
 ${D} [hidden], ${A} [hidden] { display:none !important; }
 ${D} .sf-crd-row--share:not(.is-open) { display:none !important; }
 ${D} .orr-door-hero { mask-image:none !important; -webkit-mask-image:none !important; }
-${D} .orr-door-hero__words, ${D} .orr-prep-brief { z-index:2; }
+${D} .orr-door-hero__words, ${D} .orr-prep-brief { z-index:2; position:absolute; }
 ${D} .orr-prep-challenges { display:flex !important; gap:16px; }
 ${D} .orr-prep-challenges > li { flex:1; list-style:none; }
 ${A} .sf-cru-card .sf-cru-price { visibility:visible !important; }
@@ -274,16 +284,35 @@ ${D} .k-foot .orr-prep-continue::after { content:''; position:absolute; top:-4px
 ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { transform:translateY(1px); }
 /* a short plate trims the lead tiles, never the hierarchy: mode stays the biggest face */
 @media (max-height:820px) {
- ${D} .orr-prep-settings { gap:14px !important; }
- ${D} .sf-crd-modes .orr-tile { min-height:92px !important; padding:10px 8px 8px !important; }
- ${D} .sf-crd-modes .fh-tile-art, ${D} .sf-crd-modes .fh-tile-art svg { height:44px !important; }
- ${D} .sf-crd-modes .fh-tile-art svg { width:44px !important; }
- ${D} .sf-crd-stakes .orr-tile { min-height:80px !important; }
- ${D} .orr-prep-stake-number { font-size:24px !important; }
- ${D} .sf-crd-arenas .orr-tile { min-height:56px !important; padding:4px 4px 6px !important; }
- ${D} .sf-crd-arenas .fh-tile-art img { height:32px !important; }
- ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:6px !important; }
- ${D} .orr-prep-disclosure { padding:8px 0; }
+ ${D} { padding:18px 36px 14px !important; gap:10px 28px !important; }
+ ${D} > .k-title h1 { font-size:40px !important; }
+ ${D} .sf-crd-sub { font-size:13px !important; margin:4px 0 0 !important; }
+ ${D} .orr-prep-nav { gap:18px; }
+ ${D} .orr-prep-tab, ${D} .orr-prep-nextstep { padding:8px 0; min-height:36px; font-size:14px; }
+ ${D} .orr-prep-panelhead { margin:0 0 10px !important; }
+ ${D} .orr-prep-panelhead-step { font-size:13px !important; }
+ ${D} .orr-prep-panelhead-line { font-size:12px !important; margin:2px 0 0 !important; }
+ ${D} .orr-prep-settings { gap:10px !important; }
+ ${D} .k-row > .k-row__name { margin-bottom:6px !important; }
+ ${D} .sf-crd-modes .orr-tile { min-height:72px !important; padding:6px 6px 6px !important; }
+ ${D} .sf-crd-modes .fh-tile-art, ${D} .sf-crd-modes .fh-tile-art svg { height:34px !important; }
+ ${D} .sf-crd-modes .fh-tile-art svg { width:34px !important; }
+ ${D} .sf-crd-modes .fh-tile-legend { font-size:11px !important; letter-spacing:.1em !important; }
+ ${D} .sf-crd-stakes .orr-tile { min-height:64px !important; padding:6px 4px !important; }
+ ${D} .orr-prep-stake-number { font-size:20px !important; }
+ /* UI polish: at 720p the stake mark gives its 30px back so purse, pressure and yield all fit the tile unclipped */
+ ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
+ ${D} .orr-prep-stake-yield { font-size:11px !important; letter-spacing:0 !important; }
+ ${D} .orr-prep-stake-pressure { letter-spacing:.04em !important; font-size:11px !important; }
+ ${D} :is(.orr-prep-stake-pressure,.orr-prep-stake-yield) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+ /* Arena above the fold: hero carries the rooms — drop strip thumbs so both rows fit */
+ ${D} .sf-crd-arenas .fh-tile-art { display:none !important; }
+ ${D} .sf-crd-arenas .orr-tile { min-height:34px !important; padding:6px 2px !important; }
+ ${D} .sf-crd-arenas .fh-tile-legend { font-size:11px !important; }
+ ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:2px !important; font-size:11.5px !important; line-height:1.3 !important; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+ ${D} .orr-prep-disclosure { padding:2px 0; font-size:12px; }
+ ${D} .orr-door-hero__words { bottom:110px !important; }
+ ${D} > .k-foot { padding:8px 0 0 !important; }
 }
 @media (max-width:1150px) {
  ${D}, ${A} { padding:24px !important; column-gap:24px !important; }
@@ -346,6 +375,46 @@ ${A} .sf-cru-card.is-unavail .sf-cru-afford { color:var(--dp-ink-dim) !important
 ${A} .sf-cru-card.is-lit.is-unavail { opacity:.75 !important; }
 ${A} .sf-cru-card.is-fitted .sf-cru-price { color:var(--dp-hand) !important; }
 ${A} .orr-armory-item > video { width:100%; height:100%; object-fit:contain; }
+
+/* —— UI polish: Crucible door (scrim, contrast, 1080p lift) —— */
+/* Bottom-left void scrim under hero copy + brief (void → transparent). */
+${D} .orr-door-hero::after {
+  content:''; position:absolute; pointer-events:none; z-index:1;
+  left:0; bottom:0; width:100%; height:70%;
+  background:
+    linear-gradient(0deg, rgb(${VOID} / .97) 0%, rgb(${VOID} / .82) 28%, rgb(${VOID} / .35) 58%, transparent 82%),
+    linear-gradient(90deg, rgb(${VOID} / .92) 0%, rgb(${VOID} / .55) 42%, transparent 78%);
+}
+${D} .orr-door-hero__words {
+  background:linear-gradient(100deg, rgb(${VOID} / .9) 0%, rgb(${VOID} / .62) 55%, rgb(${VOID} / .15) 88%, transparent 100%) !important;
+  padding:18px 36px 16px 18px !important; margin-left:-18px; border-radius:2px;
+  box-shadow:0 0 40px 18px rgb(${VOID} / .35);
+}
+${D} .orr-prep-brief {
+  background:linear-gradient(90deg, rgb(${VOID} / .94) 0%, rgb(${VOID} / .7) 50%, rgb(${VOID} / .2) 82%, transparent 100%) !important;
+  padding:16px 28px 12px 18px !important; margin-left:-18px; border-radius:2px;
+}
+${D} .orr-door-hero__words::before, ${D} .orr-prep-brief::before { content:none !important; display:none !important; }
+${D} .orr-prep-purse { color:rgb(${BONE} / .98); }
+${D} .orr-prep-cadence { color:rgb(${BONE} / .82); }
+${D} .orr-prep-panelhead-line { color:rgb(${BONE} / .8) !important; }
+${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { color:rgb(${BONE} / .8) !important; }
+${D} .k-row > .k-row__name { color:rgb(${BONE} / .72) !important; }
+${D} .orr-tile .fh-tile-legend { color:rgb(${BONE} / .94) !important; }
+${D} .orr-prep-nextstep { text-transform:uppercase !important; letter-spacing:.12em !important; }
+/* 1080p band: composition lift without CSS zoom (Encounter chrome is denser than
+   settings/codex — zoom:1.12 pushed BACK / Continue off-frame). Scale faces +
+   padding to read at the same weight as the 1.12 stack. */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${D} { padding:28px 52px 20px !important; gap:16px 44px !important; }
+  ${D} > .k-title h1 { font-size:58px !important; }
+  ${D} .sf-crd-sub { font-size:16px !important; }
+  ${D} .orr-prep-tab, ${D} .orr-prep-nextstep { font-size:17px; }
+  ${D} .orr-door-hero__name { font-size:clamp(30px,3.2vw,48px) !important; }
+  ${D} .orr-door-hero__line { font-size:15px !important; }
+  ${D} .orr-prep-purse { font-size:40px; }
+  ${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard { font-size:20px !important; min-height:52px !important; }
+}
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;

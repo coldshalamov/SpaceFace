@@ -183,7 +183,7 @@ test('the Brood feel the field kernel: a well pulls the flock toward its centre'
   assert.ok(closer > compared * 0.5, `well pulled bodies toward it (${closer}/${compared})`);
 });
 
-test('brood die against rocks: contact death, terrain receipt, run pay', () => {
+test('ambient terrain kills still remove brood but cannot mint player score or cash', () => {
   const h = boot({ wave: 1 });
   const engine = makeEngine(h);
   engine.prepareWave(h.state.run, 1);
@@ -212,11 +212,11 @@ test('brood die against rocks: contact death, terrain receipt, run pay', () => {
   assert.ok(kills.length >= 1);
   const terrain = kills.find((e) => e.payload.cause === 'terrain');
   assert.ok(terrain, 'rock contact reads terrain');
-  assert.ok(terrain.payload.count >= 1);
+  assert.equal(terrain.payload.count, 0);
+  assert.ok(terrain.payload.removedCount >= 1);
   const pay = h.emitted.filter((e) => e.event === 'run:awardRequested'
     && e.payload.reason === 'brood');
-  assert.ok(pay.length >= 1, 'the kill paid through the run envelope');
-  assert.equal(pay[0].payload.credits, terrain.payload.count);
+  assert.equal(pay.length, 0, 'unattributed terrain loss does not pay');
 });
 
 test('brood die in explosions: the shared blast receipts reach the tier', () => {
@@ -232,7 +232,7 @@ test('brood die in explosions: the shared blast receipts reach the tier', () => 
   }
   cx /= n; cz /= n;
   const before = engine.census().alive;
-  h.bus.emit('charge:detonated', { pos: { x: cx, z: cz }, radius: 90, trigger: 'test', hits: [], shoves: [] });
+  h.bus.emit('charge:detonated', { ownerId: h.player.id, pos: { x: cx, z: cz }, radius: 90, trigger: 'test', hits: [], shoves: [] });
   const after = engine.census().alive;
   assert.ok(after < before, 'bodies inside the blast died');
   const kills = h.emitted.filter((e) => e.event === 'swarm:broodKills'

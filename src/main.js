@@ -136,6 +136,7 @@ async function boot() {
     // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
     // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
     installLiveClipDirector(bus, {
+      stateOf: () => state,
       seedOf: () => state && state.meta && state.meta.seed,
       tickOf: () => state && state.tick,
     });

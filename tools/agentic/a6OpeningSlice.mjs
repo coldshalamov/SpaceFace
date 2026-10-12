@@ -57,7 +57,7 @@ const WATCHED_EVENTS = [
   'dock:docked', 'dock:undocked', 'module:purchased', 'module:equipped', 'economy:chargeCredits',
   'economy:saleExecuted', 'law:incidentOpened', 'law:dispatchStarted', 'law:incidentResolved',
   'law:responseDeferred', 'law:distressRaised', 'heat:changed',
-  'massline:releaseCancelled', 'tether:latchDenied',
+  'massline:releaseCancelled', 'tether:latchDenied', 'tether:cutDenied',
   'massline:throw', 'economy:grantCredits', 'combat:fire',
   'economy:cargoSold', 'mission:failed', 'encounter:resolved', 'salvage:completed',
   'pickup:collected', 'world:playerRelocated',
@@ -284,6 +284,14 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     return d;
   }
 
+  // A shelved far actor is a real hull in space but a kinematic-frozen one: its mirrored vel
+  // is the row's last measured drift, not motion it is doing now — and it carries no live
+  // collider, so a freed hull flies straight through it. Read it as static and never cut on
+  // it: walking a ghost's stale velocity forward spends the catch on a meeting that never was.
+  const SHELF_TIERS = new Set(['S2_ABSTRACT', 'S3_DORMANT', 'S4_AGGREGATE']);
+  const shelfFrozen = (e) => !!(e && e.activity && SHELF_TIERS.has(e.activity.simTier));
+  const readVel = (e) => (shelfFrozen(e) ? { x: 0, z: 0 } : (e.vel || { x: 0, z: 0 }));
+
   // What the thrown payload should meet. The release solver has a 6 s contact horizon, so the
   // aim must sit within ~6×relativeSpeed of the PAYLOAD — the nearest aimable body wins.
   let pinnedAimId = null;
@@ -292,7 +300,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     const payload = payloadId != null ? state.entities.get(payloadId) : null;
     const ref = (payload && payload.pos) || player.pos;
     const cur = pinnedAimId != null ? state.entities.get(pinnedAimId) : null;
-    if (cur && cur.alive !== false && dist(cur.pos, ref) < 1400) return cur;
+    if (cur && cur.alive !== false && !shelfFrozen(cur) && dist(cur.pos, ref) < 1400) return cur;
     pinnedAimId = null;
     // Prefer a STATIC body — a manoeuvring ship aim keeps the turn tracker degraded.
     const STATIC = new Set(['asteroid', 'station', 'wreck']);
@@ -300,6 +308,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     for (const e of state.entityList || []) {
       if (!e || e.alive === false || e.id === player.id || e.id === payloadId) continue;
       if (!e.pos || !STATIC.has(e.type)) continue;
+      if (shelfFrozen(e)) continue; // a kinematic ghost is not cover — the throw flies through it
       if ((e.mass || 0) < 100 && (e.radius || 0) < 12) continue;
       const d = dist(e.pos, ref);
       if (d < bd && d < 2200) { bd = d; best = e; }
@@ -308,6 +317,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
       for (const e of state.entityList || []) {
         if (!e || e.alive === false || e.id === player.id || e.id === payloadId) continue;
         if (!e.pos || !AIMABLE.has(e.type)) continue;
+        if (shelfFrozen(e)) continue;
         if ((e.mass || 0) < 100 && (e.radius || 0) < 12) continue;
         const d = dist(e.pos, ref);
         if (d < bd && d < 1200) { bd = d; best = e; }
@@ -328,10 +338,11 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     for (const e of state.entityList || []) {
       if (!e || e.alive === false || e.id === playerId || e.id === payload.id) continue;
       if (!e.pos || !AIMABLE.has(e.type)) continue;
+      if (shelfFrozen(e)) continue; // shelf hulls do not collide — never a victim the ray can meet
       if ((e.radius || 0) < 10) continue;
       const d = dist(e.pos, payload.pos);
       if (d > 2200) continue;
-      const ev = e.vel || { x: 0, z: 0 };
+      const ev = readVel(e);
       const c = sweptDiskContact(
         e.pos.x - payload.pos.x, e.pos.z - payload.pos.z,
         ev.x - pv.x, ev.z - pv.z,
@@ -342,10 +353,11 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
   }
 
   // A confident hand cuts on its own read, not only the solver's beep: walk the freed hull
-  // (post-release bleed ≈0.35/s — a live ship recovering) and the victim (its OWN measured
-  // acceleration, not a constant-velocity promise) forward, and cut the tick the two
-  // trajectories actually meet inside the contact pad. The solver's window certifies the
-  // crossing for a steady target; this read is what a pilot sees on a braking one.
+  // (ballistic after the cut) and the victim (its OWN measured acceleration, not a
+  // constant-velocity promise) forward, and cut the tick the two trajectories actually meet
+  // inside the contact pad. The solver's window certifies the crossing for a steady target;
+  // this read is what a pilot sees on a braking one — and it only trusts a meeting a live
+  // ship cannot steer out of.
   const swingCutTrack = new Map(); // victimId -> recent [{t,vx,vz}] — the measured accel source
   const SWING_CUT_MIN_SPEED = 150;   // below the lethal band a meeting is a nudge
   const SWING_CUT_MAX_D = 700;       // beyond this the forward read is a guess, not a call
@@ -355,7 +367,8 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     if (!victim || !victim.pos || !victim.vel) return false;
     let hist = swingCutTrack.get(victim.id);
     if (!hist) { hist = []; swingCutTrack.set(victim.id, hist); }
-    hist.push({ t: state.simTime, vx: num(victim.vel.x), vz: num(victim.vel.z) });
+    const vvel = readVel(victim);
+    hist.push({ t: state.simTime, vx: num(vvel.x), vz: num(vvel.z) });
     while (hist.length && state.simTime - hist[0].t > 0.75) hist.shift();
     const pv = payload.vel || { x: 0, z: 0 };
     const payV = Math.hypot(pv.x, pv.z);
@@ -363,23 +376,25 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
     if (payV < SWING_CUT_MIN_SPEED || d > SWING_CUT_MAX_D || d < 40) return false;
     const oldest = hist[0];
     const spanS = oldest ? Math.max(1 / 60, state.simTime - oldest.t) : 0;
-    const ax = oldest ? (num(victim.vel.x) - oldest.vx) / spanS : 0;
-    const az = oldest ? (num(victim.vel.z) - oldest.vz) / spanS : 0;
+    const ax = oldest ? (num(vvel.x) - oldest.vx) / spanS : 0;
+    const az = oldest ? (num(vvel.z) - oldest.vz) / spanS : 0;
     const pad = (payload.radius || 0) + (victim.radius || 0) + SWING_CUT_PAD_SLACK;
     let hx = payload.pos.x, hz = payload.pos.z, hvx = pv.x, hvz = pv.z;
-    let vx = victim.pos.x, vz = victim.pos.z, vvx = num(victim.vel.x), vvz = num(victim.vel.z);
-    let best = Infinity;
+    let vx = victim.pos.x, vz = victim.pos.z, vvx = num(vvel.x), vvz = num(vvel.z);
+    let best = Infinity, bestT = Infinity;
     const stepS = 1 / 15, horizonS = Math.min(4, d / payV + 1.5);
     for (let tt = stepS; tt <= horizonS; tt += stepS) {
       hx += hvx * stepS; hz += hvz * stepS;
-      const bleed = Math.max(0, 1 - 0.35 * stepS);
-      hvx *= bleed; hvz *= bleed;
+      // a freed hull flies ballistic — no post-release bleed in the current physics
       vx += vvx * stepS; vz += vvz * stepS;
       vvx += ax * stepS; vvz += az * stepS;
       const sep = Math.hypot(vx - hx, vz - hz);
-      if (sep < best) best = sep; else if (sep > best + 5) break;
+      if (sep < best) { best = sep; bestT = tt; } else if (sep > best + 5) break;
     }
-    return best < pad;
+    // A freed hull is a live ship that steers out of the read — only a meeting close in time
+    // survives its curve. A static victim holds still for the whole flight.
+    const staticV = victim.type === 'asteroid' || victim.type === 'station' || victim.type === 'wreck';
+    return best < pad && (staticV || bestT <= 1.3);
   }
 
   function tryEmergencyDock() {
@@ -686,6 +701,7 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
           if (!e || e.alive === false || e.id === payloadId || e.id === playerId || !e.pos || !e.vel) continue;
           if (e.type !== 'ship' && e.type !== 'drone' && e.type !== 'asteroid') continue;
           if (e === scan?.e) continue;
+          if (shelfFrozen(e)) continue;
           if (dist(payload.pos, e.pos) <= SWING_CUT_MAX_D) cands.push(e);
         }
         let cutVictim = null;
@@ -699,7 +715,9 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
           input.aimWorld = { x: cutVictim.pos.x, z: cutVictim.pos.z };
           input.aimIntentActive = true;
           masslineCmd({ cut: true });
-          phase = 'post_throw'; phaseStart = t; continue;
+          // No continue: the cut packet must stay live through this iteration's runTicks —
+          // a continue burns the tick and masslineIdle() wipes the flag unread.
+          phase = 'post_throw'; phaseStart = t;
         }
       }
       if (phase === 'swing' && (taut || t - swingStart > 12)) { phase = 'release'; phaseStart = t; }
@@ -707,10 +725,10 @@ export async function runOpeningSliceA6({ seed = SEED, verbose = false, maxSimSe
         // The freed hull is a live ship that brakes to recover — a window certified on a far
         // aim fires a ray that lands where nothing is. A hand waits for the swing's own read:
         // arm only while the release ray already crosses a body whose meeting is close enough
-        // that the post-cut bleed cannot walk the hull off it, and pin the aim there so the
-        // solver's certified cut is the same meeting the scan measured. Ships get the tightest
-        // read (they manoeuvre through a long flight); a rock holds still — the bleeder just
-        // arrives slower and the light payload still dies on it.
+        // that the victim cannot steer off it, and pin the aim there so the solver's certified
+        // cut is the same meeting the scan measured. Ships get the tightest read (they
+        // manoeuvre through a long flight); a rock holds still — the throw just arrives
+        // slower and the light payload still dies on it.
         const tof = scan ? scan.c.impactTime : Infinity;
         const tofCap = scan && (scan.e.type === 'ship' || scan.e.type === 'drone') ? 1.5 : 2.5;
         const honestHit = scan && tof <= tofCap && vtNow >= 150 && !overspeed;

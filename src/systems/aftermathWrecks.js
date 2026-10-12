@@ -120,6 +120,8 @@ export function ensureAftermathState(state) {
   if (!own.causes || typeof own.causes !== 'object' || Array.isArray(own.causes)) own.causes = {};
   if (!own.ecology || typeof own.ecology !== 'object' || Array.isArray(own.ecology)) own.ecology = {};
   if (typeof own.seed !== 'number') own.seed = seedOf(state);
+  if (!Number.isFinite(own.runToken) || own.runToken < 0) own.runToken = 0;
+  else own.runToken = own.runToken >>> 0;
   return own;
 }
 
@@ -421,7 +423,14 @@ function currentWreckFieldId(state) {
 function markerIdFor(state, sectorId, payload) {
   const victimId = payload && (payload.id != null ? payload.id : payload.entityId);
   const fingerprint = payload && payload.encounterFingerprint;
-  return 'aft_' + hash32(seedOf(state), sectorId, fingerprint || victimId, victimId, payload && payload.killerId, state && state.tick || 0, 'aftermath').toString(36);
+  // New Game recycles entity ids and the sim tick. A delayed salvage receipt from the
+  // previous run must not complete the next wreck that inherits both.
+  const own = state && state.aftermathWrecks;
+  const runToken = own && Number.isFinite(own.runToken) ? own.runToken >>> 0 : 0;
+  return 'aft_' + hash32(
+    seedOf(state), sectorId, fingerprint || victimId, victimId,
+    payload && payload.killerId, state && state.tick || 0, 'aftermath', runToken,
+  ).toString(36);
 }
 
 function victimClassFor(entity, payload) {
@@ -1007,7 +1016,12 @@ export const aftermathWrecks = {
     };
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
-    this._onEncounterResolved = (payload) => rememberCause(this.state, this.bus, payload || {});
+    this._onEncounterResolved = (payload) => {
+      const cause = rememberCause(this.state, this.bus, payload || {});
+      // The wreck materializes on the kill, which is before the raid resolves. Stamp the
+      // cause onto that live body so a scan can read it without leaving and coming back.
+      if (cause) this._stampLiveCause(cause);
+    };
     this._onDocked = (payload) => this._offerAtStation(payload && payload.stationId);
     this._onOfferBoarded = (payload) => this._markOfferBoarded(payload || {});
     this._onMissionAccepted = (payload) => this._markMissionActive(payload || {});
@@ -1065,9 +1079,13 @@ export const aftermathWrecks = {
 
   newGame() {
     this._saveRestoring = false;
+    const prior = this.state && this.state.aftermathWrecks && Number.isFinite(this.state.aftermathWrecks.runToken)
+      ? this.state.aftermathWrecks.runToken >>> 0
+      : 0;
     if (this.state) {
       this.state.aftermathWrecks = {
         schemaVersion: STATE_VERSION, bySector: {}, causes: {}, ecology: {}, seed: seedOf(this.state),
+        runToken: (prior + 1) >>> 0,
       };
     }
     if (this._spawned) this._spawned.clear();
@@ -1638,18 +1656,21 @@ export const aftermathWrecks = {
     const seed = seedOf(this.state);
     const victimVel = boundedKillVel(marker.victimVel);
     const speed = Math.hypot(victimVel.x, victimVel.z);
+    const victimRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
+    const shardRadius = Math.max(ARENA_SHARD_RADIUS_FLOOR, victimRadius);
     // Scatter direction: within ±80° of the way the hull was moving, so the push can never
     // oppose the inherited momentum (the body keeps the death's direction); a dead-stop kill
-    // with no velocity left takes a free angle. Position offset is drawn independently.
+    // with no velocity left takes a free angle. Position offset is drawn independently, but it
+    // must clear BOTH bodies' radii: a shard minted inside the hull it came from resolves the
+    // interpenetration as a hard contact on the first physics step.
     const offsetAngle = (hash32(seed, marker.markerId, 'shardOffsetAngle') % 360) * (Math.PI / 180);
-    const offsetR = 6 + (hash32(seed, marker.markerId, 'shardOffsetR') % 14);
+    const offsetR = victimRadius + shardRadius + 3 + (hash32(seed, marker.markerId, 'shardOffsetR') % 14);
     const spreadAngle = speed > 1e-6
       ? Math.atan2(victimVel.z, victimVel.x)
         + ((hash32(seed, marker.markerId, 'shardSpreadAngle') % 161) - 80) * (Math.PI / 180)
       : offsetAngle;
     const spread = ARENA_SHARD_MIN_SEPARATION_SPEED
       + (hash32(seed, marker.markerId, 'shardSpread') % (ARENA_SHARD_MAX_SEPARATION_SPEED - ARENA_SHARD_MIN_SEPARATION_SPEED + 1));
-    const victimRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
     const victimMass = boundedVictimMass(marker.victimMass);
     const shardMass = victimMass != null ? victimMass * 0.35 : 1e6;
     return {
@@ -1664,7 +1685,7 @@ export const aftermathWrecks = {
       }),
       angVel: boundedKillTumble(((hash32(seed, marker.markerId, 'shardSpin') % 200) - 100) / 100),
       // At ≥ the victim's own on-screen size (the §25 Phase 3 bar), never below the floor.
-      radius: Math.max(ARENA_SHARD_RADIUS_FLOOR, victimRadius),
+      radius: shardRadius,
       mass: shardMass,
       hull: 1,
       hullMax: 1,
@@ -1906,6 +1927,30 @@ export const aftermathWrecks = {
       entity.bank = identity.bank;
     }
     return this._bindLiveMarker(marker, entity) ? entity : null;
+  },
+
+  // The marker already holds the joined cause. Copy it onto the bound hulk in place:
+  // salvage, motion, and the pool stay where the player left them.
+  _stampLiveCause(cause) {
+    if (!cause || !cause.fingerprint || !this.state) return;
+    const markers = aftermathForSector(this.state, cause.sectorId);
+    for (const marker of markers) {
+      if (!marker || marker.encounterFingerprint !== cause.fingerprint || !marker.cause) continue;
+      const live = this._resolveBoundWreck(marker.markerId);
+      if (!live || !live.data) continue;
+      const data = live.data;
+      const stamped = clonePlain(marker.cause);
+      data.causeContract = stamped;
+      if (data.aftermath && typeof data.aftermath === 'object') {
+        data.aftermath.cause = clonePlain(marker.cause);
+      }
+      if (data.provenance && typeof data.provenance === 'object') {
+        data.provenance.evidence = marker.cause.evidence || null;
+        data.provenance.remedy = marker.cause.remedy || null;
+        data.provenance.motiveId = marker.cause.motiveId || data.provenance.motiveId || null;
+      }
+      data.provenanceLine = aftermathLine(marker);
+    }
   },
 
   _resolveBoundWreck(markerId) {
@@ -2341,6 +2386,7 @@ export const aftermathWrecks = {
     return {
       schemaVersion: STATE_VERSION,
       seed: own.seed,
+      runToken: own.runToken >>> 0,
       bySector,
       causes: trimCauses(own.causes),
       ecology: serializeEcology(own.ecology),
@@ -2356,6 +2402,7 @@ export const aftermathWrecks = {
   *deserializeChunked(data) {
     const own = ensureAftermathState(this.state);
     own.seed = data && typeof data.seed === 'number' ? data.seed >>> 0 : seedOf(this.state);
+    own.runToken = data && Number.isFinite(data.runToken) && data.runToken >= 0 ? data.runToken >>> 0 : 0;
     own.bySector = {};
     own.causes = trimCauses(data && data.causes);
     own.ecology = serializeEcology(data && data.ecology);

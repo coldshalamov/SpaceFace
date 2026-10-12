@@ -57,7 +57,8 @@ const ELECTRON = process.argv.includes('--electron');
 // READ ONLY here: they are copied into a throwaway profile, never opened for writing.
 const REAL_SAVES = process.argv.includes('--real-saves');
 const CIRCUIT = process.argv.includes('--circuit');
-const NO_ROUNDTRIP = CIRCUIT || process.argv.includes('--no-roundtrip');
+const PHYSICS_VENUE = process.argv.find(arg => arg.startsWith('--physics='))?.slice('--physics='.length);
+const NO_ROUNDTRIP = CIRCUIT || !!PHYSICS_VENUE || process.argv.includes('--no-roundtrip');
 // --player-profile launches Electron EXACTLY as SpaceFace-Desktop.bat does: the canonical port
 // 41788, the player's own user-data directory, their real settings profile and their real GPU
 // state. The isolated evidence profile differs in every one of those, so a green isolated run is
@@ -373,6 +374,13 @@ try {
       if (REAL_SAVES) {
         // Straight onto the load path — this is what the player was doing when it broke.
         if (!(await clickButton(page, 'Continue'))) throw new Error('Continue button absent or disabled with real saves present');
+      } else if (PHYSICS_VENUE) {
+        if (!['gallery', 'league'].includes(PHYSICS_VENUE)) throw new Error('unknown physics venue');
+        await page.locator('[data-screen="mainMenu"] [data-action="physics"]').click({ timeout: 60000 });
+        await page.locator('[data-screen="physicsVenues"] .race-board-course button')
+          .nth(PHYSICS_VENUE === 'gallery' ? 0 : 1).click();
+        await page.getByRole('dialog', { name: 'Launch a physics challenge?', exact: true })
+          .getByRole('button', { name: 'Launch', exact: true }).click();
       } else if (CIRCUIT) {
         await page.locator('[data-screen="mainMenu"] [data-action="circuits"]').click({ timeout: 60000 });
         await page.getByRole('combobox', { name: 'Circuit ship', exact: true }).selectOption('starter_wasp');
@@ -393,6 +401,18 @@ try {
       inFlight = true;
       phase = 'flight';
       record('LAUNCH', true, 'flight mode entered');
+      if (PHYSICS_VENUE) {
+        await page.waitForFunction(kind => window.SF.state.physicsVenuePublic?.active
+          && window.SF.state.physicsVenuePublic.kind === kind, PHYSICS_VENUE, { timeout: 15000 });
+        const venue = await page.evaluate(() => {
+          const st = window.SF.state;
+          return { view: st.physicsVenuePublic,
+            ownedBodies: st.entityList.filter(entity => entity.alive !== false && entity.data?.physicsVenueId).length,
+            inputOwner: st.physicsVenuePublic?.kind };
+        });
+        record('PHYSICS', venue.ownedBodies > 0 && !!venue.view.instruction,
+          `public ${venue.inputOwner} flight: ${venue.ownedBodies} real bodies; ${venue.view.title}`);
+      }
     } catch (err) {
       const detail = await page.evaluate(async (verbose) => {
         const state = window.SF?.state;
@@ -670,6 +690,34 @@ try {
       }, null, { timeout: 60000 });
     }
     await assertPlayable(page);
+    if (PHYSICS_VENUE) {
+      try {
+        await page.waitForFunction(() => {
+          const rows = window.SF.state.entityList.filter(entity => entity.alive !== false && entity.data?.physicsVenueId);
+          return rows.length > 0 && rows.every(entity => entity.mesh?.parent && entity.mesh.visible);
+        }, null, { timeout: 60000 });
+        const bodies = await page.evaluate(() => window.SF.state.entityList
+          .filter(entity => entity.alive !== false && entity.data?.physicsVenueId)
+          .map(entity => ({ id: entity.id, key: entity.data.physicsVenueKey, mass: entity.mass,
+            meshes: (() => { let count = 0; entity.mesh.traverse(node => { if (node.isMesh && node.visible) count++; }); return count; })() })));
+        record('PHYSICS-RENDER', bodies.every(body => body.meshes > 0), `${bodies.length} venue bodies mounted: ${JSON.stringify(bodies)}`);
+        await page.evaluate(kind => {
+          window.__venueRetryReceipts = 0;
+          window.SF.bus.on(`${kind === 'gallery' ? 'orbital-gallery' : 'kinetic-league'}:started`, () => { window.__venueRetryReceipts++; });
+        }, PHYSICS_VENUE);
+        await page.locator('#physics-venue-instrument').getByRole('button', { name: 'Retry', exact: true }).click();
+        await page.waitForFunction(() => window.__venueRetryReceipts > 0 && window.SF.state.physicsVenuePublic?.active,
+          null, { timeout: 15000 });
+        record('PHYSICS-RETRY', true, 'HUD Retry received a fresh authoritative started receipt');
+        await page.locator('#physics-venue-instrument').getByRole('button', { name: 'Leave event', exact: true }).click();
+        await page.waitForFunction(() => window.SF.state.physicsVenuePublic?.active === false
+          && !window.SF.state.entityList.some(entity => entity.alive !== false && entity.data?.physicsVenueId),
+        null, { timeout: 15000 });
+        record('PHYSICS-LEAVE', true, 'HUD Leave reached worker and removed owned venue bodies');
+      } catch (error) {
+        record('PHYSICS-LIFECYCLE', false, error.message);
+      }
+    }
     if (CIRCUIT) {
       await page.waitForFunction(() => {
         const st = window.SF.state;

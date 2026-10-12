@@ -27,9 +27,9 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
 export const PRODUCTION_INIT_ORDER = Object.freeze([
   'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults', 'killReplay', 'killcamRecorder',
   'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'swarmJuice', 'swarmElites', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
-  'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
+  'scanner', 'spectrum', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
-  'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
+  'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'massSeed',
   'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
@@ -37,7 +37,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'capitalBossEncounters',
   // memorialThief is a uniqueWrecks sub-object (no id, no clock). Do not add it here.
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
-  'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
+  'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'volatileExposure', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'chronicler', 'factionPresence',
@@ -75,7 +75,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
  */
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak', 'lawSecurity', 'scanner',
-  'scanReveal', 'buildIdentity', 'pirateDisguise', 'pirateParley', 'pirateDisengage',
+  'spectrum', 'scanReveal', 'buildIdentity', 'pirateDisguise', 'pirateParley', 'pirateDisengage',
   'aceMemory', 'factionPresence',
   // Nemesis ordering contract (integration notes §2): engine → encounter host → tacticalAI,
   // so the AI sees spawned rival entities and current fire gates on the same fixed tick.
@@ -86,16 +86,16 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // re-runs inside tacticalAI on both full-decision and cached ticks, so a score-owned capital
   // can never double-fire through stock intent.
   'nemesis', 'nemesisEncounter', 'capitalBossEncounters', 'kilnback', 'mothlight', 'palletJack', 'secondRinse', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
-  'beacons', 'travelLanes', 'flightSlot', 'cruise', 'redKite', 'ilexArk', 'aiPorts', 'tumbleStates',
+  'beacons', 'travelLanes', 'orbitalGallery', 'kineticLeague', 'flightSlot', 'cruise', 'redKite', 'ilexArk', 'aiPorts', 'tumbleStates',
   // Bombs and emergent primitives read the shared chargeDetonate edge before impulseCharges consumes it.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'physics', 'latchNine', 'combat',
+  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'physics', 'reactiveMatter', 'latchNine', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
-  'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
+  'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
   // so it runs on the full-rate table clock beside lootShards/fragileCargo.
@@ -320,7 +320,7 @@ export function calendarCohortTickMod(id) {
 }
 
 export const NEAR_CLOCK_IDS = Object.freeze([
-  'flybyFocus', 'scanner', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
+  'flybyFocus', 'scanner', 'spectrum', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'traffic', 'titles', 'planetRuntime',
   'towlineTable', 'borrowedVoice', 'npcJobsRuntime',
   // Observer receipts; primary ticks already throttle internally. Catch-up extra steps
@@ -344,7 +344,7 @@ export const NEAR_CLOCK_IDS = Object.freeze([
  */
 export const TABLE_CLOCK_IDS = Object.freeze([
   // Input and control owners — per-tick player intent and assists.
-  'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions',
+  'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'mercyService', 'wreckCourt',
   // Flight + physics authorities: single writers of position/velocity.
   'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor', 'latchNine', 'scissorwake', 'redKite', 'ilexArk', 'kilnback', 'mothlight', 'palletJack', 'secondRinse',
   // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.

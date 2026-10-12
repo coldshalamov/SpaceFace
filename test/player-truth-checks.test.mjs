@@ -5,10 +5,12 @@ import assert from 'node:assert/strict';
 import {
   CLS, VIS, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
+  isLoadingAssetState,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
-import { auditItems } from '../scripts/player-truth/routes.mjs';
+import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
 import { separation } from '../scripts/player-truth/readability.mjs';
+import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 
 const goodPlayer = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
 function trace({ n = 60, dt = 0.1, player = () => goodPlayer(), ents = () => [], events = [], rounds = [], probes = [], vfx = null, mode = 'swarm', meta = {} } = {}) {
@@ -31,10 +33,40 @@ test('lod_churn fails an entity flapping between LODs and passes a stable one', 
   const flap = trace({ ents: (i) => [ent(7, CLS.enemy, { 10: i % 2 })] });
   const r = checkLodChurn(flap);
   assert.equal(r.status, 'FAIL'); assert.match(r.offenders[0].line, /entity 7/);
+  assert.match(r.value, /59 real LOD · 0 loading/);
+  assert.match(r.detail, /59 real LOD\/model swaps · 0 visible loading-state swaps/);
   assert.equal(checkLodChurn(trace({ ents: () => [ent(7, CLS.enemy, { 10: 0 })] })).status, 'PASS');
   assert.equal(checkLodChurn(trace({ ents: () => [ent(7, CLS.enemy)] })).status, 'UNKNOWN');
   const unseen = checkLodChurn(trace({ ents: (i) => [ent(7, CLS.enemy, { 10: i % 2, 9: VIS.offscreen })] }));
   assert.equal(unseen.status, 'PASS'); assert.match(unseen.detail, /off screen, not graded/);
+});
+
+test('visible loading-state swaps are reported apart from real LOD swaps and still FAIL', () => {
+  assert.equal(isLoadingAssetState('awaiting-authored-admission'), true);
+  assert.equal(isLoadingAssetState('loading'), true);
+  assert.equal(isLoadingAssetState('compiling-pipelines'), true);
+  assert.equal(isLoadingAssetState('authored'), false);
+  const loading = trace({
+    player: (i) => goodPlayer({ state: i % 2 ? 'compiling-pipelines' : 'authored' }),
+    ents: () => [ent(7, CLS.enemy, { 10: 0 })],
+  });
+  loading.keys = ['a|m|lod0|authored'];
+  const r = checkLodChurn(loading);
+  assert.equal(r.status, 'FAIL');
+  assert.match(r.value, /0 real LOD · 59 loading/);
+  assert.match(r.detail, /0 real LOD\/model swaps · 59 visible loading-state swaps \(awaiting\/loading\/compiling, still counted\)/);
+  const md = renderVerdict({
+    meta: { label: 't', mode: 'swarm', seed: 4242, commit: 'c', renderer: 'swift', browserVersion: '1', resolution: '960x540', when: 't', wallSeconds: 1, simSeconds: 1, frames: 60, shots: 1, script: 's' },
+    results: [r], overall: 'FAIL', paths: null,
+  });
+  assert.match(md, /0 real LOD · 59 loading/);
+  assert.match(md, /visible loading-state swaps/);
+  const off = trace({ ents: (i) => [ent(7, CLS.enemy, { 10: i % 2, 9: VIS.offscreen })] });
+  off.keys = ['a|m|lod0|loading', 'b|m|lod1|compiling-pipelines'];
+  const hidden = checkLodChurn(off);
+  assert.equal(hidden.status, 'PASS');
+  assert.match(hidden.detail, /0 visible loading-state swaps/);
+  assert.match(hidden.detail, /off screen, not graded/);
 });
 
 test('player_ship flags a placeholder rectangle and a missing ship', () => {
@@ -47,8 +79,17 @@ test('player_ship flags a placeholder rectangle and a missing ship', () => {
 
 test('popping counts on-screen hide/show toggles of a live body', () => {
   const pop = trace({ ents: (i) => [ent(9, CLS.asteroid, { 9: i % 4 < 2 ? VIS.onscreen : VIS.hidden })] });
-  assert.equal(checkPopping(pop).status, 'FAIL');
+  const r = checkPopping(pop);
+  assert.equal(r.status, 'FAIL');
+  assert.match(r.detail, /visibility pops · 0 visible loading-state pops/);
   assert.equal(checkPopping(trace({ ents: () => [ent(9, CLS.asteroid)] })).status, 'PASS');
+  const loading = trace({ ents: (i) => [ent(9, CLS.asteroid, { 9: i % 4 < 2 ? VIS.onscreen : VIS.hidden, 10: 0 })] });
+  loading.keys = ['u|wasp|lod1|awaiting-authored-admission'];
+  const lr = checkPopping(loading);
+  assert.equal(lr.status, 'FAIL');
+  assert.match(lr.value, /0 visibility · \d+ loading/);
+  assert.match(lr.detail, /0 visibility pops · \d+ visible loading-state pops \(awaiting\/loading\/compiling, still counted\)/);
+  assert.match(lr.offenders[0].line, /loading-state/);
 });
 
 test('round_resolution and kills_before_input reproduce the four-second idle win', () => {
@@ -138,6 +179,42 @@ test('score credited before the first flight input fails', async () => {
   assert.match(r.value, /\+120/);
   trace.samples[2].run.sc = 0;
   assert.equal(checkRewardBeforeInput(trace).status, 'PASS');
+});
+
+test('Open armory is ready on the draft screen and lost in a non-draft world', () => {
+  const draft = { top: 'crucibleDraft', mode: 'flight', kind: 'adventure', phase: 'draft' };
+  assert.equal(classifyArmoryArrival(draft, ARMORY_WORLD_GRACE_MS), 'ready');
+  const door = { top: 'crucible', mode: 'menu', kind: 'adventure', phase: 'inactive' };
+  assert.equal(classifyArmoryArrival(door, 0), 'wait');
+  const booting = { top: null, mode: 'flight', kind: 'adventure', phase: 'inactive' };
+  assert.equal(classifyArmoryArrival(booting, ARMORY_WORLD_GRACE_MS - 1), 'wait');
+  assert.equal(classifyArmoryArrival(booting, ARMORY_WORLD_GRACE_MS), 'lost');
+  const pending = { top: null, mode: 'loading', kind: 'adventure', phase: 'draft' };
+  assert.equal(classifyArmoryArrival(pending, ARMORY_WORLD_GRACE_MS * 2), 'wait');
+  const line = formatArmoryMiss({ mode: 'flight', kind: 'adventure', phase: 'inactive', top: null, hud: 'Ceres Refinery intake short' });
+  assert.match(line, /mode=flight kind=adventure phase=inactive top=none/);
+  assert.match(line, /Ceres Refinery/);
+  assert.ok(line.length < 180);
+  const parked = formatArmoryMiss({ mode: 'flight', kind: 'adventure', phase: 'inactive', top: null, x: -1900, z: -2200, hud: 'TRAINING DERELICT' });
+  assert.match(parked, /at -1900,-2200 helios_core spawn/);
+  assert.ok(parked.length < 180);
+  const gauntlet = { top: null, mode: 'flight', kind: 'survival', phase: 'active' };
+  assert.equal(classifyArmoryArrival(gauntlet, ARMORY_WORLD_GRACE_MS), 'lost');
+  assert.equal(classifyArmoryArrival(gauntlet, ARMORY_WORLD_GRACE_MS, { acceptSurvival: true }), 'ready');
+  assert.match(formatArmoryMiss(gauntlet, 'Enter the Gauntlet'), /^Enter the Gauntlet missed the draft:/);
+  const tutorial = { top: null, mode: 'flight', kind: 'adventure', phase: 'inactive', tutorial: true, x: -1900, z: -2200 };
+  assert.equal(classifyArmoryArrival(tutorial, 0), 'wait');
+  assert.equal(classifyArmoryArrival(tutorial, 0, { failOnTutorial: true }), 'lost');
+  const rescue = { top: null, mode: 'flight', kind: 'adventure', phase: 'inactive', rescue: true };
+  assert.equal(classifyArmoryArrival(rescue, 0, { failOnTutorial: true }), 'lost');
+  const live = { top: null, mode: 'flight', kind: 'survival', phase: 'active', tutorial: true };
+  assert.equal(classifyArmoryArrival(live, 0, { failOnTutorial: true, acceptSurvival: true }), 'ready');
+  assert.equal(classifyArmoryArrival(live, 0, { failOnTutorial: true }), 'wait');
+  const tutorialLine = formatSwarmTutorialMiss(tutorial);
+  assert.match(tutorialLine, new RegExp(SWARM_TUTORIAL_MISS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(tutorialLine, /mode=flight kind=adventure phase=inactive/);
+  assert.match(tutorialLine, /at -1900,-2200 helios_core spawn/);
+  assert.ok(tutorialLine.length < 180);
 });
 
 test('crucible_realm: Adventure objective in a swarm play frame or an empty armory FAILs', async () => {

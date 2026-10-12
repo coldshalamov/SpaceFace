@@ -48,12 +48,14 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
-import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { validateRunState } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { gateBearing } from './waveMaterialization.js';
+import { findSwarmArrival } from './swarmSafety.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
   BROOD_CHARGER_DASH_SPEED,
@@ -117,6 +119,13 @@ import {
 
 const DT = 1 / 60;
 const CAP = SWARM_BROOD_MAX;
+export const BROOD_ATTACK_GAP_S = 0.45;
+export const BROOD_ATTACK_ARRIVAL_S = 1.25;
+export const BROOD_LEECHER_STACK_MAX = 3;
+const BROOD_CREDIT_WINDOW_S = 5;
+export function broodAttackLimit(wave) {
+  return Math.min(4, 2 + Math.floor((Math.max(1, finite(wave, 1)) - 1) / 10));
+}
 
 // family FSM phases (published; the renderer reads them for the telegraph language)
 export const BROOD_PHASE_FLOCK = 0;
@@ -187,6 +196,8 @@ export function createBroodEngine(deps = {}) {
   const heading = new Float32Array(CAP);
   const family = new Uint8Array(CAP);   // index into the family mirror
   const hp = new Float32Array(CAP);
+  const creditUntil = new Float64Array(CAP);
+  const attackAfter = new Float64Array(CAP);
   const alive = new Uint8Array(CAP);
   const phase = new Uint8Array(CAP);    // family FSM phase (see BROOD_PHASE_*)
   const timer = new Float32Array(CAP);  // FSM clock
@@ -206,6 +217,7 @@ export function createBroodEngine(deps = {}) {
   const rockR = new Float32Array(ROCK_CACHE_MAX);
   const rockVX = new Float32Array(ROCK_CACHE_MAX);
   const rockVZ = new Float32Array(ROCK_CACHE_MAX);
+  const rockCredited = new Uint8Array(ROCK_CACHE_MAX);
   let rockCount = 0;
   const movX = new Float32Array(MOVER_CACHE_MAX);
   const movZ = new Float32Array(MOVER_CACHE_MAX);
@@ -215,7 +227,14 @@ export function createBroodEngine(deps = {}) {
   const movRad = new Float32Array(MOVER_CACHE_MAX);
   const movIsPlayer = new Uint8Array(MOVER_CACHE_MAX);
   const movIsHead = new Uint8Array(MOVER_CACHE_MAX);
+  const movCredited = new Uint8Array(MOVER_CACHE_MAX);
   let movCount = 0;
+  let nextAttackAt = 0;
+  let spawnRequested = false;
+  let nextSpawnAttemptAt = 0;
+  let attackClock = 0;
+  let attackSlots = 0;
+  let brakeDvBudget = 0;
 
   // --- B3: the Tendril's segment chain (see src/data/swarmBrood.js §B3) ---------------------
   //
@@ -251,6 +270,7 @@ export function createBroodEngine(deps = {}) {
   // per-tick kill receipt scratch (causes fixed — SWARM_BROOD_KILL_CAUSES order)
   const CAUSE_N = SWARM_BROOD_KILL_CAUSES.length;
   const killCount = new Int32Array(CAUSE_N);
+  const creditedCount = new Int32Array(CAUSE_N);
   const killCredits = new Int32Array(CAUSE_N);
   const killScore = new Int32Array(CAUSE_N);
   const killPosX = new Float32Array(CAUSE_N);
@@ -260,6 +280,8 @@ export function createBroodEngine(deps = {}) {
 
   // field sampling scratch — reused for every body, every tick
   const accel = { ax: 0, az: 0 };
+  const creditAccel = { ax: 0, az: 0 };
+  const playerFields = [];
   const posScratch = { x: 0, z: 0 };
   const velScratch = { x: 0, z: 0 };
   const fieldProfileScratch = { mass: 8, type: 'drone', team: 'brood', fieldResponseMult: 1, id: 0 };
@@ -375,6 +397,12 @@ export function createBroodEngine(deps = {}) {
   function clear(reason = 'clear') {
     if (aliveCount > 0) alive.fill(0);
     aliveCount = 0;
+    creditUntil.fill(0);
+    nextAttackAt = 0;
+    spawnRequested = false;
+    nextSpawnAttemptAt = 0;
+    attackSlots = 0;
+    brakeDvBudget = 0;
     pendingPlan = null;
     if (lobCount > 0) { lobAlive.fill(0); lobCount = 0; }
     poolCount = 0;
@@ -412,6 +440,13 @@ export function createBroodEngine(deps = {}) {
     sacBudget = swarmBroodSacReserve(planned, run && run.arenaId);
     hiveMode = sacBudget > 0;
     immediateQuota = planned - sacBudget;
+    // Plan only the immediate share here. Deferred geometry never consumes the Hive reserve.
+    let immediateLeft = immediateQuota;
+    pendingPlan = pendingPlan.map(part => {
+      const count = Math.min(part.count, immediateLeft);
+      immediateLeft -= count;
+      return { ...part, count };
+    }).filter(part => part.count > 0);
     liveWave = w;
     view.wave = liveWave;
     view.tendril = tendrilMode;
@@ -421,91 +456,38 @@ export function createBroodEngine(deps = {}) {
   /** Fill the planned cohort around the player anchor, in clumps on the wave's gate ring. */
   function spawnWave(state) {
     if (!pendingPlan || pendingPlan.length === 0) return 0;
-    const player = state && state.entities && state.playerId != null
-      ? state.entities.get(state.playerId) : null;
-    const ax = finite(player && player.pos && player.pos.x);
-    const az = finite(player && player.pos && player.pos.z);
+    spawnRequested = true; // the arena owns the initial lesson release; retries cannot bypass it
+    const now = finite(state?.simTime);
+    nextSpawnAttemptAt = now + 0.5;
+    const player = state?.entities?.get?.(state.playerId);
+    const ax = finite(player?.pos?.x), az = finite(player?.pos?.z);
     const familyIndex = buildFamilyIndex();
-    const distance = 165;
-    // Arrivals land in open space: a body born inside a rock would die on its first tick and
-    // pay out a kill the player never made.
-    cacheRocks(state);
-    // ...and clear of the hulls already flying, so a clump never lands on a ship it would be
-    // plowed by on the first step.
-    cacheMovers(state);
-    let spawned = 0;
-    let groupIndex = 0;
+    const deferred = [];
+    let spawned = 0, groupIndex = 0;
     for (const part of pendingPlan) {
-      const found = familyIndex.get(part.id);
-      const famIdx = found == null ? -1 : found;
-      if (famIdx < 0) continue;
-      // Clumps of ~18 on walked gate bearings: arrivals read as packs on several sides — the
-      // same throw-shaped grammar SWARM-03 gave ship batches.
-      const clumpSize = 18;
-      let remaining = part.count;
-      while (remaining > 0) {
-        const bearing = gateBearing(GATE_RING[groupIndex % GATE_RING.length]);
-        groupIndex += 1;
-        const baseAngle = Math.atan2(bearing.z, bearing.x);
-        const cx = ax + Math.cos(baseAngle) * distance;
-        const cz = az + Math.sin(baseAngle) * distance;
-        const n = Math.min(clumpSize, remaining);
-        remaining -= n;
+      const famIdx = familyIndex.get(part.id);
+      if (famIdx == null) continue;
+      let owed = 0;
+      for (let start = 0; start < part.count; start += 18) {
+        const bearing = gateBearing(GATE_RING[groupIndex++ % GATE_RING.length]);
+        const cx = ax + bearing.x * 165, cz = az + bearing.z * 165;
+        const n = Math.min(18, part.count - start);
         for (let i = 0; i < n; i++) {
-          // B4 — the Hive's reserve stays in the sacs: the wave's open delivers only the
-          // plan's immediate share; the sacs pay the rest out on their own clock.
-          if (spawned >= immediateQuota) { pendingPlan = null; publish(); return spawned; }
           const slot = findFreeSlot();
-          if (slot < 0) { pendingPlan = null; publish(); return spawned; } // the cap is the law
-          const a = rng() * Math.PI * 2;
-          const r = Math.sqrt(rng()) * 30;
-          const open = clearOfRocks(cx + Math.cos(a) * r, cz + Math.sin(a) * r, liveFamilyRadius[famIdx]);
+          if (slot < 0) { owed++; continue; }
+          const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 30;
+          const open = findSwarmArrival(state, { x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r },
+            liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE });
+          if (!open) { owed++; continue; }
           spawnAt(slot, famIdx, open.x, open.z);
-          spawned += 1;
+          spawned++;
         }
       }
+      if (owed > 0) deferred.push({ ...part, count: owed });
     }
-    pendingPlan = null;
+    pendingPlan = deferred.length ? deferred : null;
     publish();
     return spawned;
-  }
-
-  const openScratch = { x: 0, z: 0 };
-  /** Push a point out of every cached rock (a few passes settle neighbours that overlap). */
-  function clearOfRocks(x, z, rad) {
-    let ox = x;
-    let oz = z;
-    for (let pass = 0; pass < 4; pass++) {
-      let moved = false;
-      for (let r = 0; r < rockCount; r++) {
-        const dx = ox - rockX[r];
-        const dz = oz - rockZ[r];
-        const need = rockR[r] + rad + BROOD_SPAWN_ROCK_CLEARANCE;
-        const d2 = dx * dx + dz * dz;
-        if (d2 >= need * need) continue;
-        const d = Math.sqrt(d2);
-        const nx = d > 1e-6 ? dx / d : 1;
-        const nz = d > 1e-6 ? dz / d : 0;
-        ox = rockX[r] + nx * need;
-        oz = rockZ[r] + nz * need;
-        moved = true;
-      }
-      for (let m = 0; m < movCount; m++) {
-        const dx = ox - movX[m];
-        const dz = oz - movZ[m];
-        const need = movRad[m] + rad + BROOD_SPAWN_ROCK_CLEARANCE;
-        const d2 = dx * dx + dz * dz;
-        if (d2 >= need * need) continue;
-        const d = Math.sqrt(d2);
-        ox = movX[m] + (d > 1e-6 ? dx / d : 1) * need;
-        oz = movZ[m] + (d > 1e-6 ? dz / d : 0) * need;
-        moved = true;
-      }
-      if (!moved) break;
-    }
-    openScratch.x = ox;
-    openScratch.z = oz;
-    return openScratch;
   }
 
   function spawnAt(slot, famIdx, x, z) {
@@ -516,6 +498,8 @@ export function createBroodEngine(deps = {}) {
     heading[slot] = rng() * Math.PI * 2;
     family[slot] = famIdx;
     hp[slot] = liveFamilyHull[famIdx];
+    creditUntil[slot] = 0;
+    attackAfter[slot] = finite(getState()?.simTime) + BROOD_ATTACK_ARRIVAL_S;
     alive[slot] = 1;
     phase[slot] = BROOD_PHASE_FLOCK;
     timer[slot] = 0;
@@ -546,7 +530,17 @@ export function createBroodEngine(deps = {}) {
     playerVX = finite(playerRef && playerRef.vel && playerRef.vel.x);
     playerVZ = finite(playerRef && playerRef.vel && playerRef.vel.z);
     playerRad = finite(playerRef && playerRef.radius, 6);
-    playerMass = Math.max(1, finite(playerRef && playerRef.mass, 400));
+    const body = playerRef && resolvePhysicsBodySpec(playerRef);
+    playerMass = Math.max(1, finite(body?.mass, finite(playerRef?.mass, 400)));
+  }
+
+  function playerOwnsBody(state, entity) {
+    const playerId = state?.playerId;
+    if (playerId == null || !entity) return false;
+    if (entity.id === playerId) return true;
+    const tether = state.player?.tether;
+    if (tether?.active && tether.targetId === entity.id) return true;
+    return readRecentImpulseProvenance(entity, state.tick)?.actorId === playerId;
   }
 
   function cacheRocks(state) {
@@ -560,6 +554,7 @@ export function createBroodEngine(deps = {}) {
       // any heavy body. Under the index it never reaches this list anyway; on the un-indexed
       // fallback every entity lands here, and without the guard the worm eats its own neck.
       if (e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID) continue;
+      rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
       rockX[rockCount] = finite(e.pos.x);
       rockZ[rockCount] = finite(e.pos.z);
       rockR[rockCount] = finite(e.radius, 10) * 1.05;
@@ -595,6 +590,7 @@ export function createBroodEngine(deps = {}) {
       movMass[movCount] = finite(e.mass, 1);
       movRad[movCount] = finite(e.radius, 6);
       movIsPlayer[movCount] = e.id === playerId ? 1 : 0;
+      movCredited[movCount] = playerOwnsBody(state, e) ? 1 : 0;
       movIsHead[movCount] = isHead ? 1 : 0;
       movCount += 1;
     }
@@ -615,6 +611,7 @@ export function createBroodEngine(deps = {}) {
   function step(state) {
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return false;
+    if (spawnRequested && pendingPlan?.length && finite(state.simTime) >= nextSpawnAttemptAt) spawnWave(state);
     // The Tendril wave keeps stepping while the body may still exist — the champion hull can
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.
     const tendrilWatching = tendrilMode && !tendrilDone;
@@ -627,12 +624,26 @@ export function createBroodEngine(deps = {}) {
     cacheMovers(state);
     rebuildGrid();
     killCount.fill(0);
+    creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
 
     const fields = fieldList() || EMPTY_FIELDS;
     const simTime = finite(state.simTime);
     const dt = DT;
+    attackClock = simTime;
+    // Windups, committed passes and airborne lobs share one attention budget. Never cancel
+    // a committed attack; just defer the next tell until the room has a readable opening.
+    attackSlots = broodAttackLimit(liveWave) - lobCount;
+    for (let i = 0; i < CAP; i++) {
+      if (alive[i] && (phase[i] === BROOD_PHASE_WINDUP || phase[i] === BROOD_PHASE_DASH)) attackSlots--;
+    }
+    brakeDvBudget = Math.min(Math.hypot(playerVX, playerVZ),
+      BROOD_LEECHER_BRAKE_ACCEL * dt * BROOD_LEECHER_STACK_MAX);
+    playerFields.length = 0;
+    for (const field of fields) {
+      if (state.playerId != null && field?.ownerId === state.playerId) playerFields.push(field);
+    }
     const dragKeep = Math.max(0, 1 - BROOD_DRAG_PER_S * dt);
     const fieldsEmpty = fields.length === 0;
     const linkR2 = BROOD_LINK_RADIUS * BROOD_LINK_RADIUS;
@@ -723,6 +734,10 @@ export function createBroodEngine(deps = {}) {
           sampleFieldAcceleration(posScratch, velScratch, fields, simTime, fieldProfileScratch, accel);
           ax += accel.ax;
           az += accel.az;
+          if (playerFields.length) {
+            sampleFieldAcceleration(posScratch, velScratch, playerFields, simTime, fieldProfileScratch, creditAccel);
+            if (Math.abs(creditAccel.ax) + Math.abs(creditAccel.az) > 1e-6) creditUntil[i] = simTime + BROOD_CREDIT_WINDOW_S;
+          }
         }
 
         // -- integrate (semi-implicit Euler, the sim's shape)
@@ -781,11 +796,12 @@ export function createBroodEngine(deps = {}) {
         const moving = rel2 >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED;
         const slam = liveFamilySpeed[fam] * BROOD_TERRAIN_SLAM_FACTOR;
         if (moving && (rockVX[r] * rockVX[r] + rockVZ[r] * rockVZ[r]) >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) {
-          kill(i, 'collision', px[i], pz[i]);
+          kill(i, 'collision', px[i], pz[i], !!rockCredited[r] || creditUntil[i] > simTime);
           break;
         }
         if (rel2 >= slam * slam) {
-          kill(i, 'terrain', px[i], pz[i]);
+          kill(i, 'terrain', px[i], pz[i], !!rockCredited[r]
+            || creditUntil[i] > simTime || phase[i] === BROOD_PHASE_DASH);
           break;
         }
         // A body under its own steering meets the rock and slides along its face.
@@ -816,7 +832,7 @@ export function createBroodEngine(deps = {}) {
         const isPlayer = movIsPlayer[m] === 1;
         const ramSpeed = isPlayer ? BROOD_PLAYER_RAM_SPEED : BROOD_PLOW_MIN_SPEED;
         if (relSpeed2 >= ramSpeed * ramSpeed && (isPlayer || movMass[m] >= BROOD_PLOW_MIN_MASS)) {
-          kill(i, 'collision', px[i], pz[i]);
+          kill(i, 'collision', px[i], pz[i], !!movCredited[m] || creditUntil[i] > simTime);
           break;
         }
       }
@@ -833,10 +849,17 @@ export function createBroodEngine(deps = {}) {
 
   // --- the spitter: a marked arc, then a splash that stays a beat ---------------------------
 
+  function takeAttackSlot() {
+    if (attackSlots <= 0 || attackClock + 1e-9 < nextAttackAt) return false;
+    attackSlots--;
+    nextAttackAt = attackClock + BROOD_ATTACK_GAP_S;
+    return true;
+  }
+
   function stepSpitter(i, dp, dt) {
     if (phase[i] !== BROOD_PHASE_FLOCK) return;
     timer[i] -= dt;
-    if (timer[i] > 0 || dp > BROOD_SPITTER_LOB_RANGE || dp < 1e-4) return;
+    if (attackClock < attackAfter[i] || timer[i] > 0 || dp > BROOD_SPITTER_LOB_RANGE || dp < 1e-4 || !takeAttackSlot()) return;
     // Lead the marker by the flight time so a moving pilot must actually move to dodge.
     const flightS = dp / BROOD_SPITTER_LOB_SPEED;
     teleX[i] = playerX + playerVX * flightS;
@@ -909,7 +932,7 @@ export function createBroodEngine(deps = {}) {
       if (!alive[i]) continue;
       const dx = px[i] - x;
       const dz = pz[i] - z;
-      if (dx * dx + dz * dz <= r2) kill(i, 'explosive', x, z);
+      if (dx * dx + dz * dz <= r2) kill(i, 'explosive', x, z, creditUntil[i] > finite(state.simTime));
     }
     // The pool that stays a beat.
     const slot = poolCursor % BROOD_POOL_MAX;
@@ -976,7 +999,7 @@ export function createBroodEngine(deps = {}) {
       if (timer[i] <= 0) phase[i] = BROOD_PHASE_FLOCK;
       return;
     }
-    if (dp > BROOD_CHARGER_RANGE || dp < 1e-4) return;
+    if (attackClock < attackAfter[i] || phase[i] !== BROOD_PHASE_FLOCK || dp > BROOD_CHARGER_RANGE || dp < 1e-4 || !takeAttackSlot()) return;
     // The tell: the line draws toward where the pass will go, for the whole windup.
     const lead = dp / BROOD_CHARGER_DASH_SPEED;
     teleX[i] = playerX + playerVX * lead;
@@ -1052,7 +1075,10 @@ export function createBroodEngine(deps = {}) {
     // reverse the hull — a drag, not a tether.
     const speed = Math.sqrt(playerVX * playerVX + playerVZ * playerVZ);
     if (speed > 1 && playerRef) {
-      const dv = Math.min(BROOD_LEECHER_BRAKE_ACCEL * dt, speed);
+      // All latches share this tick's budget. N independent min(dv, speed) checks could
+      // sum to more than the ship's entire momentum and reverse it in one solver step.
+      const dv = Math.min(BROOD_LEECHER_BRAKE_ACCEL * dt, brakeDvBudget);
+      brakeDvBudget -= dv;
       queuePhysicsImpulse(playerRef, {
         x: -(playerVX / speed) * dv * playerMass,
         y: 0,
@@ -1125,7 +1151,7 @@ export function createBroodEngine(deps = {}) {
   }
 
   /** One dead link: the receipt, and the Centipede rule — its follower now leads a free body. */
-  function killSeg(i, cause, sampleX, sampleZ) {
+  function killSeg(i, cause, sampleX, sampleZ, credited = true) {
     if (!segAlive[i]) return;
     segAlive[i] = 0;
     segAliveCount -= 1;
@@ -1140,6 +1166,8 @@ export function createBroodEngine(deps = {}) {
       killPosX[c] = finite(sampleX);
       killPosZ[c] = finite(sampleZ);
     }
+    if (!credited) return;
+    creditedCount[c]++;
     const pay = killPayFor(TENDRIL_SEG_PAY_FAMILY);
     killCredits[c] += pay.credits;
     killScore[c] += pay.score;
@@ -1232,7 +1260,7 @@ export function createBroodEngine(deps = {}) {
         const relx = rockVX[r] - segVX[i];
         const relz = rockVZ[r] - segVZ[i];
         const moving = relx * relx + relz * relz >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED;
-        killSeg(i, moving ? 'collision' : 'terrain', segX[i], segZ[i]);
+        killSeg(i, moving ? 'collision' : 'terrain', segX[i], segZ[i], !!rockCredited[r]);
         break;
       }
       if (!segAlive[i]) continue;
@@ -1250,7 +1278,7 @@ export function createBroodEngine(deps = {}) {
         const isPlayer = movIsPlayer[m] === 1;
         const ramSpeed = isPlayer ? BROOD_PLAYER_RAM_SPEED : BROOD_PLOW_MIN_SPEED;
         if (relSpeed2 >= ramSpeed * ramSpeed && (isPlayer || movMass[m] >= BROOD_PLOW_MIN_MASS)) {
-          killSeg(i, 'collision', segX[i], segZ[i]);
+          killSeg(i, 'collision', segX[i], segZ[i], !!movCredited[m]);
           break;
         }
       }
@@ -1296,6 +1324,7 @@ export function createBroodEngine(deps = {}) {
         // bat: the line drags the body along the swing
         vx[i] += batx;
         vz[i] += batz;
+        creditUntil[i] = finite(state.simTime) + BROOD_CREDIT_WINDOW_S;
       }
     }
     // The same line crosses the Tendril's body — a taut whip severs a link exactly like it
@@ -1317,6 +1346,11 @@ export function createBroodEngine(deps = {}) {
   // --- explosions (event-driven; the shared blast receipts) --------------------------------
 
   function onExplosion(payload) {
+    const state = getState();
+    const run = liveSwarmRun(state);
+    if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
+    const actor = payload?.ownerId ?? payload?.killerId ?? payload?.provenance?.actorId;
+    const credited = state.playerId != null && actor === state.playerId;
     if (!payload || (aliveCount <= 0 && segAliveCount <= 0)) return;
     const ex = finite(payload.pos && payload.pos.x, NaN);
     const ez = finite(payload.pos && payload.pos.z, NaN);
@@ -1327,6 +1361,7 @@ export function createBroodEngine(deps = {}) {
     const shoveR = radius * 1.6;
     const shoveR2 = shoveR * shoveR;
     killCount.fill(0);
+    creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
     for (let i = 0; i < CAP; i++) {
@@ -1336,20 +1371,21 @@ export function createBroodEngine(deps = {}) {
       const d2 = dx * dx + dz * dz;
       if (d2 > shoveR2) continue;
       if (d2 <= killR2) {
-        kill(i, 'explosive', ex, ez);
+        kill(i, 'explosive', ex, ez, credited || creditUntil[i] > finite(state.simTime));
         continue;
       }
       const d = Math.sqrt(d2) || 1;
       const falloff = 1 - d / shoveR;
       vx[i] += (dx / d) * falloff * 90;
       vz[i] += (dz / d) * falloff * 90;
+      if (credited) creditUntil[i] = finite(state.simTime) + BROOD_CREDIT_WINDOW_S;
     }
     for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
       if (!segAlive[i]) continue;
       const dx = segX[i] - ex;
       const dz = segZ[i] - ez;
       const d2 = dx * dx + dz * dz;
-      if (d2 <= killR2) killSeg(i, 'explosive', ex, ez);
+      if (d2 <= killR2) killSeg(i, 'explosive', ex, ez, credited);
       // A blast shove on a chain is just a faster weave for a tick — the projection next
       // tick pulls it back onto the line, which reads as the body flexing, not breaking.
     }
@@ -1359,7 +1395,8 @@ export function createBroodEngine(deps = {}) {
 
   // --- death bookkeeping -------------------------------------------------------------------
 
-  function kill(i, cause, sampleX, sampleZ) {
+  function kill(i, cause, sampleX, sampleZ, credited = true) {
+    if (!alive[i]) return;
     alive[i] = 0;
     aliveCount -= 1;
     const c = CAUSE_INDEX[cause];
@@ -1369,6 +1406,8 @@ export function createBroodEngine(deps = {}) {
       killPosX[c] = finite(sampleX);
       killPosZ[c] = finite(sampleZ);
     }
+    if (!credited) return;
+    creditedCount[c]++;
     const pay = killPayFor(liveFamilyId[family[i]]);
     killCredits[c] += pay.credits;
     killScore[c] += pay.score;
@@ -1381,14 +1420,16 @@ export function createBroodEngine(deps = {}) {
   function flushKillsFrom(state) {
     const run = state ? liveSwarmRun(state) : null;
     const wave = run ? run.wave : liveWave;
-    const canPay = !!(run && bus);
+    const canPay = !!(run && run.phase === 'active' && state.mode === 'flight' && bus);
     for (let c = 0; c < CAUSE_N; c++) {
       const count = killCount[c];
       if (count <= 0) continue;
       const cause = SWARM_BROOD_KILL_CAUSES[c];
       if (bus) {
         bus.emit('swarm:broodKills', {
-          count,
+          count: canPay ? creditedCount[c] : 0,
+          removedCount: count,
+          environmentalCount: count - creditedCount[c],
           cause,
           pos: { x: killPosX[c], z: killPosZ[c] },
           credits: killCredits[c],
@@ -1406,6 +1447,7 @@ export function createBroodEngine(deps = {}) {
       }
     }
     killCount.fill(0);
+    creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
   }
@@ -1450,6 +1492,9 @@ export function createBroodEngine(deps = {}) {
 
   function publish() {
     view.aliveCount = aliveCount;
+    view.pendingCount = pendingPlan ? pendingPlan.reduce((sum, part) => sum + part.count, 0) : 0;
+    view.attackLimit = broodAttackLimit(liveWave);
+    view.nextAttackAt = nextAttackAt;
     view.wave = liveWave;
     view.lobCount = lobCount;
     view.poolCount = poolCount;
@@ -1497,6 +1542,7 @@ export function createBroodEngine(deps = {}) {
     _setFamilyMirrorForTest: setFamilyMirror,
     _killDirectForTest(i, cause) {
       killCount.fill(0);
+      creditedCount.fill(0);
       killCredits.fill(0);
       killScore.fill(0);
       kill(i, cause, px[i], pz[i]);
@@ -1505,6 +1551,7 @@ export function createBroodEngine(deps = {}) {
     },
     _killSegDirectForTest(i, cause) {
       killCount.fill(0);
+      creditedCount.fill(0);
       killCredits.fill(0);
       killScore.fill(0);
       killSeg(i, cause, segX[i], segZ[i]);

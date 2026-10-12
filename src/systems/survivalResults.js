@@ -60,7 +60,8 @@ function bearingPhrase(direction) {
 export function deathSentence(receipt, context = {}) {
   if (!receipt) return 'The run ended.';
   const attacker = receipt.attacker || (receipt.source && receipt.source.label) || 'Something';
-  const weapon = receipt.weapon ? ` with its ${receipt.weapon}` : '';
+  const environmental = receipt.source && receipt.source.kind === 'environment';
+  const weapon = !environmental && receipt.weapon ? ` with its ${receipt.weapon}` : '';
   const direction = bearingPhrase(receipt.direction);
   const layer = receipt.dominantLayer === 'hull'
     ? 'through the hull'
@@ -182,7 +183,8 @@ export function closingSpeedPhrase(receipt) {
 export function deathCauseText(receipt, trail = []) {
   if (receipt && typeof receipt === 'object') {
     const attacker = receipt.attacker || (receipt.source && receipt.source.label) || 'Unidentified attacker';
-    const weapon = receipt.weapon || 'unidentified weapon';
+    const weapon = receipt.source && receipt.source.kind === 'environment'
+      ? 'Environmental impact' : receipt.weapon || 'unidentified weapon';
     const direction = receipt.direction || 'bearing unknown';
     const layer = receipt.dominantLayer || 'hull';
     return `${attacker} · ${weapon} · ${direction}${closingSpeedPhrase(receipt)} · ${layer} breach`;
@@ -206,6 +208,9 @@ export function deathCauseText(receipt, trail = []) {
  * rule: the warning is the weapon, so move when a tell opens.
  */
 export function counterplayFor(receipt) {
+  if (receipt && receipt.source && receipt.source.kind === 'environment') {
+    return 'Leave room to brake and turn clear of solid bodies and environmental hazards.';
+  }
   const dir = String((receipt && receipt.direction) || '').toUpperCase();
   if (dir === 'AFT') return 'It killed from astern — clear your six before the next pass.';
   if (dir === 'PORT' || dir === 'STARBOARD') return 'It killed from the flank — keep turning so no lane sits still.';
@@ -250,7 +255,10 @@ export function resolveDeathTelegraph({
   };
   // Known killer: their tell only. Any other ship's tell is not the miss that killed you.
   // Unknown killer: the most recent tell still names a warning rather than "you died".
-  const witnessed = matchTell(true) || (killerId == null ? matchTell(false) : null);
+  // An environmental death (a rock, a collision, a hazard) has no ship behind it: borrowing the
+  // latest ship's engine flare would print "Environmental hazard's tell was engine flare".
+  const environmental = !!(receipt && receipt.source && receipt.source.kind === 'environment');
+  const witnessed = environmental ? null : matchTell(true) || (killerId == null ? matchTell(false) : null);
   if (witnessed && Number.isFinite(witnessed.simTime)) {
     return {
       name: telegraphWord(witnessed.kind),
@@ -260,7 +268,7 @@ export function resolveDeathTelegraph({
   }
   const hits = Array.isArray(damageTrail) ? damageTrail.filter((e) => e && typeof e === 'object') : [];
   const timed = hits.filter((e) => Number.isFinite(e.simTime) && e.simTime < death
-    && death - e.simTime <= 4 && (killerId == null || e.attackerId === killerId));
+    && death - e.simTime <= 4 && !environmental && (killerId == null || e.attackerId === killerId));
   const first = timed.length ? timed.reduce((a, b) => (a.simTime <= b.simTime ? a : b)) : null;
   if (first) {
     const counts = new Map();

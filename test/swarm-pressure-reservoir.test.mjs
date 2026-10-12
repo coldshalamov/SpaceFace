@@ -2,7 +2,7 @@
 //
 // After a ≥3-kill clear the live stream holds replacement for 4 s, then spends the stored
 // pressure as one telegraphed group. Same roster, same concurrent ceiling, same hull values.
-// An empty board still refills on the next tick.
+// A fresh empty board refills immediately; a player-earned wipe keeps its breath.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -149,13 +149,15 @@ test('pure reservoir: a 3-body hole holds for 4 s, then spends a readable group'
   assert.equal(state.holding, false);
 });
 
-test('pure reservoir: empty board emergency-fills, even after a 3-kill', () => {
+test('pure reservoir: a complete 3-kill wipe earns breathing room instead of emergency refill', () => {
   const state = createSwarmPressureState();
   noteSwarmPressureKills(3, state);
   const empty = swarmReinforceDecision(state, 10, { alive: 0 });
-  assert.equal(empty.count, SWARM_REINFORCE_BATCH);
-  assert.equal(empty.telegraph, false);
-  assert.equal(state.holding, false);
+  assert.equal(empty.count, 0);
+  assert.equal(empty.telegraph, true);
+  assert.equal(state.holding, true);
+  const startup = swarmReinforceDecision(createSwarmPressureState(), 10, { alive: 0 });
+  assert.equal(startup.count, SWARM_REINFORCE_BATCH, "startup still fills immediately");
 });
 
 test('pure reservoir: a spent group never exceeds the surge ceiling or the live hole', () => {

@@ -6,9 +6,51 @@ its check reads PASS. Renderer for every run below:
 `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)` (no GPU on this VM),
 960x540, headless, so frame-time is UNKNOWN (graded only on a GPU, `--headed`).
 
-## Owning lanes (rebased onto `d748312d1`, 2026-10-12)
+## Scoreboard (seed 4242) — measured on `9e647c306`, branch now on `e6173d9552`
 
-Room pin, the station toy, and LOD/residency: **Lane 6** (`codex/swarm-crucible-overhaul` — `survivalArena`, `src/render/lod.js`, `assetResidency.js`, `crucibleWarmPackageResidency.js`). Collision resolve if a ship is still held inside a solid: **local integration** (flight/physics under `src/runtime/**`). Master already shipped Lane 6's clearance (`6b67d1fb1`, a room solid is pushed until it clears the hull by 24 u) and a presented-LOD swap cap (`68da0fae3`, `d3e7d8dcc`). The v2 rows below were measured **before** that clearance (harness commits `a0b854c91`, `07e4eda14`). They stay as the reproduction that made the pin a number.
+Rebased onto `origin/master` `debe715c8a` (2026-10-12, clean, no content conflicts, `mergeable` MERGEABLE). The rows below were measured on `9e647c306`, which already contains Lane 6's room-solid clearance `6b67d1fb1`. They are not a fresh measurement of `debe715c8a`: master moved after that run, including the popin/residency waves and UI polish #301. The harness commits do not change combat. Renderer: SwiftShader, 960x540. Command that produced the rows: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`.
+
+On `debe715c8a` the same command (`--tag=seed4242-debe715`, `--wall=50`, no `--prune-frames`) did **not** reach play. Both passes clicked through the door (Crucible, Ricochet Foundry, seed 4242) and `Open armory` never opened `crucibleDraft`. The idle trace left the door into `mode=flight` `run.kind=adventure` `phase=inactive` `top=none` and stayed there. The last sample puts the ship at **(-1900, -2200)**, which is `helios_core`'s arena spawn in `src/data/combatLabSetups.js`. The door relocated the player and then survival never began (`run.kind` stayed `adventure`, phase `inactive`). HUD on the failure frame is the Adventure training derelict, not a Swarm round. That is a route FAIL on this master, owned by **local integration** (`requestCrucibleRun` → `applySandboxSetup` relocates, `runSession.begin` does not stick). Lane 6's room, station toy, and LOD code do not run until a survival run exists. Evidence: `swarm-ricochet-foundry-launch-debe715/`. The route names this landing after 60 s, including the spawn coordinate. `--prune-frames` stays off.
+
+`origin/master` is now `e6173d9552` (PR #318). That change makes a Swarm Crucible launch apply after the worker-lane replay window, so OPEN ARMORY is supposed to reach `crucibleDraft` instead of the Training Derelict. The harness keeps both checks: a flight with the tutorial or a rescue cast fails immediately and the line still starts with #318's sentence, and any other non-draft world still fails after 60 s with mode, kind, phase, top, and the `helios_core` spawn. Swarm `--gate` on this master has not been measured yet. The `debe715c8a` rows above stay the record of that miss. They are not a result for `e6173d9552`.
+
+A status of UNKNOWN is not a pass. Round 2 after the clearance is UNKNOWN: the active pass died in round 1 when the browser closed. The exit code of a FAIL is 1 (`gateExitCode`); INCOMPLETE is 2; only an all-PASS run exits 0.
+
+| check | status | measured on this master | owner |
+|---|---|---|---|
+| route | FAIL | Idle reached play. Active closed: `Target page, context or browser has been closed` at 11.2 sim s. | This harness (the close). Not a missed door button. |
+| round_resolution | FAIL | Idle PASS, shortest 41.1 s. Active FAIL because no round was won before the browser died. | Lane 6 owns a short win. This active FAIL is the close. |
+| kills_before_input | PASS | 0 kills on both seed-4242 passes. Pre-clearance idle on this seed was FAIL 9. | Lane 6 |
+| reward_before_input | PASS | +0 on both passes. Pre-clearance idle was FAIL +4041. | Lane 6 |
+| spawn_motion | PASS | 0 passive bodies over 8 u/s on both passes. | Lane 6 |
+| player_control | UNKNOWN | Round 1 probes PASS, 0 pinned spans, both passes. Round 2 was not played, so the pin is not cleared. | Lane 6 (`survivalArena`) + local integration if a later span names a solid |
+| tumble | PASS | Longest 0 s on both passes. | — |
+| player_ship | FAIL | Idle: 8.2% of frames (105/1278) are a resolving marker from sim 1.5 s (`loading`, then `compiling-pipelines`). Active round 1 was 0/381 before the close. | Lane 6 (`assetResidency.js`, `crucibleWarmPackageResidency.js`) |
+| lod_churn | FAIL | Idle 2.61/s (cap ≤1/s). Active round 1 was 0.7/s. | Lane 6 (`src/render/lod.js`) |
+| popping | FAIL | Idle 275/min. Active 31.7/min. | Lane 6 (residency / streaming) |
+| readability | FAIL | Idle separation 0.26. Active separation 2.1 still FAILs: enemy 67% of samples have ΔL < 8, and `station:plate` sits over the ship. | Lane 6 (enemy and room look) |
+| vfx_coverage | FAIL | Threats hidden p95 100% on both passes. Idle combat p95 34%. Active combat p95 11%. | Agent 3 (presentation) + Lane 6 (Swarm VFX) |
+| backdrop_coverage | FAIL | Idle: threats on a bright backdrop p95 40%. Active round 1 PASS at 25%. | Lane 6 (arena look) |
+| loadout | PASS | 0 irrelevant offers on both passes. | Lane 6 (crucible / loadout UI) |
+| frame_time | UNKNOWN | Software GL. Graded only with `--headed` on a GPU. | — |
+| round_transitions | UNKNOWN | Round 2 was not played. The active verdict prints FAIL because an unmeasured gate check is FAIL. That line is the browser close, not a pin. | Lane 6 + local integration, once a round-2 start is on disk |
+| rounds_reached | FAIL | Active stopped at round 1. The gate requires round 3. Cause: browser closed. | This harness for the close. Lane 6 if a later run dies in-game before round 3. |
+
+## Not a `--gate` pass (UNKNOWN, not PASS)
+
+These are not measured. Do not read an older first-generation verdict below as this gate.
+
+| run | status | reason |
+|---|---|---|
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | The `debe715c8a` launch never starts a survival run, so round 2 cannot be played. Not a pin measurement. |
+| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | FAIL route, ship not scored | Measured: all four unlocked hulls at 960x540, plus Ricochet Runner at 1280x720. Every trace ends `flight` / `adventure` / `inactive` with the ship at (-1900, -2200). No combo reached a Swarm spawn, so none shows the rectangle or an invisible Swarm ship. 1920 and the other 1280 hulls were not run; the miss is before the viewport is on screen. |
+| Gauntlet `--gate` | FAIL route | Measured on build `9741522468` (before #318), seed 4242, SwiftShader 960x540, `--tag=gate`. Both passes stopped before play: `Enter the Gauntlet missed the draft: mode=flight kind=adventure phase=inactive top=none at -1900,-2200 helios_core spawn`. Idle 114 s wall, active 144 s wall, 0 s sim. Not a play score, and not remeasured on `e6173d9552`. Evidence: `gauntlet-idle-gate/`, `gauntlet-active-gate/`. The first-generation arena rows below are not this gate. |
+| Adventure `--gate` | UNKNOWN | Not run. Requeued on `e6173d9552`. The 150 s cruise below is not a `--gate` pass. |
+| Racing `--gate` | UNKNOWN | Not run. Requeued after Adventure. The 75 s Textile Belt row below is not a `--gate` pass. |
+
+## Owning lanes (rebased onto `e6173d9552`, 2026-10-12)
+
+Room pin, the station toy, and LOD/residency: **Lane 6** (`codex/swarm-crucible-overhaul` — `survivalArena`, `src/render/lod.js`, `assetResidency.js`, `crucibleWarmPackageResidency.js`). Collision resolve if a ship is still held inside a solid: **local integration** (`codex/starter-integration`, flight/physics under `src/runtime/**`). The `debe715c8a` launch miss is also **local integration**: `applySandboxSetup` moves the ship to the `helios_core` spawn and `runSession` leaves `state.run` as adventure/inactive, so the armory never opens. That is not a Lane 6 room bug. Lane 6 still owns the pin, the station toy, and LOD once a survival run exists. Master already shipped Lane 6's clearance (`6b67d1fb1`, a room solid is pushed until it clears the hull by 24 u) and a presented-LOD swap cap (`68da0fae3`, `d3e7d8dcc`). The v2 rows below were measured **before** that clearance (harness commits `a0b854c91`, `07e4eda14`). They stay as the reproduction that made the pin a number. Post-clearance round 2 is still unmeasured, because this master does not start the run. UI polish #301 does not move this split.
 
 ### Remount after the clearance (`5e1f24156`, 2026-10-12)
 
@@ -30,9 +72,33 @@ Idle pass finished (363 s wall, 46 sim s, round still active at the duration cap
 | backdrop_coverage | PASS | FAIL threats p95 100% |
 | player_control | UNKNOWN (dead before probes) | PASS 0 pinned |
 
-Active pass is **not a round-2 measurement**. The page closed at 25.6 sim s of round 1 (1616 s wall) after a SwiftShader stall (sim 6.4 → 10.5 across ~22 min, 0.1 fps). `rounds_reached` and `round_transitions` FAIL because the browser died, not because the ship was pinned. Before the close: `player_control` PASS (0 pinned), `spawn_motion` PASS, `reward_before_input` PASS, `readability` PASS 3.24, `loadout` PASS, `player_ship` FAIL 0.6% (5 frames, resolving marker / `compiling-pipelines` at 1.5 s), `popping` FAIL 30/min, `vfx_coverage` FAIL (threats hidden p95 100%). The pin-after-clearance question is still open; the active pass is being re-run with the seed field filled.
+Active pass on seed 73311 is **not a round-2 measurement**. The page closed at 25.6 sim s of round 1 (1616 s wall) after a SwiftShader stall (sim 6.4 → 10.5 across ~22 min, 0.1 fps). `rounds_reached` and `round_transitions` FAIL because the browser died, not because the ship was pinned. Before the close: `player_control` PASS (0 pinned), `spawn_motion` PASS, `reward_before_input` PASS, `readability` PASS 3.24, `loadout` PASS, `player_ship` FAIL 0.6% (5 frames, resolving marker / `compiling-pipelines` at 1.5 s), `popping` FAIL 30/min, `vfx_coverage` FAIL (threats hidden p95 100%), `backdrop_coverage` PASS (threats p95 20%).
+
+### Remount on the requested seed (`9e647c306`, 2026-10-12)
+
+The seed row sits below the fold at 960x540. `9e647c306` scrolls it into view and checks the field value, so both passes below record seed **4242** (the 73311 remount did not). Command: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. SwiftShader, 960x540. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`.
+
+**Idle 4242: overall FAIL.** 2059 s wall, 41.5 sim s, stopped after 1 round. `round_resolution` PASS (shortest 41.1 s); the pre-clearance idle on this seed died at 13.2 s. `player_ship` / `lod_churn` / `popping` / `readability` / `vfx_coverage` / `backdrop_coverage` FAIL. `kills_before_input` and `reward_before_input` now PASS (0 kills, +0), improved vs pre-clearance (FAIL 9 / +4041) and vs the 73311 remount (FAIL 12 / +2839). Also PASS: `spawn_motion` 0, `player_control` 0 pinned, `loadout` 0. `player_ship` regressed vs both earlier idles: 8.2% of frames (105/1278) are a resolving marker (`loading` from sim 1.5 s, `compiling-pipelines` from 2.7 s). `lod_churn` 2.61/s (per-entity max 3/10 s, on the cap). `popping` 275/min. `readability` min separation 0.26; enemy 76% of samples have ΔL < 8; `station:plate` sits over the ship in 21% of 34 samples. `vfx_coverage` threats hidden p95 100% (combat p95 34%). `backdrop_coverage` threats on a bright backdrop p95 40%.
+
+| check | pre-clearance idle (4242) | remount idle (73311) | this idle (4242) |
+|---|---|---|---|
+| kills_before_input | FAIL 9 | FAIL 12 | PASS 0 |
+| reward_before_input | FAIL +4041 | FAIL +2839 | PASS +0 |
+| spawn_motion | FAIL 13 bodies | PASS 0 | PASS 0 |
+| player_ship | PASS | PASS | FAIL 8.2% resolving marker |
+| loadout | FAIL 5 irrelevant | PASS 0 | PASS 0 |
+| lod_churn | FAIL 5.34/s | FAIL 1.8/s | FAIL 2.61/s |
+| popping | FAIL 307/min | FAIL 116/min | FAIL 275/min |
+| readability | FAIL 0.69 | FAIL 0.93 | FAIL 0.26 |
+| vfx_coverage | FAIL threats p95 100% | FAIL threats p95 100% | FAIL threats p95 100% (combat p95 34%) |
+| backdrop_coverage | PASS | FAIL threats p95 100% | FAIL threats p95 40% |
+| player_control | UNKNOWN (dead before probes) | PASS 0 pinned | PASS 0 pinned |
+
+**Active 4242: overall FAIL.** Not a round-2 measurement. The browser closed mid-run at 11.2 sim s of round 1 (1370 s wall). `route` / `rounds_reached` / `round_transitions` FAIL as a harness crash (`page.evaluate: Target page, context or browser has been closed`); `round_resolution` FAIL because the gate counts that unmeasured win as FAIL. Round 2 is still unmeasured. Before the close: `popping` / `readability` / `vfx_coverage` still FAIL; `player_ship` / `lod_churn` / `kills_before_input` / `reward_before_input` / `spawn_motion` / `player_control` PASS. `backdrop_coverage` PASS (threats p95 25%). Readability's min separation is 2.1 (clears ≥ 1); the FAIL is low contrast (enemy 67% of samples ΔL < 8) plus `station:plate` over the ship in 27% of 11 samples. `popping` 31.7/min. `vfx_coverage` threats hidden p95 100% (combat p95 11%). `player_ship` 0/381 bad frames. `lod_churn` 0.7/s. 0 pinned spans. The pin-after-clearance question stays open.
 
 ## v2 gate (2026-10-12) — round 2 and beyond
+
+The table below is the **pre-clearance** reproduction (harness commits `a0b854c91`, `07e4eda14`, seed 4242). Lane 6 then shipped `6b67d1fb1`. Post-clearance numbers are the remounts above. Round 2 after that clearance is **still unmeasured**: the seed-4242 active pass died in round 1 when the browser closed. Do not read a pre-clearance REPRODUCED row as a result after `6b67d1fb1`.
 
 `npm run player-truth -- --mode=<mode> --gate` runs an **idle pass** (no input for 40 s: passive kills, reward,
 spawn motion) and an **active pass** (the scripted fighter plays from 3 s with public mouse aim/fire and W/S/A/D, and
@@ -45,7 +111,7 @@ planet layers are graded separately as `backdrop_coverage`.
 
 | Owner saw (round 2) | v2 result on master (Crucible · Ricochet Foundry · seed 4242 · 960x540 SwiftShader) | Evidence | Owner |
 |---|---|---|---|
-| Could not move next round | **REPRODUCED** — every round-2 start the fighter reached is pinned. At 66 % hull: W held 1.7 s reads 47 u/s, ship moves 1.5 u of 93 u; pinned 62.5–64.5 s (175 u implied, 21 u moved). At 97 % hull (another run): 168 u/s read, 1 u of 180 u moved, pinned 22.2–24.7 s. Not damage-dependent: it follows the round start. **Cause seen in the trace:** in every pinned span the ship sits 0–2 u from a solid room toy (`station:furnace`, `survivalArena._materializeRoom`) or an asteroid, i.e. the round-2 room solids materialize on top of the player (`player_control` / `round_transitions` now name the body). Gate active pass, 100 % hull: W held 1.4 s reads 141 u/s, ship moves 1.2 u of 179 u; pinned 45.5–47.6 s 1 u from `station:furnace` | `swarm-ricochet-foundry-round2-damaged/`, `swarm-ricochet-foundry-gate-active/` | Lane 6 (arena room placement, `survivalArena`) + Local integration (collision resolve) |
+| Could not move next round | **REPRODUCED (pre-clearance)** — every round-2 start the fighter reached is pinned. At 66 % hull: W held 1.7 s reads 47 u/s, ship moves 1.5 u of 93 u; pinned 62.5–64.5 s (175 u implied, 21 u moved). At 97 % hull (another run): 168 u/s read, 1 u of 180 u moved, pinned 22.2–24.7 s. Not damage-dependent: it follows the round start. **Cause seen in the trace:** in every pinned span the ship sits 0–2 u from a solid room toy (`station:furnace`, `survivalArena._materializeRoom`) or an asteroid, i.e. the round-2 room solids materialize on top of the player (`player_control` / `round_transitions` now name the body). Gate active pass, 100 % hull: W held 1.4 s reads 141 u/s, ship moves 1.2 u of 179 u; pinned 45.5–47.6 s 1 u from `station:furnace` | `swarm-ricochet-foundry-round2-damaged/`, `swarm-ricochet-foundry-gate-active/` | Lane 6 (arena room placement, `survivalArena`) + Local integration (collision resolve) |
 | Things shot at him, he died | **REPRODUCED** — killed 7.3 s into round 2 while pinned ("Wasp Swarmer killed you on wave 2") | same | Lane 6 |
 | "Told I WON" fast | **REPRODUCED (active)** — round 1 won in 18.4 s (< 20 s) with the fighter playing (Ricochet Runner, 960x540) | matrix run | Lane 6 |
 | Round-2 passive kills | **REPRODUCED** — 2 hostiles killed by asteroids in the first 0.3 s of round 2 before input | matrix run | Lane 6 |
@@ -53,14 +119,31 @@ planet layers are graded separately as `backdrop_coverage`.
 | White geodesic sphere | **CLASSIFIED** — a `station`-type entity (`station:furnace` in the gate run): one of the arena room's solid toys (`survivalArena._materializeRoom`), lit Lab ≈ [46, −4, −9] (grey-white), r ≈ 40 px, **over the player ship in 28–39 % of samples**. Play-space geometry, not backdrop; reads as neither enemy nor asteroid. `readability` lists it as an offender | `verdict.json` → `readability.census` | Lane 6 (arena room look) |
 | Orange blobs | **CLASSIFIED** — enemy `ship:` entities (lit Lab ≈ [39, 8, 9], "orange") and `wreck` bodies; enemy-vs-asteroid separation 0.66–0.75 (≥ 1.0) | same | Lane 6 (enemy look) |
 | Tumbling | **NOT REPRODUCED** — longest out-of-plane/uncommanded spin 0.1 s across all round starts measured | — | — |
-| Rectangle ship | see hull × viewport matrix below | — | — |
+| Rectangle ship | **NOT SCORED on `debe715c8a`** — four unlocked hulls at 960 and Ricochet Runner at 1280 all die at the launch miss. The failure frame shows the Adventure kestrel at the arena spawn, not a Swarm rectangle. The pre-clearance Swarm rectangle stays unmeasured on this master. | `swarm-ricochet-foundry-launch-debe715/` | Lane 6 once a survival run can spawn |
 
-Round 3: **not reached on master.** The fighter clears round 1, but the round-2 pin kills it. `rounds_reached` FAILs
-honestly (round 2); no round-3 coverage is claimed. A player can't get there either.
+Round 3: **not reached in the pre-clearance runs.** The fighter cleared round 1, and the round-2 pin killed it. `rounds_reached` FAILs
+honestly (round 2); no round-3 coverage is claimed. After `6b67d1fb1`, round 2 itself is still unmeasured.
 
 <!-- V2-GATE-RESULTS -->
 
 <!-- V2-MATRIX -->
+
+## Hull × viewport matrix (launch miss, ship not scored)
+
+The rectangle / invisible ship was reported as hull- and viewport-dependent. On `debe715c8a` the public door never starts survival, so `player_ship` has no Swarm frame to grade. Measured combos, SwiftShader, seed 4242, Ricochet Foundry, each trace's last sample at (-1900, -2200), `run.kind=adventure`, phase `inactive`:
+
+| hull | 960x540 | 1280x720 | 1920x1080 |
+|---|---|---|---|
+| ricochet_runner | route FAIL, same spawn | route FAIL, same spawn | not run |
+| energy_baseline | route FAIL, same spawn | not run | not run |
+| kinetic_baseline | route FAIL, same spawn | not run | not run |
+| mirror_demonstrator | route FAIL, same spawn | not run | not run |
+
+No combo differs. 1920 was not run: the miss happens before the viewport shows a ship. Contact sheet: `swarm-ricochet-foundry-launch-debe715/contact-sheet.jpg` (idle pass, main menu then the Adventure HUD). The command below is **not** `--gate`. The acceptance command stays `npm run player-truth -- --mode=swarm --gate`.
+
+```
+npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --hull=all --viewports=960x540,1280x720,1920x1080 --rounds=2 --idle=3 --duration=70 --wall=12 --evidence --tag=matrix
+```
 
 ## First-generation verdicts (PR #288)
 
@@ -106,6 +189,8 @@ and round resolution are measured on the 73311 run. Only Ricochet Foundry is ope
 
 ## Gauntlet (Crucible door "scored" ruleset) — every arena
 
+Gauntlet `--gate` on build `9741522468` is a **route FAIL** before play (see the table above). It is not a play score, and it is not a measurement of `e6173d9552`. The rows below are an earlier non-gate pass, not a PASS of the gate.
+
 `npm run player-truth -- --mode=gauntlet --arena=all --rounds=2 --idle=30 --duration=75`. The scored door
 opens all seven arenas to a fresh profile (Swarm opens only Ricochet Foundry).
 
@@ -124,6 +209,8 @@ no "won after N s" to measure. Gauntlet LOD re-keying (1.3–4.2/s raw) happens 
 
 ## Adventure (New Game → default Hitch start, Helios, tutorial hints on)
 
+Adventure `--gate` is **UNKNOWN**. It has not been run. The cruise below is not a `--gate` pass and is not a PASS.
+
 `npm run player-truth -- --mode=adventure --duration=150` — **INCOMPLETE** (no FAIL). 150 s cruise, seed 4242
 (no seed field on this route; the default start is deterministic). Ship, control, tumble, popping and VFX PASS;
 on-screen LOD churn 0.03/s PASS. Readability UNKNOWN: only 1 hostile and 0 asteroids on screen in the first
@@ -131,6 +218,8 @@ on-screen LOD churn 0.03/s PASS. Readability UNKNOWN: only 1 hostile and 0 aster
 free flight. Contact sheet: `adventure/contact-sheet.jpg`.
 
 ## Racing (main menu → Circuits → first course Textile Belt → Race → confirm "Launch circuit")
+
+Racing `--gate` is **UNKNOWN**. It has not been run. The circuit below is not a `--gate` pass and is not a PASS.
 
 `npm run player-truth -- --mode=racing --duration=75` — **FAIL**, seed 4242. `popping` 7.9/min (≤6): 10 bodies
 appear from hidden to on screen in the inner view between sim 1.0 and 1.9 s, after the loading veil has lifted

@@ -29,7 +29,7 @@ import {
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
 import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
-import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
+import { isAnchoredPhysicalBody, isPhysicalMissionBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -1716,7 +1716,7 @@ export const fields = {
 
   _forceableBody(e) {
     if (!e || e.alive === false || !e.pos) return false;
-    if (e.type === EMITTER_TYPE || e.type === 'massSeed' || e.type === 'fx') return false;
+    if (e.type === EMITTER_TYPE || e.type === 'massSeed' || (e.type === 'fx' && !isPhysicalMissionBody(e))) return false;
     // Only dynamic Rapier bodies can be moved by an impulse; fixed bodies (stations, gates, static
     // asteroids, the emitters/anchors themselves) ignore it. Gating here spares wasted membrane
     // writes and keeps the affected count honest.

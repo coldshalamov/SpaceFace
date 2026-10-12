@@ -946,8 +946,10 @@ export function createSimHost() {
         const e = registry.get('economy');
         if (!e || typeof e.handleTrade !== 'function') return { ok: false, reason: 'economy-system-unavailable' };
         const a = args || {};
-        const res = e.handleTrade(a.commodityId, a.side, a.qty,
-          a.expectedTotal != null ? { expectedTotal: a.expectedTotal } : null);
+        const res = e.handleTrade(a.commodityId, a.side, a.qty, {
+          expectedTotal: a.expectedTotal, sourceStationId: a.sourceStationId,
+          requireFullQuantity: a.requireFullQuantity, intentId: a.intentId,
+        });
         return { ok: true, result: res || { ok: false, reason: 'no_result' } };
       }],
       ['economyMintListing', (args) => {

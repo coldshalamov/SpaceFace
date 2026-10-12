@@ -8,6 +8,7 @@ export function offlineReceiptFingerprint(receipt) {
     receipt.nowMs || 0,
     receipt.credited || 0,
     receipt.upkeepCharged || 0,
+    receipt.upkeepUnpaid || 0,
     receipt.lost || 0,
     receipt.distressed ? 1 : 0,
   ].join(':');
@@ -34,7 +35,10 @@ export function formatOfflineReceiptLine(receipt) {
   const hrs = hours >= 10 ? String(Math.round(hours)) : hours.toFixed(1);
   const credited = Math.round(Number(receipt.credited) || 0);
   const upkeep = Math.round(Number(receipt.upkeepCharged) || 0);
-  const bits = [`+${credited} cr earned`, `${upkeep} cr upkeep`];
+  const net = credited - upkeep;
+  const unpaid = Math.max(0, Math.round(Number(receipt.upkeepUnpaid) || 0));
+  const bits = [`${net >= 0 ? '+' : '−'}${Math.abs(net)} cr wallet change`, `+${credited} cr earned`, `${upkeep} cr upkeep`];
+  if (unpaid > 0) bits.push(`${unpaid} cr unpaid (not yet charged)`);
   const lost = Math.round(Number(receipt.lost) || 0);
   if (lost > 0) bits.push(`${lost} lost`);
   if (receipt.distressed) bits.push('assets distressed');
@@ -66,7 +70,8 @@ function lastOfflineReceipt(state) {
 function showOfflineReceipt(bus, state, receipt) {
   const line = consumeOfflineReceiptOnce(state, receipt);
   if (!line) return false;
-  bus.emit('toast', { text: line, kind: 'credits', ttl: 8 });
+  const warning = Number(receipt.upkeepCharged) > Number(receipt.credited) || Number(receipt.upkeepUnpaid) > 0;
+  bus.emit('toast', { text: line, kind: warning ? 'warn' : 'credits', ttl: 8 });
   return true;
 }
 

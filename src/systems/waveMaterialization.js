@@ -12,6 +12,7 @@
 // counting entities.
 
 import { mulberry32 } from '../core/rng.js';
+import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { swarmDoctrineStamp } from '../data/swarmMode.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
@@ -203,6 +204,7 @@ export function materializeWaveBatch(ctx, request) {
 
   const budget = ctx && ctx.helpers && ctx.helpers.spawnBudget;
   if (!budget || typeof budget.request !== 'function') return emptyReceipt(requested);
+  if (req.swarm === true && typeof budget.bindEntity !== 'function') return emptyReceipt(requested);
   const helpers = ctx && ctx.helpers;
   if (!helpers || typeof helpers.spawnEntity !== 'function') return emptyReceipt(requested);
 
@@ -225,6 +227,8 @@ export function materializeWaveBatch(ctx, request) {
   ));
 
   const spawnedIds = [];
+  const reserved = [];
+  let deferred = 0;
   // SWARM-03: a swarm batch of 2+ arrives as one clump — same gate, same distance band,
   // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
   // the clump centre first, then each body's offset inside it.
@@ -255,12 +259,25 @@ export function materializeWaveBatch(ctx, request) {
           z: anchor.z + Math.sin(angle) * radius,
         };
       }
-      clearOfRocks(ctx && ctx.state, pos);
+      if (req.swarm !== true) clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
+      if (req.swarm === true) {
+        const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
+          { velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
+            clusterRadius: SWARM_CLUMP_RADIUS_WU });
+        if (!open) { deferred++; continue; }
+        spec.pos = open;
+      }
       spec.data = spec.data || {};
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.spawnContext = 'encounter';
+      // Admission owns the initial hold: the AI may run before the next wave update.
+      if (req.swarm === true) {
+        const now = Number.isFinite(ctx.state?.simTime) ? ctx.state.simTime : 0;
+        spec.data.ai.swarmArmedAt = now + SWARM_ARRIVAL_GRACE_S;
+        spec.data.ai.swarmFireHoldUntil = spec.data.ai.swarmArmedAt;
+      }
       // A run cohort hunts the pilot until the round resolves. Adventure surrender,
       // pirate morale and a spawn-point leash otherwise strand the final few enemies.
       const playerId = ctx.state?.playerId;
@@ -329,10 +346,23 @@ export function materializeWaveBatch(ctx, request) {
       const id = spawnIdOf(spawned);
       if (id == null) continue;
       const bound = typeof budget.bindEntity === 'function' && !!budget.bindEntity(id, ownerId);
-      // Spawned-but-unbound is not admitted. The reserved slot is released below; the body is
-      // left alone because this module is not the entity lifecycle owner.
-      if (!bound) continue;
+      // Roll back through the lifecycle owner, never leave an uncounted attacker alive.
+      if (!bound) {
+        if (typeof helpers.removeEntity === 'function') helpers.removeEntity(id);
+        else {
+          // Minimal/headless adapters may lack the removal port. The ordinary despawn sweep
+          // owns disposal; quarantine the failed admission until that sweep, without a kill.
+          const orphan = ctx.state?.entities?.get?.(id) || spawned;
+          if (orphan && typeof orphan === 'object') {
+            orphan.alive = false;
+            orphan.data = orphan.data || {};
+            orphan.data.despawnAt = Number.isFinite(ctx.state?.simTime) ? ctx.state.simTime : 0;
+          }
+        }
+        continue;
+      }
       spawnedIds.push(id);
+      reserved.push(spec);
     }
   } finally {
     const unbound = granted - spawnedIds.length;
@@ -347,5 +377,6 @@ export function materializeWaveBatch(ctx, request) {
     admitted: spawnedIds.length,
     spawnedIds,
     rejected: requested - spawnedIds.length,
+    ...(deferred > 0 ? { deferred, reason: 'unsafe_arrival' } : {}),
   };
 }

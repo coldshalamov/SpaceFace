@@ -26,7 +26,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
 import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
-import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
+import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock, commodityStandingMultipliers } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
 import { createEconomyPulse, recordEconomyPulse, recordEconomyCash, restoreEconomyPulse, economyPulseReport } from '../economy/economyPulse.js';
 import { presenceServiceForStation } from '../data/factionPresence.js';
@@ -1602,8 +1602,8 @@ export const economy = {
     bus.on('day:tick', (p) => this._onDebtStaleDay(p));
 
     // ---- trade intents from UI ------------------------------------------------------------
-    bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal }); });
-    bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty, { expectedTotal: p.expectedTotal }); });
+    bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); });
+    bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty, { expectedTotal: p.expectedTotal, sourceStationId: p.sourceStationId, requireFullQuantity: p.requireFullQuantity, intentId: p.intentId }); });
     bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
       this.refreshStationDemand(p.stationId);
@@ -2586,9 +2586,9 @@ export const economy = {
     // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
     // its goods dear. One lookup, applied here so quote/execute/automation all see the same price.
     const conditionMult = stationTradeMults(state, stationId, info);
-    const standing = conditionMult.buy === 1 && conditionMult.sell === 1
-      ? standingBase
-      : { ...standingBase, buy: standingBase.buy * conditionMult.buy, sell: standingBase.sell * conditionMult.sell };
+    const frontier = info ? this.frontierPenalty(info) : 0;
+    const spread = spreadOf(entry, frontier);
+    const standing = commodityStandingMultipliers(spread, standingBase, conditionMult);
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
@@ -2609,8 +2609,6 @@ export const economy = {
     const requestedQty = qty;
     if (side === 'buy') qty = Math.min(qty, Math.max(0, Math.floor(entry.stock - 1)));
     if (qty <= 0) return { ok: false, reason: 'no_stock' };
-    const frontier = info ? this.frontierPenalty(info) : 0;
-    const spread = spreadOf(entry, frontier);
     const el = def.elasticity;
     // Benefits cannot invert the same-port spread over an unchanged stock interval.
     const bidFactor = 1 - spread / 2;
@@ -2754,6 +2752,12 @@ export const economy = {
    *  confirmation is needed. Absent expectedTotal keeps today's live-price behavior. */
   execute(stationId, commodityId, side, qty, opts = null) {
     const state = this.state;
+    if (opts && opts.sourceStationId != null && opts.sourceStationId !== stationId) {
+      return { ok: false, reason: 'station_changed' };
+    }
+    if (opts && opts.expectedTotal != null && (!Number.isFinite(Number(opts.expectedTotal)) || Number(opts.expectedTotal) < 0)) {
+      return { ok: false, reason: 'bad_terms' };
+    }
     if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
       return { ok: false, reason: 'black_market_locked' };
     }
@@ -2797,6 +2801,8 @@ export const economy = {
     }
     const q = this.quote(stationId, commodityId, side, qty);
     if (!q.ok) return { ok: false, reason: q.reason || 'invalid' };
+    if (opts && opts.requireFullQuantity && (q.qty !== requestedQty || q.partial || q.holdLimited
+        || (q.acceptQty != null && q.acceptQty !== requestedQty))) return { ok: false, reason: 'load_changed' };
     qty = q.qty;
     const market = state.economy.markets[stationId];
     const entry = market && market[commodityId];
@@ -2815,6 +2821,7 @@ export const economy = {
       const canFit = Number.isFinite(free) ? Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1)) : 0;
       if (canFit < qty) qty = canFit;
       if (qty <= 0) return { ok: false, reason: 'cargo_full' };
+      if (opts && opts.requireFullQuantity && qty !== requestedQty) return { ok: false, reason: 'load_changed' };
       const fq = this.quote(stationId, commodityId, 'buy', qty);
       const cost = round(fq.total);
       if (normalizeCredits(state.player.credits) < cost) return { ok: false, reason: 'credits', need: cost };
@@ -2835,7 +2842,7 @@ export const economy = {
       this.recomputeLivePrices(entry, def, stationId, commodityId);
       this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realCost / realQty;
-      this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def);
+      this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def, intentId);
       return this._sealTradeIntent(intentId, {
         ok: true, qty: realQty, unitAvg, total: realCost, priceImpactPct: fq.priceImpactPct,
       }, { stationId, commodityId, side: 'buy', requestedQty });
@@ -2844,6 +2851,7 @@ export const economy = {
       const have = state.player.cargo.items[commodityId] || 0;
       if (have <= 0) return { ok: false, reason: 'no_cargo' };
       if (qty > have) qty = have;
+      if (opts && opts.requireFullQuantity && qty !== requestedQty) return { ok: false, reason: 'load_changed' };
       const fq = this.quote(stationId, commodityId, 'sell', qty);
       const gross = round(fq.total);
       if (normalizeCredits(state.player.credits) > CREDITS_MAX - gross) return { ok: false, reason: 'credits_cap' };
@@ -2872,6 +2880,7 @@ export const economy = {
         realGross,
         fq.priceImpactPct,
         def,
+        intentId,
       );
       const profit = receipt ? receipt.profit : 0;
       return this._sealTradeIntent(intentId, {
@@ -2920,7 +2929,7 @@ export const economy = {
   },
 
   /** Common post-trade bookkeeping: stats, intel refresh, emit economy:tradeCompleted. */
-  afterTrade(state, stationId, commodityId, side, qty, unitAvg, total, priceImpactPct, def) {
+  afterTrade(state, stationId, commodityId, side, qty, unitAvg, total, priceImpactPct, def, intentId = null) {
     const info = stationInfo(state, stationId);
     const receipt = this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
     const profit = side === 'sell' && receipt ? receipt.profit : null;
@@ -2941,6 +2950,7 @@ export const economy = {
       receiptId: receipt && receipt.receiptId,
       tradeSequence: receipt && receipt.tradeSequence,
       seenAt: receipt && receipt.seenAt,
+      intentId,
     });
     // AE-138/139 — a biohazard lot that settles is a faction-consequence datum the ecology
     // layer records (sealed custody reads differently than an open-mesh sale).
@@ -3180,6 +3190,7 @@ export const economy = {
         side,
         qty: Math.max(0, Math.floor(Number(qty) || 0)),
         reason: 'not_docked',
+        intentId: opts && opts.intentId,
       });
       return { ok: false, reason: 'not_docked' };
     }
@@ -3209,6 +3220,7 @@ export const economy = {
         need: res.need,
         expectedTotal: res.expectedTotal,
         liveTotal: res.liveTotal,
+        intentId: opts && opts.intentId,
       });
       // AE-139 — the refusal itself is a remembered datum: the ecology layer tallies it
       // under the station's faction.
@@ -4856,13 +4868,10 @@ export const economy = {
     return this.state.economy.markets[stationId] || this.ensureMarket(stationId);
   },
   priceOf(stationId, commodityId, side) {
-    const m = this.getMarket(stationId);
-    const e = m && m[commodityId];
-    if (!e) return null;
-    const info = stationInfo(this.state, stationId);
-    const standing = priceModForState(this.state, info && info.factionId);
-    const raw = side === 'buy' ? e.lastBuy * standing.buy : e.lastSell * standing.sell;
-    return Math.max(1, round(raw));
+    // A one-unit price has the same rounding, standing, conditions and access rules
+    // as the counter. Cached market mids remain non-personal world intelligence.
+    const quoted = this.quote(stationId, commodityId, side, 1);
+    return quoted && quoted.ok && quoted.qty === 1 ? quoted.total : null;
   },
 
   // -------------------------------------------------------------------------------------------
