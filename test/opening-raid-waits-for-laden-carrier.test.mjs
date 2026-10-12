@@ -8,6 +8,7 @@ import {
 } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import * as openingRaidModule from '../src/data/encounters/344-opening-hauler-raid.js';
+import { TENSION_POLICY_SCHEMA } from '../src/ai/tensionPolicy.js';
 
 const SEED = 4242;
 const RAID = 'opening_hauler_raid';
@@ -69,6 +70,35 @@ test(`seed ${SEED}: the hold is bounded; an empty barge cannot cancel the openin
     sim.runTicks(60 * 10);
     assert.ok(liveRaid(), `the raid fires anyway once ${FIRE_READY_HOLD_S} s of hold elapse`);
     assert.equal(dir.stats.fireReadyExpired, 1);
+  });
+});
+
+test(`seed ${SEED}: tension recovery keeps the opening raid on its readiness hold`, () => {
+  withReadiness(() => false, () => {
+    const { sim, state, item, liveRaid } = harness();
+    const now = state.simTime || 0;
+    state.tensionDirector = {
+      policy: {
+        schema: TENSION_POLICY_SCHEMA,
+        enabled: true,
+        issuedAt: now,
+        validUntil: now + 2,
+        phase: 'recovery',
+        rhythmPhase: 'aftermath',
+        allowCombat: false,
+        allowMajor: false,
+        combatRate: 0.15,
+        civilianRate: 1,
+        minGapS: 60,
+        preference: 0,
+        recentShapes: [],
+      },
+    };
+    sim.runTicks(60);
+    assert.equal(liveRaid(), null, 'an empty corridor still waits');
+    assert.equal(item.defers || 0, 0, 'recovery must not spend a gate defer on the teach-day raid');
+    assert.equal(Number.isFinite(item.fireReadyHoldSince), true);
+    assert.ok(item.dueAt < 21, 'the beat rechecks in a second, not after the 21 s defer');
   });
 });
 

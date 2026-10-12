@@ -1349,7 +1349,12 @@ export const mining = {
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
-      if (e.type === 'pickup' && (combatLoot ? !beatPending : dist <= magnet)) {
+      // A titled crew cut is the working barge's lot. The passive vacuum reaches the whole
+      // opening neighbourhood and would take the chip before that hull arrives. Flying into
+      // the body still collects it, which is the theft the law owner already charges.
+      const crewCut = e.type === 'pickup' && pickupData.npcMiningSource
+        && typeof pickupData.npcMiningSource === 'object';
+      if (e.type === 'pickup' && !crewCut && (combatLoot ? !beatPending : dist <= magnet)) {
         // Homing vacuum: inherit player velocity, then accelerate relative approach.
         // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
         // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.

@@ -1147,7 +1147,9 @@ export const encounterDirector = {
     const ceresActivityAmbush = isCeresActivityAmbushItem(item);
     const preyInReach = ceresActivityAmbush && this._ceresAmbushPreyInReach();
     // Authored teach-day items carry a timed promise (A1: under attack inside three minutes):
-    // the tutorial rail and the nominal spacing gap are exactly what would push them past it.
+    // the tutorial rail, the nominal spacing gap, and a tension-recovery breather are exactly
+    // what would push them past the freight they were written to meet. The opening raid's
+    // 60 s readiness hold is the wait; a 21 s gate defer walks that hold off the barge.
     const authoredGuarantee = isAuthoredGuaranteeItem(item);
     const pacingReason = encounterPacingBlockReason(dir, state, shape, now);
     // The authored Throughline crossing is still a normal paced ambush when only the player is in
@@ -1157,7 +1159,8 @@ export const encounterDirector = {
     // the pirates are springing on the hauler's transit, not on the player's combat readiness —
     // deferring them past the hauler's crossing silently spends the authored encounter.
     if (pacingReason
-      && !(authoredGuarantee && (pacingReason === 'tutorial' || pacingReason === 'pacing_gap'))
+      && !(authoredGuarantee && (pacingReason === 'tutorial' || pacingReason === 'pacing_gap'
+        || pacingReason === 'tension_recovery'))
       && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'
         || pacingReason === 'tension_recovery' || pacingReason === 'rhythm'))) {
       // A guarantee item deferring on pacing must still be bounded — plain defer() would let it

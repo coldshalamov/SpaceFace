@@ -349,6 +349,54 @@ function factionHullFor(anchorHull, factionId, rng) {
 const HELIOS_TALLY_REACH = 70;
 const HELIOS_TALLY_STILL = 4;
 const HELIOS_TALLY_COUNT_S = 6;
+const HELIOS_TALLY_LEDGER_CAP = 8;
+
+function heliosFreightDisposition(value) {
+  return value === 'delivered' || value === 'lost' ? value : 'counted';
+}
+
+function normalizeHeliosFreightTally(row) {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+  const manifestId = typeof row.manifestId === 'string' && row.manifestId ? row.manifestId : null;
+  const totalQty = Number(row.totalQty);
+  if (!manifestId || !(totalQty > 0)) return null;
+  const disposition = heliosFreightDisposition(row.disposition);
+  const tally = {
+    manifestId,
+    carrierWorldRecordId: typeof row.carrierWorldRecordId === 'string' && row.carrierWorldRecordId
+      ? row.carrierWorldRecordId : null,
+    commodityId: typeof row.commodityId === 'string' && row.commodityId ? row.commodityId : null,
+    totalQty,
+    destinationId: typeof row.destinationId === 'string' && row.destinationId
+      ? row.destinationId : 'station_helios',
+    simTime: Number.isFinite(Number(row.simTime)) ? Number(row.simTime) : 0,
+    sectorId: 'sector_helios_prime',
+    disposition,
+  };
+  // A counted row has no later clock. Delivered and lost keep the sim time of that one change.
+  if (disposition !== 'counted' && Number.isFinite(Number(row.dispositionSimTime))) {
+    tally.dispositionSimTime = Number(row.dispositionSimTime);
+  }
+  return tally;
+}
+
+function normalizeHeliosFreightTallyList(rows) {
+  if (!Array.isArray(rows)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const row of rows) {
+    const tally = normalizeHeliosFreightTally(row);
+    if (!tally || seen.has(tally.manifestId)) continue;
+    seen.add(tally.manifestId);
+    out.push(tally);
+  }
+  return out.length > HELIOS_TALLY_LEDGER_CAP ? out.slice(out.length - HELIOS_TALLY_LEDGER_CAP) : out;
+}
+
+/** Counted Helios freight, oldest first. Empty when nothing has been tallied this save. */
+export function heliosFreightTallies(state) {
+  return normalizeHeliosFreightTallyList(state && state.traffic && state.traffic.heliosFreightTallies);
+}
 const HELIOS_BERTH_MAX_DRIFT = 20;
 const TRAFFIC_ROLES = {
   hauler:   { ship: 'ship_mule',     team: 2, speed: 26, archetype: 'fleeing_trader', weight: 30,
@@ -1641,6 +1689,10 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    // A living barge can lose the counted hold without dying: the opening raid's robbed
+    // outcome is the raider leaving with the ore. Destruction closes the same row when the
+    // kill path never saw this manifest id.
+    this.bus.on('encounter:resolved', (p) => this._onOpeningRaidFreightResolved(p || {}));
     this.bus.on('world:farActorShelved', (p) => this._onFarActorShelved(p || {}));
     this.bus.on('world:farActorRestored', (p) => this._onFarActorRestored(p || {}));
     // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
@@ -6382,6 +6434,52 @@ export const traffic = {
     setIntent(e, 0, 1, false, false, null, Math.atan2(rock.pos.z - e.pos.z, rock.pos.x - e.pos.x));
   },
 
+  // The count outlives the bark. One row per manifest, capped, on the traffic save.
+  _rememberHeliosFreightTally(entity, manifest, commodityId) {
+    const row = normalizeHeliosFreightTally({
+      manifestId: manifest && manifest.manifestId,
+      carrierWorldRecordId: entity && entity.data && entity.data.worldRecordId,
+      commodityId,
+      totalQty: manifest && manifest.totalQty,
+      destinationId: 'station_helios',
+      simTime: this.state && this.state.simTime,
+    });
+    if (!row || !this.state || !this.state.traffic) return;
+    const bag = this.state.traffic;
+    const prior = Array.isArray(bag.heliosFreightTallies) ? bag.heliosFreightTallies : [];
+    if (prior.some((item) => item && item.manifestId === row.manifestId)) return;
+    const next = prior.concat(row);
+    bag.heliosFreightTallies = next.length > HELIOS_TALLY_LEDGER_CAP
+      ? next.slice(next.length - HELIOS_TALLY_LEDGER_CAP) : next;
+  },
+
+  // The count is the start of the fact. Delivery and loss close it once, and neither
+  // overwrites the other: a docked hold that is later destroyed was already off the barge,
+  // and a lost hold does not become a delivery because a later hull reuses the id.
+  _noteHeliosFreightDisposition(manifestId, disposition) {
+    if (disposition !== 'delivered' && disposition !== 'lost') return false;
+    if (!this.state || !this.state.traffic || typeof manifestId !== 'string' || !manifestId) return false;
+    const rows = this.state.traffic.heliosFreightTallies;
+    if (!Array.isArray(rows)) return false;
+    const row = rows.find((item) => item && item.manifestId === manifestId);
+    if (!row || heliosFreightDisposition(row.disposition) !== 'counted') return false;
+    row.disposition = disposition;
+    row.dispositionSimTime = Number(this.state.simTime) || 0;
+    return true;
+  },
+
+  // Robbed and destroyed are the two opening-raid outcomes that take the counted hold.
+  // Defended and flying on leave the ore on the barge, so the row stays counted until a
+  // real dock or a later loss. Another shape cannot close a Helios tally.
+  _onOpeningRaidFreightResolved(payload) {
+    if (!payload || payload.shape !== 'opening_hauler_raid') return false;
+    if (payload.outcome !== 'robbed' && payload.outcome !== 'hauler_destroyed') return false;
+    const causality = payload.causality;
+    const manifestId = causality && typeof causality.manifestId === 'string'
+      ? causality.manifestId : '';
+    return this._noteHeliosFreightDisposition(manifestId, 'lost');
+  },
+
   // The Helios freight spine counts every laden hull at its tally post before the berth: the seam's
   // ore crosses the opening neighbourhood as real freight instead of slipping off behind the rock.
   _heliosTallyPoint() {
@@ -6460,9 +6558,13 @@ export const traffic = {
         if (state.simTime - rec.tallyHoldSince < HELIOS_TALLY_COUNT_S) return;
         rec.tallyManifestId = current.manifestId;
         rec.tallyHoldSince = null;
+        const line = current.lines.find((row) => row && row.qty > 0);
+        this._rememberHeliosFreightTally(entity, current, line && line.commodityId);
         this.bus.emit('traffic:freightTallied', {
           carrierId: entity.id, worldRecordId: entity.data.worldRecordId || null,
-          manifestId: current.manifestId, totalQty: current.totalQty, destinationId: 'station_helios',
+          manifestId: current.manifestId, totalQty: current.totalQty,
+          commodityId: line && line.commodityId || null,
+          destinationId: 'station_helios',
         });
         return;
       }
@@ -8294,6 +8396,7 @@ export const traffic = {
     }
     rec.dockSeq = Math.max(rec.dockSeq | 0, dockSeq + 1);
     if (entity && entity.data) entity.data.freightDockSeq = rec.dockSeq;
+    this._noteHeliosFreightDisposition(manifest && manifest.manifestId, 'delivered');
 
     // After delivery, refresh manifest for the next leg (still deterministic per dockSeq key).
     const nextKey = `${freighterKey}:leg:${rec.dockSeq}`;
@@ -11623,6 +11726,7 @@ export const traffic = {
         });
       }
       t.appliedLossIds = mergeAppliedFreightIds(t.appliedLossIds, fresh);
+      this._noteHeliosFreightDisposition(manifest && manifest.manifestId, 'lost');
     }
 
     if (p.killerId != null && p.killerId === this.state.playerId) {
@@ -11863,6 +11967,7 @@ export const traffic = {
   serialize() {
     captureCeresWorkfleetHardware(this);
     this._ensureState();
+    const heliosFreightTallies = normalizeHeliosFreightTallyList(this.state.traffic.heliosFreightTallies);
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,
       ...(this.state.traffic.depotServices?.length
@@ -11883,6 +11988,7 @@ export const traffic = {
       disruptedStationIds: leftoverNormalizeDisruptedStationIds(
         this.state.traffic.disruptedStationIds,
       ),
+      ...(heliosFreightTallies.length ? { heliosFreightTallies } : {}),
     };
   },
 
@@ -11946,6 +12052,10 @@ export const traffic = {
     this.state.traffic.disruptedStationIds = leftoverNormalizeDisruptedStationIds(
       validTrafficSave ? data.disruptedStationIds : [],
     );
+    const tallies = validTrafficSave
+      ? normalizeHeliosFreightTallyList(data.heliosFreightTallies) : [];
+    if (tallies.length) this.state.traffic.heliosFreightTallies = tallies;
+    else delete this.state.traffic.heliosFreightTallies;
   },
 
   newGame() {

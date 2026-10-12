@@ -67,6 +67,49 @@ export const trigger = deepFreeze({
 // (the same ids/roles bookkeeping the director's entity-gone handler maintains) so resolve()'s
 // straggler sweep finds nothing to stamp with a despawn timer. Spawn budget stays with the ships
 // through dir.active until each one actually leaves play — the ordinary population contract.
+function stampOpeningFreight(live, manifest, carrier, adopted) {
+  const causality = live && live.causality;
+  if (!causality || !manifest || typeof manifest.manifestId !== 'string') return;
+  const line = Array.isArray(manifest.lines) ? manifest.lines.find((row) => row && row.qty > 0) : null;
+  causality.manifestId = manifest.manifestId;
+  causality.freightRole = manifest.role || (adopted ? 'ore_carrier' : 'hauler');
+  causality.totalQty = manifest.totalQty;
+  causality.commodityId = line && line.commodityId || null;
+  causality.carrierWorldRecordId = carrier && carrier.data && carrier.data.worldRecordId || null;
+  causality.adoptedWorkingBarge = adopted === true;
+  if (!adopted || !carrier || !carrier.data) return;
+  causality.evidence = `The raid hit the working ore barge. Counted hold ${manifest.manifestId} (${manifest.totalQty}).`;
+  carrier.data.encounterFingerprint = causality.fingerprint;
+  carrier.data.encounterCausality = { ...causality };
+}
+
+// Flying on leaves the raiders in the world. Name the lowest-id one who does not already
+// wear a minted callsign, through the same disengage receipt ace memory already keeps.
+// Already-named hulls stay off the list so a deadline cannot tier a pilot up a second time.
+function rememberOpeningRaidEscape(d, live) {
+  const entities = d && d.state && d.state.entities;
+  if (!entities || !live || typeof d.emit !== 'function') return;
+  const memberIds = [];
+  for (const id of live.ids || []) {
+    if (!live.roles || live.roles[id] !== 'raider') continue;
+    const entity = entities.get(id);
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    if (entity.data && entity.data.promotedPilot) continue;
+    memberIds.push(id);
+  }
+  if (!memberIds.length) return;
+  memberIds.sort((a, b) => (a === b ? 0 : a > b ? 1 : -1));
+  d.emit('pirateDisengage:triggered', {
+    squadId: live.id,
+    memberIds,
+    reason: 'escaped',
+    outcome: 'fled',
+    source: 'opening_hauler_raid',
+    sectorId: live.sectorId,
+    t: typeof d.now === 'function' ? d.now() : 0,
+  });
+}
+
 function releaseSquadToWorld(live) {
   if (!live) return;
   if (Array.isArray(live.ids)) live.ids.length = 0;
@@ -140,6 +183,10 @@ function releaseAdoptedCarrier(d, live) {
   if (live.roles) delete live.roles[adopted.entityId];
   if (!entity || !entity.data || entity.data.worldRecordId !== adopted.worldRecordId) return;
   if (entity.alive === false) return;
+  // A living barge goes back to its own work. The fingerprint stays only on a hull this raid
+  // killed, so a later unrelated death does not inherit the opening cause.
+  delete entity.data.encounterFingerprint;
+  delete entity.data.encounterCausality;
   const restore = adopted.restore || {};
   for (const key of ['freightRewardOwner', 'bountyCr', 'loot']) {
     if (restore[key] === undefined) delete entity.data[key];
@@ -223,6 +270,7 @@ export const runtime = Object.freeze({
       hdata.bountyCr = 0;
       hdata.loot = null;
       hdata.freightRewardOwner = 'manifest_custody';
+      stampOpeningFreight(live, live.data.freightManifest, hauler, true);
     } else if (hauler) {
       const band = live.shape.unitsPerHauler || [6, 10];
       const qty = Math.max(1, Math.round(
@@ -251,6 +299,7 @@ export const runtime = Object.freeze({
         lines: [{ commodityId: 'cmdty_fuel_cells', qty }],
         totalQty: qty,
       };
+      stampOpeningFreight(live, hdata.cargoManifest, hauler, false);
     }
     live.phase = 'conflict';
     d.say(live, 'alert', 'curtain_convoy_alert', null, { primary: true });
@@ -303,6 +352,7 @@ export const runtime = Object.freeze({
       // record, the hauler keeps flying and the raiders keep being pirates as ordinary world
       // entities the player can still fight, save, or rob after the encounter has ended.
       releaseAdoptedCarrier(d, live);
+      rememberOpeningRaidEscape(d, live);
       releaseSquadToWorld(live);
       sayOpeningConsequence(d, 'raid_over');
       return d.resolve(live, 'raid_over', { speak: false });

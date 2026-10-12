@@ -1090,11 +1090,16 @@ export const aceMemory = {
       t: now,
     });
     this._completeTransition('fled', pseudoAce, rec);
-    emit(this.bus, 'toast', {
-      text: `${identity.name} got away — that transponder will come back around.`,
-      kind: 'info',
-      ttl: 4,
-    });
+    // The opening raid's deadline leaves these hulls in front of the player. The disengage
+    // toast would say they got away while they are still on the guns. The name, the record,
+    // and the news line are the facts a later visit can read.
+    if (payload.source !== 'opening_hauler_raid') {
+      emit(this.bus, 'toast', {
+        text: `${identity.name} got away — that transponder will come back around.`,
+        kind: 'info',
+        ttl: 4,
+      });
+    }
   },
 
   _noteSparedPilot(payload) {
