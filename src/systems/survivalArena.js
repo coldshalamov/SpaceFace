@@ -999,6 +999,11 @@ export const survivalArena = {
     // functions below and their six tests are ready and stay covered meanwhile.
     // ---------------------------------------------------------------------------------------
     this._unsubs.push(this.bus.on('run:waveCleared', () => this._teardown('wave_cleared')));
+    this._unsubs.push(this.bus.on('run:openingLessonReleased', () => {
+      const deferred = this._deferredFields;
+      this._deferredFields = null;
+      if (deferred) this._installFields(deferred);
+    }));
     this._unsubs.push(this.bus.on('run:ended', () => {
       // Mirrors the renderer's _releaseSurvivalRosterPrewarm('run_ended'): the roots are gone,
       // so the ledger that says "already warm" has to go with them.
@@ -1152,7 +1157,11 @@ export const survivalArena = {
       this._authoredStrength = cone && Number.isFinite(cone.strength) ? cone.strength : 0;
     }
     this._installedFields = Array.isArray(install.fields) ? install.fields.slice() : [];
-    this._installFields(install.fields);
+    // The opening lesson is a still room: one hostile, one rock, nothing drifting. The room's
+    // law (a sag, a shove) arrives with the pack — otherwise it drags the furniture into the
+    // lone hostile before the pilot has touched a key and the round plays itself.
+    if (plan.openingLesson && wave <= 1) this._deferredFields = install.fields;
+    else this._installFields(install.fields);
     this._installMines(install.mines);
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
@@ -1723,6 +1732,7 @@ export const survivalArena = {
 
   _reset() {
     this._fieldIds = [];
+    this._deferredFields = null;
     this._mineIds = [];
     this._encounterId = null;
     this._phase = null;
