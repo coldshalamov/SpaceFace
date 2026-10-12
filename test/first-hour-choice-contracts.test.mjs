@@ -71,47 +71,94 @@ function makeHarness(seed = 47) {
   return { state, bus, missions, onboarding };
 }
 
-test('B4 waits for the authored recommended delivery to finish', () => {
+test('B4 resolves at the Helios berth; accepting the Ceres run tracks it and retires the rail', () => {
   const h = makeHarness();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  // Live order: input emits the dock intent before uiRoot commits ui.dockedStationId.
+  h.state.ui.dockedStationId = null;
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.ok(h.state.onboarding.beatDoneAt.dock != null,
+    'docking is the lesson: selling, fitting and the next job are local and never wait on Ceres');
+  assert.equal(h.state.onboarding.choiceStationId, 'station_helios',
+    'the choice opens at the berth the player is standing in');
 
+  // The tick advances onto B5; selling still surfaces the board from there.
+  h.state.onboarding.currentBeat = CHOICE_BEAT;
   h.bus.emit('economy:tradeCompleted', { side: 'sell', commodityId: 'cmdty_ore_iron', qty: 3 });
-  assert.equal(h.state.onboarding.beatDoneAt.dock, undefined,
-    'selling training ore only surfaces the board; it cannot skip the complete contract loop');
   assert.equal(h.state.onboarding.beatAction, "Board's got one job for you.");
 
   const firstTrade = h.missions._instanceFromOffer(buildFirstTradeOffer(47));
+  assert.equal(firstTrade.destStationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID,
+    'the authored delivery keeps its truthful Ceres terms');
   h.state.missions.active.push(firstTrade);
   h.state.ui.trackedMissionId = firstTrade.id;
   h.state.nav.waypoint = {
     onboarding: true,
     kind: 'mission-objective',
     label: 'Helios Station',
-    reason: 'Helios. Dock when close.',
+    reason: 'Pick the work that fits.',
   };
   h.bus.emit('mission:accepted', {
     missionId: firstTrade.id,
     source: FIRST_TRADE_CONTRACT_SOURCE,
   });
   assert.equal(h.state.onboarding.recommendedMissionId, firstTrade.id);
-  assert.equal(h.state.onboarding.beatAction, 'Complete the tracked delivery.');
-  assert.equal(h.state.onboarding.beatDoneAt.dock, undefined);
+  assert.equal(h.state.onboarding.finished, true,
+    'taking the Ceres run is choosing real work: no stale tutorial objective rides along');
   assert.equal(h.state.nav.waypoint.kind, 'mission');
   assert.equal(h.state.nav.waypoint.missionId, firstTrade.id);
   assert.equal(h.state.nav.waypoint.stationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID,
-    'the accepted delivery replaces the tutorial Helios marker with its real destination');
-  const routed = structuredClone(h.state.nav.waypoint);
-  h.onboarding._setObjectiveWaypoint(false);
-  assert.deepEqual(h.state.nav.waypoint, routed,
-    'the still-active tutorial cannot reclaim the delivery waypoint on its next update');
+    'the accepted delivery owns navigation to its real destination');
+});
 
-  h.bus.emit('mission:completed', {
-    missionId: firstTrade.id,
-    source: FIRST_TRADE_CONTRACT_SOURCE,
-    type: 'cargo_delivery',
-  });
-  assert.ok(h.state.onboarding.beatDoneAt.dock != null,
-    'the recommended delivery completion closes B4');
-  assert.equal(h.state.onboarding.choiceStationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID);
+test('starter-progression: undocking from B5 without a job retires the rail and keeps the offers', () => {
+  const h = makeHarness();
+  h.state.ui.dockedStationId = 'station_helios';
+  h.state.onboarding.currentBeat = CHOICE_BEAT;
+  h.state.onboarding.choiceStationId = 'station_helios';
+  h.onboarding._openChoice();
+  const choices = h.missions.ensureOnboardingChoiceOffers('station_helios');
+  h.state.ui.dockedStationId = null;
+  h.bus.emit('dock:undocked', { stationId: 'station_helios' });
+  assert.equal(h.state.onboarding.finished, true, 'declining is a plan too; the rail yields');
+  const board = h.state.missions.boards.station_helios;
+  assert.ok(choices.every((offer) => board.slots.some((row) => row.id === offer.id)),
+    'the declined offers stay on the board as ordinary work');
+  h.bus.emit('mission:accepted', { missionId: 'later', source: 'economyContract' });
+  assert.equal(h.state.onboarding.finished, true);
+});
+
+test('starter-progression: B5 opens at the berth with sim time frozen; undocking without a job retires the rail', () => {
+  const h = makeHarness();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  // Live order: input emits the dock intent before uiRoot commits ui.dockedStationId.
+  h.state.ui.dockedStationId = null;
+  h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.ok(h.state.onboarding.beatDoneAt.dock != null);
+  assert.equal(h.state.onboarding.currentBeat, CHOICE_BEAT, 'B5 opens at the berth: the station pauses sim time');
+  h.state.ui.dockedStationId = null;
+  h.bus.emit('dock:undocked', { stationId: 'station_helios' });
+  assert.equal(h.state.onboarding.finished, true,
+    'the choice beat never rides along into flight after the player left the berth');
+});
+
+test('starter-progression: a docked save on B5 keeps the berth and its three choice offers', () => {
+  const h = makeHarness();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  h.state.ui.dockedStationId = null;
+  h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
+  h.state.onboarding.missingThree = { completed: false };
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  h.missions.ensureOnboardingChoiceOffers('station_helios');
+  const saved = JSON.parse(JSON.stringify(h.onboarding.serialize()));
+  const ids = h.state.onboarding.choiceOfferIds.slice();
+  h.state.onboarding = { active: false, finished: false };
+  h.onboarding.deserialize(saved);
+  assert.equal(h.state.onboarding.currentBeat, CHOICE_BEAT);
+  assert.equal(h.state.onboarding.choiceStationId, 'station_helios');
+  assert.deepEqual(h.state.onboarding.choiceOfferIds, ids);
+  assert.equal(ids.length, 3);
 });
 
 test('B5 posts three normal starter-risk offers and accepts exactly one choice', () => {

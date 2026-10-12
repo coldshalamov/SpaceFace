@@ -327,17 +327,18 @@ export const BEATS = [
     ],
     done: 'oreCollected',
   },
-  { // B4 DOCK — sell flow + ONE recommended contract
+  { // B4 DOCK — the berth itself: selling, fitting and the next job all happen here
     key: 'dock',
     line: 'Helios. Dock when close.',
+    done: 'docked',
+  },
+  { // B5 CHOICE — at the same berth: the authored Ceres run plus three side-by-side offers.
+    // Accepting any real work ends the tutorial; undocking without one hands the player the ship.
+    key: 'choice',
+    line: 'Pick the work that fits.',
     followups: [
       { on: 'sold', line: "Board's got one job for you." },
     ],
-    done: 'recommendedCompleted',
-  },
-  { // B5 CHOICE — three side-by-side offers; accept any → ends tutorial
-    key: 'choice',
-    line: 'Pick the work that fits.',
     done: 'mission:accepted',
   },
 ];
@@ -472,10 +473,10 @@ export const onboarding = {
     });
 
     // Objective completion hooks (real events verified against the systems).
-    bus.on('dock:docked', () => {
+    bus.on('dock:docked', (p) => {
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
-      this._onBeatEvent('dock:docked');
+      this._onBeatEvent('dock:docked', p);
     });
     bus.on('economy:tradeCompleted', (p) => {
       if (p && p.side === 'sell') this._onBeatEvent('sold', p);
@@ -546,6 +547,7 @@ export const onboarding = {
     // SFQ-B064: an unspent verb-changing fit is felt at the next undock, once per verb per
     // profile, through the same first-use voice. The demo end card is unchanged.
     bus.on('dock:undocked', () => {
+      this._onUndockedFromChoice();
       this._maybeSpeakFitFelt();
       this._maybeShowDemoEndCard();
     });
@@ -915,6 +917,20 @@ export const onboarding = {
     this.bus.emit('hud:firstUse', { verbId: key, text, entityId });
   },
 
+  // Leaving the B5 berth without taking a job is a choice too: the player flies their own plan.
+  // The rail retires instead of pinning "Pick the work that fits" over open space; the offers
+  // stay on the board as ordinary rows, and any owed fit-felt line speaks at this undock.
+  _onUndockedFromChoice() {
+    const ob = this.state && this.state.onboarding;
+    const beat = ob && ob.active && !ob.finished && BEATS[ob.currentBeat];
+    if (!beat) return;
+    // Leaving inside the silence gap (B4 done at the berth, B5 not yet entered) is the same
+    // decline: never let the choice beat open in flight with nothing to pick from.
+    const choicePending = beat.key === 'dock' && ob.beatDoneAt && ob.beatDoneAt.dock != null;
+    if (beat.key !== 'choice' && !choicePending) return;
+    this._finish();
+  },
+
   _tutorialRailOwnsVoice() {
     const ob = this.state && this.state.onboarding;
     return !!(ob && ob.active && !ob.finished);
@@ -1119,6 +1135,9 @@ export const onboarding = {
       claimed: ob.claimed && typeof ob.claimed === 'object' ? railRecord(ob.claimed) : null,
       missingThree: rail ? railRecord(rail) : null,
       storeSentence: ob.storeSentence ? plainClone(ob.storeSentence) : null,
+      choiceStationId: typeof ob.choiceStationId === 'string' ? ob.choiceStationId : null,
+      choiceOfferIds: Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.slice() : null,
+      recommendedMissionId: ob.recommendedMissionId != null ? ob.recommendedMissionId : null,
     };
   },
 
@@ -1143,6 +1162,10 @@ export const onboarding = {
     ob.tetherBreaks = d.tetherBreaks | 0;
     ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
     if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence);
+    // B5's berth and offers survive a docked save, so the board keeps its choice framing.
+    if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
+    if (Array.isArray(d.choiceOfferIds)) ob.choiceOfferIds = d.choiceOfferIds.slice(); else delete ob.choiceOfferIds;
+    if (d.recommendedMissionId != null) ob.recommendedMissionId = d.recommendedMissionId; else delete ob.recommendedMissionId;
     ob.rescue = restoreRescueRecord(d.rescue);
     ob.raid = plainClone(d.raid);
     ob.claimed = plainClone(d.claimed);
@@ -1287,7 +1310,7 @@ export const onboarding = {
 
   // Try to advance to the next beat if the silence gate has passed since the previous beat's DONE.
   // Called from update(). Fires the new beat's entry line + spawns the beat's world content.
-  _tryAdvanceBeat() {
+  _tryAdvanceBeat(opts = {}) {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
     const nextIndex = ob.currentBeat + 1;
@@ -1307,7 +1330,8 @@ export const onboarding = {
       const prevDoneAt = ob.beatDoneAt[prev.key];
       if (prevDoneAt == null) return;                 // predecessor not DONE yet
       const now = this.state.simTime || 0;
-      if (now - Math.max(prevDoneAt, this._lastTextAtS) < SILENCE_S) return;
+      // The station screen pauses sim time, so a beat DONE'd by docking opens at the berth.
+      if (!opts.atBerth && now - Math.max(prevDoneAt, this._lastTextAtS) < SILENCE_S) return;
     }
     // Rescue-opening gate (PQ-163.00): while a rescue verb is current, the drill beat it gates
     // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
@@ -1416,24 +1440,18 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!ob || !beat) return;
-    if (beat.key === 'dock' && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {
-      ob.recommendedMissionId = payload.missionId || null;
-      ob.beatAction = 'Complete the tracked delivery.';
-      this._clearObjectiveWaypoint();
-      const missions = this.registry && this.registry.get && this.registry.get('missions');
-      if (missions && typeof missions.releaseOnboardingNavigation === 'function') {
-        missions.releaseOnboardingNavigation(payload.missionId);
-      }
-      this._refreshBeatPanel();
-      return;
-    }
+    if (payload.source === FIRST_TRADE_CONTRACT_SOURCE) ob.recommendedMissionId = payload.missionId || null;
     this._onBeatEvent('mission:accepted', payload);
-    // The rail yields to real work: an accepted contract that is not the dock beat's own
-    // recommended first-trade offer ends the tutorial through the same _finish() the choice
-    // beat's accept uses, so the objective slot follows the job the player actually took and
-    // the n/12 status retires instead of pinning a stale beat for the rest of the run.
-    if (ob.active && !ob.finished && payload.source !== FIRST_TRADE_CONTRACT_SOURCE) {
-      this._finish();
+    // The rail yields to real work: any accepted contract — a B5 choice, the authored Ceres run,
+    // or an ordinary board row — ends the tutorial through the same _finish(), so the objective
+    // slot follows the job the player actually took instead of pinning a stale beat. The Ceres
+    // delivery is tracked and owns navigation like any other accepted job; nothing local waits
+    // for its completion.
+    const railWasLive = ob.active && !ob.finished;
+    if (railWasLive) this._finish();
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (railWasLive && payload.missionId != null && missions && typeof missions.releaseOnboardingNavigation === 'function') {
+      missions.releaseOnboardingNavigation(payload.missionId);
     }
   },
 
@@ -1443,6 +1461,8 @@ export const onboarding = {
     if (!ob || !beat || beat.key !== 'dock') return;
     if (payload.source !== FIRST_TRADE_CONTRACT_SOURCE) return;
     if (ob.recommendedMissionId && payload.missionId !== ob.recommendedMissionId) return;
+    // Legacy saves only: a rail saved on B4 with the delivery already accepted. The current rail
+    // resolves B4 at the berth and finishes on the accept, so this path never runs for new runs.
     ob.choiceStationId = this.state.ui && this.state.ui.dockedStationId
       || FIRST_TRADE_CONTRACT_DEST_STATION_ID;
     this._onBeatEvent('recommended:completed', payload);
@@ -1499,13 +1519,19 @@ export const onboarding = {
       const choiceIds = Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds : [];
       resolved = payload && payload.source === ONBOARDING_CHOICE_SOURCE
         && choiceIds.includes(payload.sourceOfferId);
-    } else if (done === 'recommendedCompleted' && eventName === 'recommended:completed') {
-      // B4 stays live through the authored Helios delivery. Merely selling the training ore or
-      // accepting an unrelated board row cannot skip the first complete contract loop.
-      resolved = true;
+    } else if (done === 'docked' && (eventName === 'dock:docked' || eventName === 'recommended:completed')) {
+      // B4 resolves at the berth: selling, fitting and choosing the next job are local. The
+      // choice beat opens its offers at this station, beside the authored Ceres run.
+      // The dock intent names the berth; uiRoot commits ui.dockedStationId after this listener.
+      const stationId = (payload && payload.stationId) || (this.state.ui && this.state.ui.dockedStationId);
+      if (stationId) ob.choiceStationId = stationId;
+      resolved = eventName === 'recommended:completed' || !!stationId;
     }
     // Movement, heat recovery, distance, and ore collection resolve from deterministic state reads.
-    if (resolved) this._beatDone(beat);
+    if (resolved) {
+      this._beatDone(beat);
+      if (done === 'docked' && eventName === 'dock:docked') this._tryAdvanceBeat({ atBerth: true });
+    }
   },
 
   // Mark a beat DONE and, if it was the choice beat, finish the tutorial.

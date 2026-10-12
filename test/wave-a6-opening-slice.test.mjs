@@ -7,6 +7,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { MODULES } from '../src/data/modules.js';
+import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { runOpeningSliceA6 } from '../tools/agentic/a6OpeningSlice.mjs';
 
 const BEAT_ORDER = ['raid', 'throw_kill', 'collect', 'patrol_in_frame', 'dock', 'buy_fit', 'undock_fitted'];
@@ -37,7 +39,11 @@ test('A6 opening slice plays all seven beats in order on seed 4242', { timeout: 
   assert.equal(buy.defId, 'mod_swing_drive_s');
   const purchase = result.events.find(e => e.ev === 'module:purchased' && e.p && e.p.defId === 'mod_swing_drive_s');
   assert.ok(purchase, 'no module:purchased event for the Swing Drive');
-  assert.equal(purchase.p.price, 7400, 'purchase must be the Helios first-haul offer, not the catalog price');
+  const swing = MODULES.find(d => d.id === 'mod_swing_drive_s');
+  assert.equal(purchase.p.price, swing.shopOffers.station_helios.price,
+    'purchase must be the Helios first-haul offer, not the catalog price');
+  assert.ok(purchase.p.price < swing.price, 'the first-haul rack undercuts the catalog');
+  assert.ok(purchase.p.price > NEW_GAME.credits, 'the starting stake alone must not buy it: the slice earns the difference');
   const equipped = result.events.find(e => e.ev === 'module:equipped' && e.p && e.p.defId === 'mod_swing_drive_s');
   assert.ok(equipped, 'Swing Drive was bought but never fitted');
 });
