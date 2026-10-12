@@ -40,7 +40,7 @@ function hostileAt(t, x, z) {
   return t.sim.spawn({
     type: 'ship', team: 1, pos: { x, z }, vel: { x: 0, z: 0 }, rot: 0,
     radius: 8, mass: 20, hull: 40, hullMax: 40,
-    data: { intent: {}, ai: {} },
+    data: { intent: {}, ai: { archetype: 'pirate' } },
   });
 }
 

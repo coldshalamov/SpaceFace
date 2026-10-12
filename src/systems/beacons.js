@@ -21,6 +21,7 @@
 // the load path's transient-entity clear drops it; state.beacons resets on save:loaded to match.
 
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 const BEACON_COST = 250;            // cheap, one-slot
 export const BEACON_TTL = 45;         // seconds a beacon lives
@@ -197,12 +198,17 @@ export const beacons = {
   // "someone came for the beacon".
   _skirmishInterested(state, b) {
     const fallback = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.alive) return false;
     const scratch = this._interestScratch || (this._interestScratch = []);
     const ships = queryNearbyEntities(state, { x: b.x, z: b.z }, LURE_RADIUS, scratch, fallback);
     for (const e of ships) {
       if (!e || !e.alive || !e.pos || e.type !== 'ship' || e.id === state.playerId) continue;
       if (e.team === 0) continue;
       if (e.data && e.data.isWingman) continue;
+      // Team 1 also contains lawful patrols; team 2 is working traffic. Neither
+      // should abandon its job or prolong a skirmish unless genuinely hostile.
+      if (!isHostileForAI(state, e, player)) continue;
       const dx = b.x - e.pos.x, dz = b.z - e.pos.z;
       if (dx * dx + dz * dz <= LURE_RADIUS * LURE_RADIUS) return true;
     }
@@ -211,6 +217,7 @@ export const beacons = {
 
   // Steer nearby hostiles toward the beacon (intent override), leaving player-engagers alone.
   _lure(state, b, player) {
+    if (!player || !player.alive) return;
     const fallback = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     const scratch = this._lureScratch || (this._lureScratch = []);
     const ships = queryNearbyEntities(state, { x: b.x, z: b.z }, LURE_RADIUS, scratch, fallback);
@@ -218,6 +225,9 @@ export const beacons = {
       if (!e || !e.alive || !e.pos || e.type !== 'ship' || e.id === state.playerId) continue;
       if (e.team === 0) continue;                         // player-aligned (incl. wingmen) excluded
       if (e.data && e.data.isWingman) continue;
+      // Team 1 also contains lawful patrols; team 2 is working traffic. Neither
+      // should abandon its job or prolong a skirmish unless genuinely hostile.
+      if (!isHostileForAI(state, e, player)) continue;
       const dx = b.x - e.pos.x, dz = b.z - e.pos.z;
       const d2 = dx * dx + dz * dz;
       if (d2 > LURE_RADIUS * LURE_RADIUS) continue;       // out of lure range
