@@ -29,6 +29,7 @@ import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectPauseLayouts } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import { requestCodexTab } from './codex.js';
@@ -1069,6 +1070,7 @@ export const pauseScreen = {
     // name engraved over its row) with Resume leading as the one lit verb; the brief, which the dial
     // would cover, becomes a reading on the right. Same list, same roving focus, same buttons.
     injectOrreryScreens();
+    injectPauseLayouts();
     // A phone has no room for the dial: the verbs stay the plain banked Deckplate column and the brief stays
     // above them in it, like the title's phone composition.
     const phone = isPhoneLayout();
