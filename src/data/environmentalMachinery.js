@@ -169,6 +169,14 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_charon_expanse: 'charon',
   sector_io_reach: 'io',
   sector_ashfall_reach: 'ashfall',
+  sector_nyx_march: 'nyx',
+  sector_hyperion_cut: 'hyperion',
+  sector_orcus_shadow: 'orcus',
+  sector_eris_margin: 'eris',
+  sector_nereid_shoal: 'nereid',
+  sector_proteus_well: 'proteus',
+  sector_triton_wake: 'triton',
+  sector_eunomia_gulf: 'eunomia',
 });
 
 function buildKillMachine({
@@ -658,6 +666,294 @@ export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
   }],
 });
 
+// ── AEP PR-2 — rim signature toys, wave 2 ──────────────────────────────────────────────────
+// One kill machine per wave-2 rim sector, on the same law as the Ceres mouths: warning is
+// geometry, surge is the shove, calm is the window. Each machine is a different KIND of
+// object mechanically — the audit's identity table made physical, not eight reskins of one
+// sheet. Haumea's toy (RIFT_FISSURE_CRACKER) already exists above, so the wave adds eight.
+
+// Nyx March — the paper-burning fence. Two opposed intake cones face each other across the
+// anvil: whatever crosses the floor gets bitten from both sides and folded into the shred
+// chamber, the way the march folds manifests into nothing. The only scissor-geometry machine
+// in the census — every other cone machine aims one mouth at one anvil.
+export const NYX_SHREDDER_SECTOR_ID = 'sector_nyx_march';
+export const NYX_PAPER_SHREDDER = buildKillMachine({
+  id: 'nyx_paper_shredder',
+  hazardType: 'debris',
+  placeId: 'place_crusher_module',
+  sectorId: NYX_SHREDDER_SECTOR_ID,
+  // On the open march floor between the fence and the nebula rim.
+  localPos: { x: 200, z: -400 },
+  rot: 0.35,
+  phaseOffsetS: 1,
+  hazardRadius: 130,
+  anvil: { radius: 22, mass: 11000, along: 0, across: 0 },
+  mouth: { name: 'Paper Shredder', radius: 18 },
+  fields: [
+    {
+      idSuffix: 'intake_port',
+      kind: 'cone',
+      strength: 640,
+      radius: 110,
+      halfAngleRad: 0.4,
+      edgeSoftRad: 0.12,
+      falloff: 1.06,
+      along: -70,
+      across: 0,
+      dirAlong: 1,
+    },
+    {
+      idSuffix: 'intake_starboard',
+      kind: 'cone',
+      strength: 640,
+      radius: 110,
+      halfAngleRad: 0.4,
+      edgeSoftRad: 0.12,
+      falloff: 1.06,
+      along: 70,
+      across: 0,
+      dirAlong: -1,
+    },
+  ],
+});
+
+// Hyperion Cut — the open cut. The saw is the lane itself: one long thin kerf of drag lying
+// down the cut axis, pulling ore and hulls along the track into the saw-head anvil. The
+// longest, narrowest sheet in the census — every other sheet drags you ACROSS your road;
+// this one carries you down ITS road.
+export const HYPERION_SAW_SECTOR_ID = 'sector_hyperion_cut';
+export const HYPERION_CUT_SAW = buildKillMachine({
+  id: 'hyperion_cut_saw',
+  hazardType: 'debris',
+  placeId: 'place_conveyor_truss',
+  sectorId: HYPERION_SAW_SECTOR_ID,
+  // On the belt lane, south of the refinery zone's heart.
+  localPos: { x: 380, z: -500 },
+  rot: -0.15,
+  phaseOffsetS: 5,
+  hazardRadius: 260,
+  anvil: { radius: 24, mass: 12000, along: 200, across: 0 },
+  mouth: { name: 'Cut Saw', radius: 20 },
+  fields: [{
+    idSuffix: 'kerf',
+    kind: 'sheet',
+    strength: 700,
+    radius: 240,
+    halfWidth: 18,
+    falloff: 1.04,
+    along: 0,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
+// Orcus Shadow — the dim library. Two lamp-post wells hold a slow tide between them: bodies
+// shuttle from lamp to lamp on the weak draw, and anything that settles at the midpoint
+// shelf gets stamped by the anvil the lamps share. The only double-well machine — every
+// other well in the census stands alone.
+export const ORCUS_LAMP_SECTOR_ID = 'sector_orcus_shadow';
+export const ORCUS_DIM_LAMP = buildKillMachine({
+  id: 'orcus_dim_lamp',
+  hazardType: 'debris',
+  placeId: 'place_worklight_tower',
+  sectorId: ORCUS_LAMP_SECTOR_ID,
+  // On the anomaly rim between the shadow zone heart and the research station.
+  localPos: { x: -200, z: -300 },
+  rot: 0.9,
+  phaseOffsetS: 9,
+  hazardRadius: 180,
+  anvil: { radius: 20, mass: 9000, along: 0, across: 0 },
+  mouth: { name: 'Dim Lamp Post', radius: 12 },
+  fields: [
+    {
+      idSuffix: 'lamp_a',
+      kind: 'well',
+      strength: 90,
+      radius: 80,
+      falloff: 1.0,
+      along: -70,
+      across: 0,
+    },
+    {
+      idSuffix: 'lamp_b',
+      kind: 'well',
+      strength: 90,
+      radius: 80,
+      falloff: 1.0,
+      along: 70,
+      across: 0,
+    },
+  ],
+});
+
+// Eris Margin — the drift net, the margin's own toll: a broad trawl sheet drags the fog rim
+// and a cod-end well off the lane's axis collects whatever the net swept up. The Metronome
+// keeps the beat (systems/environmentalMachinery.js); the net is what the sweep collects.
+// The only sheet feeding an OFF-axis well — Io's ringer feeds its bell on the sheet line.
+export const ERIS_NET_SECTOR_ID = 'sector_eris_margin';
+export const ERIS_DRIFT_NET = buildKillMachine({
+  id: 'eris_drift_net',
+  hazardType: 'debris',
+  placeId: 'place_interdiction_buoy',
+  sectorId: ERIS_NET_SECTOR_ID,
+  // On the fog rim beside the Drift Choir line (+z is north).
+  localPos: { x: 240, z: 360 },
+  rot: 0.3,
+  phaseOffsetS: 3,
+  hazardRadius: 200,
+  anvil: { radius: 22, mass: 10000, along: 60, across: 80 },
+  mouth: { name: 'Drift Net Mouth', radius: 16 },
+  fields: [
+    {
+      idSuffix: 'trawl',
+      kind: 'sheet',
+      strength: 620,
+      radius: 190,
+      halfWidth: 110,
+      falloff: 1.05,
+      along: 0,
+      across: 0,
+      dirAlong: 1,
+    },
+    {
+      idSuffix: 'cod_end',
+      kind: 'well',
+      strength: 140,
+      radius: 90,
+      falloff: 1.1,
+      along: 60,
+      across: 80,
+    },
+  ],
+});
+
+// Nereid Shoal — the ice sled. A narrow reversed cone on the channel line: the sled's launch
+// kick slings loose ice and late ore back down-channel into the scale block the waystation
+// weighs it on. The only narrow reversed cone — Tethys's clamp is the wide one.
+export const NEREID_SLED_SECTOR_ID = 'sector_nereid_shoal';
+export const NEREID_ICE_SLED = buildKillMachine({
+  id: 'nereid_ice_sled',
+  hazardType: 'debris',
+  placeId: 'place_transponder_gate',
+  sectorId: NEREID_SLED_SECTOR_ID,
+  // On the channel between the waystation and the shoal zone.
+  localPos: { x: 700, z: -300 },
+  rot: -0.35,
+  phaseOffsetS: 7,
+  hazardRadius: 170,
+  anvil: { radius: 22, mass: 11000, along: -110, across: 0 },
+  mouth: { name: 'Ice Sled Ramp', radius: 16 },
+  fields: [{
+    idSuffix: 'launch',
+    kind: 'cone',
+    strength: 780,
+    radius: 150,
+    halfAngleRad: 0.24,
+    edgeSoftRad: 0.1,
+    falloff: 1.05,
+    along: 0,
+    across: 0,
+    dirAlong: -1,
+  }],
+});
+
+// Proteus Well — the well bucket. The well IS the toy: a deep draw centered on its own
+// anvil, with the bucket's upstroke — a small repulsor at the same heart — kicking the load
+// back up the line between surges. The only two-force co-centered machine: pull and push
+// share one center, and the body that survives is the one the bucket let go.
+export const PROTEUS_BUCKET_SECTOR_ID = 'sector_proteus_well';
+export const PROTEUS_WELL_BUCKET = buildKillMachine({
+  id: 'proteus_well_bucket',
+  hazardType: 'debris',
+  placeId: 'place_extraction_mast',
+  sectorId: PROTEUS_BUCKET_SECTOR_ID,
+  // On the seams approach south-east of the den (+z is north).
+  localPos: { x: 300, z: -500 },
+  rot: 0,
+  phaseOffsetS: 2,
+  hazardRadius: 300,
+  anvil: { radius: 24, mass: 14000, along: 0, across: 0 },
+  mouth: { name: 'Well Bucket', radius: 18 },
+  fields: [
+    {
+      idSuffix: 'draw',
+      kind: 'well',
+      strength: 220,
+      radius: 280,
+      falloff: 1.08,
+      along: 0,
+      across: 0,
+    },
+    {
+      idSuffix: 'upstroke',
+      kind: 'repulsor',
+      strength: 120,
+      radius: 40,
+      falloff: 1.0,
+      along: 0,
+      across: 0,
+    },
+  ],
+});
+
+// Triton Wake — the wake kite. A single cone lying OFF the lane line: the glow band the
+// kite-keepers ride runs parallel to the courier's road, not on it, so the pull you feel is
+// the wake itself, a lane's-width off your lane. The only off-axis cone in the census.
+export const TRITON_KITE_SECTOR_ID = 'sector_triton_wake';
+export const TRITON_WAKE_KITE = buildKillMachine({
+  id: 'triton_wake_kite',
+  hazardType: 'debris',
+  placeId: 'place_pirate_sensor_mast',
+  sectorId: TRITON_KITE_SECTOR_ID,
+  // On the wake line between the lab and the anomaly (+z is north).
+  localPos: { x: 150, z: -500 },
+  rot: 0.55,
+  phaseOffsetS: 6,
+  hazardRadius: 220,
+  anvil: { radius: 22, mass: 10000, along: 150, across: 60 },
+  mouth: { name: 'Wake Kite Line', radius: 14 },
+  fields: [{
+    idSuffix: 'glow_band',
+    kind: 'cone',
+    strength: 660,
+    radius: 210,
+    halfAngleRad: 0.42,
+    edgeSoftRad: 0.12,
+    falloff: 1.06,
+    along: 0,
+    across: 60,
+    dirAlong: 1,
+  }],
+});
+
+// Eunomia Gulf — the license stamp. The board's gavel is a repulsor off the block line:
+// whatever drifts into the gulf lane gets hammered sideways onto the seal anvil beside it,
+// the cut nobody disputes. The only repulsor that pushes toward an off-axis anvil — the
+// Ashfall scarecrow pushes away from its own center instead.
+export const EUNOMIA_STAMP_SECTOR_ID = 'sector_eunomia_gulf';
+export const EUNOMIA_LICENSE_STAMP = buildKillMachine({
+  id: 'eunomia_license_stamp',
+  hazardType: 'debris',
+  placeId: 'place_customs_pylon',
+  sectorId: EUNOMIA_STAMP_SECTOR_ID,
+  // Mid-gulf on the lane between the fence and the wreck field.
+  localPos: { x: -300, z: -100 },
+  rot: -0.5,
+  phaseOffsetS: 4,
+  hazardRadius: 180,
+  anvil: { radius: 22, mass: 12000, along: 20, across: 80 },
+  mouth: { name: 'License Stamp', radius: 16 },
+  fields: [{
+    idSuffix: 'gavel',
+    kind: 'repulsor',
+    strength: 380,
+    radius: 160,
+    falloff: 1.0,
+    along: 0,
+    across: -60,
+  }],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, the Sker
 // baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
@@ -673,6 +969,14 @@ export const ALL_KILL_MACHINES = Object.freeze([
   CHARON_TAILINGS_SWEEP,
   IO_BELL_RINGER,
   ASHFALL_CLAIM_SCARECROW,
+  NYX_PAPER_SHREDDER,
+  HYPERION_CUT_SAW,
+  ORCUS_DIM_LAMP,
+  ERIS_DRIFT_NET,
+  NEREID_ICE_SLED,
+  PROTEUS_WELL_BUCKET,
+  TRITON_WAKE_KITE,
+  EUNOMIA_LICENSE_STAMP,
 ]);
 
 // The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
@@ -693,6 +997,14 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === CHARON_SWEEP_SECTOR_ID) return Object.freeze([CHARON_TAILINGS_SWEEP]);
   if (sectorId === IO_BELL_SECTOR_ID) return Object.freeze([IO_BELL_RINGER]);
   if (sectorId === ASHFALL_SCARECROW_SECTOR_ID) return Object.freeze([ASHFALL_CLAIM_SCARECROW]);
+  if (sectorId === NYX_SHREDDER_SECTOR_ID) return Object.freeze([NYX_PAPER_SHREDDER]);
+  if (sectorId === HYPERION_SAW_SECTOR_ID) return Object.freeze([HYPERION_CUT_SAW]);
+  if (sectorId === ORCUS_LAMP_SECTOR_ID) return Object.freeze([ORCUS_DIM_LAMP]);
+  if (sectorId === ERIS_NET_SECTOR_ID) return Object.freeze([ERIS_DRIFT_NET]);
+  if (sectorId === NEREID_SLED_SECTOR_ID) return Object.freeze([NEREID_ICE_SLED]);
+  if (sectorId === PROTEUS_BUCKET_SECTOR_ID) return Object.freeze([PROTEUS_WELL_BUCKET]);
+  if (sectorId === TRITON_KITE_SECTOR_ID) return Object.freeze([TRITON_WAKE_KITE]);
+  if (sectorId === EUNOMIA_STAMP_SECTOR_ID) return Object.freeze([EUNOMIA_LICENSE_STAMP]);
   return Object.freeze([]);
 }
 
