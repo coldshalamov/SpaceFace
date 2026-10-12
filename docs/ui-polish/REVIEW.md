@@ -42,7 +42,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`credits`** | **DONE** | See § Credits below — this session |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
-| `game-over` / `gameOver` | SURVEYED | |
+| **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
 | `tech-tree` / `techTree` / `tech-tree-progress` | SURVEYED | |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
@@ -307,7 +307,35 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/newGameLayouts.js` (new), `src/ui/screens/newGame.js` (inject only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `game-over` or `tech-tree`.
+**Next:** `game-over` — now DONE (see below).
+
+---
+
+## Game Over — session notes (2026-10-12)
+
+**Before:** ORRERY after-action already composed (red-cooled rays, cause as headline, career ring, black-box tape). Gaps vs the polished stack: at 1280×720 the action rail wrapped (MAIN MENU / LOAD dropped to a second line); the secondary verbs were 11px words with a dim `›` and no affordance; an unavailable *Load latest* (no save yet) looked exactly as live as the others; the ring hub (`NO RECORD` / time flown) sat straight on the hull plan view; hero labels, coverage lines, ring stations, ring title and the black-box legend sat at ~.6–.7 bone; no lift in the 1080p band.
+
+**Bench note:** `ui-bench --shot=game-over` photographs before the screen's 400 ms death slide ends (a JS timer, not a CSS animation, so `settleAnimations` can't finish it) and shows only the backdrop. Shots this session came from a bench page held ~1.2 s past ready, plus a career-populated variant (playtime, contracts, kills, trades, profit) to load the ring stations.
+
+**After (2 visual iterations, CSS overlay in `gameOverLayouts.js`):**
+
+1. **Pass 1** — verbs on one non-wrapping rail with an underline that lights with the Hand (720p gets a tighter gap); verbs 12.5px bone; hub shaded with a soft void disc and the hull dimmed under `NO RECORD`; contrast raised on sub/coverage/hero labels/stations/units/tape legend; CAREER RECORD title flanked by rules; `--sv` 1.1 in the 1080p band.
+2. **Pass 2** — red kicker one step larger; `aria-disabled` verbs (Load latest with no save) rest at .46 bone with a faint rule.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=game-over --walk` — exit 0; measured clean; 4 controls exercised (Load save → saveLoad, Load latest disabled, New Game asks, Main menu → mainMenu). Related tests (black-box names, death recovery, load-latest verb, interrupted recovery, death name, gamepad screens) 53/53 pass. Selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (career @1080) | `docs/ui-polish/game-over-before.png` |
+| Before (no record @720) | `docs/ui-polish/game-over-before-720.png` |
+| After (career @1080) | `docs/ui-polish/game-over-after.png` |
+| After (no record @720) | `docs/ui-polish/game-over-after-720.png` |
+
+**Code touched:** `src/ui/orrery/gameOverLayouts.js` (new), `src/ui/screens/gameOver.js` (inject only). `saveLayouts.js` GAME_OVER block untouched. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `tech-tree` / `tech-tree-progress`.
 
 ---
 
