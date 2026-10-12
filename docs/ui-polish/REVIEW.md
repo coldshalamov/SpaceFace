@@ -94,15 +94,17 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 ## Station tab bodies — session notes (2026-10-12, ui-polish-10)
 
-**Market body @960×540:** body height ~192px. Filters wrapped to ~140px and the decision+204px dial left analysis at 32px. Filters are now one scrolling row; stage is analysis + slim 138px dial; hull decision sleeps at this size so it cannot crush the quote or land on SELL. List + analysis regain the column.
+**Market body @960×540 (≤1100×≤800):** body height ~192px. Legend and the find share one line (the find's rule is that line's foot, no longer through the filters). The eight families are a vertical ladder beside the register, so all stay visible and the names get the width (fixed BUY/SELL/STOCK columns). Analysis: price keeps "you pay · one unit now", readings sit two-up, SPREAD sits on one line above its bracket. Console: 96px dial with QUANTITY under the number, FEWER/MORE/MAX under the ring, total, collapsed **Quote breakdown** (fees one click away), BUY + SELL on one row. Hull decision and hold arc sleep here; the berth head carries REPAIR and HOLD.
 
-**Contracts ACCEPT @960×540:** sticky `.sx-dossier__foot` in a short dossier covered the title and clipped the reward. Foot is in flow at short height; title/reward/ACCEPT stack above the fold; terms/scales/client hide under 1100×800.
+**Contracts dossier @960×540 (≤1100×≤800):** ACCEPT is in flow, never sticky. The dossier wraps into two columns without new markup (`::after` is the column break): kind, title, client, reward and ACCEPT on the left; the risk sentence (risk, pay, standing gain and loss) and the terms (time, collateral, follow-up, readiness) on the right. The scales and route map sleep at this size (their words would be ~5px); the risk sentence says the same readings. Board: legends close up, the posted list fades out instead of slicing a row, and the tracked job is one line with TRACKED beside it.
 
 **Shipworks verbs @960×540:** `seatVerbs` pinned a fixed row onto the nameplate/rail on short dock stages. Bail to `--unseated` when stage height &lt; 300; CSS absolutely fills the 192px grid cell and pins the verb row to the panel foot (clear of the destination rail). Handling stats hide at this size (they were sitting on the rail).
 
 **Market SPREAD @1280×720:** `.orr-mkt-spread__v` sat at 50% of the bracket and crossed the price trace. Label now sits just above the bracket (`translateY(-100%)`).
 
 **Code:** `marketLayouts.js`, `stationTabsLayouts.js`, `shipworksLayouts.js`, plus a one-line bail in `shipworks.js` `seatVerbs`. Selectors/IDs unchanged.
+
+**Follow-up (not in #333):** Shipworks slot callouts (Utility/Drive/Cargo) sit on the hull at 960 — they are placed by the jig in JS. Phone (390×844) station berth still stacks the note under the vitals.
 
 **Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. Industry/Factions/Bar/Ledger tab bodies not walked this session.
 
