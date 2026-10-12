@@ -1765,6 +1765,676 @@ if (new Set(SEDNA_POCKET_ACTOR_SLOT_ORDER).size !== SEDNA_POCKET_ACTOR_SLOT_ORDE
 assertDistinctRouteTopology(SEDNA_ACTIVITY_POCKETS, SEDNA_ROUTE_TOPOLOGY, 'Sedna');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// AEP PR-2 — rim signature pockets, wave 2. One camera-scale pocket per wave-2 rim sector,
+// two bodies each: the crew the sector's way-of-life verb already promised, working the toy's
+// site or the fence/lane that hosts it. Same band and topology laws as Ceres and Sedna; every
+// anchor is authored geography (each station sits at its named zone's heart). The pocket's
+// object slot is the descriptor the toy's operator job reads — the manifest lot, the saw head,
+// the lamp shelf — not a materialized body.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+// Nyx March — the burn shift: a manifest runner and the tender who walks the ash line.
+export const NYX_ACTIVITY_SECTOR_ID = 'sector_nyx_march';
+export const NYX_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const nyxZones = requireArray(SECTOR_ZONES[NYX_ACTIVITY_SECTOR_ID], 'Nyx sector zones');
+const nyxAnchors = requireRecord(SECTOR_ANCHORS[NYX_ACTIVITY_SECTOR_ID], 'Nyx sector anchors');
+const nyxFenceZone = findById(nyxZones, 'zone_nyx_fence', 'Nyx fence zone');
+const stationNyx = findById(nyxAnchors.stations, 'station_nyx_march', 'Nyx fence station anchor');
+assertSamePoint(stationNyx.pos, nyxFenceZone.center, 'station_nyx_march / zone_nyx_fence');
+
+const nyxBurnShiftId = 'nyx_burn_shift';
+
+const nyxBurnShiftObjects = Object.freeze([
+  objectSlot({
+    id: 'nyx_manifest_lot',
+    pocketId: nyxBurnShiftId,
+    kind: 'cargo_staging_pod',
+    offset: point(55, -40),
+    runtimeOwner: 'world',
+    targetRef: 'object:nyx_manifest_lot',
+  }),
+]);
+
+const nyxBurnShiftActors = Object.freeze([
+  // Transit lane, ~170 deg — the sealed lot runs berth to burn line and back.
+  actor({
+    id: 'nyx_manifest_runner', pocketId: nyxBurnShiftId, namespace: 'nyx',
+    presentationRole: 'courier', jobKind: 'hauler', passive: true, spawnOffset: point(40, -30),
+    route: route({ id: 'nyx_manifest_run', jobKind: 'hauler', durationS: 30, marks: [
+      mark('nyx_run_lot_leg', -100, 35, 'object:nyx_manifest_lot'),
+      mark('nyx_run_berth_leg', 108, -25, 'station:station_nyx_march:service-berth'),
+    ] }),
+  }),
+  // Tight wedge, ~70 deg — the burn line is short, close, repetitive work.
+  actor({
+    id: 'nyx_ash_tender', pocketId: nyxBurnShiftId, namespace: 'nyx',
+    presentationRole: 'tender', jobKind: 'surveyor', passive: true, spawnOffset: point(-35, 40),
+    route: route({ id: 'nyx_ash_line_walk', jobKind: 'surveyor', durationS: 26, marks: [
+      mark('nyx_ash_line_a', 70, 80, 'activity:nyx-ash-line-a'),
+      mark('nyx_ash_line_b', -70, 80, 'activity:nyx-ash-line-b'),
+    ] }),
+  }),
+]);
+
+export const NYX_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: nyxBurnShiftId,
+    label: 'Burn Shift',
+    identity: Object.freeze({ zoneId: nyxFenceZone.id, stationId: stationNyx.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationNyx.id, zoneId: nyxFenceZone.id,
+      placeId: stationNyx.id, localPos: stationNyx.pos,
+    }),
+    actorSlots: nyxBurnShiftActors,
+    objectSlots: nyxBurnShiftObjects,
+    sectorId: NYX_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const NYX_POCKET_ACTOR_SLOT_ORDER = Object.freeze(NYX_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const NYX_ROUTE_TOPOLOGY = Object.freeze(NYX_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (NYX_POCKET_ACTOR_SLOT_ORDER.length !== NYX_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Nyx authored capacity mismatch: ${NYX_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(NYX_POCKET_ACTOR_SLOT_ORDER).size !== NYX_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Nyx authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(NYX_ACTIVITY_POCKETS, NYX_ROUTE_TOPOLOGY, 'Nyx');
+
+// Hyperion Cut — the saw shift: the operator who rides the kerf and the hauler who runs
+// the claim scale to the refinery.
+export const HYPERION_ACTIVITY_SECTOR_ID = 'sector_hyperion_cut';
+export const HYPERION_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const hyperionZones = requireArray(SECTOR_ZONES[HYPERION_ACTIVITY_SECTOR_ID], 'Hyperion sector zones');
+const hyperionAnchors = requireRecord(SECTOR_ANCHORS[HYPERION_ACTIVITY_SECTOR_ID], 'Hyperion sector anchors');
+const hyperionRefineryZone = findById(hyperionZones, 'zone_hyperion_refinery', 'Hyperion refinery zone');
+const stationHyperion = findById(hyperionAnchors.stations, 'station_hyperion_cut', 'Hyperion cut station anchor');
+assertSamePoint(stationHyperion.pos, hyperionRefineryZone.center, 'station_hyperion_cut / zone_hyperion_refinery');
+
+const hyperionSawShiftId = 'hyperion_saw_shift';
+
+const hyperionSawShiftObjects = Object.freeze([
+  objectSlot({
+    id: 'hyp_saw_head',
+    pocketId: hyperionSawShiftId,
+    kind: 'grave_shard',
+    offset: point(-50, 45),
+    runtimeOwner: 'world',
+    targetRef: 'object:hyp_saw_head',
+  }),
+]);
+
+const hyperionSawShiftActors = Object.freeze([
+  // Quarter arc, ~110 deg — the operator works around the saw track, never through it.
+  actor({
+    id: 'hyp_saw_operator', pocketId: hyperionSawShiftId, namespace: 'hyperion',
+    presentationRole: 'operator', jobKind: 'miner', passive: true, spawnOffset: point(-40, 50),
+    route: route({ id: 'hyp_saw_operator_walk', jobKind: 'miner', durationS: 34, marks: [
+      mark('hyp_op_track_face', -85, 60, 'activity:hyperion-saw-track'),
+      mark('hyp_op_head_check', 60, -95, 'object:hyp_saw_head'),
+    ] }),
+  }),
+  // Transit lane, ~160 deg — ore off the saw to the claim scale and out.
+  actor({
+    id: 'hyp_ore_runner', pocketId: hyperionSawShiftId, namespace: 'hyperion',
+    presentationRole: 'hauler', jobKind: 'hauler', passive: true, spawnOffset: point(50, -35),
+    route: route({ id: 'hyp_ore_scale_run', jobKind: 'hauler', durationS: 28, marks: [
+      mark('hyp_run_claim_leg', 110, 20, 'station:station_hyperion_claim'),
+      mark('hyp_run_saw_leg', -95, -40, 'activity:hyperion-saw-claim-scale'),
+    ] }),
+  }),
+]);
+
+export const HYPERION_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: hyperionSawShiftId,
+    label: 'Saw Shift',
+    identity: Object.freeze({ zoneId: hyperionRefineryZone.id, stationId: stationHyperion.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationHyperion.id, zoneId: hyperionRefineryZone.id,
+      placeId: stationHyperion.id, localPos: stationHyperion.pos,
+    }),
+    actorSlots: hyperionSawShiftActors,
+    objectSlots: hyperionSawShiftObjects,
+    sectorId: HYPERION_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const HYPERION_POCKET_ACTOR_SLOT_ORDER = Object.freeze(HYPERION_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const HYPERION_ROUTE_TOPOLOGY = Object.freeze(HYPERION_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (HYPERION_POCKET_ACTOR_SLOT_ORDER.length !== HYPERION_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Hyperion authored capacity mismatch: ${HYPERION_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(HYPERION_POCKET_ACTOR_SLOT_ORDER).size !== HYPERION_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Hyperion authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(HYPERION_ACTIVITY_POCKETS, HYPERION_ROUTE_TOPOLOGY, 'Hyperion');
+
+// Orcus Shadow — the shelf watch: a lamp reader and the record carrier between the posts.
+export const ORCUS_ACTIVITY_SECTOR_ID = 'sector_orcus_shadow';
+export const ORCUS_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const orcusZones = requireArray(SECTOR_ZONES[ORCUS_ACTIVITY_SECTOR_ID], 'Orcus sector zones');
+const orcusAnchors = requireRecord(SECTOR_ANCHORS[ORCUS_ACTIVITY_SECTOR_ID], 'Orcus sector anchors');
+const orcusResearchZone = findById(orcusZones, 'zone_orcus_research', 'Orcus research zone');
+const stationOrcus = findById(orcusAnchors.stations, 'station_orcus_shadow', 'Orcus shadow station anchor');
+assertSamePoint(stationOrcus.pos, orcusResearchZone.center, 'station_orcus_shadow / zone_orcus_research');
+
+const orcusShelfWatchId = 'orcus_shelf_watch';
+
+const orcusShelfWatchObjects = Object.freeze([
+  objectSlot({
+    id: 'orcus_lamp_shelf',
+    pocketId: orcusShelfWatchId,
+    kind: 'cargo_staging_pod',
+    offset: point(45, -55),
+    runtimeOwner: 'world',
+    targetRef: 'object:orcus_lamp_shelf',
+  }),
+]);
+
+const orcusShelfWatchActors = Object.freeze([
+  // Slow wide oblique, ~140 deg — the reader walks the shelf line between the two lamp posts.
+  actor({
+    id: 'orcus_lamp_reader', pocketId: orcusShelfWatchId, namespace: 'orcus',
+    presentationRole: 'reader', jobKind: 'surveyor', passive: true, spawnOffset: point(-45, 35),
+    route: route({ id: 'orcus_shelf_walk', jobKind: 'surveyor', durationS: 38, marks: [
+      mark('orcus_shelf_lamp_a', -80, 75, 'object:orcus_lamp_shelf'),
+      mark('orcus_shelf_lamp_b', 95, -55, 'activity:orcus-far-lamp'),
+    ] }),
+  }),
+  // Tight wedge, ~65 deg — the record carrier cycles the near shelf only.
+  actor({
+    id: 'orcus_record_carrier', pocketId: orcusShelfWatchId, namespace: 'orcus',
+    presentationRole: 'courier', jobKind: 'hauler', passive: true, spawnOffset: point(35, -45),
+    route: route({ id: 'orcus_record_loop', jobKind: 'hauler', durationS: 24, marks: [
+      mark('orcus_record_shelf_leg', 105, 55, 'object:orcus_lamp_shelf'),
+      mark('orcus_record_post_leg', -30, 115, 'activity:orcus-lamp-post'),
+    ] }),
+  }),
+]);
+
+export const ORCUS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: orcusShelfWatchId,
+    label: 'Shelf Watch',
+    identity: Object.freeze({ zoneId: orcusResearchZone.id, stationId: stationOrcus.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationOrcus.id, zoneId: orcusResearchZone.id,
+      placeId: stationOrcus.id, localPos: stationOrcus.pos,
+    }),
+    actorSlots: orcusShelfWatchActors,
+    objectSlots: orcusShelfWatchObjects,
+    sectorId: ORCUS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const ORCUS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(ORCUS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const ORCUS_ROUTE_TOPOLOGY = Object.freeze(ORCUS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (ORCUS_POCKET_ACTOR_SLOT_ORDER.length !== ORCUS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Orcus authored capacity mismatch: ${ORCUS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(ORCUS_POCKET_ACTOR_SLOT_ORDER).size !== ORCUS_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Orcus authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(ORCUS_ACTIVITY_POCKETS, ORCUS_ROUTE_TOPOLOGY, 'Orcus');
+
+// Haumea Rift — the rift watch: a fissure reader and the ice cutter who keeps the lip clear.
+export const HAUMEA_ACTIVITY_SECTOR_ID = 'sector_haumea_rift';
+export const HAUMEA_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const haumeaZones = requireArray(SECTOR_ZONES[HAUMEA_ACTIVITY_SECTOR_ID], 'Haumea sector zones');
+const haumeaAnchors = requireRecord(SECTOR_ANCHORS[HAUMEA_ACTIVITY_SECTOR_ID], 'Haumea sector anchors');
+const haumeaObsZone = findById(haumeaZones, 'zone_haumea_obs', 'Haumea observatory zone');
+const stationHaumea = findById(haumeaAnchors.stations, 'station_haumea_rift', 'Haumea rift station anchor');
+assertSamePoint(stationHaumea.pos, haumeaObsZone.center, 'station_haumea_rift / zone_haumea_obs');
+
+const haumeaRiftWatchId = 'haumea_rift_watch';
+
+const haumeaRiftWatchObjects = Object.freeze([
+  objectSlot({
+    id: 'haumea_fracture_pod',
+    pocketId: haumeaRiftWatchId,
+    kind: 'cargo_staging_pod',
+    offset: point(-55, -35),
+    runtimeOwner: 'world',
+    targetRef: 'object:haumea_fracture_pod',
+  }),
+]);
+
+const haumeaRiftWatchActors = Object.freeze([
+  // Wide oblique, ~135 deg — the reader's pulse circuit walks observatory to fissure bearing.
+  actor({
+    id: 'haumea_fissure_reader', pocketId: haumeaRiftWatchId, namespace: 'haumea',
+    presentationRole: 'reader', jobKind: 'surveyor', passive: true, spawnOffset: point(45, 40),
+    route: route({ id: 'haumea_pulse_circuit', jobKind: 'surveyor', durationS: 36, marks: [
+      mark('haumea_pulse_fissure_leg', -115, 35, 'activity:haumea-fissure-bearing'),
+      mark('haumea_pulse_obs_leg', 100, -50, 'station:station_haumea_rift:service-berth'),
+    ] }),
+  }),
+  // Tight wedge, ~75 deg — the cutter works the ice lip in close, repeated bites.
+  actor({
+    id: 'haumea_ice_cutter', pocketId: haumeaRiftWatchId, namespace: 'haumea',
+    presentationRole: 'cutter', jobKind: 'miner', passive: true, spawnOffset: point(-30, -50),
+    route: route({ id: 'haumea_lip_cut_loop', jobKind: 'miner', durationS: 27, marks: [
+      mark('haumea_lip_cut_a', 60, 95, 'activity:haumea-lip-face'),
+      mark('haumea_lip_cut_b', -95, 65, 'activity:haumea-lip-face-b'),
+    ] }),
+  }),
+]);
+
+export const HAUMEA_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: haumeaRiftWatchId,
+    label: 'Rift Watch',
+    identity: Object.freeze({ zoneId: haumeaObsZone.id, stationId: stationHaumea.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationHaumea.id, zoneId: haumeaObsZone.id,
+      placeId: stationHaumea.id, localPos: stationHaumea.pos,
+    }),
+    actorSlots: haumeaRiftWatchActors,
+    objectSlots: haumeaRiftWatchObjects,
+    sectorId: HAUMEA_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const HAUMEA_POCKET_ACTOR_SLOT_ORDER = Object.freeze(HAUMEA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const HAUMEA_ROUTE_TOPOLOGY = Object.freeze(HAUMEA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (HAUMEA_POCKET_ACTOR_SLOT_ORDER.length !== HAUMEA_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Haumea authored capacity mismatch: ${HAUMEA_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(HAUMEA_POCKET_ACTOR_SLOT_ORDER).size !== HAUMEA_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Haumea authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(HAUMEA_ACTIVITY_POCKETS, HAUMEA_ROUTE_TOPOLOGY, 'Haumea');
+
+// Eris Margin — the sweep timing crew: a beat-keeper and the runner who crosses on the down.
+export const ERIS_ACTIVITY_SECTOR_ID = 'sector_eris_margin';
+export const ERIS_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const erisZones = requireArray(SECTOR_ZONES[ERIS_ACTIVITY_SECTOR_ID], 'Eris sector zones');
+const erisAnchors = requireRecord(SECTOR_ANCHORS[ERIS_ACTIVITY_SECTOR_ID], 'Eris sector anchors');
+const erisFenceZone = findById(erisZones, 'zone_eris_fence', 'Eris fence zone');
+const stationEris = findById(erisAnchors.stations, 'station_eris_margin', 'Eris margin station anchor');
+assertSamePoint(stationEris.pos, erisFenceZone.center, 'station_eris_margin / zone_eris_fence');
+
+const erisSweepShiftId = 'eris_sweep_shift';
+
+const erisSweepShiftObjects = Object.freeze([
+  objectSlot({
+    id: 'eris_tally_buoy',
+    pocketId: erisSweepShiftId,
+    kind: 'distress_beacon',
+    offset: point(-45, 50),
+    runtimeOwner: 'world',
+    targetRef: 'object:eris_tally_buoy',
+  }),
+]);
+
+const erisSweepShiftActors = Object.freeze([
+  // Parked wedge, ~50 deg — the beat-keeper barely moves; timing is the job, not the mileage.
+  actor({
+    id: 'eris_beat_keeper', pocketId: erisSweepShiftId, namespace: 'eris',
+    presentationRole: 'watcher', jobKind: 'patrol', passive: true, spawnOffset: point(-35, 30),
+    route: route({ id: 'eris_beat_watch', jobKind: 'patrol', durationS: 44, marks: [
+      mark('eris_beat_metronome_line', -60, 95, 'object:eris_tally_buoy'),
+      mark('eris_beat_down_leg', -95, 70, 'activity:eris-down-beat'),
+    ] }),
+  }),
+  // Transit lane, ~175 deg — the margin runner times the sweep and crosses full-length.
+  actor({
+    id: 'eris_margin_runner', pocketId: erisSweepShiftId, namespace: 'eris',
+    presentationRole: 'courier', jobKind: 'hauler', passive: true, spawnOffset: point(50, -30),
+    route: route({ id: 'eris_margin_crossing', jobKind: 'hauler', durationS: 25, marks: [
+      mark('eris_cross_fence_leg', 105, -40, 'station:station_eris_margin:service-berth'),
+      mark('eris_cross_fog_leg', -110, 30, 'activity:eris-fog-crossing'),
+    ] }),
+  }),
+]);
+
+export const ERIS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: erisSweepShiftId,
+    label: 'Sweep Shift',
+    identity: Object.freeze({ zoneId: erisFenceZone.id, stationId: stationEris.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationEris.id, zoneId: erisFenceZone.id,
+      placeId: stationEris.id, localPos: stationEris.pos,
+    }),
+    actorSlots: erisSweepShiftActors,
+    objectSlots: erisSweepShiftObjects,
+    sectorId: ERIS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const ERIS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(ERIS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const ERIS_ROUTE_TOPOLOGY = Object.freeze(ERIS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (ERIS_POCKET_ACTOR_SLOT_ORDER.length !== ERIS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Eris authored capacity mismatch: ${ERIS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(ERIS_POCKET_ACTOR_SLOT_ORDER).size !== ERIS_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Eris authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(ERIS_ACTIVITY_POCKETS, ERIS_ROUTE_TOPOLOGY, 'Eris');
+
+// Nereid Shoal — the sled shift: the runner who takes the channel and the cutter who feeds it.
+export const NEREID_ACTIVITY_SECTOR_ID = 'sector_nereid_shoal';
+export const NEREID_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const nereidZones = requireArray(SECTOR_ZONES[NEREID_ACTIVITY_SECTOR_ID], 'Nereid sector zones');
+const nereidAnchors = requireRecord(SECTOR_ANCHORS[NEREID_ACTIVITY_SECTOR_ID], 'Nereid sector anchors');
+const nereidCoreZone = findById(nereidZones, 'zone_nereid_core', 'Nereid core zone');
+const stationNereid = findById(nereidAnchors.stations, 'station_nereid', 'Nereid waystation anchor');
+assertSamePoint(stationNereid.pos, nereidCoreZone.center, 'station_nereid / zone_nereid_core');
+
+const nereidSledShiftId = 'nereid_sled_shift';
+
+const nereidSledShiftObjects = Object.freeze([
+  objectSlot({
+    id: 'nereid_scale_pod',
+    pocketId: nereidSledShiftId,
+    kind: 'cargo_staging_pod',
+    offset: point(60, -45),
+    runtimeOwner: 'world',
+    targetRef: 'object:nereid_scale_pod',
+  }),
+]);
+
+const nereidSledShiftActors = Object.freeze([
+  // Transit lane, ~175 deg — the sled run is one straight channel, scale to cut face.
+  actor({
+    id: 'nereid_sled_runner', pocketId: nereidSledShiftId, namespace: 'nereid',
+    presentationRole: 'hauler', jobKind: 'hauler', passive: true, spawnOffset: point(40, -40),
+    route: route({ id: 'nereid_sled_channel_run', jobKind: 'hauler', durationS: 26, marks: [
+      mark('nereid_sled_scale_leg', 115, -20, 'object:nereid_scale_pod'),
+      mark('nereid_sled_face_leg', -105, 45, 'activity:nereid-ice-face'),
+    ] }),
+  }),
+  // Tight wedge, ~80 deg — the cutter works the face the sled just emptied.
+  actor({
+    id: 'nereid_ice_cutter', pocketId: nereidSledShiftId, namespace: 'nereid',
+    presentationRole: 'cutter', jobKind: 'miner', passive: true, spawnOffset: point(-45, -30),
+    route: route({ id: 'nereid_face_cut_loop', jobKind: 'miner', durationS: 31, marks: [
+      mark('nereid_face_bite_a', -70, -90, 'activity:nereid-ice-face'),
+      mark('nereid_face_bite_b', -20, -115, 'activity:nereid-ice-face-b'),
+    ] }),
+  }),
+]);
+
+export const NEREID_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: nereidSledShiftId,
+    label: 'Sled Shift',
+    identity: Object.freeze({ zoneId: nereidCoreZone.id, stationId: stationNereid.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationNereid.id, zoneId: nereidCoreZone.id,
+      placeId: stationNereid.id, localPos: stationNereid.pos,
+    }),
+    actorSlots: nereidSledShiftActors,
+    objectSlots: nereidSledShiftObjects,
+    sectorId: NEREID_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const NEREID_POCKET_ACTOR_SLOT_ORDER = Object.freeze(NEREID_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const NEREID_ROUTE_TOPOLOGY = Object.freeze(NEREID_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (NEREID_POCKET_ACTOR_SLOT_ORDER.length !== NEREID_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Nereid authored capacity mismatch: ${NEREID_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(NEREID_POCKET_ACTOR_SLOT_ORDER).size !== NEREID_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Nereid authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(NEREID_ACTIVITY_POCKETS, NEREID_ROUTE_TOPOLOGY, 'Nereid');
+
+// Proteus Well — the well sound: the pulse reader and the den runner who files the echo.
+export const PROTEUS_ACTIVITY_SECTOR_ID = 'sector_proteus_well';
+export const PROTEUS_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const proteusZones = requireArray(SECTOR_ZONES[PROTEUS_ACTIVITY_SECTOR_ID], 'Proteus sector zones');
+const proteusAnchors = requireRecord(SECTOR_ANCHORS[PROTEUS_ACTIVITY_SECTOR_ID], 'Proteus sector anchors');
+const proteusDenZone = findById(proteusZones, 'zone_proteus_den', 'Proteus den zone');
+const stationProteus = findById(proteusAnchors.stations, 'station_proteus', 'Proteus den station anchor');
+assertSamePoint(stationProteus.pos, proteusDenZone.center, 'station_proteus / zone_proteus_den');
+
+const proteusWellSoundId = 'proteus_well_sound';
+
+const proteusWellSoundObjects = Object.freeze([
+  objectSlot({
+    id: 'proteus_echo_log',
+    pocketId: proteusWellSoundId,
+    kind: 'cargo_staging_pod',
+    offset: point(-50, 55),
+    runtimeOwner: 'world',
+    targetRef: 'object:proteus_echo_log',
+  }),
+]);
+
+const proteusWellSoundActors = Object.freeze([
+  // Quarter arc, ~105 deg — the reader circles the well mouth; you sound around a well,
+  // never down it.
+  actor({
+    id: 'proteus_well_reader', pocketId: proteusWellSoundId, namespace: 'proteus',
+    presentationRole: 'reader', jobKind: 'surveyor', passive: true, spawnOffset: point(-40, 45),
+    route: route({ id: 'proteus_well_circle', jobKind: 'surveyor', durationS: 37, marks: [
+      mark('proteus_sound_mouth_leg', -85, 70, 'activity:proteus-well-mouth'),
+      mark('proteus_sound_den_leg', 100, 55, 'object:proteus_echo_log'),
+    ] }),
+  }),
+  // Transit lane, ~165 deg — the den run: findings filed before anyone else hears them.
+  actor({
+    id: 'proteus_den_runner', pocketId: proteusWellSoundId, namespace: 'proteus',
+    presentationRole: 'courier', jobKind: 'hauler', passive: true, spawnOffset: point(50, -35),
+    route: route({ id: 'proteus_den_filing_run', jobKind: 'hauler', durationS: 29, marks: [
+      mark('proteus_den_desk_leg', 110, -30, 'station:station_proteus:service-berth'),
+      mark('proteus_den_well_leg', -105, -45, 'activity:proteus-well-mouth'),
+    ] }),
+  }),
+]);
+
+export const PROTEUS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: proteusWellSoundId,
+    label: 'Well Sound',
+    identity: Object.freeze({ zoneId: proteusDenZone.id, stationId: stationProteus.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationProteus.id, zoneId: proteusDenZone.id,
+      placeId: stationProteus.id, localPos: stationProteus.pos,
+    }),
+    actorSlots: proteusWellSoundActors,
+    objectSlots: proteusWellSoundObjects,
+    sectorId: PROTEUS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const PROTEUS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(PROTEUS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const PROTEUS_ROUTE_TOPOLOGY = Object.freeze(PROTEUS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (PROTEUS_POCKET_ACTOR_SLOT_ORDER.length !== PROTEUS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Proteus authored capacity mismatch: ${PROTEUS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(PROTEUS_POCKET_ACTOR_SLOT_ORDER).size !== PROTEUS_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Proteus authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(PROTEUS_ACTIVITY_POCKETS, PROTEUS_ROUTE_TOPOLOGY, 'Proteus');
+
+// Triton Wake — the kite watch: the keeper who minds the kite line and the courier who rides
+// the glow band off the lane.
+export const TRITON_ACTIVITY_SECTOR_ID = 'sector_triton_wake';
+export const TRITON_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const tritonZones = requireArray(SECTOR_ZONES[TRITON_ACTIVITY_SECTOR_ID], 'Triton sector zones');
+const tritonAnchors = requireRecord(SECTOR_ANCHORS[TRITON_ACTIVITY_SECTOR_ID], 'Triton sector anchors');
+const tritonLabZone = findById(tritonZones, 'zone_triton_lab', 'Triton lab zone');
+const stationTriton = findById(tritonAnchors.stations, 'station_triton', 'Triton research post anchor');
+assertSamePoint(stationTriton.pos, tritonLabZone.center, 'station_triton / zone_triton_lab');
+
+const tritonKiteWatchId = 'triton_kite_watch';
+
+const tritonKiteWatchObjects = Object.freeze([
+  objectSlot({
+    id: 'triton_kite_anchor',
+    pocketId: tritonKiteWatchId,
+    kind: 'distress_beacon',
+    offset: point(55, 50),
+    runtimeOwner: 'world',
+    targetRef: 'object:triton_kite_anchor',
+  }),
+]);
+
+const tritonKiteWatchActors = Object.freeze([
+  // Tight wedge, ~60 deg — the kite keeper minds the line anchor; the kite does the flying.
+  actor({
+    id: 'triton_kite_keeper', pocketId: tritonKiteWatchId, namespace: 'triton',
+    presentationRole: 'keeper', jobKind: 'surveyor', passive: true, spawnOffset: point(35, 45),
+    route: route({ id: 'triton_kite_line_walk', jobKind: 'surveyor', durationS: 40, marks: [
+      mark('triton_kite_line_a', 95, 70, 'object:triton_kite_anchor'),
+      mark('triton_kite_line_b', 30, 115, 'activity:triton-glow-band'),
+    ] }),
+  }),
+  // Wide oblique, ~150 deg — the wake courier rides the glow band's long diagonal.
+  actor({
+    id: 'triton_wake_courier', pocketId: tritonKiteWatchId, namespace: 'triton',
+    presentationRole: 'courier', jobKind: 'hauler', passive: true, spawnOffset: point(-50, -40),
+    route: route({ id: 'triton_wake_band_run', jobKind: 'hauler', durationS: 32, marks: [
+      mark('triton_band_up_leg', -115, -25, 'activity:triton-glow-band'),
+      mark('triton_band_post_leg', 118, 32, 'station:station_triton:service-berth'),
+    ] }),
+  }),
+]);
+
+export const TRITON_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: tritonKiteWatchId,
+    label: 'Kite Watch',
+    identity: Object.freeze({ zoneId: tritonLabZone.id, stationId: stationTriton.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationTriton.id, zoneId: tritonLabZone.id,
+      placeId: stationTriton.id, localPos: stationTriton.pos,
+    }),
+    actorSlots: tritonKiteWatchActors,
+    objectSlots: tritonKiteWatchObjects,
+    sectorId: TRITON_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const TRITON_POCKET_ACTOR_SLOT_ORDER = Object.freeze(TRITON_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const TRITON_ROUTE_TOPOLOGY = Object.freeze(TRITON_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (TRITON_POCKET_ACTOR_SLOT_ORDER.length !== TRITON_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Triton authored capacity mismatch: ${TRITON_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(TRITON_POCKET_ACTOR_SLOT_ORDER).size !== TRITON_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Triton authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(TRITON_ACTIVITY_POCKETS, TRITON_ROUTE_TOPOLOGY, 'Triton');
+
+// Eunomia Gulf — the license shift: the cutter who plates the wreck and the clerk whose
+// stamp makes it nobody's dispute.
+export const EUNOMIA_ACTIVITY_SECTOR_ID = 'sector_eunomia_gulf';
+export const EUNOMIA_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const eunomiaZones = requireArray(SECTOR_ZONES[EUNOMIA_ACTIVITY_SECTOR_ID], 'Eunomia sector zones');
+const eunomiaAnchors = requireRecord(SECTOR_ANCHORS[EUNOMIA_ACTIVITY_SECTOR_ID], 'Eunomia sector anchors');
+const eunomiaFenceZone = findById(eunomiaZones, 'zone_eunomia_fence', 'Eunomia fence zone');
+const stationEunomia = findById(eunomiaAnchors.stations, 'station_eunomia', 'Eunomia fence station anchor');
+assertSamePoint(stationEunomia.pos, eunomiaFenceZone.center, 'station_eunomia / zone_eunomia_fence');
+
+const eunomiaLicenseShiftId = 'eunomia_license_shift';
+
+const eunomiaLicenseShiftObjects = Object.freeze([
+  objectSlot({
+    id: 'eunomia_stamp_block',
+    pocketId: eunomiaLicenseShiftId,
+    kind: 'cargo_staging_pod',
+    offset: point(-55, -50),
+    runtimeOwner: 'world',
+    targetRef: 'object:eunomia_stamp_block',
+  }),
+]);
+
+const eunomiaLicenseShiftActors = Object.freeze([
+  // Quarter arc, ~115 deg — the plate cutter works around the block, wreck side to seal side.
+  actor({
+    id: 'eunomia_plate_cutter', pocketId: eunomiaLicenseShiftId, namespace: 'eunomia',
+    presentationRole: 'cutter', jobKind: 'salvor', passive: true, spawnOffset: point(-45, -40),
+    route: route({ id: 'eunomia_plate_cut_loop', jobKind: 'salvor', durationS: 35, marks: [
+      mark('eunomia_cut_wreck_leg', -100, 60, 'activity:eunomia-wreck-side'),
+      mark('eunomia_cut_block_leg', 90, -70, 'object:eunomia_stamp_block'),
+    ] }),
+  }),
+  // Tight wedge, ~55 deg — the stamp never travels: the clerk checks each plate on the block.
+  actor({
+    id: 'eunomia_stamp_clerk', pocketId: eunomiaLicenseShiftId, namespace: 'eunomia',
+    presentationRole: 'clerk', jobKind: 'patrol', passive: true, spawnOffset: point(30, -55),
+    route: route({ id: 'eunomia_stamp_walk', jobKind: 'patrol', durationS: 42, marks: [
+      mark('eunomia_stamp_ledger_leg', 115, 30, 'activity:eunomia-ledger-poi'),
+      mark('eunomia_stamp_seal_leg', -75, -90, 'object:eunomia_stamp_block'),
+    ] }),
+  }),
+]);
+
+export const EUNOMIA_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: eunomiaLicenseShiftId,
+    label: 'License Shift',
+    identity: Object.freeze({ zoneId: eunomiaFenceZone.id, stationId: stationEunomia.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationEunomia.id, zoneId: eunomiaFenceZone.id,
+      placeId: stationEunomia.id, localPos: stationEunomia.pos,
+    }),
+    actorSlots: eunomiaLicenseShiftActors,
+    objectSlots: eunomiaLicenseShiftObjects,
+    sectorId: EUNOMIA_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const EUNOMIA_POCKET_ACTOR_SLOT_ORDER = Object.freeze(EUNOMIA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const EUNOMIA_ROUTE_TOPOLOGY = Object.freeze(EUNOMIA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+if (EUNOMIA_POCKET_ACTOR_SLOT_ORDER.length !== EUNOMIA_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Eunomia authored capacity mismatch: ${EUNOMIA_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(EUNOMIA_POCKET_ACTOR_SLOT_ORDER).size !== EUNOMIA_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Eunomia authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(EUNOMIA_ACTIVITY_POCKETS, EUNOMIA_ROUTE_TOPOLOGY, 'Eunomia');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1778,6 +2448,15 @@ export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [VESTA_ACTIVITY_SECTOR_ID]: VESTA_ACTIVITY_POCKETS,
   [TETHYS_ACTIVITY_SECTOR_ID]: TETHYS_ACTIVITY_POCKETS,
   [SEDNA_ACTIVITY_SECTOR_ID]: SEDNA_ACTIVITY_POCKETS,
+  [NYX_ACTIVITY_SECTOR_ID]: NYX_ACTIVITY_POCKETS,
+  [HYPERION_ACTIVITY_SECTOR_ID]: HYPERION_ACTIVITY_POCKETS,
+  [ORCUS_ACTIVITY_SECTOR_ID]: ORCUS_ACTIVITY_POCKETS,
+  [HAUMEA_ACTIVITY_SECTOR_ID]: HAUMEA_ACTIVITY_POCKETS,
+  [ERIS_ACTIVITY_SECTOR_ID]: ERIS_ACTIVITY_POCKETS,
+  [NEREID_ACTIVITY_SECTOR_ID]: NEREID_ACTIVITY_POCKETS,
+  [PROTEUS_ACTIVITY_SECTOR_ID]: PROTEUS_ACTIVITY_POCKETS,
+  [TRITON_ACTIVITY_SECTOR_ID]: TRITON_ACTIVITY_POCKETS,
+  [EUNOMIA_ACTIVITY_SECTOR_ID]: EUNOMIA_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));

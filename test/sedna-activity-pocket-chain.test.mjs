@@ -43,6 +43,15 @@ import {
   TETHYS_ACTIVITY_SECTOR_ID,
   VESTA_ACTIVITY_POCKETS,
   VESTA_ACTIVITY_SECTOR_ID,
+  NYX_ACTIVITY_POCKETS,
+  HYPERION_ACTIVITY_POCKETS,
+  ORCUS_ACTIVITY_POCKETS,
+  HAUMEA_ACTIVITY_POCKETS,
+  ERIS_ACTIVITY_POCKETS,
+  NEREID_ACTIVITY_POCKETS,
+  PROTEUS_ACTIVITY_POCKETS,
+  TRITON_ACTIVITY_POCKETS,
+  EUNOMIA_ACTIVITY_POCKETS,
   activityActorSlotById,
   activityPocketById,
   activityPocketsForSector,
@@ -76,7 +85,17 @@ test('the activity-pocket registry includes Sedna Dark, and the older sectors ar
       + PALLAS_ACTIVITY_POCKETS.length
       + VESTA_ACTIVITY_POCKETS.length
       + TETHYS_ACTIVITY_POCKETS.length
-      + SEDNA_ACTIVITY_POCKETS.length,
+      + SEDNA_ACTIVITY_POCKETS.length
+      // AEP PR-2 wave-2 rim sectors — one pocket each.
+      + NYX_ACTIVITY_POCKETS.length
+      + HYPERION_ACTIVITY_POCKETS.length
+      + ORCUS_ACTIVITY_POCKETS.length
+      + HAUMEA_ACTIVITY_POCKETS.length
+      + ERIS_ACTIVITY_POCKETS.length
+      + NEREID_ACTIVITY_POCKETS.length
+      + PROTEUS_ACTIVITY_POCKETS.length
+      + TRITON_ACTIVITY_POCKETS.length
+      + EUNOMIA_ACTIVITY_POCKETS.length,
   );
   assert.equal(activityPocketsForSector('sector_sedna_dark').length, 2);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
