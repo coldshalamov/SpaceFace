@@ -117,6 +117,15 @@ test('parseArgs keeps a bounded hull x viewport matrix, and --gate replaces its 
   assert.throws(() => gatePasses(parseArgs(['--mode=swarm', '--gate=nope'])), /--gate must be/);
 });
 
+test('a closed browser records the chrome exit signal in the stop line', async () => {
+  const { formatRouteFailure } = await import('../scripts/player-truth/run.mjs');
+  const line = formatRouteFailure('page.evaluate: Target page, context or browser has been closed', { notes: ['page closed'], exitCode: null, signal: 'SIGKILL' });
+  assert.match(line, /^harness\/route error: page\.evaluate: Target page/);
+  assert.match(line, /page closed/);
+  assert.match(line, /chrome exit null signal SIGKILL/);
+  assert.equal(formatRouteFailure('menu missing'), 'harness/route error: menu missing');
+});
+
 test('gate process exits non-zero when any verdict is FAIL', async () => {
   const { gateExitCode } = await import('../scripts/player-truth/run.mjs');
   assert.equal(gateExitCode(['PASS']), 0);

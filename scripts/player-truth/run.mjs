@@ -70,6 +70,15 @@ export function gatePasses(args) {
   throw new Error(`--gate must be idle, active, or omitted for both (got ${which})`);
 }
 
+/** One line when the route dies. A SwiftShader OOM often SIGKILLs Chrome before Playwright's close events flush, so the exit code and signal are part of the line. */
+export function formatRouteFailure(message, { notes = [], exitCode = null, signal = null } = {}) {
+  const head = String(message || 'unknown').split('\n')[0].slice(0, 180);
+  const bits = notes.map((n) => String(n).replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (exitCode != null || signal) bits.push(`chrome exit ${exitCode == null ? 'null' : exitCode} signal ${signal || 'none'}`);
+  const extra = bits.length ? ` [${bits.join(' | ')}]` : '';
+  return `harness/route error: ${head}${extra}`.slice(0, 400);
+}
+
 /** Process status for a finished matrix: 1 if any verdict is FAIL, 2 if any is not PASS, else 0. */
 export function gateExitCode(verdicts) {
   if (verdicts.some((v) => v === 'FAIL')) return 1;
@@ -286,9 +295,12 @@ async function runOne(args, arena, extra = {}) {
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
   } catch (err) {
-    const head = String(err && err.message || err).split('\n')[0].slice(0, 180);
-    const extra = browserNotes.length ? ` [${browserNotes.join(' | ')}]` : '';
-    stopReason = `harness/route error: ${head}${extra}`.slice(0, 400);
+    if (child) {
+      await new Promise((r) => setTimeout(r, 400));
+      if (child.exitCode != null || child.signalCode) note(`chrome exit ${child.exitCode} signal ${child.signalCode || 'none'}`);
+      else if (typeof browser.isConnected === 'function' && !browser.isConnected()) note('browser not connected');
+    }
+    stopReason = formatRouteFailure(err && err.message || err, { notes: browserNotes });
     trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
     if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
     console.error(err);
