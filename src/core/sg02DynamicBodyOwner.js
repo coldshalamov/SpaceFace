@@ -4774,8 +4774,22 @@ function bodyStateMatchesEntity(rec, entity, frameOrigin, frameScratch) {
   const bodyYaw = wrapAngle(yawFromQuat(q));
   return savedVx === finite(v && v.x)
     && savedVz === finite(v && v.z)
-    && savedYaw === bodyYaw
+    && (savedYaw === bodyYaw || fixedAuthoredYawMatches(rec.body, q, entity.rot))
     && finite(entity.angVel) === -finite(w && w.y);
+}
+
+// Fixed scenery is not projected back into scalar yaw after a native step. Rapier
+// stores the authored quaternion as f32; converting it back to atan2 need not equal
+// the original JS angle. Match that exact native representation, with no angular
+// tolerance and no scalar pose mutation. Dynamic and kinematic bodies keep their
+// stricter solved-yaw path above.
+function fixedAuthoredYawMatches(body, quaternion, yaw) {
+  if (!body.isFixed() || !quaternion || !Number.isFinite(yaw)) return false;
+  const expected = quatFromYaw(yaw);
+  return quaternion.x === Math.fround(expected.x)
+    && quaternion.y === Math.fround(expected.y)
+    && quaternion.z === Math.fround(expected.z)
+    && quaternion.w === Math.fround(expected.w);
 }
 
 function wrapAngle(value) {
