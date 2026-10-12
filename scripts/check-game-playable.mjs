@@ -866,6 +866,9 @@ try {
         await page.evaluate(() => {
           window.__gameStartedCount = 0;
           window.SF.bus.on('game:started', () => { window.__gameStartedCount += 1; });
+          window.__playableLoad = { stage: null, error: null };
+          window.SF.bus.on('game:loadingProgress', stage => { window.__playableLoad.stage = stage; });
+          window.SF.bus.on('save:error', error => { window.__playableLoad.error = error; });
         });
         // Press the real Continue button. mainMenu.js:254 reads the save index and emits
         // game:load with the latest slot; firing the event directly would skip the index lookup,
@@ -896,7 +899,30 @@ try {
         loaded = true;
         record('CONTINUE', true, 'loaded the save back into flight');
       } catch (err) {
-        record('CONTINUE', false, `Continue did not return to flight (stage: ${continueStage}): ` + err.message);
+        const resumed = await page.evaluate(async () => {
+          const st = window.SF?.state;
+          let worker = null;
+          try {
+            const reply = await window.SF?.laneRpc?.('probeState', {});
+            const result = reply?.result;
+            worker = result ? { tick: result.tick, simTime: result.simTime, mode: result.mode,
+              timeScale: result.timeScale, timeEffects: result.timeEffects, skipFullTick: result.skipFullTick,
+              ui: result.ui, render: result.render, saveDiag: result.saveDiag,
+              gameStartedEmits: result.gameStartedEmits, lastRpcAck: result.lastRpcAck } : null;
+          } catch (_) { /* the frozen route may have no responding worker */ }
+          return { tick: st?.tick, simTime: st?.simTime, mode: st?.mode, paused: st?.ui?.paused,
+            timeScale: st?.timeScale, timeEffects: window.SF?.timeEffects?.describeRequests?.(),
+            docked: st?.ui?.docked, screenStack: st?.ui?.screenStack,
+            sectorShellAdmission: st?.render?.sectorShellAdmission, loading: window.__playableLoad,
+            loop: { lifecycle: window.SF?.loop?.getLifecycleState?.(), suspended: window.SF?.loop?.isSuspended?.(),
+              diagnostics: window.SF?.loop?.getDiagnostics?.() },
+            veils: [...document.querySelectorAll('#boot-overlay, .sf-loading, #sf-loading, [data-screen="loading"]')]
+              .map(el => ({ id: el.id, display: getComputedStyle(el).display, visible: !!el.getClientRects().length })),
+            topScreen: st?.ui?.topScreen, worker, lane: window.SF?.simLaneDiag?.(),
+            screens: [...document.querySelectorAll('[data-screen]')].filter(el => el.getClientRects().length)
+              .map(el => el.dataset.screen) };
+        }).catch(() => null);
+        record('CONTINUE', false, `Continue did not return to flight (stage: ${continueStage}): ${err.message} — ${JSON.stringify(resumed)}`);
       }
       if (loaded) await assertPlayable(page, '~LOAD');
       else for (const step of ['PILOT', 'HULL', 'WORLD', 'CONTROLS']) record(step + '~LOAD', false, 'skipped (Continue failed)');
