@@ -433,6 +433,10 @@ export const physics = {
     if (!live()) return false;
     const activity = ensureActivityClassified(state);
     const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
+    // Match the synchronous restore: recoil selects the body type and saved pose
+    // before native adoption or fallback rebuild claims the regenerated entities.
+    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
+    this._pendingAnchoredRecoil = null;
     let adopted = false;
     let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
