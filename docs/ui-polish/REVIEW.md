@@ -37,7 +37,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
-| `codex` / `codex-record` | SURVEYED | |
+| **`codex`** / **`codex-record`** | **DONE** | See § Codex below — this session |
 | `mission-log` / `missionLog` | SURVEYED | |
 | **`credits`** | **DONE** | See § Credits below — this session |
 | `achievements` | SURVEYED | |
@@ -174,7 +174,35 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/settingsLayouts.js` (CREDITS_CSS + `createReelProgress` label only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `codex` / `codex-record` on the player path, or `achievements` / `new-game`.
+**Next:** `codex` / `codex-record` — now DONE (see below).
+
+---
+
+## Codex — session notes (2026-10-12)
+
+**Before:** ORRERY Codex already strong (section ladder + entry rail + plate dial + unlock gauges). Gaps vs the polished settings/save-load/help/credits stack: CLOSE foot was plain `‹ CLOSE ESC` text (no keycap box / underline); subtitle, index labels, section tabs, locked cipher, filed/meta, empty notes, and search placeholder sat soft on void; no 1.12 composition zoom in the 1080p band; ladder/search rails and ticks read thin.
+
+**After (2 visual iterations, CSS only in `archiveLayouts.js` CODEX_CSS):**
+
+1. **Pass 1** — foot rail matched settings/save-load/help/credits (`‹ CLOSE` + ESC keycap box + underline); secondary copy contrast raised (≥ ~0.78–0.94); plate engraving brighter; 1.12 zoom @1080p band (1800–2199 × ≥1000).
+2. **Pass 2** — search rule + lens, section scale, entry rail, row ticks, wedge edge, and measure rule nudged brighter.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=codex --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 13 controls exercised (tabs, next, close); selectors/IDs unchanged. `codex-record` re-shot after the same CSS.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (Story / B0 @1080) | `docs/ui-polish/codex-before.png` |
+| Before (@720) | `docs/ui-polish/codex-before-720.png` |
+| After (Story / B0 @1080) | `docs/ui-polish/codex-after.png` |
+| After (@720) | `docs/ui-polish/codex-after-720.png` |
+| Before (Figures / The Record) | `docs/ui-polish/codex-record-before.png` |
+| After (Figures / The Record) | `docs/ui-polish/codex-record-after.png` |
+
+**Code touched:** `src/ui/orrery/archiveLayouts.js` (CODEX_CSS only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes. Mission-log CSS in the same file left alone this session.
+
+**Next:** `mission-log` / `missionLog`, or `achievements` / `new-game`.
 
 ---
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
@@ -221,4 +249,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/cruciblePreparationLayouts.js`: ≤820px tall — stake mark hidden, pressure/yield single-line with tightened tracking, so tiles no longer clip.
 - `src/ui/orrery/saveLayouts.js`: save-load empty-state contrast (emph/detail/vacant/filmstrip), open-berth glow, settings-matched `‹ BACK` + ESC keycap foot rail, 1.12 zoom @1080p band. Game-over styles unchanged.
 - `src/ui/orrery/helpLayouts.js`: Help foot rail `‹ CLOSE` + ESC keycap; ladder/reading/search contrast; fixed broken search-rule CSS; reading shade deepened. Selectors/IDs unchanged.
+- `src/ui/orrery/archiveLayouts.js`: Codex foot keycap rail, secondary contrast, rail/tick brighten, 1080p zoom. Selectors/IDs unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.

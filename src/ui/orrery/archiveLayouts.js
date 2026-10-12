@@ -60,11 +60,11 @@ ${CX} { --cx-sections:134px; --cx-gap:44px; row-gap:clamp(24px, 4.4vh, 52px) !im
 /* the title band: the name and its line on the left, the archive's fill as dials on the right */
 ${CX} > .k-title { display:grid !important; grid-template-columns:minmax(0, auto) minmax(0, 1fr); grid-template-rows:auto auto; column-gap:48px; align-items:end; }
 ${CX} > .k-title > :not(.cx-index) { grid-column:1; }
-${CX} > .k-title > p { margin:10px 0 0 !important; font-size:15px !important; color:rgb(${BONE} / .74) !important; ${BODY} }
+${CX} > .k-title > p { margin:10px 0 0 !important; font-size:15px !important; color:rgb(${BONE} / .86) !important; ${BODY} }
 ${CX} > .k-title > .cx-index { grid-column:2; grid-row:1 / span 2; justify-self:end; align-self:end; }
 ${CX} .cx-index { display:grid !important; grid-template-columns:auto; justify-items:end; row-gap:8px; margin:0 !important; }
 ${CX} .cx-index[hidden] { display:none !important; }
-${CX} .cx-index__cap { ${LABEL} margin:0 !important; font-size: 12px !important; letter-spacing:.24em !important; color:rgb(${BONE} / .62) !important; }
+${CX} .cx-index__cap { ${LABEL} margin:0 !important; font-size: 12px !important; letter-spacing:.24em !important; color:rgb(${BONE} / .78) !important; }
 ${CX} .cx-index__list { display:flex !important; flex-wrap:nowrap; gap:0 clamp(2px, .8vw, 16px); margin:0 !important; }
 ${CX} .cx-index__item { position:relative; display:grid !important; grid-template-rows:58px auto; justify-items:center; width:clamp(80px, 6vw, 96px); margin:0 !important; }
 ${CX} .cx-index__dial { grid-row:1; grid-column:1; width:58px; height:58px; display:block; }
@@ -72,9 +72,9 @@ ${CX} .cx-index__dial > svg { width:100%; height:100%; }
 ${CX} .cx-index__n { grid-row:1; grid-column:1; align-self:center; justify-self:center; margin:0 !important; padding-top:2px; order:0 !important;
   font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 420 !important; font-weight:420 !important;
   font-size:16px !important; line-height:1 !important; letter-spacing:-.01em; font-variant-numeric:tabular-nums lining-nums; color:rgb(223 238 255) !important; text-shadow:none !important; white-space:nowrap; }
-${CX} .cx-index__of { font-size: 12px; font-variation-settings:"wdth" 100, "wght" 500; color:rgb(${BONE} / .66); margin-left:1px; }
+${CX} .cx-index__of { font-size: 12px; font-variation-settings:"wdth" 100, "wght" 500; color:rgb(${BONE} / .8); margin-left:1px; }
 ${CX} .cx-index__w { grid-row:2; grid-column:1; margin:4px 0 0 !important; ${LABEL} font-size: 12px !important; letter-spacing:.07em !important; line-height:1.25 !important;
-  color:rgb(${BONE} / .66) !important; text-align:center; text-wrap:balance; }
+  color:rgb(${BONE} / .8) !important; text-align:center; text-wrap:balance; }
 /* the dials fill once on arrival (reduced motion: they rest filled) */
 ${CX} .orr-arc-gauge__track { fill:none; stroke:rgb(${BONE} / .3); stroke-width:5; }
 ${CX} .orr-arc-gauge__trackglow { fill:none; stroke:rgb(${BONE} / .07); stroke-width:10; }
@@ -103,34 +103,34 @@ ${CX} > .k-hang > .cx-ladder[data-overflow="1"] { -webkit-mask-image:linear-grad
 ${CX} > .k-hang > .cx-wedge { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:0; }
 ${CX} .cx-wedge > svg { position:absolute; left:0; top:0; overflow:visible; }
 ${CX} .cx-wedge .cx-wedge__fan { stroke:none; }
-${CX} .cx-wedge .cx-wedge__edge { fill:none; stroke:rgb(${BONE} / .62); stroke-width:2; vector-effect:non-scaling-stroke; }
+${CX} .cx-wedge .cx-wedge__edge { fill:none; stroke:rgb(${BONE} / .78); stroke-width:2; vector-effect:non-scaling-stroke; }
 ${CX} .cx-wedge .cx-wedge__bloom { fill:none; stroke:rgb(${BONE} / .3); stroke-width:8; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 ${CX} .cx-wedge .cx-wedge__pip { fill:${INK}; }
 /* the search: a field of light on a ruled line, no box */
 ${CX} .cx-search .sf-codex-search { ${PLAIN} ${BODY} display:block; width:100% !important; min-height:0 !important; height:34px !important; box-sizing:border-box; padding:0 0 4px 26px !important;
   font-size:14px !important; color:${INK} !important; caret-color:${INK};
-  background:linear-gradient(0deg, rgb(${BONE} / .36) 1px, transparent 1px) 0 100% / 100% 100% no-repeat,
-    repeating-linear-gradient(90deg, rgb(${BONE} / .26) 0 1px, transparent 1px 12px) 0 100% / 100% 5px no-repeat !important; }
-${CX} .cx-search .sf-codex-search::placeholder { ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .64); opacity:1; }
+  background:linear-gradient(0deg, rgb(${BONE} / .52) 1px, transparent 1px) 0 100% / 100% 100% no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .4) 0 1px, transparent 1px 12px) 0 100% / 100% 5px no-repeat !important; }
+${CX} .cx-search .sf-codex-search::placeholder { ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .78); opacity:1; }
 ${CX} .cx-search .sf-codex-search:focus-visible { outline:none !important;
   background:linear-gradient(0deg, ${INK} 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat,
     repeating-linear-gradient(90deg, rgb(${BONE} / .4) 0 1px, transparent 1px 12px) 0 100% / 100% 5px no-repeat !important; }
 ${CX} .cx-search .sf-codex-search::-webkit-search-cancel-button { filter:grayscale(1) brightness(1.6); }
 /* a lens glyph drawn in two strokes of light before the field */
-${CX} .cx-search::before { content:""; position:absolute; left:2px; top:8px; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .7); pointer-events:none; }
-${CX} .cx-search::after { content:""; position:absolute; left:11px; top:18px; width:6px; height:1.5px; background:rgb(${BONE} / .7); transform:rotate(45deg); transform-origin:0 50%; pointer-events:none; }
+${CX} .cx-search::before { content:""; position:absolute; left:2px; top:8px; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .88); pointer-events:none; }
+${CX} .cx-search::after { content:""; position:absolute; left:11px; top:18px; width:6px; height:1.5px; background:rgb(${BONE} / .88); transform:rotate(45deg); transform-origin:0 50%; pointer-events:none; }
 /* the sections: caps graduations standing on the scale's right edge */
 ${CX} .sf-tabbar { ${PLAIN} display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; align-items:stretch !important; gap:0 !important; margin:0 !important; padding:4px 0 !important; list-style:none;
-  background:linear-gradient(90deg, transparent calc(100% - 2px), rgb(${BONE} / .56) calc(100% - 2px)) 0 0 / 100% 100% no-repeat,
-    linear-gradient(90deg, transparent calc(100% - 7px), rgb(${BONE} / .07) calc(100% - 7px)) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, rgb(${BONE} / .32) 0 1px, transparent 1px 8px) 100% 0 / 6px 100% no-repeat !important; }
+  background:linear-gradient(90deg, transparent calc(100% - 2px), rgb(${BONE} / .72) calc(100% - 2px)) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent calc(100% - 7px), rgb(${BONE} / .12) calc(100% - 7px)) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .46) 0 1px, transparent 1px 8px) 100% 0 / 6px 100% no-repeat !important; }
 ${CX} .sf-tabbar > li { display:block !important; margin:0 !important; padding:0 !important; }
 ${CX} .sf-tabbar .sf-tab { ${PLAIN} ${LABEL} position:relative; display:flex !important; justify-content:flex-end !important; align-items:center !important; width:100% !important;
   min-width:0 !important; min-height:0 !important; height:clamp(26px, 3.3vh, 34px) !important; box-sizing:border-box; padding:0 20px 0 0 !important; margin:0 !important;
-  font-size: 12px !important; letter-spacing:.16em !important; line-height:1 !important; color:rgb(${BONE} / .68) !important; text-align:right; cursor:pointer; text-shadow:none !important; }
+  font-size: 12px !important; letter-spacing:.16em !important; line-height:1 !important; color:rgb(${BONE} / .82) !important; text-align:right; cursor:pointer; text-shadow:none !important; }
 ${CX} .sf-tabbar .sf-tab::after { content:"" !important; display:block !important; position:absolute !important; right:0 !important; left:auto !important; top:50% !important; bottom:auto !important;
   width:12px !important; height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; opacity:1 !important;
-  background:rgb(${BONE} / .62) !important; border:0 !important; box-shadow:none !important; clip-path:none !important; }
+  background:rgb(${BONE} / .78) !important; border:0 !important; box-shadow:none !important; clip-path:none !important; }
 ${CX} .sf-tabbar .sf-tab::before { display:none !important; content:none !important; }
 ${CX} .sf-tabbar .sf-tab:is(:hover, :focus-visible) { color:rgb(255 255 255) !important; outline:none !important; }
 ${CX} .sf-tabbar .sf-tab:is(:hover, :focus-visible)::after { width:16px !important; background:${INK} !important; }
@@ -139,16 +139,16 @@ ${CX} .sf-tabbar .sf-tab[aria-current="true"]::after { width:20px !important; he
 ${CX} .sf-tabbar .sf-tab[aria-current="true"]:focus-visible { text-shadow:0 0 12px rgb(255 250 236 / .45) !important; }
 /* the open section's rail: a tick per entry, the section heads as long graduations */
 ${CX} .cx-ladder > .k-rows { position:relative; margin:0 !important; padding:2px 0 0 !important; list-style:none; min-height:calc(100% - 12px); box-sizing:border-box; ${PLAIN}
-  background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .56) 7px, rgb(${BONE} / .56) 9px, transparent 9px) 0 0 / 100% 100% no-repeat,
-    linear-gradient(90deg, transparent 3px, rgb(${BONE} / .07) 3px, rgb(${BONE} / .07) 13px, transparent 13px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 3px 0 / 4px 100% no-repeat !important; }
+  background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .72) 7px, rgb(${BONE} / .72) 9px, transparent 9px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 3px, rgb(${BONE} / .12) 3px, rgb(${BONE} / .12) 13px, transparent 13px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .42) 0 1px, transparent 1px 8px) 3px 0 / 4px 100% no-repeat !important; }
 ${CX} .cx-ladder .k-row { ${PLAIN} position:relative !important; display:flex !important; align-items:center; gap:10px; min-height:0 !important; height:auto !important;
   padding:6px 6px 6px 38px !important; margin:0 !important; color:rgb(${BONE} / .84) !important; cursor:pointer; }
 ${CX} .cx-ladder .k-row::after { display:none !important; content:none !important; }
 ${CX} .cx-ladder .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:3px !important; top:15px !important; width:10px !important; height:2px !important;
-  margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .64) !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:0 !important; }
+  margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .8) !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:0 !important; }
 ${CX} .cx-ladder .k-row > div { min-width:0; flex:1 1 auto; }
-${CX} .cx-ladder .k-row .k-row__name { ${BODY} display:block; font-size:14px !important; line-height:1.3 !important; font-weight:450; color:rgb(${BONE} / .86) !important;
+${CX} .cx-ladder .k-row .k-row__name { ${BODY} display:block; font-size:14px !important; line-height:1.3 !important; font-weight:450; color:rgb(${BONE} / .92) !important;
   white-space:normal; overflow:visible; text-wrap:balance; text-shadow:none !important; }
 ${CX} .cx-ladder .k-row .k-row__sub, ${CX} .cx-ladder .k-row .k-row__num { display:none !important; }
 ${CX} .cx-ladder .k-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 255 255) !important; }
@@ -160,14 +160,14 @@ ${CX} .cx-ladder .k-row.k-row--static { cursor:default; padding-top:14px !import
 ${CX} .cx-ladder .k-row.k-row--static:first-child { padding-top:4px !important; }
 ${CX} .cx-ladder .k-row.k-row--static::before { left:0 !important; width:14px !important; background:rgb(${BONE} / .66) !important; top:auto !important; bottom:calc(4px + .5em) !important; }
 ${CX} .cx-ladder .k-row.k-row--static .cx-count { margin-left:10px; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 480; font-size: 12px; letter-spacing:.04em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; }
-${CX} .cx-ladder .k-row.k-row--static .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .66) !important; text-shadow:none !important; margin:0 !important; }
-${CX} .cx-ladder .k-row.k-row--static > .k-38 { ${BODY} font-size:12.5px !important; color:rgb(${BONE} / .6) !important; white-space:normal; }
+${CX} .cx-ladder .k-row.k-row--static .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .8) !important; text-shadow:none !important; margin:0 !important; }
+${CX} .cx-ladder .k-row.k-row--static > .k-38 { ${BODY} font-size:12.5px !important; color:rgb(${BONE} / .78) !important; white-space:normal; }
 ${CX} .cx-ladder .k-row.k-row--static:has(> .k-38)::before { width:6px !important; background:rgb(${BONE} / .3) !important; top:50% !important; bottom:auto !important; }
 ${CX} .cx-ladder .k-row.k-row--static:has(> .k-38) { padding-top:4px !important; }
-${CX} .cx-ladder > .k-empty { ${BODY} margin:6px 0 0 !important; padding-left:38px; font-size:13px !important; color:rgb(${BONE} / .66) !important; }
+${CX} .cx-ladder > .k-empty { ${BODY} margin:6px 0 0 !important; padding-left:38px; font-size:13px !important; color:rgb(${BONE} / .8) !important; }
 /* a locked entry's name is cipher: the real words stay for assistive tech, the eye sees noise */
 ${CX} .cx-sr { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; margin:-1px !important; padding:0 !important; }
-${CX} .cx-cipher { color:rgb(${BONE} / .58); letter-spacing:.06em; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:.92em; }
+${CX} .cx-cipher { color:rgb(${BONE} / .72); letter-spacing:.06em; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:.92em; }
 ${CX} .cx-ladder .k-row[aria-selected="true"] .cx-cipher { color:rgb(${BONE} / .8); }
 ${CX} .cx-ladder .k-row .cx-code { color:rgb(${BONE} / .86); }
 ${CX} .cx-filed { color:rgb(252 250 244); }
@@ -213,7 +213,7 @@ ${CX}[data-plate="on"] > .k-stage { padding-bottom:calc(var(--cx-foot-gap, 0px) 
 ${CX} .cx-reader__num { display:flex; align-items:baseline; gap:12px; margin:0 0 6px !important; line-height:1; }
 ${CX} .cx-reader__num-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 230; font-weight:230;
   font-size:clamp(60px, 9.5vh, 108px); line-height:.82; letter-spacing:-.03em; color:rgb(223 238 255); font-variant-numeric:tabular-nums lining-nums; }
-${CX} .cx-reader__num-of { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-size:15px; letter-spacing:.06em; color:rgb(${BONE} / .7); }
+${CX} .cx-reader__num-of { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-size:15px; letter-spacing:.06em; color:rgb(${BONE} / .82); }
 ${CX} .cx-reader__turn-at { position:absolute !important; width:1px !important; min-width:0 !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; }
 ${CX} .sf-codex-entry > * { margin-right:0 !important; min-width:0; }
 ${CX} .sf-codex-entry > .cx-reader__mark { display:none !important; }
@@ -267,7 +267,7 @@ ${CX} .orr-arc-tick { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5; vec
 ${CX} .orr-arc-tick--hi { stroke:rgb(${BONE} / .8); stroke-width:2.5; }
 ${CX} .orr-arc-ring { fill:none; stroke:rgb(${BONE} / .4); stroke-width:2; vector-effect:non-scaling-stroke; }
 ${CX} .orr-arc-ring--rim { stroke:rgb(${BONE} / .7); stroke-width:3; }
-${CX} .orr-arc-engrave { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; letter-spacing:.3em; fill:rgb(${BONE} / .72); text-transform:uppercase; }
+${CX} .orr-arc-engrave { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; letter-spacing:.3em; fill:rgb(${BONE} / .84); text-transform:uppercase; }
 ${CX} .orr-arc-cipher { font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; letter-spacing:.16em; fill:rgb(${BONE} / .5); }
 ${CX} .orr-arc-drift { transform-box:view-box; transform-origin:50% 50%; animation:orr-drift 720s linear infinite; }
 /* the Hand: an amber blade across the ring, its bloom a wider stroke of the same light */
@@ -305,27 +305,27 @@ ${CX} .cx-plate.is-unlocking .orr-arc-now { animation:cx-flare-arc 1.6s var(--dp
 @keyframes cx-flare-arc { 0% { filter:drop-shadow(0 0 16px rgb(223 238 255)); } 100% { filter:none; } }
 @keyframes orr-arc-open { from { opacity:0; filter:blur(6px); } to { opacity:1; } }
 /* the words */
-${CX} .cx-reader__filed { ${LABEL} margin:2px 0 0 !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .66) !important; }
+${CX} .cx-reader__filed { ${LABEL} margin:2px 0 0 !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .8) !important; }
 ${CX} .sf-codex-entry > h2 { margin:12px 0 0 !important; }
 ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { ${DISPLAY} font-size:clamp(24px, min(2.1vw, 4vh), 40px) !important; line-height:1.04 !important;
   letter-spacing:.01em !important; color:rgb(242 237 226) !important; text-shadow:0 2px 18px rgb(0 0 0 / .5) !important; text-wrap:balance; }
 ${CX} .sf-codex-entry.is-locked > h2 .cx-cipher { font-family:inherit !important; letter-spacing:.04em; font-size:1em; color:rgb(${BONE} / .5); }
-${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { ${LABEL} margin:10px 0 0 !important; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .66) !important; }
+${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { ${LABEL} margin:10px 0 0 !important; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .82) !important; }
 ${CX} .sf-codex-entry :is(.sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; background-image:none !important; box-shadow:none !important; border-bottom:0 !important; }
 ${CX} .sf-codex-entry :is(.sf-entity-link, [data-entity]):is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .6) !important; text-underline-offset:4px; outline:none !important; }
 ${CX} .sf-codex-entry .k-measure { ${PLAIN} margin:22px 0 0 !important; padding:18px 0 0 !important; max-width:60ch !important; min-height:0 !important;
-  background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / .42)) 0 0 / 56px 1px no-repeat,
-    repeating-linear-gradient(90deg, rgb(${BONE} / .3) 0 1px, transparent 1px 8px) 0 0 / 160px 5px no-repeat !important; }
-${CX} .sf-codex-entry .k-measure .k-sentence { ${BODY} margin:0 0 .8em !important; font-size:16.5px !important; line-height:1.6 !important; color:rgb(${BONE} / .9) !important; font-style:normal !important; }
+  background:linear-gradient(90deg, rgb(${BONE} / .62), rgb(${BONE} / .62)) 0 0 / 56px 1px no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .44) 0 1px, transparent 1px 8px) 0 0 / 160px 5px no-repeat !important; }
+${CX} .sf-codex-entry .k-measure .k-sentence { ${BODY} margin:0 0 .8em !important; font-size:16.5px !important; line-height:1.6 !important; color:rgb(${BONE} / .94) !important; font-style:normal !important; }
 ${CX} .sf-codex-entry .k-measure .k-sentence.k-38 { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
 ${CX} .sf-codex-entry .k-measure .k-rule { height:1px !important; margin:16px 0 !important; border:0 !important; width:56px; background:rgb(${BONE} / .3) !important; }
-${CX} .sf-codex-entry .k-measure .k-sentence--emph, ${CX} .sf-codex-entry .k-measure .k-sentence--emph.k-bad { color:rgb(${BONE} / .76) !important; font-size:15px !important; }
+${CX} .sf-codex-entry .k-measure .k-sentence--emph, ${CX} .sf-codex-entry .k-measure .k-sentence--emph.k-bad { color:rgb(${BONE} / .86) !important; font-size:15px !important; }
 ${CX} .sf-codex-entry .k-measure .k-rows { margin:4px 0 12px !important; }
 ${CX} .sf-codex-entry .k-measure .k-row { ${PLAIN} display:grid !important; grid-template-columns:minmax(120px, 11em) minmax(0, 1fr) !important; column-gap:18px; min-height:0 !important; padding:6px 0 !important; cursor:default; }
 ${CX} .sf-codex-entry .k-measure .k-row > span:first-child { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .64) !important; padding-top:3px; }
 ${CX} .sf-codex-entry .k-measure .k-row .k-row__name { ${BODY} font-size:14.5px !important; color:${INK} !important; white-space:normal !important; }
 /* the cipher block a locked entry shows where its lore will be */
-${CX} .cx-cipher-block { margin:0 0 14px !important; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:14px; line-height:1.7; letter-spacing:.12em; color:rgb(${BONE} / .56); word-break:break-all; }
+${CX} .cx-cipher-block { margin:0 0 14px !important; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:14px; line-height:1.7; letter-spacing:.12em; color:rgb(${BONE} / .7); word-break:break-all; }
 /* the survey's readings */
 ${CX} #sf-codex-stage .st-ledger .st-sub-h { ${DISPLAY} font-size:clamp(24px, min(2.1vw, 4vh), 40px) !important; line-height:1.04 !important; letter-spacing:.01em !important; color:rgb(242 237 226) !important; }
 ${CX} .sf-codex-entry > .k-words--row { display:flex !important; flex-wrap:wrap; gap:14px 44px; margin:20px 0 0 !important; }
@@ -365,7 +365,7 @@ ${CX} .sf-codex-entry > ul.fh-cluster .fh-fine { ${BODY} min-height:0 !important
 ${verb(`${CX} .sf-codex-entry > ul.fh-cluster .k-word`)}
 ${CX} .sf-codex-entry > ul.fh-cluster .k-word::before { content:"›  "; color:rgb(${BONE} / .6); }
 ${CX} .sf-codex-entry.cx-archive > p.k-sentence { ${BODY} margin:18px 0 0 !important; font-size:16px !important; line-height:1.55; color:rgb(${BONE} / .86) !important; max-width:60ch; }
-/* the foot: one way back, a word */
+/* the foot: ‹ CLOSE + ESC keycap rail */
 ${CX} > .k-foot { align-items:center !important; min-height:0 !important; }
 /* the plate's sheen follows the pointer across its art */
 ${CX} .cx-plate__art::before { content:""; position:absolute; inset:0; z-index:1; border-radius:50%; pointer-events:none; opacity:0; transition:opacity .3s linear;
@@ -379,13 +379,19 @@ ${RCX} .cx-plate__art::before { transition:none !important; }
 ${RCX} :is(.cx-plate.is-unlocking .orr-arc-now, .cx-ladder .k-row.is-unlocking .k-row__name, .cx-plate.is-arriving .orr-arc-now) { animation:none !important; }
 ${RCX} .cx-plate.is-arriving > .cx-plate__art > img { animation:none !important; }
 ${RCX} .cx-plate.is-arriving .orr-arc-draw { animation:none !important; stroke-dashoffset:0; }
-${verb(`${CX} > .k-foot .sf-back.k-word`)}
-${CX} > .k-foot .sf-back.k-word { font-size:12px !important; }
+/* the foot: ‹ CLOSE + ESC keycap (matches settings/save-load/help/credits) */
+${CX} > .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${CX} > .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${CX} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${CX} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${CX} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 ${CX} .cx-index__num.orr-counter { height:1em; }
 ${CX} .cx-index__num .orr-counter__digit { width:.6em; }
-${CX} > .k-foot .sf-back.k-word::before { content:"‹  "; color:rgb(${BONE} / .6); }
-${CX} > .k-foot .sf-back.k-word::after { content:"ESC" / "" !important; display:inline !important; position:static !important; margin-left:14px !important; width:auto !important; height:auto !important;
-  background:none !important; border:0 !important; box-shadow:none !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; transform:none !important; opacity:1 !important; }
 /* arrival: the lore rises line by line under its title (reduced motion: it simply is there) */
 ${CX} .cx-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
 ${CX}.cx-arrive .sf-tabbar > li, ${CX}.cx-arrive .cx-index__item { animation:orr-rise 420ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
@@ -399,6 +405,10 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 /* a short screen: the ladder's rungs close up so a section's closing note is not cut by the fold */
 @media (max-height:820px) {
   ${CX} .cx-ladder .k-row:not(.k-row--static) { padding-bottom:2px !important; }
+}
+/* 1080p band: match settings/save-load/credits composition zoom */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${CX} { zoom:1.12; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom), as the station does */
 @media (min-width:2200px) and (min-height:1200px) {
