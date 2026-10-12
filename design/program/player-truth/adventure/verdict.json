@@ -141,7 +141,7 @@
    "detail": "4 on-screen swaps over 151.2 sim s across 2 entities (139 more off screen, not graded)",
    "offenders": [
     {
-     "line": "entity 5000357 (other) 2 swaps in 10 s (2 total) — last @-/compiling-pipelines → @- at sim 3.5 s",
+     "line": "entity 357 (other) 2 swaps in 10 s (2 total) — last @-/compiling-pipelines → @- at sim 3.5 s",
      "t": 56886.9,
      "sim": 3.517,
      "box": [
@@ -152,7 +152,7 @@
      ]
     },
     {
-     "line": "entity 25000110 (enemy) 2 swaps in 10 s (2 total) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_hornet_b25a6371@lod1 at sim 21.7 s",
+     "line": "entity 110 (enemy) 2 swaps in 10 s (2 total) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_hornet_b25a6371@lod1 at sim 21.7 s",
      "t": 86243.2,
      "sim": 21.667,
      "box": [
@@ -165,7 +165,7 @@
    ],
    "moments": [
     {
-     "line": "entity 5000357 (other) 2 swaps in 10 s (2 total) — last @-/compiling-pipelines → @- at sim 3.5 s",
+     "line": "entity 357 (other) 2 swaps in 10 s (2 total) — last @-/compiling-pipelines → @- at sim 3.5 s",
      "t": 56886.9,
      "sim": 3.517,
      "box": [
@@ -176,7 +176,7 @@
      ]
     },
     {
-     "line": "entity 25000110 (enemy) 2 swaps in 10 s (2 total) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_hornet_b25a6371@lod1 at sim 21.7 s",
+     "line": "entity 110 (enemy) 2 swaps in 10 s (2 total) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_hornet_b25a6371@lod1 at sim 21.7 s",
      "t": 86243.2,
      "sim": 21.667,
      "box": [

@@ -17,7 +17,7 @@
 | tumble | **PASS** | longest 0 s | <0.5 s out of plane / uncommanded spin |
 | player_ship | **PASS** | 0% frames bad (0/707) | ≤0.5% |
 | lod_churn | **FAIL** | max 4/10s per entity · 2.79/s total | ≤3/10s per entity · ≤1/s total |
-| popping | **FAIL** | 109/min · worst entity 1 toggles | ≤6/min · ≤2 toggles |
+| popping | **FAIL** | 109/min · worst entity 1 toggle | ≤6/min · ≤2 toggles |
 | readability | **FAIL** | min separation 0.48 | ≥1 per class pair; ≤50% low-contrast |
 | vfx_coverage | **FAIL** | p95 14% screen · player hidden 8% · threats hidden p95 100% · 0 s persist | ≤25% · ≤10% · ≤30% · ≤3 s |
 | loadout | **FAIL** | 5 irrelevant · 0 undescribed · 0 silent swaps | 0 · 0 · 0 |
@@ -35,13 +35,13 @@
   - round 1: asteroid 398 moving 45.5 u/s 334 u from the player before any input
 - **player_control** (UNKNOWN) — no control probe ran
 - **lod_churn** (FAIL) — 69 on-screen swaps over 24.8 sim s across 42 entities (23 more off screen, not graded)
-  - entity 69000391 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_35b48d08@lod1 → ship_wasp_35b48d08@lod2 at sim 24 s
-  - entity 72000415 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_3b79ff5d@lod1 → ship_wasp_3b79ff5d@lod2 at sim 24.6 s
-  - entity 74000379 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_882df7ee@lod1 → ship_wasp_882df7ee@lod2 at sim 26.1 s
+  - entity 391 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_35b48d08@lod1 → ship_wasp_35b48d08@lod2 at sim 24 s
+  - entity 415 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_3b79ff5d@lod1 → ship_wasp_3b79ff5d@lod2 at sim 24.6 s
+  - entity 379 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_882df7ee@lod1 → ship_wasp_882df7ee@lod2 at sim 26.1 s
 - **popping** (FAIL) — 45 pops inside the inner 80% of the view; 1 non-projectile bodies born on screen (info)
   - entity 335 (enemy) appeared on screen 1× — first sim 1.6 s
-  - entity 36000361 (asteroid) appeared on screen 1× — first sim 10.4 s
-  - entity 28000397 (asteroid) removed without death on screen 1× — first sim 11.3 s
+  - entity 361 (asteroid) appeared on screen 1× — first sim 10.4 s
+  - entity 397 (asteroid) removed without death on screen 1× — first sim 11.3 s
 - **readability** (FAIL) — samples: enemy 109, asteroid 327, projectile 4, pickup 5
   - enemy vs asteroid: separation 0.48 (colour Δ 8.2, size ratio 1.41) over 109/327 samples
   - enemy: 61% of samples barely differ from the background (ΔL < 8)

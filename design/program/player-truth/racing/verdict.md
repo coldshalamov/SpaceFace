@@ -17,7 +17,7 @@
 | tumble | **PASS** | longest 0 s | <0.5 s out of plane / uncommanded spin |
 | player_ship | **PASS** | 0.1% frames bad (2/1643) | ≤0.5% |
 | lod_churn | **PASS** | max 2/10s per entity · 0.08/s total | ≤3/10s per entity · ≤1/s total |
-| popping | **FAIL** | 7.9/min · worst entity 1 toggles | ≤6/min · ≤2 toggles |
+| popping | **FAIL** | 7.9/min · worst entity 1 toggle | ≤6/min · ≤2 toggles |
 | readability | **UNKNOWN** | — | separation ≥1 |
 | vfx_coverage | **PASS** | p95 0% screen · player hidden 0% · threats hidden p95 n/a · 0 s persist | ≤25% · ≤10% · ≤30% · ≤3 s |
 | loadout | **n/a** | — | 0 irrelevant · 0 undescribed · 0 silent swaps |

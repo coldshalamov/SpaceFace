@@ -262,7 +262,7 @@
    "id": "popping",
    "title": "Pop-in / pop-out on screen",
    "status": "PASS",
-   "value": "4.8/min · worst entity 1 toggles",
+   "value": "4.8/min · worst entity 1 toggle",
    "threshold": "≤6/min · ≤2 toggles",
    "detail": "6 pops inside the inner 80% of the view; 0 non-projectile bodies born on screen (info)",
    "offenders": [
@@ -278,7 +278,7 @@
      ]
     },
     {
-     "line": "entity 245000392 (asteroid) appeared on screen 1× — first sim 45.9 s",
+     "line": "entity 392 (asteroid) appeared on screen 1× — first sim 45.9 s",
      "t": 228938,
      "sim": 45.883,
      "box": [
@@ -289,7 +289,7 @@
      ]
     },
     {
-     "line": "entity 246000387 (asteroid) appeared on screen 1× — first sim 45.9 s",
+     "line": "entity 387 (asteroid) appeared on screen 1× — first sim 45.9 s",
      "t": 228938,
      "sim": 45.883,
      "box": [
@@ -300,7 +300,7 @@
      ]
     },
     {
-     "line": "entity 247000391 (asteroid) appeared on screen 1× — first sim 45.9 s",
+     "line": "entity 391 (asteroid) appeared on screen 1× — first sim 45.9 s",
      "t": 228938,
      "sim": 45.883,
      "box": [
@@ -324,7 +324,7 @@
      ]
     },
     {
-     "line": "entity 245000392 (asteroid) appeared on screen 1× — first sim 45.9 s",
+     "line": "entity 392 (asteroid) appeared on screen 1× — first sim 45.9 s",
      "t": 228938,
      "sim": 45.883,
      "box": [
@@ -335,7 +335,7 @@
      ]
     },
     {
-     "line": "entity 246000387 (asteroid) appeared on screen 1× — first sim 45.9 s",
+     "line": "entity 387 (asteroid) appeared on screen 1× — first sim 45.9 s",
      "t": 228938,
      "sim": 45.883,
      "box": [

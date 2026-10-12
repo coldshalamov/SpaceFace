@@ -214,7 +214,7 @@
    "id": "popping",
    "title": "Pop-in / pop-out on screen",
    "status": "FAIL",
-   "value": "7.9/min · worst entity 1 toggles",
+   "value": "7.9/min · worst entity 1 toggle",
    "threshold": "≤6/min · ≤2 toggles",
    "detail": "10 pops inside the inner 80% of the view; 0 non-projectile bodies born on screen (info)",
    "offenders": [

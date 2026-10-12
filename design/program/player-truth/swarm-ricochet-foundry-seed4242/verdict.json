@@ -251,7 +251,7 @@
    "detail": "69 on-screen swaps over 24.8 sim s across 42 entities (23 more off screen, not graded)",
    "offenders": [
     {
-     "line": "entity 69000391 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_35b48d08@lod1 → ship_wasp_35b48d08@lod2 at sim 24 s",
+     "line": "entity 391 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_35b48d08@lod1 → ship_wasp_35b48d08@lod2 at sim 24 s",
      "t": 221716.1,
      "sim": 24.033,
      "box": [
@@ -262,7 +262,7 @@
      ]
     },
     {
-     "line": "entity 72000415 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_3b79ff5d@lod1 → ship_wasp_3b79ff5d@lod2 at sim 24.6 s",
+     "line": "entity 415 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_3b79ff5d@lod1 → ship_wasp_3b79ff5d@lod2 at sim 24.6 s",
      "t": 230149.2,
      "sim": 24.567,
      "box": [
@@ -273,7 +273,7 @@
      ]
     },
     {
-     "line": "entity 74000379 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_882df7ee@lod1 → ship_wasp_882df7ee@lod2 at sim 26.1 s",
+     "line": "entity 379 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_882df7ee@lod1 → ship_wasp_882df7ee@lod2 at sim 26.1 s",
      "t": 252794.4,
      "sim": 26.133,
      "box": [
@@ -284,7 +284,7 @@
      ]
     },
     {
-     "line": "entity 101000420 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_1f95012d@lod1 → ship_wasp_1f95012d@lod2 at sim 25.2 s",
+     "line": "entity 420 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_1f95012d@lod1 → ship_wasp_1f95012d@lod2 at sim 25.2 s",
      "t": 238499.4,
      "sim": 25.2,
      "box": [
@@ -297,7 +297,7 @@
    ],
    "moments": [
     {
-     "line": "entity 69000391 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_35b48d08@lod1 → ship_wasp_35b48d08@lod2 at sim 24 s",
+     "line": "entity 391 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_35b48d08@lod1 → ship_wasp_35b48d08@lod2 at sim 24 s",
      "t": 221716.1,
      "sim": 24.033,
      "box": [
@@ -308,7 +308,7 @@
      ]
     },
     {
-     "line": "entity 72000415 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_3b79ff5d@lod1 → ship_wasp_3b79ff5d@lod2 at sim 24.6 s",
+     "line": "entity 415 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_3b79ff5d@lod1 → ship_wasp_3b79ff5d@lod2 at sim 24.6 s",
      "t": 230149.2,
      "sim": 24.567,
      "box": [
@@ -319,7 +319,7 @@
      ]
     },
     {
-     "line": "entity 74000379 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_882df7ee@lod1 → ship_wasp_882df7ee@lod2 at sim 26.1 s",
+     "line": "entity 379 (enemy) 4 swaps in 10 s (4 total) — last ship_wasp_882df7ee@lod1 → ship_wasp_882df7ee@lod2 at sim 26.1 s",
      "t": 252794.4,
      "sim": 26.133,
      "box": [
@@ -335,7 +335,7 @@
    "id": "popping",
    "title": "Pop-in / pop-out on screen",
    "status": "FAIL",
-   "value": "109/min · worst entity 1 toggles",
+   "value": "109/min · worst entity 1 toggle",
    "threshold": "≤6/min · ≤2 toggles",
    "detail": "45 pops inside the inner 80% of the view; 1 non-projectile bodies born on screen (info)",
    "offenders": [
@@ -351,7 +351,7 @@
      ]
     },
     {
-     "line": "entity 36000361 (asteroid) appeared on screen 1× — first sim 10.4 s",
+     "line": "entity 361 (asteroid) appeared on screen 1× — first sim 10.4 s",
      "t": 121710.4,
      "sim": 10.417,
      "box": [
@@ -362,7 +362,7 @@
      ]
     },
     {
-     "line": "entity 28000397 (asteroid) removed without death on screen 1× — first sim 11.3 s",
+     "line": "entity 397 (asteroid) removed without death on screen 1× — first sim 11.3 s",
      "t": 127330.9,
      "sim": 11.333,
      "box": [
@@ -397,7 +397,7 @@
      ]
     },
     {
-     "line": "entity 36000361 (asteroid) appeared on screen 1× — first sim 10.4 s",
+     "line": "entity 361 (asteroid) appeared on screen 1× — first sim 10.4 s",
      "t": 121710.4,
      "sim": 10.417,
      "box": [
@@ -408,7 +408,7 @@
      ]
     },
     {
-     "line": "entity 28000397 (asteroid) removed without death on screen 1× — first sim 11.3 s",
+     "line": "entity 397 (asteroid) removed without death on screen 1× — first sim 11.3 s",
      "t": 127330.9,
      "sim": 11.333,
      "box": [

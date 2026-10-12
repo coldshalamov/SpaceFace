@@ -45,6 +45,9 @@ export function playSamples(trace) {
 
 function keyName(trace, k) { return k >= 0 ? (trace.keys[k] || String(k)) : null; }
 
+// Reader life ids are id + 1e6·n for recycled slots; show the game's own entity id.
+const bodyId = (id) => id % 1e6;
+
 export function checkLodChurn(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('lod_churn', 'LOD / model swap churn', 'UNKNOWN', null, T.lodSwapsPer10s, 'too few play frames sampled');
@@ -86,7 +89,7 @@ export function checkLodChurn(trace) {
   const maxPer10 = worst.length ? worst[0].per10 : 0;
   const fail = maxPer10 > T.lodSwapsPer10s || totalRate > T.lodTotalPerSec;
   const offenders = worst.slice(0, 4).map((w) => ({
-    line: `entity ${w.id} (${PLAYER_TRUTH_CLASSES[w.at.cls]}) ${w.per10} swaps in 10 s (${w.n} total) — last ${shortKey(keyName(trace, w.at.from))} → ${shortKey(keyName(trace, w.at.to))} at sim ${fmt(w.at.sim, 1)} s`,
+    line: `entity ${bodyId(w.id)} (${PLAYER_TRUTH_CLASSES[w.at.cls]}) ${w.per10} swaps in 10 s (${w.n} total) — last ${shortKey(keyName(trace, w.at.from))} → ${shortKey(keyName(trace, w.at.to))} at sim ${fmt(w.at.sim, 1)} s`,
     t: w.at.t, sim: w.at.sim, box: w.at.on ? w.at.box : null,
   }));
   if (playerSwaps.length) offenders.unshift({ line: `player ship swapped model/LOD ${playerSwaps.length}× (first sim ${fmt(playerSwaps[0].sim, 1)} s: ${playerSwaps[0].from} → ${playerSwaps[0].to})`, t: playerSwaps[0].t, sim: playerSwaps[0].sim, box: playerSwaps[0].box });
@@ -174,10 +177,10 @@ export function checkPopping(trace) {
   const maxFlap = Math.max(0, ...flaps.values());
   const byId = new Map(); for (const p of pops) { const r = byId.get(p.id) || { n: 0, p }; r.n++; byId.set(p.id, r); }
   const offenders = [...byId.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((r) => ({
-    line: `entity ${r.p.id} (${PLAYER_TRUTH_CLASSES[r.p.e[E.cls]]}) ${r.p.kind} on screen ${r.n}× — first sim ${fmt(r.p.s.sim, 1)} s`, t: r.p.s.t, sim: r.p.s.sim, box: boxOf(r.p.e),
+    line: `entity ${bodyId(r.p.id)} (${PLAYER_TRUTH_CLASSES[r.p.e[E.cls]]}) ${r.p.kind} on screen ${r.n}× — first sim ${fmt(r.p.s.sim, 1)} s`, t: r.p.s.t, sim: r.p.s.sim, box: boxOf(r.p.e),
   }));
   return result('popping', 'Pop-in / pop-out on screen', rate > T.popsPerMin || maxFlap > T.popFlapsPerEntity ? 'FAIL' : 'PASS',
-    `${fmt(rate, 1)}/min · worst entity ${maxFlap} toggles`, `≤${T.popsPerMin}/min · ≤${T.popFlapsPerEntity} toggles`,
+    `${fmt(rate, 1)}/min · worst entity ${maxFlap} toggle${maxFlap === 1 ? '' : 's'}`, `≤${T.popsPerMin}/min · ≤${T.popFlapsPerEntity} toggles`,
     `${pops.length} pops inside the inner 80% of the view; ${births} non-projectile bodies born on screen (info)`, offenders, offenders.slice(0, 3));
 }
 
