@@ -31,6 +31,7 @@ export function createWrittenFinale(choiceId, facts, receiptId) {
       namedEntries: facts.namedDebts.slice(0, 8).map(r => ({ ...r })), namedEntryTotal: facts.namedDebts.length,
       lungOutcome: facts.lungOutcome, archiveSources: facts.archiveSources.map(r => ({ ...r })),
       deepReachComplete: facts.deepReachComplete, independentWitness: facts.independentWitness,
+      spineRoad: facts.spineRoad || null,
       careerEvidence: facts.careerEvidence.slice(), evidence: facts.evidence.map(r => ({ ...r })),
     }),
     beats: freeze(content.beats.map((b, i) => ({ ...b, id: `${receiptId}:transmission:${i}` }))),

@@ -20,6 +20,7 @@ import {
   STORY_BRANCH_INTRO_TAG,
 } from './campaignData.js';
 import { ENDING_DEFS } from '../endings/endingDefs.js';
+import { adjustBoardOffer } from './storySpine.js';
 
 export const EMBODIED_MISSIONS_ID = 'campaign47a.embodiedMissions.v2';
 export const EMBODIED_MISSIONS_SCHEMA_VERSION = 2;
@@ -355,7 +356,7 @@ export function buildMissionBoardContract(beatIndex, options = {}) {
   const epoch = Math.max(0, Number(options.epoch) | 0);
   if (def.beat === 5) return buildBranchChainOffer(def, seed, epoch, options);
   const base = def.missionBoardContract;
-  return {
+  return adjustBoardOffer({
     ...base,
     id: stableOfferId(seed, def.beat, epoch, 0, null),
     params: { ...base.params },
@@ -365,7 +366,7 @@ export function buildMissionBoardContract(beatIndex, options = {}) {
     campaign47aBeat: def.beat,
     storyContractId: base.storyTag,
     source: 'campaign47a.embodied',
-  };
+  }, def.beat, options);
 }
 
 function buildDeepReachOperationOffer(options) {
@@ -388,7 +389,7 @@ function buildDeepReachOperationOffer(options) {
     massU: op.type === 'tow_recovery' ? 48 : undefined,
     scanLabel: op.type === 'tow_recovery' ? 'EVIDENCE CORE' : undefined,
   };
-  return {
+  return adjustBoardOffer({
     id: stableOfferId(seed, 7, epoch, 0, storyTag),
     type: op.type, storyTag, storyContractId: storyTag, storyOperation: op.id,
     factionId: op.factionId, stationId: op.stationId,
@@ -399,7 +400,7 @@ function buildDeepReachOperationOffer(options) {
     reward_cr: 2200, collateral_cr: 0, riskTier: 4, minRep: -149, time_limit_s: 0, distance: 5200,
     params, title: op.label.toUpperCase(), expiresAtEpoch: epoch + 2,
     campaign47aBeat: 7, source: 'campaign47a.deep_reach',
-  };
+  }, 7, options);
 }
 
 function buildBranchChainOffer(def, seed, epoch, options) {
@@ -424,7 +425,7 @@ function buildBranchChainOffer(def, seed, epoch, options) {
   // The proving leg names the physical verb the run performs — the same field the
   // authored set-piece types stamp inline in _rollParams.
   params.physicalVerb = BRANCH_HEADLINE_VERBS[branch];
-  return {
+  return adjustBoardOffer({
     id: stableOfferId(seed, 5, epoch, step, branch),
     type: chain.missionType,
     storyTag,
@@ -454,7 +455,7 @@ function buildBranchChainOffer(def, seed, epoch, options) {
     expiresAtEpoch: epoch + 1,
     campaign47aBeat: 5,
     source: 'campaign47a.embodied',
-  };
+  }, 5, options);
 }
 
 /** A/B are physical contracts on the Ashfall board. C/D/E remain world actions. */

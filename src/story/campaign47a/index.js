@@ -92,6 +92,13 @@ export {
   syncObservedBeat,
 } from './campaignTransitions.js';
 
+export {
+  adjustBoardOffer,
+  readSpine,
+  spineGreeting,
+  spineRoadFrom,
+} from './storySpine.js';
+
 // Physical campaign embodiment remains a pure library; systems opt into these builders.
 export {
   AFTERMATH_RECORD_KIND,
