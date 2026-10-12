@@ -4,7 +4,7 @@
 //   npm run player-truth -- --mode=swarm [--arena="Ricochet Foundry"|all] [--seed=4242]
 //   npm run player-truth -- --mode=adventure|racing|gauntlet [--duration=300]
 //   flags: --headed (GPU Chrome, preferred) · --rounds=3 · --duration=<sim s> · --wall=<min>
-//          --idle=<sim s> · --viewport=WxH (1280x720 headed, 960x540 software GL) · --out=<dir> · --evidence (copy compact result
+//          --idle=<sim s> · --viewport=WxH (1280x720 headed, 960x540 software GL) · --out=<dir> · --tag=<suffix> (label suffix, e.g. idle) · --evidence (copy compact result
 //          into design/program/player-truth/<label>/)
 //
 // Drives the real public route in a real rendered browser with trusted keyboard/mouse input,
@@ -31,7 +31,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, out: null, evidence: false, shotEvery: null };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, out: null, evidence: false, shotEvery: null, tag: null };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
@@ -50,7 +50,7 @@ export function parseArgs(argv) {
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 async function runOne(args, arena) {
-  const label = [args.mode, arena ? slug(arena) : null].filter(Boolean).join('-');
+  const label = [args.mode, arena ? slug(arena) : null, args.tag ? slug(args.tag) : null].filter(Boolean).join('-');
   const outDir = path.resolve(ROOT, args.out || path.join('scratch/player-truth', label));
   rmSync(outDir, { recursive: true, force: true }); mkdirSync(path.join(outDir, 'frames'), { recursive: true });
   const [vwStr, vhStr] = args.viewport.split('x'); const vw = Number(vwStr); const vh = Number(vhStr);
