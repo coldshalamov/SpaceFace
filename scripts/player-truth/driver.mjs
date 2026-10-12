@@ -37,15 +37,29 @@ export async function controlProbes(page, tag, probes) {
   await holdKey(page, 'KeyD', 0.8, `${tag} yaw`, probes);
 }
 
-function readTarget() {
+export function readTarget() {
   const st = window.SF.state; const cam = st.render && st.render.camera; const THREE = window.SF.THREE;
   const me = st.entityList.find((e) => e.id === st.playerId);
   if (!me || !cam) return null;
+  const canvas = st.render.renderer.domElement; const r = canvas.getBoundingClientRect();
+  const v = new THREE.Vector3();
+  const hostile = (e) => {
+    const d = e.data || {};
+    return d.runRole === 'enemy' || d.runRole === 'hostile'
+      || !!(d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget))
+      || (e.team !== me.team && e.team !== 0 && e.team !== 2);
+  };
   let best = null; let bd = Infinity;
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
-    const d = e.data || {};
-    if (!(d.runRole || (d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget)) || (e.team !== me.team && e.team !== 0 && e.team !== 2))) continue;
+    if (!hostile(e)) continue;
+    v.set(e.pos.x, e.pos.y || 0, e.pos.z).project(cam);
+    const x = r.left + (v.x * 0.5 + 0.5) * r.width;
+    const y = r.top + (-v.y * 0.5 + 0.5) * r.height;
+    // A public shot must hit the gameplay canvas, not an off-screen coordinate
+    // or a HUD control covering the target. Match the real DOM input boundary.
+    if (v.z < -1 || v.z > 1 || x < r.left || x >= r.right || y < r.top || y >= r.bottom
+      || document.elementFromPoint(Math.round(x), Math.round(y)) !== canvas) continue;
     const dist = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
     if (dist < bd) { bd = dist; best = e; }
   }
@@ -53,14 +67,12 @@ function readTarget() {
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
     if (Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) > 700) continue;
-    const d = e.data || {}; if (!(d.runRole || (d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget)) || (e.team !== me.team && e.team !== 0 && e.team !== 2))) continue;
+    if (!hostile(e)) continue;
     cx += e.pos.x; cz += e.pos.z; near++;
   }
   let away = null; const packDist = near ? Math.hypot(me.pos.x - cx / near, me.pos.z - cz / near) : Infinity;
   if (near) { const a = Math.atan2(me.pos.z - cz / near, me.pos.x - cx / near); away = a - me.rot; while (away > Math.PI) away -= 2 * Math.PI; while (away < -Math.PI) away += 2 * Math.PI; }
   const hull = me.hullMax ? me.hull / me.hullMax : 1;
-  const canvas = st.render.renderer.domElement; const r = canvas.getBoundingClientRect();
-  const v = new THREE.Vector3();
   if (!best) return { none: true, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
   v.set(best.pos.x, best.pos.y || 0, best.pos.z).project(cam);
   // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).

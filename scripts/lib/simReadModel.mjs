@@ -113,7 +113,15 @@ export function applySpawnInfos(readModel, spawnInfos) {
     // dead twin collects the stamp — entity identity is the map slot, the way
     // entityList swap semantics preserve row identity on the main lane.
     const existing = readModel.entities.get(info.entityId);
-    if (existing && typeof existing === 'object') {
+    const life = Number.isSafeInteger(info.occupantGeneration) ? info.occupantGeneration : null;
+    const newOccupant = existing && life != null && existing.occupantGeneration != null
+      && existing.occupantGeneration !== life;
+    if (newOccupant) existing.alive = false; // Captured admissions now lose their old owner.
+    const target = existing && typeof existing === 'object' && !newOccupant ? existing : row;
+    if (life != null) Object.defineProperty(target, 'occupantGeneration', {
+      value: life, writable: true, configurable: true, enumerable: false,
+    });
+    if (target === existing) {
       delete row.prevPos;
       Object.assign(existing, row);
       // A stamped admission verdict outranks the fresh spawn's 'pending' —
@@ -187,7 +195,10 @@ export function applyEntityVitals(readModel, vitals) {
 // the live far-row check (`state.entities.has(rec.id)`).
 export function applyDestroyIds(readModel, ids) {
   for (const id of ids || []) {
-    if (Number.isSafeInteger(id)) readModel.entities.delete(id);
+    if (!Number.isSafeInteger(id)) continue;
+    const row = readModel.entities.get(id);
+    if (row) row.alive = false;
+    readModel.entities.delete(id);
   }
 }
 

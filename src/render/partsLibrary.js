@@ -2825,7 +2825,15 @@ export function boundaryLiveEntity(boundary, fallback) {
   const resolved = id != null && live && live.entities && typeof live.entities.get === 'function'
     ? live.entities.get(id)
     : null;
-  return resolved && resolved.alive !== false ? resolved : fallback;
+  const data = boundary && boundary.userData;
+  // A recycled id is not a reattached owner. Only the renderer's explicit bind
+  // may move this boundary to a new life (including a verified semantic restore).
+  const sameType = data?.presentationEntityType == null
+    || resolved?.type === data.presentationEntityType;
+  const sameLife = data?.presentationOccupantGeneration == null
+    || resolved?.occupantGeneration == null
+    || resolved.occupantGeneration === data.presentationOccupantGeneration;
+  return resolved && resolved.alive !== false && sameType && sameLife ? resolved : fallback;
 }
 
 /** True when the admission's residency owner is gone — the entity record died mid-admission. */

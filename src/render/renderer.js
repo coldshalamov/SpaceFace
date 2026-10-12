@@ -1947,6 +1947,24 @@ export function stableMeshKeyForEntity(entity) {
   return null;
 }
 
+/** A numeric id may be reused; a mesh belongs to its occupant or an explicit restore identity. */
+export function presentationMeshMatchesEntity(entity, mesh, state = null) {
+  const data = mesh && mesh.userData;
+  if (!entity || !mesh) return false;
+  if (!data) return true;
+  if (data.presentationEntityType != null && data.presentationEntityType !== entity.type) return false;
+  const key = stableMeshKeyForEntity(entity);
+  if (data.sfStableEntityKey != null) return data.sfStableEntityKey === key;
+  if (data.sfStableEntityKey === null && key != null) return false;
+  const priorLife = data.presentationOccupantGeneration;
+  if (priorLife == null || entity.occupantGeneration == null || priorLife === entity.occupantGeneration) return true;
+  // Save restore explicitly maps the outgoing actor to its fresh native occupant.
+  // The map is authoritative only during loading; ordinary births cannot borrow it.
+  const remap = state && state.mode === 'loading' && state.sessionEntityIdRemap;
+  return remap instanceof Map && data.presentationEntityId != null
+    && remap.get(String(data.presentationEntityId)) === entity.id;
+}
+
 /**
  * Same-sector F9 keeps GPU Object3Ds in `_meshes` while `_clearEntities` replaces entity
  * objects. authoredCriticalVisualReadiness reads `entity.mesh`; presentation bind alone
@@ -2034,7 +2052,8 @@ export function* reattachResidentGpuMeshesSteps(owner) {
     const entity = resolveWorldPresentationEntity(state, id);
     if (entity && entity.alive !== false) {
       const entityKey = stableMeshKeyForEntity(entity);
-      const matches = stamped != null ? entityKey === stamped : entityKey == null;
+      const matches = (stamped != null ? entityKey === stamped : entityKey == null)
+        && presentationMeshMatchesEntity(entity, mesh, state);
       if (matches) {
         entity.mesh = mesh;
         if (entity.view) entity.view.root = mesh;
@@ -2070,10 +2089,12 @@ export function* reattachResidentGpuMeshesSteps(owner) {
       const candidate = mapped != null ? resolveWorldPresentationEntity(state, mapped) : null;
       if (candidate && candidate.alive !== false) {
         const candidateKey = stableMeshKeyForEntity(candidate);
-        if (stamped == null || candidateKey == null || candidateKey === stamped) target = candidate;
+        if ((stamped == null || candidateKey == null || candidateKey === stamped)
+            && presentationMeshMatchesEntity(candidate, mesh, state)) target = candidate;
       }
     }
-    if (target && !owner._meshes.has(target.id)) rekeys.push([id, mesh, target]);
+    if (target && presentationMeshMatchesEntity(target, mesh, state)
+        && !owner._meshes.has(target.id)) rekeys.push([id, mesh, target]);
   }
   owner._meshReleaseBatchBegin?.();
   try {
@@ -23966,6 +23987,10 @@ export const render = {
   _bindPresentationMesh(entity, mesh) {
     const world = this._presentationWorld;
     if (!entity || !mesh) return false;
+    if (!presentationMeshMatchesEntity(entity, mesh, this.state)) {
+      this._meshReconcileDirty = true;
+      return false;
+    }
     // A mesh rebound inside the release window must not drain against its old
     // owner's pending release — the registries resolve the pending entry
     // through the side index and would clear the NEW owner's record.
@@ -23988,6 +24013,8 @@ export const render = {
       mesh.userData.spacefaceProgramKeyStamp = mesh.userData.authoredVisualRoot || '';
     }
     mesh.userData.presentationEntityId = entity.id;
+    mesh.userData.presentationEntityType = entity.type;
+    mesh.userData.presentationOccupantGeneration = entity.occupantGeneration ?? null;
     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
     // Injection seam for composition paths outside renderer scope (partsLibrary's
     // whole-ship LOD swap/family refresh) that attach and detach live subtrees:
@@ -24879,8 +24906,8 @@ export const render = {
         // A recycled numeric id can resolve to a different logical entity after a save restore;
         // the mesh's stamped stable key disproves that pairing so the stale mesh is released
         // instead of drawn on the wrong boundary.
-        const stampedKey = m && m.userData ? m.userData.sfStableEntityKey : undefined;
-        const mismatched = !!(e && e.alive !== false && stampedKey != null && stableMeshKeyForEntity(e) !== stampedKey);
+        const mismatched = !!(e && e.alive !== false
+          && !presentationMeshMatchesEntity(e, m, state));
         // Residency eviction of an on-glass entity is the visible "pop out of
         // existence" defect — count it so probes can prove the class stays at 0.
         const residencyEvict = !liveShellLatched()

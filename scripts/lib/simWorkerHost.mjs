@@ -38,7 +38,7 @@ import {
   spawn47aScenarioCast,
 } from '../../src/data/scenarios/47aLiveScene.js';
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
-import { applyBudgetedLabPackage } from '../../src/ui/sandbox/sandboxSetup.js';
+import { applyBudgetedLabPackage, applyPreparedCrucibleSetup } from '../../src/ui/sandbox/sandboxSetup.js';
 import { getCombatKernel } from '../../src/combat/kernel.js';
 import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
@@ -289,6 +289,9 @@ function entityInfoBlock(state, entityId) {
   return {
     v: 2,
     entityId,
+    // Native occupants carry a non-enumerable token; explicit transport keeps
+    // recycled numeric ids distinct without adding the token to saved entities.
+    occupantGeneration: Number.isSafeInteger(e.occupantGeneration) ? e.occupantGeneration : null,
     type: typeof e.type === 'string' ? e.type : null,
     alive: e.alive !== false,
     team: Number.isFinite(e.team) ? e.team : 0,
@@ -880,6 +883,16 @@ export function createSimHost() {
           awaitPhysicsPrep: true,
         });
         if (result && result.ok === true) {
+          if (args?.opts?.crucibleLaunch === true) {
+            const prepared = applyPreparedCrucibleSetup(
+              { state, helpers: sim.helpers, registry, bus: host.bus },
+              args.opts.crucibleSetup,
+            );
+            // A refused preparation rejects the existing boot RPC, so the main
+            // loading owner aborts rather than admitting an incomplete arena.
+            if (!prepared.ok) throw new Error(prepared.reason || 'crucible-setup-incomplete');
+            result.crucible = prepared;
+          }
           host.pendingGameStarted = { newGamePlus: (args && args.newGamePlus) || null };
           // A Crucible/Swarm launch: the receipt says so, so onboarding stands down even if
           // the main-side sandbox hook's run:beginRequested has not landed yet.
