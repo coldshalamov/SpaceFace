@@ -38,11 +38,11 @@ These are not measured. Do not read an older first-generation verdict below as t
 
 | run | status | reason |
 |---|---|---|
-| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue acquired the lock and died before Chromium (`uv_cwd`: the process directory was replaced while it waited). The replacement on `debe715c8a` is waiting on `player-truth.lock` (pid 191163, one Chromium, not started): `--gate --wall=50 --evidence --tag=seed4242-debe715`. |
-| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Not in the current lock queue. `player_ship` names a rectangle or an invisible ship. |
-| Gauntlet `--gate` | UNKNOWN | Not run. Not in the current lock queue. The first-generation arena rows below are not a `--gate` pass. |
-| Adventure `--gate` | UNKNOWN | Not run. Not in the current lock queue. The 150 s cruise below is not a `--gate` pass. |
-| Racing `--gate` | UNKNOWN | Not run. Not in the current lock queue. The 75 s Textile Belt row below is not a `--gate` pass. |
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue acquired the lock and died before Chromium (`uv_cwd`: the process directory was replaced while it waited). The replacement on `debe715c8a` is waiting on `player-truth.lock` (pid 191163, one Chromium, not started): full `--gate` (idle + active), `--wall=50 --evidence --tag=seed4242-debe715`. |
+| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Queued behind that gate on the same lock (one Chromium, not started). `player_ship` names a rectangle or an invisible ship. |
+| Gauntlet `--gate` | UNKNOWN | Not run. Same follow-on queue, after the matrix. The first-generation arena rows below are not a `--gate` pass. |
+| Adventure `--gate` | UNKNOWN | Not run. Same follow-on queue. The 150 s cruise below is not a `--gate` pass. |
+| Racing `--gate` | UNKNOWN | Not run. Same follow-on queue. The 75 s Textile Belt row below is not a `--gate` pass. |
 
 ## Owning lanes (rebased onto `debe715c8a`, 2026-10-12)
 
@@ -132,7 +132,7 @@ The rectangle / invisible ship was reported as hull- and viewport-dependent. No 
 npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --hull=all --viewports=960x540,1280x720,1920x1080 --rounds=2 --idle=3 --duration=70 --wall=12 --evidence --tag=matrix
 ```
 
-Order: 960, then 1280, then 1920. `--rounds=2` is there because a spawn-only pass can miss a round-2 rectangle. Start it only when `/workspace/orchestra/state/locks/player-truth.lock` is empty and load1 is under ~8, with one headless Chromium. Gauntlet, Adventure and racing `--gate` wait on the same lock and load. The first-generation verdicts for those modes are not `--gate` passes. The acceptance command stays `npm run player-truth -- --mode=swarm --gate`.
+Order: 960, then 1280, then 1920. `--rounds=2` is there because a spawn-only pass can miss a round-2 rectangle. It runs only after the seed-4242 `--gate` releases `player-truth.lock`, with one headless Chromium. Gauntlet, Adventure and racing `--gate` follow that matrix on the same lock. The first-generation verdicts for those modes are not `--gate` passes. The acceptance command stays `npm run player-truth -- --mode=swarm --gate`.
 
 ## First-generation verdicts (PR #288)
 
