@@ -8,7 +8,7 @@ import {
   isLoadingAssetState,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
-import { auditItems, classifyArmoryArrival, formatArmoryMiss, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
+import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
 import { separation } from '../scripts/player-truth/readability.mjs';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 
@@ -202,4 +202,17 @@ test('Open armory is ready on the draft screen and lost in a non-draft world', (
   assert.equal(classifyArmoryArrival(gauntlet, ARMORY_WORLD_GRACE_MS), 'lost');
   assert.equal(classifyArmoryArrival(gauntlet, ARMORY_WORLD_GRACE_MS, { acceptSurvival: true }), 'ready');
   assert.match(formatArmoryMiss(gauntlet, 'Enter the Gauntlet'), /^Enter the Gauntlet missed the draft:/);
+  const tutorial = { top: null, mode: 'flight', kind: 'adventure', phase: 'inactive', tutorial: true, x: -1900, z: -2200 };
+  assert.equal(classifyArmoryArrival(tutorial, 0), 'wait');
+  assert.equal(classifyArmoryArrival(tutorial, 0, { failOnTutorial: true }), 'lost');
+  const rescue = { top: null, mode: 'flight', kind: 'adventure', phase: 'inactive', rescue: true };
+  assert.equal(classifyArmoryArrival(rescue, 0, { failOnTutorial: true }), 'lost');
+  const live = { top: null, mode: 'flight', kind: 'survival', phase: 'active', tutorial: true };
+  assert.equal(classifyArmoryArrival(live, 0, { failOnTutorial: true, acceptSurvival: true }), 'ready');
+  assert.equal(classifyArmoryArrival(live, 0, { failOnTutorial: true }), 'wait');
+  const tutorialLine = formatSwarmTutorialMiss(tutorial);
+  assert.match(tutorialLine, new RegExp(SWARM_TUTORIAL_MISS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(tutorialLine, /mode=flight kind=adventure phase=inactive/);
+  assert.match(tutorialLine, /at -1900,-2200 helios_core spawn/);
+  assert.ok(tutorialLine.length < 180);
 });
