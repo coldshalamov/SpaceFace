@@ -22,6 +22,12 @@ Last run: 7 tests, 7 pass, 0 fail. The CLI completed 500 traces
 Receipts land in `tools/economic-redteam/artifacts/`. The minimized contraband
 command list is `artifacts/contraband-minimized.json`.
 
-Production edits are withheld in `FIX.patch` and described in `ADAPTER.md`.
+The same-port quote clamp and illicit-salvage custody repair now live in production.
+Tests use those owners directly. `FIX.patch` / `patchModel.mjs` are historical proposals;
+do not apply them over the integrated fix. New receipts go under `.devshots/economic-redteam/`.
+The focused production transaction and Save/Continue regressions pass.
+
+Historical branch notes below:
+Production edits were withheld in `FIX.patch` and described in `ADAPTER.md`.
 `src/systems/economy.js` is owned by open PR 260. `src/systems/cargo.js` is free
 and its hunk is the landing diff.

@@ -3,6 +3,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { sellableCargoQuantity } from '../../src/systems/cargo.js';
 import {
   HOME_FACTION,
@@ -67,7 +68,7 @@ export const FAMILY_IDS = Object.freeze([
   'ship_fit_capacity',
 ]);
 
-export const CONTRABAND_ARTIFACT = new URL('./artifacts/contraband-minimized.json', import.meta.url);
+export const CONTRABAND_ARTIFACT = new URL('../../.devshots/economic-redteam/contraband-minimized.json', import.meta.url);
 
 function family(id, status, summary, extra = {}) {
   return {
@@ -173,7 +174,8 @@ function probeWash(seed) {
     const cycle = roundTrip(allied, 10);
     if (cycle.bought.ok && cycle.verdict.exploit) opened = { grants, cycle };
   }
-  const minimal = opened ? minimizeQty(allied, 10) : null;
+  // A repaired exploit still needs an observed transaction, rather than an empty green trace.
+  const minimal = opened ? minimizeQty(allied, 10) : roundTrip(allied, 10);
   let scale = null;
   if (minimal && minimal.verdict.exploit) {
     while (repOf(allied.state) < 400) {
@@ -592,7 +594,6 @@ function bayPays(seed, qty, ticks) {
   if (bayQty(sim.state, 'cmdty_stolen_goods') <= 0) return null;
   const cashed = dock(sim, HOME_STATION);
   const reasons = (cashed.detail && cashed.detail.reasons) || [];
-  if (!reasons.includes('salvage:bay_sale') || !(cashed.creditsDelta > 0)) return null;
   return {
     qty,
     ticks,
@@ -610,7 +611,7 @@ export function minimizeContraband(seed) {
     while (lo <= hi) {
       const mid = Math.floor((lo + hi) / 2);
       const hit = bayPays(seed, qty, mid);
-      if (hit) {
+      if (hit && hit.reasons.includes('salvage:bay_sale') && hit.creditsDelta > 0) {
         best = hit;
         hi = mid - 1;
       } else {
@@ -639,7 +640,7 @@ export function writeContrabandArtifact(minimized, fileUrl = CONTRABAND_ARTIFACT
     creditsDelta: minimized && minimized.creditsDelta,
     reasons: minimized && minimized.reasons,
   };
-  const path = fileUrl.pathname;
+  const path = fileURLToPath(fileUrl);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(body, null, 2)}\n`);
   return body;
@@ -647,8 +648,10 @@ export function writeContrabandArtifact(minimized, fileUrl = CONTRABAND_ARTIFACT
 
 function probeContraband(seed) {
   const minimized = minimizeContraband(seed + 3);
-  const artifact = writeContrabandArtifact(minimized);
-  const shown = minimized ? bayPays(seed + 3, minimized.qty, minimized.ticks) : null;
+  const attempt = minimized || { qty: 1, ticks: 48 };
+  const shown = bayPays(seed + 3, attempt.qty, attempt.ticks);
+  const artifact = writeContrabandArtifact({ ...attempt, ...shown });
+  artifact.minimized = !!minimized;
   const illicitVerdict = shown
     ? bayCashVerdict({ creditsDelta: shown.creditsDelta, legality: 'contraband', fineDelta: 0 })
     : { exploit: false, kind: 'not_collected' };
@@ -679,10 +682,10 @@ function probeContraband(seed) {
 
   const againSim = shown ? bootRedTeam(seed + 5) : null;
   let secondDockDelta = null;
-  if (againSim && minimized) {
+  if (againSim) {
     leaveDock(againSim);
-    lootDrop(againSim, { commodityId: 'cmdty_stolen_goods', qty: minimized.qty, source: 'kill_burst' });
-    stepTicks(againSim, minimized.ticks);
+    lootDrop(againSim, { commodityId: 'cmdty_stolen_goods', qty: attempt.qty, source: 'kill_burst' });
+    stepTicks(againSim, attempt.ticks);
     dock(againSim, HOME_STATION);
     const again = dock(againSim, HOME_STATION);
     secondDockDelta = again.creditsDelta;
@@ -700,12 +703,12 @@ function probeContraband(seed) {
         name: 'bay_stolen_goods',
         seed: seed + 3,
         commands: artifact.commands,
-        qty: minimized && minimized.qty,
-        ticks: minimized && minimized.ticks,
+        qty: attempt.qty,
+        ticks: attempt.ticks,
         creditsDelta: shown && shown.creditsDelta,
         reasons: shown && shown.reasons,
         secondDockDelta,
-        artifact: 'tools/economic-redteam/artifacts/contraband-minimized.json',
+        artifact: '.devshots/economic-redteam/contraband-minimized.json',
       }],
       controls: [
         {

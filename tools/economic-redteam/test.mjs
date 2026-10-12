@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { FAMILY_IDS, probeFamilies } from './families.mjs';
+import { fileURLToPath } from 'node:url';
+import { CONTRABAND_ARTIFACT, FAMILY_IDS, probeFamilies } from './families.mjs';
 import { ACTION_IDS, buy, dock, leaveDock, lootDrop, raiseStanding, saveContinue, sell, service, stepTicks } from './grammar.mjs';
 import {
   bayCashVerdict,
@@ -12,7 +13,6 @@ import {
   replayVerdict,
   stockFloorVerdict,
 } from './invariants.mjs';
-import { installCargoFix, installWashGuard } from './patchModel.mjs';
 import { runSearch } from './search.mjs';
 import { runStrategies } from './strategies.mjs';
 import { HOME_FACTION, bootRedTeam, restoreFeatureMaps } from './runtime.mjs';
@@ -36,19 +36,19 @@ test('action grammar names player verbs and labels the missing ones', () => {
   }
 });
 
-test('unfixed runtime still reproduces both loops', { timeout: 180000 }, () => {
+test('production runtime reports the repaired loops through real player transactions', { timeout: 180000 }, () => {
   try {
     const families = probeFamilies(1845);
     assert.equal(families.length, 12);
     assert.deepEqual(families.map((family) => family.id), FAMILY_IDS);
 
     const wash = families.find((family) => family.id === 'zero_spread_trade_cycles');
-    assert.equal(wash.status, 'exploit');
+    assert.equal(wash.status, 'clean');
     const allied = wash.traces.find((trace) => trace.name === 'allied_minimized');
-    assert.ok(allied.creditsDelta > 0, `allied wash delta ${allied.creditsDelta}`);
+    assert.ok(allied.creditsDelta <= 0, `allied wash delta ${allied.creditsDelta}`);
     assert.ok(Math.abs(allied.stockDelta || 0) < 1e-6);
     assert.ok(allied.before && allied.after, 'before/after ledger');
-    assert.equal(allied.before.credits !== allied.after.credits, true);
+    assert.ok(allied.after.credits <= allied.before.credits);
     assert.ok(Array.isArray(allied.credits) && allied.credits.length > 0);
     assert.ok(allied.credits.some((row) => String(row.reason).startsWith('trade:buy:')));
     assert.ok(allied.credits.some((row) => String(row.reason).startsWith('trade:sell:')));
@@ -57,12 +57,12 @@ test('unfixed runtime still reproduces both loops', { timeout: 180000 }, () => {
     assert.ok(neutral.creditsDelta <= 0);
 
     const bay = families.find((family) => family.id === 'contraband_relabel');
-    assert.equal(bay.status, 'exploit', bay.summary);
+    assert.equal(bay.status, 'clean', bay.summary);
     const stolen = bay.traces.find((trace) => trace.name === 'bay_stolen_goods');
-    assert.ok(stolen.creditsDelta > 0, `bay delta ${stolen.creditsDelta}`);
+    assert.ok(stolen.creditsDelta <= 0, `bay delta ${stolen.creditsDelta}`);
     assert.ok(stolen.commands.length >= 4);
     assert.equal(stolen.secondDockDelta <= 0, true);
-    const artifact = JSON.parse(readFileSync(new URL('./artifacts/contraband-minimized.json', import.meta.url), 'utf8'));
+    const artifact = JSON.parse(readFileSync(CONTRABAND_ARTIFACT, 'utf8'));
     assert.deepEqual(artifact.commands, stolen.commands);
     assert.equal(artifact.qty, stolen.qty);
     assert.equal(artifact.ticks, stolen.ticks);
@@ -87,10 +87,9 @@ test('unfixed runtime still reproduces both loops', { timeout: 180000 }, () => {
   }
 });
 
-test('patched cargo and economy stop both loops, and Continue does not pay them again', { timeout: 120000 }, () => {
+test('real cargo and economy stop both loops, and Continue does not pay them again', { timeout: 120000 }, () => {
   try {
     const baySim = bootRedTeam(501);
-    installCargoFix(baySim.registry.get('cargo'));
     leaveDock(baySim);
     const dropped = lootDrop(baySim, { commodityId: 'cmdty_stolen_goods', qty: 2, source: 'kill_burst' });
     assert.equal(dropped.ok, true);
@@ -105,7 +104,6 @@ test('patched cargo and economy stop both loops, and Continue does not pay them 
     assert.equal(againReasons.includes('salvage:bay_sale'), false);
 
     const washSim = bootRedTeam(502);
-    installWashGuard(washSim.registry.get('economy'));
     for (let i = 0; i < 28; i += 1) raiseStanding(washSim, HOME_FACTION, 15);
     service(washSim, 'loan');
     const before = washSim.state.player.credits;
@@ -118,7 +116,6 @@ test('patched cargo and economy stop both loops, and Continue does not pay them 
     const saved = saveContinue(washSim, 'ert-patch-wash');
     assert.equal(saved.result.ok, true, saved.result.reason);
     assert.equal(saved.result.detail.after.credits, washSim.state.player.credits);
-    installWashGuard(saved.sim.registry.get('economy'));
     const againBefore = saved.sim.state.player.credits;
     const boughtAgain = buy(saved.sim, 'cmdty_ore_iron', 5);
     if (boughtAgain.ok) {
@@ -133,7 +130,7 @@ test('patched cargo and economy stop both loops, and Continue does not pay them 
 
 test('search resumes, mutates recorded commands, and runs held-out seeds', { timeout: 180000 }, () => {
   try {
-    const receiptPath = new URL('./artifacts/search-resume.json', import.meta.url).pathname;
+    const receiptPath = fileURLToPath(new URL('../../.devshots/economic-redteam/search-resume.json', import.meta.url));
     const partial = runSearch({
       seed: 11,
       sequences: 4,
@@ -165,12 +162,13 @@ test('search runs at least 500 varied traces', { timeout: 180000 }, () => {
     const search = runSearch({
       seed: 77061,
       sequences: 500,
-      receiptPath: new URL('./artifacts/search-receipt.json', import.meta.url).pathname,
+      receiptPath: fileURLToPath(new URL('../../.devshots/economic-redteam/search-receipt.json', import.meta.url)),
     });
     assert.equal(search.sequencesCompleted, 500);
     assert.equal(search.traces.length, 500);
-    assert.ok(search.mutationCount > 0, 'shrink did not run');
-    assert.ok(search.mutations.some((row) => row.after < row.before && row.stillFails));
+    const exploits = search.traces.filter(row => row.classification.startsWith('exploit_'));
+    if (exploits.length) assert.ok(search.mutationCount > 0, 'an observed exploit must be minimized');
+    else assert.equal(search.mutationCount, 0, 'repaired production loops produce no fabricated shrink');
     assert.ok(search.heldOutRuns.length > 0);
     assert.ok(search.commandCoverage.raise_standing > 0);
     assert.ok(search.commandCoverage.loot_stolen > 0);
@@ -189,7 +187,7 @@ test('four honest strategies compare earnings and only flag a feedback loop', { 
       'pirate_salvager',
       'careful_smuggler',
     ]);
-    assert.ok(strategies.degenerate.includes('pirate_salvager'));
+    assert.equal(strategies.degenerate.includes('pirate_salvager'), false);
     assert.equal(strategies.rows.find((row) => row.id === 'legal_trader').degenerate, false);
     assert.equal(strategies.rows.find((row) => row.id === 'careful_smuggler').degenerate, false);
     assert.equal(strategies.rows.find((row) => row.id === 'miner_refiner').degenerate, false);

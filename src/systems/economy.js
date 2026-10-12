@@ -61,7 +61,7 @@ import { RECIPES } from '../data/mining.js';
 import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { addCargo, removeCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargo.js';
+import { addCargo, removeCargo, removeSalvageBayCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
@@ -492,6 +492,10 @@ function commodityDef(state, id) {
 /** A station tolerates contraband/illegal goods iff it is a blackmarket (smuggler/pirate den). */
 function toleratesContraband(info) {
   return !!(info && info.type === 'blackmarket');
+}
+
+export function salvageBaySaleAllowsIllicit(state, stationId = state.ui?.dockedStationId) {
+  return toleratesContraband(stationInfo(state, stationId));
 }
 
 // A station with an authored regional produce recipe makes the good locally, so it lists and
@@ -2608,6 +2612,11 @@ export const economy = {
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     const el = def.elasticity;
+    // Benefits cannot invert the same-port spread over an unchanged stock interval.
+    const bidFactor = 1 - spread / 2;
+    const sellMultiplier = bidFactor > 0
+      ? Math.min(standing.sell, standing.buy * (1 + spread / 2) / bidFactor)
+      : standing.sell;
     const pendingCycle = pending && pending.cycles && pending.cycles[commodityId];
     const cycle = pendingCycle || getCycleCore(
       state,
@@ -2624,7 +2633,7 @@ export const economy = {
       demand: applyPersistentDemand(1, entry.demandMult), cycle: cycleFactorAt(cycle, tNow),
       priceLo: PRICE_MULT_LO, priceHi: PRICE_MULT_HI,
     });
-    const standingPriceMultiplier = side === 'buy' ? standing.buy : standing.sell;
+    const standingPriceMultiplier = side === 'buy' ? standing.buy : sellMultiplier;
     const marketUnitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
     const unitAvg = marketUnitAvg * standingPriceMultiplier;
     const total = settleCredits(unitAvg * qty, side);
@@ -4412,24 +4421,30 @@ export const economy = {
 
   /** List scan-exposed illicit stacks currently in the hold: [{ commodityId, qty, def }]. */
   illicitCargo(state) {
-    const all = [];
+    let all = [];
     const items = state.player.cargo.items;
     for (const id in items) {
       const def = commodityDef(state, id);
       if (def && def.legality && def.legality !== 'legal') all.push({ commodityId: id, qty: items[id], def });
     }
-    if (!all.length) return all;
     const caps = this.smugglingCapabilities(state);
     const hiddenCapacity = hiddenHoldCapacity({
       capVolume: state.player.cargo.capVolume,
       hiddenCargoPct: caps.hiddenCargoPct,
     });
-    if (!(hiddenCapacity > 0)) return all;
-    return remainingIllicit({ stacks: all, hiddenCapacity }).exposedStacks.map((stack) => ({
-      commodityId: stack.commodityId,
-      qty: stack.qty,
-      def: commodityDef(state, stack.commodityId),
+    if (hiddenCapacity > 0) all = remainingIllicit({ stacks: all, hiddenCapacity }).exposedStacks.map((stack) => ({
+      commodityId: stack.commodityId, qty: stack.qty, def: commodityDef(state, stack.commodityId),
     }));
+    const combined = new Map(all.map(stack => [stack.commodityId,
+      { ...stack, holdQty: stack.qty, bayQty: 0 }]));
+    // The external bay is not the fitted hidden hold; customs owns its verdict.
+    for (const [id, raw] of Object.entries(state.player.salvageBay?.items || {})) {
+      const def = commodityDef(state, id), qty = Math.max(0, Math.floor(Number(raw) || 0));
+      if (!def || !def.legality || def.legality === 'legal' || !qty) continue;
+      const row = combined.get(id) || { commodityId: id, qty: 0, holdQty: 0, bayQty: 0, def };
+      row.bayQty += qty; row.qty += qty; combined.set(id, row);
+    }
+    return [...combined.values()];
   },
 
   currentSecurity() {
@@ -4524,7 +4539,10 @@ export const economy = {
     const bonded = p && p.bondedCargo;
     if (bonded && bonded.size > 0 && illicit.length) {
       illicit = illicit
-        .map((s) => ({ ...s, qty: s.qty - Math.max(0, Number(bonded.get(s.commodityId)) || 0) }))
+        .map((s) => {
+          const holdQty = Math.max(0, s.holdQty - Math.max(0, Number(bonded.get(s.commodityId)) || 0));
+          return { ...s, holdQty, qty: holdQty + s.bayQty };
+        })
         .filter((s) => s.qty > 0);
     }
     const hasContraband = illicit.length > 0;
@@ -4568,7 +4586,10 @@ export const economy = {
     fine = round(fine);
     // confiscate the goods
     const cargoSys = this.registryGet && this.registryGet('cargo');
-    for (const stack of illicit) this.removeFromCargo(cargoSys, state, stack.commodityId, stack.qty);
+    for (const stack of illicit) {
+      this.removeFromCargo(cargoSys, state, stack.commodityId, stack.holdQty);
+      removeSalvageBayCargo(state, stack.commodityId, stack.bayQty);
+    }
     // charge fine; unpaid remainder -> debt + bounty
     const credits = normalizeCredits(state.player.credits);
     if (credits >= fine) {

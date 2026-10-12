@@ -1,4 +1,11 @@
-# SF-CLOUD-13 adapter — withheld production fixes
+# SF-CLOUD-13 adapter — integrated production fixes
+
+The quote clamp and illicit-bay custody repair are now in the production economy and cargo owners.
+Ordinary docks retain illicit salvage; canonical inspections apply scanner evasion, confiscation,
+fines, debt and faction consequences. Black markets may sell it. The regressions call the real
+owners without installing `patchModel.mjs`. `FIX.patch` is a historical proposal, not an import.
+
+Historical proposal follows.
 
 The red team runs entirely under `tools/economic-redteam/`. It does not edit
 `src/systems/economy.js` or `src/systems/cargo.js`.
