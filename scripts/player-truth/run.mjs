@@ -5,8 +5,9 @@
 //   npm run player-truth -- --mode=adventure|racing|gauntlet [--duration=300]
 //   flags: --headed (GPU Chrome, preferred) · --rounds=3 · --duration=<sim s> · --wall=<min>
 //          --idle=<sim s> · --viewport=WxH (1280x720 headed, 960x540 software GL) · --out=<dir> · --tag=<suffix> (label suffix, e.g. idle) · --evidence (copy compact result
-//          into design/program/player-truth/<label>/)
-//   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL) · --viewports=960x540,1280x720,1920x1080
+//          into design/program/player-truth/<label>/; scratch frames stay) · --prune-frames (opt-in delete of scratch frames after --evidence; default off)
+//   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
+//          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
 //          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · browser: bundled Chromium
 //          (`npx playwright install chromium`), else CHROME_PATH or /opt/google/chrome/chrome
 //
@@ -35,14 +36,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, shotEvery: null, tag: null, fight: false };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
     if (k === 'headed' || k === 'gpu') a.headed = true;
     else if (k === 'evidence') a.evidence = true;
+    else if (k === 'prune-frames') a.pruneFrames = v == null || v === '' || v === 'true';
     else if (k === 'fight') a.fight = true;
-    else if (k === 'gate') a.gate = true;
+    else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
@@ -52,6 +54,37 @@ export function parseArgs(argv) {
   a.viewportList = a.viewports ? String(a.viewports).split(',').map((x) => x.trim()).filter((x) => /^\d+x\d+$/.test(x)) : [a.viewport];
   a.duration = a.duration || { swarm: 180, gauntlet: 180, adventure: 300, racing: 180 }[a.mode];
   return a;
+}
+
+// `--gate` replaces the caller's rounds and duration. A bounded hull × viewport matrix omits `--gate`
+// so `--rounds`, `--duration` and `--wall` stay the numbers on the command line.
+export function gatePasses(args) {
+  const roundMode = args.mode === 'swarm' || args.mode === 'gauntlet';
+  if (!args.gate) return [{}];
+  if (!roundMode) return [{ gatePass: 'active', tag: args.tag }];
+  const which = args.gate === true ? 'both' : String(args.gate);
+  const idle = { gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 };
+  const active = { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) };
+  if (which === 'idle') return [idle];
+  if (which === 'active') return [active];
+  if (which === 'both') return [idle, active];
+  throw new Error(`--gate must be idle, active, or omitted for both (got ${which})`);
+}
+
+/** One line when the route dies. A SwiftShader OOM often SIGKILLs Chrome before Playwright's close events flush, so the exit code and signal are part of the line. */
+export function formatRouteFailure(message, { notes = [], exitCode = null, signal = null } = {}) {
+  const head = String(message || 'unknown').split('\n')[0].slice(0, 180);
+  const bits = notes.map((n) => String(n).replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (exitCode != null || signal) bits.push(`chrome exit ${exitCode == null ? 'null' : exitCode} signal ${signal || 'none'}`);
+  const extra = bits.length ? ` [${bits.join(' | ')}]` : '';
+  return `harness/route error: ${head}${extra}`.slice(0, 400);
+}
+
+/** Process status for a finished matrix: 1 if any verdict is FAIL, 2 if any is not PASS, else 0. */
+export function gateExitCode(verdicts) {
+  if (verdicts.some((v) => v === 'FAIL')) return 1;
+  if (verdicts.some((v) => v !== 'PASS')) return 2;
+  return 0;
 }
 
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
@@ -117,7 +150,16 @@ async function runOne(args, arena, extra = {}) {
   });
   const page = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1 });
   const pageErrors = [];
+  const browserNotes = [];
+  const note = (line) => { if (browserNotes.length < 12) browserNotes.push(String(line).replace(/\s+/g, ' ').trim().slice(0, 180)); };
   page.on('pageerror', (e) => pageErrors.push(String(e.message || e).slice(0, 200)));
+  browser.on('disconnected', () => note('browser disconnected'));
+  page.on('crash', () => note('page crashed'));
+  page.on('close', () => note('page closed'));
+  const child = typeof browser.process === 'function' ? browser.process() : null;
+  if (child && child.stderr) child.stderr.on('data', (buf) => {
+    for (const line of String(buf).split('\n')) if (/FATAL|oom|killed|crash|SwiftShader|GL out|aw, snap/i.test(line)) note(line);
+  });
   let lastProgress = 0; let progressMark = null;
   let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false;
 
@@ -259,8 +301,14 @@ async function runOne(args, arena, extra = {}) {
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
   } catch (err) {
-    stopReason = `harness/route error: ${String(err && err.message || err).split('\n')[0].slice(0, 200)}`;
+    if (child) {
+      await new Promise((r) => setTimeout(r, 400));
+      if (child.exitCode != null || child.signalCode) note(`chrome exit ${child.exitCode} signal ${child.signalCode || 'none'}`);
+      else if (typeof browser.isConnected === 'function' && !browser.isConnected()) note('browser not connected');
+    }
+    stopReason = formatRouteFailure(err && err.message || err, { notes: browserNotes });
     trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
+    if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
     console.error(err);
     await shoot('route failure', false);
   } finally {
@@ -291,12 +339,38 @@ async function runOne(args, arena, extra = {}) {
   });
   await browser.close().catch(() => {}); await server.close().catch(() => {});
 
-  const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, vw, vh });
+  const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, pruneFrames: args.pruneFrames, vw, vh });
   return { label, verdict, outDir };
 }
 
+/** Scratch frames stay for review. They are removed only when --evidence and --prune-frames are both set. */
+export function maybePruneFrames(outDir, { evidence = false, pruneFrames = false } = {}) {
+  if (!evidence || !pruneFrames) return false;
+  rmSync(path.join(outDir, 'frames'), { recursive: true, force: true });
+  return true;
+}
+
+/** process.exit drops unflushed pipe buffers. Drain both streams, then exit. */
+export function flushWritable(stream) {
+  return new Promise((resolve) => {
+    if (!stream || typeof stream.write !== 'function' || stream.destroyed || stream.writableEnded) { resolve(); return; }
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; clearTimeout(timer); resolve(); } };
+    const timer = setTimeout(finish, 1000);
+    try {
+      stream.write('', () => finish());
+    } catch { finish(); }
+  });
+}
+
+export async function exitAfterFlush(code, { stdout = process.stdout, stderr = process.stderr, exit = process.exit } = {}) {
+  await flushWritable(stdout);
+  await flushWritable(stderr);
+  exit(code);
+}
+
 /** Grade a recorded trace and write verdict.md/json, contact sheet and (with evidence) the compact copy. */
-export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw, vh }) {
+export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pruneFrames = false, vw, vh }) {
   const nearestSample = (t) => { let best = null; let bd = Infinity; for (const s of trace.samples) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } } return bd < 2000 ? best : null; };
   trace.readability = await analyzeReadability(shots, nearestSample).catch((e) => ({ error: String(e) }));
   for (const c of (trace.readability && trace.readability.census) || []) c.name = trace.keys[c.ty] || null;
@@ -315,6 +389,7 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw,
     writeFileSync(path.join(evDir, 'verdict.json'), JSON.stringify(compact, null, 1));
     const evPaths = { verdict: path.relative(ROOT, path.join(evDir, 'verdict.md')), contactSheet: path.relative(ROOT, path.join(evDir, 'contact-sheet.jpg')), json: path.relative(ROOT, path.join(evDir, 'verdict.json')) };
     writeFileSync(path.join(evDir, 'verdict.md'), renderVerdict({ meta, results, overall: verdict, paths: evPaths }));
+    maybePruneFrames(outDir, { evidence: true, pruneFrames });
   }
   writeFileSync(path.join(outDir, 'verdict.md'), renderVerdict({ meta, results, overall: verdict, paths }));
   printSummary({ meta, results, overall: verdict, paths });
@@ -355,12 +430,9 @@ async function main() {
     await browser.close(); await server.close();
   }
   const hulls = args.hullList || [args.hull && args.hull !== 'all' ? args.hull : null];
-  const roundMode = args.mode === 'swarm' || args.mode === 'gauntlet';
   // --gate: an idle pass (passive kills/reward/spawn motion, the whole first round with no input) and an
   // active pass (fighter from ~3 s, must reach round 3); UNKNOWN on the core checks is a FAIL.
-  const passes = !args.gate ? [{}]
-    : roundMode ? [{ gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 }, { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) }]
-      : [{ gatePass: 'active', tag: args.tag }];
+  const passes = gatePasses(args);
   const outcomes = [];
   const multiple = args.viewportList.length * hulls.length * arenas.length * passes.length > 1;
   for (const viewport of args.viewportList) for (const hull of hulls) for (const arena of arenas) for (const pass of passes) {
@@ -375,8 +447,11 @@ async function main() {
     const { runBaseline } = await import('./compare.mjs');
     await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
   }
-  const worst = outcomes.some((o) => o.verdict === 'FAIL') ? 1 : outcomes.some((o) => o.verdict !== 'PASS') ? 2 : 0;
-  process.exitCode = worst;
+  const worst = gateExitCode(outcomes.map((o) => o.verdict));
+  console.log(`player-truth exit ${worst}`);
+  // Browser and bench server are already closed inside each run. Flush the verdict lines, then exit
+  // so a pipe (the lock wrapper) cannot lose the exit code, and so a leftover handle cannot hold the lock.
+  await exitAfterFlush(worst);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

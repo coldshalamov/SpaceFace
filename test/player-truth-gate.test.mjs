@@ -75,6 +75,100 @@ test('player_control: velocity without displacement is a pinned ship, not a work
   assert.equal(checkPlayerControl(flying).status, 'PASS');
 });
 
+test('parseArgs keeps a bounded hull x viewport matrix, and --gate replaces its rounds and duration', async () => {
+  const { parseArgs, gatePasses } = await import('../scripts/player-truth/run.mjs');
+  const argv = ['--mode=swarm', '--arena=Ricochet Foundry', '--hull=all', '--viewports=960x540,1280x720,1920x1080', '--rounds=2', '--idle=3', '--duration=70', '--wall=12', '--evidence', '--tag=matrix'];
+  const matrix = parseArgs(argv);
+  assert.equal(matrix.gate, false);
+  assert.equal(matrix.hull, 'all');
+  assert.deepEqual(matrix.viewportList, ['960x540', '1280x720', '1920x1080']);
+  assert.equal(matrix.seed, 4242);
+  assert.equal(matrix.tag, 'matrix');
+  assert.equal(matrix.evidence, true);
+  assert.equal(matrix.rounds, 2);
+  assert.equal(matrix.idle, 3);
+  assert.equal(Number(matrix.duration), 70);
+  assert.equal(Number(matrix.wall), 12);
+  assert.deepEqual(gatePasses(matrix), [{}]);
+  const gated = parseArgs([...argv, '--gate']);
+  assert.equal(gated.gate, true);
+  assert.equal(gated.hull, 'all');
+  assert.deepEqual(gated.viewportList, matrix.viewportList);
+  const passes = gatePasses(gated);
+  assert.equal(passes[0].gatePass, 'idle');
+  assert.equal(passes[0].rounds, 1);
+  assert.equal(passes[0].duration, 45);
+  assert.equal(passes[1].gatePass, 'active');
+  assert.equal(passes[1].rounds, 3);
+  assert.equal(passes[1].requireRounds, 3);
+  assert.equal(passes[1].duration, 300);
+  assert.deepEqual(gatePasses(parseArgs(['--mode=adventure', '--gate', '--tag=cruise'])), [{ gatePass: 'active', tag: 'cruise' }]);
+  const activeOnly = parseArgs(['--mode=swarm', '--seed=4242', '--gate=active', '--tag=seed4242-r2']);
+  assert.equal(activeOnly.gate, 'active');
+  assert.equal(activeOnly.seed, 4242);
+  const only = gatePasses(activeOnly);
+  assert.equal(only.length, 1);
+  assert.equal(only[0].gatePass, 'active');
+  assert.equal(only[0].idle, 3);
+  assert.equal(only[0].rounds, 3);
+  assert.equal(only[0].requireRounds, 3);
+  assert.equal(only[0].duration, 300);
+  assert.equal(gatePasses(parseArgs(['--mode=swarm', '--gate=idle'])).length, 1);
+  assert.throws(() => gatePasses(parseArgs(['--mode=swarm', '--gate=nope'])), /--gate must be/);
+});
+
+test('scratch frames stay unless --prune-frames is passed with --evidence', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { parseArgs, maybePruneFrames } = await import('../scripts/player-truth/run.mjs');
+  assert.equal(parseArgs(['--evidence']).pruneFrames, false);
+  assert.equal(parseArgs(['--evidence', '--prune-frames']).pruneFrames, true);
+  assert.equal(parseArgs(['--prune-frames=false']).pruneFrames, false);
+  const dir = mkdtempSync(join(tmpdir(), 'pt-frames-'));
+  const frames = join(dir, 'frames');
+  mkdirSync(frames);
+  writeFileSync(join(frames, '0000.jpg'), 'frame');
+  assert.equal(maybePruneFrames(dir, { evidence: true, pruneFrames: false }), false);
+  assert.equal(existsSync(join(frames, '0000.jpg')), true);
+  assert.equal(maybePruneFrames(dir, { evidence: false, pruneFrames: true }), false);
+  assert.equal(existsSync(join(frames, '0000.jpg')), true);
+  assert.equal(maybePruneFrames(dir, { evidence: true, pruneFrames: true }), true);
+  assert.equal(existsSync(frames), false);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('the exit code is applied only after stdout and stderr flush', async () => {
+  const { exitAfterFlush } = await import('../scripts/player-truth/run.mjs');
+  const order = [];
+  const stream = () => ({
+    writable: true, destroyed: false, writableEnded: false,
+    write(_chunk, cb) { order.push('flush'); cb(); return true; },
+  });
+  await exitAfterFlush(1, { stdout: stream(), stderr: stream(), exit: (code) => { order.push(`exit ${code}`); } });
+  assert.deepEqual(order, ['flush', 'flush', 'exit 1']);
+});
+
+test('a closed browser records the chrome exit signal in the stop line', async () => {
+  const { formatRouteFailure } = await import('../scripts/player-truth/run.mjs');
+  const line = formatRouteFailure('page.evaluate: Target page, context or browser has been closed', { notes: ['page closed'], exitCode: null, signal: 'SIGKILL' });
+  assert.match(line, /^harness\/route error: page\.evaluate: Target page/);
+  assert.match(line, /page closed/);
+  assert.match(line, /chrome exit null signal SIGKILL/);
+  assert.equal(formatRouteFailure('menu missing'), 'harness/route error: menu missing');
+});
+
+test('gate process exits non-zero when any verdict is FAIL', async () => {
+  const { gateExitCode } = await import('../scripts/player-truth/run.mjs');
+  assert.equal(gateExitCode(['PASS']), 0);
+  assert.equal(gateExitCode(['PASS', 'PASS']), 0);
+  assert.equal(gateExitCode(['FAIL']), 1);
+  assert.equal(gateExitCode(['PASS', 'FAIL']), 1);
+  assert.equal(gateExitCode(['INCOMPLETE']), 2);
+  assert.equal(gateExitCode(['PASS', 'INCOMPLETE']), 2);
+  assert.equal(gateExitCode(['FAIL', 'INCOMPLETE']), 1);
+});
+
 test('pinned spans name the solid body the ship sits on', async () => {
   const { checkPlayerControl } = await import('../scripts/player-truth/checks.mjs');
   const t = trace({ probes: [{ label: 'round 2 thrust', kind: 'thrust', key: 'KeyW', startSim: 15, endSim: 16.4 }], player: () => P({ vx: 140, vz: 0, x: 0, z: 0 }) });
