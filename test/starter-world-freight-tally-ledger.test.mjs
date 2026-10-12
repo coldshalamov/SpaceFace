@@ -76,6 +76,8 @@ describe('Helios freight tally ledger', { concurrency: false }, () => {
     assert.equal(rows[0].destinationId, 'station_helios');
     assert.equal(rows[0].sectorId, 'sector_helios_prime');
     assert.equal(rows[0].simTime, 16);
+    assert.equal(rows[0].disposition, 'counted');
+    assert.equal(rows[0].dispositionSimTime, undefined);
 
     state.simTime += 6;
     lanes._stepHeliosOreCarrier(entity, rec, [station], state);
@@ -146,5 +148,58 @@ describe('Helios freight tally ledger', { concurrency: false }, () => {
     assert.deepEqual(heliosFreightTallies(state), []);
     assert.equal(lanes.serialize().heliosFreightTallies, undefined);
     sim.dispose();
+  });
+
+  test('a counted hold closes once, as delivered or lost, and the other outcome cannot reopen it', () => {
+    const delivered = boot();
+    const deliveredHold = manifest('fm_docked_hold', 4);
+    const deliveredBarge = bargeAtTally(delivered.sim, deliveredHold);
+    const deliveredRec = { role: 'ore_carrier', id: deliveredBarge.id, dockSeq: 0, tallyManifestId: null, tallyHoldSince: null };
+    delivered.state.simTime = 10;
+    delivered.traffic._stepHeliosOreCarrier(deliveredBarge, deliveredRec, [delivered.station], delivered.state);
+    delivered.state.simTime = 16;
+    delivered.traffic._stepHeliosOreCarrier(deliveredBarge, deliveredRec, [delivered.station], delivered.state);
+    assert.equal(delivered.traffic._emitArrival(deliveredBarge, deliveredRec, delivered.station, { manifest: deliveredHold }), true);
+    let row = heliosFreightTallies(delivered.state)[0];
+    assert.equal(row.disposition, 'delivered');
+    assert.equal(row.dispositionSimTime, 16);
+    deliveredBarge.data.cargoManifest = deliveredHold;
+    delivered.traffic._onEntityKilled({ id: deliveredBarge.id, type: 'ship', pos: { ...deliveredBarge.pos } });
+    row = heliosFreightTallies(delivered.state)[0];
+    assert.equal(row.disposition, 'delivered', 'a later destruction does not un-deliver a hold that already docked');
+    assert.equal(row.dispositionSimTime, 16);
+    const deliveredSaved = delivered.traffic.serialize();
+    delete delivered.state.traffic.heliosFreightTallies;
+    delivered.traffic.deserialize(deliveredSaved);
+    assert.equal(heliosFreightTallies(delivered.state)[0].disposition, 'delivered');
+    assert.equal(heliosFreightTallies(delivered.state)[0].dispositionSimTime, 16);
+    delivered.sim.dispose();
+
+    const lost = boot();
+    const lostHold = manifest('fm_lost_hold', 5, 'cmdty_silicate');
+    const lostBarge = bargeAtTally(lost.sim, lostHold);
+    lost.state.simTime = 20;
+    lost.traffic._rememberHeliosFreightTally(lostBarge, lostHold, 'cmdty_silicate');
+    lost.state.simTime = 28;
+    lost.traffic._onEntityKilled({ id: lostBarge.id, killerId: 9, type: 'ship', pos: { ...lostBarge.pos } });
+    row = heliosFreightTallies(lost.state)[0];
+    assert.equal(row.manifestId, 'fm_lost_hold');
+    assert.equal(row.disposition, 'lost');
+    assert.equal(row.dispositionSimTime, 28);
+    const lostRec = { role: 'ore_carrier', id: lostBarge.id, dockSeq: 0 };
+    lostBarge.data.cargoManifest = lostHold;
+    lost.state.simTime = 40;
+    lost.traffic._emitArrival(lostBarge, lostRec, lost.station, { manifest: lostHold });
+    row = heliosFreightTallies(lost.state)[0];
+    assert.equal(row.disposition, 'lost', 'a later dock does not revive a hold the ledger already lost');
+    assert.equal(row.dispositionSimTime, 28);
+    lost.traffic.deserialize({
+      schema: lost.traffic.serialize().schema,
+      heliosFreightTallies: [{ manifestId: 'fm_old', totalQty: 2, disposition: 'smuggled', dispositionSimTime: 4 }],
+    });
+    const old = heliosFreightTallies(lost.state)[0];
+    assert.equal(old.disposition, 'counted', 'an unknown disposition reads as still counted');
+    assert.equal(old.dispositionSimTime, undefined);
+    lost.sim.dispose();
   });
 });

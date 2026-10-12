@@ -351,12 +351,17 @@ const HELIOS_TALLY_STILL = 4;
 const HELIOS_TALLY_COUNT_S = 6;
 const HELIOS_TALLY_LEDGER_CAP = 8;
 
+function heliosFreightDisposition(value) {
+  return value === 'delivered' || value === 'lost' ? value : 'counted';
+}
+
 function normalizeHeliosFreightTally(row) {
   if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
   const manifestId = typeof row.manifestId === 'string' && row.manifestId ? row.manifestId : null;
   const totalQty = Number(row.totalQty);
   if (!manifestId || !(totalQty > 0)) return null;
-  return {
+  const disposition = heliosFreightDisposition(row.disposition);
+  const tally = {
     manifestId,
     carrierWorldRecordId: typeof row.carrierWorldRecordId === 'string' && row.carrierWorldRecordId
       ? row.carrierWorldRecordId : null,
@@ -366,7 +371,13 @@ function normalizeHeliosFreightTally(row) {
       ? row.destinationId : 'station_helios',
     simTime: Number.isFinite(Number(row.simTime)) ? Number(row.simTime) : 0,
     sectorId: 'sector_helios_prime',
+    disposition,
   };
+  // A counted row has no later clock. Delivered and lost keep the sim time of that one change.
+  if (disposition !== 'counted' && Number.isFinite(Number(row.dispositionSimTime))) {
+    tally.dispositionSimTime = Number(row.dispositionSimTime);
+  }
+  return tally;
 }
 
 function normalizeHeliosFreightTallyList(rows) {
@@ -6438,6 +6449,21 @@ export const traffic = {
       ? next.slice(next.length - HELIOS_TALLY_LEDGER_CAP) : next;
   },
 
+  // The count is the start of the fact. Delivery and loss close it once, and neither
+  // overwrites the other: a docked hold that is later destroyed was already off the barge,
+  // and a lost hold does not become a delivery because a later hull reuses the id.
+  _noteHeliosFreightDisposition(manifestId, disposition) {
+    if (disposition !== 'delivered' && disposition !== 'lost') return false;
+    if (!this.state || !this.state.traffic || typeof manifestId !== 'string' || !manifestId) return false;
+    const rows = this.state.traffic.heliosFreightTallies;
+    if (!Array.isArray(rows)) return false;
+    const row = rows.find((item) => item && item.manifestId === manifestId);
+    if (!row || heliosFreightDisposition(row.disposition) !== 'counted') return false;
+    row.disposition = disposition;
+    row.dispositionSimTime = Number(this.state.simTime) || 0;
+    return true;
+  },
+
   // The Helios freight spine counts every laden hull at its tally post before the berth: the seam's
   // ore crosses the opening neighbourhood as real freight instead of slipping off behind the rock.
   _heliosTallyPoint() {
@@ -8354,6 +8380,7 @@ export const traffic = {
     }
     rec.dockSeq = Math.max(rec.dockSeq | 0, dockSeq + 1);
     if (entity && entity.data) entity.data.freightDockSeq = rec.dockSeq;
+    this._noteHeliosFreightDisposition(manifest && manifest.manifestId, 'delivered');
 
     // After delivery, refresh manifest for the next leg (still deterministic per dockSeq key).
     const nextKey = `${freighterKey}:leg:${rec.dockSeq}`;
@@ -11683,6 +11710,7 @@ export const traffic = {
         });
       }
       t.appliedLossIds = mergeAppliedFreightIds(t.appliedLossIds, fresh);
+      this._noteHeliosFreightDisposition(manifest && manifest.manifestId, 'lost');
     }
 
     if (p.killerId != null && p.killerId === this.state.playerId) {

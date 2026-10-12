@@ -5,12 +5,13 @@ Legend: **TRUE** = already on master before this branch · **BUILT** = landed he
 
 Proof metric: `branch_world_fact_delta`. This note is the follow-up to the partial slice in #285.
 The mule fallback stays. It is the victim only after the readiness hold expires with no loaded barge in frame.
+`design/program/NOW.md` on this branch matches master. The #285 claim row stays the board's row.
 
 ## What this branch records
 
 | Fact | Status | Where it lives |
 |---|---|---|
-| A Helios ore barge that holds still at `poi_helios_tally` for 6 s writes one ledger row per manifest (cap 8, oldest dropped). Empty holds write nothing. The row round-trips on the traffic save and is absent after New Game. | BUILT | `src/systems/traffic.js` `heliosFreightTallies`; `test/starter-world-freight-tally-ledger.test.mjs` |
+| A Helios ore barge that holds still at `poi_helios_tally` for 6 s writes one ledger row per manifest (cap 8, oldest dropped). Empty holds write nothing. The row round-trips on the traffic save and is absent after New Game. A later real dock closes that row as `delivered`. A later freight-loss of the same manifest closes it as `lost`. Neither outcome overwrites the other. An unknown saved disposition reads back as `counted`. | BUILT | `src/systems/traffic.js` `heliosFreightTallies`; `test/starter-world-freight-tally-ledger.test.mjs` |
 | The opening raid's cause names the hold it hit. Defended is contained and posts no job. Robbed posts replacement freight. A destroyed barge posts salvage and keeps `encounterFingerprint` on the dead hull. Flying on posts a corridor patrol, not a cargo loss. A living release clears that fingerprint. An unknown outcome records nothing. Other encounter shapes gain no freight fields. | BUILT | `src/world/encounterCausality.js`, `src/data/encounters/344-opening-hauler-raid.js`; `test/starter-world-opening-raid-cause.test.mjs` |
 | A player who scoops a chip titled to the claim miner, inside Helios jurisdiction, with a witness, gets one `payload_theft` receipt. The receipt survives save/load. No witness is a denial and leaves no ledger. An untitled chip, the player's own chip, a zero take, and the barge's own scoop are not charges. | BUILT | `src/systems/lawSecurity.js`; `test/starter-world-titled-chip-theft.test.mjs` |
 | Seed 4242 adopts `helios_starter_ore_carrier` / `ship_ironback` on the production runtime. The cause's `manifestId` is that barge's hold. 4242 is intercepted before a tally, so the ledger can be empty at the shot. | BUILT (cause stamp on the production path). Adoption itself was already true on master. | `test/starter-world-opening-raid-real-path.test.mjs` |
