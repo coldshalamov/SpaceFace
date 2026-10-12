@@ -52,10 +52,29 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   const seedInput = page.locator('#screens .sf-crd-seed input').first();
   const trySeed = async () => {
     if (seed == null || seedSet) return;
-    // The seed sits inside the door's collapsed prep disclosure: open it the way a player does.
+    // The seed is a settings row on the door, often below the fold at 960x540. Scroll it into
+    // the centre the way a player does, then replace the digits. A collapsed disclosure is the
+    // older door; open that too if it is still there.
     const closed = page.locator('#screens details:not([open]):has(.sf-crd-seed) > summary').first();
     if (await closed.count().catch(() => 0)) await closed.click({ timeout: 15000 }).catch(() => {});
-    try { await seedInput.scrollIntoViewIfNeeded({ timeout: 10000 }); await seedInput.fill(String(seed), { timeout: 3000 }); await seedInput.press('Tab'); seedSet = true; } catch { /* not on this step */ }
+    if (!(await seedInput.count().catch(() => 0))) return;
+    await seedInput.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' })).catch(() => {});
+    const want = String(seed);
+    try {
+      await seedInput.fill(want, { timeout: 5000 });
+      await seedInput.press('Tab');
+    } catch {
+      // The row is in the DOM but Playwright still calls it hidden (overflow clip). Click the
+      // centre and type, which is what a player does once the row is on screen.
+      const bb = await seedInput.boundingBox().catch(() => null);
+      if (!bb) return;
+      await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.type(want, { delay: 15 });
+      await page.keyboard.press('Tab');
+    }
+    const got = await seedInput.inputValue().catch(() => '');
+    if (String(got).trim() === want) seedSet = true;
   };
   await trySeed();
   const chosen = await listDoorArenas(page);
