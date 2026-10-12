@@ -68,6 +68,12 @@
       "runtimeMap": "partsLibrary PLACE_FILES",
       "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
     },
+    "place_landmark_cut_saw": {
+      "id": "place_landmark_cut_saw",
+      "kind": "landmark",
+      "lifecycle": "BLOCKED",
+      "notes": "pending_render — AEP C11 ID-L. Forge script complete (tools/blender/forge/ships/place_landmark_cut_saw.py; preview GLB builds cleanly, lod0 32964 tris, own sockets), release GLB not yet published. The Cut Saw: monumental tracked saw rig mid-stroke on a split moonlet, Hyperion Cut. BLOCKED stays until release publish + PLACE_FILES wiring land; enum lacks PENDING_RENDER on this baseline."
+    },
     "place_debris_chunk": {
       "id": "place_debris_chunk",
       "kind": "prop",

@@ -448,6 +448,13 @@
       "part_id": "place_landmark_skerris_throne",
       "new_place": true
     },
+    "place_landmark_cut_saw": {
+      "layout": "place",
+      "file": "place_landmark_cut_saw",
+      "asset_id": "SF_PLACE_LANDMARK_CUT_SAW",
+      "part_id": "place_landmark_cut_saw",
+      "new_place": true
+    },
     "place_station_trade_hub": {
       "layout": "place",
       "file": "place_station_trade_hub",

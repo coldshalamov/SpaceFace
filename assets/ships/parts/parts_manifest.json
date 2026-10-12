@@ -3733,6 +3733,19 @@
       }
     },
     {
+      "id": "place_landmark_cut_saw",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_cut_saw.glb",
+      "status": "blocked",
+      "statusNote": "pending_render — Forge script complete (tools/blender/forge/ships/place_landmark_cut_saw.py; preview GLB builds cleanly: lod0 32964 tris, own sockets SOCKET_Structure_Core/SOCKET_Camera_Focus), release GLB not yet published into assets/ships/parts/places/. The Cut Saw (Hyperion Cut): a monumental tracked saw rig mid-stroke on a moonlet it is slicing in half — twin rock halves, kerf faces, rail track bed, gantry carriage, 30 m toothed blade, coolant spray bar, site dressing. AEP C11 ID-L.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ]
+    },
+    {
       "id": "place_mining_drone",
       "category": "places",
       "priority": "P1",
