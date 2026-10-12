@@ -9985,6 +9985,10 @@ async function commitAuthoredBoundary(
   // Publish exactly one identity after the authored payload and bindings exist. The hidden substrate
   // is never a live readability layer and cannot turn a box or blue-clay body into a different ship.
   boundary.remove(fallbackRoot);
+  // The substrate's stand-in rode onto the boundary's userData at wrap time; it leaves with the
+  // substrate, or the boundary keeps reporting a resolving marker over the committed hero hull.
+  const staleMarker = boundary.userData && boundary.userData.resolvingMarker;
+  if (staleMarker && staleMarker.parent !== boundary) delete boundary.userData.resolvingMarker;
   boundary.add(authored.root);
   // The swap mutated the tree under no park key — a withheld/parked verdict
   // keyed on the fallback subtree stays stale until the recheck backstop

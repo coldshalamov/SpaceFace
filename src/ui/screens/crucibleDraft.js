@@ -1380,6 +1380,9 @@ export const crucibleDraftScreen = {
     card.type = 'button';
     card.dataset.offerId = offer.id;
     card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${lines.slot}`);
+    // Hover reads the same sentence the card prints: what it does, then what it replaces.
+    card.title = [lines.verb, lines.name, lines.blurb, offer.replacesName ? `Replaces ${offer.replacesName}` : '']
+      .filter(Boolean).join('. ');
 
     // The key numeral rides on the verb's line, so a card with no key (the armory's fourth
     // offer on) starts its name on the same line as the cards beside it.
