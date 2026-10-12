@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LIVING_NOISE_GLSL } from '../vfx/livingMaterial.glsl.js';
 import { explosionPattern01 } from './phasedExplosions.js';
 import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
 import { volatileClassOf } from '../../data/commodityVolatileClasses.js';
@@ -81,12 +82,13 @@ function createRuptureGeometry() {
 // Geometry, density and heat share the same transported coordinates. A drifting
 // sheet with unrelated scrolling color looked like paper even with a porous alpha.
 const REACTOR_TRANSPORT = /* glsl */`
+  ${LIVING_NOISE_GLSL}
   vec3 reactorTransport(vec2 uv, float clock, float seed) {
     float carry=uv.x-clock*(0.88+0.21*sin(seed));
-    float shear=uv.y+0.25*sin(carry*9.3+seed)
-      +0.11*sin(carry*19.7-uv.y*4.2+seed*1.7);
-    float curl=sin(carry*16.1+shear*6.3-seed);
-    return vec3(carry+0.075*sin(shear*9.1+clock*3.7),shear,curl);
+    vec2 eddy=sfLivingCurl(vec2(carry*3.7,uv.y*1.4+seed));
+    float shear=uv.y+eddy.y*.34;
+    float curl=sfLivingPotential(vec2(carry*6.1+eddy.x*.42,shear*2.3-seed)).x*2.0-1.0;
+    return vec3(carry+eddy.x*.11,shear,curl);
   }
 `;
 
@@ -204,9 +206,9 @@ const FRAGMENT = /* glsl */`
       // The domain also displaces the vertices: hot lobes move and fold rather
       // than leaving a fixed leaf with a moving texture across its face.
       vec3 flow=reactorTransport(vec2(u,v),motionTime,seed);
-      density=0.28+0.28*sin(flow.x*17.4+flow.y*5.1+seed)
-        +0.16*sin(flow.x*31.7-flow.y*9.3+seed*0.7)
-        +0.09*sin(flow.x*43.1+flow.y*14.2-seed);
+      vec3 hotMatter=sfLivingPotential(vec2(flow.x*6.2,flow.y*2.4+seed));
+      float pockets=sfLivingPotential(vec2(flow.x*11.3+3.1,flow.y*3.7-seed)).x;
+      density=.05+.64*hotMatter.x+.22*pockets;
     } else if(vKind>2.5) {
       // Fuel keeps its longer rolling folds, with connected combustible body between the
       // channels. Uneven depletion opens gaps; a permanent centre cut is not combustion.

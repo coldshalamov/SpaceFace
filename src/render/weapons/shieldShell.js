@@ -40,6 +40,8 @@
  */
 
 /** Name of the clock uniform both shield materials must declare for the shell to be alive. */
+import { LIVING_NOISE_GLSL } from '../vfx/livingMaterial.glsl.js';
+
 export const SHIELD_SHELL_TIME_UNIFORM = 'uShellTime';
 
 export const SHIELD_SHELL_FRAME_UNIFORMS = Object.freeze([
@@ -141,6 +143,7 @@ export function setShieldShellClock(material, simTime, motionReduce = false) {
 }
 
 export const SHIELD_SHELL_GLSL = /* glsl */`
+  ${LIVING_NOISE_GLSL}
   // The shell's own clock. Left at 0 by a material that does not supply it, which resolves every
   // term below to the previous static lattice rather than to anything wrong.
   uniform float uShellTime;
@@ -312,9 +315,12 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     float currentPhase = (along * 3.4 - clock * 0.62 + cell) * SF_SHIELD_TAU;
     float current = mix(pow(0.5 + 0.5 * cos(currentPhase), 6.0), 0.225586,
       smoothstep(0.7,3.14159,fwidth(currentPhase)));
-    float breath = 0.5 + 0.5 * sin(clock * 1.7 + cell * SF_SHIELD_TAU);
-    float shellPulse = 0.84 + 0.16 * sin(clock * 2.15 + cell * SF_SHIELD_TAU * 0.37);
-    float layerPulse = 0.5 + 0.5 * sin(clock * 1.55 - cell * SF_SHIELD_TAU * 1.7);
+    // Unsynchronised load transfer between panels replaces the shared breathe loop.
+    // Still confined to the welded members: the protected hull remains visible through panes.
+    vec3 loadFlow=sfLivingPotential(vec2(along*2.6-clock*.46,cell*13.7));
+    float breath = loadFlow.x;
+    float shellPulse = 0.76 + 0.24 * loadFlow.x;
+    float layerPulse = sfLivingPotential(vec2(along*3.8-clock*.31,cell*19.1+4.7)).x;
 
     // Absorbed charge does not light every panel at once: each panel has its own place in the
     // sequence, so the lattice energises as a scatter across the shell and drains the same way.

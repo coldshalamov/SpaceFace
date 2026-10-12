@@ -236,7 +236,11 @@ const PLUME_FRAG = /* glsl */`
     float dtWorld = dt * worldPerT;
 
     // Dither the entry point so undersampling shows up as fine grain instead of concentric bands.
-    float jit = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453 + uTime * 0.37);
+    // Stable spatial dithering. Without temporal accumulation, rotating this seed every frame
+    // made the volume sparkle even at a fixed pose; material flow already supplies real motion.
+    vec3 jitterSeed=fract(vec3(gl_FragCoord.xyx)*.1031);
+    jitterSeed+=dot(jitterSeed,jitterSeed.yzx+33.33);
+    float jit=fract((jitterSeed.x+jitterSeed.y)*jitterSeed.z);
     float t = t0 + dt * jit;
 
     // Mip level matching the step size. How far the noise coordinate travels per step, converted to

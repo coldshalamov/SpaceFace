@@ -5,6 +5,7 @@
 // depth-aware soft-intersection path, and separate a hot core from a turbulent halo.
 
 import * as THREE from 'three';
+import { LIVING_NOISE_GLSL } from '../vfx/livingMaterial.glsl.js';
 
 const ENERGY_VERTEX = /* glsl */`
   varying vec2 vUv;
@@ -24,6 +25,7 @@ const ENERGY_VERTEX = /* glsl */`
 `;
 
 const ENERGY_FRAGMENT = /* glsl */`
+  ${LIVING_NOISE_GLSL}
   precision highp float;
   varying vec2 vUv;
   varying vec3 vLocal;
@@ -58,7 +60,7 @@ const ENERGY_FRAGMENT = /* glsl */`
   float noise3(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
+    f = f*f*f*(f*(f*6.0-15.0)+10.0);
     float n000 = hash31(i + vec3(0.0,0.0,0.0));
     float n100 = hash31(i + vec3(1.0,0.0,0.0));
     float n010 = hash31(i + vec3(0.0,1.0,0.0));
@@ -77,7 +79,7 @@ const ENERGY_FRAGMENT = /* glsl */`
   float fbm(vec3 p) {
     float sum = 0.0;
     float amp = 0.55;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 4; i++) {
       sum += noise3(p) * amp;
       p = p * 2.03 + vec3(17.1, 9.2, 13.7);
       amp *= 0.48;
@@ -94,7 +96,8 @@ const ENERGY_FRAGMENT = /* glsl */`
   void main() {
     vec3 flowP = vLocal * uNoiseScale;
     flowP.x -= uTime * uFlowSpeed;
-    flowP.z += sin(uTime * 0.63 + vLocal.x * 2.0) * 0.35;
+    vec2 curl=sfLivingCurl(flowP.xz*.71+vec2(vLocal.y*1.3,7.1));
+    flowP.yz += curl*.29;
     float turbulence = fbm(flowP);
     float fine = noise3(flowP * 3.7 + vec3(0.0, uTime * 1.7, 0.0));
     float fresnel = pow(1.0 - clamp(abs(dot(normalize(vNormalW), normalize(vViewDirW))), 0.0, 1.0), uFresnelPower);
@@ -104,7 +107,7 @@ const ENERGY_FRAGMENT = /* glsl */`
     float radial = length(vLocal.yz);
     float coreMask = smoothstep(1.0, 0.0, radial * (1.0 + turbulence * 0.35));
     float edge = smoothstep(0.18, 0.95, fresnel + turbulence * uEdgeNoise);
-    float pulse = 1.0 + sin(uTime * 6.0 + vLocal.x * 2.4) * 0.08 * uPulse;
+    float pulse = 1.0 + (fine-.5) * .16 * uPulse;
     float density = clamp(mix(edge, coreMask, uCore) + (fine - 0.5) * 0.18, 0.0, 1.0);
 
     vec3 color = mix(uColorA, uColorB, clamp(turbulence * 0.85 + fresnel * 0.35, 0.0, 1.0));

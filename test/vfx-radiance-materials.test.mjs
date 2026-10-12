@@ -79,10 +79,13 @@ test('bomb telegraph compensates thin channels and keeps its cache identity fres
   } finally { material.dispose(); }
 });
 
-test('field volume compensates local coverage and travels its own crest pulse', () => {
-  assert.match(SURFACE_FRAGMENT, /min\(3\.0,1\.0\/max\(0\.22,absorbed\)\)/);
-  assert.match(SURFACE_FRAGMENT, /1\.10\+0\.75\*uFlash\*crestPulse/);
-  assert.match(SURFACE_FRAGMENT, /alpha=edge\*tips\*reveal\*vTint\.a\*vFront\*fracture\*absorbed/);
+test('field volume transports material and bounds emission without reciprocal-alpha whitening', () => {
+  // The previous reciprocal coverage gain bleached the carrier to grey in the non-bloom path.
+  // This structural guard supplements (does not replace) the living-vfx pixel sequence capture.
+  assert.match(SURFACE_FRAGMENT, /sfLivingFilm\(uv,flow\*rate,phase\)/);
+  assert.match(SURFACE_FRAGMENT, /min\(3\.0,hot\*3\.2\)/);
+  assert.match(SURFACE_FRAGMENT, /alpha=edge\*tips\*reveal\*vTint\.a\*vFront\*fracture\*density/);
+  assert.doesNotMatch(SURFACE_FRAGMENT, /1\.0\/max\(0\.22,absorbed\)/);
 });
 
 test('emergent current and pressure crests lift locally; structure families are untouched', () => {

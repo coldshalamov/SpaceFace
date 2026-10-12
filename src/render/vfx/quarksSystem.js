@@ -769,7 +769,7 @@ export class QuarksVfxSystem {
 
     const count = Math.max(2, Math.min(8, Math.round(intensity * 6)));
     this.retroVenting.spawn(count, this.retroVenting.emissionState, this._scratchMatrix);
-    this._emitFlow('cone', x, y, z, dirX, dirZ, 7 + intensity * 8, Math.min(5, count), 0.34, intensity * 0.6);
+    this._emitFlow('coherent', x, y, z, dirX, dirZ, 7 + intensity * 8, Math.min(5, count), 0.34, intensity * 0.6);
     this._quietEmpty = false;
   }
 
@@ -824,7 +824,7 @@ export class QuarksVfxSystem {
     this._scratchQuat.setFromUnitVectors(_vForward, this._scratchDir);
     this._scratchMatrix.compose(this._scratchPos, this._scratchQuat, _scaleOne);
     this.damageVenting.spawn(count, this.damageVenting.emissionState, this._scratchMatrix);
-    this._emitFlow('cone', x, y, z, dirX, dirZ, 5.5, Math.min(5, count), 0.7, 0.65);
+    this._emitFlow('propulsion', x, y, z, dirX, dirZ, 5.5, Math.min(5, count), 0.7, 0.65);
     this._quietEmpty = false;
   }
 

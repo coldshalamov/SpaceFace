@@ -15,6 +15,7 @@
  * streams out of it. Nothing here is a texture sliding along a static mesh.
  */
 import * as THREE from 'three';
+import { LIVING_NOISE_GLSL } from '../../vfx/livingMaterial.glsl.js';
 import { createPathSampler } from './pathSampler.js';
 import { PlasmaRibbonPlume, STATION_COUNT } from '../ribbon/plasmaRibbons.js';
 import { ContrailTrail, resolveContrailSpin } from '../ribbon/contrailTrail.js';
@@ -45,6 +46,7 @@ const THROAT_VERT = /* glsl */`
   }
 `;
 const THROAT_FRAG = /* glsl */`
+  ${LIVING_NOISE_GLSL}
   precision mediump float;
   varying vec2 vUv;
   uniform float uTime;
@@ -71,9 +73,11 @@ const THROAT_FRAG = /* glsl */`
     float halo = exp(-r * 2.6) * 0.3;
     // Combustion face: slow mottle that turns over as the burn churns — interior detail, not a
     // strobe (micro-flicker below stays small on purpose).
-    float mottle = 0.86 + 0.14 * sin(ang * 3.0 + uTime * 0.7 + r * 5.0);
+    vec2 chamber=p*3.2+sfLivingCurl(p*1.7+vec2(uTime*.29,-uTime*.19))*.35;
+    float combustion=sfLivingPotential(chamber-vec2(uTime*.47,0.0)).x;
+    float mottle = .78 + .28 * combustion;
     float rim = 1.0 - smoothstep(0.72, 1.0, r);
-    float fl = 0.94 + 0.04 * sin(uTime * 37.0) + 0.03 * sin(uTime * 91.0 + 1.7);
+    float fl = .92 + .08 * combustion; // local turnover, no 37/91-radian strobe
     // Lit from nothing: the lamp ramps in with the chamber heat instead of switching on at 30% of
     // its brightness (and, symmetrically, dims away instead of being switched off at 30%).
     float lit = smoothstep(0.0, 0.45, uDrive);

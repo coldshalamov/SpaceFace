@@ -30,6 +30,8 @@ import { isLatchActor,latchNinePropulsionAwake,createLatchNinePlumeBatch } from 
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { publishMaterialFields } from './vfx/materialEnvironment.js';
+import { createMaterialContactRead, readMaterialContact } from './vfx/materialDirector.js';
 import { bolusCableStyle, applyBolusCableProfile } from './bolusCable.js';
 import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
 import { isCeresWorkfleetPropulsion, ceresWorkfleetPropulsionAwake, createCeresWorkfleetPlumeBatch } from './ceresWorkfleetVisuals.js';
@@ -12298,6 +12300,23 @@ export const vfx = {
     if (this._gyreSnareFx) this._gyreSnareFx.update(dt, this.state);
     this._updateGyrePayloadLight();
   },
+  _syncMaterialContactLight() {
+    // One shared request, not one light per particle/system. Priority stays below actual weapon
+    // hits and the player drive. Saturation simply denies this decorative contact request.
+    if (!this._lights || !this._scene) return;
+    const read = this._materialContactRead || (this._materialContactRead = createMaterialContactRead());
+    const source = readMaterialContact(this._scene, read);
+    let slot = this._findSustainedEventLight('living-material-contact');
+    if (!source.active) { this._retireEventLightSlot(slot); return; }
+    slot = slot || this._claimEventLightSlot(24, 'living-material-contact');
+    if (!slot) return;
+    slot.obj.position.set(source.x, source.y, source.z);
+    slot.obj.color.setRGB(source.r, source.g, source.b);
+    slot.obj.distance = source.range;
+    slot.obj.intensity = slot.intensity = slot.peak = source.intensity;
+    slot.decay = slot.t = 0; slot.sustained = true; slot.admissionPriority = 24;
+  },
+
   _updateGyrePayloadLight() {
     const source = this._gyreSnareFx?.payloadLight;
     let slot = this._findSustainedEventLight('gyre-payload');
@@ -12361,6 +12380,8 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    this._materialFieldLocalizer ||= ((x,z,out)=>this._toLocalXZ(x,z,out));
+    publishMaterialFields(this._scene,this.state,this._materialFieldLocalizer);
     this._updateCauseMarks(dt);
     this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
     if (this._weaponPresenter) {
@@ -12651,6 +12672,7 @@ export const vfx = {
     } else {
       sub.momentumSink = 0;
     }
+    this._syncMaterialContactLight();
     sub.eventLights = this._decayEventLights(dt) ? 1 : 0;
     this._publishVfxSubsystemDiag();
   },
