@@ -1201,3 +1201,23 @@ test('a latched target with non-finite position is cut as target_lost', () => {
   assert.equal(h.state.player.tether.active, false);
   assert.equal(h.events.broke.at(-1)?.targetId, rock.id);
 });
+
+test('a Swarm round boundary cuts a line carried over from the last round; wave 1 and other runs keep it', () => {
+  const latched = (run, wave) => {
+    const rock = asteroid(20, { pos: { x: 120, z: 0 } });
+    const h = buildHarness([rock], { aimWorld: { x: 120, z: 0 } });
+    fireLatch(h);
+    assert.ok(h.system._active, 'line latched');
+    h.state.run = run;
+    h.bus.emit('run:wavePlanned', { wave });
+    h.state.tick += 1;
+    h.state.simTime += DT;
+    h.system.update(DT, h.state);
+    return h;
+  };
+  const swarm2 = latched({ kind: 'survival', ruleset: 'swarm', wave: 2 }, 2);
+  assert.equal(swarm2.system._active, null, 'round 2 opens with a free ship');
+  assert.equal(swarm2.events.released.length, 1, 'released through the ordinary cut');
+  assert.ok(latched({ kind: 'survival', ruleset: 'swarm', wave: 1 }, 1).system._active, 'wave 1 keeps it');
+  assert.ok(latched({ kind: 'survival', ruleset: 'classic', wave: 2 }, 2).system._active, 'non-Swarm keeps it');
+});
