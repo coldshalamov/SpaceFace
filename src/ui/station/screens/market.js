@@ -1,3 +1,4 @@
+import { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
 import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml, rememberedSurveyFreshness } from '../../views/marketPresentation.js';
 import { marketFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/market.js — "Market": the dense register (Frontend Task C §1.3).
@@ -66,21 +67,7 @@ for (const sec of SECTORS) {
 // Meaning roles kept for the instrument-hierarchy tests and the help screen's shared vocabulary.
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
 export function chartTrendColor(up) { return up ? 'var(--dp-lamp)' : 'var(--dp-danger)'; }
-export function maxAffordableQuantity({ limit, credits, quote }) {
-  const ceiling = Number(limit);
-  const budget = Number(credits);
-  if (!Number.isFinite(ceiling) || !Number.isFinite(budget) || budget < 0 || typeof quote !== 'function') return 0;
-  let low = 0;
-  let high = Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(ceiling)));
-  // Canonical buy totals are monotone with quantity; this avoids linear quote scans.
-  while (low < high) {
-    const mid = low + Math.ceil((high - low) / 2);
-    const value = quote(mid);
-    if (value && value.ok && Number.isFinite(value.total) && value.total <= budget) low = mid;
-    else high = mid - 1;
-  }
-  return low;
-}
+export { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
 /**
  * INF-084: the stated-terms binding for the go handler. Returns the rounded quoted
  * total when the stashed render quote covers exactly the confirmed quantity, else
@@ -792,7 +779,7 @@ export function createMarketScreen(ctx) {
     const sid = stationId(state);
     let route = null;
     if (mode === 'buy' && sid) {
-      try { route = (computeBestTrades(state, sid) || []).find((trade) => trade.cmdtyId === row.id) || null; } catch (_) { route = null; }
+      try { route = (quotedRoutes(state, sid) || []).find((trade) => trade.cmdtyId === row.id) || null; } catch (_) { route = null; }
     }
     const view = presentCommodityIntel({
       state,
@@ -815,6 +802,23 @@ export function createMarketScreen(ctx) {
     const starved = starvedNeedLine(state, sid, row.id);
     if (starved) rows.push({ id: 'starved', label: 'NEED', value: starved });
     return rows;
+  }
+
+  function counterUnit(def, side) {
+    const owner = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    const sid = stationId(ctx.state || {});
+    if (!owner || typeof owner.quote !== 'function' || !sid || !def) return null;
+    try {
+      const q = owner.quote(sid, def.id, side, 1);
+      return q && q.ok && q.qty === 1 && Number.isSafeInteger(q.total) ? q.total : null;
+    } catch (_) { return null; }
+  }
+  function unitBuy(_entry, def) { return counterUnit(def, 'buy'); }
+  function unitSell(_entry, def) { return counterUnit(def, 'sell'); }
+
+  function quotedRoutes(state, sid) {
+    const owner = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    return computeBestTrades(state, sid, { quote: (...args) => owner && typeof owner.quote === 'function' ? owner.quote(...args) : null });
   }
 
   function selectedTradeQuote(state, row, quantity = qty) {
@@ -1526,8 +1530,9 @@ export function createMarketScreen(ctx) {
     const intelRows = selectedMarketIntel(state, r, quote);
     const receiptHtml = rowKV('Quantity', fmt(qty) + ' u') +
       rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr/u' : 'Unavailable') +
-      rowKV(mode === 'buy' ? 'Total cost' : 'Total gain', quoteReady ? fmt(total) + ' cr' : 'Unavailable', mode === 'buy' ? 'loss' : 'gain') +
+      rowKV(mode === 'buy' ? 'Total cost' : 'Sale proceeds', quoteReady ? fmt(total) + ' cr' : 'Unavailable', mode === 'buy' ? 'loss' : 'gain') +
       rowKV('You hold', fmt(held) + ' u') + rowKV('Credits', fmt(cr) + ' cr') +
+      (quoteReady ? rowKV('Credits after', fmt(mode === 'buy' ? cr - total : cr + total) + ' cr') : '') +
       (free !== Infinity ? rowKV('Hold free', fmt(free) + ' u') : '') +
       intelRows.map((intelRow) => rowKV(intelRow.label, intelRow.value,
         intelRow.tone === 'good' ? 'gain' : (intelRow.tone === 'danger' || intelRow.tone === 'warn' ? 'loss' : ''))).join('');
@@ -1554,7 +1559,7 @@ export function createMarketScreen(ctx) {
       setQtyDial(tradeEl, qty, maxQty);
       const totalEl = tradeEl.querySelector('[data-trade-total]');
       if (totalEl) setTradeTotal(totalEl, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
-      tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Total gain';
+      tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Sale proceeds';
       const go = tradeEl.querySelector('[data-go]');
       go.disabled = !canAct;
       const goWord = go.querySelector('.orr-lampkey__word');
@@ -1570,7 +1575,7 @@ export function createMarketScreen(ctx) {
     }
 
     // Preserve the native event contract: the live side commits, the other side switches mode.
-    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note, limit: maxQty }));
+    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Sale proceeds', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note, limit: maxQty }));
     dressConsole();
     // The commit is the tab's one Lamp Key; its word morphs between BUY and SELL.
     const goBtn = tradeEl.querySelector('[data-go]');
@@ -1592,12 +1597,12 @@ export function createMarketScreen(ctx) {
   // the Set course action below is untouched.
   function renderRoutes(state) {
     let trades = [];
-    try { trades = computeBestTrades(state, stationId(state)) || []; } catch (_) { trades = []; }
+    try { trades = quotedRoutes(state, stationId(state)) || []; } catch (_) { trades = []; }
     const rows = trades.slice(0, 3).map((t, index) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
       const card = formatRouteCard(t);
       let comparison = '';
-      if (index === 0) {
+      if (index === 0 && t.sourceQuoteExact !== true) {
         try {
           const freight = compareDockedFreight(state, stationId(state), t);
           comparison = freight ? ` · ${formatFreightComparison(freight)}` : '';
@@ -1606,16 +1611,17 @@ export function createMarketScreen(ctx) {
       return (
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
-            `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span></span>` +
+            `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span>` +
+            `<button type="button" class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="Review ${t.loadUnits} units of ${escapeHtml(t.cmdtyName)}">Review load</button></span>` +
           `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
           `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`
       );
     }).join('');
     routesEl.innerHTML =
-      `<p class="k-caps sx-mkt__routes-head">Best routes from here</p>` +
-      (rows ? `<ul class="k-rows" style="--k-row-cols: minmax(0,1fr) auto auto">${rows}</ul>`
-        : `<p class="k-sentence sx-muted">No profitable runs known from here yet — visit more stations to learn their prices.</p>`);
+      `<p class="k-caps sx-mkt__routes-head">Estimated routes from here</p>` +
+      (rows ? `<ul class="k-rows" style="--k-row-cols: minmax(0,1fr) auto auto">${rows}</ul><p class="k-sentence sx-muted">Margin excludes flight costs and destination price impact. Arrival prices may change. Set course does not buy cargo.</p>`
+        : `<p class="k-sentence sx-muted">No affordable positive-margin load is known. Check hold space, local stock and credits, or refresh destination prices.</p>`);
     dressRoutes();
   }
 
@@ -1727,7 +1733,33 @@ export function createMarketScreen(ctx) {
       });
       renderStage(ctx.state || {});
       renderConsole(ctx.state || {});
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+      if (ctx.bus) {
+        ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+        if (chosen && !chosen.ok && ['price_changed', 'load_changed', 'station_changed', 'credits'].includes(chosen.reason)) {
+          const text = {
+            price_changed: 'The price rose since this offer. Nothing bought or plotted — review the new quote.',
+            load_changed: 'Stock or hold space changed. Nothing bought or plotted — review the load.',
+            station_changed: 'This offer belongs to another berth. Nothing bought or plotted.',
+            credits: 'Not enough credits for this load. Nothing bought or plotted.',
+          }[chosen.reason];
+          ctx.bus.emit('toast', { text, kind: 'warn', ttl: 4 });
+        }
+      }
+      return;
+    }
+    const review = ev.target.closest('[data-review-load]');
+    if (review) {
+      if (tradeBusy) return;
+      const state = ctx.state || {};
+      const id = review.getAttribute('data-review-load');
+      const plan = quotedRoutes(state, stationId(state)).find((row) => row.cmdtyId === id);
+      if (!plan || plan.loadUnits < 1) { renderAll(state); return; }
+      openTradeMode('buy', state);
+      selectedId = id;
+      qty = plan.loadUnits;
+      renderAll(state);
+      const quantity = tradeEl.querySelector('.sx-qty__in');
+      if (quantity && typeof quantity.focus === 'function') quantity.focus();
       return;
     }
     const course = ev.target.closest('[data-course]');

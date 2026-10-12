@@ -5,6 +5,7 @@
 // Lists commodities with the station's buy/sell prices, a qty stepper, and Buy/Sell buttons.
 // Uses an industrial control panel layout with commodity card grid, left category filter rail,
 // right intel panel, and an expanded canvas price history & prediction chart.
+import { planTradeLoad } from '../../economy/tradePlanning.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { economyBaseEqForSize, economySpotPriceForRole } from '../../systems/economy.js';
 import { massLoadFactor } from '../../systems/ships.js';
@@ -580,6 +581,8 @@ export function formatRouteCard(trade) {
   const net = Math.round(Number(trade && trade.loadProfit) || 0);
   const bound = trade && trade.loadBound === 'credits'
     ? 'credits bind'
+    : trade && trade.loadBound === 'stock' ? 'station stock binds'
+    : trade && trade.loadBound === 'margin' ? 'smaller load preserves margin'
     : `hold fits ${Math.max(0, Math.floor(Number(trade && trade.holdUnits) || 0))} u`;
   // SFQ-B084: the handling cost of the load, forecast before purchase. The tonnes ride the
   // same cargo.usedMass carrier the flight kernel feels; a penalty-free load prints the mass
@@ -592,10 +595,14 @@ export function formatRouteCard(trade) {
   const intel = (trade && trade.intelLabel) || 'unknown intel';
   const demand = trade && trade.destinationDemand && trade.destinationDemand.label
     ? ` · ${trade.destinationDemand.label}` : '';
+  const quoted = trade && trade.sourceQuoteExact === true;
+  const cash = quoted && Number.isFinite(trade.cashAfterPurchase)
+    ? ` · ${Math.floor(trade.cashAfterPurchase).toLocaleString('en-US')} cr left` : '';
+  const basis = quoted ? 'local batch quoted' : 'spot estimate';
   return {
     units,
-    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')} · ${intel} · ${bound}${mass}${demand}`,
-    profitText: net > 0 ? `+${net.toLocaleString('en-US')} cr` : '—',
+    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')} · ${intel} · ${bound}${mass}${demand} · ${basis}${cash}`,
+    profitText: net > 0 ? `${quoted ? 'Est. ' : ''}+${net.toLocaleString('en-US')} cr` : '—',
   };
 }
 
@@ -605,69 +612,41 @@ function positiveQuote(value) {
 }
 
 function knownMarketSnapshots(state) {
-  const econ = state && state.economy;
   const out = Object.create(null);
+  const now = Math.max(0, Number(state && state.simTime) || 0);
+  const add = (sid, cid, row, time, source, priority) => {
+    if (!row || typeof row !== 'object') return;
+    const seenAtT = Number(time);
+    if (!Number.isFinite(seenAtT) || seenAtT < 0 || seenAtT > now) return;
+    if (!(positiveQuote(row.sell) > 0)) return;
+    const station = out[sid] || (out[sid] = { snapshot: Object.create(null) });
+    const prior = station.snapshot[cid];
+    if (prior && (prior.seenAtT > seenAtT || (prior.seenAtT === seenAtT && prior.priority >= priority))) return;
+    station.snapshot[cid] = {
+      buy: positiveQuote(row.buy), sell: positiveQuote(row.sell), seenAtT, intelSource: source, priority,
+      demandMult: Number(row.demandMult) || 1,
+      demandDrivers: Array.isArray(row.demandDrivers) ? row.demandDrivers.map((driver) => ({ ...driver })) : [],
+    };
+  };
   const memory = state && state.player && state.player.marketMemory;
-  const hasPlayerMemory = !!(memory && typeof memory === 'object' && !Array.isArray(memory));
-  if (hasPlayerMemory) {
-    for (const sid in memory) {
-      const station = memory[sid];
-      if (!station) continue;
-      const snapshot = {};
-      for (const cid in station) {
-        const q = station[cid];
-        if (!q) continue;
-        snapshot[cid] = {
-          buy: positiveQuote(q.buy),
-          sell: positiveQuote(q.sell),
-          demandMult: Number(q.demandMult) || 1,
-          demandDrivers: Array.isArray(q.demandDrivers) ? q.demandDrivers.map((driver) => ({ ...driver })) : [],
-        };
-      }
-      out[sid] = { snapshot, seenAtT: newestMemorySeenAt(station), intelSource: 'memory' };
-    }
-  }
-  const intel = econ && econ.marketIntel;
-  if (intel) {
-    for (const sid in intel) {
-      if (intel[sid] && intel[sid].snapshot) {
-        out[sid] = { ...intel[sid], intelSource: intel[sid].source === 'uplink' ? 'uplink' : 'scanned' };
+  if (memory && typeof memory === 'object' && !Array.isArray(memory)) {
+    for (const [sid, station] of Object.entries(memory)) {
+      for (const [cid, q] of Object.entries(station || {})) {
+        if (!q || (q.source != null && !['survey', 'uplink'].includes(q.source))) continue;
+        const source = q.source || 'memory';
+        add(sid, cid, q, q.seenAt, source, source === 'memory' ? 3 : source === 'uplink' ? 2 : 1);
       }
     }
   }
-  if (hasPlayerMemory) return out;
-  const markets = econ && econ.markets;
-  if (markets) {
-    for (const sid in markets) {
-      if (out[sid]) continue;
-      const market = markets[sid];
-      const snapshot = {};
-      for (const cid in market || {}) {
-        const e = market[cid];
-        if (!e) continue;
-        snapshot[cid] = {
-          mid: e.lastMid,
-          buy: positiveQuote(e.lastBuy),
-          sell: positiveQuote(e.lastSell),
-          stock: e.stock,
-          role: e.role,
-          demandMult: Number(e.demandMult) || 1,
-          demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
-        };
-      }
-      out[sid] = { snapshot, seenAtT: (state && state.simTime) || 0, intelSource: 'market' };
+  for (const [sid, intel] of Object.entries(state && state.economy && state.economy.marketIntel || {})) {
+    if (!intel || !intel.snapshot || (intel.source != null && !['uplink', 'survey', 'scan', 'scanned'].includes(intel.source))) continue;
+    const source = intel.source === 'uplink' ? 'uplink' : intel.source === 'survey' ? 'survey' : 'scanned';
+    for (const [cid, row] of Object.entries(intel.snapshot)) {
+      add(sid, cid, row, row && row.seenAt != null ? row.seenAt : intel.seenAtT, source, source === 'uplink' ? 2 : 1);
     }
   }
+  // Missing memory is unknown, including old saves. Never leak remote live books.
   return out;
-}
-
-function newestMemorySeenAt(stationMemory) {
-  let t = 0;
-  for (const cid in stationMemory || {}) {
-    const seenAt = Number(stationMemory[cid] && stationMemory[cid].seenAt) || 0;
-    if (seenAt > t) t = seenAt;
-  }
-  return t;
 }
 
 export function describeTradeIntel(state, trade) {
@@ -678,14 +657,14 @@ export function describeTradeIntel(state, trade) {
   const now = Math.max(0, Number(state && state.simTime) || 0);
   const seen = Math.max(0, Number(trade.seenAtT != null ? trade.seenAtT : trade.age) || 0);
   const ageS = Math.max(0, now - seen);
-  const base = trade.intelSource === 'scanned' ? 'scan'
+  const base = trade.intelSource === 'survey' ? 'survey' : trade.intelSource === 'scanned' ? 'scan'
     : trade.intelSource === 'uplink' ? 'uplink' : 'price memory';
   if (ageS < 120) return `${base} · fresh`;
   const minutes = Math.max(1, Math.round(ageS / 60));
   return `${minutes >= 15 ? 'stale ' : ''}${base} · ${minutes}m old`;
 }
 
-export function computeBestTrades(state, hereStationId) {
+export function computeBestTrades(state, hereStationId, options = {}) {
   const hereMarket = state.economy && state.economy.markets && state.economy.markets[hereStationId];
   if (!hereMarket) return [];
   const knownMarkets = knownMarketSnapshots(state);
@@ -696,7 +675,14 @@ export function computeBestTrades(state, hereStationId) {
     const def = COMMODITY_BY_ID.get(cmdtyId);
     if (!def) continue;
     const vol = def.volPerU > 0 ? def.volPerU : 1;
-    const buyHere = entry.lastBuy;
+    // Runtime callers supply the local quote owner. The no-owner path is retained for
+    // read-only legacy projections and is explicitly labelled a spot estimate, not a quote.
+    const quote = typeof options.quote === 'function'
+      ? (n) => options.quote(hereStationId, cmdtyId, 'buy', n) : null;
+    let unitQuote = null;
+    if (quote) { try { unitQuote = quote(1); } catch (_) { unitQuote = null; } }
+    if (quote && (!unitQuote || !unitQuote.ok || unitQuote.qty !== 1)) continue;
+    const buyHere = unitQuote ? unitQuote.total : entry.lastBuy;
     let bestSell = -1, bestStation = null, bestSeen = 0, bestSource = 'unknown', bestDemand = null;
     for (const sid in knownMarkets) {
       if (sid === hereStationId) continue;
@@ -707,13 +693,31 @@ export function computeBestTrades(state, hereStationId) {
       if (s.sell > bestSell) {
         bestSell = s.sell;
         bestStation = sid;
-        bestSeen = known.seenAtT || 0;
-        bestSource = known.intelSource || 'unknown';
+        bestSeen = s.seenAtT;
+        bestSource = s.intelSource;
         bestDemand = s;
       }
     }
     if (!bestStation || bestSell <= buyHere) continue;
     const margin = bestSell - buyHere;
+    let load = tradeRunCapacity(state, def, buyHere, margin);
+    if (quote) {
+      const planned = planTradeLoad({
+        credits: Number(state.player && state.player.credits),
+        reserveCredits: options.reserveCredits == null ? 0 : options.reserveCredits,
+        holdUnits: load.holdUnits,
+        stockUnits: Math.max(0, Math.floor(Number(entry.stock) - 1)),
+        sellEstimate: bestSell, quote,
+      });
+      if (!planned) continue;
+      const handling = loadHandlingForecast(state, def, planned.loadUnits);
+      load = { ...planned, loadVolume: Math.round(planned.loadUnits * vol * 10) / 10,
+        ...(handling ? { loadMassT: handling.loadMassT, loadThrustPct: handling.thrustPct } : {}),
+        sourceQuoteExact: true, loadReason: 'estimated margin before flight costs' };
+    } else {
+      load.sourceQuoteExact = false;
+      load.loadReason = 'spot estimate; no executable purchase quote';
+    }
     const perVol = margin / vol;
     const destinationDemandSummary = summarizeDemandDrivers(
       bestDemand && bestDemand.demandDrivers,
@@ -738,11 +742,11 @@ export function computeBestTrades(state, hereStationId) {
           ? bestDemand.demandDrivers.map((driver) => ({ ...driver }))
           : [],
       },
-      ...tradeRunCapacity(state, def, buyHere, margin),
+      ...load,
     };
     trade.intelLabel = describeTradeIntel(state, trade);
     out.push(trade);
   }
-  out.sort((a, b) => (b.loadProfit - a.loadProfit) || (b.perVol - a.perVol));
+  out.sort((a, b) => (b.loadProfit - a.loadProfit) || (b.perVol - a.perVol) || a.cmdtyId.localeCompare(b.cmdtyId) || a.destStation.localeCompare(b.destStation));
   return out.slice(0, 5);
 }

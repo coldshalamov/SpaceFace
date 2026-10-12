@@ -82,3 +82,25 @@ export function normalizedTradeQuantity(value, maximum = 1_000_000) {
   const qty = Math.floor(value);
   return Number.isSafeInteger(qty) && qty > 0 && qty <= maximum ? qty : null;
 }
+
+/**
+ * Commodity reputation improves the merchant's spread, not the value of the goods.
+ * The old wholesale buy discount + sell bonus could cross a station's own book.
+ * Full standing grants 80% of each half-spread; 20% remains for the counterparty.
+ * Hostile penalties and causal station conditions keep their existing magnitudes.
+ * Shipyard/service discounts still use priceModForState unchanged.
+ */
+export function commodityStandingMultipliers(spread, standing = {}, conditions = {}) {
+  const half = clamp(finite(spread, 0.08), 0.04, 0.40) / 2;
+  const buy = Math.max(0, finite(standing.buy, 1));
+  const sell = Math.max(0, finite(standing.sell, 1));
+  const buyConcession = clamp((1 - buy) / 0.30, 0, 1);
+  const sellConcession = clamp((sell - 1) / 0.20, 0, 1);
+  return {
+    ...standing,
+    buy: (buy < 1 ? (1 + half * (1 - 0.8 * buyConcession)) / (1 + half) : buy)
+      * Math.max(1, finite(conditions.buy, 1)),
+    sell: (sell > 1 ? (1 - half * (1 - 0.8 * sellConcession)) / (1 - half) : sell)
+      * clamp(finite(conditions.sell, 1), 0, 1),
+  };
+}
