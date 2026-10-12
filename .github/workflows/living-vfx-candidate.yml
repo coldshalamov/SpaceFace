@@ -35,19 +35,18 @@ jobs:
           node-version: '22'
       - name: Install isolated renderer dependencies
         run: |
-          THREE_VERSION=$(node -e "const p=require('./package.json'); console.log(p.dependencies?.three || p.devDependencies?.three || '0.180.0')")
-          npm install --prefix .vfx-ci --ignore-scripts --no-audit --no-fund "three@$THREE_VERSION" esbuild
+          DEPS=$(node -e "const p=require('./package.json'); console.log(['three','three.quarks','three-mesh-bvh','@dimforge/rapier3d-compat'].map(n=>n+'@'+p.dependencies[n]).join(' '))")
+          npm install --prefix .vfx-ci --ignore-scripts --no-audit --no-fund $DEPS esbuild
           ln -s .vfx-ci/node_modules node_modules
       - name: Verify living VFX when present
         run: |
           if test -f test/living-vfx.test.mjs; then node --test test/living-vfx*.test.mjs; fi
           if test -f scripts/living-vfx-verify.mjs; then node scripts/living-vfx-verify.mjs; fi
-      - name: Package reproducible source-only candidate
+      - name: Package renderer dependencies
         if: always()
         run: |
           mkdir -p vfx-artifact
           git rev-parse HEAD > vfx-artifact/BASE_COMMIT.txt
-          tar -czf vfx-artifact/source.tar.gz --exclude=node_modules --exclude=.git --exclude=vfx-artifact --exclude=.vfx-ci src scripts test docs design package.json package-lock.json AGENTS.md ARCHITECTURE.md
           tar -czf vfx-artifact/renderer-deps.tar.gz -C .vfx-ci node_modules
       - uses: actions/upload-artifact@v4
         if: always()
