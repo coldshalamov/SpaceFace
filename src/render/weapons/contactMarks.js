@@ -350,6 +350,8 @@ export class HullScorchPool {
         if (!this.slots[i].persistent) { slot = i; break; }
       }
     }
+    // Optional player splashes must never evict persistent damage history.
+    if (slot < 0 && spec.surfaceSplash === true) return -1;
     if (slot < 0) {
       slot = this._cursor;
       this._cursor = (this._cursor + 1) % this.capacity;
