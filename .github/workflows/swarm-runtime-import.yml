@@ -2,7 +2,7 @@ name: swarm-runtime-import
 on:
   push:
     branches: [fix/swarm-runtime-maturity]
-    paths: [.agent/swarm-runtime-maturity.patch.br.b64]
+    paths: [.agent/swarm-runtime-maturity.patch.br.b64, .github/workflows/swarm-runtime-import.yml]
 permissions:
   contents: write
   actions: read
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/swarm-runtime-maturity
-          fetch-depth: 12
+          fetch-depth: 16
           sparse-checkout: |
             .agent
             .github
@@ -30,7 +30,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check whether import is still pending
+        id: pending
+        run: |
+          if test -f .agent/swarm-runtime-maturity.patch.br.b64; then echo 'yes=true' >> "$GITHUB_OUTPUT"; else echo 'yes=false' >> "$GITHUB_OUTPUT"; fi
       - name: Validate pinned patch and owned paths
+        if: steps.pending.outputs.yes == 'true'
         run: |
           set -euo pipefail
           test "$(git branch --show-current)" = 'fix/swarm-runtime-maturity'
@@ -49,25 +54,44 @@ jobs:
           fs.writeFileSync('/tmp/swarm-runtime.patch',patch);
           fs.writeFileSync('/tmp/swarm-owned-paths.json',JSON.stringify(allowed));
           JS
-      - name: Hydrate the pinned engineering packet, not heavyweight media
+      - name: Hydrate only engineering blobs from the current branch
+        if: steps.pending.outputs.yes == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api /repos/coldshalamov/SpaceFace/actions/artifacts/11728156466/zip > /tmp/swarm-source.zip
-          unzip -oq /tmp/swarm-source.zip -d .
-          node --input-type=module <<'JS'
-          import fs from 'node:fs';
-          const packet = JSON.parse(fs.readFileSync('.agent-packet.json','utf8'));
-          if (!JSON.stringify(packet).includes('d748312d1f28a1c954b6bbc508749191bee82457')) throw Error('Wrong source packet');
-          JS
+          tree="$(git rev-parse 'HEAD^{tree}')"
+          gh api "/repos/coldshalamov/SpaceFace/git/trees/${tree}?recursive=1" > /tmp/swarm-tree.json
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          tree = json.loads(pathlib.Path('/tmp/swarm-tree.json').read_text())
+          if tree.get('truncated'): raise SystemExit('Truncated tree')
+          denied = set('.glb .gltf .fbx .obj .blend .blend1 .dae .3ds .ply .stl .usd .usda .usdc .usdz .png .jpg .jpeg .webp .gif .bmp .tga .tif .tiff .dds .ktx .ktx2 .hdr .exr .ico .icns .wav .mp3 .ogg .flac .m4a .aac .mp4 .mov .webm .mkv .avi .zip .7z .rar .tar .gz .bz2 .xz .zst .bin .exe .dll .so .dylib .node .wasm .ttf .otf .woff .woff2 .pdf .cpuprofile .log'.split())
+          selected = []
+          total = 0
+          for e in tree['tree']:
+              if e.get('type') != 'blob': continue
+              path, size = e['path'], e.get('size',0)
+              if pathlib.PurePosixPath(path).suffix.lower() in denied or size > 8388608: continue
+              if path.startswith('design/program/vm-drop/') and '/artifacts/' in path: continue
+              if path.startswith('design/genie-returns/') and '/evidence/' in path: continue
+              total += size
+              escaped = path.replace('\\','\\\\')
+              for ch in '*?[]': escaped = escaped.replace(ch,'\\'+ch)
+              selected.append('/'+escaped)
+          if total > 268435456: raise SystemExit('Engineering checkout exceeds 256 MiB')
+          subprocess.run(['git','sparse-checkout','set','--no-cone','--stdin'],input='\n'.join(selected)+'\n',text=True,check=True)
+          print('Hydrated',len(selected),'engineering files;',total,'bytes')
+          PY
       - name: Apply only after a clean patch check
+        if: steps.pending.outputs.yes == 'true'
         run: |
           set -euo pipefail
           git -c core.whitespace=cr-at-eol apply --check /tmp/swarm-runtime.patch
           git -c core.whitespace=cr-at-eol apply /tmp/swarm-runtime.patch
           git -c core.whitespace=cr-at-eol diff --check
       - name: Bind repository-vendored runtime libraries without install scripts
+        if: steps.pending.outputs.yes == 'true'
         run: |
           node --input-type=module <<'JS'
           import fs from 'node:fs';
@@ -80,11 +104,13 @@ jobs:
           fs.writeFileSync('node_modules/@dimforge/rapier3d-compat/package.json',JSON.stringify({name:'@dimforge/rapier3d-compat',type:'module',exports:'./rapier.mjs'}));
           fs.symlinkSync('../../../vendor/rapier3d-compat/rapier.mjs','node_modules/@dimforge/rapier3d-compat/rapier.mjs');
           JS
-      - name: Run new native-physics and adjacent regression tests
+      - name: Run native-physics and adjacent regression tests
+        if: steps.pending.outputs.yes == 'true'
         run: |
           set -euo pipefail
           node --test --test-concurrency=4 test/swarm-runtime-*.test.mjs test/swarm-overhaul-*.test.mjs test/swarm-brood*.test.mjs test/swarm-physics-ux.test.mjs test/swarm-pressure-reservoir.test.mjs test/crucible-wave-materialization.test.mjs | tee /tmp/swarm-import-tests.log
-      - name: Publish the owned source paths without merging master
+      - name: Publish only owned paths without merging master
+        if: steps.pending.outputs.yes == 'true'
         run: |
           set -euo pipefail
           node --input-type=module <<'JS'
@@ -92,7 +118,7 @@ jobs:
           import { execFileSync } from 'node:child_process';
           const paths = JSON.parse(fs.readFileSync('/tmp/swarm-owned-paths.json','utf8'));
           for (const path of paths) if (/\.(js|mjs)$/.test(path)) execFileSync(process.execPath,['--check',path],{stdio:'inherit'});
-          execFileSync('git',['add','--',...paths],{stdio:'inherit'});
+          execFileSync('git',['add','--sparse','--',...paths],{stdio:'inherit'});
           const prefix = '.agent/swarm-runtime-maturity.patch.br.b64';
           execFileSync('git',['rm','--',...['.1','.2','.3',''].map(s=>prefix+s)],{stdio:'inherit'});
           execFileSync('git',['-c','user.name=SpaceFace Engineering','-c','user.email=engineering@users.noreply.github.com','commit','-m','fix(swarm): safe arrivals, readable pressure and causal rewards [swarm-imported]'],{stdio:'inherit'});
