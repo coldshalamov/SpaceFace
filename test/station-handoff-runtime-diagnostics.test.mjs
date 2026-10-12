@@ -201,3 +201,99 @@ test('presentation observation exposes real frame starvation counters without st
   assert.equal(s.timing.frameTiming.externalCallbackGapMs, 16000);
   assert.ok(!JSON.stringify(s).includes('never'));
 });
+
+function traceSession({ startFailure = null, readFailure = null, stuckEnd = false, oversized = false } = {}) {
+  const calls = [], listeners = new Map();
+  const session = {
+    on: (name, fn) => listeners.set(name, fn),
+    removeListener: (name) => listeners.delete(name),
+    async detach() { calls.push(['detach']); },
+    async send(method, args) {
+      calls.push([method, args]);
+      if (method === 'Tracing.start' && startFailure) throw startFailure;
+      if (method === 'Tracing.end') {
+        if (stuckEnd) return new Promise(() => {});
+        listeners.get('Tracing.tracingComplete')?.({ stream: 'trace-stream' });
+      }
+      if (method === 'IO.read') {
+        if (readFailure) throw readFailure;
+        // Synthetic fixture bytes; this is not a runtime trace or screenshot.
+        return { data: oversized ? 'x'.repeat(16 * 1024 * 1024 + 1) : 'fixture trace bytes', eof: true };
+      }
+      return {};
+    },
+  };
+  return { session, calls };
+}
+
+test('targeted browser trace caps its buffer, streams to CI artifacts and cleans up once', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { readFile, unlink } = await import('node:fs/promises');
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  const { session, calls } = traceSession();
+  const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session });
+  await trace.stop(); await trace.stop();
+  const config = calls.find(([method]) => method === 'Tracing.start')[1];
+  assert.equal(config.transferMode, 'ReturnAsStream');
+  assert.equal(config.traceConfig.traceBufferSizeInKb, 8192);
+  assert.equal(config.traceConfig.recordMode, 'recordContinuously');
+  assert.ok(config.traceConfig.includedCategories.includes('disabled-by-default-v8.cpu_profiler'));
+  assert.equal(calls.filter(([method]) => method === 'Tracing.end').length, 1);
+  assert.equal(calls.filter(([method]) => method === 'IO.close').length, 1);
+  assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+  assert.equal(calls.find(([method]) => method === 'IO.read')[1].size, 65536);
+  const path = logs.find(([message]) => message === '[station-handoff] browser trace:')[1];
+  try { assert.equal(await readFile(path, 'utf8'), 'fixture trace bytes'); }
+  finally { await unlink(path); }
+});
+
+test('trace start/read/storage failures never replace actor errors and still detach', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  t.mock.method(console, 'error', () => {});
+  for (const options of [{ startFailure: new Error('start denied') }, { readFailure: new Error('stream lost') }, { oversized: true }]) {
+    const { session, calls } = traceSession(options);
+    const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session });
+    const original = new Error('actor timeout');
+    await assert.rejects((async () => {
+      try { throw original; } finally { await trace.stop(); }
+    })(), (error) => error === original);
+    assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+    if (!options.startFailure) assert.equal(calls.filter(([method]) => method === 'IO.close').length, 1);
+  }
+});
+
+test('unresponsive browser trace end is bounded and detach still runs', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  t.mock.method(console, 'error', () => {});
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { session, calls } = traceSession({ stuckEnd: true });
+  const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session });
+  const stopping = trace.stop();
+  t.mock.timers.tick(2000);
+  await stopping;
+  assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+});
+
+test('market trace surrounds original dock boundary, without tracing the mission actor', () => {
+  const market = readFileSync(new URL('../scripts/check-market-first-loop-runtime.mjs', import.meta.url), 'utf8');
+  const mission = readFileSync(new URL('../scripts/check-mission-accept-handoff-runtime.mjs', import.meta.url), 'utf8');
+  assert.ok(market.indexOf('dockTrace = await startStationHandoffTrace(browser)') < market.indexOf('const dockTarget = await page.evaluate'));
+  assert.match(market, /issues, error\)\)\.finally\(\(\) => dockTrace.stop\(\)\)/);
+  assert.match(market, /if \(dockTrace\) await dockTrace.stop\(\);\n  if \(browser\) await browser.close/);
+  assert.doesNotMatch(mission, /startStationHandoffTrace/);
+});
+
+test('trace stream-close error still detaches the browser session', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  t.mock.method(console, 'error', () => {});
+  const { session, calls } = traceSession({ readFailure: new Error('read failed') });
+  const send = session.send;
+  session.send = async (method, args) => {
+    if (method === 'IO.close') throw new Error('close failed');
+    return send(method, args);
+  };
+  const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session });
+  await trace.stop();
+  assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+});

@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 // Passive, bounded observer. No frame pump, recurring timer, actor input or game-state write.
@@ -165,4 +165,84 @@ export async function reportStationHandoffFailure(page, context, issues, origina
   } finally { clearTimeout(timer); }
   await screenshot;
   throw originalError;
+}
+
+// One targeted browser-process trace for the cold market dock. CDP root-session tracing can
+// finish without executing JavaScript in the blocked page; it is not another page snapshot.
+export async function startStationHandoffTrace(browser) {
+  const log = (...args) => { try { console.error(...args); } catch (_) {} };
+  const bounded = async (work, label) => {
+    let timer;
+    try {
+      return await Promise.race([Promise.resolve().then(work), new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} exceeded 2000ms`)), 2000);
+      })]);
+    } finally { clearTimeout(timer); }
+  };
+  let session = null, stream = null, stopped = false, started = false, retired = false;
+  let resolveComplete;
+  const complete = new Promise((resolve) => { resolveComplete = resolve; });
+  const onComplete = (event) => { stream = event.stream; resolveComplete(event); };
+  const starting = (async () => {
+    session = await browser.newBrowserCDPSession();
+    session.on('Tracing.tracingComplete', onComplete);
+    await session.send('Tracing.start', {
+      transferMode: 'ReturnAsStream', streamFormat: 'json', streamCompression: 'gzip',
+      traceConfig: {
+        recordMode: 'recordContinuously', traceBufferSizeInKb: 8192, enableSampling: true,
+        includedCategories: ['devtools.timeline', 'v8.execute', 'toplevel',
+          'disabled-by-default-devtools.timeline', 'disabled-by-default-devtools.timeline.stack',
+          'disabled-by-default-v8.cpu_profiler', 'disabled-by-default-devtools.screenshot'],
+        excludedCategories: ['*'],
+      },
+    });
+    started = true;
+  })();
+  try { await bounded(() => starting, 'station handoff trace start'); }
+  catch (error) { log('[station-handoff] trace start unavailable:', error?.message); }
+  return {
+    async stop() {
+      if (stopped) return;
+      stopped = true;
+      try {
+        await bounded(async () => {
+          await starting;
+          if (!started || retired) return;
+          await session.send('Tracing.end');
+          await complete;
+          if (retired) return;
+          const chunks = [];
+          let bytes = 0;
+          for (;;) {
+            const part = await session.send('IO.read', { handle: stream, size: 65536 });
+            if (retired) return;
+            const chunk = Buffer.from(part.data || '', part.base64Encoded ? 'base64' : 'utf8');
+            bytes += chunk.length;
+            if (bytes > 16 * 1024 * 1024) throw new Error('station handoff trace exceeded 16MiB storage limit');
+            chunks.push(chunk);
+            if (part.eof) break;
+          }
+          if (retired) return;
+          const dir = resolve('scratch/check-ci-report/station-handoff');
+          const file = resolve(dir, `${Date.now()}-market-dock.trace.json.gz`);
+          await mkdir(dir, { recursive: true });
+          if (retired) return;
+          await writeFile(file, Buffer.concat(chunks));
+          log('[station-handoff] browser trace:', file, `(${bytes} bytes)`);
+        }, 'station handoff trace stop/read');
+      } catch (error) { log('[station-handoff] browser trace unavailable:', error?.message); }
+      finally {
+        retired = true;
+        // Cleanup is also bounded. Browser close remains the terminal owner if CDP is unavailable.
+        try {
+          await bounded(async () => {
+            try { if (stream && session) await session.send('IO.close', { handle: stream }); }
+            finally {
+              if (session) { session.removeListener('Tracing.tracingComplete', onComplete); await session.detach(); }
+            }
+          }, 'station handoff trace cleanup');
+        } catch (error) { log('[station-handoff] trace cleanup unavailable:', error?.message); }
+      }
+    },
+  };
 }

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { reportStationHandoffFailure, installStationHandoffTimingObserver } from './lib/stationHandoffDiagnostics.mjs';
+import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_CAPTURE = process.env.SF_MARKET_CAPTURE || '';
@@ -25,6 +25,7 @@ const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
 let issues = null;
+let dockTrace = null;
 
 try {
   server = await startFreshServer();
@@ -56,6 +57,7 @@ try {
     return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
   }, null, { timeout: START_TIMEOUT_MS });
 
+  dockTrace = await startStationHandoffTrace(browser);
   const dockTarget = await page.evaluate(() => {
     const sf = window.SF;
     const station = sf.state.entityList && sf.state.entityList.find((e) =>
@@ -65,7 +67,7 @@ try {
     return { stationId: station.data.stationId };
   });
   await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock')
-    .catch((error) => reportStationHandoffFailure(page, { boundary: 'market dock visibility', dockTarget }, issues, error));
+    .catch((error) => reportStationHandoffFailure(page, { boundary: 'market dock visibility', dockTarget }, issues, error)).finally(() => dockTrace.stop());
 
   // Open Market so its live market initialises (onShow emits economy:marketOpened), then seed a
   // known higher-priced buyer elsewhere so the Trade Routes panel has a profitable run to show.
@@ -219,6 +221,7 @@ try {
   if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);
   throw err;
 } finally {
+  if (dockTrace) await dockTrace.stop();
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
 }
