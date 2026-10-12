@@ -128,6 +128,32 @@ export function lawArenaBossDressing(arenaId, enemyId, role) {
  * The caller must treat a partly-admitted (or fully rejected) batch as DISPATCHED — a Survival wave
  * that waits for bodies the cap will never allow strands the player in `active` forever.
  */
+// Arrivals clear the field's rocks: a hull materialized inside a rock is shoved out by the
+// solver on its first tick and dies of the impact before the player has touched anything.
+const SPAWN_ROCK_CLEARANCE_WU = 24;
+
+function clearOfRocks(state, pos) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return pos;
+  for (let pass = 0; pass < 3; pass++) {
+    let moved = false;
+    for (const e of entities.values()) {
+      if (!e || e.type !== 'asteroid' || e.alive === false || !e.pos) continue;
+      const need = (Number.isFinite(e.radius) ? e.radius : 10) + SPAWN_ROCK_CLEARANCE_WU;
+      const dx = pos.x - e.pos.x;
+      const dz = pos.z - e.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= need * need) continue;
+      const d = Math.sqrt(d2);
+      pos.x = e.pos.x + (d > 1e-6 ? dx / d : 1) * need;
+      pos.z = e.pos.z + (d > 1e-6 ? dz / d : 0) * need;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return pos;
+}
+
 export function materializeWaveBatch(ctx, request) {
   const req = request || {};
   const requested = Number.isInteger(req.count) && req.count > 0 ? req.count : 0;
@@ -187,6 +213,7 @@ export function materializeWaveBatch(ctx, request) {
           z: anchor.z + Math.sin(angle) * radius,
         };
       }
+      clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
       spec.data = spec.data || {};
