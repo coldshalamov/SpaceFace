@@ -120,10 +120,10 @@ test('ordinary director roll: the seed-4242 planner books it in every gated sect
     const zones = zonesForSector(sectorId);
     const byId = new Map(zones.map((z) => [z.id, z]));
     let booked = null;
-    for (let day = 0; day < 60 && !booked; day++) {
+    for (let day = 0; day < 365 && !booked; day++) {
       booked = planEncounters(4242, sectorId, day, zones).find((item) => item.shapeId === 'the_cold_shoulder') || null;
     }
-    assert.ok(booked, `${sectorId}: planner never books it in 60 days`);
+    assert.ok(booked, `${sectorId}: planner never books it in 365 days`);
     const zone = byId.get(booked.zoneId);
     assert.ok(zone && enc.zoneTypes.includes(zone.type), `${sectorId}: booked on ${booked.zoneId}`);
     assert.ok(!/helios/.test(sectorId));

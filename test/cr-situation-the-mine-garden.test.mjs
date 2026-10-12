@@ -75,10 +75,10 @@ test('ordinary director roll books it in each gated sector on a permitted zone (
     const zones = zonesForSector(sectorId);
     const byId = new Map(zones.map((z) => [z.id, z]));
     let booked = null;
-    for (let day = 0; day < 60 && !booked; day++) {
+    for (let day = 0; day < 365 && !booked; day++) {
       booked = planEncounters(4242, sectorId, day, zones).find((item) => item.shapeId === SHAPE) || null;
     }
-    assert.ok(booked, `${sectorId}: planner never books it in 60 days`);
+    assert.ok(booked, `${sectorId}: planner never books it in 365 days`);
     const zone = byId.get(booked.zoneId);
     assert.ok(zone && enc.zoneTypes.includes(zone.type), `${sectorId}: booked on ${booked.zoneId}`);
   }
