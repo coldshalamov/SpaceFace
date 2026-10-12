@@ -35,7 +35,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `new-game` / `newGame` | SURVEYED | Still on fh primitives; composition pass later |
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
-| `save-load` / `saveLoad` / `save-load-empty` / `save-load-live` | SURVEYED | Next player-path candidate |
+| **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | `help` | SURVEYED | Next after save-load |
 | `codex` / `codex-record` | SURVEYED | |
 | `mission-log` / `missionLog` | SURVEYED | |
@@ -91,7 +91,34 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/settingsLayouts.js`, `src/ui/orrery/settingsPreview.js` only. No loadout data, audio systems, flight HUD threat markers, or engine/render changes.
 
-**Next:** `save-load` (then `help`) on the player path.
+**Next after settings was:** `save-load` — now DONE (see below).
+
+---
+
+## Save/Load — session notes (2026-10-12)
+
+**Before:** live-boot Load empty (`docs/ui-polish/before/03-load-*.jpg` / `save-load-before*.png`) — title emph and empty body too dim on void; vacant hero word washed out; empty filmstrip names/subs faint; foot was plain `BACK ESC` (no ‹ / keycap), unlike settings.
+
+**After (2 visual iterations, CSS-only in `saveLayouts.js`):**
+
+1. **Pass 1** — emph/detail/context contrast raised toward bone (≥ ~0.88–0.94); vacant word brighter + soft glow; open berth rim brightened (`filter` + floor wash); empty filmstrip names/subs less washed; foot rail matched settings (`‹ BACK` + ESC keycap box + underline); mild 1.12 composition zoom at 1800–2199×≥1000 (720p untouched).
+2. **Pass 2** — emph/detail/filmstrip empty contrast nudged further; context line hierarchy clearer.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=save-load-empty --walk` — exit 0; 5 controls exercised; no tangled/buried/cut-off/offscreen. Also `--shot=save-load` and `--shot=save-load-live` measured clean. Selectors/IDs unchanged. Game-over block untouched.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (Load empty @720) | `docs/ui-polish/save-load-before.png` (+ `before/03-load-1280x720.jpg`) |
+| Before (Load empty @1080) | `docs/ui-polish/save-load-before-1080.png` |
+| After (bench empty @720) | `docs/ui-polish/save-load-after.png` |
+| After (bench empty @1080) | `docs/ui-polish/save-load-after-1080.png` |
+| After (filed + live) | `docs/ui-polish/save-load-filed-after.png`, `save-load-live-after.png` |
+
+**Code touched:** `src/ui/orrery/saveLayouts.js` only. No loadout data, audio, flight HUD threat markers, engine/render, or game-over style changes.
+
+**Next:** `help` on the player path.
 
 ---
 
@@ -117,7 +144,7 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P1 | Settings | Value numerals (52%, 1.00x) use the thin read face while the rest of the row is Archivo legend caps — reads as two different products. |
 | P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. |
 | P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. |
-| P2 | Load | "No saves yet" is ~50% bone on void, under contrast for body copy. |
+| P2 | Load | "No saves yet" is ~50% bone on void, under contrast for body copy. **Fixed** (emph ≥.94, empty detail .92, vacant word .9 + open-berth glow). |
 | P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). |
 | P2 | Settings | Scroll lists fade out at the bottom (Engine trails, Boost / Dash) without a scroll affordance. |
 | P2 | Credits | "0% READ" dial reads as a loading bar; fine conceptually but the label needs explaining. |
@@ -137,4 +164,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 
 - `src/ui/orrery/settingsLayouts.js`: ≤1500px label column 150→190px, pane 480→516–560px, nav 168–176px, tighter label tracking + balanced wrap; ≥1501px label 236px; 1.12 zoom for 1800–2199px wide screens.
 - `src/ui/orrery/cruciblePreparationLayouts.js`: ≤820px tall — stake mark hidden, pressure/yield single-line with tightened tracking, so tiles no longer clip.
+- `src/ui/orrery/saveLayouts.js`: save-load empty-state contrast (emph/detail/vacant/filmstrip), open-berth glow, settings-matched `‹ BACK` + ESC keycap foot rail, 1.12 zoom @1080p band. Game-over styles unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
