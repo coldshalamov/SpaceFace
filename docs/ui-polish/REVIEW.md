@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-5` (PR #325) · stacked on `master` (includes merged #322).
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-10` (PR #333) · stacked on `master`.
 
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
@@ -56,7 +56,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth head, vitals and foot DONE (ui-polish-10, § Station berth below); tab bodies at 960×540 still open |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE; Market/Contracts/Shipworks tab bodies + Market SPREAD polished this session (§ Station tab bodies); Industry/Factions/Bar/Ledger still open at 960 |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -81,7 +81,23 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **After (`src/ui/orrery/stationLayouts.js` only):** at 651–1100 the gutter is gone. At 901–1100 the head is a 280px note column plus the vitals strip, the next-step title stays on one line with its sentence under it, and the foot's seven destinations, Comms/Help and Undock fit on one line. Word readings hide the empty ring under them. Short-screen dials are 80px with tighter denominators. Selectors and IDs are unchanged.
 
-**Still open at 960×540:** Market body (list rows and analysis crushed by the decision), Contracts (ACCEPT over the title), Shipworks (verbs row on the tab rail). The Market chart's SPREAD label also crosses the trace at 720p.
+**Still open after berth:** tab bodies (addressed in § Station tab bodies below).
+
+---
+
+## Station tab bodies — session notes (2026-10-12, ui-polish-10)
+
+**Market body @960×540:** body height ~192px. Filters wrapped to ~140px and the decision+204px dial left analysis at 32px. Filters are now one scrolling row; stage is analysis + slim 138px dial; hull decision sleeps at this size so it cannot crush the quote or land on SELL. List + analysis regain the column.
+
+**Contracts ACCEPT @960×540:** sticky `.sx-dossier__foot` in a short dossier covered the title and clipped the reward. Foot is in flow at short height; title/reward/ACCEPT stack above the fold; terms/scales/client hide under 1100×800.
+
+**Shipworks verbs @960×540:** `seatVerbs` pinned a fixed row onto the nameplate/rail on short dock stages. Bail to `--unseated` when stage height &lt; 300; CSS absolutely fills the 192px grid cell and pins the verb row to the panel foot (clear of the destination rail). Handling stats hide at this size (they were sitting on the rail).
+
+**Market SPREAD @1280×720:** `.orr-mkt-spread__v` sat at 50% of the bracket and crossed the price trace. Label now sits just above the bracket (`translateY(-100%)`).
+
+**Code:** `marketLayouts.js`, `stationTabsLayouts.js`, `shipworksLayouts.js`, plus a one-line bail in `shipworks.js` `seatVerbs`. Selectors/IDs unchanged.
+
+**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. Industry/Factions/Bar/Ledger tab bodies not walked this session.
 
 ---
 

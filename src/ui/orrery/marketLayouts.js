@@ -246,10 +246,13 @@ ${M} .orr-mkt-spread::before { content:""; position:absolute; right:0; top:0; bo
 ${M} .orr-mkt-spread::after { content:""; position:absolute; right:0; top:0; bottom:0; width:8px;
   background:linear-gradient(rgb(${BONE} / .6), rgb(${BONE} / .6)) 100% 0 / 8px 2px no-repeat,
     linear-gradient(rgb(${BONE} / .6), rgb(${BONE} / .6)) 100% 100% / 8px 2px no-repeat !important; }
-${M} .orr-mkt-spread__v { position:absolute; right:12px; top:50%; transform:translateY(-50%); text-align:right;
-  ${NUMERAL} font-size:15px !important; font-weight:520 !important; line-height:1.2 !important; color:rgb(248 244 234) !important;
-  text-shadow:0 1px 6px rgb(0 0 0 / .9) !important; }
-${M} .orr-mkt-spread__k { display:block; ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+/* SPREAD sits just above its bracket (right of the scale), never across the price trace */
+${M} .orr-mkt-spread__v { position:absolute; right:12px; top:0; transform:translateY(-100%); text-align:right; padding-bottom:3px;
+  ${NUMERAL} font-size:15px !important; font-weight:520 !important; line-height:1.15 !important; color:rgb(248 244 234) !important;
+  text-shadow:0 1px 8px rgb(0 0 0 / .95), 0 0 12px rgb(0 0 0 / .85) !important; white-space:nowrap; }
+${M} .orr-mkt-spread__k { display:block; ${LABEL} font-size:11px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${M} .sx-mkt-instrument__plot { overflow:visible !important; }
+${M} .sx-mkt-instrument { overflow:visible !important; }
 ${M} .sx-mkt-instrument__dot { background:rgb(248 244 234) !important; box-shadow:0 0 0 3px rgb(7 8 10 / .8) !important; }
 /* the crosshair Lens: a ring round the sample, crosshairs through it, the reading beside it */
 ${M} .sx-mkt-instrument__cursor i { left:var(--cx, 0%) !important; width:1.5px !important; margin-left:-.75px !important;
@@ -426,9 +429,9 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty .sx-qty__in { left:55px; width:100px !important; top:64px; height:44px !important; font-size:36px !important; line-height:44px !important; }
   ${M} .sx-qty .sx-qty__words { top:176px; left:4px; right:4px; }
   ${M} .sx-mkt-instrument__plot { height:80px !important; }
-  ${M} .sx-mkt-chart-key { display:flex !important; margin-top:4px !important; font-size:12px !important; }
+  ${M} .sx-mkt-chart-key { display:flex !important; flex-wrap:wrap !important; gap:2px 10px !important; margin-top:4px !important; font-size:11px !important;
+    letter-spacing:.06em !important; margin-left:12px !important; max-width:100% !important; }
   ${M} .sx-mkt-chart-key > span { white-space:nowrap !important; flex:none !important; }
-  ${M} .sx-mkt-chart-key { font-size:12px !important; letter-spacing:.06em !important; margin-left:12px !important; }
   ${M} .orr-mkt-subkey { margin-left:20px !important; }
   ${M} .sx-qty .orr-qdial { filter:drop-shadow(0 0 6px rgb(7 8 10 / .9)); }
   ${M} .sx-mkt__quote > .sx-mkt-chain { display:none !important; }
@@ -455,6 +458,53 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-trade__note { text-align:center; }
   ${M} .sx-trade__words { justify-content:center; }
   ${M} .orr-mkt-holdarc { justify-content:center; }
+}
+/* ---- 960×540 berth: body ~192px — decision + 204px dial crushed analysis to 32px and ate the list ---- */
+@media (max-width:1100px) and (max-height:800px) {
+  html body #screens > .sx-berth.orr-station .sx-screen__body > .sx-mkt.orr-market {
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1.2fr) !important; column-gap:14px !important; }
+  /* filters: one ruled row that scrolls, not eight wrapped rows eating the commodity list */
+  ${M} .sx-mkt-browser { gap:4px !important; }
+  ${M} .sx-mkt-browser__mode { padding-right:0 !important; min-height:0 !important; margin:0 !important; font-size:11px !important; }
+  ${M} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto !important; overflow-y:hidden !important;
+    margin:2px 0 4px !important; gap:0 12px !important; scrollbar-width:none; }
+  ${M} .sx-mkt-browser__filters li { padding-bottom:10px !important; flex:none; }
+  ${M} .sx-mkt-search { margin:0 0 2px !important; padding:2px 0 !important; font-size:12px !important; }
+  ${M} .sx-mkt__list { min-height:0 !important; }
+  ${M} .sx-mkt-row td { padding-top:3px !important; padding-bottom:3px !important; font-size:12px !important; }
+  /* stage: analysis owns the column; console is a slim dial; decision becomes a one-line foot under analysis */
+  ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 1fr) 138px !important;
+    grid-template-rows:minmax(0, 1fr) auto !important; column-gap:10px !important; row-gap:2px !important; }
+  /* analysis keeps the full body height; decision tucks under the dial so it cannot crush the quote */
+  ${M} .sx-mkt__analysis { grid-column:1 !important; grid-row:1 / span 2 !important; min-height:0 !important; overflow:auto !important; }
+  ${M} .sx-mkt__console { grid-column:2 !important; grid-row:1 !important; align-self:start !important; width:138px !important;
+    max-height:100% !important; overflow:visible !important; }
+  /* hull decision sleeps at this size — it was landing on SELL and stealing analysis height */
+  ${M} .sx-mkt__decision { display:none !important; }
+  ${M} .sx-mkt__stage { grid-template-rows:minmax(0, 1fr) !important; }
+  ${M} .sx-mkt__analysis { grid-row:1 !important; }
+  ${M} .sx-mkt__console { grid-row:1 !important; align-self:center !important; }
+  ${M} .sx-mkt-chart-key { display:none !important; }
+  /* dial: small enough to fit the 192px body without spilling over the tab rail */
+  ${M} .sx-trade { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"dial" "total" "verb" !important;
+    justify-items:center; row-gap:2px; }
+  ${M} .sx-trade > .sx-qty { width:124px; height:112px; }
+  ${M} .sx-qty .orr-qdial { left:2px; top:0; width:120px; height:120px; }
+  ${M} .sx-qty .sx-qty__k { left:2px; width:120px; top:26px; letter-spacing:.14em !important; }
+  ${M} .sx-qty .sx-qty__in { left:22px; width:80px !important; top:38px; height:28px !important; font-size:24px !important; line-height:28px !important; }
+  ${M} .sx-qty .sx-qty__words { top:100px; left:0; right:0; }
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:10px !important; letter-spacing:.1em !important; padding:1px 0 !important; }
+  ${M} .so-trade-total > span { display:none !important; }
+  ${M} .so-trade-total > strong { font-size:16px !important; }
+  ${M} .orr-mkt-holdarc, ${M} .sx-trade__note, ${M} .so-trade-breakdown { display:none !important; }
+  ${M} .sx-trade__go.orr-lampkey { min-height:30px !important; font-size:12px !important; padding:0 12px 0 10px !important; }
+  ${M} .sx-trade__words { gap:10px !important; margin:0 !important; }
+  ${M} .sx-mkt-instrument__plot { height:64px !important; }
+  ${M} .sx-mkt__hero .k-hero__n { font-size:32px !important; }
+  ${M} .sx-mkt__quote > .sx-mkt-title { font-size:22px !important; margin-top:2px !important; }
+  ${M} .sx-mkt__quote > .sx-mkt-instrument { margin-top:6px !important; }
+  ${M} .orr-mkt-tape { display:none !important; }
+  ${M} .orr-mkt-subkey { margin:4px 0 0 12px !important; gap:4px 12px; }
 }
 `;
 

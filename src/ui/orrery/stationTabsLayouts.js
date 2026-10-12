@@ -1098,6 +1098,28 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:nowrap !important; overflow:hidden !important; text-overflow:clip !important; font-size:12px !important;
     -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; }
   ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:auto !important; top:0 !important; left:auto !important; right:0 !important; justify-content:flex-end !important; }
+  /* sticky ACCEPT in a ~192px dossier covered the title and clipped the reward (960×540) — keep it in flow */
+  ${T} .sx-dossier > .sx-dossier__foot { position:static !important; margin-top:8px !important; padding:6px 0 2px !important;
+    background:none !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${T} .sx-dossier__reward { margin:4px 0 2px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:28px !important; }
+  ${T} .sx-dossier__title { font-size:18px !important; line-height:1.15 !important; margin:2px 0 4px !important; }
+  ${T} .sx-ct-commit.orr-lampkey { min-height:34px !important; font-size:13px !important; }
+}
+/* even tighter: title + reward + ACCEPT must fit in the ~192px dossier without sticky overlap */
+@media (max-width:1100px) and (max-height:800px) {
+  ${T} .sx-dossier__terms, ${T} .orr-ct-scales, ${T} .sx-dossier__client { display:none !important; }
+  ${T} .sx-dossier > .orr-ct-route { height:clamp(140px, 26vh, 200px) !important; margin-top:0 !important; }
+  ${T} .sx-dossier { grid-template-columns:minmax(0, 1fr) minmax(160px, 0.85fr) !important; column-gap:12px !important;
+    align-content:start !important; }
+  ${T} .sx-dossier > .k-caps { margin:0 0 2px !important; }
+  ${T} .sx-dossier__title { font-size:16px !important; line-height:1.2 !important; margin:0 0 2px !important; }
+  ${T} .sx-dossier__reward { margin:2px 0 !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:22px !important; }
+  ${T} .sx-dossier__reward .k-hero__w { font-size:10px !important; letter-spacing:.1em !important; margin-top:0 !important; }
+  ${T} .sx-dossier > .sx-dossier__foot { margin-top:4px !important; padding:2px 0 !important; }
+  ${T} .sx-ct-commit.orr-lampkey { min-height:30px !important; font-size:12px !important; padding:0 14px 0 12px !important; }
+  ${T} .sx-ct__dossier { padding-top:0 !important; }
 }
 /* the Ledger's purse has the width of its words */
 ${T} .orr-ledger-purse { width:260px; }

@@ -1030,6 +1030,25 @@ ${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; width:auto
   flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
 ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw__stats--unseated),
 ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) { overflow:auto !important; }
+/* 960×540: unseated verbs sit in flow under the stage, clear of Tessera and the destination rail */
+@media (max-width:1100px) and (max-height:800px) {
+  /* verbs pin to the berth panel foot; main absolutely fills the 192px cell */
+  ${W}.orr-sw--jig { position:relative !important; overflow:hidden !important; }
+  ${W}.orr-sw--jig .sx-sw__main,
+  ${W}.orr-sw--jig .sx-sw__main:has(.sx-sw-verbs--unseated),
+  ${W}.orr-sw--jig .sx-sw__main:has(.sx-sw__stats--unseated) {
+    overflow:hidden !important; min-height:0 !important; position:absolute !important;
+    left:0 !important; right:0 !important; top:0 !important; bottom:0 !important;
+    width:auto !important; height:auto !important; max-height:none !important; display:block !important; }
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { position:absolute !important; inset:0 0 30px 0 !important;
+    height:auto !important; width:auto !important; min-height:0 !important; max-height:none !important; }
+  ${W}.orr-sw--jig .sx-sw__stats { display:none !important; }
+  ${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:absolute !important; left:8px !important; right:8px !important; bottom:4px !important;
+    top:auto !important; z-index:6; width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
+    flex-direction:row !important; flex-wrap:wrap !important; gap:2px 12px !important;
+    background:linear-gradient(0deg, rgb(7 8 10 / .92) 40%, rgb(7 8 10 / 0)) !important; }
+  ${W} .sx-sw-verb { font-size:11px !important; letter-spacing:.1em !important; }
+}
 
 `;
 
