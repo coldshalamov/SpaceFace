@@ -131,10 +131,19 @@ async function runOne(args, arena, extra = {}) {
   const shoot = async (tag, play) => {
     if (busy) return; busy = true;
     try {
-      const info = await page.evaluate(() => ({ t: performance.now(), sim: window.SF ? window.SF.state.simTime : null, hud: (document.querySelector('.sf-crun') || document.querySelector('#hud') || {}).innerText || '' }));
+      const info = await page.evaluate(() => {
+        const st = window.SF ? window.SF.state : null;
+        // Adventure-realm markers visible in this frame: the 47-A rescue objective / Helios
+        // tutorial text anywhere in the visible DOM, a live onboarding, the Helios start sector.
+        const ADV = /47-A|Recover the .{0,40}sample|Training Derelict|RADIO COMMS HAIL/i;
+        const advText = [...document.querySelectorAll('body *')].filter((n) => n.childElementCount === 0 && n.offsetParent && ADV.test(n.textContent || '')).map((n) => n.textContent.replace(/\s+/g, ' ').trim().slice(0, 80)).slice(0, 2);
+        return { t: performance.now(), sim: st ? st.simTime : null, hud: (document.querySelector('.sf-crun') || document.querySelector('#hud') || {}).innerText || '',
+          realm: st ? { advText, onboarding: !!(st.onboarding && st.onboarding.active), sector: st.world ? st.world.currentSectorId || null : null, run: st.run ? st.run.kind + '/' + st.run.phase : null } : null };
+      });
       const file = path.join(outDir, 'frames', `${String(shots.length).padStart(4, '0')}.jpg`);
       await page.screenshot({ path: file, type: 'jpeg', quality: 72 });
       shots.push({ t: info.t, sim: info.sim, file, play, label: tag, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
+      if (play && info.realm) (trace.realm || (trace.realm = [])).push({ t: info.t, sim: info.sim, file, ...info.realm });
     } catch { /* page navigating */ } finally { busy = false; }
   };
   const startStreams = (tag) => {

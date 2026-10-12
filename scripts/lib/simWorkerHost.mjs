@@ -38,7 +38,7 @@ import {
   spawn47aScenarioCast,
 } from '../../src/data/scenarios/47aLiveScene.js';
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
-import { applyBudgetedLabPackage } from '../../src/ui/sandbox/sandboxSetup.js';
+import { applyBudgetedLabPackage, armWorkerCrucibleSetup } from '../../src/ui/sandbox/sandboxSetup.js';
 import { getCombatKernel } from '../../src/combat/kernel.js';
 import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
@@ -869,15 +869,27 @@ export function createSimHost() {
         // A fresh boot supersedes any earlier pending receipt (aborted or
         // never-consumed lifecycle) — stage only on a completed boot.
         host.pendingGameStarted = null;
-        const result = await runNewGameSimBoot({
-          state,
-          helpers: sim.helpers,
-          bus: host.bus,
-          registry,
-          opts: (args && args.opts) || {},
-          newGamePlus: (args && args.newGamePlus) || null,
-          awaitPhysicsPrep: true,
-        });
+        // Crucible launch (Swarm / Gauntlet / scored): apply the staged setup HERE, on the
+        // authoritative registry, at the same scenePrepared beat the main lane uses — tech,
+        // hull, fittings, arena relocation, run begin and purse all land in the sim that runs.
+        const offScene = armWorkerCrucibleSetup(
+          { state, helpers: sim.helpers, registry, bus: host.bus },
+          (args && args.opts) || null,
+        );
+        let result;
+        try {
+          result = await runNewGameSimBoot({
+            state,
+            helpers: sim.helpers,
+            bus: host.bus,
+            registry,
+            opts: (args && args.opts) || {},
+            newGamePlus: (args && args.newGamePlus) || null,
+            awaitPhysicsPrep: true,
+          });
+        } finally {
+          offScene();
+        }
         if (result && result.ok === true) {
           host.pendingGameStarted = { newGamePlus: (args && args.newGamePlus) || null };
           // A Crucible/Swarm launch: the receipt says so, so onboarding stands down even if
