@@ -57,13 +57,14 @@ function readTarget() {
     cx += e.pos.x; cz += e.pos.z; near++;
   }
   let away = null;
-  if (near) { const a = Math.atan2(me.pos.x - cx / near, me.pos.z - cz / near); away = a - me.rot; while (away > Math.PI) away -= 2 * Math.PI; while (away < -Math.PI) away += 2 * Math.PI; }
+  if (near) { const a = Math.atan2(me.pos.z - cz / near, me.pos.x - cx / near); away = a - me.rot; while (away > Math.PI) away -= 2 * Math.PI; while (away < -Math.PI) away += 2 * Math.PI; }
   const hull = me.hullMax ? me.hull / me.hullMax : 1;
   const canvas = st.render.renderer.domElement; const r = canvas.getBoundingClientRect();
   const v = new THREE.Vector3();
   if (!best) return { none: true, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
   v.set(best.pos.x, best.pos.y || 0, best.pos.z).project(cam);
-  const ang = Math.atan2(best.pos.x - me.pos.x, best.pos.z - me.pos.z);
+  // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).
+  const ang = Math.atan2(best.pos.z - me.pos.z, best.pos.x - me.pos.x);
   let rel = ang - me.rot; while (rel > Math.PI) rel -= 2 * Math.PI; while (rel < -Math.PI) rel += 2 * Math.PI;
   return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height, dist: bd, rel, away, near, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
 }
@@ -99,7 +100,7 @@ export async function fightBeat(page, beat) {
     if (tg.dist < 170) keys.push('KeyS');
     else if (tg.dist > 300 || beat % 3 !== 2) keys.push('KeyW');
   }
-  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyD' : 'KeyA';
+  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyA' : 'KeyD'; // KeyD lowers rot (measured by the yaw probes)
   for (const k of keys) await page.keyboard.down(k);
   const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
   if (turn) { await page.keyboard.down(turn); await waitSim(page, turnS, { maxWallMs: 30000 }); await page.keyboard.up(turn); }
