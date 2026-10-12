@@ -2,11 +2,7 @@ name: Living VFX candidate
 on:
   push:
     branches: [codex/living-vfx-overhaul-20261012]
-    paths:
-      - '.github/workflows/living-vfx-candidate.yml'
-      - 'src/render/**'
-      - 'test/living-vfx*'
-      - 'scripts/living-vfx*'
+    paths: ['.github/workflows/living-vfx-candidate.yml', 'src/render/**', 'test/living-vfx*', 'scripts/living-vfx*']
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,8 +23,6 @@ jobs:
             scripts
             test
             docs
-            design/vfx
-            design/program/NOW.md
             .github/workflows
       - uses: actions/setup-node@v4
         with:
@@ -42,16 +36,21 @@ jobs:
         run: |
           if test -f test/living-vfx.test.mjs; then node --test test/living-vfx*.test.mjs; fi
           if test -f scripts/living-vfx-verify.mjs; then node scripts/living-vfx-verify.mjs; fi
-      - name: Package renderer dependencies
-        if: always()
+      - name: Collect exact shipping lab models and decoder helpers
         run: |
-          mkdir -p vfx-artifact
-          git rev-parse HEAD > vfx-artifact/BASE_COMMIT.txt
-          tar -czf vfx-artifact/renderer-deps.tar.gz -C .vfx-ci node_modules
+          mkdir -p vfx-artifact/review
+          for path in assets/ships/release/parts/wholeships/kestrel.glb assets/ships/release/parts/places/place_asteroid_rock_a.glb assets/ships/release/parts/wholeships/colossus_production_v1.glb assets/ships/release/parts/places/place_station_refinery.glb assets/ships/release/parts/places/place_cargo_pod_standard.glb; do
+            mkdir -p "vfx-artifact/review/$(dirname "$path")"
+            git show "HEAD:$path" > "vfx-artifact/review/$path"
+          done
+          git archive HEAD src/render/renderPackageManifest.js scripts/vfx-gameplay-demo.html scripts/lib | tar -x -C vfx-artifact/review
+          git ls-tree -r --name-only HEAD vendor assets/ships/release | grep -E '(manifest.*\.json|basis_transcoder\.worker\.js|\.wasm|\.meshopt|\.render\.json)$' > vfx-artifact/review-aux-paths.txt || true
+          du -h vfx-artifact/review/assets/ships/release/parts/*/*
+          tar -czf vfx-artifact/shipping-models.tar.gz -C vfx-artifact/review .
+          rm -rf vfx-artifact/review
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: living-vfx-candidate
+          name: living-vfx-review-models
           path: vfx-artifact/
           if-no-files-found: error
           retention-days: 3
