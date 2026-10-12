@@ -485,12 +485,10 @@ export const onboarding = {
     bus.on('economy:tradeCompleted', (p) => {
       if (!p || p.side !== 'sell') return;
       // The earned rack pointer outranks the generic board pointer: a sale that closes an
-      // offer's price gap names the exact module it buys, and the static followup is spent
-      // so one sale never plays two guidance lines.
-      if (this._maybeSpeakFitOffer(p.stationId)) {
-        const ob = this.state && this.state.onboarding;
-        if (ob && ob.firedFollowups) ob.firedFollowups['choice:sold'] = true;
-      }
+      // offer's price gap names the exact module it buys. _maybeSpeakFitOffer spends the
+      // static followup itself, so one sale never plays two guidance lines — including a
+      // sale whose contract payout already spoke the pointer via economy:grantCredits.
+      this._maybeSpeakFitOffer(p.stationId);
       this._onBeatEvent('sold', p);
     });
     bus.on('economy:grantCredits', () => this._maybeSpeakFitOffer());
@@ -1023,7 +1021,8 @@ export const onboarding = {
       // Same gates describeOutfittingPurchase applies: standing lock, research/offer unlock,
       // a slot this hull can take, and the real offer price against real credits.
       if (def.exclusivity && !exclusivityRepMet(def.exclusivity, st.factions)) continue;
-      if (def.requiresTech && !researched.has(def.requiresTech) && (def.exclusivity || !offer)) continue;
+      // (offer is non-null here, so the purchase row's off-rack research exemption applies.)
+      if (def.requiresTech && !researched.has(def.requiresTech) && def.exclusivity) continue;
       if (!slots.some((slot) => fits(slot, def))) continue;
       if (credits < offer.price) continue;
       // The swing drive extends the latch the tutorial already taught, so it leads; the
@@ -1059,6 +1058,10 @@ export const onboarding = {
     if (!def) return '';
     if (!player.hints) player.hints = {};
     player.hints.fitOffer = true;
+    // The earned line supersedes B5's generic board followup whichever berth event spoke it
+    // (a contract payout's grantCredits fires inside the same sale, before tradeCompleted
+    // reaches this system).
+    if (ob.firedFollowups) ob.firedFollowups['choice:sold'] = true;
     const line = `Your credits cover the yard's ${def.name}.`;
     if (this._tutorialRailOwnsVoice()) ob.beatAction = line;
     this._sayTutorial(line);

@@ -116,6 +116,27 @@ test('B5: the earned pointer replaces the generic board followup for the same sa
   assert.deepEqual(h.said, [SWING_LINE], 'a second sale adds nothing');
 });
 
+test('B5: a sale whose contract payout speaks the pointer first still plays one line', () => {
+  const h = makeHarness({ credits: 4000, rail: 'choice' });
+  // economy and missions register before onboarding (registry order): the sale completes a
+  // bulk_trade contract, its payout lands, and economy:grantCredits reaches onboarding
+  // before economy:tradeCompleted does.
+  const bus = h.bus;
+  h.state.player.credits = 4000;
+  const realEmit = bus.emit.bind(bus);
+  bus.emit = (type, p) => {
+    if (type === 'economy:tradeCompleted') {
+      h.state.player.credits += 1500;
+      realEmit('economy:grantCredits', { amount: 1500, reason: 'mission:complete' });
+    }
+    return realEmit(type, p);
+  };
+  h.sell();
+  assert.deepEqual(h.said, [SWING_LINE], 'the payout-earned pointer replaces the board followup');
+  assert.equal(h.state.onboarding.beatAction, SWING_LINE);
+  assert.equal(h.state.onboarding.firedFollowups['choice:sold'], true);
+});
+
 test('B5 with nothing in reach keeps the truthful board pointer', () => {
   const h = makeHarness({ credits: 4000, rail: 'choice' });
   h.sell();
