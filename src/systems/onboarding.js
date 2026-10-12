@@ -1135,6 +1135,9 @@ export const onboarding = {
       claimed: ob.claimed && typeof ob.claimed === 'object' ? railRecord(ob.claimed) : null,
       missingThree: rail ? railRecord(rail) : null,
       storeSentence: ob.storeSentence ? plainClone(ob.storeSentence) : null,
+      choiceStationId: typeof ob.choiceStationId === 'string' ? ob.choiceStationId : null,
+      choiceOfferIds: Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.slice() : null,
+      recommendedMissionId: ob.recommendedMissionId != null ? ob.recommendedMissionId : null,
     };
   },
 
@@ -1159,6 +1162,10 @@ export const onboarding = {
     ob.tetherBreaks = d.tetherBreaks | 0;
     ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
     if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence);
+    // B5's berth and offers survive a docked save, so the board keeps its choice framing.
+    if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
+    if (Array.isArray(d.choiceOfferIds)) ob.choiceOfferIds = d.choiceOfferIds.slice(); else delete ob.choiceOfferIds;
+    if (d.recommendedMissionId != null) ob.recommendedMissionId = d.recommendedMissionId; else delete ob.recommendedMissionId;
     ob.rescue = restoreRescueRecord(d.rescue);
     ob.raid = plainClone(d.raid);
     ob.claimed = plainClone(d.claimed);

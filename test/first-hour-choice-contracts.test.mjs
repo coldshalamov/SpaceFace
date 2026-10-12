@@ -143,6 +143,24 @@ test('starter-progression: B5 opens at the berth with sim time frozen; undocking
     'the choice beat never rides along into flight after the player left the berth');
 });
 
+test('starter-progression: a docked save on B5 keeps the berth and its three choice offers', () => {
+  const h = makeHarness();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  h.state.ui.dockedStationId = null;
+  h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
+  h.state.onboarding.missingThree = { completed: false };
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  h.missions.ensureOnboardingChoiceOffers('station_helios');
+  const saved = JSON.parse(JSON.stringify(h.onboarding.serialize()));
+  const ids = h.state.onboarding.choiceOfferIds.slice();
+  h.state.onboarding = { active: false, finished: false };
+  h.onboarding.deserialize(saved);
+  assert.equal(h.state.onboarding.currentBeat, CHOICE_BEAT);
+  assert.equal(h.state.onboarding.choiceStationId, 'station_helios');
+  assert.deepEqual(h.state.onboarding.choiceOfferIds, ids);
+  assert.equal(ids.length, 3);
+});
+
 test('B5 posts three normal starter-risk offers and accepts exactly one choice', () => {
   const h = makeHarness();
   h.state.onboarding.currentBeat = CHOICE_BEAT;
