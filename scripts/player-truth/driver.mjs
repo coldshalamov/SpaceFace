@@ -52,11 +52,11 @@ function readTarget() {
   let cx = 0; let cz = 0; let near = 0;
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
-    if (Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) > 520) continue;
+    if (Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) > 700) continue;
     const d = e.data || {}; if (!(d.runRole || (d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget)) || (e.team !== me.team && e.team !== 0 && e.team !== 2))) continue;
     cx += e.pos.x; cz += e.pos.z; near++;
   }
-  let away = null;
+  let away = null; const packDist = near ? Math.hypot(me.pos.x - cx / near, me.pos.z - cz / near) : Infinity;
   if (near) { const a = Math.atan2(me.pos.z - cz / near, me.pos.x - cx / near); away = a - me.rot; while (away > Math.PI) away -= 2 * Math.PI; while (away < -Math.PI) away += 2 * Math.PI; }
   const hull = me.hullMax ? me.hull / me.hullMax : 1;
   const canvas = st.render.renderer.domElement; const r = canvas.getBoundingClientRect();
@@ -66,22 +66,23 @@ function readTarget() {
   // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).
   const ang = Math.atan2(best.pos.z - me.pos.z, best.pos.x - me.pos.x);
   let rel = ang - me.rot; while (rel > Math.PI) rel -= 2 * Math.PI; while (rel < -Math.PI) rel += 2 * Math.PI;
-  return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height, dist: bd, rel, away, near, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height, dist: bd, rel, away, near, packDist, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
 }
 
 const fighterMemory = { hull: null, breakBeats: 0 };
 
 /**
  * One beat of a kiting fighter (public input only): aim the mouse at the nearest hostile and fire,
- * hold a 180–320 u standoff, and break off — turn away from the pack and burn — when the hull
- * drops sharply or runs low, instead of trading hits. Latch (Space) every 7th beat.
+ * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when 3+ hostiles
+ * close inside 450 u, when hit, or when low, instead of trading hits. Latch (Space) every 7th beat.
  */
 export async function fightBeat(page, beat) {
   const tg = await page.evaluate(readTarget).catch(() => null);
   if (!tg) { await page.waitForTimeout(300); return; }
   const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
   fighterMemory.hull = tg.hull;
-  if (lost > 0.06 || (tg.hull < 0.35 && tg.near >= 2)) fighterMemory.breakBeats = 3;
+  // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
+  if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
   if (tg.none) {
     await holdKey(page, 'KeyW', 0.6, null, null);
     if (beat % 3 === 0) await holdKey(page, 'KeyA', 0.4, null, null);
@@ -97,8 +98,8 @@ export async function fightBeat(page, beat) {
     err = tg.away; keys.push('KeyW');
   } else {
     err = tg.rel;
-    if (tg.dist < 170) keys.push('KeyS');
-    else if (tg.dist > 300 || beat % 3 !== 2) keys.push('KeyW');
+    if (tg.dist < 230) keys.push('KeyS');
+    else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
   if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyA' : 'KeyD'; // KeyD lowers rot (measured by the yaw probes)
   for (const k of keys) await page.keyboard.down(k);
