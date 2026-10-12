@@ -294,6 +294,8 @@ export const tetherGameplay = {
           this.bus.on('save:loaded', resetAfterLoad),
           this.bus.on('game:new', resetForNewGame),
           this.bus.on('game:started', resetForNewGame),
+          this.bus.on('player:death', () => this._retirePlayerLines(this.state, 'endpoint_lost')),
+          this.bus.on('player:respawn', () => this._retirePlayerLines(this.state, 'endpoint_lost')),
           this.bus.on('sector:exit', () => endForSectorBoundary('sector_exit')),
           this.bus.on('sector:enter', () => endForSectorBoundary('sector_enter')),
           this.bus.on('tether:broken', onAuthorityBroken),
@@ -2133,6 +2135,54 @@ export const tetherGameplay = {
     }
     this._releaseAcceptedLoad(state, target.id);
     return { heldId: null, released: true };
+  },
+
+  // Death and the recovery teleport can land in the same turn, before the next physics
+  // reconcile sees alive === false. Break every live line that names the player now, so the
+  // berth does not inherit a joint to the wreck. Pause and save:loaded do not come through here:
+  // a restored line is adopted, not cut. A living selected body stays selected; a missing or
+  // dead one is dropped so a recycled id cannot inherit the lock.
+  _retirePlayerLines(state, reason) {
+    if (!state) return 0;
+    this._active = null;
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    const playerId = state.playerId;
+    const kernel = combatKernel(this);
+    const attachments = kernel && kernel.attachments;
+    const brokenIds = new Set();
+    let broken = 0;
+    if (attachments && playerId != null && typeof attachments.breakAttachment === 'function') {
+      const rows = [];
+      if (typeof attachments.listForEntity === 'function') {
+        for (const row of attachments.listForEntity(playerId, true) || []) rows.push(row);
+      }
+      if (typeof attachments.listControlledBy === 'function') {
+        for (const row of attachments.listControlledBy(playerId, true) || []) rows.push(row);
+      }
+      for (const row of rows) {
+        if (!row || row.state !== 'active' || row.id == null || brokenIds.has(row.id)) continue;
+        if (row.ownerId !== playerId && row.targetId !== playerId && row.controllerId !== playerId) continue;
+        brokenIds.add(row.id);
+        const result = attachments.breakAttachment(row, reason || 'endpoint_lost', playerId);
+        if (result && result.ok) broken += 1;
+      }
+    }
+    if (typeof this._endTwinBridleForBoundary === 'function') {
+      this._endTwinBridleForBoundary(state, reason || 'endpoint_lost');
+    }
+    if (typeof this._resetPhaseMirror === 'function') this._resetPhaseMirror();
+    if (typeof this._mirror === 'function') this._mirror(state, null, 0);
+    const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    const playerState = state.player;
+    if (playerState && playerState.targetId != null) {
+      const target = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(playerState.targetId)
+        : null;
+      if (!target || target.alive === false) playerState.targetId = null;
+    }
+    return broken;
   },
 
   _releaseAcceptedLoad(state, targetId) {
