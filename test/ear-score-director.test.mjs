@@ -105,11 +105,15 @@ test('each sector is its own key and mode, and the engine home sector keeps the 
   assert.equal(Object.keys(FACTION_SCORE_COLOUR).length >= 13, true);
 });
 
-test('theme matrix: a committed hunter is a chase (tension stem), and the place intent carries the state read', () => {
-  assert.equal(resolveThemeState({ threat: 0.45 }), 'wanted');
+test('theme matrix: a committed hunter is a chase (tension stem), not the law, and the place intent carries the state read', () => {
+  // The chase never reads as `wanted`: law mark, recipes and UI that key on `wanted` stay silent.
+  assert.equal(resolveThemeState({ threat: 0.45 }), 'travel');
   assert.equal(resolveThemeState({ threat: 0.1 }), 'travel');
   const chase = resolveThemeMatrix({ threat: 0.45, sectorId: 'sector_sker_haven', factionId: 'faction_reach' });
   assert.equal(chase.pursuit, true);
+  assert.equal(chase.state, 'travel');
+  assert.equal(chase.motif.id, 'travel_outbound');
+  assert.equal(chase.musicState, 'tense');
   assert.ok(chase.audibleStemWeights.B > chase.audibleStemWeights.A);
   assert.equal(chase.score.id, 'sector_sker_haven');
   assert.equal(chase.factionColour.id, 'faction_reach');
@@ -120,6 +124,9 @@ test('theme matrix: a committed hunter is a chase (tension stem), and the place 
   assert.equal(intent.bed.kind, 'bed_sker');
   const law = resolveThemeMatrix({ wanted: true, threat: 0.45 });
   assert.equal(law.pursuit, false);
+  assert.equal(law.state, 'wanted');
+  assert.equal(resolveThemeMatrix({ threat: 0.1 }).pursuit, false);
+  assert.equal(resolveThemeMatrix({ threat: 0.45, docked: true }).pursuit, false);
 });
 
 test('fixed-seed tape (house seed) is reproducible frame for frame', () => {

@@ -129,8 +129,19 @@ export function mixAudibleStemWeights(stateWeights, sectorWeights) {
 export function scoreStemWeights(frame, theme) {
   if (!frame || !frame.stemWeights || !theme) return null;
   if ((theme.state === 'station') !== (frame.phase === 'dock')) return null;
-  return mixAudibleStemWeights(frame.stemWeights, theme.sectorStemWeights);
+  // The sector colours the mix but never overturns the phase's lead: a hub that thins its
+  // tension stem (Helios B 0.4) still lets a chase lead with it.
+  const sector = theme.sectorStemWeights || {};
+  const out = {};
+  for (const key of ['A', 'B', 'C', 'D']) {
+    const k = Number.isFinite(sector[key]) ? sector[key] : 1;
+    const f = key === frame.stem ? SCORE_LEAD_SECTOR_FLOOR + (1 - SCORE_LEAD_SECTOR_FLOOR) * k : k;
+    out[key] = Math.round((Number(frame.stemWeights[key]) || 0) * f * 1000) / 1000;
+  }
+  return Object.freeze(out);
 }
+
+export const SCORE_LEAD_SECTOR_FLOOR = 0.6;
 
 export function wantedMotifRate(band) {
   const steps = Math.max(0, Math.min(4, (Number(band) || 1) - 1));
@@ -228,8 +239,9 @@ export function sectorBedToBandIntent(bed, options = {}) {
 }
 
 // THE EAR: a hunter closing before any shot lands (threat in the committed/approach band) is a
-// chase, and the chase is the tension stem's job — the same B row the law's pursuit uses. Before
-// this band existed a committed hunter at 0.45 threat left the travel lead playing.
+// chase. The chase rides the tension stem's mix, but it is NOT the law: the theme state stays
+// `travel` (so nothing that reads `wanted` — the law mark, recipes, UI — fires for an unwanted
+// pilot) and the matrix carries a separate `pursuit` flag.
 export const PURSUIT_THREAT = 0.3;
 
 export function resolveThemeState(input = {}) {
@@ -237,9 +249,16 @@ export function resolveThemeState(input = {}) {
   if (input.wanted) return 'wanted';
   const threat = clamp01(input.threat);
   if (input.inCombat || threat >= 0.6) return 'combat';
-  if (threat >= PURSUIT_THREAT) return 'wanted';
   return 'travel';
 }
+
+/** An unwanted pilot under a committed hunter, short of a fight. */
+export function resolvePursuit(input = {}, state = resolveThemeState(input)) {
+  return state === 'travel' && !input.wanted && clamp01(input.threat) >= PURSUIT_THREAT;
+}
+
+// Chase mix: the tension stem leads over a thinned travel bed; no combat drums yet.
+export const PURSUIT_STEM_WEIGHTS = Object.freeze({ A: 0.35, B: 0.9, C: 0.2, D: 0.0 });
 
 /**
  * SWARM-06 — the chain's music lift, 0..1. A running Swarm chain drags the audible stem mix
@@ -277,7 +296,8 @@ export function applySwarmStemLift(audibleWeights, sectorWeights, lift) {
 export function resolveThemeMatrix(input = {}) {
   const state = THEME_STATES.includes(input.state) ? input.state : resolveThemeState(input);
   const motif = THEME_MOTIFS[state];
-  const stemWeights = THEME_STEM_WEIGHTS[state];
+  const pursuit = resolvePursuit(input, state);
+  const stemWeights = pursuit ? PURSUIT_STEM_WEIGHTS : THEME_STEM_WEIGHTS[state];
   const bedRow = resolveSectorBed(input.sectorId);
   const sectorStemWeights = bedRow.stemWeights;
   let audibleStemWeights = mixAudibleStemWeights(stemWeights, sectorStemWeights);
@@ -289,13 +309,16 @@ export function resolveThemeMatrix(input = {}) {
   const factionColour = resolveFactionColour(input.factionId);
   // The place intent the Band runtime's score director and room tone read: the same inputs this
   // resolver was handed, so the room and the stems answer one state read.
+  // `scoreThreat` is the host's live-hostile read (no damage-window tail): the score's aftermath
+  // starts when the last hostile is gone, not six seconds later when the hit timer expires.
+  const liveThreat = Number.isFinite(input.scoreThreat) ? clamp01(input.scoreThreat) : clamp01(input.threat);
   const place = Object.freeze({
     sectorId: input.sectorId || null,
     factionId: input.factionId || null,
     docked: !!(input.docked || input.station),
     wanted: !!input.wanted,
-    inCombat: !!input.inCombat,
-    threat: clamp01(input.threat),
+    inCombat: !!input.inCombat && liveThreat > 0,
+    threat: liveThreat,
     swarmLift: clamp01(input.swarmLift),
     working: !!input.working,
   });
@@ -305,7 +328,7 @@ export function resolveThemeMatrix(input = {}) {
     schema: 'spaceface.themeMatrix.v1',
     seed: THEME_MATRIX_SEED,
     state,
-    musicState: THEME_TO_MUSIC_STATE[state],
+    musicState: pursuit ? 'tense' : THEME_TO_MUSIC_STATE[state],
     motif,
     stemWeights,
     sectorStemWeights,
@@ -314,7 +337,7 @@ export function resolveThemeMatrix(input = {}) {
     stemDef: stem,
     bed: Object.freeze({ ...bedRow, place }),
     sting: stingRow,
-    pursuit: state === 'wanted' && !input.wanted,
+    pursuit,
     score,
     factionColour,
     hummable: motif.hummable,
