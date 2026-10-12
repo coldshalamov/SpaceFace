@@ -46,7 +46,7 @@ const snapshot = page => boundedBrowserRead(() => page.evaluate(() => {
     } : null,
   };
 }));
-const visible = async (page, selector) => page.locator(selector).first().isVisible().catch(() => false);
+const visible = async (page, selector) => boundedBrowserRead(() => page.locator(selector).first().isVisible()).catch(() => false);
 const critical = response => response.status >= 400 && (
   /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
 try {
@@ -57,16 +57,25 @@ try {
     // or deployment protection. Production visitors do not normally load this toolbar.
     extraHTTPHeaders: { 'x-vercel-skip-toolbar': '1' } });
   const page = await context.newPage(); page.setDefaultTimeout(20000);
+  const tapControl = async selector => {
+    const control = typeof selector === 'string' ? page.locator(selector).first() : selector;
+    await control.waitFor({ state: 'visible' });
+    await control.scrollIntoViewIfNeeded();
+    const box = await control.boundingBox();
+    if (!box) throw new Error(`Mobile control has no visible bounds: ${selector}`);
+    // Moving title/ORRERY instruments never become "stable". A player taps their current position.
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  };
   page.on('crash', () => report.lifecycle.push({ event: 'page-crash', at: new Date().toISOString() }));
   page.on('close', () => report.lifecycle.push({ event: 'page-close', at: new Date().toISOString() }));
   page.on('pageerror', error => report.pageErrors.push(String(error?.stack || error)));
   page.on('console', message => {
     if (message.type() === 'log' && /\[render\] GPU:|\[opening-cook\]/.test(message.text()))
       console.log(`[mobile:${engine}] ${message.text()}`);
-    if (['error', 'warning'].includes(message.type()) && report.console.length < 250) {
+    if (['error', 'warning'].includes(message.type()) && !/was preloaded using link preload/.test(message.text())) {
+      if (report.console.length >= 250) report.console.shift();
       report.console.push({ type: message.type(), text: message.text().slice(0, 3000) });
-      if (!/was preloaded using link preload/.test(message.text()))
-        console.log(`[mobile:${engine}:${message.type()}] ${message.text().slice(0, 2000)}`);
+      console.log(`[mobile:${engine}:${message.type()}] ${message.text().slice(0, 2000)}`);
     }
   });
   page.on('requestfailed', request => {
@@ -77,26 +86,26 @@ try {
       type: response.request().resourceType(), mime: response.headers()['content-type'], bytes: response.headers()['content-length'] });
   });
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  report.navigation = { status: navigation?.status(), url: page.url() }; report.html = await page.content();
+  report.navigation = { status: navigation?.status(), url: page.url() }; report.html = await boundedBrowserRead(() => page.content());
   const menu = '[data-screen="mainMenu"] button[data-action="newGame"]';
   const beforeMenu = Date.now();
   while (!(await visible(page, menu)) && Date.now() - beforeMenu < 180000) {
     if (await visible(page, '#cinematic-splash .cine-begin'))
-      await page.locator('#cinematic-splash .cine-begin').tap().catch(() => {});
+      await tapControl('#cinematic-splash .cine-begin').catch(() => {});
     const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
-    if (await motion.isVisible().catch(() => false)) await motion.tap();
+    if (await boundedBrowserRead(() => motion.isVisible()).catch(() => false)) await tapControl(motion);
     await page.waitForTimeout(1000);
   }
   await page.screenshot({ path: join(out, '01-menu.png') });
   if (!(await visible(page, menu))) throw new Error('Main menu never became playable');
   report.stages.push({ stage: 'menu', ...await snapshot(page) });
   console.log(`[mobile:${engine}] menu ready`);
-  await page.locator(menu).tap();
+  await tapControl(menu);
   await page.locator('.sf-ng-launch').waitFor({ state: 'visible', timeout: 30000 });
   report.stages.push({ stage: 'new-game', ...await snapshot(page) });
   console.log(`[mobile:${engine}] launching`);
   await page.screenshot({ path: join(out, '02-new-game.png') });
-  await page.locator('.sf-ng-launch').tap();
+  await tapControl('.sf-ng-launch');
   const launchAt = Date.now(); let reachedFlight = false;
   while (Date.now() - launchAt < 300000) {
     await page.waitForTimeout(2000);
@@ -110,6 +119,9 @@ try {
     }
     if (report.console.some(entry => /\[SpaceFace\] new game startup failed/.test(entry.text)))
       throw new Error('Game reported a startup-readiness failure; see console and failed asset URLs');
+    if (!state.loading.length && state.launchButton && !state.launchButton.disabled
+        && state.alerts.some(text => /could not finish loading|did not finish preparing|could not start/i.test(text)))
+      throw new Error(`Game refused mobile startup: ${state.alerts.filter(Boolean).join(' ')}`);
     if (state.flight === '1' && !state.loading.length) { reachedFlight = true; break; }
     if (Date.now() - launchAt > 5000 && await visible(page, menu))
       throw new Error('New Game returned to the main menu without entering flight');
