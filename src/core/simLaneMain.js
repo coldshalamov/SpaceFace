@@ -712,6 +712,14 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   // ---- directive posting ---------------------------------------------------------------------
   const advanceResult = { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
   let pendingSteps = 0;
+  let queuedShedSteps = 0;
+
+  function capPendingSteps(stepCap) {
+    const shed = Math.max(0, pendingSteps - stepCap);
+    pendingSteps -= shed;
+    queuedShedSteps += shed;
+    return shed;
+  }
 
   function watchFlight(flight, delayMs = LANE_WATCHDOG_SAMPLE_MS, confirm = false) {
     const dueMs = nowMs() + delayMs;
@@ -743,6 +751,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     if (inFlight) return;
     const commands = envelopeRing.drain();
     if (pendingSteps <= 0 && commands.length === 0 && pendingAckEnd === 0) return;
+    capPendingSteps(MAX_CATCHUP_STEPS);
 
     const seq = nextToken();
     const msg = {
@@ -942,6 +951,16 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         LOOP_FIXED_DT,
         effectiveStepCap,
       );
+      // While a directive is in flight, multiple presentation frames can owe the next
+      // batch. Apply the same catch-up ceiling to that combined debt: replaying all of
+      // it makes each reply slower and the next batch larger. Only whole overdue ticks
+      // are shed; command order and the accumulator's fractional phase remain intact.
+      const queuedOverflow = capPendingSteps(effectiveStepCap);
+      if (queuedOverflow > 0) {
+        advanceResult.shedBacklog = true;
+        advanceResult.shedSteps += queuedOverflow;
+        advanceResult.steps = Math.max(0, advanceResult.steps - queuedOverflow);
+      }
       advanceResult.stepCap = effectiveStepCap;
       advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
@@ -1030,6 +1049,8 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         replyCount,
         postedDirectives,
         postedSteps,
+        pendingSteps,
+        queuedShedSteps,
         inFlight: inFlight != null,
         inFlightWallMs: inFlight ? Math.max(0, nowMs() - inFlight.sentMs) : null,
         inFlightMainThreadDelayedMs: inFlight ? inFlight.mainThreadDelayedMs : null,
