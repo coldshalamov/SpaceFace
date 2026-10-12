@@ -1832,6 +1832,10 @@ function classifyWorld(state, runtime) {
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || namedAceActor
       || (entity.flags && entity.flags.missionPinned)
+      // A convoy/trader transit cast must physically finish its route — arrival is endpoint
+      // geometry, so shelving the cast past the player's reach would freeze the encounter
+      // mid-lane (check-living-universe-events §J). Same class as the courier above.
+      || data.transitCritical === true
       // A lawful ship answering a law-security incident — chasing an aggressor or holding a
       // witnessed wreck — is mission-critical even when it began as far ambient traffic; without
       // this the aggregate gate below shelved the enlisted patrol in S4_AGGREGATE where it could

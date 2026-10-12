@@ -28,6 +28,7 @@ import { pickupCustodyAllowsCollector } from './pickupCustody.js';
 import { combatFlag } from '../data/featureFlags.js';
 import {
   ensureActivityClassified,
+  entityNeedsPhysics,
   resetActivityRuntimeForRestore,
 } from '../world/activityRuntime.js';
 import {
@@ -932,6 +933,12 @@ export const physics = {
     const b = fenceBoundsForState(state);
     for (const e of physicsMovableEntities(state)) {
       if (!e.alive) continue;
+      // Shelved bodies (S2/S3/S4, unpinned) are owned by catch-up/scheduled wakes, not this
+      // integrator — parity with the partition-0 freeze under native authority. Integrating
+      // them here AND ballistic-drifting them on wake re-entry double-counts the motion
+      // (check-living-universe-events §J: a dormant hauler was thrown ~14km past its mark).
+      // Entities with no activity stamp still answer true, so unclassified bodies integrate.
+      if (!entityNeedsPhysics(e)) continue;
       // sector soft boundary: gentle inward acceleration past the soft radius
       if (e.type === 'ship' && b) {
         const dv = sectorFenceDeltaV(b, e, dt, _fenceScratch);
