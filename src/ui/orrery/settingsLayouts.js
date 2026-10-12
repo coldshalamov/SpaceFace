@@ -273,10 +273,13 @@ ${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !impor
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
 @media (min-width:1501px) { ${S} #sf-settings-pane.is-roomy { --orr-scale-w:294px; } }
+/* UI polish: at 1080p the label column fits every label on one or two lines, and the composition reads at 1.12 so 12px legends are not tiny on a 24in screen */
+@media (min-width:1501px) { ${S} { --orr-label-w:236px; } }
+@media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${S}, ${C} { zoom:1.12; } }
 @media (max-width:1500px) {
-  ${S} { --orr-scale-w:174px; --orr-label-w:150px; grid-template-columns:minmax(150px, 176px) minmax(456px, 480px) minmax(0, 1fr) !important; }
+  ${S} { --orr-scale-w:174px; --orr-label-w:190px; grid-template-columns:minmax(168px, 176px) minmax(516px, 560px) minmax(0, 1fr) !important; }
   ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
-  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.09em !important; text-wrap:balance; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size: 12px !important; letter-spacing:.12em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 174px) 56px !important; column-gap:10px !important; }
