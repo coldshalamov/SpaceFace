@@ -66,6 +66,11 @@ const libSrc = fs.readFileSync(partsLibraryPath, 'utf8');
 const libSlots = slotUrlsFromPartsLibrary(libSrc);
 const status = fs.existsSync(statusPath) ? readJson(statusPath) : { assets: {} };
 
+const LIFECYCLE_ENUM = status.lifecycle_enum || [
+  'CONCEPT', 'PENDING_RENDER', 'SOURCE_GLB', 'RELEASE_BUILT',
+  'MANIFEST_SLOT', 'RUNTIME_MAP', 'VISIBLE_IN_PLAY', 'BLOCKED',
+];
+
 const rows = parts.map((part) => {
   const id = part.id;
   const ledger = status.assets?.[id] || {};
@@ -75,18 +80,44 @@ const rows = parts.map((part) => {
     blocked: part.status === 'blocked',
     inferred: inferLifecycle(part, slots, libSlots),
     ledger_lifecycle: ledger.lifecycle || null,
+    ledger_valid: !ledger.lifecycle || LIFECYCLE_ENUM.includes(ledger.lifecycle),
     iterations: ledger.iterations || null,
     wired: ledger.wired || [],
   };
 });
 
+// Ledger-only assets (tracked in ASSET_STATUS.json without a manifest row) —
+// the home of PENDING_RENDER place commissions whose GLB is not built yet.
+for (const [id, ledger] of Object.entries(status.assets || {})) {
+  if (parts.some((part) => part.id === id)) continue;
+  rows.push({
+    id,
+    file: ledger.file || null,
+    blocked: false,
+    inferred: null,
+    ledger_lifecycle: ledger.lifecycle || null,
+    ledger_valid: !ledger.lifecycle || LIFECYCLE_ENUM.includes(ledger.lifecycle),
+    iterations: ledger.iterations || null,
+    wired: ledger.wired || [],
+  });
+}
+
 const blocked = rows.filter((r) => r.blocked);
 const manifestOnly = rows.filter((r) => r.inferred === 'MANIFEST_SLOT' && !r.ledger_lifecycle);
+const pendingRender = rows.filter((r) => r.ledger_lifecycle === 'PENDING_RENDER');
+const invalidLedger = rows.filter((r) => r.ledger_lifecycle && !r.ledger_valid);
+// pending_render fallback contract (ASSET_EXPERIENCE_PROGRAM §4): an unbuilt GLB
+// must stay out of every wired registry — flag any that slipped.
+const wiredPending = pendingRender.filter((r) =>
+  (r.inferred && r.inferred !== 'CONCEPT') || (r.wired && r.wired.length));
 
 console.log('Asset status report');
-console.log('parts:', rows.length, '| blocked:', blocked.length);
+console.log('parts:', rows.length, '| blocked:', blocked.length, '| pending_render:', pendingRender.length);
 if (blocked.length) console.log('blocked:', blocked.map((r) => r.id).join(', '));
 if (manifestOnly.length) console.log('manifest_slot (wire pending):', manifestOnly.length);
+if (pendingRender.length) console.log('pending_render:', pendingRender.map((r) => r.id).join(', '));
+if (invalidLedger.length) console.log('WARN  ledger lifecycle not in lifecycle_enum:', invalidLedger.map((r) => `${r.id}=${r.ledger_lifecycle}`).join(', '));
+if (wiredPending.length) console.log('WARN  pending_render asset appears wired:', wiredPending.map((r) => r.id).join(', '));
 
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 2));

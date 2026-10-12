@@ -9,7 +9,7 @@
 // `status: "blocked"` field + this check do.
 //
 // Run: `npm run check:asset-status`. Exits 1 on any violation.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -79,6 +79,64 @@ if (ambiguous.length === 0) {
 for (const part of manifest.parts || []) {
   if (part.status === 'blocked' && (!part.statusNote || part.statusNote.length < 20)) {
     fail(`blocked asset ${part.id} has no meaningful statusNote (>=20 chars required)`);
+  }
+}
+
+// --- 4. ASSET_STATUS.json ledger: lifecycle values must be in lifecycle_enum, and ---
+// PENDING_RENDER assets (Forge script complete, GLB not yet built — see
+// design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md §4 fallback
+// semantics) must stay out of every wired registry. Entries there require real
+// bytes/hash, so a pending id appearing in one means a phantom asset got wired.
+const statusPath = resolve(ROOT, 'assets/ASSET_STATUS.json');
+let statusLedger = null;
+try {
+  statusLedger = JSON.parse(readFileSync(statusPath, 'utf8'));
+} catch {
+  statusLedger = null;
+}
+if (!statusLedger) {
+  ok('no ASSET_STATUS.json ledger — pending_render contract skipped');
+} else {
+  const lifecycleEnum = new Set(statusLedger.lifecycle_enum || []);
+  const ledgerAssets = Object.values(statusLedger.assets || {});
+  const pendingRender = ledgerAssets.filter((a) => a.lifecycle === 'PENDING_RENDER');
+
+  for (const a of ledgerAssets) {
+    if (a.lifecycle && !lifecycleEnum.has(a.lifecycle)) {
+      fail(`ASSET_STATUS asset ${a.id || '(no id)'} has lifecycle "${a.lifecycle}" not in lifecycle_enum`);
+    }
+  }
+
+  if (pendingRender.length === 0) {
+    ok('no PENDING_RENDER assets tracked');
+  } else {
+    const failuresBefore = failures;
+    const registrySources = [
+      ['parts_manifest.json runtimeSlots', JSON.stringify(manifest.runtimeSlots || {})],
+      ['src/render/partsLibrary.js', partsLibrary],
+      ['src/render/renderPackageManifest.js', readFileSync(resolve(ROOT, 'src/render/renderPackageManifest.js'), 'utf8')],
+      ['src/data/modelTruthCensus.json', readFileSync(resolve(ROOT, 'src/data/modelTruthCensus.json'), 'utf8')],
+      ['assets/ships/release/release_manifest.json', readFileSync(resolve(ROOT, 'assets/ships/release/release_manifest.json'), 'utf8')],
+    ];
+    for (const asset of pendingRender) {
+      const id = asset.id;
+      const file = asset.file || (id ? `places/${id}.glb` : null);
+      for (const [name, src] of registrySources) {
+        if (id && src.includes(id)) {
+          fail(`PENDING_RENDER asset ${id} appears in wired registry ${name} — unbuilt GLBs must stay out of every registry until rendered and admitted`);
+        }
+      }
+      if (file) {
+        for (const base of ['assets/ships/parts', 'assets/ships/release/parts']) {
+          if (existsSync(resolve(ROOT, base, file))) {
+            fail(`PENDING_RENDER asset ${id} has a GLB on disk at ${base}/${file} — lifecycle should advance past PENDING_RENDER`);
+          }
+        }
+      }
+    }
+    if (failures === failuresBefore) {
+      ok(`pending_render contract: ${pendingRender.length} PENDING_RENDER asset(s) absent from wired registries`);
+    }
   }
 }
 

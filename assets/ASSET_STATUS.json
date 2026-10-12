@@ -3,6 +3,7 @@
   "description": "Lifecycle + wiring truth. STRICT G4 populate 2026-07-09.",
   "lifecycle_enum": [
     "CONCEPT",
+    "PENDING_RENDER",
     "SOURCE_GLB",
     "RELEASE_BUILT",
     "MANIFEST_SLOT",
@@ -10,7 +11,7 @@
     "VISIBLE_IN_PLAY",
     "BLOCKED"
   ],
-  "updated": "2026-07-09",
+  "updated": "2026-10-12",
   "assets": {
     "place_asteroid_graffiti": {
       "id": "place_asteroid_graffiti",
