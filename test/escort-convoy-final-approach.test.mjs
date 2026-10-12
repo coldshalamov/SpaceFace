@@ -54,6 +54,18 @@ function makeHarness({ ambushSize = 2, convoySize = 3 } = {}) {
     stations: [station],
     shipLike: [player],
     wrecks: [],
+    // repairEntityIndex (coreSystem) forces `ready` off when any maintained lane is missing —
+    // the membership-sync funnel inside _stampMissionTargetIdentity repairs the stub mid-spawn,
+    // so the lanes below keep this harness at the indexed shape (D163 contract, w125 lanes).
+    fx: [],
+    mines: [],
+    vectorMines: [],
+    charges: [],
+    bombs: [],
+    byWorldRecordId: new Map(),
+    byWorldRecordIdCount: new Map(),
+    bySectorId: new Map(),
+    _indexedIds: new Set(),
   };
   let nextEntityId = 1000;
   const helpers = {
