@@ -248,14 +248,22 @@ function inputsBetween(trace, a, b) { return trace.events.filter((ev) => isFligh
 
 export function checkSpawnMotion(trace) {
   const T = THRESHOLDS; const rounds = roundsOf(trace);
-  const starts = rounds.length ? rounds.map((r) => ({ label: `round ${r.wave}`, sim: r.startSim })) : (trace.meta.playStartSim != null ? [{ label: 'spawn', sim: trace.meta.playStartSim }] : []);
+  const starts = rounds.length ? rounds.map((r) => ({ label: `round ${r.wave}`, wave: r.wave, sim: r.startSim })) : (trace.meta.playStartSim != null ? [{ label: 'spawn', sim: trace.meta.playStartSim }] : []);
   if (!starts.length) return result('spawn_motion', 'Unexplained motion at spawn', 'UNKNOWN', null, `0 bodies >${T.spawnSpeed} u/s`, 'no spawn moment recorded');
-  const offenders = []; let count = 0;
+  const hasRunMetadata = trace.samples.some((s) => s.run?.w != null && s.run?.ph != null);
+  const offenders = []; let count = 0; let checked = 0; let missing = 0;
   for (const st of starts) {
-    const s = trace.samples.find((x) => x.sim >= st.sim && x.mode === 'flight');
-    if (!s || !s.p) continue;
-    const firstIn = inputsBetween(trace, st.sim, st.sim + 1e9)[0];
+    // Actor polls can notice the round several physics ticks after it opens. The continuous
+    // reader already recorded the actual first active frame; later contacts are not spawn motion.
+    const index = trace.samples.findIndex((x) => x.mode === 'flight' && (st.wave != null && hasRunMetadata
+      ? x.run?.w === st.wave && x.run.ph === 'active' : x.sim >= st.sim));
+    const s = trace.samples[index];
+    if (!s || !s.p) { missing++; continue; }
+    const inputStart = st.wave != null && hasRunMetadata
+      ? Math.min(st.sim, trace.samples[index - 1]?.sim ?? s.sim) : st.sim;
+    const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
+    checked++;
     for (const e of s.e) {
       if (!(e[E.cls] === CLS.asteroid || e[E.cls] === CLS.pickup || e[E.cls] === CLS.other)) continue;
       const d = Math.hypot(e[E.x] - s.p.x, e[E.z] - s.p.z); if (d > T.spawnRadius) continue;
@@ -267,8 +275,8 @@ export function checkSpawnMotion(trace) {
     }
   }
   offenders.sort((a, b) => b.sp - a.sp);
-  return result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
-    `${starts.length} spawn moment(s) checked`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  return result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : missing ? 'UNKNOWN' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
+    `${checked} spawn moment(s) checked${missing ? `; ${missing} opening frame(s) missing` : ''}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
 export function checkKillsBeforeInput(trace) {
