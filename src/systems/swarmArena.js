@@ -38,6 +38,7 @@
 
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
 import { mulberry32 } from '../core/rng.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
@@ -740,7 +741,7 @@ export const swarmArena = {
    * sets the same `despawnAt` deadline the engine's own sweep reads (coreSystem.js), so a wreck
    * somebody is mid-salvage on in some other mode is never yanked out from under them.
    */
-  // Between rounds the room comes to rest. A rock thrown in the last fight would otherwise still
+  // Between rounds the room comes to rest. A rock or wreck thrown in the last fight would otherwise still
   // be flying through the next round's opening breath, before the pilot has touched anything.
   // The stop is a counter-impulse through the physics port, so Rapier stays the authority.
   _settleRoom() {
@@ -751,11 +752,13 @@ export const swarmArena = {
     const SETTLE_SPEED = 6;
     const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
     for (const e of entities.values()) {
-      if (!e || e.type !== 'asteroid' || e.alive === false || !e.vel) continue;
+      if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
       const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
       const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
       if (vx * vx + vz * vz < SETTLE_SPEED * SETTLE_SPEED) continue;
-      const mass = Number.isFinite(e.mass) && e.mass > 0 ? e.mass : 0;
+      // The stop is sized on the body the solver actually holds, not the entity's display mass.
+      const spec = resolvePhysicsBodySpec(e);
+      const mass = spec && spec.mass > 0 ? spec.mass : (Number.isFinite(e.mass) && e.mass > 0 ? e.mass : 0);
       if (mass <= 0) continue;
       physics.applyImpulse({
         entityId: e.id,
