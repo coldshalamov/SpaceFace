@@ -82,7 +82,7 @@ function clampSpeed(vx, vz, cap) {
  */
 export function spawnReactiveBody(world, spec) {
   if (!world || world.destroyed) throw new Error('reactive world is destroyed');
-  if (!spec || typeof spec.id !== 'string' || spec.id.length === 0) return null;
+  if (!spec || !(Number.isSafeInteger(spec.id) || (typeof spec.id === 'string' && spec.id.length))) return null;
   if (world.bodies.has(spec.id)) return null;
   const model = modelById(spec.modelId);
   if (!model) {
@@ -152,7 +152,7 @@ export function spawnReactiveBody(world, spec) {
 
 export function addMachine(world, spec) {
   if (!world || world.destroyed) throw new Error('reactive world is destroyed');
-  if (!spec || typeof spec.id !== 'string') return null;
+  if (!spec || !(Number.isSafeInteger(spec.id) || typeof spec.id === 'string')) return null;
   if (world.machines.has(spec.id)) return null;
   if (world.machines.size >= BUDGET.maxMachines) return null;
   const machine = {
@@ -174,7 +174,7 @@ export function addMachine(world, spec) {
 }
 
 export function addHitch(world, spec) {
-  if (!spec || typeof spec.id !== 'string') return null;
+  if (!spec || !(Number.isSafeInteger(spec.id) || typeof spec.id === 'string')) return null;
   if (world.hitches.has(spec.id)) return null;
   const owner = world.bodies.get(spec.ownerId);
   const target = world.bodies.get(spec.targetId);

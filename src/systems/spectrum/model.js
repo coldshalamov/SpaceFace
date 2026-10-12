@@ -48,6 +48,30 @@ function clonePoint(point) {
   return { x: round3(point.x), z: round3(point.z) };
 }
 
+function placed(point, origin) {
+  return point ? { x: point.x + origin.x, z: point.z + origin.z } : point;
+}
+
+export function bindSpectrumWorld(model, origin = { x: 0, z: 0 }, poses = {}) {
+  const base = spectrumCaseById(model.caseId);
+  if (!base) return false;
+  const coordinate = (v) => Number.isFinite(Number(v)) && Math.abs(Number(v)) <= 1e9 ? Number(v) : 0;
+  model.origin = { x: coordinate(origin?.x), z: coordinate(origin?.z) };
+  const at = (p) => placed(p, model.origin);
+  model.liveDefinition = { ...base, search: { ...base.search, ...at(base.search) },
+    emitters: base.emitters.map((e) => ({ ...e, pos: at(e.pos), center: at(e.center) })),
+    occluders: base.occluders.map((e) => ({ ...e, pos: at(e.pos), center: at(e.center) })),
+    reflectors: base.reflectors.map((r) => ({ ...r, a: at(r.a), b: at(r.b) })),
+    props: base.props.map((p) => ({ ...p, pos: at(p.pos) })),
+    sled: base.sled ? at(base.sled) : null,
+  };
+  model.liveBound = true;
+  model.livePoses = poses;
+  return true;
+}
+
+function definitionOf(model) { return model?.liveDefinition || spectrumCaseById(model?.caseId); }
+
 export function createSpectrumModel(caseId, simTime, seed = 1) {
   const def = spectrumCaseById(caseId);
   if (!def) return null;
@@ -84,6 +108,7 @@ export function createSpectrumModel(caseId, simTime, seed = 1) {
 }
 
 function poseOf(emitter, time, model) {
+  if (model.liveBound) return model.livePoses?.emitters?.[emitter.id] || null;
   if (emitter.propId && model.propPos[emitter.propId]) {
     const placed = model.propPos[emitter.propId];
     return { x: placed.x, z: placed.z, vx: 0, vz: 0 };
@@ -117,6 +142,11 @@ function occluderPoses(def, time, model) {
   const out = [];
   for (let i = 0; i < def.occluders.length; i++) {
     const occ = def.occluders[i];
+    if (model.liveBound) {
+      const live = model.livePoses?.occluders?.[occ.id];
+      if (live) out.push({ id: occ.id, ...live });
+      continue;
+    }
     if (occ.propId && model.propPos[occ.propId]) {
       const placed = model.propPos[occ.propId];
       out.push({ id: occ.id, x: placed.x, z: placed.z, r: occ.r });
@@ -152,6 +182,7 @@ function jamAmount(def, observer, time, model) {
     const gain = emitter.jamUntilReverse && model.reversed ? 0 : Number(emitter.jamGain) || 0;
     if (!emitter.jamRadius || gain <= 0) continue;
     const pose = poseOf(emitter, time, model);
+    if (!pose) continue;
     const distance = dist2(observer, pose);
     if (distance >= emitter.jamRadius) continue;
     jam = Math.max(jam, gain * (1 - distance / emitter.jamRadius));
@@ -195,6 +226,7 @@ function chartedEcho(observer, target, reflectors, occluders) {
 }
 
 function bodyPose(def, model, time) {
+  if (model.liveBound) return model.livePoses?.body || null;
   if (def.bodyId === 'sled' && def.sled) return { x: def.sled.x, z: def.sled.z, vx: 0, vz: 0 };
   for (let i = 0; i < def.emitters.length; i++) {
     if (def.emitters[i].id === def.bodyId) return poseOf(def.emitters[i], time, model);
@@ -221,6 +253,7 @@ function evalReverse(def, model, time) {
   }
   if (!raider) return;
   const from = poseOf(raider, time, model);
+  if (!from) return;
   const occluders = occluderPoses(def, time, model);
   let best = null;
   let bestScore = 0;
@@ -230,6 +263,7 @@ function evalReverse(def, model, time) {
     const power = emitterPower(emitter, model);
     if (power <= 0) continue;
     const pose = poseOf(emitter, time, model);
+    if (!pose) continue;
     if (segmentBlocked(from, pose, occluders)) continue;
     const score = power / (1 + dist2(from, pose));
     if (score > bestScore) {
@@ -462,7 +496,7 @@ function noteContradiction(model, track) {
 }
 
 export function applyMeasure(model, origin, velocity, simTime) {
-  const def = model && spectrumCaseById(model.caseId);
+  const def = model && definitionOf(model);
   if (!def || !origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return null;
   const time = Number(simTime);
   if (!Number.isFinite(time)) return null;
@@ -505,10 +539,12 @@ export function applyMeasure(model, origin, velocity, simTime) {
     const power = emitterPower(emitter, model);
     if (power <= 0) continue;
     const pose = poseOf(emitter, elapsed, model);
+    if (!pose) continue;
     const blocked = segmentBlocked(observer, pose, occluders);
     if (blocked) {
       sawBlocked = true;
-      const echo = chartedEcho(observer, pose, def.reflectors, occluders);
+      const echo = chartedEcho(observer, pose, model.liveBound
+        ? (model.livePoses?.reflectors || []) : def.reflectors, occluders);
       if (!echo) continue;
       const strength = signalStrengthFor(echo.path, def.horizon) * power * ECHO_POWER;
       if (strength < AUDIBLE) continue;
@@ -693,12 +729,13 @@ export function applyFocus(model, keyOrClass) {
   if (!found) return false;
   model.focusKey = found.key;
   model.manualFocus = true;
-  const def = spectrumCaseById(model.caseId);
+  const def = definitionOf(model);
   if (def) considerReveal(def, model);
   return true;
 }
 
 export function applyTow(model, propId, to, player, simTime) {
+  if (model?.liveBound) return { ok: false, reason: 'physical-tow-required' };
   if (!model || !model.propPos[propId] || !to || !player) return { ok: false, reason: 'no-prop' };
   const prop = model.propPos[propId];
   if (dist2(player, prop) > TOW_RANGE_WU) return { ok: false, reason: 'out-of-range' };
@@ -706,7 +743,7 @@ export function applyTow(model, propId, to, player, simTime) {
   prop.x = to.x;
   prop.z = to.z;
   model.towed[propId] = true;
-  const def = spectrumCaseById(model.caseId);
+  const def = definitionOf(model);
   const time = Number(simTime);
   if (def && Number.isFinite(time)) {
     model.lastTime = time;
@@ -726,7 +763,7 @@ export function applyBrake(model, player, velocity, simTime) {
   const speed = Math.hypot(velocity && velocity.x || 0, velocity && velocity.z || 0);
   if (speed > BRAKE_HOLD_WU_S) return { ok: false, reason: 'still-moving' };
   if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
-  const def = spectrumCaseById(model.caseId);
+  const def = definitionOf(model);
   if (!def || def.payoff !== 'brake') return { ok: false, reason: 'no-brake-payoff' };
   const time = Number(simTime);
   const elapsed = time - model.armedAt;
@@ -751,6 +788,23 @@ function finish(model, def) {
   model.resolved = true;
   const name = String(def.publicName || 'Return').toLowerCase();
   model.receipts.push(`${name.charAt(0).toUpperCase()}${name.slice(1)} investigated. Discovery logged. No duplicate reward.`);
+}
+
+// Called only with the production attachment owner and the physical endpoint's
+// current pose. No requested destination is ever applied to a body or a prop.
+export function observeSpectrumTow(model, propId, pose, player, simTime, latched) {
+  if (!model?.liveBound || !model.propPos[propId] || !pose || !player) return { ok: false, reason: 'no-prop' };
+  const initial = model.liveDefinition.props.find((p) => p.id === propId)?.pos;
+  model.propPos[propId] = { x: pose.x, z: pose.z };
+  if (latched && initial && dist2(initial, pose) >= 16) model.towed[propId] = true;
+  const def = definitionOf(model), time = Number(simTime);
+  if (!model.towed[propId] || !Number.isFinite(time)) return { ok: false, reason: 'not-towed' };
+  evalReverse(def, model, time - model.armedAt);
+  if (def.payoff === 'tow' && model.revealed && def.towProp === propId) {
+    const anchor = bodyPose(def, model, time - model.armedAt);
+    if (anchor && dist2(pose, anchor) <= (def.towRadius || PAYOFF_RADIUS_WU)) finish(model, def);
+  }
+  return { ok: true, resolved: model.resolved === true, reversed: model.reversed === true };
 }
 
 export function serializeSpectrum(model) {
@@ -790,6 +844,8 @@ export function serializeSpectrum(model) {
   return {
     schemaVersion: SPECTRUM_SCHEMA,
     caseId: model.caseId,
+    origin: model.origin ? { ...model.origin } : null,
+    liveBound: model.liveBound === true,
     armedAt: model.armedAt,
     seed: model.seed,
     propPos: model.propPos,
@@ -817,6 +873,7 @@ export function hydrateSpectrum(data) {
   if (!data || data.schemaVersion !== SPECTRUM_SCHEMA || !spectrumCaseById(data.caseId)) return null;
   const model = createSpectrumModel(data.caseId, data.armedAt, data.seed);
   if (!model) return null;
+  if (data.liveBound) bindSpectrumWorld(model, data.origin);
   model.propPos = data.propPos || model.propPos;
   model.towed = data.towed || {};
   model.nextTrack = data.nextTrack || 1;
@@ -834,7 +891,7 @@ export function hydrateSpectrum(data) {
   model.log = Array.isArray(data.log) ? data.log.slice() : [];
   model.receipts = Array.isArray(data.receipts) ? data.receipts.slice() : [];
   model.flags = { contradiction: false, jammed: false, wrong: false, reversed: false, ...(data.flags || {}) };
-  const def = spectrumCaseById(model.caseId);
+  const def = definitionOf(model);
   const stored = data.tracks || {};
   const keys = Object.keys(stored);
   for (let i = 0; i < keys.length; i++) {

@@ -156,8 +156,8 @@ function planFerro(world, bodies, dt, out) {
       if (!(Math.abs(j) > 1e-8)) continue;
       out.impulses.push({
         bodyId: body.id,
-        otherId: machine.bodyId,
-        anchorId: machine.anchored ? machine.id : null,
+        otherId: machine.anchored ? null : machine.bodyId,
+        anchorId: machine.anchored ? (machine.bodyId ?? machine.id) : null,
         jx: nx * j,
         jz: nz * j,
         source: 'ferro',

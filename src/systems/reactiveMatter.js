@@ -11,6 +11,9 @@ import {
 } from '../core/physicsAuthority.js';
 import { DEFAULT_MASSLINE_DEF } from '../core/constraints/masslineController.js';
 import { REACTIVE_DT } from '../data/reactiveMatter/budgets.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import { reactiveHabitatFor } from '../data/reactiveMatter/habitats.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { modelById } from '../data/reactiveMatter/models.js';
 import { stepReactiveMatter } from '../matter/reactive/step.js';
 import {
@@ -18,6 +21,8 @@ import {
   addMachine,
   createReactiveWorld,
   spawnReactiveBody,
+  saveReactiveWorld,
+  loadReactiveWorld,
 } from '../matter/reactive/world.js';
 
 const REEL_SPEED = DEFAULT_MASSLINE_DEF.reelInSpeed;
@@ -68,18 +73,24 @@ function copyImpact(payload) {
 
 function ensureWorld(state) {
   if (!state.reactiveMatterWorld) {
-    state.reactiveMatterWorld = createReactiveWorld({ seed: state.seed || 1, tick: state.tick | 0 });
+    state.reactiveMatterWorld = createReactiveWorld({ seed: state.meta?.seed || state.seed || 1, tick: state.tick | 0 });
   }
   return state.reactiveMatterWorld;
 }
 
-function spawnLiveEntity(state, spec) {
+function liveByKey(state, id) {
+  return state.entities.get(id) || state.entityList.find((e) => e.alive !== false
+    && (e.data?.reactiveMatter?.key === id || e.data?.reactiveMachine?.key === id)) || null;
+}
+
+function spawnLiveEntity(state, spec, helpers = null) {
   if (state.entities.has(spec.id)) return state.entities.get(spec.id);
   const model = modelById(spec.modelId);
   const anchored = spec.anchored === true || model?.anchored === true;
-  const entity = makeEntity({
+  const entitySpec = {
     id: spec.id,
-    type: anchored ? 'station' : (spec.isPlayer || spec.role === 'ship' || spec.role === 'traffic' ? 'ship' : 'asteroid'),
+    type: anchored ? (helpers ? 'fx' : 'station')
+      : (spec.isPlayer || spec.role === 'ship' || spec.role === 'traffic' ? 'ship' : (helpers ? 'payload' : 'asteroid')),
     alive: true,
     occupantGeneration: 1,
     isPlayer: spec.isPlayer === true,
@@ -94,7 +105,15 @@ function spawnLiveEntity(state, spec) {
       shape: 'ball', radius: spec.radius, mass: spec.mass, dynamic: true, ccd: true,
     },
     data: {
+      persistenceOwner: 'reactiveMatter',
+      isLandmark: anchored,
+      landmarkId: spec.key ?? spec.id,
+      homeSectorId: state.world?.currentSectorId || null,
+      placeId: spec.placeId || null,
+      scanLabel: spec.scanLabel || `${spec.modelId.replace(/_/g, ' ')} · towable material`,
+      authoredPayloadAssetId: !anchored ? 'pod_cargo_container' : null,
       reactiveMatter: {
+        key: spec.key ?? spec.id,
         modelId: spec.modelId,
         parentId: spec.parentId || null,
         runtime: spec.runtime === true,
@@ -102,7 +121,12 @@ function spawnLiveEntity(state, spec) {
         role: spec.role || model?.role || 'cargo',
       },
     },
-  });
+  };
+  if (helpers?.spawnEntity) {
+    if (entitySpec.id == null) delete entitySpec.id;
+    return helpers.spawnEntity(entitySpec);
+  }
+  const entity = makeEntity(entitySpec);
   state.entities.set(entity.id, entity);
   state.entityList.push(entity);
   return entity;
@@ -114,10 +138,11 @@ function syncBodies(world, state) {
     const entity = list[i];
     const stamp = entity?.data?.reactiveMatter;
     if (!stamp || entity.alive === false) continue;
-    const existing = world.bodies.get(entity.id);
+    const key = stamp.key ?? entity.id;
+    const existing = world.bodies.get(key);
     if (!existing) {
       spawnReactiveBody(world, {
-        id: entity.id,
+        id: key,
         modelId: stamp.modelId,
         x: entity.pos.x,
         z: entity.pos.z,
@@ -131,6 +156,7 @@ function syncBodies(world, state) {
         role: stamp.role,
         phase: stamp.phase,
         parentId: stamp.parentId,
+        heat: entity.heat || 0,
       });
       continue;
     }
@@ -149,10 +175,11 @@ function syncMachines(world, state) {
     const entity = list[i];
     const machine = entity?.data?.reactiveMachine;
     if (!machine) continue;
-    const existing = world.machines.get(entity.id);
+    const existing = world.machines.get(machine.key ?? entity.id);
     if (!existing) {
       addMachine(world, {
-        id: entity.id,
+        id: machine.key ?? entity.id,
+        bodyId: machine.key ?? entity.id,
         x: entity.pos.x,
         z: entity.pos.z,
         strength: machine.strength,
@@ -174,12 +201,22 @@ function syncHitches(world, state) {
   for (const id of Object.keys(byId)) {
     const attachment = byId[id];
     if (!attachment) continue;
+    for (const entityId of [attachment.ownerId, attachment.targetId]) {
+      const entity = state.entities.get(entityId);
+      if (!entity || entity.alive === false) continue;
+      const key = entity.data?.reactiveMatter?.key ?? entity.id;
+      if (!world.bodies.has(key)) {
+        const body = spawnReactiveBody(world, { id: key, modelId: 'hauler', role: 'observer',
+          x: entity.pos.x, z: entity.pos.z, mass: entity.mass, radius: entity.radius, isPlayer: entity.isPlayer });
+        if (body) { body.mass = entity.mass; body.radius = entity.radius; }
+      }
+    }
     let hitch = world.hitches.get(id);
     if (!hitch) {
       hitch = addHitch(world, {
         id,
-        ownerId: attachment.ownerId,
-        targetId: attachment.targetId,
+        ownerId: state.entities.get(attachment.ownerId)?.data?.reactiveMatter?.key ?? attachment.ownerId,
+        targetId: state.entities.get(attachment.targetId)?.data?.reactiveMatter?.key ?? attachment.targetId,
         rest: attachment.restLength,
         lugLocalX: attachment.lugLocalX || 0,
         lugLocalZ: attachment.lugLocalZ || 0,
@@ -187,13 +224,13 @@ function syncHitches(world, state) {
       });
     }
     if (!hitch) continue;
+    hitch.rest = attachment.restLength;
     if (attachment.state === 'cut' || attachment.state === 'broken') hitch.alive = false;
   }
 }
 
-function syncFields(world, state) {
-  const kernel = state.fieldsKernel;
-  const list = kernel && typeof kernel.list === 'function' ? kernel.list() : [];
+function syncFields(world, fieldsPort) {
+  const list = fieldsPort?.kernelList?.() || fieldsPort?.list?.() || [];
   const fields = [];
   for (let i = 0; i < list.length; i++) {
     const field = list[i];
@@ -211,7 +248,7 @@ function syncFields(world, state) {
   world.fields = fields;
 }
 
-function applyDemo(state, world, dt) {
+function applyDemo(state, world, dt, owner) {
   const demo = state.reactiveMatterDemo;
   if (!demo) return;
   const tape = tapeAt(demo.tape, world.tick);
@@ -233,7 +270,6 @@ function applyDemo(state, world, dt) {
       z: -player.vel.z * player.mass * scale,
     }, { motionIntent: 'player_maneuver', source: 'reactiveMatter', tick: world.tick, dt });
   }
-  const owner = state.physicsOwner;
   const byId = attachmentMap(state);
   for (const hitch of world.hitches.values()) {
     if (tape.cut && hitch.alive && hitch.ownerId === 'player') {
@@ -253,9 +289,9 @@ function applyDemo(state, world, dt) {
 }
 
 function queuePair(state, world, impulse, dt) {
-  const body = state.entities.get(impulse.bodyId);
-  const other = impulse.otherId ? state.entities.get(impulse.otherId) : null;
-  const anchor = impulse.anchorId ? state.entities.get(impulse.anchorId) : null;
+  const body = liveByKey(state, impulse.bodyId);
+  const other = impulse.otherId != null ? liveByKey(state, impulse.otherId) : null;
+  const anchor = impulse.anchorId != null ? liveByKey(state, impulse.anchorId) : null;
   let jx = impulse.jx;
   let jz = impulse.jz;
   const player = body?.isPlayer ? body : (other?.isPlayer ? other : null);
@@ -293,17 +329,17 @@ function queuePair(state, world, impulse, dt) {
   if (body) {
     queuePhysicsImpulse(body, { x: jx, y: 0, z: jz }, { source: 'reactiveMatter', externalProtected: true });
   }
-  if (other) {
+  if (other && other !== body) {
     queuePhysicsImpulse(other, { x: -jx, y: 0, z: -jz }, { source: 'reactiveMatter', externalProtected: true });
-  } else if (anchor) {
+  } else if (anchor && anchor !== body) {
     queuePhysicsImpulse(anchor, { x: -jx, y: 0, z: -jz }, { source: 'reactiveMatter', externalProtected: true });
   }
 }
 
 function commitBodies(state, world) {
   for (const body of world.bodies.values()) {
-    const entity = state.entities.get(body.id);
-    if (!entity) continue;
+    const entity = liveByKey(state, body.id);
+    if (!entity?.data?.reactiveMatter) continue;
     const stamp = entity.data.reactiveMatter;
     stamp.phase = body.phase;
     stamp.parentId = body.parentId;
@@ -313,8 +349,6 @@ function commitBodies(state, world) {
       entity.mass = 0;
       entity.collides = false;
       entity.physicsBody = false;
-      entity.vel.x = 0;
-      entity.vel.z = 0;
       continue;
     }
     if (body.mass > 0 && (entity.mass !== body.mass || entity.radius !== body.radius)) {
@@ -327,12 +361,27 @@ function commitBodies(state, world) {
   }
 }
 
-function commitSpawns(state, world, spawned) {
+function ensureCounterpart(world, entity) {
+  if (!entity?.pos || entity.alive === false) return null;
+  const key = entity.data?.reactiveMatter?.key ?? entity.id;
+  let body = world.bodies.get(key);
+  if (!body) body = spawnReactiveBody(world, { id: key, modelId: 'hauler', role: 'observer',
+    x: entity.pos.x, z: entity.pos.z, isPlayer: entity.isPlayer });
+  if (body && !entity.data?.reactiveMatter) {
+    Object.assign(body, { x: entity.pos.x, z: entity.pos.z, vx: entity.vel?.x || 0, vz: entity.vel?.z || 0,
+      mass: Math.max(0.25, entity.mass || 1), radius: entity.radius || 1,
+      anchored: entity.physicsBody?.dynamic === false, isPlayer: entity.isPlayer === true });
+  }
+  return key;
+}
+
+function commitSpawns(state, world, spawned, helpers) {
   for (let i = 0; i < spawned.length; i++) {
     const body = world.bodies.get(spawned[i]);
-    if (!body || state.entities.has(body.id)) continue;
+    if (!body || liveByKey(state, body.id)) continue;
     const entity = spawnLiveEntity(state, {
-      id: body.id,
+      id: helpers?.spawnEntity ? undefined : body.id,
+      key: body.id,
       modelId: body.modelId,
       x: body.x,
       z: body.z,
@@ -344,21 +393,28 @@ function commitSpawns(state, world, spawned) {
       role: body.role,
       parentId: body.parentId,
       anchored: false,
-    });
+    }, helpers);
     entity.data.reactiveMatter.phase = body.phase;
     entity.data.reactiveMatter.parentId = body.parentId;
   }
 }
 
-function commitRetargets(state, world, result) {
+function commitRetargets(state, world, result, owner, attachments) {
   const byId = attachmentMap(state);
-  const owner = state.physicsOwner;
   for (let i = 0; i < result.retargets.length; i++) {
     const retarget = result.retargets[i];
     const attachment = byId[retarget.hitchId];
     const hitch = world.hitches.get(retarget.hitchId);
+    const next = liveByKey(state, retarget.toId);
+    if (attachments && attachment && next) {
+      const rebound = attachments.rebind(attachment.id, attachment.ownerId, {
+        targetId: next.id, targetAnchorLocal: { x: hitch?.lugLocalX || 0, y: 0, z: hitch?.lugLocalZ || 0 },
+      });
+      if (!rebound.ok) attachments.breakAttachment(attachment, 'fracture', attachment.ownerId);
+      continue;
+    }
     if (attachment) {
-      attachment.targetId = retarget.toId;
+      attachment.targetId = next?.id ?? retarget.toId;
       attachment.lugLocalX = hitch ? hitch.lugLocalX : 0;
       attachment.lugLocalZ = hitch ? hitch.lugLocalZ : 0;
       attachment.state = 'active';
@@ -366,14 +422,14 @@ function commitRetargets(state, world, result) {
     if (owner?.cutAttachment && owner?.createAttachment && attachment) {
       owner.syncFromEntities?.(state.entityList);
       owner.cutAttachment({ attachmentId: attachment.id, reason: 'retarget', tick: world.tick });
-      const target = state.entities.get(retarget.toId);
+      const target = liveByKey(state, retarget.toId);
       const ship = state.entities.get(attachment.ownerId);
       if (target && ship) {
         owner.createAttachment({
           attachmentId: attachment.id,
           defId: 'attachment_massline_s',
           ownerId: attachment.ownerId,
-          targetId: retarget.toId,
+          targetId: target.id,
           sourceWorld: ship.pos,
           targetWorld: target.pos,
           targetAnchorLocal: { x: attachment.lugLocalX || 0, y: 0, z: attachment.lugLocalZ || 0 },
@@ -396,8 +452,13 @@ export const reactiveMatter = {
   name: 'reactiveMatter',
 
   init(ctx) {
+    for (const off of this._off || []) if (typeof off === 'function') off();
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
+    this.ctx = ctx;
+    this._sceneSector = null;
     this.pending = [];
     this.cues = [];
     this._off = [];
@@ -408,14 +469,21 @@ export const reactiveMatter = {
         this.pending.push(copy);
         if (this.pending.length > 128) this.pending.shift();
       }));
+      this._off.push(ctx.bus.on('sector:exit', () => this._clearLive()));
+      this._off.push(ctx.bus.on('game:new', () => { this._clearLive(); this.state.reactiveMatterWorld = null; }));
     }
   },
 
   update(dt, state) {
+    state = state || this.state;
+    this.state = state;
+    if (this.registry && !this.helpers.reactiveMatterLab && (state.mode !== 'flight' || !(state.timeScale > 0)
+      || state.entities.get(state.playerId)?.flags?.docked)) return null;
+    this._place();
     const world = ensureWorld(state || this.state);
     const stepDt = dt > 0 ? dt : REACTIVE_DT;
-    const owner = state.physicsOwner;
-    if (owner && typeof owner.drainContactImpacts === 'function') {
+    const owner = this.physicsPort || this.helpers.combatPhysics || this.registry?.physics || this.registry?.get?.('physics');
+    if (this.helpers.reactiveMatterLab && owner && typeof owner.drainContactImpacts === 'function') {
       const receipts = owner.drainContactImpacts() || [];
       for (let i = 0; i < receipts.length; i++) {
         const copy = copyImpact(receipts[i]);
@@ -425,14 +493,29 @@ export const reactiveMatter = {
     syncBodies(world, state);
     syncMachines(world, state);
     syncHitches(world, state);
-    syncFields(world, state);
-    applyDemo(state, world, stepDt);
-    const contacts = this.pending.splice(0, this.pending.length);
+    syncFields(world, this.fieldsPort || this.registry?.fields || this.registry?.get?.('fields'));
+    if (this.helpers.reactiveMatterLab) applyDemo(state, world, stepDt, owner);
+    const player = state.entities.get(state.playerId);
+    if (player) ensureCounterpart(world, player);
+    const contacts = [], seen = new Set();
+    for (const row of this.pending.splice(0)) {
+      const a = state.entities.get(row.aId), b = state.entities.get(row.bId);
+      if (!a?.data?.reactiveMatter && !b?.data?.reactiveMatter) continue;
+      const key = `${row.tick}:${String(row.aId)}:${String(row.bId)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      contacts.push({ ...row, aId: ensureCounterpart(world, a), bId: ensureCounterpart(world, b) });
+    }
     const result = stepReactiveMatter(world, { dt: stepDt, contacts });
     for (let i = 0; i < result.impulses.length; i++) queuePair(state, world, result.impulses[i], result.dt);
-    commitSpawns(state, world, result.spawned);
+    commitSpawns(state, world, result.spawned, this.helpers.reactiveMatterLab ? null : this.helpers);
     commitBodies(state, world);
-    commitRetargets(state, world, result);
+    const attachments = result.retargets.length && this.registry ? getCombatKernel(this.ctx).attachments : null;
+    commitRetargets(state, world, result, owner, attachments);
+    for (const key of result.reaped || []) {
+      const e = liveByKey(state, key);
+      if (e?.data?.reactiveMatter?.runtime) this.helpers.removeEntity?.(e.id);
+    }
     if (result.cues.length) {
       this.cues.push(...result.cues);
       if (this.cues.length > 64) this.cues.splice(0, this.cues.length - 64);
@@ -445,6 +528,55 @@ export const reactiveMatter = {
     return result;
   },
 
+  _place() {
+    const state = this.state, sectorId = state.world?.currentSectorId;
+    if (this.helpers.reactiveMatterLab || !this.helpers.spawnEntity || !sectorId) return;
+    const kind = state.run?.kind;
+    if (kind && kind !== 'adventure' && kind !== 'campaign') return;
+    const habitat = reactiveHabitatFor(sectorId);
+    if (!habitat || this._sceneSector === sectorId) return;
+    this._sceneSector = sectorId;
+    const world = ensureWorld(state);
+    for (const row of habitat.bodies) {
+      const key = `reactive:${sectorId}:${row.id}`;
+      if (liveByKey(state, key)) continue;
+      const saved = world.bodies.get(key);
+      if (world.terminal.get(key) === 'fractured') continue;
+      const p = sectorLocalToGlobalForSector({ x: habitat.x + row.x, z: habitat.z + row.z }, sectorId);
+      const entity = installReactiveEntity(state, { ...row, key, x: saved?.x ?? p.x, z: saved?.z ?? p.z,
+        vx: saved?.vx || 0, vz: saved?.vz || 0, mass: saved?.mass, radius: saved?.radius,
+      }, this.helpers);
+      if (saved) { entity.data.reactiveMatter.phase = saved.phase; entity.heat = saved.heat; }
+    }
+    const fragments = [...world.bodies.values()].filter((body) => String(body.id).startsWith(`reactive:${sectorId}:`)
+      && (body.role === 'shard' || body.role === 'debris'));
+    commitSpawns(state, world, fragments.map((body) => body.id), this.helpers);
+  },
+
+  _clearLive() {
+    const world = this.state?.reactiveMatterWorld;
+    if (world) syncBodies(world, this.state);
+    for (const e of [...(this.state?.entityList || [])]) {
+      if (e.data?.persistenceOwner === 'reactiveMatter') this.helpers.removeEntity?.(e.id);
+    }
+    if (world) { world.machines.clear(); world.hitches.clear(); }
+    this.pending = []; this._sceneSector = null;
+  },
+
+  serialize() {
+    const world = ensureWorld(this.state);
+    syncBodies(world, this.state);
+    const saved = saveReactiveWorld(world);
+    saved.bodies = saved.bodies.filter((body) => body.role !== 'observer');
+    return saved;
+  },
+
+  deserialize(data) {
+    this._clearLive();
+    this.state.reactiveMatterWorld = loadReactiveWorld(data);
+    this._sceneSector = null;
+  },
+
   destroy() {
     for (const off of this._off || []) if (typeof off === 'function') off();
     this._off = [];
@@ -452,10 +584,13 @@ export const reactiveMatter = {
   },
 };
 
-export function installReactiveEntity(state, spec) {
+export function installReactiveEntity(state, spec, helpers = null) {
   const model = modelById(spec.modelId);
   const entity = spawnLiveEntity(state, {
     id: spec.id,
+    key: spec.key,
+    placeId: spec.placeId,
+    scanLabel: spec.scanLabel,
     modelId: spec.modelId,
     x: spec.x || 0,
     z: spec.z || 0,
@@ -468,8 +603,8 @@ export function installReactiveEntity(state, spec) {
     anchored: spec.anchored === true || model.anchored === true,
     runtime: spec.runtime === true,
     parentId: spec.parentId || null,
-  });
-  if (spec.reactiveMachine) entity.data.reactiveMachine = { ...spec.reactiveMachine };
+  }, helpers);
+  if (spec.reactiveMachine) entity.data.reactiveMachine = { ...spec.reactiveMachine, key: spec.key ?? entity.id };
   return entity;
 }
 

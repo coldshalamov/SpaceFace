@@ -46,7 +46,6 @@ function boot(spec, opts) {
       },
     });
   }
-  state.fieldsKernel = kernel;
   for (let i = 0; i < spec.machines.length; i++) {
     const machine = spec.machines[i];
     const entity = installReactiveEntity(state, {
@@ -78,13 +77,13 @@ function boot(spec, opts) {
   const tape = opts.tape === 'idle' ? [] : (opts.segments || spec.tape);
   state.reactiveMatterDemo = { tape };
   const system = Object.create(reactiveMatter);
-  system.init({ state, bus: createBus(), helpers: {} });
+  system.init({ state, bus: createBus(), helpers: { reactiveMatterLab: true } });
+  system.fieldsPort = kernel;
   return { state, system };
 }
 
 async function openOwner(state, dt) {
   const owner = await createSg02DynamicBodyOwner({ fixedDt: dt || REACTIVE_DT, publishTelemetry: false });
-  state.physicsOwner = owner;
   owner.syncFromEntities(state.entityList);
   const byId = state.combat.attachments.byId;
   for (const id of Object.keys(byId)) {
@@ -163,6 +162,7 @@ export async function runConfiguration(id, opts = {}) {
   const ticks = opts.ticks == null ? spec.ticks : opts.ticks;
   const dt = opts.dt || REACTIVE_DT;
   const owner = await openOwner(state, dt);
+  system.physicsPort = owner;
   const samples = [];
   const cues = [];
   let lawEvals = 0;
@@ -240,6 +240,7 @@ export async function runLiveBodies(spec) {
   };
   const { state, system } = boot(picture, { tape: 'authored', segments: spec.tape, seed: spec.seed });
   const owner = await openOwner(state, spec.dt || REACTIVE_DT);
+  system.physicsPort = owner;
   const samples = [];
   const cues = [];
   const peakStored = {};
