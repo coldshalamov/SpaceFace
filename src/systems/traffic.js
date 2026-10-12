@@ -7130,6 +7130,13 @@ export const traffic = {
       const dz = entity.pos.z - carrier.pos.z;
       if (dx * dx + dz * dz <= r2) nearbyPods.push(entity);
     });
+    // A violence spill names its pods on the event; they are jettison payloads, not custody pickups.
+    if (!encounterPods.length && Array.isArray(payload && payload.podIds)) {
+      for (const podId of payload.podIds) {
+        const pod = state.entities && typeof state.entities.get === 'function' ? state.entities.get(podId) : null;
+        if (pod && pod.alive !== false && pod.pos && !nearbyPods.includes(pod)) nearbyPods.push(pod);
+      }
+    }
     const pods = encounterPods.length ? encounterPods : nearbyPods;
     if (!pods.length) return;
 
@@ -7263,7 +7270,7 @@ export const traffic = {
       return this._salvagePoolTotal(data.salvagePool) > 0;
     }
     if (entity.type === 'payload') {
-      if (data.payloadType !== CIVILIAN_MANIFEST_PAYLOAD_TYPE) return false;
+      if (data.payloadType !== CIVILIAN_MANIFEST_PAYLOAD_TYPE && data.spillNoticed !== true) return false;
       return this._salvagePoolTotal(data.salvagePool) > 0;
     }
     if (entity.type === 'pickup'

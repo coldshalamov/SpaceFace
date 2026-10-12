@@ -62,6 +62,9 @@ const CARGO_NAME_BY_ID = new Map([...COMMODITIES, ...ORES].map((entry) => [entry
 const FACTION_SHORT_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry.short || entry.name]));
 const PLAYER_TEAM = 0;
 export const POST_COMBAT_SILENCE_S = 8.0;
+// A kill while other hostiles still press the player inside this reach is a confirmation, not
+// the end of the fight: the room's aftermath breath waits for the last one.
+export const AFTERMATH_CONTACT_WU = 900;
 export const AMBIENT_BASE_GAP_S = 12.0;
 export const AMBIENT_GAP_STEP_S = 12.0;
 
@@ -531,7 +534,7 @@ export const barkDirector = {
     };
     this._onFlee = (payload) => this._speakFromEvent(payload, 'flee', 'ai:flee');
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
-    this._onCombatOutcome = () => { this.noteBarkWake(); this._enterPostCombatSilence(); };
+    this._onCombatOutcome = (payload) => { this.noteBarkWake(); this._enterPostCombatSilence(payload); };
     // The ship-history owner (systems/ships.js) is the single writer of the living-hull record and
     // republishes it whenever a witnessed act attaches to the hull. Listening to that receipt keeps
     // this observer independent of system init order.
@@ -1528,7 +1531,7 @@ export const barkDirector = {
     return best;
   },
 
-  _enterPostCombatSilence() {
+  _enterPostCombatSilence(outcome = null) {
     if (!this.state) return false;
     const own = ensureState(this.state);
     const now = this.state.simTime || 0;
@@ -1538,8 +1541,28 @@ export const barkDirector = {
     const ambient = ambientRecord(own, sectorId);
     ambient.quietSince = now;
     ambient.nextAt = Math.max(Number(ambient.nextAt) || -Infinity, until);
+    if (this._hostilesStillPressing(outcome && outcome.entityId) > 0) return true;
     this._emit('barkDirector:silence', { sectorId, until, t: now, reason: 'combat:outcome' });
     return true;
+  },
+
+  _hostilesStillPressing(exceptId) {
+    const state = this.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    if (!player || !player.pos) return 0;
+    const team = playerTeam(state);
+    const limit = AFTERMATH_CONTACT_WU * AFTERMATH_CONTACT_WU;
+    let pressing = 0;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!entity || entity === player || entity.id === exceptId || entity.alive === false || !entity.pos) return;
+      if (!isHostileToPlayer(entity, team, state)) return;
+      const dx = Number(entity.pos.x) - Number(player.pos.x);
+      const dz = Number(entity.pos.z) - Number(player.pos.z);
+      if (!(dx * dx + dz * dz <= limit)) return;
+      const ai = (entity.data && entity.data.ai) || {};
+      if (isAttackingPlayer(entity, state, String(ai.fsm || ai.state || ai.mode || '').toLowerCase())) pressing++;
+    });
+    return pressing;
   },
 
   // A neutral hauler/mining barge drifting inside pass range earns one friendly transponder

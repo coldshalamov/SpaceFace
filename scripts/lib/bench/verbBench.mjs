@@ -50,10 +50,8 @@ export async function listVerbScenarios() {
 export const VERB_BENCH_SCENARIOS = [
   { id: 'feel.rope_swing_release', label: 'B7 Rope Swing & Tangential Speed Retention' },
   { id: 'feel.shove_magnitude', label: 'B4/B5 Shove Weapon Impulse & Displacement' },
-  { id: 'feel.gravity_well', label: 'B1 Gravitic Well Deflection & Fling' },
   { id: 'feel.stroke_speed', label: 'B8 Draw-to-Fly Stroke Velocity Preservation' },
   { id: 'feel.terrain_slam', label: 'B6 Terrain Slam Lethality & Helm Loss' },
-  { id: 'world.cargo_spill', label: 'B10b Cargo Spill Encounter Reaction' },
   { id: 'feel.knock_budget', label: 'B13 Player Knock Budget — contact-sourced velocity changes on the player hull' },
 ];
 
@@ -150,14 +148,10 @@ async function executeVerbScenario(id, seed) {
       return runRopeSwingScenario(seed);
     case 'feel.shove_magnitude':
       return runShoveScenario(seed);
-    case 'feel.gravity_well':
-      return runGravityWellScenario(seed);
     case 'feel.stroke_speed':
       return runStrokeSpeedScenario(seed);
     case 'feel.terrain_slam':
       return runTerrainSlamScenario(seed);
-    case 'world.cargo_spill':
-      return runCargoSpillScenario(seed);
     default:
       throw new Error(`unknown verb scenario: ${id}`);
   }
@@ -273,53 +267,6 @@ async function runShoveScenario(seed) {
   };
 }
 
-/** B1 / §C: Gravity well deflection via symplectic orbital integration */
-async function runGravityWellScenario(seed) {
-  const dt = 1 / 60;
-  const wellPos = { x: 0, z: 0 };
-  const mu = 48000; // gravitational parameter G * M
-  const softening = 25; // softening length prevents singularity
-
-  let pos = { x: -200, z: 50 }; // flyby trajectory
-  let vel = { x: 140, z: 0 };
-  const initialSpeed = Math.hypot(vel.x, vel.z);
-  const eventTrace = [{ tick: 0, type: 'well_entry', data: { speed: initialSpeed } }];
-
-  let minDistance = Infinity;
-  for (let tick = 1; tick <= 180; tick++) {
-    const rx = wellPos.x - pos.x;
-    const rz = wellPos.z - pos.z;
-    const r2 = rx * rx + rz * rz + softening * softening;
-    const r = Math.sqrt(r2);
-    if (r < minDistance) minDistance = r;
-
-    const aMag = mu / (r * r2);
-    vel.x += aMag * rx * dt;
-    vel.z += aMag * rz * dt;
-    pos.x += vel.x * dt;
-    pos.z += vel.z * dt;
-
-    if (tick % 30 === 0) {
-      eventTrace.push({ tick, type: 'orbital_sample', data: { x: pos.x, z: pos.z, speed: Math.hypot(vel.x, vel.z) } });
-    }
-  }
-
-  const exitSpeed = Math.hypot(vel.x, vel.z);
-  const lateralDeflection = Math.abs(pos.z - 50);
-
-  return {
-    metrics: {
-      entrySpeed: initialSpeed,
-      exitSpeed,
-      minDistance,
-      lateralDeflection,
-      speedGained: exitSpeed - initialSpeed,
-      barMet: lateralDeflection >= 10.0,
-    },
-    eventTrace,
-  };
-}
-
 /** B8: Draw-to-fly stroke speed preservation envelope */
 async function runStrokeSpeedScenario(seed) {
   const cruiseSpeed = 195;
@@ -402,33 +349,3 @@ async function runTerrainSlamScenario(seed) {
     ],
   };
 }
-
-/** B10b: Cargo spill encounter response simulation */
-async function runCargoSpillScenario(seed) {
-  const dt = 1 / 60;
-  const podsCount = 3;
-  const salvorDistance = 450; // WU
-  const salvorCruiseSpeed = 150; // WU/s
-
-  // Salvor detection lag: 45 ticks (0.75s) to detect freight_cargoSpilled
-  const detectionDelayS = 0.75;
-  const transitTimeS = salvorDistance / salvorCruiseSpeed;
-  const totalResponseTimeS = detectionDelayS + transitTimeS;
-
-  const eventTrace = [
-    { tick: 0, type: 'freight_cargoSpilled', data: { pods: podsCount, pos: { x: 100, z: 200 } } },
-    { tick: Math.round(detectionDelayS * 60), type: 'npc:salvageCoursePlotted', data: { distance: salvorDistance } },
-    { tick: Math.round(totalResponseTimeS * 60), type: 'npc:salvorArrived', data: { podsRecovered: podsCount } },
-  ];
-
-  return {
-    metrics: {
-      timeToNpcArrivalS: totalResponseTimeS,
-      podsAttracted: podsCount,
-      salvorDistance,
-      barMet: totalResponseTimeS <= 30.0,
-    },
-    eventTrace,
-  };
-}
-

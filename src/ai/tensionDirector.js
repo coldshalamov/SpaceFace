@@ -250,6 +250,11 @@ export class TensionDirector {
       } else if (age >= m.phaseGoalS) {
         next = 'aftermath'; reason = 'peak_budget_spent';
       }
+    } else if (m.phase === 'aftermath' && combat) {
+      // A peak that ran out of budget while the fight continues is not yet an aftermath the player
+      // can stand in: hold its clock so the earned respite starts when contact actually releases.
+      m.phaseEnteredS = Math.min(m.activeS, m.phaseEnteredS + 1);
+      reason = 'aftermath_held_by_contact';
     } else if (m.phase === 'aftermath' && age >= m.phaseGoalS) {
       next = 'quiet'; reason = 'arc_complete';
       m.arc = count(m.arc);
