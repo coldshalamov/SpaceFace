@@ -1163,6 +1163,8 @@ export function createSimHost() {
     setLaneViewport(Number(msg.viewport && msg.viewport.w), Number(msg.viewport && msg.viewport.h));
     const bus = createBus();
     const helpers = {
+      // The main presentation owner admits restored flight after its visual/physics gates.
+      deferFlightAdmission: true,
       scenarioContract: contract.document || null,
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,

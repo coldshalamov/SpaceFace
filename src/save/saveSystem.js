@@ -6186,6 +6186,7 @@ export const save = {
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
+      flightAdmissionPending: !!finalizeLoadedGame || this.helpers?.deferFlightAdmission === true,
       pendingRestoringEmit,
       finalizerPending: false,
     };
@@ -6212,6 +6213,7 @@ export const save = {
     const {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
+      flightAdmissionPending,
     } = s;
     try {
       // 1. meta (seed/version/playtime) first — enterSector & rng depend on meta.seed.
@@ -6656,7 +6658,7 @@ export const save = {
       state.save.currentSlot = slot;
       state.save.lastRecovery = null;
       const previousMode = state.mode;
-      state.mode = finalizeLoadedGame ? 'loading' : 'flight';
+      state.mode = flightAdmissionPending ? 'loading' : 'flight';
       if (previousMode !== state.mode) {
         this.bus.emit('mode:changed', { mode: state.mode, previousMode });
       }
@@ -6672,7 +6674,7 @@ export const save = {
       }
       this.bus.emit('save:loaded', {
         slot,
-        visualGatePending: !!finalizeLoadedGame,
+        visualGatePending: flightAdmissionPending,
         recovered: options.recovered === true,
         // INF-091: Continue resolved past a dead newer slot — the receipt names it explicitly
         // instead of silently downgrading. Absent for named loads.
