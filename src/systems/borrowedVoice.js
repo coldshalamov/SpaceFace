@@ -135,9 +135,9 @@ choose(disposition,revision){if(this._busy)return {ok:false,reason:'record_chang
     this._offer();return {ok:true};
   }finally{this._busy=false;}
 },
-_lost(entityId,entity=null){if(this._restoring)return;
+_lost(entityId,entity=null){if(this._restoring||entityId==null)return;
   const ring=this._bindings.get('ring');
-  if(ring?.e.id===entityId&&(!entity||entity===ring.e)&&ring.life===ring.e.occupantGeneration){
+  if(ring&&ring.e.id===entityId&&(!entity||entity===ring.e)&&ring.life===ring.e.occupantGeneration){
     if(terminal.has(this._row.ringOutcome))return;
     this._row.ringOutcome='destroyed';this._row.evidenceRevision++;this._signals.clear();return;}
   for(const r of RECORDERS){const b=this._bindings.get(r.id);if(!b||b.e.id!==entityId||(entity&&b.e!==entity)
