@@ -64,3 +64,13 @@ test('chrome fallback honours CHROME_PATH when it exists', () => {
   assert.deepEqual(systemChromeCandidates({ CHROME_PATH: '/definitely/not/here' }).includes('/definitely/not/here'), false);
   assert.ok(systemChromeCandidates({ CHROME_PATH: process.execPath }).includes(process.execPath));
 });
+
+test('player_control: velocity without displacement is a pinned ship, not a working one', async () => {
+  const { checkPlayerControl } = await import('../scripts/player-truth/checks.mjs');
+  const probes = [{ label: 'round 2 thrust', kind: 'thrust', key: 'KeyW', startSim: 15, endSim: 16.4 }];
+  const pinned = trace({ probes, player: (i) => P({ vx: i > 50 ? 138 : 0, vz: 0, x: 0 }) });
+  const r = checkPlayerControl(pinned);
+  assert.equal(r.status, 'FAIL'); assert.ok(r.offenders.some((o) => /pinned/.test(o.line)));
+  const flying = trace({ probes, player: (i) => { const sim = 10 + i * 0.1; return P({ vx: sim > 15 ? 100 : 0, x: sim > 15 ? (sim - 15) * 100 : 0 }); } });
+  assert.equal(checkPlayerControl(flying).status, 'PASS');
+});

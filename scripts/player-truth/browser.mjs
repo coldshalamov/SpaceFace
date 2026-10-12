@@ -16,14 +16,13 @@ export function systemChromeCandidates(env = process.env) {
 
 /** Launch Chromium; returns { browser, executable } where executable is 'playwright-bundled' or the system path used. */
 export async function launchChromium(chromium, options) {
-  if (process.env.CHROME_PATH) return { browser: await chromium.launch({ ...options, executablePath: process.env.CHROME_PATH }), executable: process.env.CHROME_PATH };
   try {
     return { browser: await chromium.launch(options), executable: 'playwright-bundled' };
   } catch (err) {
     if (!/Executable doesn't exist|playwright install/i.test(String(err && err.message))) throw err;
-    for (const exe of systemChromeCandidates()) {
-      try { return { browser: await chromium.launch({ ...options, executablePath: exe }), executable: exe }; } catch { /* next */ }
-    }
-    throw new Error('player-truth: no Chromium found. Run `npx playwright install chromium` or set CHROME_PATH=/path/to/chrome');
   }
+  for (const exe of systemChromeCandidates()) {
+    try { return { browser: await chromium.launch({ ...options, executablePath: exe }), executable: exe }; } catch { /* next */ }
+  }
+  throw new Error('player-truth: no Chromium found. Run `npx playwright install chromium` or set CHROME_PATH=/path/to/chrome');
 }
