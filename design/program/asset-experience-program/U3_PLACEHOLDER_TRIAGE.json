@@ -1,0 +1,2977 @@
+{
+  "generatedBy": "scripts/check-aep-placeholder-triage.mjs (AEP-U3)",
+  "schema": 1,
+  "metrics": {
+    "stations_total": 110,
+    "stations_base_plus_overlay": 6,
+    "stations_generic_only": 29,
+    "stations_gate": 75,
+    "stations_authored": 0,
+    "stations_overlay_as_base": 0,
+    "registered_overlay_pairs": 3,
+    "census_rows_total": 212,
+    "census_red_total": 198,
+    "census_red_aep": 48,
+    "census_red_ambient": 150,
+    "classes_nonaccepted": 19,
+    "classes_red_aep": 8,
+    "classes_ambient": 11
+  },
+  "stationReads": [
+    {
+      "sector": "sector_helios_prime",
+      "station": "station_helios",
+      "stationType": "trade_hub",
+      "factionId": "faction_scn",
+      "authoredTag": "place_station_trade_hub",
+      "baseRead": "places/place_station_trade_hub.glb",
+      "overlayRead": "places/var_station_trade_hub_scn_overlay_v01.glb",
+      "presentation": "base+overlay"
+    },
+    {
+      "sector": "sector_helios_prime",
+      "station": "station_coalition",
+      "stationType": "military",
+      "factionId": "faction_scn",
+      "authoredTag": "place_station_military",
+      "baseRead": "places/place_station_military.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_helios_prime",
+      "station": "gate→sector_ceres_belt",
+      "stationType": "gate",
+      "factionId": "faction_scn",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_helios_prime",
+      "station": "gate→sector_tethys_junction",
+      "stationType": "gate",
+      "factionId": "faction_scn",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_helios_prime",
+      "station": "gate→sector_vesta_forge",
+      "stationType": "gate",
+      "factionId": "faction_scn",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ceres_belt",
+      "station": "station_ceres",
+      "stationType": "refinery",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_refinery",
+      "baseRead": "places/place_station_refinery.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_ceres_belt",
+      "station": "station_beltout",
+      "stationType": "mining",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_mining",
+      "baseRead": "places/place_station_mining.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_ceres_belt",
+      "station": "gate→sector_helios_prime",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ceres_belt",
+      "station": "gate→sector_tethys_junction",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ceres_belt",
+      "station": "gate→sector_pallas_drift",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ceres_belt",
+      "station": "gate→sector_hyperion_cut",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "station_tethys",
+      "stationType": "trade_hub",
+      "factionId": "faction_mts",
+      "authoredTag": "place_station_trade_hub",
+      "baseRead": "places/place_station_trade_hub.glb",
+      "overlayRead": "places/var_station_trade_hub_mts_overlay_v01.glb",
+      "presentation": "base+overlay"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "station_customs",
+      "stationType": "military",
+      "factionId": "faction_scn",
+      "authoredTag": "place_station_military",
+      "baseRead": "places/place_station_military.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "gate→sector_helios_prime",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "gate→sector_ceres_belt",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "gate→sector_vesta_forge",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "gate→sector_io_reach",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "gate→sector_nereid_shoal",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_tethys_junction",
+      "station": "gate→sector_dione_lane",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_vesta_forge",
+      "station": "station_forge",
+      "stationType": "fab",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_fab",
+      "baseRead": "places/place_station_fab.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_vesta_forge",
+      "station": "station_vesta_outlying_yard",
+      "stationType": "fab",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_fab",
+      "baseRead": "places/place_station_fab.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_vesta_forge",
+      "station": "station_depot3",
+      "stationType": "mining",
+      "factionId": "faction_choir",
+      "authoredTag": "place_station_mining",
+      "baseRead": "places/place_station_mining.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_vesta_forge",
+      "station": "gate→sector_helios_prime",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_vesta_forge",
+      "station": "gate→sector_tethys_junction",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_vesta_forge",
+      "station": "gate→sector_charon_expanse",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_pallas_drift",
+      "station": "station_drift",
+      "stationType": "trade_hub",
+      "factionId": "faction_mts",
+      "authoredTag": "place_station_trade_hub",
+      "baseRead": "places/place_station_trade_hub.glb",
+      "overlayRead": "places/var_station_trade_hub_mts_overlay_v01.glb",
+      "presentation": "base+overlay"
+    },
+    {
+      "sector": "sector_pallas_drift",
+      "station": "station_smuggler",
+      "stationType": "blackmarket",
+      "factionId": "faction_quiet",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_pallas_drift",
+      "station": "gate→sector_ceres_belt",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_pallas_drift",
+      "station": "gate→sector_io_reach",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_pallas_drift",
+      "station": "gate→sector_sker_haven",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_pallas_drift",
+      "station": "gate→sector_nyx_march",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_io_reach",
+      "station": "station_reach",
+      "stationType": "trade_hub",
+      "factionId": "faction_free",
+      "authoredTag": "place_station_trade_hub",
+      "baseRead": "places/place_station_trade_hub.glb",
+      "overlayRead": "places/var_station_trade_hub_free_overlay_v01.glb",
+      "presentation": "base+overlay"
+    },
+    {
+      "sector": "sector_io_reach",
+      "station": "station_io_merc",
+      "stationType": "blackmarket",
+      "factionId": "faction_quiet",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_io_reach",
+      "station": "gate→sector_tethys_junction",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_io_reach",
+      "station": "gate→sector_pallas_drift",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_io_reach",
+      "station": "gate→sector_charon_expanse",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_io_reach",
+      "station": "gate→sector_veil_nebula",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_io_reach",
+      "station": "gate→sector_nereid_shoal",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_charon_expanse",
+      "station": "station_expanse",
+      "stationType": "refinery",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_refinery",
+      "baseRead": "places/place_station_refinery.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_charon_expanse",
+      "station": "gate→sector_vesta_forge",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_charon_expanse",
+      "station": "gate→sector_io_reach",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_charon_expanse",
+      "station": "gate→sector_ashfall_reach",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_charon_expanse",
+      "station": "gate→sector_the_bolus",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_sker_haven",
+      "station": "station_sker",
+      "stationType": "blackmarket",
+      "factionId": "faction_reach",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_sker_haven",
+      "station": "gate→sector_pallas_drift",
+      "stationType": "gate",
+      "factionId": "faction_reach",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_sker_haven",
+      "station": "gate→sector_veil_nebula",
+      "stationType": "gate",
+      "factionId": "faction_reach",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_sker_haven",
+      "station": "gate→sector_kepler_scar",
+      "stationType": "gate",
+      "factionId": "faction_reach",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_sker_haven",
+      "station": "gate→sector_rhea_cinder",
+      "stationType": "gate",
+      "factionId": "faction_reach",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_veil_nebula",
+      "station": "station_veil",
+      "stationType": "research",
+      "factionId": "faction_free",
+      "authoredTag": "place_station_research",
+      "baseRead": "places/place_station_research.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_veil_nebula",
+      "station": "gate→sector_io_reach",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_veil_nebula",
+      "station": "gate→sector_sker_haven",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_veil_nebula",
+      "station": "gate→sector_ashfall_reach",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_veil_nebula",
+      "station": "gate→sector_proteus_well",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_veil_nebula",
+      "station": "gate→sector_triton_wake",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ashfall_reach",
+      "station": "station_ashcache",
+      "stationType": "blackmarket",
+      "factionId": "faction_vael",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_ashfall_reach",
+      "station": "gate→sector_charon_expanse",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ashfall_reach",
+      "station": "gate→sector_eris_margin",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ashfall_reach",
+      "station": "gate→sector_sedna_dark",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_ashfall_reach",
+      "station": "gate→sector_the_bolus",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_nyx_march",
+      "station": "station_nyx_march",
+      "stationType": "blackmarket",
+      "factionId": "faction_quiet",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_nyx_march",
+      "station": "gate→sector_hyperion_cut",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_nyx_march",
+      "station": "gate→sector_kepler_scar",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_nyx_march",
+      "station": "gate→sector_pallas_drift",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_hyperion_cut",
+      "station": "station_hyperion_cut",
+      "stationType": "refinery",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_refinery",
+      "baseRead": "places/place_station_refinery.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_hyperion_cut",
+      "station": "station_hyperion_claim",
+      "stationType": "mining",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_mining",
+      "baseRead": "places/place_station_mining.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_hyperion_cut",
+      "station": "gate→sector_nyx_march",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_hyperion_cut",
+      "station": "gate→sector_ceres_belt",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_kepler_scar",
+      "station": "station_kepler_scar",
+      "stationType": "blackmarket",
+      "factionId": "faction_reach",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_kepler_scar",
+      "station": "gate→sector_nyx_march",
+      "stationType": "gate",
+      "factionId": "faction_reach",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_kepler_scar",
+      "station": "gate→sector_orcus_shadow",
+      "stationType": "gate",
+      "factionId": "faction_reach",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_kepler_scar",
+      "station": "gate→sector_sker_haven",
+      "stationType": "gate",
+      "factionId": "faction_reach",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_orcus_shadow",
+      "station": "station_orcus_shadow",
+      "stationType": "research",
+      "factionId": "faction_archive",
+      "authoredTag": "place_station_research",
+      "baseRead": "places/place_station_research.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_orcus_shadow",
+      "station": "gate→sector_kepler_scar",
+      "stationType": "gate",
+      "factionId": "faction_archive",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_rhea_cinder",
+      "station": "station_rhea_cinder",
+      "stationType": "mining",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_mining",
+      "baseRead": "places/place_station_mining.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_rhea_cinder",
+      "station": "gate→sector_haumea_rift",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_rhea_cinder",
+      "station": "gate→sector_sker_haven",
+      "stationType": "gate",
+      "factionId": "faction_dmc",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_haumea_rift",
+      "station": "station_haumea_rift",
+      "stationType": "research",
+      "factionId": "faction_free",
+      "authoredTag": "place_station_research",
+      "baseRead": "places/place_station_research.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_haumea_rift",
+      "station": "gate→sector_rhea_cinder",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_haumea_rift",
+      "station": "gate→sector_eris_margin",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_haumea_rift",
+      "station": "gate→sector_phoebe_echo",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_eris_margin",
+      "station": "station_eris_margin",
+      "stationType": "blackmarket",
+      "factionId": "faction_quiet",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_eris_margin",
+      "station": "gate→sector_haumea_rift",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_eris_margin",
+      "station": "gate→sector_phoebe_echo",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_eris_margin",
+      "station": "gate→sector_ashfall_reach",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_phoebe_echo",
+      "station": "station_phoebe_echo",
+      "stationType": "research",
+      "factionId": "faction_vael",
+      "authoredTag": "place_station_research",
+      "baseRead": "places/place_station_research.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_phoebe_echo",
+      "station": "gate→sector_haumea_rift",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_phoebe_echo",
+      "station": "gate→sector_eris_margin",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_nereid_shoal",
+      "station": "station_nereid",
+      "stationType": "trade_hub",
+      "factionId": "faction_free",
+      "authoredTag": "place_station_trade_hub",
+      "baseRead": "places/place_station_trade_hub.glb",
+      "overlayRead": "places/var_station_trade_hub_free_overlay_v01.glb",
+      "presentation": "base+overlay"
+    },
+    {
+      "sector": "sector_nereid_shoal",
+      "station": "station_nereid_claim",
+      "stationType": "mining",
+      "factionId": "faction_dmc",
+      "authoredTag": "place_station_mining",
+      "baseRead": "places/place_station_mining.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_nereid_shoal",
+      "station": "gate→sector_io_reach",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_nereid_shoal",
+      "station": "gate→sector_tethys_junction",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_nereid_shoal",
+      "station": "gate→sector_proteus_well",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_proteus_well",
+      "station": "station_proteus",
+      "stationType": "blackmarket",
+      "factionId": "faction_quiet",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_proteus_well",
+      "station": "gate→sector_nereid_shoal",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_proteus_well",
+      "station": "gate→sector_triton_wake",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_proteus_well",
+      "station": "gate→sector_veil_nebula",
+      "stationType": "gate",
+      "factionId": "faction_quiet",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_triton_wake",
+      "station": "station_triton",
+      "stationType": "research",
+      "factionId": "faction_free",
+      "authoredTag": "place_station_research",
+      "baseRead": "places/place_station_research.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_triton_wake",
+      "station": "gate→sector_proteus_well",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_triton_wake",
+      "station": "gate→sector_veil_nebula",
+      "stationType": "gate",
+      "factionId": "faction_vael",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_eunomia_gulf",
+      "station": "station_eunomia",
+      "stationType": "blackmarket",
+      "factionId": "faction_understory",
+      "authoredTag": "place_station_blackmarket",
+      "baseRead": "places/place_station_blackmarket.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_eunomia_gulf",
+      "station": "gate→sector_sedna_dark",
+      "stationType": "gate",
+      "factionId": "faction_understory",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_sedna_dark",
+      "station": "station_sedna",
+      "stationType": "research",
+      "factionId": "faction_helix",
+      "authoredTag": "place_station_research",
+      "baseRead": "places/place_station_research.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_sedna_dark",
+      "station": "gate→sector_eunomia_gulf",
+      "stationType": "gate",
+      "factionId": "faction_helix",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_sedna_dark",
+      "station": "gate→sector_ashfall_reach",
+      "stationType": "gate",
+      "factionId": "faction_helix",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_dione_lane",
+      "station": "station_dione",
+      "stationType": "trade_hub",
+      "factionId": "faction_mts",
+      "authoredTag": "place_station_trade_hub",
+      "baseRead": "places/place_station_trade_hub.glb",
+      "overlayRead": "places/var_station_trade_hub_mts_overlay_v01.glb",
+      "presentation": "base+overlay"
+    },
+    {
+      "sector": "sector_dione_lane",
+      "station": "station_dione_customs",
+      "stationType": "military",
+      "factionId": "faction_scn",
+      "authoredTag": "place_station_military",
+      "baseRead": "places/place_station_military.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_dione_lane",
+      "station": "gate→sector_tethys_junction",
+      "stationType": "gate",
+      "factionId": "faction_mts",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_the_bolus",
+      "station": "station_bolus_rib",
+      "stationType": "research",
+      "factionId": "faction_free",
+      "authoredTag": "place_station_research",
+      "baseRead": "places/place_station_research.glb",
+      "overlayRead": null,
+      "presentation": "generic_only"
+    },
+    {
+      "sector": "sector_the_bolus",
+      "station": "gate→sector_charon_expanse",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    },
+    {
+      "sector": "sector_the_bolus",
+      "station": "gate→sector_ashfall_reach",
+      "stationType": "gate",
+      "factionId": "faction_free",
+      "authoredTag": null,
+      "baseRead": "places/place_gate_jump_ring.glb",
+      "overlayRead": null,
+      "presentation": "gate"
+    }
+  ],
+  "censusAttribution": [
+    {
+      "id": "brood_queen",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "brood_tendril",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "bruiser_brawler",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "choir_zealot",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "corsair_raider",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "cradle:faction_dmc",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "customs_cutter",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "detonator_dart",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "dreadnought_boss",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "field_anchor_controller",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "forge_regent",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "lancer_sniper",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "mine_layer_jackal",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "mirrorjaw_foreman",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "mule_trader",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "patrol_lawman",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "pd_screen_escort",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_47a_rescue_capsule",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_armor_slab_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_cargo_module",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_cockpit_section",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_dock_collar",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_engine_section",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_pressure_tank",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_radiator_panel",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_aft_weapon_spar",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_deb_corvette_armor_belt",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_deb_corvette_barbette_ring",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_deb_liner_drive_pod",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_deb_liner_hull_panel_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_deb_ore_freighter_drive_bell",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_deb_ore_freighter_hopper_lid_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_deb_ore_freighter_ring_span",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_frag_cable_bundle",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_frag_grating_sheet_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_frag_pipe_tangle",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_frag_plate_curl",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_frag_rib_cluster",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_frag_strut_shard",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_corvette_engine",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_corvette_forward",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_corvette_forward__fresh",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_corvette_forward__stripped_heavy",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_corvette_turret",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_liner_boatbay_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_liner_bow_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_liner_drum",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_liner_drum__derelict",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_liner_drum__fresh",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_mining_barge_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_ore_freighter_bow",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_ore_freighter_bow__derelict",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_ore_freighter_bow__fresh",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_ore_freighter_bow__stripped",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_ore_freighter_hopper_authored_down",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_aftermath_wreck_ore_freighter_stern",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_ash_pin",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_asteroid_graffiti",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_asteroid_rock_a",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_asteroid_rock_b",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_asteroid_rock_c",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_asteroid_seamed",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_breakaway_fork",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_breakaway_sp07",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_cargo_pod_hazmat",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_cargo_pod_standard",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_cargo_pod_standard_breached",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_ceres_bait_wreck",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_ceres_grave_shard",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_claim_mark",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4 (claims)"
+      ]
+    },
+    {
+      "id": "place_claim_outpost_base",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4 (claims)"
+      ]
+    },
+    {
+      "id": "place_claim_outpost_bastion",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4 (claims)"
+      ]
+    },
+    {
+      "id": "place_claim_outpost_catcher",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4 (claims)"
+      ]
+    },
+    {
+      "id": "place_claim_outpost_fence",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4 (claims)"
+      ]
+    },
+    {
+      "id": "place_claim_outpost_refinery",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4 (claims)"
+      ]
+    },
+    {
+      "id": "place_claim_outpost_relay",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4 (claims)"
+      ]
+    },
+    {
+      "id": "place_cold_locker",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_comms_array",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_construction_frame",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_container_rack",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_container_rack_abandoned",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_conveyor_barge",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_conveyor_truss",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_crusher_module",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_customs_pylon",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_dead_hulk",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_debris_chunk",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_dock_interior",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_drill_platform",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_drill_platform_cold",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_extraction_mast",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_freight_platform",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_gate_jump_ring",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_habitat_pod",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_habitat_pod_derelict",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_hull_rack",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_illicit_transfer_frame",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_improvised_dock",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_inspection_platform",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_interdiction_buoy",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_landmark_candle_fleet",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "Q-3",
+        "BP-8b",
+        "L-2 (landmark family)"
+      ]
+    },
+    {
+      "id": "place_landmark_resonant_cathedral",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "Q-3",
+        "BP-8b",
+        "L-2 (landmark family)"
+      ]
+    },
+    {
+      "id": "place_landmark_skerris_throne",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "Q-3",
+        "BP-8b",
+        "L-2 (landmark family)"
+      ]
+    },
+    {
+      "id": "place_landmark_wreck_cathedral",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "Q-3",
+        "BP-8b",
+        "L-2 (landmark family)"
+      ]
+    },
+    {
+      "id": "place_lane_beacon",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_lane_pin",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_maintenance_gantry",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_memorial_array",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_mining_drone",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_nav_buoy",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_observation_blister",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_ore_bulk_container",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_ore_sorter",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_parts_rack",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_passenger_platform",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_pirate_sensor_mast",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_power_skid",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_power_skid_patched",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_quiessence_freighter_a",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_quiessence_freighter_b",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_quiessence_freighter_c",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_radiator_bank",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_repair_scaffold",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_repair_scaffold_bent",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_salvage_clamp",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_scrap_cage",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_sensor_mast",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_shuttle_dock",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_slurry_tank",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_solar_array",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_station_billboard",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_station_blackmarket",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_station_fab",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_station_military",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_station_mining",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_station_refinery",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_station_research",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_station_trade_hub",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1..20",
+        "PH-3 (stations only)"
+      ]
+    },
+    {
+      "id": "place_tally_post",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_tanker_coupling",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_traffic_signal",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_transfer_arm",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_transponder_gate",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_utility_module",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_welding_drone",
+      "reasons": [
+        "no-embedded-png"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_whistle",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "place_worklight_tower",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "pod_47a_evidence_spindle",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "pod_cargo_container",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "quiet_ghost",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "reaver_pirate",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "rig:faction_quiet",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "scissorwake",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "ship_atlas",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_bastion",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_colossus",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12",
+        "C-3..C-6 (capital encounter rows)"
+      ]
+    },
+    {
+      "id": "ship_drifter",
+      "reasons": [
+        "lod-outline",
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "ship_hawser",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "ship_hornet",
+      "reasons": [
+        "lod-outline",
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_ironback",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_kestrel",
+      "reasons": [
+        "lod-outline",
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "ship_leviathan",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12",
+        "C-3..C-6 (capital encounter rows)"
+      ]
+    },
+    {
+      "id": "ship_mule",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_pelican",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_ranger",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_saucer",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12"
+      ]
+    },
+    {
+      "id": "ship_warden",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "AD-1..12",
+        "C-3..C-6 (capital encounter rows)"
+      ]
+    },
+    {
+      "id": "ship_wasp",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "span:faction_dmc",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "F2 (Lattice Warden)"
+      ]
+    },
+    {
+      "id": "span:faction_mts",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "F2 (Lattice Warden)"
+      ]
+    },
+    {
+      "id": "span:faction_reach",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "F2 (Lattice Warden)"
+      ]
+    },
+    {
+      "id": "tether_control_raider",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:arclight",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:courier",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:customs",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:express",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:hauler",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:miner",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:ore_carrier",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:pirate",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:prospector",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:rescue",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:salvor",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:shuttle",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:smuggler",
+      "reasons": [
+        "lod-outline",
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:surveyor",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:sweeper",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:tanker",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:tender",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "traffic:tug",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "var_station_trade_hub_free_overlay_v01",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PH-3"
+      ]
+    },
+    {
+      "id": "var_station_trade_hub_mts_overlay_v01",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PH-3"
+      ]
+    },
+    {
+      "id": "var_station_trade_hub_scn_overlay_v01",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "PH-3"
+      ]
+    },
+    {
+      "id": "warden_escort",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "aep-§3",
+      "items": [
+        "F2 (Lattice Warden)"
+      ]
+    },
+    {
+      "id": "wasp_swarmer",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "wasp:faction_free",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "wasp:faction_mts",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "id": "wasp:faction_scn",
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "attribution": "ambient",
+      "items": []
+    }
+  ],
+  "classAttribution": [
+    {
+      "assetId": "camera_chase",
+      "classification": "rejected",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "engine_vector",
+      "classification": "candidate",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "environment_helios_sky",
+      "classification": "candidate",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "family_core_landmarks",
+      "classification": "missing_evidence",
+      "attribution": "aep-§3",
+      "items": [
+        "Q-3",
+        "BP-8b",
+        "L-2"
+      ]
+    },
+    {
+      "assetId": "family_frontier_pois",
+      "classification": "missing_evidence",
+      "attribution": "aep-§3",
+      "items": [
+        "BP-8"
+      ]
+    },
+    {
+      "assetId": "family_outposts",
+      "classification": "missing_evidence",
+      "attribution": "aep-§3",
+      "items": [
+        "PP-4"
+      ]
+    },
+    {
+      "assetId": "focus_opponent_family",
+      "classification": "missing_evidence",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "hull_starter",
+      "classification": "rejected",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "place_asteroid_rock_b",
+      "classification": "rejected",
+      "attribution": "aep-§3",
+      "items": [
+        "PL-11",
+        "PL-12"
+      ]
+    },
+    {
+      "assetId": "place_asteroid_rock_c",
+      "classification": "rejected",
+      "attribution": "aep-§3",
+      "items": [
+        "PL-11",
+        "PL-12"
+      ]
+    },
+    {
+      "assetId": "place_gate_jump_ring",
+      "classification": "rejected",
+      "attribution": "aep-§3",
+      "items": [
+        "PL-20"
+      ]
+    },
+    {
+      "assetId": "place_lane_beacon",
+      "classification": "rejected",
+      "attribution": "aep-§3",
+      "items": [
+        "PL-19",
+        "PT-B-7"
+      ]
+    },
+    {
+      "assetId": "place_station_trade_hub",
+      "classification": "rejected",
+      "attribution": "aep-§3",
+      "items": [
+        "PL-1",
+        "PH-3",
+        "C-1"
+      ]
+    },
+    {
+      "assetId": "ship_kestrel",
+      "classification": "candidate",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "travel_lane_visuals",
+      "classification": "missing_evidence",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "vfx_combat_hit",
+      "classification": "missing_evidence",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "vfx_massline",
+      "classification": "missing_evidence",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "vfx_mining",
+      "classification": "missing_evidence",
+      "attribution": "ambient",
+      "items": []
+    },
+    {
+      "assetId": "vfx_thruster_rcs",
+      "classification": "rejected",
+      "attribution": "ambient",
+      "items": []
+    }
+  ]
+}
