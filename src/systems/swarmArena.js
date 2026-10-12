@@ -131,6 +131,9 @@ export function quietWellCenter(state, anchor, offset, radius) {
 }
 /** Restamp only after the fight has left the lattice. Closer than this, the same rocks stay. */
 const SWARM_OPTIC_RESTAMP = 520;
+// Released bodies inside this radius of the pilot (the normal camera's view plus a margin) wait.
+export const SWARM_VIEW_KEEP_RADIUS = 760;
+const SWARM_RELEASE_HOLD_EVERY_S = 0.5;
 
 /**
  * How many monoliths the fight should be able to see. Tuned against the chase bubble: the visible
@@ -626,12 +629,38 @@ export const swarmArena = {
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
     // B4 — the Hive breathes on the same fixed tick: walls grow, sacs pulse, acid drips.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveTick(state, run);
+    this._holdInViewReleases(state);
     if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
     this._nextTerrainCheck = (state.simTime || 0) + 2;
     const anchor = playerAnchor(state);
     if (!this._terrainRetry && this._lastTerrainAnchor && Math.hypot(anchor.x - this._lastTerrainAnchor.x,
       anchor.z - this._lastTerrainAnchor.z) < 260) return;
     this._topUp(run, run.wave);
+  },
+
+  /**
+   * A released rock, wreck or structure leaves the room off camera. The despawn sweep removes a body
+   * the tick its deadline passes; inside the pilot's view that read as terrain blinking out of
+   * existence (player-truth m1-active: 16 rocks and 4 structures removed on screen). While a body
+   * whose deadline is close still sits within the view radius, its deadline steps forward; once the
+   * fight has moved on it goes through the ordinary sweep. Hive geometry keeps its own lifecycle.
+   */
+  _holdInViewReleases(state) {
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (now < (this._nextReleaseHold || 0)) return;
+    this._nextReleaseHold = now + SWARM_RELEASE_HOLD_EVERY_S;
+    if (!state.entities || typeof state.entities.values !== 'function') return;
+    const anchor = playerAnchor(state);
+    const r2 = SWARM_VIEW_KEEP_RADIUS * SWARM_VIEW_KEEP_RADIUS;
+    const horizon = now + SWARM_RELEASE_HOLD_EVERY_S * 2;
+    for (const e of state.entities.values()) {
+      if (!e || e.alive === false || !e.pos || !e.data || !SOLID_TYPES.has(e.type)) continue;
+      const due = e.data.despawnAt;
+      if (!Number.isFinite(due) || due > horizon || e.data.swarmHiveReleased) continue;
+      const dx = e.pos.x - anchor.x;
+      const dz = e.pos.z - anchor.z;
+      if (dx * dx + dz * dz < r2) e.data.despawnAt = horizon;
+    }
   },
 
   /** Live rocks this system owns, for tests and the lab overlay. */
@@ -1631,6 +1660,7 @@ export const swarmArena = {
       for (const id of ids) {
         const entity = state.entities.get(id);
         if (!entity || !entity.data) continue;
+        entity.data.swarmHiveReleased = true;
         entity.data.despawnAt = Math.min(
           Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
           now + 6,
