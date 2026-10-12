@@ -38,11 +38,11 @@ These are not measured. Do not read an older first-generation verdict below as t
 
 | run | status | reason |
 |---|---|---|
-| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. Re-run on `e68c5a6578` waits on `player-truth.lock` (one Chromium): `--gate=active --wall=50 --evidence --tag=seed4242-r2`. |
-| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Queued behind that round-2 re-run. `player_ship` is the check that would name a rectangle or an invisible ship. |
-| Gauntlet `--gate` | UNKNOWN | Not run. The first-generation arena rows below are not a `--gate` pass. |
-| Adventure `--gate` | UNKNOWN | Not run. The 150 s cruise below is not a `--gate` pass. |
-| Racing `--gate` | UNKNOWN | Not run. The 75 s Textile Belt row below is not a `--gate` pass. |
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. Re-run on `e68c5a6578` is in the `player-truth.lock` queue (one Chromium): `--gate=active --wall=50 --evidence --tag=seed4242-r2`. |
+| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Same queue, after the round-2 re-run. `player_ship` names a rectangle or an invisible ship. |
+| Gauntlet `--gate` | UNKNOWN | Not run. Same queue, after the matrix. The first-generation arena rows below are not a `--gate` pass. |
+| Adventure `--gate` | UNKNOWN | Not run. Same queue. The 150 s cruise below is not a `--gate` pass. |
+| Racing `--gate` | UNKNOWN | Not run. Same queue. The 75 s Textile Belt row below is not a `--gate` pass. |
 
 ## Owning lanes (rebased onto `e68c5a6578`, 2026-10-12)
 
