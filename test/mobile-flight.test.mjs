@@ -151,6 +151,15 @@ test('virtual gun held feeds the real touch fire channel',()=>{
  assert.equal(f.touch.actions.fire.held,true);assert.equal(f.touch.axes.rightX,1);
  f.model.end(1,100,200,200,true);f.touch.tick(1/60,f.state,f.host);assert.equal(f.touch.actions.fire.held,false);
 });
+
+test('mobile boost is part of the resolved action snapshot shipped to the worker',()=>{
+ const f=fixture();begin(f.model);f.model.move(1,220,200,100);
+ for(let i=0;i<6;i++)f.touch.tick(1/60,f.state,f.host);
+ assert.equal(f.touch.mobile.frame.flight.boost,true);
+ assert.equal(f.touch.mobile.frame.actions.boost,true);
+ f.model.end(1,220,200,200,true);f.touch.tick(1/60,f.state,f.host);
+ assert.equal(f.touch.mobile.frame.actions.boost,false);
+});
 test('mobile time toggle clears on modal and cannot fire when resumed',()=>{
  const f=fixture();f.touch.mobile.activate({id:'bulletTime',kind:'toggle'});f.touch.tick(1/60,f.state,f.host);
  assert.equal(f.host._held(f.state,'bulletTime'),true);f.state.ui.screenStack=['pause'];f.touch.tick(1/60,f.state,f.host);

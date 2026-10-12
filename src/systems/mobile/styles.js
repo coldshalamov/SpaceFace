@@ -252,7 +252,7 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
  #sf-touch-overlay .mf-speed b { font-size:32px; }
  #sf-touch-overlay .mf-status { gap:4px; }
  #sf-touch-overlay .mf-edge { bottom:calc(10px + 132px * var(--mf-scale) + 78px + var(--sf-safe-bottom,0px)); height:max(64px,calc(88px * var(--mf-scale) - var(--sf-safe-bottom,0px))); }
- #sf-touch-overlay .mf-ghost { bottom:calc(80px + var(--sf-safe-bottom,0px)); }
+ #sf-touch-overlay .mf-ghost { bottom:calc(104px + var(--sf-safe-bottom,0px)); }
  #sf-touch-overlay .mf-ghost svg { width:132px; height:132px; left:-66px; top:-66px; }
  #sf-touch-overlay .mf-ghost-label { top:70px; }
 }

@@ -19,7 +19,7 @@ const VIRTUAL_ACTIONS = new Set([
   ...ALL_POWERS.filter((p) => p.kind !== 'ui').map((p) => p.id),
 ]);
 
-const HOLD_VERBS = ['boost', 'brake', 'bulletTime', 'massline', 'reelIn', 'reelOut'];
+const HOLD_VERBS = ['boost', 'brake', 'bulletTime', 'massline', 'reelIn', 'reelOut', 'gyreSnare'];
 
 function clearAxes(touch) {
   touch.axes.leftX = 0; touch.axes.leftY = 0;
@@ -88,7 +88,7 @@ export function createLaneTouchReducer() {
     const holdsNow = {
       boost: !!actions.boost, brake: !!actions.brake, bulletTime: !!actions.bulletTime,
       massline: !!actions.tether || !!actions.massline,
-      reelIn: !!actions.reelIn, reelOut: !!actions.reelOut,
+      reelIn: !!actions.reelIn, reelOut: !!actions.reelOut, gyreSnare: !!actions.gyreSnare,
     };
     if (this._prevHolds && this._host && this._host._holdToggleLatches) {
       for (const key of HOLD_VERBS) {
@@ -101,6 +101,13 @@ export function createLaneTouchReducer() {
       this.axes.leftY = Number(frame.axes.leftY) || 0;
       this.axes.rightX = Number(frame.axes.rightX) || 0;
       this.axes.rightY = Number(frame.axes.rightY) || 0;
+    }
+    // Frames are complete snapshots with only held verbs on the wire, not action patches.
+    // An omitted brake/fire/power is a release; keeping its previous value latches it forever.
+    for (const verb of Object.keys(this.actions)) {
+      if (Object.prototype.hasOwnProperty.call(actions, verb)) continue;
+      const prev = this.actions[verb].held;
+      this.actions[verb] = { held:false, pressed:false, released:!!prev, value:0 };
     }
     for (const [verb, held] of Object.entries(actions)) {
       const prev = !!this.actions[verb] && this.actions[verb].held;
