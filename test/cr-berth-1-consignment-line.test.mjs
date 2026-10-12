@@ -88,7 +88,8 @@ function bootBerthHarness() {
 }
 
 test('CR-BERTH-1: the berth record is one frozen row pinned to Forge Foundry', () => {
-  assert.ok(FACTION_BERTHS.length >= 2, 'the line and the slip are authored berths');
+  assert.deepEqual(FACTION_BERTHS.map((b) => b.id), ['berth_pitborn_consign_line', 'berth_understory_afterwake_slip', 'berth_archive_pallas_stacks', 'berth_helix_variance_pier'],
+    'four faction berths are authored, in order — the line, the slip, the stacks and the pier');
   assert.ok(Object.isFrozen(FACTION_BERTHS), 'the berth list is frozen');
   const berth = FACTION_BERTHS[0];
   assert.ok(Object.isFrozen(berth));

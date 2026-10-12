@@ -25,6 +25,7 @@ import {
   presenceServiceForStation,
 } from '../data/factionPresence.js';
 import {
+  FACTION_BERTHS,
   factionBerthById,
   factionBerthForStation, // CR-BERTH-1
   factionBerthHulkHome,
@@ -800,6 +801,7 @@ export const factionPresence = {
     if (result.forgave || (result.opened && (act !== 'struck' || conduct.grudge.hostile))) {
       this._applyConduct(factionId);
     }
+    if (result.opened || result.forgave) this._refreshDesks();
     return result;
   },
 
@@ -901,6 +903,7 @@ export const factionPresence = {
       this.bus.emit('factionPresence:conduct', payload);
       this._speakConduct(factionId, 'forgive');
       this._applyConduct(factionId);
+      this._refreshDesks();
     }
     this._wakeBerthKeepers();
     this._watchBerths();
@@ -943,6 +946,17 @@ export const factionPresence = {
   },
 
   /** A berth hulk is the faction's property on its rack: towing it off is an act, so is returning it. */
+  // A desk the player already stands at shuts (or reopens) the moment the stance turns.
+  _refreshDesks() {
+    const own = ensureOwnState(this.state);
+    const reps = factionReps(this.state);
+    const stances = conductStances(this.state);
+    for (const stationId of Object.keys(own.servicesByStation)) {
+      const service = presenceServiceForStation(stationId, reps, stances);
+      if (service) own.servicesByStation[stationId] = { ...service };
+    }
+  },
+
   _watchBerths() {
     const sectorId = this.state.world && this.state.world.currentSectorId;
     const berths = sectorId ? factionBerthsInSector(sectorId) : [];
@@ -969,16 +983,18 @@ export const factionPresence = {
         this.bus.emit('factionPresence:berthRobbed', { berthId: berth.id, factionId: berth.factionId, distance: d });
         this._speakConduct(berth.factionId, 'robbed', { berth });
         this._recordAct(berth.factionId, 'berth_robbed', { berthId: berth.id });
-      } else if (watch.displaced && d < BERTH_RETURNED_WU) {
+      } else if (watch.displaced && d >= BERTH_RETURNED_WU) {
+        // The stolen hull persists where it was left (reentry, Continue); keep its live id so
+        // hauling that same hull home still counts as the return.
+        this._watchedHulkId = hulk.id;
+      } else if (watch.displaced && this._watchedHulkId === hulk.id) {
+        // Only the hull that was seen away and hauled back is restitution; a fresh copy that turns
+        // up on the rack is the faction's record, and the theft stays on the books.
         watch.displaced = false;
         watch.displacedAt = null;
-        // Only the same live hull hauled back counts as a return; a fresh copy minted at the rack
-        // after a reload is the world's record, not the player's restitution.
-        if (this._watchedHulkId === hulk.id) {
-          this.bus.emit('factionPresence:berthReturned', { berthId: berth.id, factionId: berth.factionId });
-          this._speakConduct(berth.factionId, 'returned', { berth });
-          this._recordAct(berth.factionId, 'berth_returned', { berthId: berth.id });
-        }
+        this.bus.emit('factionPresence:berthReturned', { berthId: berth.id, factionId: berth.factionId });
+        this._speakConduct(berth.factionId, 'returned', { berth });
+        this._recordAct(berth.factionId, 'berth_returned', { berthId: berth.id });
         this._watchedHulkId = null;
       }
     }

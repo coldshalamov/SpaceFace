@@ -95,8 +95,8 @@ function bootBerthHarness() {
 }
 
 test('CR-BERTH-2: the slip record is a second frozen row pinned to Expanse Refinery', () => {
-  assert.ok(FACTION_BERTHS.length >= 2, 'the line and the slip are authored berths');
-  assert.equal(FACTION_BERTHS[1].id, 'berth_understory_afterwake_slip', 'the slip stays the second row');
+  assert.deepEqual(FACTION_BERTHS.map((b) => b.id), ['berth_pitborn_consign_line', 'berth_understory_afterwake_slip', 'berth_archive_pallas_stacks', 'berth_helix_variance_pier'],
+    'four faction berths are authored; the slip stays the second row');
   assert.ok(Object.isFrozen(FACTION_BERTHS));
   assert.ok(BERTH && BERTH.id === 'berth_understory_afterwake_slip',
     'factionBerthForStation resolves the slip at the refinery');
