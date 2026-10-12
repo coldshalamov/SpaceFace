@@ -100,7 +100,10 @@ export const scanReveal = {
       const data = entity.data || (entity.data = {});
       const lossId = data.provenance && data.provenance.lossId;
       const loss = lossId ? findLossById(state, lossId, lossCache) : null;
-      const known = lossId ? isInvestigated(state, lossId) : false;
+      // The bounded display cache may evict a still-retained loss. Its durable
+      // receipt remains the authority for whether cartography already paid.
+      const known = !!(loss && loss.cartographyClaimed === true)
+        || (lossId ? isInvestigated(state, lossId) : false);
       const reveal = buildWreckScanReveal(entity, state, {
         origin,
         now,

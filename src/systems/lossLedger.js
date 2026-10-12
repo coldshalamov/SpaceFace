@@ -58,6 +58,25 @@ import { stationBerthAdmits } from '../data/frontierRumors.js';
 
 const MAX_PER_SECTOR = 8;           // ring-buffer cap — bounded growth (failureMode guard)
 const MAX_TOTAL = 64;               // global backstop across all sectors (rare; trims oldest)
+// Survey is part of the same durable loss history, not a new top-level save lane.
+// Copy and bound legacy/imported books so snapshots never alias the active scan cache.
+function surveySnapshot(value) {
+  const valid = (row) => row && typeof row === 'object' && !Array.isArray(row)
+    && Number.isFinite(row.at) && row.at >= 0;
+  const investigated = Object.entries(value && value.investigated || {})
+    .filter(([id, row]) => id && !['__proto__', 'constructor', 'prototype'].includes(id) && valid(row))
+    .sort((a, b) => b[1].at - a[1].at)
+    .slice(0, MAX_TOTAL)
+    .map(([id, row]) => [id, { at: row.at, sectorId: typeof row.sectorId === 'string' ? row.sectorId : null,
+      entityId: typeof row.entityId === 'string' || Number.isFinite(row.entityId) ? row.entityId : null }]);
+  const milestones = Object.entries(value && value.milestones || {})
+    .filter(([id, row]) => /:(3|6|10)$/.test(id) && valid(row) && Number.isInteger(row.count)
+      && row.count >= Number(id.slice(id.lastIndexOf(':') + 1)))
+    .slice(0, SECTORS.length * 3)
+    .map(([id, row]) => [id, { at: row.at, count: row.count }]);
+  return { investigated: Object.fromEntries(investigated), milestones: Object.fromEntries(milestones) };
+}
+
 const GHOST_CONVOY_THRESHOLD = 3;
 const GHOST_CONVOY_DRIVER = 'reach_pressure';
 const GHOST_CONVOY_MISSION_ID = 'wm_reach_bounty';
@@ -421,6 +440,15 @@ export const lossLedger = {
     this._onEntityKilled = (p) => this._handleEntityKilled(p);
     this._onPlayerDeath = (p) => this._handlePlayerDeath(p);
     this._onMissionCompleted = (p) => this._handleMissionCompleted(p);
+    this._onSurvey = (p) => {
+      if (!p || !p.lossId || !(p.paid > 0)) return;
+      const ledger = ensureState(this._state);
+      // bySector may retain an older loss beyond the global recent-history ring.
+      for (const rows of Object.values(ledger.bySector)) {
+        const loss = rows.find((row) => row.lossId === p.lossId);
+        if (loss) loss.cartographyClaimed = true;
+      }
+    };
     this._onNewGame = () => this._reset();
 
     if (this._bus && this._bus.on) {
@@ -430,6 +458,7 @@ export const lossLedger = {
       this._bus.on('entity:killed', this._onEntityKilled);
       this._bus.on('player:death', this._onPlayerDeath);
       this._bus.on('mission:completed', this._onMissionCompleted);
+      this._bus.on('scan:wreckInvestigated', this._onSurvey);
       this._bus.on('game:newGame', this._onNewGame);
     }
   },
@@ -441,6 +470,7 @@ export const lossLedger = {
     if (!state) return;
     const seed = (state.meta && state.meta.seed) || 1;
     state.lossLedger = { bySector: {}, entries: [], seed, ghostConvoy: { fired: {} } };
+    state.scanReveal = surveySnapshot(null);
   },
 
   _handleAssetLost(p) {
@@ -646,6 +676,7 @@ export const lossLedger = {
       if (this._onEntityKilled) this._bus.off('entity:killed', this._onEntityKilled);
       if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
       if (this._onMissionCompleted) this._bus.off('mission:completed', this._onMissionCompleted);
+      if (this._onSurvey) this._bus.off('scan:wreckInvestigated', this._onSurvey);
       if (this._onNewGame) this._bus.off('game:newGame', this._onNewGame);
     }
     this._onAssetLost = null;
@@ -654,6 +685,7 @@ export const lossLedger = {
     this._onEntityKilled = null;
     this._onPlayerDeath = null;
     this._onMissionCompleted = null;
+    this._onSurvey = null;
     this._onNewGame = null;
   },
 
@@ -664,6 +696,7 @@ export const lossLedger = {
     // Entries only — bySector is derivable from entries (rebuilt on deserialize).
     return {
       entries: L.entries.slice(-MAX_TOTAL),
+      scanSurvey: surveySnapshot(this._state && this._state.scanReveal),
       seed: L.seed,
       ghostConvoy: { fired: { ...(L.ghostConvoy && L.ghostConvoy.fired || {}) } },
     };
@@ -680,6 +713,7 @@ export const lossLedger = {
     const L = ensureState(state);
     const entries = (data && Array.isArray(data.entries)) ? data.entries : [];
     L.entries = entries.slice(-MAX_TOTAL);
+    state.scanReveal = surveySnapshot(data && data.scanSurvey);
     L.seed = (data && typeof data.seed === 'number') ? (data.seed >>> 0) : ((state.meta && state.meta.seed) || 1);
     L.ghostConvoy = {
       fired: {
