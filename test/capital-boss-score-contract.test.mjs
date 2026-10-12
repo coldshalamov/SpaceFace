@@ -31,6 +31,14 @@ import {
 import { assertCapitalBossEncounter } from '../src/data/encounters/capital-boss/validate.js';
 import { STATUS_DEFS, WING_COMPOSITION_GRAMMAR, TWIST_CLAUSES } from '../src/data/combatDefs.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { LAST_ARGUMENT as LAST_ARGUMENT } from '../src/data/lastArgument.js';
+import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { combat } from '../src/systems/combat.js';
+import { bootRealPath, OPEN_SPACE_BOUNDS } from '../scripts/lib/bench/realPath.mjs';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { SECTORS } from '../src/data/sectors.js';
+import { observeLastArgument } from '../src/systems/lastArgument.js';
 
 const DT = 1 / 60;
 const SEED = 4242;
@@ -47,7 +55,7 @@ const VOCABULARY = Object.freeze({
 
 test('every shipped capital score satisfies the authored telegraph contract', () => {
   const rows = Object.values(CAPITAL_BOSS_ENCOUNTERS);
-  assert.equal(rows.length, 7, 'the catalog still carries its seven capitals');
+  assert.equal(rows.length, 8, 'the seven established capitals and Last Argument remain catalogued');
   const failures = [];
   for (const encounter of rows) {
     try {
@@ -126,8 +134,11 @@ function tick(h, n = 1) {
   }
 }
 
-test('the production factory executes every shipped score to its first telegraph', () => {
+test('the production factory executes mission-owned capital scores to their first telegraph', () => {
   for (const id of Object.keys(CAPITAL_BOSS_ENCOUNTERS)) {
+    // Last Argument's admission belongs to encounterDirector, not a fabricated mission row.
+    // Its real director/native-physics route is exercised below.
+    if (id === LAST_ARGUMENT.scoreId) continue;
     const h = bootScoreFight(id);
     const score = requireCapitalBossEncounter(id).score;
     const authored = new Set(score.beats.map((b) => b.id));
@@ -144,4 +155,50 @@ test('the production factory executes every shipped score to its first telegraph
       `${id}: the telegraph carries a readable warning window`);
     h.capSys.destroy();
   }
+});
+
+test('Last Argument admits through the real director and native runtime before starting its score', async () => {
+  const sectorId = LAST_ARGUMENT.sectors[0];
+  const playerPos = sectorLocalToGlobalForSector({ x: 0, z: 0 }, sectorId);
+  const host = await bootRealPath({ seed: SEED, bounds: OPEN_SPACE_BOUNDS,
+    systems: [spawnBudget, combat, encounterDirector, createProductionCapitalBossEncounters()],
+    prepareState({ state }) {
+      state.mode = 'flight'; state.run = { kind: 'adventure' };
+      state.simTime = LAST_ARGUMENT.earliestSeconds + LAST_ARGUMENT.firstDelayMin + LAST_ARGUMENT.firstDelaySpan + 1;
+      state.world.currentSectorId = sectorId;
+      state.world.activeSector = SECTORS.find(row => row.id === sectorId);
+    },
+    hulls: [{ hullId: 'ship_kestrel', isPlayer: true, pos: playerPos, team: 0 }],
+  });
+  try {
+    const telegraphs = [];
+    host.bus.on('capitalBoss:telegraph', payload => telegraphs.push(payload));
+    host.step(2);
+    const own = host.state.capitalBossEncounters.lastArgument;
+    assert.ok(own?.active, 'ordinary capital owner requests and admits the director encounter');
+    const body = host.state.entities.get(own.active.bossId);
+    assert.equal(body.data.lootTableId, LAST_ARGUMENT.enemyId);
+    assert.equal(body.physicsBody.shape, 'compound');
+    const score = requireCapitalBossEncounter(LAST_ARGUMENT.scoreId).score;
+    host.step(score.introTicks + score.transitionTicks + 40);
+    const record = host.state.capitalBossEncounters.fights[own.active.key];
+    assert.equal(record.started, true, 'the director-admitted live pair starts its real score');
+    assert.ok(telegraphs.some(p => p.fightId === record.fightId && p.beatId === 'sounding'));
+    assert.equal(host.proof().backend, 'rapier-dynamic');
+    const clock = record.clock;
+    host.state.ui.docked = true; host.step(2);
+    assert.equal(record.clock, clock, 'docking suspends the admitted fight instead of bypassing lifecycle authority');
+    assert.equal(observeLastArgument(record, host.state, host.runtime.getHelpers()).active, false);
+  } finally { host.dispose(); }
+});
+
+test('Last Argument vocabulary accepts its real banks while rejecting invented banks and oversized wings', () => {
+  const original = requireCapitalBossEncounter(LAST_ARGUMENT.scoreId);
+  assert.doesNotThrow(() => assertCapitalBossEncounter(original, VOCABULARY));
+  const badBank = structuredClone(original);
+  badBank.score.beats[0].requires.push('last_argument_invented_bank');
+  assert.throws(() => assertCapitalBossEncounter(badBank, VOCABULARY), /requirements/);
+  const oversized = structuredClone(original);
+  oversized.score.maxWingMembers = 3;
+  assert.throws(() => assertCapitalBossEncounter(oversized, VOCABULARY), /two-wing-member ceiling/);
 });
