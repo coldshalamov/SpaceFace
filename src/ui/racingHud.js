@@ -10,6 +10,7 @@ import { finishRacingCupHeat, releaseRacingCupHeat, recordRaceMeeting } from '..
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { applyWorldObjectSelection } from './worldObjectInteraction.js';
+import { createHudCombatLock } from './hudCombatLock.js';
 
 export function mountRacingHud({ root, bus, state, screens }) {
   if (!root || typeof document === 'undefined') return null;
@@ -29,8 +30,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
   const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
   const button = (text, action) => {
     const b = make('button','k-word',text); b.type='button';
-    // Blur after activate so Space/Enter cannot re-fire a HUD button mid-combat.
-    b.addEventListener('click', (ev) => { action(ev); try { b.blur(); } catch {} });
+    // Blur after a pointer click so a later Space/Enter cannot re-fire a HUD button mid-combat.
+    // Keyboard activation (detail 0) keeps focus, so keyboard players do not lose their place.
+    b.addEventListener('click', (ev) => { action(ev); if (ev?.detail > 0) { try { b.blur(); } catch {} } });
     row.appendChild(b); return b;
   };
   const view = button(`View ${BINDINGS.steeringView.label}`,()=>toggleSteeringView(state,bus));
@@ -47,6 +49,17 @@ export function mountRacingHud({ root, bus, state, screens }) {
   readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,row,live); root.appendChild(panel);
   let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
   const offs = [];
+  const combatLock = createHudCombatLock({ bus, state });
+  let rowLocked = false;
+  const setRowLocked = (locked) => {
+    if (locked === rowLocked) return;
+    rowLocked = locked;
+    // Weapons hot: the action row leaves the pointer path (clicks fall through to the flight
+    // canvas and fire) and the tab order, so Circuits cannot open the race board mid-fight.
+    panel.dataset.combatLock = locked ? 'true' : 'false';
+    row.inert = locked;
+    if (locked && row.contains?.(document.activeElement)) { try { document.activeElement.blur(); } catch {} }
+  };
   const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
   listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
   listen('settings:changed',()=>{lastTick=-Infinity;});
@@ -86,6 +99,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const crucibleLive = !!(st?.run && st.run.kind === 'survival' && isRunSealed(st));
       panel.hidden = !inFlight || st.physicsVenuePublic?.active === true || crucibleLive;
       if (!inFlight || crucibleLive) return;
+      setRowLocked(combatLock.hot(st));
       const now=st.simTime||0;
       if(now>=lastTick&&now-lastTick<0.1)return;
       lastTick=now;
@@ -174,6 +188,6 @@ export function mountRacingHud({ root, bus, state, screens }) {
         `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} wu`+
         (tape.delta===null||personal?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`))+personal+precision;
     },
-    dispose(){ for(const off of offs)off();panel.remove(); },
+    dispose(){ for(const off of offs)off();combatLock.dispose();panel.remove(); },
   };
 }
