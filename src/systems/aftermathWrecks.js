@@ -1638,18 +1638,21 @@ export const aftermathWrecks = {
     const seed = seedOf(this.state);
     const victimVel = boundedKillVel(marker.victimVel);
     const speed = Math.hypot(victimVel.x, victimVel.z);
+    const victimRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
+    const shardRadius = Math.max(ARENA_SHARD_RADIUS_FLOOR, victimRadius);
     // Scatter direction: within ±80° of the way the hull was moving, so the push can never
     // oppose the inherited momentum (the body keeps the death's direction); a dead-stop kill
-    // with no velocity left takes a free angle. Position offset is drawn independently.
+    // with no velocity left takes a free angle. Position offset is drawn independently, but it
+    // must clear BOTH bodies' radii: a shard minted inside the hull it came from resolves the
+    // interpenetration as a hard contact on the first physics step.
     const offsetAngle = (hash32(seed, marker.markerId, 'shardOffsetAngle') % 360) * (Math.PI / 180);
-    const offsetR = 6 + (hash32(seed, marker.markerId, 'shardOffsetR') % 14);
+    const offsetR = victimRadius + shardRadius + 3 + (hash32(seed, marker.markerId, 'shardOffsetR') % 14);
     const spreadAngle = speed > 1e-6
       ? Math.atan2(victimVel.z, victimVel.x)
         + ((hash32(seed, marker.markerId, 'shardSpreadAngle') % 161) - 80) * (Math.PI / 180)
       : offsetAngle;
     const spread = ARENA_SHARD_MIN_SEPARATION_SPEED
       + (hash32(seed, marker.markerId, 'shardSpread') % (ARENA_SHARD_MAX_SEPARATION_SPEED - ARENA_SHARD_MIN_SEPARATION_SPEED + 1));
-    const victimRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
     const victimMass = boundedVictimMass(marker.victimMass);
     const shardMass = victimMass != null ? victimMass * 0.35 : 1e6;
     return {
@@ -1664,7 +1667,7 @@ export const aftermathWrecks = {
       }),
       angVel: boundedKillTumble(((hash32(seed, marker.markerId, 'shardSpin') % 200) - 100) / 100),
       // At ≥ the victim's own on-screen size (the §25 Phase 3 bar), never below the floor.
-      radius: Math.max(ARENA_SHARD_RADIUS_FLOOR, victimRadius),
+      radius: shardRadius,
       mass: shardMass,
       hull: 1,
       hullMax: 1,
