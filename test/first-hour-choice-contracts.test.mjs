@@ -85,7 +85,7 @@ test('B4 resolves at the Helios berth; accepting the Ceres run tracks it and ret
   // The tick advances onto B5; selling still surfaces the board from there.
   h.state.onboarding.currentBeat = CHOICE_BEAT;
   h.bus.emit('economy:tradeCompleted', { side: 'sell', commodityId: 'cmdty_ore_iron', qty: 3 });
-  assert.equal(h.state.onboarding.beatAction, "Board's got one job for you.");
+  assert.equal(h.state.onboarding.beatAction, "The board's holding work that fits.");
 
   const firstTrade = h.missions._instanceFromOffer(buildFirstTradeOffer(47));
   assert.equal(firstTrade.destStationId, FIRST_TRADE_CONTRACT_DEST_STATION_ID,
