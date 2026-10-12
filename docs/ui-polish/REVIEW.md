@@ -39,7 +39,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`help`** | **DONE** | See § Help below — this session |
 | `codex` / `codex-record` | SURVEYED | |
 | `mission-log` / `missionLog` | SURVEYED | |
-| **`credits`** | **DONE** | See § Credits below — this session |
+| `credits` | SURVEYED | Shares orrery settingsLayouts credits path |
 | `achievements` | SURVEYED | |
 | `statistics` | SURVEYED | |
 | `game-over` / `gameOver` | SURVEYED | |
@@ -146,35 +146,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/helpLayouts.js` only. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next after help was:** `credits` — now DONE (see below).
-
----
-
-
-## Credits — session notes (2026-10-12)
-
-**Before:** ORRERY Credits already strong (reel + orrery Hand + drift). Gaps vs the polished settings/save-load/help stack: BACK foot was plain `‹ BACK ESC` text (no keycap box / underline); subtitle / ladder / notice / row-sub copy sat too dim on void; "0% READ" read as a loading bar; at 720p orrery body nums 03/04 clipped their discs.
-
-**After (2 visual iterations, CSS + one label string in `settingsLayouts.js`):**
-
-1. **Pass 1** — foot rail matched settings/save-load/help (`‹ BACK` + ESC keycap box + underline); progress label `Read` → `Of reel`; title/ladder/notice/row-sub/end contrast raised (≥ ~0.78–0.92); short-window hide of orrery body nums; 1.12 zoom @1080p band.
-2. **Pass 2** — ladder rest/current contrast nudged; title rule and row ticks brighter.
-
-**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=credits --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 14 controls exercised; selectors/IDs unchanged.
-
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (Made by @1080) | `docs/ui-polish/credits-before.png` |
-| Before (@720) | `docs/ui-polish/credits-before-720.png` |
-| After (Made by @1080) | `docs/ui-polish/credits-after.png` |
-| After (@720) | `docs/ui-polish/credits-after-720.png` |
-| After (Libraries / Fonts) | `docs/ui-polish/credits-after-libraries.png`, `credits-after-fonts.png` |
-
-**Code touched:** `src/ui/orrery/settingsLayouts.js` (CREDITS_CSS + `createReelProgress` label only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
-
-**Next:** `codex` / `codex-record` on the player path, or `achievements` / `new-game`.
+**Next:** `credits` (shares orrery settingsLayouts credits path) or `codex` on the player path.
 
 ---
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
@@ -202,7 +174,7 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P2 | Load | "No saves yet" is ~50% bone on void, under contrast for body copy. **Fixed** (emph ≥.94, empty detail .92, vacant word .9 + open-berth glow). |
 | P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). |
 | P2 | Settings | Scroll lists fade out at the bottom (Engine trails, Boost / Dash) without a scroll affordance. |
-| P2 | Credits | "0% READ" dial read as a loading bar. **Fixed** — label is now "OF REEL"; foot keycap + contrast pass. |
+| P2 | Credits | "0% READ" dial reads as a loading bar; fine conceptually but the label needs explaining. |
 
 ## Design direction (consolidated)
 
@@ -217,7 +189,7 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 
 ## Done this session (stacked commit)
 
-- `src/ui/orrery/settingsLayouts.js`: ≤1500px label column 150→190px, pane 480→516–560px, nav 168–176px, tighter label tracking + balanced wrap; ≥1501px label 236px; 1.12 zoom for 1800–2199px wide screens. Credits: foot keycap rail, `Of reel` progress label, contrast, short-window orrery-num hide, 1080p zoom.
+- `src/ui/orrery/settingsLayouts.js`: ≤1500px label column 150→190px, pane 480→516–560px, nav 168–176px, tighter label tracking + balanced wrap; ≥1501px label 236px; 1.12 zoom for 1800–2199px wide screens.
 - `src/ui/orrery/cruciblePreparationLayouts.js`: ≤820px tall — stake mark hidden, pressure/yield single-line with tightened tracking, so tiles no longer clip.
 - `src/ui/orrery/saveLayouts.js`: save-load empty-state contrast (emph/detail/vacant/filmstrip), open-berth glow, settings-matched `‹ BACK` + ESC keycap foot rail, 1.12 zoom @1080p band. Game-over styles unchanged.
 - `src/ui/orrery/helpLayouts.js`: Help foot rail `‹ CLOSE` + ESC keycap; ladder/reading/search contrast; fixed broken search-rule CSS; reading shade deepened. Selectors/IDs unchanged.
