@@ -7,6 +7,10 @@ The owner-directed weapons and powers audit is [Arsenal experience](design/progr
 the complete built-kit lifecycle matrix and implementation plan for physical world effects,
 distinct attack/target presentation, custom SVG identities and usable controls.
 
+The asset experience plan is [Asset experience program](design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md).
+Cloud integration intentions and resulting behavior are recorded in
+[PR maturation, 2026-10-12](design/program/PR_MATURATION_2026-10-12.md).
+
 Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
 
 For the owner-directed production-quality and physics-playground planning pass, use
