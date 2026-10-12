@@ -1,0 +1,445 @@
+{
+ "meta": {
+  "mode": "gauntlet",
+  "rounds": true,
+  "hasLoadout": false,
+  "playStartSim": 0.09999999999999999,
+  "runSeed": 73311,
+  "label": "gauntlet-cryo-drift",
+  "seedSet": false,
+  "arena": "Cryo Drift",
+  "seed": 4242,
+  "commit": "a4536789f",
+  "dirty": false,
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "softwareGl": true,
+  "headed": false,
+  "browserVersion": "149.0.7827.55",
+  "resolution": "960x540",
+  "when": "2026-10-12T01:25:34.126Z",
+  "wallSeconds": 200,
+  "simSeconds": 62.3,
+  "frames": 3098,
+  "shots": 50,
+  "script": "idle 30 s → thrust/yaw probes → aim+fire at nearest hostile, close/open range, latch every 7th beat",
+  "stopReason": "run ended (player dead)",
+  "pageErrors": [],
+  "arenasOffered": [
+   {
+    "name": "Ricochet Foundry",
+    "disabled": false,
+    "pressed": true
+   },
+   {
+    "name": "Lagrange Crucible",
+    "disabled": false,
+    "pressed": false
+   },
+   {
+    "name": "Cinder Sluice",
+    "disabled": false,
+    "pressed": false
+   },
+   {
+    "name": "Cryo Drift",
+    "disabled": false,
+    "pressed": false
+   },
+   {
+    "name": "Storm Lattice",
+    "disabled": false,
+    "pressed": false
+   },
+   {
+    "name": "Asteroid Mill",
+    "disabled": false,
+    "pressed": false
+   },
+   {
+    "name": "The Hive",
+    "disabled": false,
+    "pressed": false
+   }
+  ],
+  "overall": "FAIL"
+ },
+ "overall": "FAIL",
+ "results": [
+  {
+   "id": "route",
+   "title": "Public route plays end to end",
+   "status": "PASS",
+   "value": "main menu → mode select → spawn → play",
+   "threshold": "every step through public controls",
+   "detail": "4 steps",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "round_resolution",
+   "title": "Round resolves by play",
+   "status": "UNKNOWN",
+   "value": null,
+   "threshold": "≥20 s and player input",
+   "detail": "no round was won; round 1 ended (run over) after 62.3 s",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "kills_before_input",
+   "title": "Kills before the player acts",
+   "status": "FAIL",
+   "value": "1 kills",
+   "threshold": "0",
+   "detail": "non-player kills between round start and first flight input · whole run: 3 hostile deaths, 3 not credited to the player (info)",
+   "offenders": [
+    {
+     "line": "round 1: 1 kill in the first 30.1 s before input — by ship×1",
+     "t": 88831.26499999966,
+     "sim": 17.433,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "round 1: 1 kill in the first 30.1 s before input — by ship×1",
+     "t": 88831.26499999966,
+     "sim": 17.433,
+     "box": null
+    }
+   ]
+  },
+  {
+   "id": "reward_before_input",
+   "title": "Score before the player acts",
+   "status": "PASS",
+   "value": "+0 score",
+   "threshold": "0",
+   "detail": "HUD score credited between round start and the first flight input — the player is rewarded for doing nothing",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "spawn_motion",
+   "title": "Unexplained motion at spawn",
+   "status": "PASS",
+   "value": "0 bodies",
+   "threshold": "0 passive bodies >8 u/s within 900 u",
+   "detail": "1 spawn moment(s) checked",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_control",
+   "title": "Ship answers input",
+   "status": "PASS",
+   "value": "0/2 probes dead",
+   "threshold": "thrust Δv≥3 u/s · yaw Δ≥0.2 rad",
+   "detail": "round 1 thrust 167.07 · round 1 yaw -1.9",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "tumble",
+   "title": "Ship stays in the play plane",
+   "status": "PASS",
+   "value": "longest 0 s",
+   "threshold": "<0.5 s out of plane / uncommanded spin",
+   "detail": "0 s total; limits pitch 0.35, bank 0.75 rad, |y| 4, spin 2.5 rad/s",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_ship",
+   "title": "Player ship visible as hero model",
+   "status": "PASS",
+   "value": "0.1% frames bad (1/1174)",
+   "threshold": "≤0.5%",
+   "detail": "missing / hidden / off-frame / non-lod0 / placeholder (<300 tris) while alive in play",
+   "offenders": [
+    {
+     "line": "mesh hidden: 1 frames, first at sim 0 s",
+     "t": 51539.4,
+     "sim": 0.033,
+     "box": [
+      440,
+      230,
+      520,
+      310
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "mesh hidden: 1 frames, first at sim 0 s",
+     "t": 51539.4,
+     "sim": 0.033,
+     "box": [
+      440,
+      230,
+      520,
+      310
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lod_churn",
+   "title": "LOD / model swap churn",
+   "status": "PASS",
+   "value": "max 0/10s per entity · 0/s total",
+   "threshold": "≤3/10s per entity · ≤1/s total",
+   "detail": "0 on-screen swaps over 62.3 sim s across 0 entities (86 more off screen, not graded)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "popping",
+   "title": "Pop-in / pop-out on screen",
+   "status": "PASS",
+   "value": "0/min · worst entity 0 toggles",
+   "threshold": "≤6/min · ≤2 toggles",
+   "detail": "0 pops inside the inner 80% of the view; 0 non-projectile bodies born on screen (info)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "readability",
+   "title": "Enemy / asteroid / projectile readable",
+   "status": "UNKNOWN",
+   "value": null,
+   "threshold": "separation ≥1",
+   "detail": "not enough on-screen samples per class (enemy 0, asteroid 0, projectile 0, pickup 0; need 5)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "vfx_coverage",
+   "title": "VFX coverage / occlusion",
+   "status": "PASS",
+   "value": "p95 13% screen · player hidden 1% · threats hidden p95 n/a · 0 s persist",
+   "threshold": "≤25% · ≤10% · ≤30% · ≤3 s",
+   "detail": "293 scans of additive/transparent layers (bounding-sphere footprint on a 48×27 grid; 1 screen-sized batches excluded)",
+   "offenders": [
+    {
+     "line": "player ship ≥50% under additive VFX in 1% of scans (first sim 30.7 s; top: sf-selection-sigil)",
+     "t": 116024.9,
+     "sim": 30.717,
+     "box": [
+      495,
+      220,
+      559,
+      299
+     ]
+    },
+    {
+     "line": "peak coverage 16% at sim 61.9 s (overdraw 0.2×)",
+     "t": 164035.8,
+     "sim": 61.85,
+     "box": [
+      736,
+      135,
+      1044,
+      443
+     ]
+    },
+    {
+     "line": "layer \"sf-selection-sigil\": mean 5.5% of screen, max 16%",
+     "t": null,
+     "sim": null,
+     "box": null
+    },
+    {
+     "line": "layer \"Mesh\": mean 0% of screen, max 0%",
+     "t": null,
+     "sim": null,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "player ship ≥50% under additive VFX in 1% of scans (first sim 30.7 s; top: sf-selection-sigil)",
+     "t": 116024.9,
+     "sim": 30.717,
+     "box": [
+      495,
+      220,
+      559,
+      299
+     ]
+    },
+    {
+     "line": "peak coverage 16% at sim 61.9 s (overdraw 0.2×)",
+     "t": 164035.8,
+     "sim": 61.85,
+     "box": [
+      736,
+      135,
+      1044,
+      443
+     ]
+    }
+   ]
+  },
+  {
+   "id": "loadout",
+   "title": "Loadout readable and relevant",
+   "status": "N/A",
+   "value": null,
+   "threshold": "0 irrelevant · 0 undescribed · 0 silent swaps",
+   "detail": "mode has no preparation loadout",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "frame_time",
+   "title": "Frame time / long tasks",
+   "status": "UNKNOWN",
+   "value": "p50 80 ms · p99 383 ms · 5 long tasks ≥250 ms",
+   "threshold": "p99 ≤50 ms · 0 long tasks ≥250 ms",
+   "detail": "software GL (SwiftShader): frame time is not the player's — rerun headed on a GPU to grade",
+   "offenders": [
+    {
+     "line": "long task 3266 ms at sim 0.1 s (frame 66)",
+     "t": 52502.20999999996,
+     "sim": 0.067,
+     "box": null
+    },
+    {
+     "line": "long task 775 ms at sim 1.6 s (frame 103)",
+     "t": 63315.09499999974,
+     "sim": 1.65,
+     "box": null
+    },
+    {
+     "line": "long task 383 ms at sim 1.9 s (frame 111)",
+     "t": 64657.78500000015,
+     "sim": 1.9,
+     "box": null
+    },
+    {
+     "line": "frame 66: 4224 ms at sim 0.1 s (95 entities, 0 draws)",
+     "t": 55763.4,
+     "sim": 0.067,
+     "box": null
+    }
+   ],
+   "moments": []
+  }
+ ],
+ "rounds": [
+  {
+   "wave": 1,
+   "startSim": 0.09999999999999999,
+   "startT": 55813.65500000026,
+   "endSim": 62.416666666664405,
+   "endT": 196540.97999999952,
+   "endPhase": "ended"
+  }
+ ],
+ "probes": [
+  {
+   "label": "round 1 thrust",
+   "key": "KeyW",
+   "kind": "thrust",
+   "startSim": 30.249999999999563,
+   "endSim": 31.533333333332823,
+   "startT": 115274.64999999944,
+   "endT": 117736.34499999974,
+   "value": 167.06772262134712
+  },
+  {
+   "label": "round 1 yaw",
+   "key": "KeyD",
+   "kind": "yaw",
+   "startSim": 31.533333333332823,
+   "endSim": 32.44999999999944,
+   "startT": 117737.34999999963,
+   "endT": 119058.625,
+   "value": -1.8973436857796584
+  }
+ ],
+ "route": {
+  "steps": [
+   {
+    "name": "main menu",
+    "ok": true,
+    "detail": "menu visible",
+    "t": null
+   },
+   {
+    "name": "mode select",
+    "ok": true,
+    "detail": "Crucible · scored · arena Cryo Drift · seed field not visible",
+    "t": null
+   },
+   {
+    "name": "spawn",
+    "ok": true,
+    "detail": "flight · round 1 active at sim 0.1 s",
+    "t": null
+   },
+   {
+    "name": "play",
+    "ok": true,
+    "detail": "1 round(s): 1:ended@62.3s",
+    "t": null
+   }
+  ]
+ },
+ "readability": {
+  "classes": {
+   "enemy": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   },
+   "asteroid": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   },
+   "projectile": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   },
+   "pickup": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   }
+  },
+  "pairs": [
+   {
+    "a": "enemy",
+    "b": "asteroid",
+    "nA": 0,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "projectile",
+    "nA": 0,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "asteroid",
+    "b": "projectile",
+    "nA": 0,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "pickup",
+    "nA": 0,
+    "nB": 0,
+    "sep": null
+   }
+  ]
+ },
+ "loadout": null
+}
