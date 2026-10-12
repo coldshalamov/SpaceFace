@@ -9,6 +9,8 @@ import { sampleFactionBehavior } from './factionDoctrines.js';
 import { FACTION_KITS } from './factions/index.js';
 import { sectorGlobalOrigin } from './sectorCoordinates.js';
 import { conflictPairsForSector, escalationForConflict } from './conflictZones.js';
+import { factionBerthsInSector, factionBerthKeeperPos } from './factionBerths.js';
+import { conductDeskClosure } from './factionConduct.js';
 
 function freeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -434,7 +436,48 @@ export function planFactionPresence({
   return Object.freeze(plans);
 }
 
-export function presenceServiceForStation(stationId, repByFaction = {}) {
+/**
+ * Berth keepers: one hull per berth that names a keeper role, drawn from the faction's own
+ * shipRoles (never invented), parked at the berth apron. Kept separate from planFactionPresence so
+ * the authored per-sector presence sets stay exactly as they were; factionPresence spawns these
+ * on the same enter path and gives them their stance from the player's history.
+ */
+export function planBerthKeepers({ sectorId, seed = 1 } = {}) {
+  if (!sectorId) return Object.freeze([]);
+  const plans = [];
+  for (const berth of factionBerthsInSector(sectorId)) {
+    if (!berth.keeper) continue;
+    const hulls = shipRoleHulls(berth.factionId, berth.keeper.role).filter((id) => SHIP_IDS.has(id));
+    const pos = factionBerthKeeperPos(berth);
+    if (!hulls.length || !pos) continue;
+    plans.push(plan({
+      factionId: berth.factionId,
+      shipDefId: hulls[hash32(seed, berth.id, 'keeper') % hulls.length],
+      sectorId,
+      seed,
+      index: 40,
+      pos: freeze({ x: pos.x, z: pos.z }),
+      passive: true,
+      berthKeeper: true,
+      berthId: berth.id,
+    }));
+  }
+  return Object.freeze(plans);
+}
+
+function withConductClosure(row, stances) {
+  const closedReason = conductDeskClosure(row.factionId, stances && stances[row.factionId]);
+  return closedReason ? freeze({ ...row, available: false, closedReason }) : row;
+}
+
+// `stances` is the optional factionId → conduct stance map factionPresence derives from the
+// player's history; a grudge closes the desk of a faction whose doctrine closes desks.
+export function presenceServiceForStation(stationId, repByFaction = {}, stances = null) {
+  const row = presenceServiceForStationByRep(stationId, repByFaction);
+  return row && stances ? withConductClosure(row, stances) : row;
+}
+
+function presenceServiceForStationByRep(stationId, repByFaction = {}) {
   if (['station_drift', 'station_tethys', 'station_helios'].includes(stationId)) {
     const rep = Number(repByFaction.faction_archive) || 0;
     return freeze({
