@@ -42,9 +42,9 @@ These are not measured. Do not read an older first-generation verdict below as t
 |---|---|---|
 | Swarm round 2 after `6b67d1fb1` | UNKNOWN | The `debe715c8a` launch never starts a survival run, so round 2 cannot be played. Not a pin measurement. |
 | Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | FAIL route, ship not scored | Measured: all four unlocked hulls at 960x540, plus Ricochet Runner at 1280x720. Every trace ends `flight` / `adventure` / `inactive` with the ship at (-1900, -2200). No combo reached a Swarm spawn, so none shows the rectangle or an invisible Swarm ship. 1920 and the other 1280 hulls were not run; the miss is before the viewport is on screen. |
-| Gauntlet `--gate` | UNKNOWN | Queued on the same lock, after this matrix is cut. Same door. The first-generation arena rows below are not a `--gate` pass. |
-| Adventure `--gate` | UNKNOWN | Queued after Gauntlet. The 150 s cruise below is not a `--gate` pass. |
-| Racing `--gate` | UNKNOWN | Queued after Adventure. The 75 s Textile Belt row below is not a `--gate` pass. |
+| Gauntlet `--gate` | UNKNOWN | The matrix shell died when Chromium was SIGKILLed on the later 1280 combos (energy closed after mode select; kinetic never booted). Requeued behind `player-truth.lock`. Same door as Swarm, so a non-survival flight fails in 60 s. The first-generation arena rows below are not a `--gate` pass. |
+| Adventure `--gate` | UNKNOWN | Requeued after Gauntlet. The 150 s cruise below is not a `--gate` pass. |
+| Racing `--gate` | UNKNOWN | Requeued after Adventure. The 75 s Textile Belt row below is not a `--gate` pass. |
 
 ## Owning lanes (rebased onto `debe715c8a`, 2026-10-12)
 
