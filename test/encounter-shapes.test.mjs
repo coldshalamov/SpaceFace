@@ -21,7 +21,7 @@ import {
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DIR = join(ROOT, 'src/data/encounters');
-const MODULE_RE = /^\d{3}-[a-z0-9-]+\.js$/;
+const MODULE_RE = /^\d{3,4}-[a-z0-9-]+\.js$/;
 
 test('vocabularies are exported and frozen', () => {
   assert.equal(Object.isFrozen(SITUATION_VOCABULARY), true);
