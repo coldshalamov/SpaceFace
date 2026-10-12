@@ -190,6 +190,9 @@ const HELIOS_STARTER_FIELD_ID = 'f_helios_starter';
 const HELIOS_STARTER_MINER_SHIFT_S = 6;
 const HELIOS_SEAM_MINER_SLOT_ID = 'helios_seam_miner';
 const HELIOS_STARTER_ROCK_MAX_DRIFT = 20;
+// A miner's lot changes hands only across a shared berth: the receiving hull must load within
+// this of where the lot was set down (a station's berth spread, not a sector).
+const LOT_HANDOFF_RANGE = 260;
 const BEAM_MK1 = BEAMS.find((row) => row && row.id === 'beam_mk1') || {
   dps: 18, range: 240, heatMax: 100, heatRate: 22, coolRate: 55,
 };
@@ -1213,6 +1216,8 @@ export const npcJobsRuntime = {
     if (intent.event === 'npcjobs:unload' && intent.kind === NPC_JOB_KIND.MINER) {
       const loop = entry && entry.job ? entry.job.loopCount | 0 : 0;
       const posted = { lotId: `lot:${intent.jobId}:l${loop}`, kind: 'ore', postedBy: intent.jobId, postedAt: now, sectorId };
+      const at = this._handoffPos(entry, intent);
+      if (at) posted.pos = at;
       const replaced = lots[sectorId] && lots[sectorId].lotId !== posted.lotId ? lots[sectorId] : null;
       lots[sectorId] = posted;
       if (this.bus && typeof this.bus.emit === 'function') {
@@ -1228,6 +1233,14 @@ export const npcJobsRuntime = {
     if (intent.event === 'npcjobs:load' && intent.kind === NPC_JOB_KIND.HAULER
       && !(intent.payload && intent.payload.claimConvoy)) {
       const standing = lots[sectorId] || null;
+      // The lot sits where the miner set it down; a load somewhere else in the sector is not a
+      // handoff. It stays on the shelf for a hull that actually comes alongside.
+      if (standing && standing.lotId && !this._withinLotHandoff(standing, entry, intent)) {
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('npcjobs:loadEmpty', { haulerJobId: intent.jobId, sectorId, simTime: now, lotId: standing.lotId, reason: 'not_alongside' });
+        }
+        return;
+      }
       if (standing && standing.lotId) {
         lots[sectorId] = null;
         if (this.bus && typeof this.bus.emit === 'function') {
@@ -1243,6 +1256,23 @@ export const npcJobsRuntime = {
         this._publishShortRunNews(intent, entry, sectorId, now);
       }
     }
+  },
+
+  // Where a handoff physically happens: the live hull when this job's body is in the sector,
+  // otherwise the waypoint the kernel completed the phase at (virtual jobs keep the same rule).
+  _handoffPos(entry, intent) {
+    const entity = entry && entry.entityId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(entry.entityId) : null;
+    const live = entity && entity.alive !== false && entity.pos
+      && (!entry.worldRecordId || !entity.data || entity.data.worldRecordId === entry.worldRecordId);
+    const pos = live ? entity.pos : intent && intent.pos;
+    return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? { x: pos.x, z: pos.z } : null;
+  },
+  _withinLotHandoff(lot, entry, intent) {
+    if (!lot.pos) return true;
+    const at = this._handoffPos(entry, intent);
+    if (!at) return false;
+    return Math.hypot(at.x - lot.pos.x, at.z - lot.pos.z) <= LOT_HANDOFF_RANGE;
   },
 
   /**
@@ -6519,6 +6549,8 @@ export const npcJobsRuntime = {
           postedBy: typeof lot.postedBy === 'string' ? lot.postedBy : null,
           postedAt: Number.isFinite(Number(lot.postedAt)) ? Number(lot.postedAt) : 0,
           sectorId,
+          ...(lot.pos && Number.isFinite(lot.pos.x) && Number.isFinite(lot.pos.z)
+            ? { pos: { x: lot.pos.x, z: lot.pos.z } } : {}),
         };
       }
     }
