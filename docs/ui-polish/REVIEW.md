@@ -41,7 +41,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
 | **`credits`** | **DONE** | See § Credits below — this session |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
-| `statistics` | SURVEYED | |
+| **`statistics`** | **DONE** | See § Statistics below — this session |
 | `game-over` / `gameOver` | SURVEYED | |
 | `tech-tree` / `techTree` / `tech-tree-progress` | SURVEYED | |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
@@ -255,7 +255,35 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/constellationLayouts.js` (ACHIEVEMENTS only). RESEARCH CSS in the same file left alone this session. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `statistics` or `new-game` (prefer statistics if new-game loadout styling risks loadout-data off-limits).
+**Next after achievements was:** `statistics` — now DONE (see below).
+
+---
+
+## Statistics — session notes (2026-10-12)
+
+**Before:** kit `k-screen--stage` list with fh title; amber primary Back (no ‹ / ESC keycap); group caps / row hairlines / secondary copy soft on void; no ORRERY composition sheet; no 1.12 zoom in the 1080p band; LAW rows fell under the fold at 720p.
+
+**After (2 visual iterations + short-frame tighten):**
+
+1. **Pass 1** — new `statisticsLayouts.js` ORRERY sheet scoped to `.orr-statistics`: foot rail `‹ BACK` + ESC keycap + underline; title/subtitle contrast; shade pool under the reading; group caps + row names ≥ ~0.84–0.94; phos numerals; brighter hairlines; scrollable stage; 1.12 zoom @1080p (+1440/4K archive zoom).
+2. **Pass 2** — group caps get a soft rule; row/numeral contrast nudged; stage bottom pad so LAW clears the foot; short-height (≤820px) tighten so Status + Heat stay on first paint at 720p.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=statistics --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 1 control (Back); selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/statistics-before.png` |
+| Before (@720) | `docs/ui-polish/statistics-before-720.png` |
+| After (@1080) | `docs/ui-polish/statistics-after.png` |
+| After (@720) | `docs/ui-polish/statistics-after-720.png` |
+
+**Code touched:** `src/ui/orrery/statisticsLayouts.js` (new), `src/ui/screens/statistics.js` (inject + `orr-statistics` + `sf-back` on Back only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `new-game` (styling only — stay off loadout item list data) or `game-over`.
+
+---
 
 ---
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
@@ -305,4 +333,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/archiveLayouts.js`: Codex foot keycap rail, secondary contrast, rail/tick brighten, 1080p zoom. Selectors/IDs unchanged.
 - `src/ui/orrery/archiveLayouts.js`: Mission Log foot keycap rail, secondary contrast, beam/lane/dial brighten, 1080p zoom. Selectors/IDs unchanged.
 - `src/ui/orrery/constellationLayouts.js`: Achievements foot keycap rail, secondary contrast, dial/stage chrome brighten, 1080p (+1440/4K) zoom. Selectors/IDs unchanged. RESEARCH block untouched.
+- `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
