@@ -5,7 +5,10 @@
 import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { OPTIC_STRUCTURES } from '../data/opticStructures.js';
+import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
@@ -15,6 +18,7 @@ import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
 export const ASTEROID_FIELD_CELL = 220;
+const CANONICAL_OPTIC_STRUCTURES = new Set(OPTIC_STRUCTURES.map(spec => spec.id));
 
 function finite(n, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
@@ -411,6 +415,22 @@ function isOpticRockData(data) {
   return !!(data && typeof data.opticStructureId === 'string' && data.opticStructureId);
 }
 
+function opticColliderRadius(data, radius) {
+  const visualRadius = Math.max(0.5, finite(radius, 8));
+  if (data.opticMaterial !== 'stone') return visualRadius;
+  let pitch = data.opticLatticeSpacing;
+  // Old world caches predate pitch metadata. Only the canonical compiler's known rows
+  // inherit its spacing; an unrecognized/custom structure must supply its own pitch.
+  if (!(Number.isFinite(pitch) && pitch > 0)) {
+    const canonical = CANONICAL_OPTIC_STRUCTURES.has(data.opticStructureId)
+      || /^scatter:.+:[0-9]+$/.test(data.opticStructureId);
+    if (!canonical) return visualRadius;
+    pitch = OPTIC_LATTICE_SPACING;
+  }
+  // The visual stone seam laps, but its dynamic native bodies must not interpenetrate at rest.
+  return Math.min(visualRadius, pitch / 2);
+}
+
 export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote') {
   if (!state || id == null) return null;
   const live = state.entities && typeof state.entities.get === 'function'
@@ -438,8 +458,15 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     : (Number.isFinite(rec.hullMax) ? rec.hullMax : (optic ? 1e6 : undefined));
   // Optic lattices are authored against entity.radius; bump colliders must not seal the mouth.
   const colliderR = optic
-    ? Math.max(0.5, finite(rec.radius, 8))
+    ? opticColliderRadius(data, rec.radius)
     : asteroidColliderRadius(data.typeId, rec.radius);
+  const physicsBody = { radius: colliderR };
+  if (optic && colliderR < rec.radius) {
+    // Collider calibration must not resize the stone's density-derived native mass or inertia.
+    const previous = resolvePhysicsBodySpec({ ...rec, data, physicsBody: { radius: rec.radius } });
+    physicsBody.mass = previous.mass;
+    physicsBody.inertiaY = previous.inertiaY;
+  }
   const admitPos = resolveAdmitOverlap(state, rec.pos, colliderR, reason);
   if (!admitPos) return null;
   const ent = spawn({
@@ -454,7 +481,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     hull,
     hullMax,
     collides: true,
-    physicsBody: { radius: colliderR },
+    physicsBody,
     data,
   });
   if (!ent) return null;

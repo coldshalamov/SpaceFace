@@ -48,7 +48,7 @@ import {
   sectorGlobalOrigin,
 } from '../data/sectorCoordinates.js';
 import { SpatialHash } from './spatialHash.js';
-import { opticGenerationOf } from '../combat/opticField.js';
+import { opticGenerationOf, opticMaterialOf, isOpticEnergyBolt, isOpticOrdnance } from '../combat/opticField.js';
 import { projectileTravelLimit } from '../combat/projectileFlight.js';
 import { traumaFromContact } from '../render/feel.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
@@ -97,6 +97,12 @@ const SG02_INIT_PREPARE_TIMEOUT_MS = 60000;
 // The parent bolt — generation 0 — stays owner-immune on every contact path.
 function opticSplinterHitsOwner(proj) {
   return opticGenerationOf(proj) > 0;
+}
+
+function authoredOpticReceiver(target, projectile) {
+  return target.type === 'asteroid' && typeof target.data?.opticStructureId === 'string'
+    && target.data.opticStructureId.length > 0 && !!opticMaterialOf(target)
+    && (isOpticEnergyBolt(projectile) || isOpticOrdnance(projectile));
 }
 
 // Compact physical hulls may extend beyond their nominal gameplay radius. Keep
@@ -1201,7 +1207,9 @@ export const physics = {
       // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
       if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
       if (!canCollide(proj, tgt, honorAuthored) && !canCollide(tgt, proj, honorAuthored)) continue;
-      const manifest = tgt.shield > 0 ? null : resolveCollisionProxyManifest(tgt);
+      // Optic recipes own circular receiver geometry at the reference radius; the visual
+      // asset proxy and calibrated moving-body envelope cannot change their bank/fuse paths.
+      const manifest = tgt.shield > 0 || authoredOpticReceiver(tgt, proj) ? null : resolveCollisionProxyManifest(tgt);
       if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + projectileProxyRadius(tgt, manifest))) continue;
       // The broad circle is not a solid hull: authored/measured compounds can have
       // open mouths and corridors. Active shields retain their spherical interception

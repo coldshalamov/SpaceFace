@@ -28,8 +28,11 @@ test('a genuinely moving body at the real opening still fails with the existing 
 test('legacy captures without run metadata retain their timestamp-based opening check', () => {
   const result = checkSpawnMotion(trace([sample(47.483, 1.1, null), sample(47.75, 12.9, null)]));
   assert.equal(result.status, 'FAIL'); assert.equal(result.offenders[0].sim, 47.75);
+  const unnamedRound = trace([sample(47.483, 1.1, null), sample(47.75, 12.9, null)]);
+  delete unnamedRound.rounds[0].wave;
+  assert.equal(checkSpawnMotion(unnamedRound).status, 'FAIL', 'an older unnamed round still uses its round timestamp');
   const adventure = { meta: { playStartSim: 47.683 }, rounds: [], samples: [sample(47.75, 12.9, null)], events: [] };
-  assert.equal(checkSpawnMotion(adventure).status, 'FAIL');
+  assert.equal(checkSpawnMotion(adventure).status, 'UNKNOWN', 'a mid-flight sample cannot invent the non-round opening');
 });
 
 test('a missing matching-wave opening cannot silently pass using a different wave', () => {

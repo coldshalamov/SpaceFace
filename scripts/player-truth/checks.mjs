@@ -255,24 +255,44 @@ export function checkSpawnMotion(trace) {
   for (const st of starts) {
     // Actor polls can notice the round several physics ticks after it opens. The continuous
     // reader already recorded the actual first active frame; later contacts are not spawn motion.
-    const index = trace.samples.findIndex((x) => x.mode === 'flight' && (st.wave != null && hasRunMetadata
-      ? x.run?.w === st.wave && x.run.ph === 'active' : x.sim >= st.sim));
+    const nonRound = rounds.length === 0;
+    const index = trace.samples.findIndex((x) => x.mode === 'flight' && (nonRound
+      || (st.wave != null && hasRunMetadata ? x.run?.w === st.wave && x.run.ph === 'active' : x.sim >= st.sim)));
     const s = trace.samples[index];
     if (!s || !s.p) { missing++; continue; }
+    const previous = trace.samples[index - 1];
+    if (nonRound && s.sim !== 0 && (!previous || previous.mode === 'flight')) { missing++; continue; }
     const inputStart = st.wave != null && hasRunMetadata
-      ? Math.min(st.sim, trace.samples[index - 1]?.sim ?? s.sim) : st.sim;
+      ? Math.min(st.sim, previous?.sim ?? s.sim) : nonRound ? s.sim : st.sim;
     const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
     checked++;
-    for (const e of s.e) {
-      if (!(e[E.cls] === CLS.asteroid || e[E.cls] === CLS.pickup || e[E.cls] === CLS.other)) continue;
-      const d = Math.hypot(e[E.x] - s.p.x, e[E.z] - s.p.z); if (d > T.spawnRadius) continue;
-      const sp = Math.hypot(e[E.vx], e[E.vz]);
-      if (sp > T.spawnSpeed) {
-        count++;
-        offenders.push({ sp, line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input`, t: s.t, sim: s.sim, box: e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled ? boxOf(e) : null });
+    // The actor can announce opening several ticks late. Record each initial passive life's
+    // first observed state through that announcement, rather than regrade post-solve drift.
+    // Include the announcement's first sample: reader sim stamps are rounded to milliseconds.
+    const announced = nonRound ? trace.samples.findIndex((x, i) => i >= index && x.sim >= st.sim) : index;
+    const cohort = nonRound ? trace.samples.slice(index, announced < 0 ? trace.samples.length : announced + 1) : [s];
+    const seen = new Set(); let prev = previous; let incomplete = nonRound && announced < 0;
+    for (const frame of cohort) {
+      if (nonRound && (frame.mode !== 'flight' || !frame.p
+        || (Number.isSafeInteger(prev?.f) && Number.isSafeInteger(frame.f) && frame.f !== prev.f + 1))) {
+        incomplete = true; break;
+      }
+      prev = frame;
+      if (firstIn && firstIn.sim < frame.sim) break;
+      for (const e of frame.e) {
+        if (!(e[E.cls] === CLS.asteroid || e[E.cls] === CLS.pickup || e[E.cls] === CLS.other)) continue;
+        if (seen.has(e[E.id])) continue;
+        seen.add(e[E.id]);
+        const d = Math.hypot(e[E.x] - frame.p.x, e[E.z] - frame.p.z); if (d > T.spawnRadius) continue;
+        const sp = Math.hypot(e[E.vx], e[E.vz]);
+        if (sp > T.spawnSpeed) {
+          count++;
+          offenders.push({ sp, line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input`, t: frame.t, sim: frame.sim, box: e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled ? boxOf(e) : null });
+        }
       }
     }
+    if (incomplete) missing++;
   }
   offenders.sort((a, b) => b.sp - a.sp);
   return result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : missing ? 'UNKNOWN' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,

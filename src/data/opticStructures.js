@@ -254,6 +254,7 @@ export function compileOpticCells(cells, spacing = OPTIC_LATTICE_SPACING, headin
       typeId: material.typeId,
       tint: material.tint,
       radius: material.radius,
+      latticeSpacing: Math.abs(spacing),
       surfaceMaterial: material.surfaceMaterial,
       x: lx * cos - lz * sin,
       z: lx * sin + lz * cos,

@@ -1624,6 +1624,7 @@ export const world = {
             opticMaterial: body.material,
             opticStructureId: spec.id,
             opticCell: `${body.ix},${body.iz}`,
+            opticLatticeSpacing: body.latticeSpacing,
             surfaceMaterial: body.surfaceMaterial,
             size: body.radius,
             // Not ore: skip massline latch so the mining beam cannot acquire via tether.
