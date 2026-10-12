@@ -67,6 +67,26 @@ test('both opening seeds carry actual loose ore into the refinery exactly once',
   }
 });
 
+test('the passive ore magnet leaves a titled starter chip for the barge', () => {
+  const h = boot();
+  const pickup = extract(h);
+  const player = h.sim.state.entities.get(h.sim.state.playerId);
+  pickup.pos = { x: player.pos.x + 400, z: player.pos.z };
+  pickup.vel = { x: 0, z: 0 };
+  const plain = h.sim.spawn({
+    type: 'pickup',
+    pos: { x: player.pos.x + 400, z: player.pos.z + 40 },
+    vel: { x: 0, z: 0 },
+    radius: 2.2,
+    data: { kind: 'ore', commodityId: 'cmdty_silicate', amount: 1, despawnAt: 9999 },
+  });
+  h.sim.registry.get('mining')._updatePickups(1 / 60, h.sim.state);
+  assert.ok(Math.hypot(pickup.vel.x || 0, pickup.vel.z || 0) < 1, 'a titled cut stays where it was cut');
+  assert.ok(Math.hypot(plain.vel.x || 0, plain.vel.z || 0) > 1, 'loose ore still seeks the player');
+  assert.equal(pickup.alive, true);
+  assert.ok(pickup.data.amount > 0);
+});
+
 test('a player towing or taking the ore leaves the barge empty', () => {
   const h = boot();
   const pickup = extract(h);

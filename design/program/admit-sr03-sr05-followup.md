@@ -14,7 +14,7 @@ The mule fallback stays. It is the victim only after the readiness hold expires 
 | A Helios ore barge that holds still at `poi_helios_tally` for 6 s writes one ledger row per manifest (cap 8, oldest dropped). Empty holds write nothing. The row round-trips on the traffic save and is absent after New Game. A later real dock closes that row as `delivered`. A later freight-loss of the same manifest closes it as `lost`. The opening raid does the same on `robbed` and `hauler_destroyed`, including a barge that is still alive after the ore leaves. `defended`, `raid_over`, and any other shape leave the row counted. Neither outcome overwrites the other. An unknown saved disposition reads back as `counted`. | BUILT | `src/systems/traffic.js` `heliosFreightTallies`; `test/starter-world-freight-tally-ledger.test.mjs` |
 | The opening raid's cause names the hold it hit. Defended is contained and posts no job. Robbed posts replacement freight. A destroyed barge posts salvage and keeps `encounterFingerprint` on the dead hull. Flying on posts a corridor patrol, not a cargo loss. A living release clears that fingerprint. An unknown outcome records nothing. Other encounter shapes gain no freight fields. | BUILT | `src/world/encounterCausality.js`, `src/data/encounters/344-opening-hauler-raid.js`; `test/starter-world-opening-raid-cause.test.mjs` |
 | A player who scoops a chip titled to the claim miner, inside Helios jurisdiction, with a witness, gets one `payload_theft` receipt. The receipt survives save/load. No witness is a denial and leaves no ledger. An untitled chip, the player's own chip, a zero take, and the barge's own scoop are not charges. | BUILT | `src/systems/lawSecurity.js`; `test/starter-world-titled-chip-theft.test.mjs` |
-| Seed 4242 adopts `helios_starter_ore_carrier` / `ship_ironback` on the production runtime. The cause's `manifestId` is that barge's hold. 4242 is intercepted before a tally, so the ledger can be empty at the shot. | BUILT (cause stamp on the production path). Adoption itself was already true on master. | `test/starter-world-opening-raid-real-path.test.mjs` |
+| Seed 4242 adopts `helios_starter_ore_carrier` / `ship_ironback` on the production runtime. The cause's `manifestId` is that barge's hold. 4242 is intercepted before a tally, so the ledger can be empty at the shot. The passive 800 WU ore magnet does not pull a chip titled to the cutter; flying into that chip still collects it. | BUILT | `test/starter-world-opening-raid-real-path.test.mjs`; `src/systems/mining.js`; `test/living-adventure-shift.test.mjs` |
 | An authored teach-day beat is not pushed off its freight by tension recovery. Tutorial and pacing-gap were already exempt. Recovery was deferring the opening raid 21 s at a time, so the 60 s readiness hold never started. Recovery now leaves that beat on the hold. | BUILT, cross-lane, listed | `src/systems/encounterDirector.js` `_pump`; `test/opening-raid-waits-for-laden-carrier.test.mjs` |
 
 ## Production probe (player at the Helios origin, no injected readiness)
@@ -34,11 +34,13 @@ SEED 8008 raidDue=170  readyS=61.0  raid=conflict t=191.0
 
 8008, on the pre-edit probe, counted a hold at ~70 s and was adopted at t=191 inside a hold that started when the beat came due at 170 s. A later run on this branch, before the tension exemption, never started that hold: `tension_recovery` (`allowCombat: false`) gate-deferred the beat by 21 s from t=170 onward (`defers=1`, `due=191.1`, `fireReadyHoldSince` unset) while the barge's return drifted. That seed is not a committed production assertion. The exemption puts the beat back on the 1 s readiness recheck. Whether 8008's barge is inside 260 WU before the hold expires still depends on the flight.
 
-Production line from `test/starter-world-opening-raid-real-path.test.mjs` on this branch. The same line came back after the tension-recovery exemption (119 s wall, exit 0):
+Production line from `test/starter-world-opening-raid-real-path.test.mjs`, twice in a row after the magnet fix (about 47 s and 42 s wall, exit 0 both times):
 
 ```
-REAL_PATH seed=4242 t=160.0 manifest=fm_e31374c5 qty=1 commodity=cmdty_silicate tallies=0 tallyEvents=0
+REAL_PATH seed=4242 t=131.0 manifest=fm_e31374c5 qty=1 commodity=cmdty_silicate tallies=0 tallyEvents=0
 ```
+
+The earlier `t=160.0` line is the same hold (`fm_e31374c5`, silicate, no tally). On the rebased tip the idle player's ore magnet, now an impulse the physics body actually follows, was taking that chip before the barge's scoop. The raid then fired the mule. That miss is sim-tick deterministic. It is not wall-clock or load, and the dock/loss commits (`9049d2456c`, `a16dda0cef`) do not touch the scoop or the magnet. A titled crew cut stays where it was cut. Loose ore still seeks the player.
 
 ## Player-truth
 
