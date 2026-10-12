@@ -123,6 +123,11 @@ export function collectContentCatalogIssues(opts = {}) {
 const SWARM_STRAGGLER_MAX = 2;
 const SWARM_STRAGGLER_LEASH_WU = 1800;
 const SWARM_STRAGGLER_GRACE_TICKS = 8 * 60;
+// The pack's last few lights kept their orbiting pursuit long after the round clock ran out, so a
+// round with three wasps circling at 70 u/s stayed open for two more minutes (player-truth
+// m6-active). Once the clock is spent they stop circling and commit to the pilot: a climax.
+const SWARM_LAST_STAND_MAX = 3;
+const SWARM_LAST_STAND_DOCTRINE = 'brawler_commit';
 
 function playerIsAlive(state) {
   if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
@@ -188,6 +193,7 @@ export const survivalWave = {
     this._shapeSwarmFire();
     this._reinforceSwarm(run);
     this._releaseStragglers();
+    this._commitLastStand();
     this._publishWaveProgress();
     this._checkCleared(run);
   },
@@ -847,6 +853,27 @@ export const survivalWave = {
       if (dx * dx + dz * dz < leash2) { member.strayTicks = 0; continue; }
       member.strayTicks = (member.strayTicks || 0) + 1;
       if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS) helpers.removeEntity(id);
+    }
+  },
+
+  _commitLastStand() {
+    if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
+    if (this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length)) return;
+    if (this._elapsedSeconds() < this._durationSeconds()) return;
+    const rows = [];
+    for (const [id, member] of this._cohort.entries()) {
+      if (!this._isCohortMemberActionable(id, member)) continue;
+      rows.push([id, member]);
+      if (rows.length > SWARM_LAST_STAND_MAX) return;
+    }
+    for (const [id, member] of rows) {
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      const data = entity && entity.data;
+      if (!data || !data.ai || data.ai.swarmLastStand === true) continue;
+      if (data.isBoss === true || data.bossId != null) continue;
+      data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
+      data.ai.swarmLastStand = true;
     }
   },
 
