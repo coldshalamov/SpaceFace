@@ -69,7 +69,7 @@ import {
   update47aScenarioActorIntents,
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
-import { projectBridgeEvent } from './simEventBridge.mjs';
+import { projectBridgeEvent, resolveEventEntityRef } from './simEventBridge.mjs';
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
 import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js';
@@ -641,7 +641,42 @@ export function createSimHost() {
     return breaches;
   }
 
+  function refreshDraftReadView(state) {
+    const owner = host.registry?.get('survivalDraft');
+    const run = state.run;
+    if (!owner || run?.kind !== 'survival' || !['draft', 'refit'].includes(run.phase)) {
+      state.survivalDraftPublic = null;
+      host.draftReadKey = null;
+      host.draftReadRun = null;
+      return;
+    }
+    if (host.draftReadBus !== host.bus) {
+      host.draftReadUnsubscribe?.();
+      host.draftReadBus = host.bus;
+      host.draftReadUnsubscribe = host.bus.on('run:draftLockChanged', () => { host.draftReadDirty = true; });
+      host.draftReadDirty = true;
+    }
+    const owned = state.player.ownedShips?.[state.player.activeShipIndex];
+    const preparation = owner.preparationReceipt();
+    const notice = owner.lastNotice();
+    // Recompute stock only on native settlement/custody changes, not every
+    // paused presentation frame. No native RNG or owner references cross over.
+    const key = JSON.stringify([run.phase, run.wave, run.credits, owner.preparationGeneration(),
+      owner.rerollCount(), notice, preparation, owned?.defId, owned?.fittings,
+      (state.player.moduleInventory || []).map(row => [row.instanceId, row.defId])]);
+    if (host.draftReadRun === run && host.draftReadKey === key && !host.draftReadDirty) return;
+    state.survivalDraftPublic = structuredClone({
+      offers: owner.currentOffers(), wave: owner.currentWave(), notice,
+      reroll: owner.rerollState(), recommended: owner.recommendedOffers(),
+      preparation, generation: owner.preparationGeneration(), refitRows: owner.refitRows(),
+    });
+    host.draftReadRun = run;
+    host.draftReadKey = key;
+    host.draftReadDirty = false;
+  }
+
   function diffDomains(state, seq) {
+    refreshDraftReadView(state);
     const r = host.domainDiffer.diff(state, seq);
     host.domainDiffNsTotal += BigInt(Math.round(r.diffMs * 1e6));
     if (r.diffMs > host.domainDiffMsMax) host.domainDiffMsMax = r.diffMs;
@@ -712,7 +747,26 @@ export function createSimHost() {
   // and the capture-all emit wrap (production lane — the sim owns events main
   // has never seen, so whitelisting there would silently drop real traffic).
   function recordBridgeEvent(type, payload) {
-    const projected = projectBridgeEvent(type, payload);
+    let receipt = payload;
+    if ((type === 'entity:killed' || type === 'entity:destroyed' || type === 'asteroid:destroyed')
+      && payload && typeof payload === 'object') {
+      // Capture at emit/queue time, before core recycles the id and before a reply's journal
+      // removes the victim. Plain {id,pos,...} receipts retain their complete event meaning.
+      // Combat/fracture mark the actor dead before emitting, so the live presentation resolver
+      // deliberately omits it. The authoritative map still owns it until core's sweep.
+      const victim = payload.entity || host.state.entities?.get(payload.id)
+        || resolveWorldPresentationEntity(host.state, payload.id);
+      const killer = type === 'entity:killed'
+        ? resolveWorldPresentationEntity(host.state, payload.killerId) : null;
+      receipt = {
+        ...payload,
+        occupantGeneration: Number.isSafeInteger(payload.occupantGeneration)
+          ? payload.occupantGeneration : (victim?.occupantGeneration ?? null),
+        simTime: host.state.simTime,
+        ...(killer ? { killerOccupantGeneration: killer.occupantGeneration ?? null } : {}),
+      };
+    }
+    const projected = projectBridgeEvent(type, receipt);
     host.emittedEventCounts[type] = (host.emittedEventCounts[type] || 0) + 1;
     if (projected.dropped) {
       host.droppedEventCount++;
@@ -1568,10 +1622,10 @@ export function createSimHost() {
           const ref = (v) => v && typeof v === 'object' && Number.isFinite(v.entityRef);
           for (const k of Object.keys(payload)) {
             const v = payload[k];
-            if (ref(v)) payload[k] = state.entities.get(v.entityRef) || v;
+            if (ref(v)) payload[k] = resolveEventEntityRef(v, state.entities);
             else if (Array.isArray(v)) {
               for (let i = 0; i < v.length; i++) {
-                if (ref(v[i])) v[i] = state.entities.get(v[i].entityRef) || v[i];
+                if (ref(v[i])) v[i] = resolveEventEntityRef(v[i], state.entities);
               }
             }
           }
@@ -1880,6 +1934,8 @@ export function createSimHost() {
   }
 
   function handleShutdown() {
+    host.draftReadUnsubscribe?.();
+    host.draftReadUnsubscribe = null;
     try {
       if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
       else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();

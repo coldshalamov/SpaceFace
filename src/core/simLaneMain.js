@@ -46,7 +46,7 @@ import {
   sabEnvelopePost,
   SAB_ENV_KIND,
 } from '../../scripts/lib/simSabEnvelope.mjs';
-import { flattenEventPayload } from '../../scripts/lib/simEventBridge.mjs';
+import { flattenEventPayload, resolveEventEntityRef } from '../../scripts/lib/simEventBridge.mjs';
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
@@ -216,19 +216,21 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     return !!v && typeof v === 'object' && Number.isFinite(v.entityRef);
   }
   function remapEventPayload(p) {
+    if (isEntityRef(p)) return resolveEventEntityRef(p, readModel.entities);
     if (!p || typeof p !== 'object') {
-      return isEntityRef(p) ? (readModel.entities.get(p.entityRef) || p) : p;
+      return p;
     }
     if (p.entity === undefined && Number.isFinite(p.entityId)) {
       const row = readModel.entities.get(p.entityId);
-      if (row) p.entity = row;
+      if (row) p.entity = resolveEventEntityRef({ entityRef: p.entityId,
+        occupantGeneration: p.occupantGeneration }, readModel.entities);
     }
     for (const k of Object.keys(p)) {
       const v = p[k];
-      if (isEntityRef(v)) p[k] = readModel.entities.get(v.entityRef) || v;
+      if (isEntityRef(v)) p[k] = resolveEventEntityRef(v, readModel.entities);
       else if (Array.isArray(v)) {
         for (let i = 0; i < v.length; i++) {
-          if (isEntityRef(v[i])) v[i] = readModel.entities.get(v[i].entityRef) || v[i];
+          if (isEntityRef(v[i])) v[i] = resolveEventEntityRef(v[i], readModel.entities);
         }
       }
     }

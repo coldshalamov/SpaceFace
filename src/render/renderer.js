@@ -1965,6 +1965,15 @@ export function presentationMeshMatchesEntity(entity, mesh, state = null) {
     && remap.get(String(data.presentationEntityId)) === entity.id;
 }
 
+/** A delayed destruction must not cancel or release a new occupant's presentation owner. */
+export function destructionReceiptMatchesPresentationOwner(receipt, entity, mesh) {
+  const life = receipt?.occupantGeneration ?? receipt?.entity?.occupantGeneration;
+  if (!Number.isSafeInteger(life)) return true; // local compatibility fixtures without life tokens
+  if (Number.isSafeInteger(entity?.occupantGeneration) && entity.occupantGeneration !== life) return false;
+  const meshLife = mesh?.userData?.presentationOccupantGeneration;
+  return !Number.isSafeInteger(meshLife) || meshLife === life;
+}
+
 /**
  * Same-sector F9 keeps GPU Object3Ds in `_meshes` while `_clearEntities` replaces entity
  * objects. authoredCriticalVisualReadiness reads `entity.mesh`; presentation bind alone
@@ -18744,9 +18753,16 @@ export const render = {
         }
       }
     });
-    onBus('entity:destroyed', ({ id }) => {
-      this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
+    onBus('entity:destroyed', (receipt = {}) => {
+      const { id } = receipt;
       const still = resolveWorldPresentationEntity(this.state, id);
+      if (!destructionReceiptMatchesPresentationOwner(receipt, still, this._meshes.get(id))) {
+        // The journal already admitted a different occupant. Its normal reconcile sweep owns
+        // any predecessor graph; this old receipt cannot cancel the fresh admission or pool.
+        this._meshReconcileDirty = true;
+        return;
+      }
+      this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
       if (still && still.alive !== false && isPresentationLedgerRow(still)) {
         const kept = this._meshes.get(id);
         if (kept) this._bindPresentationMesh(still, kept);

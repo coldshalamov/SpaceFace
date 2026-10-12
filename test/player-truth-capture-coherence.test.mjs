@@ -74,6 +74,118 @@ test('the reader keeps instrumentation in every split and projects the presented
   }
 });
 
+function attributionFixture({ extraCandidates = 0, frontVisible = true, unstable = false } = {}) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-100, 100, 60, -60, 0.1, 500);
+  camera.position.set(0, 100, 0); camera.up.set(0, 0, -1);
+  camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
+  const geometry = new THREE.PlaneGeometry(5, 5);
+  const material = new THREE.MeshBasicMaterial({
+    name: 'FixtureContactMaterial', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+  });
+  const hull = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+  scene.add(hull);
+  const sigil = new SelectionSigil(scene); sigil.mesh.visible = true;
+  const behind = new THREE.Mesh(geometry, material);
+  behind.name = 'BehindOpaqueHull'; behind.userData.sfBoundEntityId = 77; scene.add(behind);
+  for (let i = 0; i < extraCandidates; i++) {
+    const effect = new THREE.Mesh(geometry, material); effect.name = `IrrelevantContact${i}`; scene.add(effect);
+  }
+  const front = new THREE.Mesh(geometry, material);
+  front.name = 'FrontContact'; front.userData.sfBoundEntityId = 99; front.visible = frontVisible; scene.add(front);
+  scene.updateMatrixWorld(true);
+  const originalTarget = {}; let target = originalTarget; let callback = null;
+  const draws = [];
+  const renderer = {
+    isWebGLRenderer: true, domElement: { clientWidth: 200, clientHeight: 120 },
+    info: { autoReset: true, render: { calls: 7, triangles: 99 } }, shadowMap: { autoUpdate: true },
+    getRenderTarget: () => target, setRenderTarget: (next) => { target = next; }, clear() {},
+    render() {
+      draws.push({ front: front.visible, instrument: sigil.mesh.visible, behind: behind.visible });
+      renderer.info.render.calls++; renderer.info.render.triangles += 10;
+    },
+    readRenderTargetPixels(_target, _x, _y, _w, _h, pixels) {
+      // Controlled readback: the opaque hull depth-occludes the behind draw. A front contact
+      // changes its pixels, while target instrumentation stays present in both counterfactuals.
+      const value = front.visible ? (unstable && draws.length >= 4 ? 100 : 200) : 50;
+      for (let i = 0; i < pixels.length; i += 4) {
+        pixels[i] = value; pixels[i + 1] = value; pixels[i + 2] = value; pixels[i + 3] = 255;
+      }
+    },
+  };
+  const enemy = { id: 2, type: 'ship', alive: true, radius: 20, team: 3,
+    pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { runRole: 'enemy' } };
+  const win = {
+    performance: { now: () => 100 }, addEventListener() {}, removeEventListener() {},
+    requestAnimationFrame(fn) { callback = fn; return 1; }, cancelAnimationFrame() {},
+    SF: { THREE, state: { mode: 'flight', simTime: 1, playerId: 1, entityList: [enemy],
+      render: { renderer, scene, camera, meshes: new Map([[2, hull]]) } } },
+  };
+  const reader = installPlayerTruthReader(win, { pxEvery: 1, vfxEvery: 1 });
+  return { front, behind, sigil, renderer, originalTarget, draws,
+    frame() { reader.start(); callback(); return reader.drain().samples[0]; },
+    dispose() { reader.dispose(); sigil.dispose(); geometry.dispose(); material.dispose(); hull.material.dispose(); },
+  };
+}
+
+test('first-positive attribution finds the front contributor and excludes the behind-hull draw', () => {
+  const fixture = attributionFixture();
+  try {
+    const first = fixture.frame(); const diagnostic = first.px.attribution;
+    assert.equal(first.px.ct, 1, 'the original positive threat mask remains graded');
+    assert.equal(diagnostic.status, 'contributor-found');
+    assert.equal(diagnostic.contributor.name, 'FrontContact');
+    assert.equal(diagnostic.contributor.owner, 99);
+    assert.equal(diagnostic.contributor.originalMaskFrac, 1);
+    assert.equal(diagnostic.candidates[0].name, 'BehindOpaqueHull');
+    assert.equal(diagnostic.candidates[0].materials[0].id, fixture.behind.material.uuid);
+    assert.equal(diagnostic.candidates.some((c) => c.name === 'sf-selection-sigil'), false);
+    assert.ok(diagnostic.extraDraws <= 8);
+    const beforeSecond = fixture.draws.length;
+    const second = fixture.frame();
+    assert.equal(second.px.ct, 1); assert.equal(second.px.attribution, undefined);
+    assert.equal(fixture.draws.length - beforeSecond, 3, 'only the ordinary split runs on later frames');
+    assert.ok(fixture.draws.every((d) => d.instrument));
+    assert.equal(fixture.front.visible, true); assert.equal(fixture.behind.visible, true);
+    assert.equal(fixture.renderer.getRenderTarget(), fixture.originalTarget);
+    assert.deepEqual(fixture.renderer.info.render, { calls: 7, triangles: 99 });
+  } finally { fixture.dispose(); }
+});
+
+test('depth-occluded and noncombat draws do not trigger positive attribution', () => {
+  const fixture = attributionFixture({ frontVisible: false });
+  try {
+    const sample = fixture.frame();
+    assert.equal(sample.px.ct, 0); assert.equal(sample.px.attribution, undefined);
+    assert.equal(fixture.draws.length, 3);
+    assert.ok(fixture.draws.every((d) => d.instrument));
+  } finally { fixture.dispose(); }
+});
+
+test('one-shot attribution reports an unstable baseline instead of blaming a draw', () => {
+  const fixture = attributionFixture({ unstable: true });
+  try {
+    const sample = fixture.frame();
+    assert.equal(sample.px.ct, 1);
+    assert.equal(sample.px.attribution.status, 'unstable-baseline');
+    assert.equal(sample.px.attribution.extraDraws, 1);
+    assert.equal(sample.px.attribution.contributor, undefined);
+  } finally { fixture.dispose(); }
+});
+
+test('many candidates exhaust a strict eight-draw budget without claiming an owner', () => {
+  const fixture = attributionFixture({ extraCandidates: 255 });
+  try {
+    const sample = fixture.frame(); const diagnostic = sample.px.attribution;
+    assert.equal(diagnostic.status, 'budget-exhausted');
+    assert.equal(diagnostic.extraDraws, 8); assert.equal(fixture.draws.length, 11);
+    assert.equal(diagnostic.candidates.length, 64); assert.equal(diagnostic.catalogTruncated, 193);
+    assert.equal(diagnostic.contributor, undefined);
+    assert.ok(diagnostic.remainingCandidateCount > 1);
+    assert.equal(fixture.front.visible, true); assert.equal(fixture.behind.visible, true);
+  } finally { fixture.dispose(); }
+});
+
 async function captureFixture({ enemyColour = [240, 40, 30], pose = () => ({ x: 40, key: 5 }), bounded = true } = {}) {
   const dir = await mkdtemp(path.join(tmpdir(), 'spaceface-capture-coherence-'));
   const file = path.join(dir, 'picture.png');

@@ -485,6 +485,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
   'cursor',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
+  'survivalDraftPublic',
   'physicsVenueSession', 'world.wreckCourtRulings',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
@@ -1099,10 +1100,14 @@ export function createDomainDiffer(options = {}) {
 
   function walk(path, segs, v, tick, updates, stats) {
     const node = ensureNode(path, segs);
+    // This owner publishes detached immutable snapshots only at settlement.
+    // A new stock/hold receipt must not wait for the large-leaf cold cadence.
+    const freshDraftSnapshot = segs[0] === 'survivalDraftPublic' && node.draftSnapshotSource !== v;
+    if (segs[0] === 'survivalDraftPublic') node.draftSnapshotSource = v;
     if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
       if (node.leaf) releaseProbeSlot(node); // leaf -> container
       node.leaf = false;
-      const enumDue = node.lastEnum == null
+      const enumDue = freshDraftSnapshot || node.lastEnum == null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
         const liveKids = new Set(Object.keys(v));
@@ -1147,7 +1152,7 @@ export function createDomainDiffer(options = {}) {
     }
     node.leaf = true;
     const leafRule = domainLeafViewFor(segs);
-    if (node.lastSign >= 0) {
+    if (node.lastSign >= 0 && !freshDraftSnapshot) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       const interval = Math.max(tierTicks, domainCadenceFor(segs[0]));
@@ -1163,7 +1168,7 @@ export function createDomainDiffer(options = {}) {
           return;
         }
       }
-    } else if (leafRule && leafRule.deferFirstSign) {
+    } else if (!freshDraftSnapshot && leafRule && leafRule.deferFirstSign) {
       // Mass-mint smoothing for leaf-view rules: a first sign waits for the
       // leaf's slot instead of firing immediately, spreading mint bursts
       // (e.g. station markets materializing on one economy:tick) over

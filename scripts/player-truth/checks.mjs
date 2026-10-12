@@ -45,13 +45,18 @@ export function playSamples(trace) {
 
 function keyName(trace, k) { return k >= 0 ? (trace.keys[k] || String(k)) : null; }
 
-// Mesh keys are `uuid|model|lod|authoredAssetState` (reader.js). A visible swap into or out of
-// awaiting / loading / compiling is pop-in the player sees. It is reported on its own line and
-// still counted; it is not dropped from the FAIL threshold.
+// New captures append the actual drawn-content signature. Admission status alone can change
+// while the same stand-in stays drawn; legacy captures cannot distinguish that and stay strict.
 export function assetKeyParts(name) {
   const parts = String(name || '').split('|');
-  if (parts.length < 4) return { id: parts[0] || '', model: '', lod: '', state: '' };
-  return { id: parts[0], model: parts[1], lod: parts[2], state: parts.slice(3).join('|') };
+  if (parts.length < 4) return { id: parts[0] || '', model: '', lod: '', state: '', drawn: null };
+  return { id: parts[0], model: parts[1], lod: parts[2], state: parts[3],
+    drawn: parts[4]?.startsWith('draw:') ? parts[4].slice(5) : null };
+}
+
+export function visibleContentChanged(fromName, toName) {
+  const from = assetKeyParts(fromName); const to = assetKeyParts(toName);
+  return from.drawn != null && to.drawn != null ? from.drawn !== to.drawn : fromName !== toName;
 }
 
 export function isLoadingAssetState(state) {
@@ -70,18 +75,18 @@ export function checkLodChurn(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('lod_churn', 'LOD / model swap churn', 'UNKNOWN', null, T.lodSwapsPer10s, 'too few play frames sampled');
   const last = new Map(); const swaps = new Map(); let measured = 0; let unseen = 0;
-  let lodN = 0; let loadN = 0;
+  let lodN = 0; let loadN = 0; let stateN = 0;
   const playerSwaps = [];
   const tally = (fromName, toName) => { if (swapIsLoading(fromName, toName)) loadN++; else lodN++; };
   for (const s of samples) {
     if (s.p && s.p.meshId) {
-      const pk = `${s.p.meshId}|${s.p.model}|${s.p.lod}|${s.p.state}`;
+      const pk = `${s.p.meshId}|${s.p.model}|${s.p.lod}|${s.p.state}${s.p.drawn != null ? `|draw:${s.p.drawn}` : ''}`;
       const prev = last.get('P');
-      if (prev && prev.k !== pk) {
+      if (prev && prev.k !== pk && visibleContentChanged(prev.k, pk)) {
         const loading = swapIsLoading(prev.k, pk);
         tally(prev.k, pk);
         playerSwaps.push({ t: s.t, sim: s.sim, from: prev.k, to: pk, box: s.p.box, loading });
-      }
+      } else if (prev && prev.k !== pk) stateN++;
       last.set('P', { k: pk });
     }
     for (const e of s.e) {
@@ -93,6 +98,11 @@ export function checkLodChurn(trace) {
       if (prev && prev.k !== k) {
         if (on || prev.on) {
           const fromName = keyName(trace, prev.k); const toName = keyName(trace, k);
+          if (!visibleContentChanged(fromName, toName)) {
+            stateN++;
+            last.set(e[E.id], { k, on });
+            continue;
+          }
           const loading = swapIsLoading(fromName, toName);
           tally(fromName, toName);
           const list = swaps.get(e[E.id]) || []; list.push({ sim: s.sim, t: s.t, from: prev.k, to: k, cls: e[E.cls], box: boxOf(e), on, loading });
@@ -123,7 +133,7 @@ export function checkLodChurn(trace) {
   if (playerSwaps.length) offenders.unshift({ line: `player ship swapped model/LOD ${playerSwaps.length}× (${splitOf(playerSwaps)}; first sim ${fmt(playerSwaps[0].sim, 1)} s: ${playerSwaps[0].from} → ${playerSwaps[0].to})`, t: playerSwaps[0].t, sim: playerSwaps[0].sim, box: playerSwaps[0].box });
   return result('lod_churn', 'LOD / model swap churn', fail ? 'FAIL' : 'PASS',
     `max ${maxPer10}/10s per entity · ${fmt(totalRate)}/s total · ${lodN} real LOD · ${loadN} loading`, `≤${T.lodSwapsPer10s}/10s per entity · ≤${T.lodTotalPerSec}/s total`,
-    `${lodN} real LOD/model swaps · ${loadN} visible loading-state swaps (awaiting/loading/compiling, still counted) over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
+    `${lodN} real LOD/model swaps · ${loadN} visible loading-state swaps (awaiting/loading/compiling, still counted) over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded); ${stateN} metadata-only transitions with unchanged drawn contents (diagnostic)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
 }
 
 function shortKey(k) { if (!k) return '?'; const [, model, lod, st] = k.split('|'); return `${(model || '').replace(/^GLTFKIT_/, '').slice(0, 28)}@${lod || '-'}${st && st !== 'authored' ? '/' + st : ''}`; }
@@ -175,7 +185,13 @@ const REMOVAL_CLASSES = new Set([CLS.enemy, CLS.asteroid, CLS.neutral, CLS.stati
 export function checkPopping(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('popping', 'Pop-in / pop-out on screen', 'UNKNOWN', null, `≤${T.popsPerMin}/min`, 'too few play frames');
-  const killedIds = new Set(trace.events.filter((ev) => ev.ev === 'killed').map((ev) => ev.id));
+  // Combat kills and mining depletion are explicit deaths. Generic entity:destroyed also
+  // serves shelving/cleanup, so it never excuses an unexplained on-screen removal.
+  const deathReceipts = new Map();
+  for (const ev of trace.events) {
+    if ((ev.ev !== 'killed' && ev.ev !== 'asteroid-destroyed') || !Number.isFinite(ev.id)) continue;
+    const list = deathReceipts.get(ev.id) || []; list.push(ev); deathReceipts.set(ev.id, list);
+  }
   const inner = (e, s) => e[E.sx] > s.vw * 0.1 && e[E.sx] < s.vw * 0.9 && e[E.sy] > s.vh * 0.1 && e[E.sy] < s.vh * 0.9 && e[E.pr] >= 2;
   let prev = null; const pops = []; const flaps = new Map(); let births = 0; let measured = 0;
   for (const s of samples) {
@@ -194,7 +210,9 @@ export function checkPopping(trace) {
         }
       }
       for (const [id, p] of prev.map) {
-        if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || killedIds.has(id) || !REMOVAL_CLASSES.has(p[E.cls])) continue;
+        const confirmedDeath = deathReceipts.get(id)?.some((ev) => ev.sim >= prev.s.sim - 1 / 60
+          && ev.sim <= s.sim + 1 / 60);
+        if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || confirmedDeath || !REMOVAL_CLASSES.has(p[E.cls])) continue;
         pops.push({ id, kind: 'removed without death', s: prev.s, e: p, loading: entityLoading(trace, p) });
       }
     }

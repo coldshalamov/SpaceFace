@@ -923,6 +923,22 @@ export function createRegistry(ctx) {
   function laneSystemFacade(name) {
     const st = ctx && ctx.state;
     switch (name) {
+      case 'survivalDraft': {
+        // Ephemeral stock and custody are computed by the native draft owner.
+        // UI mutations continue through its existing run:* intents.
+        const read = (key, fallback) => structuredClone(st?.survivalDraftPublic?.[key] ?? fallback);
+        return {
+          name: 'survivalDraft',
+          currentOffers: () => read('offers', []),
+          currentWave: () => read('wave', 0),
+          lastNotice: () => read('notice', null),
+          rerollState: () => read('reroll', null),
+          recommendedOffers: () => read('recommended', []),
+          preparationReceipt: () => read('preparation', null),
+          preparationGeneration: () => read('generation', 0),
+          refitRows: () => read('refitRows', []),
+        };
+      }
       case 'save':
         return {
           name: 'save',
