@@ -29,13 +29,23 @@ async function fixture(t) {
   await lane.readyPromise;
   lane.runner.stepOnce();
   const firstFlight = posts.at(-1);
-  return { lane, posts, firstFlight, receive: onMessage, advanceWall: (ms) => { clock += ms; } };
+  return {
+    lane, posts, firstFlight, receive: onMessage,
+    advanceWall: (ms) => { clock += ms; },
+    dispatch: (ms = 100) => { clock += ms; t.mock.timers.tick(ms); },
+  };
 }
 
-test('a worker reply queued during a long main-thread task gets a dispatch turn before stall quarantine', async (t) => {
+test('cold main-thread work is excluded even when WebKit dispatches timers before a queued worker reply', async (t) => {
   const f = await fixture(t);
-  f.advanceWall(5001);
+  f.advanceWall(15000);
   f.lane.runner.prepareWithoutAdvance();
+  t.mock.timers.tick(100);
+  assert.equal(f.lane.getDiagnostics().inFlightMainThreadDelayedMs, 14900);
+  assert.equal(f.lane.getDiagnostics().inFlightResponsiveMs, 100);
+  // One timer turn is not sufficient: let several callbacks win the task-source choice.
+  f.dispatch();
+  f.dispatch();
   assert.equal(f.lane.runner.isClosed(), false);
   f.receive({ kind: 'tickDone', seq: f.firstFlight.seq, stateTick: 1, simTime: 1 / 60 });
   t.mock.timers.tick(0);
@@ -43,27 +53,45 @@ test('a worker reply queued during a long main-thread task gets a dispatch turn 
   assert.equal(f.lane.getDiagnostics().replyCount, 1);
 });
 
-test('a genuinely wedged worker still closes at the existing five-second deadline after confirmation', async (t) => {
+test('a genuinely wedged worker still closes after five seconds of responsive browser dispatch', async (t) => {
   const f = await fixture(t);
-  f.advanceWall(5001);
-  f.lane.runner.prepareWithoutAdvance();
+  for (let i = 0; i < 49; i++) f.dispatch();
   assert.equal(f.lane.runner.isClosed(), false);
+  f.dispatch();
   t.mock.timers.tick(0);
   assert.equal(f.lane.runner.isClosed(), true);
   assert.throws(() => f.lane.runner.stepOnce(), /tick directive stalled >5000ms/);
 });
 
+test('a blocked interval postpones but cannot forgive a worker that remains wedged after dispatch resumes', async (t) => {
+  const f = await fixture(t);
+  f.advanceWall(15000);
+  t.mock.timers.tick(100);
+  for (let i = 0; i < 48; i++) f.dispatch();
+  assert.equal(f.lane.runner.isClosed(), false);
+  f.dispatch();
+  t.mock.timers.tick(0);
+  assert.equal(f.lane.runner.isClosed(), true);
+});
+
 test('confirmation for an old directive cannot close its successful replacement', async (t) => {
   const f = await fixture(t);
-  f.advanceWall(5001);
+  for (let i = 0; i < 49; i++) f.dispatch();
   f.lane.runner.stepOnce();
   f.receive({ kind: 'tickDone', seq: f.firstFlight.seq, stateTick: 1 });
   const replacement = f.posts.at(-1);
   assert.notEqual(replacement.seq, f.firstFlight.seq);
   t.mock.timers.tick(0);
   assert.equal(f.lane.runner.isClosed(), false);
-  f.advanceWall(5001);
-  f.lane.runner.prepareWithoutAdvance();
+  for (let i = 0; i < 50; i++) f.dispatch();
   t.mock.timers.tick(0);
   assert.match(f.lane.getDiagnostics().error, new RegExp(`seq ${replacement.seq}`));
+});
+
+test('closing the lane cancels the pending watchdog callback', async (t) => {
+  const f = await fixture(t);
+  f.lane.close();
+  f.advanceWall(15000);
+  t.mock.timers.tick(15000);
+  assert.equal(f.lane.getDiagnostics().error, null);
 });
