@@ -2555,22 +2555,55 @@ const _threatPlateScale = new THREE.Vector3();
 const _threatCameraQuat = new THREE.Quaternion();
 const _swarmThreatMarks = new WeakMap();
 
+const _hostileTint = new THREE.Color(0xff2438);
+
 /**
- * Hostile swarm hulls are dark metal on a dark field. A filled disk the size of the
- * hull painted the ship out — enemies read as red circles. This is a camera-facing
- * crimson rim on the silhouette: the center stays open so the hull shows through.
- * Default outer radius is entity.radius (floor 2). A cohort member may set
- * entity.data.swarmMarkRadius, but the rim is capped at SWARM_THREAT_MARK_CAP ×
- * body radius so the stroke stays in the gap between the readability hull sample
- * (Chebyshev d ≤ 0.7r) and the background ring (d > 1.2r). A wider rim painted
- * both samples crimson (idle aaca743840: 82% of enemies within ΔL 8 of the field).
- * The heading wedge sits on the nose, inside that hull sample, and points along
- * +X (the renderer yaws with mesh.rotation.y = -entity.rot). It used to scale
- * with the bracket and the tip landed at about 1.38× body radius, inside the
- * background ring. MeshBasic with normal blending, so the mark is paint rather
- * than a glow. depthWrite is off. depthTest is off: a tested disc at the hull
- * origin is hidden by the hull, which is why the foundry wasp read as another
- * rock. Created once per boundary.
+ * Paint this hull crimson without touching a shared material. Authored wasp
+ * metal and a grey rock were the same dark read on the foundry sky (idle
+ * aaca743840: 82% of enemy samples within ΔL 8 of the field). The clone stays
+ * on this mesh. A LOD swap changes the child count and tints the new body.
+ */
+function tintSwarmHostileHull(mesh) {
+  const n = mesh.children ? mesh.children.length : 0;
+  if (mesh.userData.swarmHostileTint === n) return;
+  mesh.userData.swarmHostileTint = n;
+  mesh.traverse((obj) => {
+    if (!obj.isMesh || !obj.material) return;
+    if (typeof obj.name === 'string' && obj.name.startsWith('sf-swarm-threat')) return;
+    const list = Array.isArray(obj.material) ? obj.material : [obj.material];
+    let changed = false;
+    const next = list.map((mat) => {
+      if (!mat || (mat.userData && mat.userData.swarmHostileTint)) return mat;
+      const clone = mat.clone();
+      clone.userData = { ...(mat.userData || {}), swarmHostileTint: true };
+      if (clone.emissive && clone.emissive.isColor) {
+        clone.emissive.copy(_hostileTint);
+        clone.emissiveIntensity = Math.max(Number(clone.emissiveIntensity) || 0, 0.9);
+      } else if (clone.color && clone.color.isColor) {
+        clone.color.lerp(_hostileTint, 0.65);
+      }
+      changed = true;
+      return clone;
+    });
+    if (changed) obj.material = Array.isArray(obj.material) ? next : next[0];
+  });
+}
+
+/**
+ * Hostile swarm hulls are dark metal on a dark field, and a thick target
+ * reticle (ring 0.70–1 plus an inner hoop) read as a bullseye with a speck
+ * in the middle. Three marks, all MeshBasic, normal blending, tone-mapped so
+ * they do not bloom into a white ring:
+ *   - a camera-facing card, CircleGeometry radius 0.86 on the rim's scale,
+ *     depth-tested and depth-writing, drawn behind the hull. The disc covers
+ *     the readability sample (d ≤ 0.7 × body radius) and more than half of the
+ *     threat AABB (π·0.86²/4 ≈ 0.58), so the nebula cannot own the box. The
+ *     hull's nearer faces still draw on top.
+ *   - a thin camera-facing rim at 0.92–1 of the capped mark, depthTest off,
+ *     depthWrite off, in the gap before the background sample (d > 1.2r)
+ *   - a heading wedge on the nose, inside the hull sample, along +X
+ *     (the renderer yaws with mesh.rotation.y = -entity.rot)
+ * The rim is capped at SWARM_THREAT_MARK_CAP × body radius. Created once per boundary.
  */
 // Lockstep with SWARM_THREAT_MARK_SCALE in survivalWave.js. Do not import that
 // module from here: the wave owner pulls the sim, and this file is the mesh builder.
@@ -2586,19 +2619,19 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     }
     return;
   }
+  tintSwarmHostileHull(mesh);
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');
   if (!plate) {
-    // Unit ring. 0.70–1.0 is a stroke wide enough to read and still leaves the
-    // middle of the hull open. The inner hoop below stays inside 0.62.
+    // Thin stroke. 0.92–1.0 sits outside the hull sample and short of the sky.
     plate = new THREE.Mesh(
-      getGeometry('swarm:threat-ring-070', () => new THREE.RingGeometry(0.70, 1, 40)),
-      getMaterial('swarm:threat-ring-070', () => new THREE.MeshBasicMaterial({
+      getGeometry('swarm:threat-rim', () => new THREE.RingGeometry(0.92, 1, 48)),
+      getMaterial('swarm:threat-rim', () => new THREE.MeshBasicMaterial({
         color: 0xff1a3a,
         side: THREE.DoubleSide,
         depthWrite: false,
         depthTest: false,
         fog: false,
-        toneMapped: false,
+        toneMapped: true,
       })),
     );
     plate.name = 'sf-swarm-threat-plate';
@@ -2606,17 +2639,25 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     plate.frustumCulled = true;
     mesh.add(plate);
   }
-  // The silhouette rim sits outside the inner 70% of the hull, which is the
-  // disk a readability sample actually reads. A second hoop inside that disk
-  // pulls the hull off the dark field and off grey rock. The center stays open.
+  // Faction card behind the hull. Radius 0.86 of the rim scale fills the
+  // readability sample and more than half the threat box. depthWrite is on so
+  // a later planet pass cannot repaint the disc; renderOrder stays below the
+  // hull so the ship's near faces still cover the middle. Not additive.
   let core = mesh.getObjectByName('sf-swarm-threat-core');
   if (!core) {
     core = new THREE.Mesh(
-      getGeometry('swarm:threat-core', () => new THREE.RingGeometry(0.42, 0.62, 40)),
-      plate.material,
+      getGeometry('swarm:threat-card', () => new THREE.CircleGeometry(0.86, 40)),
+      getMaterial('swarm:threat-card', () => new THREE.MeshBasicMaterial({
+        color: 0xff1a3a,
+        side: THREE.DoubleSide,
+        depthWrite: true,
+        depthTest: true,
+        fog: false,
+        toneMapped: true,
+      })),
     );
     core.name = 'sf-swarm-threat-core';
-    core.renderOrder = 12;
+    core.renderOrder = -2;
     core.frustumCulled = true;
     mesh.add(core);
   }
@@ -2647,8 +2688,13 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   const bodyScaleX = bodyR * inv(_threatPlateScale.x);
   const bodyScaleY = bodyR * inv(_threatPlateScale.y);
   const bodyScaleZ = bodyR * inv(_threatPlateScale.z);
-  plate.scale.set(markR * inv(_threatPlateScale.x), markR * inv(_threatPlateScale.y), markR * inv(_threatPlateScale.z));
-  core.scale.set(bodyScaleX, bodyScaleY, bodyScaleZ);
+  const markScaleX = markR * inv(_threatPlateScale.x);
+  const markScaleY = markR * inv(_threatPlateScale.y);
+  const markScaleZ = markR * inv(_threatPlateScale.z);
+  plate.scale.set(markScaleX, markScaleY, markScaleZ);
+  // Same scale as the rim. A card left on the hull scale covers ~29% of a
+  // 1.12× bracket, and the backdrop gate fails a box that is ≥50% sky.
+  core.scale.set(markScaleX, markScaleY, markScaleZ);
   // ConeGeometry(0.22, 0.46) half-height is 0.23. Center at 0.36 of the hull:
   // tip at 0.59 body radii, tail at 0.13. Both sit inside d ≤ 0.7, so the wedge
   // lifts the hull sample and does not tint the background ring. Not the bracket.

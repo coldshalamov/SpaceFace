@@ -150,6 +150,13 @@ export const SWARM_ADVENTURE_ONLY_IDS = Object.freeze(new Set([
   'mod_host_cartography_s', 'mod_echo_recorder_s',
   // faction standing gates that a Crucible run never earns
   'mod_sanction_spool', 'mod_deep_scoop_array_m',
+  // salvage uniques of the rows above: cargo scan, survey, triangulation, scrambler.
+  // Deepsurvey's name matches the shelf harness (/survey/), so it cannot be offered.
+  'unique_truesight_scanner', 'unique_quadrille_box_reader', 'unique_deepsurvey_suite',
+  'unique_first_notch_marker', 'unique_double_entry_mask',
+  // machine sites and fauna mining. Not a fight in this room.
+  'mod_precursor_handshake_s', 'mod_quiet_equation_s', 'mod_lattice_coupler_s',
+  'mod_resonant_massline_m',
 ]));
 
 /** True when a def does something in a Swarm fight. */
@@ -162,8 +169,9 @@ export function isSwarmRelevantDef(def) {
 /**
  * One line for why this fitting is on a Swarm shelf. Prefers an authored
  * swarmReason, then the air sentence, then the first sentence of the description.
- * Read at offer time. Shared WEAPONS and MODULES rows are not mutated: an
- * adventure import of this module must not grow a swarmReason onto stock.
+ * Relevant MODULES rows are stamped at load (authorSwarmFightReasons) so the
+ * reason lives on the module. Weapons keep the derived sentence. Adventure-only
+ * rows are not stamped.
  */
 export function swarmFightReason(def) {
   if (!def || typeof def !== 'object') return '';
@@ -237,6 +245,32 @@ function rowSlotOf(defId) {
   const def = everyStockDef().find((entry) => entry.id === defId);
   return def ? def.slotType : null;
 }
+
+/**
+ * Stamp one fight line onto each Swarm-relevant module. The air sentence is
+ * already the one-liner; copying its first sentence onto `swarmReason` keeps
+ * the reason on the module the shelf offers. Rows the shelf will not offer
+ * stay untouched, and a hand-authored swarmReason of 12 characters or more wins.
+ * Weapons are left alone: their derived sentence is the reason, and the module
+ * table is what the shelf contract asked to carry.
+ */
+function authorSwarmFightReasons(list) {
+  if (!Array.isArray(list)) return;
+  for (const def of list) {
+    if (!def || typeof def !== 'object') continue;
+    if (!isSwarmRelevantDef(def)) continue;
+    if (typeof def.swarmReason === 'string' && def.swarmReason.trim().length >= 12) continue;
+    const sentence = typeof def.sentence === 'string' ? def.sentence.trim() : '';
+    const desc = typeof def.description === 'string' ? def.description.trim() : '';
+    const line = sentence.length >= 12 ? sentence : desc;
+    if (line.length < 12) continue;
+    const cut = line.split(/(?<=[.!?])\s/)[0].trim();
+    if (cut.length < 12) continue;
+    def.swarmReason = cut.length > 160 ? `${cut.slice(0, 157)}…` : cut;
+  }
+}
+
+authorSwarmFightReasons(MODULES);
 
 /** Counts by shelf — the door and tests read this to say what the sandbox really stocks. */
 export function swarmCatalogCoverage() {
