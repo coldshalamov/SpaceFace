@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { reportStationHandoffFailure } from './lib/stationHandoffDiagnostics.mjs';
+import { reportStationHandoffFailure, installStationHandoffTimingObserver } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
@@ -26,6 +26,7 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
+  await page.addInitScript(installStationHandoffTimingObserver);
   // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
   // harnesses never touch the machine save drawer, and store calls take the localStorage path.
   const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true });

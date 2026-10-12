@@ -116,3 +116,88 @@ test('runtime probes retain actor deadlines and instrument each observed boundar
   assert.match(market, /boundary: 'market dock visibility'/);
   for (const s of [mission, market]) assert.match(s, /DOCK_TIMEOUT_MS = 15000/);
 });
+
+test('passive long-task observer is bounded, idempotent and never installs a frame or timer pump', async () => {
+  const { installStationHandoffTimingObserver } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  let callback, installs = 0;
+  const window = {};
+  class Observer {
+    static supportedEntryTypes = ['longtask'];
+    constructor(fn) { callback = fn; installs += 1; }
+    observe(options) { assert.deepEqual(JSON.parse(JSON.stringify(options)), { type: 'longtask', buffered: true }); }
+  }
+  const sandbox = { window, PerformanceObserver: Observer,
+    requestAnimationFrame() { assert.fail('observer cannot pump frames'); },
+    setInterval() { assert.fail('observer cannot pump timers'); } };
+  const script = `(${installStationHandoffTimingObserver.toString()})();`;
+  runInNewContext(script + script, sandbox);
+  callback({ getEntries: () => Array.from({ length: 50 }, (_, i) => ({ startTime: i, duration: i + 50, attribution: 'private' })) });
+  assert.equal(installs, 1);
+  assert.equal(window.__SF_HANDOFF_TIMING.longTasks.length, 16);
+  assert.equal(window.__SF_HANDOFF_TIMING.longTasks[0].startTime, 34);
+  assert.ok(!JSON.stringify(window).includes('private'));
+  const unsupported = { window: {} };
+  runInNewContext(script, unsupported);
+  assert.equal(unsupported.window.__SF_HANDOFF_TIMING.supported, false);
+});
+
+test('timing evidence keeps bounded production witness frames and initial-paint semantics', () => {
+  const row = { wallMs: 123, executedFrames: 7, renderUpdates: 6, callbackMs: 14000,
+    renderMs: 13900, lifecycle: 'presenting', suspended: false, contextLost: false,
+    private: 'must not copy' };
+  const s = JSON.parse(JSON.stringify(collector({
+    window: { __SF_WITNESS__: { snapshot: () => row, recent: () => Array(20).fill(row) },
+      __SF_HANDOFF_TIMING: { supported: true, longTasks: Array(20).fill({ startTime: 20, duration: 14000 }) } },
+    document: { querySelectorAll: () => [], hidden: false, visibilityState: 'visible' },
+    performance: { now: () => 15000, getEntriesByType: (type) => {
+      assert.equal(type, 'paint'); return [{ name: 'first-paint', startTime: 10, duration: 0 }];
+    } },
+  })));
+  assert.equal(s.timing.witness.recent.length, 8);
+  assert.equal(s.timing.witness.current.renderMs, 13900);
+  assert.equal(s.timing.longTasks.length, 16);
+  assert.equal(s.timing.initialPaints[0].name, 'first-paint');
+  assert.ok(!JSON.stringify(s).includes('must not copy'));
+});
+
+test('broken runtime witness does not discard lane or DOM evidence', () => {
+  const s = collector({ window: { __SF_WITNESS__: { recent() { throw new Error('witness unavailable'); } } } });
+  assert.equal(s.timing.witness, null);
+  assert.equal(s.timing.witnessError, 'witness unavailable');
+  assert.equal(s.stationRootCount, 0);
+});
+
+test('failure screenshot uses uploaded artifact tree with original animations and bounded timeout', async () => {
+  const { captureStationHandoffScreenshot } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  let options;
+  const path = await captureStationHandoffScreenshot({ screenshot: async (value) => { options = value; } }, { boundary: 'mission dock identity' });
+  assert.match(path, /scratch\/check-ci-report\/station-handoff\/\d+-mission-dock-identity\.png$/);
+  assert.deepEqual(options, { path, type: 'png', timeout: 2000 });
+});
+
+test('a stuck screenshot cannot delay beyond the observer ceiling or replace original error', async (t) => {
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const original = new Error('original timeout');
+  const pending = assert.rejects(reportStationHandoffFailure({
+    evaluate: async () => ({ docked: true }), screenshot: () => new Promise(() => {}),
+  }, {}, issues, original), (e) => e === original);
+  t.mock.timers.tick(2000);
+  await pending;
+  assert.ok(logs.some((row) => /screenshot unavailable/.test(row[0])));
+});
+
+test('presentation observation exposes real frame starvation counters without stepping the game', () => {
+  const s = collector({ window: { SF: {
+    state: { perfRuntime: { readFrameSample: () => ({ callbackMs: 2, externalCallbackGapMs: 16000,
+      callbackDispatchLagMs: 3, renderMs: 1, credential: 'never' }) } },
+    loop: { getDiagnostics: () => ({ requestedFrames: 8, executedFrames: 7, renderUpdates: 6,
+      lifecycleState: 'running', suspended: false, presentationStalled: false, lastPresentMs: 1,
+      simulation: { private: 'never' } }),
+      simStep() { assert.fail('observers cannot step the game'); } },
+  } } });
+  assert.equal(s.timing.presentation.requestedFrames, 8);
+  assert.equal(s.timing.frameTiming.externalCallbackGapMs, 16000);
+  assert.ok(!JSON.stringify(s).includes('never'));
+});

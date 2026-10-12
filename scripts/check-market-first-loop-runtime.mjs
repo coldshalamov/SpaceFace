@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { reportStationHandoffFailure } from './lib/stationHandoffDiagnostics.mjs';
+import { reportStationHandoffFailure, installStationHandoffTimingObserver } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_CAPTURE = process.env.SF_MARKET_CAPTURE || '';
@@ -30,6 +30,7 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
+  await page.addInitScript(installStationHandoffTimingObserver);
   issues = collectPageIssues(page, { includeWarnings: true, playerStoreMounted: false });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
