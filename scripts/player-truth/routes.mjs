@@ -67,7 +67,23 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
     const pick = hulls.find((h) => h.id === wantHull || h.face.toLowerCase() === String(wantHull).toLowerCase());
     if (!pick) throw new Error(`hull "${wantHull}" not offered (offered: ${hulls.map((h) => h.id).join(', ')})`);
     if (pick.locked) throw new Error(`hull "${wantHull}" is locked for this profile`);
-    await page.locator(`#screens .sf-crd-hull[data-starter-id="${pick.id}"]`).first().click({ timeout: 15000 });
+    // The tile idles in a perpetual CSS motion, so Playwright's "stable" wait never settles under
+    // software GL. Click it the way a player does: a trusted mouse click at the tile's centre.
+    const tile = page.locator(`#screens .sf-crd-hull[data-starter-id="${pick.id}"]`).first();
+    await tile.scrollIntoViewIfNeeded({ timeout: 15000 }).catch(() => {});
+    const bb = await tile.boundingBox();
+    if (!bb) throw new Error(`hull "${pick.id}" tile has no box on screen`);
+    const picked = (id) => { const t = document.querySelector(`#screens .sf-crd-hull[data-starter-id="${id}"]`); return !!t && t.getAttribute('aria-pressed') === 'true'; };
+    await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    let ok = await page.waitForFunction(picked, pick.id, { timeout: 4000 }).then(() => true, () => false);
+    if (!ok) {
+      // Mouse missed (the tile is covered or reflowing): Tab-focus the tile and press Enter, as a keyboard player does.
+      const hit = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].slice(0, 3).join('.')}` : 'nothing'; }, [bb.x + bb.width / 2, bb.y + bb.height / 2]);
+      await tile.focus();
+      await page.keyboard.press('Enter');
+      ok = await page.waitForFunction(picked, pick.id, { timeout: 8000 }).then(() => true, () => false);
+      if (!ok) throw new Error(`hull "${pick.id}" did not select by mouse (centre hits ${hit}) or keyboard`);
+    }
     await page.waitForTimeout(400);
   }
   const hull = await page.evaluate(() => { const b = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected')); return b ? b.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : null; });
