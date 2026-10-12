@@ -110,3 +110,66 @@ test('starter-world: an empty or out-of-frame barge is left to its work; the rai
     assert.ok(mule && mule.id !== carrier.id, `${label}: the planned mule carries the raid`);
   }
 });
+
+test('starter-world: a barge lost to the raid leaves one marker wreck with its real lot identity', async () => {
+  const { aftermathWrecks, aftermathForSector } = await import('../src/systems/aftermathWrecks.js');
+  const sim = createSimulation({ seed: 4242, systems: [spawnBudget, encounterDirector, aftermathWrecks] });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.world.currentSectorId = 'sector_helios_prime';
+  const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 6 });
+  state.playerId = player.id;
+  state.player = state.player || { flags: {}, credits: 0, cargo: { items: {} } };
+  const carrier = sim.spawn(loadedCarrierSpec({ x: 40, z: 30 }, 12));
+  const raidPlan = planEncounters(4242, 'sector_helios_prime', 0, zonesForSector('sector_helios_prime'))
+    .find((it) => it.shapeId === 'opening_hauler_raid');
+  const dir = state.encounterDirector;
+  dir.pending = [{ ...raidPlan, dueAt: raidPlan.delay, defers: 0 }];
+  dir.pressure.combat = 30;
+  state.simTime = raidPlan.delay + 1;
+  sim.runTicks(120);
+  const live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
+  assert.equal(live.data.adoptedCarrier.entityId, carrier.id);
+  const raider = live.ids.map((id) => state.entities.get(id))
+    .find((e) => e && e.data && e.data.predationRole === 'raider');
+  assert.ok(raider, 'a designated raider is bound to the barge');
+
+  // The kill is delivered on the production event; what is asserted is the consequence it leaves.
+  carrier.alive = false;
+  const kill = { id: carrier.id, killerId: raider.id, type: 'ship', factionId: 'faction_scn',
+    pos: { ...carrier.pos }, sectorId: 'sector_helios_prime' };
+  bus.emit('entity:killed', kill);
+  bus.emit('entity:killed', { ...kill });
+  const markers = aftermathForSector(state, 'sector_helios_prime')
+    .filter((m) => m.freightIdentity && m.freightIdentity.manifestId === 'fm_starter_world_seam_lot');
+  assert.equal(markers.length, 1, 'one wreck marker for the barge, duplicate kill delivery ignored');
+  const marker = markers[0];
+  assert.equal(marker.freightIdentity.freighterKey, 'wr_starter_world_test_carrier', 'the wreck names the barge');
+  assert.equal(marker.encounterId, live.id, 'the wreck names the raid that took it');
+  // Custody is the single writer for the lot: the whole seam manifest spills as physical pods
+  // under the raid's custody, and the wreck adds no second copy of the same ore.
+  assert.equal(carrier.data.freightCustody.status, 'spilled');
+  assert.equal(carrier.data.cargoManifest.totalQty, 0, 'the hold emptied into space, not into the ledger');
+  const custody = live.data.freightCargoCustody;
+  assert.equal(custody.legalOwnerStableId, 'wr_starter_world_test_carrier', 'the pods still belong to the barge');
+  const pods = custody.pods.filter((pod) => pod.cause === 'carrier_destroyed' && pod.status === 'live');
+  assert.equal(pods.reduce((sum, pod) => sum + pod.qty, 0), 12, 'all twelve ore are floating as physical pods');
+  for (const pod of pods) {
+    const body = state.entities.get(pod.entityId);
+    assert.ok(body && body.alive !== false, `pod ${pod.podIdentity} is a live body`);
+  }
+  assert.equal(marker.manifestResidue, null, 'no double-paid residue on top of the spilled lot');
+  assert.equal(marker.killerId, raider.id);
+
+  sim.runTicks(60);
+  const wrecks = sim.registry.get('aftermathWrecks');
+  const persisted = JSON.parse(JSON.stringify(wrecks.serialize()));
+  wrecks.deserialize(persisted);
+  const back = aftermathForSector(state, 'sector_helios_prime')
+    .filter((m) => m.markerId === marker.markerId);
+  assert.equal(back.length, 1, 'the barge wreck survives save/load');
+  assert.deepEqual(back[0].freightIdentity, marker.freightIdentity);
+  assert.deepEqual(back[0].manifestResidue, marker.manifestResidue);
+  sim.dispose();
+});
