@@ -3,25 +3,25 @@
   "mode": "adventure",
   "rounds": false,
   "hasLoadout": false,
-  "playStartSim": 0.2333333333333333,
+  "playStartSim": 0.41666666666666663,
   "label": "adventure",
   "seedSet": false,
   "arena": null,
   "seed": 4242,
-  "commit": "55f38f0f7",
-  "dirty": true,
+  "commit": "350a3a4e6",
+  "dirty": false,
   "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
   "softwareGl": true,
   "headed": false,
   "browserVersion": "154.0.8037.57",
   "resolution": "960x540",
-  "when": "2026-10-12T02:53:15.178Z",
-  "wallSeconds": 1395,
-  "simSeconds": 150.4,
-  "frames": 2698,
-  "shots": 66,
+  "when": "2026-10-12T04:03:10.637Z",
+  "wallSeconds": 2564,
+  "simSeconds": 300.8,
+  "frames": 5296,
+  "shots": 127,
   "script": "idle 6 s → thrust/yaw probes → cruise: thrust bursts and turns",
-  "stopReason": "duration 150 sim s reached",
+  "stopReason": "duration 300 sim s reached",
   "pageErrors": [],
   "arenasOffered": null,
   "overall": "INCOMPLETE"
@@ -84,7 +84,7 @@
    "status": "PASS",
    "value": "0/2 probes dead",
    "threshold": "thrust Δv≥3 u/s · yaw Δ≥0.2 rad",
-   "detail": "spawn thrust 189.91 · spawn yaw 2.4",
+   "detail": "spawn thrust 191.95 · spawn yaw 2.45",
    "offenders": [],
    "moments": []
   },
@@ -102,7 +102,7 @@
    "id": "player_ship",
    "title": "Player ship visible as hero model",
    "status": "PASS",
-   "value": "0% frames bad (0/2580)",
+   "value": "0% frames bad (0/5212)",
    "threshold": "≤0.5%",
    "detail": "missing / hidden / off-frame / non-lod0 / placeholder (<300 tris) while alive in play",
    "offenders": [],
@@ -112,42 +112,88 @@
    "id": "lod_churn",
    "title": "LOD / model swap churn",
    "status": "PASS",
-   "value": "max 0/10s per entity · 0/s total",
+   "value": "max 1/10s per entity · 0/s total",
    "threshold": "≤3/10s per entity · ≤1/s total",
-   "detail": "0 on-screen swaps over 150.6 sim s across 0 entities (20 more off screen, not graded)",
-   "offenders": [],
-   "moments": []
-  },
-  {
-   "id": "popping",
-   "title": "Pop-in / pop-out on screen",
-   "status": "PASS",
-   "value": "0.4/min · worst entity 1 toggles",
-   "threshold": "≤6/min · ≤2 toggles",
-   "detail": "1 pops inside the inner 80% of the view; 0 non-projectile bodies born on screen (info)",
+   "detail": "1 on-screen swaps over 301.2 sim s across 1 entities (38 more off screen, not graded)",
    "offenders": [
     {
-     "line": "entity 5000351 (other) appeared on screen 1× — first sim 2.4 s",
-     "t": 77531.5,
-     "sim": 2.35,
+     "line": "entity 355 (other) 1 swaps in 10 s (1 total) — last @-/compiling-pipelines → @- at sim 1.4 s",
+     "t": 55921.4,
+     "sim": 1.367,
      "box": [
-      55.8,
-      238.8,
-      166.2,
-      349.2
+      791.6,
+      204.6,
+      898.4,
+      311.4
      ]
     }
    ],
    "moments": [
     {
-     "line": "entity 5000351 (other) appeared on screen 1× — first sim 2.4 s",
-     "t": 77531.5,
-     "sim": 2.35,
+     "line": "entity 355 (other) 1 swaps in 10 s (1 total) — last @-/compiling-pipelines → @- at sim 1.4 s",
+     "t": 55921.4,
+     "sim": 1.367,
      "box": [
-      55.8,
-      238.8,
-      166.2,
-      349.2
+      791.6,
+      204.6,
+      898.4,
+      311.4
+     ]
+    }
+   ]
+  },
+  {
+   "id": "popping",
+   "title": "Pop-in / pop-out on screen",
+   "status": "PASS",
+   "value": "0.4/min · worst entity 1 toggle",
+   "threshold": "≤6/min · ≤2 toggles",
+   "detail": "2 pops inside the inner 80% of the view; 0 non-projectile bodies born on screen (info)",
+   "offenders": [
+    {
+     "line": "entity 355 (other) appeared on screen 1× — first sim 1.4 s",
+     "t": 55921.4,
+     "sim": 1.367,
+     "box": [
+      791.6,
+      204.6,
+      898.4,
+      311.4
+     ]
+    },
+    {
+     "line": "entity 393 (other) appeared on screen 1× — first sim 14.2 s",
+     "t": 76838,
+     "sim": 14.167,
+     "box": [
+      185.7,
+      252.7,
+      212.3,
+      279.3
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 355 (other) appeared on screen 1× — first sim 1.4 s",
+     "t": 55921.4,
+     "sim": 1.367,
+     "box": [
+      791.6,
+      204.6,
+      898.4,
+      311.4
+     ]
+    },
+    {
+     "line": "entity 393 (other) appeared on screen 1× — first sim 14.2 s",
+     "t": 76838,
+     "sim": 14.167,
+     "box": [
+      185.7,
+      252.7,
+      212.3,
+      279.3
      ]
     }
    ]
@@ -168,17 +214,17 @@
    "status": "PASS",
    "value": "p95 0% screen · player hidden 0% · threats hidden p95 n/a · 0 s persist",
    "threshold": "≤25% · ≤10% · ≤30% · ≤3 s",
-   "detail": "645 scans of additive/transparent layers (bounding-sphere footprint on a 48×27 grid; 1 screen-sized batches excluded)",
+   "detail": "1303 scans of additive/transparent layers (bounding-sphere footprint on a 48×27 grid; 1 screen-sized batches excluded)",
    "offenders": [
     {
-     "line": "peak coverage 1% at sim 14.4 s (overdraw 0×)",
-     "t": 97945.9,
-     "sim": 14.383,
+     "line": "peak coverage 1% at sim 8 s (overdraw 0×)",
+     "t": 67402.2,
+     "sim": 8,
      "box": [
-      579,
-      315,
-      588,
-      323
+      618,
+      278,
+      626,
+      286
      ]
     },
     {
@@ -202,14 +248,14 @@
    ],
    "moments": [
     {
-     "line": "peak coverage 1% at sim 14.4 s (overdraw 0×)",
-     "t": 97945.9,
-     "sim": 14.383,
+     "line": "peak coverage 1% at sim 8 s (overdraw 0×)",
+     "t": 67402.2,
+     "sim": 8,
      "box": [
-      579,
-      315,
-      588,
-      323
+      618,
+      278,
+      626,
+      286
      ]
     }
    ]
@@ -228,32 +274,32 @@
    "id": "frame_time",
    "title": "Frame time / long tasks",
    "status": "UNKNOWN",
-   "value": "p50 72 ms · p99 238 ms · 8 long tasks ≥250 ms",
+   "value": "p50 67 ms · p99 189 ms · 11 long tasks ≥250 ms",
    "threshold": "p99 ≤50 ms · 0 long tasks ≥250 ms",
    "detail": "software GL (SwiftShader): frame time is not the player's — rerun headed on a GPU to grade",
    "offenders": [
     {
-     "line": "long task 4959 ms at sim 0.1 s (frame 120)",
-     "t": 61978.715000003576,
-     "sim": 0.067,
+     "line": "long task 8397 ms at sim 290.9 s (frame 5122)",
+     "t": 422188.4250000119,
+     "sim": 290.95,
      "box": null
     },
     {
-     "line": "long task 1317 ms at sim 0.1 s (frame 120)",
-     "t": 66939.32499998808,
-     "sim": 0.067,
+     "line": "long task 3249 ms at sim 0.4 s (frame 95)",
+     "t": 46472.27000001073,
+     "sim": 0.383,
      "box": null
     },
     {
-     "line": "long task 814 ms at sim 0.2 s (frame 124)",
-     "t": 68905.30499997735,
-     "sim": 0.2,
+     "line": "long task 1632 ms at sim 0.4 s (frame 96)",
+     "t": 49920.090000003576,
+     "sim": 0.417,
      "box": null
     },
     {
-     "line": "frame 120: 6301 ms at sim 0.1 s (96 entities, 0 draws)",
-     "t": 68239.4,
-     "sim": 0.067,
+     "line": "frame 5121: 8376 ms at sim 290.9 s (185 entities, 0 draws)",
+     "t": 430503.4,
+     "sim": 290.917,
      "box": null
     }
    ],
@@ -266,21 +312,21 @@
    "label": "spawn thrust",
    "key": "KeyW",
    "kind": "thrust",
-   "startSim": 6.3166666666666496,
-   "endSim": 7.5499999999999785,
-   "startT": 83193.72499999404,
-   "endT": 86424.50499999523,
-   "value": 189.9091033935547
+   "startSim": 6.466666666666649,
+   "endSim": 7.766666666666644,
+   "startT": 63893.75999999046,
+   "endT": 66981.25,
+   "value": 191.95050048828125
   },
   {
    "label": "spawn yaw",
    "key": "KeyD",
    "kind": "yaw",
-   "startSim": 7.5499999999999785,
-   "endSim": 8.366666666666662,
-   "startT": 86426.04499998689,
-   "endT": 88147.56999999285,
-   "value": 2.3979323835798
+   "startSim": 7.766666666666644,
+   "endSim": 8.600000000000007,
+   "startT": 66983.25499999523,
+   "endT": 68512.05000001192,
+   "value": 2.4505018731520614
   }
  ],
  "route": {
@@ -306,13 +352,13 @@
    {
     "name": "spawn",
     "ok": true,
-    "detail": "flight at sim 0.2 s",
+    "detail": "flight at sim 0.4 s",
     "t": null
    },
    {
     "name": "play",
     "ok": true,
-    "detail": "150.4 sim s flown",
+    "detail": "300.8 sim s flown",
     "t": null
    }
   ]

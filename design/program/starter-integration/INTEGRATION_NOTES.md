@@ -105,27 +105,29 @@ Useful without the sibling branches:
 
 ## Player-truth adventure
 
-Required gate for the tutorial-on circuit, run once the harness existed:
+Full tutorial-on gate, default adventure length, on this branch after the rebase onto `c15b0e913`:
 
-`npm run player-truth -- --mode=adventure --duration=150 --evidence --wall=35`
+`npm run player-truth -- --mode=adventure --wall=55`
 
-The recorded build is `55f38f0f7` (dirty). That commit was a local merge of the pre-rebase flight head `cd22d5d89` and harness `ec37c3d2e`. The scratch branch was never pushed and has been deleted. Dirty is `scripts/player-truth/run.mjs` only: an uncommitted launch used system Chrome at `/usr/bin/google-chrome` (`channel: 'chrome'`, `--no-sandbox`, `--disable-dev-shm-usage`) because Playwright's bundled Chromium is not installed on this box. That patch was reverted before the scratch branch was deleted. It is not on this branch. An empty diff of the owned flight, input, audio, camera, and tether files between `cd22d5d89` and the rebased head is the game tree this verdict grades. Master's later harness commit `da74b69c0` only prints the game entity id (`id % 1e6`) on offender lines and pluralizes the popping count. This run had no FAIL, so that wording does not move a grade.
+Recorded build `350a3a4e6`, not dirty. `src` and `scripts` were unmodified. Playwright's bundled Chromium is not installed here; a launcher outside the repo pointed the expected browser path at system Chrome with `--no-sandbox`. That wrapper is not a repo change. `SPACEFACE_PLAYER_STORE_DIR` and `SPACEFACE_USER_CONTENT_DIR` were empty.
 
-Exit code 2. Overall **INCOMPLETE**. No page errors. Seed 4242. Software GL (SwiftShader), headless Chromium 154.0.8037.57, 960×540. Wall 1395 s, play sim 150.4 s, 2698 frames, 66 screenshots. Stopped because the 150 s duration was reached. The player script was idle 6 s, then thrust and yaw probes, then cruise thrust bursts and turns.
+Exit code 2. Overall **INCOMPLETE**. No check is **FAIL**. Seed 4242. Software GL (SwiftShader), headless Chromium 154.0.8037.57, 960×540. Wall 2564 s, play sim 300.8 s, 5296 frames, 127 screenshots. Stopped because the 300 s duration was reached. The script was idle 6 s, then thrust and yaw probes, then cruise thrust bursts and turns. Tutorial hints were true. Flight began at sim 0.4 s.
 
 | Check | Result |
 |---|---|
-| route | **PASS** — main menu → mode select → preparation → spawn → play. Tutorial hints true. Default pilot and ship, Launch. Flight at sim 0.2 s. |
-| player_control | **PASS** — 0/2 probes dead. KeyW thrust Δv 189.9 over sim 6.32–7.55 s. KeyD yaw 2.40 rad over sim 7.55–8.37 s. |
+| route | **PASS** — main menu → mode select → preparation → spawn → play. |
+| player_control | **PASS** — 0/2 probes dead. Spawn thrust Δv 192.0. Spawn yaw 2.45 rad. |
 | tumble | **PASS** — longest 0 s. |
-| player_ship | **PASS** — 0/2580 frames bad. |
+| player_ship | **PASS** — 0/5212 frames bad. |
 | spawn_motion | **PASS** — 0 bodies. |
-| lod_churn | **PASS** — 0/s. |
+| lod_churn | **PASS** — max 1/10 s per entity, 0/s total. |
 | popping | **PASS** — 0.4/min, worst entity 1 toggle. |
 | vfx_coverage | **PASS** — p95 0% of the screen. |
 | readability | **UNKNOWN** — enemy 0, asteroid 0, projectile 0, pickup 0 (need 5). |
-| frame_time | **UNKNOWN** — p50 72 ms, p99 238 ms, 8 long tasks ≥250 ms. Software GL, not graded. |
+| frame_time | **UNKNOWN** — p50 67 ms, p99 189 ms, 11 long tasks ≥250 ms. Software GL, not graded. |
 | round_resolution, kills_before_input, reward_before_input, loadout | n/a |
+
+No flight, input, camera, tether, or audio change came out of this run. The two open checks are ungraded, not failed: the cruise puts no hostile, rock, shot, or pickup on screen, and the harness refuses to grade frame time on SwiftShader.
 
 Copies of the harness output, unchanged:
 
@@ -133,7 +135,7 @@ Copies of the harness output, unchanged:
 - `design/program/starter-integration/player-truth/adventure/verdict.json`
 - `design/program/starter-integration/player-truth/adventure/contact-sheet.jpg`
 
-The sheet header is `INCOMPLETE · adventure · seed 4242 · 55f38f0f7` and `FAIL: none`. Speed climbs from 0 to about 195 by sim 16 s and later holds near 180–189. The tutorial strip stays `TUTORIAL 1 / 12` for the whole 150 s. The earlier custom public session remains the evidence that a Space latch, reel, and cut, plus blur, F5, pause, and Continue, work through the public keys. This harness cruise does not press Massline, so it does not replace that session.
+The sheet header is `INCOMPLETE · adventure · seed 4242 · 350a3a4e6` and `FAIL: none`. Speed is about 195–196 through the cruise. The tutorial strip stays `TUTORIAL 1 / 12` from sim 0.9 s through sim 300.6 s. The earlier custom public session remains the evidence that a Space latch, reel, and cut, plus blur, F5, pause, and Continue, work through the public keys. This harness cruise does not press Massline, so it does not replace that session.
 
 ### Routed: the adventure cruise never arms the tether lesson
 
