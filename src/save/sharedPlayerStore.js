@@ -457,14 +457,20 @@ export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
   // never land after a newer one and out-argue it on the last-writer-wins store. An uncontended
   // push still starts synchronously (the deadline request must be visible to the caller before
   // the first await — the hung-store pin in player-save-store.test.mjs).
+  let run;
   if (!_sharedStoreWriteInFlight) {
     _sharedStoreWriteInFlight = true;
-    const run = attempt();
-    const release = () => { _sharedStoreWriteInFlight = false; };
-    _sharedStoreWriteChain = run.then(release, release);
-    return run;
+    run = attempt();
+  } else {
+    run = _sharedStoreWriteChain.then(attempt, attempt);
   }
-  const settled = _sharedStoreWriteChain.then(attempt, attempt);
-  _sharedStoreWriteChain = settled.then(() => {}, () => {});
-  return settled;
+  // Only the current tail may release queue ownership. The first request can settle
+  // while its queued successor is still writing; clearing the flag then lets a new
+  // caller bypass that successor and publish regular mirrors out of order.
+  const release = () => {
+    if (_sharedStoreWriteChain === tail) _sharedStoreWriteInFlight = false;
+  };
+  const tail = run.then(release, release);
+  _sharedStoreWriteChain = tail;
+  return run;
 }
