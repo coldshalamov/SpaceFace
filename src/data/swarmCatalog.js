@@ -129,6 +129,38 @@ export function isArmoryStock(def) {
     || def.slotType === 'mining';
 }
 
+/**
+ * Swarm is a fight in a closed room: no hold to fill, no ore to cut, no market, no scan
+ * economy, no ecology, no travel. Kit whose whole effect lives in those loops is adventure
+ * stock and stays off the Swarm shelf (owner playtest 2026-10-11: a Cargo Scanner on the
+ * armory). Whole slots first, then the utility rigs that only speak to those loops.
+ */
+const SWARM_IRRELEVANT_SLOTS = new Set(['cargo', 'mining']);
+export const SWARM_ADVENTURE_ONLY_IDS = Object.freeze(new Set([
+  // scanning / information economy
+  'mod_cargo_scanner_s', 'mod_market_data_s', 'mod_triangulation_suite_s', 'mod_survey_suite',
+  'mod_sensor_array_l', 'mod_sensor_scrambler_s', 'mod_sensor_scrambler_m',
+  'mod_cloak_mk1', 'mod_cloak_mk2',
+  // ore and salvage pickup
+  'mod_drill_amp', 'mod_tractor_beam_m',
+  // travel
+  'mod_engine_warp_l', 'mod_jump_drive_m',
+  // ecology, contamination, biological cargo
+  'mod_filter_stack_s', 'mod_filter_stack_m', 'mod_bio_spectral_pass_s', 'mod_field_coherence_meter',
+  'mod_quarantine_locker_s', 'mod_hull_purge_ring_m', 'mod_quiet_mask_s', 'mod_relay_needle_s',
+  'mod_capture_cradle_m', 'mod_containment_seal_s', 'mod_filament_contrast_s',
+  'mod_host_cartography_s', 'mod_echo_recorder_s',
+  // faction standing gates that a Crucible run never earns
+  'mod_sanction_spool', 'mod_deep_scoop_array_m',
+]));
+
+/** True when a def does something in a Swarm fight. */
+export function isSwarmRelevantDef(def) {
+  if (!def || typeof def !== 'object') return false;
+  if (SWARM_IRRELEVANT_SLOTS.has(def.slotType)) return false;
+  return !SWARM_ADVENTURE_ONLY_IDS.has(def.id);
+}
+
 let allStock = null;
 function everyStockDef() {
   if (allStock == null) {
@@ -149,6 +181,7 @@ export function swarmCatalogOffers(excludedDefIds) {
   const rows = [];
   for (const def of everyStockDef()) {
     if (excluded.has(def.id)) continue;
+    if (!isSwarmRelevantDef(def)) continue;
     rows.push({
       id: `cat_${def.id}`,
       defId: def.id,
