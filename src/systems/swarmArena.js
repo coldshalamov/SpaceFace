@@ -658,6 +658,7 @@ export const swarmArena = {
     this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
     this._cullWrecks();
+    if (wave > 1) this._settleRoom();
     this._topUp(run, wave);
     this._installSlalomWells(run);
     const lesson = payload && payload.plan && payload.plan.openingLesson;
@@ -736,6 +737,34 @@ export const swarmArena = {
    * sets the same `despawnAt` deadline the engine's own sweep reads (coreSystem.js), so a wreck
    * somebody is mid-salvage on in some other mode is never yanked out from under them.
    */
+  // Between rounds the room comes to rest. A rock thrown in the last fight would otherwise still
+  // be flying through the next round's opening breath, before the pilot has touched anything.
+  // The stop is a counter-impulse through the physics port, so Rapier stays the authority.
+  _settleRoom() {
+    const physics = this.helpers && this.helpers.combatPhysics;
+    const entities = this.state && this.state.entities;
+    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    if (!entities || typeof entities.values !== 'function') return;
+    const SETTLE_SPEED = 6;
+    const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    for (const e of entities.values()) {
+      if (!e || e.type !== 'asteroid' || e.alive === false || !e.vel) continue;
+      const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
+      const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
+      if (vx * vx + vz * vz < SETTLE_SPEED * SETTLE_SPEED) continue;
+      const mass = Number.isFinite(e.mass) && e.mass > 0 ? e.mass : 0;
+      if (mass <= 0) continue;
+      physics.applyImpulse({
+        entityId: e.id,
+        impulse: { x: -vx * mass, z: -vz * mass },
+        point: null,
+        reason: 'swarm_round_settle',
+        tick,
+        provenance: { actorId: null, tag: 'swarm_round_settle' },
+      });
+    }
+  },
+
   _cullWrecks() {
     const state = this.state;
     if (!state || !Array.isArray(state.entityList)) return;
