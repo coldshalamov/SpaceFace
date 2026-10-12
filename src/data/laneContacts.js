@@ -150,13 +150,16 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
   Object.freeze({
     // Dione Lane is the south's lawful freight floor: the Exchange's convoys leave only
     // after Dione Customs reads the lane, and the one hull Customs never reads twice is
-    // the exchange's own standing cleared run. Meridian invoice register.
+    // the exchange's own standing cleared run. Meridian invoice register. The run is
+    // Sable's want: keep the clearance streak alive so no customs crew ever opens the hull.
     id: 'lane_sable_cleared_run',
     name: 'Sable of the Cleared Run',
     callsign: 'CLEARED-RUN',
     role: 'hauler',
     gimmick: 'cleared-run',
     ship: 'ship_mule',
+    hail: 'Cleared run on the clock. Do not make me the hull the gate remembers.',
+    memoryHook: 'dione-cleared-run',
     sectorIds: Object.freeze(['sector_dione_lane']),
   }),
   Object.freeze({
@@ -186,13 +189,16 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
   Object.freeze({
     // Rhea Cinder: scorched ore buys at the Cinder Claim and the Sker approach draws
     // raiders. Brand runs the scorched lots down that thin-escort approach because the
-    // Claim pays same-shift and the raiders eat anyone slower.
+    // Claim pays same-shift and the raiders eat anyone slower. His want: enough clear runs
+    // to buy his claim out from under the burn before the front takes it.
     id: 'lane_brand_scorched_seam',
     name: 'Brand of the Scorched Seam',
     callsign: 'CINDER-ORE',
     role: 'hauler',
     gimmick: 'scorched-ore',
     ship: 'ship_mule',
+    hail: 'Scorched lot, hot approach. The front does not wait and neither do I.',
+    memoryHook: 'rhea-scorched-seam',
     sectorIds: Object.freeze(['sector_rhea_cinder']),
   }),
   Object.freeze({
@@ -210,13 +216,16 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
   Object.freeze({
     // Kepler Scar: the Bazaar under the capsized Void-Reach — stolen cargo in, surplus
     // out, favors priced. Ferr is the surplus leg: goods nobody asks about, priced to
-    // move before the capsized hull finds a new owner for them.
+    // move before the capsized hull finds a new owner for them. His want: enough surplus
+    // moved to buy his own stall off the drum before the graveyard collects the lot.
     id: 'lane_ferr_surplus_gate',
     name: 'Ferr of the Surplus Gate',
     callsign: 'SURPLUS-OUT',
     role: 'smuggler',
     gimmick: 'surplus-run',
     ship: 'ship_drifter',
+    hail: 'Surplus off the drum, priced to move. The graveyard keeps whatever stays.',
+    memoryHook: 'kepler-surplus-gate',
     sectorIds: Object.freeze(['sector_kepler_scar']),
   }),
   Object.freeze({

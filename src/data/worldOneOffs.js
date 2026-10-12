@@ -443,6 +443,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 0.2,
     spin: 0.04,
     radius: 14,
+    // PR-1: the mast is ropeable — the graveyard's one standing piece can be dragged clear of
+    // the ring or shoved into it. Heavier than a pin, lighter than a hulk section.
+    physicalBody: Object.freeze({ mass: 140 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_aftermath_wreck_corvette_turret', dx: 88, dz: -30, rot: 2.1, radius: 14 }),
@@ -557,6 +560,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 2.0,
     spin: 0.1,
     radius: 16,
+    // PR-1: the array is ropeable — she can be pulled off her old aim or pushed toward the
+    // sphere, though the transmission repeats either way.
+    physicalBody: Object.freeze({ mass: 110 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_nav_buoy', dx: 44, dz: -20, rot: 0.9, radius: 8 }),
@@ -665,6 +671,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 3.1,
     spin: 0.06,
     radius: 8,
+    // PR-1: the pin is ropeable — a light marker hull; dragging it realigns the surveyed
+    // bearing or carries the route's only proof elsewhere.
+    physicalBody: Object.freeze({ mass: 30 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_ash_pin', dx: 40, dz: -20, rot: 1.7, radius: 6 }),
