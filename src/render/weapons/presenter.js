@@ -11,6 +11,8 @@ import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
 import { HullScorchPool, heatForWeaponVariant } from './contactMarks.js';
+import { weaponEffectSeed } from './energyBoltPool.js';
+import { planPlayerSurfaceSplash } from './playerSurfaceSplash.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
 import { addShieldContact, ageShieldContacts, clearShieldContacts, shieldContactsActiveCount } from './shieldContacts.js';
 import {
@@ -39,6 +41,7 @@ const _offset = new THREE.Vector3();
 const _axis = new THREE.Vector3();
 const _invQuat = new THREE.Quaternion();
 const _worldQuat = new THREE.Quaternion();
+const _receiverCentre = new THREE.Vector3();
 
 // Bank and pitch live on the hull child; the root only carries yaw. A mark stored on the
 // root slides off the plate as soon as the ship leans. LOD and refit replace that child.
@@ -173,7 +176,8 @@ export class WeaponVfxPresenter {
     this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false, boundKey: null };
     this._targetWorldScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, nx: 1, ny: 0, nz: 0 };
     this._surfacePoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
-    this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0 };
+    this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, surfaceX: 0, surfaceY: 0, surfaceZ: 0, surfaceRadius: 0 };
+    this._lastPlayerSurfaceSplashAt = -Infinity;
     this._nearMissPlayerLocal = { x: 0, z: 0 };
     this._nearMissLocal = { x: 0, z: 0 };
     this._lightCullWorld = { x: 0, z: 0 };
@@ -335,7 +339,40 @@ export class WeaponVfxPresenter {
         this._spawnImpactSurface(captured, IMPACT_KIND.HULL, recipe, impact, nx, nz, ax, az, payload.targetId);
       }
     }
-    if (!hitShield && recipe.hull.scorch) {
+    // Player-priority world answer, not another full-screen particle overlay. Actual hit
+    // receipts name the receiver; the existing 32-mark instanced mesh owns all new splashes.
+    const targetEntity = this.state?.entities?.get?.(payload.targetId);
+    const heroRock = payload.ownerId != null && payload.ownerId === this.state?.playerId
+      && targetEntity?.type === 'asteroid';
+    let activeSurfaceSplashes = 0;
+    if (heroRock) {
+      for (const s of this.scorches.slots) if (s.alive && s.surfaceSplash) activeSurfaceSplashes++;
+    }
+    const now = Number.isFinite(this.state?.simTime) ? this.state.simTime : 0;
+    const splashPlan = heroRock ? planPlayerSurfaceSplash({
+      ownerId: payload.ownerId, playerId: this.state?.playerId,
+      targetType: targetEntity?.type, targetAlive: targetEntity?.alive !== false,
+      attached: !!this._mesh(payload.targetId), hitShield: !!hitShield,
+      visible: !this._lightCulled(pos.x, pos.z, 0.4),
+      variant: recipe.variant, quality: this.state?.settings?.video?.particleQuality,
+      now, lastAt: this._lastPlayerSurfaceSplashAt, active: activeSurfaceSplashes,
+      targetRadius: targetEntity?.radius,
+    }) : null;
+    if (splashPlan) {
+      const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.08, nz);
+      const slot = this.scorches.spawn({
+        targetId: payload.targetId, localX: captured.x, localY: captured.y, localZ: captured.z,
+        nx: captured.nx, ny: captured.ny, nz: captured.nz,
+        attached: captured.attached, boundKey: captured.boundKey,
+        surfaceSplash: true, markKind: splashPlan.markKind,
+        width: splashPlan.width, height: splashPlan.width * 0.82,
+        life: splashPlan.life, heat: 1, opacity: Math.min(1, a11y.flashOpacityScale ?? 1),
+        seed: weaponEffectSeed(String(payload.projectileId ?? (String(payload.ownerId)+':'+String(payload.targetId)+':'+Math.floor(now*1000)))),
+        r: _color.r, g: _color.g, b: _color.b,
+      });
+      if (slot >= 0) this._lastPlayerSurfaceSplashAt = now;
+    }
+    if (!hitShield && recipe.hull.scorch && !splashPlan) {
       const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.08, nz);
       const scorch = this._flashSpec(recipe.hull.scorchLife, 1.8, 1.15, 1);
       this.scorches.spawn({
@@ -858,7 +895,19 @@ export class WeaponVfxPresenter {
       const drop = !slot.persistent && (foreign || this._markEntityGone(slot.targetId));
       return drop ? false : null;
     }
-    return this._worldFromTargetLocal(slot);
+    const pose = this._worldFromTargetLocal(slot);
+    pose.surfaceRadius = 0;
+    if (slot.surfaceSplash) {
+      const target = this.state?.entities?.get?.(slot.targetId);
+      if (target?.type === 'asteroid' && Number.isFinite(target.radius) && target.radius > 0) {
+        mesh.getWorldPosition(_receiverCentre);
+        pose.surfaceX = _receiverCentre.x;
+        pose.surfaceY = _receiverCentre.y;
+        pose.surfaceZ = _receiverCentre.z;
+        pose.surfaceRadius = target.radius;
+      }
+    }
+    return pose;
   }
 
   _foreignMarkBinding(mesh, slot) {
@@ -905,7 +954,7 @@ export class WeaponVfxPresenter {
 
   // Mining carves a molten work-face into the rock. Coordinates are frame-local, matching
   // the presenter's internal contact space; the caller converts from galactic-global.
-  stampMiningScar(targetId, localX, localY, localZ, nx, ny, nz, size = 1.7, heat = 1.0) {
+  stampMiningScar(targetId, localX, localY, localZ, nx, ny, nz, size = 1.7, heat = 1.0, markKind = 0, fracture = 0) {
     const captured = this._captureTargetLocal(
       targetId,
       Number.isFinite(localX) ? localX : 0,
@@ -932,6 +981,8 @@ export class WeaponVfxPresenter {
       life: scorch.life,
       opacity: scorch.opacity0,
       heat,
+      markKind,
+      fracture,
       r: _color.r,
       g: _color.g,
       b: _color.b,

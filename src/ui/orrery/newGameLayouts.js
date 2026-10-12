@@ -1,5 +1,5 @@
 // ORRERY polish overlay for New Game (design/frontend/ORRERY.md §6 New game).
-// Layout and type only: foot rail, secondary contrast, loadout size column, 1080p zoom.
+// Layout and type only: foot rail, secondary contrast, loadout size column, 1080p left-column lift.
 // Scoped to `.orr-newgame`. Selectors/IDs unchanged. Loadout item DATA untouched.
 
 import { injectOrrery } from './tokens.js';
@@ -79,8 +79,14 @@ ${NG} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) > .fh-legend {
 @media (max-width:1366px) {
   ${NG} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
   ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label {
-    grid-template-columns:10.5em 1.1em !important; font-size:12px !important; }
+    grid-template-columns:13.2em 1.1em !important; font-size:12px !important; }
 }
+
+/* yard hull names ride above every model, so a hero's engine glow never cuts a rear name */
+${NG} .orr-yard--models > .orr-turntable__row { z-index:auto !important; }
+${NG} .orr-yard--models > .orr-turntable__row > li { z-index:120 !important; }
+${NG} .orr-yard--models > .orr-turntable__row > li .k-word {
+  text-shadow:0 0 2px rgb(4 6 9), 0 0 10px rgb(4 6 9 / .9), 0 1px 14px rgb(0 0 0 / .6) !important; }
 
 /* yard rear hulls a touch clearer as choices */
 ${NG} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { color:rgb(${BONE} / .78) !important; }
@@ -110,10 +116,26 @@ ${NG} > .sf-ng-footer .k-word.sf-back:is(:hover, :focus-visible) {
 ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 
-/* 1080p band composition zoom (archive / statistics matched); 1440p/4K already handled in screenLayouts */
+
+/* 1080p band: lift the left column only. Not the whole screen: the yard carousel places hulls and
+   names from getBoundingClientRect, and a screen-wide zoom double-scales those offsets (HITCH fell
+   onto the route, WASP behind the hero). The yard, stage and route stay at 1:1. */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
-  ${NG} { zoom:1.12; }
+  ${NG} > :is(.sf-ng-header, .sf-ng-body, .sf-ng-footer, .k-fine) { zoom:1.14; }
+  ${NG} .orr-ng-caption > .k-sentence { font-size:15.5px !important; line-height:1.5 !important; max-width:34em !important; }
+  ${NG} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
+  ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:13.5px !important; }
 }
+`;
+
+// phone: the three hull names share one row in thirds; keep the wide ones (PELICAN) inside theirs
+const NG_PHONE = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.orr-newgame.orr-newgame';
+export const NEW_GAME_PHONE_CSS = `
+${NG_PHONE} .orr-turntable > .orr-turntable__row { gap:12px !important; justify-content:space-between !important; }
+${NG_PHONE} .orr-turntable > .orr-turntable__row > li { flex:1 1 auto !important; min-width:max-content !important; }
+${NG_PHONE} .orr-turntable > .orr-turntable__row > li .k-word {
+  font-size:clamp(14px, 4.2vw, 17px) !important; letter-spacing:.08em !important; white-space:nowrap !important; }
+${NG_PHONE} .orr-turntable > .orr-turntable__row > li .k-word-sub { letter-spacing:.14em !important; }
 `;
 
 export function injectNewGameLayouts(doc = globalThis.document) {
@@ -122,6 +144,6 @@ export function injectNewGameLayouts(doc = globalThis.document) {
   if (doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = NEW_GAME_LAYOUT_CSS;
+  style.textContent = NEW_GAME_LAYOUT_CSS + NEW_GAME_PHONE_CSS;
   doc.head.appendChild(style);
 }
