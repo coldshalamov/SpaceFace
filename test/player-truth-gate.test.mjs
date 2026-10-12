@@ -103,6 +103,18 @@ test('parseArgs keeps a bounded hull x viewport matrix, and --gate replaces its 
   assert.equal(passes[1].requireRounds, 3);
   assert.equal(passes[1].duration, 300);
   assert.deepEqual(gatePasses(parseArgs(['--mode=adventure', '--gate', '--tag=cruise'])), [{ gatePass: 'active', tag: 'cruise' }]);
+  const activeOnly = parseArgs(['--mode=swarm', '--seed=4242', '--gate=active', '--tag=seed4242-r2']);
+  assert.equal(activeOnly.gate, 'active');
+  assert.equal(activeOnly.seed, 4242);
+  const only = gatePasses(activeOnly);
+  assert.equal(only.length, 1);
+  assert.equal(only[0].gatePass, 'active');
+  assert.equal(only[0].idle, 3);
+  assert.equal(only[0].rounds, 3);
+  assert.equal(only[0].requireRounds, 3);
+  assert.equal(only[0].duration, 300);
+  assert.equal(gatePasses(parseArgs(['--mode=swarm', '--gate=idle'])).length, 1);
+  assert.throws(() => gatePasses(parseArgs(['--mode=swarm', '--gate=nope'])), /--gate must be/);
 });
 
 test('pinned spans name the solid body the ship sits on', async () => {

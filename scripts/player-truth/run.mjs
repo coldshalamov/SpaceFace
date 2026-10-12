@@ -6,7 +6,8 @@
 //   flags: --headed (GPU Chrome, preferred) · --rounds=3 · --duration=<sim s> · --wall=<min>
 //          --idle=<sim s> · --viewport=WxH (1280x720 headed, 960x540 software GL) · --out=<dir> · --tag=<suffix> (label suffix, e.g. idle) · --evidence (copy compact result
 //          into design/program/player-truth/<label>/)
-//   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL) · --viewports=960x540,1280x720,1920x1080
+//   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
+//          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
 //          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · browser: bundled Chromium
 //          (`npx playwright install chromium`), else CHROME_PATH or /opt/google/chrome/chrome
 //
@@ -42,7 +43,7 @@ export function parseArgs(argv) {
     if (k === 'headed' || k === 'gpu') a.headed = true;
     else if (k === 'evidence') a.evidence = true;
     else if (k === 'fight') a.fight = true;
-    else if (k === 'gate') a.gate = true;
+    else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
@@ -60,10 +61,13 @@ export function gatePasses(args) {
   const roundMode = args.mode === 'swarm' || args.mode === 'gauntlet';
   if (!args.gate) return [{}];
   if (!roundMode) return [{ gatePass: 'active', tag: args.tag }];
-  return [
-    { gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 },
-    { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) },
-  ];
+  const which = args.gate === true ? 'both' : String(args.gate);
+  const idle = { gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 };
+  const active = { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) };
+  if (which === 'idle') return [idle];
+  if (which === 'active') return [active];
+  if (which === 'both') return [idle, active];
+  throw new Error(`--gate must be idle, active, or omitted for both (got ${which})`);
 }
 
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
@@ -124,7 +128,16 @@ async function runOne(args, arena, extra = {}) {
   });
   const page = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1 });
   const pageErrors = [];
+  const browserNotes = [];
+  const note = (line) => { if (browserNotes.length < 12) browserNotes.push(String(line).replace(/\s+/g, ' ').trim().slice(0, 180)); };
   page.on('pageerror', (e) => pageErrors.push(String(e.message || e).slice(0, 200)));
+  browser.on('disconnected', () => note('browser disconnected'));
+  page.on('crash', () => note('page crashed'));
+  page.on('close', () => note('page closed'));
+  const child = typeof browser.process === 'function' ? browser.process() : null;
+  if (child && child.stderr) child.stderr.on('data', (buf) => {
+    for (const line of String(buf).split('\n')) if (/FATAL|oom|killed|crash|SwiftShader|GL out|aw, snap/i.test(line)) note(line);
+  });
   let lastProgress = 0; let progressMark = null;
   let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false;
 
@@ -266,8 +279,11 @@ async function runOne(args, arena, extra = {}) {
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
   } catch (err) {
-    stopReason = `harness/route error: ${String(err && err.message || err).split('\n')[0].slice(0, 200)}`;
+    const head = String(err && err.message || err).split('\n')[0].slice(0, 180);
+    const extra = browserNotes.length ? ` [${browserNotes.join(' | ')}]` : '';
+    stopReason = `harness/route error: ${head}${extra}`.slice(0, 400);
     trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
+    if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
     console.error(err);
     await shoot('route failure', false);
   } finally {
