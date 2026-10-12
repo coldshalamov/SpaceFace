@@ -12098,21 +12098,44 @@ export const missions = {
     return !ob || (ob.active && !ob.finished) || ob.finished === false;
   },
 
+  // The mission log prints "15m left" from deadline_s - simTime. Parking already
+  // takes the row off the expiry walk. Shift the deadline with simTime so that
+  // window does not shrink, and does not expire, while the swarm match is the screen.
+  _holdParkedContractClocks(state) {
+    const parked = state && state.missions && state.missions._swarmParkedActive;
+    if (!Array.isArray(parked)) return;
+    const now = Number(state.simTime);
+    if (!Number.isFinite(now)) return;
+    for (const mission of parked) {
+      if (!mission || !Number.isFinite(Number(mission.deadline_s))) continue;
+      if (!Number.isFinite(mission._swarmClockParkedAt)) {
+        mission._swarmClockParkedAt = now;
+        mission._swarmClockDeadline = mission.deadline_s;
+      }
+      mission.deadline_s = mission._swarmClockDeadline + (now - mission._swarmClockParkedAt);
+    }
+  },
+
   // A swarm run boots a full Helios game, so the starter contract would stay tracked
   // and, once untracked, the corridor idle objective would say "Dock at Helios Station".
   // Park the live list and clear both waypoint kinds. The mission status stays active.
-  // Restore when the match is over. Idempotent: missions.update calls this every tick.
+  // Restore when the match is over, including a quit straight to the menu (run phase
+  // inactive). Idempotent: missions.update calls this every tick.
   // The HUD's next owner after this is the story beat ("choose the next story action").
   // Hiding that line, and the RADIO / COMMS / HAIL tape, is the crucible-focus stylesheet.
   _releaseCampaignNavForSwarm(state = this.state) {
     const bag = state && state.missions;
     if (!swarmScreenIsLive(state)) {
       if (bag && Array.isArray(bag._swarmParkedActive)) {
+        this._holdParkedContractClocks(state);
         const parked = bag._swarmParkedActive;
         bag._swarmParkedActive = null;
         if (!Array.isArray(bag.active)) bag.active = [];
         for (const mission of parked) {
-          if (mission && !bag.active.includes(mission)) bag.active.push(mission);
+          if (!mission) continue;
+          delete mission._swarmClockParkedAt;
+          delete mission._swarmClockDeadline;
+          if (!bag.active.includes(mission)) bag.active.push(mission);
         }
       }
       return false;
@@ -12131,6 +12154,7 @@ export const missions = {
       }
       bag.active = [];
     }
+    this._holdParkedContractClocks(state);
     return true;
   },
 
@@ -12156,7 +12180,7 @@ export const missions = {
       : (m.active || []);
     // Strip transient runtime fields (entity ids) from active missions.
     const active = source.map((a) => {
-      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, ...rest } = a;
+      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, _swarmClockParkedAt, _swarmClockDeadline, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema

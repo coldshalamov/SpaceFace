@@ -8,7 +8,8 @@ test('Swarm threat marks are an intentional x-ray: depthTest false draws through
   const camera = new THREE.PerspectiveCamera(); camera.rotation.x = -.7;
   const enemy = { type: 'ship', team: 1, radius: 12 };
   syncSwarmThreatPlate(hull, enemy, camera);
-  const plate = hull.getObjectByName('sf-swarm-threat-plate'), core = hull.getObjectByName('sf-swarm-threat-core');
+  const plate = hull.getObjectByName('sf-swarm-threat-plate');
+  assert.equal(hull.getObjectByName('sf-swarm-threat-core'), undefined, 'no filled card behind the hull');
   assert.equal(plate.material.depthTest, false, 'marks-through-cover is intentional x-ray; the hull must not hide the plate');
   const chevron = hull.getObjectByName('sf-swarm-threat-chevron');
   assert.ok(chevron, 'a hostile hull wears a heading wedge');
@@ -16,7 +17,7 @@ test('Swarm threat marks are an intentional x-ray: depthTest false draws through
   const orientation = new THREE.Quaternion(); plate.getWorldQuaternion(orientation);
   assert.ok(orientation.angleTo(camera.quaternion) < 1e-6, 'parent rotation does not tip the camera-facing rim');
   syncSwarmThreatPlate(hull, { ...enemy, team: 0 }, camera);
-  assert.equal(plate.visible, false); assert.equal(core.visible, false);
+  assert.equal(plate.visible, false);
   assert.equal(chevron.visible, false);
   syncSwarmThreatPlate(hull, enemy, camera); assert.equal(plate.visible, true);
 });

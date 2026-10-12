@@ -171,7 +171,8 @@ export function isSwarmRelevantDef(def) {
  * swarmReason, then the air sentence, then the first sentence of the description.
  * Relevant MODULES rows are stamped at load (authorSwarmFightReasons) so the
  * reason lives on the module. Weapons keep the derived sentence. Adventure-only
- * rows are not stamped.
+ * rows are not stamped. Adventure never reads swarmReason: the yard line is
+ * arsenalSentence (identity, then sentence, then description).
  */
 export function swarmFightReason(def) {
   if (!def || typeof def !== 'object') return '';
@@ -253,6 +254,12 @@ function rowSlotOf(defId) {
  * stay untouched, and a hand-authored swarmReason of 12 characters or more wins.
  * Weapons are left alone: their derived sentence is the reason, and the module
  * table is what the shelf contract asked to carry.
+ *
+ * This mutates the shared MODULES objects at import. That is intentional and
+ * narrow: the field is additive, adventure-only ids are skipped, and no
+ * adventure reader consults it. arsenalSentence (the yard) ignores swarmReason.
+ * Offer-time derivation would drop the line off the module the shelf contract
+ * asked to carry.
  */
 function authorSwarmFightReasons(list) {
   if (!Array.isArray(list)) return;

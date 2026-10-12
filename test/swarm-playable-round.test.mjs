@@ -6,7 +6,9 @@ import { MODULES } from '../src/data/modules.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { offerDraft } from '../src/data/survivalDraft.js';
 import { isSwarmRelevantDef, swarmFightReason } from '../src/data/swarmCatalog.js';
+import { arsenalSentence } from '../src/data/arsenalIdentity.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
+import { createRunState } from '../src/core/runState.js';
 import { missions, resolveCorridorOpeningObjective } from '../src/systems/missions.js';
 
 const HARNESS_IRRELEVANT = /cargo|market|trade|uplink|drill|prospect|bio-?spectral|biofilm|survey|refin|mining/i;
@@ -100,4 +102,75 @@ test('a live swarm run parks the campaign objective and gives it back after', ()
   assert.equal(sys.state.ui.trackedMissionId, mission.id);
   assert.ok(sys.state.missions.active.includes(mission));
   assert.equal(sys.state.missions._swarmParkedActive, null);
+});
+
+test('the adventure yard line ignores a stamped swarmReason', () => {
+  const mod = MODULES.find((row) => typeof row.swarmReason === 'string' && row.swarmReason.length >= 12);
+  assert.ok(mod, 'a fight module carries a swarmReason');
+  const copy = { ...mod, swarmReason: 'SWARM-ONLY-REASON that the yard must not read.' };
+  assert.equal(arsenalSentence(copy), arsenalSentence(mod));
+  assert.equal(arsenalSentence(copy).includes('SWARM-ONLY-REASON'), false);
+  const unknown = arsenalSentence({
+    id: 'not_in_the_arsenal',
+    sentence: 'The yard sentence.',
+    description: 'The long description.',
+    swarmReason: 'SWARM-ONLY-REASON that the yard must not read.',
+  });
+  assert.equal(unknown, 'The yard sentence.');
+});
+
+test('a timed contract does not tick while parked and returns on the menu', () => {
+  const sys = Object.create(missions);
+  const start = 1000;
+  const windowS = 15 * 60;
+  const mission = {
+    id: 'haul-15m', status: 'active', title: 'Haul', type: 'delivery',
+    deadline_s: start + windowS,
+  };
+  sys.bus = { emit() {} };
+  sys.state = {
+    mode: 'flight',
+    tick: 0,
+    simTime: start,
+    player: { credits: 0 },
+    run: { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 },
+    ui: { trackedMissionId: mission.id },
+    nav: { waypoint: null },
+    missions: {
+      active: [mission], boards: {}, completedLog: [], receipts: [], nextId: 2,
+    },
+    story: { beatIndex: 0, branch: null, flags: {} },
+  };
+  sys.update(1 / 60, sys.state);
+  assert.ok(Math.abs((mission.deadline_s - start) - windowS) < 1e-6);
+  for (let i = 0; i < 5; i++) {
+    sys.state.simTime += 200;
+    sys.state.tick += 1;
+    sys.update(1 / 60, sys.state);
+  }
+  assert.equal(mission.status, 'active');
+  assert.equal(sys.state.missions.receipts.length, 0);
+  assert.ok(sys.state.missions._swarmParkedActive.includes(mission));
+  assert.deepEqual(sys.state.missions.active, []);
+  assert.ok(Math.abs((mission.deadline_s - sys.state.simTime) - windowS) < 1e-6, 'the 15m window stays put');
+  const saved = sys.serialize();
+  const savedRow = saved.active.find((row) => row.id === mission.id);
+  assert.ok(savedRow);
+  assert.equal(savedRow._swarmClockParkedAt, undefined);
+  assert.ok(Math.abs((savedRow.deadline_s - sys.state.simTime) - windowS) < 1e-6);
+  // Quit straight to the menu. createRunState is the inactive run exit-to-menu installs.
+  sys.state.run = createRunState();
+  sys.state.simTime += 10;
+  sys.update(1 / 60, sys.state);
+  assert.equal(sys.state.run.phase, 'inactive');
+  assert.equal(sys.state.run.kind, 'adventure');
+  assert.ok(sys.state.missions.active.includes(mission));
+  assert.equal(sys.state.missions._swarmParkedActive, null);
+  assert.equal(mission.status, 'active');
+  assert.equal(mission._swarmClockParkedAt, undefined);
+  assert.ok(Math.abs((mission.deadline_s - sys.state.simTime) - windowS) < 1e-6);
+  sys.state.simTime += 25;
+  sys.update(1 / 60, sys.state);
+  assert.equal(mission.status, 'active');
+  assert.ok(Math.abs((mission.deadline_s - sys.state.simTime) - (windowS - 25)) < 1e-6, 'the clock runs again after the menu');
 });

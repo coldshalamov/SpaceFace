@@ -1,7 +1,7 @@
 // Swarm residual readability contracts outside the Perf Lane.
-// Threat markers are a camera-facing crimson rim plus a faction card behind the hull.
-// The card is opaque MeshBasic (depthWrite on, not additive), so it stays out of the
-// combat-VFX budget. The rim is a thin stroke, depthTest off, so cover cannot hide it.
+// Threat markers are a thin camera-facing crimson rim plus a heading wedge.
+// There is no filled faction card: a disc the size of the hull reads as a red coin.
+// The rim is a thin stroke, depthTest off, so cover cannot hide it.
 // Foundry room solids are dark furniture. The generic station (white greeble, rings, blinkers)
 // read as a geodesic sitting on the pilot.
 import test from 'node:test';
@@ -56,37 +56,17 @@ test('a hostile ship wears one opaque threat rim that faces the camera', () => {
   assert.notEqual(plate.material.blending, THREE.AdditiveBlending);
   assert.equal(plate.material.toneMapped, true, 'an unmapped rim blooms into a white ring');
   assert.ok(plate.material.opacity > 0.02);
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined, 'a filled card paints the ship into a red coin');
 
   const worldQ = plate.getWorldQuaternion(new THREE.Quaternion());
   const plateZ = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQ);
   const camZ = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
   assert.ok(plateZ.dot(camZ) > 0.999, 'plate +Z matches the camera +Z, so the face looks back at the lens');
 
-  // Faction card. It shares the rim's scale so a 0.86 disc covers the threat
-  // box, and it is its own material: depth-tested, drawn behind the hull.
-  const core = mesh.getObjectByName('sf-swarm-threat-core');
-  assert.ok(core && core.isMesh, 'hostile team 1 mounts a faction card');
-  assert.equal(core.geometry.type, 'CircleGeometry');
-  assert.equal(core.geometry.parameters.radius, 0.86);
-  assert.ok(core.geometry.parameters.radius > 0.7, 'the card covers the readability sample');
-  assert.notEqual(core.material, plate.material);
-  assert.equal(core.material.color.getHex(), 0xff1a3a);
-  assert.equal(core.material.depthTest, true);
-  assert.equal(core.material.depthWrite, true, 'the card has to hold its pixels against the nebula');
-  assert.equal(core.material.toneMapped, true);
-  assert.equal(core.material.blending, THREE.NormalBlending);
-  assert.equal(core.scale.x, plate.scale.x);
-  assert.equal(core.scale.y, plate.scale.y);
-  assert.equal(core.renderOrder, -2);
-  assert.equal(core.visible, true);
-  const coreZ = new THREE.Vector3(0, 0, 1).applyQuaternion(core.getWorldQuaternion(new THREE.Quaternion()));
-  assert.ok(coreZ.dot(camZ) > 0.999, 'the faction card faces the camera with the rim');
-
   const again = mesh.getObjectByName('sf-swarm-threat-plate');
-  const againCore = mesh.getObjectByName('sf-swarm-threat-core');
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
   assert.equal(mesh.getObjectByName('sf-swarm-threat-plate'), again, 'a second sync reuses the plate');
-  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), againCore, 'a second sync reuses the faction card');
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined);
 
   const other = plateOn(hostile(3, 1), null, null).plate;
   assert.ok(other);
@@ -103,19 +83,16 @@ test('a scaled hull does not inflate the threat plate past the ship', () => {
   mesh.updateMatrixWorld(true);
   const plate = mesh.getObjectByName('sf-swarm-threat-plate');
   const world = plate.getWorldScale(new THREE.Vector3());
-  const core = mesh.getObjectByName('sf-swarm-threat-core');
-  const coreWorld = core.getWorldScale(new THREE.Vector3());
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined);
   assert.ok(Math.abs(world.x - 8) < 1e-3, `world radius ${world.x} should be 1×8`);
   assert.ok(Math.abs(world.y - 8) < 1e-3);
-  assert.ok(Math.abs(coreWorld.x - world.x) < 1e-3, 'the faction card uses the rim scale');
-  assert.ok(Math.abs(coreWorld.y - world.y) < 1e-3);
   // Outer edge sits on the silhouette. It must not grow past the ship into the
   // readability background ring (d > 1.2r).
   assert.ok(world.x <= 8 * 1.05);
   assert.ok(world.x >= 8 * 0.99);
 });
 
-test('a cohort mark clamps the faction card to the hull, and a heading wedge points along the nose', () => {
+test('a cohort mark is clamped to 1.12× and the wedge stays on the nose', () => {
   const mesh = new THREE.Group();
   // entity.rot = PI/2 is world heading +Z. The renderer applies mesh.rotation.y = -entity.rot.
   mesh.rotation.y = -Math.PI / 2;
@@ -125,12 +102,10 @@ test('a cohort mark clamps the faction card to the hull, and a heading wedge poi
   syncSwarmThreatPlate(mesh, entity, camera);
   mesh.updateMatrixWorld(true);
   const plate = mesh.getObjectByName('sf-swarm-threat-plate');
-  const core = mesh.getObjectByName('sf-swarm-threat-core');
   const chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
   const plateWorld = plate.getWorldScale(new THREE.Vector3());
-  const coreWorld = core.getWorldScale(new THREE.Vector3());
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined, 'the cohort mark is a rim, not a filled card');
   assert.ok(Math.abs(plateWorld.x - 12 * 1.12) < 1e-3, `bracket world radius ${plateWorld.x} should clamp to 1.12×12`);
-  assert.ok(Math.abs(coreWorld.x - plateWorld.x) < 1e-3, 'the faction card fills the bracket, not a hole inside it');
   assert.ok(chevron && chevron.isMesh);
   assert.equal(chevron.geometry.type, 'ConeGeometry');
   assert.equal(chevron.material, plate.material);
@@ -147,14 +122,9 @@ test('a cohort mark clamps the faction card to the hull, and a heading wedge poi
   // the nose, inside the hull sample, even when the caller asks for a sky-sized halo.
   const plateReach = chebyshevReach(mesh, plate);
   const chevronReach = chebyshevReach(mesh, chevron);
-  const cardReach = chebyshevReach(mesh, core);
   assert.ok(plateReach <= 12 * 1.12 + 1e-3, `rim reaches ${plateReach}, past the 1.12 cap`);
   assert.ok(chevronReach <= 12 * 0.7 + 1e-3, `wedge reaches ${chevronReach}, into the background ring`);
   assert.ok(chevronReach > 12 * 0.4, 'the wedge still reads as a nose, not a speck at the origin');
-  // Chebyshev of a tilted disc is at least radius/√2. 0.86 × 1.12 × 12 / √2 ≈ 8.2,
-  // so the pin is the geometry (0.86 on the bracket scale), not an axis-aligned reach.
-  assert.ok(cardReach > 12 * 0.5, `card reaches ${cardReach}, a speck instead of a faction disc`);
-  assert.ok(cardReach <= 12 * 1.2, `card reaches ${cardReach}, into the background ring`);
   syncSwarmThreatPlate(mesh, { type: 'ship', team: 0, radius: 12 }, camera);
   assert.equal(chevron.visible, false);
 });
@@ -189,7 +159,7 @@ test('friendly teams and non-ships grow no threat plate', () => {
   for (const team of [null, undefined, 0, 2]) {
     const built = plateOn({ type: 'ship', team, radius: 8 }, null, null);
     assert.equal(built.plate, undefined, `team ${team} stays unmarked`);
-    assert.equal(built.mesh.getObjectByName('sf-swarm-threat-core'), undefined, `team ${team} grows no inner hoop`);
+    assert.equal(built.mesh.getObjectByName('sf-swarm-threat-core'), undefined, `team ${team} grows no card`);
   }
   const rockBuilt = plateOn({ type: 'asteroid', team: 1, radius: 8 }, null, null);
   assert.equal(rockBuilt.plate, undefined);
@@ -210,7 +180,8 @@ test('a hostile hull is tinted on a clone and the shared material stays put', ()
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
   assert.notEqual(hull.material, shared);
   assert.equal(hull.material.emissive.getHex(), 0xff2438);
-  assert.ok(hull.material.emissiveIntensity >= 0.9);
+  assert.equal(hull.material.emissiveIntensity, 0.5);
+  assert.equal(hull.material.userData.spacefaceSharedAsset, true, 'despawn must not free a tint shared by other hulls');
   assert.equal(shared.emissive.getHex(), 0x111111);
   assert.equal(shared.emissiveIntensity, 0.2);
   assert.equal(shared.color.getHex(), 0x222222);
@@ -221,6 +192,20 @@ test('a hostile hull is tinted on a clone and the shared material stays put', ()
   const stamped = hull.material;
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
   assert.equal(hull.material, stamped, 'a stable child count does not clone again');
+  const other = new THREE.Group();
+  const otherHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared);
+  other.add(otherHull);
+  syncSwarmThreatPlate(other, hostile(1, 8), camera);
+  assert.equal(otherHull.material, stamped, 'one tinted clone per source material');
+  const basicShared = new THREE.MeshBasicMaterial({ color: 0x8899aa });
+  const basicMesh = new THREE.Group();
+  const basicHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), basicShared);
+  basicMesh.add(basicHull);
+  syncSwarmThreatPlate(basicMesh, hostile(1, 8), camera);
+  const mixed = new THREE.Color(0x8899aa).lerp(new THREE.Color(0xff2438), 0.22);
+  assert.equal(basicHull.material.color.getHex(), mixed.getHex());
+  assert.equal(basicShared.color.getHex(), 0x8899aa);
+  assert.notEqual(basicHull.material, basicShared);
 });
 
 function foundry(kind, radius = 16) {
