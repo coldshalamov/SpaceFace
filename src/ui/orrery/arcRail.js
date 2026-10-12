@@ -351,7 +351,7 @@ function drawFace(p, re) {
  *                                  the screens that pass it get it; the grouped dial never does.
  */
 export function createArcRail({ host, list, frame = null, extra = [], emblemUrl = null, engraving = '', grouped = false, dense = false,
-  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null, clearOf = null, freeTrack = false } = {}) {
+  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null, clearOf = null, freeTrack = false, seat = 6 } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   // Headless shims (tests) mount screens without a real document: the rail is presentation only, so
   // it steps aside and the menu stays exactly the list the screen built.
@@ -598,7 +598,28 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         const id = `orr-arcrail-clear-${++clearSeq}`;
         const m = svg('mask', { id, maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H });
         m.appendChild(svg('rect', { x: 0, y: 0, width: W, height: H, fill: '#fff' }));
-        for (const b of boxes) m.appendChild(svg('rect', { x: (b.left - hr.left - 8).toFixed(1), y: (b.top - hr.top - 6).toFixed(1), width: (b.width + 16).toFixed(1), height: (b.height + 12).toFixed(1), rx: 4, fill: '#000' }));
+        // A clear ZONE, not a cut-out (UI polish 2026-10-12): a box knocked out of the rings left every
+        // stroke ending flush against a letter, and a padded box read as a rectangle cut through the
+        // dial. Instead the dial rises out of the dark BELOW the words: nothing of it is drawn above
+        // their foot (plus a share of their height), and it fades up over a soft band under them, so
+        // the name stands in open air with the rings coming up beneath it. A static gradient, not a
+        // blur filter — the masked group holds the drifting orbit, and a filter would re-run per frame.
+        const right = Math.max(...boxes.map((b) => b.left + b.width)) - hr.left;
+        const foot = Math.max(...boxes.map((b) => b.top + b.height)) - hr.top;
+        const h = Math.max(12, ...boxes.map((b) => b.height));
+        const y0 = foot + h * 0.22;
+        const y1 = y0 + h * 1.3;
+        const x1 = right + h * 0.9;
+        const gid = `${id}-fade`;
+        const fade = svg('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: '0', y1: y0.toFixed(1), x2: '0', y2: y1.toFixed(1) });
+        fade.append(
+          svg('stop', { offset: '0', 'stop-color': '#000' }),
+          svg('stop', { offset: '.55', 'stop-color': '#7a7a7a' }),
+          svg('stop', { offset: '1', 'stop-color': '#fff' }),
+        );
+        m.appendChild(fade);
+        m.appendChild(svg('rect', { x: 0, y: 0, width: x1.toFixed(1), height: y0.toFixed(1), fill: '#000' }));
+        m.appendChild(svg('rect', { x: 0, y: y0.toFixed(1), width: x1.toFixed(1), height: (y1 - y0).toFixed(1), fill: `url(#${gid})` }));
         const defs = svg('defs'); defs.appendChild(m);
         const back = svg('g', { mask: `url(#${id})` });
         while (layer.firstChild) back.appendChild(layer.firstChild);
@@ -745,7 +766,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     heads = [];
     all.forEach((row, i) => {
       const { x, y } = geo.anchors[i];
-      let cursor = x + 6;
+      // seat: how far past its tick a row's first word starts (a screen whose awake word steps
+      // toward the dial passes more, so the stepped word never lands on the tick or the leader)
+      const seatPx = typeof seat === 'function' ? Number(seat(W, H)) || 6 : seat;
+      let cursor = x + seatPx;
       let rowTop = y;
       let head = null;
       let record = null;

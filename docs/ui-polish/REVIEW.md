@@ -1,6 +1,7 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-4` (PR #322) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-5` (PR #325) · stacked on `master` (includes merged #322).
+
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
 
@@ -30,9 +31,9 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 | Screen (bench id) | Status | Notes / prioritized issues |
 |---|---|---|
-| `title` / `mainMenu` | SURVEYED | Ledger DONE earlier; re-judge later if polish stack returns |
+| **`title`** / **`mainMenu`** | **DONE** | Tab order + logo clear of the orrery rings on ui-polish-5 (§ Main menu below) |
 | `motionAsk` | SURVEYED | Inherits title |
-| **`new-game`** / `newGame` | **DONE** | See § New Game below — this session |
+| **`new-game`** / `newGame` | **DONE** | See § New Game below; yard/loadout fixes on ui-polish-5 (§ New Game yard fixes) |
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
@@ -47,6 +48,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
+| **`crucible-results`** | **DONE** (ui-polish-5) | See § Crucible results below |
 | `orrery-flight` | SURVEYED | |
 | `comms-radial` | SURVEYED | |
 | `wingman-radial` | SURVEYED | |
@@ -375,8 +377,8 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P1 | Crucible | Step tabs mix three styles: boxed "01 ENCOUNTER", bare "02 SHIP & KIT", and lowercase "03 / Armory". **Fixed** (one uppercase tab face; selected = Hand underline; muted `03 ARMORY` / `03 LAUNCH`). |
 | P1 | Settings / Video | Live HUD preview's FOV readout collides with the speed dial at 1280 width. |
 | P1 | Settings | Value numerals (52%, 1.00x) use the thin read face while the rest of the row is Archivo legend caps — reads as two different products. |
-| P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. |
-| P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. |
+| P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. **Fixed** (Tab walks verbs → reference line → Credits/Achievements, wraps). |
+| P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. **Fixed** (dial fades up from under the name; awake verb seated clear of tick + leader). |
 | P2 | Load | "No saves yet" is ~50% bone on void, under contrast for body copy. **Fixed** (emph ≥.94, empty detail .92, vacant word .9 + open-berth glow). |
 | P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). **Fixed** (size column, no ·; contrast + foot keycap). |
 | P2 | Settings | Scroll lists fade out at the bottom (Engine trails, Boost / Dash) without a scroll affordance. |
@@ -404,10 +406,38 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/archiveLayouts.js`: Mission Log foot keycap rail, secondary contrast, beam/lane/dial brighten, 1080p zoom. Selectors/IDs unchanged.
 - `src/ui/orrery/constellationLayouts.js`: Achievements foot keycap rail, secondary contrast, dial/stage chrome brighten, 1080p (+1440/4K) zoom. Selectors/IDs unchanged. RESEARCH block untouched.
 - `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
-- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
+- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p left-column lift (the screen-wide zoom was replaced on ui-polish-5). Selectors/IDs and loadout data unchanged.
 - `src/ui/orrery/constellationLayouts.js` + `src/ui/screens/techTree.js`: Tech Tree / Research foot keycap rail, hour-verb curve clip (no dial tangle), secondary contrast, rim chrome, 1080p zoom. Selectors/IDs unchanged. ACHIEVEMENTS block untouched.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
 
+## Crucible results (`crucible-results`) — ui-polish-5 (2026-10-12)
+
+New overlay `src/ui/orrery/crucibleResultsLayouts.js`, injected from the results mount (one import + one call in `crucible.js`). Scoped to `.sf-crucible-results.has-deathdial`; no DOM, selector or ID changes.
+
+- **Fixed (P0):** the left column was two clipped scrollers. At 720p *What you built* ran into *The run* and the share codes faded out; at 1080p *Share* showed a title with nothing under it. Now it is one scroll column in reading order: figures, the run, the build, results sheet, stunt combo, share. A bottom fade shows there is more.
+- **Fixed (P0, 390×844):** the dial sat on top of the column and the figures overlapped ("6 31 24 88"). The phone layout now stacks title, dial, take, column, with the ways out docked at the bottom on a solid fade. The figures are a 2×2 grid, the wave engraving is hidden where it hit STARBOARD, and the short hit legend replaces the long one.
+- **Finish (P1):** each band title runs into a hairline. The share codes are framed fields with an underlined save link. Story and lead copy is brighter. The 1080p band lifts the figures, copy and build verbs.
+- Checked at 1280×720, 1920×1080 and 390×844, including scrolled to the bottom. Shots are in `/workspace/spaceface-scratch/ui-shots/results/` (not committed).
+
+## New Game yard fixes (`new-game`) — ui-polish-5 (2026-10-12)
+
+CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-data changes.
+
+- **Fixed (P0, 1080p):** HITCH / SKATER sat on the *First 15 minutes* route and WASP was cut by the hero ship. Cause: the screen-wide 1.12 zoom from the earlier New Game pass. The yard carousel places hulls and names from `getBoundingClientRect`, so the zoom scaled those offsets twice. The zoom now applies only to the left column (header, fields, foot, fine print), the same way the 1440p rule in `screenLayouts.js` already does it. The yard, stage and route stay at 1:1, and the caption copy and loadout get a small type lift instead.
+- **Fixed (P1):** hull names sit above every ship model, with a dark halo, so a hero's engine glow no longer covers a rear name.
+- **Fixed (P1, 720p):** SHIELD BOOSTER ran into its size letter. The loadout name column is wider at ≤1366px.
+- **Fixed (P1, 390×844):** PELICAN and WASP ran together in the *Start as* row. Names now size to their content, slightly smaller, with a fixed gap.
+- Checked at 1280×720, 1366×768, 1920×1080, 2560×1440 and 390×844; `--walk` exercised 12 controls with all three hulls brought to the front. `test/yard-carousel` and the new-game tests pass (50/50). Shots are in `/workspace/spaceface-scratch/ui-shots/ng5/` (not committed).
+
+## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
+
+`src/ui/screens/mainMenu.js` + `src/ui/orrery/arcRail.js` (the `clearOf` mask is used only by the title; the new `seat` option defaults to the old 6px, so pause is unchanged). No selector, ID or DOM changes.
+
+- **Fixed (P1, Tab order):** each `words()` group keeps its one roving Tab stop, and `_syncCurrent` set every reference word to `tabIndex -1`. The result was that the first Tab from the lit verb went straight to CREDITS, and HELP / ARCHIVE / CIRCUITS / PHYSICS / SANDBOX could not be reached with Tab at all. Tab and Shift+Tab now follow the reading order (verb ladder → reference line → Credits → Achievements) and wrap. Hidden Continue and still-loading verbs are skipped, the same as the arrow keys. Arrow keys still move within a group.
+- **Fixed (P1, logo over rings):** the old mask cut a tight box out of the rings, so ring strokes ended right against the letters. A crown of rim also stuck out above the kicker. Now none of the dial is drawn above the name. It fades in under the name over about 1.3× the name's height, so the name has open space around it. The mask is a static gradient, not a blur filter, so the orbit's drift costs nothing extra per frame.
+- **Fixed (P1, words on strokes):** the awake verb grows 6% toward the dial, so its first letter sat on the tick and the Hand's leader (0px gap at 720p). On the title the verbs now sit half a verb-size further out (18px @720, 23px @1080). The awake word clears the leader by about 12px.
+- Checked at 1280×720, 1920×1080, 2560×1440 and 390×844 (phone has no dial; Tab order checked there too). `--walk` exercised 12 controls. Related tests pass, except two failures that also fail on the base commit: `focus-lifecycle` "pushScreen restores the prior exposure" and the credits NOTICE check. Shots are in `/workspace/spaceface-scratch/ui-shots/main-menu-20261012-1425/` (not committed).
+- **Remaining:** at 1080p the reference line's SANDBOX sits over the hull's nose in the key art (this was already true before; it moved about 17px). Archive / Achievements / Quit (P0 above): the bench walk opens Codex and Achievements, and Quit asks to confirm. This still needs checking in a live browser build.
 ---
 
 ## #322 HOLD review fixes (2026-10-12)

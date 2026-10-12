@@ -68,6 +68,7 @@ import { createStationRow } from '../orrery/stopDial.js';
 import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
+import { injectCrucibleResultsLayouts } from '../orrery/crucibleResultsLayouts.js';
 import {
   buildCodeFor,
   buildNameFor,
@@ -3204,7 +3205,7 @@ export const crucibleResultsScreen = {
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
-    if (ORRERY) { injectOrreryScreens(); rootEl.classList.add('orr-crucible'); }
+    if (ORRERY) { injectOrreryScreens(); injectCrucibleResultsLayouts(); rootEl.classList.add('orr-crucible'); }
     // PQ-146 Phase 3: retry launches start here, so the callout layer re-ensures with the plate.
     // The dispose below releases it — a finished run has nothing more to name.
     try { ensureStuntCallout(ctx); } catch { /* presentation must never block the plate */ }
