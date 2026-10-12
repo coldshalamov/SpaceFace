@@ -83,6 +83,33 @@ function stampOpeningFreight(live, manifest, carrier, adopted) {
   carrier.data.encounterCausality = { ...causality };
 }
 
+// Flying on leaves the raiders in the world. Name the lowest-id one who does not already
+// wear a minted callsign, through the same disengage receipt ace memory already keeps.
+// Already-named hulls stay off the list so a deadline cannot tier a pilot up a second time.
+function rememberOpeningRaidEscape(d, live) {
+  const entities = d && d.state && d.state.entities;
+  if (!entities || !live || typeof d.emit !== 'function') return;
+  const memberIds = [];
+  for (const id of live.ids || []) {
+    if (!live.roles || live.roles[id] !== 'raider') continue;
+    const entity = entities.get(id);
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    if (entity.data && entity.data.promotedPilot) continue;
+    memberIds.push(id);
+  }
+  if (!memberIds.length) return;
+  memberIds.sort((a, b) => (a === b ? 0 : a > b ? 1 : -1));
+  d.emit('pirateDisengage:triggered', {
+    squadId: live.id,
+    memberIds,
+    reason: 'escaped',
+    outcome: 'fled',
+    source: 'opening_hauler_raid',
+    sectorId: live.sectorId,
+    t: typeof d.now === 'function' ? d.now() : 0,
+  });
+}
+
 function releaseSquadToWorld(live) {
   if (!live) return;
   if (Array.isArray(live.ids)) live.ids.length = 0;
@@ -325,6 +352,7 @@ export const runtime = Object.freeze({
       // record, the hauler keeps flying and the raiders keep being pirates as ordinary world
       // entities the player can still fight, save, or rob after the encounter has ended.
       releaseAdoptedCarrier(d, live);
+      rememberOpeningRaidEscape(d, live);
       releaseSquadToWorld(live);
       sayOpeningConsequence(d, 'raid_over');
       return d.resolve(live, 'raid_over', { speak: false });
