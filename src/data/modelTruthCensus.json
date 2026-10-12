@@ -1,8 +1,8 @@
 {
   "counts": {
     "green": 14,
-    "red": 201,
-    "rows": 215
+    "red": 202,
+    "rows": 216
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -26288,11 +26288,11 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "bfb22945caaee23001f60e28ef16bca4cc169e36052768887370e99e2223ad7a"
+              "sha256": "f42d8da8b724a2f052a1086da5ea5a266269aa9176254c40e681faabaf2369bd"
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
+              "sha256": "eb3b1aa9723980fed107c9895652b32e648f1634ba79d9379a502ca9c6e08323"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -26308,23 +26308,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
+              "sha256": "48534e69699a4e98fce23ca3d215be903cba7149d93532564ec0e9d868a72108"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
+              "sha256": "1f5b4a8c0a5f5cd3c2bf0ac28bfe6b2e7642bfbee25dfd9e5ba7f00d0a49888e"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "b8ec97c5d70155ab27b4449cc72d24ee06e8017fa665725dc84ad41b77cee8ea"
+              "sha256": "c2fe96624d2ff3f9016481e610d741f63af021ee9fdc55ad4016a31ccf1cee25"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76"
+              "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "a0b98e92451e30c8e45aea30a28393fd645a1d7f452ef1d50bbceb63ec894cf5"
+              "sha256": "a7164b67da19af55b94d448b132b597c3c8a50a5e7a92c313ef3052dd2b4486e"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -26372,14 +26372,181 @@
       ],
       "drawScale": 2,
       "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "world-site-bodies",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
       "id": "place_ceres_second_measure",
-      "note": "place_ceres_second_measure: missing or wrong hash-bound world-site certificate",
-      "reasons": [
-        "measure-failed"
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 16.05352
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        }
       ],
-      "status": "red",
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 24,
+      "nodes": 32,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 80,
+        "inwardFaceFraction": 0.461,
+        "silhouetteRadius": 200.669001,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Section_Crossbeam",
+          "position": [
+            40,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Section_Keel",
+          "position": [
+            0,
+            0,
+            35
+          ]
+        },
+        {
+          "name": "SOCKET_Section_LongPlate",
+          "position": [
+            -40,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Structure_Core",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Support_A",
+          "position": [
+            -59,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Support_B",
+          "position": [
+            59,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Support_C",
+          "position": [
+            20.25,
+            0,
+            47.5
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
       "tasteBudget": null,
-      "url": "places/place_ceres_second_measure.glb"
+      "triangles": 138628,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
+      "worldSize": [
+        360,
+        52.4,
+        166.650002
+      ]
     },
     {
       "bounds": {
@@ -26673,11 +26840,11 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "bfb22945caaee23001f60e28ef16bca4cc169e36052768887370e99e2223ad7a"
+              "sha256": "f42d8da8b724a2f052a1086da5ea5a266269aa9176254c40e681faabaf2369bd"
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
+              "sha256": "eb3b1aa9723980fed107c9895652b32e648f1634ba79d9379a502ca9c6e08323"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -26693,23 +26860,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
+              "sha256": "48534e69699a4e98fce23ca3d215be903cba7149d93532564ec0e9d868a72108"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
+              "sha256": "1f5b4a8c0a5f5cd3c2bf0ac28bfe6b2e7642bfbee25dfd9e5ba7f00d0a49888e"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "b8ec97c5d70155ab27b4449cc72d24ee06e8017fa665725dc84ad41b77cee8ea"
+              "sha256": "c2fe96624d2ff3f9016481e610d741f63af021ee9fdc55ad4016a31ccf1cee25"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76"
+              "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
-              "sha256": "4bbd90029a2c28ee6e37d7e011fe3aa944c54faeeebbdd589bfa5d2d8647c135"
+              "sha256": "39924b7b301d2e98a546cc3ada4ec3321f642b91f2423ae56348a6a621a8bff3"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -26757,14 +26924,133 @@
       ],
       "drawScale": 2,
       "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "world-site-bodies",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
       "id": "place_ceres_second_measure_crossbeam",
-      "note": "place_ceres_second_measure_crossbeam: missing or wrong hash-bound world-site certificate",
-      "reasons": [
-        "measure-failed"
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.32091
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
       ],
-      "status": "red",
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 15,
+      "nodes": 20,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 96,
+        "inwardFaceFraction": 0.34375,
+        "silhouetteRadius": 54.011381,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Cut_A",
+          "position": [
+            0,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Cut_B",
+          "position": [
+            0,
+            0,
+            27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Recovery",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Tow",
+          "position": [
+            0,
+            3,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
       "tasteBudget": null,
-      "url": "places/place_ceres_second_measure_crossbeam.glb"
+      "triangles": 11692,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb",
+      "worldSize": [
+        68.006839,
+        12.004761,
+        110
+      ]
     },
     {
       "bounds": {
@@ -27022,11 +27308,11 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "bfb22945caaee23001f60e28ef16bca4cc169e36052768887370e99e2223ad7a"
+              "sha256": "f42d8da8b724a2f052a1086da5ea5a266269aa9176254c40e681faabaf2369bd"
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
+              "sha256": "eb3b1aa9723980fed107c9895652b32e648f1634ba79d9379a502ca9c6e08323"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -27042,23 +27328,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
+              "sha256": "48534e69699a4e98fce23ca3d215be903cba7149d93532564ec0e9d868a72108"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
+              "sha256": "1f5b4a8c0a5f5cd3c2bf0ac28bfe6b2e7642bfbee25dfd9e5ba7f00d0a49888e"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "b8ec97c5d70155ab27b4449cc72d24ee06e8017fa665725dc84ad41b77cee8ea"
+              "sha256": "c2fe96624d2ff3f9016481e610d741f63af021ee9fdc55ad4016a31ccf1cee25"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76"
+              "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
-              "sha256": "a8bf040a4568d4e81a6e30db232cbd3e94fdbbda7cb50595808bfe76e5fb04fc"
+              "sha256": "3f0277f9ff9867c152d5dea7d80e82cb5763529dd0bddda2705f8b6c1390ff3e"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -27106,14 +27392,133 @@
       ],
       "drawScale": 2,
       "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "world-site-bodies",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
       "id": "place_ceres_second_measure_keel",
-      "note": "place_ceres_second_measure_keel: missing or wrong hash-bound world-site certificate",
-      "reasons": [
-        "measure-failed"
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
       ],
-      "status": "red",
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 15,
+      "nodes": 20,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.15675,
+        "silhouetteRadius": 36.384089,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Cut_A",
+          "position": [
+            -17.5,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Cut_B",
+          "position": [
+            17.5,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Recovery",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Tow",
+          "position": [
+            0,
+            3,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
       "tasteBudget": null,
-      "url": "places/place_ceres_second_measure_keel.glb"
+      "triangles": 4750,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb",
+      "worldSize": [
+        70,
+        11.998355,
+        19.998566
+      ]
     },
     {
       "bounds": {
@@ -27407,11 +27812,11 @@
             },
             {
               "path": "src/systems/worldSiteRuntime.js",
-              "sha256": "bfb22945caaee23001f60e28ef16bca4cc169e36052768887370e99e2223ad7a"
+              "sha256": "f42d8da8b724a2f052a1086da5ea5a266269aa9176254c40e681faabaf2369bd"
             },
             {
               "path": "scripts/model-truth-census.mjs",
-              "sha256": "17a49c94886f886526b19e4a9bff8aa0b11fafe21b9eac67494714fd6b7fdd9d"
+              "sha256": "eb3b1aa9723980fed107c9895652b32e648f1634ba79d9379a502ca9c6e08323"
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
@@ -27427,23 +27832,23 @@
             },
             {
               "path": "src/render/partsLibrary.js",
-              "sha256": "a42f308137fc83b3c378cd09891f1cb92c09889c896bc8108bc48e703f0f6b1a"
+              "sha256": "48534e69699a4e98fce23ca3d215be903cba7149d93532564ec0e9d868a72108"
             },
             {
               "path": "assets/ships/parts/parts_manifest.json",
-              "sha256": "c7d6997d79a237ebee73673dfb1a1d3f03c26376fee3f95474c9794595fe8458"
+              "sha256": "1f5b4a8c0a5f5cd3c2bf0ac28bfe6b2e7642bfbee25dfd9e5ba7f00d0a49888e"
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "b8ec97c5d70155ab27b4449cc72d24ee06e8017fa665725dc84ad41b77cee8ea"
+              "sha256": "c2fe96624d2ff3f9016481e610d741f63af021ee9fdc55ad4016a31ccf1cee25"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76"
+              "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
-              "sha256": "df7422fb84eb9ed89979bdd5d34f55d217a9b0792ed94aa2397858d0f6349b2d"
+              "sha256": "f8191af8007696411414b46345d52ce9f1c2a6e3e8c5224be8f8b8522f3eb952"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -27491,14 +27896,133 @@
       ],
       "drawScale": 2,
       "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": null,
+        "colliderKind": "world-site-bodies",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
       "id": "place_ceres_second_measure_long_plate",
-      "note": "place_ceres_second_measure_long_plate: missing or wrong hash-bound world-site certificate",
-      "reasons": [
-        "measure-failed"
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4.457357
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_BrushedMetal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        }
       ],
-      "status": "red",
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 15,
+      "nodes": 20,
+      "note": "Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.",
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [],
+      "shell": {
+        "boundaryEdges": 96,
+        "inwardFaceFraction": 0.35,
+        "silhouetteRadius": 55.716968,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Cut_A",
+          "position": [
+            0,
+            0,
+            -27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Cut_B",
+          "position": [
+            0,
+            0,
+            27.5
+          ]
+        },
+        {
+          "name": "SOCKET_Recovery",
+          "position": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Tow",
+          "position": [
+            0,
+            2.5,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "green",
       "tasteBudget": null,
-      "url": "places/place_ceres_second_measure_long_plate.glb"
+      "triangles": 13770,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb",
+      "worldSize": [
+        68.006839,
+        10.00408,
+        110
+      ]
     },
     {
       "bounds": {

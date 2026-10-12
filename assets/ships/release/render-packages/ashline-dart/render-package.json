@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8c3f2612cd64a48c521f9f5924ae2893e93ab73cb4ed7218367912ab3c823acd",
+  "contentHash": "ad9849f5a5cffe1ea0a5f77c292919a94f5ae8ef1840a24e87afacd03d428e00",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-dart.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -4814,8 +4814,8 @@
       "uri": "ashline_dart.glb"
     },
     "sourceManifest": {
-      "bytes": 270117,
-      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
+      "bytes": 270891,
+      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
       "uri": "pilots.json"
     }
   },
@@ -7020,7 +7020,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_dart.glb"
   },
-  "runtimeHash": "3ede220db9b8e990b15082fcf43f0579e90402409fe39954ee6e3f63544a56a1",
+  "runtimeHash": "fdac5ea03c6c5f73fb2a0778891edb5f7bcce9e6d40a4983517d92741f1cfebd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

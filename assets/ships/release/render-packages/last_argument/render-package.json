@@ -853,7 +853,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d2395c0bfd0442dabee860433f22255d882bcea0df822d1a680c6416036fa707",
+  "contentHash": "be8fb8d941593aa479df163a06eb8e26ee1c6fc2422027574e707359553fd75f",
   "dynamicGroups": [
     {
       "id": "sf.render.last_argument.node.hook-armor-la-vent-0-armour-2.dynamic",
@@ -18900,8 +18900,8 @@
       "uri": "last_argument.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270891,
+      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
       "uri": "pilots.json"
     }
   },
@@ -27530,7 +27530,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/last_argument.glb"
   },
-  "runtimeHash": "5903407584a2654a994698eb5e185be00063fb6ca7095e05de9c475c1de7310e",
+  "runtimeHash": "a328ade89eb43ace208faff66e0c4aa2267f5f518b9ca1f002e3ccfc8a6613c5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

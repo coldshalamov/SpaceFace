@@ -143,6 +143,9 @@ const RETRYABLE_WRITE_CODES = new Set(['UNKNOWN', 'EPERM', 'EBUSY']);
 let packageWriteSequence = 0;
 
 export async function writeFileWithRetry(path, bytes, attempts = 15) {
+  // Content-addressed assets already served by the game need no publication when identical.
+  try { if ((await readFile(path)).equals(Buffer.from(bytes))) return; }
+  catch (error) { if (error?.code !== 'ENOENT') throw error; }
   // Readers serving the live game must see a complete old or complete new file.
   // A sibling publication also avoids opening their current file for truncation,
   // which Windows can refuse while an indexer or asset request holds it open.
