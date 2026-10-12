@@ -4067,16 +4067,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           ? `Buy ${d.name} and fit it to this ${slot.type} ${slot.size} slot.${ringNote}`
         : purchase.title;
       const viewingActiveHull = viewIdx === ((ctx.state.player && ctx.state.player.activeShipIndex) || 0);
-      const jobImpact = selectedFit && viewingActiveHull
+      const fitsOnceFunded = !equipped && purchase.state === 'funding' && !headConflict && !selectedBudgetBlocker;
+      const jobImpact = (selectedFit || fitsOnceFunded) && viewingActiveHull
         ? outfittingJobImpact(ctx.state, d, fittedId || null, { stationId: shopStationId }) : '';
       const actionDetailFull = jobImpact ? `${actionDetail} ${jobImpact}` : actionDetail;
+      const advice = [purchase.state === 'funding' ? purchase.earnHint : '', jobImpact].filter(Boolean).join(' ');
       const buyWord = availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit';
       const btn = equipped
         ? `<span class="k-t-fine k-38 sx-modrow__eq">Equipped</span>`
         : purchase.state === 'locked' || purchase.state === 'standing' || purchase.state === 'noberth'
           ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
           : purchase.state === 'funding'
-            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
+            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding" title="${escapeHtml(advice ? `${purchase.title} ${jobImpact}`.trim() : purchase.title)}">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
             : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
@@ -4085,7 +4087,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (arsenalSentence(d) ? `<span class="sx-modrow__sentence">${escapeHtml(arsenalSentence(d))}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
-            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetailFull)}</span></span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetailFull)}</span>` +
+            (advice ? `<span class="k-row__sub sx-modrow__role sx-modrow__advice">${escapeHtml(advice)}</span>` : '') + `</span>` +
           `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
         `</li>`
       );
