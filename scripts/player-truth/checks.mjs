@@ -555,6 +555,10 @@ export function checkFrameTime(trace) {
   ];
   const value = `p50 ${fmt(p50, 0)} ms · p99 ${fmt(p99, 0)} ms · ${longs.length} long tasks ≥${T.longTaskMs} ms`;
   if (trace.meta.softwareGl) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, 'software GL (SwiftShader): frame time is not the player\'s — rerun headed on a GPU to grade', offenders.slice(0, 4), []);
+  if (trace.meta.performanceContext?.contended === true) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', value,
+    `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`,
+    `${samples.length} play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Observer readbacks and screenshots remain included in these measurements.`,
+    offenders.slice(0, 4), offenders.filter((o) => o.t != null).slice(0, 2));
   return result('frame_time', 'Frame time / long tasks', p99 > T.frameP99Ms || longs.length ? 'FAIL' : 'PASS', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, `${samples.length} play frames`, offenders.slice(0, 4), offenders.filter((o) => o.t != null).slice(0, 2));
 }
 

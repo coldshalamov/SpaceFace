@@ -14,6 +14,10 @@ export function renderVerdict({ meta, results, overall, paths }) {
   }
   L.push(`- Renderer: ${meta.renderer}${meta.softwareGl ? ' — SOFTWARE GL (SwiftShader): slow, frame times not representative' : ''}`);
   L.push(`- Browser: ${meta.headed ? 'headed' : 'headless'} Chromium ${meta.browserVersion} · ${meta.resolution} · ${meta.when}`);
+  if (meta.performanceContext) {
+    const context = meta.performanceContext, observer = context.observer || {};
+    L.push(`- Performance context: ${context.quietHost ? 'marked quiet host' : 'unmarked/contended development host'} · ${context.authority} · observer: ${observer.pixelSplitPasses ?? '?'} render/readback passes every ${observer.pixelSplitEveryFrames ?? '?'} frames; screenshots every ${observer.screenshotEveryMs ?? '?'} ms, included in measured wall time`);
+  }
   L.push(`- Run: ${meta.wallSeconds} s wall, ${meta.simSeconds} s of play sim time, ${meta.frames} frames sampled, ${meta.shots} screenshots · player script: ${meta.script}`);
   if (meta.stopReason) L.push(`- Stopped: ${meta.stopReason}`);
   L.push('');

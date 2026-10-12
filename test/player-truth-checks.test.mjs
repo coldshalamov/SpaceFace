@@ -11,6 +11,7 @@ import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
 import { separation } from '../scripts/player-truth/readability.mjs';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
+import { performanceRunContext } from '../scripts/player-truth/run.mjs';
 
 const goodPlayer = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
 function trace({ n = 60, dt = 0.1, player = () => goodPlayer(), ents = () => [], events = [], rounds = [], probes = [], vfx = null, mode = 'swarm', meta = {} } = {}) {
@@ -144,6 +145,48 @@ test('loadout audit flags a cargo scanner in Swarm and a silent swap', () => {
 test('frame_time is UNKNOWN on software GL and grades on a GPU', () => {
   assert.equal(checkFrameTime(trace({ meta: { softwareGl: true } })).status, 'UNKNOWN');
   assert.equal(checkFrameTime(trace()).status, 'PASS');
+});
+
+test('performance context reads only the dedicated marker and records observer cadence', () => {
+  const env = {SPACEFACE_QUIET_HOST: '0'};
+  const context = performanceRunContext(env, {screenshotEveryMs: 1500});
+  assert.deepEqual(context, {quietHost: false, contended: true, authority: 'diagnostic-only',
+    observer: {pixelSplitPasses: 3, pixelSplitEveryFrames: 24, screenshotEveryMs: 1500}});
+  assert.deepEqual(env, {SPACEFACE_QUIET_HOST: '0'}, 'the runner cannot mark its own host');
+  assert.equal(performanceRunContext({}).contended, true);
+  assert.equal(performanceRunContext({SPACEFACE_QUIET_HOST: true}).quietHost, false);
+  assert.equal(performanceRunContext({SPACEFACE_QUIET_HOST: '1'}).quietHost, true);
+});
+
+test('contended frame times stay diagnostic UNKNOWN with all measurements; quiet hardware still fails', () => {
+  const slow = trace(); for (const sample of slow.samples) sample.dt = 100;
+  slow.longTasks = [{t: 200, d: 338, sim: 10.2, f: 2}];
+  const hardware = checkFrameTime(slow); assert.equal(hardware.status, 'FAIL');
+  slow.meta.performanceContext = performanceRunContext({});
+  const contended = checkFrameTime(slow);
+  assert.equal(contended.status, 'UNKNOWN');
+  assert.equal(contended.value, hardware.value); assert.equal(contended.threshold, hardware.threshold);
+  assert.deepEqual(contended.offenders, hardware.offenders);
+  assert.match(contended.detail, /quiet-host performance unmeasured/);
+  slow.meta.performanceContext = performanceRunContext({SPACEFACE_QUIET_HOST: '1'});
+  assert.equal(checkFrameTime(slow).status, 'FAIL');
+  const fast = trace({meta: {performanceContext: performanceRunContext({})}});
+  assert.equal(checkFrameTime(fast).status, 'UNKNOWN', 'fast contended measurements cannot certify performance');
+  fast.meta.performanceContext = performanceRunContext({SPACEFACE_QUIET_HOST: '1'});
+  assert.equal(checkFrameTime(fast).status, 'PASS');
+  fast.meta.softwareGl = true; assert.equal(checkFrameTime(fast).status, 'UNKNOWN');
+});
+
+test('diagnostic frame context is visible in the verdict and cannot erase a gameplay failure', () => {
+  const recorded = trace({meta: {performanceContext: performanceRunContext({})}});
+  const frame = checkFrameTime(recorded);
+  const badShip = checkPlayerShip(trace({player: () => goodPlayer({mesh: false})}));
+  assert.equal(badShip.status, 'FAIL'); assert.equal(overall([frame, badShip]), 'FAIL');
+  assert.equal(overall([frame]), 'INCOMPLETE');
+  const md = renderVerdict({meta: {...recorded.meta, label: 'diagnostic'}, results: [frame], overall: 'INCOMPLETE'});
+  assert.match(md, /Performance context: unmarked\/contended development host · diagnostic-only/);
+  assert.match(md, /3 render\/readback passes every 24 frames; screenshots every 1000 ms/);
+  assert.match(md, /\*\*UNKNOWN\*\*/); assert.match(md, /quiet-host performance unmeasured/);
 });
 
 test('readability: overlapping classes fail, distinct classes pass, thin data is UNKNOWN', () => {

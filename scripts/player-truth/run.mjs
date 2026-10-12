@@ -35,6 +35,16 @@ import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat } from '
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
 
+// QUIET_HOST_PROGRAM §0: unmarked development hosts produce diagnostics, not performance
+// acceptance. Read the existing machine marker; never promote this process into a quiet host.
+export function performanceRunContext(env = process.env, { screenshotEveryMs = 1000 } = {}) {
+  const quietHost = env.SPACEFACE_QUIET_HOST === '1';
+  return {
+    quietHost, contended: !quietHost, authority: quietHost ? 'quiet-host' : 'diagnostic-only',
+    observer: { pixelSplitPasses: 3, pixelSplitEveryFrames: 24, screenshotEveryMs },
+  };
+}
+
 export function parseArgs(argv) {
   const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
@@ -161,7 +171,7 @@ async function runOne(args, arena, extra = {}) {
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm', gate: args.gatePass || null, requireRounds: args.requireRounds || null }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
