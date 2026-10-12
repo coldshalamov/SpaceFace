@@ -69,6 +69,7 @@ import {
   update47aScenarioActorIntents,
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
+import { snapshotSurvivalDraft } from '../../src/core/simLaneCommands.js';
 import { projectBridgeEvent } from './simEventBridge.mjs';
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
@@ -635,6 +636,22 @@ export function createSimHost() {
     }
     host.auxJournalBreaches += breaches;
     return breaches;
+  }
+
+  // Armory read view for the main-side survivalDraft facade: ships only when it changed.
+  let lastDraftViewSig = 'null';
+  function survivalDraftViewIfChanged(state) {
+    const run = state && state.run;
+    // Armory phases only: currentOffers() re-evaluates legality, too heavy for every flight tick.
+    const live = run && run.kind === 'survival' && (run.phase === 'loadout' || run.phase === 'draft' || run.phase === 'refit');
+    let view = null;
+    if (live) {
+      try { view = snapshotSurvivalDraft(host.registry && host.registry.get('survivalDraft')); } catch (_) { view = null; }
+    }
+    const sig = JSON.stringify(view);
+    if (sig === lastDraftViewSig) return undefined;
+    lastDraftViewSig = sig;
+    return view;
   }
 
   function diffDomains(state, seq) {
@@ -1799,6 +1816,7 @@ export function createSimHost() {
       spawnInfos,
       events,
       warmStubs,
+      draftView: survivalDraftViewIfChanged(state),
       commandsProbe: msg.commandsProbe ? { farId: host.cmdProbeFarId != null ? host.cmdProbeFarId : null } : undefined,
       foldsApplied: drain.foldsApplied || 0,
       rpcAcks: drain.rpcAcks,

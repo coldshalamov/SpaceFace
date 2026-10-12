@@ -59,6 +59,7 @@ import {
   laneUiFold,
   laneViewport,
   laneBusEmit,
+  setLaneDraftView,
 } from './simLaneCommands.js';
 import {
   modalInputActive,
@@ -565,6 +566,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     if (Array.isArray(msg.entityVitals) && msg.entityVitals.length) {
       applyEntityVitals(readModel, msg.entityVitals);
     }
+    if (msg.draftView !== undefined) setLaneDraftView(msg.draftView);
     if (Array.isArray(msg.auxUpserts) && msg.auxUpserts.length) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);

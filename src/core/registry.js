@@ -227,7 +227,7 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
 import { isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
-import { laneRpc, laneDomEvent, laneKeepalive } from './simLaneCommands.js';
+import { laneRpc, laneDomEvent, laneKeepalive, laneDraftView, SURVIVAL_DRAFT_READS } from './simLaneCommands.js';
 import {
   computeDiscoveredRoute,
   activeDriveForState,
@@ -1006,6 +1006,21 @@ export function createRegistry(ctx) {
             return q;
           },
         };
+      }
+      case 'survivalDraft': {
+        // Read-only view of the worker's armory owner (see simLaneCommands). Arrays come back
+        // as fresh copies so a screen cannot mutate the shared snapshot.
+        const facade = { name: 'survivalDraft' };
+        const EMPTY = { currentOffers: [], recommendedOffers: [], refitRows: [], currentWave: 0 };
+        for (const read of SURVIVAL_DRAFT_READS) {
+          facade[read] = () => {
+            const view = laneDraftView();
+            const v = view ? view[read] : undefined;
+            if (v === undefined || v === null) return read in EMPTY ? (Array.isArray(EMPTY[read]) ? [] : EMPTY[read]) : null;
+            return Array.isArray(v) ? v.map((x) => (x && typeof x === 'object' ? { ...x } : x)) : v;
+          };
+        }
+        return facade;
       }
       case 'cargo':
         return {
