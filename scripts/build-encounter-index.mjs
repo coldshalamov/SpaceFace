@@ -37,7 +37,8 @@ function authoredFiles() {
   return readdirSync(DIR, { withFileTypes: true })
     .filter((entry) => entry.isFile() && MODULE_RE.test(entry.name))
     .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b, 'en'));
+    // Numeric order first so a four-digit block (1200-1299) appends after 901 instead of renumbering.
+    .sort((a, b) => (parseInt(a, 10) - parseInt(b, 10)) || a.localeCompare(b, 'en'));
 }
 
 function renderIndex(files) {
