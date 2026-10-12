@@ -748,7 +748,8 @@ export function createSimHost() {
   // has never seen, so whitelisting there would silently drop real traffic).
   function recordBridgeEvent(type, payload) {
     let receipt = payload;
-    if ((type === 'entity:killed' || type === 'entity:destroyed' || type === 'asteroid:destroyed')
+    if ((type === 'entity:killed' || type === 'entity:destroyed' || type === 'asteroid:destroyed'
+      || type === 'environment:detonated' || type === 'entity:retired')
       && payload && typeof payload === 'object') {
       // Capture at emit/queue time, before core recycles the id and before a reply's journal
       // removes the victim. Plain {id,pos,...} receipts retain their complete event meaning.
@@ -760,6 +761,11 @@ export function createSimHost() {
         ? resolveWorldPresentationEntity(host.state, payload.killerId) : null;
       receipt = {
         ...payload,
+        // Cook-off is an actual material-body death; its existing VFX cue also needs the
+        // dying body's type before the same slot can become a projectile or another rock.
+        ...(type === 'environment:detonated' && payload.type == null && victim
+          && (payload.occupantGeneration == null || payload.occupantGeneration === victim.occupantGeneration)
+          ? { type: victim.type } : {}),
         occupantGeneration: Number.isSafeInteger(payload.occupantGeneration)
           ? payload.occupantGeneration : (victim?.occupantGeneration ?? null),
         simTime: host.state.simTime,
