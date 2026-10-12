@@ -1,0 +1,56 @@
+name: Living VFX candidate
+on:
+  push:
+    branches: [codex/living-vfx-overhaul-20261012]
+    paths:
+      - '.github/workflows/living-vfx-candidate.yml'
+      - 'src/render/**'
+      - 'test/living-vfx*'
+      - 'scripts/living-vfx*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: living-vfx-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          sparse-checkout: |
+            src
+            scripts
+            test
+            docs
+            design/vfx
+            design/program/NOW.md
+            .github/workflows
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated renderer dependencies
+        run: |
+          THREE_VERSION=$(node -e "const p=require('./package.json'); console.log(p.dependencies?.three || p.devDependencies?.three || '0.180.0')")
+          npm install --prefix .vfx-ci --ignore-scripts --no-audit --no-fund "three@$THREE_VERSION" esbuild
+          ln -s .vfx-ci/node_modules node_modules
+      - name: Verify living VFX when present
+        run: |
+          if test -f test/living-vfx.test.mjs; then node --test test/living-vfx*.test.mjs; fi
+          if test -f scripts/living-vfx-verify.mjs; then node scripts/living-vfx-verify.mjs; fi
+      - name: Package reproducible source-only candidate
+        if: always()
+        run: |
+          mkdir -p .vfx-artifact
+          git rev-parse HEAD > .vfx-artifact/BASE_COMMIT.txt
+          tar -czf .vfx-artifact/source.tar.gz --exclude=node_modules --exclude=.git --exclude=.vfx-artifact --exclude=.vfx-ci src scripts test docs design package.json package-lock.json AGENTS.md ARCHITECTURE.md
+          tar -czf .vfx-artifact/renderer-deps.tar.gz -C .vfx-ci node_modules
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: living-vfx-candidate
+          path: .vfx-artifact/
+          retention-days: 3
