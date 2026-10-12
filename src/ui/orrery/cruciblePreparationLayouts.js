@@ -5,6 +5,7 @@ const BONE = '236 230 216';
 const VOID = '5 7 10';
 const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-preparation[data-prep-step]';
 const A = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory.orr-visual-armory';
+const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit';
 const CSS = `
 .orr-equipment-glyph { display:block; width:48px; height:48px; flex:none; color:var(--dp-ink); pointer-events:none; }
 ${D} { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows:auto auto minmax(0,1fr) auto !important; gap:18px 40px !important; padding:30px 48px 22px !important; width:100% !important; height:100dvh !important; max-width:none !important; max-height:none !important; margin:0 !important; overflow:hidden !important; }
@@ -348,7 +349,7 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .orr-tile .fh-tile-legend { font-size:12px !important; }
  ${D} .orr-prep-stake-number { font-size:22px; }
  ${D} .orr-prep-stake-pressure { font-size:12px; }
- ${A} > .k-title .sf-cru-sub { margin-right:0; max-width:100%; }
+ ${A} > .k-title :is(.sf-cru-sub,.sf-cru-preview,.sf-cru-cradle) { margin-right:0; max-width:100%; }
  ${A} .orr-armory-wallet { position:static; text-align:left; display:flex; align-items:baseline; gap:12px; margin-top:16px; }
  ${A} .orr-armory-wallet strong { font-size:30px; }
  ${A} > .sf-cru-stage { height:420px !important; flex:none !important; }
@@ -414,6 +415,225 @@ ${D} .orr-prep-nextstep { text-transform:uppercase !important; letter-spacing:.1
   ${D} .orr-door-hero__line { font-size:15px !important; }
   ${D} .orr-prep-purse { font-size:40px; }
   ${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard { font-size:20px !important; min-height:52px !important; }
+}
+
+/* —— UI polish: Crucible Armory (foot rail, contrast, filters, 1080p lift) —— */
+/* Foot: solid void + upward shadow + stronger top rule (matches door). Launch stays a word. */
+${A} > .k-foot {
+  z-index:6 !important; padding:14px 0 0 !important;
+  border-top:1px solid rgb(${BONE} / .16) !important;
+  background:rgb(${VOID}) !important;
+  box-shadow:0 -10px 14px 0 rgb(${VOID} / .85) !important;
+  isolation:isolate;
+}
+${A} .k-foot .k-words { position:relative; z-index:1; }
+${A} .k-foot .k-word--primary {
+  color:rgb(255 253 248) !important; font-weight:700 !important;
+  text-shadow:0 0 18px rgb(0 0 0 / .55) !important; background:none !important;
+}
+${A} .k-foot .k-word--primary:is(:hover, :focus-visible) {
+  color:var(--dp-hand-hot, #ffd98c) !important;
+  text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
+}
+${A} .k-foot .k-word:not(.k-word--primary) {
+  color:rgb(${BONE} / .72) !important; font-weight:600 !important;
+}
+${A} .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) {
+  color:rgb(${BONE} / .92) !important;
+}
+/* Keycaps — .sf-cru-kbd on Launch/Esc + nested kbd language; fine-print 1/2/3/Tab caps. */
+${A} .k-foot .sf-cru-kbd,
+${A} .sf-cru-fine .orr-armory-keycap {
+  display:inline-block !important; box-sizing:border-box !important;
+  margin-left:12px !important; margin-right:0 !important;
+  padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
+  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  line-height:1 !important; text-transform:uppercase !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
+  border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
+  opacity:1 !important; text-shadow:none !important;
+}
+${A} .sf-cru-fine .orr-armory-keycap { margin-left:0 !important; margin-right:4px !important; }
+${A} .sf-cru-fine { color:rgb(${BONE} / .78) !important; position:relative; z-index:1; }
+${A} .orr-armory-hintword { color:rgb(${BONE} / .78) !important; }
+
+/* Secondary contrast — bone alphas where washed --dp-ink-dim was the problem. */
+${A} > .k-title .sf-cru-sub { color:rgb(${BONE} / .86) !important; }
+${A} > .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; margin:6px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+${A} > .k-title .sf-cru-cradle { color:rgb(${BONE} / .8) !important; margin:4px 0 0; font:400 12.5px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+/* Right gutter for the wallet only where there's room; phones keep full text width. */
+@media (min-width:761px) { ${A} > .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin-right:200px; } }
+${A} .orr-armory-wallet span { color:rgb(${BONE} / .8) !important; }
+${A} .sf-cru-filters > button { color:rgb(${BONE} / .82) !important; }
+${A} .sf-cru-filters > button[aria-pressed=true] {
+  color:rgb(${BONE} / .98) !important; border-bottom:2px solid var(--dp-hand) !important;
+  box-shadow:0 1px 0 0 rgb(242 185 80 / .35);
+}
+${A} .sf-cru-count { opacity:1 !important; color:rgb(${BONE} / .72) !important; }
+${A} .sf-cru-card.sf-cru-card { position:relative !important; }
+${A} .sf-cru-card .sf-cru-name { color:rgb(${BONE} / .9) !important; }
+${A} .sf-cru-card .sf-cru-verb { color:rgb(${BONE} / .78) !important; }
+${A} .sf-cru-card .sf-cru-price { color:rgb(${BONE} / .82) !important; }
+${A} .sf-cru-card.is-lit {
+  background:linear-gradient(90deg,rgb(242 185 80 / .16),rgb(242 185 80 / .04) 48%,transparent 78%) !important;
+}
+${A} .sf-cru-card.is-lit .sf-cru-name { color:rgb(255 253 248) !important; }
+${A} .sf-cru-card.is-lit::before {
+  content:'' !important; display:block !important; position:absolute !important;
+  left:0 !important; top:14px !important; bottom:14px !important; width:2px !important;
+  height:auto !important; transform:none !important; clip-path:none !important;
+  background:var(--dp-hand) !important; box-shadow:0 0 8px rgb(242 185 80 / .35) !important;
+}
+${A} .orr-crew-item-label, ${A} .orr-crew-names, ${A} .orr-crew-status { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-object-label { color:rgb(${BONE} / .78) !important; }
+${A} .orr-armory-reading__verb { color:rgb(${BONE} / .78) !important; }
+${A} .orr-armory-reading__act { color:rgb(${BONE} / .82) !important; }
+${A} .orr-armory-build { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-build li small { color:rgb(${BONE} / .78) !important; }
+${A} .orr-armory-refusal { color:rgb(${BONE} / .78) !important; }
+${A} .orr-rail-divider { color:rgb(${BONE} / .72) !important; }
+${A} .orr-armory-empty { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-reading__demo-word, ${A} .orr-armory-reading__hold-word { color:rgb(${BONE} / .78) !important; }
+
+/* Filters + search chrome */
+${A} .sf-cru-search {
+  border-bottom:1px solid rgb(${BONE} / .28) !important;
+  color:rgb(${BONE} / .96) !important;
+}
+${A} .sf-cru-search::placeholder { color:rgb(${BONE} / .62) !important; opacity:1 !important; }
+${A} .sf-cru-wallet { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-reading__blurb { color:rgb(${BONE} / .92) !important; }
+${A} .orr-armory-fitline { color:rgb(${BONE} / .9) !important; }
+${A} .sf-cru-note { color:rgb(${BONE} / .88) !important; }
+
+/* 1080p lift — type/spacing without CSS zoom (door learned zoom clips the foot). */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${A} { padding:28px 52px 20px !important; gap:22px 42px !important; }
+  ${A} > .k-title h1 { font-size:52px !important; }
+  ${A} > .k-title .sf-cru-sub { font-size:15px !important; }
+  ${A} .orr-armory-wallet strong { font-size:44px; }
+  ${A} .sf-cru-card.sf-cru-card { min-height:96px !important; padding:14px 4px 14px 14px !important; }
+  ${A} .sf-cru-card .sf-cru-name { font-size:17px !important; }
+  ${A} .orr-armory-purchase { min-height:54px; font-size:17px; }
+  ${A} .orr-armory-reading__name { font-size:clamp(26px,2.5vw,40px) !important; }
+  ${A} .k-foot .k-word { font-size:17px !important; }
+}
+
+/* —— UI polish: Crucible Refit (foot rail, keycaps, contrast, lit spare, 1080p lift) —— */
+/* Foot: solid void + upward shadow + stronger top rule (matches door/armory). Continue stays a word. */
+${R} > .k-foot {
+  z-index:6 !important; padding:16px 0 10px !important;
+  border-top:1px solid rgb(${BONE} / .18) !important;
+  background:rgb(${VOID}) !important;
+  box-shadow:0 -10px 14px 0 rgb(${VOID} / .85) !important;
+  isolation:isolate;
+}
+${R} .k-foot .k-words { position:relative; z-index:1; }
+${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp) {
+  color:rgb(${BONE} / .88) !important; font-weight:600 !important;
+}
+${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp):is(:hover, :focus-visible) {
+  color:rgb(${BONE} / .98) !important;
+}
+${R} .k-foot .k-word.k-word--primary:not(.is-lamp) {
+  color:rgb(255 253 248) !important; font-weight:700 !important;
+  text-shadow:0 0 18px rgb(0 0 0 / .55) !important; background:none !important; background-image:none !important;
+}
+${R} .k-foot .k-word.k-word--primary:not(.is-lamp):is(:hover, :focus-visible) {
+  color:var(--dp-hand-hot, #ffd98c) !important;
+  text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
+}
+${R} .k-foot .sf-cru-fine, ${R} .k-foot .sf-cru-keynote {
+  color:rgb(${BONE} / .86) !important; position:relative; z-index:1; max-width:42ch;
+}
+${R} .k-foot .k-word--primary.is-lamp .sf-cru-kbd {
+  color:rgb(${BONE} / .92) !important; border-color:rgb(${BONE} / .55) !important;
+}
+/* Keycaps — .sf-cru-kbd on foot verbs + Enter on lit FIT (override bare-hint strip in screenLayouts). */
+${R} .k-foot .sf-cru-kbd {
+  display:inline-block !important; box-sizing:border-box !important;
+  margin-left:12px !important; margin-right:0 !important;
+  padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
+  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  line-height:1 !important; text-transform:uppercase !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
+  border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
+  opacity:1 !important; text-shadow:none !important; place-items:unset !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after {
+  display:inline-block !important; box-sizing:border-box !important;
+  margin-left:10px !important; padding:3px 7px 4px !important; min-width:0 !important;
+  width:auto !important; height:auto !important;
+  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  line-height:1 !important; text-transform:uppercase !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
+  border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
+  place-items:unset !important;
+}
+
+/* Secondary contrast — bone alphas on sub, slot tags, bare values, contrast, spares, fit count. */
+${R} > .k-title .sf-cru-sub { color:rgb(${BONE} / .86) !important; }
+${R} > .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; }
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-row { color:rgb(${BONE} / .84) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__n { color:rgb(${BONE} / .72) !important; }
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-slottag { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .is-bare .orr-hp__value { color:rgb(${BONE} / .8) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__contrast { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare { color:rgb(${BONE} / .72) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__empty { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name::before { color:rgb(${BONE} / .72) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { color:rgb(${BONE} / .84) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { fill:rgb(${BONE} / .8) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-max { fill:rgb(${BONE} / .7) !important; }
+
+/* Selected / focus Hand underline on spares — 2px + soft glow (matches armory filters). */
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare::after {
+  height:2px !important; background:rgb(${BONE} / .85) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare[aria-checked="true"] {
+  color:rgb(255 253 248) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare[aria-checked="true"]::after {
+  background:var(--dp-hand, #f2b950) !important;
+  box-shadow:0 0 8px rgb(242 185 80 / .45) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare:focus-visible::after {
+  height:2px !important; background:var(--dp-hand, #f2b950) !important;
+  box-shadow:0 0 8px rgb(242 185 80 / .5) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare[aria-checked="true"] {
+  color:rgb(${BONE} / .96) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare::after {
+  height:2px !important;
+  background:repeating-linear-gradient(90deg, var(--dp-hand, #f2b950) 0 4px, transparent 4px 7px) !important;
+  box-shadow:0 0 6px rgb(242 185 80 / .3) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb(${BONE} / .92) !important; }
+
+/* Short plates: keep the void rail, but don't bury the fit count under a tall foot. */
+@media (max-height:820px) {
+  ${R} > .k-foot { padding:8px 0 4px !important; box-shadow:0 -8px 12px 0 rgb(${VOID} / .85) !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:178px !important; }
+}
+
+/* 1080p lift — type/spacing without CSS zoom (door/armory lesson: zoom clips the foot). */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${R} > .k-title .k-t-title { font-size:clamp(38px, 4.8vh, 56px) !important; }
+  ${R} > .k-title .sf-cru-sub { font-size:15px !important; max-width:48ch; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__n { font-size:23px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__value { font-size:18px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare-name { font-size:16px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .sf-cru-slottag { font-size:13px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__contrast { font-size:13px !important; }
+  ${R} .k-foot .k-word { font-size:17px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { font-size:13px !important; bottom:172px; }
+  ${R} > .k-foot { padding:18px 0 12px !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
