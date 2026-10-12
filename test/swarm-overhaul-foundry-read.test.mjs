@@ -31,8 +31,8 @@ test('a hostile ship wears one opaque threat plate that faces the camera', () =>
   assert.equal(plate.isSprite, undefined);
   assert.equal(plate.renderOrder, 12);
   assert.equal(plate.frustumCulled, true);
-  assert.equal(plate.scale.x, 10);
-  assert.equal(plate.scale.y, 10);
+  assert.equal(plate.scale.x, 8);
+  assert.equal(plate.scale.y, 8);
   assert.equal(plate.material.isMeshBasicMaterial, true);
   assert.equal(plate.material.color.getHex(), 0xff1a3a);
   assert.equal(plate.material.side, THREE.DoubleSide);
@@ -54,7 +54,7 @@ test('a hostile ship wears one opaque threat plate that faces the camera', () =>
 
   const other = plateOn(hostile(3, 1), null, null).plate;
   assert.ok(other);
-  assert.equal(other.scale.x, 2.5, 'radius floor is 2, then ×1.25');
+  assert.equal(other.scale.x, 2, 'radius floor is 2');
   assert.equal(other.geometry, plate.geometry, 'plates share one circle');
   assert.equal(other.material, plate.material);
 });
@@ -67,12 +67,12 @@ test('a scaled hull does not inflate the threat plate past the ship', () => {
   mesh.updateMatrixWorld(true);
   const plate = mesh.getObjectByName('sf-swarm-threat-plate');
   const world = plate.getWorldScale(new THREE.Vector3());
-  assert.ok(Math.abs(world.x - 10) < 1e-3, `world radius ${world.x} should be 1.25×8`);
-  assert.ok(Math.abs(world.y - 10) < 1e-3);
-  // Readability samples the inner 70% of entity.radius. The plate has to cover that
-  // disk and stay a ship-sized marker.
-  assert.ok(world.x >= 8 * 0.7);
-  assert.ok(world.x <= 8 * 1.25 + 1e-3);
+  assert.ok(Math.abs(world.x - 8) < 1e-3, `world radius ${world.x} should be 1×8`);
+  assert.ok(Math.abs(world.y - 8) < 1e-3);
+  // Readability samples the inner 70% of entity.radius. The plate covers that
+  // square (corners ~0.99r) and stays inside the background ring at 1.2r.
+  assert.ok(world.x >= 8 * 0.99);
+  assert.ok(world.x <= 8 * 1.05);
 });
 
 test('the threat crimson clears the low-contrast bar against a dark field', () => {

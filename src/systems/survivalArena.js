@@ -957,7 +957,9 @@ function makeRosterPrewarmSpec(enemyId) {
 // solver snapped the hull back to rest - the owner's round-2 "could not move" (player-truth m2-active,
 // station solid at 2 u from the ship). The toy keeps its place in the room's grammar, pushed straight out
 // from the ship until it clears the hull with a margin.
-const ROOM_SOLID_PILOT_CLEARANCE = 24;
+// 64u keeps a furnace (radius ~16) and the player's screen box from sharing pixels.
+// 24u cleared the collision hull and still left the toy over the ship on camera.
+export const ROOM_SOLID_PILOT_CLEARANCE = 64;
 function clearOfPilot(state, at, radius) {
   const pos = { x: at.x, z: at.z };
   const player = state && state.entities && typeof state.entities.get === 'function'

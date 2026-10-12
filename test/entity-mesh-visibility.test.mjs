@@ -159,9 +159,14 @@ test('default video settings still request full picture quality', async () => {
 
 test('live entity view sync hides off-runway roots through the helper', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(_submitVisibilityOptions\)/);
-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)/,
+  // Picture hold wraps the helper. A root that has already drawn stays submitted so a
+  // pending latch cannot flip it hidden while its center is still in the graded view.
+  // Both sites still ask shouldSubmitEntityMesh and still publish through the helper.
+  assert.match(source, /const submitMesh = pictureHoldSubmit\(\s*mesh\.userData,\s*shouldSubmitEntityMesh\(_submitVisibilityOptions\),/);
+  assert.match(source, /const hiddenSubmit = pictureHoldSubmit\(\s*mesh\.userData,\s*posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\),/,
     'the hidden-boundary site submits through the same scratch');
+  assert.match(source, /applyEntityMeshVisibility\(mesh, submitMesh\)/);
+  assert.match(source, /applyEntityMeshVisibility\(mesh, hiddenSubmit\)/);
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*true/);
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*false/);
   assert.match(source, /_submitVisibilityOptions\.snapshotMissing\s*=\s*!posed/);

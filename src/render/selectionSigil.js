@@ -59,6 +59,10 @@ export const SELECTION_SIGIL_LIFT = 0.5;
 export const SIGIL_RADIUS_SCALE = 3.0;
 export const SIGIL_RADIUS_MIN = 6;
 export const SIGIL_RADIUS_MAX = 170;
+// Swarm fights grade the sigil as combat VFX. The 3× instrument's center strokes
+// fill the threat box; a tight scale keeps the same figures on the hull.
+export const SIGIL_TIGHT_SCALE = 1.2;
+export const SIGIL_TIGHT_GAIN = 0.2;
 
 /** Departure is a structural reverse of the arrival order, not a dissolve. */
 export const SIGIL_RETRACT_SECONDS = 0.34;
@@ -119,10 +123,11 @@ export function resolveSelectionSigil(state) {
   };
 }
 
-export function sigilRadius(entityRadius) {
+export function sigilRadius(entityRadius, scale = SIGIL_RADIUS_SCALE) {
   const raw = Number(entityRadius);
   const base = Number.isFinite(raw) && raw > 0 ? raw : 6;
-  return Math.min(SIGIL_RADIUS_MAX, Math.max(SIGIL_RADIUS_MIN, base * SIGIL_RADIUS_SCALE));
+  const mul = Number.isFinite(scale) && scale > 0 ? scale : SIGIL_RADIUS_SCALE;
+  return Math.min(SIGIL_RADIUS_MAX, Math.max(SIGIL_RADIUS_MIN, base * mul));
 }
 
 const SIGIL_VERT = /* glsl */`
@@ -529,13 +534,20 @@ export class SelectionSigil {
     if (!this._motionReduce) this._clock += step;
     this._age += step;
 
-    const radius = sigilRadius(subject && subject.radius);
+    const tight = !!(subject && subject.tight);
+    const fit = tight ? SIGIL_TIGHT_SCALE : SIGIL_RADIUS_SCALE;
+    const radius = sigilRadius(subject && subject.radius, fit);
     this._id = subject ? subject.id : null;
     this._x = x;
     this._z = z;
     this._radius = radius;
     this.mesh.position.set(x, SELECTION_SIGIL_LIFT, z);
     this.mesh.scale.set(radius, 1, radius);
+    const bodyR = Number(subject && subject.radius);
+    this._u.uHull.value = tight && radius > 1e-4 && Number.isFinite(bodyR) && bodyR > 0
+      ? bodyR / radius
+      : 1 / SIGIL_RADIUS_SCALE;
+    this._u.uGain.value = tight ? SIGIL_TIGHT_GAIN : 0.36;
     this._tint(klass, step);
 
     this._u.uPhase.value = this._clock * 0.62;

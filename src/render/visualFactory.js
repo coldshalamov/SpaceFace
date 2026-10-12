@@ -2583,9 +2583,10 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     mesh.add(plate);
   }
   // Local scale is divided by the parent so a scaled hull cannot inflate the disk.
-  // The readability sampler reads the inner 70% of entity.radius; 1.25 covers that
-  // disk without a second copy of the hull scale.
-  const worldR = Math.max(2, Number(entity.radius) || 2) * 1.25;
+  // The inner sample is the chebyshev square at 0.7r (corners at ~0.99r). A disk
+  // of radius r covers that square. 1.25r reached the background ring (d > 1.2r)
+  // and pulled the enemy's ΔL back toward the field.
+  const worldR = Math.max(2, Number(entity.radius) || 2);
   mesh.updateWorldMatrix(true, false);
   mesh.getWorldScale(_threatPlateScale);
   plate.scale.set(

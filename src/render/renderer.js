@@ -222,6 +222,8 @@ import {
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
 import { projectedWidthPx } from './lod.js';
+import { presentedLodBook } from './presentedLodBook.js';
+import { PICTURE_HOLD_NDC, pictureHoldSubmit, projectEntityCenter } from './pictureHold.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -295,6 +297,7 @@ import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
 import {
   shouldPresentShieldBubble,
+  swarmCombatShieldRadius,
   updateEntityShieldBubblePresentation,
 } from './weapons/shieldBubblePresentation.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
@@ -691,6 +694,7 @@ const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
 // worldToScreen camera-space scratch: one Vector3, reused per call, never retained.
 const _w2sCamSpace = new THREE.Vector3();
+const _pictureNdc = { ok: false, x: 0, y: 0 };
 const _rayGlobalXZ = { x: 0, z: 0 };
 const _rayLocalXZ = { x: 0, z: 0 };
 
@@ -23996,6 +24000,7 @@ export const render = {
     };
     // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
     mesh.userData._appliedLodLevel = undefined;
+    mesh.userData.sfPictureHeld = false;
     // A bound root that has not yet entered the visible set gets no pose writes, so the
     // per-frame updateMatrixWorld compose on it (plus the force it pushes into every
     // descendant) is dead work until first submit. Freeze it here; syncEntityViews restores
@@ -26651,6 +26656,18 @@ export const render = {
       ? performance.now() : Date.now());
     let viewSweepStrideAt = viewSweepNow();
 
+    // Visibility means the camera's real view, not only the requested-zoom rectangle: a body
+    // whose centre leaves the rectangle while a limb is still drawn stays on-glass. Built once
+    // per pass from the live camera; no camera -> the rectangle below decides alone.
+    let liveViewFrustum = null;
+    const liveCam = this.cam && this.cam.obj;
+    if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
+      liveCam.updateMatrixWorld();
+      _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
+      _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
+      liveViewFrustum = _liveViewFrustum;
+    }
+
     // A root crossing out of the retained visible set receives one final authoritative current pose.
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
@@ -26675,6 +26692,7 @@ export const render = {
           // and options fill are dead work here: the mesh is hidden this same iteration
           // and a revived row re-poses through the visible loop on re-entry.
           syncResolvingMarker(mesh, this.state);
+          if (mesh.userData) mesh.userData.sfPictureHeld = false;
           const doomedChanged = applyEntityMeshVisibility(mesh, false);
           if (doomedChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
           if (mesh.userData && mesh.userData.asteroidInstanceBody) {
@@ -26721,11 +26739,20 @@ export const render = {
         _submitVisibilityOptions.projectedPx = 0;
         _submitVisibilityOptions.allowShadowCast = false;
         _submitVisibilityOptions.onLiveGlass = false;
+        projectEntityCenter(liveCam, mesh, _pictureNdc);
+        const hiddenInHold = _pictureNdc.ok === true
+          && Math.abs(_pictureNdc.x) <= PICTURE_HOLD_NDC
+          && Math.abs(_pictureNdc.y) <= PICTURE_HOLD_NDC;
+        const hiddenSubmit = pictureHoldSubmit(
+          mesh.userData,
+          posed && shouldSubmitEntityMesh(_submitVisibilityOptions),
+          hiddenInHold,
+        );
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh(_submitVisibilityOptions));
+          && applyEntityMeshVisibility(mesh, hiddenSubmit);
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
         if (mesh.userData && mesh.userData.asteroidInstanceBody) {
-          mesh.userData.asteroidInstanceViewCulled = true;
+          mesh.userData.asteroidInstanceViewCulled = hiddenSubmit !== true;
         }
         world.clearDirty(slot);
         // Out of the visible set the root's local transform is never rewritten (the pose above
@@ -26754,18 +26781,6 @@ export const render = {
       this.cam && this.cam.obj && this.cam.obj.aspect,
       INNER_VIEW_BAND_SCALE,
     );
-
-    // Visibility means the camera's real view, not only the requested-zoom rectangle: a body
-    // whose centre leaves the rectangle while a limb is still drawn stays on-glass. Built once
-    // per pass from the live camera; no camera -> the rectangle below decides alone.
-    let liveViewFrustum = null;
-    const liveCam = this.cam && this.cam.obj;
-    if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
-      liveCam.updateMatrixWorld();
-      _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
-      _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
-      liveViewFrustum = _liveViewFrustum;
-    }
 
     for (let index = 0; index < query.visibleCount; index++) {
       if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
@@ -26871,7 +26886,11 @@ export const render = {
         );
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx, this.state.simTime);
+          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(
+            projectedPx,
+            this.state.simTime,
+            entityId != null ? presentedLodBook(entityId) : undefined,
+          );
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
           if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
@@ -26987,8 +27006,17 @@ export const render = {
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
         _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
         _submitVisibilityOptions.onLiveGlass = onLiveGlass;
+        projectEntityCenter(liveCam, mesh, _pictureNdc);
+        const inPictureHold = _pictureNdc.ok === true
+          && Math.abs(_pictureNdc.x) <= PICTURE_HOLD_NDC
+          && Math.abs(_pictureNdc.y) <= PICTURE_HOLD_NDC;
+        const submitMesh = pictureHoldSubmit(
+          mesh.userData,
+          shouldSubmitEntityMesh(_submitVisibilityOptions),
+          inPictureHold,
+        );
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
+          && applyEntityMeshVisibility(mesh, submitMesh);
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
         // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
         // its compile/residency while it was still off-glass must not finish under ambient FIFO
@@ -27164,6 +27192,14 @@ export const render = {
             _worldSiteA11y && _worldSiteA11y.reducedMotion === true,
             presFrameDt,
           );
+          if (this.state.run && this.state.run.kind === 'survival') {
+            const shell = swarmCombatShieldRadius(entity.radius);
+            if (Math.abs(shieldBubble.scale.x - shell) > 0.01
+                || Math.abs(shieldBubble.scale.y - shell) > 0.01
+                || Math.abs(shieldBubble.scale.z - shell) > 0.01) {
+              shieldBubble.scale.setScalar(shell);
+            }
+          }
         }
 
         const hlod = userData.hlod;

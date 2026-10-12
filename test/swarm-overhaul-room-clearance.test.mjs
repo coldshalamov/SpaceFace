@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { survivalArena } from '../src/systems/survivalArena.js';
+import { ROOM_SOLID_PILOT_CLEARANCE, survivalArena } from '../src/systems/survivalArena.js';
 
 test('a room solid laid over the pilot is pushed clear of the hull; one already clear keeps its place', () => {
   const spawned = [];
@@ -19,7 +19,8 @@ test('a room solid laid over the pilot is pushed clear of the hull; one already 
   ], 2);
   const [hub, far] = spawned;
   const d = Math.hypot(hub.pos.x + 1499.7, hub.pos.z + 2909.6);
-  assert.ok(d >= 20 + 10 + 24 - 1e-6, `hub clears the hull (${d.toFixed(1)} u)`);
+  assert.equal(ROOM_SOLID_PILOT_CLEARANCE, 64);
+  assert.ok(d >= 20 + 10 + ROOM_SOLID_PILOT_CLEARANCE - 1e-6, `hub clears the hull (${d.toFixed(1)} u)`);
   assert.ok(hub.pos.x > -1499.7, 'pushed straight out from the ship');
   assert.deepEqual(far.pos, { x: -1200, z: -2909.6 });
 });
