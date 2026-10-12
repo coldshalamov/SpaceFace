@@ -1,8 +1,10 @@
 // SpaceFace SPEC3-F8b — "Painted Deep-Field" background.
 //
 // One THREE.Group locked to the camera's X/Z, floating at a fixed depth below the play plane.
-// Runtime layers depth-test against gameplay geometry but never write depth; explicit negative group
-// order keeps them behind transparent canopies, shields, and VFX. Offscreen bake passes stay depthless.
+// Runtime layers reserve the far depth boundary, test against gameplay geometry and never write
+// depth. Their physical planes still own perspective/parallax, but cannot intersect a station's
+// underside. Negative group order keeps them behind transparent canopies, shields, and VFX.
+// Offscreen bake passes stay depthless.
 //   L0  clean near-black void                                           (baked tile, opaque)
 //   L1  rare sector-owned nebula structure                              (baked tile, alpha blend)
 //   L2  anomaly-only glow wisps                                         (baked tile, additive)
@@ -197,12 +199,57 @@ const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-s
 const ARENA_BACKDROP_FOCUS = 0.38;
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
+const backgroundDepthMaterials = new WeakSet();
+const backgroundDepthObjects = new WeakSet();
+
+function applyBackgroundMaterialDepth(material) {
+  if (!material || backgroundDepthMaterials.has(material)) return;
+  backgroundDepthMaterials.add(material);
+  const compile = material.onBeforeCompile;
+  const programKey = material.customProgramCacheKey;
+  material.onBeforeCompile = function backgroundFarDepth(shader, renderer) {
+    compile.call(this, shader, renderer);
+    // Alter only depth after the authored shader has projected the layer. Keep XY, W, point size,
+    // texture sampling and closed-form parallax intact. Preserve deliberately clipped populations
+    // (stellar shaders use z>w), near/far clipping and vertices behind the camera.
+    shader.vertexShader = shader.vertexShader.replace(/}\s*$/, `
+      if (gl_Position.w > 0.0 && gl_Position.z >= -gl_Position.w
+          && gl_Position.z <= gl_Position.w) {
+        gl_Position.z = gl_Position.w;
+      }
+    }`);
+  };
+  material.customProgramCacheKey = function backgroundDepthProgramKey() {
+    return `${programKey.call(this)}|background-far-depth-v1`;
+  };
+  material.depthTest = true;
+  material.depthWrite = false;
+  material.needsUpdate = true;
+}
+
+function applyBackgroundObjectDepth(object) {
+  const materials = object.material;
+  if (Array.isArray(materials)) {
+    for (const material of materials) applyBackgroundMaterialDepth(material);
+  } else applyBackgroundMaterialDepth(materials);
+  if (backgroundDepthObjects.has(object)) return;
+  backgroundDepthObjects.add(object);
+  const add = object.add;
+  // Nested groups may arrive empty and receive meshes after async decode. Pass the rule down at
+  // every admission boundary, not just the root; existing children are covered by the initial walk.
+  object.add = function addBackgroundObjects(...objects) {
+    for (const child of objects) child.traverse(applyBackgroundObjectDepth);
+    return add.apply(this, objects);
+  };
+}
 
 export function applySpaceBackgroundRootContract(group, bgY) {
   if (!group) return group;
   group.name = 'SpaceBackground';
   group.renderOrder = SPACE_BACKGROUND_GROUP_ORDER;
   group.position.y = bgY;
+  // No scene traversal, depth pass, allocation or material mutation in the frame loop.
+  group.traverse(applyBackgroundObjectDepth);
   return group;
 }
 
