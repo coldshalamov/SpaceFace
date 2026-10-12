@@ -109,18 +109,44 @@ async function aimClearOfHud(page, x, y, cx, cy) {
 
 const fighterMemory = { hull: null, breakBeats: 0 };
 
+// Ricochet runner guns: Bank Stream 280, concussion cannon 260. A 230–400 hold,
+// plus a break whenever 3 hostiles sat inside 450, parked the bot outside both
+// guns for a 10-ship wave. rounds_reached never left round 1.
+export const SWARM_KITE_NEAR = 150;
+export const SWARM_KITE_FAR = 250;
+const SWARM_PACK_BREAK_COUNT = 4;
+const SWARM_PACK_BREAK_DIST = 160;
+const SWARM_HURT_BREAK_DIST = 220;
+
+/** True when the bot should stop trading and burn out of the pack. */
+export function swarmBreakWanted(tg, lost) {
+  if (!tg || tg.none) return false;
+  if (lost > 0.04) return true;
+  if (tg.near >= SWARM_PACK_BREAK_COUNT && tg.packDist < SWARM_PACK_BREAK_DIST) return true;
+  if (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < SWARM_HURT_BREAK_DIST) return true;
+  return false;
+}
+
+/** 'KeyW' closes or escapes, 'KeyS' brakes, null coasts inside the gun band. */
+export function swarmKiteKey(dist, beat, breaking) {
+  if (breaking) return 'KeyW';
+  if (dist < SWARM_KITE_NEAR) return 'KeyS';
+  if (dist > SWARM_KITE_FAR || beat % 3 !== 2) return 'KeyW';
+  return null;
+}
+
 /**
  * One beat of a kiting fighter (public input only): aim the mouse at the nearest hostile and fire,
- * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when 3+ hostiles
- * close inside 450 u, when hit, or when low, instead of trading hits. Latch (Space) every 7th beat.
+ * hold a 150–250 u standoff inside the 260 u guns, and break off — turn away from the pack and
+ * burn — only when 4+ hostiles sit inside 160 u, when hit, or when low and close. Latch (Space)
+ * every 7th beat.
  */
 export async function fightBeat(page, beat) {
   const tg = await page.evaluate(readTarget).catch(() => null);
   if (!tg) { await page.waitForTimeout(300); return; }
   const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
   fighterMemory.hull = tg.hull;
-  // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
-  if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
+  if (swarmBreakWanted(tg, lost)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
   if (tg.none) {
     await holdKey(page, 'KeyW', 0.6, null, null);
     if (beat % 3 === 0) await holdKey(page, 'KeyA', 0.4, null, null);
@@ -132,14 +158,15 @@ export async function fightBeat(page, beat) {
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
   // ~5 rad/s; holding it for a whole beat overshoots and the ship spins in place under fire).
   const keys = []; let turn = null; let err = 0;
-  if (fighterMemory.breakBeats > 0 && tg.away != null) {
+  const breaking = fighterMemory.breakBeats > 0 && tg.away != null;
+  if (breaking) {
     fighterMemory.breakBeats--;
-    err = tg.away; keys.push('KeyW');
+    err = tg.away;
   } else {
     err = tg.rel;
-    if (tg.dist < 230) keys.push('KeyS');
-    else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
+  const thrust = swarmKiteKey(tg.dist, beat, breaking);
+  if (thrust) keys.push(thrust);
   if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyA' : 'KeyD'; // KeyD lowers rot (measured by the yaw probes)
   for (const k of keys) await page.keyboard.down(k);
   const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
