@@ -55,6 +55,31 @@ const EXPAND_R = 141;
 
 export const SWARM_DENSITY_THRESHOLD = 8;
 
+/** Clock bearing of the nearest hostile glyph that this draw actually painted. */
+export function radarHostileCourseText(marks, center, offRangeMarker = null, drawnLimit = MAX_SEMANTIC_HOSTILES) {
+  let nearest = null; let distanceSq = Infinity;
+  const consider = (mark) => {
+    if (!mark || !Number.isFinite(mark.x) || !Number.isFinite(mark.y)) return;
+    const d = (mark.x - center) ** 2 + (mark.y - center) ** 2;
+    if (d >= 0.25 && d < distanceSq) { nearest = mark; distanceSq = d; }
+  };
+  for (let i = 0; i < Math.min(marks.length, drawnLimit); i++) consider(marks[i]);
+  consider(offRangeMarker);
+  if (!nearest) return '';
+  const degrees = Math.round((Math.atan2(nearest.x - center, center - nearest.y) * 180 / Math.PI + 360) % 360) % 360;
+  const clock = Math.round(degrees / 30) % 12 || 12;
+  return `Nearest hostile at ${clock} o'clock, dial bearing ${degrees} degrees.`;
+}
+
+/** Accessible copy follows the drawn instrument; menu/empty draws clear its previous course. */
+export function publishRadarHostileCourse(canvas, { baseLabel, courseText = '', mode, simTime }) {
+  const live = mode === 'flight' && courseText && Number.isFinite(simTime);
+  const label = live ? `${baseLabel} ${courseText}` : baseLabel;
+  if (canvas.getAttribute('aria-label') !== label) canvas.setAttribute('aria-label', label);
+  if (live) canvas.setAttribute('data-radar-bearing-sim', String(simTime));
+  else canvas.removeAttribute('data-radar-bearing-sim');
+}
+
 const TRAIL_MAX = 7;
 const MAX_TRAIL_UPDATES = 72;
 const TRAIL_PRUNE_INTERVAL = 20;
@@ -1743,6 +1768,7 @@ export function createRadar(ctx) {
   }
 
   function onSectorEnter() {
+    clearHostileCourse();
     clearAllTrails();
     if (expanded) setExpanded(false);
     markContactsDirty();
@@ -1757,6 +1783,7 @@ export function createRadar(ctx) {
       ['game:started', markContactsDirty],
       ['save:loaded', markContactsDirty],
       ['sector:enter', onSectorEnter],
+      ['mode:changed', ({ mode } = {}) => { if (mode !== 'flight') clearHostileCourse(); }],
     ]) {
       const off = bus.on(event, handler);
       if (typeof off === 'function') unsubscribers.push(off);
@@ -1882,6 +1909,7 @@ export function createRadar(ctx) {
   }
 
   function draw() {
+    if (state.mode !== 'flight') clearHostileCourse();
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
 
@@ -1917,6 +1945,7 @@ export function createRadar(ctx) {
       ? state.entities.get(state.playerId)
       : null;
     if (!player || !player.pos) {
+      clearHostileCourse();
       updateObjectiveKey(null, null);
       return;
     }
@@ -2235,10 +2264,12 @@ export function createRadar(ctx) {
       if (selected) drawTargetRing(g, mark.x, mark.y, center);
     }
 
+    let offRangeHostileMarker = null;
     if (nearestOffRangeHostile) {
       const projected = projectRadarPoint(player.pos, nearestOffRangeHostile.pos, range, metrics, projectScratch);
       if (projected) {
         drawHostileEdgeMarker(g, projected.x, projected.y, projected.angle, nearestOffRangeHostile.id === targetId);
+        offRangeHostileMarker = { x: projected.x, y: projected.y };
       }
     }
 
@@ -2423,19 +2454,24 @@ export function createRadar(ctx) {
     const ariaLabel = waypoint
       ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
       : 'Local tactical radar. You are the lit centre hull. Hostiles are red class silhouettes, stations are cyan berth hexagons, gates are violet double rings, allied ships are green, and nearby traffic is blue-grey. Distant small traffic stays off the dial.';
-    if (ariaLabel !== lastAriaLabel) {
-      lastAriaLabel = ariaLabel;
-      canvas.setAttribute('aria-label', ariaLabel);
-    }
+    lastAriaLabel = ariaLabel;
+    publishRadarHostileCourse(canvas, { baseLabel: ariaLabel, mode: state.mode, simTime: state.simTime,
+      courseText: radarHostileCourseText(hostileMarks, center, offRangeHostileMarker, hostileMarkCount) });
+  }
+
+  function clearHostileCourse() {
+    publishRadarHostileCourse(canvas, { baseLabel: lastAriaLabel || 'Local tactical radar.', mode: 'menu' });
   }
 
   function invalidate() {
+    clearHostileCourse();
     markContactsDirty();
     asteroidStillCache.armed = false;
     asteroidStillCache.rescanDraws = 0;
   }
 
   function destroy() {
+    clearHostileCourse();
     dial.removeEventListener('click', onDialClick);
     for (const unsubscribe of unsubscribers.splice(0)) {
       try { unsubscribe(); } catch (_) {}

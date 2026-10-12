@@ -73,7 +73,24 @@ export function readTarget() {
   let away = null; const packDist = near ? Math.hypot(me.pos.x - cx / near, me.pos.z - cz / near) : Infinity;
   if (near) { const a = Math.atan2(me.pos.z - cz / near, me.pos.x - cx / near); away = a - me.rot; while (away > Math.PI) away -= 2 * Math.PI; while (away < -Math.PI) away += 2 * Math.PI; }
   const hull = me.hullMax ? me.hull / me.hullMax : 1;
-  if (!best) return { none: true, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  if (!best) {
+    // The off-screen hostile is a public radar glyph, not a hidden world target. Follow its
+    // accessible dial bearing until a real target is reachable by the gameplay canvas.
+    const radar = document.querySelector?.('.sf-radar-semantic-canvas');
+    const text = radar?.getAttribute('aria-label') || '';
+    const bearing = /Nearest hostile at \d+ o'clock, dial bearing (\d+) degrees\./.exec(text);
+    const stampText = radar?.getAttribute('data-radar-bearing-sim');
+    const stamp = stampText == null ? NaN : Number(stampText);
+    let radarRel = null;
+    if (radar?.offsetParent && bearing && Number.isFinite(stamp) && Number.isFinite(st.simTime)
+      && st.simTime - stamp >= 0 && st.simTime - stamp <= 0.5) {
+      // The radar's +X reads left, +Z reads up: a clockwise dial bearing maps to XZ heading.
+      radarRel = Math.PI / 2 + Number(bearing[1]) * Math.PI / 180 - me.rot;
+      while (radarRel > Math.PI) radarRel -= 2 * Math.PI;
+      while (radarRel < -Math.PI) radarRel += 2 * Math.PI;
+    }
+    return { none: true, hull, radarRel, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  }
   v.set(best.pos.x, best.pos.y || 0, best.pos.z).project(cam);
   // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).
   const ang = Math.atan2(best.pos.z - me.pos.z, best.pos.x - me.pos.x);
@@ -109,6 +126,23 @@ export async function fightBeat(page, beat) {
   // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
   if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
   if (tg.none) {
+    if (Number.isFinite(tg.radarRel)) {
+      const turn = Math.abs(tg.radarRel) > 0.12 ? (tg.radarRel > 0 ? 'KeyA' : 'KeyD') : null;
+      const turnS = turn ? Math.min(0.6, Math.abs(tg.radarRel) / 4.5) : 0;
+      try {
+        if (turn) {
+          await page.keyboard.down(turn);
+          await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
+          await page.keyboard.up(turn);
+        }
+        if (!await page.evaluate(readCombatPhaseEnded)) {
+          await holdKey(page, 'KeyW', Math.max(0.05, 0.6 - turnS), null, null, combatPhaseEnded);
+        }
+      } finally {
+        for (const key of ['KeyW', 'KeyA', 'KeyD']) await page.keyboard.up(key);
+      }
+      return;
+    }
     await holdKey(page, 'KeyW', 0.6, null, null, combatPhaseEnded);
     if (beat % 3 === 0 && !await page.evaluate(readCombatPhaseEnded)) {
       await holdKey(page, 'KeyA', 0.4, null, null, combatPhaseEnded);
