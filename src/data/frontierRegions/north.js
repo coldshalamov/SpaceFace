@@ -149,6 +149,31 @@ export const NORTH_SECTORS = Object.freeze([
         hidden: true,
         contents: Object.freeze({ commodityId: 'cmdty_ore_goldium', amount: 2 }),
       }),
+      // PR-1 chain: the Pour's log is the clue — the tank crew recorded where the pour was
+      // really heading, and buried the evidence before the front took the shift. The burn
+      // cache sits on the gate's own pour line.
+      Object.freeze({
+        id: 'poi_rhea_pour_log',
+        type: 'derelict',
+        name: 'The Pour Log',
+        scannerSignalKind: 'archive',
+        discoveryPlate: Object.freeze({
+          title: 'The Pour Log',
+          body: 'The slurry tank that froze mid-pour kept one crew record: the shift\'s real yield never reached the claim — it was sealed on the burn line before the gate cycled again.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_rhea_burn_cache',
+        type: 'cache',
+        name: 'Burn-Line Cache',
+        hidden: true,
+        requiresActiveScan: true,
+        contents: Object.freeze({ commodityId: 'cmdty_ore_goldium', amount: 2 }),
+        discoveryPlate: Object.freeze({
+          title: 'Burn-Line Cache',
+          body: 'The shift\'s real yield sealed on the burn line — scorched goldium the claim never logged.',
+        }),
+      }),
     ]),
   }),
 
@@ -359,6 +384,30 @@ export const NORTH_SECTORS = Object.freeze([
         hidden: true,
         contents: Object.freeze({ commodityId: 'cmdty_exotic_xenium', amount: 1 }),
       }),
+      // PR-1 chain: the Answer's tag is the clue — the array that repeats the sphere's note
+      // kept one recorded bar nobody broadcast. The note cache holds the recording's price.
+      Object.freeze({
+        id: 'poi_phoebe_answer_tag',
+        type: 'derelict',
+        name: 'The Answer Tag',
+        scannerSignalKind: 'archive',
+        discoveryPlate: Object.freeze({
+          title: 'The Answer Tag',
+          body: 'The answering array repeats the sphere\'s note on a loop, but one bar was recorded and sealed instead of broadcast. The tag points the way to the vault the keepers never claimed.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_phoebe_note_cache',
+        type: 'cache',
+        name: 'Note Cache',
+        hidden: true,
+        requiresActiveScan: true,
+        contents: Object.freeze({ commodityId: 'cmdty_art', amount: 1 }),
+        discoveryPlate: Object.freeze({
+          title: 'Note Cache',
+          body: 'The recorded bar of the song, sealed and priced as art — the answer the keepers could not bring themselves to send.',
+        }),
+      }),
     ]),
   }),
 ]);
@@ -400,6 +449,17 @@ export const NORTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_rhea_claim',
         pos: Object.freeze({ x: -1380, z: -280 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        // At the Pour one-off itself — the log is the tank's own crew record.
+        id: 'poi_rhea_pour_log',
+        pos: Object.freeze({ x: 240, z: 120 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_rhea_burn_cache',
+        pos: Object.freeze({ x: 850, z: -450 }),
         landmarkGlb: 'place_debris_chunk',
       }),
     ]),
@@ -519,6 +579,17 @@ export const NORTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_phoebe_vault',
         pos: Object.freeze({ x: -1480, z: 520 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        // At the Answer one-off itself — the tag rides the answering array.
+        id: 'poi_phoebe_answer_tag',
+        pos: Object.freeze({ x: -300, z: -300 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_phoebe_note_cache',
+        pos: Object.freeze({ x: -1400, z: -100 }),
         landmarkGlb: 'place_debris_chunk',
       }),
     ]),

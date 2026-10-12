@@ -437,6 +437,30 @@ const REGION_KEPLER = freezeRegion({
         },
       },
       { id: 'poi_kepler_stash', type: 'cache', name: 'Raider Stash', hidden: true },
+      // PR-1 chain: the Unbroken's dead-crew log is the clue — it names a buried surplus lot
+      // the winch crew never cashed out. The manifest cache is the payoff (active scan only).
+      {
+        id: 'poi_kepler_unbroken_log',
+        type: 'derelict',
+        name: 'The Unbroken Log',
+        scannerSignalKind: 'archive',
+        discoveryPlate: {
+          title: 'The Unbroken Log',
+          body: 'The mast still standing in the ring kept one sealed manifest. Its last entry names the winch drum that won the ring — and where the crew buried the payout under the glow.',
+        },
+      },
+      {
+        id: 'poi_kepler_won_manifest',
+        type: 'cache',
+        name: 'The Won Manifest',
+        hidden: true,
+        requiresActiveScan: true,
+        contents: { commodityId: 'cmdty_stolen_goods', amount: 3 },
+        discoveryPlate: {
+          title: 'The Won Manifest',
+          body: 'A sealed surplus lot under the glow — the mast crew\'s buried cut, still worth what it was won for.',
+        },
+      },
     ],
   },
   anchors: {
@@ -469,6 +493,17 @@ const REGION_KEPLER = freezeRegion({
       {
         id: 'poi_kepler_stash',
         pos: { x: -1320, z: -360 },
+        landmarkGlb: 'place_debris_chunk',
+      },
+      {
+        // At the Unbroken one-off itself — the log rides the mast's ring.
+        id: 'poi_kepler_unbroken_log',
+        pos: { x: 120, z: -180 },
+        landmarkGlb: 'place_debris_chunk',
+      },
+      {
+        id: 'poi_kepler_won_manifest',
+        pos: { x: 200, z: -80 },
         landmarkGlb: 'place_debris_chunk',
       },
     ],

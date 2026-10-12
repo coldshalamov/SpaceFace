@@ -225,6 +225,30 @@ export const SOUTH_SECTORS = Object.freeze([
         name: 'Sedna Vault',
         hidden: true,
       }),
+      // PR-1 chain: the Pin's dead-crew record is the clue — it names a marker line that ends
+      // at the cache. The lamp walker ran the walk on a sealed pocket that was never logged.
+      Object.freeze({
+        id: 'poi_sedna_pin_log',
+        type: 'derelict',
+        name: 'The Pin Log',
+        scannerSignalKind: 'archive',
+        discoveryPlate: Object.freeze({
+          title: 'The Pin Log',
+          body: 'The pin hull still broadcasts one survey record: the walk is the real line — post to cadence, cadence to dark. The last lamp walker cached her survey pay beyond the beacon before the hull found her.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_sedna_walk_cache',
+        type: 'cache',
+        name: 'Walk-End Cache',
+        hidden: true,
+        requiresActiveScan: true,
+        contents: Object.freeze({ commodityId: 'cmdty_salvage_electronics', amount: 2 }),
+        discoveryPlate: Object.freeze({
+          title: 'Walk-End Cache',
+          body: 'A survey pay pocket sealed past the cadence beacon — the lamp walker\'s last shift, still paying.',
+        }),
+      }),
       Object.freeze({
         id: 'poi_sedna_cadence',
         type: 'beacon',
@@ -293,6 +317,30 @@ export const SOUTH_SECTORS = Object.freeze([
         id: 'poi_dione_relay',
         type: 'beacon',
         name: 'Lane Relay',
+      }),
+      // PR-1 chain: the Dispute's tag is the clue — the two hulls that argued over a cleared slot
+      // both paid out on the same sealed drop. The run cache sits off the lane, under the sweep.
+      Object.freeze({
+        id: 'poi_dione_dispute_tag',
+        type: 'derelict',
+        name: 'The Dispute Tag',
+        scannerSignalKind: 'archive',
+        discoveryPlate: Object.freeze({
+          title: 'The Dispute Tag',
+          body: 'Two hulls argued over the same cleared slot and both lost. The lane\'s record shows their freight rerouted to a sealed drop under the sweep — whoever clears it owns the argument.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_dione_run_cache',
+        type: 'cache',
+        name: 'Run Cache',
+        hidden: true,
+        requiresActiveScan: true,
+        contents: Object.freeze({ commodityId: 'cmdty_stolen_goods', amount: 2 }),
+        discoveryPlate: Object.freeze({
+          title: 'Run Cache',
+          body: 'The disputed freight, rerouted and sealed under the sweep — the gate\'s price for losing the argument.',
+        }),
       }),
       Object.freeze({
         // 2026-09-28 INFERENCE — the southern front's dead drop. The pack that watches the
@@ -414,6 +462,17 @@ export const SOUTH_ANCHORS = Object.freeze({
         landmarkGlb: 'place_asteroid_seamed',
         landmark: true,
       }),
+      Object.freeze({
+        // At the Pin one-off itself — the log rides its broadcast.
+        id: 'poi_sedna_pin_log',
+        pos: Object.freeze({ x: 700, z: -480 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_sedna_walk_cache',
+        pos: Object.freeze({ x: 1000, z: -750 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
     ]),
   }),
 
@@ -458,6 +517,17 @@ export const SOUTH_ANCHORS = Object.freeze({
         // this row is its placed body: a debris chunk off the relay, in the field's shadow).
         id: 'poi_dione_deaddrop',
         pos: Object.freeze({ x: -140, z: 860 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        // At the Dispute one-off itself — the tag is what the two hulls left behind.
+        id: 'poi_dione_dispute_tag',
+        pos: Object.freeze({ x: 170, z: -350 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_dione_run_cache',
+        pos: Object.freeze({ x: -460, z: -720 }),
         landmarkGlb: 'place_debris_chunk',
       }),
     ]),
