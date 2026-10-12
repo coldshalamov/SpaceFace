@@ -86,9 +86,72 @@ export const FIELD_JOB_SIGNATURE_CRAFT = Object.freeze([
   }),
 ]);
 
+// AEP U1 (spec §3.5): the NPC-path unit roster craft rows. Same contract as the field
+// signatures — one craftId per unit, reuse-first released hulls, jobKind = the npcJobs
+// phase machine the unit rides. Fielding is roster-driven (`npcUnitRoster.js` gates +
+// `Traffic._ensureNpcUnitFixtures`), so these rows stay OUT of both ambient craft lists:
+// a service-less pocket must never roll them.
+export const NPC_UNIT_CRAFT = Object.freeze([
+  Object.freeze({
+    craftId: 'hornet_scn_interdictor',
+    unitId: 'npc_customs_interceptor',
+    role: 'customs_interceptor',
+    file: 'wholeships/hornet_scn_interdictor.glb',
+    assetId: 'SF_HORNET_SCN_INTERDICTOR',
+    jobKind: 'patrol',
+    releaseUrl: 'assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb',
+  }),
+  Object.freeze({
+    craftId: 'volatiles_tanker',
+    unitId: 'npc_fuel_tender',
+    role: 'fuel_tender',
+    file: 'wholeships/volatiles_tanker.glb',
+    assetId: 'SF_WHOLESHIP_VOLATILES_TANKER',
+    jobKind: 'tender',
+    releaseUrl: 'assets/ships/release/parts/wholeships/volatiles_tanker.glb',
+  }),
+  Object.freeze({
+    craftId: 'apron_shuttle',
+    unitId: 'npc_courier_relay',
+    role: 'courier_relay',
+    file: 'wholeships/apron_shuttle.glb',
+    assetId: 'SF_WHOLESHIP_APRON_SHUTTLE',
+    jobKind: 'hauler',
+    releaseUrl: 'assets/ships/release/parts/wholeships/apron_shuttle.glb',
+  }),
+  Object.freeze({
+    craftId: 'survey_pin',
+    unitId: 'npc_media_drone',
+    role: 'media_drone',
+    file: 'wholeships/survey_pin.glb',
+    assetId: 'SF_WHOLESHIP_SURVEY_PIN',
+    jobKind: 'patrol',
+    releaseUrl: 'assets/ships/release/parts/wholeships/survey_pin.glb',
+  }),
+  Object.freeze({
+    craftId: 'inspection_cutter',
+    unitId: 'npc_quarantine_corvette',
+    role: 'quarantine_corvette',
+    file: 'wholeships/inspection_cutter.glb',
+    assetId: 'SF_WHOLESHIP_INSPECTION_CUTTER',
+    jobKind: 'patrol',
+    releaseUrl: 'assets/ships/release/parts/wholeships/inspection_cutter.glb',
+  }),
+  Object.freeze({
+    craftId: 'massline_express_liner_v1',
+    unitId: 'npc_diplomat_yacht',
+    role: 'diplomat_yacht',
+    file: 'wholeships/massline_express_liner_v1.glb',
+    assetId: 'SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1',
+    jobKind: 'hauler',
+    releaseUrl: 'assets/ships/release/parts/wholeships/massline_express_liner_v1.glb',
+  }),
+]);
+
 export const OCCUPATIONAL_JOB_KIND_BY_ROLE = Object.freeze({
   ...Object.fromEntries(OCCUPATIONAL_TRAFFIC_CRAFT.map((row) => [row.role, row.jobKind])),
   ...Object.fromEntries(FIELD_JOB_SIGNATURE_CRAFT.map((row) => [row.role, row.jobKind])),
+  ...Object.fromEntries(NPC_UNIT_CRAFT.map((row) => [row.role, row.jobKind])),
 });
 
 // P03's named single worker is commissioned by brace_long_plate, never weighted ambient traffic.
