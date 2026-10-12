@@ -169,6 +169,11 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_charon_expanse: 'charon',
   sector_io_reach: 'io',
   sector_ashfall_reach: 'ashfall',
+  sector_kepler_scar: 'kepler',
+  sector_dione_lane: 'dione',
+  sector_rhea_cinder: 'rhea',
+  sector_phoebe_echo: 'phoebe',
+  sector_sedna_dark: 'sedna',
 });
 
 function buildKillMachine({
@@ -662,6 +667,179 @@ export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
 // baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
 // sector deactivates or a machine is absent.
+// ── AEP PR-1 rim wave 1 (audit BP-8): the five rim sectors' signature toys. Same warning /
+// surge / calm shove-into-an-anvil law as the core machines; each is built from an admitted
+// place prop (AGENTS.md) and each is worked on camera by its sector's activity pocket.
+
+// KEPLER SCAR — the Capsize Winch. The graveyard bazaar's claim to the dead carrier: a salvage
+// clamp on the Void-Reach's north drum that hauls loose wreckage across the work face and rolls
+// it onto the drum line. A body caught in the haul sheet reads as another hull being capsized.
+export const KEPLER_WINCH_SECTOR_ID = 'sector_kepler_scar';
+export const KEPLER_CAPSIZE_WINCH = buildKillMachine({
+  id: 'kepler_capsize_winch',
+  hazardType: 'debris',
+  placeId: 'place_salvage_clamp',
+  sectorId: KEPLER_WINCH_SECTOR_ID,
+  // North rim of the graveyard strip, between station_kepler_scar (588 WU) and the Flight Deck
+  // hulk (180 WU); clear of the debris hazard rim (841) and the glow (1210).
+  localPos: { x: 40, z: 900 },
+  // Aimed south at the capsized drum line — the haul runs bazaar-ward into the wreck face.
+  rot: -1.4,
+  phaseOffsetS: 20,
+  hazardRadius: 140,
+  // The drum the winch wraps: the anvil everything hauled ends against.
+  anvil: { radius: 26, mass: 14000, along: 92, across: 0 },
+  mouth: { name: 'Capsize Winch', radius: 20 },
+  fields: [{
+    // One haul sheet spanning the work face; surge drags what it catches toward the drum.
+    idSuffix: 'haul',
+    kind: 'sheet',
+    strength: 700,
+    radius: 150,
+    halfWidth: 60,
+    falloff: 1.0,
+    along: 30,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
+// DIONE LANE — the Lane Gate. The speed lane's own fixture: a transponder arch mid-corridor
+// that slams the lane shut on a cycle. Traffic that holds the cleared line threads the gate;
+// anything caught in the slam sheet is squeezed onto the weigh plate under the arch.
+export const DIONE_GATE_SECTOR_ID = 'sector_dione_lane';
+export const DIONE_LANE_GATE = buildKillMachine({
+  id: 'dione_lane_gate',
+  hazardType: 'debris',
+  placeId: 'place_transponder_gate',
+  sectorId: DIONE_GATE_SECTOR_ID,
+  // Mid-corridor between Dione Customs and the Exchange, beside the Dispute (112 WU) and
+  // the lane relay (126 WU); inside the patrol corridor, clear of f_dione_1 (1126 WU).
+  localPos: { x: 200, z: -460 },
+  // Aligned with the lane bearing (customs→exchange, ~40 deg).
+  rot: 0.7,
+  phaseOffsetS: 22,
+  hazardRadius: 150,
+  // The gate's own plate under the arch — the squeeze delivers onto it.
+  anvil: { radius: 22, mass: 11000, along: 0, across: 0 },
+  mouth: { name: 'Lane Gate', radius: 20 },
+  fields: [{
+    // The slam sheet sweeps the lane's uprange band back through the arch — the gate feeds
+    // its own plate rather than straddling the kill point (that sweep belongs to Charon).
+    idSuffix: 'slam',
+    kind: 'sheet',
+    strength: 640,
+    radius: 170,
+    halfWidth: 60,
+    falloff: 1.0,
+    along: 60,
+    across: 0,
+    dirAlong: -1,
+  }],
+});
+
+// RHEA CINDER — the Pour Gate. The burning claim's valve: a slurry tank on the slag line that
+// cycles open and drops the pour across the burn plate. The gate is why the claim is on fire —
+// and why crossing its pour line on the surge is a mistake a hull only makes once.
+export const RHEA_POUR_SECTOR_ID = 'sector_rhea_cinder';
+export const RHEA_POUR_GATE = buildKillMachine({
+  id: 'rhea_pour_gate',
+  hazardType: 'debris',
+  placeId: 'place_slurry_tank',
+  sectorId: RHEA_POUR_SECTOR_ID,
+  // On the burn line inside the slag zone; clear of f_rhea_1's cluster rim (475 WU), the
+  // station (1766), and the Pour one-off (824).
+  localPos: { x: 950, z: -250 },
+  // The gate mouths back toward the claim floor where the Pour still hangs mid-air.
+  rot: 2.66,
+  phaseOffsetS: 24,
+  hazardRadius: 160,
+  // The burn plate where the pour lands.
+  anvil: { radius: 26, mass: 13000, along: 100, across: 0 },
+  mouth: { name: 'Pour Gate', radius: 20 },
+  fields: [{
+    // The pour cone: surge pushes slag out of the gate mouth onto the burn plate.
+    idSuffix: 'pour',
+    kind: 'cone',
+    strength: 760,
+    radius: 140,
+    halfAngleRad: 0.34,
+    edgeSoftRad: 0.1,
+    falloff: 1.05,
+    along: 0,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
+// PHOEBE ECHO — the Tuning Fork. The sector's sound made physical: a sensor mast split like a
+// fork on the shrine's rim, resonating on the Shard Sphere's old bearing. On the surge the note
+// gathers what drifts in its lobe and lays it across the resonator plate.
+export const PHOEBE_FORK_SECTOR_ID = 'sector_phoebe_echo';
+export const PHOEBE_TUNING_FORK = buildKillMachine({
+  id: 'phoebe_tuning_fork',
+  hazardType: 'debris',
+  placeId: 'place_sensor_mast',
+  sectorId: PHOEBE_FORK_SECTOR_ID,
+  // On the shrine's south rim inside the song's reach; clear of the debris field (665 WU),
+  // f_phoebe_2 (556), the vault (993), and the station approach (1420).
+  localPos: { x: -540, z: 200 },
+  // The tines aim the note at the Shard Sphere on its true bearing from the rim.
+  rot: -0.96,
+  phaseOffsetS: 26,
+  hazardRadius: 140,
+  // The resonator plate the note lands on.
+  anvil: { radius: 20, mass: 8000, along: 90, across: 0 },
+  mouth: { name: 'Tuning Fork', radius: 18 },
+  fields: [{
+    // The note lobe: surge sweeps the sphere's bearing and settles what it catches on the plate.
+    idSuffix: 'note',
+    kind: 'cone',
+    strength: 560,
+    radius: 120,
+    halfAngleRad: 0.3,
+    edgeSoftRad: 0.12,
+    falloff: 1.0,
+    along: 0,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
+// SEDNA DARK — the Patch Gun. The lighthouse economy's tool: a worklight tower on the lantern
+// walk that slams drifting hulls onto the post's patch plate on the surge. In the dark rim,
+// the lamp that moves you is also the lamp that fixes you.
+export const SEDNA_PATCH_SECTOR_ID = 'sector_sedna_dark';
+export const SEDNA_PATCH_GUN = buildKillMachine({
+  id: 'sedna_patch_gun',
+  hazardType: 'debris',
+  placeId: 'place_worklight_tower',
+  sectorId: SEDNA_PATCH_SECTOR_ID,
+  // On the lantern walk between the survey post (1062 WU) and the cadence beacon (778), inside
+  // the glow; clear of f_sedna_1 (457) and the Pin (552).
+  localPos: { x: 300, z: -100 },
+  // Aimed down the lamp line at the cadence beacon.
+  rot: -0.77,
+  phaseOffsetS: 28,
+  hazardRadius: 130,
+  // The patch plate the gun works its catch against.
+  anvil: { radius: 22, mass: 10000, along: 88, across: 0 },
+  mouth: { name: 'Patch Gun', radius: 18 },
+  fields: [{
+    // The patch lobe: surge shoves drifting hulls downrange onto the plate.
+    idSuffix: 'patch',
+    kind: 'cone',
+    strength: 600,
+    radius: 110,
+    halfAngleRad: 0.38,
+    edgeSoftRad: 0.12,
+    falloff: 1.05,
+    along: 0,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
 export const ALL_KILL_MACHINES = Object.freeze([
   ...KILL_MACHINES,
   STARTER_FIELD_MACHINE,
@@ -673,6 +851,11 @@ export const ALL_KILL_MACHINES = Object.freeze([
   CHARON_TAILINGS_SWEEP,
   IO_BELL_RINGER,
   ASHFALL_CLAIM_SCARECROW,
+  KEPLER_CAPSIZE_WINCH,
+  DIONE_LANE_GATE,
+  RHEA_POUR_GATE,
+  PHOEBE_TUNING_FORK,
+  SEDNA_PATCH_GUN,
 ]);
 
 // The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
@@ -693,6 +876,11 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === CHARON_SWEEP_SECTOR_ID) return Object.freeze([CHARON_TAILINGS_SWEEP]);
   if (sectorId === IO_BELL_SECTOR_ID) return Object.freeze([IO_BELL_RINGER]);
   if (sectorId === ASHFALL_SCARECROW_SECTOR_ID) return Object.freeze([ASHFALL_CLAIM_SCARECROW]);
+  if (sectorId === KEPLER_WINCH_SECTOR_ID) return Object.freeze([KEPLER_CAPSIZE_WINCH]);
+  if (sectorId === DIONE_GATE_SECTOR_ID) return Object.freeze([DIONE_LANE_GATE]);
+  if (sectorId === RHEA_POUR_SECTOR_ID) return Object.freeze([RHEA_POUR_GATE]);
+  if (sectorId === PHOEBE_FORK_SECTOR_ID) return Object.freeze([PHOEBE_TUNING_FORK]);
+  if (sectorId === SEDNA_PATCH_SECTOR_ID) return Object.freeze([SEDNA_PATCH_GUN]);
   return Object.freeze([]);
 }
 
