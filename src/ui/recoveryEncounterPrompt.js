@@ -302,11 +302,14 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
         choices: [],
       });
     }
+    const committedLabel = { rescue: 'RESCUE', blackbox: 'BLACK BOX', strip: 'STRIP' }[readout.committedChoice];
     return offer({
       ...base,
       kind: 'info',
-      statusFlag: 'STABLE · CHOOSE',
-      detail: readout.retryReason === 'cargo_full'
+      statusFlag: committedLabel ? `STABLE · CONTINUE ${committedLabel}` : 'STABLE · CHOOSE',
+      detail: committedLabel
+        ? `${committedLabel} already started. Make cargo space, then continue the same recovery.`
+        : readout.retryReason === 'cargo_full'
         ? 'Hold full. Make cargo space, then choose again.'
         : readout.retryReason === 'no_life_signs'
           ? 'No life signs. Recover the box or strip components.'
@@ -315,7 +318,8 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
         { id: 'rescue', label: 'RESCUE', disabled: !readout.hasSurvivor, reason: readout.hasSurvivor ? 'Recover the survivor and earn claimant goodwill.' : 'No life signs detected.' },
         { id: 'blackbox', label: 'BLACK BOX', cancel: true, title: 'Recover the flight record and return registered evidence.' },
         { id: 'strip', label: 'STRIP', danger: true, title: 'Take components; claimed or restricted wrecks carry reputation consequences.' },
-      ],
+      ].filter((choice) => !committedLabel || choice.id === readout.committedChoice)
+        .map((choice) => committedLabel ? { ...choice, label: `CONTINUE ${committedLabel}` } : choice),
       onChoose: (choiceId, source) => bus.emit('recovery:choose', { recoveryId: readout.recoveryId, choice: choiceId, source }),
     });
   }

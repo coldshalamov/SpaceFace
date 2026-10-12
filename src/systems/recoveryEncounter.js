@@ -145,6 +145,14 @@ function normalizeState(data) {
   return normalized;
 }
 
+// A failed empty hold is only a refusal. Once any cargo was physically taken, however,
+// the method and its legal consequence are committed; retry must finish that same lot.
+function committedRecoveryChoice(record) {
+  const choice = record && record.rewardPlan && record.rewardPlan.choice;
+  return CHOICE[choice] && Object.values(record.recoveredCargo || {}).some((qty) => Number(qty) > 0)
+    ? choice : null;
+}
+
 function publicReadout(record, state) {
   if (!record) return null;
   return {
@@ -167,6 +175,7 @@ function publicReadout(record, state) {
     stabilizationMode: record.stabilizationMode || null,
     stabilizeRequired_s: STABILIZE_S,
     retryReason: record.retryReason || null,
+    committedChoice: committedRecoveryChoice(record),
     towClear_wu: TOW_CLEAR_WU,
   };
 }
@@ -536,6 +545,12 @@ export const recoveryEncounter = {
     const record = this._recordFromPayload(payload);
     const choice = String(payload.choice || payload.optionId || '');
     if (!record || record.phase !== 'decision' || !CHOICE[choice]) return false;
+    const committed = committedRecoveryChoice(record);
+    if (committed && choice !== committed) {
+      record.retryReason = 'choice_committed';
+      this._emit('recovery:retryAvailable', publicReadout(record, this.state));
+      return false;
+    }
     if (choice === 'rescue' && !record.hasSurvivor) {
       record.retryReason = 'no_life_signs';
       this._emit('recovery:retryAvailable', publicReadout(record, this.state));
