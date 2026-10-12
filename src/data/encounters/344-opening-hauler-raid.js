@@ -67,6 +67,22 @@ export const trigger = deepFreeze({
 // (the same ids/roles bookkeeping the director's entity-gone handler maintains) so resolve()'s
 // straggler sweep finds nothing to stamp with a despawn timer. Spawn budget stays with the ships
 // through dir.active until each one actually leaves play — the ordinary population contract.
+function stampOpeningFreight(live, manifest, carrier, adopted) {
+  const causality = live && live.causality;
+  if (!causality || !manifest || typeof manifest.manifestId !== 'string') return;
+  const line = Array.isArray(manifest.lines) ? manifest.lines.find((row) => row && row.qty > 0) : null;
+  causality.manifestId = manifest.manifestId;
+  causality.freightRole = manifest.role || (adopted ? 'ore_carrier' : 'hauler');
+  causality.totalQty = manifest.totalQty;
+  causality.commodityId = line && line.commodityId || null;
+  causality.carrierWorldRecordId = carrier && carrier.data && carrier.data.worldRecordId || null;
+  causality.adoptedWorkingBarge = adopted === true;
+  if (!adopted || !carrier || !carrier.data) return;
+  causality.evidence = `The raid hit the working ore barge. Counted hold ${manifest.manifestId} (${manifest.totalQty}).`;
+  carrier.data.encounterFingerprint = causality.fingerprint;
+  carrier.data.encounterCausality = { ...causality };
+}
+
 function releaseSquadToWorld(live) {
   if (!live) return;
   if (Array.isArray(live.ids)) live.ids.length = 0;
@@ -140,6 +156,10 @@ function releaseAdoptedCarrier(d, live) {
   if (live.roles) delete live.roles[adopted.entityId];
   if (!entity || !entity.data || entity.data.worldRecordId !== adopted.worldRecordId) return;
   if (entity.alive === false) return;
+  // A living barge goes back to its own work. The fingerprint stays only on a hull this raid
+  // killed, so a later unrelated death does not inherit the opening cause.
+  delete entity.data.encounterFingerprint;
+  delete entity.data.encounterCausality;
   const restore = adopted.restore || {};
   for (const key of ['freightRewardOwner', 'bountyCr', 'loot']) {
     if (restore[key] === undefined) delete entity.data[key];
@@ -223,6 +243,7 @@ export const runtime = Object.freeze({
       hdata.bountyCr = 0;
       hdata.loot = null;
       hdata.freightRewardOwner = 'manifest_custody';
+      stampOpeningFreight(live, live.data.freightManifest, hauler, true);
     } else if (hauler) {
       const band = live.shape.unitsPerHauler || [6, 10];
       const qty = Math.max(1, Math.round(
@@ -251,6 +272,7 @@ export const runtime = Object.freeze({
         lines: [{ commodityId: 'cmdty_fuel_cells', qty }],
         totalQty: qty,
       };
+      stampOpeningFreight(live, hdata.cargoManifest, hauler, false);
     }
     live.phase = 'conflict';
     d.say(live, 'alert', 'curtain_convoy_alert', null, { primary: true });

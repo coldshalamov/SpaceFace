@@ -2310,9 +2310,36 @@ export const lawSecurity = {
     if (!state || state.playerId == null) return null;
     if (!sameLawEntityId(payload.collectorId, state.playerId)) return null;
     if (payload.acceptedAmount != null && !(Number(payload.acceptedAmount) > 0)) return null;
-    return this._reportStolenCargoPod(
-      entityById(state, payload.pickupId ?? payload.entityId ?? payload.targetId),
-    );
+    const entity = entityById(state, payload.pickupId ?? payload.entityId ?? payload.targetId);
+    return this._reportStolenCargoPod(entity) || this._reportTitledClaimChip(entity, payload);
+  },
+
+  // A cut chip titled to the claim miner is not free scrap. Scooping it is the same witnessed
+  // theft door as a jettisoned pod: no eye, no charge, and the receipt is the thing that lasts.
+  _reportTitledClaimChip(entity, payload) {
+    const state = this.state;
+    const data = entity && entity.data;
+    const source = data && data.npcMiningSource;
+    if (!entity || entity.type !== 'pickup' || !source || !source.minerWorldRecordId) return null;
+    const ownerId = data.ownerId;
+    if (ownerId == null || String(ownerId) !== String(source.minerWorldRecordId)) return null;
+    if (sameLawEntityId(ownerId, state.playerId)) return null;
+    const pos = finiteLawPoint(entity.pos) || finiteLawPoint(payload && payload.pos);
+    if (!pos) return null;
+    const chipId = cleanLawId(`chip:${entity.id}`);
+    const reportId = cleanLawId(`chip-theft:${chipId}:${source.minerWorldRecordId}`);
+    if (!chipId || !reportId) return null;
+    const causalTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+    return this.reportIncident({
+      reportId,
+      kind: 'payload_theft',
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: chipId,
+      causalTick,
+      pos,
+      victimEntityId: ownerId,
+    });
   },
 
   _handleStolenCargoPodLatch(payload) {

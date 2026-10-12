@@ -18,6 +18,11 @@ const MOTIVES = Object.freeze({
   distress_call: Object.freeze({ id: 'distress_response', actor: 'distress contact', evidence: 'The transponder history identifies when and where the mayday began.' }),
   salvage_signal: Object.freeze({ id: 'wreck_recovery', actor: 'salvage beacon', evidence: 'A black-box carrier signal identifies recoverable evidence.' }),
   anomaly_whisper: Object.freeze({ id: 'anomalous_signal', actor: 'unknown signal', evidence: 'A repeatable bearing trace distinguishes the signal from sensor noise.' }),
+  opening_hauler_raid: Object.freeze({
+    id: 'cargo_raid',
+    actor: 'Reach raid wing',
+    evidence: 'The opening freight corridor recorded a raid on a hauler already under way.',
+  }),
 });
 
 const AFTERMATH_BY_SHAPE = Object.freeze({
@@ -31,10 +36,45 @@ const AFTERMATH_BY_SHAPE = Object.freeze({
   trader_run: Object.freeze({ kind: 'economic', remedyType: 'cargo_delivery', remedy: 'Restore the interrupted trade flow with a replacement load.' }),
   distress_call: Object.freeze({ kind: 'distress', remedyType: 'salvage_retrieval', remedy: 'Recover the recorder and account for the distress contact.' }),
   salvage_signal: Object.freeze({ kind: 'wreck', remedyType: 'salvage_retrieval', remedy: 'Recover the black-box evidence from the marked wreck.' }),
+  // Outcome-specific: flying on is not a lost hold, and a saved hauler owes no replacement.
+  opening_hauler_raid: Object.freeze({
+    byOutcome: Object.freeze({
+      defended: Object.freeze({
+        kind: 'economic', remedyType: 'cargo_delivery', status: 'contained',
+        remedy: 'The recorded hold stayed with the hauler. Nothing is owed.',
+      }),
+      robbed: Object.freeze({
+        kind: 'economic', remedyType: 'cargo_delivery', status: 'open',
+        remedy: 'Replace the cargo the raiders carried off the recorded hauler.',
+      }),
+      hauler_destroyed: Object.freeze({
+        kind: 'wreck', remedyType: 'salvage_retrieval', status: 'open',
+        remedy: 'Recover what is left of the recorded hauler and its hold.',
+      }),
+      raid_over: Object.freeze({
+        kind: 'security', remedyType: 'patrol_clear', status: 'open',
+        remedy: 'The raid is still on the freight corridor. Clear the raiders.',
+      }),
+    }),
+  }),
 });
 
 function clean(value, fallback = '') {
   return value == null || value === '' ? fallback : String(value);
+}
+
+function freightStamp(causality) {
+  if (!causality || typeof causality.manifestId !== 'string' || !causality.manifestId) return null;
+  const totalQty = Number(causality.totalQty);
+  return {
+    manifestId: causality.manifestId,
+    freightRole: typeof causality.freightRole === 'string' && causality.freightRole ? causality.freightRole : null,
+    totalQty: totalQty > 0 ? totalQty : null,
+    commodityId: typeof causality.commodityId === 'string' && causality.commodityId ? causality.commodityId : null,
+    carrierWorldRecordId: typeof causality.carrierWorldRecordId === 'string' && causality.carrierWorldRecordId
+      ? causality.carrierWorldRecordId : null,
+    adoptedWorkingBarge: causality.adoptedWorkingBarge === true,
+  };
 }
 
 export function encounterFingerprint(input = {}) {
@@ -120,13 +160,18 @@ export function causalAftermath(causality, outcome, at = {}) {
   const result = clean(outcome, 'unknown');
   if (result.startsWith('aborted:') || result === 'faded' || result === 'spoken' || result === 'unmet') return null;
   const grammar = AFTERMATH_BY_SHAPE[causality.shapeId];
-  if (!grammar) return null;
-  const status = [
-    'paid', 'cleared', 'rescued', 'guarded', 'recovered', 'clean', 'completed', 'killed',
-    'arrived', 'bait_broken', 'defended',
-  ].includes(result)
-    ? 'contained'
-    : 'open';
+  const outcomeGrammar = grammar && grammar.byOutcome ? grammar.byOutcome[result] : null;
+  if (!grammar || (grammar.byOutcome && !outcomeGrammar)) return null;
+  const resolvedGrammar = outcomeGrammar || grammar;
+  const status = outcomeGrammar && outcomeGrammar.status
+    ? outcomeGrammar.status
+    : [
+      'paid', 'cleared', 'rescued', 'guarded', 'recovered', 'clean', 'completed', 'killed',
+      'arrived', 'bait_broken', 'defended',
+    ].includes(result)
+      ? 'contained'
+      : 'open';
+  const freight = freightStamp(causality);
   return {
     schemaVersion: ENCOUNTER_CAUSALITY_SCHEMA_VERSION,
     causeId: `cause_${causality.fingerprint}`,
@@ -141,12 +186,13 @@ export function causalAftermath(causality, outcome, at = {}) {
     motiveId: causality.motiveId,
     actor: causality.actor,
     outcome: result,
-    consequenceKind: grammar.kind,
+    consequenceKind: resolvedGrammar.kind,
     evidence: causality.evidence,
     resolvedFingerprint: at.resolvedFingerprint || causality.resolvedFingerprint || null,
-    remedyType: grammar.remedyType,
-    remedy: grammar.remedy,
+    remedyType: resolvedGrammar.remedyType,
+    remedy: resolvedGrammar.remedy,
     status,
+    ...(freight || {}),
     createdTick: Number.isFinite(at.tick) ? at.tick : 0,
     createdAt: Number.isFinite(at.t) ? at.t : 0,
     offerId: null,
