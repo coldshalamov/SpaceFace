@@ -54,6 +54,18 @@ export function parseArgs(argv) {
   return a;
 }
 
+// `--gate` replaces the caller's rounds and duration. A bounded hull × viewport matrix omits `--gate`
+// so `--rounds`, `--duration` and `--wall` stay the numbers on the command line.
+export function gatePasses(args) {
+  const roundMode = args.mode === 'swarm' || args.mode === 'gauntlet';
+  if (!args.gate) return [{}];
+  if (!roundMode) return [{ gatePass: 'active', tag: args.tag }];
+  return [
+    { gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 },
+    { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) },
+  ];
+}
+
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
 async function installPacingWatch(page) {
   await page.evaluate(() => {
@@ -350,12 +362,9 @@ async function main() {
     await browser.close(); await server.close();
   }
   const hulls = args.hullList || [args.hull && args.hull !== 'all' ? args.hull : null];
-  const roundMode = args.mode === 'swarm' || args.mode === 'gauntlet';
   // --gate: an idle pass (passive kills/reward/spawn motion, the whole first round with no input) and an
   // active pass (fighter from ~3 s, must reach round 3); UNKNOWN on the core checks is a FAIL.
-  const passes = !args.gate ? [{}]
-    : roundMode ? [{ gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 }, { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) }]
-      : [{ gatePass: 'active', tag: args.tag }];
+  const passes = gatePasses(args);
   const outcomes = [];
   for (const viewport of args.viewportList) for (const hull of hulls) for (const arena of arenas) for (const pass of passes) {
     const a = { ...args, viewport, ...pass, tag: pass.tag !== undefined ? [pass.tag, args.tag].filter(Boolean).join('-') || null : args.tag };

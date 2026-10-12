@@ -75,6 +75,36 @@ test('player_control: velocity without displacement is a pinned ship, not a work
   assert.equal(checkPlayerControl(flying).status, 'PASS');
 });
 
+test('parseArgs keeps a bounded hull x viewport matrix, and --gate replaces its rounds and duration', async () => {
+  const { parseArgs, gatePasses } = await import('../scripts/player-truth/run.mjs');
+  const argv = ['--mode=swarm', '--arena=Ricochet Foundry', '--hull=all', '--viewports=960x540,1280x720,1920x1080', '--rounds=2', '--idle=3', '--duration=70', '--wall=12', '--evidence', '--tag=matrix'];
+  const matrix = parseArgs(argv);
+  assert.equal(matrix.gate, false);
+  assert.equal(matrix.hull, 'all');
+  assert.deepEqual(matrix.viewportList, ['960x540', '1280x720', '1920x1080']);
+  assert.equal(matrix.seed, 4242);
+  assert.equal(matrix.tag, 'matrix');
+  assert.equal(matrix.evidence, true);
+  assert.equal(matrix.rounds, 2);
+  assert.equal(matrix.idle, 3);
+  assert.equal(Number(matrix.duration), 70);
+  assert.equal(Number(matrix.wall), 12);
+  assert.deepEqual(gatePasses(matrix), [{}]);
+  const gated = parseArgs([...argv, '--gate']);
+  assert.equal(gated.gate, true);
+  assert.equal(gated.hull, 'all');
+  assert.deepEqual(gated.viewportList, matrix.viewportList);
+  const passes = gatePasses(gated);
+  assert.equal(passes[0].gatePass, 'idle');
+  assert.equal(passes[0].rounds, 1);
+  assert.equal(passes[0].duration, 45);
+  assert.equal(passes[1].gatePass, 'active');
+  assert.equal(passes[1].rounds, 3);
+  assert.equal(passes[1].requireRounds, 3);
+  assert.equal(passes[1].duration, 300);
+  assert.deepEqual(gatePasses(parseArgs(['--mode=adventure', '--gate', '--tag=cruise'])), [{ gatePass: 'active', tag: 'cruise' }]);
+});
+
 test('pinned spans name the solid body the ship sits on', async () => {
   const { checkPlayerControl } = await import('../scripts/player-truth/checks.mjs');
   const t = trace({ probes: [{ label: 'round 2 thrust', kind: 'thrust', key: 'KeyW', startSim: 15, endSim: 16.4 }], player: () => P({ vx: 140, vz: 0, x: 0, z: 0 }) });

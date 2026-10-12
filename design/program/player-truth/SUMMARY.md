@@ -86,6 +86,16 @@ honestly (round 2); no round-3 coverage is claimed. After `6b67d1fb1`, round 2 i
 
 <!-- V2-MATRIX -->
 
+## Hull × viewport matrix (planned, not run)
+
+The rectangle / invisible ship was reported as hull- and viewport-dependent. The CLI already repeats one combo at a time. This command is **not** `--gate`: a gate active pass forces rounds ≥ 3 and duration ≥ 300 sim s, which would throw away the 12 min wall. `player_ship` grades the rectangle, the invisible ship, and the resolving marker. Four unlocked fresh-profile hulls × three viewports = 12 combos. Evidence lands per finished combo (a killed run still keeps the combos that finished) at `design/program/player-truth/swarm-ricochet-foundry-<hull>-<viewport>-matrix/`.
+
+```
+npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --hull=all --viewports=960x540,1280x720,1920x1080 --rounds=2 --idle=3 --duration=70 --wall=12 --evidence --tag=matrix
+```
+
+Order: 960, then 1280, then 1920. `--rounds=2` is there because a spawn-only pass can miss a round-2 rectangle. Start it only when `/workspace/orchestra/state/locks/player-truth.lock` is empty and load1 is under ~8, with one headless Chromium. Gauntlet, Adventure and racing `--gate` wait on the same lock and load. The first-generation verdicts for those modes are not `--gate` passes. The acceptance command stays `npm run player-truth -- --mode=swarm --gate`.
+
 ## First-generation verdicts (PR #288)
 
 ### Owner's 2026-10-11 Swarm report — what reproduced
