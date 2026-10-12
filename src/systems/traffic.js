@@ -4428,7 +4428,7 @@ export const traffic = {
       if (!anchor || !anchor.pos) continue;
       if (atCap) {
         const donor = this._pickNpcUnitDonor(list);
-        if (donor) this._rebuildNpcUnit(donor.entity, donor.rec, unit, anchor, sectorId);
+        if (donor) this._rebuildNpcUnit(donor.entity, donor.rec, unit, anchor, sectorId, sector, stations);
         continue;
       }
       if (!this.helpers || !this.helpers.spawnEntity) return;
@@ -4528,7 +4528,7 @@ export const traffic = {
   // durable record id and world slot, retcon its role/hull/identity onto the unit, refresh
   // hull stats through the ships owner, and hand it the unit's job. The ambient job the
   // donor held is released first — the slot is reclaimed, not double-booked.
-  _rebuildNpcUnit(entity, rec, unit, anchor, sectorId) {
+  _rebuildNpcUnit(entity, rec, unit, anchor, sectorId, sector, stations) {
     const def = TRAFFIC_ROLES[unit.role];
     if (!entity || !entity.data || !def) return false;
     const data = entity.data;
@@ -4554,7 +4554,7 @@ export const traffic = {
     } else if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ship:appearanceChanged', { id: entity.id });
     }
-    this._assignNpcUnitJob(entity, unit, null, null, anchor, sectorId);
+    this._assignNpcUnitJob(entity, unit, sector, stations, anchor, sectorId);
     return true;
   },
 
@@ -4648,9 +4648,9 @@ export const traffic = {
     if (unit.jobKind === 'tender') {
       // Call-out: berth to the nearest client post and back — a second station when the
       // sector has one, else the nearest gate (a picket still needs its fuel run).
-      const berth = anchor.station || stations[0];
+      const berth = anchor.station || (stations || [])[0];
       if (!berth || !berth.pos) return null;
-      const client = this._nearestStationTo(stations, berth)
+      const client = this._nearestStationTo(stations || [], berth)
         || ((sector && sector.gates || []).map((g) => ({ id: g.to, pos: g.pos }))
             .find((g) => g && g.pos));
       if (!client || !client.pos) return null;
@@ -4666,7 +4666,7 @@ export const traffic = {
       const lane = unit.laneBySector && unit.laneBySector[sectorId];
       const origin = lane
         ? (stations || []).find((st) => stationIdentity(st) === lane.from)
-        : stations[0];
+        : (stations || [])[0];
       if (!origin || !origin.pos) return null;
       let dest = null;
       if (lane && lane.to) {
@@ -4676,7 +4676,7 @@ export const traffic = {
           if (poi && poi.pos) dest = { id: poi.id, pos: poi.pos, name: poi.name || poi.id };
         }
       } else {
-        dest = stations[1] || null;
+        dest = (stations || [])[1] || null;
       }
       if (!dest || !dest.pos) return null;
       const legS = Math.max(20, Math.round(
