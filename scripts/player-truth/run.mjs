@@ -45,6 +45,52 @@ export function performanceRunContext(env = process.env, { screenshotEveryMs = 1
   };
 }
 
+/** Observer predicate executed in the page; native automatic launches need no button click. */
+export function roundHandoffSnapshot({ previousWave, simLimit = null, includeButton = true }) {
+  const state = window.SF?.state; const run = state?.run;
+  if (!run) return null;
+  if (run.phase === 'ended' || run.phase === 'victory') return { kind: 'terminal', phase: run.phase };
+  if (simLimit != null && state.simTime > simLimit) return { kind: 'cap', sim: state.simTime };
+  if (run.phase === 'active' && run.wave > previousWave) {
+    return { kind: 'active', wave: run.wave, sim: state.simTime, t: performance.now() };
+  }
+  if (!includeButton || !['draft', 'cleanup', 'refit'].includes(run.phase)) return null;
+  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+  const button = [...document.querySelectorAll('#screens button')].find((b) => b.offsetParent && !b.disabled
+    && /^(Launch round \d+|Keep current loadout|Continue)/.test(norm(b.textContent)));
+  return button ? { kind: 'launch', word: norm(button.textContent).replace(/Esc$/, '').trim() } : null;
+}
+
+export async function awaitRoundHandoff(page, {
+  previousWave, simLimit = null, timeoutMs = 300000, beforeLaunch = async () => {},
+}) {
+  const deadline = Date.now() + timeoutMs;
+  const observe = async (includeButton) => {
+    const remaining = deadline - Date.now(); if (remaining <= 0) return null;
+    const handle = await page.waitForFunction(roundHandoffSnapshot,
+      { previousWave, simLimit, includeButton }, { timeout: remaining }).catch(() => null);
+    if (!handle) return null;
+    try { return await handle.jsonValue(); } finally { await handle.dispose?.(); }
+  };
+  while (Date.now() < deadline) {
+    const next = await observe(true); if (!next || next.kind !== 'launch') return next;
+    await beforeLaunch(next.word);
+    // A public screen can disappear while its screenshot settles; observe native progress
+    // again instead of parking clickText on a launch word that no longer exists.
+    const current = await page.evaluate(roundHandoffSnapshot, { previousWave, simLimit, includeButton: false });
+    if (current) return current;
+    const button = page.locator('#screens button:visible').filter({ hasText: next.word }).first();
+    if (!await button.isVisible().catch(() => false) || !await button.isEnabled().catch(() => false)) continue;
+    try { await button.click({ timeout: Math.max(1, Math.min(1000, deadline - Date.now())) }); }
+    catch (error) {
+      const progressed = await page.evaluate(roundHandoffSnapshot, { previousWave, simLimit, includeButton: false });
+      return progressed || { kind: 'launch-error', message: String(error?.message || error) };
+    }
+    return observe(false);
+  }
+  return null;
+}
+
 export function parseArgs(argv) {
   const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
@@ -301,14 +347,21 @@ async function runOne(args, arena, extra = {}) {
         }
         if (ph.ph === 'draft' || ph.ph === 'cleanup' || ph.ph === 'refit') {
           if (trace.rounds.length >= args.rounds) { stopReason = `${args.rounds} rounds played`; break; }
-          const word = await page.waitForFunction(() => { const n = (s) => String(s || '').replace(/\s+/g, ' ').trim(); const b = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && !x.disabled && /^(Launch round \d+|Keep current loadout|Continue)/.test(n(x.textContent))); return b ? n(b.textContent) : null; }, null, { timeout: 300000 }).then((h) => h.jsonValue()).catch(() => null);
-          if (!word) { stopReason = 'between-round screen had no launch word'; trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break; }
-          await shoot(`between rounds (${word.replace(/Esc$/, '')})`, false);
-          await clickText(page, word.replace(/Esc$/, '').trim());
-          await page.waitForFunction(() => window.SF.state.run && window.SF.state.run.phase === 'active', null, { timeout: 300000 }).catch(() => null);
-          const s1 = await phaseNow();
-          if (s1.ph !== 'active') { stopReason = `next round did not start (phase ${s1.ph})`; trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break; }
-          round = { wave: s1.w, startSim: s1.sim, startT: s1.t, endSim: null, endT: null, endPhase: null };
+          const next = await awaitRoundHandoff(page, { previousWave: round.wave,
+            simLimit: trace.meta.playStartSim + args.duration,
+            timeoutMs: Math.max(1, Math.min(300000, wallCapMs - (Date.now() - T0))),
+            beforeLaunch: (word) => shoot(`between rounds (${word})`, false) });
+          if (next?.kind === 'terminal') continue;
+          if (!next || next.kind === 'cap') {
+            const current = await phaseNow();
+            stopReason = overBudget(trace.meta.playStartSim, current.sim) || 'between-round transition timed out';
+            trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break;
+          }
+          if (next.kind !== 'active') {
+            stopReason = `next round launch failed: ${next.message || next.kind}`;
+            trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break;
+          }
+          round = { wave: next.wave, startSim: next.sim, startT: next.t, endSim: null, endT: null, endPhase: null };
           trace.rounds.push(round); first = true;
           log(`round ${round.wave} active`);
           continue;
