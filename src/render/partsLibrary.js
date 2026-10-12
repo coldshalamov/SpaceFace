@@ -1848,6 +1848,14 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   // reads as a pale toy (Hitch-plus fail). Pirate uses the accepted Wasp of the same combat role.
   smuggler: 'wholeships/drifter_production_v1.glb',
   pirate: 'wholeships/wasp_production_v1.glb',
+  // AEP U1 (spec §3.5): NPC-path unit roster hull bindings — reuse-first, every row a
+  // packaged release. The yacht rides the liner class until the pilgrim-hulk family lands.
+  customs_interceptor: 'wholeships/hornet_scn_interdictor.glb',
+  fuel_tender: 'wholeships/volatiles_tanker.glb',
+  courier_relay: 'wholeships/apron_shuttle.glb',
+  media_drone: 'wholeships/survey_pin.glb',
+  quarantine_corvette: 'wholeships/inspection_cutter.glb',
+  diplomat_yacht: 'wholeships/massline_express_liner_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   // Must match the asset identity embedded in each packaged traffic body above; the record
@@ -1871,6 +1879,12 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   customs: 'SF_WHOLESHIP_INSPECTION_CUTTER',
   smuggler: 'SF_DRIFTER_PRODUCTION_V1',
   pirate: 'SF_WASP_PRODUCTION_V1',
+  customs_interceptor: 'SF_HORNET_SCN_INTERDICTOR',
+  fuel_tender: 'SF_WHOLESHIP_VOLATILES_TANKER',
+  courier_relay: 'SF_WHOLESHIP_APRON_SHUTTLE',
+  media_drone: 'SF_WHOLESHIP_SURVEY_PIN',
+  quarantine_corvette: 'SF_WHOLESHIP_INSPECTION_CUTTER',
+  diplomat_yacht: 'SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1',
 });
 // PQ-193.09: live Span/Wasp carry existing foundry faction kits. Unknown factions keep the
 // unskinned body. Pirate Wasp and the player Wasp stay the accepted production hull.
