@@ -80,7 +80,7 @@ function live(state) {
  * this module does between ticks — `prepareBackend`, every `bus.emit` — must go through here, or it
  * reads the process defaults (all false) and a flag-gated listener silently never runs.
  */
-function withFeatures(runtime, fn) {
+export function withFeatures(runtime, fn) {
   const previous = snapshotFeatureMaps();
   applyFeatureConfigToMaps(runtime && runtime.config && runtime.config.features);
   try {
@@ -107,7 +107,7 @@ function bodyIds(runtime) {
  * clause is UNMEASURED — the staging fell outside the residency ring — not that the world failed
  * to react. The two answers must never be confused.
  */
-function bodilessActors(runtime, actors) {
+export function bodilessActors(runtime, actors) {
   const records = bodyIds(runtime);
   if (!records) return ['<sg02 owner unavailable>'];
   const missing = [];
@@ -119,7 +119,7 @@ function bodilessActors(runtime, actors) {
 }
 
 /** Boot the full production world in a real sector. Not a fixture: this is the shipping manifest. */
-async function bootWorld(seed) {
+export async function bootWorld(seed) {
   const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed });
   const state = runtime.state;
   if (!state) throw new Error('world.reaction_trio: runtime has no simulation state');
