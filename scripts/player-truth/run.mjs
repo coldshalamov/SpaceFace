@@ -291,6 +291,7 @@ async function runOne(args, arena, extra = {}) {
 export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw, vh }) {
   const nearestSample = (t) => { let best = null; let bd = Infinity; for (const s of trace.samples) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } } return bd < 2000 ? best : null; };
   trace.readability = await analyzeReadability(shots, nearestSample).catch((e) => ({ error: String(e) }));
+  for (const c of (trace.readability && trace.readability.census) || []) c.name = trace.keys[c.ty] || null;
   const results = runChecks(trace);
   const verdict = overall(results);
   const paths = { verdict: path.relative(ROOT, path.join(outDir, 'verdict.md')), contactSheet: path.relative(ROOT, path.join(outDir, 'contact-sheet.jpg')), json: path.relative(ROOT, path.join(outDir, 'verdict.json')), trace: path.relative(ROOT, path.join(outDir, 'trace.json.gz')), frames: path.relative(ROOT, path.join(outDir, 'frames')) };
