@@ -5404,12 +5404,30 @@ export const save = {
       // ones paint between batches (the driver's own 16ms gate dedupes any extra yield).
       let saveLoadedDrainSince = nowMs();
       let saveLoadedDrainGuard = 0;
-      while (typeof this.bus.pendingEmitSliceCount === 'function'
-          && this.bus.pendingEmitSliceCount() > 0
-          && saveLoadedDrainGuard++ <= 64) { // a listener re-arming sliced emits can't wedge the restore
+      let saveLoadedRearms = 0;
+      while (typeof this.bus.pendingEmitSliceCount === 'function') {
+        const pendingBefore = this.bus.pendingEmitSliceCount();
+        if (!Number.isSafeInteger(pendingBefore) || pendingBefore < 0) {
+          throw this._annotateRegion(new Error('save_loaded_drain_invalid'), 'saveLoaded');
+        }
+        if (pendingBefore === 0) break;
+        // A paced drain may run only one listener. Listener count grows with the game,
+        // so an iteration limit must never silently declare a partial restore complete.
+        // Bound pathological re-arming/stalled buses separately and fail before physics.
+        if (++saveLoadedDrainGuard > 65536 || saveLoadedRearms >= 64) {
+          throw this._annotateRegion(new Error('save_loaded_drain_incomplete'), 'saveLoaded');
+        }
         // Count AND wall-clock budget: one heavyweight listener would otherwise stretch a
         // count-only slice past the paint deadline — stop the batch after it instead.
-        this.bus.drainEmitSlice(4, RESTORE_YIELD_SLICE_MS);
+        const ran = this.bus.drainEmitSlice(4, RESTORE_YIELD_SLICE_MS);
+        const pendingAfter = this.bus.pendingEmitSliceCount();
+        if (!Number.isSafeInteger(pendingAfter) || pendingAfter < 0
+            || (pendingAfter > 0 && (!Number.isFinite(ran) || ran <= 0))) {
+          throw this._annotateRegion(new Error('save_loaded_drain_stalled'), 'saveLoaded');
+        }
+        // Count re-arming across the entire drain, including cycles that decrease
+        // briefly before expanding another queued event.
+        if (pendingAfter >= pendingBefore) saveLoadedRearms += 1;
         if (nowMs() - saveLoadedDrainSince >= RESTORE_YIELD_SLICE_MS) {
           yield 'save-loaded-drained';
           saveLoadedDrainSince = nowMs();
@@ -5465,6 +5483,9 @@ export const save = {
     let drainedRunTransition = null;
     let hadPendingRunTransition = false;
     if (restoreError == null && s.chunkError != null) restoreError = s.chunkError;
+    // A failed restore must not leak old save:loaded/sector:enter callbacks into
+    // rollback or a queued newer route. Cancel before releasing the exclusive freeze.
+    if (restoreError) this.bus.cancelSlicedEmits?.();
     if (restoreError) this._cancelCeresAttachmentRestore();
     if (restoreError) this._cancelCeresEntityReferenceRestore();
     // The epilogue always runs (the old finally{}): a failed chunk still releases the restore

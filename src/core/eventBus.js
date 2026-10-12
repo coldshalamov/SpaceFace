@@ -487,6 +487,13 @@ export function createBus() {
     return ran;
   }
 
+  // Abort an exclusive restore's unfinished simulation callbacks without removing
+  // subscriptions or touching ordinary/deferred/presentation event queues.
+  function cancelSlicedEmits() {
+    emitSlice = null;
+    pendingSlicedEmits.length = 0;
+  }
+
   function pendingEmitSliceCount() {
     return (emitSlice ? emitSlice.fns.length - emitSlice.index : 0)
       + pendingSlicedEmits.length;
@@ -600,7 +607,7 @@ export function createBus() {
 
   return {
     on, off, once, emit, queue, flush, clear,
-    setEmitSliceBudget, drainEmitSlice, pendingEmitSliceCount,
+    setEmitSliceBudget, drainEmitSlice, pendingEmitSliceCount, cancelSlicedEmits,
     setEmitSliceSuspended, flushSlicedEmits,
     claimPresentationDrain, drainPresentationTail, pendingPresentationCount,
     setPayloadSnapshot,
