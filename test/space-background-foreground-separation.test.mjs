@@ -74,6 +74,17 @@ test('one root contract covers later structures, sprite planets and custom-shade
   assert.equal(hull.customProgramCacheKey(), key, 'readmission does not stack depth programs');
 });
 
+test('authored shader variants retain distinct program keys with the default Three cache key', () => {
+  const root = applySpaceBackgroundRootContract(new THREE.Group(), -211);
+  const first = new THREE.MeshBasicMaterial();
+  const second = new THREE.MeshBasicMaterial();
+  first.onBeforeCompile = shader => { shader.vertexShader += '\n// first authored shader'; };
+  second.onBeforeCompile = shader => { shader.vertexShader += '\n// second authored shader'; };
+  root.add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), first));
+  root.add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), second));
+  assert.notEqual(first.customProgramCacheKey(), second.customProgramCacheKey());
+});
+
 test('the contract changes depth only; zoom, tilt and parallax keep their projection', () => {
   const root = applySpaceBackgroundRootContract(new THREE.Group(), -211);
   const material = new THREE.MeshBasicMaterial();

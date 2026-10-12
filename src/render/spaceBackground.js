@@ -207,6 +207,7 @@ function applyBackgroundMaterialDepth(material) {
   backgroundDepthMaterials.add(material);
   const compile = material.onBeforeCompile;
   const programKey = material.customProgramCacheKey;
+  const usesDefaultProgramKey = programKey === THREE.Material.prototype.customProgramCacheKey;
   material.onBeforeCompile = function backgroundFarDepth(shader, renderer) {
     compile.call(this, shader, renderer);
     // Alter only depth after the authored shader has projected the layer. Keep XY, W, point size,
@@ -220,7 +221,7 @@ function applyBackgroundMaterialDepth(material) {
     }`);
   };
   material.customProgramCacheKey = function backgroundDepthProgramKey() {
-    return `${programKey.call(this)}|background-far-depth-v1`;
+    return `${usesDefaultProgramKey ? compile.toString() : programKey.call(this)}|background-far-depth-v1`;
   };
   material.depthTest = true;
   material.depthWrite = false;

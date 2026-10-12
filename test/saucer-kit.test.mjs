@@ -13,12 +13,15 @@ import { hullBurstFieldRecord, shapeOfFieldKind } from '../src/render/forceLangu
 import { runSession } from '../src/systems/runSession.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { economy } from '../src/systems/economy.js';
+import { resetCrucibleMetaForTests, settleCrucibleRun } from '../src/systems/survivalRecords.js';
 import { refitRowLines } from '../src/ui/screens/crucibleDraft.js';
 import { crucibleCombatLines } from '../src/ui/crucibleCombatReadout.js';
 const saucer = SHIPS.find(s=>s.id==='ship_saucer');
 const emitters = e => e.data.weapons.map(w=>w.defId);
 
 function shop(cash=1000) {
+  resetCrucibleMetaForTests();
+  settleCrucibleRun({ result: { ruleset: 'swarm', startWave: 1, wavesCleared: 30 }, run: { ruleset: 'swarm', startWave: 1 } });
   const state=createGameState(4242), bus=createBus();
   const registry={get:name=>({ships,economy,survivalDraft})[name]};
   const ctx={state,bus,registry,helpers:{}};
