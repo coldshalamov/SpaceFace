@@ -6,9 +6,9 @@ its check reads PASS. Renderer for every run below:
 `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)` (no GPU on this VM),
 960x540, headless, so frame-time is UNKNOWN (graded only on a GPU, `--headed`).
 
-## Scoreboard (seed 4242) — measured on `9e647c306`, branch now on `e68c5a6578`
+## Scoreboard (seed 4242) — measured on `9e647c306`, branch now on `debe715c8a`
 
-Rebased onto `origin/master` `e68c5a6578` (2026-10-12, clean, no content conflicts). The rows below were measured on `9e647c306`, which already contains Lane 6's room-solid clearance `6b67d1fb1`. They are not a fresh measurement of `e68c5a6578`: master moved 319 commits after that run, including the popin/residency waves. The harness commits do not change combat. Renderer: SwiftShader, 960x540. Command that produced the rows: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`. A fresh `--gate=active` on this tip is the open run.
+Rebased onto `origin/master` `debe715c8a` (2026-10-12, clean, no content conflicts, `mergeable` MERGEABLE). The rows below were measured on `9e647c306`, which already contains Lane 6's room-solid clearance `6b67d1fb1`. They are not a fresh measurement of `debe715c8a`: master moved 328 commits after that run, including the popin/residency waves and UI polish #301. The harness commits do not change combat. Renderer: SwiftShader, 960x540. Command that produced the rows: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`. A fresh `--gate=active` on this tip is the open run.
 
 A status of UNKNOWN is not a pass. Round 2 after the clearance is UNKNOWN: the active pass died in round 1 when the browser closed. The exit code of a FAIL is 1 (`gateExitCode`); INCOMPLETE is 2; only an all-PASS run exits 0.
 
@@ -38,15 +38,15 @@ These are not measured. Do not read an older first-generation verdict below as t
 
 | run | status | reason |
 |---|---|---|
-| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. Re-run on `e68c5a6578` is in the `player-truth.lock` queue (one Chromium): `--gate=active --wall=50 --evidence --tag=seed4242-r2`. |
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue acquired the lock and died before Chromium (`uv_cwd`: the process directory was replaced while it waited). The replacement queue on `debe715c8a` waits on `player-truth.lock` (one Chromium): `--gate=active --wall=50 --evidence --tag=seed4242-r2`. |
 | Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Same queue, after the round-2 re-run. `player_ship` names a rectangle or an invisible ship. |
 | Gauntlet `--gate` | UNKNOWN | Not run. Same queue, after the matrix. The first-generation arena rows below are not a `--gate` pass. |
 | Adventure `--gate` | UNKNOWN | Not run. Same queue. The 150 s cruise below is not a `--gate` pass. |
 | Racing `--gate` | UNKNOWN | Not run. Same queue. The 75 s Textile Belt row below is not a `--gate` pass. |
 
-## Owning lanes (rebased onto `e68c5a6578`, 2026-10-12)
+## Owning lanes (rebased onto `debe715c8a`, 2026-10-12)
 
-Room pin, the station toy, and LOD/residency: **Lane 6** (`codex/swarm-crucible-overhaul` — `survivalArena`, `src/render/lod.js`, `assetResidency.js`, `crucibleWarmPackageResidency.js`). Collision resolve if a ship is still held inside a solid: **local integration** (`codex/starter-integration`, flight/physics under `src/runtime/**`). Master already shipped Lane 6's clearance (`6b67d1fb1`, a room solid is pushed until it clears the hull by 24 u) and a presented-LOD swap cap (`68da0fae3`, `d3e7d8dcc`). The v2 rows below were measured **before** that clearance (harness commits `a0b854c91`, `07e4eda14`). They stay as the reproduction that made the pin a number. Post-clearance round 2 is still unmeasured, including on `e68c5a6578`.
+Room pin, the station toy, and LOD/residency: **Lane 6** (`codex/swarm-crucible-overhaul` — `survivalArena`, `src/render/lod.js`, `assetResidency.js`, `crucibleWarmPackageResidency.js`). Collision resolve if a ship is still held inside a solid: **local integration** (`codex/starter-integration`, flight/physics under `src/runtime/**`). Master already shipped Lane 6's clearance (`6b67d1fb1`, a room solid is pushed until it clears the hull by 24 u) and a presented-LOD swap cap (`68da0fae3`, `d3e7d8dcc`). The v2 rows below were measured **before** that clearance (harness commits `a0b854c91`, `07e4eda14`). They stay as the reproduction that made the pin a number. Post-clearance round 2 is still unmeasured, including on `debe715c8a`. UI polish #301 does not move this split.
 
 ### Remount after the clearance (`5e1f24156`, 2026-10-12)
 
