@@ -142,6 +142,18 @@ const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
     .map((module) => [module.trigger.id, module.runtime]),
 );
 
+// A shape module may publish a readiness seam (`fireReady(state)`, or the opening raid's
+// `openingRaidCarrierReady`): its authored beat only reads true once that holds. A due beat
+// waits on it for at most FIRE_READY_HOLD_S, re-checked each pump, then fires anyway.
+export const ENCOUNTER_FIRE_READY = new Map(
+  ENCOUNTER_MODULES
+    .filter((module) => module && module.trigger)
+    .map((module) => [module.trigger.id, module.fireReady || module.openingRaidCarrierReady
+      || (module.runtime && module.runtime.fireReady)])
+    .filter(([, fn]) => typeof fn === 'function'),
+);
+export const FIRE_READY_HOLD_S = 60;
+
 // ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
 export const PURSUIT_RESOLVE_S = 60; // a hostile sitting on a non-fighting player resolves
 const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
@@ -1181,6 +1193,17 @@ export const encounterDirector = {
     // without spending pressure/window/voice state; genuine distress needs both a victim and one
     // threat before it can truthfully become live.
     if (!this._spawnAdmissionAvailable(item, shape)) return defer();
+    const fireReady = ENCOUNTER_FIRE_READY.get(shape.id);
+    if (fireReady && item.fireReadyExpired !== true) {
+      let ready = false;
+      try { ready = !!fireReady(state); } catch { ready = false; }
+      if (!ready) {
+        if (!Number.isFinite(item.fireReadyHoldSince)) item.fireReadyHoldSince = now;
+        if (now - item.fireReadyHoldSince < FIRE_READY_HOLD_S) { item.dueAt = now + 1; return; }
+        item.fireReadyExpired = true;
+        dir.stats.fireReadyExpired = (dir.stats.fireReadyExpired | 0) + 1;
+      }
+    }
     dir.pending.splice(dueIdx, 1);
     this._fire(dir, state, item, shape, now);
   },
