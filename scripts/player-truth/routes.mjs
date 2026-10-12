@@ -33,8 +33,13 @@ export async function listDoorArenas(page) {
     .map((b) => ({ name: b.textContent.replace(/\s+/g, ' ').trim(), disabled: !!b.disabled || b.getAttribute('aria-disabled') === 'true', pressed: b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-checked') === 'true' })));
 }
 
+/** Every hull tile the Crucible ship step offers: starter id, face word, locked flag. */
+export async function listHulls(page) {
+  return page.evaluate(() => [...document.querySelectorAll('#screens .sf-crd-hull')].map((b) => ({ id: b.dataset.starterId, face: b.textContent.replace(/\s+/g, ' ').trim().slice(0, 40), locked: b.dataset.locked === '1' || !!b.disabled })));
+}
+
 /** Crucible door → ruleset → arena → seed → ship & kit → armory. Returns what the door showed. */
-export async function crucibleToArmory(page, { ruleset, arena, seed }, step) {
+export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step) {
   await clickText(page, 'Crucible', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: 60000 });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
@@ -57,6 +62,14 @@ export async function crucibleToArmory(page, { ruleset, arena, seed }, step) {
   step('mode select', true, `Crucible · ${ruleset} · arena ${(chosen.find((x) => x.pressed) || {}).name || arena || 'default'} · seed ${seedSet ? seed : 'field not visible'}`);
   await clickText(page, 'Choose ship');
   await trySeed();
+  const hulls = await listHulls(page);
+  if (wantHull) {
+    const pick = hulls.find((h) => h.id === wantHull || h.face.toLowerCase() === String(wantHull).toLowerCase());
+    if (!pick) throw new Error(`hull "${wantHull}" not offered (offered: ${hulls.map((h) => h.id).join(', ')})`);
+    if (pick.locked) throw new Error(`hull "${wantHull}" is locked for this profile`);
+    await page.locator(`#screens .sf-crd-hull[data-starter-id="${pick.id}"]`).first().click({ timeout: 15000 });
+    await page.waitForTimeout(400);
+  }
   const hull = await page.evaluate(() => { const b = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected')); return b ? b.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : null; });
   if (ruleset === 'swarm') {
     await clickText(page, 'Open armory');
@@ -64,7 +77,7 @@ export async function crucibleToArmory(page, { ruleset, arena, seed }, step) {
   } else {
     await clickText(page, 'Enter the Gauntlet');
   }
-  return { arenas, seedSet, hull };
+  return { arenas, seedSet, hull, hulls };
 }
 
 const IRRELEVANT = {

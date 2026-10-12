@@ -31,7 +31,7 @@ export const THRESHOLDS = Object.freeze({
   yawDeltaRad: 0.2, // rad turned after ~0.8 s of yaw
   tumblePitch: 0.35, tumbleBank: 0.75, tumbleY: 4, tumbleAngVel: 2.5, tumbleSeconds: 0.5,
   readabilityMinSeparation: 1.0, readabilityMinSamples: 5,
-  vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3,
+  vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3, backdropThreatP95: 0.3,
   longTaskMs: 250, frameP99Ms: 50,
 });
 
@@ -365,7 +365,44 @@ export function checkReadability(trace) {
     `samples: ${counts}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
+/** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
+function checkVfxPixels(trace, px) {
+  const T = THRESHOLDS; const q = (xs) => { const a = xs.filter((x) => x != null).sort((m, n) => m - n); return a.length ? a[Math.floor(a.length * 0.95)] : null; };
+  const p95 = q(px.map((s) => s.px.c)) || 0;
+  const pS = px.filter((s) => s.px.cp != null); const pOccFrac = pS.length ? pS.filter((s) => s.px.cp >= 0.5).length / pS.length : null;
+  const tP95 = q(px.map((s) => s.px.ct));
+  let persist = 0; let runStart = null;
+  for (const s of px) { if (s.px.c > T.vfxCoverP95) { if (runStart == null) runStart = s.sim; persist = Math.max(persist, s.sim - runStart); } else runStart = null; }
+  const maxS = px.reduce((a, b) => (b.px.c > a.px.c ? b : a));
+  const occ = pS.find((s) => s.px.cp >= 0.5);
+  const fail = p95 > T.vfxCoverP95 || (pOccFrac != null && pOccFrac > T.vfxPlayerOccludedFrac) || (tP95 != null && tP95 > T.vfxThreatOccludedP95) || persist > T.vfxPersistSeconds;
+  const offenders = [];
+  if (occ) offenders.push({ line: `player ship ≥50% under combat VFX pixels in ${fmt(pOccFrac * 100, 0)}% of splits (first sim ${fmt(occ.sim, 1)} s)`, t: occ.t, sim: occ.sim, box: occ.p && occ.p.box });
+  offenders.push({ line: `peak combat-VFX pixels ${fmt(maxS.px.c * 100, 0)}% of screen at sim ${fmt(maxS.sim, 1)} s (${maxS.px.nC} combat layers lit)`, t: maxS.t, sim: maxS.sim, box: null });
+  return result('vfx_coverage', 'Combat VFX coverage / occlusion', fail ? 'FAIL' : 'PASS',
+    `p95 ${fmt(p95 * 100, 0)}% screen · player hidden ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threats hidden p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
+    `≤${T.vfxCoverP95 * 100}% · ≤${T.vfxPlayerOccludedFrac * 100}% · ≤${T.vfxThreatOccludedP95 * 100}% · ≤${T.vfxPersistSeconds} s`,
+    `${px.length} per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom 160×90; backdrop layers graded separately)`,
+    offenders, offenders.filter((o) => o.box).slice(0, 2));
+}
+
+/** Backdrop (deep field, nebula, stars, planets) drawn over the play: reported apart from combat VFX. */
+export function checkBackdrop(trace) {
+  const T = THRESHOLDS; const px = playSamples(trace).filter((s) => s.px && !s.px.err);
+  if (px.length < 5) return result('backdrop_coverage', 'Backdrop stays behind the play', 'UNKNOWN', null, `threats over bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, 'no per-pixel splits sampled');
+  const a = px.map((s) => s.px.bt).filter((x) => x != null).sort((m, n) => m - n); const tP95 = a.length ? a[Math.floor(a.length * 0.95)] : null;
+  const covs = px.map((s) => s.px.b).sort((m, n) => m - n); const p50 = covs[Math.floor(covs.length / 2)]; const p95 = covs[Math.floor(covs.length * 0.95)];
+  const worst = px.reduce((m, s) => ((s.px.bt || 0) > (m.px.bt || 0) ? s : m));
+  const fail = tP95 != null && tP95 > T.backdropThreatP95;
+  const offenders = fail ? [{ line: `${fmt(worst.px.bt * 100, 0)}% of on-screen threats sit on bright backdrop pixels at sim ${fmt(worst.sim, 1)} s (backdrop lights ${fmt(worst.px.b * 100, 0)}% of the screen)`, t: worst.t, sim: worst.sim, box: null }] : [];
+  return result('backdrop_coverage', 'Backdrop stays behind the play', fail ? 'FAIL' : 'PASS',
+    `backdrop lights median ${fmt(p50 * 100, 0)}% / p95 ${fmt(p95 * 100, 0)}% of screen · threats on bright backdrop p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'}`,
+    `threats on bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, `${px.length} per-pixel splits with backdrop layers hidden vs shown`, offenders, offenders);
+}
+
 export function checkVfx(trace) {
+  const px = playSamples(trace).filter((s) => s.px && !s.px.err);
+  if (px.length >= 5) return checkVfxPixels(trace, px);
   const T = THRESHOLDS; const scans = playSamples(trace).filter((s) => s.vfx && !s.vfx.err);
   if (scans.length < 5) return result('vfx_coverage', 'VFX coverage / occlusion', 'UNKNOWN', null, `p95 ≤${T.vfxCoverP95}`, 'too few VFX scans');
   const covs = scans.map((s) => s.vfx.cov).sort((a, b) => a - b);
@@ -438,7 +475,59 @@ export function checkRoute(trace) {
 export const ALL_CHECKS = [checkRoute, checkRoundResolution, checkKillsBeforeInput, checkRewardBeforeInput, checkSpawnMotion, checkPlayerControl, checkTumble,
   checkPlayerShip, checkLodChurn, checkPopping, checkReadability, checkVfx, checkLoadout, checkFrameTime];
 
-export function runChecks(trace) { return ALL_CHECKS.map((fn) => fn(trace)); }
+/** Round transitions: after every round start past the first, the ship is whole, answers input and stays in plane. */
+export function checkRoundTransitions(trace) {
+  const T = THRESHOLDS; const rounds = roundsOf(trace);
+  if (!trace.meta.rounds) return result('round_transitions', 'Every round starts playable', 'N/A', null, null, 'mode has no rounds');
+  const later = rounds.slice(1);
+  if (!later.length) return result('round_transitions', 'Every round starts playable', 'UNKNOWN', null, 'ship whole · probes answer · in plane, first 8 s of each round', 'no round after round 1 was reached');
+  const offenders = []; const parts = [];
+  for (const r of later) {
+    const win = trace.samples.filter((s) => s.sim >= r.startSim && s.sim <= r.startSim + 8 && s.p);
+    const bad = win.filter((s) => playerBadReasons(s.p).length);
+    const tumble = win.filter((s) => Math.abs(s.p.pitch) > T.tumblePitch || Math.abs(s.p.bank) > T.tumbleBank || Math.abs(s.p.y) > T.tumbleY);
+    const probes = (trace.probes || []).filter((pr) => pr.label && pr.label.startsWith(`round ${r.wave} `));
+    const dead = probes.filter((pr) => { const a = nearestSample(trace, pr.startSim); const b = nearestSample(trace, pr.endSim); if (!a || !b || !a.p || !b.p) return true;
+      if (pr.kind === 'thrust') return Math.hypot(b.p.vx, b.p.vz) - Math.hypot(a.p.vx, a.p.vz) < T.thrustDeltaSpeed && Math.hypot(b.p.x - a.p.x, b.p.z - a.p.z) < 3;
+      let d = b.p.rot - a.p.rot; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d) < T.yawDeltaRad; });
+    const hull = win[0] && win[0].p.hullMax ? Math.round(100 * win[0].p.hull / win[0].p.hullMax) : null;
+    parts.push(`round ${r.wave}: ${win.length} frames, hull ${hull == null ? '?' : hull + '%'}, ${bad.length} bad ship, ${tumble.length} out of plane, ${dead.length}/${probes.length} dead probes`);
+    const why = [];
+    if (!win.length) why.push('no player frames in the first 8 s');
+    if (bad.length / Math.max(1, win.length) > T.playerBadFrac) why.push(`ship bad in ${bad.length}/${win.length} frames (${playerBadReasons(bad[0].p).join(', ')})`);
+    if (tumble.length >= 3) why.push(`out of plane in ${tumble.length} frames`);
+    if (!probes.length) why.push('no control probe ran');
+    else if (dead.length) why.push(`${dead.length}/${probes.length} control probes dead`);
+    if (why.length) { const s0 = bad[0] || tumble[0] || win[0]; offenders.push({ line: `round ${r.wave} start (hull ${hull == null ? '?' : hull + '%'}): ${why.join('; ')}`, t: s0 ? s0.t : r.startT, sim: s0 ? s0.sim : r.startSim, box: s0 && s0.p ? s0.p.box : null }); }
+  }
+  return result('round_transitions', 'Every round starts playable', offenders.length ? 'FAIL' : 'PASS', `${offenders.length}/${later.length} round starts broken`, 'ship whole · probes answer · in plane, first 8 s of each round',
+    parts.join(' · '), offenders, offenders.slice(0, 2));
+}
+
+/** Gate pass reached the required round. */
+export function checkRoundsReached(trace) {
+  const need = trace.meta.requireRounds;
+  if (!need) return result('rounds_reached', 'Run reaches the gate round', 'N/A', null, null, 'not a gate active pass');
+  const got = Math.max(0, ...roundsOf(trace).map((r) => r.wave || 0));
+  return result('rounds_reached', 'Run reaches the gate round', got >= need ? 'PASS' : 'FAIL', `round ${got}`, `≥ round ${need}`,
+    `stopped: ${trace.meta.stopReason || 'n/a'}`, got >= need ? [] : [{ line: `scripted fighter stopped at round ${got}: ${trace.meta.stopReason || ''}`, t: null, sim: null, box: null }]);
+}
+
+ALL_CHECKS.splice(ALL_CHECKS.indexOf(checkVfx) + 1, 0, checkBackdrop);
+ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached);
+
+/** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
+export const GATE_STRICT = Object.freeze(['player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
+const GATE_STRICT_IDLE = Object.freeze(['player_ship', 'tumble']);
+
+export function runChecks(trace) {
+  const results = ALL_CHECKS.map((fn) => fn(trace));
+  const gate = trace.meta.gate;
+  if (!gate) return results;
+  const strict = gate === 'idle' ? GATE_STRICT_IDLE : GATE_STRICT;
+  for (const r of results) if (r.status === 'UNKNOWN' && strict.includes(r.id)) { r.status = 'FAIL'; r.detail = `not measured — gate counts UNKNOWN as FAIL (${r.detail})`; }
+  return results;
+}
 
 /** Verdict over a check list: any FAIL fails; otherwise UNKNOWN beats PASS. */
 export function overall(results) {

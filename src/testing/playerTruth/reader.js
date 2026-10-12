@@ -53,6 +53,7 @@ export function installPlayerTruthReader(win, opts = {}) {
   if (!SF || !SF.state || !SF.THREE) throw new Error('player-truth: window.SF debug seam missing');
   const THREE = SF.THREE;
   const vfxEvery = Math.max(1, opts.vfxEvery || 4);
+  const pxEvery = opts.pxEvery === 0 ? 0 : Math.max(1, opts.pxEvery || 24);
   const GW = 48; const GH = 27;
   const keys = []; const keyIdx = new Map();
   const intern = (s) => { let i = keyIdx.get(s); if (i === undefined) { i = keys.length; keys.push(s); keyIdx.set(s, i); } return i; };
@@ -128,7 +129,7 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   // Sky/backdrop layers (deep-field stars, nebula ribbons, planets painted behind the plane)
   // are additive but are the backdrop, not VFX over the play.
-  const BACKDROP_NAME = /^(SF_)?DeepField|^SpaceBackground$|^L\d[a-z]?[_-]/;
+  const BACKDROP_NAME = /^(SF_|SpaceFace_ClipProof)?DeepField|^SpaceBackground$|^L\d[a-z]?[_-]|^UiStage(Stars|Sky)$/;
   function isBackdrop(o) {
     for (let n = o; n && !n.isScene; n = n.parent) if (n.name && BACKDROP_NAME.test(n.name)) return true;
     return false;
@@ -236,6 +237,64 @@ export function installPlayerTruthReader(win, opts = {}) {
       tOcc: tn ? +(tc / tn).toFixed(3) : null, tN: tn, unb: unbounded, bg: backdrop, top };
   }
 
+  // Per-pixel split of what additive layers contribute: render the same camera into a small
+  // offscreen target three times (all, combat VFX hidden, backdrop hidden) inside one synchronous
+  // call, restore visibility before returning — the displayed frame is never altered. Measured
+  // before post-processing (bloom), at PW×PH.
+  const PW = 160; const PH = 90; let pxTarget = null; let bufA = null; let bufB = null; let bufC = null;
+  function isBackdropLayer(o) {
+    if (isBackdrop(o)) return true;
+    if (ownerOf(o) != null) return false;
+    for (let n = o; n && !n.isScene; n = n.parent) if (n.renderOrder <= -50) return true;
+    return false;
+  }
+  function pixelSplit(renderer, scene, cam, vw, vh, playerBox, threatBoxes) {
+    if (!renderer || !renderer.isWebGLRenderer || !renderer.readRenderTargetPixels) return { err: 'renderer is not WebGL' };
+    if (!pxTarget) { pxTarget = new THREE.WebGLRenderTarget(PW, PH); bufA = new Uint8Array(PW * PH * 4); bufB = new Uint8Array(PW * PH * 4); bufC = new Uint8Array(PW * PH * 4); }
+    const combat = []; const back = [];
+    scene.traverseVisible((o) => {
+      if (!(o.isMesh || o.isPoints || o.isSprite || o.isLine)) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      if (!mats.some((m) => isAdditive(m, THREE))) return;
+      (isBackdropLayer(o) ? back : combat).push(o);
+    });
+    const prevTarget = renderer.getRenderTarget(); const prevAuto = renderer.info.autoReset;
+    const prevShadow = renderer.shadowMap ? renderer.shadowMap.autoUpdate : null;
+    const saved = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
+    renderer.info.autoReset = false; if (renderer.shadowMap) renderer.shadowMap.autoUpdate = false;
+    const draw = (buf) => { renderer.setRenderTarget(pxTarget); renderer.clear(); renderer.render(scene, cam); renderer.readRenderTargetPixels(pxTarget, 0, 0, PW, PH, buf); };
+    try {
+      draw(bufA);
+      for (const o of combat) o.visible = false; try { draw(bufB); } finally { for (const o of combat) o.visible = true; }
+      for (const o of back) o.visible = false; try { draw(bufC); } finally { for (const o of back) o.visible = true; }
+    } finally {
+      renderer.setRenderTarget(prevTarget); renderer.info.autoReset = prevAuto; if (renderer.shadowMap) renderer.shadowMap.autoUpdate = prevShadow;
+      renderer.info.render.calls = saved.calls; renderer.info.render.triangles = saved.triangles;
+    }
+    const LUM = 10; // ≥10/255 luminance added by the layer counts as covered
+    const lum = (b, i) => 0.2126 * b[i] + 0.7152 * b[i + 1] + 0.0722 * b[i + 2];
+    const cMask = new Uint8Array(PW * PH); const bMask = new Uint8Array(PW * PH); let cN = 0; let bN = 0;
+    for (let k = 0; k < PW * PH; k++) {
+      const i = k * 4; const a = lum(bufA, i);
+      if (a - lum(bufB, i) >= LUM) { cMask[k] = 1; cN++; }
+      if (a - lum(bufC, i) >= LUM) { bMask[k] = 1; bN++; }
+    }
+    // readRenderTargetPixels rows run bottom-up.
+    const boxFrac = (mask, b) => {
+      if (!b) return null;
+      const x0 = Math.max(0, Math.floor(b[0] / vw * PW)); const x1 = Math.min(PW - 1, Math.floor(b[2] / vw * PW));
+      const y0 = Math.max(0, Math.floor(b[1] / vh * PH)); const y1 = Math.min(PH - 1, Math.floor(b[3] / vh * PH));
+      if (x1 < x0 || y1 < y0) return null;
+      let n = 0; let c = 0;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { n++; if (mask[(PH - 1 - y) * PW + x]) c++; }
+      return n ? c / n : null;
+    };
+    const occ = (mask) => { let tn = 0; let tc = 0; for (const b of threatBoxes) { const f = boxFrac(mask, b); if (f != null) { tn++; if (f >= 0.5) tc++; } } return tn ? +(tc / tn).toFixed(3) : null; };
+    const pc = boxFrac(cMask, playerBox); const pb = boxFrac(bMask, playerBox);
+    return { c: +(cN / (PW * PH)).toFixed(3), b: +(bN / (PW * PH)).toFixed(3), cp: pc == null ? null : +pc.toFixed(3), bp: pb == null ? null : +pb.toFixed(3),
+      ct: occ(cMask), bt: occ(bMask), nC: combat.length, nB: back.length };
+  }
+
   function sample() {
     const t = now(); const dt = lastT ? t - lastT : 0; lastT = t; frame++;
     const st = SF.state; const r = st.render || {};
@@ -270,10 +329,13 @@ export function installPlayerTruthReader(win, opts = {}) {
         } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
         if ((cls === 'enemy' || cls === 'projectile') && sc.inView) threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
       }
-      s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, e.type === 'asteroid' || cls !== 'other' ? 0 : intern(e.type)]);
+      s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype)) || ''}`)]);
     }
     if (cam && scene && frame % vfxEvery === 0) {
       try { s.vfx = vfxScan(st, cam, scene, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.vfx = { err: String(err && err.message || err) }; }
+    }
+    if (cam && scene && pxEvery && frame % pxEvery === 0) {
+      try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }
     samples.push(s);
   }

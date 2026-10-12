@@ -19,31 +19,34 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { loadPlaywright } from '../lib/load-playwright.mjs';
+import { launchChromium } from './browser.mjs';
 import { startBenchServer } from '../lib/benchServer.mjs';
 import { runChecks, overall } from './checks.mjs';
 import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
-import { bootToMenu, crucibleToArmory, readArmory, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas } from './routes.mjs';
+import { bootToMenu, crucibleToArmory, readArmory, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat } from './driver.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, out: null, evidence: false, shotEvery: null, tag: null, fight: false };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
     if (k === 'headed' || k === 'gpu') a.headed = true;
     else if (k === 'evidence') a.evidence = true;
     else if (k === 'fight') a.fight = true;
+    else if (k === 'gate') a.gate = true;
     else if (k === 'shot-every') a.shotEvery = Number(v);
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
   if (!MODES.includes(a.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
   // SwiftShader fill cost dominates a software run; a smaller canvas keeps a bounded run in minutes.
   a.viewport = a.viewport || (a.headed ? '1280x720' : '960x540');
+  a.viewportList = a.viewports ? String(a.viewports).split(',').map((x) => x.trim()).filter((x) => /^\d+x\d+$/.test(x)) : [a.viewport];
   a.duration = a.duration || { swarm: 180, gauntlet: 180, adventure: 300, racing: 180 }[a.mode];
   return a;
 }
@@ -83,8 +86,8 @@ export function summarizePacing(log, breathS = 2.4) {
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-async function runOne(args, arena) {
-  const label = [args.mode, arena ? slug(arena) : null, args.tag ? slug(args.tag) : null].filter(Boolean).join('-');
+async function runOne(args, arena, extra = {}) {
+  const label = [args.mode, arena ? slug(arena) : null, extra.hull ? slug(extra.hull) : null, extra.vpTag ? args.viewport : null, args.tag ? slug(args.tag) : null].filter(Boolean).join('-');
   const outDir = path.resolve(ROOT, args.out || path.join('scratch/player-truth', label));
   rmSync(outDir, { recursive: true, force: true }); mkdirSync(path.join(outDir, 'frames'), { recursive: true });
   const [vwStr, vhStr] = args.viewport.split('x'); const vw = Number(vwStr); const vh = Number(vhStr);
@@ -92,13 +95,13 @@ async function runOne(args, arena) {
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm', gate: args.gatePass || null, requireRounds: args.requireRounds || null }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
   const server = await startBenchServer();
   const { chromium } = await loadPlaywright();
-  const browser = await chromium.launch({
+  const { browser, executable } = await launchChromium(chromium, {
     headless: !args.headed,
     args: args.headed
       ? ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows']
@@ -136,7 +139,7 @@ async function runOne(args, arena) {
     if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
   const installReader = async () => {
-    await page.addScriptTag({ type: 'module', content: "import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4 }).start(); window.__playerTruthReady = true;" });
+    await page.addScriptTag({ type: 'module', content: "import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24 }).start(); window.__playerTruthReady = true;" });
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
   };
@@ -154,7 +157,7 @@ async function runOne(args, arena) {
     await shoot('main menu', false);
 
     if (args.mode === 'swarm' || args.mode === 'gauntlet') {
-      doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed }, step);
+      doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step);
       if (args.mode === 'swarm') {
         await page.waitForFunction(() => { const n = (s) => String(s || '').replace(/\s+/g, ' '); return [...document.querySelectorAll('#screens button')].some((x) => x.offsetParent && !x.disabled && /Launch round 1/.test(n(x.textContent))); }, null, { timeout: 600000 });
         await waitBootOverlayGone(page);
@@ -187,21 +190,26 @@ async function runOne(args, arena) {
           round.endSim = ph.sim; round.endT = ph.t; round.endPhase = ph.ph;
           log(`round ${round.wave} → ${ph.ph} after ${(ph.sim - round.startSim).toFixed(1)} sim s`);
           await shoot(`round ${round.wave} ${ph.ph}`, false);
+          trace.transitions = trace.transitions || [];
+          trace.transitions.push({ wave: round.wave, endSim: ph.sim, endPhase: ph.ph, hull: await page.evaluate(() => { const st = window.SF.state; const p = st.entityList.find((e) => e.id === st.playerId); return p ? { hull: p.hull, hullMax: p.hullMax, alive: p.alive !== false } : null; }).catch(() => null) });
         }
         if (stopReason) break;
         if (ph.ph === 'ended' || ph.ph === 'victory') { stopReason = `run ${ph.ph} (player ${ph.playerAlive ? 'alive' : 'dead'})`; await page.waitForTimeout(2500); await shoot('results', false); break; }
         if (ph.ph === 'active') {
           if (first) {
+            round.startHull = await page.evaluate(() => { const st = window.SF.state; const p = st.entityList.find((e) => e.id === st.playerId); return p && p.hullMax ? +(p.hull / p.hullMax).toFixed(3) : null; }).catch(() => null);
             first = false;
             if (round === trace.rounds[0] && args.idle > 0) {
               log(`idle ${args.idle} sim s (no input)`);
               await waitSim(page, args.idle, { maxWallMs: 600000, until: (st) => !st.run || st.run.phase !== 'active' });
               if ((await phaseNow()).ph !== 'active') continue;
             }
+            if (round !== trace.rounds[0]) await shoot(`round ${round.wave} start`, true);
             await controlProbes(page, `round ${round.wave}`, trace.probes);
+            if (round !== trace.rounds[0]) await shoot(`round ${round.wave} after probes`, true);
             continue;
           }
-          await fightBeat(page, beat++);
+          await fightBeat(page, beat++, args.fighter);
           continue;
         }
         if (ph.ph === 'draft' || ph.ph === 'cleanup' || ph.ph === 'refit') {
@@ -267,10 +275,10 @@ async function runOne(args, arena) {
   const softwareGl = /swiftshader|llvmpipe|software|softpipe/i.test(renderer);
   const playStart = trace.meta.playStartSim;
   Object.assign(trace.meta, {
-    label, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, commit, dirty, renderer, softwareGl, headed: args.headed, browserVersion,
+    label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, commit, dirty, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
-    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'aim+fire at nearest hostile, close/open range, latch every 7th beat' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}`,
+    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: aim+fire at nearest hostile, hold 180–320 u range, strafe, break off under fire, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · no invulnerability (the only toggle is the physics-lab practice rack, not offered in Swarm/Gauntlet)`,
     stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
   });
   await browser.close().catch(() => {}); await server.close().catch(() => {});
@@ -313,19 +321,50 @@ async function main() {
   let arenas = [args.arena];
   if (args.arena === 'all' && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
     const server = await startBenchServer(); const { chromium } = await loadPlaywright();
-    const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+    const { browser } = await launchChromium(chromium, { headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await bootToMenu(page, server.baseUrl, () => {});
     await clickText(page, 'Crucible', { exact: true });
     await page.locator(`#screens .sf-crd-mode[data-ruleset="${RULESET[args.mode] || args.mode}"]`).click();
     const door = await listDoorArenas(page);
     arenas = door.filter((a) => !a.disabled).map((a) => a.name);
+    if (args.hull === 'all') { await clickText(page, 'Choose ship'); args.hullList = (await listHulls(page)).filter((h) => !h.locked).map((h) => h.id); }
     await browser.close(); await server.close();
     const locked = door.filter((a) => a.disabled).map((a) => a.name);
     console.log(`arenas reachable from the door: ${arenas.join(', ')}${locked.length ? ` · locked for a fresh profile: ${locked.join(', ')}` : ''}`);
   }
+  if (args.hull === 'all' && !args.hullList && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
+    const server = await startBenchServer(); const { chromium } = await loadPlaywright();
+    const { browser } = await launchChromium(chromium, { headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    await bootToMenu(page, server.baseUrl, () => {});
+    await clickText(page, 'Crucible', { exact: true });
+    await page.locator(`#screens .sf-crd-mode[data-ruleset="${RULESET[args.mode] || args.mode}"]`).click();
+    await clickText(page, 'Choose ship');
+    const all = await listHulls(page); args.hullList = all.filter((h) => !h.locked).map((h) => h.id);
+    console.log(`hulls offered: ${all.map((h) => `${h.face} (${h.id}${h.locked ? ', locked' : ''})`).join(', ')}`);
+    await browser.close(); await server.close();
+  }
+  const hulls = args.hullList || [args.hull && args.hull !== 'all' ? args.hull : null];
+  const roundMode = args.mode === 'swarm' || args.mode === 'gauntlet';
+  // --gate: an idle pass (passive kills/reward/spawn motion, the whole first round with no input) and an
+  // active pass (fighter from ~3 s, must reach round 3); UNKNOWN on the core checks is a FAIL.
+  const passes = !args.gate ? [{}]
+    : roundMode ? [{ gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 }, { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) }]
+      : [{ gatePass: 'active', tag: args.tag }];
   const outcomes = [];
-  for (const arena of arenas) outcomes.push(await runOne(args, arena));
+  for (const viewport of args.viewportList) for (const hull of hulls) for (const arena of arenas) for (const pass of passes) {
+    const a = { ...args, viewport, ...pass, tag: pass.tag !== undefined ? [pass.tag, args.tag].filter(Boolean).join('-') || null : args.tag };
+    outcomes.push(await runOne(a, arena, { hull, vpTag: args.viewportList.length > 1 }));
+  }
+  if (outcomes.length > 1) {
+    console.log('\nplayer-truth matrix:');
+    for (const o of outcomes) console.log(`  ${o.verdict.padEnd(10)} ${o.label}  →  ${path.relative(ROOT, path.join(o.outDir, 'verdict.md'))}`);
+  }
+  if (args.baseline) {
+    const { runBaseline } = await import('./compare.mjs');
+    await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
+  }
   const worst = outcomes.some((o) => o.verdict === 'FAIL') ? 1 : outcomes.some((o) => o.verdict !== 'PASS') ? 2 : 0;
   process.exitCode = worst;
 }

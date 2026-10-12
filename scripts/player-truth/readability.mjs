@@ -64,7 +64,7 @@ export async function analyzeReadability(shots, nearestSample) {
       if (cx < r || cy < r || cx > W - r || cy > H - r) continue;
       const m = sampleBox(data, W, H, info.channels, cx, cy, Math.min(r, 60));
       if (!m) continue;
-      per[cls].push({ ...m, r: e[E.pr], t: shot.t, box: [e[E.sx] - e[E.pr], e[E.sy] - e[E.pr], e[E.sx] + e[E.pr], e[E.sy] + e[E.pr]] });
+      per[cls].push({ ...m, r: e[E.pr], ty: e[E.type], t: shot.t, box: [e[E.sx] - e[E.pr], e[E.sy] - e[E.pr], e[E.sx] + e[E.pr], e[E.sy] + e[E.pr]] });
     }
   }
   const classes = {};
@@ -80,5 +80,17 @@ export async function analyzeReadability(shots, nearestSample) {
     const s = separation(per[a], per[b]);
     pairs.push({ a, b, nA: per[a].length, nB: per[b].length, ...s, exampleT: per[a][0].t, exampleBox: per[a][0].box });
   }
-  return { classes, pairs };
+  // What each kind of body looks like on screen: the census that names "the white sphere" and "the orange blobs".
+  const types = new Map();
+  for (const c of CLASSES) for (const x of per[c]) {
+    const k = `${c}|${x.ty}`; const r = types.get(k) || { cls: c, ty: x.ty, n: 0, L: 0, a: 0, b: 0, r: 0, t: x.t, box: x.box };
+    r.n++; r.L += x.lab[0]; r.a += x.lab[1]; r.b += x.lab[2]; r.r += x.r; types.set(k, r);
+  }
+  const census = [...types.values()].sort((p, q) => q.n - p.n).slice(0, 16).map((r) => {
+    const L = r.L / r.n; const a = r.a / r.n; const b = r.b / r.n; const chroma = Math.hypot(a, b);
+    const hue = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
+    const look = chroma < 12 ? (L > 70 ? 'white' : L > 40 ? 'grey' : 'dark') : hue < 35 || hue > 340 ? 'red' : hue < 85 ? 'orange' : hue < 110 ? 'yellow' : hue < 200 ? 'green' : hue < 260 ? 'cyan/blue' : 'violet';
+    return { cls: r.cls, ty: r.ty, n: r.n, meanLab: [+L.toFixed(1), +a.toFixed(1), +b.toFixed(1)], look, meanRadiusPx: +(r.r / r.n).toFixed(1), exampleT: r.t, exampleBox: r.box };
+  });
+  return { classes, pairs, census };
 }
