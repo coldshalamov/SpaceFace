@@ -1,0 +1,42 @@
+--- a/src/ui/screens/clips.js
++++ b/src/ui/screens/clips.js
+@@ -24,6 +24,7 @@
+ import { arcGauge } from '../orrery/instruments.js';
+ import { attachClipDirectorToBus, createClipDirector } from '../../core/simSnapshot.js';
+ import { openReplay, requestReplaySeek, resolveReplayRecording } from './replay.js';
++import { analyzeMomentStream } from '../../presentation/momentMachine/index.js';
+ import {
+   CLIP_EXPORT_FORMATS,
+   CLIP_EXPORT_UNAVAILABLE,
+@@ -261,6 +262,29 @@
+     hostResult: delivery.hostResult || null,
+     formats: CLIP_EXPORT_FORMATS.slice(),
+   };
+ }
+ 
++export function exportLoggedMoment(ctx) {
++  const recording = resolveReplayRecording(ctx);
++  const analysis = analyzeMomentStream({
++    adventureTape: recording,
++    chronicle: ctx && ctx.state && ctx.state.chronicler,
++  });
++  const request = analysis && analysis.exportRequest;
++  if (!request) {
++    return { ok: false, reason: 'no-logged-moment', targetFile: 'src/ui/screens/clips.js', applied: false };
++  }
++  const footage = analysis.selection && analysis.selection.ranked[0]
++    && analysis.selection.ranked[0].footage;
++  if (!footage || footage.status === 'unrecorded' || footage.status === 'pre-roll-missing') {
++    return {
++      ok: false,
++      reason: footage && footage.status ? footage.status : 'tape-positions-unrecorded',
++      request,
++      applied: false,
++    };
++  }
++  return { ok: false, reason: 'playback-frames-required', request, applied: false };
++}
++
+ function stopPlayback() {
+   if (!openState) return;
+   if (openState.view) disposeReelView(openState.view);
