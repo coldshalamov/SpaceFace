@@ -13537,6 +13537,10 @@ export const render = {
             isActive: () => mobileActive && !recookStale(),
           });
           if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
+          // Register the promise observers while loading owns the canvas. Registering already
+          // awaited handles on the first flight draw temporarily counts them as pending until
+          // their microtasks run, refusing that picture for a whole frame on slow WebKit.
+          this._openingAdmissionPendingCount();
           this._postOpeningPipelineAdmissionReleased = true;
           this._sessionLiveSectorCookedId = recookSectorId;
           state.render.sessionLiveSectorCookedId = recookSectorId;
@@ -32094,6 +32098,8 @@ export const render = {
       renderGraphDetails: renderGraphDiag,
       gpuTimers,
       dynResScale: Number.isFinite(this.state?.render?.dynResScale) ? this.state.render.dynResScale : 1,
+      firstPlayableFrameAt: Number.isFinite(this.state?.render?.firstPlayableFrameAt)
+        ? this.state.render.firstPlayableFrameAt : null,
     };
   },
 

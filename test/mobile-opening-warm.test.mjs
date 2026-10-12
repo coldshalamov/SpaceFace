@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { isMobileRenderContext } from '../src/render/renderCapabilityProfile.js';
 import { prepareMobileOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
+import { render as rendererOwner } from '../src/render/renderer.js';
 
 test('iPhone Chrome uses the mobile warm scheduler even when its WebKit GPU links in parallel', () => {
   assert.equal(isMobileRenderContext({ navigator: {
@@ -63,4 +64,22 @@ test('a stuck exact submission has a bounded failure route', async () => {
     yieldToMain: async () => {},
   }), /admission timed out/);
   assert.deepEqual(fixture.calls, ['prepare', 'capture']);
+});
+
+test('priming admission observers during loading clears resolved handles and keeps real pending work', async () => {
+  let complete;
+  const unfinished = new Promise((resolve) => { complete = resolve; });
+  const owner = { state: { mode: 'loading', render: {
+    openingGpuResidencyReady: Promise.resolve({ ready: true }),
+    pipelinePrecompileReady: Promise.resolve({ ready: true }),
+    liveScenePresentReady: unfinished,
+  } } };
+  assert.equal(rendererOwner._openingAdmissionPendingCount.call(owner), 3);
+  await Promise.resolve();
+  assert.equal(rendererOwner._openingAdmissionPendingCount.call(owner), 1);
+  complete({ ready: true });
+  await Promise.resolve();
+  owner.state.mode = 'flight';
+  assert.equal(rendererOwner._openingAdmissionPendingCount.call(owner), 0,
+    'the first flight draw must not rediscover settled handles as pending');
 });

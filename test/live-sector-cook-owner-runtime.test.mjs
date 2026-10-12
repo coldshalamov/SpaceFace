@@ -411,6 +411,11 @@ function mobilePreflightFixture() {
   f.values.isMobileRenderContext = () => true;
   f.values.prepareMobileOpeningFirstPicture = prepareMobileOpeningFirstPicture;
   f.owner._discardEarlyCrucibleWarm = () => f.marks.push('discard-speculative-warm');
+  f.owner._openingAdmissionPendingCount = () => {
+    assert.equal(f.state.mode, 'loading', 'the loading shell still owns the first picture');
+    f.marks.push('watch-opening-admissions');
+    return 0;
+  };
   const plan = { complete: true, firstPlayablePipelineSet: { complete: true }, drawLeaves: [{ id: 'player' }] };
   Object.assign(f.state.render, {
     prepareOpeningFirstPicture: async () => true,
@@ -428,7 +433,7 @@ test('mobile preflight admits the exact picture and cleans up its publication gu
   assert.equal(result.plan, f.plan);
   assert.equal(f.state.render.sessionLiveSectorCookedId, 'ceres');
   assert.equal(f.state.render.liveSectorGpuAdmission, false);
-  assert.deepEqual(f.marks, ['discard-speculative-warm', 'hold', 'freeze']);
+  assert.deepEqual(f.marks, ['discard-speculative-warm', 'watch-opening-admissions', 'hold', 'freeze']);
 });
 
 test('mobile preflight rejects a required admission failure and restores the current guards', async () => {

@@ -27,6 +27,8 @@ const snapshot = page => boundedBrowserRead(() => page.evaluate(() => {
     && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
   // Observer only; the actor below still uses the public menu and touch controls.
   const render = window.SF?.state?.render;
+  const frame = window.__SF_WITNESS__?.snapshot?.();
+  const graphics = window.__THREE_GAME_DIAGNOSTICS__?.getReport?.();
   return {
     launchButton: (() => { const e = document.querySelector('.sf-ng-launch'); return e ? { text: e.textContent, disabled: e.disabled, ariaDisabled: e.getAttribute('aria-disabled') } : null; })(),
     title: document.title, mobile: document.documentElement.dataset.sfMobile || null,
@@ -37,12 +39,14 @@ const snapshot = page => boundedBrowserRead(() => page.evaluate(() => {
     loading: [...document.querySelectorAll('[data-loading-label], [data-loading-detail]')].filter(shown).map(e => e.textContent),
     screens: [...document.querySelectorAll('[data-screen]')].filter(shown).map(e => e.dataset.screen),
     alerts: [...document.querySelectorAll('[role="alert"], .boot-error')].filter(shown).map(e => e.textContent),
-    runtime: render ? {
-      gpu: render.gpu,
-      parallelCompile: !!render.renderer?.extensions?.get('KHR_parallel_shader_compile'),
-      admission: render.requiredPackageAdmission,
-      cook: render.openingCookLedger,
-      frame: window.__SF_WITNESS__?.snapshot?.().samples?.at(-1),
+    runtime: render || frame ? {
+      gpu: render?.gpu,
+      parallelCompile: render ? !!render.renderer?.extensions?.get('KHR_parallel_shader_compile') : undefined,
+      admission: render?.requiredPackageAdmission,
+      cook: render?.openingCookLedger,
+      frame,
+      render: graphics?.render,
+      post: graphics?.post,
     } : null,
   };
 }));
@@ -122,7 +126,10 @@ try {
     if (!state.loading.length && state.launchButton && !state.launchButton.disabled
         && state.alerts.some(text => /could not finish loading|did not finish preparing|could not start/i.test(text)))
       throw new Error(`Game refused mobile startup: ${state.alerts.filter(Boolean).join(' ')}`);
-    if (state.flight === '1' && !state.loading.length) { reachedFlight = true; break; }
+    if (state.flight === '1' && !state.loading.length
+        && Number.isFinite(state.runtime?.post?.firstPlayableFrameAt)) {
+      reachedFlight = true; break;
+    }
     if (Date.now() - launchAt > 5000 && await visible(page, menu))
       throw new Error('New Game returned to the main menu without entering flight');
   }
