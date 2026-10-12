@@ -34,6 +34,16 @@
 // 'grip' (catch one light hull and carry it on the nose). Geometry, timing, latch and the hostile/nudge split
 // are shared; only the delivery differs, so a new type is a data row plus one small delivery function.
 export const HULL_BURST_TYPES = Object.freeze({
+  saucer_horizon: Object.freeze({
+    id: 'saucer_horizon', effect: 'horizon', shape: 'radial', name: 'Event Horizon',
+    moduleId: 'ship_saucer', blurb: 'an all-around alien shock field on boost; repels and burns enemies',
+    reachWu: 220, halfAngleRad: Math.PI, noseWidthWu: 0,
+    massScale: 4, kickWuS: 240, bounce: 0.5, toeClosingWuS: 60,
+    kneeWuS: 300, maxDeltaVWuS: 480, forwardBias: 0,
+    nudgeMaxDeltaVWuS: 0, hitStunSource: 'hull_burst',
+    damage: 600, activationCost: 45, activationGapS: 1.25,
+    rehitFactor: 1e9, rehitMinGain: 1e9, rehitGapS: 1.25,
+  }),
   gravity: Object.freeze({
     id: 'gravity',
     effect: 'throw',

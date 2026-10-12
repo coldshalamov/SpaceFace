@@ -39,6 +39,7 @@ import {
   SEDNA_AUTHORED_ACTIVITY_CAPACITY,
   SEDNA_POCKET_ACTOR_SLOT_ORDER,
   SEDNA_ROUTE_TOPOLOGY,
+  SKER_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_SECTOR_ID,
   VESTA_ACTIVITY_POCKETS,
@@ -76,7 +77,8 @@ test('the activity-pocket registry includes Sedna Dark, and the older sectors ar
       + PALLAS_ACTIVITY_POCKETS.length
       + VESTA_ACTIVITY_POCKETS.length
       + TETHYS_ACTIVITY_POCKETS.length
-      + SEDNA_ACTIVITY_POCKETS.length,
+      + SEDNA_ACTIVITY_POCKETS.length
+      + SKER_ACTIVITY_POCKETS.length,
   );
   assert.equal(activityPocketsForSector('sector_sedna_dark').length, 2);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);

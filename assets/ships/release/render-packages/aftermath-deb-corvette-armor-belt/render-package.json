@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "55f6f2880e649a181d59ca2cbe905c7729f91fc4cbf34d05e6afbca95c656255",
+  "contentHash": "e1c6cbf155108896b6342e1e782b99172f3b796512fd3a6a47355452236e8bfc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3024468b8f3826547f1591fed0c8f8e134fae3ad862446ba25012e60073357e",
+      "geometryHash": "f81b15a8bcbcd3d985776c5ae8de35e94871854595dac7c11340c6628fd96b2a",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0-m.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -48,16 +48,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a81d08dd01c88d9eb82f1c27af31240bdcc7ecb7c605e4162fa2c19378e537b",
+      "geometryHash": "dbb4f914657a3d2ed8a4c8fa3343a29a3d9a5ae0eed7a36529d487f4c54536e3",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0-m.primitive.1",
-      "indexCount": 1548,
+      "indexCount": 1425,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "Belt0_M",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0-m",
       "primitiveIndex": 1,
-      "vertexCount": 494
+      "vertexCount": 474
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b813481bb9b454a5d4319afa57029cbf595dbd5e4460f95889d00d5d62227eb8",
+      "geometryHash": "0383cd7ebd054d89ed09a881e7076731526067a890a5d8795c739bcbacfc2195",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -98,16 +98,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b0978d94313039e13317976f1079f7cac28ff04b53b6ac097899567aa855674",
+      "geometryHash": "34c62a29133ab9955289e985e05e8f37f2b12c250f103e4b5995749406c395c9",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0.primitive.1",
-      "indexCount": 1548,
+      "indexCount": 1425,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "Belt0",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0",
       "primitiveIndex": 1,
-      "vertexCount": 494
+      "vertexCount": 474
     },
     {
       "bounds": {
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d9b7c9a37b3ea6cd1da02f8a78ac61131ad1238e6d16c49a52ff299e96a6c70",
+      "geometryHash": "8bf889f7efbec5fc7bda89359e7307caad72e8c37106514b485ea1b5c0ed1558",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1-m.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -148,16 +148,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be6a6c73d88828f927e1330aeb95f053890b95027e4d32792237655683c8ea09",
+      "geometryHash": "636f44b1b7e95c6ec55380c6e84fc9a5dcc117564416063877b5d74f4a69d0ae",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1-m.primitive.1",
-      "indexCount": 1548,
+      "indexCount": 1425,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "Belt1_M",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1-m",
       "primitiveIndex": 1,
-      "vertexCount": 494
+      "vertexCount": 474
     },
     {
       "bounds": {
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bca40b6cdbe991e42fc847747b8f1ca30cd8e01601d5e598faacf2ada811c2cc",
+      "geometryHash": "47dd0bd998d4eccb6d5d2666deb9924e0b028317ae950d86651703c6f47fb996",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -198,16 +198,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3539838a58b27ec90c18c1f91c12dc80b3e24ab198d14a94ec512745f3c41e5",
+      "geometryHash": "6dca4f449c2b4c2bc8c0bc8eefd18617a92dc4426aebf3ba94be307cd9eae703",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1.primitive.1",
-      "indexCount": 1548,
+      "indexCount": 1425,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "Belt1",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1",
       "primitiveIndex": 1,
-      "vertexCount": 494
+      "vertexCount": 474
     },
     {
       "bounds": {
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a53414486f5090ed73ce1d9de9148eb3b3ba9664928371d2571c6e8ec4cd314a",
+      "geometryHash": "91f167c8ae721b0876c90e34eda460e4fd9ce64fd23c3a16c31e5dc890cffd79",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2-m.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -248,16 +248,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79a42b87588d1c594e3d62ad837487ad72047fe77c952388e2901a86526672ca",
+      "geometryHash": "178104eb154f4c879fb0e80bd7bf57f1f08d851d25abcd4fab22568724ddb635",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2-m.primitive.1",
-      "indexCount": 1548,
+      "indexCount": 1425,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "Belt2_M",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2-m",
       "primitiveIndex": 1,
-      "vertexCount": 494
+      "vertexCount": 474
     },
     {
       "bounds": {
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e133d285c0032e0c31391dd0a652b3db26d915c932497cf6056fcb640087cbbd",
+      "geometryHash": "b64fd1600e222136e41d98c3b78cc9c1272b86c13cce6846f90ff89db235aa22",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -298,16 +298,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "768cea8c3ecac9910553fb49378dc7bb79b37677e7438cc2b5b4143f42c8923d",
+      "geometryHash": "15ffe5e09e1f786f3899a84d9c8b56b6069a4e5a6a8b8437ecd87d0d7af1d8d1",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2.primitive.1",
-      "indexCount": 1548,
+      "indexCount": 1425,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "Belt2",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2",
       "primitiveIndex": 1,
-      "vertexCount": 494
+      "vertexCount": 474
     },
     {
       "bounds": {
@@ -1384,19 +1384,19 @@
       "sha256": "f39b15c74d23384a4dec9b2ccf0f1edbc71d32684d79e77f461774e86d064bb1"
     },
     "sourceGlb": {
-      "bytes": 220072,
-      "sha256": "b63a18212f54000d679e446d3be4a7ab04bdefa666843ac037dcdaa6033a9a11",
+      "bytes": 218284,
+      "sha256": "76054382a49f9ccd2eff48fd362745c651f569ffd7527706692d5a4f73af9dbc",
       "uri": "place_aftermath_deb_corvette_armor_belt.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 302020,
-    "sha256": "a12d4ab1b25881abfecc61893ab34fc15e2fc61f0a32b222951f0ab1498d31af",
+    "bytes": 299748,
+    "sha256": "3669bbb4aea2496020199f57f32f7b8c816bfc95c901e9979dac5b59e851d696",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2079,7 +2079,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_armor_belt.glb"
   },
-  "runtimeHash": "caea78faa80185f51083034fc6b8a6a167555b7896bccfbde0d67dacc6e38199",
+  "runtimeHash": "b8c55a59f6bfac2dcb18850b9c4709dacd441dddcbd7c0941a66aa9fd41ad144",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

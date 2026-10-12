@@ -475,7 +475,7 @@ test('quota refusal and unavailable storage are named failures, not silent loss'
   } finally { h.restore(); }
 });
 
-test('a superseded autosave is a cancellation, not a failure and not a success', () => {
+test('a superseded autosave is a cancellation, not a failure and not a success', async () => {
   const h = makeHarness();
   try {
     assert.equal(h.save.save('quick'), true);
@@ -501,7 +501,7 @@ test('a superseded autosave is a cancellation, not a failure and not a success',
     const job = { reason: 'autosave', requestedAt: Date.now(), restoreSequence: 999, capture: null };
     h.save._autosaveInFlight = true;
     h.save._activeAutosaveJob = job;
-    const ok = h.save._commitAutosaveSnapshot(job, {
+    const ok = await h.save._commitAutosaveSnapshot(job, {
       serializeMs: 1,
       stringifyMs: 1,
       blockingSlices: [1],

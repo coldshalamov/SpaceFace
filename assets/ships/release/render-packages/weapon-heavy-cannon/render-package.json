@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1b2beb834a6d7264f068ee2434eecbb4b5ae938e9ded7bb8bb8fab386e7e0d17",
+  "contentHash": "f48643e1f82ccff6a765df322e1331969a28334d54669c80fadc6d772039d8a8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "398663b06032454050afbe1d2dc7e0f09323243990fc96fa96f2cb4fd9621a45",
+      "geometryHash": "a14d8c7ac2dd340621be1ea4f0479de4bd05de9197901ef37bb4f55faeb89308",
       "id": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -79,7 +79,7 @@
       "meshName": "Heavy_Muzzle_Glow",
       "nodeId": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 74
     },
     {
       "bounds": {
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2639b07914a7e4454a89855794846187cd23bb0b70426a4d89fe672f1ee5d45",
+      "geometryHash": "2d92987250e2bae2a65064692c4e5fb0feb7144cb1affac02f5bbb972def9c2f",
       "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1056,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "Remaster_HeavyRecessedBore",
       "nodeId": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel",
       "primitiveIndex": 0,
-      "vertexCount": 528
+      "vertexCount": 400
     },
     {
       "bounds": {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "adf52b979fb48f317e13203de4ba49ea2816e538c9d001b0e3a99bfcd5912e38",
+      "geometryHash": "4e30ac75c33a7f6995a50aac500dc3ed2f2bc86643205d5dd4eee5962cf9e109",
       "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -129,7 +129,7 @@
       "meshName": "Remaster_RecoilClevis-1",
       "nodeId": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel",
       "primitiveIndex": 0,
-      "vertexCount": 456
+      "vertexCount": 216
     },
     {
       "bounds": {
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f23795fb3af8584c4907e896b394cb0e28cc4178902bca4564c1546988925f4f",
+      "geometryHash": "8846e62899cb12adad075435f03c211a08204f9388ba291752b9bb236fd168b7",
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged.primitive.0",
       "indexCount": 3360,
       "indexed": true,
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51dc5609b22cd6fbbd58719ab022df73f1d6a9abd2c9061dd050735cd9b85f44",
+      "geometryHash": "9e517774ed671df63110b86b3a9e9687866b4135b29389fc91de45c69124cf87",
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged.primitive.1",
       "indexCount": 1116,
       "indexed": true,
@@ -179,7 +179,7 @@
       "meshName": "weapon_heavy_cannon_Material_Hull_Merged.001",
       "nodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
       "primitiveIndex": 1,
-      "vertexCount": 728
+      "vertexCount": 356
     },
     {
       "bounds": {
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8323ab7bb5b1b2b25e900288c01ed701d06d9aa1bb1043ef8324d5edf920a356",
+      "geometryHash": "bd57f70c8c4405a460f0ebdc3e22fc742b8eb6f175a567af3b443d079e2dde88",
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged.primitive.0",
       "indexCount": 2736,
       "indexed": true,
@@ -204,7 +204,7 @@
       "meshName": "weapon_heavy_cannon_Material_Mechanical_Merged",
       "nodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 822
+      "vertexCount": 1116
     }
   ],
   "hlods": [],
@@ -1535,19 +1535,19 @@
       "sha256": "1e31f3b557c2122f229a09ec78c35881db7659a7e9142b32cbaf28b70c72e2f5"
     },
     "sourceGlb": {
-      "bytes": 445480,
-      "sha256": "572b2b7cbfd2b0c7f8134f6d65ba08064f04655ad8d93437e9da312831ae880a",
+      "bytes": 443508,
+      "sha256": "208dc9a7b878bf355ccd9b6762b06e2f669efa400602bd6153fd52c379220c8f",
       "uri": "weapon_heavy_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 508488,
-    "sha256": "a2b74f25e806a525b059a782ebcf60a4dde69cc10a28c032936ca3fc459c9cdb",
+    "bytes": 478376,
+    "sha256": "22bc2dc0435a7cd7cad46ae0a9ed773353ae8eebf962d9ed7ede9c91d14561cb",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1865,7 +1865,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
   },
-  "runtimeHash": "4e66549b8f3f5d4b03aafd5244a1ee4e04699e6172a210be1bbd53aec02625a2",
+  "runtimeHash": "fc475e9967a15d233658ef4462366bfe6b9826b3d671591a418e3a0e22217301",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

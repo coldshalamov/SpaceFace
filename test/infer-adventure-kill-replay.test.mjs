@@ -93,18 +93,18 @@ test('the tape is a thirty-second window: old ticks and aged marks fall off the 
     'a mark older than the window no longer points at the tape');
 });
 
-test('survival keeps its body ring and records no adventure tape; pause steps nothing; new game resets', () => {
+test('survival keeps its body ring and shares bounded flight recording; pause steps nothing; new game resets', () => {
   const t = boot();
   t.state.run = { kind: 'survival', phase: 'live' };
   stepTicks(t, 60);
-  assert.equal(t.state.replay.recording.ticks, 0, 'no adventure tape during a survival run');
+  assert.equal(t.state.replay.recording.ticks, 60, 'survival has the same actual-flight recording seam');
 
   t.state.run = null;
   stepTicks(t, 30);
   t.state.mode = 'paused';
   t.sim.step();
   t.sim.step();
-  assert.equal(t.state.replay.recording.ticks, 30, 'paused ticks never land on the tape');
+  assert.equal(t.state.replay.recording.ticks, 90, 'paused ticks never land on the tape');
 
   t.state.mode = 'flight';
   t.bus.emit('game:new', {});

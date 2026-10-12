@@ -1,13 +1,16 @@
 // Site-keyed warn dedup for sim/systems catch tails — the renderer's stormWarn
 // contract without the render-internal import. A persistent per-tick fault pays
-// WARN_DEDUP_VERBATIM verbatim warns then a >=1 s suppressed-count heartbeat
-// instead of ~60 Hz Error+stack serialization on the presented-frame thread.
+// WARN_DEDUP_VERBATIM verbatim warns then an exponentially-backing-off
+// suppressed-count heartbeat (1 s doubling to a 30 s cap — the shape
+// tryPresentedCall's retryAt already uses) instead of ~60 Hz Error+stack
+// serialization on the presented-frame thread.
 
 import { perfNow } from './perfRuntime.js';
 
 const WARN_DEDUP_VERBATIM = 8;
 const WARN_DEDUP_CAP = 256;
 const WARN_DEDUP_HEARTBEAT_MS = 1000;
+const WARN_DEDUP_HEARTBEAT_MAX_MS = 30000;
 
 const _warnDedupLog = new Map();
 
@@ -21,7 +24,7 @@ function dedup(site, level, args) {
       const oldest = _warnDedupLog.keys().next();
       if (!oldest.done) _warnDedupLog.delete(oldest.value);
     }
-    row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity, heartbeatMs: WARN_DEDUP_HEARTBEAT_MS };
     _warnDedupLog.set(site, row);
   }
   const sink = level === 'error' ? console.error : console.warn;
@@ -31,8 +34,13 @@ function dedup(site, level, args) {
     return;
   }
   row.suppressed += 1;
-  if (now - row.lastWarnAt >= WARN_DEDUP_HEARTBEAT_MS) {
+  // Heal proxy: a >60 s quiet gap is a new storm, not a continuing one —
+  // re-arm the heartbeat at the short cadence so sparse faults still print
+  // promptly instead of inheriting the previous storm's backed-off interval.
+  if (now - row.lastWarnAt >= 60000) row.heartbeatMs = WARN_DEDUP_HEARTBEAT_MS;
+  if (now - row.lastWarnAt >= row.heartbeatMs) {
     row.lastWarnAt = now;
+    row.heartbeatMs = Math.min(row.heartbeatMs * 2, WARN_DEDUP_HEARTBEAT_MAX_MS);
     sink.call(console, `'${site}' faulted ${row.suppressed} more times; latest:`, ...args);
     row.suppressed = 0;
   }

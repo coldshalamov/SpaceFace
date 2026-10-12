@@ -88,7 +88,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   let lastNumbers = -Infinity, lastMode = '', lastTick = -1, lastBoost = false, aimDeg = NaN;
   const listen = (el, event, fn, opts) => { el.addEventListener(event, fn, opts); cleanup.push(() => el.removeEventListener(event, fn, opts)); };
   const clock = () => win.performance?.now?.() ?? 0;
-  const size = () => ({ w: win.innerWidth, h: win.innerHeight });
+  const size = () => ({ w: win.innerWidth, h: Math.min(win.innerHeight, win.visualViewport?.scale === 1 ? win.visualViewport.height : win.innerHeight) });
   const eat = e => { if (e.cancelable) e.preventDefault(); e.stopImmediatePropagation(); };
   const haptic = () => { if (config().haptics === true) win.navigator?.vibrate?.(12); };
   const schedule = () => { if (!raf && !destroyed) raf = win.requestAnimationFrame(() => { raf = 0; render(); }); };
@@ -103,7 +103,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   const wheel = createWheel(doc, {
     pages: POWER_PAGES, icon,
     onUse: power => use(power),
-    onPage: i => { model.wheelPage = i; wheel.setPage(i); schedule(); },
+    onPage: i => { model.wheelPage = i; selected = -1; wheel.setPage(i); schedule(); },
   });
   flight.insertBefore(wheel.root, q('.mf-toast'));
   let wheelGeometry = { cx: 0, cy: 0, radius: 150 }, selected = -1;
@@ -133,21 +133,26 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   }
   function openWheel(pointer = null) {
     const { w, h } = size(), bounds = edge.getBoundingClientRect();
-    const short = h < 500;
-    // Portrait: the bank tabs and the readout stand above the rail, the key cluster below it, so the rail's
-    // radius is whatever the gap between them allows. Landscape: they sit beside it, and the rail takes the
-    // screen's height (nodes need ~62px of arc each, which a small rail cannot give them).
-    const topClear = 236, bottomClear = h < 650 ? 100 : 184;
-    const radius = short
-      ? clamp((h - 24) / 2, 92, Math.min(150, w * 0.4))
-      : clamp((h - topClear - bottomClear) / 2, 96, Math.min(198, w - 56));
-    const cy = short
-      ? clamp(pointer?.oy ?? h * 0.5, radius + 12, h - radius - 12)
-      : clamp(pointer?.oy ?? h * 0.56, topClear + radius, Math.max(topClear + radius, h - bottomClear - radius));
+    const portrait = w < h;
+    const keys = q('.mf-buttons').getBoundingClientRect();
+    const safeTop = Math.max(0, pauseKey.getBoundingClientRect().top - 10);
+    const safeBottom = keys.height ? Math.max(0, h - keys.bottom - (h <= 500 ? 10 : 18)) : 0;
+    // A full orbit gives portrait's short rail enough circumference for all powers. Landscape's arc
+    // sits inward of the entire gun/tether cluster, so the other thumb can still use either key.
+    const topClear = (h < 650 ? 228 : 236) + safeTop, bottomClear = 184 + safeBottom;
+    const radius = !portrait
+      ? clamp((h - safeTop - safeBottom - 24) / 2, 92, Math.min(150, w * 0.4))
+      : clamp((h - topClear - bottomClear) / 2, 96, Math.min(152, (w - 64) / 2));
+    const cy = !portrait
+      ? clamp((h + safeTop - safeBottom) * .5, safeTop + radius + 12, h - safeBottom - radius - 12)
+      : clamp(h * 0.56, topClear + radius, Math.max(topClear + radius, h - bottomClear - radius));
     const side = hand();
-    const cx = side === 'left' ? bounds.left + 4 : bounds.right - 4;
-    wheelGeometry = { cx, cy, radius }; selected = -1;
-    wheel.open({ cx, cy, radius, side }, model.wheelPage, !pointer);
+    const clusterWidth = 170 * Number(root.style.getPropertyValue?.('--mf-scale') || 1);
+    const cx = portrait ? w / 2 + (w <= 360 ? (side === 'left' ? 12 : -12) : 0) : side === 'left'
+      ? Math.max(bounds.left + 4, keys.width ? keys.right + 12 : clusterWidth + 28)
+      : Math.min(bounds.right - 4, keys.width ? keys.left - 12 : w - clusterWidth - 28);
+    wheelGeometry = { cx, cy, radius, span: portrait ? 360 : 180 }; selected = -1;
+    wheel.open({ ...wheelGeometry, side }, model.wheelPage, !pointer);
     markWheel(true); edge.setAttribute('aria-expanded', 'true'); schedule();
   }
   function openGuide() {
@@ -172,8 +177,10 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     const layout = cfg.layout === 'lefty' || cfg.layout === 'compact' ? cfg.layout : 'standard';
     root.dataset.layout = layout;
     root.dataset.lefty = layout === 'lefty' ? '1' : '0';
-    const scale = clamp(Number(cfg.scale) || 1, 0.8, 1.6);
+    const { h } = size();
+    const scale = clamp(Number(cfg.scale) || 1, 0.8, h <= 500 ? Math.max(.8, (h - 164) / 220) : 1.6);
     root.style.setProperty('--mf-scale', scale);
+    root.style.height = `${h}px`;
     // the page's own receipts line keeps clear of the key cluster: it needs the cluster's side and width
     const html = doc.documentElement;
     html.dataset.sfMobileLefty = layout === 'lefty' ? '1' : '0';
@@ -244,7 +251,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     for (const sample of (e.getCoalescedEvents?.() || [])) model.move(e.pointerId, sample.clientX, sample.clientY, sample.timeStamp);
     model.move(e.pointerId, e.clientX, e.clientY, e.timeStamp);
     if (p.role === 'wheel') {
-      const g = wheelGeometry, next = wheelSlot(e.clientX, e.clientY, g.cx, g.cy, g.radius, 6, selected, hand());
+      const g = wheelGeometry, next = wheelSlot(e.clientX, e.clientY, g.cx, g.cy, g.radius, POWER_PAGES[model.wheelPage].powers.length, selected, hand(), g.span);
       if (next !== selected && next >= 0) haptic();
       selected = next; wheel.select(next);
     }
@@ -256,7 +263,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     // The final pointerup can carry movement that never received a pointermove.
     model.move(e.pointerId, e.clientX, e.clientY, e.timeStamp);
     if (!cancelled && p.role === 'wheel' && p.moved) {
-      const g = wheelGeometry; selected = wheelSlot(e.clientX, e.clientY, g.cx, g.cy, g.radius, 6, selected, hand());
+      const g = wheelGeometry; selected = wheelSlot(e.clientX, e.clientY, g.cx, g.cy, g.radius, POWER_PAGES[model.wheelPage].powers.length, selected, hand(), g.span);
     }
     const ended = model.end(e.pointerId, e.clientX, e.clientY, e.timeStamp, cancelled);
     const capture = captures.get(e.pointerId); captures.delete(e.pointerId);
@@ -286,14 +293,16 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
   listen(win, 'blur', cancelAll); listen(win, 'pagehide', cancelAll);
   listen(doc, 'visibilitychange', () => { if (doc.hidden) cancelAll(); schedule(); });
   let viewportSize = size();
-  listen(win, 'resize', () => {
+  const resize = () => {
     const next = size();
     const rotated = Math.abs(next.w - viewportSize.w) > 48;
     viewportSize = next;
+    applyConfig();
     if (rotated) cancelAll();
-    else schedule();
-  });
-  if (win.visualViewport) listen(win.visualViewport, 'resize', schedule);
+    else { if (!wheel.root.hidden) openWheel(model.wheel); schedule(); }
+  };
+  listen(win, 'resize', resize);
+  if (win.visualViewport) listen(win.visualViewport, 'resize', resize);
   listen(win, 'keydown', e => { if (e.code === 'Escape' && !wheel.root.hidden) { closeWheel(); e.preventDefault(); } });
   // Mouse/keyboard activation and accessible click path; touch quick-tap is handled above.
   listen(edge, 'click', e => { if (e.detail === 0 || e.pointerType === 'mouse') { pinned = !pinned; if (pinned) openWheel(); else closeWheel(); } });

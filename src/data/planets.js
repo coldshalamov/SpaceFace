@@ -48,6 +48,7 @@ export const PLANET_SITE = Object.freeze({
 
   // ---- attraction (annular WELL registered into the PQ-012 kernel) ----------------------------
   field: Object.freeze({
+    wellConsequences: Object.freeze({ grindPriming: false, exitHitstun: false }),
     innerRadius: 900,   // zero pull below this (the atmosphere is not a gravity trap)
     innerSoft: 250,     // ramp 0->1 across [900, 1150] — peak lands at the sling inner edge
     radius: 2600,       // falloff reaches zero here (the influence edge — bounded, never infinite)

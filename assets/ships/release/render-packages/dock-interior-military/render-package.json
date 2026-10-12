@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "987f44750aa6520aad19cb25e82d0700a08fdbc3d76c0b7a692110a466b346d8",
+  "contentHash": "902211927e6f504c0ec9d8a961acace91af38932fc9ab7d6cb9528f1695846a8",
   "dynamicGroups": [
     {
       "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port.dynamic",
@@ -81,7 +81,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44ec34ddc7f43044090420336ddce26e12669005eaa4b8a44e034b81c64b91fe",
+      "geometryHash": "ef23e733a90e60730e0b62ff80c0a0425e31ece6cc978720f015e972d043e358",
       "id": "sf.render.dock-interior-military.mesh.lod0-armor.primitive.0",
       "indexCount": 10716,
       "indexed": true,
@@ -131,16 +131,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fc7fcb700ec51c79332b7a1ee167e722ba3d131c31087a1b7b895f45454f71e",
+      "geometryHash": "ed4af05d2f970ad55d21aac19e1ab2cd5d721acc629404c305945fe41e3ebac0",
       "id": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port.primitive.0",
-      "indexCount": 1332,
+      "indexCount": 1314,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.dock-interior-military.mesh.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 520
+      "vertexCount": 516
     },
     {
       "bounds": {
@@ -181,7 +181,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09d4afc676b00cb409be5fdb3664b9b023523dd01b8c88f7b4f73f218a183bba",
+      "geometryHash": "6aba187f07802bdea211c551fd63982c632fb84c4f7ea468d44fdb15e56d5f1b",
       "id": "sf.render.dock-interior-military.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -206,7 +206,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8480e874a381efd3c8d9ab9bc8851b683c40c51475a432be172e13b7bdb3b152",
+      "geometryHash": "311b8e751289679891c59af8816aeddb8f7a014d66d2a7e99fa30955b301924f",
       "id": "sf.render.dock-interior-military.mesh.lod0-hull-deck.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -281,7 +281,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eed2f033321481048a1433a7427516401759b3afe63d4700f1cefb5413fa23e6",
+      "geometryHash": "22bec1d2e2987190282afdbcbdad74be59796ec9466baa04dd9c07d426ef8883",
       "id": "sf.render.dock-interior-military.mesh.lod0-hull-navy.primitive.0",
       "indexCount": 1200,
       "indexed": true,
@@ -331,7 +331,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2f7988d61dff751660914abed4c4c4868161e58d21057e4419cb2f5b49a9321",
+      "geometryHash": "c9d5d800c6abe2057894e49a6c46f66ba535bafc1509dfd6d80275606d1deb4a",
       "id": "sf.render.dock-interior-military.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 2088,
       "indexed": true,
@@ -381,7 +381,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8bfeeaf7172817c8d99b4996c02b9330cc85c2f068c6220b1f31a81d1e584454",
+      "geometryHash": "209e690c906b6a2f4df1f78af03f795a76d1e8e75f73983fad117ea52c7a367e",
       "id": "sf.render.dock-interior-military.mesh.lod0-mechanical.primitive.0",
       "indexCount": 17052,
       "indexed": true,
@@ -406,7 +406,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbdb5d372519e6e7266cf63555d19668965a6b280f22ba0d3d608575ec4936cc",
+      "geometryHash": "750c93105cba6a710284f5eae3da927330444d1616eaf616aea9ebc86ec75b09",
       "id": "sf.render.dock-interior-military.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 2112,
       "indexed": true,
@@ -431,7 +431,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63baede1762e8560028605350c355de4ca42a5680d8e707beb12228076e306cd",
+      "geometryHash": "634e7ce52295d4c42a92da5b5200c5c23e678685242ca663f70181d5bb5a3d1b",
       "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -456,7 +456,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cfc92dd6c2b2a5dda0929b29da175424923f60915a1c94b9d33d3258aadf0cb",
+      "geometryHash": "b261f1db709699ccfb105454c8b4861a33134c673bcda3a000f37cdfcd59fcd8",
       "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-l-mechanicaldark.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -481,7 +481,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e53bb989b72929e764fb51779a438299df48fea23ea4056cea880c3461af42ea",
+      "geometryHash": "3d8209e9f0eb11f0383e619e469823ccca27d7ea4f726d5195daf4970ed3188d",
       "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -506,7 +506,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49ef901396afafe57691ab59101db1f9772780ac0468d3309e47005cb433bc12",
+      "geometryHash": "9ca9b02ed26b1dd7e76684ada10f234b2cb79e1eef16cbca6153b4a77ec78d84",
       "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-clamp-r-mechanicaldark.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -531,7 +531,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1695e181bbf594cbba3b3c8a2eb72dd7d344076e4f2f10e23e10bc19b989fe0",
+      "geometryHash": "a28f875c75afb9873f38c5afc9b4bf2e1aac914d6cfbc4e6f50aa8bb100df613",
       "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -556,7 +556,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67b2d00ef475a098c75a691aaa34c11913269df553a4c478082dab463ad57c59",
+      "geometryHash": "be4efec4724d403ce121837d0ae639422bae5a6f913f5792e089994342ad1961",
       "id": "sf.render.dock-interior-military.mesh.lod0-motion-dock-umbilical-warning.primitive.0",
       "indexCount": 1140,
       "indexed": true,
@@ -2190,19 +2190,19 @@
       "sha256": "9b2becc6a4b4fcff413894d8b5c9dba7d7b91db02cfecfc1253c9c85a19a26a1"
     },
     "sourceGlb": {
-      "bytes": 370336,
-      "sha256": "95441b07e5c62120f9d0f6d4bd2b5bb6c3ef1433b2aa6c9869dfe865f1cfbcfc",
+      "bytes": 367420,
+      "sha256": "a94d083696510137804ad9f84b3761ecc2225d745957ce5964d1248bf58ab7dc",
       "uri": "place_dock_interior_military.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 611228,
-    "sha256": "f0086bf290d0896b5aca491b94a4c49d0a881fedbc2856c4054528d427406f9b",
+    "bytes": 611188,
+    "sha256": "16d33f6d3c5c1bc086cb5f6a47bafd429bf021858eec84f5e5fc65b89db24a11",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3165,7 +3165,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dock_interior_military.glb"
   },
-  "runtimeHash": "ca69e0b1d6b7f77949b0d44f7ea5e21c3dd9d27ca3491e709cd9898dc95a4d78",
+  "runtimeHash": "a7c5825298cfc1814e8f040b23af82446d32853cdb6ebb1ef551e1b77675f2a1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

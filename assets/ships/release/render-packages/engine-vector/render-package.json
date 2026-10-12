@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e8f79842101d3d368a5a87efac5cc1a764df851378c2fb9965cb1bfd5a14e9bc",
+  "contentHash": "e83363ee9806e8ecac9d5c0f299017602ba45a641b01596cdf2c0435d5a1c815",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce29e13b6c41999e5acd388076f8e4a6fa52686cb2342b3fa9def3ff582b24b1",
+      "geometryHash": "9d8ae39a7b89c01e7da4cd6f4610d77316d12cf2b4afec8edd1cead31ce595b0",
       "id": "sf.render.engine-vector.node.det-heat-scorch-band.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Cylinder.010",
       "nodeId": "sf.render.engine-vector.node.det-heat-scorch-band",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 66
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4cd6fb14636848c25c150c2055b8dd387e8d58e5c00e1209bb5ff54f820314b",
+      "geometryHash": "daa60086d8379074857b7e81792248b33e369d1eb55a7c74cd16d748f3814f43",
       "id": "sf.render.engine-vector.node.det-heat-streak.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf3e5e1891d9e1e87f8d509e3ee87e4e9c9179d222b7e903cd9e7dfff4fe81c4",
+      "geometryHash": "ff2bcf2df0006d18b16bec69412527ca99d64312b1b6aadb23833c79089ebf19",
       "id": "sf.render.engine-vector.node.hook-drive-core.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "HOOK_DRIVE_CORE_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 336
+      "vertexCount": 192
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5907010b9c9e72c08d1f668ec8360aec82db7d22560d2bf29da0435850e2f46",
+      "geometryHash": "cf0a0741dd49480858778503293d1246455e04e9381e2ed680e6fbc612a844ce",
       "id": "sf.render.engine-vector.node.hook-drive-fan.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -107,7 +107,7 @@
       "meshName": "HOOK_DRIVE_FAN_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-fan",
       "primitiveIndex": 0,
-      "vertexCount": 336
+      "vertexCount": 232
     },
     {
       "bounds": {
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f95db7f9998dfee1ddba3b3f6fb52ee610b4394b025daf6b44e19d6050690903",
+      "geometryHash": "6d8dffaa56dd4336de55b4add72061630a334b357d373fcb02acf63d8f21daf5",
       "id": "sf.render.engine-vector.node.hook-drive-plume.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -132,7 +132,7 @@
       "meshName": "HOOK_DRIVE_PLUME_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-plume",
       "primitiveIndex": 0,
-      "vertexCount": 336
+      "vertexCount": 192
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64aeb9e73113fec69057e16c3ecbada833459e8f4ab0c4ea9e7383cbd6187e71",
+      "geometryHash": "d4047838d1c77c4fc0a9b1c9cb290139a076695d0752c3733a37bfb7e2f975eb",
       "id": "sf.render.engine-vector.node.lod0-engine-vector-main.primitive.0",
       "indexCount": 14976,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "engine_vector_mesh",
       "nodeId": "sf.render.engine-vector.node.lod0-engine-vector-main",
       "primitiveIndex": 0,
-      "vertexCount": 9692
+      "vertexCount": 3591
     }
   ],
   "hlods": [],
@@ -565,19 +565,19 @@
       "sha256": "c70fa1181200fe5849d0f7da95b87b0935419e3265dde2797f1d1a42f749edac"
     },
     "sourceGlb": {
-      "bytes": 139048,
-      "sha256": "305395c2ecbe679697f1b6c58534bce75a2b12333e1c663b92c36db3575a3d68",
+      "bytes": 152416,
+      "sha256": "6fc50f4aff4fc5b379b49099f6c366b76f4be9b8de1ef5e797801b68ced0a6ad",
       "uri": "engine_vector.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 223296,
-    "sha256": "ba2f83d2b12744f957c5d4f1b9cc360f682fac630e5777222e2ce33e0cf04f9d",
+    "bytes": 130424,
+    "sha256": "7f0616a1996c80cb9831b36131f23b2651b724b7bda3ec71934e71a42148bda3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -872,7 +872,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_vector.glb"
   },
-  "runtimeHash": "9374575ff424466d79e77655b2eee0e90a9fd0105023c3d23e42f14f0063e555",
+  "runtimeHash": "48e7f1a8f2492c91e59f303456cb83bdc7e5a8c41df528d23809a261f3bdebd3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

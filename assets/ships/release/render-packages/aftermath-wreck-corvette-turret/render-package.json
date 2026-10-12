@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f18e4bc1e92d6abe694d6776ccb1ec1708ee7df07bb2807141b38110263f3355",
+  "contentHash": "917f55f2ab5d92b0b0903cc7244c8fc1fba6da4f91d72236dbe5c37e33c3068b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "faf678bad86719ed86ee3a4111c34ffccf9565ab7bd620b8429c5e5f8a840bb4",
+      "geometryHash": "3dd0a53ef1e83d19136ebf246f206897d6b8db9bf5ad70142fd36051d38a052d",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse.primitive.0",
       "indexCount": 1299,
       "indexed": true,
@@ -345,7 +345,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2260039f16ffd713bff241726280bc96eed56ba77169b2b30ee0f9643b3b069",
+      "geometryHash": "64b75628e9f6566cc0fb2ccbb6b59462bed66142395b61f3033fdc77b7a812a0",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse.primitive.1",
       "indexCount": 837,
       "indexed": true,
@@ -370,16 +370,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "600d2275596ca78b5c7a4c44196cb5df22e078c9420b79ac5bd2bbf84ef6a9f6",
+      "geometryHash": "eba7c97fc3bd741cccb1a70728c896b1b3643d93ba43e561fd9b57c9d7344ad7",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse.primitive.2",
-      "indexCount": 1404,
+      "indexCount": 1284,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "materialPipelineKey": "opaque",
       "meshName": "TurretAHouse",
       "nodeId": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse",
       "primitiveIndex": 2,
-      "vertexCount": 498
+      "vertexCount": 454
     },
     {
       "bounds": {
@@ -395,7 +395,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c8071094a59a0860064821920acd3adb5e90da4fd84880cf85a28bbc0fdd1f5",
+      "geometryHash": "2041a957976492806926236aa23da4c917201c1d8b2fd8ee5cc44af5b7b59477",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretamantlet.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -420,7 +420,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1654a5e1176c2b23ded41abdf2d736037b46bca76a0590f9688e9207ce07067",
+      "geometryHash": "a9870dc88eca5014e01ee737bd1898cb5c6316942d8e62515efbe97c10d11cc9",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretarace.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "124afbf46b3588a23f2f6fe3517c26605795bc0740e2f03ae813e45795a70f03",
+      "geometryHash": "6b00da9f6674e9707fb05e0ead586621c2be6c7afd937d0f9257cadddf87abb0",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretaring.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -470,7 +470,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f6959bae2dbd9847b98780e32c1f658bff4c67bd43d97fc3e80f8246f48f3cf",
+      "geometryHash": "986cc4e0577c2401444ee1be4dc907c4e7f4369109c9c917418dac571d31cea8",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretaring.primitive.1",
       "indexCount": 1188,
       "indexed": true,
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6b0474087f512c83addb79708a6e05e4fa36ae3b5a7d1ef20c4c201039e235b",
+      "geometryHash": "cbbf258cd6b5352bb8275bf8a175413cf2b73593eba43bff029258052a07240f",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasight.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -520,7 +520,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e4306e58ab345638cb3029ebf54a88eace743e366b0be8497c989d7c160f6f8",
+      "geometryHash": "7eb4a2d97d3cd1aaa26ecd0db0fbb8f98193918e84ddde44e646adae0c997089",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve-0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -545,7 +545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c954b6bbc5127b088b45a2276a7f27b40f3f78d4d3dbc9bef4e17d842c3ab37f",
+      "geometryHash": "6d3aaab1e1b7f0db952be80c5eae1380e24bc82be7012290affa56618c58d18c",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -1691,19 +1691,19 @@
       "sha256": "91c494ac328f998af58bb58d2d07e5a85ad9936d04372fc052d6dd4f26e80338"
     },
     "sourceGlb": {
-      "bytes": 201832,
-      "sha256": "a019bbdd23efba3733b6f574935804a6490dba1eb5d86798c4bc1b630c36db4a",
+      "bytes": 198876,
+      "sha256": "03bbf7b8226bbd1b297420180bafb4747aa21b35601784342af093f664141f23",
       "uri": "place_aftermath_wreck_corvette_turret.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 251120,
-    "sha256": "e041f0599bf4d89f268c4c02a41d996c3b8c51a9e5299bd045261bd1cd6ee471",
+    "bytes": 250124,
+    "sha256": "3cf60c7f3fab55b23cb0f69c063e13010c5b0f983646791ba25cefcf02f3178d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2425,7 +2425,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_turret.glb"
   },
-  "runtimeHash": "7d454c604c45e072b14866b6c08815160e39f41e30a902a566f1da2a1f00d3a9",
+  "runtimeHash": "2581fe9b8d8cb29a646b7984ed0a249020d8514cad7fa034eb5c750a51cb4593",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

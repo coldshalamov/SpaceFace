@@ -109,9 +109,18 @@ _offer(id=null){const signal=this._signals.get(id),r=RECORDERS.find(r=>r.id===id
     text:borrowedVoiceJournalPlate(this.state)?.body||'Three retained signal sources. Tow clear of shielding and point the antenna toward the broken ring. Unknown words remain unknown.',
     canChoose:this._row.recoveredFragmentIds.length>0&&['open','leave'].includes(this._row.disposition)});
 },
-choose(disposition,revision){if(this._busy||!this._active()||revision!==this._row.evidenceRevision
-  ||!['archive','quarantine','leave'].includes(disposition)||!this._row.recoveredFragmentIds.length
-  ||!['open','leave'].includes(this._row.disposition)||distance(this._player()?.pos,C.center)>C.siteRange)return {ok:false,reason:'record_changed'};
+_refreshStaleDecision(disposition){const player=this._player();
+  if(!['archive','quarantine','leave'].includes(disposition)||!this._active()||this.state.ui?.docked===true||!player
+    ||!(distance(player.pos,C.center)<=C.siteRange)||!this._row.recoveredFragmentIds.length
+    ||!['open','leave'].includes(this._row.disposition))return;
+  this.bus.emit('toast',{text:'The record changed while you were reviewing it. Check the updated evidence before choosing.',
+    kind:'info',ttl:6});
+  this._offer();
+},
+choose(disposition,revision){if(this._busy)return {ok:false,reason:'record_changed'};
+  if(revision!==this._row.evidenceRevision){this._refreshStaleDecision(disposition);return {ok:false,reason:'record_changed'};}
+  if(!this._active()||this.state.ui?.docked===true||!['archive','quarantine','leave'].includes(disposition)||!this._row.recoveredFragmentIds.length
+  ||!['open','leave'].includes(this._row.disposition)||!(distance(this._player()?.pos,C.center)<=C.siteRange))return {ok:false,reason:'record_changed'};
   if(disposition===this._row.disposition)return {ok:true,duplicate:true};
   const economy=this.ctx.registry?.get('economy');
   if(disposition==='archive'&&!this._row.archiveReceipt&&typeof economy?.grantCredits!=='function')return {ok:false,reason:'credit_owner_missing'};
@@ -126,9 +135,9 @@ choose(disposition,revision){if(this._busy||!this._active()||revision!==this._ro
     this._offer();return {ok:true};
   }finally{this._busy=false;}
 },
-_lost(entityId,entity=null){if(this._restoring)return;
+_lost(entityId,entity=null){if(this._restoring||entityId==null)return;
   const ring=this._bindings.get('ring');
-  if(ring?.e.id===entityId&&(!entity||entity===ring.e)&&ring.life===ring.e.occupantGeneration){
+  if(ring&&ring.e.id===entityId&&(!entity||entity===ring.e)&&ring.life===ring.e.occupantGeneration){
     if(terminal.has(this._row.ringOutcome))return;
     this._row.ringOutcome='destroyed';this._row.evidenceRevision++;this._signals.clear();return;}
   for(const r of RECORDERS){const b=this._bindings.get(r.id);if(!b||b.e.id!==entityId||(entity&&b.e!==entity)

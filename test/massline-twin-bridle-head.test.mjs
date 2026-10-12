@@ -259,7 +259,7 @@ test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => 
   assert.deepEqual(
     heavies.map((row) => row.id),
     ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent',
-      'brood_queen', 'brood_tendril', 'kilnback'],
+      'brood_queen', 'brood_tendril', 'last_argument', 'kilnback'],
   );
   assert.ok(heavies.every((row) => ['brood_tendril', 'kilnback'].includes(row.id) || Number(row.mass) >= ANCHOR.mass),
     'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');

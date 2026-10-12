@@ -175,6 +175,8 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       frame.flight.brake = frame.actions.brake = drive.brake;
       frame.flight.boost = frame.flight.boost && !drive.brake && drive.thrust > 0.1;
     }
+    // The main-lane surface ships action snapshots, so boost must cross the same boundary as fire/brake.
+    frame.actions.boost = !!frame.flight.boost;
     this.axes.leftX = drive.turn; this.axes.leftY = -drive.thrust;
     this.axes.rightX = 0; this.axes.rightY = 0;
     // Gun drag is deliberate independent aim; otherwise weapons/tether follow stick or heading.

@@ -95,16 +95,26 @@ function boot(state) {
 // The Done sentence
 // ---------------------------------------------------------------------------------------
 
-test('PRO-06: exiting to the menu writes a save, and the bytes are durable before the mode flips', () => {
+// The exit write is a paced chain (saveAsync): the emit schedules the serialize→write
+// legs across task hops so the menu transition paints between them; the durable bytes
+// and the save:completed receipt land when the chain settles. Tests that assert on the
+// write await it here — same assertions as the old synchronous contract.
+async function settlePacedSave() {
+  const job = save._activePacedSave;
+  if (job && job.promise) await job.promise;
+}
+
+test('PRO-06: exiting to the menu writes a save, and the bytes are durable once the chain settles', async () => {
   const store = installStorage();
   const h = boot(flightState());
   try {
     assert.equal(h.state.mode, 'paused');
     // main.js installs its mode flip AFTER createRegistry, and the bus dispatches listeners in
-    // registration order — so on the real route the save lands before state.mode becomes 'menu'.
+    // registration order — the paced write still lands while the mode flip is this emit's tail.
     h.bus.on('game:exitToMenu', () => { h.state.mode = 'menu'; });
 
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
 
     // The autosave slot now holds a real, complete envelope...
     const raw = store.storage.getItem('sf.save.auto');
@@ -135,11 +145,12 @@ test('PRO-06: exiting to the menu writes a save, and the bytes are durable befor
   }
 });
 
-test('PRO-06: the write is verified, not merely issued', () => {
+test('PRO-06: the write is verified, not merely issued', async () => {
   const store = installStorage();
   const h = boot(flightState());
   try {
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
     const raw = store.storage.getItem('sf.save.auto');
     // Read-back verify is the save system's own contract; assert the stored bytes are the ones a
     // reader will parse and that the checksum the envelope advertises is the one it carries.
@@ -157,7 +168,7 @@ test('PRO-06: the write is verified, not merely issued', () => {
   }
 });
 
-test('PRO-06: requestAutosave could not have done this — the exit needs its own synchronous write', () => {
+test('PRO-06: requestAutosave could not have done this — the exit needs its own immediate write', async () => {
   // Pins WHY the exit path is separate. requestAutosave() bails when mode !== 'flight', and the
   // player is in 'paused' when they leave. If this ever stops being true the two paths can merge.
   const store = installStorage();
@@ -179,6 +190,7 @@ test('PRO-06: requestAutosave could not have done this — the exit needs its ow
 
     // The exit path writes from that same state.
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
     assert.ok(store.storage.getItem('sf.save.auto'),
       'the exit path must still write from a paused state');
   } finally {
@@ -224,13 +236,14 @@ for (const jumpState of ['CHARGING', 'JUMPING']) {
   });
 }
 
-test('PRO-06: a settled jump state still saves', () => {
+test('PRO-06: a settled jump state still saves', async () => {
   const store = installStorage();
   const state = flightState();
   state.jump = { state: 'IDLE', progress: 0 };
   const h = boot(state);
   try {
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
     assert.ok(store.storage.getItem('sf.save.auto'),
       'a jump that is not in flight must not block the exit save');
   } finally {
@@ -260,13 +273,14 @@ for (const kind of ['survival', 'lab']) {
   });
 }
 
-test('PRO-06: an inactive run does not block the exit save', () => {
+test('PRO-06: an inactive run does not block the exit save', async () => {
   const store = installStorage();
   const state = flightState();
   state.run = { kind: 'survival', phase: 'inactive' };
   const h = boot(state);
   try {
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
     assert.ok(store.storage.getItem('sf.save.auto'),
       'a finished run is ordinary campaign state again');
   } finally {
@@ -275,7 +289,7 @@ test('PRO-06: an inactive run does not block the exit save', () => {
   }
 });
 
-test('PRO-06: a repeat exit request does not pay for a second full write', () => {
+test('PRO-06: a repeat exit request does not pay for a second full write', async () => {
   const store = installStorage();
   const h = boot(flightState());
   try {
@@ -283,11 +297,13 @@ test('PRO-06: a repeat exit request does not pay for a second full write', () =>
     // after the save system's, so the second request genuinely arrives already at the menu.
     h.bus.on('game:exitToMenu', () => { h.state.mode = 'menu'; });
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
     assert.equal(h.events('save:completed').length, 1, 'the first exit writes once');
     assert.equal(h.state.mode, 'menu');
     // A second exit request, arriving after the mode is already 'menu', must not write again.
     // (Two writes would differ only by their savedAt stamp, so the count is the honest probe.)
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
     assert.equal(h.events('save:completed').length, 1,
       'a repeat exit must not pay for a second full write');
     assert.equal(h.events('save:started').length, 1, 'and must not even start one');
@@ -297,13 +313,14 @@ test('PRO-06: a repeat exit request does not pay for a second full write', () =>
   }
 });
 
-test('PRO-06: a queued autosave is dropped rather than paid for twice', () => {
+test('PRO-06: a queued autosave is dropped rather than paid for twice', async () => {
   const store = installStorage();
   const h = boot(flightState());
   try {
     // Stand in a pending autosave job, as a debounced trigger would leave it.
     save._autosavePending = { reason: 'interval', force: false, requestedAt: 0, runEpoch: save._runEpoch };
     h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
     assert.equal(save._autosavePending, null, 'the stale job is cleared by the exit write');
     assert.equal(h.events('save:completed').length, 1, 'only the fresher exit write ran');
   } finally {
@@ -352,20 +369,28 @@ for (const eventName of ['pagehide', 'beforeunload']) {
   });
 }
 
-test('PRO-06: quitting to the menu and then closing the tab writes once, not twice', () => {
+test('PRO-06: quitting to the menu and then closing the tab writes once, not twice', async () => {
   const store = installStorage();
-  withFakeWindow((fake) => {
-    const h = boot(flightState());
-    try {
-      h.bus.on('game:exitToMenu', () => { h.state.mode = 'menu'; });
-      h.bus.emit('game:exitToMenu', { source: 'pause' });
-      fake.fire('pagehide');
-      assert.equal(h.events('save:completed').length, 1,
-        'the two session-end doors must not both pay for a full write');
-    } finally {
-      h.restore();
-    }
-  });
+  const listeners = new Map();
+  const fake = {
+    addEventListener(type, handler) { (listeners.get(type) || listeners.set(type, []).get(type)).push(handler); },
+    fire(type) { for (const fn of listeners.get(type) || []) fn(); },
+  };
+  const prevWindow = Object.hasOwn(globalThis, 'window') ? globalThis.window : undefined;
+  globalThis.window = fake;
+  const h = boot(flightState());
+  try {
+    h.bus.on('game:exitToMenu', () => { h.state.mode = 'menu'; });
+    h.bus.emit('game:exitToMenu', { source: 'pause' });
+    await settlePacedSave();
+    fake.fire('pagehide');
+    assert.equal(h.events('save:completed').length, 1,
+      'the two session-end doors must not both pay for a full write');
+  } finally {
+    h.restore();
+    if (prevWindow !== undefined) globalThis.window = prevWindow;
+    else delete globalThis.window;
+  }
   store.restore();
 });
 

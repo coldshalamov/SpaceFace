@@ -577,6 +577,16 @@ export class ManeuverPlanner {
         }
       }
     }
+    // Authored civilian waypoints can themselves travel faster than the stationary
+    // intercept budget (e.g. a 160-WU ring at 0.55 rad/s). Close in that moving frame
+    // using the existing approach allowance; physical propulsion still caps the hull.
+    // An obstacle dodge owns its slower emergency route and never inherits this budget.
+    if (intent.reason?.startsWith('vignette_motion:') && intent.targetId == null
+      && intent.formationVelocity && !desired.obstacleAvoidance && !reflex) {
+      const pointSpeed = Math.hypot(intent.formationVelocity.x, intent.formationVelocity.z);
+      if (pointSpeed > 0) envelope.maxSpeed = Math.max(envelope.maxSpeed,
+        pointSpeed + this.config.maxApproachClosingSpeed * hullScale.closing);
+    }
     if (disruption.phase === 'recover' || disruption.phase === 'regroup') {
       const scale = hullScale && hullScale.speed > 0 ? hullScale.speed : 1;
       envelope.maxSpeed = Math.min(envelope.maxSpeed,

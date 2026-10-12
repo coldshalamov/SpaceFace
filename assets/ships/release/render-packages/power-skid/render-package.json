@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b3a0e33897341b24c7d832f1254d4efa1fdc0ab322b9332a3ebb73de77317e74",
+  "contentHash": "f25d66e4a334417846c39d5326a7e641ba6ace4635aa81e499363953e19d6ce8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -130,18 +130,18 @@
     {
       "bounds": {
         "max": [
-          4.609450817108154,
-          0.6083539724349976,
+          4.6094512939453125,
+          0.6083540320396423,
           1.5947879552841187
         ],
         "min": [
           2.543034553527832,
-          0.18997177481651306,
+          0.18997175991535187,
           0.713557779788971
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f28100ea6e2de5d46ad7c6075d0926d95fcc8864f4025131dda0f3c611c683c",
+      "geometryHash": "84f043d997bc60b4117a97f4b6249cc0d767ec23f0b841108840f4beef8ceb9f",
       "id": "sf.render.power-skid.mesh.cable.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7482ab1f2be293816641c2805419570ca08ac6fd10e3f7cd79ef555cc86d4c8",
+      "geometryHash": "983ddadbb99f36200109b1342e04e8da60e90b478359f5e79e987d3831ee3869",
       "id": "sf.render.power-skid.mesh.core-domea.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -175,7 +175,7 @@
       "meshName": "Sphere.002",
       "nodeId": "sf.render.power-skid.mesh.core-domea",
       "primitiveIndex": 0,
-      "vertexCount": 420
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30231828283897b0775260493ccd3014a21a2909d6748e3c5e373f8851abd70a",
+      "geometryHash": "0e41dff0d61b3f04e1111cff68e726d8be5bef00b30c9a11268f622cfdbd5e45",
       "id": "sf.render.power-skid.mesh.core-domef.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -200,7 +200,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.power-skid.mesh.core-domef",
       "primitiveIndex": 0,
-      "vertexCount": 420
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25455e39f46e6cb597d005baa569a678381486aefb01cc06db0366b7a4561def",
+      "geometryHash": "0f61915944461e48e75fd58a77ad7b091fafbee88fe07c7f5a1af97a69169f8e",
       "id": "sf.render.power-skid.mesh.core-shell.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -275,7 +275,7 @@
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.power-skid.mesh.core-shell",
       "primitiveIndex": 0,
-      "vertexCount": 108
+      "vertexCount": 72
     },
     {
       "bounds": {
@@ -1403,19 +1403,19 @@
       "sha256": "d4ad10b93b992abbcece0645b6631d0169f1eb204055001c2360427eb5cbbef5"
     },
     "sourceGlb": {
-      "bytes": 22736,
-      "sha256": "eade2d4e0f4cf78825c2667dfb1cdf0db7096647f3662f1ca77a20306bbfe13a",
+      "bytes": 23084,
+      "sha256": "945291679598ae7fa12ba2a6343f504cda25beac07ec38766d20340a1ffb04e2",
       "uri": "place_power_skid.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 45020,
-    "sha256": "8e3be73e2da23a5f90c9ce968d8e03f5e8301c9555d6eaf7b13e08eddadb6551",
+    "bytes": 36668,
+    "sha256": "08f5bf59f46554394c2f007a4b10b399a5ba3c9e9280bee6a4d3d7a9be56e3bf",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2047,7 +2047,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_power_skid.glb"
   },
-  "runtimeHash": "455b2277e4cd8e796d27a65ca34b22a6f7369cfd9003c04ad8286e960304bba0",
+  "runtimeHash": "af2646125fde0ca92d56ad908c916b75cfb97a423533309d2e8c12c3fb8e36d0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

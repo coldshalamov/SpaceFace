@@ -1,0 +1,17 @@
+{
+  "family": "contraband_relabel",
+  "name": "bay_stolen_goods",
+  "minimized": true,
+  "commands": [
+    "undock",
+    "loot:drop kill_burst cmdty_stolen_goods 1",
+    "step 1",
+    "dock:docked station_helios"
+  ],
+  "qty": 1,
+  "ticks": 1,
+  "creditsDelta": 193,
+  "reasons": [
+    "salvage:bay_sale"
+  ]
+}

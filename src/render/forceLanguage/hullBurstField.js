@@ -37,7 +37,7 @@ export function hullBurstFieldRecord(state) {
   const rot = finite(player.rot);
   const dx = Math.cos(rot);
   const dz = Math.sin(rot);
-  const nose = finite(player.radius, 12);
+  const nose = def.shape === 'radial' ? 0 : finite(player.radius, 12);
   record.kind = `burst_${def.id}`;
   record.center.x = finite(player.pos.x) + dx * nose;
   record.center.z = finite(player.pos.z) + dz * nose;
@@ -53,10 +53,12 @@ export function hullBurstFieldRecord(state) {
 
 /** Tint per burst type: [body, accent] as 0xRRGGBB. The presentation preloads these once. */
 export const BURST_STYLE = Object.freeze({
+  burst_saucer_horizon: Object.freeze({ color: 0x65ffdc, accent: 0xd7fff4 }),
   burst_gravity: Object.freeze({ color: 0x7f9cff, accent: 0xd8e2ff }),
   burst_lance: Object.freeze({ color: 0xff8a3d, accent: 0xffe1a4 }),
   burst_grip: Object.freeze({ color: 0x79f0c8, accent: 0xd9ffe0 }),
 });
 
-/** The recipe a field kind draws with: burst kinds are cones. */
-export const shapeOfFieldKind = (kind) => (Object.hasOwn(BURST_STYLE, kind) ? 'cone' : kind);
+/** Nose bursts are cones; Event Horizon uses the existing full-circle pressure shell. */
+export const shapeOfFieldKind = (kind) => kind === 'burst_saucer_horizon' ? 'repulsor'
+  : (Object.hasOwn(BURST_STYLE, kind) ? 'cone' : kind);

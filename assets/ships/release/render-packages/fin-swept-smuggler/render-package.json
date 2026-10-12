@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4f92bb0ecfe959388be22a40d531a2e00a9b397791d177604db4682fcddd29df",
+  "contentHash": "68e5f1740c804fc8036e2adc9453347896be6ee346dd9dffe4df852fb29b93aa",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4c70fbf3d3a8c1b7ca4c07862854ddd6f28dcd61198eb32590c25b09fd98499",
+      "geometryHash": "a4d94c419f09dc5aee79b3a3e554b696f5b3554c58aefed547eb163d60454986",
       "id": "sf.render.fin-swept-smuggler.mesh.fin-swept-smuggler-material-mechanical-merged.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "207ffcaac82c5811b18c7107111ddc2b331306d93ef92dd703ea86f0fda43d52",
+      "geometryHash": "12dcfecf6aaa3d934acf7beb66b45fa53c41dd0e89c7cd80020ccadb58ea2ff5",
       "id": "sf.render.fin-swept-smuggler.mesh.swept-blade.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "Swept_Blade",
       "nodeId": "sf.render.fin-swept-smuggler.mesh.swept-blade",
       "primitiveIndex": 0,
-      "vertexCount": 20
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5800c2a7039c1813ec090ec2a1146c3bf458f199f363923baeb926a414f0d608",
+      "geometryHash": "df12e4de3ecfe21ce11bbaed2c2abda7fb4f4e2fc24eb100f559172b02e25708",
       "id": "sf.render.fin-swept-smuggler.mesh.swept-edge.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Swept_Edge",
       "nodeId": "sf.render.fin-swept-smuggler.mesh.swept-edge",
       "primitiveIndex": 0,
-      "vertexCount": 18
+      "vertexCount": 50
     }
   ],
   "hlods": [],
@@ -339,19 +339,19 @@
       "sha256": "e35debd0ead80cd62c70270542e4ee3eafa14eb0f2353d6f51bcf963c42b725a"
     },
     "sourceGlb": {
-      "bytes": 372208,
-      "sha256": "3263b0ce4a315ef9734019e24db664d05bb7a34bd64788602ea4279eed399beb",
+      "bytes": 374240,
+      "sha256": "68541eabfd6a6d32d4b1b93c158aefc235a60925db9b12b5a90aeb6e922780ff",
       "uri": "fin_swept_smuggler.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 377036,
-    "sha256": "6ed6a73887ee67ac93b97ba58ad851e6a8644bd068e124c26031c4487c3d01a6",
+    "bytes": 379200,
+    "sha256": "72f4f320f8c5f51dd6fdea39bca397f1f84c5a8252711621bdde197cb334d863",
     "uri": "render.glb"
   },
   "runtime": {
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_swept_smuggler.glb"
   },
-  "runtimeHash": "6dd66fe57b68443dabfcb0eba5032fb5ffa8e4a0072836e481e81bfc06c544a6",
+  "runtimeHash": "03bf6fa951ce85838e4693b25ffde02945d92db7791a02f43cb06b63207b24f6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

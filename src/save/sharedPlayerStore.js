@@ -316,6 +316,59 @@ export function applySharedStoreKeys(keys, storage = globalThis.localStorage) {
   return written;
 }
 
+// Chunked twin for the boot sync: identical write/prune semantics, but the
+// getItem-compare + setItem pass and the tombstone sweep yield the task queue
+// between batches — the unyielded variant was the last multi-MB atomic leg in
+// the boot store reconcile.
+const APPLY_SHARED_STORE_BATCH = 8;
+
+export async function applySharedStoreKeysChunked(keys, storage = globalThis.localStorage, { yieldQueue } = {}) {
+  if (!storage || typeof storage.setItem !== 'function') return 0;
+  const yieldNow = typeof yieldQueue === 'function' ? yieldQueue : null;
+  let written = 0;
+  let sinceYield = 0;
+  const tick = async () => {
+    if (yieldNow && ++sinceYield >= APPLY_SHARED_STORE_BATCH) {
+      sinceYield = 0;
+      await yieldNow();
+    }
+  };
+  for (const [key, value] of Object.entries(keys || {})) {
+    if (isSharedPlayerStoreKey(key) && typeof value === 'string') {
+      try {
+        if (!(typeof storage.getItem === 'function' && storage.getItem(key) === value)) {
+          storage.setItem(key, value);
+          written += 1;
+        }
+      } catch {
+        // quota / disabled storage: keep going
+      }
+    }
+    await tick();
+  }
+  const tombstones = collectTombstones(keys);
+  if (tombstones.size && typeof storage.key === 'function' && typeof storage.removeItem === 'function') {
+    for (let i = (storage.length || 0) - 1; i >= 0; i--) {
+      let key = null;
+      try { key = storage.key(i); } catch { break; }
+      const deletable = deletableKey(key);
+      if (deletable && !Object.hasOwn(keys, key)) {
+        const deletedAt = tombstones.get(deletable.tombstone + deletable.slot);
+        if (deletedAt != null) {
+          let stale = null;
+          let ok = true;
+          try { stale = storage.getItem(key); } catch { ok = false; }
+          if (ok && deletedAt >= envelopeTime(stale)) {
+            try { storage.removeItem(key); } catch { /* best effort */ }
+          }
+        }
+      }
+      await tick();
+    }
+  }
+  return written;
+}
+
 export async function fetchSharedPlayerStore() {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return null;
   if (storeRouteAbsent) return null;
@@ -375,7 +428,9 @@ export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
   // The budget is measured in UTF-8 bytes (non-ASCII names encode wider than .length), and the
   // encoder only runs when the guarantee was actually requested.
   let byteLength = 0;
-  try { byteLength = new TextEncoder().encode(body).byteLength; } catch { byteLength = body.length; }
+  if (keepalive === true) {
+    try { byteLength = new TextEncoder().encode(body).byteLength; } catch { byteLength = body.length; }
+  }
   const carriesKeepalive = keepalive === true && byteLength <= KEEPALIVE_BODY_BUDGET_BYTES;
   const attempt = async () => {
     try {

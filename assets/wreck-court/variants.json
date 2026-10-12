@@ -1,0 +1,29 @@
+{
+  "note": "Code-native silhouettes for Wreck Court bodies. Each polygon is a distinct planform in the XZ plane, extruded by the presenter. These are the geometric identities the court draws. They are not renamed copies of the aftermath-wreck shelf, and they are not a Forge GLB promotion — that manifest edit is intentionally unapplied.",
+  "variants": [
+    {"id": "wc_tug", "label": "Short-coupled tug", "role": "tug", "height": 5.5, "material": {"hull": "#6e7c86", "trim": "#d7c4a1", "roughness": 0.55}, "vertices": [[-18, -5], [-8, -7], [10, -6], [16, -2], [16, 2], [10, 6], [-8, 7], [-18, 5], [-20, 0]]},
+    {"id": "wc_hauler", "label": "Box hauler", "role": "hauler", "height": 8, "material": {"hull": "#8d7054", "trim": "#e6d2b0", "roughness": 0.7}, "vertices": [[-22, -8], [14, -8], [20, -6], [20, 6], [14, 8], [-22, 8]]},
+    {"id": "wc_freighter", "label": "Long freighter", "role": "freighter", "height": 7, "material": {"hull": "#5c6b73", "trim": "#b9c3c4", "roughness": 0.48}, "vertices": [[-28, -6], [18, -7], [26, -3], [26, 3], [18, 7], [-28, 6]]},
+    {"id": "wc_barge", "label": "Refinery barge", "role": "barge", "height": 9, "material": {"hull": "#7a6238", "trim": "#e07a3d", "roughness": 0.62}, "vertices": [[-16, -14], [16, -14], [18, -8], [18, 8], [16, 14], [-16, 14], [-18, 8], [-18, -8]]},
+    {"id": "wc_liner", "label": "Tumbling liner section", "role": "liner", "height": 8, "material": {"hull": "#c8beae", "trim": "#6e8ea8", "roughness": 0.4}, "vertices": [[-24, -4], [-10, -9], [8, -9], [22, -4], [22, 4], [8, 9], [-10, 9], [-24, 4]]},
+    {"id": "wc_escort", "label": "Lane escort", "role": "escort", "height": 4.5, "material": {"hull": "#3e4c59", "trim": "#9ad0c8", "roughness": 0.35}, "vertices": [[-16, -3], [8, -6], [18, 0], [8, 6], [-16, 3]]},
+    {"id": "wc_gunship", "label": "Gunship", "role": "gunship", "height": 4, "material": {"hull": "#4a3f46", "trim": "#d35b4a", "roughness": 0.42}, "vertices": [[-14, -2], [6, -7], [16, -2], [16, 2], [6, 7], [-14, 2], [-16, 0]]},
+    {"id": "wc_skiff", "label": "Pirate skiff", "role": "skiff", "height": 3.2, "material": {"hull": "#6b3a32", "trim": "#e0b15a", "roughness": 0.58}, "vertices": [[-12, -2], [4, -5], [14, 0], [4, 5], [-12, 2]]},
+    {"id": "wc_tender", "label": "Yard tender", "role": "tender", "height": 5, "material": {"hull": "#7f8c6a", "trim": "#efe6c9", "roughness": 0.6}, "vertices": [[-10, -8], [8, -9], [12, -4], [12, 4], [8, 9], [-10, 8], [-12, 0]]},
+    {"id": "wc_station", "label": "Clamp pylon", "role": "station", "height": 18, "material": {"hull": "#9aa3ad", "trim": "#f2e7cf", "roughness": 0.33}, "vertices": [[-8, -20], [8, -20], [10, -8], [6, 0], [10, 8], [8, 20], [-8, 20], [-10, 8], [-6, 0], [-10, -8]]},
+    {"id": "wc_pod", "label": "Cargo pod", "role": "pod", "height": 4, "material": {"hull": "#b4532a", "trim": "#f0d0a0", "roughness": 0.5}, "vertices": [[-6, -4], [-2, -6], [4, -5], [7, 0], [4, 5], [-2, 6], [-6, 4]]},
+    {"id": "wc_isotope_pod", "label": "Sealed isotope pod", "role": "pod", "height": 4.4, "material": {"hull": "#2f6f62", "trim": "#d6f36b", "roughness": 0.28}, "vertices": [[-5, -5], [0, -7], [6, -4], [7, 2], [3, 7], [-4, 6], [-7, 0]]},
+    {"id": "wc_rock", "label": "Cover rock", "role": "rock", "height": 12, "material": {"hull": "#6a6258", "trim": "#3a342e", "roughness": 0.92}, "vertices": [[-12, -4], [-6, -12], [4, -10], [12, -3], [10, 7], [2, 12], [-8, 9], [-13, 2]]},
+    {"id": "wc_plate", "label": "Ore plate", "role": "plate", "height": 2.2, "material": {"hull": "#8d8474", "trim": "#5c564c", "roughness": 0.84}, "vertices": [[-14, -6], [14, -5], [15, 4], [-13, 6]]},
+    {"id": "wc_planetoid", "label": "Sling mass", "role": "planetoid", "height": 30, "material": {"hull": "#5a5348", "trim": "#c4b49a", "roughness": 0.88}, "vertices": [[-20, -8], [-12, -18], [0, -22], [12, -18], [20, -6], [18, 10], [8, 20], [-8, 20], [-18, 10]]},
+    {"id": "wc_cable", "label": "Parted tow cable", "role": "cable", "height": 0.6, "material": {"hull": "#b7b1a8", "trim": "#6e6a64", "roughness": 0.45}, "vertices": [[-10, -0.6], [10, -0.4], [10, 0.5], [-10, 0.7]]},
+    {"id": "wc_buoy", "label": "Decoy buoy", "role": "buoy", "height": 3, "material": {"hull": "#a33b3b", "trim": "#f4e27a", "roughness": 0.4}, "vertices": [[-2, -2], [0, -5], [2, -2], [5, 0], [2, 2], [0, 5], [-2, 2], [-5, 0]]},
+    {"id": "wc_fragment", "label": "Hull fragment", "role": "fragment", "height": 2.4, "material": {"hull": "#8a8175", "trim": "#d9cbb8", "roughness": 0.77}, "vertices": [[-4, -1], [2, -3], [5, 0], [1, 3], [-3, 2]]},
+    {"id": "wc_vent", "label": "Vent droplet", "role": "vent", "height": 0.4, "material": {"hull": "#f2f0ea", "trim": "#9fd6ff", "roughness": 0.2}, "vertices": [[-0.8, 0], [0, -0.6], [0.8, 0], [0, 0.6]]},
+    {"id": "wc_nozzle", "label": "Stuck nozzle", "role": "nozzle", "height": 3, "material": {"hull": "#4d555c", "trim": "#ffb25e", "roughness": 0.38}, "vertices": [[-3, -2], [2, -4], [6, 0], [2, 4], [-3, 2]]},
+    {"id": "wc_decoy", "label": "Lane decoy shard", "role": "decoy", "height": 1.6, "material": {"hull": "#6e5a4a", "trim": "#c47a5a", "roughness": 0.8}, "vertices": [[-3, -2], [2, -2.5], [3, 1], [-1, 2.5]]},
+    {"id": "wc_ballast", "label": "Dropped ballast", "role": "ballast", "height": 5, "material": {"hull": "#4e5650", "trim": "#a8b2a2", "roughness": 0.72}, "vertices": [[-6, -5], [6, -5], [6, 5], [-6, 5]]},
+    {"id": "wc_round", "label": "Ricochet fragment", "role": "round", "height": 0.8, "material": {"hull": "#d8d2c8", "trim": "#8a8175", "roughness": 0.3}, "vertices": [[-1.2, -0.4], [1.4, -0.3], [1.2, 0.4], [-1.4, 0.3]]},
+    {"id": "wc_assay", "label": "Assay buoy", "role": "assay", "height": 4, "material": {"hull": "#245c73", "trim": "#e7f6ff", "roughness": 0.32}, "vertices": [[-3, -3], [3, -3], [4, 0], [3, 3], [-3, 3], [-4, 0]]}
+  ]
+}

@@ -41,12 +41,12 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-scale { position:relative; height:4px; background:rgb(var(--mf-bone) / .13); overflow:hidden; }
 #sf-touch-overlay .mf-fill { position:absolute; inset:0; transform-origin:0 50%; transform:scaleX(0); background:rgb(var(--k)); }
 #sf-touch-overlay .mf-scale::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(90deg, transparent 0 9px, rgb(6 8 12 / .85) 9px 10px); }
-#sf-touch-overlay .mf-pause { pointer-events:auto; touch-action:manipulation; position:relative; margin-left:auto; flex:none; width:calc(52px * var(--mf-scale)); height:calc(52px * var(--mf-scale)); padding:0; border:0; background:none; color:rgb(var(--mf-bone)); }
+#sf-touch-overlay .mf-pause { pointer-events:auto; touch-action:manipulation; position:relative; margin-left:auto; flex:none; width:calc(52px * var(--mf-scale)); height:calc(52px * var(--mf-scale)); min-width:44px; min-height:44px; padding:0; border:0; background:none; color:rgb(var(--mf-bone)); }
 #sf-touch-overlay .mf-pause svg { width:100%; height:100%; overflow:visible; }
 #sf-touch-overlay .mf-pause:active .mf-r-edge { stroke:var(--mf-phos); }
 /* ---- powers handle (the wheel opens from here) ---- */
-#sf-touch-overlay .mf-edge { position:absolute; right:var(--sf-safe-right,0px); top:56%; transform:translateY(-50%); width:calc(48px * var(--mf-scale)); height:calc(132px * var(--mf-scale)); padding:0; border:0; background:none; pointer-events:auto; touch-action:none; color:rgb(var(--mf-bone)); z-index:6; }
-#sf-touch-overlay .mf-edge::before { content:''; position:absolute; inset:-24px -2px -24px -34px; }
+#sf-touch-overlay .mf-edge { position:absolute; right:var(--sf-safe-right,0px); bottom:calc(18px + 156px * var(--mf-scale) + 78px + var(--sf-safe-bottom,0px)); width:calc(48px * var(--mf-scale)); height:calc(110px * var(--mf-scale)); min-width:44px; padding:0; border:0; background:none; pointer-events:auto; touch-action:none; color:rgb(var(--mf-bone)); z-index:6; }
+#sf-touch-overlay .mf-edge::before { content:''; position:absolute; inset:-8px -2px -8px -18px; }
 #sf-touch-overlay .mf-edge-art { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 #sf-touch-overlay .mf-e-plate { fill:rgb(6 8 12 / .56); }
 #sf-touch-overlay .mf-e-edge { fill:none; stroke:rgb(var(--mf-bone) / .58); stroke-width:1.5; vector-effect:non-scaling-stroke; }
@@ -144,17 +144,19 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-unit { font:600 12px/1 var(--mf-face); font-stretch:108%; font-style:normal; letter-spacing:.14em; text-transform:uppercase; color:rgb(var(--mf-bone) / .7); }
 #sf-touch-overlay .mf-stick[data-boost="1"] .mf-num, #sf-touch-overlay .mf-stick[data-brake="1"] .mf-num { font:800 25px/1 var(--mf-face); font-stretch:125%; letter-spacing:.08em; }
 /* the first-run ghost: where a thumb will make the stick */
-#sf-touch-overlay .mf-ghost { position:absolute; left:27%; top:62%; width:0; height:0; pointer-events:none; animation:mf-breathe 3s ease-in-out infinite; }
-#sf-touch-overlay .mf-ghost svg { position:absolute; width:230px; height:230px; left:-115px; top:-115px; overflow:visible; }
+#sf-touch-overlay .mf-ghost { position:absolute; left:23%; bottom:calc(124px + var(--sf-safe-bottom,0px)); width:0; height:0; pointer-events:none; animation:mf-breathe 3s ease-in-out infinite; }
+#sf-touch-overlay .mf-ghost svg { position:absolute; width:170px; height:170px; left:-85px; top:-85px; overflow:visible; }
 #sf-touch-overlay .mf-ghost .mf-band { stroke-width:9; }
 #sf-touch-overlay .mf-ghost .mf-edge-ring { stroke:rgb(var(--mf-bone) / .5); }
 #sf-touch-overlay .mf-ghost .mf-boost-dash { opacity:.4; }
 #sf-touch-overlay .mf-ghost-hand { fill:none; stroke:var(--mf-hand); stroke-width:2.6; stroke-linecap:round; vector-effect:non-scaling-stroke; }
-#sf-touch-overlay .mf-ghost-label { position:absolute; width:210px; left:-105px; top:128px; text-align:center; font:500 13px/1.3 var(--mf-body); font-stretch:100%; letter-spacing:.01em; color:rgb(var(--mf-bone) / .88); text-shadow:0 1px 5px #000; }
-#sf-touch-overlay[data-lefty="1"] .mf-ghost { left:auto; right:27%; }
+#sf-touch-overlay .mf-ghost-label { position:absolute; width:156px; left:-78px; top:94px; text-align:center; font:500 12px/1.3 var(--mf-body); font-stretch:100%; letter-spacing:.01em; color:rgb(var(--mf-bone) / .88); text-shadow:0 1px 5px #000; }
+#sf-touch-overlay[data-lefty="1"] .mf-ghost { left:auto; right:23%; }
 /* ---- the wheel: an ORRERY radial menu opening inward from the handle ---- */
 #sf-touch-overlay .mf-wheel { position:absolute; inset:0; z-index:7; pointer-events:none; }
 #sf-touch-overlay .mf-wheel-art { position:absolute; pointer-events:none; animation:mf-wheel-open 280ms var(--mf-out) both; }
+#sf-touch-overlay .mf-wheel[data-orbit="0"][data-side="right"] .mf-wheel-art { clip-path:inset(0 44% 0 0); }
+#sf-touch-overlay .mf-wheel[data-orbit="0"][data-side="left"] .mf-wheel-art { clip-path:inset(0 0 0 44%); }
 #sf-touch-overlay .mf-wheel-svg { width:100%; height:100%; overflow:visible; }
 #sf-touch-overlay .mf-w-plate { fill:rgb(6 8 12 / .66); }
 #sf-touch-overlay .mf-w-band { fill:none; stroke:rgb(var(--mf-bone) / .09); stroke-width:10; }
@@ -170,20 +172,29 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-w-hand[data-idle] { opacity:.32; }
 #sf-touch-overlay .mf-w-hub { fill:rgb(8 11 16 / .92); stroke:var(--mf-hand); stroke-width:2.2; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-nodes { position:absolute; inset:0; pointer-events:none; }
-#sf-touch-overlay .mf-node { position:absolute; pointer-events:auto; touch-action:none; transform:translate(-50%,-50%); width:calc(var(--mf-wheel-r) * .4); min-width:62px; max-width:84px; aspect-ratio:1; display:grid; place-content:center; justify-items:center; gap:2px; padding:0; border:0; border-radius:50%; background:rgb(var(--mf-bone) / .075); color:rgb(var(--mf-bone) / .92); animation:mf-node-in 300ms var(--mf-over) both; animation-delay:calc(var(--i, 0) * 32ms + 70ms); transition:background 90ms linear, color 90ms linear; }
-#sf-touch-overlay .mf-node svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-#sf-touch-overlay .mf-node span { max-width:80px; font:600 12px/1.05 var(--mf-face); font-stretch:100%; letter-spacing:.02em; text-transform:uppercase; text-align:center; }
+#sf-touch-overlay .mf-node { position:absolute; pointer-events:auto; touch-action:none; transform:translate(-50%,-50%); width:var(--mf-node-size,56px); min-width:44px; aspect-ratio:1; display:grid; place-content:center; justify-items:center; gap:2px; padding:0; border:0; border-radius:50%; background:rgb(var(--mf-bone) / .075); color:rgb(var(--mf-bone) / .92); animation:mf-node-in 300ms var(--mf-over) both; animation-delay:calc(var(--i, 0) * 32ms + 70ms); transition:background 90ms linear, color 90ms linear; }
+#sf-touch-overlay .mf-node svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+#sf-touch-overlay .mf-node span { max-width:74px; font:600 11px/1.05 var(--mf-face); font-stretch:100%; letter-spacing:.01em; text-transform:uppercase; text-align:center; }
 #sf-touch-overlay .mf-node[data-selected="1"] { background:var(--mf-phos); color:#0b141c; transform:translate(-50%,-50%) scale(1.14); box-shadow:0 0 0 2px var(--mf-hand); animation:none; }
 #sf-touch-overlay .mf-wheel-top { position:absolute; left:50%; top:calc(132px + var(--sf-safe-top,0px)); transform:translateX(-50%); width:min(96vw,440px); display:grid; gap:4px; justify-items:center; pointer-events:none; }
-#sf-touch-overlay .mf-tabs { display:flex; flex-wrap:wrap; justify-content:center; pointer-events:auto; }
-#sf-touch-overlay .mf-tab { position:relative; min-height:44px; padding:0 7px; border:0; background:none; touch-action:manipulation; font:600 12px/1 var(--mf-face); font-stretch:100%; letter-spacing:.04em; text-transform:uppercase; color:rgb(var(--mf-bone) / .64); text-shadow:0 1px 5px #000; }
+#sf-touch-overlay .mf-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:100%; pointer-events:auto; }
+#sf-touch-overlay .mf-tab { position:relative; min-width:0; min-height:44px; padding:0 4px; border:0; background:none; touch-action:manipulation; font:600 12px/1 var(--mf-face); font-stretch:100%; letter-spacing:.02em; text-transform:uppercase; color:rgb(var(--mf-bone) / .64); text-shadow:0 1px 5px #000; }
 #sf-touch-overlay .mf-tab[aria-pressed="true"] { color:var(--mf-hand-hot); }
 #sf-touch-overlay .mf-tab[aria-pressed="true"]::after { content:''; position:absolute; left:7px; right:7px; bottom:7px; height:2px; background:var(--mf-hand); }
 #sf-touch-overlay .mf-pick { display:grid; justify-items:center; gap:3px; max-width:100%; padding:8px 18px 9px; text-align:center; background:rgb(8 11 16 / .74); }
 #sf-touch-overlay .mf-pick-name { font:800 18px/1 var(--mf-face); font-stretch:125%; letter-spacing:.05em; text-transform:uppercase; color:rgb(var(--mf-bone)); }
 #sf-touch-overlay .mf-wheel[data-choice="0"] .mf-pick-name { font-size:13px; letter-spacing:.16em; color:rgb(var(--mf-bone) / .72); }
 #sf-touch-overlay .mf-pick-text { font:500 13px/1.3 var(--mf-body); font-stretch:100%; color:rgb(var(--mf-bone) / .8); }
-@media (max-height:599px) and (min-aspect-ratio:1/1) { #sf-touch-overlay .mf-wheel-top { top:calc(10px + var(--sf-safe-top,0px)); } }
+#sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick { padding:6px 14px; }
+#sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-name { font-size:16px; }
+#sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:12px; line-height:1.25; }
+@media (max-height:599px) and (min-aspect-ratio:1/1) {
+ #sf-touch-overlay .mf-wheel-top { top:calc(10px + var(--sf-safe-top,0px)); left:calc(212px + var(--sf-safe-left,0px)); right:calc(270px + var(--sf-safe-right,0px)); width:auto; transform:none; }
+ #sf-touch-overlay .mf-tab { font-size:11px; font-stretch:90%; letter-spacing:0; }
+ #sf-touch-overlay .mf-pick { box-sizing:border-box; width:176px; max-width:100%; padding:6px 10px; justify-self:start; }
+ #sf-touch-overlay .mf-pick-name { font-size:14px; }
+ #sf-touch-overlay .mf-pick-text { font-size:12px; line-height:1.25; }
+}
 /* ---- toast, guide pill, guide dialog ---- */
 #sf-touch-overlay .mf-toast { position:absolute; z-index:8; left:50%; top:calc(78px + var(--sf-safe-top,0px)); transform:translateX(-50%); max-width:min(76vw,360px); padding:9px 16px 9px 20px; background:rgb(8 11 16 / .84); color:rgb(var(--mf-bone)); font:600 13px/1.3 var(--mf-face); font-stretch:106%; letter-spacing:.04em; text-align:left; animation:mf-key-in 220ms var(--mf-out) both; }
 #sf-touch-overlay .mf-toast::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--mf-hand); }
@@ -226,6 +237,12 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
 @media (max-width:600px) {
  #sf-touch-overlay .mf-buttons { right:calc(12px + var(--sf-safe-right,0px)); }
 }
+@media (max-width:360px) {
+ #sf-touch-overlay .mf-tab { font-size:11px; letter-spacing:0; }
+ #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick { padding:4px 10px; }
+ #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-name { font-size:14px; }
+ #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:11px; line-height:1.2; }
+}
 @media (max-height:500px) {
  #sf-touch-overlay .mf-buttons { bottom:calc(10px + var(--sf-safe-bottom,0px)); width:calc(170px * var(--mf-scale)); height:calc(132px * var(--mf-scale)); }
  #sf-touch-overlay .mf-gun { width:calc(82px * var(--mf-scale)); height:calc(82px * var(--mf-scale)); }
@@ -234,8 +251,10 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
  #sf-touch-overlay .mf-reel { right:calc(12px + 170px * var(--mf-scale) + 12px + var(--sf-safe-right,0px)); bottom:calc(10px + 33px * var(--mf-scale) - 38px + var(--sf-safe-bottom,0px)); }
  #sf-touch-overlay .mf-speed b { font-size:32px; }
  #sf-touch-overlay .mf-status { gap:4px; }
- #sf-touch-overlay .mf-edge { top:auto; bottom:calc(150px + var(--sf-safe-bottom,0px)); transform:none; height:calc(112px * var(--mf-scale)); }
-  #sf-touch-overlay .mf-node { min-width:56px; }
+ #sf-touch-overlay .mf-edge { bottom:calc(10px + 132px * var(--mf-scale) + 78px + var(--sf-safe-bottom,0px)); height:max(64px,calc(88px * var(--mf-scale) - var(--sf-safe-bottom,0px))); }
+ #sf-touch-overlay .mf-ghost { bottom:calc(104px + var(--sf-safe-bottom,0px)); }
+ #sf-touch-overlay .mf-ghost svg { width:132px; height:132px; left:-66px; top:-66px; }
+ #sf-touch-overlay .mf-ghost-label { top:70px; }
 }
 #sf-touch-overlay[data-layout="compact"] .mf-buttons { bottom:calc(8px + var(--sf-safe-bottom,0px)); right:calc(10px + var(--sf-safe-right,0px)); transform:scale(.86); transform-origin:100% 100%; }
 /* ---- left hand: the cluster, handle, reel and dock mirror to the left edge ---- */
@@ -250,7 +269,7 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
 #sf-touch-overlay[data-lefty="1"] .mf-reel-rail::before { right:auto; left:0; }
 #sf-touch-overlay[data-lefty="1"] .mf-reel-bead { right:auto; left:-5px; }
 #sf-touch-overlay[data-lefty="1"] .mf-edge { right:auto; left:var(--sf-safe-left,0px); }
-#sf-touch-overlay[data-lefty="1"] .mf-edge::before { inset:-24px -34px -24px -2px; }
+#sf-touch-overlay[data-lefty="1"] .mf-edge::before { inset:-8px -18px -8px -2px; }
 #sf-touch-overlay[data-lefty="1"] .mf-edge-art { transform:scaleX(-1); }
 #sf-touch-overlay[data-lefty="1"] .mf-edge-word { left:auto; right:calc(17px * var(--mf-scale)); transform:translateY(-50%); }
 `;
@@ -345,6 +364,17 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { position:fixed!important; top:64px!important; right:12px!important; bottom:auto!important; left:auto!important; transform:scale(.5)!important; transform-origin:top right!important; pointer-events:auto!important; }
+ /* Ordinary flight's camera/Circuits keys are a narrow rail under Pause, clear of the ship scales.
+    Authored races keep their map and readings in a compact central instrument. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 11px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:rgb(8 11 16 / .76); padding:6px; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(70px + var(--sf-safe-top,0px)); right:calc(12px + var(--sf-safe-right,0px)); width:min(128px,calc(100vw - 202px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions { gap:4px; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions .k-word { min-height:44px; border:0; border-bottom:1px solid rgb(232 226 212 / .25); padding:4px 6px; font:inherit; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .k-word { min-width:0; padding:4px 1px; white-space:normal; overflow-wrap:normal; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] { top:calc(12px + var(--sf-safe-top,0px)); left:calc(214px + var(--sf-safe-left,0px)); right:calc(78px + var(--sf-safe-right,0px)); width:auto; transform:none; grid-template-columns:64px minmax(0,1fr); max-height:calc(100dvh - 210px); overflow-y:auto; }
+ :root[data-sf-mobile-wheel="1"] #race-tape { visibility:hidden; pointer-events:none; }
+ :root[data-sf-mobile-wheel="1"] #race-tape * { pointer-events:none; }
 }
  :root[data-sf-mobile-wheel="1"] #hud .sf-radar-wrap { display:none!important; }
  :root[data-sf-mobile-wheel="1"] :is(#hud .sf-vtape,#alerts) { opacity:0!important; }
@@ -357,6 +387,11 @@ const SCREEN_CSS = `
  /* landscape has the width: alerts return to the top centre, the right dock sits left of the pause key */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(64px + var(--sf-safe-top,0px))!important; right:calc(104px + var(--sf-safe-right,0px))!important; width:min(236px,32vw)!important; max-height:150px; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(68px + var(--sf-safe-top,0px)); right:calc(84px + var(--sf-safe-right,0px)); width:auto; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
+}
+@media (max-width:600px) {
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] { top:calc(172px + var(--sf-safe-top,0px)); left:14px; right:14px; max-height:calc(100dvh - 372px); }
 }
 `;
 

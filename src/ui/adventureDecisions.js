@@ -12,6 +12,7 @@ import { SERVICE_PRICES, quote } from '../systems/economy.js';
 import { evaluateTwoLegItinerary, predictPriceCurve } from '../systems/economyCycles.js';
 import { missionPreflight } from './missionPreflight.js';
 import { applyTradeNavigation, computeBestTrades } from './market/tradeLogic.js';
+import { laneRpc } from '../core/simLaneCommands.js';
 
 export const ADVENTURE_DECISION_BAR_PER_HOUR = 6;
 export const REFERENCE_ADVENTURE_SEED = 4242;
@@ -44,7 +45,7 @@ const logs = new WeakMap();
 function logOf(state) {
   let log = logs.get(state);
   if (!log) {
-    log = { presented: new Map(), chosen: [], chosenIds: new Set(), closedIds: new Set() };
+    log = { presented: new Map(), chosen: [], chosenIds: new Set(), closedIds: new Set(), applyingIds: new Set() };
     logs.set(state, log);
   }
   return log;
@@ -397,7 +398,70 @@ function activeMissionIds(state) {
   return new Set(active.filter((mission) => mission && mission.id).map((mission) => mission.id));
 }
 
-function applyEffect(state, effect, ctx) {
+// The sim-worker lane applies emits asynchronously off-thread, so an effect verdict can
+// never come from a synchronous facade read-back — it has to ride an rpc ack (registered
+// only inside the worker realm) or a bridged outcome event.
+const RPC_MISSING = /no lane rpc handler/;
+function rpcUnavailable(resp) {
+  return !resp || resp.ok !== true || (typeof resp.error === 'string' && RPC_MISSING.test(resp.error));
+}
+
+export async function acceptMissionOnLane(bus, missionId) {
+  const resp = await laneRpc('missionsCall', { method: 'acceptMission', missionId });
+  if (!rpcUnavailable(resp)) {
+    const res = resp && resp.result;
+    return { ok: res === true || (res && res.ok === true) };
+  }
+  // Main lane: the emit applies synchronously; availability is verified by the caller.
+  if (bus) bus.emit('ui:acceptMission', { missionId });
+  return { ok: true, emitted: true };
+}
+
+const TRADE_ACK_TIMEOUT_MS = 5000;
+function waitTradeOutcome(bus, commodityId, side, timeoutMs = TRADE_ACK_TIMEOUT_MS) {
+  return new Promise((resolve) => {
+    if (!bus || typeof bus.once !== 'function') {
+      resolve({ ok: false, reason: 'no_bus' });
+      return;
+    }
+    let settled = false;
+    let timer = null;
+    const offs = [];
+    const finish = (res) => {
+      if (settled) return;
+      settled = true;
+      if (timer !== null) clearTimeout(timer);
+      for (const off of offs) { try { off(); } catch (_) {} }
+      resolve(res);
+    };
+    const match = (p) => p && p.commodityId === commodityId && p.side === side;
+    offs.push(bus.once('economy:tradeCompleted', (p) => { if (match(p)) finish({ ok: true }); }));
+    offs.push(bus.once('economy:tradeFailed', (p) => {
+      if (match(p)) finish({ ok: false, reason: p.reason || 'trade_failed' });
+    }));
+    timer = setTimeout(() => finish({ ok: false, reason: 'trade_unconfirmed' }), timeoutMs);
+  });
+}
+
+const SERVICE_POLL_MS = 3500;
+const SERVICE_POLL_STEP_MS = 120;
+function delay(ms) {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
+}
+// The service chain has no structured completed event, so the verdict is the same
+// heuristic the main lane used — hull up or credits down — just waited for the mirror.
+async function waitServiceSettled(state, hullBefore, creditsBefore, timeoutMs = SERVICE_POLL_MS) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const ship = playerShip(state);
+    const hull = ship ? Number(ship.hull) || 0 : 0;
+    if (hull > hullBefore || creditsOf(state) < creditsBefore) return { ok: true };
+    if (Date.now() >= deadline) return { ok: false, reason: 'repair_failed' };
+    await delay(SERVICE_POLL_STEP_MS);
+  }
+}
+
+async function applyEffect(state, effect, ctx) {
   const bus = ctx && ctx.bus;
   if (!effect) return { ok: false, reason: 'no_effect' };
   if (effect.type === 'hold' || effect.type === 'stay' || effect.type === 'fly') {
@@ -405,9 +469,11 @@ function applyEffect(state, effect, ctx) {
   }
   if (effect.type === 'acceptMission') {
     const before = activeMissionIds(state);
-    if (bus) bus.emit('ui:acceptMission', { missionId: effect.missionId });
+    const res = await acceptMissionOnLane(bus, effect.missionId);
+    if (!res.emitted) return res.ok ? { ok: true } : { ok: false, reason: 'accept_failed' };
+    // Accepted instances mint a fresh id — the growth check is the verdict, not a name hit.
     const after = activeMissionIds(state);
-    if (!after.has(effect.missionId) && after.size <= before.size) {
+    if (after.size <= before.size) {
       return { ok: false, reason: 'accept_failed' };
     }
     return { ok: true };
@@ -417,16 +483,30 @@ function applyEffect(state, effect, ctx) {
     const side = effect.type === 'sell' ? 'sell' : 'buy';
     const beforeCredits = creditsOf(state);
     const beforeQty = heldQty(state, effect.commodityId);
-    let result = null;
+    let ok = null;
+    let reason = 'trade_failed';
     if (economy && typeof economy.handleTrade === 'function') {
-      result = economy.handleTrade(effect.commodityId, side, effect.qty);
-    } else if (bus) {
-      bus.emit(side === 'sell' ? 'ui:sell' : 'ui:buy', { commodityId: effect.commodityId, qty: effect.qty });
+      const result = economy.handleTrade(effect.commodityId, side, effect.qty);
+      if (result && result.ok === false) return { ok: false, reason: result.reason || 'trade_failed' };
+      ok = creditsOf(state) !== beforeCredits || heldQty(state, effect.commodityId) !== beforeQty;
+      reason = 'trade_unchanged';
+    } else {
+      const resp = await laneRpc('economyTrade', {
+        commodityId: effect.commodityId, side, qty: effect.qty,
+      });
+      if (!rpcUnavailable(resp)) {
+        const res = resp && resp.result;
+        if (res && res.ok === false) return { ok: false, reason: res.reason || 'trade_failed' };
+        ok = res === true || (res && res.ok === true);
+      } else {
+        const wait = waitTradeOutcome(bus, effect.commodityId, side);
+        if (bus) bus.emit(side === 'sell' ? 'ui:sell' : 'ui:buy', { commodityId: effect.commodityId, qty: effect.qty });
+        const outcome = await wait;
+        if (!outcome.ok) return { ok: false, reason: outcome.reason };
+        ok = true;
+      }
     }
-    const creditsMoved = creditsOf(state) !== beforeCredits;
-    const qtyMoved = heldQty(state, effect.commodityId) !== beforeQty;
-    if (result && result.ok === false) return { ok: false, reason: result.reason || 'trade_failed' };
-    if (!creditsMoved && !qtyMoved) return { ok: false, reason: 'trade_unchanged' };
+    if (!ok) return { ok: false, reason };
     if (effect.type === 'haul' && effect.destStationId) {
       try { applyTradeNavigation({ state, bus }, effect.destStationId, effect.commodityId); } catch (_) {}
     }
@@ -437,33 +517,39 @@ function applyEffect(state, effect, ctx) {
     const before = ship ? Number(ship.hull) || 0 : 0;
     const beforeCredits = creditsOf(state);
     if (bus) bus.emit('ui:service', { type: 'repair' });
-    const after = ship ? Number(ship.hull) || 0 : 0;
-    if (after <= before && creditsOf(state) >= beforeCredits) return { ok: false, reason: 'repair_failed' };
-    return { ok: true };
+    return waitServiceSettled(state, before, beforeCredits);
   }
   return { ok: false, reason: 'unknown_effect' };
 }
 
-export function chooseAdventureDecision(state, decisionId, optionId, ctx = {}) {
+export async function chooseAdventureDecision(state, decisionId, optionId, ctx = {}) {
   const log = logOf(state);
   const record = log.presented.get(decisionId);
   if (!record) return { ok: false, reason: 'not_visible' };
   if (log.chosenIds.has(decisionId)) return { ok: true, duplicate: true, counted: false };
+  // An in-flight choice already reached the async apply — a second click must not
+  // apply the effect twice while the verdict is still pending.
+  if (log.applyingIds.has(decisionId)) return { ok: false, reason: 'in_flight' };
   const option = record.options.find((row) => row.id === optionId);
   if (!option) return { ok: false, reason: 'missing_option' };
-  const applied = applyEffect(state, option.effect, ctx);
-  if (!applied.ok) return applied;
-  log.chosenIds.add(decisionId);
-  log.chosen.push({
-    id: decisionId,
-    kind: record.kind,
-    situation: record.situation,
-    chosen: option.id,
-    tradeoff: option.tradeoff,
-    options: record.options.map((row) => ({ id: row.id, tradeoff: row.tradeoff })),
-    atS: Number(state.simTime) || 0,
-  });
-  return { ok: true, counted: true };
+  log.applyingIds.add(decisionId);
+  try {
+    const applied = await applyEffect(state, option.effect, ctx);
+    if (!applied.ok) return applied;
+    log.chosenIds.add(decisionId);
+    log.chosen.push({
+      id: decisionId,
+      kind: record.kind,
+      situation: record.situation,
+      chosen: option.id,
+      tradeoff: option.tradeoff,
+      options: record.options.map((row) => ({ id: row.id, tradeoff: row.tradeoff })),
+      atS: Number(state.simTime) || 0,
+    });
+    return { ok: true, counted: true };
+  } finally {
+    log.applyingIds.delete(decisionId);
+  }
 }
 
 export function dismissUnworkableDecision(state, decisionId) {

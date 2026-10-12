@@ -45,6 +45,16 @@ export const ALLOWED_WALL_TIME_FILES = new Map([
   ['src/core/runtimeWitness.js', '1 Hz flight-recorder instrumentation; wall stamps label human-facing reports'],
   ['src/core/renderUpdatePhase.js', 'render-phase timing instrumentation'],
   ['src/core/bootScheduler.js', 'boot scheduling instrumentation; no sim ownership'],
+  // Boot-seed draw moved here from src/main.js by the worker-lane extraction: Date.now() only
+  // XORs into the fallback seed when opts.seed is not finite, and the drawn value becomes the
+  // run's explicit seed — the wall stamp never reaches a sim stream.
+  ['src/core/newGameBoot.js', 'boot-seed XOR source only (fallback seed becomes the explicit run seed)'],
+  // Lane transport watchdog: sentMs/nowMs() stamps only measure rpc-ack delivery latency for the
+  // stall detector — a wall bound on transport waits, never a sim clock (same class as eventBus).
+  ['src/core/simLaneMain.js', 'lane rpc stall watchdog; wall stamps bound transport wait, not sim state'],
+  // Wire-id mint: Date.now() only makes nextLaneToken ids unique across same-ms calls; sim never
+  // reads the timestamp portion — same class as telemetry's local session id.
+  ['src/core/simLaneCommands.js', 'lane wire-id mint; wall stamp for token uniqueness only'],
   // Input-device adapters: real hardware event timing is inherently wall-clock, and these
   // stamps are diagnostic-only — input.js keeps the wall stamp off serialized state;
   // gamepad.js/touch.js mark lastActiveMs "diagnostic only"; gamepad's self-benchmark

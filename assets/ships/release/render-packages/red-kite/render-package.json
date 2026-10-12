@@ -283,7 +283,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "84d4a98224d5f102b65c6845fe559dfa2a06b3d8ff6738984a3b55c9c6dcde42",
+  "contentHash": "cb38a52d27f8b09eee5c5c26c802835e586652ecf21e7cc255f749b89af8c78c",
   "dynamicGroups": [
     {
       "id": "sf.render.red-kite.node.lod0-motion-red-kite-clamp-port-armor.dynamic",
@@ -331,7 +331,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "877d6fe9ac1829c393a6d6529457de793b4ecdee190c04db4680c4c6fe11a67f",
+      "geometryHash": "16669825ecb724264d34ae627093aa6718b3f285c58b4cde65be322988523053",
       "id": "sf.render.red-kite.node.collision-red-kite-port-sail-0.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -356,7 +356,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f099c0bb651cde329be260aef00d54bdd832aacfaff0c14b84574be868d7c6b2",
+      "geometryHash": "24847ac9206d7040475a942de445c74272aa106df16cf24a948e365b6208292f",
       "id": "sf.render.red-kite.node.collision-red-kite-port-sail-1.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -381,7 +381,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c789516871598e1bba2c4bbffc00d1ec4fcfbf3ab76c8141043720102e7a8e9",
+      "geometryHash": "82ff237e064f4989e6fe314db3f7c1ed0a3cdc26c4b64ddd31d844f2aa1116eb",
       "id": "sf.render.red-kite.node.collision-red-kite-port-sail-2.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -406,7 +406,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0eaa9fcc336483e8aa4279f1933e3c18199a5ca0452dd01342226d4f06d140a",
+      "geometryHash": "f14986b778893d8c0e04071de4ba55d9647c3d89c9e9df4040f16bae2e54a0aa",
       "id": "sf.render.red-kite.node.collision-red-kite-port-spar.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -431,7 +431,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eca60975fdaeca8a9cc3580ad01efec44d7fc9cf73c17bae2dd12649d86b8bc4",
+      "geometryHash": "672f805edc42c820cd78d5e13fe417474129b8df9b5be5d4b99787138a581366",
       "id": "sf.render.red-kite.node.collision-red-kite-pressure-dart.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -456,7 +456,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d959c5e4565ebed33861135dcfc4474493a3c1f51be8f1ceb7964727a493880a",
+      "geometryHash": "23830a8d367d75e13d9c527c98d852529adbb3cdb0d7c1c07560792402f9a569",
       "id": "sf.render.red-kite.node.collision-red-kite-starboard-drive.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -506,7 +506,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56b2c85f1a8efb20106475a5d51a201a98c62bf1ec9ca97b000f499f6984a36e",
+      "geometryHash": "48c7f901daf438b536f45948450779564467800212938f7498ff647016c9580e",
       "id": "sf.render.red-kite.node.collision-red-kite-stern-port.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -531,7 +531,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3b9ab5c134bc74243c4c3c077d5b9a3947bf46c07cb5e47f85503c678e93acc",
+      "geometryHash": "d4d634c94d2d932b652c1ab5f1b03c7227de7f8650ebed3c95c25207190985a8",
       "id": "sf.render.red-kite.node.collision-red-kite-stern-starboard.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -556,16 +556,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8a8c176cd7e5654ea8bc6ac32822e2f6d99064662c0076dede93dade8a080a3",
+      "geometryHash": "1231d7a7595a5033361e4da3f347a0ef986457b2f0ecd2803453ea0a99c58e97",
       "id": "sf.render.red-kite.node.lod0-armor.primitive.0",
-      "indexCount": 5652,
+      "indexCount": 5562,
       "indexed": true,
       "materialHash": "0de44fa6e689963345aa7f06bb14a0dfc7a1234db875d88a2abea4929fa62ec3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.red-kite.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1704
+      "vertexCount": 1668
     },
     {
       "bounds": {
@@ -581,7 +581,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6d4cc662474b171f19b8a03191d2a57acd348637913071e9f422ad884f66568",
+      "geometryHash": "4d0ac3f149476f90a67c506e838475d661e7b46f0c4f21146482f2fb1542e276",
       "id": "sf.render.red-kite.node.lod0-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -606,7 +606,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d07a0a280f8baf3c68767633f56c63523a3dfa94b1219bb0477d5722e001199a",
+      "geometryHash": "0a037323bc73f6c435fccc724c966ce5b9f3e9ceb045d868a408b349b53f6afc",
       "id": "sf.render.red-kite.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 1122,
       "indexed": true,
@@ -681,16 +681,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "888acfcb82be7f749405650287eff3d17c1ffea5cc12f4d10226f6ba7e03d1e5",
+      "geometryHash": "cf33b07e94eb52c3b9b4d8282d0f1a5774326fcca853eb873bd0284f783cb233",
       "id": "sf.render.red-kite.node.lod0-hull.primitive.0",
-      "indexCount": 7485,
+      "indexCount": 7317,
       "indexed": true,
       "materialHash": "c642f2f9c3ddd76f2ae4dda9f6d20e68e3de790695dff24f151049c4578e731d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.red-kite.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2186
+      "vertexCount": 2122
     },
     {
       "bounds": {
@@ -706,7 +706,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e3e93b0589585c1cedbc4f83872ee007975879511967cda0d9399e3b3fb7992",
+      "geometryHash": "cc8bb3532b19e61f9a3c78a8c507c7cd2424ee11209de079faa43bcf17709dc8",
       "id": "sf.render.red-kite.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 18993,
       "indexed": true,
@@ -731,7 +731,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ae0001917f72d0b5d8eff478bebcaf79ec4146e113002f37a51a58500d900f0",
+      "geometryHash": "f64c0381f3b5140ae913a2c3e114934a52a2fa20182306717192c8fbaf43b73f",
       "id": "sf.render.red-kite.node.lod0-motion-red-kite-clamp-port-armor.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -756,7 +756,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83b0190f426da0d52366a16010eb5e0ef755031b8f74e74b9cf8c770f0b60c03",
+      "geometryHash": "17fc5d37ff169fe4d7ee7031a5afc618ba24d38a1a480b812a283e4cb72fecaf",
       "id": "sf.render.red-kite.node.lod0-motion-red-kite-clamp-starboard-armor.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -781,7 +781,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd1a7b92ae7cf45cfeb45a206bb61df82646dc63a925ea9fe1fe1156af2252be",
+      "geometryHash": "d77b5e2ac2cf5b75e3f185694197f977a8a3046b6888060e738956bdb25cf68a",
       "id": "sf.render.red-kite.node.lod0-motion-red-kite-flap-armor.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -2352,19 +2352,19 @@
       "sha256": "2463b999723293ac7417baabff1ff7c0b92e72b282a41ed328f8286a5cbfc02a"
     },
     "sourceGlb": {
-      "bytes": 556828,
-      "sha256": "f7a5a62b9cbd495e4027e8bce87dbea740641d5cc62cfa2c8564f0c5e207b13a",
+      "bytes": 556108,
+      "sha256": "7d370fa2aad31ee7777a941d480f8dea9cfdd9df7dfbb02ebfaff89e6768223b",
       "uri": "red_kite.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 824800,
-    "sha256": "b52e9ceb896fab785612ca937107d471e0e6b1309f49e5e26a4d954de894b4e4",
+    "bytes": 821824,
+    "sha256": "40046b244ea2efba5e18703428eb6c1925ab7268f1a984e1ed598f2bb0d4736b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3340,7 +3340,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/red_kite.glb"
   },
-  "runtimeHash": "ac20f1a965fe4596b9b3652f87f9f935b3b30a0318284a5d7c243f23814fdf16",
+  "runtimeHash": "3af17a1fa2ced234a2ebd95d306fedd6d8bae333b9bb20dab36f226194b220c5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

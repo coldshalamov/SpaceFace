@@ -11,17 +11,22 @@ function uvulaHold(state) {
   const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (!byId) return null;
   const pid = state.playerId;
-  const list = state.entityList || [];
   for (const id in byId) {
     const att = byId[id];
     if (!att || att.state !== 'active') continue;
     if (att.ownerId !== pid && att.controllerId !== pid) continue;
-    for (let k = 0; k < list.length; k++) {
-      const ent = list[k];
-      if (!ent || ent.id !== att.targetId || !ent.data || !ent.data.bolus) continue;
-      if (ent.data.bolus.role !== 'uvula') continue;
-      return Number(ent.data.bolus.hold) || 0;
+    let ent = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(att.targetId)
+      : null;
+    if (!ent) {
+      const list = state.entityList || [];
+      for (let k = 0; k < list.length; k++) {
+        if (list[k] && list[k].id === att.targetId) { ent = list[k]; break; }
+      }
     }
+    if (!ent || !ent.data || !ent.data.bolus) continue;
+    if (ent.data.bolus.role !== 'uvula') continue;
+    return Number(ent.data.bolus.hold) || 0;
   }
   return null;
 }

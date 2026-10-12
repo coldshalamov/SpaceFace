@@ -494,6 +494,56 @@ const CHAIN_OUTCOME_VERB = Object.freeze({
   witnessed_only: 'witnessed',
 });
 const WORLD_STORY_CAP = 16;
+const CODEX_PLATE_ROOT = 'assets/ui/generated/codex/';
+const CODEX_ENTRY_ROOT = CODEX_PLATE_ROOT + 'entries/';
+const CODEX_WRECK_ART = Object.freeze({
+  wreck_isc_vigilant: 'wreck-isc-vigilant',
+  wreck_dmc_ironsong: 'wreck-dmc-ironsong',
+  wreck_isc_lighthouse: 'wreck-isc-lighthouse',
+  wreck_lanebreaker_pale_coil: 'wreck-lanebreaker-pale-coil',
+  wreck_choir_bell_aegis: 'wreck-choir-bell-aegis',
+  wreck_gravhand_tideline: 'wreck-gravhand-tideline',
+  wreck_nestbreaker: 'wreck-nestbreaker',
+  wreck_deepsurvey: 'wreck-deepsurvey',
+  wreck_smokesong: 'wreck-smokesong',
+  wreck_choir_tender: 'wreck-choir-tender',
+  wreck_mts_silver_draft: 'wreck-mts-silver-draft',
+  wreck_choir_cassandra: 'wreck-choir-cassandra',
+  wreck_mts_quadrille: 'wreck-mts-quadrille',
+  wreck_isc_double_entry: 'wreck-isc-double-entry',
+  wreck_dmc_first_notch: 'wreck-dmc-first-notch',
+  wreck_mts_regular: 'wreck-mts-regular',
+  wreck_dmc_refinery_tender: 'wreck-ceres-refinery-tender',
+});
+const CODEX_CARGO_ART = Object.freeze({
+  cmdty_47a_assay_sample: 'cargo-47a-assay-sample',
+  cmdty_unclassified_composite: 'cargo-unclassified-composite',
+  depth_vols_black_box: 'cargo-vols-black-box',
+  depth_vols_letter: 'cargo-vols-letter',
+  cmdty_personal_ledger: 'cargo-personal-ledger',
+  cmdty_navigational_data: 'cargo-navigational-data',
+});
+const CODEX_CHARACTER_ART = Object.freeze({
+  protagonist: 'character-wren',
+  vale: 'character-vale',
+  elroy: 'character-elroy',
+  kurtz: 'character-kurtz',
+});
+
+function codexEntryArt(key) {
+  return key ? { src: CODEX_ENTRY_ROOT + key + '.webp', kind: 'plate' } : null;
+}
+
+function codexWreckArt(wreckId) {
+  return codexEntryArt(CODEX_WRECK_ART[wreckId]);
+}
+
+function codexFactionArt(factionId) {
+  const faction = String(factionId || '').replace(/^faction_/, '');
+  return /^[a-z0-9_]+$/.test(faction)
+    ? { src: 'assets/ui/generated/crests/faction_' + faction + '.webp', kind: 'crest' }
+    : null;
+}
 
 /**
  * @returns {{wrecks: object[], aces: object[], chains: object[], stories: object[]}}
@@ -518,6 +568,7 @@ export function worldCodexEntries(state) {
       if (choice && choice.label) body.push(`Last decision: ${choice.label}.`);
       groups.wrecks.push({
         id: `world:wreck:${wreckId}`,
+        art: codexWreckArt(wreckId),
         name: rec.name || (def && def.name) || wreckId,
         sub: 'Unique wreck',
         meta: WRECK_PHASE_META[phase],
@@ -540,6 +591,7 @@ export function worldCodexEntries(state) {
       if (!line) continue;
       groups.aces.push({
         id: `world:ace:${ace.id}`,
+        art: codexFactionArt(ace.factionId) || codexEntryArt('codex-record'),
         name: ace.name,
         sub: 'Named captain',
         meta: ACE_STANCE_META[stance.stance],
@@ -568,6 +620,7 @@ export function worldCodexEntries(state) {
     const verb = CHAIN_OUTCOME_VERB[chain.outcome] || (open ? 'open' : 'closed');
     groups.chains.push({
       id: `world:chain:${chain.id || groups.chains.length}`,
+      art: codexFactionArt(factionId) || codexEntryArt('codex-record'),
       name: act && act.text ? act.text : (faction ? `${faction} — an incident chain` : 'An incident chain'),
       sub: 'Provenance',
       meta: open ? 'Held against you' : 'Settled',
@@ -588,6 +641,7 @@ export function worldCodexEntries(state) {
     for (const view of views) {
       groups.stories.push({
         id: `world:story:${view.id}:r${view.revision}`,
+        art: codexEntryArt('chronicler-story'),
         name: view.title || 'A recorded story',
         sub: 'Chronicler record',
         meta: view.kind || 'record',
@@ -605,9 +659,11 @@ function undressEntry(entry) {
   for (const node of [...entry.article.querySelectorAll(':scope > .cx-chrome')]) node.remove();
 }
 
-/** Produced art for a figure: the canonical portrait, else the faction's generated crest. */
+/** Produced or canonical art for a figure: a dedicated codex scene, canonical portrait, or crest. */
 function figureArt(figureKey) {
   if (!figureKey) return null;
+  const codexCharacter = CODEX_CHARACTER_ART[figureKey];
+  if (codexCharacter) return codexEntryArt(codexCharacter);
   const portrait = CANONICAL_PORTRAITS[figureKey];
   if (portrait) return { src: PORTRAIT_ASSET_ROOT + portrait, kind: 'photo' };
   const faction = FIGURE_FACTION[figureKey];
@@ -618,15 +674,15 @@ function figureArt(figureKey) {
 const pad2 = (n) => String(n).padStart(2, '0');
 
 /**
- * The codex's produced plates (assets/ui/generated/codex/, manifest beside them): one per story beat;
- * the endgame's choices stand in the last beat's plate (they are offered at the Deep Reach).
+ * The codex's produced plates (assets/ui/generated/codex/, manifest beside them): one per story
+ * beat, plus a distinct ending plate for each endgame choice.
  */
-const CODEX_PLATE_ROOT = 'assets/ui/generated/codex/';
 function codexPlate(entry) {
   const id = String(entry && entry.id || '');
   const beat = /^beat:(\d+)$/.exec(id);
   if (beat && Number(beat[1]) <= 7) return CODEX_PLATE_ROOT + 'beat' + beat[1] + '.webp';
-  if (id.startsWith('endgame:')) return CODEX_PLATE_ROOT + 'beat7.webp';
+  const ending = /^endgame:([A-E])$/.exec(id);
+  if (ending) return CODEX_ENTRY_ROOT + 'ending-' + ending[1].toLowerCase() + '.webp';
   return null;
 }
 
@@ -1323,6 +1379,7 @@ export const codexScreen = {
       const epilogue = (archive.epilogue || []).join('\n');
       this._section('Filed Ending', [makeEntry({
         id: 'endgame:filed',
+        art: codexEntryArt('ending-' + String(archive.choiceId || '').toLowerCase()),
         name: archive.title,
         sub: 'Filed ending',
         title: archive.title,
@@ -1480,8 +1537,10 @@ export const codexScreen = {
         meta.appendChild(linked);
         if (sectorRest) meta.appendChild(document.createTextNode(sectorRest));
       }
+      const wreckMatch = /^(?:unique_wreck|wreck):(wreck_[a-z0-9_]+)$/.exec(String(plate.id || ''));
+      const wreckArt = wreckMatch && codexWreckArt(wreckMatch[1]);
       const entry = makeEntry({
-        art: { src: SIGNAL_STILLS.anomaly, kind: 'still' },
+        art: wreckArt || { src: SIGNAL_STILLS.anomaly, kind: 'still' },
         id: 'plate:' + plate.id,
         name: plate.title,
         sub: sectorName || '',
@@ -2045,6 +2104,7 @@ export const codexScreen = {
     if (model.empty) { this._section('The Record', [], model.emptyLine); return; }
     const entry = makeEntry({
       id: 'record:deeds',
+      art: codexEntryArt('codex-record'),
       name: 'The Record',
       sub: model.total + (model.total === 1 ? ' deed' : ' deeds'),
       meta: model.standing.map((s) => s.text).join(' \u00b7 '),
@@ -2092,6 +2152,7 @@ export const codexScreen = {
 
     this._section('Reference Codes', [makeEntry({
       id: 'refs',
+      art: codexEntryArt('reference-codes'),
       name: 'Reference Codes',
       sub: REFS.CONTRACT_47A + ' · ' + REFS.REF_44C,
       meta: 'Two codes that keep coming back',
@@ -2101,6 +2162,7 @@ export const codexScreen = {
 
     this._section('Personal Effects', PERSISTENT_CARGO.map((p) => makeEntry({
       id: 'effect:' + p.id,
+      art: codexEntryArt(CODEX_CARGO_ART[p.id]),
       name: p.name,
       sub: p.mass + ' t · unsellable',
       meta: p.mass + ' t · unsellable',

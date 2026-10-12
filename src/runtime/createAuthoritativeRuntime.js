@@ -171,6 +171,9 @@ export function createAuthoritativeRuntime(options = {}) {
         updateOrder: systemsForUpdate || undefined,
         runtimeManifest: resolved,
         runtimeConfig: config,
+        // Stage-8 whole-sim worker: the journal lives in the sim realm with the
+        // sim (presentationAdapters records into it; the host drains it).
+        presentationJournal: options.presentationJournal || null,
       }));
       if (sim.state) {
         bindRuntimeToState(sim.state, config, resolved);

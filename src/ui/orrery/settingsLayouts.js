@@ -19,6 +19,7 @@ import { svg, arcD, ticksD, polar } from './svg.js';
 import { reducedMotion, onFrame, createSpring } from './motion.js';
 import { decrypt } from './text.js';
 
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 const STYLE_ID = 'sf-orrery-settings-layouts';
 const S = 'html body #screens > .k-screen.of-settings.orr-settings';
 const C = 'html body #screens > .k-screen.of-credits.orr-credits';
@@ -703,6 +704,7 @@ ${CREDITS_CSS}
 ${SCROLL_EXTENT_CSS}`;
 
 export function injectOrrerySettings(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc?.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
   injectOrrery(doc);
   if (doc.getElementById(STYLE_ID)) return;

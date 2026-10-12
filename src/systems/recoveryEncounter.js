@@ -796,11 +796,18 @@ export const recoveryEncounter = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane drains inline */ }
+  },
+
+  *deserializeChunked(data) {
     this.state.recoveryEncounters = normalizeState(data);
     const own = ensureState(this.state);
+    let i = 0;
     for (const record of Object.values(own.records)) {
       const receipt = record && own.outcomes[record.id];
+      // Emits stay inside the slice — each publishes its own receipt per record.
       if (receipt) this._publishLungCase(record, receipt);
+      if ((++i & 15) === 0) yield 'lung-cases';
     }
   },
 

@@ -36,6 +36,7 @@ import { activeOwnedShip } from '../data/hullIdentity.js';
 import { loadAuthoredPart as loadAuthoredPartLive } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { wholeShipVisualForEntity } from './partsLibrary.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
@@ -411,7 +412,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
     if (stage.warmupPending === true) warmupStage(stage, renderer);
     drawStage(stage, renderer, state, dt);
   } catch (error) {
-    console.warn('[uiStage] stage draw failed', error);
+    dedupWarn('uiStage.stage-draw', '[uiStage] stage draw failed', error);
     publishStatus(request, 'unavailable');
     releaseUiStage('draw-error');
     return false;
@@ -501,7 +502,7 @@ export function tickUiStagePrewarm({ render, state } = {}) {
         : null,
     });
   } catch (error) {
-    console.warn('[uiStage] berth prewarm failed to start; the dock builds it as before', error);
+    dedupWarn('uiStage.berth-prewarm', '[uiStage] berth prewarm failed to start; the dock builds it as before', error);
     prewarm = null;
     return false;
   }
@@ -654,7 +655,7 @@ function publishStatus(request, status) {
   const notify = request && request.onStatus;
   if (typeof notify === 'function' && request.__lastStatus !== status) {
     request.__lastStatus = status;
-    try { notify(status); } catch (error) { console.warn('[uiStage] status listener failed', error); }
+    try { notify(status); } catch (error) { dedupWarn('uiStage.status-listener', '[uiStage] status listener failed', error); }
   }
 }
 
@@ -861,7 +862,7 @@ async function loadPart(file, renderer, slot, built = null, partOptions = null) 
       if (record) return record;
     } catch (error) {
       lastError = `${url}: ${error && error.message ? error.message : error}`;
-      console.warn('[uiStage] part load failed', url, error);
+      dedupWarn('uiStage.part-load', '[uiStage] part load failed', url, error);
     }
   }
   return null;
@@ -1223,7 +1224,7 @@ function warmupStage(built, renderer) {
     renderer.setClearColor(built.spec.sky.ground, 1);
     renderer.render(built.scene, built.camera);
   } catch (error) {
-    console.warn('[uiStage] warm-up draw failed; the first frame links it instead', error);
+    dedupWarn('uiStage.warm-draw', '[uiStage] warm-up draw failed; the first frame links it instead', error);
   } finally {
     renderer.setRenderTarget(previousTarget);
     renderer.autoClear = previousAutoClear;

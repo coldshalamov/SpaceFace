@@ -40,6 +40,14 @@ function isKnownKind(kind) {
     || kind === FIELD_KINDS.SHEET;
 }
 
+// Explicit opt-outs affect only these two Well consequences, never force/heat/target filters.
+// Missing/legacy metadata and missing members retain the existing default-on behavior.
+function normalizedWellConsequences(value) {
+  if (value?.grindPriming !== false && value?.exitHitstun !== false) return null;
+  return Object.freeze({ grindPriming: value?.grindPriming !== false,
+    exitHitstun: value?.exitHitstun !== false });
+}
+
 // Normalize a raw register() spec into a frozen-shape live record. Pure; allocates one record.
 export function normalizeField(spec = {}) {
   const kind = isKnownKind(spec.kind) ? spec.kind : FIELD_KINDS.WELL;
@@ -50,6 +58,7 @@ export function normalizeField(spec = {}) {
   let dz = finite(dir.z, 0);
   const dlen = Math.hypot(dx, dz);
   const thermal = normalizeKilnbackThermalRecipe(spec.thermal);
+  const wellConsequences = normalizedWellConsequences(spec.wellConsequences);
   if (dlen > 1e-6) { dx /= dlen; dz /= dlen; } else { dx = 1; dz = 0; }
   return {
     id: String(spec.id != null ? spec.id : `field_${kind}`),
@@ -91,6 +100,7 @@ export function normalizeField(spec = {}) {
       z: finite(spec.frame && spec.frame.z),
     },
     ...(thermal ? { thermal } : {}),
+    ...(wellConsequences ? { wellConsequences } : {}),
   };
 }
 
@@ -446,13 +456,25 @@ function fieldSumOrder(fields) {
  * @param {{ax:number,az:number}} [out]
  * @returns {{ax:number,az:number}}
  */
-export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, out) {
+// Optional pooled receipts attribute each field AFTER coupling and the shared total clamp.
+// The ordinary summation order and arithmetic remain unchanged. Receipts do not own force.
+export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, out, receipts) {
   const o = out || { ax: 0, az: 0 };
   o.ax = 0; o.az = 0;
+  if (receipts) receipts.count = 0;
   if (!pos || !Array.isArray(fields) || fields.length === 0) return o;
   const profile = bodyProfile || DEFAULT_PROFILE;
   const couple = couplingScale(profile);
   const order = fieldSumOrder(fields);
+  if (receipts) {
+    for (let n = 0; n < order.length; n++) {
+      const row = receipts.entries[n] || (receipts.entries[n] = {});
+      row.field = fields[order[n]]; row.ax = 0; row.az = 0;
+    }
+    receipts.count = order.length;
+    // Do not retain retired fields in the scratch pool after the active set shrinks.
+    receipts.entries.length = order.length;
+  }
   let sx = 0, sz = 0;
   if (couple > 0) {
     for (let n = 0; n < order.length; n++) {
@@ -461,6 +483,10 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
       fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
       sx += _rawScratch.ax;
       sz += _rawScratch.az;
+      if (receipts) {
+        receipts.entries[n].ax = _rawScratch.ax * couple;
+        receipts.entries[n].az = _rawScratch.az * couple;
+      }
     }
     sx *= couple;
     sz *= couple;
@@ -475,12 +501,19 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
       hitchLockAcceleration(field, pos.x, pos.z, _lockScratch);
       sx += _lockScratch.ax;
       sz += _lockScratch.az;
+      if (receipts) {
+        receipts.entries[n].ax += _lockScratch.ax;
+        receipts.entries[n].az += _lockScratch.az;
+      }
     }
   }
   const mag = Math.hypot(sx, sz);
   if (mag > FIELD_MAX_ACCEL) {
     const k = FIELD_MAX_ACCEL / mag;
     sx *= k; sz *= k;
+    if (receipts) for (let n = 0; n < receipts.count; n++) {
+      receipts.entries[n].ax *= k; receipts.entries[n].az *= k;
+    }
   }
   o.ax = sx; o.az = sz;
   return o;
@@ -590,6 +623,8 @@ export function integrateFieldEscape(pos, vel, fields, bodyProfile, opts = {}) {
  */
 export function createFieldKernel() {
   const fields = new Map(); // id -> normalized record
+  // Weak ownership receipts distinguish earned termination from administrative retirement.
+  const retirements = new WeakMap();
   let listCache = null;     // id-sorted snapshot, invalidated on any mutation
 
   function invalidate() { listCache = null; }
@@ -598,12 +633,16 @@ export function createFieldKernel() {
     /** Register (or replace) a field. Returns the live normalized record. */
     register(spec) {
       const record = normalizeField(spec);
+      const previous = fields.get(record.id);
+      if (previous) retirements.set(previous, 'retired');
       fields.set(record.id, record);
       invalidate();
       return record;
     },
     /** Remove a field by id. Returns true if one was present. */
-    unregister(id) {
+    unregister(id, reason = 'ended') {
+      const previous = fields.get(id);
+      if (previous) retirements.set(previous, reason === 'retired' ? 'retired' : 'ended');
       const had = fields.delete(id);
       if (had) invalidate();
       return had;
@@ -625,9 +664,19 @@ export function createFieldKernel() {
         record.frame.x = finite(patch.frame.x, record.frame.x);
         record.frame.z = finite(patch.frame.z, record.frame.z);
       }
+      // Participation changes start a new consequence lifetime, even for the same id.
+      if (Object.prototype.hasOwnProperty.call(patch, 'wellConsequences')) {
+        const next = { ...record };
+        const policy = normalizedWellConsequences(patch.wellConsequences);
+        if (policy) next.wellConsequences = policy; else delete next.wellConsequences;
+        retirements.set(record, 'retired');
+        fields.set(id, next); invalidate();
+        return next;
+      }
       // geometry mutation does not change ordering, so the id-sorted cache stays valid
       return record;
     },
+    retirementReason(record) { return retirements.get(record) || null; },
     has(id) { return fields.has(id); },
     get(id) { return fields.get(id) || null; },
     /** Id-sorted snapshot (stable summation order). Cached until the next mutation. */
@@ -637,14 +686,22 @@ export function createFieldKernel() {
       return listCache;
     },
     get size() { return fields.size; },
-    clear() { if (fields.size) { fields.clear(); invalidate(); } },
+    clear() {
+      for (const record of fields.values()) retirements.set(record, 'retired');
+      if (fields.size) { fields.clear(); invalidate(); }
+    },
     /** Drop every field whose bounded lifetime has elapsed. Returns the removed ids. */
     expire(now) {
       let removed = null;
       for (const [id, f] of fields) {
         if (f.expireAt !== Infinity && now >= f.expireAt) { (removed || (removed = [])).push(id); }
       }
-      if (removed) { for (const id of removed) fields.delete(id); invalidate(); }
+      if (removed) {
+        for (const id of removed) {
+          retirements.set(fields.get(id), 'expired'); fields.delete(id);
+        }
+        invalidate();
+      }
       return removed || EMPTY;
     },
   };

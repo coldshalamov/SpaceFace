@@ -1,3 +1,5 @@
+import { isPlayerSaucer } from '../data/saucer.js';
+import { projectSaucerControls } from '../core/flight/saucerControl.js';
 // Input system: samples keyboard + mouse, projects the cursor to the world plane, and writes
 // state.input each tick. THREE control schemes, picked by settings.gameplay.controlScheme
 // ('pilot' default | 'helm-assist' | 'classic'):
@@ -561,7 +563,7 @@ const OPPOSING_ACTIONS = new Map([
   ['strafeLeft', 'strafeRight'],
 ]);
 
-function eventCode(e) {
+export function eventCode(e) {
   if (e && e.code) return e.code;
   const key = e && typeof e.key === 'string' ? e.key.toLowerCase() : '';
   return KEY_CODE_FALLBACKS[key] || '';
@@ -582,7 +584,8 @@ function clearActionCodes(state, keys, action, exceptCode) {
 
 /**
  * Deterministic keyboard event transition shared by the DOM listener and fixed-tick harnesses.
- * Opposing axes retain the established last-input-wins behavior. Dedicated actions such as
+ * Ordinary opposing axes retain last-input-wins; a player saucer keeps both for cancellation.
+ * Dedicated actions such as
  * brake do not need an impossible simultaneous-axis state.
  */
 export function transitionFlightKeyState(
@@ -602,7 +605,9 @@ export function transitionFlightKeyState(
   }
   const action = actionForCode(state, code);
   const opposingAction = action && OPPOSING_ACTIONS.get(action);
-  if (opposingAction) {
+  // A disc averages physically held directions. Conventional ships retain last-input-wins.
+  const saucer = isPlayerSaucer(state?.entities?.get?.(state?.playerId));
+  if (opposingAction && !saucer) {
     clearActionCodes(state, nextKeys, opposingAction, code);
   }
   nextKeys[code] = true;
@@ -770,17 +775,37 @@ function dropUnreleasedHeldEdges(queue, keys) {
   queue.length = write;
 }
 
-function isTextEntryTarget(target) {
+export function isTextEntryTarget(target) {
   if (!target || typeof target.closest !== 'function') return false;
   return !!target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
 }
 
-function isUiCommandTarget(target) {
+export function isUiCommandTarget(target) {
   if (!target || typeof target.closest !== 'function') return false;
   return !!target.closest('button, [role="button"], a[href], input, textarea, select, [contenteditable="true"], [contenteditable=""], #ui-root, #screens');
 }
 
-function modalInputActive() {
+// --- sim-lane overrides ------------------------------------------------------
+// When the whole sim runs in a worker (simLane=worker), DOM facts the reducer
+// needs — viewport size and the modal-body latch — cannot be read there. The
+// main lane ships them in as lane overrides; `null` keeps the DOM read for the
+// main lane. The fold arrives over the command channel before any tick applies
+// it, so both lanes reduce identical inputs.
+let _laneViewport = null;      // {width, height} — replaces innerWidth/innerHeight
+let _laneModalActive = null;   // boolean — replaces the document.body class read
+
+export function setLaneViewport(width, height) {
+  _laneViewport = Number.isFinite(width) && Number.isFinite(height)
+    ? { width, height }
+    : null;
+}
+
+export function setLaneModalActive(active) {
+  _laneModalActive = active === null || active === undefined ? null : active === true;
+}
+
+export function modalInputActive() {
+  if (_laneModalActive !== null) return _laneModalActive;
   const body = typeof document !== 'undefined' ? document.body : null;
   if (!body || !body.classList || typeof body.classList.contains !== 'function') return false;
   // Pausing modals AND live overlays both own the keyboard: a screen over a running sim must not
@@ -798,6 +823,7 @@ function syncPointerScreen(state, x, y) {
 }
 
 function viewportSize() {
+  if (_laneViewport) return { width: _laneViewport.width, height: _laneViewport.height };
   return {
     width: typeof innerWidth === 'number' ? Math.max(1, innerWidth) : 1,
     height: typeof innerHeight === 'number' ? Math.max(1, innerHeight) : 1,
@@ -861,6 +887,7 @@ function resetAutoTargetPath(host, state = host && host.state) {
 function stickViewport() {
   // Pass a collapsed window through as itself. viewportSize() floors at 1px for the pointer,
   // which would turn a minimize into a real radius and keep commanding thrust.
+  if (_laneViewport) return { width: _laneViewport.width, height: _laneViewport.height };
   const width = typeof innerWidth === 'number' ? innerWidth : 1;
   const height = typeof innerHeight === 'number' ? innerHeight : 1;
   return { width, height };
@@ -905,6 +932,89 @@ function stickWorldDirection(host, state, player, axes) {
   return out;
 }
 
+// --- normalized DOM-event reducers -------------------------------------------
+// One DOM event, one descriptor, one reducer — shared by the real DOM adapter
+// (descriptors built from live events on the presenting lane) and the sim-lane
+// path (descriptors shipped to the sim's realm via ingestLaneDomEvent). Field
+// names are the wire contract. `uiCommand`/`offCanvas`/`neutralize` are computed
+// on the realm that owns the DOM — the sim realm replays them verbatim.
+export function domKeyEvent(host, d = {}) {
+  applyFlightKeyEvent(host, {
+    code: d.code,
+    pressed: d.pressed === true,
+    repeat: d.repeat === true,
+    blocked: d.blocked === true,
+  });
+}
+
+export function domPointerMoveEvent(host, d = {}) {
+  if (!host || !Number.isFinite(d.clientX) || !Number.isFinite(d.clientY)) return;
+  const geometry = centeredPointer();
+  if (host.state && host.state.input && host.state.input.autoFire) {
+    if (d.neutralize === true || d.uiCommand === true) return;
+    // Dynamic combat-stick input records from the mousemove stream ONLY. Browsers
+    // dispatch a compatibility mousemove for every pointermove, so accepting both
+    // would double the stick displacement whenever pointer lock is absent.
+    if (d.type === 'pointermove') return;
+    const movementX = Number.isFinite(d.movementX) ? d.movementX : 0;
+    const movementY = Number.isFinite(d.movementY) ? d.movementY : 0;
+    if (movementX === 0 && movementY === 0) return;
+    recordAutoTargetStick(host, movementX, movementY);
+    host._screen.x = geometry.cx;
+    host._screen.y = geometry.cy;
+    host._screen.active = true;
+    host._ndc.x = 0;
+    host._ndc.y = 0;
+  } else {
+    host._screen.x = d.clientX;
+    host._screen.y = d.clientY;
+    host._screen.active = true;
+    host._ndc.x = (host._screen.x / geometry.width) * 2 - 1;
+    host._ndc.y = -(host._screen.y / geometry.height) * 2 + 1;
+  }
+  syncPointerScreen(host.state, host._screen.x, host._screen.y);
+  // noteFlightPointer equivalent — uiCommand already computed on the DOM realm.
+  if (d.uiCommand !== true) {
+    host._kbmActivityPending = true;
+    host._pointerHelmEdge = true;
+  }
+}
+
+export function domMouseDownEvent(host, d = {}) {
+  if (!host) return;
+  domPointerMoveEvent(host, d);
+  if (d.offCanvas === true || (!host._canvas && d.uiCommand === true)) {
+    host._m0 = false; host._m1 = false; host._m2 = false;
+    host._clearM2HoldClock();
+    return;
+  }
+  if (d.button === 0) host._m0 = true;
+  if (d.button === 1) host._m1 = true;
+  if (d.button === 2) {
+    host._m2 = true; host._m2HeldS = 0; host._m2ToolLane = null; host._m2SlingTargetId = null;
+    host._clearM2HoldClock();
+    const clockTarget = host._m2TimerTarget;
+    if (host._m2UsesUiClock && clockTarget && typeof clockTarget.setTimeout === 'function') {
+      const epoch = host._m2HoldEpoch;
+      try {
+        host._m2HoldTimer = clockTarget.setTimeout(() => {
+          if (host._initialized && host._m2 === true && host._m2HoldEpoch === epoch) {
+            host._m2HoldReady = true;
+          }
+        }, WORLD_TOOL_HOLD_S * 1000);
+      } catch (_) { host._m2HoldTimer = null; }
+    }
+  }
+  host._kbmActivityPending = true;
+}
+
+export function domMouseUpEvent(host, d = {}) {
+  if (!host) return;
+  if (d.button === 0) host._m0 = false;
+  if (d.button === 1) host._m1 = false;
+  if (d.button === 2) { host._m2 = false; host._clearM2HoldClock(); }
+}
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -921,8 +1031,11 @@ export const input = {
     this._domBindings = [];
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
-    const viewportW = typeof innerWidth === 'number' ? innerWidth : 0;
-    const viewportH = typeof innerHeight === 'number' ? innerHeight : 0;
+    const initViewport = _laneViewport || null;
+    const viewportW = initViewport ? initViewport.width
+      : (typeof innerWidth === 'number' ? innerWidth : 0);
+    const viewportH = initViewport ? initViewport.height
+      : (typeof innerHeight === 'number' ? innerHeight : 0);
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     resetDynamicFlightStick(this, Math.max(1, viewportW), Math.max(1, viewportH));
@@ -948,6 +1061,13 @@ export const input = {
     this._inputActivitySeq = 0;
     this._lastInputWallMs = 0;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
+    // Worker realm (simLane=worker): no window/document, but self carries real timers —
+    // the m2 world-tool hold clock keeps its wall-duration semantics inside the sim realm.
+    if (typeof window === 'undefined' && typeof self !== 'undefined'
+        && typeof self.setTimeout === 'function' && typeof self.clearTimeout === 'function') {
+      this._m2UsesUiClock = true;
+      this._m2TimerTarget = self;
+    }
 
     this.gamepad = createGamepad(ctx);
     ctx.gamepad = this.gamepad;
@@ -966,6 +1086,74 @@ export const input = {
     }
     this._domAdapterAttached = true;
     this._attachDomInputAdapter(keys);
+  },
+
+  /**
+   * simLane=worker: apply one DOM-event descriptor shipped from the main lane.
+   * The descriptor is built by the same normalized functions the main adapter uses,
+   * so the reducer evolves identically on whichever realm hosts the sim.
+   */
+  ingestLaneDomEvent(d) {
+    if (!d || typeof d !== 'object') return;
+    switch (d.type) {
+      case 'keydown':
+      case 'keyup':
+        domKeyEvent(this, d);
+        break;
+      case 'pointermove':
+      case 'mousemove':
+        domPointerMoveEvent(this, d);
+        break;
+      case 'mousedown':
+        domMouseDownEvent(this, d);
+        break;
+      case 'mouseup':
+        domMouseUpEvent(this, d);
+        break;
+      case 'blur':
+        this.releaseHeldControls('window-blur');
+        break;
+      case 'gestureCancel':
+        // worldObjectInteraction's main-side cancel call — the m2 gesture
+        // state lives on this (sim-owned) input system under the lane.
+        if (typeof this.cancelWorldObjectGesture === 'function') {
+          this.cancelWorldObjectGesture(typeof d.reason === 'string' ? d.reason : 'lane');
+        }
+        break;
+      case 'drillTick': {
+        // The drill screen's per-frame held-state — its clock is the screen's
+        // rAF, so frames ride the descriptor batch and apply in wire order.
+        const laneCtx = this._inputContext;
+        const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
+          ? laneCtx.registry.get('drill') : null;
+        if (drill && typeof drill.tickInput === 'function') drill.tickInput(d.held, d.dt, d.opts);
+        break;
+      }
+      case 'drillCall': {
+        const laneCtx = this._inputContext;
+        const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
+          ? laneCtx.registry.get('drill') : null;
+        if (!drill) break;
+        if (d.op === 'begin' && typeof drill.begin === 'function') drill.begin(d.asteroidId);
+        else if (d.op === 'pulseScan' && typeof drill.pulseScan === 'function') drill.pulseScan();
+        else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
+        break;
+      }
+      case 'touchFrame': {
+        // The mobile deck runs on the main realm (DOM detector + view + model);
+        // its resolved frame lands here — the lane touch reducer applies axes,
+        // actions and cancelled-role resets into the sim-owned touch surface.
+        if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
+          this.touch.applyLaneFrame(d.frame, this);
+        }
+        break;
+      }
+      case 'resize':
+        if (this.touch && typeof this.touch.autoDetect === 'function') this.touch.autoDetect();
+        break;
+      default:
+        break;
+    }
   },
 
   /**
@@ -989,7 +1177,8 @@ export const input = {
     listen(windowTarget, 'resize', () => this.touch.autoDetect());
 
     listen(windowTarget, 'keydown', (e) => {
-      applyFlightKeyEvent(this, {
+      domKeyEvent(this, {
+        type: 'keydown',
         code: eventCode(e),
         pressed: true,
         repeat: e.repeat === true,
@@ -1001,78 +1190,33 @@ export const input = {
     // Physical releases must reach the owner even when a modal consumes the event below
     // window. Otherwise frozen menu ticks preserve a held thrust/fire command on resume.
     listen(windowTarget, 'keyup', (e) => {
-      applyFlightKeyEvent(this, {
-        code: eventCode(e),
-        pressed: false,
-        blocked: false,
-      });
+      domKeyEvent(this, { type: 'keyup', code: eventCode(e), pressed: false });
     }, { capture: true });
     listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
     const pointerSurface = this._canvas || windowTarget;
-    const handlePointerMove = (e) => {
-      if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
-      const geometry = centeredPointer();
-      if (this.state && this.state.input && this.state.input.autoFire) {
-        if (shouldNeutralizeFlightInput(this.state, modalInputActive()) || isUiCommandTarget(e.target)) return;
-        // Dynamic combat-stick input records from the mousemove stream ONLY. Browsers dispatch a
-        // compatibility mousemove for every pointermove, so accepting both would double the stick
-        // displacement whenever pointer lock is absent.
-        if (e.type === 'pointermove') return;
-        const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
-        const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
-        if (movementX === 0 && movementY === 0) return;
-        recordAutoTargetStick(this, movementX, movementY);
-        this._screen.x = geometry.cx;
-        this._screen.y = geometry.cy;
-        this._screen.active = true;
-        this._ndc.x = 0;
-        this._ndc.y = 0;
-      } else {
-        this._screen.x = e.clientX;
-        this._screen.y = e.clientY;
-        this._screen.active = true;
-        this._ndc.x = (this._screen.x / geometry.width) * 2 - 1;
-        this._ndc.y = -(this._screen.y / geometry.height) * 2 + 1;
-      }
-      syncPointerScreen(this.state, this._screen.x, this._screen.y);
-      noteFlightPointer(this, e.target);
-    };
+    const pointerDescriptor = (e) => ({
+      type: e.type,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      movementX: e.movementX,
+      movementY: e.movementY,
+      uiCommand: isUiCommandTarget(e.target),
+      neutralize: shouldNeutralizeFlightInput(this.state, modalInputActive()),
+    });
+    const handlePointerMove = (e) => domPointerMoveEvent(this, pointerDescriptor(e));
     // Capture pointer truth before overlays can consume the event. Electron focus/activation can
     // otherwise leave the software cursor at its fallback center until a later unhandled move.
     listen(windowTarget, 'mousemove', handlePointerMove, { capture: true });
     listen(windowTarget, 'pointermove', handlePointerMove, { capture: true });
     listen(pointerSurface, 'mousedown', (e) => {
-      handlePointerMove(e);
-      if (this._canvas && e.target !== this._canvas) {
-        this._m0 = false; this._m1 = false; this._m2 = false;
-        this._clearM2HoldClock();
-        return;
-      }
-      if (!this._canvas && isUiCommandTarget(e.target)) {
-        this._m0 = false; this._m1 = false; this._m2 = false;
-        this._clearM2HoldClock();
-        return;
-      }
-      if (e.button === 0) this._m0 = true;
-      if (e.button === 1) { this._m1 = true; if (typeof e.preventDefault === 'function') e.preventDefault(); } // no autoscroll cursor
-      if (e.button === 2) {
-        this._m2 = true; this._m2HeldS = 0; this._m2ToolLane = null; this._m2SlingTargetId = null;
-        this._clearM2HoldClock();
-        const clockTarget = this._m2TimerTarget;
-        if (this._m2UsesUiClock && clockTarget && typeof clockTarget.setTimeout === 'function') {
-          const epoch = this._m2HoldEpoch;
-          try {
-            this._m2HoldTimer = clockTarget.setTimeout(() => {
-              if (this._initialized && this._m2 === true && this._m2HoldEpoch === epoch) {
-                this._m2HoldReady = true;
-              }
-            }, WORLD_TOOL_HOLD_S * 1000);
-          } catch (_) { this._m2HoldTimer = null; }
-        }
-      }
-      this._kbmActivityPending = true;
+      const d = pointerDescriptor(e);
+      d.type = 'mousedown';
+      d.offCanvas = !!(this._canvas && e.target !== this._canvas);
+      d.button = e.button;
+      domMouseDownEvent(this, d);
+      if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault(); // no autoscroll cursor
     });
-    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } }, { capture: true });
+    listen(windowTarget, 'mouseup', (e) => domMouseUpEvent(this, { type: 'mouseup', button: e.button }), { capture: true });
     listen(windowTarget, 'pointercancel', () => this.releaseHeldControls('pointercancel'));
     const pointerLockTarget = typeof document !== 'undefined' ? document : null;
     listen(pointerLockTarget, 'pointerlockchange', () => {
@@ -1593,12 +1737,17 @@ export const input = {
     const kbmRecent = activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, gpTick, gpSeq)
       && activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, tpTick, tpSeq);
 
-    const kbdDrive = !!(kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
+    // Even opposing keys claim keyboard control: cancelling all four means STOP, not
+    // fall back to a previously active joystick whose last sample is still nonzero.
+    const saucerKeys = isPlayerSaucer(p) && (up || down
+      || this._held(state, 'yawLeft') || this._held(state, 'yawRight')
+      || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].some(k => this._keys[k]));
+    const kbdDrive = !!(saucerKeys || kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
     const pointerOwnsHelm = !!(helm && kbmRecent && this._screen && this._screen.active);
     const pointerHelmEdge = !!(this._pointerHelmEdge && pointerOwnsHelm);
     this._pointerHelmEdge = false;
     resolveMovementOwner(this, { kbdDrive, gp, tp, pointerHelmEdge, pointerOwnsHelm });
-    let keyboardBrake = (helm || pilot)
+    let keyboardBrake = isPlayerSaucer(p) ? !!kbdBrakeHeld : (helm || pilot)
       ? !!(pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld))
       : !!(down || kbdBrakeHeld);
     // Ownership gates the drive vector only (turn/move axes). Boost and brake are modifiers,
@@ -1933,6 +2082,18 @@ export const input = {
           inp.moveZ = 0; inp.moveX = 0;
         }
       }
+    }
+    if (isPlayerSaucer(p)) {
+      Object.assign(inp, projectSaucerControls({
+        keys: this._keys, source: this._movementSource,
+        left: this._held(state, 'yawLeft') || this._held(state, 'strafeLeft'),
+        right: this._held(state, 'yawRight') || this._held(state, 'strafeRight'),
+        up, down, pad: gp?.axes, touch: tp?.axes,
+        // Down is translation on a saucer, NEVER the ordinary reverse-brake shortcut.
+        brake: brakeHeld,
+      }));
+      inp.turnIntentFromAim = false;
+      inp.lineOrbit = 0;
     }
   },
 };

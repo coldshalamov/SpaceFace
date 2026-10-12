@@ -24,7 +24,7 @@ import {
   writeReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
 import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
-import { buildRetailRuntimeWorkers, RETAIL_BROWSER_TARGETS } from './lib/retailRuntimeWorkers.mjs';
+import { buildRetailRuntimeWorkers, moduleWorkerEntryPoints, validateRetailModuleWorkers, RETAIL_BROWSER_TARGETS } from './lib/retailRuntimeWorkers.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -80,7 +80,11 @@ async function build() {
   // loadingTerminalArt and introSignalRemixBoot stay stable-named entry chunks so the dynamic
   // imports inside bootEntry resolve to the same names in dev and retail.
   const entryPoints = { main: join(SRC, 'ui/bootEntry.js'), 'ui/loadingTerminalArt': join(SRC, 'ui/loadingTerminalArt.js'),
-    'ui/introSignalRemixBoot': join(SRC, 'ui/introSignalRemixBoot.js') };
+    'ui/introSignalRemixBoot': join(SRC, 'ui/introSignalRemixBoot.js'),
+    // Module Workers join the main build as entries so code splitting dedupes
+    // their vendored deps into shared chunks instead of re-bundling them
+    // (~14 MB on the sim lane). Classic workers stay separate below.
+    ...moduleWorkerEntryPoints(ROOT) };
 
   console.log('[bundle] entry points:', Object.keys(entryPoints).length, '(bootEntry -> game + loadingTerminalArt + intro remix optics; ' + screens.length + ' screens via dynamic imports)');
   await cleanOutputDir();
@@ -126,8 +130,10 @@ async function build() {
   ]);
 
   // URL-created workers are separate programs, not dependencies of the main bundle.
-  // Emit them before sealing the receipt so they receive the same hash/parity checks.
+  // Classic workers emit here; module workers already emitted inside the main
+  // build — validate their import graph resolves inside the deployment root.
   await buildRetailRuntimeWorkers({ esbuild, root: ROOT, outdir: OUT });
+  await validateRetailModuleWorkers({ outdir: OUT });
 
   // Write a bundled index.html (no importmap — the bundle resolves everything).
   const bundledHtml = await buildBundledHtml();

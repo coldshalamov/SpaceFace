@@ -27,6 +27,7 @@ import {
   PALLAS_ACTIVITY_POCKETS,
   PALLAS_ACTIVITY_SECTOR_ID,
   SEDNA_ACTIVITY_POCKETS,
+  SKER_ACTIVITY_POCKETS,
   SEDNA_ACTIVITY_SECTOR_ID,
   TETHYS_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_SECTOR_ID,
@@ -63,7 +64,8 @@ test('the activity-pocket registry is multi-sector, and Ceres is unchanged', () 
   assert.equal(
     ACTIVITY_POCKETS.length,
     CERES_ACTIVITY_POCKETS.length + HELIOS_ACTIVITY_POCKETS.length + PALLAS_ACTIVITY_POCKETS.length
-      + VESTA_ACTIVITY_POCKETS.length + TETHYS_ACTIVITY_POCKETS.length + SEDNA_ACTIVITY_POCKETS.length,
+      + VESTA_ACTIVITY_POCKETS.length + TETHYS_ACTIVITY_POCKETS.length + SEDNA_ACTIVITY_POCKETS.length
+      + SKER_ACTIVITY_POCKETS.length,
   );
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 

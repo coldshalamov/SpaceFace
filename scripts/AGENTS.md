@@ -23,9 +23,11 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
 - Probes clean up browser/server/process resources and write only to the designated ignored tree.
 - Acceptance actors use public controls. Observers may collect approved evidence but may not mutate
   gameplay or tell the actor hidden facts.
-- `scripts/player-truth/` is the binding gameplay acceptance gate: any gameplay PR attaches its
-  verdict and contact sheet for the modes it touches, and a FAIL blocks landing
-  (`docs/VALIDATION_WORKFLOW.md`). Its actor stays public-input only; its reader stays observer-only.
+- `scripts/player-truth/` is the binding gameplay acceptance gate. The acceptance command is
+  `npm run player-truth -- --mode=swarm --gate` (same `--mode=` for gauntlet, adventure, racing).
+  Any gameplay PR attaches its verdict and contact sheet for the modes it touches, and a FAIL
+  blocks landing (`docs/VALIDATION_WORKFLOW.md`). Its actor stays public-input only; its reader
+  stays observer-only.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save,
   and raw trace identity. Never reuse a capture across acceptance cells.
 

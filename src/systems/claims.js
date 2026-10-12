@@ -3285,3 +3285,18 @@ export const claims = {
     _nextClaimId = 1;
   },
 };
+
+// Lane-facade read view: binds the system's read methods to a foreign `state`
+// (the worker lane's domain mirror). The prototype IS the system object, so
+// every `this.` read helper (ledger, _stationName, _depotSupportReadout,
+// _refineryReadiness, _relayDestination, ...) resolves against the real
+// implementation while `this.state` reads the mirror. READ-ONLY surface —
+// mutating methods (claim, buildModule, tick, init, ...) belong to lane rpcs;
+// callers must pick read names off the view, never expose it whole.
+export function claimsReadView(state) {
+  const view = Object.create(claims);
+  view.state = state;
+  view.bus = null;
+  view.ctx = { state, bus: null };
+  return view;
+}

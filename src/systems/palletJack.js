@@ -11,6 +11,7 @@ import { sectorGlobalOrigin, sectorMembershipAtGlobal } from '../data/sectorCoor
 import { sweepCollisionProxyInto } from '../core/collisionProxySweep.js';
 import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { primitiveBlocksSegment } from '../combat/lineOfSight.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 
 const owners = new WeakMap(), terminal = new Set(['destroyed', 'collected']);
 const clone = value => structuredClone(value);
@@ -153,6 +154,8 @@ export const palletJack = {
     delete cargo.data.despawnAt; cargo.flags = { ...cargo.flags, persistent: true };
     actor.data.palletJackBodyId = `${id}:actor`; actor.data.persistenceOwner = C.owner;
     actor.data.palletJackActorId = C.actorId; actor.data.homeSectorId = sectorId;
+    syncEntitySectorMembership(this.state && this.state.entityIndex, cargo);
+    syncEntitySectorMembership(this.state && this.state.entityIndex, actor);
     actor.data.combatProfileId = 'combat_profile_pallet_jack'; actor.data.weapons = []; actor.weapons = [];
     actor.flags = { ...actor.flags, persistent: true }; actor.physicsBody = palletJackPhysicalBody();
     actor.mass = actor.physicsBody.mass; actor.radius = PALLET_JACK_RADIUS;
@@ -324,6 +327,8 @@ export const palletJack = {
         && sectorMembershipAtGlobal(c.pos) === r.routeEndpointId) {
         r.sectorId = r.routeEndpointId; r.result = 'escaped'; this._phase('escaped');
         a.data.homeSectorId = r.sectorId; c.data.homeSectorId = r.sectorId;
+        syncEntitySectorMembership(this.state && this.state.entityIndex, a);
+        syncEntitySectorMembership(this.state && this.state.entityIndex, c);
         r.receipts.push({ id: `${r.id}:escape`, kind: 'escape', targetCargoId: r.targetCargoId,
           routeEndpointId: r.routeEndpointId, atTick: tick }); this._cue('FOLLOW THE PAPERWORK — the same marked load crossed the real sector boundary.');
       }

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a8fb188deb804e5624927586e2e71043ec4d0fbfadf6160c875199da944bc9f7",
+  "contentHash": "0429678bc05cabb0b6c0a9b37d72317d5ae22bfde69ed639dcc247dbdfcdd751",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84859fc0f8456a565cba5254d32f368cc638decf08251d880f332320569feed6",
+      "geometryHash": "4eeb9051b32af6301a94fc70e4cba4edef8d74bb85e1813a4b92cb973cd0746f",
       "id": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -48,16 +48,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8f6957d67b45201cb8b21504baada34d2c6f25b4f5564f7bbd262d4f67158e3",
+      "geometryHash": "5b47bdaa253a4a5e2446b38149ac1d6edca5c92270700727f6d976b260839879",
       "id": "sf.render.engine-resonator.mesh.det-crystal-fracture.primitive.0",
-      "indexCount": 324,
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "56d49e34dbcbfa8f982eaa0c57c00e61cf714d8d72798f568901c69989e6488f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.engine-resonator.mesh.det-crystal-fracture",
       "primitiveIndex": 0,
-      "vertexCount": 182
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9037a6dda163238b994b0f41effba0c0af6c10f9e3d36a5c0495cb709c1b9ae3",
+      "geometryHash": "20f423a7bbdedf14a45a549c091f9582f59af1a17648dc5844e026e9005b451e",
       "id": "sf.render.engine-resonator.mesh.det-emissive-port.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Cube.007",
       "nodeId": "sf.render.engine-resonator.mesh.det-emissive-port",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3886a96e972f27bb7a8d08417e7ddd6ad63d5accf6673d5bc65c2037127c9170",
+      "geometryHash": "0b9993aec17553efbd0306f48184e0fc6b3deaac6f8e6cb75c2add14c74ff6a7",
       "id": "sf.render.engine-resonator.mesh.det-oxidized-rib.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -107,7 +107,7 @@
       "meshName": "Cube.005",
       "nodeId": "sf.render.engine-resonator.mesh.det-oxidized-rib",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccfbfbdfb041f61f45b619745f5b8ba11056e831596e92fe38e19f81e5057da4",
+      "geometryHash": "550163cb727ab3a993c3668a92206c705de39e286980dc76fefb288eefa04b22",
       "id": "sf.render.engine-resonator.mesh.det-phase-seam.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -132,7 +132,7 @@
       "meshName": "Cube.006",
       "nodeId": "sf.render.engine-resonator.mesh.det-phase-seam",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc54f99c3b04ab054d81f3b32d77bccebe755a0392dfa12af4782cb79fbd3fc7",
+      "geometryHash": "2eb1d169fa062252ed63bb5b46d9f5436872305f52532bdaea3c396b3c9213f5",
       "id": "sf.render.engine-resonator.mesh.det-resonance-port.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "Cube.009",
       "nodeId": "sf.render.engine-resonator.mesh.det-resonance-port",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42c91c5b1e9d4eda6baf7597387bff6573a35a4505c0730230272077a786a0bb",
+      "geometryHash": "25dfd635da9604d720fec72279e1c3258bdba74caaa1ad051c9400a5035ace2a",
       "id": "sf.render.engine-resonator.mesh.det-resonance-ring.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -182,7 +182,7 @@
       "meshName": "Cube.004",
       "nodeId": "sf.render.engine-resonator.mesh.det-resonance-ring",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -198,16 +198,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15b83f668afafa1098bf0902251d83d5dd06d201b2130690f31140040eaac794",
+      "geometryHash": "d53f1bab3cd6d79851c47fab56916f5327f70a65184df163e4626249da092251",
       "id": "sf.render.engine-resonator.mesh.det-veil-stencil.primitive.0",
-      "indexCount": 324,
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "56d49e34dbcbfa8f982eaa0c57c00e61cf714d8d72798f568901c69989e6488f",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.engine-resonator.mesh.det-veil-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 182
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff4bfdfc65ab5feae98bae681695d80e659641df732e575a316c173cb4685688",
+      "geometryHash": "9533a3e991d3dec39db7025fff8350d25bdc938ffd8ae57dd32aed5a47297550",
       "id": "sf.render.engine-resonator.mesh.det-violet-bleed-vein.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -232,7 +232,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.engine-resonator.mesh.det-violet-bleed-vein",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -248,7 +248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fddd1e8b0e5062ed98f5846bb167545da5600aff09df272efe2e22cc7a0696c5",
+      "geometryHash": "46454ad0d1c9fd0f75c21226861365f136d0967a5a257cff469bb8f830ba4221",
       "id": "sf.render.engine-resonator.mesh.det-violet-vein.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -257,7 +257,7 @@
       "meshName": "Cube.008",
       "nodeId": "sf.render.engine-resonator.mesh.det-violet-vein",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6be948d61aa5e461b9268e0f588af4e84aaadf92f38c2cdb66c14a3ae098008a",
+      "geometryHash": "2647b96e40956101abe4330e550bcb84277a4ebe26abdea5004f4a8755785b2b",
       "id": "sf.render.engine-resonator.mesh.engine-resonator-material-mechanical-merged.primitive.0",
       "indexCount": 4824,
       "indexed": true,
@@ -298,16 +298,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9abd66986aa5f44ed8b6b6b86452d35836a587d340ae1c47b7d9619f71d1df2d",
+      "geometryHash": "69afdcffa03df84f5f204445ce639817340af9a74039cae3e618f08375a7042d",
       "id": "sf.render.engine-resonator.mesh.hook-drive-core.primitive.0",
-      "indexCount": 960,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "56d49e34dbcbfa8f982eaa0c57c00e61cf714d8d72798f568901c69989e6488f",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_CORE",
       "nodeId": "sf.render.engine-resonator.mesh.hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 187
+      "vertexCount": 185
     },
     {
       "bounds": {
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b2d850f145c31bcd7f09c547e8d0fd0f4e924a050e792e6287e361805c10d22",
+      "geometryHash": "de1d9a2e2c0c9ed8464714db5b394360b15d6a9054044050d9f8177d44081efa",
       "id": "sf.render.engine-resonator.mesh.hook-drive-fan.primitive.0",
       "indexCount": 1080,
       "indexed": true,
@@ -332,7 +332,7 @@
       "meshName": "HOOK_DRIVE_FAN",
       "nodeId": "sf.render.engine-resonator.mesh.hook-drive-fan",
       "primitiveIndex": 0,
-      "vertexCount": 294
+      "vertexCount": 292
     },
     {
       "bounds": {
@@ -348,16 +348,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0b965ab9de44a70d1c1526eb28fcceb99faa828440cc4e868b227783ff61bb5",
+      "geometryHash": "69f325204a62e43acb628bb4865b82fa06428f46089d6ff2f14a93aa063034a7",
       "id": "sf.render.engine-resonator.mesh.hook-drive-plume.primitive.0",
-      "indexCount": 672,
+      "indexCount": 588,
       "indexed": true,
       "materialHash": "56d49e34dbcbfa8f982eaa0c57c00e61cf714d8d72798f568901c69989e6488f",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_PLUME",
       "nodeId": "sf.render.engine-resonator.mesh.hook-drive-plume",
       "primitiveIndex": 0,
-      "vertexCount": 135
+      "vertexCount": 133
     },
     {
       "bounds": {
@@ -373,7 +373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8de9cd748efa00c843aadd4ffaa0e1582361c2a7f13c83e994df6515b53f980c",
+      "geometryHash": "e3c7f205cedc198e8ec638120f03657d09d6759cc68582afeb10960ffdde2ed5",
       "id": "sf.render.engine-resonator.mesh.lod0-engine-resonator-main.primitive.0",
       "indexCount": 936,
       "indexed": true,
@@ -1276,19 +1276,19 @@
       "sha256": "2c92b752ad1f6ec0f7380bdc8fbe7d7a518770618540956b36c1ad681f20afba"
     },
     "sourceGlb": {
-      "bytes": 93740,
-      "sha256": "d6bcad63c151360f0ac61f44fd38a98b623d2dc493441d07002588817832e8cf",
+      "bytes": 90484,
+      "sha256": "8ee3f260bf92d0b5e59be625ad727326681d5a21091dafd360759941d463d390",
       "uri": "engine_resonator.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 177104,
-    "sha256": "18181c4b65ea2116c4a4f19b3c79f03540930d64cc3ab685190fcc7c0afd73f1",
+    "bytes": 146344,
+    "sha256": "960290d8d1d21cd2fe1683600302f7f964a776843cf741c75f8ce5f856773996",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1856,7 +1856,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_resonator.glb"
   },
-  "runtimeHash": "1f9872f100a8e8ee16cb29f16ce64558603ad2e89184afa1d2c8ec743dd6a1e6",
+  "runtimeHash": "7c4f674e11cf27631942f05d6894d578ea113681e40c7544bfdfb4ee9cd41a76",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

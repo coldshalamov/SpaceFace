@@ -19,6 +19,7 @@ import * as THREE from 'three';
 import { installIllustratedSurface } from './illustratedSurface.js';
 import { normalizeMaterialAbi } from './materialAbi.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
+import { dedupWarn } from '../core/warnDedup.js';
 
 // ---- tiny seeded hash (same scheme visualFactory uses) --------------------------------------
 function hashId(id) {
@@ -230,7 +231,7 @@ export function resolve(role, pal = {}, extra) {
   const b = BUILDERS[role];
   if (!b) {
     // Unknown role → fall back to bodyPrimary so a typo never breaks a build.
-    if (typeof console !== 'undefined') console.warn('[materialLibrary] unknown role:', role, '→ bodyPrimary');
+    if (typeof console !== 'undefined') dedupWarn('material-library.unknown-role', '[materialLibrary] unknown role:', role, '→ bodyPrimary');
     return bodyPrimary(pal);
   }
   return b(pal, extra);

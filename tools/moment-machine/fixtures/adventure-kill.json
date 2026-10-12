@@ -1,0 +1,10 @@
+{
+  "seed": 11,
+  "tickRate": 60,
+  "ticks": 1800,
+  "seconds": 30,
+  "base": 0,
+  "events": [
+    { "tick": 1700, "type": "kill", "label": "Hauler" }
+  ]
+}

@@ -279,7 +279,7 @@ test('render graph exposes every off-scene target to context-loss cleanup', () =
   graph.dispose();
 });
 
-test('graph normal pass excludes inactive instanced pools and restores them after render errors', () => {
+test('graph normal pass replays the captured list, dropping zero-count instanced pools and never touching layers', () => {
   let activeTarget = null;
   let throwOnNormal = false;
   const normalVisibility = [];
@@ -290,10 +290,25 @@ test('graph normal pass excludes inactive instanced pools and restores them afte
     getRenderTarget: () => activeTarget,
     setRenderTarget(target) { activeTarget = target; },
     clear() {},
-    render(scene) {
-      if (activeTarget !== graph.normalTarget) return;
-      normalVisibility.push({ inactive: inactive.layers.test(camera.layers), active: active.layers.test(camera.layers), child: child.layers.test(camera.layers), parentVisible: inactive.visible });
-      if (throwOnNormal) throw new Error('normal target interrupted');
+    render() {
+      if (activeTarget === graph.normalTarget && throwOnNormal) throw new Error('normal target interrupted');
+    },
+    renderAndCaptureList(scene, camera) {
+      this.render(scene, camera);
+      const captured = { opaque: [], transmissive: [], transparent: [] };
+      scene.traverse((object) => { if (object.isInstancedMesh) captured.opaque.push({ object }); });
+      return captured;
+    },
+    renderCapturedList(scene, camera, captured) {
+      // The vendor replay drops count<=0 instanced items before drawing (PERF-138 F1).
+      const drawn = [];
+      for (const item of captured.opaque) {
+        const object = item.object;
+        if (object.isInstancedMesh === true && object.count <= 0) continue;
+        drawn.push(object);
+      }
+      normalVisibility.push({ inactive: drawn.includes(inactive), active: drawn.includes(active), child: drawn.includes(child), parentVisible: inactive.visible });
+      this.render(scene, camera);
     },
   };
   const graph = new SpaceRenderGraph(renderer, { ao: true, bloom: false });
@@ -316,10 +331,11 @@ test('graph normal pass excludes inactive instanced pools and restores them afte
     'only zero-instance pools leave the normal pass');
   assert.equal(inactive.visible, true);
   assert.equal(active.visible, true);
+  assert.equal(inactive.layers.mask, originalMask, 'replay never mutates layer masks');
 
   throwOnNormal = true;
   assert.throws(() => graph.render(scene, camera, { time: 1 }), /normal target interrupted/);
-  assert.equal(inactive.layers.mask, originalMask, 'failed normal renders restore every original layer');
+  assert.equal(inactive.layers.mask, originalMask, 'nothing to restore — replay never masked');
   assert.equal(inactive.visible, true, 'inactive parent remains visible so its live children can render');
   assert.equal(active.visible, true);
   graph.dispose();
@@ -636,6 +652,8 @@ test('AO and zero/off bloom skip their pass families without skipping presentati
     setRenderTarget(target) { activeTarget = target; },
     clear() {},
     render(scene) { renders.push(scene); },
+    renderAndCaptureList(scene, camera) { this.render(scene, camera); return { opaque: [], transmissive: [], transparent: [] }; },
+    renderCapturedList(scene, camera) { this.render(scene, camera); },
   };
   const graph = new SpaceRenderGraph(renderer, {
     ao: false,

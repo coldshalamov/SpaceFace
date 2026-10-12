@@ -202,7 +202,12 @@ export const environmentMaterials = {
       const body = this._resolve(job, true);
       if (!body) { if (this._resolve(job)) waiting.push(job); continue; }
       if (body.alive === false) continue;
-      if (body.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(body)) continue;
+      if (isAnchoredPhysicalBody(body) || body.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(body)) {
+        // Retirement must release the admission latch without restamping protected
+        // scenery from an old queued recipe. A later unanchored body can react again.
+        if (body.data?.materialCondition) body.data.materialCondition.pending = false;
+        continue;
+      }
       stampEnvironmentMaterial(body, job.material);
       const condition = body.data.materialCondition;
       if (condition.reacted) continue;

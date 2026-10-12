@@ -801,6 +801,9 @@ async function createWindow() {
       v8CacheOptions: 'bypassHeatCheck',
     },
   });
+  // S1 stage D: SPACEFACE_SIM_LANE opts the authoritative sim into its worker
+  // lane for a launched shell — the canonical URL forbids query params, so the
+  // lane ships through localStorage 'sf.simLane' via preload.cjs instead.
   const gameUrl = `http://127.0.0.1:${port}/`;
   // FB-106: a remembered maximized shell comes back maximized; fullscreen already applied above.
   if (rememberedWindow && rememberedWindow.mode === 'maximized') win.maximize();

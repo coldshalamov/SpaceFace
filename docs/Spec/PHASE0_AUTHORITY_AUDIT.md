@@ -14,6 +14,7 @@ Allowed current call sites:
 | File | Classification | Rationale |
 |---|---|---|
 | `src/main.js` | boot seed source | Used only to create an ad hoc seed when no explicit seed is supplied. Once `state.meta.seed` exists, simulation streams must derive from that seed. |
+| `src/core/newGameBoot.js` | boot seed source | `resetRunState` draws a fallback seed only when `opts.seed` is not finite; the value becomes the run's explicit seed, same case as `src/main.js` (moved here by the worker-lane extraction). |
 | `src/audio/synth.js` | cosmetic audio | Generates non-authoritative white-noise buffers. |
 | `src/audio/bandBeds.js` | cosmetic audio | Owns only cosmetic Web Audio carrier nodes. `createBandBedRuntime` takes an injected RNG (`options.random`) whose ambient default feeds a procedural noise buffer only; the sim's `state.rng` is never read. |
 | `src/audio/audioSystem.js` | cosmetic audio | Varies playback rate/gain timing for presentation only. |
@@ -72,6 +73,9 @@ Current classified wall-clock owners:
 | `src/core/runtimeWitness.js` | diagnostics | 1 Hz flight recorder (`window.__SF_WITNESS__`); wall stamps label human-facing reports. |
 | `src/core/renderUpdatePhase.js` | diagnostics | Render-phase timing instrumentation. |
 | `src/core/bootScheduler.js` | diagnostics | Boot scheduling measurements; no sim ownership. |
+| `src/core/newGameBoot.js` | boot seed source | `Date.now()` XORs into the fallback seed only when `opts.seed` is not finite; the drawn value becomes the run's explicit seed — moved here from `src/main.js` by the worker-lane extraction. |
+| `src/core/simLaneMain.js` | frame driver | Lane rpc stall watchdog: `sentMs`/`nowMs()` stamps bound how long the lane waits on a worker ack — a transport deadline, never a sim outcome (same class as `eventBus` flush). |
+| `src/core/simLaneCommands.js` | wire-id mint | `nextLaneToken` uses `Date.now()` only to keep rpc/descriptor ids unique across same-millisecond calls; sim never reads the timestamp portion. |
 | `src/systems/input.js` | input adapter (diagnostic stamp) | Input→photon latency stamp; measurement-only, kept off serialized `state.input` — device arbitration uses the `(tick, seq)` pair. |
 | `src/systems/gamepad.js` | input adapter (diagnostic stamp) | `lastActiveMs` device diagnostic plus an idle-skip self-benchmark that measures its own cost. |
 | `src/systems/touch.js` | input adapter (diagnostic stamp) | Prefers `ev.timeStamp`; wall clock is only the diagnostic fallback. |

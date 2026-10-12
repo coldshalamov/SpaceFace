@@ -495,7 +495,7 @@ async function loadAdventureRoute() {
 async function measureAdventureBlock(args) {
   const { route, decisions } = await loadAdventureRoute();
   const seeds = pickSeeds(args, [decisions.REFERENCE_ADVENTURE_SEED]);
-  const results = seeds.map((seed) => route.runReferenceAdventureHour(seed));
+  const results = await Promise.all(seeds.map((seed) => route.runReferenceAdventureHour(seed)));
   return {
     bar: decisions.ADVENTURE_DECISION_BAR_PER_HOUR,
     pass: results.every((r) => r.interestingDecisionsPerHour >= r.bar),
@@ -514,7 +514,7 @@ async function runAdventureMeasure(args, outDir, isoDate) {
     console.log('======================================================================\n');
     console.log(`► Adventure decision route (${seeds.length} seed x 1 sim hour)...`);
   }
-  const results = seeds.map((seed) => route.runReferenceAdventureHour(seed));
+  const results = await Promise.all(seeds.map((seed) => route.runReferenceAdventureHour(seed)));
   const payload = {
     schema: 'spaceface.funMeasure.adventure.v1',
     bench: 'adventure',

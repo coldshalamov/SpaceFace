@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "982a0982229db8dfe6d95162d2e38ec98d51465b8f7ab65d20496691ad3c83c2",
+  "contentHash": "489ac22909df739b4c8b7343fc71e47f77e5e0d05f66f815d1a747f335b27eed",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c4318c1150240f5a8efec8a1470c718df8db24d972ddaa6e321919d4036c159",
+      "geometryHash": "7029daa94d665e32181c9ebb8a3bfcb3021db3ece06b3bc7fc70aecf0c679990",
       "id": "sf.render.hull-miner.mesh.lod0-det-cargo-latch.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -125,7 +125,7 @@
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-cargo-latch",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -141,7 +141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f15433a7c5f8572de4f3d65479b4f63be324cc59c1021f0176bac35e4bcc40a",
+      "geometryHash": "a2a00d1fe93f53e5d3d3639f190558c6ac46e6c30ef6aaebd7416890f2f2b8b4",
       "id": "sf.render.hull-miner.mesh.lod0-det-chute-scar.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -150,7 +150,7 @@
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-chute-scar",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b50e87b85466ec4efdd7b4aa7637b0b48c2e1c5d3546c1dc897e7b31f5741f71",
+      "geometryHash": "2a70f2d16487865c87d4e0fcf751054e1c298c4c96acadaa43326e1995e86b0f",
       "id": "sf.render.hull-miner.mesh.lod0-det-dock-scrape.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -175,7 +175,7 @@
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-dock-scrape",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4afe2c2c6042937af64507631d182c4d8216aff6952a86b65148e880c79dba2",
+      "geometryHash": "f449332f10761e5b66519999b01bbaa877e98781b983cd13bbb6cb6f7bb2dc92",
       "id": "sf.render.hull-miner.mesh.lod0-det-exhaust-soot.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -200,7 +200,7 @@
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-exhaust-soot",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -216,7 +216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05881be2c3e2eb098834e757fb0ff40aa277451bfea73f5de1704c5969364509",
+      "geometryHash": "a359e05fdacdbc4a8943132fcb727e18b2e9d9fc264a946bece261bcf82ed759",
       "id": "sf.render.hull-miner.mesh.lod0-det-hopper-rim.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -225,7 +225,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-hopper-rim",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b43688967cfb7940c31cda8e6b83c847b97d793125b79e5b93a1a13ad20c048",
+      "geometryHash": "4783488adcd7d51d3a974d34483fd03e1cef099e2bdac57b85ee3a4747786d73",
       "id": "sf.render.hull-miner.mesh.lod0-det-manifest-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -250,7 +250,7 @@
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-manifest-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd5fbaab0967c1e3817774f0ce0bd88b806e93a3e1cb1e15845edfa5095aa6ff",
+      "geometryHash": "98786b5f4129149f1d77e7f182fb1fb5e251c7606f0b93bced11decb129c4132",
       "id": "sf.render.hull-miner.mesh.lod0-det-ore-dust-cake.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -275,7 +275,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-ore-dust-cake",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1dce1ebe159e71143a6c7358f894e222a68f9a9d88145e211f0fdf3cdd1201ff",
+      "geometryHash": "28f0649f81a011ee8f5f7312d7337e491a26337e7c6efd812c862721ed813f0f",
       "id": "sf.render.hull-miner.mesh.lod0-det-rust-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -300,7 +300,7 @@
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-miner.mesh.lod0-det-rust-stripe",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 135
     },
     {
       "bounds": {
@@ -316,16 +316,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5b9639d653d0e8a9725528155a4f3e6223644d6676cc937c45ba45eda84308c",
+      "geometryHash": "680240d1b8b32b014f5398e1eb1ce3e617d5e03524108babdb9e88d55eb1590e",
       "id": "sf.render.hull-miner.mesh.lod0-hull-miner-main.primitive.0",
-      "indexCount": 25431,
+      "indexCount": 8418,
       "indexed": true,
       "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_MINER",
       "nodeId": "sf.render.hull-miner.mesh.lod0-hull-miner-main",
       "primitiveIndex": 0,
-      "vertexCount": 12912
+      "vertexCount": 7065
     },
     {
       "bounds": {
@@ -341,16 +341,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58fb027be9dc172b5ac0057d4ea2e622ac0a35c05e5105c377bb13e8b9bba601",
+      "geometryHash": "66818b2f013ebe429f5c061e0a09a7a96f7ccf9a8fae52ae40c22d1fb2b320ac",
       "id": "sf.render.hull-miner.mesh.lod1-hull-miner-silhouette.primitive.0",
-      "indexCount": 10182,
+      "indexCount": 9576,
       "indexed": true,
       "materialHash": "9159ba5c9d1163f1f4ea025c8466ba893e27e248651b2de8e77677fe66313383",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_MINER.001",
       "nodeId": "sf.render.hull-miner.mesh.lod1-hull-miner-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 9403
+      "vertexCount": 7571
     },
     {
       "bounds": {
@@ -366,7 +366,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5259768c6d2ab92703873900ef65c37a17d57a741c9df4e6bc21e75df3d643e",
+      "geometryHash": "111abe827175947e2fedbc5ad46c50f4561c2d535dfc5babb5c8ec86949c25a7",
       "id": "sf.render.hull-miner.mesh.lod2-hull-miner-silhouette.primitive.0",
       "indexCount": 768,
       "indexed": true,
@@ -375,7 +375,7 @@
       "meshName": "LOD0_HULL_MINER.002",
       "nodeId": "sf.render.hull-miner.mesh.lod2-hull-miner-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 760
+      "vertexCount": 470
     }
   ],
   "hlods": [],
@@ -1073,19 +1073,19 @@
       "sha256": "499b2f722e23bb8ceea1661e8a8c25604600a6fb5a9cd018158ea1b9e58a5967"
     },
     "sourceGlb": {
-      "bytes": 733588,
-      "sha256": "b8903083c75a0aa498e930e02b61ff4bc9496ea3fe699ef55765a42753e58246",
+      "bytes": 633240,
+      "sha256": "f66e02c7fa565089d1e141591f85b223dc288e9da8518b129569c39fc66023b8",
       "uri": "hull_miner.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1199572,
-    "sha256": "6cafdc7625631e8d23b849d42eee1b444201229060757dc964eb3a6ecd8f865e",
+    "bytes": 820144,
+    "sha256": "1eb0da00e0c08fd38e3d210b6494b0de2f951e0e2fe8e42cb15a867269ee1fb1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_miner.glb"
   },
-  "runtimeHash": "af327b62ac706fdb50fa74bb7e09804e3ef36dafad3d6fb4feaffca09aac5133",
+  "runtimeHash": "14a7f8329f4fe295cc76f76b45c6f6d4d3cb7ebca99f7bfda8e7ff7b8e4b5816",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -424,18 +424,12 @@ export function resolveClipFrames(clip, options = {}) {
     if (!(w > 0 && h > 0)) return null;
     return { frames: recorded, width: w, height: h, source: 'recorded' };
   }
-  const hasWindow = !!(clip && (Number.isFinite(clip.startTick) || clip.label || clip.trickId));
-  if (hasWindow && options.allowRaster !== false) {
-    return rasterizeClipCard(clip, {
-      width: width || 240,
-      height: height || 72,
-    });
-  }
   return null;
 }
 
 export function encodeClipBytes(frames, meta, format) {
-  const spec = { width: meta.width, height: meta.height, delayCs: 10, fps: 10 };
+  const fps = meta.fps > 0 ? meta.fps : 10;
+  const spec = { width: meta.width, height: meta.height, delayCs: Math.max(1, Math.round(100 / fps)), fps };
   if (format === 'mp4') return encodeClipMp4(frames, spec);
   return encodeClipGif(frames, spec);
 }
@@ -451,6 +445,11 @@ function bytesToBase64(bytes) {
 }
 
 /** Fire-and-forget delivery: Electron saveFile, injected download, or <a download>. */
+const downloadURLs = new Set();
+export function releaseClipDownloadURLs() {
+  for (const url of downloadURLs) URL.revokeObjectURL(url);
+  downloadURLs.clear();
+}
 export function deliverClipFile({ bytes, filename, mime, host } = {}) {
   const job = { bytes, filename, mime, bytesLength: bytes ? bytes.length : 0 };
   if (host && typeof host.saveFile === 'function') {
@@ -481,7 +480,8 @@ export function deliverClipFile({ bytes, filename, mime, host } = {}) {
         else if (a.parentNode) a.parentNode.removeChild(a);
       }
       if (url && typeof URL.revokeObjectURL === 'function') {
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        downloadURLs.add(url);
+        setTimeout(() => { URL.revokeObjectURL(url); downloadURLs.delete(url); }, 30000);
       }
       job.via = 'browser-download';
       return job;

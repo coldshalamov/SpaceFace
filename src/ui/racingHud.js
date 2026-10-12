@@ -1,5 +1,5 @@
 // Continuous flight instrument. Mission receipts still belong to the shared toast floor.
-import { raceGateGlobals } from '../data/raceLevels.js';
+import { raceGateGlobals, startLineFor } from '../data/raceLevels.js';
 import { activeAuthoredRace, activeRaceMission, activeSteerLock, readRaceTape, resolveSteeringView } from '../systems/racingSteer.js';
 import { injectDeckplate } from './deckplate/index.js';
 import { BINDINGS, promptLabel } from './bindings.js';
@@ -22,6 +22,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
   const hints = make('div','race-tape-hint');
   const pack = make('div','race-tape-pack');
   const courseCue = make('div','race-tape-hint');
+  const goal = make('div','race-tape-goal');
   const mapHost = make('div','race-tape-map');
   const row = make('div','race-tape-actions');
   const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
@@ -39,8 +40,8 @@ export function mountRacingHud({ root, bus, state, screens }) {
       applyWorldObjectSelection(state, selection, 'race-instrument');
   });
   select.hidden = true;
-  readings.append(line,sub,pack,hints,courseCue); panel.append(mapHost,readings,row,live); root.appendChild(panel);
-  let map = null, missionId = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
+  readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,row,live); root.appendChild(panel);
+  let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
   const offs = [];
   const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
   listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
@@ -68,6 +69,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
   listen('race:ended',p=>{rememberRacingResult(p);releaseRacingCupHeat(p);showResult();});
   listen('race:launchFailed',()=>releaseRacingCupHeat());
   listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; });
+  listen('mission:updated',()=>{lastTick=-Infinity;});
 
   return {
     frame(liveState) {
@@ -90,7 +92,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       mapHost.hidden=readings.hidden=!authored;
       if(!authored){if(missionId!==null){missionId=null;map=null;mapHost.replaceChildren();}return;}
       if(missionId!==race.id){
-        missionId=race.id;lastTick=-Infinity;pulse='';lastHolding=false;
+        missionId=race.id;lastTick=-Infinity;pulse='';lastHolding=false;lastPhase=null;
         map=createRacingMap(raceGateGlobals(race.params),'Circuit, next gate and ship');
         mapHost.replaceChildren(...(map?[map.element]:[]));
       }
@@ -110,8 +112,33 @@ export function mountRacingHud({ root, bus, state, screens }) {
         select.title='Select this body, then use your normal Massline control.';
       }
       const tape=readRaceTape(race.params,player,raceGateGlobals(race.params),now);
-      map?.update(player,race.params.nextGate);
+      const phase=race.params.sectionMission?race.params.phase:'chase';
+      panel.dataset.phase=phase;
+      reset.disabled=phase==='approach'||phase==='handoff';
+      reset.title=reset.disabled?'Recovery is available during the timed course only.':'Return behind the last gate; clock continues and wake progress resets.';
+      goal.hidden=!(race.params.draftRequiredS>0)||phase==='handoff';
+      goal.textContent=goal.hidden?'':`WAKE ${Math.min(race.params.draftRequiredS,Number(race.params.draftTimeS)||0).toFixed(1)} / ${race.params.draftRequiredS.toFixed(1)}s`;
+      const grid=phase==='approach'?startLineFor(race.params):null;
+      map?.update(player,race.params.nextGate,grid);
       const name=tape.courseName||race.title||'Circuit';
+      if(phase!==lastPhase){
+        live.textContent=phase==='approach'?'Approach the grid. Stop and face the first gate.':phase==='handoff'?'Course complete. Preferred view restored. Dock at the marked station for payment.':'';
+        lastPhase=phase;
+      }
+      if(phase==='approach'){
+        line.textContent=`${name} · APPROACH`;
+        const distance=grid&&player?.pos?Math.hypot(grid.x-player.pos.x,grid.z-player.pos.z):0;
+        sub.textContent=`GRID ${Math.round(distance)} wu · ${Math.round(tape.speed)} wu/s`;
+        hints.textContent='Stop within 70 wu of the marker, below 8 wu/s. Face gate 1; release the Massline.';
+        return;
+      }
+      if(phase==='handoff'){
+        mapHost.hidden=true;
+        line.textContent=`${race.title||name} · HANDOFF`;
+        sub.textContent=`${formatRaceTime(race.params.raceElapsedS)} · ${race.params.raceClean?'CLEAN':'UNRANKED'} · PAYMENT PENDING`;
+        hints.textContent=`Preferred view restored. Dock at ${st.nav?.waypoint?.missionId===race.id?st.nav.waypoint.label:'the marked station'} for payment. Leaving the run forfeits payment.`;
+        return;
+      }
       line.textContent=race.params.adventureSpeedId?`${name} · SPEED CONTRACT`:`${name} · LAP ${tape.lap}/${tape.laps}`;
       if(tape.holding){
         const count=Math.ceil(tape.gridLeft);

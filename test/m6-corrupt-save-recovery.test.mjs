@@ -155,7 +155,17 @@ function installHarness(storage) {
   };
 }
 
-test('autosave request returns before serialization, coalesces duplicates, then completes with recovery', () => {
+// Scheduled callbacks now suspend inside awaited paced hops (worker roundtrips,
+// frame-yield setTimeout fallbacks) and push their next step from a continuation —
+// an awaited drive must pump the macrotask queue when the queue runs dry.
+async function drainScheduled(scheduled) {
+  for (let idle = 0; idle < 3;) {
+    if (scheduled.length) { await scheduled.shift()(); idle = 0; }
+    else { idle++; await new Promise((resolve) => setTimeout(resolve, 0)); }
+  }
+}
+
+test('autosave request returns before serialization, coalesces duplicates, then completes with recovery', async () => {
   const storage = makeStorage();
   const h = installHarness(storage);
   const scheduled = [];
@@ -184,12 +194,12 @@ test('autosave request returns before serialization, coalesces duplicates, then 
     assert.equal(save.requestAutosave('duplicate', { force: true }), false, 'forced duplicate must coalesce');
     assert.equal(scheduled.length, 1, 'duplicate request must not queue another job');
 
-    scheduled.shift()();
+    await scheduled.shift()();
     assert.equal(serializeCalls, 1);
     assert.equal(scheduled.length, 1, 'snapshot and transactional write must run in separate tasks');
     nextEnvelope.data.player.credits = 999999;
     storage.clearOperations();
-    scheduled.shift()();
+    await drainScheduled(scheduled);
     assert.equal(storage.getItem('sf.recovery.auto'), oldRaw, 'autosave overwrite must preserve prior generation');
     assert.equal(JSON.parse(storage.getItem('sf.save.auto')).data.player.credits, 1200,
       'task B must write the frozen task-A snapshot, not later state/object mutation');
@@ -207,7 +217,7 @@ test('autosave request returns before serialization, coalesces duplicates, then 
   } finally { h.restore(); }
 });
 
-test('failed deferred autosave reports once and remains immediately retryable', () => {
+test('failed deferred autosave reports once and remains immediately retryable', async () => {
   const storage = makeStorage();
   const h = installHarness(storage);
   const scheduled = [];
@@ -222,7 +232,7 @@ test('failed deferred autosave reports once and remains immediately retryable', 
     save.serialize = () => { throw new Error('synthetic serialize failure'); };
 
     assert.equal(save.requestAutosave('failure'), true);
-    scheduled.shift()();
+    await scheduled.shift()();
     assert.equal(h.events.filter((event) => event.name === 'save:error').length, 1);
     assert.equal(h.events.filter((event) => event.name === 'save:completed').length, 0);
     assert.equal(save._autosavePending, null);
@@ -230,8 +240,8 @@ test('failed deferred autosave reports once and remains immediately retryable', 
 
     save.serialize = () => makeEnvelope({ slot: 'auto', savedAt: '2026-07-12T00:20:00.000Z' });
     assert.equal(save.requestAutosave('retry'), true, 'failed autosave must not consume debounce state');
-    scheduled.shift()();
-    scheduled.shift()();
+    await scheduled.shift()();
+    await drainScheduled(scheduled);
     assert.equal(h.events.filter((event) => event.name === 'save:completed').length, 1);
   } finally { h.restore(); }
 });

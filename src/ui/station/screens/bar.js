@@ -35,6 +35,7 @@ import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { BINDINGS } from '../../bindings.js';
 import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
+import { acceptMissionOnLane } from '../../adventureDecisions.js';
 import {
   frontierRumorOffer,
   frontierRumorOwned,
@@ -673,7 +674,7 @@ export function createBarScreen(ctx) {
     selectContact(words[next].getAttribute('data-contact'), true);
   });
 
-  stageEl.addEventListener('click', (ev) => {
+  stageEl.addEventListener('click', async (ev) => {
     if (ev.target.closest('[data-open-vonn-freight-loss-map]')) {
       if (openVonnFreightLossMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
       return;
@@ -719,14 +720,20 @@ export function createBarScreen(ctx) {
     if (accept && !accept.disabled) {
       const missionId = accept.getAttribute('data-accept-mission');
       const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
-      if (ctx.bus) {
-        ctx.bus.emit('ui:acceptMission', { missionId });
-        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-      }
-      if (wasAvailable && !missionOfferAvailable(ctx.state || {}, missionId)) {
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      // The worker-lane rpc returns the authoritative verdict; the emitted path
+      // (main lane) has no ack, so acceptance is verified by re-reading the offer.
+      const res = await acceptMissionOnLane(ctx.bus, missionId);
+      const laneAccepted = res && res.ok === true && res.emitted !== true;
+      const markAccepted = () => {
         acceptedMissionId = missionId;
         pendingMissionOffer = null;
         saidText = `Accepted + tracked. Mission Log (${BINDINGS.missionLog.label}) now carries route, timer, and progress. Undock when Departure Check is green.`;
+      };
+      if (wasAvailable && !missionOfferAvailable(ctx.state || {}, missionId)) {
+        markAccepted();
+      } else if (laneAccepted) {
+        markAccepted();
       } else {
         saidText = wasAvailable
           ? 'Mission still pending. Resolve the readiness blocker before accepting.'

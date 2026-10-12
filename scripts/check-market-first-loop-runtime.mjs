@@ -32,8 +32,10 @@ try {
   issues = collectPageIssues(page, { includeWarnings: true, playerStoreMounted: false });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  assert.equal(new URL(page.url()).search, '', 'market first-loop probe must use the canonical root URL with no query flags');
+  // Writes state.economy.marketIntel directly — a facade fabrication the worker lane's
+  // mirror would clobber, so this probe pins the main lane.
+  await page.goto(server.baseUrl + '?simLane=main', { waitUntil: 'domcontentloaded' });
+  assert.equal(new URL(page.url()).search, '?simLane=main', 'market first-loop probe must use the canonical root URL with only the lane pin');
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
   // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms

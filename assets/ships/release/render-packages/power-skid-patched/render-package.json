@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c3d01bad60e46ffa41553ef88e6b1bdac68a270ab7e4527ce49eca85c9ab90d0",
+  "contentHash": "04dc673af1d0ffbab7cbb52c9c72a85d03ca1e659e997531c4a67f327ca0fb17",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -109,18 +109,18 @@
     {
       "bounds": {
         "max": [
-          4.609450817108154,
-          0.6083539724349976,
+          4.6094512939453125,
+          0.6083540320396423,
           1.5947879552841187
         ],
         "min": [
           2.543034553527832,
-          0.18997177481651306,
+          0.18997175991535187,
           0.713557779788971
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f28100ea6e2de5d46ad7c6075d0926d95fcc8864f4025131dda0f3c611c683c",
+      "geometryHash": "84f043d997bc60b4117a97f4b6249cc0d767ec23f0b841108840f4beef8ceb9f",
       "id": "sf.render.power-skid-patched.mesh.cable.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7482ab1f2be293816641c2805419570ca08ac6fd10e3f7cd79ef555cc86d4c8",
+      "geometryHash": "983ddadbb99f36200109b1342e04e8da60e90b478359f5e79e987d3831ee3869",
       "id": "sf.render.power-skid-patched.mesh.core-domea.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -154,7 +154,7 @@
       "meshName": "Sphere.002",
       "nodeId": "sf.render.power-skid-patched.mesh.core-domea",
       "primitiveIndex": 0,
-      "vertexCount": 420
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30231828283897b0775260493ccd3014a21a2909d6748e3c5e373f8851abd70a",
+      "geometryHash": "0e41dff0d61b3f04e1111cff68e726d8be5bef00b30c9a11268f622cfdbd5e45",
       "id": "sf.render.power-skid-patched.mesh.core-domef.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -179,7 +179,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.power-skid-patched.mesh.core-domef",
       "primitiveIndex": 0,
-      "vertexCount": 420
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -270,7 +270,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25455e39f46e6cb597d005baa569a678381486aefb01cc06db0366b7a4561def",
+      "geometryHash": "0f61915944461e48e75fd58a77ad7b091fafbee88fe07c7f5a1af97a69169f8e",
       "id": "sf.render.power-skid-patched.mesh.core-shell.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -279,7 +279,7 @@
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.power-skid-patched.mesh.core-shell",
       "primitiveIndex": 0,
-      "vertexCount": 108
+      "vertexCount": 72
     },
     {
       "bounds": {
@@ -1433,19 +1433,19 @@
       "sha256": "fad96cb195b9973b5d08d0320d6d644daa9a39696593c2d8f48c350560ddb7b7"
     },
     "sourceGlb": {
-      "bytes": 25224,
-      "sha256": "3e12c92a0c82a937e7c86769e3a62ae6e4bd90d574348a137ffcd13a6d6f614e",
+      "bytes": 25568,
+      "sha256": "80fcb7e90916ba6e4c8e4edab999c74b0f147f7f9728dc8758e13b3703591e26",
       "uri": "place_power_skid_patched.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 47256,
-    "sha256": "87c3f77cb4da461b6eb13b75e9c379074d0deee562529f756e9de0d02d137826",
+    "bytes": 38908,
+    "sha256": "3ab9fc8cde83b88a0374ea9946f445eaa481e692b364b522425f622abfeb5acf",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2071,7 +2071,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_power_skid_patched.glb"
   },
-  "runtimeHash": "3bb08255ef69f4dad792b1d576c9342966aea69e3c97bd4a76afede080e4871f",
+  "runtimeHash": "2419a097fea7b53ec502b2fb4f829c47588d91ea3a35932dde34535511217a5f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

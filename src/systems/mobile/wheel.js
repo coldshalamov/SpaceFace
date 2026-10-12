@@ -1,7 +1,7 @@
-// The powers wheel, drawn as an ORRERY Radial Menu (design/frontend/ORRERY.md §4 #18): six powers on an
-// arc rail, a lit sector under the choice, and the Hand, the one amber arm, that swings on a spring to
-// whatever the thumb is over. It opens from the edge handle as a half ring turned inward; releasing on a
-// power requests it and releasing in the middle cancels.
+// The powers wheel, drawn as an ORRERY Radial Menu (design/frontend/ORRERY.md §4 #18): each bank's powers
+// on an arc or orbit, a lit sector under the choice, and the Hand, the one amber arm, that swings on a
+// spring to whatever the thumb is over. Portrait uses a full orbit; landscape opens inward from the
+// edge. Releasing on a power requests it and releasing in the middle cancels.
 //
 // Presentation only. The gesture (which sector a thumb is in, when to cancel) is model.wheelSlot, and what a
 // request does is the bridge and the existing gameplay owners; this module draws a choice and reports taps.
@@ -11,8 +11,6 @@ import { clamp } from './model.js';
 
 const U = 100;                       // the rail's radius in drawing units; CSS scales the drawing to the real radius
 const HALF = 135;
-const SECTORS = 6;
-const SECTOR = 180 / SECTORS;
 const NODE_R = 0.76;                 // where the powers sit, as a fraction of the radius
 const WEDGE_IN = 0.56, WEDGE_OUT = 0.95;
 
@@ -24,7 +22,7 @@ const el = (doc, tag, cls, text) => {
 };
 
 /** Centre of sector `i` in dial degrees (0 = up, clockwise). The right-hand wheel opens leftward (counter-clockwise). */
-export const sectorDeg = (i, side) => (side === 'left' ? 1 : -1) * (i + 0.5) * SECTOR;
+export const sectorDeg = (i, side, count = 6, span = 180) => (side === 'left' ? 1 : -1) * (i + 0.5) * span / count;
 
 function wedgeD(a0, a1, r0, r1) {
   const [x0, y0] = polar(0, 0, r0, a0);
@@ -86,7 +84,7 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
     return b;
   });
 
-  let geom = { cx: 0, cy: 0, radius: 150, side: 'right' };
+  let geom = { cx: 0, cy: 0, radius: 150, side: 'right', span: 180 };
   let page = 0, selected = -1, pinned = false;
 
   const spring = createSpring({
@@ -95,28 +93,35 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
   });
 
   function layout() {
-    const { cx, cy, radius, side } = geom;
+    const { cx, cy, radius, side, span } = geom;
+    const count = pages[page].powers.length;
     const size = (HALF * 2 / U) * radius;
     art.style.width = art.style.height = `${size}px`;
     art.style.left = `${cx - size / 2}px`;
     art.style.top = `${cy - size / 2}px`;
     root.style.setProperty('--mf-wheel-r', `${radius}px`);
-    rule.setAttribute('d', Array.from({ length: SECTORS + 1 }, (_, k) => {
-      const a = (side === 'left' ? 1 : -1) * k * SECTOR;
+    // Keep neighbouring hit targets separate, with a 44px floor for a thumb.
+    const gap = 2 * radius * NODE_R * Math.sin(span * Math.PI / (360 * count));
+    root.style.setProperty('--mf-node-size', `${clamp(Math.min(radius * .4, gap - 4), 44, 64)}px`);
+    root.dataset.orbit = span === 360 ? '1' : '0';
+    rule.setAttribute('d', Array.from({ length: count + 1 }, (_, k) => {
+      const a = (side === 'left' ? 1 : -1) * k * span / count;
       const [x0, y0] = polar(0, 0, U * WEDGE_IN, a);
       const [x1, y1] = polar(0, 0, U * WEDGE_OUT, a);
       return `M ${x0.toFixed(2)} ${y0.toFixed(2)} L ${x1.toFixed(2)} ${y1.toFixed(2)}`;
     }).join(' '));
-    // the visible half of the rail, as a lit track over the full-circle band
-    track.setAttribute('stroke-dasharray', `${(Math.PI * U * NODE_R).toFixed(2)} ${(Math.PI * U * NODE_R * 3).toFixed(2)}`);
+    // the active arc or orbit, as a lit track over the full-circle band
+    const arc = span / 180 * Math.PI * U * NODE_R;
+    track.setAttribute('stroke-dasharray', `${arc.toFixed(2)} ${(Math.PI * U * NODE_R * 2 - arc).toFixed(2)}`);
     track.setAttribute('transform', `rotate(${side === 'left' ? -90 : 90})`);
   }
 
   function fillNodes() {
     nodes.replaceChildren();
-    const { cx, cy, radius, side } = geom;
+    const { cx, cy, radius, side, span } = geom;
+    const count = pages[page].powers.length;
     pages[page].powers.forEach((power, i) => {
-      const a = sectorDeg(i, side);
+      const a = sectorDeg(i, side, count, span);
       const [ux, uy] = polar(0, 0, radius * NODE_R, a);
       const b = el(doc, 'button', 'mf-node');
       b.type = 'button';
@@ -135,10 +140,11 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
 
   function paintSelection() {
     [...nodes.children].forEach((b, i) => { b.dataset.selected = i === selected ? '1' : '0'; });
-    const { side } = geom;
+    const { side, span } = geom;
+    const count = pages[page].powers.length, sector = span / count;
     if (selected >= 0) {
-      const a = sectorDeg(selected, side);
-      wedge.setAttribute('d', wedgeD(a - SECTOR / 2, a + SECTOR / 2, U * WEDGE_IN, U * WEDGE_OUT));
+      const a = sectorDeg(selected, side, count, span);
+      wedge.setAttribute('d', wedgeD(a - sector / 2, a + sector / 2, U * WEDGE_IN, U * WEDGE_OUT));
       wedge.removeAttribute('data-off');
       hand.removeAttribute('data-idle');
       spring.set(a);
@@ -175,7 +181,7 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
       paintSelection();
     },
     setPinned(on) { pinned = on; root.dataset.pinned = on ? '1' : '0'; paintSelection(); },
-    setPage(i) { page = clamp(i, 0, pages.length - 1); selected = -1; fillNodes(); paintSelection(); },
+    setPage(i) { page = clamp(i, 0, pages.length - 1); selected = -1; layout(); fillNodes(); paintSelection(); },
     /** Swing the Hand to sector `i`; -1 leaves it idle at the middle. */
     select(i) { if (i === selected) return; selected = i; paintSelection(); },
     close() { selected = -1; root.hidden = true; spring.stop(); },

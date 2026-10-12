@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c82e1d4985d950880784671c08bb1a81667e39d5a6d9818cca815f036a8c1813",
+  "contentHash": "b6a6361676011042f17018aaa4ebeede8d7f4a3ce94cec7c1ee56a7fdd4ccad8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -441,7 +441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a524ba0654ef9384df1f4f19b6cbc3029188467f864f400116b43209abfa64f0",
+      "geometryHash": "9f0e876301927c95ae33b201ac4ff2e81334a11e98afa7caa05ac345cc750abd",
       "id": "sf.render.crusher-module.mesh.motor.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -450,7 +450,7 @@
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.crusher-module.mesh.motor",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 56
     },
     {
       "bounds": {
@@ -566,7 +566,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "656b9b02ad7a153d106068a59c8081294c06386b1221e23b70692e1d2decf412",
+      "geometryHash": "88fd9c8f93ce1fe0ffc7adfe63108c3107ffea13a8a678503afcd4ad2c597ec9",
       "id": "sf.render.crusher-module.mesh.strobe.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -575,7 +575,7 @@
       "meshName": "Sphere.003",
       "nodeId": "sf.render.crusher-module.mesh.strobe",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     }
   ],
   "hlods": [],
@@ -1632,19 +1632,19 @@
       "sha256": "faa8c9b3f2d91522389c7357a189a6d348d6d27f52f2038915bb41288a73ce0d"
     },
     "sourceGlb": {
-      "bytes": 29192,
-      "sha256": "483b613d1bac17c53daa4a96f04b6c431bc24bbe14cf54b21ada5f47141d61df",
+      "bytes": 28708,
+      "sha256": "d8c92aaf8dab4e889c5c47fbf3120dcbae61ce33be7a9e39c5bf9e7d5df93bf9",
       "uri": "place_crusher_module.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 49540,
-    "sha256": "6d6b3baed16e852e2dec4beda7bf552a137ab47b0c71d83089ba3d600f3ada64",
+    "bytes": 48944,
+    "sha256": "cf6b832a5427e397af112479d2d8968c75f03c2cf287be9aad950dda348ba611",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2372,7 +2372,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_crusher_module.glb"
   },
-  "runtimeHash": "079dba965d977872feeb7e63cd65e493a0b216551d651e99d9c74897b06e3f38",
+  "runtimeHash": "299d2ba724a6f18be2384c9733f8910462b21541edc97a5c710a7b494c0b52e8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

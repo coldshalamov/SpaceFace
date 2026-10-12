@@ -14,6 +14,7 @@ import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el } from '../kit/index.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { disabledServiceWhy, disabledVitalActHtml, factionPresenceServiceRows, runFactionPresenceDockAction } from './serviceQuotes.js';
 import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
@@ -641,6 +642,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     if (ctx && ctx.screenMemory) ctx.screenMemory.set('station', { destination: id });
     closePop();
+    if (prev && isPhoneLayout()) {
+      // Phone tabs share the berth's page scroll. A shorter destination must not inherit the
+      // market's bottom-of-page offset and appear blank after its tab was touched.
+      requestAnimationFrame(() => {
+        if (activeId === id && shown && rootEl.isConnected) bodyEl.scrollIntoView({ block: 'start' });
+      });
+    }
   }
 
   // The register per destination (Task C §1.2): the market and the ledger are dense (the deeper
