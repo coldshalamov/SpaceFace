@@ -38,7 +38,8 @@ test('the ricochet starter and a full swarm draft stay inside the fight', () => 
     const def = defById(offer.defId);
     assert.ok(def, offer.defId);
     assert.equal(isSwarmRelevantDef(def), true, offer.defId);
-    assert.ok(typeof def.swarmReason === 'string' && def.swarmReason.length >= 12, offer.defId);
+    assert.equal(def.swarmReason, undefined, `${offer.defId} stays unstamped`);
+    assert.ok(swarmFightReason(def).length >= 12, offer.defId);
     assert.ok(typeof offer.blurb === 'string' && offer.blurb.length >= 12, offer.defId);
     assert.equal(HARNESS_IRRELEVANT.test(offer.name || ''), false, offer.name);
     assert.equal(HARNESS_IRRELEVANT.test(def.name || ''), false, def.name);

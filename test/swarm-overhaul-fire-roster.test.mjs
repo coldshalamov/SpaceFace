@@ -64,6 +64,23 @@ test('an idle swarm round holds every gun until the pilot acts', () => {
   assert.deepEqual([10, 11, 12, 13, 14, 15].map((id) => held(sys, id)), [false, false, true, true, true, true]);
 });
 
+test('combat-stick axes written under autoFire do not count as a pilot act', () => {
+  const sys = world(3);
+  sys.state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
+  // followAutoTargetPath writes these three while autoFire is on. They are the assist.
+  sys.state.input = {
+    fire: false, moveX: 0.6, moveZ: -1, turnIntent: 0.4, boost: false, brake: false, autoFire: true,
+  };
+  sys._shapeSwarmFire();
+  sys.state.simTime += 3;
+  sys._cursor = 30;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12].map((id) => held(sys, id)), [true, true, true]);
+  sys.state.input.autoFire = false;
+  sys._shapeSwarmFire();
+  assert.equal(held(sys, 10), false, 'a real stick with autoFire off still latches');
+});
+
 test('later waves clear more guns at once', () => {
   const sys = world(8, { wave: 4 });
   sys._shapeSwarmFire();

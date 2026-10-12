@@ -113,17 +113,19 @@ export function noteSwarmPilotAction(state) {
 }
 
 /**
- * Manual flight or a trigger pull. autoFire is the ship's own gun and does not
- * count: an idle pilot with the trigger left on auto has not acted.
- * Threshold matches flight.js hasManualFlightInput.
+ * A trigger pull, boost, brake, or a real stick. autoFire is combat-stick mode:
+ * followAutoTargetPath writes moveX/moveZ/turnIntent every tick, so those axes
+ * do not count while autoFire is on. An idle pilot who left the stick on auto
+ * has not acted. Fire, boost, and brake still count. Threshold matches
+ * flight.js hasManualFlightInput.
  */
 export function swarmPilotIsActing(state) {
   const input = state && state.input;
   if (!input) return false;
   if (input.fire === true) return true;
+  if (input.boost || input.brake) return true;
+  if (input.autoFire) return false;
   return Math.abs(input.moveX || 0) > 0.08
     || Math.abs(input.moveZ || 0) > 0.08
-    || Math.abs(input.turnIntent || 0) > 0.08
-    || !!input.boost
-    || !!input.brake;
+    || Math.abs(input.turnIntent || 0) > 0.08;
 }

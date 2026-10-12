@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { syncSwarmThreatPlate } from '../src/render/visualFactory.js';
 
-test('Swarm threat marks respect foreground depth, allegiance changes and nested orientation', () => {
+test('Swarm threat marks are an intentional x-ray: depthTest false draws through cover', () => {
   const world = new THREE.Group(), hull = new THREE.Group(); world.rotation.y = .4; hull.rotation.x = .2; world.add(hull);
   const camera = new THREE.PerspectiveCamera(); camera.rotation.x = -.7;
   const enemy = { type: 'ship', team: 1, radius: 12 };
   syncSwarmThreatPlate(hull, enemy, camera);
   const plate = hull.getObjectByName('sf-swarm-threat-plate'), core = hull.getObjectByName('sf-swarm-threat-core');
-  assert.equal(plate.material.depthTest, false, 'a depth-tested disc at the hull origin is hidden by the hull');
+  assert.equal(plate.material.depthTest, false, 'marks-through-cover is intentional x-ray; the hull must not hide the plate');
   const chevron = hull.getObjectByName('sf-swarm-threat-chevron');
   assert.ok(chevron, 'a hostile hull wears a heading wedge');
   assert.equal(plate.material.depthWrite, false, 'the mark cannot occlude authored hull geometry');

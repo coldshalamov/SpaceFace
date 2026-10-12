@@ -162,8 +162,8 @@ export function isSwarmRelevantDef(def) {
 /**
  * One line for why this fitting is on a Swarm shelf. Prefers an authored
  * swarmReason, then the air sentence, then the first sentence of the description.
- * Adventure-only ids are not stamped: their sentences explain a loop this mode
- * does not run.
+ * Read at offer time. Shared WEAPONS and MODULES rows are not mutated: an
+ * adventure import of this module must not grow a swarmReason onto stock.
  */
 export function swarmFightReason(def) {
   if (!def || typeof def !== 'object') return '';
@@ -180,16 +180,6 @@ export function swarmFightReason(def) {
   const size = typeof def.size === 'string' ? ` ${def.size}` : '';
   return `${catalogVerbFor(def)}${size} for the bay that takes it.`;
 }
-
-function stampSwarmFightReasons() {
-  for (const def of WEAPONS.concat(MODULES)) {
-    if (!isArmoryStock(def) || !isSwarmRelevantDef(def)) continue;
-    const reason = swarmFightReason(def);
-    if (reason.length < 12) continue;
-    try { def.swarmReason = reason; } catch { /* frozen rows stay readable through swarmFightReason */ }
-  }
-}
-stampSwarmFightReasons();
 
 let allStock = null;
 function everyStockDef() {

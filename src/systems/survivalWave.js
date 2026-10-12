@@ -604,7 +604,8 @@ export const survivalWave = {
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     // Idle seed 4242: the lesson wasp was cleared after 2.5s and walked the hull
     // from 140 to 31 before the probe touched the stick. Hold every gun, including
-    // bosses, until this wave sees a real pilot act. autoFire does not qualify.
+    // bosses, until this wave sees a real pilot act. autoFire's combat-stick
+    // writes (moveX/moveZ/turnIntent) do not qualify; fire, boost, and brake do.
     if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
     const quiet = !swarmPilotHasActed(state);
     const rank = [];
