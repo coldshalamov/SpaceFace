@@ -249,7 +249,7 @@ export function directContactCausalActorId(aId, bId, aVx, aVz, bVx, bVz, nx, nz)
   return aContribution > bContribution ? aId : bId;
 }
 
-// Radial pre-solve closing speed along A-to-B center separation. Static bodies pass 0 velocity.
+// Pre-solve closing speed along an A-to-B separation or contact-normal axis. Static bodies pass 0 velocity.
 // Separating and tangential pairs are 0; this is not total relative speed and never abs().
 export function preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz) {
   const normalLength = Math.hypot(finite(nABx), finite(nABz));
@@ -2875,7 +2875,6 @@ export class Sg02DynamicBodyOwner {
         nABx,
         nABz,
       );
-      const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz);
       let byB = merged.get(a.entity.id);
       if (!byB) {
         byB = this._impactByBPool.length ? this._impactByBPool.pop() : new Map();
@@ -2895,6 +2894,11 @@ export class Sg02DynamicBodyOwner {
       const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
         ? { x: -rawNormal.x, z: -rawNormal.z }
         : rawNormal;
+      // A compound hull's center can lie far along the wall from the actual surface the
+      // player is driving into. Classify its stopping response by that surface normal;
+      // the centroid axis otherwise mistakes native wall braking for an external shove
+      // and restores thrust velocity while the solver correctly keeps the hull outside.
+      const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const receipt = {
         schemaVersion: 1,
