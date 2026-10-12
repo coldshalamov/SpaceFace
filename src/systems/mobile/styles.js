@@ -367,11 +367,11 @@ const SCREEN_CSS = `
  /* Ordinary flight's camera/Circuits keys are a narrow rail under Pause, clear of the ship scales.
     Authored races keep their map and readings in a compact central instrument. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 11px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:rgb(8 11 16 / .76); padding:6px; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(70px + var(--sf-safe-top,0px)); right:calc(12px + var(--sf-safe-right,0px)); width:min(128px,calc(100vw - 216px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(70px + var(--sf-safe-top,0px)); right:calc(12px + var(--sf-safe-right,0px)); width:min(128px,calc(100vw - 202px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions { gap:4px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions .k-word { min-height:44px; border:0; border-bottom:1px solid rgb(232 226 212 / .25); padding:4px 6px; font:inherit; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .k-word { min-width:0; padding:4px 2px; white-space:normal; overflow-wrap:normal; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .k-word { min-width:0; padding:4px 1px; white-space:normal; overflow-wrap:normal; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] { top:calc(12px + var(--sf-safe-top,0px)); left:calc(214px + var(--sf-safe-left,0px)); right:calc(78px + var(--sf-safe-right,0px)); width:auto; transform:none; grid-template-columns:64px minmax(0,1fr); max-height:calc(100dvh - 210px); overflow-y:auto; }
  :root[data-sf-mobile-wheel="1"] #race-tape { visibility:hidden; pointer-events:none; }
  :root[data-sf-mobile-wheel="1"] #race-tape * { pointer-events:none; }
