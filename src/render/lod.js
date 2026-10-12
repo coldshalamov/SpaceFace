@@ -28,7 +28,17 @@ const HYSTERESIS_PX = 25;
 // Dwell (seconds). A level change must hold for this long before it is presented, so a combat
 // camera breathing its zoom across a boundary cannot swap a rock's model several times a second.
 // Applies only when the caller passes a clock; the first resolve commits at once.
-export const LOD_DWELL_S = 0.75;
+export const LOD_DWELL_S = 1.5;
+
+// The band is also at least this fraction of the threshold, so a 45 px boundary gets a real band and
+// screen-size noise (a camera breathing its zoom, a hull turning edge-on) cannot cross it.
+const HYSTERESIS_RATIO = 0.2;
+
+// Hard cap: an entity presents at most this many level changes per window; past it the level holds.
+export const LOD_SWAP_CAP = 2;
+export const LOD_SWAP_WINDOW_S = 10;
+
+const lodBand = (threshold) => Math.max(HYSTERESIS_PX, threshold * HYSTERESIS_RATIO);
 
 const _v = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
@@ -76,6 +86,7 @@ export function createLodState() {
   let lastPx = Infinity;
   let pendingLevel = null;
   let pendingSince = 0;
+  const swaps = [];
   return {
     get level() { return level; },
     get lastPx() { return lastPx; },
@@ -86,12 +97,12 @@ export function createLodState() {
       const presented = level;
       // Hysteresis: only change level when px moves HYSTERESIS_PX past the current level's boundary.
       if (level === 'lod0') {
-        if (width < LOD_THRESHOLDS.LOD0_ABOVE - HYSTERESIS_PX) level = 'lod1';
+        if (width < LOD_THRESHOLDS.LOD0_ABOVE - lodBand(LOD_THRESHOLDS.LOD0_ABOVE)) level = 'lod1';
       } else if (level === 'lod1') {
-        if (width > LOD_THRESHOLDS.LOD1_BELOW + HYSTERESIS_PX) level = 'lod0';
-        else if (width < LOD_THRESHOLDS.LOD2_BELOW - HYSTERESIS_PX) level = 'lod2';
+        if (width > LOD_THRESHOLDS.LOD1_BELOW + lodBand(LOD_THRESHOLDS.LOD1_BELOW)) level = 'lod0';
+        else if (width < LOD_THRESHOLDS.LOD2_BELOW - lodBand(LOD_THRESHOLDS.LOD2_BELOW)) level = 'lod2';
       } else { // lod2
-        if (width > LOD_THRESHOLDS.LOD2_BELOW + HYSTERESIS_PX) level = 'lod1';
+        if (width > LOD_THRESHOLDS.LOD2_BELOW + lodBand(LOD_THRESHOLDS.LOD2_BELOW)) level = 'lod1';
       }
       lastPx = width;
       if (!timed || level === presented) {
@@ -106,6 +117,12 @@ export function createLodState() {
         level = presented;
         return level;
       }
+      while (swaps.length > 0 && nowS - swaps[0] >= LOD_SWAP_WINDOW_S) swaps.shift();
+      if (swaps.length >= LOD_SWAP_CAP) {
+        level = presented;
+        return level;
+      }
+      swaps.push(nowS);
       pendingLevel = null;
       return level;
     },
