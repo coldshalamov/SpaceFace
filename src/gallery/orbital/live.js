@@ -41,6 +41,7 @@ export function createLiveGallery(ctx) {
     fieldUsed: false,
     playStartTick: state.tick, boostTicks: 0, brakeTicks: 0, cuts: 0, contacts: 0,
         playerContactRoles: {}, approachSide: null, styleChip: state.rng(), result: null,
+        fieldOrigin: { x: venue.center.x, z: venue.center.z },
         fieldRecord(id) { return kernelFieldRecord(fieldsSys, kernelByCatalog.get(id)); },
       };
       spawnTick = state.tick; linesPending = true;
@@ -86,6 +87,7 @@ export function createLiveGallery(ctx) {
             gallery.result = { won: false, reason: `line:${made.reason}`, tick: state.tick };
             gallery.phase = 'settled';
           } else {
+            made.attachment.restLength = line.restLength;
             gallery.tetherLatched = true;
           }
         }

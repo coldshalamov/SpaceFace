@@ -4,6 +4,7 @@ import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
 import { getCombatKernel } from '../../combat/kernel.js';
 import { FIELD_DEFS } from '../../data/fields.js';
 import { assetForKind } from './assets.js';
+import { galleryMotorOf } from './judge.js';
 
 export function createPhysicalVenue(ctx, { id, bodies, solids = [], fields = [], markers = [], shipAt, center }) {
   const { state, helpers = {}, registry } = ctx;
@@ -77,8 +78,8 @@ export function createPhysicalVenue(ctx, { id, bodies, solids = [], fields = [],
           ax += (force?.fx || 0) / entity.mass;
           az += (force?.fz || 0) / entity.mass;
         }
-        if (view.motor) {
-          const motor = view.motor;
+        const motor = galleryMotorOf(entity);
+        if (motor) {
           const phase = state.simTime + (motor.phaseS || 0);
           const sign = motor.periodS > 0 && Math.floor(phase / (motor.periodS * 0.5)) % 2 ? -1 : 1;
           const hx = Math.cos(motor.heading || 0) * sign, hz = Math.sin(motor.heading || 0) * sign;
@@ -86,10 +87,7 @@ export function createPhysicalVenue(ctx, { id, bodies, solids = [], fields = [],
           const accel = Math.max(-(motor.accel || 60), Math.min(motor.accel || 60,
             ((motor.cruise || 0) - along) / dt));
           ax += hx * accel; az += hz * accel;
-          if (accel) {
-            entity.data = entity.data || {};
-            entity.data.galleryMotorWorked = true;
-          }
+          if (accel) entity.data.galleryMotorWorked = motor;
         }
         if (ax || az) queuePhysicsImpulse(entity, { x: ax * entity.mass * dt, y: 0, z: az * entity.mass * dt });
       }

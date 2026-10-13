@@ -94,26 +94,62 @@ function liveKernelField(gallery, id) {
   return record;
 }
 
+function fieldCenter(record) {
+  if (!record) return null;
+  if (record.center && Number.isFinite(record.center.x) && Number.isFinite(record.center.z)) return record.center;
+  if (Number.isFinite(record.x) && Number.isFinite(record.z)) return record;
+  return null;
+}
+
+function matchesAuthoredField(record, authored, origin) {
+  const center = fieldCenter(record);
+  if (!center || !authored) return false;
+  const ox = origin && origin.x || 0;
+  const oz = origin && origin.z || 0;
+  return center.x === authored.x + ox
+    && center.z === authored.z + oz
+    && record.radius === authored.radius
+    && record.strength === authored.strength;
+}
+
 function markFieldUse(state, gallery) {
-  if (!gallery || gallery.fieldUsed || !state.entities) return;
+  if (!gallery || !state.entities) return;
   const authored = getScenario(gallery.scenarioId);
   const needed = (authored && authored.fields) || [];
   if (!needed.length) return;
+  const origin = gallery.fieldOrigin;
   const roles = gallery.roles || {};
+  let matches = true;
+  let overlapped = false;
   for (const field of needed) {
     const live = liveKernelField(gallery, field.id);
-    if (!live) continue;
+    if (!matchesAuthoredField(live, field, origin)) {
+      matches = false;
+      continue;
+    }
     for (const role of Object.keys(roles)) {
       const entity = state.entities.get(roles[role]);
       if (!entity || !entity.pos) continue;
       const dx = entity.pos.x - live.center.x;
       const dz = entity.pos.z - live.center.z;
       if (dx * dx + dz * dz <= live.radius * live.radius) {
-        gallery.fieldUsed = true;
-        return;
+        overlapped = true;
+        break;
       }
     }
   }
+  if (!matches) {
+    gallery.fieldUsed = false;
+    return;
+  }
+  if (overlapped) gallery.fieldUsed = true;
+}
+
+export function galleryMotorOf(entity) {
+  if (!entity || entity.alive === false || !entity.data) return null;
+  const motor = entity.data.galleryMotor;
+  if (!motor || typeof motor !== 'object') return null;
+  return motor;
 }
 
 function mechanismsReady(state, gallery) {
@@ -135,10 +171,11 @@ function fieldsReady(state, gallery, authored) {
   const needed = authored.fields || [];
   if (!needed.length) return true;
   const planted = gallery.plantedFields || [];
+  const origin = gallery.fieldOrigin;
   for (const field of needed) {
-    const row = planted.find((item) => item && item.id === field.id && item.radius > 0);
-    if (!row) return false;
-    if (!liveKernelField(gallery, field.id)) return false;
+    const row = planted.find((item) => item && item.id === field.id);
+    if (!row || !matchesAuthoredField(row, field, origin)) return false;
+    if (!matchesAuthoredField(liveKernelField(gallery, field.id), field, origin)) return false;
   }
   markFieldUse(state, gallery);
   return gallery.fieldUsed === true;
@@ -156,7 +193,8 @@ function linesReady(state, gallery, authored) {
     const target = entityOf(state, gallery, line.target);
     if (!owner || !target) return false;
     const found = active.some((row) => row.defId === line.defId
-      && row.ownerId === owner.id && row.targetId === target.id);
+      && row.ownerId === owner.id && row.targetId === target.id
+      && row.restLength === line.restLength);
     if (!found) return false;
   }
   return true;
@@ -168,8 +206,8 @@ function motorsWorked(state, gallery, authored) {
     if (!body.motor) continue;
     found = true;
     const entity = entityOf(state, gallery, body.role);
-    const data = entity && entity.data;
-    if (!data || !sameMotor(data.galleryMotor, body.motor) || !data.galleryMotorWorked) return false;
+    const motor = galleryMotorOf(entity);
+    if (!motor || !sameMotor(motor, body.motor) || entity.data.galleryMotorWorked !== motor) return false;
   }
   return found;
 }
@@ -194,8 +232,7 @@ function propReady(entity, asset) {
 function expectedProp(entity, asset) {
   const data = entity.data || {};
   if (data.galleryFractured || data.fractureInto) {
-    const into = data.fractureInto || (asset.fracture && asset.fracture.into);
-    return assetForKind(into);
+    return assetForKind(asset.fracture && asset.fracture.into);
   }
   return asset;
 }

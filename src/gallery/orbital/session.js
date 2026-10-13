@@ -113,6 +113,7 @@ export async function openSession(scenarioId, options = {}) {
     result: null,
     creditsAtOpen,
     trace: options.trace ? [] : null,
+    fieldOrigin: { x: 0, z: 0 },
     fieldRecord(id) { return kernelFieldRecord(fieldsSys, id); },
   };
   state.orbitalGallery = gallery;
@@ -142,6 +143,7 @@ export async function openSession(scenarioId, options = {}) {
     if (!made.ok) {
       throw new Error(`orbital gallery: line ${line.owner}->${line.target} ${made.reason}`);
     }
+    made.attachment.restLength = line.restLength;
     gallery.tetherLatched = true;
   }
 

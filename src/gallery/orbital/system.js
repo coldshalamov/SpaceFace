@@ -4,6 +4,7 @@
 // touch credits.
 
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
+import { galleryMotorOf } from './judge.js';
 import { createLiveGallery } from './live.js';
 
 const NEUTRAL = Object.freeze({
@@ -121,8 +122,8 @@ function driveMotors(gallery, state, dt) {
   const simTime = state.simTime || 0;
   for (const role of Object.keys(roles)) {
     const entity = state.entities.get(roles[role]);
-    const motor = entity && entity.data && entity.data.galleryMotor;
-    if (!entity || entity.alive === false || !motor) continue;
+    const motor = galleryMotorOf(entity);
+    if (!motor) continue;
     stepMotor(entity, motor, simTime, dt);
   }
 }
@@ -146,7 +147,7 @@ function stepMotor(entity, motor, simTime, dt) {
   const accelCap = motor.accel > 0 ? motor.accel : 60;
   const accel = Math.max(-accelCap, Math.min(accelCap, err / dt));
   const mass = (entity.physicsBody && entity.physicsBody.mass) || entity.mass || 1;
-  entity.data.galleryMotorWorked = true;
+  entity.data.galleryMotorWorked = motor;
   queuePhysicsImpulse(entity, {
     x: hx * accel * mass * dt,
     y: 0,

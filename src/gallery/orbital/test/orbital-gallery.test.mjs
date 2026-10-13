@@ -87,6 +87,63 @@ test('an empty planted field list cannot win the eye', () => {
   assert.equal(state.orbitalGallery.fieldUsed, false);
 });
 
+test('a token field or a field moved off the authored circle cannot win', () => {
+  const player = { id: 1, alive: true, hull: 100, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {} };
+  const pod = {
+    id: 2, alive: true, pos: { x: 50, z: 0 }, vel: { x: 0, z: 0 },
+    data: { galleryRole: 'pod', gallerySpawnX: 28, gallerySpawnZ: 0, galleryAsset: assetForKind('mass') },
+  };
+  const authored = getScenario('og-e1-into-the-well').fields[0];
+  const token = { id: authored.id, center: { x: 0, z: 0 }, x: 0, z: 0, radius: 1, strength: 1 };
+  const eye = {
+    tick: 20, playerId: 1, entities: new Map([[1, player], [2, pod]]),
+    orbitalGallery: {
+      scenarioId: 'og-e1-into-the-well', phase: 'live', playStartTick: 0, limitTicks: 360,
+      roles: { pilot: 1, pod: 2 },
+      pockets: [{ id: 'eye', role: 'pod', x: 72, z: 0, r: 16, minTravel: 18 }],
+      hazards: [], spoils: [], spoiled: {},
+      plantedFields: [{ id: authored.id, x: 0, z: 0, radius: 1, strength: 1 }],
+      fieldOrigin: { x: 0, z: 0 }, fieldUsed: false,
+      fieldRecord() { return token; },
+    },
+  };
+  pod.pos = { x: 72, z: 0 };
+  assert.equal(judgeGallery(eye), null);
+  assert.equal(eye.orbitalGallery.fieldUsed, false);
+
+  const live = { id: authored.id, center: { x: 72, z: 0 }, radius: 34, strength: 220 };
+  eye.orbitalGallery.plantedFields = [{ id: authored.id, x: 72, z: 0, radius: 34, strength: 220 }];
+  eye.orbitalGallery.fieldRecord = () => live;
+  pod.pos = { x: 50, z: 0 };
+  assert.equal(judgeGallery(eye), null);
+  assert.equal(eye.orbitalGallery.fieldUsed, true);
+  live.center = { x: 1e6, z: 1e6 };
+  live.radius = 0.001;
+  eye.orbitalGallery.plantedFields = [{ id: authored.id, x: 1e6, z: 1e6, radius: 0.001, strength: 220 }];
+  pod.pos = { x: 72, z: 0 };
+  assert.equal(judgeGallery(eye), null);
+  assert.equal(eye.orbitalGallery.fieldUsed, false);
+
+  const repulsor = getScenario('og-e2-repulsor-berm').fields[0];
+  const berm = { id: repulsor.id, center: { x: 0, z: 0 }, x: 0, z: 0, radius: 1, strength: 1 };
+  const east = {
+    tick: 20, playerId: 1, entities: new Map([[1, player], [2, pod]]),
+    orbitalGallery: {
+      scenarioId: 'og-e2-repulsor-berm', phase: 'live', playStartTick: 0, limitTicks: 360,
+      roles: { pilot: 1, pod: 2 },
+      pockets: [{ id: 'out-east', role: 'pod', x: 96, z: 0, r: 16, minTravel: 20 }],
+      hazards: [], spoils: [], spoiled: {},
+      plantedFields: [{ id: repulsor.id, x: 0, z: 0, radius: 1, strength: 1 }],
+      fieldOrigin: { x: 0, z: 0 }, fieldUsed: true,
+      fieldRecord() { return berm; },
+    },
+  };
+  pod.pos = { x: 84, z: 0 };
+  pod.data.gallerySpawnX = 24;
+  assert.equal(judgeGallery(east), null);
+  assert.equal(east.orbitalGallery.fieldUsed, false);
+});
+
 test('an unregistered repulsor does not win out-east', async () => {
   const pod = {
     id: 2, alive: true, pos: { x: 84, z: 0 }, vel: { x: 0, z: 0 },
@@ -157,6 +214,8 @@ test('a missing line or a cut cannot win north-berth', () => {
   delete state.combat;
   assert.equal(judgeGallery(state), null);
   state.combat = { attachments: { byId: { att_000001: line } } };
+  assert.equal(judgeGallery(state), null);
+  line.restLength = 52;
   const won = judgeGallery(state);
   assert.equal(won && won.won, true);
   assert.equal(won.pocketId, 'north-berth');
@@ -194,9 +253,7 @@ test('a deleted motor cannot win intercept or the gap', () => {
   pod.data.galleryMotorWorked = false;
   assert.equal(judgeGallery(motorState), null);
   pod.data.galleryMotorWorked = true;
-  const early = judgeGallery(motorState);
-  assert.equal(early && early.won, true);
-  assert.equal(early.pocketId, 'early');
+  assert.equal(judgeGallery(motorState), null);
 
   const gapMotor = getScenario('og-d2-gap').bodies.find((body) => body.role === 'blocker').motor;
   const cargo = {
@@ -219,12 +276,30 @@ test('a deleted motor cannot win intercept or the gap', () => {
       hazards: [], spoils: [], spoiled: {}, plantedFields: [], fieldUsed: false, tetherLatched: false,
     },
   };
-  const through = judgeGallery(gapState);
-  assert.equal(through && through.won, true);
-  assert.equal(through.pocketId, 'through');
-  reopen(gapState.orbitalGallery);
+  assert.equal(judgeGallery(gapState), null);
   delete blocker.data.galleryMotor;
   assert.equal(judgeGallery(gapState), null);
+
+  const crosserMotor = getScenario('og-c4-crosser-chain').bodies.find((body) => body.role === 'crosser').motor;
+  const crosser = {
+    id: 8, alive: false, pos: { x: 30, z: -24 }, vel: { x: 0, z: 0 },
+    data: { galleryRole: 'crosser', galleryMotor: { ...crosserMotor }, galleryMotorWorked: true },
+  };
+  crosser.data.galleryMotorWorked = crosser.data.galleryMotor;
+  const rest = {
+    id: 9, alive: true, pos: { x: 90, z: 4 }, vel: { x: 0, z: 0 },
+    data: { galleryRole: 'rest', gallerySpawnX: 52, gallerySpawnZ: 4, galleryAsset: assetForKind('mass') },
+  };
+  const chain = {
+    tick: 20, playerId: 1, entities: new Map([[1, player], [8, crosser], [9, rest]]),
+    orbitalGallery: {
+      scenarioId: 'og-c4-crosser-chain', phase: 'live', playStartTick: 0, limitTicks: 360,
+      roles: { crosser: 8, rest: 9 },
+      pockets: [{ id: 'berth', role: 'rest', x: 90, z: 4, r: 16, minTravel: 12 }],
+      hazards: [], spoils: [], spoiled: {}, plantedFields: [],
+    },
+  };
+  assert.equal(judgeGallery(chain), null);
 });
 
 test('a hard hit turns the prop into the fracture product the win checks', () => {
@@ -254,7 +329,7 @@ test('a hard hit turns the prop into the fracture product the win checks', () =>
   const state = {
     tick: 20, playerId: 1, entities: new Map([[1, player], [4, anchor], [5, north]]),
     combat: { attachments: { byId: {
-      att_000001: { state: 'active', defId: 'tether_standard', ownerId: 1, targetId: 4 },
+      att_000001: { state: 'active', defId: 'tether_standard', ownerId: 1, targetId: 4, restLength: 52 },
     } } },
     orbitalGallery: {
       scenarioId: 'og-b1-orbit-strike', phase: 'live', playStartTick: 0, limitTicks: 360,
@@ -264,6 +339,9 @@ test('a hard hit turns the prop into the fracture product the win checks', () =>
     },
   };
   assert.equal(anchor.data.galleryAsset.id, 'helios-rock-b');
+  assert.equal(judgeGallery(state), null);
+  anchor.data.fractureInto = 'pilot';
+  anchor.data.galleryAsset = assetForKind('pilot');
   assert.equal(judgeGallery(state), null);
   anchor.data.galleryAsset = assetForKind('mass');
   const won = judgeGallery(state);
