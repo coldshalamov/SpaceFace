@@ -218,7 +218,7 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
     const low = S.filter((x) => deltaL(x) != null && deltaL(x) < THRESHOLDS.readabilityLowDeltaL);
     const worst = S.slice().sort((a, b) => (deltaL(a) ?? 99) - (deltaL(b) ?? 99)).slice(0, 2)
       .map((x) => ({ t: x.t, box: x.box, deltaL: deltaL(x) == null ? null : +deltaL(x).toFixed(1) }));
-    const marked = S.filter((x) => (x.marker || 0) >= 0.08).length;
+    const marked = S.filter((x) => (x.marker || 0) >= RIM_THREAT_SHARE).length;
     const threat = S.filter((x) => rimMatchesThreat(x.rim)).length;
     classes[c] = { n: S.length, lowContrastFrac: S.length ? low.length / S.length : 0, exampleT: (low[0] || S[0] || {}).t, exampleBox: (low[0] || S[0] || {}).box,
       markerRate: S.length ? marked / S.length : 0, threatRate: S.length ? threat / S.length : 0, worst,

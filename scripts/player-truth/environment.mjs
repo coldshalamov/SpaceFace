@@ -149,17 +149,19 @@ export function assessTree(entries, { root, stat = null, hash = null } = {}) {
 export function readHeadTree(root, rev = 'HEAD') {
   let text;
   try {
-    text = execFileSync('git', ['ls-tree', '-r', '-l', rev, '--', 'assets', 'design'], {
+    // Route-served surface only: design/ is never fetched by the game route (isRouteServed
+    // filters it anyway), so enumerating its blobs here is pure waste on a large tree.
+    text = execFileSync('git', ['ls-tree', '-r', '-l', rev, '--', 'assets'], {
       cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
     });
   } catch (err) {
-    const wrapped = new Error(`harness could not read git ls-tree ${rev} -- assets design: ${err && err.message ? err.message.split('\n')[0] : err}`);
+    const wrapped = new Error(`harness could not read git ls-tree ${rev} -- assets: ${err && err.message ? err.message.split('\n')[0] : err}`);
     wrapped.harnessError = true;
     throw wrapped;
   }
   const entries = parseLsTree(text);
   if (!entries.length) {
-    const wrapped = new Error(`git ls-tree ${rev} -- assets design returned no blobs`);
+    const wrapped = new Error(`git ls-tree ${rev} -- assets returned no blobs`);
     wrapped.harnessError = true;
     throw wrapped;
   }
