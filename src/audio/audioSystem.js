@@ -106,7 +106,7 @@ import {
 } from './cuePriorityBus.js';
 import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
 import { entityNeedsExactAudio } from './audioActiveSet.js';
-import { bindOutputDeviceFollow, planDeviceChange } from './outputDeviceFollow.js';
+import { bindOutputDeviceFollow, planDeviceChange, planSinkRebind } from './outputDeviceFollow.js';
 import { heatLevelFor } from '../systems/heat.js';
 import {
   createSampleRuntime,
@@ -3026,18 +3026,37 @@ export const audio = {
    * AUDIO-DEVICE-FOLLOW (board row 301). An output-device change must carry the mix to the new device
    * without a silent launch (an unlocked-never context stays locked until a gesture) and without doubled
    * loops (the context is resumed, never rebuilt: the schedulers and frame loop that paused when the
-   * context stopped are restarted by the one resume owner). A context that kept running followed the
-   * default sink on its own.
+   * context stopped are restarted by the one resume owner). When the context can retarget, the same
+   * graph is pointed at the OS default output with setSinkId('') — a running context does not stay
+   * on a headset that just left.
    */
   _onOutputDeviceChange() {
     const rt = this.rt;
     const ctx = rt && rt.ctx;
-    if (!rt || !ctx) return 'none';
+    if (!rt || !ctx || rt._destroyed || ctx.state === 'closed') return 'none';
+    const everRan = rt._contextEverRan === true;
+    const lifecycleSuspended = rt._lifecycleSuspended === true;
+    const muted = this._isMuted();
+    const sink = planSinkRebind({
+      ctxState: ctx.state,
+      lifecycleSuspended,
+      everRan,
+      muted,
+      setSinkIdAvailable: typeof ctx.setSinkId === 'function',
+    });
+    if (sink === 'rebind-default') {
+      // Same context, default sink. A removed headset then stops being the render target
+      // even when the browser left the context running.
+      try {
+        const pending = ctx.setSinkId('');
+        if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+      } catch (_) { /* a missing device must not take the frame loop down */ }
+    }
     const action = planDeviceChange({
       ctxState: ctx.state,
-      lifecycleSuspended: rt._lifecycleSuspended === true,
-      everRan: rt._contextEverRan === true,
-      muted: this._isMuted(),
+      lifecycleSuspended,
+      everRan,
+      muted,
     });
     if (action === 'resume') {
       // The sink that stopped the context is gone: the resume is the lifecycle owner's own path.
@@ -3045,7 +3064,7 @@ export const audio = {
       this._resumeAudioContext(false);
     }
     if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('audio:outputDeviceChanged', { action, state: ctx.state });
+      this.bus.emit('audio:outputDeviceChanged', { action, sink, state: ctx.state });
     }
     return action;
   },

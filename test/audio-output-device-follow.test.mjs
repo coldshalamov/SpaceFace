@@ -9,6 +9,7 @@ import {
   DEVICE_CHANGE_SETTLE_MS,
   bindOutputDeviceFollow,
   planDeviceChange,
+  planSinkRebind,
 } from '../src/audio/outputDeviceFollow.js';
 
 function host(ctx, over = {}) {
@@ -87,6 +88,51 @@ test('a context that never ran stays locked and nothing is emitted as a launch',
   assert.equal(ctx.resumes, 0, 'no silent launch');
   assert.equal(ctx.state, 'suspended');
   assert.notEqual(h.rt._resumeAfterLifecycle, true);
+});
+
+test('a running context retargets the default sink without a second context or a resume', () => {
+  const ctx = fakeCtx('running');
+  const sinks = [];
+  ctx.setSinkId = (id) => { sinks.push(id); return Promise.resolve(); };
+  const h = host(ctx);
+  assert.equal(h._onOutputDeviceChange(), 'none', 'already running: resume is not a second start');
+  assert.deepEqual(sinks, [''], 'the same context follows the OS default output');
+  assert.equal(ctx.resumes, 0);
+  assert.equal(h.rt.ctx, ctx);
+  assert.equal(h.frameLoopStarts, undefined);
+  assert.deepEqual(h.bus.emitted, [['audio:outputDeviceChanged', { action: 'none', sink: 'rebind-default', state: 'running' }]]);
+});
+
+test('a stopped context retargets and then resumes once', async () => {
+  const ctx = fakeCtx('suspended');
+  const sinks = [];
+  ctx.setSinkId = (id) => { sinks.push(id); return Promise.resolve(); };
+  const h = host(ctx);
+  assert.equal(h._onOutputDeviceChange(), 'resume');
+  await settle();
+  assert.deepEqual(sinks, ['']);
+  assert.equal(ctx.resumes, 1);
+  assert.equal(h.rt.ctx, ctx, 'retarget does not replace the context');
+  assert.equal(h.schedulerResumes, 1);
+});
+
+test('an unlocked-never or muted context does not open a device', () => {
+  const locked = fakeCtx('suspended');
+  locked.setSinkId = () => { throw new Error('must not open'); };
+  const h = host(locked, { everRan: false });
+  assert.equal(h._onOutputDeviceChange(), 'none');
+  const muted = fakeCtx('running');
+  let calls = 0;
+  muted.setSinkId = () => { calls += 1; return Promise.resolve(); };
+  const hm = host(muted, { muted: true });
+  assert.equal(hm._onOutputDeviceChange(), 'none');
+  assert.equal(calls, 0);
+  assert.equal(planSinkRebind({
+    ctxState: 'running', everRan: true, muted: false, lifecycleSuspended: true, setSinkIdAvailable: true,
+  }), 'none');
+  assert.equal(planSinkRebind({
+    ctxState: 'closed', everRan: true, muted: false, lifecycleSuspended: false, setSinkIdAvailable: true,
+  }), 'none');
 });
 
 test('a running context is left alone, and no context at all is a no-op', () => {

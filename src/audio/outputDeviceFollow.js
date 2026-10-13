@@ -27,6 +27,26 @@ export function planDeviceChange({ ctxState, lifecycleSuspended, everRan, muted 
 }
 
 /**
+ * Whether the existing context should retarget the OS default output.
+ * `setSinkId('')` moves the same graph onto the new default device. It does not
+ * build a second context, so sustained loops are not doubled. It is refused
+ * until the pilot has already unlocked audio: opening a device is not a gesture.
+ * @returns {'none' | 'rebind-default'}
+ */
+export function planSinkRebind({
+  ctxState,
+  lifecycleSuspended,
+  everRan,
+  muted,
+  setSinkIdAvailable,
+} = {}) {
+  if (!setSinkIdAvailable) return 'none';
+  if (lifecycleSuspended || muted || !everRan) return 'none';
+  if (ctxState !== 'running' && ctxState !== 'suspended' && ctxState !== 'interrupted') return 'none';
+  return 'rebind-default';
+}
+
+/**
  * Listen for output-device changes and call `onChange` once per burst: plugging a headset fires a
  * handful of events in quick succession, and the new device needs a moment to settle.
  * @returns {() => void} unbind
