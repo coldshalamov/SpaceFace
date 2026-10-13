@@ -74,6 +74,10 @@ starts only when the baseline worktree's filesystem has at least 8 GB free; belo
 Exit 4 applies when that is the only failure. `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
 from two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
 combat additive layers hidden; `backdrop_coverage` grades the deep field / nebula / planets apart.
+Those per-pixel splits skip a sample taken while a `#screens` overlay is visible, or before the
+flight phase, and the verdict reports how many were skipped. Swarm preparation that is waiting on
+Launch round 1 fails within about 30 s when a different `#screens` screen stays up, and the route
+line names it (`unexpected screen: REARM`), instead of sitting on the 600 s wait.
 
 The harness (`scripts/player-truth/`) walks the real public route in a rendered Chromium with
 trusted keyboard/mouse input (idle first, then thrust/yaw probes, then a simple fighter or flyer),

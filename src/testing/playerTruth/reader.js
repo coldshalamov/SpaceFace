@@ -16,6 +16,23 @@ const CLS = Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i]));
 const SHIPLIKE = new Set(['ship', 'drone', 'reaver', 'fauna', 'freighter']);
 const PROJECTILE_LIKE = new Set(['projectile', 'charge', 'vectormine', 'missile', 'mine']);
 
+/**
+ * True when `#screens` is the surface on top of the flight canvas.
+ * screenManager shows that container with `display:flex` and hides it with
+ * `display:none` plus `aria-hidden`. `top()` can already be null on the same
+ * frame the container is still shown, so the pixel checks read this, not only the stack id.
+ */
+export function screensOverlayOpen(root) {
+  if (!root || typeof root !== 'object') return false;
+  const display = root.style && root.style.display;
+  if (display === 'none') return false;
+  const hidden = typeof root.getAttribute === 'function' && root.getAttribute('aria-hidden') === 'true';
+  if (hidden) return false;
+  if (display === 'flex' || display === 'block') return true;
+  if (typeof root.getClientRects === 'function') return root.getClientRects().length > 0;
+  return false;
+}
+
 /** Classify a live entity for the player-truth harness. Pure; exported for fixture tests. */
 export function classifyEntity(e, playerId, playerTeam) {
   if (!e) return 'other';
@@ -720,8 +737,11 @@ export function installPlayerTruthReader(win, opts = {}) {
     const canvas = r.renderer && r.renderer.domElement;
     const vw = canvas ? canvas.clientWidth : win.innerWidth; const vh = canvas ? canvas.clientHeight : win.innerHeight;
     const run = st.run || null;
+    let screens = false;
+    try { screens = screensOverlayOpen(win.document && win.document.getElementById('screens')); } catch { screens = false; }
     const s = { f: frame, t: +t.toFixed(1), dt: +dt.toFixed(1), sim: simNow(), tick: st.tick, mode: st.mode,
       top: SF.ctx && SF.ctx.screenManager && SF.ctx.screenManager.top ? SF.ctx.screenManager.top() : null,
+      screens,
       run: run ? { kind: run.kind, rs: run.ruleset, ph: run.phase, w: run.wave, a: run.arenaId, res: run.resolvedThreat, sp: run.spawnedThreat, bud: run.threatBudget, sc: Number.isFinite(run.score) ? run.score : null } : null,
       vw, vh, p: null, e: [], info: null, vfx: null };
     if (r.renderer && r.renderer.info) s.info = { calls: r.renderer.info.render.calls, tris: r.renderer.info.render.triangles };

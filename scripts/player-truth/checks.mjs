@@ -4,7 +4,7 @@
 // measure returns UNKNOWN with the reason — never PASS.
 
 import { PLAYER_TRUTH_CLASSES } from '../../src/testing/playerTruth/reader.js';
-import { STALL_MIN_SIM_S, STALL_WINDOW_MS, formatInterruptDetail } from './playWatch.mjs';
+import { STALL_MIN_SIM_S, STALL_WINDOW_MS, formatInterruptDetail, isHudTop } from './playWatch.mjs';
 
 export const E = Object.freeze({ id: 0, cls: 1, x: 2, z: 3, vx: 4, vz: 5, sx: 6, sy: 7, pr: 8, vis: 9, key: 10, type: 11 });
 export const CLS = Object.freeze(Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i])));
@@ -52,6 +52,43 @@ const fmt = (n, d = 2) => (n == null || !Number.isFinite(n) ? 'n/a' : Number(n.t
 /** Samples during actual play: flight, no pausing screen, run active when the mode has rounds. */
 export function playSamples(trace) {
   return trace.samples.filter((s) => s.mode === 'flight' && (!s.run || s.run.ph === 'active' || !trace.meta.rounds));
+}
+
+/** The run is in the flight phase the player is flying. Draft, wave intro, menu, and loading are not. */
+export function flightPhaseSample(sample, trace) {
+  if (!sample || sample.mode !== 'flight') return false;
+  const phase = sample.run && sample.run.ph;
+  if (phase && phase !== 'active') return false;
+  if (trace && trace.meta && trace.meta.rounds && phase !== 'active') return false;
+  return true;
+}
+
+/** A `#screens` overlay is up. `screens` is the container; `top` is the stack id when the reader did not record the container. */
+export function screensOverlaySample(sample) {
+  if (!sample) return false;
+  if (sample.screens === true) return true;
+  return sample.top != null && !isHudTop(sample.top);
+}
+
+/**
+ * Per-pixel splits for backdrop and combat VFX.
+ * A split taken while `#screens` is visible, or before the flight phase, is skipped and counted.
+ * @returns {{ kept: object[], skipped: number }}
+ */
+export function pixelSplits(trace) {
+  const samples = trace && Array.isArray(trace.samples) ? trace.samples : [];
+  const kept = [];
+  let skipped = 0;
+  for (const s of samples) {
+    if (!s || !s.px) continue;
+    if (!flightPhaseSample(s, trace) || screensOverlaySample(s)) {
+      skipped++;
+      continue;
+    }
+    if (s.px.err) continue;
+    kept.push(s);
+  }
+  return { kept, skipped };
 }
 
 function keyName(trace, k) { return k >= 0 ? (trace.keys[k] || String(k)) : null; }
@@ -539,6 +576,15 @@ export function checkReadability(trace) {
   const pairs = (r.pairs || []).filter((p) => p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
   const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ');
   const measurementNote = r.measurementNote ? `; ${r.measurementNote}` : '';
+  // A class the capture threw out is unmeasured. The classes that remain cannot PASS in its place.
+  const rejected = (r.captureCoherence && r.captureCoherence.rejected) || {};
+  const captureUnmeasured = (r.captureCoherence && r.captureCoherence.unboundedShots > 0)
+    || ['enemy', 'asteroid', 'projectile'].some((k) => {
+      const reasons = rejected[k];
+      const dropped = reasons && Object.values(reasons).some((n) => n > 0);
+      const kept = r.classes[k] ? r.classes[k].n : 0;
+      return dropped && kept < T.readabilityMinSamples;
+    });
   // No pair qualifies (e.g. 8 low-contrast asteroids, 0 enemies): a measured combat
   // class still passes or fails on its own backdrop contrast. UNKNOWN only when no
   // combat class reached the sample floor.
@@ -552,7 +598,7 @@ export function checkReadability(trace) {
     const single = measured.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast`).join(' · ');
     const thin = ['enemy', 'asteroid', 'projectile'].filter((k) => !measured.includes(k));
     const thinNote = thin.length ? `; not graded (under ${T.readabilityMinSamples}): ${thin.join(', ')}` : '';
-    return result('readability', 'Enemy / asteroid / projectile readable', flat.length ? 'FAIL' : 'PASS', single, `separation ≥${T.readabilityMinSeparation}; ≤${T.readabilityLowContrastFrac * 100}% low-contrast per measured class`,
+    return result('readability', 'Enemy / asteroid / projectile readable', flat.length ? 'FAIL' : captureUnmeasured ? 'UNKNOWN' : 'PASS', single, `separation ≥${T.readabilityMinSeparation}; ≤${T.readabilityLowContrastFrac * 100}% low-contrast per measured class`,
       `samples: ${counts}${measurementNote}${thinNote}`, flat.slice(0, 4), flat.filter((o) => o.box).slice(0, 2));
   }
   const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
@@ -572,7 +618,7 @@ export function checkReadability(trace) {
   ];
   const minSep = Math.min(...pairs.map((p) => p.sep));
   const unknownNote = bodyUnknown.length ? `; opaque body/player coverage UNKNOWN for ${bodyUnknown.map(c => `${c.name || c.cls}: ${c.occlusion ? `${c.occlusion.n} measured/${c.occlusion.unknown} unknown (${Object.keys(c.occlusion.reasons || {}).join(', ') || 'insufficient samples'})` : 'radius overlap has no native mask'}`).join('; ')}` : '';
-  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : bodyUnknown.length ? 'UNKNOWN' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
+  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : (bodyUnknown.length || captureUnmeasured) ? 'UNKNOWN' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
     `samples: ${counts}${measurementNote}${unknownNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
@@ -599,8 +645,9 @@ function checkVfxPixels(trace, px) {
 
 /** Backdrop (deep field, nebula, stars, planets) drawn over the play: reported apart from combat VFX. */
 export function checkBackdrop(trace) {
-  const T = THRESHOLDS; const px = playSamples(trace).filter((s) => s.px && !s.px.err);
-  if (px.length < 5) return result('backdrop_coverage', 'Backdrop stays behind the play', 'UNKNOWN', null, `threats over bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, 'no per-pixel splits sampled');
+  const T = THRESHOLDS; const { kept: px, skipped } = pixelSplits(trace);
+  const skipNote = `skipped ${skipped}`;
+  if (px.length < 5) return result('backdrop_coverage', 'Backdrop stays behind the play', 'UNKNOWN', null, `threats over bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, `no per-pixel splits sampled · ${skipNote}`);
   const a = px.map((s) => s.px.bt).filter((x) => x != null).sort((m, n) => m - n); const tP95 = a.length ? a[Math.floor(a.length * 0.95)] : null;
   const covs = px.map((s) => s.px.b).sort((m, n) => m - n); const p50 = covs[Math.floor(covs.length / 2)]; const p95 = covs[Math.floor(covs.length * 0.95)];
   const worst = px.reduce((m, s) => ((s.px.bt || 0) > (m.px.bt || 0) ? s : m));
@@ -608,14 +655,20 @@ export function checkBackdrop(trace) {
   const offenders = fail ? [{ line: `${fmt(worst.px.bt * 100, 0)}% of on-screen threats sit on bright backdrop pixels at sim ${fmt(worst.sim, 1)} s (backdrop lights ${fmt(worst.px.b * 100, 0)}% of the screen)`, t: worst.t, sim: worst.sim, box: null }] : [];
   return result('backdrop_coverage', 'Backdrop stays behind the play', fail ? 'FAIL' : 'PASS',
     `backdrop lights median ${fmt(p50 * 100, 0)}% / p95 ${fmt(p95 * 100, 0)}% of screen · threats on bright backdrop p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'}`,
-    `threats on bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, `${px.length} per-pixel splits with backdrop layers hidden vs shown`, offenders, offenders);
+    `threats on bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, `${px.length} per-pixel splits with backdrop layers hidden vs shown · ${skipNote}`, offenders, offenders);
 }
 
 export function checkVfx(trace) {
-  const px = playSamples(trace).filter((s) => s.px && !s.px.err);
-  if (px.length >= 5) return checkVfxPixels(trace, px);
-  const T = THRESHOLDS; const scans = playSamples(trace).filter((s) => s.vfx && !s.vfx.err);
-  if (scans.length < 5) return result('vfx_coverage', 'VFX coverage / occlusion', 'UNKNOWN', null, `p95 ≤${T.vfxCoverP95}`, 'too few VFX scans');
+  const { kept: px, skipped } = pixelSplits(trace);
+  const skipNote = `skipped ${skipped}`;
+  if (px.length >= 5) {
+    const row = checkVfxPixels(trace, px);
+    row.detail = `${row.detail} · ${skipNote}`;
+    return row;
+  }
+  const T = THRESHOLDS;
+  const scans = (trace.samples || []).filter((s) => flightPhaseSample(s, trace) && !screensOverlaySample(s) && s.vfx && !s.vfx.err);
+  if (scans.length < 5) return result('vfx_coverage', 'VFX coverage / occlusion', 'UNKNOWN', null, `p95 ≤${T.vfxCoverP95}`, `too few VFX scans · ${skipNote}`);
   const covs = scans.map((s) => s.vfx.cov).sort((a, b) => a - b);
   const p95 = covs[Math.floor(covs.length * 0.95)] || 0;
   const pScans = scans.filter((s) => s.vfx.pOcc != null);
@@ -640,7 +693,7 @@ export function checkVfx(trace) {
   return result('vfx_coverage', 'VFX coverage / occlusion', fail ? 'FAIL' : 'PASS',
     `p95 ${fmt(p95 * 100, 0)}% screen · player hidden ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threats hidden p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
     `≤${T.vfxCoverP95 * 100}% · ≤${T.vfxPlayerOccludedFrac * 100}% · ≤${T.vfxThreatOccludedP95 * 100}% · ≤${T.vfxPersistSeconds} s`,
-    `${scans.length} scans of additive/transparent layers (bounding-sphere footprint on a 48×27 grid; ${unb} screen-sized batches excluded)`,
+    `${scans.length} scans of additive/transparent layers (bounding-sphere footprint on a 48×27 grid; ${unb} screen-sized batches excluded) · ${skipNote}`,
     offenders.slice(0, 5), offenders.filter((o) => o.box).slice(0, 2));
 }
 
