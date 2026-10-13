@@ -925,6 +925,69 @@ test('addObject, setPlayer, and clearPlayerFlag return the previous project when
   assert.equal(objectById(clearedMember.project, 'player').isPlayer, true);
 });
 
+test('a throwing toJSON does not escape add, clone, place, set, or clear', () => {
+  const boom = {
+    enumerable: false,
+    value() { throw new Error('boom'); },
+  };
+  const scene = getComposition('dock.intercept-cargo');
+  const rock = Object.assign(Object.create({
+    toJSON() { throw new Error('boom'); },
+  }), {
+    id: 'rock',
+    kind: 'actor',
+    role: 'prop',
+    profile: 'asteroid.light',
+    x: 10,
+    z: 10,
+    heading: 0,
+    velX: 0,
+    velZ: 0,
+    angularVelocity: 0,
+    team: 2,
+    isPlayer: false,
+    persistent: true,
+    label: 'rock',
+  });
+  const added = addObject(scene, rock);
+  assert.equal(added.ok, false);
+  assert.equal(added.project, scene);
+  assert.equal(objectById(added.project, 'rock'), null);
+
+  const copiedScene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(objectById(copiedScene, 'cargo'), 'toJSON', boom);
+  const copied = cloneObject(copiedScene, 'cargo', 'cargo_copy');
+  assert.equal(copied.ok, false);
+  assert.equal(copied.project, copiedScene);
+  assert.equal(objectById(copied.project, 'cargo_copy'), null);
+
+  const empty = emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 });
+  Object.defineProperty(empty, 'toJSON', boom);
+  const placed = placePlayer(empty);
+  assert.equal(placed.ok, false);
+  assert.equal(placed.project, empty);
+
+  const existing = getComposition('dock.intercept-cargo');
+  Object.defineProperty(objectById(existing, 'cargo'), 'toJSON', boom);
+  const again = placePlayer(existing);
+  assert.equal(again.ok, false);
+  assert.equal(again.project, existing);
+  assert.equal(objectById(again.project, 'player').isPlayer, true);
+
+  const setScene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(setScene, 'toJSON', boom);
+  const set = setPlayer(setScene, 'cargo');
+  assert.equal(set.ok, false);
+  assert.equal(set.project, setScene);
+
+  const clearScene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(clearScene, 'toJSON', boom);
+  const cleared = clearPlayerFlag(clearScene, 'player');
+  assert.equal(cleared.ok, false);
+  assert.equal(cleared.project, clearScene);
+  assert.equal(objectById(cleared.project, 'player').isPlayer, true);
+});
+
 test('deleteObjects returns the previous project when toJSON returns null', () => {
   const scene = getComposition('dock.intercept-cargo');
   Object.defineProperty(objectById(scene, 'cargo'), 'toJSON', {

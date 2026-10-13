@@ -36,7 +36,12 @@ export const OBJECT_KEY_SETS = Object.freeze({
 });
 
 export function clone(value) {
-  return value == null ? value : JSON.parse(JSON.stringify(value));
+  if (value == null) return value;
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (error) {
+    return null;
+  }
 }
 
 function cloneScene(project) {
@@ -236,7 +241,8 @@ export function placePlayer(project) {
   if (found > 1) return { ok: false, project, issues: [exactlyOnePlayerIssue(found)] };
   const existing = (project.objects || []).find((object) => isPlayerActor(object));
   if (existing) {
-    const stored = clone(project);
+    const stored = cloneScene(project);
+    if (!stored) return refuseUnstored(project);
     const gated = requireOnePlayer(project, { ok: true, project: stored, id: existing.id, issues: [] });
     return gated.ok ? gated : { ok: false, project, issues: gated.issues };
   }
