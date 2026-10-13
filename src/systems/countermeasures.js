@@ -333,7 +333,11 @@ export const countermeasures = {
       if (!cm || !cm.effect || cm.effectT <= 0) continue;
       const cfg = cm.effect.cfg;
       const r2 = cfg.radius * cfg.radius;
-      const projectiles = projectilesNear(state, e.pos, cfg.radius, this._projectileScratch);
+      // A placed buoy keeps working after its pilot leaves. Query the same stationary
+      // point that its radius test and visible mechanism use, rather than the moving hull.
+      const center = cfg.kind === 'decoy'
+        ? { x: cm.effect.originX, z: cm.effect.originZ } : e.pos;
+      const projectiles = projectilesNear(state, center, cfg.radius, this._projectileScratch);
       if (projectiles === this._projectileScratch) this._diag.effectSpatialQueries++;
       this._diag.projectileCandidates += projectiles.length;
       for (const p of projectiles) {
@@ -341,9 +345,7 @@ export const countermeasures = {
         const d = p.data;
         if (!d || d.kind !== 'missile') continue;
         // A decoy is a place, not a ship: its pull is measured from the buoy, not the broadcaster.
-        const cx = cfg.kind === 'decoy' ? cm.effect.originX : e.pos.x;
-        const cz = cfg.kind === 'decoy' ? cm.effect.originZ : e.pos.z;
-        const dx = p.pos.x - cx, dz = p.pos.z - cz;
+        const dx = p.pos.x - center.x, dz = p.pos.z - center.z;
         if (dx * dx + dz * dz > r2) continue; // outside the effect radius
         if (cfg.kind === 'chaff' || cfg.kind === 'decoy') {
           // Chaff answers the defeated lineage: a second shooter's missile keeps its own solution.
