@@ -4,11 +4,11 @@ import { detectFailures, compareDigests } from '../../tools/agentic/stranger-lab
 import { assessJourney, listJourneys } from '../../tools/agentic/stranger-lab/lib/journeys.mjs';
 import { buildRouteManifest, SWEEP_SEEDS } from '../../tools/agentic/stranger-lab/lib/manifest.mjs';
 import { PERSONA_IDS, getPersona } from '../../tools/agentic/stranger-lab/lib/personas.mjs';
-import { redact } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
+import { redact, redactString } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
 import { runSession } from '../../tools/agentic/stranger-lab/lib/session.mjs';
 import { shrinkFailure } from '../../tools/agentic/stranger-lab/lib/shrink.mjs';
-import { personaIdForSweepIndex, publicSweepRow } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
-import { canonicalForRun } from '../../tools/agentic/stranger-lab/lib/headed.mjs';
+import { compactRun, personaIdForSweepIndex, publicSweepRow } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
+import { journeyWorldStepped, replayJourneyTape } from '../../tools/agentic/stranger-lab/lib/browserJourneyHost.js';
 
 const CANARY = {
   journeyId: 'flight',
@@ -79,16 +79,62 @@ test('failing sweep rows keep their tape, and combat or docking are not a flight
     tape: { frames: [{ tick: 3, moveZ: 0.65 }] },
   });
   assert.equal(missed.tape.frames.length, 1);
-  const dockingTape = canonicalForRun({
-    journeyId: 'docking', personaId: 'meticulous-cargo-handler', seed: 7, ticks: 2,
-    tape: { frames: [{ tick: 0, moveZ: 0.65, moveX: 0, turnIntent: 0 }] },
+  assert.equal(missed.tape.frames[0].moveZ, 0.65);
+  const forced = compactRun({
+    journeyId: 'mission',
+    personaId: 'first-time-pilot',
+    seed: 7,
+    status: 'incomplete',
+    tapeHash: 'forced',
+    tape: { frames: [{ tick: 3, moveZ: 0.65 }, { tick: 4, moveZ: 0.65 }] },
   });
-  assert.equal(dockingTape.ok, true);
-  const combatTape = canonicalForRun({
-    journeyId: 'combat-death-retry', personaId: 'reckless-improvisor', seed: 7, ticks: 2,
-    tape: { frames: [{ tick: 0, moveZ: 0, moveX: 0, turnIntent: 0 }] },
+  assert.equal(forced.tape.frames.length, 2);
+  const forcedRow = publicSweepRow(forced);
+  assert.equal(forcedRow.tape.frames.length, 2);
+  assert.equal(forcedRow.tape.frames[0].tick, 3);
+  const flightOnly = {
+    systems: ['actions', 'flight', 'weapons', 'physics'],
+    builtKinds: { ship: 1 },
+    builtHostile: 0,
+    builtTetherActive: false,
+  };
+  assert.equal(journeyWorldStepped('docking', flightOnly), false);
+  assert.equal(journeyWorldStepped('combat-death-retry', flightOnly), false);
+  assert.equal(journeyWorldStepped('launch', flightOnly), false);
+  assert.equal(journeyWorldStepped('mining', flightOnly), false);
+  assert.equal(journeyWorldStepped('flight', flightOnly), true);
+  assert.equal(journeyWorldStepped('docking', {
+    systems: ['actions', 'flight', 'weapons', 'physics', 'dockingCorridor'],
+    builtKinds: { station: 1, ship: 1 },
+  }), true);
+  assert.equal(journeyWorldStepped('combat-death-retry', {
+    systems: ['actions', 'flight', 'tacticalAI', 'weapons', 'physics', 'aiPorts', 'combat'],
+    builtKinds: { ship: 4 },
+    builtHostile: 3,
+  }), true);
+});
+
+test('the journey host steps docking and combat worlds, not an empty flight', async () => {
+  const docking = await runSession({
+    journeyId: 'docking', seed: 7, ticks: 2, personaId: 'meticulous-cargo-handler',
   });
-  assert.equal(combatTape.ok, true);
+  const dockingReplay = await replayJourneyTape({ journeyId: 'docking', seed: 7, tape: docking.tape });
+  assert.equal(dockingReplay.status, 'stepped', dockingReplay.error);
+  assert.equal(journeyWorldStepped('docking', dockingReplay.evidence), true);
+  const combat = await runSession({
+    journeyId: 'combat-death-retry', seed: 7, ticks: 2, personaId: 'reckless-improvisor',
+  });
+  const combatReplay = await replayJourneyTape({
+    journeyId: 'combat-death-retry', seed: 7, tape: combat.tape,
+  });
+  assert.equal(combatReplay.status, 'stepped', combatReplay.error);
+  assert.equal(journeyWorldStepped('combat-death-retry', combatReplay.evidence), true);
+  const flightOnly = {
+    systems: ['actions', 'flight', 'weapons', 'physics'],
+    builtKinds: { ship: 1 },
+    builtHostile: 0,
+  };
+  assert.equal(journeyWorldStepped('combat-death-retry', flightOnly), false);
 });
 
 test('every persona attempts the journey cue, and docking closure thrust is visible', () => {
@@ -129,7 +175,7 @@ test('redact strips account material and does not truncate tapes', () => {
     playerName: 'Ada',
     player_name: 'Ada Underscore',
     session: 'sess-live',
-    note: `mail pilot@example.com bearer abcdef password=hunter2 password hunter2 password"=sekret Authorization: Basic dXNlcjpwYXNz cookie=sid api_key=sk-live-abc123 ${jwt}`,
+    note: `mail pilot@example.com bearer abcdef password=hunter2 password hunter2 password"=sekret Authorization: Basic dXNlcjpwYXNz cookie=sid api_key=sk-live-abc123 ${jwt} user_id=pilot-underscore player_name=Ada Underscore Authorization Basic dXNlcjpwYXNz Cookie: session=sess-live supersecret user_id=pilot-underscore`,
     ok: true,
     rows: Array.from({ length: 100 }, (_, index) => index),
   });
@@ -148,6 +194,19 @@ test('redact strips account material and does not truncate tapes', () => {
   assert.equal(out.note.includes('cookie=sid'), false);
   assert.equal(out.note.includes('sk-live-abc123'), false);
   assert.equal(out.note.includes('eyJ'), false);
+  assert.equal(out.note.includes('pilot-underscore'), false);
+  assert.equal(out.note.includes('Ada Underscore'), false);
+  assert.equal(out.note.includes('sess-live'), false);
+  assert.equal(out.note.includes('supersecret:'), false);
+  const assigned = redactString('user_id=pilot-underscore player_name=Ada Underscore Authorization Basic dXNlcjpwYXNz Cookie: session=sess-live supersecret user_id=pilot-underscore');
+  assert.equal(assigned.includes('pilot-underscore'), false);
+  assert.equal(assigned.includes('Ada Underscore'), false);
+  assert.equal(assigned.includes('dXNlcjpwYXNz'), false);
+  assert.equal(assigned.includes('sess-live'), false);
+  assert.equal(assigned.includes('supersecret:'), false);
+  assert.match(assigned, /user_id=\[redacted\]/);
+  assert.match(assigned, /player_name=\[redacted\]/);
+  assert.match(assigned, /cookie: \[redacted\]/);
   assert.equal(out.ok, true);
   assert.equal(out.rows.length, 100);
   assert.equal(out.rows[99], 99);
@@ -230,6 +289,30 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.ok(approachStuck.failures.some((row) => row.id === 'unresponsive-commands'));
+  const close = flying({
+    x: 0, speed: 0, dockPhase: 'approach', nearest: { kind: 'station', dist: 12 },
+  });
+  const closeStuck = detectFailures({
+    samples: close,
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(closeStuck.failures.some((row) => row.id === 'unresponsive-commands'));
+  const closeSlow = flying().map((sample, index) => ({
+    ...sample,
+    x: index < 20 ? index * 0.5 : 10,
+    speed: index < 20 ? 4 : 0.2,
+    nearest: { kind: 'station', dist: 12 },
+    dockPhase: 'approach',
+  }));
+  const closeContact = detectFailures({
+    samples: closeSlow,
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(closeContact.failures.some((row) => row.id === 'unresponsive-commands'), false);
 
   const menu = detectFailures({
     samples: flying({ mode: 'menu' }),

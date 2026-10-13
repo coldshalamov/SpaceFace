@@ -4,9 +4,11 @@
 const SENSITIVE_KEY = /email|e-mail|token|password|secret|authorization|cookie|account|user[-_]?id|username|player[-_]?name|session|api[-_]?key|credential/i;
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const BEARER = /bearer\s+[a-z0-9._~+/-]+=*/gi;
-const BASIC = /authorization\s*:\s*basic\s+\S+/gi;
+const BASIC = /authorization\s*:?\s*basic\s+\S+/gi;
+const COOKIE_HEADER = /\bcookie\s*:\s*(?:[^\s;]+=[^\s;]+(?:\s*;\s*[^\s;]+=[^\s;]+)*)/gi;
 const COOKIE_ASSIGN = /\bcookie\s*=\s*["']?[^\s"',;}]+/gi;
-const SECRET_ASSIGN = /(?:password|api[_-]?key|secret|token)["']?\s*(?:[:=]\s*["']?|\s+)[^\s"',}]+/gi;
+const STRING_ASSIGN = /\b(user[-_]?id|player[-_]?name)\s*=\s*(?:"[^"]*"|'[^']*'|.*?)(?=\s+\b(?:authorization|cookie|password|api[_-]?key|bearer|user[-_]?id|player[-_]?name)\b|[;\n]|$)/gi;
+const SECRET_ASSIGN = /(?<![A-Za-z0-9_-])(password|api[_-]?key|secret|token)(?![A-Za-z0-9_-])["']?\s*(?:[:=]\s*["']?|\s+)[^\s"',}]+/gi;
 const JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
 const SK_LIVE = /\bsk-(?:live|test)-[A-Za-z0-9_-]+\b/g;
 
@@ -31,11 +33,10 @@ export function redactString(text) {
     .replace(EMAIL, '[redacted-email]')
     .replace(BEARER, 'bearer [redacted]')
     .replace(BASIC, 'authorization: basic [redacted]')
+    .replace(COOKIE_HEADER, 'cookie: [redacted]')
     .replace(COOKIE_ASSIGN, 'cookie=[redacted]')
+    .replace(STRING_ASSIGN, (_, name) => `${name}=[redacted]`)
     .replace(JWT, '[redacted-jwt]')
     .replace(SK_LIVE, '[redacted-key]')
-    .replace(SECRET_ASSIGN, (match) => {
-      const name = match.match(/^[a-z0-9_-]+/i);
-      return `${name ? name[0] : 'secret'}: [redacted]`;
-    });
+    .replace(SECRET_ASSIGN, (_, name) => `${name}: [redacted]`);
 }

@@ -29,7 +29,7 @@ export async function runSweep(options = {}) {
         fault: null,
       });
       full.push(result);
-      runs.push(compact(result));
+      runs.push(compactRun(result));
       index += 1;
     }
   }
@@ -82,9 +82,9 @@ export async function runSweep(options = {}) {
 
 export function publicSweepRow(run) {
   if (!run || typeof run !== 'object') return run;
-  const failing = run.status === 'fail' || run.status === 'incomplete'
+  const keepTape = run.status !== 'pass'
     || (Array.isArray(run.confirmed) && run.confirmed.length > 0);
-  if (failing) return run;
+  if (keepTape) return run;
   const { tape, ...rest } = run;
   return {
     ...rest,
@@ -93,7 +93,7 @@ export function publicSweepRow(run) {
   };
 }
 
-function compact(result) {
+export function compactRun(result) {
   return {
     journeyId: result.journeyId,
     personaId: result.personaId,
@@ -111,7 +111,7 @@ function compact(result) {
     failures: result.failures || [],
     confirmed: result.confirmed || [],
     error: result.error || null,
-    tape: result.status === 'fail' || result.status === 'incomplete' ? result.tape : undefined,
+    tape: result.status !== 'pass' ? result.tape : undefined,
     fault: result.fault,
   };
 }

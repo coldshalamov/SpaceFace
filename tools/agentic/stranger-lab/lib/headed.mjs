@@ -1,6 +1,7 @@
-// Replay stranger tapes in Chrome at 390×844. The lab host page steps each tape
-// through runBrowserLabScenarioInternal. deviceTested stays false. No FPS claim.
-// A launch or replay that does not step the tape is unverified, with the error.
+// Replay stranger tapes in Chrome at 390×844. Each tape is stepped by
+// browserJourneyHost on that journey's systems. The flight-only lab page is
+// not a replay of combat, docking, mining, or the other journeys.
+// deviceTested stays false. No FPS claim.
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -8,10 +9,12 @@ import { mkdtempSync, existsSync, readFileSync, statSync, rmSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compileSimScenario } from '../../../../src/contracts/simScenarioSchema.js';
+import { journeyWorldStepped } from './browserJourneyHost.js';
 
 const ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
-const HOST_PAGE = '/src/testing/lab/chromiumHostPage.html';
+const HOST_PAGE = '/tools/agentic/stranger-lab/public/journeyHostPage.html';
+
+export { journeyWorldStepped };
 const VIEWPORT = Object.freeze({ width: 390, height: 844 });
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
@@ -31,61 +34,6 @@ const MIME = Object.freeze({
   '.wasm': 'application/wasm',
   '.glb': 'model/gltf-binary',
 });
-
-export function canonicalForRun(run) {
-  const frames = run && run.tape && Array.isArray(run.tape.frames) ? run.tape.frames : [];
-  const doc = {
-    schema: 'spaceface.simScenario.v1',
-    id: `stranger.${run.journeyId}.${run.personaId}.${run.seed}`,
-    version: 1,
-    title: `Stranger tape ${run.journeyId}`,
-    evidenceClass: 'focused-fixture',
-    runtimeProfile: 'focused-lab',
-    seed: run.seed >>> 0,
-    ticks: Math.max(1, frames.length || (run.ticks | 0) || 1),
-    world: {
-      fixtureProfile: 'empty-flight',
-      sectorId: 'sector_helios_prime',
-      mode: 'flight',
-      physicsBackend: 'rapier-dynamic',
-      flightBackend: 'v3',
-      aiBackend: 'legacy',
-    },
-    entities: [{
-      alias: 'player',
-      profile: 'ship.starter',
-      role: 'player',
-      team: 0,
-      factionId: 'faction_free',
-      isPlayer: true,
-      pos: { x: 0, z: 0 },
-      vel: { x: 0, z: 0 },
-      heading: Math.PI / 2,
-      persistent: true,
-    }],
-    frames: frames.map((frame) => ({
-      tick: frame.tick | 0,
-      input: {
-        moveX: Number(frame.moveX) || 0,
-        moveZ: Number(frame.moveZ) || 0,
-        turnIntent: Number(frame.turnIntent) || 0,
-        boost: !!frame.boost,
-        fire: !!frame.fire,
-        reelDelta: frame.reel < 0 ? -1 : (frame.reel > 0 ? 1 : 0),
-        masslineHeld: !!frame.tether,
-      },
-    })),
-    assertions: [{
-      kind: 'metric',
-      metric: 'invariant.finiteState',
-      op: '==',
-      value: 1,
-    }],
-    metrics: [{ name: 'invariant.finiteState', version: 1, threshold: { op: '==', value: 1 } }],
-    observer: { enabled: false },
-  };
-  return compileSimScenario(doc);
-}
 
 export async function verifyHeadedBrowser(rows) {
   const selected = Array.isArray(rows) ? rows.slice(0, 25) : [];
@@ -118,14 +66,14 @@ export async function verifyHeadedBrowser(rows) {
     }
     const results = [];
     for (const run of selected) {
-      results.push(await replayOne(page, run));
+      results.push(await replayOne(page, server, run));
     }
     const failed = results.filter((row) => row.headedBrowser !== 'replayed');
     return {
       status: failed.length ? 'unverified' : 'replayed',
       reason: failed.length
         ? `${failed.length} of ${results.length} tapes did not replay in the browser. ${failed[0].error || ''}`.trim()
-        : `Chrome stepped ${results.length} tapes at ${VIEWPORT.width}×${VIEWPORT.height}.`,
+        : `Chrome stepped ${results.length} tapes at ${VIEWPORT.width}×${VIEWPORT.height} on each journey's systems.`,
       deviceTested: false,
       fpsClaimed: false,
       viewport: VIEWPORT,
@@ -143,7 +91,7 @@ export async function verifyHeadedBrowser(rows) {
   }
 }
 
-async function replayOne(page, run) {
+async function replayOne(page, server, run) {
   const base = {
     journeyId: run.journeyId,
     personaId: run.personaId,
@@ -154,23 +102,48 @@ async function replayOne(page, run) {
     deviceTested: false,
     fpsClaimed: false,
   };
-  const compiled = canonicalForRun(run);
-  if (!compiled.ok) {
-    const issue = compiled.validation && compiled.validation.issues && compiled.validation.issues[0];
+  const frames = run && run.tape && Array.isArray(run.tape.frames) ? run.tape.frames : [];
+  if (!frames.length) {
     return {
       ...base,
       headedBrowser: 'unverified',
-      error: issue ? `${issue.path} ${issue.message}` : 'tape did not compile to a lab scenario',
+      browserStatus: 'unverified',
+      error: 'tape has no frames to step',
+    };
+  }
+  let tapeId = null;
+  try {
+    tapeId = await server.postTape({
+      journeyId: run.journeyId,
+      seed: run.seed >>> 0,
+      tape: { frames },
+    });
+  } catch (error) {
+    return {
+      ...base,
+      headedBrowser: 'unverified',
+      browserStatus: 'unverified',
+      error: error && error.message ? error.message : String(error),
     };
   }
   const expression = `(async () => {
-    const host = window.__SF_BROWSER_LAB__;
-    const result = await host.runBrowserLabScenarioInternal(${JSON.stringify(compiled.canonical)}, { skipMultiRunEquivalence: true });
+    const host = window.__SF_STRANGER_LAB__;
+    const response = await fetch('/__stranger_tape/${tapeId}');
+    const request = await response.json();
+    const result = await host.replayJourneyTape(request);
+    const evidence = result && result.evidence;
     return {
       ok: !!(result && result.ok),
       status: result && result.status || null,
-      error: result && (result.error || (result.oracle && result.oracle.failed && result.oracle.failed[0] && result.oracle.failed[0].reason)) || null,
+      error: result && result.error || null,
       ticks: result && result.ticks,
+      systems: evidence && evidence.systems || null,
+      kinds: evidence && evidence.builtKinds || null,
+      hostile: evidence && evidence.builtHostile,
+      tetherActive: evidence && evidence.builtTetherActive,
+      dockPhase: evidence && evidence.dockPhase || null,
+      sectorId: evidence && evidence.sectorId || null,
+      simTime: evidence && evidence.simTime,
       innerWidth: window.innerWidth,
       innerHeight: window.innerHeight,
     };
@@ -185,32 +158,46 @@ async function replayOne(page, run) {
       const text = evaluated.exceptionDetails.text
         || (evaluated.exceptionDetails.exception && evaluated.exceptionDetails.exception.description)
         || 'browser evaluate threw';
-      return { ...base, headedBrowser: 'unverified', error: String(text).slice(0, 500) };
+      return { ...base, headedBrowser: 'unverified', browserStatus: 'unverified', error: String(text).slice(0, 500) };
     }
     const value = evaluated.result && evaluated.result.value;
-    const stepped = value && (value.status === 'pass' || value.status === 'fail') && Number.isFinite(value.ticks);
     const sized = value && value.innerWidth === VIEWPORT.width && value.innerHeight === VIEWPORT.height;
-    if (!stepped || !sized || value.status !== 'pass') {
+    const evidence = value && {
+      systems: value.systems,
+      builtKinds: value.kinds,
+      builtHostile: value.hostile,
+      builtTetherActive: value.tetherActive,
+    };
+    const worldOk = value && value.status === 'stepped' && journeyWorldStepped(run.journeyId, evidence);
+    const stepped = worldOk && Number.isFinite(value.ticks) && value.ticks === frames.length;
+    if (!stepped || !sized) {
       return {
         ...base,
         headedBrowser: 'unverified',
-        error: !stepped
-          ? (value && value.error) || `browser status ${value && value.status}`
+        browserStatus: 'unverified',
+        error: !value
+          ? 'browser returned no journey result'
           : (!sized
             ? `viewport ${value.innerWidth}×${value.innerHeight}, wanted ${VIEWPORT.width}×${VIEWPORT.height}`
-            : (value.error || 'browser oracle did not pass')),
-        browserStatus: value && value.status,
-        ticks: value && value.ticks,
+            : (value.error || `journey ${run.journeyId} world was not stepped (systems ${(value.systems || []).join(', ')}; kinds ${JSON.stringify(value.kinds || {})})`)),
       };
     }
     return {
       ...base,
       headedBrowser: 'replayed',
       ticks: value.ticks,
-      browserStatus: value.status,
+      browserStatus: 'pass',
+      systems: value.systems,
+      worldKinds: value.kinds,
+      hostile: value.hostile,
     };
   } catch (error) {
-    return { ...base, headedBrowser: 'unverified', error: error && error.message ? error.message : String(error) };
+    return {
+      ...base,
+      headedBrowser: 'unverified',
+      browserStatus: 'unverified',
+      error: error && error.message ? error.message : String(error),
+    };
   }
 }
 
@@ -229,6 +216,7 @@ function headedResult(selected, extra) {
       surface: run.surface,
       tapeHash: run.tapeHash,
       headedBrowser: 'unverified',
+      browserStatus: 'unverified',
       viewport: VIEWPORT,
       deviceTested: false,
       fpsClaimed: false,
@@ -238,8 +226,33 @@ function headedResult(selected, extra) {
 }
 
 function startStatic(root) {
+  const tapes = new Map();
+  let tapeSeq = 0;
   const server = createServer((req, res) => {
     const url = new URL(req.url || '/', 'http://127.0.0.1');
+    if (url.pathname === '/__stranger_tape' && req.method === 'POST') {
+      const chunks = [];
+      req.on('data', (chunk) => chunks.push(chunk));
+      req.on('end', () => {
+        const id = String(++tapeSeq);
+        tapes.set(id, Buffer.concat(chunks));
+        res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+        res.end(id);
+      });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname.startsWith('/__stranger_tape/')) {
+      const id = url.pathname.slice('/__stranger_tape/'.length);
+      const body = tapes.get(id);
+      if (!body) {
+        res.writeHead(404);
+        res.end('missing');
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(body);
+      return;
+    }
     const relative = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.(\/|\\|$))+/, '');
     const path = join(root, relative);
     const rootPrefix = root.endsWith(sep) ? root : root + sep;
@@ -260,8 +273,18 @@ function startStatic(root) {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
+      const url = `http://127.0.0.1:${address.port}`;
       resolve({
-        url: `http://127.0.0.1:${address.port}`,
+        url,
+        postTape: async (payload) => {
+          const response = await fetch(`${url}/__stranger_tape`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!response.ok) throw new Error(`tape post ${response.status}`);
+          return response.text();
+        },
         close: () => new Promise((done) => server.close(() => done())),
       });
     });
@@ -351,16 +374,17 @@ async function connectPage(port, url) {
 }
 
 async function waitForHost(page) {
-  const deadline = Date.now() + 30000;
+  const deadline = Date.now() + 60000;
   let last = null;
   while (Date.now() < deadline) {
     const evaluated = await page.send('Runtime.evaluate', {
       expression: `(() => {
-        const host = window.__SF_BROWSER_LAB__;
+        const host = window.__SF_STRANGER_LAB__;
         return {
-          ready: !!(host && host.ready && host.runBrowserLabScenarioInternal),
+          ready: !!(host && host.ready && host.replayJourneyTape),
           status: host && host.status || null,
           error: host && host.error || null,
+          stack: host && host.stack || null,
           innerWidth: window.innerWidth,
           innerHeight: window.innerHeight,
         };
@@ -372,7 +396,8 @@ async function waitForHost(page) {
       return { ok: true, viewport: { width: last.innerWidth, height: last.innerHeight } };
     }
     if (last && last.status === 'error') {
-      return { ok: false, error: last.error || 'lab host module failed', viewport: { width: last.innerWidth, height: last.innerHeight } };
+      const detail = [last.error, last.stack].filter(Boolean).join('\n');
+      return { ok: false, error: detail || 'journey host module failed', viewport: { width: last.innerWidth, height: last.innerHeight } };
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }

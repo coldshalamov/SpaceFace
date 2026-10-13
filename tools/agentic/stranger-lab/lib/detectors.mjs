@@ -129,7 +129,6 @@ function detectUnresponsive(samples, frames) {
     const frame = frameAt(frames, start.tick);
     if (!frame || frame.moveZ < 0.5 || frame.brake) continue;
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
-    if (start.nearest && start.nearest.dist < 20) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
     // Approach does not hide a dead stick. A station contact closes this window
     // only when that contact is what actually cut the speed.
