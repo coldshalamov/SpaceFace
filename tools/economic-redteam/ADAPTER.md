@@ -23,7 +23,17 @@ temporary copy of that file. It is not applied to the working tree.
 `origin/master` copies of both files succeeds. The economy hunk waits on PR 260.
 The cargo hunk can land on its own.
 
-## Exploit 1 — allied standing washes the same berth
+## Standing and kill loot — tested, not confirmed by injection
+
+`zero_spread_trade_cycles` raises standing by completing live Helios faction
+missions through the missions writer. It does not emit `faction:repDelta` and
+does not call that injection a confirmed exploit. `contraband_relabel` kills a
+hostile through combat and reads the kill-reward recipe. It does not choose a
+`kill_burst` commodity. Either family is `exploit` only when that real path
+prints the loop, and `tested-not-broken` when it does not. `quote()` and
+`cashInSalvage` are not rewritten here.
+
+## Historical note — allied standing washes the same berth
 
 **Family:** `zero_spread_trade_cycles`
 

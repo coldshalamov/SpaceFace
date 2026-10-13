@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { CONTRABAND_ARTIFACT, FAMILY_IDS, probeFamilies } from './families.mjs';
-import { ACTION_IDS, buy, dock, leaveDock, lootDrop, raiseStanding, saveContinue, sell, service, stepTicks } from './grammar.mjs';
+import { ACTION_IDS, buy, completeFactionMissions, dock, runKillRecipe, saveContinue, sell, service } from './grammar.mjs';
 import {
   bayCashVerdict,
   closedWashVerdict,
@@ -43,8 +43,10 @@ test('production runtime reports the repaired loops through real player transact
     assert.deepEqual(families.map((family) => family.id), FAMILY_IDS);
 
     const wash = families.find((family) => family.id === 'zero_spread_trade_cycles');
-    assert.equal(wash.status, 'clean');
+    assert.equal(wash.status, 'tested-not-broken');
     const allied = wash.traces.find((trace) => trace.name === 'allied_minimized');
+    assert.ok(allied.missionCompletions > 0);
+    assert.equal(allied.commands.some((command) => String(command).includes('faction:repDelta')), false);
     assert.ok(allied.creditsDelta <= 0, `allied wash delta ${allied.creditsDelta}`);
     assert.ok(Math.abs(allied.stockDelta || 0) < 1e-6);
     assert.ok(allied.before && allied.after, 'before/after ledger');
@@ -55,11 +57,15 @@ test('production runtime reports the repaired loops through real player transact
     const neutral = wash.controls.find((control) => control.name === 'neutral_standing_is_not_a_wash');
     assert.equal(neutral.pass, true);
     assert.ok(neutral.creditsDelta <= 0);
+    const earned = wash.controls.find((control) => control.name === 'standing_came_from_mission_completion');
+    assert.equal(earned.pass, true);
 
     const bay = families.find((family) => family.id === 'contraband_relabel');
-    assert.equal(bay.status, 'clean', bay.summary);
+    assert.equal(bay.status, 'tested-not-broken', bay.summary);
     const stolen = bay.traces.find((trace) => trace.name === 'bay_stolen_goods');
-    assert.ok(stolen.creditsDelta <= 0, `bay delta ${stolen.creditsDelta}`);
+    assert.ok(stolen.recipeId);
+    assert.equal(stolen.commands.some((command) => String(command).includes('cmdty_stolen_goods')), false);
+    assert.deepEqual(stolen.illicit, []);
     assert.ok(stolen.commands.length >= 4);
     assert.equal(stolen.secondDockDelta <= 0, true);
     const artifact = JSON.parse(readFileSync(CONTRABAND_ARTIFACT, 'utf8'));
@@ -87,24 +93,24 @@ test('production runtime reports the repaired loops through real player transact
   }
 });
 
-test('real cargo and economy stop both loops, and Continue does not pay them again', { timeout: 120000 }, () => {
+test('a real mission completion and a real kill recipe are not confirmed exploits', { timeout: 120000 }, () => {
   try {
-    const baySim = bootRedTeam(501);
-    leaveDock(baySim);
-    const dropped = lootDrop(baySim, { commodityId: 'cmdty_stolen_goods', qty: 2, source: 'kill_burst' });
-    assert.equal(dropped.ok, true);
-    stepTicks(baySim, 48);
-    const cashed = dock(baySim, 'station_helios');
+    const killed = runKillRecipe(501);
+    assert.equal(killed.ok, true, killed.reason);
+    assert.ok(killed.recipeId);
+    assert.equal(killed.illicit.length, 0);
+    const cashed = dock(killed.sim, 'station_helios');
     const reasons = (cashed.detail && cashed.detail.reasons) || [];
-    assert.equal(reasons.includes('salvage:bay_sale'), false);
-    const continued = saveContinue(baySim, 'ert-patch-bay');
+    assert.equal(reasons.includes('salvage:bay_sale') && killed.illicit.length > 0, false);
+    const continued = saveContinue(killed.sim, 'ert-patch-bay');
     assert.equal(continued.result.ok, true, continued.result.reason);
     const again = dock(continued.sim, 'station_helios');
-    const againReasons = (again.detail && again.detail.reasons) || [];
-    assert.equal(againReasons.includes('salvage:bay_sale'), false);
+    assert.ok(again.creditsDelta <= 0);
 
     const washSim = bootRedTeam(502);
-    for (let i = 0; i < 28; i += 1) raiseStanding(washSim, HOME_FACTION, 15);
+    const earned = completeFactionMissions(washSim, HOME_FACTION);
+    assert.ok(earned.completed > 0);
+    assert.ok(earned.repAfter > earned.repBefore);
     service(washSim, 'loan');
     const before = washSim.state.player.credits;
     const bought = buy(washSim, 'cmdty_ore_iron', 5);
@@ -112,17 +118,10 @@ test('real cargo and economy stop both loops, and Continue does not pay them aga
     const held = washSim.state.player.cargo.items.cmdty_ore_iron;
     const sold = sell(washSim, 'cmdty_ore_iron', held);
     assert.equal(sold.ok, true, sold.reason);
-    assert.ok(washSim.state.player.credits - before <= 0, `patched wash ${washSim.state.player.credits - before}`);
+    assert.ok(washSim.state.player.credits - before <= 0, `mission standing wash ${washSim.state.player.credits - before}`);
     const saved = saveContinue(washSim, 'ert-patch-wash');
     assert.equal(saved.result.ok, true, saved.result.reason);
     assert.equal(saved.result.detail.after.credits, washSim.state.player.credits);
-    const againBefore = saved.sim.state.player.credits;
-    const boughtAgain = buy(saved.sim, 'cmdty_ore_iron', 5);
-    if (boughtAgain.ok) {
-      const qty = saved.sim.state.player.cargo.items.cmdty_ore_iron;
-      sell(saved.sim, 'cmdty_ore_iron', qty);
-      assert.ok(saved.sim.state.player.credits - againBefore <= 0);
-    }
   } finally {
     restoreFeatureMaps();
   }

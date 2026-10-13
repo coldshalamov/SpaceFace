@@ -69,12 +69,12 @@ export function ensureMemoryStorage() {
   };
 }
 
-export function bootRedTeam(seed = 1845) {
+export function bootRedTeam(seed = 1845, extraSystems = []) {
   useProductionFeatures();
   ensureMemoryStorage();
   const sim = createSimulation({
     seed: (Number(seed) >>> 0) || 1,
-    systems: SYSTEMS,
+    systems: extraSystems.length ? SYSTEMS.concat(extraSystems) : SYSTEMS,
   });
   const { state, bus } = sim;
   state.world.currentSectorId = HOME_SECTOR;

@@ -81,6 +81,7 @@ export function runCampaign(options = {}) {
     const critiqueReport = critique(families, search, strategies);
     const exploits = families.filter((family) => family.status === 'exploit').map((family) => family.id);
     const clean = families.filter((family) => family.status === 'clean').map((family) => family.id);
+    const testedNotBroken = families.filter((family) => family.status === 'tested-not-broken').map((family) => family.id);
     const unavailable = families.filter((family) => family.status === 'unavailable').map((family) => family.id);
     const report = {
       campaign: CAMPAIGN_ID,
@@ -92,6 +93,7 @@ export function runCampaign(options = {}) {
         : 'No player-reachable credit loop was reproduced.',
       exploits,
       clean,
+      testedNotBroken,
       unavailable,
       families: families.map((family) => ({
         id: family.id,

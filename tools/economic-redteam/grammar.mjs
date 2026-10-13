@@ -2,7 +2,13 @@
 // station UI already emits. Missing verbs are labeled unavailable. Nothing here
 // assigns state.player.credits.
 
+import { COMMODITIES } from '../../src/data/commodities.js';
+import { killRewardRecipeFor } from '../../src/data/killRewards.js';
+import { combat } from '../../src/systems/combat.js';
+import { lootShards } from '../../src/systems/lootShards.js';
+import { makeShipEntitySpec } from '../../src/systems/ships.js';
 import {
+  HOME_FACTION,
   HOME_STATION,
   bayQty,
   bootRedTeam,
@@ -18,6 +24,8 @@ import {
   stockQty,
   undock,
 } from './runtime.mjs';
+
+const LEGALITY = new Map(COMMODITIES.map((row) => [row.id, row.legality || 'legal']));
 
 export const ACTION_IDS = Object.freeze([
   'buy',
@@ -379,6 +387,100 @@ export function badQty(sim, commodityId, qty) {
     reason: response && response.reason || null,
     detail: { qty, response, stock: stockQty(sim.state, stationId, commodityId) },
   });
+}
+
+/**
+ * Accept live board offers for one faction and settle them through the missions
+ * writer. Standing moves because mission:completed asks factions to apply rep.
+ * This does not emit faction:repDelta.
+ */
+export function completeFactionMissions(sim, factionId = HOME_FACTION, limit = 24) {
+  const missions = sim.registry.get('missions');
+  const stationId = (sim.state.ui && sim.state.ui.dockedStationId) || HOME_STATION;
+  const before = repOf(sim.state, factionId);
+  const offerIds = [];
+  if (!missions || typeof missions._completeMission !== 'function') {
+    return { completed: 0, repBefore: before, repAfter: before, offerIds, reason: 'missions_unwired' };
+  }
+  let completed = 0;
+  while (completed < limit) {
+    const board = sim.state.missions.boards && sim.state.missions.boards[stationId];
+    const slots = board && Array.isArray(board.slots) ? board.slots : [];
+    const offer = slots.find((row) => row && row.id && row.factionId === factionId && !offerIds.includes(row.id));
+    if (!offer) break;
+    const accepted = acceptMission(sim, offer.id);
+    if (!accepted.ok) break;
+    const mission = (sim.state.missions.active || []).find((row) => row && row.id === accepted.detail.activeId);
+    if (!mission || mission.factionId !== factionId) break;
+    missions._completeMission(mission, sim.state.missions.active.indexOf(mission));
+    offerIds.push(offer.id);
+    completed += 1;
+  }
+  return {
+    completed,
+    repBefore: before,
+    repAfter: repOf(sim.state, factionId),
+    offerIds,
+    reason: completed ? null : 'no_faction_offer',
+  };
+}
+
+/**
+ * Kill one hostile through combat. Loot is whatever the kill-reward recipe rolls.
+ * The caller does not choose the commodity.
+ */
+export function runKillRecipe(seed) {
+  const sim = bootRedTeam(seed, [combat, lootShards]);
+  const creditsBefore = sim.state.player.credits;
+  leaveDock(sim);
+  const player = sim.state.entities.get(sim.state.playerId);
+  const foe = sim.spawn(makeShipEntitySpec('ship_drifter', {
+    team: 1,
+    factionId: 'faction_reach',
+    pos: { x: (player.pos?.x || 0) + 40, z: player.pos?.z || 0 },
+    ai: { hostileTeams: [0], huntPlayer: true },
+  }));
+  foe.data.shipClass = foe.data.shipClass || 'gunship';
+  foe.data.ai = { ...(foe.data.ai || {}), hostileTeams: [0], huntPlayer: true };
+  const recipe = killRewardRecipeFor(foe);
+  const combatSys = sim.registry.get('combat');
+  if (!combatSys || typeof combatSys.onHit !== 'function') {
+    return {
+      ok: false,
+      reason: 'combat_unwired',
+      recipeId: recipe.id,
+      commodities: [],
+      bay: {},
+      illicit: [],
+      creditsBefore,
+      sim,
+    };
+  }
+  const hit = combatSys.onHit({
+    targetId: foe.id,
+    ownerId: player.id,
+    damage: 100000,
+    damageType: 'kinetic',
+    pos: { x: foe.pos.x, z: foe.pos.z },
+  });
+  stepTicks(sim, 48);
+  const bay = {};
+  const items = sim.state.player.salvageBay && sim.state.player.salvageBay.items;
+  if (items) {
+    for (const id of Object.keys(items)) bay[id] = Math.floor(Number(items[id]) || 0);
+  }
+  const illicit = Object.keys(bay).filter((id) => bay[id] > 0 && LEGALITY.get(id) === 'contraband');
+  return {
+    ok: hit && hit.ok === true && foe.alive === false,
+    reason: foe.alive === false ? null : 'target_survived',
+    recipeId: recipe.id,
+    commodities: (recipe.materials || []).map((row) => row.commodityId),
+    bay,
+    illicit,
+    killed: foe.alive === false,
+    creditsBefore,
+    sim,
+  };
 }
 
 /** Standing moves only through the faction writer's public event. */

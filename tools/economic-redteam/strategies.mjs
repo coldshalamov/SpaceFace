@@ -7,6 +7,7 @@ import {
   dock,
   leaveDock,
   lootDrop,
+  runKillRecipe,
   sell,
   service,
   stepTicks,
@@ -15,7 +16,6 @@ import { closedWashVerdict } from './invariants.mjs';
 import {
   HOME_STATION,
   IRON,
-  bayQty,
   bootRedTeam,
   econOf,
   holdQty,
@@ -131,27 +131,28 @@ export function runMinerRefiner(seed) {
 }
 
 export function runPirateSalvager(seed) {
-  const sim = bootRedTeam(seed);
-  const start = sim.state.player.credits;
+  const killed = runKillRecipe(seed);
+  const start = killed.creditsBefore || 0;
   const notes = [];
-  let loops = 0;
   let paid = 0;
-  for (let i = 0; i < BUDGET; i += 1) {
-    leaveDock(sim);
-    const drop = lootDrop(sim, { commodityId: 'cmdty_stolen_goods', qty: 4, source: 'kill_burst' });
-    if (!drop.ok) break;
-    stepTicks(sim, 48);
-    if (bayQty(sim.state, 'cmdty_stolen_goods') <= 0) break;
-    const cashed = dock(sim, HOME_STATION);
-    loops += 1;
-    if (cashed.creditsDelta > 0) paid += cashed.creditsDelta;
+  let loops = 0;
+  if (killed.ok) {
+    const cashed = dock(killed.sim, HOME_STATION);
+    loops = 1;
+    if (killed.illicit.length && cashed.creditsDelta > 0) paid += cashed.creditsDelta;
+    notes.push(`Kill recipe ${killed.recipeId} dropped ${killed.commodities.join(', ') || 'nothing'}.`);
+    notes.push(killed.illicit.length
+      ? `Illicit bay lines: ${killed.illicit.join(', ')}. Dock delta ${cashed.creditsDelta}.`
+      : 'The recipe did not put contraband in the bay.');
+  } else {
+    notes.push(`Kill recipe did not land (${killed.reason}).`);
   }
-  const degenerate = loops >= 2 && paid > 0;
+  const degenerate = loops >= 1 && paid > 0 && killed.illicit.length > 0;
   notes.push(degenerate
-    ? `Kill-burst stolen goods cashed at Helios ${loops} times for ${paid} cr with no fine.`
-    : `Pirate salvage loop did not repeat a clean payout (loops ${loops}, paid ${paid}).`);
+    ? `Recipe contraband cashed at Helios for ${paid} cr with no fine.`
+    : 'A chosen kill_burst commodity is not a confirmed salvage loop.');
   return {
-    ...finish('pirate_salvager', sim, start, notes, { fines: 0, contrabandBay: true }),
+    ...finish('pirate_salvager', killed.sim, start, notes, { fines: 0, contrabandBay: killed.illicit.length > 0 }),
     degenerate,
     loops,
     paid,
