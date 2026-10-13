@@ -37,6 +37,8 @@
 // --drop-profile.
 
 import fs from 'node:fs';
+import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
+import { smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,6 +68,47 @@ const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
 const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile', ...(LABEL ? [LABEL] : []));
 const FIXED_SEED = 47;
+// --chromium-arg=--flag lets an A/B run change one browser behaviour (for example
+// --chromium-arg=--force-prefers-reduced-motion to see what the loading backdrop costs).
+const EXTRA_CHROMIUM_ARGS = process.argv
+  .filter((arg) => arg.startsWith('--chromium-arg='))
+  .map((arg) => arg.slice('--chromium-arg='.length))
+  .filter(Boolean);
+// --trace records a Chrome timeline alongside the CPU profile and writes trace-summary.md: the
+// main-thread self time per event inside each loading stage, which names the non-JS "(program)" work.
+const TRACE = process.argv.includes('--trace');
+// --crucible profiles the swarm mode (seed 4242, default kit, drafts auto-answered) instead of open flight;
+// --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
+const CRUCIBLE = process.argv.includes('--crucible');
+const SETTLE_MS = Math.max(0, Number(argValue('--settle-ms')) || 0);
+const TRACE_CATEGORIES = [
+  '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
+];
+
+async function startTrace(cdp) {
+  await cdp.send('Tracing.start', {
+    traceConfig: { recordMode: 'recordAsMuchAsPossible', includedCategories: TRACE_CATEGORIES },
+    transferMode: 'ReturnAsStream',
+    streamFormat: 'json',
+  });
+}
+
+async function stopTraceToFile(cdp, file) {
+  const complete = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+  await cdp.send('Tracing.end');
+  const { stream } = await complete;
+  const fd = fs.openSync(file, 'w');
+  try {
+    for (;;) {
+      const chunk = await cdp.send('IO.read', { handle: stream, size: 4 * 1024 * 1024 });
+      fs.writeSync(fd, chunk.base64Encoded ? Buffer.from(chunk.data, 'base64') : chunk.data);
+      if (chunk.eof) break;
+    }
+  } finally {
+    fs.closeSync(fd);
+    await cdp.send('IO.close', { handle: stream }).catch(() => {});
+  }
+}
 
 const log = (message) => console.log(`[main-thread-profile ${new Date().toISOString().slice(11, 19)}] ${message}`);
 
@@ -486,6 +529,14 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
   }
   lines.push('');
 
+  if (trace.rafStamps?.length) {
+    const toPerf = (wallMs) => wallMs - trace.timeOrigin;
+    const windows = phases.map((phase) => ({ id: phase.name, fromMs: toPerf(phase.from), toMs: toPerf(phase.to) }));
+    lines.push(...smoothnessMarkdown(summarizeLoadingSmoothness({
+      rafStamps: trace.rafStamps, loaf: trace.loaf, video: trace.video, windows,
+    })));
+  }
+
   lines.push(...resourceLines(trace.resources, timeline.launchWallMs, timeline.flightWallMs));
 
   lines.push('## Renderer resources', '', '| moment | programs | geometries | textures | JS heap MB |', '|---|---:|---:|---:|---:|');
@@ -538,6 +589,47 @@ async function installLaunchObservers(page) {
       resourceObserver.observe({ type: 'resource' });
       trace.observers.push(resourceObserver);
     } catch { /* resource observation is best-effort */ }
+    // What the player sees: the page's own frame cadence, long animation frames (with the scripts that held
+    // them) and the backdrop video's dropped frames. Read by scripts/lib/loadingSmoothness.mjs.
+    trace.rafStamps = [];
+    trace.loaf = [];
+    trace.video = [];
+    trace.timeOrigin = performance.timeOrigin;
+    let rafActive = true;
+    const rafTick = (now) => {
+      if (!rafActive) return;
+      if (trace.rafStamps.length < 60000) trace.rafStamps.push(now);
+      requestAnimationFrame(rafTick);
+    };
+    requestAnimationFrame(rafTick);
+    trace.observers.push({ disconnect() { rafActive = false; } });
+    try {
+      const loafObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (trace.loaf.length >= 800) break;
+          trace.loaf.push({
+            startTime: entry.startTime,
+            duration: entry.duration,
+            blockingDuration: entry.blockingDuration,
+            scripts: (entry.scripts || []).slice(0, 8).map((script) => ({
+              sourceURL: script.sourceURL,
+              sourceFunctionName: script.sourceFunctionName,
+              invoker: script.invoker,
+              duration: script.duration,
+              forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration,
+            })),
+          });
+        }
+      });
+      loafObserver.observe({ type: 'long-animation-frame', buffered: true });
+      trace.observers.push(loafObserver);
+    } catch { /* long-animation-frame needs Chrome 123+; absent means no attribution rows */ }
+    const videoTimer = setInterval(() => {
+      const video = document.querySelector('video');
+      const quality = video && typeof video.getVideoPlaybackQuality === 'function' ? video.getVideoPlaybackQuality() : null;
+      if (quality) trace.video.push({ t: performance.now(), total: quality.totalVideoFrames, dropped: quality.droppedVideoFrames });
+    }, 250);
+    trace.observers.push({ disconnect() { clearInterval(videoTimer); } });
     const bus = window.SF?.bus;
     if (bus && typeof bus.on === 'function') {
       trace.unsubscribe = bus.on('game:loadingProgress', (payload = {}) => {
@@ -553,13 +645,21 @@ async function installLaunchObservers(page) {
 async function collectLaunchObservers(page) {
   return page.evaluate(() => {
     const trace = window.__SF_PROFILE_LAUNCH__;
-    if (!trace) return { stages: [], longTasks: [], resources: [] };
+    if (!trace) return { stages: [], longTasks: [], resources: [], rafStamps: [], loaf: [], video: [], timeOrigin: 0 };
     for (const observer of trace.observers) {
       try { observer.disconnect(); } catch { /* already gone */ }
     }
     try { trace.unsubscribe?.(); } catch { /* bus already torn down */ }
     delete window.__SF_PROFILE_LAUNCH__;
-    return { stages: trace.stages, longTasks: trace.longTasks, resources: trace.resources };
+    return {
+      stages: trace.stages,
+      longTasks: trace.longTasks,
+      resources: trace.resources,
+      rafStamps: trace.rafStamps || [],
+      loaf: trace.loaf || [],
+      video: trace.video || [],
+      timeOrigin: trace.timeOrigin || 0,
+    };
   }).catch(() => ({ stages: [], longTasks: [], resources: [] }));
 }
 
@@ -588,9 +688,27 @@ async function waitForFlight(page, timeoutMs, pollMs) {
   throw new Error(`never entered flight (mode=${mode})`);
 }
 
+/** The Crucible button's own route (default kit, fixed seed); every armory draft is answered with 'keep'. */
+async function launchCrucible(page) {
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
+  const launched = await page.evaluate(async () => {
+    const launch = await import('/src/ui/crucibleLaunch.js');
+    const setup = launch.crucibleSetupFor({ seed: 4242 });
+    if (!setup || !setup.ok) return false;
+    window.__SF_PROFILE_DRAFT_ANSWER__ = setInterval(() => {
+      const st = window.SF && window.SF.state;
+      if (st && st.run && st.run.phase === 'draft') window.SF.bus.emit('run:draftPickRequested', { offerId: null });
+    }, 250);
+    return launch.requestCrucibleRun(window.SF.bus, setup.value, setup.ruleset) !== false;
+  });
+  if (!launched) throw new Error('Crucible run did not launch');
+  log('Crucible run requested (seed 4242, default kit)');
+}
+
 async function runSteadyFlightProfile(page, cdp) {
-  await clickNewGameAndLaunch(page);
+  if (CRUCIBLE) await launchCrucible(page); else await clickNewGameAndLaunch(page);
   await waitForFlight(page, 180_000, 1000);
+  if (SETTLE_MS > 0) { log(`flying ${SETTLE_MS} ms before the profile window`); await page.waitForTimeout(SETTLE_MS); }
 
   await page.evaluate(() => {
     window.__SF_PROFILE_LONGTASKS__ = [];
@@ -614,6 +732,21 @@ async function runSteadyFlightProfile(page, cdp) {
 
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
   const longTasks = await page.evaluate(() => window.__SF_PROFILE_LONGTASKS__ || []).catch(() => []);
+  // The flight-footage recorder (a JPEG ring behind the Moment clips) must still fill and decode.
+  const footage = await page.evaluate(async () => {
+    const module = await import('/src/ui/screens/flightFootage.js');
+    const active = module.getFlightFootage();
+    if (!active) return { installed: false };
+    const frames = active.ring.frames;
+    const last = frames.at(-1);
+    let decoded = null;
+    if (last) {
+      try { const bitmap = await createImageBitmap(last.blob); decoded = { width: bitmap.width, height: bitmap.height }; bitmap.close(); }
+      catch (error) { decoded = { error: String(error) }; }
+    }
+    return { installed: true, ...active.status(), lastBytes: last ? last.blob.size : 0, decoded };
+  }).catch((error) => ({ error: String(error) }));
+  log(`flight footage: ${JSON.stringify(footage)}`);
   await page
     .evaluate(() => {
       try { window.__SF_PROFILE_LONGTASK_OBSERVER__?.disconnect(); } catch { /* already gone */ }
@@ -631,6 +764,34 @@ async function runSteadyFlightProfile(page, cdp) {
   log(`long tasks in window: ${longTasks.length}`);
 }
 
+/** Main-thread self time per trace event, cut into the same windows as the stage table. */
+function writeTraceSummary(traceFile, clockSyncWallMs, timeline, stages) {
+  let events;
+  try {
+    events = traceEventsOf(JSON.parse(fs.readFileSync(traceFile, 'utf8')));
+  } catch (error) {
+    log(`trace unreadable (${error?.message}); no trace summary`);
+    return;
+  }
+  const sync = events.find((event) => event.name === 'sf-clock-sync');
+  if (!sync) { log('trace has no clock-sync mark; no trace summary'); return; }
+  const toTrace = (wallMs) => sync.ts + (wallMs - clockSyncWallMs) * 1000;
+  const windows = [{ id: 'New Game screen', fromUs: toTrace(timeline.newGameWallMs), toUs: toTrace(timeline.launchWallMs) }];
+  const staged = [...stages].sort((a, b) => a.wallMs - b.wallMs);
+  staged.forEach((stage, index) => {
+    const next = staged[index + 1];
+    windows.push({
+      id: `loading: ${stage.id}`,
+      fromUs: toTrace(stage.wallMs),
+      toUs: toTrace(next ? next.wallMs : timeline.flightWallMs),
+    });
+  });
+  windows.push({ id: 'first seconds of flight', fromUs: toTrace(timeline.flightWallMs), toUs: toTrace(timeline.endWallMs) });
+  const summary = summarizeMainThread(events, { windows: windows.filter((w) => w.toUs > w.fromUs) });
+  fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.md'), renderTraceSummaryMarkdown(summary), 'utf8');
+  log(`trace summary ${path.join(OUT_DIR, 'trace-summary.md')} (${events.length} events)`);
+}
+
 async function runLaunchProfile(page, cdp, profileNote) {
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
@@ -639,6 +800,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
     .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
   await installLaunchObservers(page);
   await cdp.send('Profiler.start');
+  if (TRACE) await startTrace(cdp);
+  // One user-timing mark on both clocks: the trace's monotonic microseconds <-> Date.now().
+  const clockSync = TRACE ? await page.evaluate(() => { performance.mark('sf-clock-sync'); return Date.now(); }) : null;
   const profileStartWallMs = Date.now();
 
   const newGameWallMs = Date.now();
@@ -665,6 +829,8 @@ async function runLaunchProfile(page, cdp, profileNote) {
   await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
+  const traceFile = TRACE ? path.join(OUT_DIR, 'trace.json') : null;
+  if (TRACE) await stopTraceToFile(cdp, traceFile);
 
   const atEnd = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
@@ -675,6 +841,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
   fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'launch-trace.json'), JSON.stringify({ timeline, stages: trace.stages, longTasks: trace.longTasks, atFlight, atEnd }, null, 1), 'utf8');
+  if (TRACE) writeTraceSummary(traceFile, clockSync, timeline, trace.stages);
   log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
   log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);
 }
@@ -686,6 +853,7 @@ const baseEnv = { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION:
 const launch = KEEP_PROFILE
   ? createKeptElectronLaunch(KEEP_PROFILE, baseEnv)
   : createIsolatedElectronLaunch({ root: ROOT, taskId: 'main-thread-profile', timeout: 180_000, baseEnv });
+if (EXTRA_CHROMIUM_ARGS.length) launch.options.args = [...(launch.options.args || []), ...EXTRA_CHROMIUM_ARGS];
 const profileNote = KEEP_PROFILE
   ? `kept evidence profile \`${path.basename(launch.userDataDir)}\` (${launch.existed ? 'reused: warm GPU program and HTTP caches' : 'new: cold start'})`
   : 'fresh temporary evidence profile (cold GPU program cache and HTTP cache)';

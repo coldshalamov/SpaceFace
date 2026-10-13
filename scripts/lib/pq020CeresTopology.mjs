@@ -157,8 +157,13 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // site bodies. Every exact pin already matched; the additive census now proves approach
 // materialization (schema v2, `approachDormant` == structural sections). Prior digest was
 // f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333.
+// 2026-10-13 (first-session lane): Ceres authored POIs 12→14 — poi_ceres_flare_rack and
+// poi_ceres_weigh_pin furnish the bare 4,700 wu arrival leg from the Helios gate (plain
+// beacon rows: two entities, no colliders, no pocket intrusion — the corridor a new player
+// crosses after the first jump). Prior digest was
+// 8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e';
+  'd0f9f1328761b4515fb95d96be9796198454f9c1d074e5c338540eccfed5b4cd';
 
 // PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
 // wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres

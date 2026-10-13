@@ -21,7 +21,7 @@ import { CombatDoctrineRuntime } from '../src/ai/combatDoctrine.js';
 const TELEGRAPH_VFX_KINDS = Object.keys(ADDITIONAL_ACTION_VFX_RECIPES['ai:telegraph'].variants);
 
 test('FB-016: every roster row carries a telegraph block with bark, line and cue', () => {
-  assert.equal(ENEMY_TYPES.length, 19, 'roster size pin — extend this test when rows are added');
+  assert.equal(ENEMY_TYPES.length, 26, 'roster size pin — extend this test when rows are added');
   for (const def of ENEMY_TYPES) {
     const t = def.telegraph;
     assert.ok(t && typeof t === 'object', `${def.id} has no telegraph block`);
@@ -46,7 +46,7 @@ test('FB-016: every authored cue resolves in the presentation recipes', () => {
 
 test('FB-016: cues are not one-size-fits-all — the roster speaks several distinct problems', () => {
   const cues = new Set(ENEMY_TYPES.map((def) => def.telegraph.cue));
-  assert.ok(cues.size >= 6, `only ${cues.size} distinct cues across 19 rows — reuse is not readability`);
+  assert.ok(cues.size >= 6, `only ${cues.size} distinct cues across ${ENEMY_TYPES.length} rows — reuse is not readability`);
 });
 
 test('FB-016: combat.js copies the telegraph block and cue onto every spawn path', () => {

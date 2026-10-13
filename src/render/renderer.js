@@ -1059,11 +1059,14 @@ export function* collectOpeningEntityRootCandidatesSteps(meshes, entities, optio
   // wall clock too. Visit order and output stay identical.
   const censusNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
+  // Every census/sweep generator in this file stamps its stride clock AFTER the yield: a driver that awaits a
+  // present per yield resumes a frame later, and a clock stamped before that wait reads over the 2 ms limit on
+  // the next row, so each following row would yield too.
   let censusStrideAt = censusNow();
   for (const [id, mesh] of meshes) {
     if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
-      censusStrideAt = censusNow();
       yield;
+      censusStrideAt = censusNow();
     }
     if (!mesh || (playerId != null && id === playerId) || mesh.visible === false) continue;
     // _meshes is the entity ownership map, but a prepared/deferred boundary may still be mounted in
@@ -1121,8 +1124,8 @@ export function* collectOpeningShadowCasterRootCandidatesSteps(meshes, entities,
   let censusStrideAt = censusNow();
   for (const [id, root] of meshes) {
     if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
-      censusStrideAt = censusNow();
       yield;
+      censusStrideAt = censusNow();
     }
     if (!root || alreadyIncluded.has(root) || root.visible === false
         || (playerId != null && id === playerId)) continue;
@@ -2129,8 +2132,8 @@ export function* reattachResidentGpuMeshesSteps(owner) {
   const reattachMint = (owner._residentReattachMint = (owner._residentReattachMint | 0) + 1);
   for (const [id, mesh] of owner._meshes) {
     if ((++scanned % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
-      reattachStrideAt = reattachNow();
       yield;
+      reattachStrideAt = reattachNow();
     }
     if (!mesh
         || (mesh.userData && mesh.userData.sfResidentReattachMint === reattachMint)) continue;
@@ -2188,8 +2191,8 @@ export function* reattachResidentGpuMeshesSteps(owner) {
     let rekeyed = 0;
     for (const [oldId, mesh, entity] of rekeys) {
       if ((++rekeyed % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
-        reattachStrideAt = reattachNow();
         yield;
+        reattachStrideAt = reattachNow();
       }
       if (owner._meshes.get(oldId) !== mesh || owner._meshes.has(entity.id)) continue;
       // The target was resolved before the stride yields — it could have died
@@ -13872,6 +13875,21 @@ export const render = {
           left: this._meshBuildQueue.length - this._meshBuildQueueHead,
         });
       };
+      if (state.mode === 'loading' && this.spaceBg) {
+        const bg = this.spaceBg;
+        for (const [lane, adopt] of [
+          [bg.deepSkyPlates, () => bg._adoptActiveSkyPlate()],
+          [bg.deepSkyBases, () => bg._adoptActiveSkyBase()],
+        ]) {
+          while (lane?.transitioning) {
+            if (cookStale()) return cookSuperseded;
+            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS) throw new Error('Opening sky upload exceeded the loading budget');
+            await yieldLiveSectorGpu();
+            if (cookStale()) return cookSuperseded;
+            if (lane.pump({ beforeFlight: true })) adopt();
+          }
+        }
+      }
       if (!scene.environment) this._bakeEnv({ force: true });
       // The envMap stamp walk is a full-scene traverse — drive its chunked twin
       // on the cook's slice clock instead of one atomic block behind the shell.
@@ -24693,8 +24711,8 @@ export const render = {
           visitedMeshes.add(mesh);
         } else if (visitedMeshes.has(mesh)) continue;
         if ((++visited % 256) === 0 || rebindNow() - rebindStrideAt >= 2) {
-          rebindStrideAt = rebindNow();
           yield;
+          rebindStrideAt = rebindNow();
         }
         const entity = resolveWorldPresentationEntity(this.state, id);
         // Same eligibility predicates the push loop applies — a parked walk
@@ -24746,8 +24764,8 @@ export const render = {
     let spawnedStrideAt = spawnedNow();
     for (let index = 0; index < spawnedSlots.length; index++) {
       if ((++visited % 256) === 0 || spawnedNow() - spawnedStrideAt >= 2) {
-        spawnedStrideAt = spawnedNow();
         yield;
+        spawnedStrideAt = spawnedNow();
       }
       const slot = spawnedSlots[index];
       // Same eligibility conjunction the rebind leg applies — a resumed leg must
@@ -26868,8 +26886,8 @@ export const render = {
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
       if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
-        viewSweepStrideAt = viewSweepNow();
         yield;
+        viewSweepStrideAt = viewSweepNow();
       }
       const slot = query.hiddenSlots[index];
       const generation = query.hiddenGenerations[index];
@@ -26979,8 +26997,8 @@ export const render = {
 
     for (let index = 0; index < query.visibleCount; index++) {
       if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
-        viewSweepStrideAt = viewSweepNow();
         yield;
+        viewSweepStrideAt = viewSweepNow();
       }
       const slot = query.visibleSlots[index];
       const generation = query.visibleGenerations[index];
@@ -27982,8 +28000,8 @@ export const render = {
     let upgradeStrideAt = upgradeNow();
     for (const [id, root] of this._meshes) {
       if (++upgradeVisited % 64 === 0 || upgradeNow() - upgradeStrideAt >= 2) {
-        upgradeStrideAt = upgradeNow();
         yield;
+        upgradeStrideAt = upgradeNow();
       }
       const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
       if (!entity || entity.alive === false || entity._noMesh) continue;

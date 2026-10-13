@@ -1,6 +1,8 @@
 // Synchronous codec used only by writer recovery/last-chance quota compaction. Normal loads
 // retain the worker/DecompressionStream path. Three's installed fflate is MIT licensed.
-import { gzipSync, Inflate, strToU8 } from '../../node_modules/three/examples/jsm/libs/fflate.module.js';
+// Vendored, unmodified fflate 0.8.2 (MIT; the same file Three ships): a relative import into node_modules would 404 on a
+// clean checkout (test/performance-dirty-ranges.test.mjs).
+import { gzipSync, Inflate, strToU8 } from '../../vendor/fflate.module.js';
 import { SAVE_GZIP_FORMAT } from './saveWorker.js';
 
 const CRC_TABLE = new Uint32Array(256);

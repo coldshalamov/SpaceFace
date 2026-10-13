@@ -2676,7 +2676,8 @@ export const traffic = {
         };
         const canonicalSpec = makeShipEntitySpec(def.ship, {
           team: def.team,
-          factionId: (sector && sector.factionId) || 'faction_free',
+          // An authored allegiance (a Concord picket in Free Frontier space) beats the sector's colours.
+          factionId: slot.factionId || (sector && sector.factionId) || 'faction_free',
           pos,
           ai: aiSpec,
         });
@@ -2726,6 +2727,8 @@ export const traffic = {
   _stampAuthoredActivityEntity(entity, canonicalData, entry, sectorId, recordId) {
     const data = entity.data || (entity.data = {});
     data.factionId = canonicalData.factionId;
+    // A restored hull still wearing an old record's sector colours is re-stamped to its authored allegiance.
+    if (entry.slot.factionId) entity.factionId = entry.slot.factionId;
     data.team = canonicalData.team;
     data.trafficRole = entry.slot.presentationRole || 'hauler';
     data.trafficLabel = (TRAFFIC_ROLES[data.trafficRole] || TRAFFIC_ROLES.hauler).label;

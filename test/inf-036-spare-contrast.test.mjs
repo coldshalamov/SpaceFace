@@ -54,7 +54,7 @@ test('INF-036: no comparison where there is none', () => {
   assert.equal(weaponSpareContrast(null), null);
   const fitted = refitRowLines({ slotIndex: 0, defId: 'wpn_pulse_laser_s', name: 'Pulse', spares: [] });
   assert.equal(fitted.contrast, null, 'a fitted part is not a spare comparison');
-  assert.equal(fitted.sentence, arsenalIdentity('wpn_pulse_laser_s').sentence,
+  assert.equal(fitted.description, arsenalIdentity('wpn_pulse_laser_s').sentence,
     'fitted rows still carry the arsenalIdentity sentence');
 });
 

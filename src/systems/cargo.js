@@ -398,6 +398,9 @@ function richLotSource(source, commodityId, qty) {
     ...(source.richResolution || source.resolution
       ? { resolution: source.richResolution || source.resolution }
       : {}),
+    ...(typeof source.legalStatus === 'string' && source.legalStatus
+      ? { legalStatus: source.legalStatus }
+      : {}),
     sourceOwner: source.sourceOwner || (source.claimedByKind === 'npc' ? 'npc' : 'player'),
   };
 }
@@ -410,6 +413,7 @@ function appendRichLot(cargo, source, commodityId, qty) {
   const existing = cargo.richLots.find((row) => row && row.lotId === lot.lotId);
   if (existing) {
     existing.qty += lot.qty;
+    if (existing.legalStatus == null && lot.legalStatus != null) existing.legalStatus = lot.legalStatus;
     return;
   }
   cargo.richLots.push(lot);

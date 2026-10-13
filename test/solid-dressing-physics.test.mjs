@@ -54,17 +54,18 @@ test('solid dressing plans follow the census silhouette and the craft-scale floo
 test('target-pinned POI draws re-derive the body radius so the skin scale equals the draw scale', () => {
   const row = modelTruthRow('place_quiessence_freighter_a');
   const target = 21;
-  const extentX = row.bounds.size[0];
+  const extent = Math.max(...row.bounds.size);
   const plan = solidDressingPlanFor('place_quiessence_freighter_a', {
     radius: 21,
     placeTargetRadius: target,
   });
   assert.ok(plan, 'memorial hull is solid');
-  // The renderer fits the model's X extent to 2 x placeTargetRadius; the plan's radius makes
-  // the measured skin land on the same drawn size.
+  // The renderer fits the longest bounds axis to 2 x placeTargetRadius. The plan
+  // uses that same envelope so the skin meets the mesh, not the empty span
+  // beside a short axis.
   const reference = row.gameplay.entityRadius;
-  assert.ok(Math.abs(plan.radius - reference * ((target * 2) / extentX)) < 1e-6);
-  assert.ok(Math.abs(plan.silhouetteWu - row.shell.silhouetteRadius * ((target * 2) / extentX)) < 1e-6);
+  assert.ok(Math.abs(plan.radius - reference * ((target * 2) / extent)) < 1e-6);
+  assert.ok(Math.abs(plan.silhouetteWu - row.shell.silhouetteRadius * ((target * 2) / extent)) < 1e-6);
 });
 
 test('dressing rows carry solidity only when the spec opts in', () => {

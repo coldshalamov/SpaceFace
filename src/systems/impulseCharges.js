@@ -34,6 +34,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
+import { swarmPilotHasActed } from './swarmSafety.js';
 
 const CHARGE_COMMODITY = 'cmdty_impulse_charge';
 
@@ -603,6 +604,9 @@ export const impulseCharges = {
       if (!dart || dart.alive === false || !dart.pos) continue;
       const spec = dart.data && dart.data.detonator;
       if (!spec) continue;
+      // Do not spend the staged fuse while damage admission is waiting on the pilot.
+      // The dart keeps moving and the same live fuse resumes after the first act.
+      if (dart.data.runCohort === 'survival' && !swarmPilotHasActed(state)) continue;
       if (this._detonatedEnts && this._detonatedEnts.has(dart)) continue;
       const triggerRange = Math.max(0, Number(spec.triggerRange) || 56);
       const near = stickCandidatesNear(state, dart.pos, triggerRange, this._stickScratch);

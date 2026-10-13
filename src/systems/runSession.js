@@ -42,6 +42,15 @@ function toReason(value) {
   return typeof value === 'string' ? value : null;
 }
 
+// A kill's displayed cause. Raw tags and weapon ids stay off the line.
+function toCausePhrase(value) {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  if (!text || text.length > 48) return undefined;
+  if (/[a-z0-9]+_[a-z0-9]+/.test(text) || /\bwpn_/.test(text)) return undefined;
+  return text;
+}
+
 // Style settlements name their acts; anything else (or nothing) rides bare.
 function toBankActs(value) {
   if (!Array.isArray(value)) return undefined;
@@ -214,11 +223,11 @@ export const runSession = {
     if (run.phase === 'inactive') return false;
     const credits = toNonNegativeInt(request && request.credits);
     const xp = toNonNegativeInt(request && request.xp);
-    // A quiet swarm wave has not been played. Seed 4242 idle paid +202 at sim
+    // A quiet Crucible wave has not been played. Seed 4242 idle paid +202 at sim
     // 41.1, in the same sample gap as the second pre-input death's resolve,
     // before any flight input. Credits and XP still settle; the score line
-    // stays 0 until this wave's pilot acts. No live swarm fight counts as
-    // already acting, so adventure and scored runs are unchanged.
+    // stays 0 until this wave's pilot acts. Outside live Swarm and Gauntlet rounds, the
+    // existing score admission is unchanged.
     let scorePoints = toNonNegativeInt(request && request.score);
     if (scorePoints > 0 && !swarmPilotHasActed(this.state)) scorePoints = 0;
     const score = Math.round(scorePoints * swarmScoreScale(run));
@@ -240,6 +249,7 @@ export const runSession = {
       reason: toReason(request && request.reason),
       wave: Number.isInteger(request && request.wave) ? request.wave : null,
       bankActs: toBankActs(request && request.bankActs),
+      causePhrase: toCausePhrase(request && request.causePhrase),
     });
     if (committed && next.level > previousLevel) {
       this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp });

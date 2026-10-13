@@ -206,9 +206,18 @@ test('an optic-asteroid demote keeps the lock — the field row re-claims the sa
   // and drops the lock — the demote re-arms it on the row that still resolves.
   const sim = createSimulation({ seed: 10, systems: [] });
   try {
+    // Ordinary ore carries an opticMaterial surface tag too; only lattice cells (opticStructureId) shelve.
+    const ore = sim.spawn({
+      type: 'asteroid', pos: { x: 90, z: 0 }, radius: 8,
+      data: { opticMaterial: 'metal' },
+    });
+    assert.equal(demoteOpticAsteroidToField(sim.state, ore, sim.helpers), null,
+      'a surface-tagged ore rock is not a lattice cell and stays live');
+    assert.ok(sim.state.entities.get(ore.id), 'the ore body is untouched');
+
     const rock = sim.spawn({
       type: 'asteroid', pos: { x: 60, z: 0 }, radius: 8,
-      data: { opticMaterial: 'sf_ice' },
+      data: { opticMaterial: 'sf_ice', opticStructureId: 'test_lattice_cell' },
     });
     const rockId = rock.id;
     sim.state.player.targetId = rockId;

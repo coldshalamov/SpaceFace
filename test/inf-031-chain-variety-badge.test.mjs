@@ -65,6 +65,11 @@ function named(h, event) {
   return h.emitted.filter((e) => e.event === event);
 }
 
+/** Milestone toasts only: the one-time 'Different kill' hint is a separate line with its own owner. */
+function milestoneToasts(h) {
+  return named(h, 'toast').filter((e) => /^CHAIN \d+$/.test(String(e.payload && e.payload.text)));
+}
+
 test('INF-031: swarm:chain carries the cause and step the chain itself scored', () => {
   const h = boot();
   kill(h, 'kinetic');
@@ -96,13 +101,13 @@ test('INF-031: a same-tick burst crossing a milestone says one toast, on the nex
   const causes = ['kinetic', 'explosive', 'kinetic', 'explosive', 'kinetic', 'explosive'];
   for (const cause of causes) kill(h, cause);
   assert.equal(swarmChain.chainState().chain, 11);
-  assert.equal(named(h, 'toast').length, 0, 'no toast mid-burst');
+  assert.equal(milestoneToasts(h).length, 0, 'no milestone toast mid-burst');
   swarmChain.update(DT, h.state);
-  const toasts = named(h, 'toast');
+  const toasts = milestoneToasts(h);
   assert.equal(toasts.length, 1, 'the burst coalesces to a single line');
   assert.equal(toasts[0].payload.text, 'CHAIN 10');
   swarmChain.update(DT, h.state);
-  assert.equal(named(h, 'toast').length, 1, 'it is said once, not every tick');
+  assert.equal(milestoneToasts(h).length, 1, 'it is said once, not every tick');
   swarmChain.destroy();
 });
 

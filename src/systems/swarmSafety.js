@@ -1,5 +1,6 @@
-// Swarm admission geometry. This is a placement test, NOT collision immunity or a
-// velocity controller. Existing bodies retain all their momentum and damage rules.
+// Swarm arrival geometry and per-wave first-act admission. Placement never writes velocity.
+// While the pilot waits, canonical damage/fuse owners hold harm; bodies keep their motion
+// and resume ordinary damage after the act. The geometry tests below never park a body.
 export const SWARM_ARRIVAL_GRACE_S = 2.5;
 export const SWARM_SPAWN_LOOKAHEAD_S = 0.75;
 export const SWARM_SPAWN_RETRY_TICKS = 30;
@@ -94,31 +95,33 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
 // and a playing pilot re-acts on the next tick, so nothing observable is lost.
 const _pilotActedWave = new WeakMap();
 
-function liveSwarmFight(state) {
+function liveFirstActFight(state) {
   const run = state && state.run;
-  if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm') return null;
+  if (!run || run.kind !== 'survival'
+    || (run.ruleset !== 'swarm' && run.ruleset !== 'scored')) return null;
   if (run.phase !== 'active' || !Number.isInteger(run.wave)) return null;
   return run;
 }
 
-/** True unless a live swarm round is waiting on this wave's first pilot act. No swarm run counts as already acting, so headless fire-roster checks keep their cap. */
+/** True unless a live Swarm or Gauntlet round awaits its first pilot act. Other runs keep their existing admission. */
 export function swarmPilotHasActed(state) {
-  const run = liveSwarmFight(state);
+  const run = liveFirstActFight(state);
   if (!run) return true;
   return _pilotActedWave.get(state) === run.wave;
 }
 
 export function noteSwarmPilotAction(state) {
-  const run = liveSwarmFight(state);
+  const run = liveFirstActFight(state);
   if (!run) return;
   _pilotActedWave.set(state, run.wave);
 }
 
 /**
- * A trigger pull, boost, brake, or a real stick. autoFire is combat-stick mode:
+ * A trigger pull, physical verb, boost, brake, or a real stick. autoFire is combat-stick mode:
  * followAutoTargetPath writes moveX/moveZ/turnIntent every tick, so those axes
  * do not count while autoFire is on. An idle pilot who left the stick on auto
- * has not acted. Fire, boost, and brake still count. Threshold matches
+ * has not acted. Input-owned drawFlightManual distinguishes real device controls
+ * from those assist axes. Explicit physical verbs still count. Threshold matches
  * flight.js hasManualFlightInput.
  */
 export function swarmPilotIsActing(state) {
@@ -126,6 +129,12 @@ export function swarmPilotIsActing(state) {
   if (!input) return false;
   if (input.fire === true) return true;
   if (input.boost || input.brake) return true;
+  const actions = input.actions;
+  if (actions && (actions.tetherFire || actions.tetherCut || actions.chargeThrow
+    || actions.chargeDetonate || actions.dropBomb || actions.gyreSnare || actions.throwArm
+    || actions.deployWell || actions.deployRepulsor || actions.deployMassSeed
+    || Math.abs(actions.reelDelta || 0) > 0.08)) return true;
+  if (input.drawFlightManual === true) return true;
   if (input.autoFire) return false;
   return Math.abs(input.moveX || 0) > 0.08
     || Math.abs(input.moveZ || 0) > 0.08

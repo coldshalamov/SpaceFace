@@ -61,6 +61,7 @@ import { isBeamTargetEligible } from './mining.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
+import { noteSwarmPilotAction, swarmPilotIsActing } from './swarmSafety.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
@@ -2108,6 +2109,9 @@ export const input = {
       inp.turnIntentFromAim = false;
       inp.lineOrbit = 0;
     }
+    // Capture deliberate verbs before their later consumers clear the one-shot edges.
+    // This observes the finalized input contract without changing axes or actions.
+    if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
   },
 };
 

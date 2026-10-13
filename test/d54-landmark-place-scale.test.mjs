@@ -91,9 +91,12 @@ for (const { poiId, sectorId, placeId, band } of LANDMARKS) {
       drawnSpan > envelope * (marker.data.visualRadius / row.gameplay.entityRadius),
       `${poiId} drawn span ${drawnSpan} should exceed the old census-scaled ${envelope}`,
     );
+    // The body is the drawn wonder, not the old 20–60 prop band and not the
+    // halo past the mesh. placeTargetRadius is that radius; the skin plan must
+    // land within 2 WU of it.
     assert.ok(
-      marker.radius >= 20 && marker.radius <= 60,
-      `${poiId} gameplay footprint ${marker.radius} stays in its authored band`,
+      Math.abs(marker.radius - target) <= 2,
+      `${poiId} gameplay footprint ${marker.radius} matches the drawn radius ${target}`,
     );
   });
 }

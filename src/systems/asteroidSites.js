@@ -1835,6 +1835,24 @@ export const asteroidSites = {
       }
     }
 
+    const refundU = def?.cost?.cmdty_control_unit || 0;
+    if (refundU > 0) {
+      const cargo = this.state.player?.cargo;
+      // Match cargo's active-content lookup and positive volume floor: a content pack
+      // can change the footprint, but dismantling must still admit the whole refund.
+      const commodities = this.state.content?.commodities;
+      const unit = (Array.isArray(commodities)
+        ? commodities.find(row => row.id === 'cmdty_control_unit')
+        : commodities?.cmdty_control_unit) || COMMODITY_BY_ID.get('cmdty_control_unit');
+      const requiredVolume = refundU * (unit?.volPerU > 0 ? unit.volPerU : 1);
+      const freeVolume = cargo ? cargo.capVolume - cargo.usedVolume : NaN;
+      if (!Number.isFinite(freeVolume) || freeVolume < requiredVolume) {
+        this.bus.emit('toast', { kind: 'warn', ttl: 4,
+          text: `Make room for ${refundU} control unit${refundU === 1 ? '' : 's'} before dismantling.` });
+        return { ok: false, reason: 'refund-hold-full', requiredVolume };
+      }
+    }
+
     site.machines.splice(idx, 1);
 
     if (confirmedSpill) {

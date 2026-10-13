@@ -36,7 +36,7 @@ import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPr
 import { starvedNeedLine } from '../../worldNewsBeats.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
-import { computeBestTrades, applyTradeNavigation, formatRouteCard } from '../../market/tradeLogic.js';
+import { computeBestTrades, applyTradeNavigation, formatRouteCard, routeIsActionable } from '../../market/tradeLogic.js';
 import { chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
 import {
   dressState,
@@ -1656,6 +1656,16 @@ export function createMarketScreen(ctx) {
     const rows = trades.slice(0, 3).map((t, index) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
       const card = formatRouteCard(t);
+      if (!routeIsActionable(t)) {
+        // A refused load explains itself; there is no run to review and no destination to plot.
+        return (
+          `<li class="k-row k-row--static sx-route-row">` +
+            `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))}</span>` +
+              `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
+            `<span class="k-row__num sx-route-row__s">${escapeHtml(card.profitText)}</span><span></span>` +
+          `</li>`
+        );
+      }
       let comparison = '';
       if (index === 0 && t.sourceQuoteExact !== true) {
         try {

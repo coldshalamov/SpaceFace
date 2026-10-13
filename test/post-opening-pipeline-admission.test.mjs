@@ -208,7 +208,9 @@ test('GPU-stage loading builds the on-table 47-A spindle, not the far wreck', ()
     data: { scenarioActorId: 'evidence_spindle_47a', assetRef: 'asset.slice.47a_spindle' },
   };
   const nearbyWreck = {
-    id: 3, type: 'wreck', alive: true, pos: { x: 340, z: 220 },
+    // Beyond the opening runway: a packaged wreck within the table + prefetch radius is part of the initial
+    // authored composition and is relevant on purpose.
+    id: 3, type: 'wreck', alive: true, pos: { x: 3400, z: 2200 },
     data: { assetRef: 'asset.slice.bourse_carrier_wreck' },
   };
   const loading = {
@@ -402,7 +404,8 @@ test('admission queues compiles during loading and retries the starting sector a
   assert.match(bloom, /unstampedVisible/);
   assert.match(bloom, /spacefaceGpuResident/);
   assert.doesNotMatch(renderer, /SF_LiveSectorShadowDepthAdmission/);
-  assert.match(renderer, /compileAsteroid/);
+  // (/compileAsteroid/ pinned a local variable removed 2026-10-02 (834c18df0b); the asteroid pool wiring is
+  // asserted by the identifiers that follow.)
   assert.match(renderer, /asteroidInstancePool/);
   assert.match(renderer, /liveSectorGpuAdmission/);
   assert.match(renderer, /FIRST_FLIGHT_ROCK_COOK_CAP/);

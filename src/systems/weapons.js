@@ -932,6 +932,22 @@ export const weapons = {
       const d = p.data;
       if (!d || d.kind !== 'missile') continue;
       if (!d.armed) { d.armed = true; }
+      // Cloak and ECM shape one authored seeker. Start from its unjammed rate each tick
+      // so neither a reveal nor a fading cloak can overwrite the other's authority.
+      let jammer = null;
+      const cloakDiverted = d.diverted && d._cloakTurnRate != null
+        && d._cloakSeekerLoss >= CLOAK_SEEKER_DROP_S;
+      // A completed cloak break keeps its stale-fix authority after ECM has released
+      // and removed its marker. The seeker owner reapplies that persistent consequence.
+      if (cloakDiverted) d.turnRate = d._cloakTurnRate * CLOAK_SEEKER_RESIDUAL;
+      if (d._jammedTurnRate != null) {
+        d.turnRate = cloakDiverted
+          ? d._cloakTurnRate * CLOAK_SEEKER_RESIDUAL : d._jammedTurnRate;
+        const source = this.helpers.getEntity(d._jammedBy);
+        const cm = source && source.alive !== false && source.data && source.data.cm;
+        if (cm && cm.effectT > 0 && cm.effect?.cfg?.kind === 'ecm') jammer = cm.effect.cfg;
+        else { delete d._jammedTurnRate; delete d._jammedBy; }
+      }
       const decoy = missileDecoyAim(d);
       let tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
       // A recycled entity id is not yesterday's target. The round stays a physical body.
@@ -958,6 +974,7 @@ export const weapons = {
         d._cloakSeekerLoss = 0;
         d._cloakTurnRate = null;
       }
+      if (jammer) d.turnRate *= Math.max(0, Math.min(1, jammer.turnRateMult ?? 0));
       const aim = decoy || (tgt && tgt.pos);
       const turnRate = d.turnRate || 0;
       const speedMax = d.projSpeed || Math.hypot(p.vel.x, p.vel.z) || 1;

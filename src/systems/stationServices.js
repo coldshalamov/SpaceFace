@@ -158,6 +158,20 @@ function playerEntity(state) {
     ? state.entities.get(state.playerId) : null;
 }
 
+function activeOwnedHull(state) {
+  const player = state && state.player;
+  return player && Array.isArray(player.ownedShips)
+    ? player.ownedShips[player.activeShipIndex] || null : null;
+}
+
+function jobMatchesHull(job, state) {
+  const owned = activeOwnedHull(state);
+  if (job._ownedHull) return job._ownedHull === owned;
+  const defId = owned && owned.defId || playerEntity(state)?.data?.defId || null;
+  return (!Number.isInteger(job.hullIndex) || job.hullIndex === state.player?.activeShipIndex)
+    && (!job.hullDefId || job.hullDefId === defId);
+}
+
 function isProductionDocked(state) {
   return !!(state && state.ui && state.ui.docked === true
     && typeof state.ui.dockedStationId === 'string' && state.ui.dockedStationId);
@@ -203,9 +217,14 @@ export const stationServices = {
       this._onDocked = (p) => this._onPlayerDocked(p);
       this._onUndocked = () => this._onPlayerUndocked();
       this._onExit = () => this._onSectorExit();
+      this._onHullChanged = () => {
+        const player = this.state.stationServices?.player;
+        if (player) this._abortForeignHullJobs(player);
+      };
       this.bus.on('dock:docked', this._onDocked);
       this.bus.on('dock:undocked', this._onUndocked);
       this.bus.on('sector:exit', this._onExit);
+      this.bus.on('ship:statsChanged', this._onHullChanged);
     }
   },
 
@@ -250,14 +269,18 @@ export const stationServices = {
   },
 
   _abortJobs(player, reason) {
-    if (!player || !Array.isArray(player.jobs)) return;
-    const count = player.jobs.length;
+    if (!player || !Array.isArray(player.jobs) || player.jobs.length === 0) return;
+    // Drop the hold before the refund emit. A listener that cancels again must see an
+    // empty queue, or the same undelivered charge is granted twice.
+    const jobs = player.jobs;
+    player.jobs = [];
+    const count = jobs.length;
     // The price was charged in full at booking, so paid work the yard never delivers comes
     // straight back — an abort that kept the credits would be a silent money leak. The same
     // pro-rata share releases undelivered note debt (FB-101 hardship fuel filed on the note).
     let refundCr = 0;
     let releaseCr = 0;
-    for (const job of player.jobs) {
+    for (const job of jobs) {
       const total = Number(job.total) || 0;
       const undelivered = total > 0 ? Math.max(0, total - Math.min(Number(job.applied) || 0, total)) : 0;
       if (undelivered > 0) {
@@ -291,7 +314,7 @@ export const stationServices = {
           ? ` The ${releaseCr} cr note was released with it.`
           : '';
     if (this.bus) {
-      for (const job of player.jobs) {
+      for (const job of jobs) {
         this.bus.emit('service:aborted', {
           jobId: job.id, type: job.type, stationId: job.stationId,
           applied: job.applied, total: job.total, reason,
@@ -303,7 +326,7 @@ export const stationServices = {
         });
         // The completion toast's mirror: the service was paid up front, so an abort destroyed
         // paid work — the refund above hands the undelivered share back and the toast names it.
-        if (job === player.jobs[0]) {
+        if (job === jobs[0]) {
           const label = job.type === 'refuel' ? 'refuel' : 'repair';
           const pct = job.total > 0 && job.applied > 0
             ? Math.round(Math.max(0, Math.min(1, job.applied / job.total)) * 100)
@@ -317,7 +340,16 @@ export const stationServices = {
         }
       }
     }
-    player.jobs = [];
+  },
+
+  _abortForeignHullJobs(player) {
+    const jobs = player.jobs || [];
+    const foreign = jobs.filter((job) => !jobMatchesHull(job, this.state));
+    if (!foreign.length) return;
+    const retained = jobs.filter((job) => jobMatchesHull(job, this.state));
+    player.jobs = foreign;
+    this._abortJobs(player, 'ship_changed');
+    player.jobs = retained;
   },
 
   // ── the seam economy.handleService calls (registryGet('stationServices')) ──────────────────
@@ -361,6 +393,9 @@ export const stationServices = {
       startedAt: null,
       ratePerS: 0,
       meta: spec.meta && typeof spec.meta === 'object' ? spec.meta : {},
+      hullIndex: Number.isInteger(state.player?.activeShipIndex) ? state.player.activeShipIndex : null,
+      hullDefId: activeOwnedHull(state)?.defId || playerEntity(state)?.data?.defId || null,
+      _ownedHull: activeOwnedHull(state),
       ...(type === 'repair' ? { deliveredHull: 0, deliveredArmor: 0 } : {}),
     };
     s.player.jobs.push(job);
@@ -397,6 +432,11 @@ export const stationServices = {
     if (!s || !s.player || !s.player.stationId) return;   // inert off the dock path
     const player = s.player;
     const stationId = player.stationId;
+
+    // Shipworks can activate another hull while the player stays on the same pad.
+    // Work was sold for the outgoing hull; return its undelivered share before any
+    // repair/fuel delta can reach the incoming one (including same-model hulls).
+    this._abortForeignHullJobs(player);
 
     // The yard only works on a hull sitting on its pad. A saved mid-job record restores
     // undocked (the save layer clears ui.docked): the job stays PARKED at the yard until the
@@ -640,6 +680,9 @@ export const stationServices = {
           total: j.total, applied: j.applied, lastApplied: j.lastApplied,
           status: j.status, queuedAt: j.queuedAt, startedAt: j.startedAt,
           ratePerS: j.ratePerS, meta: j.meta && typeof j.meta === 'object' ? j.meta : {},
+          hullIndex: j._ownedHull && Array.isArray(this.state.player?.ownedShips)
+            ? this.state.player.ownedShips.indexOf(j._ownedHull) : j.hullIndex,
+          hullDefId: j.hullDefId || null,
           ...(j.type === 'repair' ? { deliveredHull: j.deliveredHull || 0, deliveredArmor: j.deliveredArmor || 0 } : {}),
         })),
       },
@@ -674,6 +717,10 @@ export const stationServices = {
         startedAt: Number.isFinite(j.startedAt) ? j.startedAt : null,
         ratePerS: Math.max(0, Number(j.ratePerS) || 0),
         meta: j.meta && typeof j.meta === 'object' ? j.meta : {},
+        hullIndex: Number.isInteger(j.hullIndex) ? j.hullIndex : null,
+        hullDefId: typeof j.hullDefId === 'string' ? j.hullDefId : null,
+        _ownedHull: Number.isInteger(j.hullIndex) && Array.isArray(this.state.player?.ownedShips)
+          ? this.state.player.ownedShips[j.hullIndex] || null : null,
         ...(j.type === 'repair' ? {
           deliveredHull: Math.max(0, Number(j.deliveredHull ?? ((Number(j.applied) || 0) * (j.meta?.shares?.hull ?? 1))) || 0),
           deliveredArmor: Math.max(0, Number(j.deliveredArmor ?? ((Number(j.applied) || 0) * (j.meta?.shares?.armor ?? 0))) || 0),
@@ -691,8 +738,9 @@ export const stationServices = {
       if (this._onDocked) this.bus.off('dock:docked', this._onDocked);
       if (this._onUndocked) this.bus.off('dock:undocked', this._onUndocked);
       if (this._onExit) this.bus.off('sector:exit', this._onExit);
+      if (this._onHullChanged) this.bus.off('ship:statsChanged', this._onHullChanged);
     }
-    this._onDocked = this._onUndocked = this._onExit = null;
+    this._onDocked = this._onUndocked = this._onExit = this._onHullChanged = null;
   },
 };
 

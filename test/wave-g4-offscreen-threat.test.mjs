@@ -115,14 +115,15 @@ test('G4 places one marker on the shooter quadrant and none for an in-frame or d
       return out;
     };
     halo.update(player, state, inFrame);
-    // A contact crossing INTO the frame holds its edge mark through the retire grace — a
-    // hostile oscillating on the frustum edge must not blink its arc at tick rate. Sustained
-    // in-frame retires it. Jump the clock past the grace window to observe the retired state.
+    assert.equal(visibleArcs(mock).length, 0,
+      'an in-frame attacker retires immediately, including inside placement grace');
     globalThis.performance = { now: () => t0 + 400 };
     try {
       halo.update(player, state, inFrame);
       assert.equal(visibleArcs(mock).length, 0, 'a sustained in-frame attacker retires its edge mark');
 
+      halo.update(player, state, offRight);
+      assert.equal(visibleArcs(mock).length, 1);
       shooter.alive = false;
       halo.update(player, state, offRight);
       assert.equal(visibleArcs(mock).length, 0, 'the mark dies with the hostile');
@@ -132,4 +133,41 @@ test('G4 places one marker on the shooter quadrant and none for an in-frame or d
   } finally {
     globalThis.document = oldDoc;
   }
+});
+
+test('G4 places and publishes the submitted local hull pose in its global frame', () => {
+  const mock = mockDocument(); const oldDoc = globalThis.document;
+  globalThis.document = mock.document;
+  try {
+    const halo = createThreatHalo(mock.document.createElement('div'));
+    const player = { id: 1, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
+    const shooter = { id: 2, occupantGeneration: 17, type: 'ship', alive: true, team: 1,
+      pos: { x: 900, z: 0 }, data: { encounter: true, weapons: ['wpn_pulse'] } };
+    const root = { visible: true, position: { x: 600, z: 0 } };
+    const state = { tick: 10, simTime: 10 / 60, playerId: 1, entityList: [player, shooter],
+      world: { frameOrigin: { x: 1000, z: 20 } }, render: { meshes: new Map([[2, root]]) } };
+    const project = (world, out) => {
+      out.x = world.x; out.y = world.z + 340; out.onScreen = world.x >= 0 && world.x <= 1280;
+      out.behind = false; return out;
+    };
+    halo.update(player, state, project);
+    const slot = visibleArcs(mock)[0];
+    assert.ok(slot, 'submitted hull at1600 remains offscreen despite the newer sim pose at900');
+    const placement = JSON.parse(slot.getAttribute('data-placement-read'));
+    assert.equal(placement.id, shooter.id); assert.equal(placement.generation, 17);
+    assert.equal(placement.x, 1600); assert.equal(placement.y, 360);
+    assert.equal(placement.onScreen, false); assert.equal(placement.tick, state.tick);
+    assert.ok(Number.isFinite(placement.at)); assert.ok(placement.expiresAt > placement.at);
+    assert.equal(placement.checkedAt, placement.at);
+    assert.equal(placement.frame, Number(slot.parentNode.getAttribute('data-placement-frame')));
+    root.position.x = 100;
+    halo.update(player, state, project);
+    assert.equal(visibleArcs(mock).length, 0, 'the submitted hull entering frame retires the marker');
+    assert.equal(slot.getAttribute('data-placement-read'), undefined, 'retired slot drops its placement');
+    root.visible = false; shooter.pos.x = 1600;
+    halo.update(player, state, project);
+    assert.equal(JSON.parse(visibleArcs(mock)[0].getAttribute('data-placement-read')).x, 1600,
+      'an unavailable/pooled root uses the canonical global simulation anchor');
+    halo.destroy();
+  } finally { globalThis.document = oldDoc; }
 });

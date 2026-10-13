@@ -144,11 +144,11 @@ test('every region binds a plate that exists, and a plateless region costs nothi
 // Residency: bounded, and never uploading on a frame with no room for it.
 // ---------------------------------------------------------------------------------------------
 
-function fakeResidency({ lastPresentDtMs = 10 } = {}) {
+function fakeResidency({ lastPresentDtMs = 10, mode = undefined } = {}) {
   const loads = [];
   const disposed = [];
   const uploaded = [];
-  const state = { render: { lastPresentDtMs } };
+  const state = { ...(mode ? { mode } : {}), render: { lastPresentDtMs } };
   const loader = {
     load(url, onLoad) {
       const texture = { url, disposed: false, dispose() { this.disposed = true; disposed.push(url); } };
@@ -204,6 +204,28 @@ test('the plate upload waits for a frame with room, and is never skipped forever
   assert.equal(residency.readyId, 'core-lantern-shelf',
     'only after initTexture may the sky start blending the plate in');
   assert.equal(residency.stats().uploads, 1);
+});
+
+test('the opening cook may upload the sky behind the loading shell; flight never skips the frame-room gate', () => {
+  // The sky managers only pump in flight, so a plate decoded late used to upload inside the first seconds of
+  // flight (81 ms of texSubImage2D in the 2026-10-13 profile). The loading cook passes beforeFlight, which is
+  // honoured only while state.mode is 'loading'.
+  const loading = fakeResidency({ lastPresentDtMs: 48, mode: 'loading' });
+  loading.residency.request('core-lantern-shelf');
+  loading.loads[0].onLoad();
+  assert.equal(loading.residency.pump(), false, 'without the option a late frame still waits');
+  assert.equal(loading.uploaded.length, 0);
+  assert.equal(loading.residency.pump({ beforeFlight: true }), true, 'the loading cook uploads behind the shell');
+  assert.deepEqual(loading.uploaded, ['/assets/background/deep-sky/core-lantern-shelf.png']);
+  assert.equal(loading.residency.readyId, 'core-lantern-shelf');
+
+  const flight = fakeResidency({ lastPresentDtMs: 48, mode: 'flight' });
+  flight.residency.request('core-lantern-shelf');
+  flight.loads[0].onLoad();
+  assert.equal(flight.residency.pump({ beforeFlight: true }), false,
+    'in flight the option is ignored: a late frame must still wait');
+  assert.equal(flight.uploaded.length, 0);
+  assert.equal(flight.residency.readyId, null);
 });
 
 test('a sustained run of late frames still admits the plate rather than parking it', () => {

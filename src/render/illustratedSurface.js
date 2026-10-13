@@ -1,14 +1,14 @@
 // Illustrated industrial surfaces: shape the light, never quantize the texture.
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
 //
-// v10-v13 (the Look, 2026-09-30): every constant that decides the vibe is a shared Look
+// v10-v14 (the Look): every constant that decides the vibe is a shared Look
 // uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
 // gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
 import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v13';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v14';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -96,11 +96,11 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
     // from washing out where a wall turns away).
     float sfCoatFresnel = 0.05 + sfLookCoatEdge * pow(sfGrazing, 5.0);
     sfCoatLight *= sfLookCoatTint * (sfCoatWeight * sfCoatFresnel);
-    // Edge light: the hull limb picks up the mood's rim hue. Brighter on the unlit side,
-    // where it is the only thing separating a dark hull from black space.
-    sfRimLight = sfLookRim * (sfLookRimStrength * sfCoatWeight
-      * pow(sfGrazing, sfLookRimPower) * (1.0 - 0.55 * sfBodyLight));
   }
+  // The limb picks up the opposing stage light, strongest away from the key. Stone has
+  // no lacquer, but its grazing facets still need to separate from black space.
+  sfRimLight = sfLookRim * (sfLookRimStrength * (sfCoatWeight + sfRockSurface * sfLookRockRim)
+    * pow(sfGrazing, sfLookRimPower) * (1.0 - 0.55 * sfBodyLight));
 `;
 
 const THREE_DEFAULT_PROGRAM_KEY_PARTS = new Set([
@@ -249,6 +249,7 @@ export function installIllustratedSurface(material) {
     } };
     shader.uniforms.sfPaintPigment = { value: new Color(pigment?.color || '#ffffff') };
     shader.uniforms.sfPaintStrength = { value: pigment?.strength || 0 };
+    shader.uniforms.sfRockSurface = { value: this.userData?.spacefaceSharedMaterialRole === 'rock' ? 1 : 0 };
     const layout = this.userData?.spacefaceHullLayout;
     shader.uniforms.sfLayoutKind = { value: layout?.kind || 0 };
     shader.uniforms.sfLayoutStrength = { value: layout?.strength || 0 };
@@ -276,6 +277,9 @@ export function installIllustratedSurface(material) {
         uniform float sfLookPaintCeiling;
         uniform float sfLookRimStrength;
         uniform float sfLookRimPower;
+        uniform float sfLookRockFill;
+        uniform float sfLookRockRim;
+        uniform float sfRockSurface;
         uniform vec3 sfLookShadowTint;
         uniform vec3 sfLookLightTint;
         uniform vec3 sfLookCoatTint;
@@ -339,7 +343,11 @@ export function installIllustratedSurface(material) {
       // bloom threshold, so a sunlit ivory wall keeps its form instead of glowing. Coat, rim,
       // specular and lamps are light and stay free to bloom.
       .replace(OUTPUT_NEEDLE, `
-        vec3 sfPaint = totalDiffuse * sfContour;
+        // Retain the scanned pigment/strata under a broad shadow fill. This is diffuse
+        // reflected light, bounded by the same pigment ceiling; no emissive blanket.
+        vec3 sfRockFill = diffuseColor.rgb * (1.0 - metalnessFactor) * sfLookShadowTint
+          * (sfRockSurface * sfLookRockFill * (1.0 - sfBodyLight));
+        vec3 sfPaint = (totalDiffuse + sfRockFill) * sfContour;
         float sfPaintY = dot(sfPaint, vec3(0.2126, 0.7152, 0.0722));
         // Gloss needs headroom: on pigment already near the ceiling (sunlit ivory) the coat and
         // rim fade, or a pale wall would stack them into a glowing white slab.
