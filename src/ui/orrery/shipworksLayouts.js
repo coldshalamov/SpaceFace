@@ -98,6 +98,9 @@ ${W} .orr-sw-jig { position:absolute; inset:0 0 34px 0; z-index:3; }
 }
 /* a drawing that cannot lay out stands down whole: its labels never fall into the flow */
 ${W} .orr-sw-jig:not(.orr-hull--on) .orr-sw-node { display:none !important; }
+/* ...and takes no pointer: an unlaid jig is an empty box over the live hull, and at z3 it swallowed
+   every click meant for the slot callouts, the camera words and the hull drag beneath it */
+${W} .orr-sw-jig:not(.orr-hull--on) { pointer-events:none; }
 ${W} .orr-sw-jig .orr-hull__pool { -webkit-mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
   mask-composite:intersect; }

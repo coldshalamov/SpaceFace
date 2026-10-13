@@ -515,6 +515,14 @@ New overlay `src/ui/orrery/pauseLayouts.js`, injected from `pause.js` (one impor
 **Next:** HUD chrome / dialogs / stations; re-verify earlier screens on fresh assets; SANDBOX-over-nose remaining on main menu @1080p.
 
 
+## Shipworks stage takes the pointer again — session notes (2026-10-13, ui-polish-21)
+
+**Before:** two pointer bugs on the Shipworks dock, found while checking the rename field. (1) The rename field ("Name this hull") couldn't be clicked at any size, including phone; only Tab reached it. `.sx-sw__nameplate` is `pointer-events:none` and the input inherits it, and the kit's `input.k-input:hover { pointer-events:unset }` hands the `none` back on hover. (2) At ≤1100 wide, where the hull drawing doesn't lay out and the live hull shows, the empty jig box (z3) still took the pointer. Slot callouts, LEFT / CENTER / RIGHT and the hull drag all hit the jig instead, so nothing on the stage responded to the mouse.
+
+**Fix:** `station.css`: the rename field takes the pointer back, with `:hover`/`:focus` arms that outrank the kit rule. `shipworksLayouts.js`: `.orr-sw-jig:not(.orr-hull--on) { pointer-events:none }`. When the jig is laid out it keeps the pointer, and the nameplate's existing z4 keeps the field above it.
+
+**Checked:** click then type works at 960×540, 1280×720, 1920×1080, 390×844 and 844×390. At 960, 1024 and 1100 the hit-tests reach the callout, the camera word and the canvas, and a click on the Weapon callout opens its chooser. Idle screenshots are pixel-identical to master at every size. Shots: `ui-shots/rename-click/`.
+
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
 
 Captured by booting the actual game (`node server.js`, Playwright + SwiftShader) and clicking through the main menu the way a player does. Images: `docs/ui-polish/before/*.jpg`, `docs/ui-polish/after/*.jpg`.
