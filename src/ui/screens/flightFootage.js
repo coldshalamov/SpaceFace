@@ -24,6 +24,80 @@ export function createFootageRing(limits = FLIGHT_FOOTAGE_LIMITS) {
 let active = null;
 export function getFlightFootage() { return active; }
 
+/**
+ * Worker body, shipped to a Blob-URL worker through Function.toString (the boot ring's pattern), so it
+ * references nothing outside itself. It scales a presented frame onto an OffscreenCanvas and encodes the
+ * JPEG there. The sync GPU-to-CPU readback that canvas.toBlob does on the main thread waits for the whole
+ * queued render on an integrated GPU (~11 ms a capture inside Crucible, 11% of the main thread); in a
+ * worker the same wait stalls only the worker.
+ */
+export function footageEncoderRuntime() {
+  let canvas = null, context = null;
+  self.onmessage = async ({ data }) => {
+    const { id, bitmap, width, height } = data;
+    try {
+      if (!canvas) { canvas = new OffscreenCanvas(width, height); context = canvas.getContext('2d'); }
+      if (canvas.width !== width) canvas.width = width;
+      if (canvas.height !== height) canvas.height = height;
+      context.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.88 });
+      self.postMessage({ id, blob });
+    } catch (error) {
+      try { bitmap.close(); } catch { /* already closed */ }
+      self.postMessage({ id, failed: String(error) });
+    }
+  };
+}
+
+/** The off-main-thread JPEG encoder, or null where Worker/OffscreenCanvas/createImageBitmap are missing. */
+export function createFootageEncoder(scope = globalThis) {
+  if (typeof scope.Worker !== 'function' || typeof scope.OffscreenCanvas !== 'function'
+    || typeof scope.createImageBitmap !== 'function' || typeof scope.Blob !== 'function'
+    || typeof scope.URL?.createObjectURL !== 'function') return null;
+  let worker = null, url = null, nextId = 0, broken = false;
+  const waiting = new Map();
+  const failAll = (reason) => {
+    broken = true;
+    for (const entry of waiting.values()) entry.reject(new Error(reason));
+    waiting.clear();
+  };
+  try {
+    url = scope.URL.createObjectURL(new scope.Blob([`(${footageEncoderRuntime.toString()})();`], { type: 'text/javascript' }));
+    worker = new scope.Worker(url, { name: 'spaceface-footage' });
+  } catch {
+    if (url) { try { scope.URL.revokeObjectURL?.(url); } catch { /* nothing to revoke */ } }
+    return null;
+  }
+  worker.onerror = (event) => { event?.preventDefault?.(); failAll(event?.message || 'footage worker error'); };
+  worker.onmessageerror = () => failAll('footage worker message error');
+  worker.onmessage = ({ data }) => {
+    const entry = waiting.get(data?.id);
+    if (!entry) return;
+    waiting.delete(data.id);
+    if (data.failed || !data.blob) entry.reject(new Error(data.failed || 'footage worker returned no frame'));
+    else entry.resolve(data.blob);
+  };
+  return {
+    get usable() { return !broken; },
+    /** Transfers the bitmap; resolves with the JPEG blob. */
+    encode(bitmap, width, height) {
+      if (broken) { bitmap.close?.(); return Promise.reject(new Error('footage worker retired')); }
+      const id = ++nextId;
+      return new Promise((resolve, reject) => {
+        waiting.set(id, { resolve, reject });
+        try { worker.postMessage({ id, bitmap, width, height }, [bitmap]); }
+        catch (error) { waiting.delete(id); failAll(String(error)); reject(error); }
+      });
+    },
+    dispose() {
+      failAll('footage encoder disposed');
+      try { worker.terminate(); } catch { /* already gone */ }
+      if (url) { try { scope.URL.revokeObjectURL?.(url); } catch { /* nothing to revoke */ } url = null; }
+    },
+  };
+}
+
 export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {}) {
   active?.dispose();
   if (typeof document === 'undefined' || typeof stateOf !== 'function') { active = null; return null; }
@@ -34,7 +108,7 @@ export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {})
   const subscriptions = [];
   const clock = () => globalThis.performance?.now?.() ?? Date.now();
   const openingDelay = Number.isFinite(startDelayMs) ? Math.max(0, startDelayMs) : 5000;
-  let openingSince = null, context = null;
+  let openingSince = null, context = null, encoder = null, encoderTried = false;
   const stopStream = () => {
     epoch += 1;
     if (video && callback != null) video.cancelVideoFrameCallback?.(callback);
@@ -65,15 +139,25 @@ export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {})
       const scale = Math.min(1, FLIGHT_FOOTAGE_LIMITS.width / (source.width || 640), FLIGHT_FOOTAGE_LIMITS.height / (source.height || 360));
       const width = Math.max(1, Math.round((source.width || 640) * scale));
       const height = Math.max(1, Math.round((source.height || 360) * scale));
-      if (canvas.width !== width) canvas.width = width;
-      if (canvas.height !== height) canvas.height = height;
-      context.drawImage(video, 0, 0, width, height);
       encoding = true;
-      canvas.toBlob((blob) => {
+      const land = (blob) => {
         if (token !== epoch || stopped) return;
         encoding = false;
         if (blob) ring.push({ tick, blob, width, height });
-      }, 'image/jpeg', 0.88);
+      };
+      // The worker path hands the frame over as a bitmap and never touches the main thread's canvas; any
+      // failure retires it and this capture's successors take the main-thread path below, so the ring
+      // never silently stops filling.
+      if (encoder?.usable) {
+        createImageBitmap(video, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' })
+          .then((bitmap) => encoder.encode(bitmap, width, height))
+          .then(land, () => { if (token === epoch && !stopped) encoding = false; });
+      } else {
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
+        context.drawImage(video, 0, 0, width, height);
+        canvas.toBlob(land, 'image/jpeg', 0.88);
+      }
     }
     if (video) callback = video.requestVideoFrameCallback?.(capture) ?? null;
   };
@@ -93,6 +177,7 @@ export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {})
     try {
       stream = next.captureStream(FLIGHT_FOOTAGE_LIMITS.fps);
       video = document.createElement('video'); video.muted = true; video.playsInline = true;
+      if (!encoderTried) { encoderTried = true; encoder = createFootageEncoder(); }
       video.srcObject = stream; canvas = document.createElement('canvas');
       context = canvas.getContext('2d');
       video.play().then(() => { if (video) callback = video.requestVideoFrameCallback?.(capture) ?? null; }).catch(stopStream);
@@ -121,7 +206,7 @@ export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {})
     },
     clear,
     dispose() {
-      stopped = true; clear(); clearInterval(timer);
+      stopped = true; clear(); clearInterval(timer); encoder?.dispose(); encoder = null;
       subscriptions.forEach((off) => off()); document.removeEventListener('visibilitychange', visibility);
       if (active === this) active = null;
     },

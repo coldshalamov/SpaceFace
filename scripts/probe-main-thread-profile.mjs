@@ -732,6 +732,21 @@ async function runSteadyFlightProfile(page, cdp) {
 
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
   const longTasks = await page.evaluate(() => window.__SF_PROFILE_LONGTASKS__ || []).catch(() => []);
+  // The flight-footage recorder (a JPEG ring behind the Moment clips) must still fill and decode.
+  const footage = await page.evaluate(async () => {
+    const module = await import('/src/ui/screens/flightFootage.js');
+    const active = module.getFlightFootage();
+    if (!active) return { installed: false };
+    const frames = active.ring.frames;
+    const last = frames.at(-1);
+    let decoded = null;
+    if (last) {
+      try { const bitmap = await createImageBitmap(last.blob); decoded = { width: bitmap.width, height: bitmap.height }; bitmap.close(); }
+      catch (error) { decoded = { error: String(error) }; }
+    }
+    return { installed: true, ...active.status(), lastBytes: last ? last.blob.size : 0, decoded };
+  }).catch((error) => ({ error: String(error) }));
+  log(`flight footage: ${JSON.stringify(footage)}`);
   await page
     .evaluate(() => {
       try { window.__SF_PROFILE_LONGTASK_OBSERVER__?.disconnect(); } catch { /* already gone */ }
