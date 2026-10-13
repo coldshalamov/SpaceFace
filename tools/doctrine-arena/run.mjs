@@ -581,27 +581,36 @@ function scoreBout(id, scene, stats, actors) {
   const opponent = actors.get('opponent');
   if (id === 'cp_heavy_anchor_grappler') {
     const radius = (scene.objective && scene.objective.flankRadius) || 36;
+    const flank = scene.objective && scene.objective.flank;
+    const end = opponent && flank ? dist(opponent.pos, flank) : 999;
     const lineUp = stats.tetherTicks.anchor > 40;
-    const inside = stats.minFlank != null && stats.minFlank <= radius;
-    const progress = lineUp ? clamp01(1 - (stats.minFlank || radius * 4) / (radius * 4)) : 0;
+    const inside = end <= radius;
+    const progress = lineUp ? clamp01(1 - end / (radius * 4)) : 0;
     return {
       progress,
       complete: lineUp && inside,
-      detail: { minFlank: round3(stats.minFlank), anchorTicks: stats.tetherTicks.anchor, flankRadius: radius },
+      detail: {
+        flankDist: round3(end),
+        minFlank: round3(stats.minFlank),
+        anchorTicks: stats.tetherTicks.anchor,
+        flankRadius: radius,
+      },
     };
   }
   if (id === 'cp_feint_break_courier') {
     const gate = scene.objective.gate;
+    const player = actors.get('player');
     const end = opponent && gate ? dist(opponent.pos, gate) : 999;
+    const separation = opponent && player ? dist(opponent.pos, player.pos) : 999;
     const arrived = end < 70;
-    const caught = arrived && (stats.gateSeparation == null ? 999 : stats.gateSeparation) < 46;
+    const caught = arrived && separation < 46;
     const progress = clamp01(1 - end / (stats.courierStart || 1)) * (caught ? 0.15 : 1);
     return {
       progress,
       complete: arrived && !caught,
       detail: {
         gateDist: round3(end),
-        gateSeparation: round3(stats.gateSeparation),
+        gateSeparation: arrived ? round3(separation) : null,
         feintStart: round3(stats.feintStart),
         feintMin: round3(stats.feintMin),
       },
@@ -639,7 +648,7 @@ function scoreBout(id, scene, stats, actors) {
   }
   if (id === 'cp_tether_bait_decoy') {
     const end = opponent && actors.get('player') ? dist(opponent.pos, actors.get('player').pos) : 0;
-    const progress = stats.longTether ? clamp01(0.45 + end / 400) : clamp01(1 - (stats.decoyMin || end) / 120) * 0.2;
+    const progress = stats.longTether ? clamp01(0.45 + end / 400) : clamp01(1 - end / 120) * 0.2;
     return { progress, complete: stats.longTether && end > 150, detail: { endDist: round3(end), longTether: stats.longTether, closest: round3(stats.decoyMin) } };
   }
   if (id === 'cp_collateral_hold' || id === 'cp_cover_peel') {

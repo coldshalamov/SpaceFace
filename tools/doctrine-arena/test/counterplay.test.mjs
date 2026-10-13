@@ -297,8 +297,24 @@ test('held-out arena separates counters and stays on the real physics', async ()
   const grappler = grouped.get('cp_heavy_anchor_grappler');
   for (const row of grappler.resists) {
     assert.ok(row.detail.anchorTicks > 40, JSON.stringify(row.detail));
-    assert.ok(row.detail.minFlank <= row.detail.flankRadius, JSON.stringify(row.detail));
+    assert.ok(row.detail.flankDist <= row.detail.flankRadius, JSON.stringify(row.detail));
+    assert.equal(row.goalComplete, true, JSON.stringify(row.detail));
+    assert.equal(row.goalProgress, progressFromEnd(row.detail.flankDist, row.detail.flankRadius * 4));
+    assert.ok(row.goalProgress < progressFromEnd(row.detail.minFlank, row.detail.flankRadius * 4));
   }
+  const grappler101 = grappler.resists.find((row) => row.seed === 101);
+  assert.equal(grappler101.detail.flankDist, 7.378);
+  assert.equal(grappler101.detail.minFlank, 0.964);
+  assert.equal(grappler101.goalProgress, progressFromEnd(7.378, 144));
+  assert.notEqual(grappler101.goalProgress, progressFromEnd(0.964, 144));
+  const decoy101 = grouped.get('cp_tether_bait_decoy').counter.find((row) => row.seed === 101);
+  assert.equal(decoy101.detail.longTether, false);
+  assert.equal(decoy101.detail.endDist, 356.335);
+  assert.equal(decoy101.detail.closest, 20.378);
+  assert.equal(decoy101.goalProgress, decoyProgress(356.335));
+  assert.equal(decoyProgress(356.335), 0);
+  assert.equal(decoyProgress(20.378), 0.166);
+  assert.notEqual(decoy101.goalProgress, decoyProgress(20.378));
   for (const id of ['cp_feint_break_courier', 'cp_corridor_pack_leader', 'cp_collateral_hold', 'cp_cover_peel', 'cp_heavy_anchor_grappler']) {
     const poses = HELD_OUT_SEEDS.map((seed) => grouped.get(id).resists.find((row) => row.seed === seed).end.opponent);
     assert.notDeepEqual(poses[0], poses[1], id);
@@ -315,6 +331,47 @@ test('held-out arena separates counters and stays on the real physics', async ()
       .map((row) => row.phaseTrace);
     assert.equal(new Set(traces).size, 10, `phase traces collided on seed ${seed}: ${traces.join(' | ')}`);
   }
+});
+
+function progressFromEnd(distance, span) {
+  const raw = 1 - distance / span;
+  return Math.round(Math.max(0, Math.min(1, raw)) * 1000) / 1000;
+}
+
+function decoyProgress(separation) {
+  const raw = Math.max(0, Math.min(1, 1 - separation / 120)) * 0.2;
+  return Math.round(raw * 1000) / 1000;
+}
+
+test('a best-ever flank approach does not keep the win after the hull has left', async () => {
+  const receipt = await runCounterplayScenario({
+    doctrineId: 'cp_heavy_anchor_grappler',
+    seed: 101,
+    pilotId: 'rope_manipulator',
+    terrain: 'corridor',
+    tape: 'archetype',
+    ticks: 340,
+  });
+  const radius = receipt.detail.flankRadius;
+  assert.ok(receipt.detail.anchorTicks > 40, JSON.stringify(receipt.detail));
+  assert.ok(receipt.detail.minFlank <= radius, JSON.stringify(receipt.detail));
+  assert.ok(receipt.detail.flankDist > radius, JSON.stringify(receipt.detail));
+  assert.equal(receipt.goalComplete, false);
+  assert.equal(receipt.goalProgress, progressFromEnd(receipt.detail.flankDist, radius * 4));
+  assert.ok(receipt.goalProgress < progressFromEnd(receipt.detail.minFlank, radius * 4));
+});
+
+test('decoy seed 101 progress matches the final separation', async () => {
+  const receipt = await runCounterplayScenario({
+    doctrineId: 'cp_tether_bait_decoy', seed: 101, tape: 'counter',
+  });
+  assert.equal(receipt.detail.longTether, false);
+  assert.equal(receipt.detail.endDist, 356.335);
+  assert.equal(receipt.detail.closest, 20.378);
+  assert.equal(decoyProgress(356.335), 0);
+  assert.equal(decoyProgress(20.378), 0.166);
+  assert.equal(receipt.goalProgress, decoyProgress(receipt.detail.endDist));
+  assert.notEqual(receipt.goalProgress, decoyProgress(receipt.detail.closest));
 });
 
 test('the feint phase closes on the feint point before the break', async () => {
