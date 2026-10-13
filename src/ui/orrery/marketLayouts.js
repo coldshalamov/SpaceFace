@@ -502,8 +502,21 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt__analysis { grid-column:1 !important; grid-row:1 !important; min-height:0 !important; overflow:auto !important; }
   ${M} .sx-mkt__console { grid-column:2 !important; grid-row:1 !important; align-self:start !important; width:138px !important;
     max-height:100% !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:none; }
-  /* the hull decision has no room here; the berth head carries REPAIR and its price */
-  ${M} .sx-mkt__decision { display:none !important; }
+  /* the decision stays on the board: its sentence, then one line per verb with its terms, right
+     under the analysis (the console keeps the full height). On a short berth the four readings
+     yield while it waits, so the trace keeps its floor. */
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) { grid-template-rows:minmax(0, max-content) minmax(auto, 1fr) !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__console { grid-row:1 / -1 !important; }
+  ${M} .sx-mkt__decision:not(:empty) { display:block !important; grid-column:1 !important; grid-row:2 !important; margin:0 !important;
+    padding:5px 0 0 8px !important; border-top:1px solid rgb(${BONE} / .16); align-self:start !important; min-width:0; }
+  ${M} .sx-mkt__decision .sx-decision { gap:0 !important; }
+  ${M} .sx-mkt__decision .sx-decision > .k-sentence { margin:0 0 1px !important; font-size:11.5px !important; line-height:15px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; color:rgb(${BONE} / .72) !important; }
+  ${M} .sx-mkt__decision .sx-decision__opt { flex-direction:row !important; align-items:baseline !important; gap:10px !important; padding:2px 0 2px 12px !important;
+    min-width:0; max-width:100%; }
+  ${M} .sx-mkt__decision .sx-decision__opt::before { top:2px !important; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:11px !important; letter-spacing:.14em !important; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { min-width:0; font-size:11px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${M} .sx-mkt-chart-key { display:none !important; }
   /* analysis: the price keeps its words; the readings sit two-up so the last one is not cut */
   ${M} .sx-mkt__hero { padding-left:8px !important; }
@@ -539,6 +552,12 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-trade__go.orr-lampkey { min-height:26px !important; min-width:0 !important; width:auto !important; font-size:11px !important;
     padding:0 14px 0 9px !important; white-space:nowrap; }
   ${M} .sx-trade__go:not([data-go]) { font-size:9.5px !important; letter-spacing:.12em !important; padding:2px 0 !important; white-space:nowrap; }
+}
+@media (max-width:1100px) and (max-height:640px) {
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .orr-mkt-subkey { display:none !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:14px !important; }
+  ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt-instrument__plot { height:48px !important; }
 }
 `;
 
