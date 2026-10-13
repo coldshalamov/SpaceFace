@@ -34,7 +34,7 @@ fps from separate launches swings 10-45 on this host; the numbers that hold are 
 |---|---|---|
 | About 2x average fps | **Met** on the original witness | open flight 18.6 -> 39.9 fps with the opening included (host 61% -> 43% busy), 49.9 settled 25 s into flight; launch click to flight 30-37 s -> 14.3 s warm; first seconds of flight 14.2 -> 25-30 fps. Crucible: the clip recorder no longer costs 11% of its main thread. |
 | No hitching | **Not met** | The first ~10 s of flight keep the main thread ~100% busy (25-30 fps, p95 ~50 ms). The New Game screen opens with two 250 ms stalls (ledger D198). Crucible is GPU-bound on this iGPU (39-45 fps quiet host, 11-18 when the host is 70% busy), so its remaining hitches are GPU time, not code. |
-| Smooth, animated loading screen | **Partly met** | The boot ring and the backdrop video render off the main thread and keep moving. The DOM labels and progress freeze for the gaps below. `loading: gpu-resources` (10 s of the load) holds 43.9 fps with a p95 of 50 ms. `authored-library` is 3 frames over 0.4 s (150 ms gaps), `authored-visuals` 19.6 fps with a worst gap of 233 ms, `entering-flight` 27.8 fps with a worst gap of 200 ms. Source: `oct13-o1-launch/report.md`, quiet host. |
+| Smooth, animated loading screen | **Mostly met; four small gaps remain** | Four runs with the corrected probe on a quiet host (8-22% busy, `launch-corrected-probe-run1..4.md`): Launch click to flight **11.4-12.5 s**. Main-thread tasks of 70 ms or more in the whole load: five events of 100-130 ms (the New Game click, the Launch click, three inside the cook), and in one of the four runs the Launch click ran 508 ms (the sim reply promoted a late-arriving environment map in one task: 2K float upload 179 ms + program link 90 ms + stars 59 ms). No task of 70 ms or more in the first 6 s of flight. The boot ring (worker-drawn) and the backdrop video are off the main thread; the video drops about 75% of its frames in its first second of playing (the decoder restarts at `currentTime = 0`) and 1-2% afterwards. Page rAF worst gaps by stage: New Game screen 133-150 ms, Launch click 183-233, authored-library 67-201, authored-visuals 117-167, gpu-resources 117-200 (4-6 frames over 100 ms of ~400), entering-flight 150-217. Open items: the video's first second, the 100-130 ms DOM pauses, the late-HDRI tail (reverted attempt below). |
 
 ## Evidence files
 
@@ -53,6 +53,10 @@ Every number in this record comes from a file in `docs/perf-evidence/2026-10-13-
 * Playwright role locators (`getByRole`) build an ARIA tree inside the page's main thread, which appeared as 50-100 ms long tasks on the New Game screen and at the Launch click in the very windows being measured (`isElementHiddenForAria`, `getAriaRole`). The probe now finds buttons with a plain DOM query and a real mouse click. Loading-smoothness numbers taken before that correction (everything above that names a New Game or Launch-click stall) overstate those two windows.
 * Clicking New Game within a second of the title menu appearing measures boot-time background residency work, not the screen; `--menu-dwell-ms` reads the menu first the way a person does.
 * `--sampling-us=4000` keeps the CPU profiler's own cost out of a smoothness read.
+
+## Tried and reverted
+
+* Arming (not forcing) the late foundry-environment bake so it retires at the first veiled cook seam instead of inside the Launch reply: the intent is right, but the 445-508 ms case could not be reproduced on demand (one run in six; a held-back HDRI response in both old and new code never produced it), so there was no before/after to keep it on. The stack and the one-line change are recorded in the commit history of this record; try again with a boot that lands the HDRI between the menu bake deadline and the Launch click.
 
 ## What is left, with the reason
 
