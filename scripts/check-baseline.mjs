@@ -94,6 +94,16 @@ const KILL_GRACE_MS = 2_000;
 // defect described in the header, so if you add an aggregate link, set it.
 const LINKS = [
   {
+    id: 'plan-integrity',
+    costHintMs: 2500,
+    command: 'node scripts/check-plan-integrity.mjs',
+    why: 'The plan front door (program-dispatch --next) must always answer with a real unit while '
+      + 'any plan surface is open, and the §1C board must be drift-free. This is the check that '
+      + 'keeps the board from silently rotting into "erroring", "drained", or "hundreds of plans" '
+      + 'again — the 2026-10-12 evidence-expiry deadlock was invisible for weeks because nothing '
+      + 'gated the dispatcher itself.',
+  },
+  {
     id: 'ui-screen-imports',
     costHintMs: 500,
     command: 'node scripts/check-ui-screen-imports.mjs',
