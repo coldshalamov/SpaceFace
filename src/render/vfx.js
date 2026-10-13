@@ -10313,7 +10313,8 @@ export const vfx = {
   _onTetherSnap(p) {
     // Attachment cuts report through tether:broken before tetherGameplay publishes the semantic
     // ordinary-release pair. A player `tether_cut` must therefore skip the violent snap grammar.
-    if (p && p.reason === 'tether_cut') return false;
+    // The default cut reason and a plain release are the same let-go; only a real break snaps.
+    if (p && (p.reason === 'tether_cut' || p.reason === 'cut' || p.reason === 'release')) return false;
     const cable = this._tetherCable;
     if (!cable || !this._scene || !this._tetherBreakMatchesCable(p, cable)) return false;
     // Hold the ribbon even when the anchor was already swept (mined-out rock, killed payload).

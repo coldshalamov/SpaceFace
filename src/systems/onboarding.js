@@ -238,6 +238,20 @@ const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall be
 const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
 // INF-062 — consecutive genuine latch denials before the one contextual hint.
 const LATCH_DENIAL_HINT_AFTER = 3;
+
+// The denial event already carries the cause. The hint used to collapse every cause
+// except cooldown and a missing target into the range line. Unknown causes still use
+// that line — INF-062 pins owner_attachment_limit there. Prefixes match the HUD strip.
+function latchDenialHintLine(reason) {
+  const raw = typeof reason === 'string' ? reason.replace(/^(snare|bridle)_/, '') : '';
+  if (raw === 'cooldown') return 'Line resetting. Wait a breath, then latch.';
+  if (raw === 'no-target' || raw === 'no_target') return 'Target a rock or wreck first. Then latch.';
+  if (raw === 'protected') return 'That body is protected. Latch something else.';
+  if (raw === 'scripted-body') return 'That body is locked in place. Latch something else.';
+  if (raw === 'blocked') return 'The line of sight is blocked.';
+  if (raw === 'out-of-range' || raw === 'out_of_range') return 'Latch needs a target in range.';
+  return 'Latch needs a target in range.';
+}
 const RAID_WHIP_KILL_WINDOW_S = 12;  // kill credited to the throw inside this window after a whip
 // Claimed-salvage tableau (the wanted beat). Spilled cargo from the raid is lawfully claimed; a
 // law cutter stands witness. Taking it reports the theft through the real law owner entry
@@ -709,12 +723,7 @@ export const onboarding = {
       if (!massline2Flag('throw')) return;
       this._latchDenialStreak = (this._latchDenialStreak || 0) + 1;
       if (this._latchDenialStreak < LATCH_DENIAL_HINT_AFTER) return;
-      const reason = payload && payload.reason;
-      const line = reason === 'cooldown'
-        ? 'Line resetting. Wait a breath, then latch.'
-        : reason === 'no-target'
-          ? 'Target a rock or wreck first. Then latch.'
-          : 'Latch needs a target in range.';
+      const line = latchDenialHintLine(payload && payload.reason);
       this._showHint('masslineLatchDenied', line, payload);
     });
     bus.on('tether:latched', () => {
