@@ -130,15 +130,31 @@ export function layoutHullCallouts({
   }
 
   // Each column's x-range sits flush against the hull box, across the gap, inside the bounds.
+  // A squeezed bounds must never shove a card onto the hull: prefer overhanging the bounds
+  // (or a thin card clipped to the clear band) over printing on the keep-out.
   const place = (it) => {
     if (it.side === 'left') {
       it.right = hull.left - gap;
       it.left = it.right - it.w;
-      if (it.left < bounds.left) { it.left = bounds.left; it.right = it.left + it.w; }
+      if (it.left < bounds.left) {
+        it.left = bounds.left;
+        it.right = it.left + it.w;
+        if (it.right > hull.left - gap) {
+          it.right = hull.left - gap;
+          it.left = it.right - it.w;
+        }
+      }
     } else {
       it.left = hull.right + gap;
       it.right = it.left + it.w;
-      if (it.right > bounds.right) { it.right = bounds.right; it.left = it.right - it.w; }
+      if (it.right > bounds.right) {
+        it.right = bounds.right;
+        it.left = it.right - it.w;
+        if (it.left < hull.right + gap) {
+          it.left = hull.right + gap;
+          it.right = it.left + it.w;
+        }
+      }
     }
   };
   // Chrome that shares a column's width (the nameplate up top, the camera words at the foot)

@@ -562,6 +562,13 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !important; }
   ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:14px !important; }
   ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt-instrument__plot { height:48px !important; }
+  /* too short for the terms to wrap under one another: the verbs sit side by side, each with its
+     terms under it, so the whole reading (armor included) shows in the same height */
+  ${M} .sx-mkt__decision .sx-decision { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; column-gap:12px !important; }
+  ${M} .sx-mkt__decision .sx-decision > .k-sentence { grid-column:1 / -1; }
+  ${M} .sx-mkt__decision .sx-decision__opt { flex-direction:column !important; align-items:flex-start !important; gap:1px !important; text-align:left; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { font-size:10.5px !important; line-height:13px !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
 }
 `;
 
