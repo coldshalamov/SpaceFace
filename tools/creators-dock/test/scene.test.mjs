@@ -1601,6 +1601,105 @@ test('a new null slot, a null inside an array object, and a chained toJSON are r
   assert.notEqual(chainedCommit.present.grid.fresh, null);
 });
 
+test('a rejected return-this toJSON does not leave grid null on the returned project', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const history = createHistory(scene);
+  const grid = history.present.grid;
+  history.present.toJSON = function () {
+    this.grid = null;
+    return this;
+  };
+  const committed = commit(history, history.present);
+  assert.equal(committed, history);
+  assert.equal(committed.present.grid, grid);
+  assert.notEqual(committed.present.grid, null);
+  assert.equal(committed.present.grid.size, grid.size);
+
+  const arrayScene = getComposition('dock.intercept-cargo');
+  const arrayHistory = createHistory(arrayScene);
+  const arrayGrid = arrayHistory.present.grid;
+  arrayHistory.present.toJSON = function () {
+    this.grid = [null];
+    return this;
+  };
+  const arrayCommit = commit(arrayHistory, arrayHistory.present);
+  assert.equal(arrayCommit, arrayHistory);
+  assert.equal(arrayCommit.present.grid, arrayGrid);
+  assert.equal(Array.isArray(arrayCommit.present.grid), false);
+
+  const again = getComposition('dock.intercept-cargo');
+  again.toJSON = function () {
+    this.grid = null;
+    return this;
+  };
+  const second = commit(history, again);
+  assert.equal(second, history);
+  assert.equal(second.present.grid, grid);
+
+  const panned = setCamera(history.present, { x: 4, z: 1 });
+  assert.equal(panned, history.present);
+  assert.equal(panned.grid, grid);
+  assert.equal(commit(history, panned), history);
+  assert.equal(history.present.grid, grid);
+
+  const addedScene = getComposition('dock.intercept-cargo');
+  const addedGrid = addedScene.grid;
+  addedScene.toJSON = function () {
+    this.grid = null;
+    return this;
+  };
+  const added = addObject(addedScene, plainActor('rock'));
+  assert.equal(added.ok, false);
+  assert.equal(added.project, addedScene);
+  assert.equal(added.project.grid, addedGrid);
+
+  const spedScene = getComposition('dock.intercept-cargo');
+  const spedGrid = spedScene.grid;
+  spedScene.toJSON = function () {
+    this.grid = [null];
+    return this;
+  };
+  const sped = setVelocity(spedScene, 'cargo', 1, 0);
+  assert.equal(sped.ok, false);
+  assert.equal(sped.project.grid, spedGrid);
+
+  const frameScene = getComposition('dock.intercept-cargo');
+  const frameGrid = frameScene.grid;
+  frameScene.toJSON = function () {
+    this.grid = null;
+    return { ...this };
+  };
+  const framed = applyDockOp(frameScene, {
+    op: 'setFrames',
+    frames: [{ tick: 1, input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, fire: false } }],
+  });
+  assert.equal(framed.project.grid, frameGrid);
+
+  const quiet = getComposition('dock.intercept-cargo');
+  const quietHistory = createHistory(quiet);
+  const quietGrid = quietHistory.present.grid;
+  Object.defineProperty(quietHistory.present, 'toJSON', {
+    enumerable: false,
+    value() {
+      this.grid = null;
+      return { ...this };
+    },
+  });
+  assert.equal(commit(quietHistory, quietHistory.present), quietHistory);
+  assert.equal(commit(quietHistory, quietHistory.present), quietHistory);
+  assert.equal(quietHistory.present.grid, quietGrid);
+
+  const nested = getComposition('dock.intercept-cargo');
+  const nestedHistory = createHistory(nested);
+  const nestedGrid = nestedHistory.present.grid;
+  nestedHistory.present.grid.toJSON = function () {
+    nestedHistory.present.grid = null;
+    return null;
+  };
+  assert.equal(commit(nestedHistory, nestedHistory.present), nestedHistory);
+  assert.equal(nestedHistory.present.grid, nestedGrid);
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {

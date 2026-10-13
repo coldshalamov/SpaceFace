@@ -108,6 +108,58 @@ function introducedNull(original, produced) {
   return false;
 }
 
+function captureFields(object) {
+  const toJSON = Object.prototype.hasOwnProperty.call(object, 'toJSON')
+    ? Object.getOwnPropertyDescriptor(object, 'toJSON')
+    : null;
+  if (Array.isArray(object)) {
+    const items = [];
+    for (let i = 0; i < object.length; i += 1) {
+      if (Object.prototype.hasOwnProperty.call(object, i)) items[i] = object[i];
+    }
+    return { kind: 'array', object, length: object.length, items, toJSON };
+  }
+  const keys = Object.keys(object);
+  const values = new Map();
+  for (const key of keys) values.set(key, object[key]);
+  return { kind: 'object', object, keys, values, toJSON };
+}
+
+function captureTree(value, seen, records) {
+  if (!value || typeof value !== 'object' || seen.has(value)) return;
+  seen.add(value);
+  records.push(captureFields(value));
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      if (Object.prototype.hasOwnProperty.call(value, i)) captureTree(value[i], seen, records);
+    }
+    return;
+  }
+  for (const key of Object.keys(value)) captureTree(value[key], seen, records);
+}
+
+function restoreRecord(record) {
+  const object = record.object;
+  if (record.kind === 'array') {
+    object.length = 0;
+    for (let i = 0; i < record.length; i += 1) {
+      if (Object.prototype.hasOwnProperty.call(record.items, i)) object[i] = record.items[i];
+    }
+    object.length = record.length;
+  } else {
+    for (const key of Object.keys(object)) {
+      if (!record.values.has(key)) delete object[key];
+    }
+    for (const key of record.keys) object[key] = record.values.get(key);
+  }
+  if (record.toJSON) Object.defineProperty(object, 'toJSON', record.toJSON);
+  else if (Object.prototype.hasOwnProperty.call(object, 'toJSON')) delete object.toJSON;
+}
+
+function restoreTree(records) {
+  for (let i = records.length - 1; i >= 0; i -= 1) restoreRecord(records[i]);
+}
+
 function materialize(value, key, seen) {
   if (value === null) return null;
   if (value === undefined) return undefined;
@@ -155,16 +207,26 @@ function materialize(value, key, seen) {
 
 export function clone(value) {
   if (value == null) return value;
+  const records = [];
   try {
     // A toJSON that returns null, deletes itself then returns null, or places
     // null over another field must not be stored. isPlayer null still clones
-    // so the player canon can name that flag.
+    // so the player canon can name that flag. A rejected toJSON must not leave
+    // the caller's object mutated.
+    captureTree(value, new Set(), records);
     const plain = materialize(value, '', new Set());
-    if (plain === CLONE_REJECT || plain === undefined) return null;
+    if (plain === CLONE_REJECT || plain === undefined) {
+      restoreTree(records);
+      return null;
+    }
     const text = JSON.stringify(plain);
-    if (typeof text !== 'string') return null;
+    if (typeof text !== 'string') {
+      restoreTree(records);
+      return null;
+    }
     return JSON.parse(text);
   } catch (error) {
+    restoreTree(records);
     return null;
   }
 }
