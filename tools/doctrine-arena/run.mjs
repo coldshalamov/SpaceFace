@@ -21,10 +21,11 @@ import { flightV3 } from '../../src/systems/flightV3.js';
 import { weapons } from '../../src/systems/weapons.js';
 import {
   OPEN_SPACE_BOUNDS,
-  bootRealPath,
+  bootArena,
   realPathProof,
+  tacticalAiModuleEvaluated,
   writeRealPathInput,
-} from '../../scripts/lib/bench/realPath.mjs';
+} from './boot.mjs';
 import { steerToward } from '../../src/ai/counterplay/steer.js';
 import { idleManeuver, pilotIntent } from './pilots.mjs';
 import { buildCounterplayScene } from './scenes.mjs';
@@ -51,7 +52,7 @@ const REPAIR_CATALOG = createCombatCatalog();
 export async function runCounterplayScenario(options = {}) {
   const scene = options.scene || buildCounterplayScene(options.doctrineId, options);
   const doctrine = counterplayDoctrineById(scene.doctrineId);
-  const host = await bootRealPath({
+  const host = await bootArena({
     seed: scene.seed,
     systems: ARENA_SYSTEMS,
     bounds: OPEN_SPACE_BOUNDS,
@@ -257,7 +258,7 @@ export async function runCounterplayScenario(options = {}) {
       driveDelta: stats.driveStart == null || stats.driveEnd == null ? null : round3(stats.driveEnd - stats.driveStart),
       detail: score.detail,
       systems: ARENA_SYSTEM_NAMES,
-      tacticalAI: false,
+      tacticalAI: tacticalAiModuleEvaluated(),
       physicsBackend: proof.backend,
       sg02Ready: proof.sg02Ready === true,
       end: endPose(actors),

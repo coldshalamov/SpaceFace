@@ -336,6 +336,8 @@ test('a doctrine change moves the tape and an edit to tacticalAI.js does not', a
   writeFileSync(stubPath, `
 import { appendFileSync } from 'node:fs';
 const marker = process.env.SF_TACTICAL_MARKER;
+globalThis.__SF_TACTICAL_AI_EVALUATED__ = true;
+appendFileSync(marker, 'evaluated\\n');
 export const PRODUCTION_ENEMY_MIND_CONFIG = { stub: true };
 export function createTacticalAISystem() {
   appendFileSync(marker, 'constructed\\n');
@@ -390,6 +392,7 @@ process.stdout.write(JSON.stringify({
   assert.equal(edited.goalProgress, feint.goalProgress);
   let marker = '';
   try { marker = readFileSync(markerPath, 'utf8'); } catch { marker = ''; }
+  assert.equal(marker.includes('evaluated'), false);
   assert.equal(marker.includes('constructed'), false);
   assert.equal(marker.includes('update'), false);
 });
