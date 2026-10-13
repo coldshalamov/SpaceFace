@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth DONE (#11); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar/Ledger still open at 960; phone Market dial still crowded |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar/Ledger still open at 960 |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -110,9 +110,20 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Before (390×844):** the berth was one long scroll (~2180px). Title and mechanic scrolled off; vitals alone were ~454px (44px min-height on every act); destination tabs sat at y≈1810 under the whole tab body; Munitions spanned the vitals grid.
 
-**After:** `mobileScreenLayouts.js` + `systems/mobile/styles.js`. Identity, mechanic (one line), compact 3+2 vitals, and a wrapped destination foot stay on glass. The tab body is the only scroll (~280px). Instrument acts keep a dense min-height so the crown fits; chrome verbs stay ≥40px. Selectors/IDs unchanged.
+**After:** `mobileScreenLayouts.js` + `systems/mobile/styles.js`. Identity, tape, vitals and a wrapped destination foot stay on glass; the tab body is the only scroll. Selectors/IDs unchanged.
 
-**Still open on phone:** Market quantity dial/chart geometry inside the body still crowds Iron Ore at 390; Shipworks callouts; Industry/Factions/Bar/Ledger tab bodies at 960.
+**#335 HOLD fixes (Code Work, 19:55):** `mobileScreenLayouts.js` only.
+1. Market decision (`.sx-mkt__decision`) is laid out under the trade as full-width 44px option rows. It is no longer hidden.
+2. Find a service stays as a 44px search key beside the tape (its label is kept for screen readers).
+3. Mechanic, station event and story ledger are two-line cards in a swipeable tape. The hull reading leads and the next card peeks in.
+4. REPAIR/INSURE/DRAW/REARM are dense two-line keys, each with a measured 44–45px `::after` hit box that does not overlap another control.
+5. Crown: five vitals sit on one gutter-aligned row (a word reading takes the dial's slot). The purse moves to the right end of the title band.
+6. The body grows from ~283 to ~384px of 844 and the dead band is gone. Buy/Sell is on glass when Market opens.
+7. Market: the order is commodity, trade (128px dial | total, Buy/Sell, breakdown), decision, then trace, then register. Nothing overlaps. Fewer/More read as −/+.
+8. Tab badges are amber pills after their own word. The tabs sit on a 4-column grid.
+Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with the foot pinned. Desktop 960×540 is pixel-identical; at 1280×720 only the animated rule differs.
+
+**Still open on phone:** Shipworks callouts; Industry/Factions/Bar/Ledger tab bodies at 960. At ≤1100×≤800 on desktop, the market decision is still hidden by #333's 960 rule.
 
 **Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. Industry/Factions/Bar/Ledger tab bodies not walked this session.
 
