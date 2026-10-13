@@ -565,13 +565,15 @@ export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
   const saved = [];
   if (session) {
     for (const object of session.drawables) {
-      if (keep.has(object)) continue;
+      if (object.visible === false || keep.has(object)) continue;
       saved.push({ object, visible: object.visible });
       object.visible = false;
     }
   } else if (scene && typeof scene.traverse === 'function') {
-    scene.traverse((object) => {
-      if (!isDrawable(object) || keep.has(object)) return;
+    // An already hidden branch cannot draw; leave its visibility untouched.
+    const traverse = typeof scene.traverseVisible === 'function' ? scene.traverseVisible : scene.traverse;
+    traverse.call(scene, (object) => {
+      if (object.visible === false || !isDrawable(object) || keep.has(object)) return;
       saved.push({ object, visible: object.visible });
       object.visible = false;
     });
