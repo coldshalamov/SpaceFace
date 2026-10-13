@@ -38,7 +38,8 @@ self.onmessage = async (event) => {
 
 let encoderInstance;
 /** Shared JPEG encoder worker; null where workers/OffscreenCanvas/createImageBitmap are missing. */
-function footageEncoder() {
+export const FOOTAGE_ENCODE_TIMEOUT_MS = 2000;
+export function footageEncoder() {
   if (encoderInstance !== undefined) return encoderInstance;
   encoderInstance = null;
   try {
@@ -51,17 +52,27 @@ function footageEncoder() {
     let nextId = 0;
     worker.onmessage = ({ data }) => {
       const job = pending.get(data.id); if (!job) return;
-      pending.delete(data.id);
+      pending.delete(data.id); clearTimeout(job.timer);
       if (data.blob) job.resolve(data.blob); else job.reject(new Error(data.error || 'encode failed'));
     };
+    // Deliberate: a worker that fails once (script error, OOM, CSP) is not retried. encoderInstance
+    // becomes null (not undefined), so every later capture this session uses the canvas.toBlob
+    // fallback, which produces byte-identical JPEGs.
     worker.onerror = () => {
-      for (const job of pending.values()) job.reject(new Error('footage encoder failed'));
+      for (const job of pending.values()) { clearTimeout(job.timer); job.reject(new Error('footage encoder failed')); }
       pending.clear(); encoderInstance = null; worker.terminate();
     };
     encoderInstance = {
       encode(bitmap, width, height) {
         return new Promise((resolve, reject) => {
-          const id = ++nextId; pending.set(id, { resolve, reject });
+          const id = ++nextId;
+          // A job the worker never answers would hold `encoding` true and stall capture for good;
+          // after the timeout it is rejected (the caller resets `encoding`) and forgotten, and a
+          // late reply for it is ignored.
+          const timer = setTimeout(() => {
+            if (pending.delete(id)) reject(new Error('footage encode timed out'));
+          }, FOOTAGE_ENCODE_TIMEOUT_MS);
+          pending.set(id, { resolve, reject, timer });
           worker.postMessage({ id, bitmap, width, height, quality: 0.88 }, [bitmap]);
         });
       },
