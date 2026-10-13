@@ -1284,6 +1284,21 @@ function wreckOfferParams(mission) {
       return { scanTargets: 1, progress: 0, fValue: 1, taskTime: 25 };
     case 'passenger_transport':
       return { passengers: 1, fValue: 1, taskTime: 20 };
+    // The physical verbs finally have world presence: a communicator tow/pull offer
+    // carries the same verbs and completion methods the runner's _rollParams speaks,
+    // so the board row names the action the fieldwork performs.
+    case 'tow_recovery':
+      return {
+        cmdtyId: 'cmdty_salvage_electronics', qty: 2, cargoValue: 70,
+        fValue: 1, taskTime: 40,
+        physicalVerb: 'tow', completionMethods: ['tow_in', 'sling_in'],
+      };
+    case 'rescue_under_fire':
+      return {
+        podCount: 2, escortCount: 2, escortsDown: 0, podsLost: 0,
+        targetStrength: 1.5, fValue: 1.5, taskTime: 70,
+        physicalVerb: 'pull', completionMethods: ['stage_tow', 'corridor_pull'],
+      };
     default:
       return { fValue: 1, taskTime: 30 };
   }
