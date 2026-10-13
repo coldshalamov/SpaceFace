@@ -61,7 +61,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `wingman-radial` | SURVEYED | |
 | `ship` | SURVEYED | Ledger DONE earlier |
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
-| **`range`** | **DONE @960×540** (ui-polish-17) | See § Proving Range @960 below; 1024 / 1280 / 1920 / phone unchanged |
+| **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
@@ -141,6 +141,20 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 **Before:** the title block (180px) and the foot (338px: a five-row rule ladder, the dossier and a 64px run gauge) plus the 48px kit row gap outgrew 540px. The stage, which holds the course itself, was squeezed to 0px, and RULES / BESTIARY / CLOSE and the run instrument fell below the frame.
 
 **After (`src/ui/screens/range.js`, local style block only, `@media (max-width:1100px) and (max-height:640px)`, desktop only):** frame padding 20/40/12 and an 8px row gap, the corner count moves up with the title (40px), and the lamp key is 34px tall. The ladder words are tracked tighter, with 5px ticks and a 12px gap, so the 16 rules take four rows. The dossier and the run row close up, and the gauge is 40px. The course keeps ~146px (~110px when a long rule name wraps to two lines). The whole foot is on glass, and RULES and BESTIARY open their drawer over the stage. Type stays on the grammar scale. Selectors and IDs are unchanged. 1024×768, 1280, 1920 and phone don't match the query. Shots: `ui-shots/range960/`.
+
+## Proving Range @1280 + phone course — session notes (2026-10-13, ui-polish-23)
+
+**Before (master c8f43e53ee):** at 1280×720 the course (`.k-stage`) was ~85px; the 64px top pad, two 48px kit row gaps, a four-row ladder at ~42px a row and the 64px gauge took the rest. On phone 390×844 the course was **0px**: the 40px title ran four lines, the kit's title padding (it reserves the corner's width) squeezed every title line to 182px, and the 16 rules wrapped into a ten-row ladder (44px touch rows), so the foot alone was 641px. On phone 844×390 the course was also 0px.
+
+**After (`src/ui/screens/range.js` only, local style block plus one small helper):**
+- **Mid-height desktop** — `@media (min-width:1101px) and (max-height:900px), (min-height:641px) and (max-height:900px)`, desktop only. The top pad is 40px and the row gaps 22px; the ladder rows are ~34px with 6px ticks; the dossier and run row are 14px; the gauge is 48px. Course: 1280×720 **85→224px**, 1024×768 115→250, 1440×900 251→398. 960×540 still matches the short-frame block (146px, unchanged) and 1920×1080 is past 900px (385px, unchanged).
+- **Phone portrait** (`data-sf-mobile`): the ladder is one row that scrolls sideways. The spine is a `background-attachment: local` rule so it travels with the words, the right edge fades, and `_keepRungInView` scrolls the live rung into view when NEXT RULE (or anything other than a tap on the ladder) changes it. The title drops the kit's corner padding: only the rule keeps 88px for the corner, at `var(--k-fs-menu)` (30px on phone). The score is 22px, the run gauge 36px, the gaps 12px, and the course row has a 200px floor. Course at 390×844: **0→384px**, and the foot (ladder, dossier, RULES / BESTIARY / CLOSE, run gauge) ends at 824. The longest rule ("A sheet collects loose mass onto the line") still fits without scrolling, with 330px of course.
+- **Phone landscape (≤500px tall)**: the course takes the right 44% at full height (350×306, below the score), and the title sits over the foot on the left. Course at 844×390: **0→306px**.
+- Drawer width is capped at the stage on phone. Type stays on the grammar scale (12/13/14/15/22 plus the kit token), and selectors and IDs are unchanged.
+
+Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer open, NEXT RULE ×6 rail scroll, longest rule).
+
+**Live-build check (Code Work's ask, 06:10 ET):** the real game (`?dev=screen:range`, then Esc and the real F4 key) matches ui-bench at 960 (146px), 1280 (224px) and 1920 (385px). On a real touch phone the coarse pointer gives AGAIN / TRY IT EMPTY 44px rows, so NEXT RULE wrapped to its own row and the 390×844 course was 314px, not 384. Under `(pointer: coarse)` the verbs now share one row (10px gap, phone-sized lamp key, as on the phone Market): course 390×844 **314→364**, 375×812 285→335, 360×740 217→267; 844×390 is 318. The drone's name (BRUISER) is now painted last on a small void plate, so the gate rung and turn ring that pack under it on the narrow course no longer cut through the letters. Shots: `ui-shots/range-course/live/` (before) and `live/after3/`.
 
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 
