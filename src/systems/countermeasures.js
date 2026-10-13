@@ -95,11 +95,13 @@ function equippedPointDefense(fittings) {
 // kill charges the weapon's energyCost — the same field the gun spends when it fires. Enemies
 // carry their mounts on data.weapons, not data.fittings, which is why the PD-screen escort's
 // curtain was decorative before this pass.
-function interceptWeaponChannel(data) {
+function interceptWeaponChannel(data, runtime = null) {
   const mounts = data && Array.isArray(data.weapons) ? data.weapons : null;
   if (!mounts || !mounts.length) return null;
   let best = null;
   for (const w of mounts) {
+    const subsystem = runtime?.subsystems?.[w.subsystemId || 'subsystem_weapon'];
+    if (subsystem && (subsystem.destroyed === true || subsystem.effectiveDisabled === true)) continue;
     // Resolved mount records carry the def fields verbatim (`...base` in resolveEnemyWeapon);
     // a bare {id} entry falls back to the catalog row.
     const rec = w.intercepts === true ? w : WEAPON_BY_ID.get(w.defId || w.id);
@@ -376,7 +378,7 @@ export const countermeasures = {
           // Jam only the defeated lineage. Other seekers in the radius keep turning.
           if (!missileMatchesLineage(d, cm.effect.lineage, p)) continue;
           if (d._jammedBy !== e.id) {
-            if (d._jammedTurnRate == null) d._jammedTurnRate = d.turnRate || 0;
+            if (d._jammedTurnRate == null) d._jammedTurnRate = d._cloakTurnRate ?? d.turnRate ?? 0;
             d.turnRate = (d._jammedTurnRate || 0) * cfg.turnRateMult;
             d._jammedBy = e.id;
           }
@@ -395,7 +397,8 @@ export const countermeasures = {
       if (e.type !== 'ship' || !e.alive) continue;
       const data = e.data;
       const eq = data && equippedPointDefense(data.fittings);
-      const gun = data && interceptWeaponChannel(data);
+      const combatRuntime = state.combat?.entities?.[e.id] || data?.combatRuntime || null;
+      const gun = data && interceptWeaponChannel(data, combatRuntime);
       if (!eq && !gun) continue;
       const pds = data.pds || (data.pds = { cooldownT: 0 });
       // The servo module keeps its own slot; the gun battery keeps `weaponCooldownT`.
@@ -436,8 +439,8 @@ export const countermeasures = {
         // Gun batteries spend the shot even when it misses — the chance roll happens at fire
         // time, same as a real gun's spread. Cheap energy keeps flak honest instead of free.
         if (ch.energyCost > 0 && (e.cap || 0) < ch.energyCost) continue;
-        const target = nearestInterceptableProjectile(projectiles, e, ch.radius);
-        if (!target || !projectileInArc(target, e, ch.arcRad)) continue;
+        const target = nearestInterceptableProjectile(projectiles, e, ch.radius, ch.arcRad);
+        if (!target) continue;
         ch.commit();
         if (ch.energyCost > 0) e.cap = Math.max(0, (e.cap || 0) - ch.energyCost);
         if (ch.chance < 1 && !(state.rng && state.rng() < ch.chance)) continue;
@@ -738,7 +741,7 @@ function projectilesNear(state, pos, radius, out) {
 // nearest hostile projectile inside the ring, ties broken by scan order (the spatial index's
 // stable order). Own-side rounds and the servo owner's own shots are never intercepted. The
 // radius check is restated here so the choice stays correct even on a fallback (unhashed) scan.
-function nearestInterceptableProjectile(projectiles, ship, radius) {
+function nearestInterceptableProjectile(projectiles, ship, radius, arcRad = Math.PI * 2) {
   let bestMissile = null;
   let bestMissileD2 = Infinity;
   let bestOther = null;
@@ -748,6 +751,9 @@ function nearestInterceptableProjectile(projectiles, ship, radius) {
     if (p.type !== 'projectile' || !p.alive) continue;
     if (p.ownerId != null && p.ownerId === ship.id) continue;
     if (p.team != null && ship.team != null && p.team === ship.team) continue;
+    // Eligibility precedes priority: a nearer rear missile must not mask the forward
+    // contact this mount can actually answer. Servo rings keep their full coverage.
+    if (!projectileInArc(p, ship, arcRad)) continue;
     const dx = p.pos.x - ship.pos.x, dz = p.pos.z - ship.pos.z;
     const d2 = dx * dx + dz * dz;
     if (d2 > r2) continue;
