@@ -2687,7 +2687,9 @@ export const economy = {
       acceptQty, acceptUnitAvg, acceptTotal, holdLimited: acceptQty < qty,
       priceImpactPct, stockAfter,
       standingPriceMultiplier,
-      stationSurchargeWaived: side === 'buy' && standing.surchargeWaived,
+      // The waiver is a property of the berth's standing, not of which side was asked.
+      // A sold-out buy must not be the only quote that can say the surcharge was waived.
+      stationSurchargeWaived: standing.surchargeWaived === true,
       reputationBuyMult: standingOnly.buy,
       reputationSellMult: standingOnly.sell,
       legalityWarning: def.legality !== 'legal' ? def.legality : null,

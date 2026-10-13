@@ -29,7 +29,7 @@ import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import { focusNamedStationControl } from '../../outfittingSpendConfirm.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
-import { lastMoveCause, marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { lastMoveCause, marketQuoteValue, presentMarketDrivers, reputationFromQuotes } from '../../marketDriverPresenter.js';
 import { latestTradeReceipt } from '../../sim/tradeTruth.js';
 import { TRADE_EXPECTATION_KEY } from '../tradeReceipt.js';
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
@@ -818,16 +818,6 @@ export function createMarketScreen(ctx) {
   }
   function unitBuy(_entry, def) { return counterUnit(def, 'buy'); }
   function unitSell(_entry, def) { return counterUnit(def, 'sell'); }
-  function reputationFromQuotes(buyQ, sellQ) {
-    const buy = buyQ && Number(buyQ.reputationBuyMult);
-    const sell = sellQ && Number(sellQ.reputationSellMult);
-    if (!Number.isFinite(buy) || !Number.isFinite(sell)) return null;
-    return {
-      buy,
-      sell,
-      surchargeWaived: !!(buyQ && buyQ.stationSurchargeWaived),
-    };
-  }
 
   function quotedRoutes(state, sid) {
     const owner = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
