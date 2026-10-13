@@ -33,9 +33,10 @@ function tryDesktopQuit() {
 }
 
 export function canQuit() {
-  // Quit is always offered — in browser window.close may be blocked, but
-  // we still show the button and explain how to close the tab.
-  return true;
+  // Quit is offered only where it can act: the desktop shell. In a browser tab window.close() is
+  // ignored for any tab the player opened themselves, so a Quit there was a dead red button. The
+  // web build hides it; the title is already where Quit would lead, and Pause keeps Main Menu.
+  return hasDesktopQuit();
 }
 
 export function isDesktopQuitAvailable() {

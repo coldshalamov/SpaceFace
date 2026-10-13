@@ -218,9 +218,33 @@ if (typeof window !== 'undefined') {
       return;
     }
     if (warmIndex < warmQueue.length) {
-      if (warmTranslatedCatalog(warmQueue[warmIndex], 400)) warmIndex += 1;
-      setTimeout(warmStep, 0);
+      const locale = warmQueue[warmIndex];
+      if (!isIdleWarmLocale(locale)) {
+        if (warmTranslatedCatalog(locale, 400)) warmIndex += 1;
+        setTimeout(warmStep, 0);
+        return;
+      }
+      // A locale nobody is reading yet only warms in idle time: its machine-translate pass
+      // (~0.5 s of main-thread JS across the four non-English catalogs) used to land as
+      // back-to-back timer tasks through the menu, New Game and loading. A switch to that
+      // locale still builds it synchronously on first access, exactly as before.
+      scheduleIdleWarm(warmStep);
     }
+  };
+  const isIdleWarmLocale = (locale) => locale !== startupLocale && locale !== DEFAULT_LOCALE;
+  const scheduleIdleWarm = (step) => {
+    if (typeof window.requestIdleCallback !== 'function') { setTimeout(step, 0); return; }
+    window.requestIdleCallback((deadline) => {
+      // A main thread that never idles still converges: a timed-out callback takes one slice.
+      if (deadline.didTimeout && warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])) {
+        if (warmTranslatedCatalog(warmQueue[warmIndex], 120)) warmIndex += 1;
+      }
+      while (warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])
+        && deadline.timeRemaining() > 6) {
+        if (warmTranslatedCatalog(warmQueue[warmIndex], 120)) warmIndex += 1;
+      }
+      if (warmIndex < warmQueue.length) step();
+    }, { timeout: 30000 });
   };
   setTimeout(warmStep, 0);
 }

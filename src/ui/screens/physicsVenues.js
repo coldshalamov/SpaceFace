@@ -1,5 +1,6 @@
 import { el, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { injectRaceBoardLayouts } from '../orrery/raceBoardLayouts.js';
 import { confirm } from '../confirm.js';
 import { listScenarios } from '../../gallery/orbital/catalog.js';
 import { EVENTS } from '../../sports/kineticLeague/circuit.js';
@@ -10,7 +11,7 @@ const manager = ctx => ctx.screenManager || ctx.screens;
 export const physicsVenuesScreen = {
   id: 'physicsVenues',
   mount(root, ctx) {
-    injectDeckplate(); root.replaceChildren(); root.classList.add('k-screen', 'race-board');
+    injectDeckplate(); injectRaceBoardLayouts(); root.replaceChildren(); root.classList.add('k-screen', 'race-board');
     root.setAttribute('aria-label', 'Physics challenges'); this.root = root;
     const header = el('header', 'k-title');
     header.append(el('p', 'k-sentence', 'PHYSICS / PLAY'), el('h1', 'k-display k-t-title', 'Move the world.'),

@@ -20,7 +20,7 @@ import { localizeText } from '../../localization/gameLocalization.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
-import { requestQuit } from '../quitGame.js';
+import { canQuit, requestQuit } from '../quitGame.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
@@ -29,6 +29,7 @@ import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectPauseLayouts } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import { requestCodexTab } from './codex.js';
@@ -1021,7 +1022,8 @@ export const pauseScreen = {
       if (ok) this._toMenu(ctx);
     }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
 
-    mk(coreText('quitGame'), async () => {
+    // Web build: Main Menu above is the way out; Quit Game is offered only where the shell can quit.
+    if (canQuit()) mk(coreText('quitGame'), async () => {
       const lines = pauseStatusLines(ctx && ctx.state);
       const ok = await confirm({
         title: 'Quit game?',
@@ -1068,6 +1070,7 @@ export const pauseScreen = {
     // name engraved over its row) with Resume leading as the one lit verb; the brief, which the dial
     // would cover, becomes a reading on the right. Same list, same roving focus, same buttons.
     injectOrreryScreens();
+    injectPauseLayouts();
     // A phone has no room for the dial: the verbs stay the plain banked Deckplate column and the brief stays
     // above them in it, like the title's phone composition.
     const phone = isPhoneLayout();

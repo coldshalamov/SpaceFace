@@ -1098,6 +1098,56 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:nowrap !important; overflow:hidden !important; text-overflow:clip !important; font-size:12px !important;
     -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 24px), transparent) !important; }
   ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:auto !important; top:0 !important; left:auto !important; right:0 !important; justify-content:flex-end !important; }
+  /* sticky ACCEPT in a ~192px dossier covered the title and clipped the reward (960×540) — keep it in flow */
+  ${T} .sx-dossier > .sx-dossier__foot { position:static !important; margin-top:8px !important; padding:6px 0 2px !important;
+    background:none !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${T} .sx-dossier__reward { margin:4px 0 2px !important; }
+  ${T} .sx-dossier__reward .k-hero__n { font-size:28px !important; }
+  ${T} .sx-dossier__title { font-size:18px !important; line-height:1.15 !important; margin:2px 0 4px !important; }
+  ${T} .sx-ct-commit.orr-lampkey { min-height:34px !important; font-size:13px !important; }
+}
+/* even tighter (960×540, dossier ~192px): the terms stay on the board — a second column beside the
+   title, reward and ACCEPT — and the dossier scrolls for the route; a player never accepts blind */
+@media (max-width:1100px) and (max-height:800px) {
+  /* two columns without new markup: the dossier flows down and wraps, and ::after is the column
+     break — title, client, reward and ACCEPT on the left; the risk sentence and the terms on the right */
+  ${T} .sx-dossier { display:flex !important; flex-direction:column !important; flex-wrap:wrap !important; align-content:flex-start !important;
+    height:100% !important; column-gap:8px !important; row-gap:0 !important; padding-top:8px !important; padding-bottom:4px !important; }
+  ${T} .sx-dossier > * { order:1; width:calc(50% - 8px) !important; max-width:none !important; flex:none !important; }
+  ${T} .sx-dossier::after { content:""; order:2; flex-basis:100%; width:0; }
+  ${T} .sx-dossier > :is(.sx-dossier__risk, .sx-dossier__terms) { order:3; }
+  ${T} .sx-dossier > .sx-dossier__risk { position:static !important; clip:auto !important; clip-path:none !important; width:calc(50% - 8px) !important;
+    height:auto !important; overflow:visible !important; white-space:normal !important; margin:2px 0 6px !important; padding:0 !important;
+    font-size:11px !important; line-height:1.3 !important; color:rgb(${BONE} / .82) !important; }
+  /* at this size the scales' words would be 5px and the route map a postage stamp; the risk sentence
+     says both readings in words, and the title names the destination */
+  ${T} .sx-dossier > :is(.orr-ct-scales, .orr-ct-route) { display:none !important; }
+  ${T} .sx-dossier > .sx-dossier__terms { margin:0 !important; }
+  ${T} .sx-dossier__terms > li { grid-template-columns:84px minmax(0, 1fr) !important; column-gap:8px !important; padding:2px 0 !important; }
+  ${T} .sx-dossier__terms > li > .k-62 { font-size:9.5px !important; letter-spacing:.1em !important; }
+  ${T} .sx-dossier__terms .sx-term__v { font-size:11px !important; gap:0 6px !important; line-height:1.25 !important; }
+  ${T} .sx-dossier__terms .sx-term__sub { font-size:10px !important; line-height:1.25 !important; white-space:normal !important; }
+  ${T} .sx-dossier__terms .sx-term__v { min-width:0 !important; white-space:normal !important; }
+  ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-10px; width:6px; }
+  ${T} .sx-dossier > .k-caps { margin:0 0 2px !important; font-size:10.5px !important; letter-spacing:.14em !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${T} .sx-dossier__title { font-size:16px !important; line-height:1.2 !important; margin:0 0 2px !important; }
+  ${T} .sx-dossier__client { margin:0 0 2px !important; font-size:11.5px !important; }
+  ${T} .sx-dossier .k-hero--hero { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:8px !important; margin:2px 0 8px !important; }
+  ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:26px !important; }
+  ${T} .sx-dossier .k-hero--hero .k-hero__w { font-size:9.5px !important; letter-spacing:.1em !important; margin-top:0 !important; }
+  ${T} .sx-dossier > ul.sx-dossier__foot.k-words { margin-top:4px !important; padding:2px 0 !important; }
+  ${T} .sx-ct-commit.orr-lampkey { min-height:30px !important; font-size:12px !important; padding:0 14px 0 12px !important; }
+  ${T} .sx-ct__dossier { padding-top:0 !important; }
+  /* the board: legends close up, the scrolling list fades out instead of slicing a row, and the
+     tracked job shows whole */
+  ${T} .sx-ct__hang > * + * { margin-top:4px !important; }
+  ${T} .sx-ct__hang > .sx-ct__yours { margin-top:6px !important; padding-top:0 !important; padding-bottom:0 !important; min-height:0 !important; }
+  ${T} .sx-ct__board { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 18px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 18px), transparent) !important; padding-bottom:14px !important; }
+  ${T} .sx-ct__active { overflow:visible !important; height:auto !important; max-height:none !important; padding-top:0 !important; }
+  /* the tracked job: one line, its TRACKED word beside the name (its route line lives in the dossier) */
+  ${T} .sx-ct__jobs .sx-job { grid-template-areas:"title track" !important; align-items:center !important; }
+  ${T} .sx-ct__jobs .sx-job .sx-job__meta { display:none !important; }
 }
 /* the Ledger's purse has the width of its words */
 ${T} .orr-ledger-purse { width:260px; }
