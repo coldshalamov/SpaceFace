@@ -9,7 +9,7 @@ import {
   isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
-import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
+import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS, classifyPreparationScreen, notePreparationWait, waitForPreparationLaunch, PREPARATION_UNEXPECTED_MS } from '../scripts/player-truth/routes.mjs';
 import { separation, sampleBox, rimMatchesThreat, threatMarkerCredit, THREAT_MARKER } from '../scripts/player-truth/readability.mjs';
 import { offscreenShooterMarker } from '../src/ui/threatHalo.js';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
@@ -440,6 +440,45 @@ test('score credited before the first flight input fails', async () => {
   assert.match(r.value, /\+120/);
   trace.samples[2].run.sc = 0;
   assert.equal(checkRewardBeforeInput(trace).status, 'PASS');
+});
+
+test('preparation names a Rearm screen in about 30s and keeps waiting on the armory', async () => {
+  const rearm = { visible: true, title: 'Rearm', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'CRUCIBLE / REARM', top: 'crucibleDraft', launch: false };
+  const armory = { visible: true, title: 'Armory', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'CRUCIBLE / REARM', top: 'crucibleDraft', launch: false };
+  const opening = { visible: true, title: 'Armory', sub: 'Fit out before round 1 — the purse is already open.', top: 'crucibleDraft', launch: false };
+  assert.equal(classifyPreparationScreen(rearm).status, 'unexpected');
+  assert.equal(classifyPreparationScreen(rearm).name, 'REARM');
+  assert.equal(classifyPreparationScreen(armory).status, 'waiting');
+  assert.equal(classifyPreparationScreen(opening).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...rearm, launch: true }).status, 'ready');
+  assert.equal(classifyPreparationScreen({ visible: false, title: 'Rearm', sub: 'Wave 0 cleared. Nothing new fits this hull.' }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ visible: true, title: 'Results', sub: 'Run over.' }).name, 'RESULTS');
+  const first = notePreparationWait(null, rearm, 0, PREPARATION_UNEXPECTED_MS);
+  assert.equal(first.due, false);
+  const held = notePreparationWait({ name: 'REARM', since: first.since }, rearm, PREPARATION_UNEXPECTED_MS, PREPARATION_UNEXPECTED_MS);
+  assert.equal(held.due, true);
+  assert.equal(notePreparationWait(held, armory, PREPARATION_UNEXPECTED_MS).status, 'waiting');
+  let now = 1_000_000;
+  const page = { waitForTimeout: async (ms) => { now += ms; } };
+  await assert.rejects(
+    () => waitForPreparationLaunch(page, { timeoutMs: 600000, unexpectedMs: 30000, pollMs: 1000, now: () => now, read: async () => rearm }),
+    /unexpected screen: REARM/,
+  );
+  assert.ok(now - 1_000_000 >= 30000 && now - 1_000_000 < 35000);
+  now = 5_000_000;
+  let reads = 0;
+  const ready = await waitForPreparationLaunch(page, {
+    timeoutMs: 600000, unexpectedMs: 30000, pollMs: 1000, now: () => now,
+    read: async () => (reads++ < 2 ? rearm : { ...armory, launch: true, sub: 'Fit out before round 1 — the purse is already open.' }),
+  });
+  assert.equal(ready.launch, true);
+  assert.ok(now - 5_000_000 < 30000);
+  now = 9_000_000;
+  await assert.rejects(
+    () => waitForPreparationLaunch(page, { timeoutMs: 5000, unexpectedMs: 30000, pollMs: 1000, now: () => now, read: async () => armory }),
+    /Launch round 1 did not appear/,
+  );
+  assert.ok(now - 9_000_000 >= 5000 && now - 9_000_000 < 30000);
 });
 
 test('Open armory is ready on the draft screen and lost in a non-draft world', () => {
