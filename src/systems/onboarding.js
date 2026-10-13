@@ -1779,11 +1779,27 @@ export const onboarding = {
     if (!player || !player.pos) return;
     // A seam rock destroyed in crossfire (the wanted-escape chaos) restages — retry,
     // never a wall: the seam beat respawns its marked rock the moment it is gone.
-    const beatNow = BEATS[ob.currentBeat];
-    if (beatNow && beatNow.key === 'seam'
-      && (this._miningRockId == null
-        || !(this.state.entities.get(this._miningRockId)?.alive !== false))) {
+    const miningRock = this._miningRockId != null && this.state.entities.get(this._miningRockId);
+    if (beat.key === 'seam'
+      && (!miningRock || miningRock.alive === false || !miningRock.data?.trainingMining)) {
       this._spawnMiningRock();
+      this._setObjectiveWaypoint(true);
+    }
+    const derelict = this._derelictId != null && this.state.entities.get(this._derelictId);
+    if (beat.key === 'tether' && (!derelict || derelict.alive === false
+      || derelict.data?.onboarding !== true || derelict.data?.kind !== 'derelict')) {
+      const oldId = this._derelictId;
+      this._spawnDerelict();
+      const replacement = this.state.entities.get(this._derelictId);
+      if (replacement && replacement !== derelict) {
+        ob.tetherReeled = false;
+        for (const key of Object.keys(ob.firedFollowups || {})) {
+          if (key.startsWith('tether:')) delete ob.firedFollowups[key];
+        }
+        if (this.state.player.targetId === oldId) this.state.player.targetId = this._derelictId;
+        this._setObjectiveWaypoint(true);
+      }
+      return;
     }
     const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
     let trainer = this._trainingActor();
@@ -1921,7 +1937,7 @@ export const onboarding = {
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return null;
     const existing = this._miningRockId != null && st.entities.get(this._miningRockId);
-    if (existing && existing.alive !== false) return existing;
+    if (existing && existing.alive !== false && existing.data?.trainingMining) return existing;
     const angle = onboardingRandom(st) * TAU;
     const rock = this.helpers.spawnEntity({
       type: 'asteroid',
