@@ -1474,6 +1474,73 @@ test('formatReport does not throw when the error message getter throws', () => {
   assert.equal(/function showReport\(value\) \{\s*try \{/.test(editor), true);
 });
 
+test('toJSON cannot store grid null, a null array, or a frames hole', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+
+  const returned = getComposition('dock.intercept-cargo');
+  returned.toJSON = function () {
+    this.grid = null;
+    return this;
+  };
+  const returnedCommit = commit(history, returned);
+  assert.equal(returnedCommit, history);
+  assert.notEqual(returnedCommit.present.grid, null);
+  assert.equal(returnedCommit.present.grid.size, history.present.grid.size);
+
+  const copied = getComposition('dock.intercept-cargo');
+  copied.toJSON = function () {
+    this.grid = null;
+    return { ...this };
+  };
+  const copiedCommit = commit(history, copied);
+  assert.equal(copiedCommit, history);
+  assert.notEqual(copiedCommit.present.grid, null);
+
+  const listed = getComposition('dock.intercept-cargo');
+  listed.grid.toJSON = function () { return [null]; };
+  const listedCommit = commit(history, listed);
+  assert.equal(listedCommit, history);
+  assert.equal(Array.isArray(listedCommit.present.grid), false);
+  assert.notEqual(listedCommit.present.grid, null);
+
+  const nested = getComposition('dock.intercept-cargo');
+  nested.toJSON = function () {
+    const source = this;
+    return {
+      toJSON() {
+        return { ...source, grid: null };
+      },
+    };
+  };
+  const nestedCommit = commit(history, nested);
+  assert.equal(nestedCommit, history);
+  assert.notEqual(nestedCommit.present.grid, null);
+
+  const holed = getComposition('dock.intercept-cargo');
+  delete holed.frames[0];
+  const holedCommit = commit(history, holed);
+  assert.equal(holedCommit, history);
+  assert.notEqual(holedCommit.present.frames[0], null);
+  assert.equal(holedCommit.present.frames[0].tick, history.present.frames[0].tick);
+  const opened = openDockHistory(holed);
+  assert.equal(opened.ok, false);
+  assert.equal(opened.history, null);
+});
+
+test('stableStringify does not throw when a boxed id toJSON throws', () => {
+  const boxed = new String('dock.intercept-cargo');
+  Object.defineProperty(boxed, 'toJSON', {
+    enumerable: true,
+    value() { throw new Error('boom'); },
+  });
+  let text;
+  assert.doesNotThrow(() => {
+    text = stableStringify({ projectId: boxed });
+  });
+  assert.equal(typeof text, 'string');
+  assert.equal(text.includes('boom'), false);
+});
+
 test('stableStringify does not throw out of commit', () => {
   const history = createHistory(getComposition('dock.intercept-cargo'));
   history.present.grid.toJSON = function () { throw new Error('boom'); };

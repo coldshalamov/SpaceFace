@@ -13,11 +13,19 @@ export function safeStableStringify(value) {
   }
 }
 
+function boxedPrimitive(value) {
+  return value instanceof String || value instanceof Number || value instanceof Boolean;
+}
+
 export function sortValue(value) {
   if (Array.isArray(value)) return value.map(sortValue);
   if (!value || typeof value !== 'object') return value;
   const out = {};
-  for (const key of Object.keys(value).sort()) out[key] = sortValue(value[key]);
+  const skipToJSON = boxedPrimitive(value);
+  for (const key of Object.keys(value).sort()) {
+    if (skipToJSON && key === 'toJSON' && typeof value[key] === 'function') continue;
+    out[key] = sortValue(value[key]);
+  }
   return out;
 }
 

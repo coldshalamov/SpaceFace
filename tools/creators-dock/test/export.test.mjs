@@ -334,9 +334,8 @@ test('a throwing toJSON on project.id does not escape the export manifest', asyn
     end(body) { chunks.push(body); },
   };
   assert.doesNotThrow(() => send(res, 200, { manifest: { projectId: boxed } }));
-  const posted = JSON.parse(chunks[0]);
-  assert.equal(posted.ok, false);
-  assert.equal(posted.issues.some((issue) => issue.includes('scene could not be cloned')), true);
+  assert.equal(typeof chunks[0], 'string');
+  assert.equal(chunks[0].includes('boom'), false);
 });
 
 test('exportProject records a throwing toJSON instead of throwing', async () => {

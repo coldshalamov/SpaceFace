@@ -37,14 +37,44 @@ export const OBJECT_KEY_SETS = Object.freeze({
 
 const CLONE_REJECT = Symbol('clone-reject');
 
+function snapshot(value, seen = new Map()) {
+  if (value === null || value === undefined || typeof value !== 'object') return value;
+  if (seen.has(value)) return seen.get(value);
+  if (Array.isArray(value)) {
+    const out = [];
+    seen.set(value, out);
+    for (let i = 0; i < value.length; i += 1) {
+      if (Object.prototype.hasOwnProperty.call(value, i)) out[i] = snapshot(value[i], seen);
+      else out.length = i + 1;
+    }
+    return out;
+  }
+  const out = {};
+  seen.set(value, out);
+  for (const key of Object.keys(value)) out[key] = snapshot(value[key], seen);
+  return out;
+}
+
+function arrayHasForbiddenNull(array) {
+  for (let i = 0; i < array.length; i += 1) {
+    if (!Object.prototype.hasOwnProperty.call(array, i) || array[i] === null) return true;
+    if (Array.isArray(array[i]) && arrayHasForbiddenNull(array[i])) return true;
+  }
+  return false;
+}
+
 function introducedNull(original, produced) {
+  if (produced === null) return original != null;
   if (!produced || typeof produced !== 'object' || !original || typeof original !== 'object') return false;
   if (produced === original) return false;
   if (Array.isArray(produced)) {
-    if (!Array.isArray(original)) return false;
+    if (!Array.isArray(original)) return arrayHasForbiddenNull(produced);
     for (let i = 0; i < produced.length; i += 1) {
-      if (produced[i] === null && original[i] != null) return true;
-      if (produced[i] && typeof produced[i] === 'object' && introducedNull(original[i], produced[i])) return true;
+      if (!Object.prototype.hasOwnProperty.call(produced, i)) return true;
+      const next = produced[i];
+      const prev = original[i];
+      if (next === null && prev != null) return true;
+      if (next && typeof next === 'object' && prev && typeof prev === 'object' && introducedNull(prev, next)) return true;
     }
     return false;
   }
@@ -53,12 +83,13 @@ function introducedNull(original, produced) {
     const next = produced[key];
     const prev = original[key];
     if (next === null && prev != null) return true;
+    if (Array.isArray(next) && !Array.isArray(prev) && arrayHasForbiddenNull(next)) return true;
     if (next && typeof next === 'object' && prev && typeof prev === 'object' && introducedNull(prev, next)) return true;
   }
   return false;
 }
 
-function materialize(value, key, seen) {
+function materialize(value, key, seen, baseline) {
   if (value === null) return null;
   if (value === undefined) return undefined;
   const type = typeof value;
@@ -68,12 +99,15 @@ function materialize(value, key, seen) {
   if (type !== 'object') return undefined;
   if (seen.has(value)) throw new TypeError('Converting circular structure to JSON');
   if (typeof value.toJSON === 'function') {
+    const before = baseline || snapshot(value);
     seen.add(value);
     const produced = value.toJSON(key);
     if (produced === null) return CLONE_REJECT;
     if (produced === undefined) return undefined;
-    if (produced !== value) {
-      if (produced && typeof produced === 'object' && introducedNull(value, produced)) return CLONE_REJECT;
+    if (produced && typeof produced === 'object') {
+      if (introducedNull(before, produced)) return CLONE_REJECT;
+      if (produced !== value) return materialize(produced, key, seen, before);
+    } else if (produced !== value) {
       return materialize(produced, key, seen);
     }
   } else if (value instanceof String || value instanceof Number || value instanceof Boolean) {
@@ -84,9 +118,10 @@ function materialize(value, key, seen) {
   if (Array.isArray(value)) {
     const out = [];
     for (let i = 0; i < value.length; i += 1) {
+      if (!Object.prototype.hasOwnProperty.call(value, i)) return CLONE_REJECT;
       const item = materialize(value[i], String(i), seen);
-      if (item === CLONE_REJECT) return CLONE_REJECT;
-      out.push(item === undefined ? null : item);
+      if (item === CLONE_REJECT || item === undefined) return CLONE_REJECT;
+      out.push(item);
     }
     return out;
   }
