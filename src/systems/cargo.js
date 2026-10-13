@@ -94,9 +94,9 @@ function defOf(state, id) {
   const reg = state && state.content && state.content.commodities;
   if (reg) {
     const c = Array.isArray(reg) ? reg.find((x) => x.id === id) : reg[id];
-    if (c) return { vol: c.volPerU, mass: c.massPerU, legality: c.legality };
+    if (c) return { vol: c.volPerU, mass: c.massPerU, legality: c.legality, basePrice: c.basePrice };
   }
-  if (id in VOL) return { vol: VOL[id], mass: MASS[id], legality: LEGALITY[id] };
+  if (id in VOL) return { vol: VOL[id], mass: MASS[id], legality: LEGALITY[id], basePrice: BASE_PRICE[id] };
   if (PERSISTENT_FOOTPRINT.has(id)) return PERSISTENT_FOOTPRINT.get(id);
   return null;
 }
@@ -547,19 +547,27 @@ export function cashInSalvage(state, { includeIllicit = false } = {}) {
   let units = 0;
   let credits = 0;
   const lots = [];
+  const balance = Number(state.player?.credits);
+  const receivingRoom = Number.MAX_SAFE_INTEGER - Math.max(0, Number.isFinite(balance) ? Math.round(balance) : 0);
   for (const id of Object.keys(bay.items).sort()) {
     const qty = Math.floor(Number(bay.items[id]) || 0);
     if (qty <= 0) continue;
     const def = defOf(state, id);
     if (!includeIllicit && def?.legality && def.legality !== 'legal') continue;
-    const value = Math.floor(qty * (BASE_PRICE[id] || 0) * SALVAGE_BAY.saleRate);
+    const price = Number(def?.basePrice);
+    // A custom/content-loaded find is valued by the same active registry as its footprint.
+    // Unknown pricing keeps custody in the bay until the content can settle it.
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const value = Math.floor(qty * price * SALVAGE_BAY.saleRate);
+    if (!Number.isSafeInteger(value) || value <= 0) continue;
+    if (value > receivingRoom - credits) continue;
     units += qty;
     credits += value;
     lots.push({ commodityId: id, qty, credits: value });
     delete bay.items[id];
   }
   bay.usedVolume = Object.entries(bay.items).reduce((volume, [id, qty]) =>
-    volume + Math.max(0, Math.floor(Number(qty) || 0)) * (defOf(state, id)?.vol || 1), 0);
+    volume + Math.max(0, Math.floor(Number(qty) || 0)) * volumePerUnit(defOf(state, id) || {}), 0);
   if (units <= 0) return null;
   return { units, credits, lots };
 }
@@ -747,7 +755,7 @@ export const cargo = {
       const dumped = commodityId ? this.jettison(commodityId, 1) : 0;
       if (!(dumped > 0) && this.bus) {
         this.bus.emit('toast', {
-          text: commodityId ? 'That lot is sealed — it stays aboard' : jettisonRefusalText(state),
+          text: commodityId ? 'Cargo could not be released — it stays aboard' : jettisonRefusalText(state),
           kind: 'warn',
           ttl: 1.6,
         });
@@ -1070,9 +1078,15 @@ export const cargo = {
   _cashInSalvage(payload = {}) {
     if (!combatFlag('salvageBay')) return;
     const sale = cashInSalvage(this.state, { includeIllicit: salvageBaySaleAllowsIllicit(this.state, payload.stationId) });
-    const retained = Object.values(this.state.player.salvageBay?.items || {}).reduce((sum, qty) => sum + Math.max(0, Number(qty) || 0), 0);
-    if (retained && this.bus?.emit) this.bus.emit('toast', {
-      text: `Restricted salvage remains in your bay: ${retained} units. Find a black market to sell it.`,
+    const remaining = Object.entries(this.state.player.salvageBay?.items || {});
+    const restricted = remaining.reduce((sum, [id, qty]) => sum + (defOf(this.state, id)?.legality && defOf(this.state, id).legality !== 'legal' ? Math.max(0, Number(qty) || 0) : 0), 0);
+    const retained = remaining.reduce((sum, [, qty]) => sum + Math.max(0, Number(qty) || 0), 0);
+    if (restricted && this.bus?.emit) this.bus.emit('toast', {
+      text: `Restricted salvage remains in your bay: ${restricted} units. Find a black market to sell it.`,
+      kind: 'warn', ttl: 7,
+    });
+    if (retained > restricted && this.bus?.emit) this.bus.emit('toast', {
+      text: `Salvage remains in your bay: ${retained - restricted} units could not be valued or paid.`,
       kind: 'warn', ttl: 7,
     });
     if (!sale || !this.bus || typeof this.bus.emit !== 'function') return;
@@ -1134,6 +1148,10 @@ export const cargo = {
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
   jettison(commodityId, qty, options = null) {
+    if (this._jettisonInFlight) return 0;
+    const state = this.state;
+    const player = state.entities.get(state.playerId);
+    if (!player || player.alive === false || typeof this.helpers?.spawnEntity !== 'function') return 0;
     const free = sellableCargoQuantity(this.state, commodityId);
     if (qty == null) qty = free;
     qty = Math.max(0, Math.floor(Number(qty) || 0));
@@ -1142,12 +1160,13 @@ export const cargo = {
     if (reservedCargoQuantity(this.state, commodityId) > 0 && qty > free) return 0;
     qty = Math.min(qty, free);
     if (qty <= 0) return 0;
-    const state = this.state;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
-    const dumped = removeCargo(state, commodityId, qty);
-    if (dumped <= 0) return 0;
-    const player = state.entities.get(state.playerId);
-    if (player && this.helpers && this.helpers.spawnEntity) {
+    this._jettisonInFlight = true;
+    let removed = 0, dumped = 0;
+    const acceptedRich = new Map();
+    try {
+      removed = removeCargo(state, commodityId, qty);
+      if (removed <= 0) return 0;
       const px = player.pos.x, pz = player.pos.z;
       const rot = Number.isFinite(player.rot) ? player.rot : 0;
       const fx = Math.cos(rot), fz = Math.sin(rot);
@@ -1171,7 +1190,7 @@ export const cargo = {
           ? { x: vx * 0.04, z: vz * 0.04 }
           : { x: vx - fx * eject, z: vz - fz * eject };
         // Industrial-beam payload body: mass, collides, tetherable, flags.persistent. Not a TTL pickup.
-        spawnJettisonedCargoPod(state, {
+        const pod = spawnJettisonedCargoPod(state, {
           pos,
           vel,
           radius: JETTISON_POD_RADIUS,
@@ -1183,20 +1202,39 @@ export const cargo = {
           factionId: player.factionId || 'player',
           ownerId: player.id,
         }, this.helpers);
+        if (pod && pod.alive !== false) {
+          dumped += amount;
+          if (richSource) acceptedRich.set(richSource.lotId, (acceptedRich.get(richSource.lotId) || 0) + amount);
+        }
       };
       let allocated = 0;
       for (const richSource of richSources) {
-        const amount = Math.min(dumped - allocated, richSource.richQty);
+        const amount = Math.min(removed - allocated, richSource.richQty);
         spawnJettisonPod(amount, richSource);
         allocated += amount;
       }
-      spawnJettisonPod(Math.max(0, dumped - allocated));
-    }
-    // Receipt seam (Wave M2 §5.3): the dump is announced so reaction-impulse/heat/AI layers can
-    // observe it without owning cargo. Emitting is not a state write — the 47-A harness has no
-    // subscriber for it, and the massline2 impulse consumer is flag-gated OFF headless.
-    if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('cargo:jettisoned', { commodityId, amount: dumped });
+      spawnJettisonPod(Math.max(0, removed - allocated));
+    } finally {
+      try {
+        const retained = removed - dumped;
+        if (retained > 0) {
+          // This is the return of existing custody, not a new pickup. Even a synchronous
+          // fit/capacity change cannot make refused pods erase the pilot's original stock.
+          const hold = state.player.cargo;
+          hold.items[commodityId] = (hold.items[commodityId] || 0) + retained;
+          for (const source of richSources) {
+            const amount = source.richQty - (acceptedRich.get(source.lotId) || 0);
+            if (amount > 0) appendRichLot(hold, source, commodityId, amount);
+          }
+          this.recompute(state);
+          emitChanged(state, hold);
+        }
+        // Accepted pods are already physical custody even if a later admission throws.
+        // Their public verb receipt must land before the exception leaves this attempt.
+        if (dumped > 0 && this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('cargo:jettisoned', { commodityId, amount: dumped });
+        }
+      } finally { this._jettisonInFlight = false; }
     }
     return dumped;
   },

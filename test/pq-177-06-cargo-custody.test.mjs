@@ -64,7 +64,7 @@ function bootMiner() {
   econ.newGame();
   inst.init({ state, bus: inst.bus, helpers: {}, registry: { get: (id) => id === 'economy' ? econ : null } });
   inst.newGame();
-  return {
+  const fixture = {
     state,
     inst,
     econ,
@@ -81,6 +81,8 @@ function bootMiner() {
     },
     def: { id: 'drone_mk1', mineRate: 0.8, bufferCap: 40, fuelRate: 1 },
   };
+  state.automation.drones.push(fixture.group);
+  return fixture;
 }
 
 function mineTwoSeconds(inst, group, def) {
@@ -156,6 +158,7 @@ test('PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing', (
     quantity: 1,
   };
   const mid = JSON.parse(JSON.stringify(group));
+  state.automation.drones = [mid];
   const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 1);
   assert.equal(expected.ok, true);
   const expectedCredited = Math.round(expected.total);
@@ -166,6 +169,7 @@ test('PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing', (
   assert.equal(state.player.credits, expectedCredited);
 
   const afterCommit = JSON.parse(JSON.stringify(mid));
+  state.automation.drones = [afterCommit];
   afterCommit.pendingSale = {
     intentId: first.receipt.id,
     stationId: 'station_helios',
