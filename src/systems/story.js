@@ -933,6 +933,12 @@ export const story = {
     const elig = evaluateEndingEligibility(state, 'C');
     if (!elig.eligible) {
       this.bus.emit('world:abortJumpCharge', { reason: 'choice_c_ineligible', unfiled: true });
+      this.bus.emit('endgame:ineligible', {
+        choice: 'C',
+        unmet: (elig.unmet || []).map((u) => ({ code: u.code, text: u.text })),
+      });
+      const first = elig.unmet && elig.unmet[0];
+      if (first && first.text) this._sayStoryLine(first.text, 5);
       return;
     }
     // Fire the Vale line the instant the drive begins charging (per the spine doc timing note),
