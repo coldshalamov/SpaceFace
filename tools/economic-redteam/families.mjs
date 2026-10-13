@@ -216,6 +216,7 @@ function probeWash(seed) {
           repBefore: earned.repBefore,
           repAfter: earned.repAfter,
           repFromWriter: earned.repFromWriter,
+          receipts: earned.receipts,
           alliedBand: earned.alliedBand,
           buyTotal: minimal.buyQuote && minimal.buyQuote.total,
           sellTotal: minimal.sellQuote && minimal.sellQuote.total,
@@ -230,6 +231,9 @@ function probeWash(seed) {
           missionCompletions: earned.completed,
           repBefore: earned.repBefore,
           repAfter: earned.repAfter,
+          repFromWriter: earned.repFromWriter,
+          receipts: earned.receipts,
+          alliedBand: earned.alliedBand,
         },
       ].filter(Boolean),
       controls: [{

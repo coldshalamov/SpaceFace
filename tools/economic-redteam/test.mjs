@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { CONTRABAND_ARTIFACT, FAMILY_IDS, probeFamilies } from './families.mjs';
-import { ACTION_IDS, buy, completeFactionMissions, dock, runKillRecipe, saveContinue, sell, service } from './grammar.mjs';
+import { ACTION_IDS, buy, completeFactionMissions, dock, heliosIronQuote, runKillRecipe, saveContinue, sell, service, shippingAlliedTier } from './grammar.mjs';
 import {
   bayCashVerdict,
   closedWashVerdict,
@@ -15,7 +15,7 @@ import {
 } from './invariants.mjs';
 import { runSearch } from './search.mjs';
 import { runStrategies } from './strategies.mjs';
-import { HOME_FACTION, bootRedTeam, restoreFeatureMaps } from './runtime.mjs';
+import { HOME_FACTION, bootRedTeam, repOf, restoreFeatureMaps } from './runtime.mjs';
 
 test('closed wash, bay launder, stock floor, and replay invariants', () => {
   assert.equal(closedWashVerdict({ creditsDelta: 16, stockDelta: 0, cargoDelta: 0 }).exploit, true);
@@ -36,6 +36,24 @@ test('action grammar names player verbs and labels the missing ones', () => {
   }
 });
 
+test('Helios iron quote stays negative at neutral, the shipping Allied tier, and cap', () => {
+  const alliedTier = shippingAlliedTier();
+  assert.equal(alliedTier, 400);
+  try {
+    const sim = bootRedTeam(1846);
+    assert.equal(repOf(sim.state, HOME_FACTION), 0);
+    for (const rep of [0, alliedTier, 1000]) {
+      const book = heliosIronQuote(sim, rep, 10);
+      assert.equal(book.ok, true, JSON.stringify(book));
+      assert.equal(book.rep, rep);
+      assert.ok(book.sellTotal < book.buyTotal, `rep ${rep} buy ${book.buyTotal} sell ${book.sellTotal}`);
+    }
+    assert.equal(repOf(sim.state, HOME_FACTION), 0);
+  } finally {
+    restoreFeatureMaps();
+  }
+});
+
 test('production runtime reports the repaired loops through real player transactions', { timeout: 180000 }, () => {
   try {
     const families = probeFamilies(1845);
@@ -47,11 +65,27 @@ test('production runtime reports the repaired loops through real player transact
     const allied = wash.traces.find((trace) => trace.name === 'allied_minimized');
     assert.ok(allied.missionCompletions > 0);
     assert.equal(allied.commands.some((command) => String(command).includes('faction:repDelta')), false);
+    const receiptSim = bootRedTeam(allied.seed);
+    const settled = completeFactionMissions(receiptSim, HOME_FACTION);
+    const store = receiptSim.state.missions && Array.isArray(receiptSim.state.missions.receipts)
+      ? receiptSim.state.missions.receipts : [];
+    assert.ok(settled.missionIds.length > 0);
+    assert.equal(settled.missionIds.length, allied.missionCompletions);
+    let expectedRep = 0;
+    const receiptDeltas = [];
+    for (const missionId of settled.missionIds) {
+      const receipt = store.find((row) => row && row.missionId === missionId && row.outcome === 'completed');
+      if (!receipt) continue;
+      assert.equal(Number.isFinite(Number(receipt.repDelta)), true, missionId);
+      const delta = Number(receipt.repDelta);
+      receiptDeltas.push(delta);
+      expectedRep += delta;
+    }
+    assert.ok(receiptDeltas.length > 0);
+    assert.equal(allied.repFromWriter, expectedRep);
+    assert.deepEqual((allied.receipts || []).map((receipt) => Number(receipt.repDelta)), receiptDeltas);
     assert.equal(allied.repFromWriter, allied.repAfter);
-    // Sum of mission-receipt repDelta from the missions writer on seed 1846.
-    // The old allied wash band was 200. This completion set does not reach it.
-    assert.equal(allied.repFromWriter, 33);
-    assert.equal(allied.alliedBand, 200);
+    assert.equal(allied.alliedBand, shippingAlliedTier());
     assert.ok(allied.repFromWriter < allied.alliedBand);
     assert.equal(allied.creditPath, 'economy.quote -> economy.execute trade:buy/trade:sell');
     assert.equal(allied.reachesCreditPrint, false);
@@ -136,8 +170,22 @@ test('a real mission completion and a real kill recipe are not confirmed exploit
     const washSim = bootRedTeam(502);
     const earned = completeFactionMissions(washSim, HOME_FACTION);
     assert.ok(earned.completed > 0);
+    const store = washSim.state.missions && Array.isArray(washSim.state.missions.receipts)
+      ? washSim.state.missions.receipts : [];
+    assert.ok(Array.isArray(earned.missionIds) && earned.missionIds.length === earned.completed);
+    let expectedRep = 0;
+    let filed = 0;
+    for (const missionId of earned.missionIds) {
+      const receipt = store.find((row) => row && row.missionId === missionId && row.outcome === 'completed');
+      if (!receipt) continue;
+      assert.equal(Number.isFinite(Number(receipt.repDelta)), true, missionId);
+      expectedRep += Number(receipt.repDelta);
+      filed += 1;
+    }
+    assert.ok(filed > 0);
+    assert.equal(earned.repFromWriter, expectedRep);
     assert.equal(earned.repFromWriter, earned.repAfter);
-    assert.equal(earned.alliedBand, 200);
+    assert.equal(earned.alliedBand, shippingAlliedTier());
     assert.ok(earned.repFromWriter < earned.alliedBand);
     service(washSim, 'loan');
     const before = washSim.state.player.credits;

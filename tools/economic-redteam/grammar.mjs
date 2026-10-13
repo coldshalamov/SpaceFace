@@ -2,6 +2,8 @@
 // station UI already emits. Missing verbs are labeled unavailable. Nothing here
 // assigns state.player.credits.
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { COMMODITIES } from '../../src/data/commodities.js';
 import { killRewardRecipeFor } from '../../src/data/killRewards.js';
 import { combat } from '../../src/systems/combat.js';
@@ -10,6 +12,7 @@ import { makeShipEntitySpec } from '../../src/systems/ships.js';
 import {
   HOME_FACTION,
   HOME_STATION,
+  IRON,
   bayQty,
   bootRedTeam,
   captureLedger,
@@ -26,6 +29,16 @@ import {
 } from './runtime.mjs';
 
 const LEGALITY = new Map(COMMODITIES.map((row) => [row.id, row.legality || 'legal']));
+
+const FACTIONS_SOURCE = fileURLToPath(new URL('../../src/systems/factions.js', import.meta.url));
+
+/** Shipped Allied tier minimum. `TIERS` in factions.js is the owner; quote() has no rep gate of its own. */
+export function shippingAlliedTier() {
+  const source = readFileSync(FACTIONS_SOURCE, 'utf8');
+  const match = source.match(/\{\s*name:\s*'Allied',\s*min:\s*(-?\d+)\s*\}/);
+  if (!match) throw new Error('shipping Allied tier missing from src/systems/factions.js');
+  return Number(match[1]);
+}
 
 export const ACTION_IDS = Object.freeze([
   'buy',
@@ -402,7 +415,15 @@ export function completeFactionMissions(sim, factionId = HOME_FACTION, limit = 2
   const missionIds = [];
   if (!missions || typeof missions._completeMission !== 'function') {
     return {
-      completed: 0, repBefore: before, repAfter: before, repFromWriter: 0, offerIds, reason: 'missions_unwired',
+      completed: 0,
+      repBefore: before,
+      repAfter: before,
+      repFromWriter: 0,
+      receipts: [],
+      missionIds,
+      alliedBand: shippingAlliedTier(),
+      offerIds,
+      reason: 'missions_unwired',
     };
   }
   let completed = 0;
@@ -420,22 +441,61 @@ export function completeFactionMissions(sim, factionId = HOME_FACTION, limit = 2
     missionIds.push(mission.id);
     completed += 1;
   }
-  const receipts = sim.state.missions && Array.isArray(sim.state.missions.receipts)
+  const store = sim.state.missions && Array.isArray(sim.state.missions.receipts)
     ? sim.state.missions.receipts : [];
+  const receipts = [];
   let repFromWriter = 0;
   for (let i = 0; i < missionIds.length; i += 1) {
-    const receipt = receipts.find((row) => row && row.missionId === missionIds[i] && row.outcome === 'completed');
-    repFromWriter += receipt ? Number(receipt.repDelta) || 0 : 0;
+    const receipt = store.find((row) => row && row.missionId === missionIds[i] && row.outcome === 'completed');
+    if (!receipt) continue;
+    receipts.push({
+      missionId: receipt.missionId,
+      outcome: receipt.outcome,
+      repDelta: receipt.repDelta,
+    });
+    repFromWriter += Number(receipt.repDelta) || 0;
   }
   return {
     completed,
     repBefore: before,
     repAfter: repOf(sim.state, factionId),
     repFromWriter,
-    alliedBand: 200,
+    receipts,
+    missionIds,
+    alliedBand: shippingAlliedTier(),
     offerIds,
     reason: completed ? null : 'no_faction_offer',
   };
+}
+
+/**
+ * Same-station iron book at an exact standing. quote() reads faction rep; this
+ * sets that field for the read and restores it. It does not emit faction:repDelta
+ * and it does not execute a trade.
+ */
+export function heliosIronQuote(sim, rep, qty = 10) {
+  const rec = sim.state.factions && sim.state.factions[HOME_FACTION];
+  if (!rec || !Number.isFinite(Number(rec.rep))) {
+    return { ok: false, reason: 'no_faction_record', rep, qty, buyTotal: null, sellTotal: null };
+  }
+  const previous = rec.rep;
+  rec.rep = rep;
+  try {
+    const econ = econOf(sim);
+    const buyQuote = econ.quote(HOME_STATION, IRON, 'buy', qty);
+    const sellQuote = econ.quote(HOME_STATION, IRON, 'sell', qty);
+    const buyTotal = buyQuote && buyQuote.ok ? Number(buyQuote.total) : null;
+    const sellTotal = sellQuote && sellQuote.ok ? Number(sellQuote.total) : null;
+    return {
+      ok: buyTotal != null && sellTotal != null,
+      rep,
+      qty,
+      buyTotal,
+      sellTotal,
+    };
+  } finally {
+    rec.rep = previous;
+  }
 }
 
 /**
