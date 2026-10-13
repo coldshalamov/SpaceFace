@@ -553,6 +553,10 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
     padding:0 14px 0 9px !important; white-space:nowrap; }
   ${M} .sx-trade__go:not([data-go]) { font-size:9.5px !important; letter-spacing:.12em !important; padding:2px 0 !important; white-space:nowrap; }
 }
+/* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
+@media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+}
 @media (max-width:1100px) and (max-height:640px) {
   ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .orr-mkt-subkey { display:none !important; }
   ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__analysis { -webkit-mask-image:none !important; mask-image:none !important; }
