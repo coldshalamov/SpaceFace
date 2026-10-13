@@ -259,6 +259,13 @@ html:root[data-sf-mobile="1"] body #screens #sf-range > .k-title > .sf-range__ru
 html:root[data-sf-mobile="1"] #sf-range .k-title > p { font-size: 15px; line-height: 20px; }
 html:root[data-sf-mobile="1"] #sf-range .k-title > p + p { font-size: 13px; line-height: 18px; }
 html:root[data-sf-mobile="1"] #sf-range .sf-range__verbs { margin-top: 8px !important; column-gap: 18px; row-gap: 6px; }
+/* A touch phone gives every word a 44px row (coarse pointer), so AGAIN / TRY IT EMPTY over NEXT
+   RULE cost the course ~50px in the live build. A 10px gap and a phone-sized lamp key (as on the
+   phone Market) keep all three on one row down to a 360px-wide phone. */
+@media (pointer: coarse) {
+  html:root[data-sf-mobile="1"] #sf-range .sf-range__verbs { column-gap: 10px; align-items: center; }
+  html:root[data-sf-mobile="1"] #sf-range .sf-range__verbs .orr-lampkey { min-height: 44px !important; font-size: 14px !important; padding: 0 16px 0 12px !important; white-space: nowrap; }
+}
 html:root[data-sf-mobile="1"] #sf-range .k-hero__n { font-size: 22px; line-height: 1; }
 html:root[data-sf-mobile="1"] #sf-range .k-foot { row-gap: 6px; }
 html:root[data-sf-mobile="1"] #sf-range .sf-range__ladder { flex-wrap: nowrap; overflow: auto hidden; width: 100%; max-width: 100%; box-sizing: border-box; column-gap: 22px; row-gap: 0;
@@ -2325,13 +2332,33 @@ function drawDrone(ctx2d, drone, bounds, width, height, forced, roles) {
   ctx2d.strokeStyle = forced ? 'CanvasText' : ink.paper;
   ctx2d.lineWidth = 1.8;
   ctx2d.stroke();
-  ctx2d.font = canvasFont('600', 12, 'body');
-  ctx2d.fillStyle = forced ? 'CanvasText' : ink.paper;
-  ctx2d.textAlign = 'center';
-  ctx2d.textBaseline = 'top';
-  ctx2d.fillText(drone.shortName, point.x, point.y + radius + 6);
   ctx2d.restore();
   return point;
+}
+
+/** --dp-void at .84: the Range's own --sf-surface is transparent (the sky is the ground). */
+const NAME_PLATE = 'rgba(5,7,10,.84)';
+
+/** The drone's name, painted last (after the gates, the turn arc and the player) on a small
+ *  plate, so nothing drawn later can strike through it — the narrow phone course packs the
+ *  gates and the turn ring right under it. */
+function drawDroneName(ctx2d, drone, point, forced, roles) {
+  if (!drone || !point || !drone.shortName) return;
+  const ink = roles || canvasRoles();
+  const radius = Math.max(9, finite(drone.radius, 14) * 0.45);
+  const nameY = point.y + radius + 6;
+  ctx2d.save();
+  ctx2d.font = canvasFont('600', 12, 'body');
+  ctx2d.textAlign = 'center';
+  ctx2d.textBaseline = 'top';
+  if (typeof ctx2d.measureText === 'function' && typeof ctx2d.fillRect === 'function') {
+    const nameW = ctx2d.measureText(drone.shortName).width;
+    ctx2d.fillStyle = forced ? 'Canvas' : NAME_PLATE;
+    ctx2d.fillRect(point.x - nameW / 2 - 4, nameY - 2, nameW + 8, 16);
+  }
+  ctx2d.fillStyle = forced ? 'CanvasText' : ink.paper;
+  ctx2d.fillText(drone.shortName, point.x, nameY);
+  ctx2d.restore();
 }
 
 function drawWeakArc(ctx2d, drone, weakPoint, bounds, width, height, forced, roles) {
@@ -4681,6 +4708,7 @@ export const rangeScreen = {
     if (sim.id === 'heavy_turns_wide') this._drawTurnArc(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'stopping_takes_room') this._drawStopBar(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'you_can_run_dry') this._drawEnergyReadout(ctx2d, sim, width, height, forced, roles);
+    drawDroneName(ctx2d, sim.drone, this._lastDroneScreen, forced, roles);
   },
 
   _drawHeavyGates(ctx2d, sim, width, height, forced, roles) {

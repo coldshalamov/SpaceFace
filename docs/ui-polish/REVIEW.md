@@ -154,6 +154,8 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 
 Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer open, NEXT RULE ×6 rail scroll, longest rule).
 
+**Live-build check (Code Work's ask, 06:10 ET):** the real game (`?dev=screen:range`, then Esc and the real F4 key) matches ui-bench at 960 (146px), 1280 (224px) and 1920 (385px). On a real touch phone the coarse pointer gives AGAIN / TRY IT EMPTY 44px rows, so NEXT RULE wrapped to its own row and the 390×844 course was 314px, not 384. Under `(pointer: coarse)` the verbs now share one row (10px gap, phone-sized lamp key, as on the phone Market): course 390×844 **314→364**, 375×812 285→335, 360×740 217→267; 844×390 is 318. The drone's name (BRUISER) is now painted last on a small void plate, so the gate rung and turn ring that pack under it on the narrow course no longer cut through the letters. Shots: `ui-shots/range-course/live/` (before) and `live/after3/`.
+
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 
 **Before (390×844):** the berth was one long scroll (~2180px). Title and mechanic scrolled off; vitals alone were ~454px (44px min-height on every act); destination tabs sat at y≈1810 under the whole tab body; Munitions spanned the vitals grid.
