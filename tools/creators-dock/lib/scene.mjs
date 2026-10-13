@@ -543,3 +543,39 @@ export function savedProjectText(project) {
   if (issues.length) return { ok: false, issues, text: null };
   return { ok: true, issues: [], text: JSON.stringify(stored, null, 2) };
 }
+
+export function saveRequestBody(project) {
+  const download = savedProjectText(project);
+  if (!download.ok) return { ok: false, issues: download.issues, body: null };
+  try {
+    return { ok: true, issues: [], body: JSON.stringify({ project: JSON.parse(download.text) }) };
+  } catch (error) {
+    return { ok: false, issues: ['scene could not be saved'], body: null };
+  }
+}
+
+export function formatReport(value) {
+  const issues = [];
+  if (value && Array.isArray(value.issues)) {
+    for (const issue of value.issues) {
+      try {
+        issues.push(String(issue));
+      } catch (error) {
+        issues.push('issue');
+      }
+    }
+  }
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (error) {
+    return JSON.stringify({ ok: false, issues: issues.length ? issues : [String(error && error.message || error)] }, null, 2);
+  }
+}
+
+export function copyScene(project) {
+  try {
+    return structuredClone(project);
+  } catch (error) {
+    return null;
+  }
+}

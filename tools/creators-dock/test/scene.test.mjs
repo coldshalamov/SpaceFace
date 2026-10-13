@@ -22,6 +22,8 @@ import {
   projectIssues,
   replaceObject,
   REQUEST_SCHEMA,
+  formatReport,
+  saveRequestBody,
   savedProjectText,
   setCamera,
   setPlayer,
@@ -1018,6 +1020,52 @@ test('commit, open, and setMeta do not throw when toJSON throws', () => {
   const nullMeta = applyDockOp(nulled, { op: 'setMeta', meta: { title: 'Nope' } });
   assert.equal(nullMeta.ok, false);
   assert.equal(nullMeta.project, nulled);
+});
+
+test('create keeps the previous history when a nested toJSON throws', () => {
+  const world = { fixtureProfile: 'empty-flight', toJSON() { throw new Error('boom'); } };
+  const result = applyRequest({
+    schema: REQUEST_SCHEMA,
+    ops: [
+      { op: 'loadExample', id: 'dock.intercept-cargo' },
+      { op: 'create', project: { id: 'dock.bad', title: 'Bad', seed: 1, world } },
+    ],
+  });
+  assert.equal(result.ok, false);
+  assert.notEqual(result.project, null);
+  assert.equal(result.project.id, 'dock.intercept-cargo');
+  assert.equal(result.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+});
+
+test('formatReport does not throw when the project toJSON throws', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(scene, 'toJSON', {
+    enumerable: false,
+    value() { throw new Error('boom'); },
+  });
+  const text = formatReport({ ok: false, project: scene, issues: ['scene could not be cloned'] });
+  assert.equal(typeof text, 'string');
+  assert.equal(text.includes('scene could not be cloned'), true);
+  assert.equal(text.includes('boom'), false);
+});
+
+test('saveRequestBody does not throw when toJSON throws for the project key', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(scene, 'toJSON', {
+    enumerable: false,
+    value(key) {
+      if (key === 'project') throw new Error('boom');
+      const body = { ...this };
+      delete body.toJSON;
+      return body;
+    },
+  });
+  const saved = saveRequestBody(scene);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(typeof saved.body, 'string');
+  assert.equal(saved.body.includes('"isPlayer":true'), true);
+  const posted = JSON.parse(saved.body);
+  assert.equal(posted.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
 });
 
 test('deleteObjects returns the previous project when toJSON returns null', () => {

@@ -30,11 +30,17 @@ export function applyRequest(request) {
       return response(false, history && history.present, [`${label}: op is required`], applied);
     }
     if (op.op === 'create') {
-      history = newDockHistory(op.project || {});
-      const created = requireOnePlayer(history.present, { ok: true, project: history.present, issues: [] });
-      if (!created.ok) {
-        return response(false, history.present, created.issues.map((issue) => `${label}: ${issue}`), applied);
+      const createdHistory = newDockHistory(op.project || {});
+      const created = requireOnePlayer(createdHistory && createdHistory.present, {
+        ok: true,
+        project: createdHistory && createdHistory.present,
+        issues: [],
+      });
+      if (!created.ok || !createdHistory || createdHistory.present == null) {
+        const issues = created.issues && created.issues.length ? created.issues : ['scene could not be cloned'];
+        return response(false, history && history.present, issues.map((issue) => `${label}: ${issue}`), applied);
       }
+      history = createdHistory;
       applied.push(op.op);
       continue;
     }

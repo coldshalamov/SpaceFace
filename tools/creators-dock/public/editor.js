@@ -11,10 +11,12 @@ import {
   hitTest,
   nudgeObjects,
   objectById,
+  copyScene,
+  formatReport,
   placePlayer,
   playerCanonIssues,
   projectIssues,
-  savedProjectText,
+  saveRequestBody,
   screenToWorld,
   setCamera,
   setPlayer,
@@ -178,7 +180,8 @@ function paintInspector() {
         commitProject(result.project);
         return;
       }
-      const next = structuredClone(project());
+      const next = copyScene(project());
+      if (!next) return showReport({ ok: false, issues: ['scene could not be cloned'] });
       const target = next.objects.find((row) => row.id === object.id);
       if (!target) return;
       if (field.kind === 'checkbox') target[field.key] = input.checked;
@@ -573,7 +576,8 @@ function groupSelected() {
 }
 
 function toggleSnap() {
-  const next = structuredClone(project());
+  const next = copyScene(project());
+  if (!next) return showReport({ ok: false, issues: ['scene could not be cloned'] });
   next.grid = { ...(next.grid || { size: 10 }), snap: !(next.grid && next.grid.snap) };
   commitProject(next);
 }
@@ -688,18 +692,23 @@ function addTemplate(object) {
 }
 
 async function saveProject() {
-  const download = savedProjectText(project());
+  const download = saveRequestBody(project());
   if (!download.ok) return showReport(download);
-  const blob = new Blob([download.text], { type: 'application/json' });
+  const blob = new Blob([download.body], { type: 'application/json' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = `${project().id}.dock.json`;
   link.click();
-  const saved = await fetch('/api/save', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ project: project() }),
-  }).then((res) => res.json());
+  let saved;
+  try {
+    saved = await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: download.body,
+    }).then((res) => res.json());
+  } catch (error) {
+    return showReport({ ok: false, issues: ['scene could not be saved'] });
+  }
   showReport(saved);
 }
 
@@ -714,7 +723,7 @@ async function post(url, body) {
 }
 
 function showReport(value) {
-  report.textContent = JSON.stringify(value, null, 2);
+  report.textContent = formatReport(value);
 }
 
 new ResizeObserver(resize).observe(canvas);
