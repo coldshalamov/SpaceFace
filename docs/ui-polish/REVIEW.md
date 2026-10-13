@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-10` (PR #333) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-11` (PR pending) · stacked on `master`.
 
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE; Market/Contracts/Shipworks tab bodies + Market SPREAD polished this session (§ Station tab bodies); Industry/Factions/Bar/Ledger still open at 960 |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar/Ledger still open at 960 |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -94,7 +94,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 ## Station tab bodies — session notes (2026-10-12, ui-polish-10)
 
-**Market body @960×540 (≤1100×≤800):** body height ~192px. Legend and the find share one line (the find's rule is that line's foot, no longer through the filters). The eight families are a vertical ladder beside the register, so all stay visible and the names get the width (fixed BUY/SELL/STOCK columns). Analysis: price keeps "you pay · one unit now", readings sit two-up, SPREAD sits on one line above its bracket. Console: 96px dial with QUANTITY under the number, FEWER/MORE/MAX under the ring, total, collapsed **Quote breakdown** (fees one click away), BUY + SELL on one row. Hull decision and hold arc sleep here; the berth head carries REPAIR and HOLD.
+**Market body @960×540 (≤1100×≤800):** body height ~192px. Legend and the find share one line (the find's rule is that line's foot, no longer through the filters). The eight families are a vertical ladder beside the register, so all stay visible and the names get the width (fixed BUY/SELL/STOCK columns). Analysis: price keeps "you pay · one unit now", readings sit two-up, SPREAD sits on one line above its bracket. Console: 96px dial with QUANTITY under the number, FEWER/MORE/MAX under the ring, total, collapsed **Quote breakdown** (fees one click away), BUY + SELL on one row. The hold arc sleeps here (the berth head carries HOLD). A pending market decision (e.g. the hull repair) stays on the board: a ruled block right under the analysis with its sentence and one line per verb and its terms, while the console keeps the full height. At ≤640px tall the four readings yield while it waits so the trace keeps its floor; at 1024×768 they stay. With no decision the layout is unchanged.
 
 **Contracts dossier @960×540 (≤1100×≤800):** ACCEPT is in flow, never sticky. The dossier wraps into two columns without new markup (`::after` is the column break): kind, title, client, reward and ACCEPT on the left; the risk sentence (risk, pay, standing gain and loss) and the terms (time, collateral, follow-up, readiness) on the right. The scales and route map sleep at this size (their words would be ~5px); the risk sentence says the same readings. Board: legends close up, the posted list fades out instead of slicing a row, and the tracked job is one line with TRACKED beside it.
 
@@ -104,7 +104,26 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code:** `marketLayouts.js`, `stationTabsLayouts.js`, `shipworksLayouts.js`, plus a one-line bail in `shipworks.js` `seatVerbs`. Selectors/IDs unchanged.
 
-**Follow-up (not in #333):** Shipworks slot callouts (Utility/Drive/Cargo) sit on the hull at 960 — they are placed by the jig in JS. Phone (390×844) station berth still stacks the note under the vitals.
+**Follow-up (not in #333):** Shipworks slot callouts (Utility/Drive/Cargo) sit on the hull at 960 — they are placed by the jig in JS.
+
+## Phone station berth — session notes (2026-10-12, ui-polish-11)
+
+**Before (390×844):** the berth was one long scroll (~2180px). Title and mechanic scrolled off; vitals alone were ~454px (44px min-height on every act); destination tabs sat at y≈1810 under the whole tab body; Munitions spanned the vitals grid.
+
+**After:** `mobileScreenLayouts.js` + `systems/mobile/styles.js`. Identity, tape, vitals and a wrapped destination foot stay on glass; the tab body is the only scroll. Selectors/IDs unchanged.
+
+**#335 HOLD fixes (Code Work, 19:55):** `mobileScreenLayouts.js` only.
+1. Market decision (`.sx-mkt__decision`) is laid out under the trade as full-width 44px option rows. It is no longer hidden.
+2. Find a service stays as a 44px search key beside the tape (its label is kept for screen readers).
+3. Mechanic, station event and story ledger are two-line cards in a swipeable tape. The hull reading leads and the next card peeks in.
+4. REPAIR/INSURE/DRAW/REARM are dense two-line keys, each with a measured 44–45px `::after` hit box that does not overlap another control.
+5. Crown: five vitals sit on one gutter-aligned row (a word reading takes the dial's slot). The purse moves to the right end of the title band.
+6. The body grows from ~283 to ~384px of 844 and the dead band is gone. Buy/Sell is on glass when Market opens.
+7. Market: the order is commodity, trade (128px dial | total, Buy/Sell, breakdown), decision, then trace, then register. Nothing overlaps. Fewer/More read as −/+.
+8. Tab badges are amber pills after their own word. The tabs sit on a 4-column grid.
+Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with the foot pinned. Desktop 960×540 is pixel-identical; at 1280×720 only the animated rule differs.
+
+**Still open on phone:** Shipworks callouts; Industry/Factions/Bar/Ledger tab bodies at 960. At ≤1100×≤800 on desktop, the market decision is still hidden by #333's 960 rule.
 
 **Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. Industry/Factions/Bar/Ledger tab bodies not walked this session.
 
