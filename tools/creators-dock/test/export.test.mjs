@@ -335,7 +335,8 @@ test('a throwing toJSON on project.id does not escape the export manifest', asyn
   };
   assert.doesNotThrow(() => send(res, 200, { manifest: { projectId: boxed } }));
   assert.equal(typeof chunks[0], 'string');
-  assert.equal(chunks[0].includes('boom'), false);
+  assert.equal(chunks[0].includes('"0"'), false);
+  assert.equal(chunks[0].includes('dock.intercept-cargo'), true);
 });
 
 test('exportProject records a throwing toJSON instead of throwing', async () => {

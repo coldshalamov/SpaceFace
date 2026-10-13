@@ -1527,6 +1527,80 @@ test('toJSON cannot store grid null, a null array, or a frames hole', () => {
   assert.equal(opened.history, null);
 });
 
+test('a new null slot, a null inside an array object, and a chained toJSON are refused', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+
+  const self = getComposition('dock.intercept-cargo');
+  self.toJSON = function () {
+    this.frames = this.frames.concat([null]);
+    return this;
+  };
+  assert.equal(commit(history, self), history);
+  assert.equal(history.present.frames.some((frame) => frame == null), false);
+  const selfPost = getComposition('dock.intercept-cargo');
+  selfPost.toJSON = function () {
+    this.frames = this.frames.concat([null]);
+    return this;
+  };
+  const selfBody = postRequestBody({ project: selfPost });
+  assert.equal(selfBody.ok, false);
+  assert.equal(selfBody.body, null);
+
+  const copy = getComposition('dock.intercept-cargo');
+  copy.toJSON = function () {
+    return { ...this, frames: this.frames.concat([null]) };
+  };
+  assert.equal(commit(history, copy), history);
+  const copyBody = postRequestBody({ project: copy });
+  assert.equal(copyBody.ok, false);
+  assert.equal(copyBody.body, null);
+
+  const wrapped = getComposition('dock.intercept-cargo');
+  wrapped.toJSON = function () {
+    const source = this;
+    return {
+      toJSON() {
+        return { ...source, frames: source.frames.concat([null]) };
+      },
+    };
+  };
+  assert.equal(commit(history, wrapped), history);
+  assert.equal(history.present.frames.at(-1) == null, false);
+
+  const events = getComposition('dock.intercept-cargo');
+  events.inputEvents = [];
+  events.inputEvents.toJSON = function () { return [null]; };
+  const eventsCommit = commit(history, events);
+  assert.equal(eventsCommit, history);
+  assert.equal(eventsCommit.present.inputEvents.some((item) => item == null), false);
+
+  const sized = getComposition('dock.intercept-cargo');
+  sized.grid.toJSON = function () { return [{ size: null }]; };
+  const sizedCommit = commit(history, sized);
+  assert.equal(sizedCommit, history);
+  assert.equal(Array.isArray(sizedCommit.present.grid), false);
+  assert.notEqual(sizedCommit.present.grid.size, null);
+  const sizedAdd = addObject(sized, plainActor('rock'));
+  assert.equal(sizedAdd.ok, false);
+  assert.equal(sizedAdd.project, sized);
+  assert.equal(Array.isArray(sizedAdd.project.grid), false);
+
+  const chained = getComposition('dock.intercept-cargo');
+  chained.grid.toJSON = function () {
+    return {
+      fresh: 1,
+      size: this.size,
+      snap: this.snap,
+      toJSON() {
+        return { size: this.size, snap: this.snap, fresh: null };
+      },
+    };
+  };
+  const chainedCommit = commit(history, chained);
+  assert.equal(chainedCommit, history);
+  assert.notEqual(chainedCommit.present.grid.fresh, null);
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {
@@ -1538,7 +1612,16 @@ test('stableStringify does not throw when a boxed id toJSON throws', () => {
     text = stableStringify({ projectId: boxed });
   });
   assert.equal(typeof text, 'string');
-  assert.equal(text.includes('boom'), false);
+  assert.equal(text.includes('"0"'), false);
+  assert.equal(text.includes('dock.intercept-cargo'), true);
+  const number = new Number(3);
+  Object.defineProperty(number, 'toJSON', {
+    enumerable: true,
+    value() { throw new Error('boom'); },
+  });
+  const numbered = stableStringify({ seed: number });
+  assert.equal(numbered.includes('"seed": {}'), false);
+  assert.equal(numbered.includes('"seed": 3'), true);
 });
 
 test('stableStringify does not throw out of commit', () => {

@@ -55,12 +55,29 @@ function snapshot(value, seen = new Map()) {
   return out;
 }
 
-function arrayHasForbiddenNull(array) {
-  for (let i = 0; i < array.length; i += 1) {
-    if (!Object.prototype.hasOwnProperty.call(array, i) || array[i] === null) return true;
-    if (Array.isArray(array[i]) && arrayHasForbiddenNull(array[i])) return true;
+function containsForbiddenNull(value, seen = new Set()) {
+  if (value === null) return true;
+  if (!value || typeof value !== 'object') return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      if (!Object.prototype.hasOwnProperty.call(value, i) || containsForbiddenNull(value[i], seen)) return true;
+    }
+    return false;
+  }
+  for (const key of Object.keys(value)) {
+    if (key === 'isPlayer') continue;
+    if (containsForbiddenNull(value[key], seen)) return true;
   }
   return false;
+}
+
+function nullWasIntroduced(original, key, next) {
+  if (next !== null || key === 'isPlayer') return false;
+  if (!original || typeof original !== 'object') return true;
+  if (!Object.prototype.hasOwnProperty.call(original, key)) return true;
+  return original[key] != null;
 }
 
 function introducedNull(original, produced) {
@@ -68,28 +85,30 @@ function introducedNull(original, produced) {
   if (!produced || typeof produced !== 'object' || !original || typeof original !== 'object') return false;
   if (produced === original) return false;
   if (Array.isArray(produced)) {
-    if (!Array.isArray(original)) return arrayHasForbiddenNull(produced);
+    if (!Array.isArray(original)) return containsForbiddenNull(produced);
     for (let i = 0; i < produced.length; i += 1) {
       if (!Object.prototype.hasOwnProperty.call(produced, i)) return true;
       const next = produced[i];
-      const prev = original[i];
-      if (next === null && prev != null) return true;
-      if (next && typeof next === 'object' && prev && typeof prev === 'object' && introducedNull(prev, next)) return true;
+      if (nullWasIntroduced(original, i, next)) return true;
+      if (next && typeof next === 'object') {
+        const prev = original[i];
+        if (prev && typeof prev === 'object') {
+          if (introducedNull(prev, next)) return true;
+        } else if (containsForbiddenNull(next)) return true;
+      }
     }
     return false;
   }
   for (const key of Object.keys(produced)) {
-    if (key === 'isPlayer') continue;
     const next = produced[key];
-    const prev = original[key];
-    if (next === null && prev != null) return true;
-    if (Array.isArray(next) && !Array.isArray(prev) && arrayHasForbiddenNull(next)) return true;
-    if (next && typeof next === 'object' && prev && typeof prev === 'object' && introducedNull(prev, next)) return true;
+    if (nullWasIntroduced(original, key, next)) return true;
+    if (Array.isArray(next) && !Array.isArray(original[key]) && containsForbiddenNull(next)) return true;
+    if (next && typeof next === 'object' && original[key] && typeof original[key] === 'object' && introducedNull(original[key], next)) return true;
   }
   return false;
 }
 
-function materialize(value, key, seen, baseline) {
+function materialize(value, key, seen) {
   if (value === null) return null;
   if (value === undefined) return undefined;
   const type = typeof value;
@@ -99,14 +118,14 @@ function materialize(value, key, seen, baseline) {
   if (type !== 'object') return undefined;
   if (seen.has(value)) throw new TypeError('Converting circular structure to JSON');
   if (typeof value.toJSON === 'function') {
-    const before = baseline || snapshot(value);
+    const before = snapshot(value);
     seen.add(value);
     const produced = value.toJSON(key);
     if (produced === null) return CLONE_REJECT;
     if (produced === undefined) return undefined;
     if (produced && typeof produced === 'object') {
       if (introducedNull(before, produced)) return CLONE_REJECT;
-      if (produced !== value) return materialize(produced, key, seen, before);
+      if (produced !== value) return materialize(produced, key, seen);
     } else if (produced !== value) {
       return materialize(produced, key, seen);
     }

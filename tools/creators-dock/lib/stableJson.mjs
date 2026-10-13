@@ -19,13 +19,10 @@ function boxedPrimitive(value) {
 
 export function sortValue(value) {
   if (Array.isArray(value)) return value.map(sortValue);
+  if (boxedPrimitive(value)) return sortValue(value.valueOf());
   if (!value || typeof value !== 'object') return value;
   const out = {};
-  const skipToJSON = boxedPrimitive(value);
-  for (const key of Object.keys(value).sort()) {
-    if (skipToJSON && key === 'toJSON' && typeof value[key] === 'function') continue;
-    out[key] = sortValue(value[key]);
-  }
+  for (const key of Object.keys(value).sort()) out[key] = sortValue(value[key]);
   return out;
 }
 
