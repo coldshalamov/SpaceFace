@@ -379,3 +379,38 @@ test('a reply inside the timeout clears its timer (no timer is left holding a No
   assert.deepEqual(process.getActiveResourcesInfo().filter((name) => name === 'Timeout').length <= 1, true);
   encoder.dispose();
 });
+
+test('a fatal worker error terminates the thread and releases the Blob URL, not only at dispose', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope, revoked } = fakeScope();
+  const encoder = createFootageEncoder(scope);
+  const worker = FakeWorker.instances[0];
+  worker.mode = 'hold';
+  const pending = encoder.encode({ close() {} }, 640, 340);
+  worker.onerror({ message: 'out of memory', preventDefault() {} });
+  await assert.rejects(pending, /out of memory/);
+  assert.equal(worker.terminated, true, 'the errored worker is terminated at once');
+  assert.deepEqual(revoked, ['blob:fake/1'], 'and its Blob URL is revoked');
+  assert.equal(encoder.usable, false);
+  encoder.dispose(); // idempotent: no second terminate/revoke
+  assert.equal(revoked.length, 1);
+
+  const second = createFootageEncoder(scope);
+  FakeWorker.instances.at(-1).onmessageerror();
+  assert.equal(FakeWorker.instances.at(-1).terminated, true, 'a message error retires the worker too');
+  assert.equal(second.usable, false);
+});
+
+test('a transfer that throws releases the bitmap it never handed over and retires the worker', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope, revoked } = fakeScope();
+  const encoder = createFootageEncoder(scope);
+  const worker = FakeWorker.instances[0];
+  worker.postMessage = () => { throw new Error('DataCloneError'); };
+  let closed = 0;
+  await assert.rejects(encoder.encode({ close() { closed += 1; } }, 640, 340), /DataCloneError/);
+  assert.equal(closed, 1, 'the untransferred bitmap is closed');
+  assert.equal(worker.terminated, true);
+  assert.equal(revoked.length, 1);
+  assert.equal(encoder.usable, false);
+});

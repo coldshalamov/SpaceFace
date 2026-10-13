@@ -62,6 +62,14 @@ export function createFootageEncoder(scope = globalThis, { timeoutMs = 5000 } = 
     for (const entry of waiting.values()) entry.reject(new Error(reason));
     waiting.clear();
   };
+  // One idempotent retirement for every fatal path (worker error, message error, a failed transfer, dispose): pending
+  // requests reject, the thread ends and the Blob URL is released, so a dead worker never stays owned (OffscreenCanvas,
+  // thread) while the main-thread fallback records.
+  const retire = (reason) => {
+    failAll(reason);
+    if (worker) { try { worker.terminate(); } catch { /* already gone */ } worker = null; }
+    if (url) { try { scope.URL.revokeObjectURL?.(url); } catch { /* nothing to revoke */ } url = null; }
+  };
   try {
     url = scope.URL.createObjectURL(new scope.Blob([`(${footageEncoderRuntime.toString()})();`], { type: 'text/javascript' }));
     worker = new scope.Worker(url, { name: 'spaceface-footage' });
@@ -69,8 +77,8 @@ export function createFootageEncoder(scope = globalThis, { timeoutMs = 5000 } = 
     if (url) { try { scope.URL.revokeObjectURL?.(url); } catch { /* nothing to revoke */ } }
     return null;
   }
-  worker.onerror = (event) => { event?.preventDefault?.(); failAll(event?.message || 'footage worker error'); };
-  worker.onmessageerror = () => failAll('footage worker message error');
+  worker.onerror = (event) => { event?.preventDefault?.(); retire(event?.message || 'footage worker error'); };
+  worker.onmessageerror = () => retire('footage worker message error');
   worker.onmessage = ({ data }) => {
     const entry = waiting.get(data?.id);
     if (!entry) return;
@@ -82,7 +90,7 @@ export function createFootageEncoder(scope = globalThis, { timeoutMs = 5000 } = 
     get usable() { return !broken; },
     /** Transfers the bitmap; resolves with the JPEG blob. */
     encode(bitmap, width, height) {
-      if (broken) { bitmap.close?.(); return Promise.reject(new Error('footage worker retired')); }
+      if (broken || !worker) { bitmap.close?.(); return Promise.reject(new Error('footage worker retired')); }
       const id = ++nextId;
       return new Promise((resolve, reject) => {
         // A worker that neither replies nor errors must not hold the recorder's one in-flight slot forever:
@@ -95,14 +103,15 @@ export function createFootageEncoder(scope = globalThis, { timeoutMs = 5000 } = 
           reject: (error) => { clearTimeout(timer); reject(error); },
         });
         try { worker.postMessage({ id, bitmap, width, height }, [bitmap]); }
-        catch (error) { waiting.delete(id); clearTimeout(timer); failAll(String(error)); reject(error); }
+        catch (error) {
+          // The transfer never happened, so the bitmap is still ours to release.
+          waiting.delete(id); clearTimeout(timer);
+          try { bitmap.close?.(); } catch { /* already closed */ }
+          retire(String(error)); reject(error);
+        }
       });
     },
-    dispose() {
-      failAll('footage encoder disposed');
-      try { worker.terminate(); } catch { /* already gone */ }
-      if (url) { try { scope.URL.revokeObjectURL?.(url); } catch { /* nothing to revoke */ } url = null; }
-    },
+    dispose() { retire('footage encoder disposed'); },
   };
 }
 
