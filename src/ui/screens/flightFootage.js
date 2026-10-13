@@ -24,7 +24,7 @@ export function createFootageRing(limits = FLIGHT_FOOTAGE_LIMITS) {
 let active = null;
 export function getFlightFootage() { return active; }
 
-export function installFlightFootage(bus, { stateOf } = {}) {
+export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {}) {
   active?.dispose();
   if (typeof document === 'undefined' || typeof stateOf !== 'function') { active = null; return null; }
   const ring = createFootageRing();
@@ -32,6 +32,9 @@ export function installFlightFootage(bus, { stateOf } = {}) {
   let marks = [], lastPoseTick = -1, video = null, stream = null, callback = null;
   let canvas = null, source = null, timer = null, stopped = false, encoding = false, epoch = 0;
   const subscriptions = [];
+  const clock = () => globalThis.performance?.now?.() ?? Date.now();
+  const openingDelay = Number.isFinite(startDelayMs) ? Math.max(0, startDelayMs) : 5000;
+  let openingSince = null, context = null;
   const stopStream = () => {
     epoch += 1;
     if (video && callback != null) video.cancelVideoFrameCallback?.(callback);
@@ -39,9 +42,9 @@ export function installFlightFootage(bus, { stateOf } = {}) {
     for (const track of stream?.getTracks() || []) track.stop();
     stream = null;
     if (video) { video.pause(); video.srcObject = null; video.removeAttribute('src'); video.load(); }
-    video = null; source = null; canvas = null;
+    video = null; source = null; canvas = null; context = null; encoding = false;
   };
-  const clear = () => { stopStream(); ring.clear(); poses.length = 0; marks = []; lastPoseTick = -1; };
+  const clear = () => { stopStream(); ring.clear(); poses.length = 0; marks = []; lastPoseTick = -1; openingSince = null; };
   const recordMetadata = (state) => {
     const sample = state?.replay?.latestPoseSample;
     if (!sample || sample.tick === lastPoseTick) return;
@@ -62,12 +65,14 @@ export function installFlightFootage(bus, { stateOf } = {}) {
       const scale = Math.min(1, FLIGHT_FOOTAGE_LIMITS.width / (source.width || 640), FLIGHT_FOOTAGE_LIMITS.height / (source.height || 360));
       const width = Math.max(1, Math.round((source.width || 640) * scale));
       const height = Math.max(1, Math.round((source.height || 360) * scale));
-      canvas.width = width; canvas.height = height;
-      canvas.getContext('2d').drawImage(video, 0, 0, width, height);
+      if (canvas.width !== width) canvas.width = width;
+      if (canvas.height !== height) canvas.height = height;
+      context.drawImage(video, 0, 0, width, height);
       encoding = true;
       canvas.toBlob((blob) => {
+        if (token !== epoch || stopped) return;
         encoding = false;
-        if (blob && token === epoch && !stopped) ring.push({ tick, blob, width, height });
+        if (blob) ring.push({ tick, blob, width, height });
       }, 'image/jpeg', 0.88);
     }
     if (video) callback = video.requestVideoFrameCallback?.(capture) ?? null;
@@ -77,6 +82,10 @@ export function installFlightFootage(bus, { stateOf } = {}) {
     if (state?.mode === 'menu' && ring.frames.length) clear();
     if (!eligible(state)) { if (video) stopStream(); return; }
     recordMetadata(state);
+    const firstPictureAt = state.render?.firstPlayableFrameAt;
+    const current = clock();
+    openingSince ??= Number.isFinite(firstPictureAt) ? firstPictureAt : current;
+    if (current - openingSince < openingDelay) return;
     const next = state.render?.renderer?.domElement || state.render?.canvas;
     if (!next?.captureStream || next.width <= 0 || next.height <= 0) return;
     if (source === next && video) return;
@@ -85,6 +94,7 @@ export function installFlightFootage(bus, { stateOf } = {}) {
       stream = next.captureStream(FLIGHT_FOOTAGE_LIMITS.fps);
       video = document.createElement('video'); video.muted = true; video.playsInline = true;
       video.srcObject = stream; canvas = document.createElement('canvas');
+      context = canvas.getContext('2d');
       video.play().then(() => { if (video) callback = video.requestVideoFrameCallback?.(capture) ?? null; }).catch(stopStream);
     } catch { stopStream(); }
   };
