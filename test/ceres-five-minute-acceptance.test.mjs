@@ -4246,10 +4246,15 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
   assert.ok(result.receipts.at(-1).speed <= 1);
   assert.ok(result.playerHull > 0 && result.playerHull <= 260);
   assert.equal(result.boundHostilesBeforeReposition.length, 1);
-  assert.deepEqual(result.boundHostilesBeforeReposition[0], {
-    entityId: 202,
-    worldRecordId: 'wr_npc_b41fdf37',
-  }, 'the two-sector seed-47 production bootstrap must discover the Browser cohort identity');
+  const boundHostile = result.boundHostilesBeforeReposition[0];
+  assert.equal(boundHostile.worldRecordId, 'wr_npc_b41fdf37',
+    'the two-sector seed-47 production bootstrap must discover the durable Browser cohort identity');
+  // Authored sector additions change allocation order; only the durable identity crosses boots.
+  assert.ok(Number.isSafeInteger(boundHostile.entityId) && boundHostile.entityId > 0);
+  assert.ok(result.conflictSnapshot.boundHostiles.some((hostile) =>
+    hostile.alive === true && hostile.entityId === boundHostile.entityId
+      && hostile.worldRecordId === boundHostile.worldRecordId),
+  'the durable cohort identity must resolve to the same live numeric handle after repositioning');
   const authoredHostileRecordId = result.boundHostilesBeforeReposition[0].worldRecordId;
   assert.ok(Math.abs(result.authoredHostileStartPos.x - (-8972.711625)) < 1e-3
     && Math.abs(result.authoredHostileStartPos.z - 7237.062744) < 1e-3,

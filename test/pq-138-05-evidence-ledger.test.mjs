@@ -35,6 +35,7 @@ import { buildDockArrival, writeBerthArrival } from '../src/ui/dockArrival.js';
 import { stationFrameHtml } from '../src/ui/views/stationFrames.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { openRichSeamOpportunity } from '../src/systems/fieldDepletion.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -744,6 +745,12 @@ test('live world: one loaded Ceres approach kill leaves five traces and the pack
     const { state, bus } = runtime;
     const physics = runtime.getSystem('physics');
     assert.equal(await physics.prepareBackend(state, { reset: true }), true);
+    // The finite rich opportunity makes the real mined parcel large enough to expose a price
+    // change after whole-credit rounding. Cargo and the rendezvous still belong to their owners.
+    assert.ok(openRichSeamOpportunity(state, {
+      fieldId: 'f_ceres_1', activityObjectSlotId: 'ceres_seam_ore_clast',
+      sectorId: SECTOR_ID, simTime: state.simTime,
+    }));
     let victim = null;
     // Observe the ordinary miner -> rendezvous -> loaded refinery approach. The time bound is
     // only a scenario timeout; no phase, position, manifest or witness is injected to meet it.
@@ -765,7 +772,12 @@ test('live world: one loaded Ceres approach kill leaves five traces and the pack
     assert.equal(state.traffic.ceresMinerHaulerHandoff.handoffId, handoffId);
     const recordId = victim.data.worldRecordId;
     const econ = runtime.getSystem('economy');
-    const priceBefore = econ.priceOf(STATION_ID, COMMODITY_ID, 'buy');
+    // priceOf is a rounded one-unit quote. Price the actual parcel through the same counter;
+    // an eight-unit loss may change its market mid while still displaying 21 for one unit.
+    const quoteBefore = econ.quote(STATION_ID, COMMODITY_ID, 'buy', cargo.totalQty);
+    assert.equal(quoteBefore.ok, true);
+    assert.equal(quoteBefore.qty, cargo.totalQty);
+    const priceBefore = quoteBefore.total;
     const hullsBefore = liveRefineryHaulers(state).length;
     const kills = [];
     const pressures = [];
@@ -794,7 +806,10 @@ test('live world: one loaded Ceres approach kill leaves five traces and the pack
       && (entity.type === 'station' || entity.data?.placeId || entity.data?.worldOneOff)
       && entity.data?.structurePatch?.receiptId === `aft_patch:${marker?.markerId}`);
     const patch = structure?.data?.structurePatch;
-    const priceAfter = econ.priceOf(STATION_ID, COMMODITY_ID, 'buy');
+    const quoteAfter = econ.quote(STATION_ID, COMMODITY_ID, 'buy', cargo.totalQty);
+    assert.equal(quoteAfter.ok, true);
+    assert.equal(quoteAfter.qty, cargo.totalQty);
+    const priceAfter = quoteAfter.total;
     const rows = [
       { trace: 'wreck persists', ok: !!marker && wrecks().length === 1
         && saved.bySector[SECTOR_ID].some((row) => row.markerId === marker.markerId), evidenceId: marker?.markerId },
