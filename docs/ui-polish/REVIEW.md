@@ -440,6 +440,17 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 **Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js` (Armory `${A}` polish block only).
 
+### Armory descriptions — ui-polish-25 (2026-10-13)
+
+Player-truth graded every Swarm armory offer "undescribed" (63 of the 67; the other 4 are refit rows). Two causes, both UI:
+
+1. **No lit row after a refresh.** Each refresh rebuilds the shelf, and `_paintReading` returns early when the reading is unchanged, so the rebuilt cards never got `is-lit` / `aria-pressed`. The reading panel kept its sentence, but nothing on the rail owned it (no Hand bar either). `_buildCard` now lights the row being read. Bench `readArmory`: 78/78 `none` → 78/78 `reading`.
+2. **761–1150 wide, the sentence sat under the schematic.** The single reading column kept `grid-template-rows:minmax(0,1fr)`, so the 350px visual overflowed onto the words (1024×768, 960×540). Rows now size to content and the words lead; at ≤640 tall the word margins close up so the purchase key is whole at 960×540. The schematic, crew and jig follow below in the panel's scroll.
+
+1280×720, 1920×1080 and 390×844 differ only in the lit card (the Hand bar is back). Loadout data untouched. Shots: `ui-shots/armory-desc/{before,after2}/`.
+
+**Not fixed here:** the 4 fitted refit rows have no sentence. `refitRowLines` returns `contrast: null` for a fitted part by design (test `inf-036`), so that needs a decision first.
+
 
 
 

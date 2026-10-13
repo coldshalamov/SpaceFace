@@ -1386,6 +1386,14 @@ export const crucibleDraftScreen = {
     if (glyph) card.appendChild(glyph);
     card.type = 'button';
     card.dataset.offerId = offer.id;
+    // Every refresh rebuilds the shelf, and _paintReading returns early when the reading has
+    // not changed, so the row being read takes its lit state here: without it a rebuilt
+    // shelf has no lit row and the reading panel's sentence belongs to nothing on the rail.
+    if (this._reading) {
+      const lit = this._reading.offerId === offer.id;
+      card.classList.toggle('is-lit', lit);
+      card.setAttribute('aria-pressed', String(lit));
+    }
     card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${lines.slot}`);
     // Hover reads the same sentence the card prints: what it does, then what it replaces.
     card.title = [lines.verb, lines.name, lines.blurb, offer.replacesName ? `Replaces ${offer.replacesName}` : '']

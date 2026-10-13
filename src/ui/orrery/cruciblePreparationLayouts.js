@@ -329,6 +329,19 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-object-label { display:none; }
  ${A} .orr-slotjig__word, ${A} .orr-slotjig__sub { display:none; }
 }
+/* One reading column (761–1150 wide): its rows size to their content and the words lead, so
+   the name, the sentence and the purchase key are never printed under the schematic and jig. */
+@media (min-width:761px) and (max-width:1150px) {
+ ${A} .orr-armory-reading.orr-armory-reading { grid-template-rows:none !important; grid-auto-rows:max-content !important; align-content:start !important; }
+ ${A} .orr-armory-reading__words { order:-1; }
+}
+/* …and on a short plate (960×540) the words close up so the purchase key sits above the fold. */
+@media (min-width:761px) and (max-width:1150px) and (max-height:640px) {
+ ${A} .orr-armory-reading.orr-armory-reading { padding-top:8px !important; }
+ ${A} .orr-armory-reading__name { margin:4px 0 8px !important; }
+ ${A} .orr-armory-reading__budget { margin:8px 0 !important; }
+ ${A} .orr-armory-reading__buy { margin:8px 0 12px !important; }
+}
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }
  ${D} > .k-title h1, ${A} > .k-title h1 { font-size:36px !important; }
