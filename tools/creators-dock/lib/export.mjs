@@ -635,6 +635,14 @@ export function importScenario(doc) {
     if (entity.loadout != null) actor.loadout = clone(entity.loadout);
     objects.push(actor);
   }
+  const playerCount = objects.filter((object) => object.kind === 'actor' && object.isPlayer).length;
+  if (playerCount > 1) {
+    return {
+      ok: false,
+      issues: [`scene needs exactly one player actor (found ${playerCount})`],
+      project: null,
+    };
+  }
   let linkIndex = 0;
   for (const link of doc.attachments || []) {
     const row = {

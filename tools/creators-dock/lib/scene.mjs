@@ -113,8 +113,33 @@ export function issuesForObject(object) {
   return issues;
 }
 
+function isPlayerActor(object) {
+  return !!(object && object.kind === 'actor' && object.isPlayer);
+}
+
+function countPlayers(objects) {
+  let count = 0;
+  for (const object of objects || []) {
+    if (isPlayerActor(object)) count += 1;
+  }
+  return count;
+}
+
+function exactlyOnePlayerIssue(found) {
+  return `scene needs exactly one player actor (found ${found})`;
+}
+
+function playersAfterReplace(project, id, object) {
+  let count = 0;
+  for (const entry of project.objects || []) {
+    const row = entry && entry.id === id ? object : entry;
+    if (isPlayerActor(row)) count += 1;
+  }
+  return count;
+}
+
 export function placePlayer(project) {
-  const existing = (project.objects || []).find((object) => object && object.kind === 'actor' && object.isPlayer);
+  const existing = (project.objects || []).find((object) => isPlayerActor(object));
   if (existing) return { ok: true, project, id: existing.id, issues: [] };
   let id = 'player';
   let n = 1;
@@ -156,6 +181,9 @@ export function setPlayer(project, id) {
 export function clearPlayerFlag(project, id) {
   const target = objectById(project, id);
   if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
+  if (target.isPlayer && countPlayers(project.objects) <= 1) {
+    return { ok: false, project, issues: [exactlyOnePlayerIssue(0)] };
+  }
   const next = clone(project);
   const object = next.objects.find((row) => row.id === id);
   object.isPlayer = false;
@@ -165,6 +193,10 @@ export function clearPlayerFlag(project, id) {
 export function addObject(project, object) {
   const issues = issuesForObject(object);
   if (objectById(project, object && object.id)) issues.push(`duplicate id "${object && object.id}"`);
+  if (isPlayerActor(object)) {
+    const found = countPlayers(project.objects) + 1;
+    if (found > 1) issues.push(exactlyOnePlayerIssue(found));
+  }
   if (issues.length) return { ok: false, project, issues };
   const next = clone(project);
   const placed = applySnap(clone(object), next.grid);
@@ -176,6 +208,11 @@ export function replaceObject(project, id, object) {
   const issues = issuesForObject(object);
   if (object.id !== id) issues.push('replacement id must match the edited id');
   if (!objectById(project, id)) issues.push(`missing id "${id}"`);
+  else {
+    const found = playersAfterReplace(project, id, object);
+    const current = countPlayers(project.objects);
+    if (found > 1 || (found === 0 && current > 0)) issues.push(exactlyOnePlayerIssue(found));
+  }
   if (issues.length) return { ok: false, project, issues };
   const next = clone(project);
   next.objects = next.objects.map((entry) => (entry.id === id ? applySnap(object, next.grid) : entry));
@@ -352,9 +389,9 @@ export function projectIssues(project) {
     for (const issue of issuesForObject(object)) issues.push(`${object && object.id}: ${issue}`);
     if (object && ids.has(object.id)) issues.push(`duplicate id "${object.id}"`);
     if (object && object.id) ids.add(object.id);
-    if (object && object.kind === 'actor' && object.isPlayer) players += 1;
+    if (isPlayerActor(object)) players += 1;
   }
-  if (players !== 1) issues.push(`scene needs exactly one player actor (found ${players})`);
+  if (players !== 1) issues.push(exactlyOnePlayerIssue(players));
   return issues;
 }
 

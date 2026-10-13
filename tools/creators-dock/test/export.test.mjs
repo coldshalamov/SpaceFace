@@ -52,6 +52,47 @@ test('eight compositions export schema-valid scenarios and round-trip', async ()
   }
 });
 
+test('import refuses a second player and a single player keeps height', async () => {
+  const project = structuredClone(getComposition('dock.intercept-cargo'));
+  const player = project.objects.find((object) => object.isPlayer);
+  player.y = 4.5;
+  player.velY = -1.25;
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, exported.issues.join('\n'));
+
+  const scenario = structuredClone(exported.scenario);
+  const donor = scenario.entities.find((row) => row.isPlayer);
+  scenario.entities.push({
+    ...donor,
+    alias: 'second_player',
+    isPlayer: true,
+    pos: { ...donor.pos, y: 8 },
+    vel: { ...donor.vel, y: 2.5 },
+  });
+  const imported = importScenario(scenario);
+  assert.equal(imported.ok, false);
+  assert.equal(imported.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 2')), true);
+  const kept = imported.project && imported.project.objects
+    ? imported.project.objects.filter((object) => object.isPlayer)
+    : [];
+  assert.equal(kept.length > 1, false);
+  assert.equal(kept.some((object) => object.id === 'second_player'), false);
+
+  const single = importScenario(exported.scenario);
+  assert.equal(single.ok, true, single.issues.join('\n'));
+  const back = single.project.objects.find((object) => object.isPlayer);
+  assert.equal(back.y, 4.5);
+  assert.equal(back.velY, -1.25);
+  assert.equal(single.project.objects.filter((object) => object.isPlayer).length, 1);
+
+  const doubled = structuredClone(project);
+  const body = doubled.objects.find((object) => object.isPlayer);
+  doubled.objects.push({ ...structuredClone(body), id: 'second_player', label: 'second player' });
+  const refused = await exportProject(doubled);
+  assert.equal(refused.ok, false);
+  assert.equal(refused.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 2')), true);
+});
+
 test('actor height and vertical velocity survive export and import', async () => {
   const project = structuredClone(getComposition('dock.intercept-cargo'));
   const player = project.objects.find((object) => object.isPlayer);

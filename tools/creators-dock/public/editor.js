@@ -154,7 +154,10 @@ function paintInspector() {
     input.addEventListener('change', () => {
       if (field.key === 'isPlayer') {
         const result = input.checked ? setPlayer(project(), object.id) : clearPlayerFlag(project(), object.id);
-        if (!result.ok) return showReport(result);
+        if (!result.ok) {
+          render();
+          return showReport(result);
+        }
         commitProject(result.project);
         return;
       }
