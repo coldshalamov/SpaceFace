@@ -8,7 +8,7 @@ import { createMercyRuntime, beginIncident, snapshotMercy, restoreMercy, report,
 import { boardIncidents, incidentById } from './incidents.js';
 import { advanceLatches, notePhase } from './gates.js';
 import { secureCapability, toolRange } from './equipment.js';
-import { refreshModel } from './models.js';
+import { MERCY_MODELS, refreshModel } from './models.js';
 import { settleDelivery, settleLeave, settleLost } from './settlement.js';
 import { MERCY_DT, CLAMP_REL_SPEED, STAB_RATE } from './constants.js';
 
@@ -17,13 +17,16 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const toolGap = (a, b) => Math.max(0, dist(a.pos, b.pos) - (a.radius || 0) - (b.radius || 0));
 const adventure = (state) => state.mode === 'flight' && !state.physicsVenueSession && !state.physicsVenue?.active
   && (!state.run || state.run.phase === 'inactive' || state.run.kind === 'adventure');
-export const MERCY_LIVE_PLACE_IDS = Object.freeze({
-  SF_MERCY_BEACON: 'place_nav_buoy', SF_MERCY_CAPSULE: 'place_47a_rescue_capsule',
-  SF_MERCY_TRUSS: 'place_conveyor_truss', SF_MERCY_BERTH: 'place_improvised_dock',
-  SF_MERCY_BARGE: 'place_shuttle_dock', SF_MERCY_GANTRY: 'place_maintenance_gantry',
-  SF_MERCY_TANK: 'place_cargo_pod_hazmat', SF_MERCY_SHEAR: 'place_aftermath_aft_cargo_module',
-  SF_MERCY_WELL: 'place_interdiction_buoy',
-});
+function publishedPlaceId(modelId) {
+  const file = MERCY_MODELS[modelId] && MERCY_MODELS[modelId].publishedGlb;
+  return String(file || '').replace(/^.*\//, '').replace(/\.glb$/i, '');
+}
+
+// World place props. The renderer mounts these as type fx with a placeId that
+// placeFileForEntity resolves; that resolved GLB is the mesh.
+export const MERCY_LIVE_PLACE_IDS = Object.freeze(Object.fromEntries(
+  Object.keys(MERCY_MODELS).map((modelId) => [modelId, publishedPlaceId(modelId)]),
+));
 
 export function createLiveMercyServiceSystem() {
   return {

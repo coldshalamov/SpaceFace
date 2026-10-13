@@ -1,8 +1,8 @@
 // Collision-authoritative rescue components.
 //
-// These are the bodies the 60 Hz witness collides and the stages measure.
-// They are not published Forge GLBs. Intact and damaged states change the
-// part list the integrator uses. See ADAPTER.md for the withheld asset pass.
+// Circle parts are the offline witness collider. publishedGlb is the release
+// place the live host spawns, and the renderer mounts that file. Intact and
+// damaged states change the part list the integrator uses.
 
 export const MERCY_MODELS = Object.freeze({
   SF_MERCY_BEACON: Object.freeze({

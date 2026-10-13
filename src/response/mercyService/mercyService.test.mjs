@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { LOOP_FIXED_DT } from '../../core/simulationRunner.js';
+import { MERCY_LIVE_PLACE_IDS } from './live.js';
 import {
   MERCY_DT, MERCY_MODELS, MODEL_IDS, PHASES, acceptContract, beginIncident,
   boardIncidents, canonicalSuccessTrace, commandFor, createMercyRuntime,
@@ -249,10 +250,14 @@ test('leave and ship loss pay nothing; settlement does not repeat', () => {
   beginIncident(dead, 'ms_drift_crusher');
   damagePlayer(dead, 500);
   assert.equal(dead.player.alive, false);
-  for (let i = 0; i < 1200; i++) {
+  const heldStep = stepMercy(dead, MERCY_DT, commandFor(dead, 'neglect'));
+  assert.equal(heldStep.ok, true);
+  assert.equal(heldStep.held, 'ship-loss');
+  for (let i = 0; i < 1199; i++) {
     syncFocus(dead);
     if (!dead.focus || dead.focus.latches.settled) break;
-    stepMercy(dead, MERCY_DT, commandFor(dead, 'neglect'));
+    const stepped = stepMercy(dead, MERCY_DT, commandFor(dead, 'neglect'));
+    assert.equal(stepped.held, 'ship-loss');
   }
   const held = incidentOf(dead, 'ms_drift_crusher');
   assert.equal(held.latches.settled, false);
@@ -262,20 +267,32 @@ test('leave and ship loss pay nothing; settlement does not repeat', () => {
 
   let emitted = 0;
   const bus = { emit(type) { if (type === 'economy:grantCredits') emitted += 1; } };
-  const done = runIncident({
-    seed: SEED, id: 'ms_pod_traffic', policy: 'tether-berth',
-    runtime: createMercyRuntime({ seed: SEED, bus }),
-  });
-  const grants = done.rt.intentLog.filter((row) => row.type === 'economy:grantCredits').length;
-  assert.equal(emitted, grants);
-  for (let i = 0; i < 80; i++) stepMercy(done.rt, MERCY_DT, commandFor(done.rt, 'neglect'));
-  assert.equal(done.rt.intentLog.filter((row) => row.type === 'economy:grantCredits').length, grants);
-  const snap = snapshotMercy(done.rt);
+  const paid = createMercyRuntime({ seed: SEED, bus });
+  assert.equal(beginIncident(paid, 'ms_pod_traffic').ok, true);
+  const done = runIncident({ runtime: paid, policy: 'tether-berth' });
+  const grantRows = done.rt.intentLog.filter((row) => row.type === 'economy:grantCredits');
+  assert.equal(grantRows.length, 1);
+  assert.equal(emitted, 1);
+  assert.equal(done.rt.appliedGrants[grantRows[0].key], true);
+  const applied = Object.keys(done.rt.appliedGrants).length;
+  const snap = JSON.parse(JSON.stringify(snapshotMercy(done.rt)));
   const copy = createMercyRuntime({ seed: SEED, bus });
-  assert.equal(restoreMercy(copy, JSON.parse(JSON.stringify(snap))).ok, true);
+  assert.equal(restoreMercy(copy, snap).ok, true);
+  assert.equal(Object.keys(copy.appliedGrants).length, applied);
+  assert.equal(copy.appliedGrants[grantRows[0].key], true);
   for (let i = 0; i < 30; i++) stepMercy(copy, MERCY_DT, commandFor(copy, 'neglect'));
-  assert.equal(copy.intentLog.filter((row) => row.type === 'economy:grantCredits').length, grants);
-  assert.equal(emitted, grants);
+  assert.equal(Object.keys(copy.appliedGrants).length, applied);
+  assert.equal(copy.intentLog.filter((row) => row.type === 'economy:grantCredits').length, 1);
+  assert.equal(emitted, 1);
+  // Receipt keys short-circuit before appliedGrants. Drop the paid key and the
+  // settled latch so the next step asks to pay the same grant again.
+  const restored = incidentOf(copy, 'ms_pod_traffic');
+  restored.latches.settled = false;
+  delete restored.settlementReceipt.keys[grantRows[0].key];
+  stepMercy(copy, MERCY_DT, commandFor(copy, 'neglect'));
+  assert.equal(Object.keys(copy.appliedGrants).length, applied);
+  assert.equal(copy.intentLog.filter((row) => row.type === 'economy:grantCredits').length, 1);
+  assert.equal(emitted, 1);
 });
 
 test('save/load reproduces the witness and cleanup drops bodies', () => {
@@ -431,9 +448,9 @@ test('same seed matches, another seed moves jittered ore, and sources stay free 
     assert.equal(text.includes("from '../../systems/missions.js'"), false, name);
     assert.equal(text.includes('from \'three\''), false, name);
   }
-  for (const model of Object.values(MERCY_MODELS)) {
-    assert.equal(typeof model.publishedGlb, 'string');
-    assert.equal(model.publishedGlb.endsWith('.glb'), true);
+  for (const [modelId, model] of Object.entries(MERCY_MODELS)) {
+    const placeId = MERCY_LIVE_PLACE_IDS[modelId];
+    assert.equal(model.publishedGlb, `assets/ships/release/parts/places/${placeId}.glb`);
     assert.equal(existsSync(new URL(`../../../${model.publishedGlb}`, import.meta.url)), true, model.publishedGlb);
     assert.notDeepEqual(model.states.intact.parts, model.states.damaged.parts);
   }
