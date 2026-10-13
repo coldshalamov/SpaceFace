@@ -301,8 +301,8 @@ test('a delegated dead ship holds ship-loss and a living one grants once', () =>
   const crossHold = extractHold - MERCY_DT;
   assert.equal(crossHold, 0.2833333333333333);
 
-  function boot(alive) {
-    const player = { id: 1, alive, pos: { x: 400, z: 400 }, vel: { x: 0, z: 0 } };
+  function boot(mutate) {
+    const player = { id: 1, alive: true, pos: { x: 400, z: 400 }, vel: { x: 0, z: 0 } };
     const state = {
       meta: { seed: 1 }, simTime: 0, playerId: player.id, input: {},
       entities: new Map([[player.id, player]]),
@@ -342,19 +342,29 @@ test('a delegated dead ship holds ship-loss and a living one grants once', () =>
     inc.securedId = capsule.id;
     inc.intentOrder = 'tether-berth';
     system.rt.player.alive = true;
+    if (typeof mutate === 'function') mutate(player, state);
     return { system, state, bus, inc };
   }
 
-  const dead = boot(false);
-  assert.equal(dead.state.entities.get(1).alive, false);
-  assert.equal(dead.system.rt.player.alive, true);
-  const held = dead.system.update(MERCY_DT, dead.state);
-  assert.equal(held.held, 'ship-loss');
-  assert.equal(dead.inc.latches.settled, false);
-  assert.equal(dead.inc.outcome, null);
-  assert.equal(dead.bus.events.some((row) => row.type === 'economy:grantCredits'), false);
+  function assertShipLoss(label, row) {
+    assert.equal(row.system.rt.player.alive, true, label);
+    const held = row.system.update(MERCY_DT, row.state);
+    assert.equal(held.held, 'ship-loss', label);
+    assert.equal(row.system.rt.player.alive, false, label);
+    assert.equal(row.inc.latches.settled, false, label);
+    assert.equal(row.inc.outcome, null, label);
+    assert.equal(row.bus.events.some((event) => event.type === 'economy:grantCredits'), false, label);
+  }
 
-  const live = boot(true);
+  assertShipLoss('dead with a pose', boot((player) => { player.alive = false; }));
+  assertShipLoss('missing pos', boot((player) => { player.alive = false; delete player.pos; }));
+  assertShipLoss('null pos', boot((player) => { player.alive = false; player.pos = null; }));
+  assertShipLoss('removed entity', boot((player, state) => {
+    player.alive = false;
+    state.entities.delete(player.id);
+  }));
+
+  const live = boot(() => {});
   const paid = live.system.update(MERCY_DT, live.state);
   assert.equal(paid.ok, true);
   assert.equal(paid.held, undefined);

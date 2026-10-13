@@ -532,9 +532,14 @@ function checkLeave(rt, inc, dt) {
 
 function copyPlayerFromState(rt) {
   const state = rt.state;
-  if (!state || !state.entities || typeof state.entities.get !== 'function') return;
-  const entity = state.entities.get(state.playerId);
-  if (!entity || !entity.pos) return;
+  const entities = state && state.entities;
+  const entity = entities && typeof entities.get === 'function' ? entities.get(state.playerId) : null;
+  // A delegated ship we cannot read is not alive. Leaving the previous true
+  // lets the step extract and pay.
+  if (!entity || !entity.pos) {
+    rt.player.alive = false;
+    return;
+  }
   rt.player.pos.x = entity.pos.x || 0;
   rt.player.pos.z = entity.pos.z || 0;
   rt.player.vel.x = entity.vel ? entity.vel.x || 0 : 0;
