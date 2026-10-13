@@ -470,3 +470,38 @@ test('New does not leave a zero-player scene and undo will not restore one', () 
   assert.equal(objectById(forward.history.present, 'cargo').x, objectById(history.present, 'cargo').x);
   assert.equal(playerIds(forward.history.present).length, 1);
 });
+
+test('Infinity player flags are rejected before clone on add, replace, and clone', () => {
+  for (const flag of [Infinity, -Infinity]) {
+    const empty = emptyProject({ id: 'dock.infinite', title: 'Infinite', seed: 1 });
+    const added = addObject(empty, plainActor('player', { role: 'player', isPlayer: flag, team: 0 }));
+    assert.equal(added.ok, false);
+    assert.equal(added.project, empty);
+    assert.equal(added.project.objects.length, 0);
+    assert.equal(added.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+    assert.equal(added.project.objects.some((object) => object.isPlayer == null), false);
+
+    const scene = getComposition('dock.intercept-cargo');
+    objectById(scene, 'player').isPlayer = flag;
+    const cargo = objectById(scene, 'cargo');
+    const replaced = replaceObject(scene, 'cargo', { ...cargo, label: 'still cargo' });
+    assert.equal(replaced.ok, false);
+    assert.equal(replaced.project, scene);
+    assert.equal(objectById(replaced.project, 'player').isPlayer, flag);
+    assert.equal(replaced.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+
+    const cloned = cloneObject(scene, 'cargo', 'cargo_copy');
+    assert.equal(cloned.ok, false);
+    assert.equal(cloned.project, scene);
+    assert.equal(objectById(cloned.project, 'cargo_copy'), null);
+    assert.equal(objectById(cloned.project, 'player').isPlayer, flag);
+    assert.equal(cloned.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+  }
+
+  const scene = getComposition('dock.intercept-cargo');
+  const copied = cloneObject(scene, 'cargo', 'cargo_bool');
+  assert.equal(copied.ok, true, copied.issues.join('\n'));
+  assert.equal(objectById(copied.project, 'player').isPlayer, true);
+  assert.equal(typeof objectById(copied.project, 'player').isPlayer, 'boolean');
+  assert.equal(playerIds(copied.project).length, 1);
+});

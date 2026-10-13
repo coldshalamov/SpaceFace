@@ -35,8 +35,13 @@ export const OBJECT_KEY_SETS = Object.freeze({
   attachment: ATTACHMENT_KEYS,
 });
 
+function cloneReplacer(key, value) {
+  if (key === 'isPlayer' && typeof value !== 'boolean' && value != null) return !!value;
+  return value;
+}
+
 export function clone(value) {
-  return value == null ? value : JSON.parse(JSON.stringify(value));
+  return value == null ? value : JSON.parse(JSON.stringify(value, cloneReplacer));
 }
 
 export function sameProject(a, b) {
@@ -115,6 +120,20 @@ export function issuesForObject(object) {
 
 function isPlayerActor(object) {
   return !!(object && object.kind === 'actor' && object.isPlayer);
+}
+
+function nonBooleanPlayerIssue(object) {
+  if (!object || typeof object !== 'object' || object.kind !== 'actor') return null;
+  if (!Object.prototype.hasOwnProperty.call(object, 'isPlayer')) return null;
+  if (typeof object.isPlayer === 'boolean') return null;
+  return `${object.id ? `${object.id}: ` : ''}isPlayer must be a boolean`;
+}
+
+function pushPlayerFlagIssues(issues, objects) {
+  for (const object of objects || []) {
+    const issue = nonBooleanPlayerIssue(object);
+    if (issue) issues.push(issue);
+  }
 }
 
 function countPlayers(objects) {
@@ -200,13 +219,15 @@ export function clearPlayerFlag(project, id) {
 export function addObject(project, object) {
   const issues = issuesForObject(object);
   if (objectById(project, object && object.id)) issues.push(`duplicate id "${object && object.id}"`);
+  pushPlayerFlagIssues(issues, [object]);
+  pushPlayerFlagIssues(issues, project.objects);
   const found = countPlayers(project.objects) + (isPlayerActor(object) ? 1 : 0);
   if (found !== 1) issues.push(exactlyOnePlayerIssue(found));
   if (issues.length) return { ok: false, project, issues };
   const next = clone(project);
   const placed = applySnap(clone(object), next.grid);
   next.objects = [...(next.objects || []), placed];
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function replaceObject(project, id, object) {
@@ -214,13 +235,15 @@ export function replaceObject(project, id, object) {
   if (object.id !== id) issues.push('replacement id must match the edited id');
   if (!objectById(project, id)) issues.push(`missing id "${id}"`);
   else {
+    pushPlayerFlagIssues(issues, [object]);
+    pushPlayerFlagIssues(issues, (project.objects || []).filter((entry) => entry.id !== id));
     const found = playersAfterReplace(project, id, object);
     if (found !== 1) issues.push(exactlyOnePlayerIssue(found));
   }
   if (issues.length) return { ok: false, project, issues };
   const next = clone(project);
   next.objects = next.objects.map((entry) => (entry.id === id ? applySnap(object, next.grid) : entry));
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function deleteObjects(project, ids) {
