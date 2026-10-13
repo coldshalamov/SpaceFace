@@ -136,6 +136,12 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 
 **After (`crestOrbit.js` only):** when a flush end name would need two lines, force stagger; when an even tier still splits under stagger, lift the odd row (rise 24 + 12px headroom) so SWORN ENEMY clears HATED. 960×540 (≤640 ladder) and 1280×720 pixel-identical to master; 1920 gets the same end-name stagger so the flush label no longer shares a baseline with HATED. Shots: `/workspace/spaceface-scratch/ui-shots/factions-standing/`.
 
+## Codex @960×540 and 1024×768 — session notes (2026-10-13, ui-polish-19)
+
+**Before:** at 960 and 1024 wide the seven unlock dials (about 600px, no wrap) ran over the subtitle, so it printed on top of STORY. The plate (34vw) took the stage's right half, leaving the reading about 150px wide, so the entry title broke into three words and the lore fell below the fold. At 960×540 the plate's top met the ENDGAME dial label, and LEDGER sat on CLOSE.
+
+**After (`src/ui/orrery/archiveLayouts.js`, Codex CSS only):** at 801–1100px wide the dials are 44px on 64px columns, the plate is `min(300px, 48vh, 29vw)` and sits a little lower, and the hang column is 316px. The reading has about 250–300px, with a 44px numeral, a 22px title and 14px lore, and record rows stack label over line. At ≤640px tall, section rungs are 22px and the search and foot close up, so LEDGER clears CLOSE. Selectors and IDs are unchanged. 1280, 1920 and phone portrait don't match the query. A phone on its side (844×390) is better but still has the scale over CLOSE, which is a follow-up. Shots: `ui-shots/codex960/`.
+
 ## Proving Range @960×540 — session notes (2026-10-13, ui-polish-17)
 
 **Before:** the title block (180px) and the foot (338px: a five-row rule ladder, the dossier and a 64px run gauge) plus the 48px kit row gap outgrew 540px. The stage, which holds the course itself, was squeezed to 0px, and RULES / BESTIARY / CLOSE and the run instrument fell below the frame.

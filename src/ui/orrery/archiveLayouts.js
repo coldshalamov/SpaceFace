@@ -406,6 +406,47 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 @media (max-height:820px) {
   ${CX} .cx-ladder .k-row:not(.k-row--static) { padding-bottom:2px !important; }
 }
+/* a narrow desktop (960 and 1024 wide): smaller dials beside the title and a smaller plate, so the
+   reading between the ladder and the plate keeps a column wide enough for its words */
+@media (max-width:1100px) and (min-width:801px) {
+  ${CX} { --cx-sections:108px; --cx-gap:20px; --cx-plate:min(300px, 48vh, 29vw); grid-template-columns:316px minmax(0, 1fr) !important; }
+  ${CX} > .k-title { column-gap:28px; }
+  ${CX} > .k-title > p { margin-top:6px !important; font-size:14px !important; }
+  ${CX} .cx-index { row-gap:4px; }
+  ${CX} .cx-index__cap { font-size:11px !important; letter-spacing:.2em !important; }
+  ${CX} .cx-index__list { gap:0 4px; }
+  ${CX} .cx-index__item { grid-template-rows:44px auto; width:64px; }
+  ${CX} .cx-index__dial { width:44px; height:44px; }
+  ${CX} .cx-index__n { font-size:12.5px !important; }
+  ${CX} .cx-index__of { font-size:10px; }
+  ${CX} .cx-index__w { margin-top:3px !important; font-size:10.5px !important; letter-spacing:.04em !important; }
+  ${CX} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
+  ${CX} .cx-ladder .k-row { padding-left:32px !important; }
+  ${CX} .cx-ladder .k-row.k-row--static .k-caps { letter-spacing:.14em !important; }
+  ${CX} > .cx-plate-host { top:calc(50% + 34px - var(--cx-plate) / 2); }
+  ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 24px) !important; }
+  ${CX} .cx-reader__num-n { font-size:44px; }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:22px !important; }
+  ${CX} .sf-codex-entry > h2 { margin-top:8px !important; }
+  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:6px !important; font-size:11px !important; }
+  ${CX} .sf-codex-entry .k-measure { margin-top:12px !important; padding-top:12px !important; }
+  ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:14px !important; line-height:1.5 !important; }
+  ${CX} .sf-codex-entry .k-measure .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:2px; padding:5px 0 !important; }
+  ${CX} .cx-reader__turn { margin-top:14px !important; }
+}
+/* ...and a short one (960×540): the scale's rungs and the foot close up so LEDGER clears CLOSE */
+@media (max-width:1100px) and (min-width:801px) and (max-height:640px) {
+  ${CX} { row-gap:14px !important; }
+  ${CX} > .k-hang { row-gap:10px; }
+  ${CX} .cx-search .sf-codex-search { height:28px !important; }
+  ${CX} .cx-search::before { top:5px; }
+  ${CX} .cx-search::after { top:15px; }
+  ${CX} .sf-tabbar .sf-tab { height:22px !important; font-size:11px !important; letter-spacing:.14em !important; }
+  ${CX} .cx-ladder .k-row { padding-top:4px !important; padding-bottom:2px !important; }
+  ${CX} .cx-ladder .k-row::before { top:12px !important; }
+  ${CX} > .k-foot .sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; }
+}
+}
 /* 1080p band: match settings/save-load/credits composition zoom */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${CX} { zoom:1.12; }
