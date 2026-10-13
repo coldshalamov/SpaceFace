@@ -17,12 +17,29 @@ function boxedPrimitive(value) {
   return value instanceof String || value instanceof Number || value instanceof Boolean;
 }
 
+function dataValue(object, key) {
+  const descriptor = Object.getOwnPropertyDescriptor(object, key);
+  if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return undefined;
+  return { present: true, value: descriptor.value };
+}
+
 export function sortValue(value) {
-  if (Array.isArray(value)) return value.map(sortValue);
+  if (Array.isArray(value)) {
+    const out = [];
+    for (let i = 0; i < value.length; i += 1) {
+      const slot = dataValue(value, String(i));
+      out.push(slot ? sortValue(slot.value) : null);
+    }
+    return out;
+  }
   if (boxedPrimitive(value)) return sortValue(value.valueOf());
   if (!value || typeof value !== 'object') return value;
   const out = {};
-  for (const key of Object.keys(value).sort()) out[key] = sortValue(value[key]);
+  for (const key of Object.keys(value).sort()) {
+    const slot = dataValue(value, key);
+    if (!slot) continue;
+    out[key] = sortValue(slot.value);
+  }
   return out;
 }
 

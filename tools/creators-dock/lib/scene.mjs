@@ -118,6 +118,17 @@ function nullWasIntroduced(original, key, next) {
   return original[key] != null;
 }
 
+function accessorHidData(original, produced) {
+  if (!original || typeof original !== 'object' || !produced || typeof produced !== 'object') return false;
+  if (Array.isArray(original) || Array.isArray(produced)) return false;
+  for (const [key, prev] of ownDataEntries(original)) {
+    if (key === 'isPlayer' || prev == null) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(produced, key);
+    if (descriptor && !isDataDescriptor(descriptor)) return true;
+  }
+  return false;
+}
+
 function introducedNull(original, produced) {
   if (produced === null) return original != null;
   if (!produced || typeof produced !== 'object' || !original || typeof original !== 'object') return false;
@@ -231,7 +242,7 @@ function materialize(value, key, seen) {
     if (produced === null) return CLONE_REJECT;
     if (produced === undefined) return undefined;
     if (produced && typeof produced === 'object') {
-      if (introducedNull(before, produced)) return CLONE_REJECT;
+      if (accessorHidData(before, produced) || introducedNull(before, produced)) return CLONE_REJECT;
       if (produced !== value) return materialize(produced, key, seen);
     } else if (produced !== value) {
       return materialize(produced, key, seen);
@@ -436,16 +447,20 @@ function collectNestedPlayerFlags(value, path, issues, seen) {
   if (!value || typeof value !== 'object') return;
   if (seen.has(value)) return;
   seen.add(value);
-  if (Object.prototype.hasOwnProperty.call(value, 'isPlayer') && typeof value.isPlayer !== 'boolean') {
+  const playerFlag = Object.getOwnPropertyDescriptor(value, 'isPlayer');
+  if (isDataDescriptor(playerFlag) && typeof playerFlag.value !== 'boolean') {
     issues.push(`${path || 'project'}: isPlayer must be a boolean`);
   }
   if (Array.isArray(value)) {
-    value.forEach((item, index) => collectNestedPlayerFlags(item, `${path}[${index}]`, issues, seen));
+    for (let index = 0; index < value.length; index += 1) {
+      const slot = arrayDataAt(value, index);
+      if (slot.kind === 'data') collectNestedPlayerFlags(slot.value, `${path}[${index}]`, issues, seen);
+    }
     return;
   }
-  for (const key of Object.keys(value)) {
+  for (const [key, child] of ownDataEntries(value)) {
     if (key === 'isPlayer') continue;
-    collectNestedPlayerFlags(value[key], path ? `${path}.${key}` : key, issues, seen);
+    collectNestedPlayerFlags(child, path ? `${path}.${key}` : key, issues, seen);
   }
 }
 
