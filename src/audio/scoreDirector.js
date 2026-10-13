@@ -257,9 +257,10 @@ export function phaseStemWeights(phase, intensity, aftermathT = 0) {
 
 // Room-tone mix for the place layer. The room is the first thing back after a fight and the
 // first thing to step aside for one; arrival opens the room from closed.
-export function phaseRoomMix(phase, intensity, phaseT = 1) {
+export function phaseRoomMix(phase, intensity, phaseT = 1, workPresence = 0) {
   const i = clamp01(intensity);
   const t = clamp01(phaseT);
+  const w = clamp01(workPresence);
   switch (phase) {
     case 'fight': return Object.freeze({ level: 0.32, air: 0.5, sub: 0.4, events: 0, open: 1 });
     case 'threat': return Object.freeze({ level: 0.7 - 0.3 * i, air: 0.85, sub: 0.9, events: 0.35, open: 1 });
@@ -267,7 +268,9 @@ export function phaseRoomMix(phase, intensity, phaseT = 1) {
     case 'arrival': return Object.freeze({ level: 0.4 + 0.75 * t, air: 1, sub: 1, events: 0.6 * t, open: t });
     case 'dock': return Object.freeze({ level: 0.85, air: 0.7, sub: 0.35, events: 0.8, open: 1 });
     case 'departure': return Object.freeze({ level: 0.6 + 0.4 * t, air: 1, sub: 0.7 + 0.3 * t, events: 0.4, open: 1 });
-    case 'work': return Object.freeze({ level: 0.9, air: 0.9, sub: 1, events: 1, open: 1 });
+    // The pocket answers how many crews are on the face: a lone welder sits just under the
+    // travel room; a full working pocket pulses the place's life layer nearly twice as dense.
+    case 'work': return Object.freeze({ level: 0.9 + 0.3 * w, air: 0.9, sub: 1, events: 0.7 + 1.1 * w, open: 1 });
     default: return Object.freeze({ level: 1, air: 1, sub: 1, events: 1, open: 1 });
   }
 }
@@ -282,7 +285,9 @@ function phaseTarget(phase, input, aftermathT, peak) {
     case 'dock': return 0.1;
     case 'arrival': return 0.35;
     case 'departure': return 0.3;
-    case 'work': return 0.32;
+    // A lone crew at the face is a shade under the travel floor's own calm; a working pocket
+    // climbs the mix on the strength of the crews actually present, never past threat's band.
+    case 'work': return 0.24 + 0.18 * clamp01(input.workPresence);
     default: return 0.22;
   }
 }
@@ -386,7 +391,7 @@ export function createScoreDirector(options = {}) {
       barIndex,
       phraseBar: barIndex % BARS_PER_PHRASE,
       stemWeights: phaseStemWeights(phase, mem.intensity, aftermathT),
-      room: phaseRoomMix(phase, mem.intensity, phase === 'aftermath' ? aftermathT : phaseT),
+      room: phaseRoomMix(phase, mem.intensity, phase === 'aftermath' ? aftermathT : phaseT, input.workPresence),
       identity: identityRow,
       chord: scoreChordForBar(identityRow, musicState, barIndex),
       faction: resolveFactionColour(input.factionId),
