@@ -116,6 +116,9 @@ export function createPipSpannerMotion(rig, { draw = () => {}, schedule, cancel,
 // preview, which moves the parked canvas into the new canvas's place. Scene, rig, lease and asset
 // runtime are still released at once; at most one context is ever parked.
 const defaultRendererFactory = options => new THREE.WebGLRenderer(options);
+// Assumes at most one live Pip Spanner preview at a time (pipSpannerCrew retires the old one before
+// ensurePreview makes the next). Two concurrent previews would still be correct, since only a retiring
+// one parks and only a new one takes, but the second retire would destroy its context as before.
 let parked = null;
 const takeParked = (canvas) => {
   const entry = parked; parked = null;
@@ -125,6 +128,9 @@ const takeParked = (canvas) => {
   if (lost) { try { entry.renderer.dispose(); } catch (_) {} return null; }
   const reused = entry.canvas;
   for (const { name, value } of Array.from(canvas.attributes || [])) reused.setAttribute(name, value);
+  // The caller's freshly created canvas is detached here and the parked one takes its slot. Any
+  // reference the caller kept to its own canvas is now stale; pipSpannerCrew finds the live one with
+  // stage.querySelector('canvas'), and this preview uses only the reused canvas from here on.
   canvas.replaceWith?.(reused);
   return entry;
 };
