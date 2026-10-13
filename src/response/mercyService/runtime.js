@@ -552,6 +552,7 @@ export function stepMercy(rt, dt, command) {
   promote(rt);
   syncFocus(rt);
   let cmd = normalizeCommand(command);
+  if (rt.delegatePlayer) copyPlayerFromState(rt);
   if (!rt.player.alive) {
     // A lost ship does not settle or abandon the rescue. The incident stays open.
     if (!rt.state) rt.simTime += dt;
@@ -559,8 +560,7 @@ export function stepMercy(rt, dt, command) {
     rt.stats.ticks += 1;
     return { ok: true, phase: rt.focus ? phaseOf(rt.focus) : null, held: 'ship-loss' };
   }
-  if (rt.delegatePlayer) copyPlayerFromState(rt);
-  else integratePlayer(rt, cmd, dt);
+  if (!rt.delegatePlayer) integratePlayer(rt, cmd, dt);
 
   if (rt.focus && cmd.policy && rt.focus.def.orders[cmd.policy]) rt.focus.intentOrder = cmd.policy;
 
@@ -854,9 +854,9 @@ export function createMercyFixtureSystem() {
       ctx.mercyService = this.rt;
     },
     update(dt, state) {
-      if (!this.rt || this.rt.destroyed) return;
+      if (!this.rt || this.rt.destroyed) return { ok: false, reason: 'destroyed' };
       if (state) this.rt.state = state;
-      stepMercy(this.rt, dt, commandFromGameState(state));
+      return stepMercy(this.rt, dt, commandFromGameState(state));
     },
   };
 }
