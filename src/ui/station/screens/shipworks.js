@@ -304,18 +304,6 @@ export function variantBonusWords(bonuses) {
   return parts.join(' · ');
 }
 
-/**
- * The system labels around the hull. Every bead is inside the hull's box (`keepOut`: the render's
- * ink on the poster, the beads' own spread on the live hull, never narrower than centre +-100);
- * the labels stand in a column on each side of it, stacked so no two touch, and a label can never
- * print over a bead (src/ui/ship/calloutLayout.js). The old solver placed each card next to its
- * own bead and never looked at the others, so "Thrusters OPEN / S" carried the weapon's bead on
- * its text, and each leader started 17 px below its bead, which is why they read as loose elbows.
- *
- * Returns per slot: the card relative to its bead (`calloutX` is the card's facing edge -- the
- * right edge for a left card, which the CSS pulls left by its own width), the card in stage
- * coordinates, and the leader as an SVG path relative to the bead.
- */
 let fieldMeasureCtx = null;
 /** Width of `text` set in an input's computed font (canvas metrics; 0 when there is no canvas). */
 function fieldTextWidth(text, cs) {
@@ -331,6 +319,18 @@ function fieldTextWidth(text, cs) {
   return fieldMeasureCtx.measureText(text).width + spacing * text.length;
 }
 
+/**
+ * The system labels around the hull. Every bead is inside the hull's box (`keepOut`: the render's
+ * ink on the poster, the beads' own spread on the live hull, never narrower than centre +-100);
+ * the labels stand in a column on each side of it, stacked so no two touch, and a label can never
+ * print over a bead (src/ui/ship/calloutLayout.js). The old solver placed each card next to its
+ * own bead and never looked at the others, so "Thrusters OPEN / S" carried the weapon's bead on
+ * its text, and each leader started 17 px below its bead, which is why they read as loose elbows.
+ *
+ * Returns per slot: the card relative to its bead (`calloutX` is the card's facing edge -- the
+ * right edge for a left card, which the CSS pulls left by its own width), the card in stage
+ * coordinates, and the leader as an SVG path relative to the bead.
+ */
 export function calculateSpatialSlotLayout({
   projectedSlots = [],
   stageWidth = 1100,
