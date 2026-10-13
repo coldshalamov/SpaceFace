@@ -378,23 +378,25 @@
       "hullId": "ship_mule",
       "silhouette": "ship_mule",
       "telegraphKind": "feint_burn",
-      "phaseTrace": "feint>break",
+      "phaseTrace": "feint>break>disengage>done",
       "telegraphTicks": 30,
       "fireRequests": 0,
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.832,
-      "goalComplete": true,
+      "goalProgress": 0.077,
+      "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
-      "playerShift": 21.367,
-      "opponentPath": 209.374,
+      "playerShift": 304.947,
+      "opponentPath": 542.441,
       "driveDelta": null,
       "detail": {
-        "gateDist": 35.321,
-        "gateSeparation": 71.303
+        "gateDist": 193.854,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.706
       },
       "systems": [
         "flightV3",
@@ -409,12 +411,12 @@
       "sg02Ready": true,
       "end": {
         "player": {
-          "x": 33.531,
-          "z": 67.321
+          "x": 155.612,
+          "z": 323.458
         },
         "opponent": {
-          "x": -14.616,
-          "z": 188.986
+          "x": 156.335,
+          "z": 340.472
         },
         "buoy": {
           "x": 6.876,
@@ -422,7 +424,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "b4fd1f27"
+      "hash": "077006ae"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -437,23 +439,25 @@
       "hullId": "ship_mule",
       "silhouette": "ship_mule",
       "telegraphKind": "feint_burn",
-      "phaseTrace": "feint>break>done",
+      "phaseTrace": "feint>break",
       "telegraphTicks": 30,
       "fireRequests": 0,
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.136,
+      "goalProgress": 0.469,
       "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
       "playerShift": 158.049,
-      "opponentPath": 217.187,
+      "opponentPath": 600.1,
       "driveDelta": null,
       "detail": {
-        "gateDist": 19.509,
-        "gateSeparation": 24.811
+        "gateDist": 111.6,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.684
       },
       "systems": [
         "flightV3",
@@ -472,8 +476,8 @@
           "z": 202.26
         },
         "opponent": {
-          "x": 22.052,
-          "z": 204.757
+          "x": 9.159,
+          "z": 328.593
         },
         "buoy": {
           "x": 6.876,
@@ -481,7 +485,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "5748c600"
+      "hash": "de9809d9"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -496,23 +500,25 @@
       "hullId": "ship_mule",
       "silhouette": "ship_mule",
       "telegraphKind": "feint_burn",
-      "phaseTrace": "feint>break",
+      "phaseTrace": "feint>break>disengage>done",
       "telegraphTicks": 30,
       "fireRequests": 0,
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.832,
-      "goalComplete": true,
+      "goalProgress": 0.063,
+      "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
-      "playerShift": 21.367,
-      "opponentPath": 209.374,
+      "playerShift": 306.383,
+      "opponentPath": 548.623,
       "driveDelta": null,
       "detail": {
-        "gateDist": 35.321,
-        "gateSeparation": 71.303
+        "gateDist": 196.737,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.706
       },
       "systems": [
         "flightV3",
@@ -527,12 +533,12 @@
       "sg02Ready": true,
       "end": {
         "player": {
-          "x": 18.956,
-          "z": 52.465
+          "x": 140.755,
+          "z": 310.314
         },
         "opponent": {
-          "x": -29.191,
-          "z": 174.13
+          "x": 141.311,
+          "z": 330.618
         },
         "buoy": {
           "x": -7.699,
@@ -540,7 +546,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "52b8222f"
+      "hash": "d7352946"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -555,23 +561,25 @@
       "hullId": "ship_mule",
       "silhouette": "ship_mule",
       "telegraphKind": "feint_burn",
-      "phaseTrace": "feint>break>done",
+      "phaseTrace": "feint>break",
       "telegraphTicks": 30,
       "fireRequests": 0,
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.136,
+      "goalProgress": 0.469,
       "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
       "playerShift": 158.049,
-      "opponentPath": 217.187,
+      "opponentPath": 600.1,
       "driveDelta": null,
       "detail": {
-        "gateDist": 19.509,
-        "gateSeparation": 24.811
+        "gateDist": 111.6,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.684
       },
       "systems": [
         "flightV3",
@@ -590,8 +598,8 @@
           "z": 187.403
         },
         "opponent": {
-          "x": 7.476,
-          "z": 189.901
+          "x": -5.417,
+          "z": 313.737
         },
         "buoy": {
           "x": -7.699,
@@ -599,7 +607,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "3f697312"
+      "hash": "fc23a089"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -614,23 +622,25 @@
       "hullId": "ship_mule",
       "silhouette": "ship_mule",
       "telegraphKind": "feint_burn",
-      "phaseTrace": "feint>break",
+      "phaseTrace": "feint>break>disengage>done",
       "telegraphTicks": 30,
       "fireRequests": 0,
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.832,
-      "goalComplete": true,
+      "goalProgress": 0.06,
+      "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
-      "playerShift": 21.367,
-      "opponentPath": 209.373,
+      "playerShift": 307.594,
+      "opponentPath": 543.19,
       "driveDelta": null,
       "detail": {
-        "gateDist": 35.322,
-        "gateSeparation": 71.303
+        "gateDist": 197.379,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.706
       },
       "systems": [
         "flightV3",
@@ -645,12 +655,12 @@
       "sg02Ready": true,
       "end": {
         "player": {
-          "x": 20.185,
-          "z": 53.693
+          "x": 146.181,
+          "z": 310.909
         },
         "opponent": {
-          "x": -27.962,
-          "z": 175.358
+          "x": 146.749,
+          "z": 327.817
         },
         "buoy": {
           "x": -6.471,
@@ -658,7 +668,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "e322ef9b"
+      "hash": "85b5a6ed"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -673,23 +683,25 @@
       "hullId": "ship_mule",
       "silhouette": "ship_mule",
       "telegraphKind": "feint_burn",
-      "phaseTrace": "feint>break>done",
+      "phaseTrace": "feint>break",
       "telegraphTicks": 30,
       "fireRequests": 0,
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.136,
+      "goalProgress": 0.469,
       "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
       "playerShift": 158.049,
-      "opponentPath": 217.182,
+      "opponentPath": 600.1,
       "driveDelta": null,
       "detail": {
-        "gateDist": 19.521,
-        "gateSeparation": 24.823
+        "gateDist": 111.6,
+        "gateSeparation": null,
+        "feintStart": 281.603,
+        "feintMin": 243.684
       },
       "systems": [
         "flightV3",
@@ -708,8 +720,8 @@
           "z": 188.632
         },
         "opponent": {
-          "x": 8.717,
-          "z": 191.124
+          "x": -4.188,
+          "z": 314.965
         },
         "buoy": {
           "x": -6.471,
@@ -717,7 +729,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "fad76452"
+      "hash": "8b44bd16"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -738,8 +750,8 @@
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.956,
-      "goalComplete": true,
+      "goalProgress": 0.276,
+      "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
@@ -747,7 +759,7 @@
       "opponentPath": 203.226,
       "driveDelta": null,
       "detail": {
-        "exitDist": 13.577
+        "exitDist": 221.277
       },
       "systems": [
         "flightV3",
@@ -775,7 +787,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "7c38cfae"
+      "hash": "1bc09ef3"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -796,7 +808,7 @@
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.237,
+      "goalProgress": 0.211,
       "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
@@ -805,7 +817,7 @@
       "opponentPath": 207.173,
       "driveDelta": null,
       "detail": {
-        "exitDist": 233.177
+        "exitDist": 241.276
       },
       "systems": [
         "flightV3",
@@ -833,7 +845,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "539645a0"
+      "hash": "2701e4c4"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -854,8 +866,8 @@
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.965,
-      "goalComplete": true,
+      "goalProgress": 0.416,
+      "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
@@ -863,7 +875,7 @@
       "opponentPath": 239.229,
       "driveDelta": null,
       "detail": {
-        "exitDist": 10.426
+        "exitDist": 171.712
       },
       "systems": [
         "flightV3",
@@ -891,7 +903,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "5bd62ffe"
+      "hash": "a6354ab9"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -912,7 +924,7 @@
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.196,
+      "goalProgress": 0.191,
       "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
@@ -921,7 +933,7 @@
       "opponentPath": 196.694,
       "driveDelta": null,
       "detail": {
-        "exitDist": 236.31
+        "exitDist": 237.891
       },
       "systems": [
         "flightV3",
@@ -949,7 +961,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "e771a156"
+      "hash": "8f6b4081"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -970,8 +982,8 @@
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.96,
-      "goalComplete": true,
+      "goalProgress": 0.279,
+      "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
       "projectiles": 0,
@@ -979,7 +991,7 @@
       "opponentPath": 252.857,
       "driveDelta": null,
       "detail": {
-        "exitDist": 11.78
+        "exitDist": 212.806
       },
       "systems": [
         "flightV3",
@@ -1007,7 +1019,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "5e4b884b"
+      "hash": "d55b81c8"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -1028,7 +1040,7 @@
       "fireAuthorized": 0,
       "fireDenied": 0,
       "unexpectedFire": 0,
-      "goalProgress": 0.207,
+      "goalProgress": 0.19,
       "goalComplete": false,
       "engagementTicks": 340,
       "playerDamage": 0,
@@ -1037,7 +1049,7 @@
       "opponentPath": 199.746,
       "driveDelta": null,
       "detail": {
-        "exitDist": 233.892
+        "exitDist": 238.813
       },
       "systems": [
         "flightV3",
@@ -1065,7 +1077,7 @@
         }
       },
       "opponentWeapons": 0,
-      "hash": "5e0afadf"
+      "hash": "df4976be"
     },
     {
       "schema": "spaceface.counterplay.receipt.v1",
@@ -3576,9 +3588,9 @@
     },
     "cp_feint_break_courier": {
       "runs": 16,
-      "meanProgress": 0.017,
+      "meanProgress": 0,
       "minProgress": 0,
-      "maxProgress": 0.048,
+      "maxProgress": 0,
       "unexpectedFire": 0,
       "telegraphRuns": 16,
       "complete": 0

@@ -40,9 +40,6 @@ function aimAt(self, target) {
 
 export function pilotIntent(pilotId, ctx) {
   if (pilotId === 'stationary') return toInput(ctx.player, holdManeuver(ctx.player));
-  if (ctx.scene && ctx.scene.doctrineId === 'cp_feint_break_courier' && ctx.scene.tape === 'resists') {
-    return toInput(ctx.player, holdManeuver(ctx.player));
-  }
   if (pilotId === 'counter' || (ctx.scene && ctx.scene.tape === 'counter' && pilotId === ctx.scene.pilotId && pilotId !== 'close_booster' && pilotId !== 'rope_manipulator' && pilotId !== 'evasive' && pilotId !== 'civilian_protector')) {
     return counterIntent(ctx);
   }

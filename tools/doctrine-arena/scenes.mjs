@@ -154,14 +154,14 @@ function layoutFor(id, s, scale, jx, jz) {
   }
   if (id === 'cp_feint_break_courier') {
     const gate = { x: 0, z: 210 };
+    const feint = { x: 280, z: 30 };
+    const opponent = { x: 0, z: 0 };
     return {
       player: { x: 20, z: 40 },
-      opponent: { x: 0, z: 0 },
+      opponent,
+      opponentRot: Math.atan2(feint.z - opponent.z, feint.x - opponent.x),
       rocks: [rock('buoy', gate, { radius: 6, mass: 2000 })],
-      objective: {
-        feint: { x: 280, z: 30 },
-        gate,
-      },
+      objective: { feint, gate },
       shift: { x: jx, z: jz },
     };
   }

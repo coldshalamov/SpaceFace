@@ -29,7 +29,6 @@ import { runDemonstrations, runTournament, summarizeReceipts } from '../tourname
 const SHIP_DOCTRINE_IDS = new Set(Object.values(CombatDoctrineId));
 const STRONG = [
   'cp_heavy_anchor_grappler',
-  'cp_feint_break_courier',
   'cp_rescue_tow',
   'cp_prize_runner',
   'cp_release_orbit_hunter',
@@ -286,8 +285,11 @@ test('held-out arena separates counters and stays on the real physics', async ()
     assert.equal(cover.counter[i].fireAuthorized, 0);
   }
   const corridor = grouped.get('cp_corridor_pack_leader');
-  assert.ok(corridor.resists.every((row) => row.telegraphTicks >= 30 && row.goalProgress > 0.5));
-  assert.ok(corridor.counter.every((row, i) => row.detail.exitDist > corridor.resists[i].detail.exitDist + 40));
+  for (const row of corridor.resists) {
+    assert.equal(row.goalComplete, false, `seed ${row.seed} exitDist ${row.detail.exitDist}`);
+    assert.ok(row.detail.exitDist > 100, `seed ${row.seed} final exitDist ${row.detail.exitDist}`);
+    assert.ok(row.telegraphTicks >= 30);
+  }
   const collateralDamage = grouped.get('cp_collateral_hold');
   for (let i = 0; i < HELD_OUT_SEEDS.length; i += 1) {
     assert.ok(collateralDamage.resists[i].playerDamage > collateralDamage.counter[i].playerDamage);
@@ -313,6 +315,33 @@ test('held-out arena separates counters and stays on the real physics', async ()
       .map((row) => row.phaseTrace);
     assert.equal(new Set(traces).size, 10, `phase traces collided on seed ${seed}: ${traces.join(' | ')}`);
   }
+});
+
+test('the feint phase closes on the feint point before the break', async () => {
+  const receipt = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 101, tape: 'resists',
+  });
+  assert.equal(receipt.pilotId, 'close_booster');
+  assert.ok(receipt.detail.feintStart > 0);
+  assert.ok(
+    receipt.detail.feintMin < receipt.detail.feintStart,
+    `feint min ${receipt.detail.feintMin} start ${receipt.detail.feintStart}`,
+  );
+});
+
+test('the resists feint pilot flies close_booster and a frozen player changes the separation', async () => {
+  const chasing = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 101, tape: 'resists',
+  });
+  const frozen = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 101, tape: 'resists', pilotId: 'stationary',
+  });
+  assert.equal(chasing.pilotId, 'close_booster');
+  assert.equal(frozen.pilotId, 'stationary');
+  assert.ok(chasing.playerShift > 1, `chasing shift ${chasing.playerShift}`);
+  assert.equal(frozen.playerShift, 0);
+  assert.notEqual(chasing.detail.gateDist, frozen.detail.gateDist);
+  assert.notEqual(chasing.goalProgress, frozen.goalProgress);
 });
 
 test('a doctrine change moves the tape and an edit to tacticalAI.js does not', async () => {

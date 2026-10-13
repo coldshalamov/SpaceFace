@@ -136,6 +136,11 @@ export async function runCounterplayScenario(options = {}) {
         stats.phases.push(decision.phase);
         lastPhase = decision.phase;
       }
+      if (decision.phase === 'feint' && scene.objective && scene.objective.feint && opponent) {
+        const feintDist = dist(opponent.pos, scene.objective.feint);
+        if (stats.feintStart == null) stats.feintStart = feintDist;
+        stats.feintMin = stats.feintMin == null ? feintDist : Math.min(stats.feintMin, feintDist);
+      }
       if (decision.telegraph && decision.telegraph.readable) stats.telegraphTicks += 1;
       if (decision.cue && decision.cue.predicted && !stats.predicted) {
         stats.predicted = { x: decision.cue.predicted.x, z: decision.cue.predicted.z };
@@ -519,6 +524,8 @@ function freshStats(scene, opponent, patient, actors) {
     packStartDist: packmate && exit ? dist(packmate.pos, exit) : null,
     minPackDist: packmate && exit ? dist(packmate.pos, exit) : null,
     courierStart: opponent && gate ? dist(opponent.pos, gate) : null,
+    feintStart: null,
+    feintMin: null,
     decoyMin: null,
     driveStart: null,
     driveEnd: null,
@@ -589,10 +596,21 @@ function scoreBout(id, scene, stats, actors) {
     const arrived = end < 70;
     const caught = arrived && (stats.gateSeparation == null ? 999 : stats.gateSeparation) < 46;
     const progress = clamp01(1 - end / (stats.courierStart || 1)) * (caught ? 0.15 : 1);
-    return { progress, complete: arrived && !caught, detail: { gateDist: round3(end), gateSeparation: round3(stats.gateSeparation) } };
+    return {
+      progress,
+      complete: arrived && !caught,
+      detail: {
+        gateDist: round3(end),
+        gateSeparation: round3(stats.gateSeparation),
+        feintStart: round3(stats.feintStart),
+        feintMin: round3(stats.feintMin),
+      },
+    };
   }
   if (id === 'cp_corridor_pack_leader') {
-    const end = stats.minPackDist == null ? 999 : stats.minPackDist;
+    const packmate = actors.get('packmate');
+    const exit = scene.objective && scene.objective.exit;
+    const end = packmate && exit ? dist(packmate.pos, exit) : 999;
     const progress = clamp01(1 - end / (stats.packStartDist || 1));
     return { progress, complete: end < 48, detail: { exitDist: round3(end) } };
   }
