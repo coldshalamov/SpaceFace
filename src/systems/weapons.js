@@ -991,6 +991,27 @@ export const weapons = {
         const step = Math.max(-turnRate * dt, Math.min(turnRate * dt, diff));
         cur = wrapAngle(cur + step);
       }
+      // A dumb round names its cause: once per player-owned round, the first tick
+      // guidance is gone, say why (burnout / cone / range / cloak / decoy) so the
+      // juke-and-cloak counterplay the solver authors wrote is readable to the shooter.
+      if (!d._guidanceLostEmitted && d.ownerId != null && state && d.ownerId === state.playerId) {
+        let lostReason = null;
+        if (decoy) lostReason = (d._cloakSeekerLoss > 0) ? 'cloak' : 'decoy';
+        else if (d.diverted) lostReason = 'cloak';
+        else if (missileV2 && !motorOn) lostReason = 'burnout';
+        else if (missileV2 && !guiding && aim) lostReason = 'cone';
+        else if (missileV2 && !guiding && !aim) lostReason = 'range';
+        if (lostReason && !guiding && this.bus) {
+          d._guidanceLostEmitted = true;
+          this.bus.emit('missile:guidanceLost', {
+            missileId: p.id,
+            ownerId: d.ownerId,
+            targetId: d.targetId != null ? d.targetId : null,
+            reason: lostReason,
+            tick: Number.isInteger(state.tick) ? state.tick : 0,
+          });
+        }
+      }
       // ramp speed up to the weapon's max projectile speed while the motor burns; after burnout
       // (missileV2 only) bleed speed gently so the coast reads as a spent, ballistic round.
       let sp = Math.hypot(p.vel.x, p.vel.z);

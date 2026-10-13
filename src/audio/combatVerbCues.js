@@ -242,6 +242,9 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   // tick, not another thud — the combat:damage layer voice owns the impact on the
   // same tick, so the crit reads as skill on top of the hit, never a doubled hit.
   'combat:weakPointHit': 'sfx_lock_acquired',
+  // A dumb round names its cause: the guidance-loss tick borrows the falling
+  // resolve (lock gone, not a hit). One play per round, guarded by _guidanceLostEmitted.
+  'missile:guidanceLost': 'sfx_wanted_clear',
   'player:respawn': 'sfx_respawn_chime',
 });
 
