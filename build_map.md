@@ -1137,7 +1137,9 @@ save/reload determinism comparisons passed. Adventure player-truth reached ordin
 and passed controls, hull, LOD continuity and interruption checks; overall INCOMPLETE
 (combat visual sample coverage and quiet-host timing unmeasured). Swarm gate evidence
 is retained under `.devshots/batch20-oct13/`; its public preparation never reached play,
-so the capped run was stopped and the unisolated preparation/driver stall recorded as D195.
+so the capped run was stopped and the unisolated preparation/driver stall recorded as local
+ledger row D195. That shared ledger already carries foreign uncommitted work and stays
+unstaged here; the twenty production outcomes above are published independently.
 These are implemented production outcomes, not full Adventure/Swarm acceptance or FPS
 certification. Startup hints cover the owned machine module and already-published imports;
 the foreign uncommitted Candle encounter is deliberately excluded from publication.
