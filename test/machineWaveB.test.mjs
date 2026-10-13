@@ -196,7 +196,11 @@ test('every evidence source a wave-B system emits is in the table', () => {
 test('setpiece defs resolve to real sites and fire once', () => {
   for (const def of SETPIECE_DEFS) {
     assert.ok(def.id.startsWith('N'), `${def.id} ids the N-table`);
-    if (def.trigger !== 'cross') assert.ok(def.radius > 0, `${def.id} has radius`);
+    // Event-driven work/interactions use their owner's real contact volume; only the
+    // proximity triggers consumed by runSetpieces carry a radius on the definition.
+    if (!['cross', 'interact', 'pulseInside', 'foreignWork'].includes(def.trigger)) {
+      assert.ok(def.radius > 0, `${def.id} has radius`);
+    }
     if (def.evidence) assert.ok(EVIDENCE_TABLE[def.evidence], `${def.id} evidence resolves`);
   }
   assert.ok(setpieceById('N01_broken_corridor'));
@@ -276,12 +280,15 @@ test('executor wakes on a protocol fault and its pulse destroys biohazard cargo'
   // Revoked + player inside pulse radius carrying biohazard -> pulse scrubs the lot.
   advanceMachineProtocol(state, 'revoked');
   makePlayer(state, executor.pos.x + 100, executor.pos.z);
+  state.entities.get(state.playerId).vel.x = 9; // remain in breach, rather than completing WITNESS
   state.player.cargo.items.cmdty_spore_catalyst = 2;
   state.player.cargo.usedVolume = 2;
   const bio = COMMODITIES.find((c) => c.id === 'cmdty_spore_catalyst');
   assert.ok(bio && bio.biohazard, 'fixture commodity is biohazard');
-  executor.data.machine.sweepT = 999; // force the pulse this tick
   tickMachineLayer(world, 0.1);
+  assert.equal(state.player.cargo.items.cmdty_spore_catalyst, 2, 'awakening warns before purging');
+  assert.ok(emitLog.some((e) => e.type === 'comms:log' && e.p.text.includes('JETTISON BIOLOGICAL CARGO')));
+  for (let i = 0; i < 600; i++) { state.simTime += 0.1; tickMachineLayer(world, 0.1); }
   assert.ok(!state.player.cargo.items.cmdty_spore_catalyst, 'biohazard scrubbed');
   assert.ok(emitLog.some((e) => e.type === 'ecology:quarantinePulse' && e.p.scrubbed === 2));
 });
