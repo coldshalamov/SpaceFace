@@ -37,3 +37,27 @@ test('adventure new game: scenePrepared keeps the 47-A contract tracked', () => 
   assert.ok(m, '47-A stays');
   assert.equal(state.ui.trackedMissionId, m.id);
 });
+
+// Real boot order: newGameBoot emits scenePrepared, THEN the lane emits game:started → newGame().
+test('crucible launch: game:started after scenePrepared does not reinstall 47-A', () => {
+  const { state, bus } = boot();
+  bus.emit('game:scenePrepared', { crucibleLaunch: true });
+  bus.emit('game:started', {});
+  assert.equal(b0(state), undefined, 'latched launch skips the install');
+  bus.emit('game:started', { crucibleLaunch: true });
+  assert.equal(b0(state), undefined, 'worker receipt flag skips the install');
+});
+
+test('crucible launch: an active survival run skips 47-A even without the flag', () => {
+  const { state, bus } = boot();
+  state.run = { ...(state.run || {}), kind: 'survival', phase: 'draft' };
+  bus.emit('game:started', {});
+  assert.equal(b0(state), undefined);
+});
+
+test('adventure: game:started after a plain scenePrepared installs 47-A', () => {
+  const { state, bus } = boot();
+  bus.emit('game:scenePrepared', {});
+  bus.emit('game:started', {});
+  assert.ok(b0(state));
+});

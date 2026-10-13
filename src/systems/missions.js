@@ -1409,7 +1409,11 @@ export const missions = {
     this._lastWaypointRouteAt = 0;
 
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
-    bus.on('game:started', () => this.newGame());
+    bus.on('game:started', (p) => {
+      const crucible = (p && p.crucibleLaunch === true) || this._crucibleLaunchPending === true;
+      this._crucibleLaunchPending = false;
+      this.newGame({ crucibleLaunch: crucible });
+    });
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => {
       this._restoreNavigationAfterLoad();
@@ -1421,7 +1425,10 @@ export const missions = {
     // campaign: withdraw that contract before the run so its objective, nav marker and HUD
     // tracker never paint over the arena (worker-lane regression: "Recover the 47-A sample").
     bus.on('game:scenePrepared', (p) => {
-      if (p && p.crucibleLaunch === true) this._withdrawContract47aColdStartForCrucible();
+      // game:started (→ newGame) fires AFTER scenePrepared, so the withdraw alone ran before
+      // the install and the contract came back. Latch the launch so newGame skips the install.
+      this._crucibleLaunchPending = p && p.crucibleLaunch === true;
+      if (this._crucibleLaunchPending) this._withdrawContract47aColdStartForCrucible();
     });
 
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
@@ -12070,7 +12077,7 @@ export const missions = {
     return this.acceptMission(offer.id);
   },
 
-  newGame() {
+  newGame(opts) {
     this._racingOpponents?.stop('new_game');
     this._racingSetPieces?.stop('new_game');
     resetRacingGhostSession(this.state);
@@ -12089,7 +12096,10 @@ export const missions = {
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [] };
     initCampaignSidecar(state, state.simTime || 0);
     this._installThreadBFragment();
-    this._installContract47aColdStart();
+    // The Crucible (Swarm / Gauntlet / scored) is not the campaign: no 47-A cold start.
+    const crucibleLaunch = (opts && opts.crucibleLaunch === true)
+      || (state.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive');
+    if (!crucibleLaunch) this._installContract47aColdStart();
     this._spawnSeq = 0;
     if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.clear();
     this._nextMissionSpawnRetryTick = 0;
