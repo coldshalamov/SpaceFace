@@ -305,7 +305,8 @@ function safeGrid(shield) {
   if (!grid || typeof grid !== 'object' || !shield.shape || !gridShapeDirty(grid, shield.shape)) return grid;
   const copy = {};
   for (const [key, saved] of shield.shape.fields) {
-    writeField(copy, key, saved.items ? saved.items.slice() : saved.value, saved.enumerable);
+    const raw = saved.items ? saved.items.slice() : saved.value;
+    writeField(copy, key, raw && typeof raw === 'object' ? detachData(raw) : raw, saved.enumerable);
   }
   return copy;
 }
@@ -318,7 +319,8 @@ function sceneBearingGrid(scene, grid, ownNames) {
     const descriptor = Object.getOwnPropertyDescriptor(scene, key);
     if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
     if (typeof descriptor.value === 'function') continue;
-    writeField(out, key, descriptor.value, descriptor.enumerable);
+    const raw = descriptor.value;
+    writeField(out, key, raw && typeof raw === 'object' ? detachData(raw) : raw, descriptor.enumerable);
   }
   if (grid !== undefined) writeField(out, 'grid', grid, true);
   return out;
@@ -375,7 +377,8 @@ function publish(value) {
   const arraysStuck = restoreArrays(activeArrays);
   if (activeShields) restoreShieldList(activeShields);
   const map = activeShields ? replacementMap(activeShields) : new Map();
-  if (map.size && value && typeof value === 'object') {
+  const failed = settersStuck || arraysStuck || !!(value && value.ok === false);
+  if (!failed && map.size && value && typeof value === 'object') {
     if (Object.prototype.hasOwnProperty.call(value, 'history')) applySceneMap(value.history, map);
     else if (Object.prototype.hasOwnProperty.call(value, 'present')) applySceneMap(value, map);
   }
@@ -453,6 +456,9 @@ function snapshotSetters(scenes) {
   const entries = [];
   const seen = new Set();
   for (const scene of scenes) collectSetters(scene, entries, seen);
+  for (const entry of activeAccessors || []) {
+    if (entry.value && typeof entry.value === 'object') collectSetters(entry.value, entries, seen);
+  }
   return entries;
 }
 
@@ -484,6 +490,15 @@ function collectSetters(value, entries, seen) {
         }
         entries.push({ object: value, key, value: read });
         if (read && typeof read === 'object') collectSetters(read, entries, seen);
+        continue;
+      }
+      if (typeof descriptor.get === 'function' && key === 'pocket') {
+        try {
+          const read = descriptor.get.call(value);
+          if (read && typeof read === 'object') collectSetters(read, entries, seen);
+        } catch (error) {
+          // A get-only accessor refused. Setters behind it stay unrecorded.
+        }
         continue;
       }
       if (current !== value) continue;

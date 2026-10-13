@@ -2,8 +2,8 @@
 // No Node builtins, no physics step. The lab is the only simulator.
 
 import {
-  detachData, liveObjectsIn, protectLiveObjects, restoreInheritedArrays, sameJson,
-  snapshotInheritedArrays, sortValue, unprotectLiveObjects,
+  captureLive, detachData, liveObjectsIn, protectLiveObjects, restoreInheritedArrays,
+  restoreLive, sameJson, snapshotInheritedArrays, sortValue, unprotectLiveObjects,
 } from './stableJson.mjs';
 
 export const PROJECT_SCHEMA = 'spaceface.creatorsDock.v1';
@@ -502,9 +502,14 @@ function materialize(value, key, seen) {
   let carriedGrid;
   if (typeof toJSON === 'function') {
     seen.add(value);
-    const inheritedArrays = snapshotInheritedArrays(value);
     const gridAccessor = gridAccessorState(value);
     const gridFields = gridAccessor ? snapshotGridFields(gridAccessor.value) : null;
+    const callerRecords = captureLive(value);
+    const inheritedArrays = snapshotInheritedArrays(value);
+    if (gridAccessor && gridAccessor.value && typeof gridAccessor.value === 'object') {
+      captureLive(gridAccessor.value, new Set(), callerRecords);
+      inheritedArrays.push(...snapshotInheritedArrays(gridAccessor.value));
+    }
     // toJSON runs on a detached tree so a non-configurable write cannot stick to the live scene.
     const detached = detachData(value);
     const live = liveObjectsIn([value, gridAccessor && gridAccessor.value]);
@@ -514,6 +519,7 @@ function materialize(value, key, seen) {
       produced = toJSON.call(detached, key);
     } finally {
       unprotectLiveObjects();
+      restoreLive(callerRecords);
       restoreInheritedArrays(inheritedArrays);
     }
     restoreGridAccessor(value, gridAccessor);
@@ -571,8 +577,28 @@ function materialize(value, key, seen) {
     if (child !== undefined) writeData(out, 'grid', child);
   }
   copyGetterGrid(value, out);
+  copyAccessors(value, out);
   copyInheritedFields(value, out);
   return out;
+}
+
+function copyAccessors(source, out) {
+  if (!source || typeof source !== 'object' || !out || typeof out !== 'object' || Array.isArray(out)) return;
+  for (const key of Object.getOwnPropertyNames(source)) {
+    if (key === 'toJSON' || key === 'objects' || key === 'grid' || Object.prototype.hasOwnProperty.call(out, key)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(source, key);
+    if (!descriptor || typeof descriptor.get !== 'function') continue;
+    const hasSetter = typeof descriptor.set === 'function';
+    if (!hasSetter && key !== 'pocket') continue;
+    try {
+      const read = descriptor.get.call(source);
+      if (!hasSetter && !(read && typeof read === 'object')) continue;
+      const child = detachData(read);
+      if (child !== undefined) writeData(out, key, child);
+    } catch (error) {
+      // A getter refused. The stored scene omits that key.
+    }
+  }
 }
 
 function copyInheritedFields(source, out) {
@@ -1247,7 +1273,14 @@ export function formatReport(value) {
     }
   }
   try {
-    return JSON.stringify(value, null, 2);
+    const copy = value && typeof value === 'object' ? detachData(value) : value;
+    const toJSON = value && typeof value === 'object' ? readToJSON(value) : undefined;
+    let payload = copy;
+    if (typeof toJSON === 'function') {
+      const produced = toJSON.call(copy);
+      if (produced !== undefined) payload = produced;
+    }
+    return JSON.stringify(payload, null, 2);
   } catch (error) {
     let detail = 'scene could not be cloned';
     if (!issues.length) {

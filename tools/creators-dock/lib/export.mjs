@@ -136,7 +136,8 @@ export function exportProjectWithDialect(project, dialect) {
     manifest.labOnly.push(`objects.${link.id}`);
   }
   for (const field of fields) explainField(field, issues, manifest);
-  if ((project.grid) || (project.camera)) {
+  if ((project && Object.prototype.hasOwnProperty.call(project, 'grid'))
+    || (project && Object.prototype.hasOwnProperty.call(project, 'camera'))) {
     manifest.editorOnly.push({
       path: 'grid',
       reason: 'Grid, snap, and camera are editor state.',

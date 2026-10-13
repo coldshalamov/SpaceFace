@@ -472,6 +472,24 @@ test('a null height is not exported or imported as zero', async () => {
   assert.equal(imported.project, null);
 });
 
+test('export does not invoke a live grid getter', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const grid = project.grid;
+  const size = grid.size;
+  Object.defineProperty(project, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      grid.size = null;
+      return grid;
+    },
+  });
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  assert.equal(grid.size, size);
+  assert.equal(size, 10);
+});
+
 test('a place disc edits the exported place and objectives follow the lab metric', async () => {
   const project = getComposition('dock.bank-shot');
   const zone = objectById(project, 'bank_zone');

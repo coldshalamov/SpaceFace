@@ -21,8 +21,8 @@ export function byteLength(value) {
   if (typeof value === 'string') return utf8Length(value);
   try {
     // Probe toJSON on a detached copy so a throw is reported and the live value stays put.
-    stableStringify(value);
-    const text = JSON.stringify(detachData(value));
+    stableStringify(value, false);
+    const text = JSON.stringify(detachData(value, new Map(), false));
     if (typeof text !== 'string') return null;
     return utf8Length(text);
   } catch (error) {
@@ -65,20 +65,27 @@ function walk(value, path, issues, depth) {
   }
   if (value == null || typeof value === 'boolean') return;
   if (Array.isArray(value)) {
-    value.forEach((entry, i) => walk(entry, `${path}[${i}]`, issues, depth + 1));
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+      walk(descriptor.value, `${path}[${i}]`, issues, depth + 1);
+    }
     return;
   }
   if (typeof value !== 'object') {
     issues.push(`${path}: unsupported value`);
     return;
   }
-  for (const key of Object.keys(value)) {
+  for (const key of Object.getOwnPropertyNames(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
     if (BANNED_KEYS.has(key)) {
       issues.push(`${path}.${key}: banned key`);
       continue;
     }
     if (key === 'asset' || key === 'dataUrl' || key === 'bytes' || key === 'payloadBase64') {
-      const raw = value[key];
+      const raw = descriptor.value;
       const size = typeof raw === 'string' ? utf8Length(raw) : byteLength(raw);
       if (size == null) {
         issues.push(`${path}.${key}: scene could not be cloned`);
@@ -86,7 +93,7 @@ function walk(value, path, issues, depth) {
         issues.push(`${path}.${key}: asset payload exceeds ${MAX_ASSET_BYTES} bytes`);
       }
     }
-    walk(value[key], `${path}.${key}`, issues, depth + 1);
+    walk(descriptor.value, `${path}.${key}`, issues, depth + 1);
   }
 }
 
