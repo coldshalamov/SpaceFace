@@ -1,7 +1,9 @@
 // Cards for the ten scenes the public lab run operates.
 // `document` is the compiled spaceface.simScenario.v1 for that scene's primary tape.
 // `controls` name every input on that tape.
-// `verified` stays false until certifyPresentationCard's public lab run accepts the document.
+// `verified` on the stored card stays false at import. certifyPresentationCard runs
+// runLabScenario on that card's compiled document and returns verified true only
+// when the public run passes. The shipping CLI writes that result.
 
 import { ACCEPTED_SCENES } from './accepted.js';
 import { runLabScenario } from '../../testing/lab/runScenario.js';
@@ -48,9 +50,12 @@ export function controlsCoverTape(controls, tape) {
 }
 
 export async function certifyPresentationCard(card) {
+  return certifyPresentationDocument(card, card && card.document);
+}
+
+export async function certifyPresentationDocument(card, document) {
   const scene = sceneFor(card);
   const tape = scene && scene.primary;
-  const document = card && card.document;
   let lab;
   try {
     lab = await runLabScenario(document);
@@ -62,7 +67,7 @@ export async function certifyPresentationCard(card) {
       error: err && err.message ? err.message : String(err),
     };
   }
-  const accepted = !!(lab && lab.ok === true && lab.status === 'pass');
+  const accepted = !!(lab && lab.ok === true && lab.status === 'pass' && lab.certifying === true);
   const named = !!(tape && card && controlsCoverTape(card.controls, tape));
   const compiled = !!(
     scene
