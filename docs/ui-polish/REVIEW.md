@@ -720,3 +720,20 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Still open (not this pass):** at ≤800 wide the dial's REFERENCE bank runs STATISTICS (and ACHIEVEMENTS at 701) past the right edge (800×600, 761×500, 720×480, 701×480). That is arcRail bank placement, which this pass did not change. The Missions route strip at 960×540 (archiveLayouts.js, frozen on #374) is also still open.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28d/{before,after,compare}/`.
+
+## Pause — REFERENCE bank stays on the glass at ≤800 wide (ui-polish-28)
+
+**Before:** the dial seats each category on one line (head, then its verbs). When a line runs past the right edge, the width split continues it on a new stop, but an arc carries at most nine stops and Pause already uses eight, so only one split is available. Below about 820 wide, SHIP took that split, and REFERENCE (HELP / CONTROLS · CODEX · ACHIEVEMENTS · STATISTICS) stayed whole and ran off the right edge: STATISTICS at 800×600, 780×560, 761×500, 760×540 and 720×480 (it ended at x 853 on an 800 frame), and ACHIEVEMENTS too at 701×480. The split also planned from a head width carried over from the last build, which could be measured before the display face loaded. So whether 960×540 split REFERENCE depended on build timing, and the greedy pack left STATISTICS alone on its continuation row.
+
+**After (`src/ui/orrery/arcRail.js` only, grouped dial = Pause only):**
+- **Tight form:** build() first plans the normal seat. If a row still overruns after the splits the stops allow, the host takes `orr-arcrail-host--tight`, which applies the same verbs in a narrower cut (`wdth` 76, .07em tracking; awake `wdth` 80), eases the head tracking from .28 to .16em, and sets the verb gap to 13px and the head bridge to 24px (from 22 and 30). The verbs are re-measured under that form before it plans. With it, SHIP fits whole (all four verbs, LOCAL MAP included) and the spare stop goes to REFERENCE. At 800×600 STATISTICS ends at x 574, and at 701×480 at x 533. Frames that already fit (≥ ~820 wide) never take it.
+- **Balanced split:** a split row keeps the same number of lines, but its verbs are dealt to minimise the longest line, so REFERENCE reads HELP / CONTROLS · CODEX over ACHIEVEMENTS · STATISTICS rather than three over one. Ties keep the greedy deal.
+- **Fresh head measure:** the split plans from each head engraved off-dial at a fixed size in the form being planned, with the current fonts, rather than from a width carried from the previous build. 960×540 now always splits REFERENCE (a 2+2 deal, where it used to be 3+1 with STATISTICS alone).
+
+820×600, 860×600, 1280×720 and the phone (390×844 `--phone`) are pixel-identical. 1920×1080 differs only in the dial's drift, with the same rows. 900×600 and 960×540 change only by the 2+2 REFERENCE deal. The bench reports no overlaps at 701×480, 720×480, 760×540, 761×500, 780×560, 800×600, 820/860/900×600, 960×540, 1280×720, 1920×1080 and 390×844 (before: STATISTICS cut off / off-frame at all six ≤800 sizes, and ACHIEVEMENTS too at 701). `--walk` at 800×600 and 701×480 clicks all 18 controls, and ACHIEVEMENTS and STATISTICS open their screens. The prior foot keycaps and flight brief are unchanged. Selectors and IDs are unchanged. Focused tests pass: `orrery-arcrail-width` (7), `pause-save-line`, `wave-c3-pause-kit`, `pq-194-06-pause-shell`, `sf-275-pause-ownership` and `pause-ship-fit`.
+
+**Still open (not this pass):** the Missions route strip at 960×540 (archiveLayouts.js, frozen on #374).
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28e/{before,after,compare}/`.
+
+**Branch:** pushed to ui-polish-28 without a PR while the #371/#374 freeze holds.
