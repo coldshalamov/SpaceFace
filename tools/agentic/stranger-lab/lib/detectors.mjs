@@ -2,8 +2,6 @@
 // Intended settle, an initial berth, a detached renderer, and an idempotent trade
 // must not become confirmed defects.
 
-import { SIM_DT } from '../../../../src/core/sim.js';
-
 const UNRESPONSIVE_WINDOW = 24;
 const TURN_WINDOW = 30;
 
@@ -133,14 +131,14 @@ function detectUnresponsive(samples, frames) {
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
     // A station that is actually slowing the ship closes the window, including
-    // inside 20. A flat speed with no displacement is a dead stick unless this
-    // window is the post-impact pin of a hull that was still integrating.
+    // inside 20. An earlier step that matched speed does not close this one.
+    // Only yaw or strafe that answers inside this window does.
     if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160
       && end.speed + 0.05 < start.speed) continue;
     const moved = Math.hypot(end.x - start.x, end.z - start.z);
     const sped = end.speed - start.speed;
     if (moved < 0.25 && sped < 0.05) {
-      if (postImpactPin(samples, i, start, end, frame, moved)) continue;
+      if (stationWindowAnswered(frames, start, end)) continue;
       return {
         id: 'unresponsive-commands',
         tick: start.tick,
@@ -151,37 +149,35 @@ function detectUnresponsive(samples, frames) {
   return null;
 }
 
-function postImpactPin(samples, index, start, end, frame, moved) {
+function stationWindowAnswered(frames, start, end) {
   const nearest = start.nearest;
   if (!nearest || nearest.kind !== 'station') return false;
   const radius = Number.isFinite(nearest.radius) ? nearest.radius : null;
-  const inside = radius != null && nearest.dist < radius;
-  if (!inside) return false;
-  // Held speed is not an answer. Forward thrust is already required to reach
-  // this check, so a live stick alone must not close the window.
-  if (rotationDelta(start.rot, end.rot) > 0.02) return true;
-  if (frame && Math.abs(frame.moveX) > 0.2 && moved > 0.01) return true;
-  return earlierStepMatchedSpeed(samples, index);
-}
-
-function earlierStepMatchedSpeed(samples, index) {
-  const last = index - UNRESPONSIVE_WINDOW;
-  for (let j = 0; j <= last; j += 1) {
-    if (stepMatchedSpeed(samples[j], samples[j + UNRESPONSIVE_WINDOW])) return true;
+  if (radius == null || !(nearest.dist < radius)) return false;
+  let yawCommand = false;
+  let strafeCommand = false;
+  for (const frame of frames) {
+    const tick = frame.tick | 0;
+    if (tick < start.tick || tick > end.tick) continue;
+    if (Math.abs(frame.turnIntent) > 0.2) yawCommand = true;
+    if (Math.abs(frame.moveX) > 0.2) strafeCommand = true;
   }
+  if (yawCommand && (rotationDelta(start.rot, end.rot) > 0.02 || angVelDelta(start, end) > 0.02)) return true;
+  if (strafeCommand && lateralShift(start, end) > 0.01) return true;
   return false;
 }
 
-function stepMatchedSpeed(start, end) {
-  if (!start || !end) return false;
-  const ticks = (end.tick | 0) - (start.tick | 0);
-  if (ticks <= 0) return false;
-  const moved = Math.hypot(end.x - start.x, end.z - start.z);
-  const speed = (Number(start.speed) + Number(end.speed)) / 2;
-  const expected = speed * SIM_DT * ticks;
-  if (!(expected > 8)) return false;
-  const ratio = moved / expected;
-  return ratio > 0.55 && ratio < 1.45;
+function angVelDelta(start, end) {
+  const from = Number.isFinite(start.angVel) ? start.angVel : 0;
+  const to = Number.isFinite(end.angVel) ? end.angVel : 0;
+  return Math.abs(to - from);
+}
+
+function lateralShift(start, end) {
+  const dx = (end.x || 0) - (start.x || 0);
+  const dz = (end.z || 0) - (start.z || 0);
+  const rot = Number.isFinite(start.rot) ? start.rot : 0;
+  return Math.abs(dx * -Math.sin(rot) + dz * Math.cos(rot));
 }
 
 function rotationDelta(from, to) {
