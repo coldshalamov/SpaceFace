@@ -18,7 +18,7 @@ import {
   OVERRIDE_APPLIED,
   TETHER_DEF_ID,
 } from './mirrors.mjs';
-import { clone, emptyProject, projectIssues, PROJECT_SCHEMA, round6 } from './scene.mjs';
+import { clone, emptyProject, playerCanonIssues, projectIssues, PROJECT_SCHEMA, round6 } from './scene.mjs';
 import { assertProjectSize, inspectValue } from './security.mjs';
 import { stableStringify } from './stableJson.mjs';
 
@@ -716,7 +716,10 @@ export function importScenario(doc) {
     issues.push(`assertion kind "${assertion.kind}" has no dock mapping. Refusing to drop it.`);
   }
   project.objects = objects;
-  return { ok: issues.length === 0, issues, project };
+  const stored = clone(project);
+  const canon = playerCanonIssues(stored);
+  if (canon.length) return { ok: false, issues: issues.concat(canon), project: null };
+  return { ok: issues.length === 0, issues, project: stored };
 }
 
 export function packFileText(files) {

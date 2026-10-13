@@ -228,7 +228,8 @@ export function setPlayer(project, id) {
   for (const object of next.objects || []) {
     if (object.kind === 'actor') object.isPlayer = object.id === id;
   }
-  const gated = requireOnePlayer(project, { ok: true, project: next, id, issues: [] });
+  const stored = clone(next);
+  const gated = requireOnePlayer(project, { ok: true, project: stored, id, issues: [] });
   return gated.ok ? gated : { ok: false, project, issues: gated.issues };
 }
 

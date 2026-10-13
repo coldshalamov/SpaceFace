@@ -2,25 +2,31 @@ import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, 
 
 const CAP = 100;
 
+function storedPresent(present) {
+  const stored = clone(present);
+  const issues = playerCanonIssues(stored);
+  if (issues.length) return { ok: false, present: null, issues };
+  return { ok: true, present: stored, issues: [] };
+}
+
 export function createHistory(present) {
-  if (playerCanonIssues(present).some((issue) => issue.includes('isPlayer must be a boolean'))) {
-    return { past: [], present: null, future: [] };
-  }
-  return { past: [], present: clone(present), future: [] };
+  const stored = storedPresent(present);
+  if (!stored.ok) return { past: [], present: null, future: [] };
+  return { past: [], present: stored.present, future: [] };
 }
 
 export function commit(history, next) {
-  if (playerCanonIssues(next).length) return history;
-  const present = clone(next);
-  if (sameProject(history.present, present)) return history;
+  const stored = storedPresent(next);
+  if (!stored.ok) return history;
+  if (sameProject(history.present, stored.present)) return history;
   const past = history.past.concat([history.present]).slice(-CAP);
-  return { past, present, future: [] };
+  return { past, present: stored.present, future: [] };
 }
 
 export function openDockHistory(project) {
-  const issues = playerCanonIssues(project);
-  if (issues.length) return { ok: false, history: null, issues };
-  return { ok: true, history: createHistory(project), issues: [] };
+  const stored = storedPresent(project);
+  if (!stored.ok) return { ok: false, history: null, issues: stored.issues };
+  return { ok: true, history: { past: [], present: stored.present, future: [] }, issues: [] };
 }
 
 function undo(history) {

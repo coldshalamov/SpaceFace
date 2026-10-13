@@ -132,6 +132,14 @@ test('an empty dock can place exactly one player', () => {
   assert.equal(named.project.objects.filter((object) => object.isPlayer).length, 1);
 });
 
+function emptyHistory() {
+  return {
+    past: [],
+    present: emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }),
+    future: [],
+  };
+}
+
 function playerIds(project) {
   return (project.objects || []).filter((object) => object.isPlayer).map((object) => object.id);
 }
@@ -447,7 +455,7 @@ test('editor and agent cannot install a present by calling undo or redo directly
     assert.equal(call('redo').test(text), false, rel);
   }
 
-  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  const empty = emptyHistory();
   const placed = placePlayer(empty.present);
   const committed = commit(empty, placed.project);
   const undone = restoreHistory(committed, 'undo');
@@ -458,7 +466,7 @@ test('editor and agent cannot install a present by calling undo or redo directly
 });
 
 test('a no-op undo does not report ok for an empty history', () => {
-  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  const empty = emptyHistory();
   for (const direction of ['undo', 'redo']) {
     const result = restoreHistory(empty, direction);
     assert.equal(result.ok, false, direction);
@@ -469,7 +477,7 @@ test('a no-op undo does not report ok for an empty history', () => {
 });
 
 test('editor and agent undo do not present zero players', () => {
-  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  const empty = emptyHistory();
   const placed = placePlayer(empty.present);
   assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
   const committed = commit(empty, placed.project);
@@ -503,7 +511,7 @@ test('New does not leave a zero-player scene and undo will not restore one', () 
   assert.equal(freshUndo.history, created);
   assert.equal(playerIds(freshUndo.history.present).length, 1);
 
-  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  const empty = emptyHistory();
   const placed = placePlayer(empty.present);
   assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
   const committed = commit(empty, placed.project);
@@ -670,4 +678,30 @@ test('non-boolean player flags cannot ride along with one real player', () => {
   assert.equal(objectById(fresh.present, 'player').isPlayer, true);
   assert.equal(typeof objectById(fresh.present, 'player').isPlayer, 'boolean');
   assert.equal(playerIds(fresh.present).length, 1);
+});
+
+test('a player toJSON that clears isPlayer is not committed or opened', () => {
+  const project = getComposition('dock.intercept-cargo');
+  const player = objectById(project, 'player');
+  Object.defineProperty(player, 'toJSON', {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      body.isPlayer = null;
+      return body;
+    },
+  });
+  const baseline = createHistory(getComposition('dock.intercept-cargo'));
+  const committed = commit(baseline, project);
+  assert.equal(committed, baseline);
+  assert.equal(committed.present.objects.some((object) => object.isPlayer === null), false);
+  assert.equal(objectById(committed.present, 'player').isPlayer, true);
+
+  const opened = openDockHistory(project);
+  assert.equal(opened.ok, false);
+  assert.equal(opened.history, null);
+  assert.equal(opened.issues.some((issue) => issue.includes('isPlayer must be a boolean') || issue.includes('exactly one player')), true);
+
+  const created = createHistory(project);
+  assert.equal(created.present, null);
 });

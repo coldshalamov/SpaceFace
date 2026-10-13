@@ -3,6 +3,7 @@ import { inspectValue } from '/lib/security.mjs';
 import {
   addObject,
   clearPlayerFlag,
+  clone,
   cloneObject,
   deleteObjects,
   expandIds,
@@ -54,9 +55,12 @@ function resize() {
 }
 
 function commitProject(next) {
-  const issues = playerCanonIssues(next);
-  if (issues.length) return showReport({ ok: false, issues });
-  history = commit(history, next);
+  const nextHistory = commit(history, next);
+  if (nextHistory === history) {
+    const issues = playerCanonIssues(clone(next));
+    if (issues.length) return showReport({ ok: false, issues });
+  }
+  history = nextHistory;
   render();
 }
 
