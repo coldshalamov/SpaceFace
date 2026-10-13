@@ -14,6 +14,7 @@ fps from separate launches swings 10-45 on this host; the numbers that hold are 
 | `... --crucible --settle-ms=N` | The same steady-flight profile for the swarm mode (seed 4242, drafts auto-answered) |
 | `... --gpu-timers` | Per-pass GPU time (bloomScene, downsample, composite) from the capability-gated timer queries |
 | `... --eval-file=<expr.js>` | Runs one page expression in the settled flight and saves its result: the way to A/B inside one session (rotate modes in blocks) |
+| `... --heap-sampling` | V8 sampling heap profiler across launch: which allocation sites still hold live memory at flight, with the JS heap at each milestone |
 | `probe-smooth-flight.mjs [--crucible]` | rAF fps, p50/p95/p99, hitch classifier, link placement, cook ledger for a 30 s window |
 
 ## Results (before -> after, same instrument)
@@ -37,6 +38,12 @@ fps from separate launches swings 10-45 on this host; the numbers that hold are 
   hotspot above 2%. The New Game screen's 1.2 s main-thread cost is style recalc (211 ms), GL command-buffer waits
   (245 ms) and microtask churn (104 ms).
 * The first 10 s of flight keep the main thread ~100% busy (render, residency, view sync).
+* Heap: `usedJSHeapSize` reads 301 MB at the title screen, 798 MB at the first flight frame and 1021 MB after 8 s of
+  flight, but the sampling profiler attributes only ~104 MB of live objects to everything allocated since New Game
+  (scene graph nodes 15.7 MB, `cloneUniforms` 7.8 MB, GLB parse 5.8 MB, package loader 4.9 MB). The rest is garbage
+  awaiting a collection (about 27 MB/s of churn in the flight tail; total GC time was 0.6% of the Crucible window),
+  so the 800-1000 MB figure is not a leak and not a stall source. The 300 MB base before New Game is the real
+  standing cost.
 
 ## Method notes (do not repeat these experiments)
 
