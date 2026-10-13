@@ -13877,18 +13877,24 @@ export const render = {
       };
       if (state.mode === 'loading' && this.spaceBg) {
         const bg = this.spaceBg;
+        const skyStarted = prepareNow();
+        let skyTimedOut = false;
         for (const [lane, adopt] of [
           [bg.deepSkyPlates, () => bg._adoptActiveSkyPlate()],
           [bg.deepSkyBases, () => bg._adoptActiveSkyBase()],
         ]) {
           while (lane?.transitioning) {
             if (cookStale()) return cookSuperseded;
-            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS) throw new Error('Opening sky upload exceeded the loading budget');
+            // Fail open like every other bounded step of this cook: a plate that has not decoded inside the
+            // budget (slow network on the hosted build) finishes uploading in flight, as it always did; throwing
+            // here would abandon the census, touch, compile and admission steps after it.
+            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS) { skyTimedOut = true; break; }
             await yieldLiveSectorGpu();
             if (cookStale()) return cookSuperseded;
             if (lane.pump({ beforeFlight: true })) adopt();
           }
         }
+        if (skyTimedOut) recordOpeningCookStep(state.render, 'cook.skyUpload', skyStarted, 'timeout');
       }
       if (!scene.environment) this._bakeEnv({ force: true });
       // The envMap stamp walk is a full-scene traverse — drive its chunked twin
