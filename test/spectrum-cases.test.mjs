@@ -8,7 +8,7 @@ import { publicSpectrum } from '../src/systems/spectrum/model.js';
 import { signalMetaText } from '../src/ui/signalInvestigationPrompt.js';
 import { admitReceipt } from '../src/ui/hudAttention.js';
 import { SPECTRUM_CASES, spectrumCaseById } from '../src/data/spectrum/scenarios.js';
-import { dist2 } from '../src/systems/spectrum/geometry.js';
+import { bearingDeg, dirFromBearing, dist2 } from '../src/systems/spectrum/geometry.js';
 
 function boot(seed) {
   const sim = createSimulation({ seed, systems: [scanner, spectrum] });
@@ -53,6 +53,18 @@ function tow(run, propId, x, z) {
   run.player.pos.z = prop.z;
   run.bus.emit('spectrum:tow', { propId, x, z });
   return { ...run.state.spectrum.propPos[propId] };
+}
+
+function matchAtFix(run) {
+  const model = run.state.spectrum;
+  if (!model.fix || !model.velocity) throw new Error(`no intercept ${summary(run)}`);
+  const dt = run.state.simTime - (model.fixTime || 0);
+  run.player.pos.x = model.fix.x + model.velocity.x * dt;
+  run.player.pos.z = model.fix.z + model.velocity.z * dt;
+  run.player.vel.x = model.velocity.x;
+  run.player.vel.z = model.velocity.z;
+  run.state.input.actions.brake = true;
+  run.sim.runTicks(1);
 }
 
 function brakeAtFix(run) {
@@ -119,13 +131,13 @@ const ROUTES = {
     pulseAt(run, 12, { x: 400, z: -240 });
     pulseAt(run, 24, { x: 180, z: 420 });
     pulseAt(run, 36, { x: -320, z: 80 });
-    brakeAtFix(run);
+    matchAtFix(run);
   },
   spectrum_skimming_wreck(run) {
     pulseAt(run, 2, { x: 200, z: -500 });
     pulseAt(run, 18, { x: -420, z: 220 });
     pulseAt(run, 30, { x: -600, z: -100 });
-    pulseAt(run, 40, { x: -80, z: 60 });
+    pulseAt(run, 48, { x: -800, z: 1200 });
     brakeAtFix(run);
   },
   spectrum_split_wake(run) {
@@ -198,6 +210,12 @@ test('twelve cases, three in each family, no shared layout', () => {
   }
   assert.deepEqual(families, { navigation: 3, hunt: 3, deception: 3, disaster: 3 });
   assert.equal(situations.size, 12);
+  const payoffs = {};
+  for (const row of SPECTRUM_CASES) payoffs[row.payoff] = (payoffs[row.payoff] || 0) + 1;
+  assert.equal(payoffs.tow, 1);
+  assert.equal(payoffs.match, 1);
+  assert.equal(payoffs.block, 1);
+  assert.ok(payoffs.brake < 11, JSON.stringify(payoffs));
   const mechanisms = new Set(SPECTRUM_CASES.flatMap((row) => row.mechanisms));
   for (const name of ['bearing', 'chirp', 'occlusion', 'multipath', 'spoof', 'jam']) {
     assert.ok(mechanisms.has(name), name);
@@ -299,6 +317,12 @@ test('jam inside the curtain is information and does not invent a fix', () => {
   assert.equal(view.reason, 'jammed');
   assert.equal(view.fix, null);
   assert.equal(view.revealed, false);
+  assert.ok(view.jamWu > 100, view.jamWu);
+  const row = run.events.results.at(-1).primary;
+  assert.equal(row.distance, view.jamWu);
+  const text = signalMetaText(row);
+  assert.match(text, new RegExp(`${view.jamWu.toLocaleString('en-US')} WU`));
+  assert.equal(text.includes('0 WU'), false);
 });
 
 test('braking on the wrong drift buoy does not complete the chord', () => {
@@ -353,4 +377,74 @@ test('echo gallery sample from the south is an echo, not the beacon coordinate',
   assert.equal(view.revealed, false);
   const truth = spectrumCaseById('spectrum_echo_gallery').emitters[0].pos;
   assert.ok(JSON.stringify(view).includes(String(truth.x)) === false);
+  assert.ok(view.props.some((prop) => prop.id === 'relay' && prop.kind === 'relay'));
+});
+
+test('a stationary buoy chirp includes the ship range-rate', () => {
+  const run = boot(11);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_cold_parallax' });
+  const vel = { x: 0, z: 40 };
+  pulseAt(run, 1, { x: 0, z: 0 }, vel);
+  pulseAt(run, 12, { x: 0, z: 620 }, vel);
+  pulseAt(run, 24, { x: -480, z: 180 }, vel);
+  const view = publicSpectrum(run.state.spectrum);
+  const heard = [...view.log].reverse().find((row) => row.accepted && row.chirp != null);
+  assert.ok(heard, JSON.stringify(view.log));
+  const buoy = spectrumCaseById('spectrum_cold_parallax').emitters[0].pos;
+  const dir = dirFromBearing(bearingDeg(heard.observer, buoy));
+  const expected = -(vel.x * dir.x + vel.z * dir.z);
+  assert.ok(Math.abs(heard.chirp - expected) < 0.05, `${heard.chirp} vs ${expected}`);
+  assert.ok(Math.abs(heard.chirp) > 5, heard.chirp);
+});
+
+test('focusing a contradictory return revokes an early fix', () => {
+  const run = boot(50311);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_split_wake' });
+  pulseAt(run, 1, { x: 200, z: 900 });
+  pulseAt(run, 12, { x: 0, z: 600 });
+  pulseAt(run, 24, { x: 400, z: 1100 });
+  pulseAt(run, 36, { x: -80, z: 480 });
+  run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
+  assert.equal(publicSpectrum(run.state.spectrum).revealed, true, summary(run));
+  const parked = run.bus.emit('spectrum:focus', { motionClass: 'STATIONARY' });
+  assert.equal(parked || true, true);
+  assert.equal(publicSpectrum(run.state.spectrum).revealed, false, summary(run));
+  assert.equal(publicSpectrum(run.state.spectrum).fix, null);
+  run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
+  assert.equal(publicSpectrum(run.state.spectrum).revealed, true, summary(run));
+});
+
+test('courier dead stop does not collect the intercept, and a matched velocity does', () => {
+  const run = boot(50311);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_courier_shear' });
+  pulseAt(run, 1, { x: 0, z: 0 });
+  pulseAt(run, 12, { x: 400, z: -240 });
+  pulseAt(run, 24, { x: 180, z: 420 });
+  pulseAt(run, 36, { x: -320, z: 80 });
+  brakeAtFix(run);
+  assert.equal(run.state.spectrum.resolved, false, summary(run));
+  matchAtFix(run);
+  assert.equal(run.state.spectrum.resolved, true, summary(run));
+});
+
+test('blocking the raider line is required; a brake with the slab parked does not rule the mine', () => {
+  const run = boot(50311);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_mirror_mine' });
+  pulseAt(run, 1, { x: 200, z: 180 });
+  for (const hop of [[280, -80], [560, 140], [730, 245], [900, 350]]) tow(run, 'slab', hop[0], hop[1]);
+  for (const hop of [[280, 180], [480, 320], [700, 470], [920, 590], [1100, 700]]) {
+    tow(run, 'player-decoy', hop[0], hop[1]);
+  }
+  pulseAt(run, 12, { x: 1500, z: 1280 });
+  pulseAt(run, 24, { x: 900, z: 1500 });
+  pulseAt(run, 36, { x: 1760, z: 980 });
+  pulseAt(run, 48, { x: 1280, z: 1680 });
+  run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
+  const parked = { ...run.state.spectrum.propPos.slab };
+  run.state.spectrum.propPos.slab = { x: 0, z: -320 };
+  brakeAtFix(run);
+  assert.equal(run.state.spectrum.resolved, false, summary(run));
+  run.state.spectrum.propPos.slab = parked;
+  brakeAtFix(run);
+  assert.equal(run.state.spectrum.resolved, true, summary(run));
 });

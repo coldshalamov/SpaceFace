@@ -183,7 +183,10 @@ test('props are distinct silhouettes and a pre-fix frame does not mark the sourc
 
   const model = createSpectrumModel('spectrum_cold_parallax', 0, 1);
   const view = applyMeasure(model, { x: 0, z: 0 }, { x: 0, z: 0 }, 1);
-  const frame = buildSpectrumFrame(view);
+  const echo = publicSpectrum(createSpectrumModel('spectrum_echo_gallery', 0, 1));
+  const echoFrame = buildSpectrumFrame(echo, echo.props);
+  assert.ok(echoFrame.props.some((prop) => prop.id === 'relay' && prop.kind === 'relay'));
+  const frame = buildSpectrumFrame(view, view.props);
   assert.equal(frame.ellipse, null);
   assert.ok(frame.rays.length >= 1);
   assert.ok(frame.cues.length <= 2);

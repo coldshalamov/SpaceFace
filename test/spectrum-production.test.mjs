@@ -119,6 +119,9 @@ test('live pose save/restore preserves displacement and missing bodies across al
     bindSpectrumWorld(model, { x: 100, z: -200 }); model.sectorId = 'sector_helios_prime';
     materializeSpectrum(model, f.state, f.sim.helpers);
     assert.ok(model.bindings.length > 0);
+    for (const prop of def.props) {
+      assert.ok(model.bindings.some((binding) => binding.key === `prop:${prop.id}`), `${def.id} ${prop.id}`);
+    }
     const first = f.state.entities.get(model.bindings[0].entityId);
     first.pos.x += 100; first.vel.z += 3;
     const saved = captureSpectrumBodies(model, f.state);

@@ -104,6 +104,7 @@ export function createSpectrumModel(caseId, simTime, seed = 1) {
     receipts: [],
     ops: 0,
     flags: { contradiction: false, jammed: false, wrong: false, reversed: false },
+    jamWu: 0,
   };
 }
 
@@ -175,11 +176,15 @@ function emitterPower(emitter, model) {
   return Number(emitter.power ?? 1);
 }
 
+function jammerGain(emitter, model) {
+  return emitter.jamUntilReverse && model.reversed ? 0 : Number(emitter.jamGain) || 0;
+}
+
 function jamAmount(def, observer, time, model) {
   let jam = 0;
   for (let i = 0; i < def.emitters.length; i++) {
     const emitter = def.emitters[i];
-    const gain = emitter.jamUntilReverse && model.reversed ? 0 : Number(emitter.jamGain) || 0;
+    const gain = jammerGain(emitter, model);
     if (!emitter.jamRadius || gain <= 0) continue;
     const pose = poseOf(emitter, time, model);
     if (!pose) continue;
@@ -188,6 +193,23 @@ function jamAmount(def, observer, time, model) {
     jam = Math.max(jam, gain * (1 - distance / emitter.jamRadius));
   }
   return jam;
+}
+
+// World-units the ship still has to travel to leave every active curtain.
+// A rejected pulse prints this distance. It is never a hardcoded zero.
+function jamClearanceWu(def, observer, time, model) {
+  let clearance = 0;
+  for (let i = 0; i < def.emitters.length; i++) {
+    const emitter = def.emitters[i];
+    const gain = jammerGain(emitter, model);
+    if (!emitter.jamRadius || gain <= 0) continue;
+    const pose = poseOf(emitter, time, model);
+    if (!pose) continue;
+    const distance = dist2(observer, pose);
+    if (distance >= emitter.jamRadius) continue;
+    clearance = Math.max(clearance, emitter.jamRadius - distance);
+  }
+  return clearance;
 }
 
 function toneOf(emitter, byId) {
@@ -386,9 +408,28 @@ function holdFix(model, def, track) {
   model.focusKey = track.key;
 }
 
+function revokeReveal(model) {
+  if (!model || model.resolved || !model.revealed) return;
+  model.revealed = false;
+  model.fix = null;
+  model.velocity = null;
+  model.fixTime = null;
+  model.area = null;
+  model.identity = 'UNRESOLVED';
+}
+
+function trackHoldsReveal(def, model, track) {
+  if (!track || track.samples.length < REQUIRED_PINGS) return false;
+  if (track.area == null || track.area > REVEAL_AREA_WU2) return false;
+  if (def.solve === 'fix-after-reverse' && !model.reversed) return false;
+  if (def.solve === 'survivor' && !track.heardWhileClaimSilent) return false;
+  if (def.wantClass && track.motionClass !== def.wantClass) return false;
+  if (track.contradiction) return false;
+  return true;
+}
+
 function considerReveal(def, model) {
   if (def.solve === 'backtrack') {
-    if (model.revealed) return;
     const impacts = [];
     const tracks = Object.values(model.tracks);
     for (let i = 0; i < tracks.length; i++) {
@@ -399,7 +440,10 @@ function considerReveal(def, model) {
         z: track.estimate.z - track.decoded.z * def.silenceS,
       });
     }
-    if (impacts.length < 3) return;
+    if (impacts.length < 3) {
+      revokeReveal(model);
+      return;
+    }
     let sx = 0;
     let sz = 0;
     for (let i = 0; i < impacts.length; i++) {
@@ -409,7 +453,10 @@ function considerReveal(def, model) {
     const mean = { x: sx / impacts.length, z: sz / impacts.length };
     let worst = 0;
     for (let i = 0; i < impacts.length; i++) worst = Math.max(worst, dist2(impacts[i], mean));
-    if (worst > BACKTRACK_AGREE_WU) return;
+    if (worst > BACKTRACK_AGREE_WU) {
+      revokeReveal(model);
+      return;
+    }
     model.revealed = true;
     model.fix = mean;
     model.velocity = { x: 0, z: 0 };
@@ -424,18 +471,14 @@ function considerReveal(def, model) {
     track = null;
     for (let i = 0; i < tracks.length; i++) {
       const candidate = tracks[i];
-      if (candidate.claim || !candidate.heardWhileClaimSilent) continue;
-      if (candidate.samples.length < REQUIRED_PINGS) continue;
-      if (candidate.area == null || candidate.area > REVEAL_AREA_WU2) continue;
-      if (def.wantClass && candidate.motionClass !== def.wantClass) continue;
+      if (!trackHoldsReveal(def, model, candidate)) continue;
       track = candidate;
     }
   }
-  if (!track || track.samples.length < REQUIRED_PINGS) return;
-  if (track.area == null || track.area > REVEAL_AREA_WU2) return;
-  if (def.solve === 'fix-after-reverse' && !model.reversed) return;
-  if (def.solve === 'survivor' && !track.heardWhileClaimSilent) return;
-  if (def.wantClass && track.motionClass !== def.wantClass) return;
+  if (!trackHoldsReveal(def, model, track)) {
+    revokeReveal(model);
+    return;
+  }
   holdFix(model, def, track);
 }
 
@@ -486,7 +529,22 @@ export function publicSpectrum(model) {
     bearingDeg: last && last.bearingDeg != null ? last.bearingDeg : null,
     reason: last ? last.reason : null,
     accepted: last ? last.accepted === true : false,
+    jamWu: Math.max(0, Math.round(Number(model.jamWu) || 0)),
+    props: publicProps(model),
   };
+}
+
+function publicProps(model) {
+  const def = definitionOf(model);
+  if (!def || !Array.isArray(def.props)) return [];
+  const out = [];
+  for (let i = 0; i < def.props.length; i++) {
+    const prop = def.props[i];
+    const placed = model.propPos && model.propPos[prop.id];
+    if (!placed) continue;
+    out.push({ id: prop.id, kind: prop.kind, x: round3(placed.x), z: round3(placed.z) });
+  }
+  return out;
 }
 
 function noteContradiction(model, track) {
@@ -509,9 +567,11 @@ export function applyMeasure(model, origin, velocity, simTime) {
   const speed = Math.hypot(velocity && velocity.x || 0, velocity && velocity.z || 0);
   const jam = jamAmount(def, observer, elapsed, model);
   if (jam >= JAM_REJECT) {
+    model.jamWu = jamClearanceWu(def, observer, elapsed, model);
     if (!model.flags.jammed) {
       model.flags.jammed = true;
-      model.receipts.push('Noise floor high. Leave the curtain and pulse again.');
+      const leave = Math.round(model.jamWu);
+      model.receipts.push(`Noise floor high. Leave the curtain (${leave} WU) and pulse again.`);
     }
     pushLog(model, {
       t: round3(time),
@@ -527,6 +587,7 @@ export function applyMeasure(model, origin, velocity, simTime) {
     });
     return publicSpectrum(model);
   }
+  model.jamWu = 0;
 
   const byId = new Map(def.emitters.map((row) => [row.id, row]));
   const occluders = occluderPoses(def, elapsed, model);
@@ -635,7 +696,10 @@ export function applyMeasure(model, origin, velocity, simTime) {
       continue;
     }
     const dir = dirFromBearing(constraintBearing);
-    let chirp = cand.pose.vx * dir.x + cand.pose.vz * dir.z;
+    const sourceRadial = cand.pose.vx * dir.x + cand.pose.vz * dir.z;
+    const shipRadial = (velocity && velocity.x || 0) * dir.x + (velocity && velocity.z || 0) * dir.z;
+    // Opening range-rate. A stationary return heard from a moving ship is not zero.
+    let chirp = sourceRadial - shipRadial;
     let motif = null;
     if (cand.emitter.modulation === 'recording' && cand.emitter.recordedVel) {
       motif = { x: cand.emitter.recordedVel.x, z: cand.emitter.recordedVel.z };
@@ -666,7 +730,6 @@ export function applyMeasure(model, origin, velocity, simTime) {
     }
   }
 
-  const revealedNow = model.revealed;
   if (!model.manualFocus) {
     let loudestAccepted = null;
     const tracks = Object.values(model.tracks);
@@ -685,9 +748,6 @@ export function applyMeasure(model, origin, velocity, simTime) {
     else if (primary) model.focusKey = primary.track.key;
   }
   considerReveal(def, model);
-  if (model.revealed && revealedNow && def.solve !== 'backtrack' && def.solve !== 'survivor') {
-    holdFix(model, def, model.tracks[model.focusKey]);
-  }
 
   const focus = model.tracks[model.focusKey] || (primary && primary.track) || null;
   pushLog(model, {
@@ -758,13 +818,7 @@ export function applyTow(model, propId, to, player, simTime) {
   return { ok: true, reversed: model.reversed === true };
 }
 
-export function applyBrake(model, player, velocity, simTime) {
-  if (!model || model.resolved || !player) return { ok: false, reason: 'idle' };
-  const speed = Math.hypot(velocity && velocity.x || 0, velocity && velocity.z || 0);
-  if (speed > BRAKE_HOLD_WU_S) return { ok: false, reason: 'still-moving' };
-  if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
-  const def = definitionOf(model);
-  if (!def || def.payoff !== 'brake') return { ok: false, reason: 'no-brake-payoff' };
+function arriveOnBody(model, def, player, simTime) {
   const time = Number(simTime);
   const elapsed = time - model.armedAt;
   const body = bodyPose(def, model, elapsed);
@@ -781,6 +835,61 @@ export function applyBrake(model, player, velocity, simTime) {
     model.receipts.push('Fix not held. That hull is not the return.');
   }
   return { ok: false, reason: onFix ? 'wrong-body' : 'off-fix' };
+}
+
+function lineToStolenIsBlocked(def, model, elapsed) {
+  const spec = def.reverse;
+  if (!spec) return false;
+  let raider = null;
+  let stolen = null;
+  for (let i = 0; i < def.emitters.length; i++) {
+    const emitter = def.emitters[i];
+    if (emitter.id === spec.raiderId) raider = emitter;
+    if (emitter.role === spec.fromRole) stolen = emitter;
+  }
+  if (!raider || !stolen) return false;
+  const from = poseOf(raider, elapsed, model);
+  const target = poseOf(stolen, elapsed, model);
+  if (!from || !target) return false;
+  return segmentBlocked(from, target, occluderPoses(def, elapsed, model)) != null;
+}
+
+function applyMatch(model, def, player, velocity, simTime) {
+  if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
+  const earned = model.velocity || { x: 0, z: 0 };
+  const earnedSpeed = Math.hypot(earned.x, earned.z);
+  if (earnedSpeed < MANEUVER_SPEED_WU_S) return { ok: false, reason: 'not-an-intercept' };
+  const vx = velocity && velocity.x || 0;
+  const vz = velocity && velocity.z || 0;
+  if (Math.hypot(vx, vz) <= BRAKE_HOLD_WU_S) return { ok: false, reason: 'dead-stop' };
+  if (Math.hypot(vx - earned.x, vz - earned.z) > BRAKE_HOLD_WU_S) {
+    return { ok: false, reason: 'velocity-mismatch' };
+  }
+  return arriveOnBody(model, def, player, simTime);
+}
+
+function applyBlock(model, def, player, velocity, simTime) {
+  const speed = Math.hypot(velocity && velocity.x || 0, velocity && velocity.z || 0);
+  if (speed > BRAKE_HOLD_WU_S) return { ok: false, reason: 'still-moving' };
+  if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
+  const elapsed = Number(simTime) - model.armedAt;
+  evalReverse(def, model, elapsed);
+  if (!model.reversed) return { ok: false, reason: 'decoy-unset' };
+  if (!lineToStolenIsBlocked(def, model, elapsed)) return { ok: false, reason: 'line-open' };
+  return arriveOnBody(model, def, player, simTime);
+}
+
+export function applyBrake(model, player, velocity, simTime) {
+  if (!model || model.resolved || !player) return { ok: false, reason: 'idle' };
+  const def = definitionOf(model);
+  if (!def) return { ok: false, reason: 'idle' };
+  if (def.payoff === 'match') return applyMatch(model, def, player, velocity, simTime);
+  if (def.payoff === 'block' || def.payoff === 'decoy') return applyBlock(model, def, player, velocity, simTime);
+  if (def.payoff !== 'brake') return { ok: false, reason: 'no-brake-payoff' };
+  const speed = Math.hypot(velocity && velocity.x || 0, velocity && velocity.z || 0);
+  if (speed > BRAKE_HOLD_WU_S) return { ok: false, reason: 'still-moving' };
+  if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
+  return arriveOnBody(model, def, player, simTime);
 }
 
 function finish(model, def) {

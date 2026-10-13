@@ -33,7 +33,8 @@ function rowFromPublic(model, view) {
   if (focus && focus.contradiction) bits.push('claim disagrees');
   if (focus && focus.echo) bits.push('echo off a charted wall');
   if (view.reversed) bits.push('lock reversed');
-  if (view.revealed) bits.push('fix held — brake alongside or tow the relay');
+  if (view.reason === 'jammed') bits.push(`${Math.max(0, Math.round(Number(view.jamWu) || 0))} WU to leave the curtain`);
+  if (view.revealed) bits.push('fix held — brake alongside, match the intercept, tow the relay, or block the line');
   else bits.push('move and pulse again');
   const detail = bits.join('. ').replace(/^\w/, (c) => c.toUpperCase());
   const row = {
@@ -44,7 +45,7 @@ function rowFromPublic(model, view) {
     manualInvestigation: true,
     detail,
     strength: view.accepted ? 0.6 : 0.2,
-    distance: 0,
+    distance: view.reason === 'jammed' ? Math.max(0, Math.round(Number(view.jamWu) || 0)) : 0,
     scanCount: Math.max(1, sampleCount),
     pos: view.observer ? { x: view.observer.x, z: view.observer.z } : { x: 0, z: 0 },
     spectrum: {

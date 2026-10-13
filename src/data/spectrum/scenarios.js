@@ -1,8 +1,9 @@
 // Twelve Spectrum cases. Truth poses live here so the sim can run the forward
 // sensor model. The player-facing row is built without copying these poses.
 // Families: 3 navigation, 3 moving hunts, 3 deceptions, 3 salvage disasters.
-// Each case uses a different spatial trick. Payoffs are physical (brake, tow,
-// block a line, place a decoy), not a ping to collect.
+// Each case uses a different spatial trick. Payoffs are physical (brake to a
+// stop, match an intercept velocity, tow a relay, block a line and place a
+// decoy), not a ping to collect.
 
 function emitter(spec) {
   return Object.freeze(spec);
@@ -103,7 +104,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 800, z: 0, radius: 1800 }),
     solve: 'fix',
     wantClass: null,
-    payoff: 'brake',
+    payoff: 'match',
     bodyId: 'courier',
     emitters: Object.freeze([
       emitter({
@@ -178,7 +179,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 700, z: 400, radius: 1600 }),
     solve: 'fix-after-reverse',
     wantClass: 'DRIFTING',
-    payoff: 'brake',
+    payoff: 'block',
     bodyId: 'hauler',
     reverse: Object.freeze({ raiderId: 'raider', fromRole: 'decoy', toRole: 'player-decoy' }),
     emitters: Object.freeze([
