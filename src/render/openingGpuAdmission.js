@@ -17,8 +17,12 @@ import { compileSubjectsAcrossPresents } from './compilePresentSlice.js';
 import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  isPackageGeometryDetached,
+  orientationHoldHidesDrawable,
+  presentedCompressedUploadUnsafe,
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
+  restorePresentedCompressedMips,
 } from './packageCpuDetach.js';
 import {
   collectStartupGeometries,
@@ -735,6 +739,27 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
       withOnlySubjectsDrawable(lightingScene, drawableSubjects, () => {
         for (const item of drawableSubjects) {
           if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
+          // The bloom frame hides these for the aspect-flip hold. This touch is a
+          // second draw that reveals the subject on purpose, and three uploads
+          // attributes before any draw guard can refuse. Hide the released meshes
+          // for this draw too so it cannot create a zero-length buffer.
+          if (typeof item.traverse === 'function') {
+            item.traverse((node) => {
+              if (!node || node.visible === false) return;
+              // Sibling atlases still hold the chain the residency pass cleared
+              // on this user. Restore before the draw so texStorage sees levels.
+              restorePresentedCompressedMips(node.material);
+              // projectObject uploads attributes before any draw guard. A released
+              // mesh here would create a zero-length buffer and fail the indexed
+              // draw. The presented frame still draws it against the GPU copy.
+              const hide = orientationHoldHidesDrawable(renderer, node)
+                || isPackageGeometryDetached(node.geometry)
+                || presentedCompressedUploadUnsafe(renderer, node.material);
+              if (!hide) return;
+              if (!hiddenForTouch.has(node)) hiddenForTouch.set(node, true);
+              node.visible = false;
+            });
+          }
         }
         renderer.render(lightingScene, camera);
       }, options.drawableSession);

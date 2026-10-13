@@ -16,4 +16,4 @@ const shots = (trace.shots || []).map((s) => ({ ...s, file: path.join(outDir, 'f
 delete trace.shots;
 const [vw, vh] = String(trace.meta.resolution || '960x540').split('x').map(Number);
 const verdict = await gradeAndWrite({ trace, shots, outDir, label: trace.meta.label || path.basename(outDir), evidence: argv.includes('--evidence'), vw, vh });
-process.exitCode = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2;
+process.exitCode = verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : verdict === 'ENVIRONMENT' ? 4 : 2;

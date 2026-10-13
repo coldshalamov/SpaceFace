@@ -72,13 +72,9 @@ test('the activity-pocket registry includes Sedna Dark, and the older sectors ar
   assert.equal(ACTIVITY_POCKETS_BY_SECTOR[SEDNA_ACTIVITY_SECTOR_ID], SEDNA_ACTIVITY_POCKETS);
   assert.equal(
     ACTIVITY_POCKETS.length,
-    CERES_ACTIVITY_POCKETS.length
-      + HELIOS_ACTIVITY_POCKETS.length
-      + PALLAS_ACTIVITY_POCKETS.length
-      + VESTA_ACTIVITY_POCKETS.length
-      + TETHYS_ACTIVITY_POCKETS.length
-      + SEDNA_ACTIVITY_POCKETS.length
-      + SKER_ACTIVITY_POCKETS.length,
+    // The registry is the flat concatenation of every registered sector, so a new sector can join
+    // it without this pin being edited (CR-HOLLOW-4 added seven).
+    Object.values(ACTIVITY_POCKETS_BY_SECTOR).reduce((total, list) => total + list.length, 0),
   );
   assert.equal(activityPocketsForSector('sector_sedna_dark').length, 2);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
