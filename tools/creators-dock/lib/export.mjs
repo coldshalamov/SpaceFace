@@ -211,6 +211,17 @@ function explainField(field, issues, manifest) {
   issues.push(`${field.id}: unknown fieldKind "${field.fieldKind}"`);
 }
 
+function finiteMeasure(value, issues, label) {
+  if (value === null) {
+    issues.push(`${label} must be a finite number`);
+    return null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) return round6(value);
+  if (value === undefined) return 0;
+  issues.push(`${label} must be a finite number`);
+  return null;
+}
+
 function buildScenario(project, actors, triggers, objectives, attachments, issues, projectId) {
   if (!project || project.schema !== PROJECT_SCHEMA) return null;
   const entities = [];
@@ -238,8 +249,16 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
       profile: actor.profile,
       role: actor.role || 'prop',
       isPlayer: !!actor.isPlayer,
-      pos: { x: round6(actor.x || 0), y: round6(actor.y || 0), z: round6(actor.z || 0) },
-      vel: { x: round6(actor.velX || 0), y: round6(actor.velY || 0), z: round6(actor.velZ || 0) },
+      pos: {
+        x: round6(actor.x || 0),
+        y: finiteMeasure(actor.y, issues, `${actor.id}.y`),
+        z: round6(actor.z || 0),
+      },
+      vel: {
+        x: round6(actor.velX || 0),
+        y: finiteMeasure(actor.velY, issues, `${actor.id}.velY`),
+        z: round6(actor.velZ || 0),
+      },
       heading: round6(actor.heading || 0),
       angularVelocity: round6(actor.angularVelocity || 0),
       persistent: actor.persistent !== false,
@@ -651,6 +670,19 @@ export function importScenario(doc) {
   if (doc.saveLoadEquivalence) project.saveLoadEquivalence = doc.saveLoadEquivalence;
 
   const objects = [];
+  let refusedMeasure = false;
+  function importedMeasure(value, label) {
+    if (value === null) {
+      refusedMeasure = true;
+      issues.push(`${label} must be a finite number`);
+      return null;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (value === undefined) return 0;
+    refusedMeasure = true;
+    issues.push(`${label} must be a finite number`);
+    return null;
+  }
   for (const entity of doc.entities || []) {
     const actor = {
       id: entity.alias,
@@ -658,11 +690,11 @@ export function importScenario(doc) {
       role: entity.role,
       profile: entity.profile,
       x: entity.pos ? entity.pos.x : 0,
-      y: entity.pos && Number.isFinite(entity.pos.y) ? entity.pos.y : 0,
+      y: importedMeasure(entity.pos ? entity.pos.y : undefined, `${entity.alias || 'entity'}.pos.y`),
       z: entity.pos ? entity.pos.z : 0,
       heading: entity.heading || 0,
       velX: entity.vel ? entity.vel.x : 0,
-      velY: entity.vel && Number.isFinite(entity.vel.y) ? entity.vel.y : 0,
+      velY: importedMeasure(entity.vel ? entity.vel.y : undefined, `${entity.alias || 'entity'}.vel.y`),
       velZ: entity.vel ? entity.vel.z : 0,
       angularVelocity: entity.angularVelocity || 0,
       persistent: entity.persistent !== false,
@@ -689,6 +721,7 @@ export function importScenario(doc) {
       project: null,
     };
   }
+  if (refusedMeasure) return { ok: false, issues, project: null };
   let linkIndex = 0;
   for (const link of doc.attachments || []) {
     const row = {

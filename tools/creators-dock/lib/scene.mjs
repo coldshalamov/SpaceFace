@@ -1,7 +1,10 @@
 // Pure XZ scene model for Creator's Dock.
 // No Node builtins, no physics step. The lab is the only simulator.
 
-import { detachData, sameJson, sortValue } from './stableJson.mjs';
+import {
+  detachData, liveObjectsIn, protectLiveObjects, restoreInheritedArrays, sameJson,
+  snapshotInheritedArrays, sortValue, unprotectLiveObjects,
+} from './stableJson.mjs';
 
 export const PROJECT_SCHEMA = 'spaceface.creatorsDock.v1';
 export const REQUEST_SCHEMA = 'spaceface.creatorsDockRequest.v1';
@@ -468,6 +471,23 @@ function copyGetterGrid(source, out) {
   }
 }
 
+function dataFields(object) {
+  const fields = [];
+  if (!object || typeof object !== 'object') return fields;
+  for (const [key, field] of ownDataEntries(object)) {
+    if (key === 'toJSON' || typeof field === 'function') continue;
+    fields.push([key, field]);
+  }
+  return fields;
+}
+
+function wipedObject(original, produced) {
+  if (!original || typeof original !== 'object' || Array.isArray(original)) return false;
+  if (!produced || typeof produced !== 'object' || Array.isArray(produced) || produced === original) return false;
+  if (!dataFields(original).length) return false;
+  return dataFields(produced).length === 0;
+}
+
 function materialize(value, key, seen) {
   if (value === null) return null;
   if (value === undefined) return undefined;
@@ -482,11 +502,20 @@ function materialize(value, key, seen) {
   let carriedGrid;
   if (typeof toJSON === 'function') {
     seen.add(value);
+    const inheritedArrays = snapshotInheritedArrays(value);
     const gridAccessor = gridAccessorState(value);
     const gridFields = gridAccessor ? snapshotGridFields(gridAccessor.value) : null;
     // toJSON runs on a detached tree so a non-configurable write cannot stick to the live scene.
     const detached = detachData(value);
-    const produced = toJSON.call(detached, key);
+    const live = liveObjectsIn([value, gridAccessor && gridAccessor.value]);
+    protectLiveObjects(live);
+    let produced;
+    try {
+      produced = toJSON.call(detached, key);
+    } finally {
+      unprotectLiveObjects();
+      restoreInheritedArrays(inheritedArrays);
+    }
     restoreGridAccessor(value, gridAccessor);
     if (gridFields) restoreGridFields(gridAccessor.value, gridFields);
     if (gridFields && gridFieldsStillNull(gridAccessor.value, gridFields)) return CLONE_REJECT;
@@ -502,11 +531,14 @@ function materialize(value, key, seen) {
       return undefined;
     } else if (produced && typeof produced === 'object') {
       if (accessorHidData(before, produced) || introducedNull(before, produced)) return CLONE_REJECT;
-      const nested = materialize(produced, key, seen);
-      if (nested && typeof nested === 'object' && !Array.isArray(nested) && nested.grid == null) {
-        copyGetterGrid(value, nested);
+      // {} must not erase a world that still has credits and the rest of its fields.
+      if (!wipedObject(value, produced)) {
+        const nested = materialize(produced, key, seen);
+        if (nested && typeof nested === 'object' && !Array.isArray(nested) && nested.grid == null) {
+          copyGetterGrid(value, nested);
+        }
+        return nested;
       }
-      return nested;
     } else if (produced !== value) {
       return materialize(produced, key, seen);
     }

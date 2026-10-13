@@ -414,7 +414,7 @@ test('export keeps authored y and velY when toJSON nulls them', async () => {
   Object.defineProperty(project, 'toJSON', {
     enumerable: false,
     value() {
-      const actor = this.objects.find((object) => object && object.isPlayer === true);
+      const actor = project.objects.find((object) => object && object.isPlayer === true);
       actor.y = null;
       actor.velY = null;
       return this;
@@ -433,6 +433,43 @@ test('export keeps authored y and velY when toJSON nulls them', async () => {
   const roundTrip = objectById(imported.project, 'player');
   assert.equal(roundTrip.y, 4.5);
   assert.equal(roundTrip.velY, -1.25);
+});
+
+test('a null height is not exported or imported as zero', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const player = objectById(project, 'player');
+  player.y = null;
+  player.velY = null;
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, false);
+  assert.equal(player.y, null);
+  assert.equal(player.velY, null);
+  const entity = exported.scenario.entities.find((row) => row.isPlayer);
+  assert.equal(entity.pos.y, null);
+  assert.equal(entity.vel.y, null);
+
+  const zeroed = getComposition('dock.intercept-cargo');
+  const zeroPlayer = objectById(zeroed, 'player');
+  zeroPlayer.y = 0;
+  zeroPlayer.velY = 0;
+  const zeros = await exportProject(zeroed);
+  assert.equal(zeros.ok, true, (zeros.issues || []).join('\n'));
+  const zeroEntity = zeros.scenario.entities.find((row) => row.isPlayer);
+  assert.equal(zeroEntity.pos.y, 0);
+  assert.equal(zeroEntity.vel.y, 0);
+  const zeroImport = importScenario(zeros.scenario);
+  assert.equal(zeroImport.ok, true, (zeroImport.issues || []).join('\n'));
+  const zeroBack = objectById(zeroImport.project, 'player');
+  assert.equal(zeroBack.y, 0);
+  assert.equal(zeroBack.velY, 0);
+
+  const nulled = structuredClone(zeros.scenario);
+  const nulledPlayer = nulled.entities.find((row) => row.isPlayer);
+  nulledPlayer.pos.y = null;
+  nulledPlayer.vel.y = null;
+  const imported = importScenario(nulled);
+  assert.equal(imported.ok, false);
+  assert.equal(imported.project, null);
 });
 
 test('a place disc edits the exported place and objectives follow the lab metric', async () => {

@@ -1,5 +1,5 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
-import { detachData } from './stableJson.mjs';
+import { detachData, liveObjectsIn, protectLiveObjects, snapshotInheritedArrays, unprotectLiveObjects } from './stableJson.mjs';
 
 const CAP = 100;
 
@@ -431,9 +431,17 @@ function runShielded(scenes, fn) {
   activeAccessors = scenesNeedAccessors(scenes) ? snapshotAccessors(scenes) : [];
   activeSetters = snapshotSetters(scenes);
   activeArrays = snapshotArrays(scenes);
+  const protectedLive = liveObjectsIn(scenes);
+  for (const entry of activeAccessors) {
+    if (entry.value && typeof entry.value === 'object') {
+      for (const object of liveObjectsIn([entry.value])) protectedLive.add(object);
+    }
+  }
+  protectLiveObjects(protectedLive);
   try {
     return publish(fn());
   } finally {
+    unprotectLiveObjects();
     activeShields = previousShields;
     activeAccessors = previousAccessors;
     activeSetters = previousSetters;
@@ -527,6 +535,16 @@ function snapshotArrays(scenes) {
   const entries = [];
   const seen = new Set();
   for (const scene of scenes) collectArrays(scene, entries, seen);
+  for (const scene of scenes) {
+    for (const extra of snapshotInheritedArrays(scene)) {
+      if (entries.some((entry) => entry.array === extra.array)) continue;
+      entries.push({
+        array: extra.array,
+        length: extra.length,
+        items: extra.items.map((value) => ({ kind: 'data', value })),
+      });
+    }
+  }
   return entries;
 }
 

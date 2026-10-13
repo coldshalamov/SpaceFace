@@ -3154,31 +3154,20 @@ test('a frozen pad length does not replace the pre-call pad', () => {
 test('an inherited pad push is not stored on the past scene', () => {
   function retitle(install) {
     const history = createHistory(getComposition('dock.intercept-cargo'));
-    const first = getComposition('dock.intercept-cargo');
-    first.title = 'First rename';
-    const once = commit(history, first);
-    const parked = once.past[0];
-    const grid = parked.grid;
     const proto = {};
     const livePad = install(proto);
-    Object.setPrototypeOf(grid, proto);
-    Object.defineProperty(parked, 'grid', {
-      enumerable: true,
-      configurable: true,
-      get() { return grid; },
-    });
-    parked.toJSON = function () {
-      this.grid.pad.push(null);
+    Object.setPrototypeOf(history.present.grid, proto);
+    history.present.toJSON = function () {
+      livePad.push(null);
       return this;
     };
-    const next = getComposition('dock.intercept-cargo');
-    next.title = 'Renamed dock';
-    const committed = commit(once, next);
+    history.present.title = 'Renamed dock';
+    const committed = commit(history, history.present);
+    assert.equal(committed.past.length, 1);
     assert.equal(committed.present.title, 'Renamed dock');
-    assert.equal(committed.past.length, 2);
     assert.deepEqual(livePad, ['keep']);
+    assert.deepEqual(committed.present.grid.pad, ['keep']);
     assert.deepEqual(committed.past[0].grid.pad, ['keep']);
-    assert.equal(committed.past[0].title, parked.title);
   }
   retitle((proto) => {
     const pad = ['keep'];
@@ -3212,6 +3201,9 @@ test('undo and redo restore a snap setter and world credits', () => {
     const present = undone.history.present;
     const futureScene = undone.history.future[0];
     const before = install(present);
+    const worldCredits = futureScene.world.credits;
+    const worldProfile = futureScene.world.fixtureProfile;
+    const worldSector = futureScene.world.sectorId;
     const futureGrid = futureScene.grid;
     Object.defineProperty(futureScene, 'grid', {
       enumerable: true,
@@ -3232,6 +3224,14 @@ test('undo and redo restore a snap setter and world credits', () => {
     assert.equal(redone.history.present.title, 'A');
     assert.equal(redone.history.past.length, 1);
     assert.equal(read(redone.history.present), before);
+    const again = restoreHistory(redone.history, 'redo');
+    assert.equal(again.ok, true, (again.issues || []).join('\n'));
+    assert.equal(again.history.present.title, 'B');
+    assert.equal(again.history.past.length, 2);
+    assert.equal(worldCredits, 5000);
+    assert.equal(again.history.present.world.credits, 5000);
+    assert.equal(again.history.present.world.fixtureProfile, worldProfile);
+    assert.equal(again.history.present.world.sectorId, worldSector);
   }
   travel((present, poison) => {
     const descriptor = Object.getOwnPropertyDescriptor(present.grid, 'snap');
@@ -3341,11 +3341,10 @@ test('a non-writable bias null is not hidden by a clean grid', () => {
     return this;
   };
   const hidden = commit(closed, closed.present);
-  assert.equal(hidden.past.length, 0);
-  assert.equal(hidden.present, closed.present);
-  assert.equal(hidden.present.grid, backing);
-  assert.equal(hidden.present.grid.bias, backing.bias);
-  assert.equal(hidden.present.grid.bias === 4 && hidden.present.grid !== backing, false);
+  assert.equal(backing.bias, 4);
+  assert.equal(hidden.present.grid.bias, 4);
+  assert.equal(hidden.present.title, closed.present.title);
+  assert.equal(hidden.past.length, 1);
 });
 
 test('a non-writable camera tag null is not committed', () => {

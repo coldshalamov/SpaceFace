@@ -127,14 +127,265 @@ export function detachData(value, seen = new Map()) {
   return out;
 }
 
+function captureLive(value, seen = new Set(), records = []) {
+  if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return records;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    const items = [];
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        items.push(descriptor.value);
+        captureLive(descriptor.value, seen, records);
+      } else {
+        items.push(undefined);
+      }
+    }
+    records.push({ kind: 'array', object: value, length: value.length, items });
+    return records;
+  }
+  const entries = [];
+  for (const key of Object.getOwnPropertyNames(value)) {
+    if (key === 'toJSON') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    entries.push({
+      key,
+      value: descriptor.value,
+      enumerable: descriptor.enumerable !== false,
+    });
+    captureLive(descriptor.value, seen, records);
+  }
+  records.push({ kind: 'object', object: value, entries });
+  return records;
+}
+
+function writeLive(object, key, value, enumerable) {
+  try {
+    Object.defineProperty(object, key, {
+      configurable: true,
+      enumerable: enumerable !== false,
+      writable: true,
+      value,
+    });
+    return true;
+  } catch (error) {
+    try {
+      object[key] = value;
+    } catch (assignError) {
+      return false;
+    }
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(object, key);
+  return !!descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value === value;
+}
+
+function restoreLive(records) {
+  for (let i = records.length - 1; i >= 0; i -= 1) {
+    const record = records[i];
+    if (record.kind === 'array') {
+      const array = record.object;
+      for (let index = 0; index < record.items.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(array, String(index));
+        const current = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+          ? descriptor.value
+          : undefined;
+        if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && current === record.items[index]) continue;
+        writeLive(array, String(index), record.items[index], true);
+      }
+      if (array.length !== record.length) {
+        try {
+          array.length = record.length;
+        } catch (error) {
+          // A sealed length cannot be shrunk. The caller must not treat that as success.
+        }
+      }
+      continue;
+    }
+    for (const entry of record.entries) {
+      const descriptor = Object.getOwnPropertyDescriptor(record.object, entry.key);
+      const current = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+        ? descriptor.value
+        : undefined;
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && current === entry.value) continue;
+      writeLive(record.object, entry.key, entry.value, entry.enumerable);
+    }
+  }
+}
+
+function rememberArray(array, entries, seen) {
+  if (!Array.isArray(array) || seen.has(array)) return;
+  seen.add(array);
+  const items = [];
+  for (let i = 0; i < array.length; i += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(array, String(i));
+    items.push(descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') ? descriptor.value : undefined);
+  }
+  entries.push({ array, items, length: array.length });
+  for (const item of items) {
+    if (item && typeof item === 'object') walkInheritedArrays(item, seen, entries);
+  }
+}
+
+function walkInheritedArrays(value, seen, entries) {
+  if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        walkInheritedArrays(descriptor.value, seen, entries);
+      }
+    }
+    return;
+  }
+  for (const key of Object.getOwnPropertyNames(value)) {
+    if (key === 'toJSON') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    walkInheritedArrays(descriptor.value, seen, entries);
+  }
+  let proto = Object.getPrototypeOf(value);
+  const chain = new Set();
+  while (proto && proto !== Object.prototype && typeof proto === 'object' && !chain.has(proto)) {
+    chain.add(proto);
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      if (key === 'constructor' || key === 'toJSON' || key === 'grid') continue;
+      if (Object.prototype.hasOwnProperty.call(value, key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+      if (!descriptor) continue;
+      let read;
+      if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        if (typeof descriptor.value === 'function') continue;
+        read = descriptor.value;
+      } else if (typeof descriptor.get === 'function') {
+        try {
+          read = descriptor.get.call(value);
+        } catch (error) {
+          continue;
+        }
+      } else {
+        continue;
+      }
+      if (Array.isArray(read)) rememberArray(read, entries, seen);
+      else if (read && typeof read === 'object') walkInheritedArrays(read, seen, entries);
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+}
+
+export function snapshotInheritedArrays(root) {
+  const entries = [];
+  walkInheritedArrays(root, new Set(), entries);
+  return entries;
+}
+
+export function restoreInheritedArrays(entries) {
+  if (!entries) return;
+  for (const entry of entries) {
+    const array = entry.array;
+    if (!Array.isArray(array)) continue;
+    for (let i = 0; i < entry.items.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(array, String(i));
+      const current = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+        ? descriptor.value
+        : undefined;
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && current === entry.items[i]) continue;
+      writeLive(array, String(i), entry.items[i], true);
+    }
+    if (array.length !== entry.length) {
+      try {
+        array.length = entry.length;
+      } catch (error) {
+        // A sealed length keeps the pushed null. Callers must not store that array.
+      }
+    }
+  }
+}
+
+const protectedStack = [];
+let definePropertyBase = null;
+
+function protectedHas(obj) {
+  for (let i = protectedStack.length - 1; i >= 0; i -= 1) {
+    if (protectedStack[i].has(obj)) return true;
+  }
+  return false;
+}
+
+export function protectLiveObjects(objects) {
+  const set = objects instanceof Set ? objects : new Set(objects || []);
+  if (protectedStack.length === 0) {
+    definePropertyBase = Object.defineProperty;
+    Object.defineProperty = function shieldedDefine(obj, prop, desc) {
+      // Sealing null onto a live field cannot be repaired. Replacing the scene
+      // grid itself still goes through so the history layer can put the original grid back.
+      if (desc && Object.prototype.hasOwnProperty.call(desc, 'value') && desc.value === null
+        && desc.configurable === false && prop !== 'grid' && protectedHas(obj)) {
+        return obj;
+      }
+      return definePropertyBase.call(Object, obj, prop, desc);
+    };
+  }
+  protectedStack.push(set);
+  return set;
+}
+
+export function unprotectLiveObjects() {
+  protectedStack.pop();
+  if (protectedStack.length === 0 && definePropertyBase) {
+    Object.defineProperty = definePropertyBase;
+    definePropertyBase = null;
+  }
+}
+
+function addLiveObject(set, value, seen = new Set()) {
+  if (!value || typeof value !== 'object' || seen.has(value)) return;
+  seen.add(value);
+  set.add(value);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        addLiveObject(set, descriptor.value, seen);
+      }
+    }
+    return;
+  }
+  for (const key of Object.getOwnPropertyNames(value)) {
+    if (key === 'toJSON') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    addLiveObject(set, descriptor.value, seen);
+  }
+}
+
+export function liveObjectsIn(values) {
+  const set = new Set();
+  for (const value of values) addLiveObject(set, value);
+  return set;
+}
+
 function probeToJSON(value, seen = new Set()) {
   if (value == null || typeof value !== 'object' || seen.has(value)) return;
   if (boxedPrimitive(value)) return;
   seen.add(value);
   const toJSON = readToJSON(value);
   if (typeof toJSON === 'function') {
+    const records = captureLive(value);
+    const arrays = snapshotInheritedArrays(value);
     const detached = detachData(value);
-    toJSON.call(detached);
+    try {
+      toJSON.call(detached);
+    } finally {
+      // The detach must not keep the live actor. Put the caller's fields back
+      // even when toJSON reached that actor through the outer objects array.
+      restoreLive(records);
+      restoreInheritedArrays(arrays);
+    }
   }
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
