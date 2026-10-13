@@ -144,9 +144,10 @@ export function bindEntity(entity) {
     pos: entity.pos || { x: 0, z: 0 },
     rot: entity.rot || 0,
   });
-  const presentedRadius = Number.isFinite(entity.presentedRadius)
-    ? Number(entity.presentedRadius)
-    : expectedRadius;
+  // A missing draw measurement stays unmeasured. Copying the keep-out into
+  // presentedRadius would make the scale check compare a field to itself.
+  const measuredPresentation = Number.isFinite(entity.presentedRadius);
+  const presentedRadius = measuredPresentation ? Number(entity.presentedRadius) : null;
   const hull = Number(entity.hull);
   const hullMax = Number(entity.hullMax);
   const effects = [];
@@ -195,7 +196,8 @@ export function bindEntity(entity) {
     rot: Number(entity.rot) || 0,
     colliderRadius: Number.isFinite(colliderRadius) ? colliderRadius : 0,
     expectedRadius: Number.isFinite(expectedRadius) ? expectedRadius : 0,
-    presentedRadius: Number.isFinite(presentedRadius) ? presentedRadius : 0,
+    presentedRadius,
+    presentationSource: measuredPresentation ? 'measured' : 'unmeasured',
     hull: Number.isFinite(hull) ? hull : null,
     hullMax: Number.isFinite(hullMax) ? hullMax : null,
     lodLevel,

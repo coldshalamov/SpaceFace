@@ -11,6 +11,7 @@ test('the scene-truth hook does not draw and does not install an overlay', () =>
   ], { tick: 4, seed: 47, zoom: 144, qualityTier: 'medium' });
   assert.equal(frame.overlay, false);
   assert.equal(frame.draws, false);
+  assert.equal(frame.gpuFrame, false);
   assert.equal(frame.objectCount, 1);
   assert.equal(hookInstallsOverlay(), false);
   const source = fs.readFileSync(repoPath('tools/scene-truth/lib/hook.mjs'), 'utf8');

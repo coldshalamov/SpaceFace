@@ -27,6 +27,57 @@ function csvCell(value) {
   return text;
 }
 
+function payloadText(payload) {
+  if (typeof payload === 'string') return payload;
+  if (!payload || typeof payload !== 'object') return '';
+  if (typeof payload.svg === 'string') return payload.svg;
+  if (typeof payload.markup === 'string') return payload.markup;
+  if (typeof payload.bytes === 'string') return payload.bytes;
+  if (typeof payload.pixels === 'string') return payload.pixels;
+  if (typeof payload.image === 'string') return payload.image;
+  return '';
+}
+
+function payloadBytes(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const bytes = payload.bytes ?? payload.pixels ?? payload.image ?? null;
+  if (bytes == null || typeof bytes === 'string') return null;
+  if (typeof bytes.length === 'number') return bytes.length;
+  return null;
+}
+
+function isSvgPayload(payload) {
+  if (payload && typeof payload === 'object' && (payload.format === 'svg' || payload.source === 'semantic-svg')) return true;
+  const text = payloadText(payload).trim();
+  return text.startsWith('<svg') || text.startsWith('<?xml') || text.includes('<svg');
+}
+
+/**
+ * A semantic SVG diagram is not a captured frame.
+ * gpuFrame is true only for a non-SVG payload marked as a real capture.
+ */
+export function claimGpuFrame(witness) {
+  if (!witness || typeof witness !== 'object') return false;
+  if (witness.captureKind === 'semantic-projection' || witness.captureKind === 'svg' || witness.captureKind === 'semantic-svg') {
+    return false;
+  }
+  if (witness.captureKind !== 'gpu-frame') return false;
+  const payload = witness.frameCapture ?? witness.pixels ?? witness.frameBytes ?? null;
+  if (payload == null || isSvgPayload(payload)) return false;
+  if (typeof payload === 'string') return false;
+  const size = payloadBytes(payload);
+  return size != null && size > 0;
+}
+
+export function publishCapture(witness) {
+  const gpuFrame = claimGpuFrame(witness);
+  return {
+    ...witness,
+    gpuFrame,
+    captureKind: gpuFrame ? 'gpu-frame' : 'semantic-projection',
+  };
+}
+
 export function sceneSvg(witness) {
   const frame = witness.frame;
   const pad = 8;
@@ -45,7 +96,10 @@ export function sceneSvg(witness) {
     if (!object.screen) return '';
     const color = colors[object.type] || '#cccccc';
     const dash = object.screen.onScreen ? '' : ' stroke-dasharray="2 2"';
-    return `<g><circle cx="${object.screen.x}" cy="${object.screen.z}" r="${Math.max(object.presentedRadius, 0.4)}" fill="${color}" fill-opacity="0.35" stroke="${color}"${dash}/><text x="${object.screen.x}" y="${object.screen.z - Math.max(object.presentedRadius, 1) - 1}" font-size="3" fill="#d5dbe6">${esc(object.alias || object.objectId)}</text></g>`;
+    const drawn = Number.isFinite(object.presentedRadius) && object.presentedRadius > 0
+      ? object.presentedRadius
+      : (Number.isFinite(object.colliderRadius) && object.colliderRadius > 0 ? object.colliderRadius : 0.4);
+    return `<g><circle cx="${object.screen.x}" cy="${object.screen.z}" r="${Math.max(drawn, 0.4)}" fill="${color}" fill-opacity="0.35" stroke="${color}"${dash}/><text x="${object.screen.x}" y="${object.screen.z - Math.max(drawn, 1) - 1}" font-size="3" fill="#d5dbe6">${esc(object.alias || object.objectId)}</text></g>`;
   }).join('');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}">
@@ -59,11 +113,18 @@ export function sceneSvg(witness) {
 }
 
 export function writeAtlas(outDir, report) {
+  const published = {
+    ...report,
+    packs: (report.packs || []).map((pack) => ({
+      ...pack,
+      views: (pack.views || []).map((view) => publishCapture(view)),
+    })),
+  };
   fs.mkdirSync(outDir, { recursive: true });
   const captureDir = path.join(outDir, 'captures');
   fs.mkdirSync(captureDir, { recursive: true });
   const links = [];
-  for (const pack of report.packs || []) {
+  for (const pack of published.packs || []) {
     if (!pack.views) continue;
     const dir = path.join(captureDir, pack.id);
     fs.mkdirSync(dir, { recursive: true });
@@ -71,7 +132,13 @@ export function writeAtlas(outDir, report) {
       if (view.qualityTier !== 'medium') continue;
       const name = `z${view.zoom}.svg`;
       fs.writeFileSync(path.join(dir, name), sceneSvg(view));
-      links.push({ scenarioId: pack.id, zoom: view.zoom, file: `captures/${pack.id}/${name}` });
+      links.push({
+        scenarioId: pack.id,
+        zoom: view.zoom,
+        file: `captures/${pack.id}/${name}`,
+        gpuFrame: false,
+        captureKind: 'semantic-svg',
+      });
     }
   }
   const issues = report.issues || [];
@@ -83,10 +150,10 @@ export function writeAtlas(outDir, report) {
     ].map(csvCell).join(',')),
   ].join('\n');
   fs.writeFileSync(path.join(outDir, 'issues.csv'), `${csv}\n`);
-  fs.writeFileSync(path.join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
-  fs.writeFileSync(path.join(outDir, 'verdict.json'), `${JSON.stringify(report.verdict, null, 2)}\n`);
-  fs.writeFileSync(path.join(outDir, 'report.md'), markdown(report, links));
-  fs.writeFileSync(path.join(outDir, 'index.html'), html(report, links));
+  fs.writeFileSync(path.join(outDir, 'report.json'), `${JSON.stringify(published, null, 2)}\n`);
+  fs.writeFileSync(path.join(outDir, 'verdict.json'), `${JSON.stringify(published.verdict, null, 2)}\n`);
+  fs.writeFileSync(path.join(outDir, 'report.md'), markdown(published, links));
+  fs.writeFileSync(path.join(outDir, 'index.html'), html(published, links));
   return { outDir, files: ['index.html', 'report.md', 'issues.csv', 'report.json', 'verdict.json'] };
 }
 
@@ -132,7 +199,9 @@ function markdown(report, links) {
   lines.push('');
   lines.push('## Captures');
   lines.push('');
-  for (const link of links) lines.push(`- [${link.scenarioId} zoom ${link.zoom}](${link.file})`);
+  for (const link of links) {
+    lines.push(`- [${link.scenarioId} zoom ${link.zoom}](${link.file}) — semantic SVG, not a GPU frame`);
+  }
   lines.push('');
   lines.push('## Critique');
   lines.push('');
@@ -147,7 +216,7 @@ function issuesOf(report) {
 
 function html(report, links) {
   const cards = links.map((link) => (
-    `<figure><img src="${esc(link.file)}" alt="${esc(link.scenarioId)} zoom ${esc(link.zoom)}"/><figcaption>${esc(link.scenarioId)} zoom ${esc(link.zoom)}</figcaption></figure>`
+    `<figure><img src="${esc(link.file)}" alt="Semantic SVG of ${esc(link.scenarioId)} zoom ${esc(link.zoom)}, not a GPU frame"/><figcaption>${esc(link.scenarioId)} zoom ${esc(link.zoom)} — semantic SVG, not a GPU frame</figcaption></figure>`
   )).join('');
   const rows = issuesOf(report).map((row) => (
     `<tr class="${row.failBuild ? 'fail' : 'review'}"><td>${esc(row.confidence)}</td><td>${esc(row.kind)}</td><td>${esc(row.scenarioId)}</td><td>${esc(row.tick)}</td><td>${esc(row.zoom)}</td><td>${esc(row.qualityTier)}</td><td>${esc((row.objectIds || []).join(', '))}</td><td>${esc(row.summary)}</td></tr>`

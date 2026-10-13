@@ -36,6 +36,46 @@ function packageReady(object) {
   return !!(object.package && object.package.sourceExists && object.package.metadataExists && object.package.key);
 }
 
+function sameRecord(left, right) {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length === 0 || leftKeys.length !== rightKeys.length) return false;
+  for (let i = 0; i < leftKeys.length; i += 1) {
+    const key = leftKeys[i];
+    if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
+    const a = left[key];
+    const b = right[key];
+    if (a && b && typeof a === 'object' && typeof b === 'object') {
+      if (!sameRecord(a, b)) return false;
+    } else if (a !== b) return false;
+  }
+  return true;
+}
+
+/** True when an observation record is the expected record, by reference or by field copy. */
+export function copiedObservation(witness) {
+  if (!witness || typeof witness !== 'object') return false;
+  if (witness.observed && witness.expected && sameRecord(witness.observed, witness.expected)) return true;
+  const objects = Array.isArray(witness.objects) ? witness.objects : [];
+  for (let i = 0; i < objects.length; i += 1) {
+    const object = objects[i];
+    if (!object) continue;
+    if (object.presentationSource === 'expected-copy') return true;
+    if (object.observed && object.expected && sameRecord(object.observed, object.expected)) return true;
+  }
+  return false;
+}
+
+function hullReach(object) {
+  if (object && object.presentationSource !== 'expected-copy'
+    && Number.isFinite(object.presentedRadius) && object.presentedRadius > 0) {
+    return object.presentedRadius;
+  }
+  return object && Number.isFinite(object.colliderRadius) ? object.colliderRadius : 0;
+}
+
 /**
  * Semantic detectors. They read object ids and package metadata.
  * A pixel-hash change with matching geometry is not a failure.
@@ -43,6 +83,18 @@ function packageReady(object) {
 export function analyzeWitness(witness, prior = null) {
   const found = [];
   const objects = Array.isArray(witness.objects) ? witness.objects : [];
+  if (copiedObservation(witness)) {
+    found.push(issue(
+      witness,
+      'copied-observation',
+      'high',
+      objects.map((object) => object && object.objectId).filter(Boolean).slice(0, 8),
+      'observed fields measured independently of the expected fields',
+      'observed fields are a copy of the expected fields',
+      'The witness repeated the expected record as the observation.',
+    ));
+    return found;
+  }
   const ids = new Map();
 
   if (witness.playerRequired !== false && !objects.some((object) => object.isPlayer && object.alive !== false)) {
@@ -146,7 +198,11 @@ export function analyzeWitness(witness, prior = null) {
       ));
     }
 
-    const scaleRatio = object.expectedRadius > 0 ? object.presentedRadius / object.expectedRadius : 1;
+    const scaleRatio = object.presentationSource === 'measured' && object.expectedRadius > 0
+      ? object.presentedRadius / object.expectedRadius
+      : (Number.isFinite(object.presentedRadius) && object.expectedRadius > 0
+        ? object.presentedRadius / object.expectedRadius
+        : null);
     if (object.alive !== false && object.required && Number.isFinite(scaleRatio) && scaleRatio > TOL.scaleMismatchRatio) {
       found.push(issue(
         witness,
@@ -350,7 +406,7 @@ function depthIssues(witness, live) {
       if (nearDist >= farDist) continue;
       if (far.renderOrder <= near.renderOrder) continue;
       const separation = dist(far, near);
-      if (separation > far.presentedRadius + near.presentedRadius) continue;
+      if (separation > hullReach(far) + hullReach(near)) continue;
       found.push(issue(
         witness,
         'impossible-depth-order',

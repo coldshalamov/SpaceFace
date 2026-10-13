@@ -27,6 +27,7 @@ export function sceneTruthFrameFromSamples(samples, meta = {}) {
     seed: meta.seed ?? null,
     zoom: meta.zoom ?? null,
     qualityTier: meta.qualityTier || null,
+    gpuFrame: false,
     objectCount: objects.length,
     objects,
   };

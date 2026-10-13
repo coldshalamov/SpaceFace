@@ -2,6 +2,7 @@ import { ENEMY_TYPES } from '../../../src/data/enemies.js';
 import { runLabScenarioInternal } from '../../../src/testing/lab/runScenario.js';
 import { bindEntity } from './bindVisual.mjs';
 import { WITNESS_SCHEMA } from './constants.mjs';
+import { claimGpuFrame } from './atlas.mjs';
 import {
   SHIPPING_CHASE_ZOOM,
   frameHalfExtents,
@@ -108,7 +109,7 @@ export function projectWitness({ entry, surface, objects, zoom, tier, tick, focu
     frame,
     playerRequired: true,
     captureKind: 'semantic-projection',
-    gpuFrame: false,
+    gpuFrame: claimGpuFrame({ captureKind: 'semantic-projection' }),
     objects: projected,
   };
 }
