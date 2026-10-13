@@ -192,3 +192,26 @@ test('a frame that never clears still gets its response after the bounded retrie
   assert.equal(log.dispatches[0].responders.length, 3);
   assert.equal(state.spawnBudget.used, 3);
 });
+
+test('a field rock on the authored arrival slot moves the launch instead of starting a patrol inside it', async () => {
+  // Baseline: where do the three reserves arrive with open space?
+  const open = boot();
+  await open.sim.registry.get('physics').prepareBackend(open.state);
+  sustainedFireOn(open.bus, open.player.id, open.station.id);
+  open.sim.runTicks(120);
+  assert.equal(open.log.dispatches.length, 1);
+  const authored = open.log.dispatches[0].arrivals.map((row) => ({ ...row.pos }));
+
+  // Same world, but a 40 WU rock sits exactly on the first reserve's authored slot.
+  const rocky = boot();
+  await rocky.sim.registry.get('physics').prepareBackend(rocky.state);
+  rocky.sim.spawn({ type: 'asteroid', team: 0, pos: { x: authored[0].x, z: authored[0].z }, radius: 40, hull: 1e6, hullMax: 1e6, mass: 1e6, data: {} });
+  sustainedFireOn(rocky.bus, rocky.player.id, rocky.station.id);
+  rocky.sim.runTicks(120);
+  assert.equal(rocky.log.dispatches.length, 1, 'the response still launches');
+  const arrivals = rocky.log.dispatches[0].arrivals;
+  for (const arrival of arrivals) {
+    assert.ok(Math.hypot(arrival.pos.x - authored[0].x, arrival.pos.z - authored[0].z) >= 40 + arrival.radius,
+      `responder ${arrival.id} starts at ${JSON.stringify(arrival.pos)}, inside the rock at ${JSON.stringify(authored[0])}`);
+  }
+});

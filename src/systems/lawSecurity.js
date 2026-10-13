@@ -1442,6 +1442,9 @@ export const lawSecurity = {
       delete incident.spawnBudgetDeferred;
     }
     let spawnedCount = 0;
+    // Field rocks are not living-world actors, but a patrol that launches inside one starts inside its collision body.
+    // Only the rocks near the arrival frame matter, gathered once per dispatch (a rare event), not per candidate slot.
+    const arrivalSolids = reserveGrant > 0 ? this._arrivalSolidsNear(state, incident) : [];
     for (let index = 0; index < reserveGrant && typeof this.helpers.spawnEntity === 'function'; index++) {
       const reserveOrdinal = Math.max(0, incident.nextReserveOrdinal | 0);
       const pos = reserveArrivalPoint({
@@ -1477,7 +1480,7 @@ export const lawSecurity = {
       // each other's firing lanes. Keep the visible arrival, but find a clear launch slot.
       const clearPos = clearReserveArrivalPoint(pos,
         incidentOccupant(state, incident.attackerId, incident.attackerGeneration)?.pos,
-        station, spec.radius, actors.concat(out));
+        station, spec.radius, actors.concat(out, arrivalSolids));
       if (!clearPos && (incident.arrivalCrowdedTries | 0) < RESERVE_ARRIVAL_CROWDED_RETRIES) {
         incident.arrivalCrowdedTries = (incident.arrivalCrowdedTries | 0) + 1;
         incident.spawnBudgetDeferred = 'arrival_crowded';
@@ -1508,6 +1511,21 @@ export const lawSecurity = {
       budget.releaseSome(requester, reserveGrant - spawnedCount);
     }
     return out;
+  },
+
+  /** Field rocks within reach of the witness frame around the offender: solid obstacles for a reserve's launch slot. */
+  _arrivalSolidsNear(state, incident) {
+    const aggressor = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
+    const origin = aggressor && aggressor.pos;
+    if (!origin) return [];
+    const reach = WITNESS_FRAME_HALF_WU + 120;
+    const near = [];
+    forEachFieldRock(state, (rock) => {
+      const at = rock.pos;
+      if (!at) return;
+      if (Math.hypot(at.x - origin.x, at.z - origin.z) <= reach + (Number(rock.radius) || 0)) near.push(rock);
+    });
+    return near;
   },
 
   _dispatchIncident(incident, victim, attacker) {
