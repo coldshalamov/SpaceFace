@@ -628,6 +628,20 @@ html body #screens #sf-automation.au-orrery .au-next-body {
   -webkit-box-orient: vertical; overflow: hidden; }
 html body #screens #sf-automation.au-orrery .au-next-row { margin-top: 2px; padding-top: 2px; }
 html body #screens #sf-automation.au-orrery .au-next-meta { font-size: 12px; }
+/* 761–1100 wide (960×540): five flow nodes beside the gauge left ~90px each, so DRONES/TRADERS/
+   OUTPOSTS ran under the next ring. The strip takes its own row under the gauge; the board card's
+   cost sits on its own line above the button instead of wrapping into it. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  html body #screens #sf-automation.au-orrery .au-income { flex-wrap: wrap; row-gap: 4px; }
+  html body #screens #sf-automation.au-orrery .au-flow { flex: 1 0 100%; margin-left: 0; }
+  html body #screens #sf-automation.au-orrery .au-node__t i { letter-spacing: .08em; }
+  html body #screens #sf-automation.au-orrery .au-next-row { flex-wrap: wrap; justify-content: flex-start; row-gap: 6px; }
+  html body #screens #sf-automation.au-orrery .au-next-meta { flex: 1 0 100%; }
+  html body #screens #sf-automation.au-orrery .au-next-body { -webkit-line-clamp: 3; }
+  /* drone rungs: five stat columns clipped "upkeep" under THROTTLE; range and upkeep take a second line
+     (doubled class: the base track rule sits later in this sheet) */
+  html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta { grid-auto-flow: row; grid-template-columns: 10ch 20ch 10ch; row-gap: 2px; }
+}
 html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-content: start; padding-top: 2px; }
 html body #screens #sf-automation.au-orrery .au-metric {
   border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }

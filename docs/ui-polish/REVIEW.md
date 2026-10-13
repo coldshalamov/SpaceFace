@@ -156,6 +156,12 @@ Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer 
 
 **Live-build check (Code Work's ask, 06:10 ET):** the real game (`?dev=screen:range`, then Esc and the real F4 key) matches ui-bench at 960 (146px), 1280 (224px) and 1920 (385px). On a real touch phone the coarse pointer gives AGAIN / TRY IT EMPTY 44px rows, so NEXT RULE wrapped to its own row and the 390×844 course was 314px, not 384. Under `(pointer: coarse)` the verbs now share one row (10px gap, phone-sized lamp key, as on the phone Market): course 390×844 **314→364**, 375×812 285→335, 360×740 217→267; 844×390 is 318. The drone's name (BRUISER) is now painted last on a small void plate, so the gate rung and turn ring that pack under it on the narrow course no longer cut through the letters. Shots: `ui-shots/range-course/live/` (before) and `live/after3/`.
 
+## Credits + Automation @960 — session notes (2026-10-13, ui-polish-27)
+
+- **Credits** (`settingsLayouts.js`, 901–1100px only): the 80vh orrery reached into the reel, so its MADE BY label sat on the blurb at 960×540 and the whole emblem covered the TYPE rows at 1024×768. The emblem is now `min(80vh, 38vw)`, parked 30% off the right edge, and the reel is 420px wide with a 38ch sentence; the current body name is 28 SVG units so it stays legible. Under 600px tall the reel-progress dial (decoration) is hidden because it fell onto ‹ BACK.
+- **Automation** (`automationPanel.js`, 761–1100px only): CONDUCT THE MACHINE takes its own row under the gauge, so DRONES/TRADERS/OUTPOSTS no longer run under the next ring. The board card's "4,000 cr starter" sits on its own line above the button, the body gets a third line, and the drone bay rungs put range and upkeep on a second line so "upkeep" isn't clipped by THROTTLE at 1024.
+- 1280×720, 1920×1080, and the phone are unchanged; the only pixel differences are the animated drift field and beads. Shots are in `ui-shots/leftovers27/{before,after2}/`.
+
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 
 **Before (390×844):** the berth was one long scroll (~2180px). Title and mechanic scrolled off; vitals alone were ~454px (44px min-height on every act); destination tabs sat at y≈1810 under the whole tab body; Munitions spanned the vitals grid.
