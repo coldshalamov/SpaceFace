@@ -1,6 +1,8 @@
 // Survival score and salvage are separate entitlements. RunSession owns the wallet.
+import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { admitStuntThreat, threatReward } from '../combat/stuntScoring.js';
+import { WEAPONS } from '../data/weapons.js';
 import { bodyLife } from '../combat/stuntEvidence.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
@@ -19,6 +21,37 @@ export const chipValueForPlan = () => 10; // cohort lives use the threat table, 
 export function estimateBoardScore({ gunKills = 0, physicsKills = 0, stuntPoints = 0, playerPhysics = true, threatClass = 'fodder' } = {}) {
   return (Math.max(0, Math.trunc(gunKills)) + (playerPhysics ? Math.max(0, Math.trunc(physicsKills)) : 0)) * threatReward(threatClass).baseScore + Math.max(0, Math.floor(stuntPoints));
 }
+// Contact and environment are the physical cause even when a weapon id rode along
+// on the same receipt. Anything else is that weapon's display name, never its id.
+const PHYSICAL_CAUSE_WORDS = Object.freeze({
+  direct_contact: 'Ram',
+  environment: 'The environment',
+});
+const WEAPON_NAME_BY_ID = new Map(WEAPONS.filter((def) => def && def.id && def.name).map((def) => [def.id, def.name]));
+
+function provenanceTag(receipt) {
+  return receipt && typeof receipt.tag === 'string' && receipt.tag ? receipt.tag : '';
+}
+
+function physicalCauseWord(receipt) {
+  return PHYSICAL_CAUSE_WORDS[provenanceTag(receipt)] || null;
+}
+
+function rewardCausePhrase(payload, victim, tick) {
+  const onBody = victim ? readRecentImpulseProvenance(victim, tick) : null;
+  const onEvent = payload && payload.provenance && typeof payload.provenance === 'object'
+    ? payload.provenance : null;
+  const receipt = physicalCauseWord(onBody) ? onBody
+    : (physicalCauseWord(onEvent) ? onEvent : (onBody || onEvent));
+  if (!receipt) return null;
+  const physical = physicalCauseWord(receipt);
+  if (physical) return physical;
+  const weaponId = typeof receipt.weaponId === 'string' ? receipt.weaponId : '';
+  const name = WEAPON_NAME_BY_ID.get(weaponId);
+  if (name) return name;
+  return provenanceTag(receipt) ? 'A weapon' : null;
+}
+
 function liveRun(state) {
   const run = state?.run;
   return run?.kind === 'survival' && run.phase !== 'inactive' && validateRunState(run).ok ? run : null;
@@ -101,7 +134,14 @@ export const survivalRewards = {
     const playerId = this.state.playerId;
     const killerId = payload.killerId ?? payload.provenance?.actorId;
     const playerOwned = playerId != null && killerId === playerId;
-    this._emit('run:awardRequested', { xp: killXpFor(victim.data?.level), score: playerOwned ? threat.baseScore : 0, reason: 'kill', wave: run.wave });
+    const causePhrase = rewardCausePhrase(payload, victim, this.state && this.state.tick);
+    this._emit('run:awardRequested', {
+      xp: killXpFor(victim.data?.level),
+      score: playerOwned ? threat.baseScore : 0,
+      reason: 'kill',
+      wave: run.wave,
+      ...(causePhrase ? { causePhrase } : {}),
+    });
     // SWARM-06: Bounty Hunter pays triple on champions — the perk's whole contract. The scale
     // rides the same entitlement, so the chip the body drops IS the triple, not a side award.
     const bountyMult = runHasPerk(run, 'bounty_hunter') && victim.data?.swarmChampion === true ? 3 : 1;

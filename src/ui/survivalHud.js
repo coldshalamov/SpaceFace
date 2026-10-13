@@ -153,6 +153,8 @@ export function earnLine(award) {
         const shown = names.slice(0, 3).join(', ');
         line += names.length > 3 ? ` · ${shown} +${names.length - 3}` : ` · ${shown}`;
       }
+    } else if (award.reason === 'kill' && typeof award.causePhrase === 'string' && award.causePhrase) {
+      line += ` · ${award.causePhrase}`;
     }
     parts.push(line);
   }

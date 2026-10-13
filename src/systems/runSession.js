@@ -42,6 +42,15 @@ function toReason(value) {
   return typeof value === 'string' ? value : null;
 }
 
+// A kill's displayed cause. Raw tags and weapon ids stay off the line.
+function toCausePhrase(value) {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  if (!text || text.length > 48) return undefined;
+  if (/[a-z0-9]+_[a-z0-9]+/.test(text) || /\bwpn_/.test(text)) return undefined;
+  return text;
+}
+
 // Style settlements name their acts; anything else (or nothing) rides bare.
 function toBankActs(value) {
   if (!Array.isArray(value)) return undefined;
@@ -240,6 +249,7 @@ export const runSession = {
       reason: toReason(request && request.reason),
       wave: Number.isInteger(request && request.wave) ? request.wave : null,
       bankActs: toBankActs(request && request.bankActs),
+      causePhrase: toCausePhrase(request && request.causePhrase),
     });
     if (committed && next.level > previousLevel) {
       this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp });
