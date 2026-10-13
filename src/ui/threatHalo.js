@@ -77,6 +77,8 @@ export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
   'return_fire_warning',
   'pd_curtain_closing',
   'warden_screen_closing',
+  'furnace_preheat',
+  'mothlight_iris',
 ]);
 
 export const TELEGRAPH_CUE_TICKS = 30;
