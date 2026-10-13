@@ -201,3 +201,60 @@ test('clearing the only player is refused and checking another actor moves the f
   assert.equal(uncleared.ok, false);
   assert.deepEqual(playerIds(uncleared.project), ['cargo']);
 });
+
+function plainActor(id, fields = {}) {
+  return {
+    id,
+    kind: 'actor',
+    role: 'prop',
+    profile: 'asteroid.light',
+    x: 10,
+    z: 10,
+    heading: 0,
+    velX: 0,
+    velZ: 0,
+    angularVelocity: 0,
+    team: 2,
+    isPlayer: false,
+    persistent: true,
+    label: id,
+    ...fields,
+  };
+}
+
+test('addObject refuses a non-player when the scene would not have exactly one player', () => {
+  const empty = emptyProject({ id: 'dock.zero', title: 'Zero', seed: 1 });
+  const added = addObject(empty, plainActor('cargo'));
+  assert.equal(added.ok, false);
+  assert.equal(added.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  assert.equal(added.project, empty);
+  assert.equal(added.project.objects.length, 0);
+
+  const doubled = getComposition('dock.intercept-cargo');
+  const player = objectById(doubled, 'player');
+  doubled.objects.push({ ...player, id: 'wingman', label: 'wingman' });
+  assert.equal(playerIds(doubled).length, 2);
+  const extra = addObject(doubled, plainActor('rock'));
+  assert.equal(extra.ok, false);
+  assert.equal(extra.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 2')), true);
+  assert.equal(extra.project, doubled);
+  assert.equal(objectById(extra.project, 'rock'), null);
+  assert.equal(playerIds(extra.project).length, 2);
+});
+
+test('replaceObject refuses a replace that leaves zero players', () => {
+  const bare = emptyProject({ id: 'dock.zero', title: 'Zero', seed: 1 });
+  const cargo = plainActor('cargo');
+  bare.objects = [cargo];
+  const replaced = replaceObject(bare, 'cargo', { ...cargo, label: 'moved', x: 30 });
+  assert.equal(replaced.ok, false);
+  assert.equal(replaced.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  assert.equal(replaced.project, bare);
+  assert.equal(objectById(replaced.project, 'cargo').label, 'cargo');
+  assert.equal(objectById(replaced.project, 'cargo').x, 10);
+  assert.equal(playerIds(replaced.project).length, 0);
+
+  const promoted = replaceObject(bare, 'cargo', { ...cargo, isPlayer: true, role: 'player' });
+  assert.equal(promoted.ok, true, promoted.issues.join('\n'));
+  assert.deepEqual(playerIds(promoted.project), ['cargo']);
+});

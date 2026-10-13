@@ -193,10 +193,8 @@ export function clearPlayerFlag(project, id) {
 export function addObject(project, object) {
   const issues = issuesForObject(object);
   if (objectById(project, object && object.id)) issues.push(`duplicate id "${object && object.id}"`);
-  if (isPlayerActor(object)) {
-    const found = countPlayers(project.objects) + 1;
-    if (found > 1) issues.push(exactlyOnePlayerIssue(found));
-  }
+  const found = countPlayers(project.objects) + (isPlayerActor(object) ? 1 : 0);
+  if (found !== 1) issues.push(exactlyOnePlayerIssue(found));
   if (issues.length) return { ok: false, project, issues };
   const next = clone(project);
   const placed = applySnap(clone(object), next.grid);
@@ -210,8 +208,7 @@ export function replaceObject(project, id, object) {
   if (!objectById(project, id)) issues.push(`missing id "${id}"`);
   else {
     const found = playersAfterReplace(project, id, object);
-    const current = countPlayers(project.objects);
-    if (found > 1 || (found === 0 && current > 0)) issues.push(exactlyOnePlayerIssue(found));
+    if (found !== 1) issues.push(exactlyOnePlayerIssue(found));
   }
   if (issues.length) return { ok: false, project, issues };
   const next = clone(project);
