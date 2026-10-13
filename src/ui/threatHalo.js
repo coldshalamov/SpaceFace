@@ -1346,7 +1346,10 @@ export function createThreatHalo(root, busOrOpts) {
     for (let i = 0; i < HOSTILE_LIMIT; i++) {
       const slot = hostileSlots[i];
       if (i >= hostileCount || !resolvePlacement(hostileX[i], hostileY[i], false)) {
-        if (slotInGrace(slot)) {
+        // Grace belongs to a placement failure for this same eligible shooter. An actor
+        // entering the frame, dying or leaving the halo must retire its old arc now.
+        if (i < hostileCount && slot.getAttribute('data-entity-id') === String(hostileId[i])
+          && slotInGrace(slot)) {
           shown++;
           continue;
         }
