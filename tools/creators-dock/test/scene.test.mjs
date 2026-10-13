@@ -2424,3 +2424,169 @@ test('stableStringify does not throw out of commit', () => {
   assert.equal(committed, titled);
   assert.equal(committed.present.title.includes('Renamed'), false);
 });
+
+test('a return-this toJSON cannot store a non-enumerable null grid', () => {
+  const installs = [
+    function () {
+      Object.defineProperty(this, 'grid', {
+        enumerable: false,
+        configurable: true,
+        writable: true,
+        value: null,
+      });
+      return this;
+    },
+    function () {
+      Object.defineProperty(this, 'grid', {
+        enumerable: false,
+        configurable: true,
+        writable: true,
+        value: [{ pad: [null] }],
+      });
+      return this;
+    },
+  ];
+  for (const install of installs) {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    const grid = history.present.grid;
+    history.present.toJSON = install;
+    const committed = commit(history, history.present);
+    assert.equal(committed.present.grid, grid);
+    assert.notEqual(committed.present.grid, null);
+    assert.equal(Array.isArray(committed.present.grid), false);
+    assert.equal(committed.past.length, 0);
+    const descriptor = Object.getOwnPropertyDescriptor(committed.present, 'grid');
+    assert.equal(descriptor && descriptor.value, grid);
+  }
+});
+
+test('a return-this toJSON cannot keep a non-configurable null grid', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const grid = history.present.grid;
+  history.present.toJSON = function () {
+    Object.defineProperty(this, 'grid', {
+      enumerable: true,
+      configurable: false,
+      writable: false,
+      value: null,
+    });
+    return this;
+  };
+  let committed;
+  assert.doesNotThrow(() => {
+    committed = commit(history, history.present);
+  });
+  assert.notEqual(committed.present.grid, null);
+  assert.equal(committed.present.grid, grid);
+  assert.equal(committed.past.length, 0);
+  const descriptor = Object.getOwnPropertyDescriptor(committed.present, 'grid');
+  assert.equal(Object.prototype.hasOwnProperty.call(descriptor, 'value'), true);
+  assert.equal(descriptor.value, grid);
+});
+
+test('a return-this toJSON cannot null grid through its setter', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const grid = history.present.grid;
+  let slot = grid;
+  Object.defineProperty(history.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return slot; },
+    set(value) { slot = value; },
+  });
+  history.present.toJSON = function () {
+    this.grid = null;
+    return this;
+  };
+  const committed = commit(history, history.present);
+  assert.equal(slot, grid);
+  assert.equal(history.present.grid, grid);
+  assert.notEqual(history.present.grid, null);
+  assert.notEqual(committed.present.grid, null);
+  assert.equal(committed.present.grid.size, grid.size);
+});
+
+test('a parked toJSON cannot commit an in-place or non-configurable null grid', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const first = getComposition('dock.intercept-cargo');
+  first.title = 'First rename';
+  const once = commit(history, first);
+  const live = once.present;
+  const grid = live.grid;
+  live.grid.pad = ['keep'];
+  const parked = once.past[0];
+  const parkedGrid = parked.grid;
+  parked.toJSON = function () {
+    live.grid.pad = [null];
+    live.grid.size = null;
+    return this;
+  };
+  Object.defineProperty(parked, 'grid', {
+    configurable: true,
+    enumerable: true,
+    get() { return parkedGrid; },
+  });
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Second rename';
+  const committed = commit(once, next);
+  assert.equal(live.grid, grid);
+  assert.equal(live.grid.size, grid.size);
+  assert.equal(live.grid.pad[0], 'keep');
+  for (const scene of [committed.present, ...committed.past, ...committed.future]) {
+    assert.notEqual(scene.grid, null);
+    assert.notEqual(scene.grid.size, null);
+    if (Array.isArray(scene.grid.pad)) assert.notEqual(scene.grid.pad[0], null);
+  }
+
+  const poisons = [
+    function (victim) {
+      Object.defineProperty(victim, 'grid', {
+        configurable: false,
+        enumerable: true,
+        writable: false,
+        value: null,
+      });
+    },
+    function (victim) {
+      Object.defineProperty(victim, 'grid', {
+        configurable: false,
+        enumerable: true,
+        writable: false,
+        value: [{ pad: [null] }],
+      });
+    },
+  ];
+  for (const poison of poisons) {
+    const base = createHistory(getComposition('dock.intercept-cargo'));
+    const renamed = commit(base, first);
+    const victim = renamed.present;
+    const victimGrid = victim.grid;
+    const parkedScene = renamed.past[0];
+    const parkedSceneGrid = parkedScene.grid;
+    parkedScene.toJSON = function () {
+      poison(victim);
+      return this;
+    };
+    Object.defineProperty(parkedScene, 'grid', {
+      configurable: true,
+      enumerable: true,
+      get() { return parkedSceneGrid; },
+    });
+    const third = getComposition('dock.intercept-cargo');
+    third.title = 'Third rename';
+    let returned;
+    assert.doesNotThrow(() => {
+      returned = commit(renamed, third);
+    });
+    assert.equal(returned.present.grid, victimGrid);
+    assert.notEqual(returned.present.grid, null);
+    assert.equal(Array.isArray(returned.present.grid), false);
+    assert.notEqual(returned.present.grid.size, null);
+    for (const scene of [returned.present, ...returned.past, ...returned.future]) {
+      assert.notEqual(scene.grid, null);
+      assert.equal(Array.isArray(scene.grid), false);
+      if (Array.isArray(scene.grid.pad)) assert.notEqual(scene.grid.pad[0], null);
+      assert.notEqual(scene.grid.size, null);
+    }
+  }
+});

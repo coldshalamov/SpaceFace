@@ -43,7 +43,7 @@ function isDataDescriptor(descriptor) {
 
 function ownDataEntries(object) {
   const entries = [];
-  for (const key of Object.keys(object)) {
+  for (const key of Object.getOwnPropertyNames(object)) {
     const descriptor = Object.getOwnPropertyDescriptor(object, key);
     if (!isDataDescriptor(descriptor)) continue;
     entries.push([key, descriptor.value]);
@@ -228,8 +228,8 @@ function restoreRecord(record) {
       // length can be non-writable after a hostile toJSON
     }
   } else {
-    for (const key of Object.keys(object)) {
-      if (record.values.has(key)) continue;
+    for (const key of Object.getOwnPropertyNames(object)) {
+      if (key === 'toJSON' || record.values.has(key)) continue;
       const descriptor = Object.getOwnPropertyDescriptor(object, key);
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
         try {
@@ -266,6 +266,48 @@ function restoreTree(records) {
   }
 }
 
+function gridAccessorState(value) {
+  if (!value || typeof value !== 'object') return null;
+  const descriptor = Object.getOwnPropertyDescriptor(value, 'grid');
+  if (!descriptor || typeof descriptor.get !== 'function') return null;
+  let current;
+  try {
+    current = descriptor.get.call(value);
+  } catch (error) {
+    current = undefined;
+  }
+  return { descriptor, value: current };
+}
+
+function readGridValue(value) {
+  try {
+    return value.grid;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+function restoreGridAccessor(value, saved) {
+  if (!saved || saved.value == null) return;
+  if (readGridValue(value) === saved.value) return;
+  try {
+    value.grid = saved.value;
+  } catch (error) {
+    // The setter refused the previous value. Fall through to a data property.
+  }
+  if (readGridValue(value) === saved.value) return;
+  try {
+    Object.defineProperty(value, 'grid', {
+      configurable: true,
+      enumerable: saved.descriptor.enumerable !== false,
+      writable: true,
+      value: saved.value,
+    });
+  } catch (error) {
+    // A non-configurable getter stays. The clone carries the pre-call value instead.
+  }
+}
+
 function materialize(value, key, seen) {
   if (value === null) return null;
   if (value === undefined) return undefined;
@@ -277,9 +319,12 @@ function materialize(value, key, seen) {
   if (seen.has(value)) throw new TypeError('Converting circular structure to JSON');
   const before = snapshot(value);
   const toJSON = readToJSON(value);
+  let carriedGrid;
   if (typeof toJSON === 'function') {
     seen.add(value);
+    const gridAccessor = gridAccessorState(value);
     const produced = toJSON.call(value, key);
+    restoreGridAccessor(value, gridAccessor);
     if (produced === null) return CLONE_REJECT;
     if (produced === undefined) return undefined;
     if (produced && typeof produced === 'object') {
@@ -288,6 +333,7 @@ function materialize(value, key, seen) {
     } else if (produced !== value) {
       return materialize(produced, key, seen);
     }
+    if (gridAccessor && gridAccessor.value != null) carriedGrid = gridAccessor.value;
   } else if (value instanceof String || value instanceof Number || value instanceof Boolean) {
     return materialize(value.valueOf(), key, seen);
   } else {
@@ -309,6 +355,11 @@ function materialize(value, key, seen) {
     const child = materialize(childValue, childKey, seen);
     if (child === CLONE_REJECT) return CLONE_REJECT;
     if (child !== undefined) writeData(out, childKey, child);
+  }
+  if (carriedGrid !== undefined && !Object.prototype.hasOwnProperty.call(out, 'grid')) {
+    const child = materialize(carriedGrid, 'grid', seen);
+    if (child === CLONE_REJECT) return CLONE_REJECT;
+    if (child !== undefined) writeData(out, 'grid', child);
   }
   return out;
 }

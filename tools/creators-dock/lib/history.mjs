@@ -28,6 +28,8 @@ function inheritedGridGetter(project) {
   return gridReadsThroughAccessor(project);
 }
 
+let activeShields = null;
+
 function dataGrid(scene) {
   if (!canHostGrid(scene)) return null;
   const descriptor = Object.getOwnPropertyDescriptor(scene, 'grid');
@@ -35,10 +37,139 @@ function dataGrid(scene) {
   return descriptor;
 }
 
-function restoreDataGrid(scene, descriptor) {
-  const current = Object.getOwnPropertyDescriptor(scene, 'grid');
-  if (current && Object.prototype.hasOwnProperty.call(current, 'value') && current.value === descriptor.value) {
+function shapeOf(grid) {
+  if (!grid || typeof grid !== 'object') return null;
+  const fields = new Map();
+  for (const key of Object.getOwnPropertyNames(grid)) {
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    const value = descriptor.value;
+    fields.set(key, {
+      enumerable: descriptor.enumerable !== false,
+      value,
+      items: Array.isArray(value) ? value.slice() : null,
+    });
+  }
+  return { fields };
+}
+
+function shieldScenes(scenes) {
+  const shields = [];
+  const seen = new Set();
+  for (const scene of scenes) {
+    if (!canHostGrid(scene) || seen.has(scene)) continue;
+    seen.add(scene);
+    const descriptor = dataGrid(scene);
+    if (!descriptor) continue;
+    shields.push({
+      scene,
+      descriptor,
+      shape: shapeOf(descriptor.value),
+      stuck: false,
+    });
+  }
+  return shields;
+}
+
+function gridValuePoisoned(value, seen = new Set()) {
+  if (value === null) return true;
+  if (!value || typeof value !== 'object') return false;
+  if (seen.has(value)) return false;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return true;
+      if (gridValuePoisoned(descriptor.value, seen)) return true;
+    }
     return false;
+  }
+  for (const key of Object.getOwnPropertyNames(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    if (gridValuePoisoned(descriptor.value, seen)) return true;
+  }
+  return false;
+}
+
+function gridShapeDirty(grid, shape) {
+  if (!shape) return false;
+  if (!grid || typeof grid !== 'object') return true;
+  for (const [key, saved] of shape.fields) {
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return true;
+    if (descriptor.value !== saved.value) return true;
+    if (saved.items) {
+      if (!Array.isArray(descriptor.value) || descriptor.value.length !== saved.items.length) return true;
+      for (let i = 0; i < saved.items.length; i += 1) {
+        if (descriptor.value[i] !== saved.items[i]) return true;
+      }
+    }
+  }
+  for (const key of Object.getOwnPropertyNames(grid)) {
+    if (shape.fields.has(key)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    return true;
+  }
+  return false;
+}
+
+function writeField(object, key, value, enumerable) {
+  try {
+    Object.defineProperty(object, key, {
+      configurable: true,
+      enumerable: enumerable !== false,
+      writable: true,
+      value,
+    });
+  } catch (error) {
+    try {
+      object[key] = value;
+    } catch (assignError) {
+      return false;
+    }
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(object, key);
+  return !!descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value === value;
+}
+
+function writeGridFields(grid, shape) {
+  if (!shape || !grid || typeof grid !== 'object') return false;
+  let ok = true;
+  for (const [key, saved] of shape.fields) {
+    if (!writeField(grid, key, saved.value, saved.enumerable)) ok = false;
+    if (saved.items && Array.isArray(saved.value)) {
+      for (let i = 0; i < saved.items.length; i += 1) {
+        if (saved.value[i] !== saved.items[i] && !writeField(saved.value, String(i), saved.items[i], true)) ok = false;
+      }
+    }
+  }
+  for (const key of [...Object.getOwnPropertyNames(grid)]) {
+    if (shape.fields.has(key)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    try {
+      delete grid[key];
+    } catch (error) {
+      ok = false;
+    }
+  }
+  return ok && !gridShapeDirty(grid, shape);
+}
+
+function restoreDataGrid(scene, descriptor, shape) {
+  const current = Object.getOwnPropertyDescriptor(scene, 'grid');
+  const same = current
+    && Object.prototype.hasOwnProperty.call(current, 'value')
+    && current.value === descriptor.value;
+  if (same) {
+    if (!gridShapeDirty(current.value, shape)) return false;
+    return writeGridFields(current.value, shape) ? true : 'stuck';
   }
   try {
     Object.defineProperty(scene, 'grid', {
@@ -48,30 +179,115 @@ function restoreDataGrid(scene, descriptor) {
       value: descriptor.value,
     });
   } catch (error) {
+    const now = Object.getOwnPropertyDescriptor(scene, 'grid');
+    if (now && Object.prototype.hasOwnProperty.call(now, 'value') && gridValuePoisoned(now.value)) return 'stuck';
     return true;
+  }
+  if (descriptor.value && gridShapeDirty(descriptor.value, shape) && !writeGridFields(descriptor.value, shape)) {
+    return 'stuck';
   }
   return true;
 }
 
-function guardedClone(project, protect) {
-  const saved = [];
-  const seen = new Set();
-  for (const scene of protect) {
-    if (!canHostGrid(scene) || seen.has(scene)) continue;
-    seen.add(scene);
-    const descriptor = dataGrid(scene);
-    if (descriptor) saved.push([scene, descriptor]);
+function restoreShieldList(shields) {
+  let mutated = false;
+  if (!shields) return { mutated };
+  for (const shield of shields) {
+    const status = restoreDataGrid(shield.scene, shield.descriptor, shield.shape);
+    if (status === false) continue;
+    mutated = true;
+    shield.stuck = status === 'stuck';
   }
+  return { mutated };
+}
+
+function safeGrid(shield) {
+  const grid = shield.descriptor.value;
+  if (!grid || typeof grid !== 'object' || !shield.shape || !gridShapeDirty(grid, shield.shape)) return grid;
+  const copy = {};
+  for (const [key, saved] of shield.shape.fields) {
+    writeField(copy, key, saved.items ? saved.items.slice() : saved.value, saved.enumerable);
+  }
+  return copy;
+}
+
+function sceneBearingGrid(scene, grid) {
+  const out = {};
+  for (const key of Object.getOwnPropertyNames(scene)) {
+    if (key === 'grid' || key === 'toJSON') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(scene, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    writeField(out, key, descriptor.value, descriptor.enumerable);
+  }
+  writeField(out, 'grid', grid, true);
+  return out;
+}
+
+function remapHistory(history, map) {
+  if (!history || !map.size) return history;
+  const swap = (scene) => (map.has(scene) ? map.get(scene) : scene);
+  const present = swap(history.present);
+  const past = Array.isArray(history.past) ? history.past.map(swap) : history.past;
+  const future = Array.isArray(history.future) ? history.future.map(swap) : history.future;
+  if (present === history.present
+    && Array.isArray(past) && past.every((scene, index) => scene === history.past[index])
+    && Array.isArray(future) && future.every((scene, index) => scene === history.future[index])) {
+    return history;
+  }
+  return { past, present, future };
+}
+
+function replacementMap(shields) {
+  const map = new Map();
+  for (const shield of shields) {
+    if (!shield.stuck || map.has(shield.scene)) continue;
+    const now = Object.getOwnPropertyDescriptor(shield.scene, 'grid');
+    const value = now && Object.prototype.hasOwnProperty.call(now, 'value') ? now.value : undefined;
+    const stillBad = (value !== undefined && gridValuePoisoned(value))
+      || (!!value && typeof value === 'object' && gridShapeDirty(value, shield.shape));
+    if (!stillBad) {
+      shield.stuck = false;
+      continue;
+    }
+    map.set(shield.scene, sceneBearingGrid(shield.scene, safeGrid(shield)));
+  }
+  return map;
+}
+
+function publish(value) {
+  if (!activeShields) return value;
+  restoreShieldList(activeShields);
+  const map = replacementMap(activeShields);
+  if (!map.size || !value || typeof value !== 'object') return value;
+  if (Object.prototype.hasOwnProperty.call(value, 'history')) {
+    const history = remapHistory(value.history, map);
+    if (history === value.history) return value;
+    return { ...value, history };
+  }
+  if (Object.prototype.hasOwnProperty.call(value, 'present')) return remapHistory(value, map);
+  return value;
+}
+
+function runShielded(scenes, fn) {
+  const previous = activeShields;
+  activeShields = shieldScenes(scenes);
+  try {
+    return publish(fn());
+  } finally {
+    activeShields = previous;
+  }
+}
+
+function guardedClone(project, protect) {
+  const shields = activeShields || shieldScenes(protect);
   let stored = null;
   try {
     stored = clone(project);
   } catch (error) {
     stored = null;
   }
-  let mutated = false;
-  for (const [scene, descriptor] of saved) {
-    if (restoreDataGrid(scene, descriptor)) mutated = true;
-  }
+  const { mutated } = restoreShieldList(shields);
   return { stored, mutated };
 }
 
@@ -131,7 +347,7 @@ function historyOrShielded(history) {
   return { past: history.past, present, future: history.future };
 }
 
-export function commit(history, next) {
+function commitBody(history, next) {
   const stored = storedPresent(next);
   if (!stored.ok) return historyOrShielded(history);
   let unchanged = false;
@@ -154,6 +370,12 @@ export function commit(history, next) {
   const older = stripScenes(history.past, protect);
   if (!prior || !older) return historyOrShielded(history);
   return { past: older.concat([prior]).slice(-CAP), present: stored.present, future: [] };
+}
+
+export function commit(history, next) {
+  const scenes = historyScenes(history);
+  scenes.push(next);
+  return runShielded(scenes, () => commitBody(history, next));
 }
 
 export function openDockHistory(project) {
@@ -206,7 +428,7 @@ export function newDockHistory(meta = {}) {
   return createHistory(placed.project);
 }
 
-export function restoreHistory(history, direction) {
+function restoreHistoryBody(history, direction) {
   const stepped = direction === 'redo' ? redo(history) : undo(history);
   if (!stepped) return { ok: false, history, issues: ['scene could not be cloned'] };
   const present = withoutGridAccessor(stepped.present, [
@@ -222,4 +444,8 @@ export function restoreHistory(history, direction) {
   const gate = requireOnePlayer(history.present, { ok: true, project: next.present, issues: [] });
   if (!gate.ok) return { ok: false, history, issues: gate.issues };
   return { ok: true, history: next, issues: [] };
+}
+
+export function restoreHistory(history, direction) {
+  return runShielded(historyScenes(history), () => restoreHistoryBody(history, direction));
 }
