@@ -59,8 +59,9 @@ export const SELECTION_SIGIL_LIFT = 0.5;
 export const SIGIL_RADIUS_SCALE = 3.0;
 export const SIGIL_RADIUS_MIN = 6;
 export const SIGIL_RADIUS_MAX = 170;
-// In a swarm fight the wide instrument's center strokes sit across the hull.
-// A tight scale keeps the same figures on the ship.
+// Non-swarm survival passes subject.tight (vfx.js) so the figures sit on the hull
+// instead of the wide deck. An active swarm fight does not: that fit still paints
+// the hostile's screen box (idle Ricochet Foundry, threats hidden p95 100%).
 export const SIGIL_TIGHT_SCALE = 1.2;
 export const SIGIL_TIGHT_GAIN = 0.2;
 
@@ -104,13 +105,33 @@ export function classifySelectionSubject(entity, hostile) {
 }
 
 /**
+ * Active swarm fights withhold this deck. The crimson threat plate is the hostile mark, and it
+ * is not additive. This instrument is: even the tight survival fit (scale 1.2, gain 0.2) still
+ * clears the harness luminance bar on the strokes, and those strokes sit inside the hostile's
+ * screen box. Measured on the idle Ricochet Foundry seed: one in-view wasp, threats-hidden p95
+ * 100%; nine in view, exactly one box hidden — the locked subject. The lock rule itself stays
+ * in targetContour.js, so the DOM bracket does not move.
+ * @param {object} state
+ * @returns {boolean}
+ */
+export function swarmWithholdsSelectionSigil(state) {
+  const run = state && state.run;
+  if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm') return false;
+  // Only the live fight: draft/armory/intro keep their subjects, so a future
+  // combat subject there is never silently unmarked.
+  return run.phase === 'active';
+}
+
+/**
  * The subject rule is INF-045's, unchanged: the live SELECTION wins, and the engaged gun target
  * only subjects when there is no live selection, so the guns never fire at a ship with no mark
  * anywhere. `targetContour.js` owns that rule; this adds the class the emblem and palette need.
+ * An active swarm fight returns null — see swarmWithholdsSelectionSigil.
  *
  * @returns {{id, x, z, radius, klass}|null} world-space subject, or null when unmarked.
  */
 export function resolveSelectionSigil(state) {
+  if (swarmWithholdsSelectionSigil(state)) return null;
   const subject = resolveTargetContourEntity(state);
   if (!subject || !subject.pos) return null;
   const player = (state && state.player) || null;

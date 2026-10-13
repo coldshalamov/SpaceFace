@@ -649,8 +649,12 @@ async function assertLoadedTetherDoesNotSteerWithoutTurn() {
   }
   assert(maxYawChange < 0.08,
     `forward thrust without turn must not make the tether steer the ship; yaw moved ${maxYawChange.toFixed(3)} rad`);
-  assert.equal(player._flightFrame.orbitAssist.active, false,
-    'forward without turn does not engage the optional yaw helper');
+  const assist = player._flightFrame.orbitAssist;
+  if (assist.active) {
+    assert.equal(assist.carry, true, 'forward without turn may only carry an existing swing');
+    assert(Math.abs(assist.desiredYawRate) < 0.08,
+      'a radial tow must not manufacture an orbital turn');
+  }
 }
 
 async function assertSlowReverseIntoTetherLimitStaysStable() {

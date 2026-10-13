@@ -15,6 +15,13 @@ import {
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
+import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import {
+  claimSharedImageTexture,
+  resetImageSourceDedupeForTests,
+  restoreSharedCompressedMips,
+  sharedImageTextureFor,
+} from '../src/render/imageSourceDedupe.js';
 import {
   createPackageDetachManifest,
   detachPackageGeometry,
@@ -284,7 +291,15 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
   const bloom = read('src/render/bloom.js');
   assert.match(bloom, /detachedPresentedDrawBlocked\(renderer, geometry, material\)/);
   assert.match(bloom, /queuePresentedDetachRehydrate\(renderer\)/);
-  assert.match(rendererSrc, /noteOrientationDetachedHold\(this\.renderer\)/);
+  assert.match(bloom, /const orientationHold = orientationDetachedHoldActive\(renderer\)/);
+  assert.match(bloom, /if \(!orientationHold && unreadyProgramsPending !== true/);
+  assert.match(bloom, /orientationHoldHidesDrawable\(renderer, object\)/);
+  assert.match(rendererSrc, /this\._drawBufferAspectClass = aspectClassFromSize\(_drawSize\)/);
+  assert.match(
+    rendererSrc,
+    /_applySize\(\) \{[\s\S]*?noteOrientationDetachedHold\(this\.renderer\);[\s\S]*?const drawSize = applyRendererSize\(this\.renderer, this\.state\)/,
+    'the aspect hold arms before setSize, so the first phone rotation is not treated as the initial size',
+  );
 });
 
 test('presented draw skips a detached upload and refills before the next one', async () => {
@@ -343,4 +358,128 @@ test('presented draw skips a detached upload and refills before the next one', a
   renderer.renderBufferDirect(null, null, geometry, material, null, null);
   assert.equal(draws, 2, 'the following frame draws the restored payload');
   loader.dispose();
+});
+
+test('orientation hold hides a detached mesh after the readiness walk has gone steady', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => {
+    decodes += 1;
+    return decodes === 1 ? decoded : decodedFixture();
+  });
+  await loader.load(packageMetadata('fixture.orientation-hide'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const hull = decoded.scene.children[0];
+  const prop = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  prop.name = 'LooseProp';
+  decoded.scene.add(prop);
+  const readyProgram = { isReady() { return true; }, program: { id: 1 } };
+  const renderer = {
+    properties: { get() { return { currentProgram: readyProgram }; } },
+    info: { programs: [readyProgram] },
+    getContext() { return null; },
+  };
+  const guard = createUnreadyDrawableGuard(renderer);
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  assert.equal(geometry.getAttribute('normal').array.byteLength, 0);
+
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'a ready program does not hide the ship');
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'steady-state detached draws keep the live GPU copy');
+
+  noteOrientationDetachedHold(renderer);
+  guard.hide(decoded.scene);
+  assert.equal(hull.visible, false, 'the first aspect flip hides the ship before projectObject uploads');
+  assert.equal(prop.visible, true, 'an ordinary mesh stays on screen through the hold');
+  guard.restore();
+  assert.equal(hull.visible, true, 'the hide lasts one pass');
+
+  const flight = presentedDetachRehydrateInFlight();
+  assert.ok(flight, 'the hold starts one refill');
+  await flight;
+  assert.equal(isPackageGeometryDetached(geometry), false);
+  assert.ok(geometry.getAttribute('normal').array.byteLength > 0, 'normal bytes restored');
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'the refill drops the hold and the ship draws again');
+  prop.geometry.dispose();
+  loader.dispose();
+});
+
+test('exact-target touch skips a detached mesh while the orientation hold is set', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => {
+    decodes += 1;
+    return decodes === 1 ? decoded : decodedFixture();
+  });
+  await loader.load(packageMetadata('fixture.orientation-touch'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const hull = decoded.scene.children[0];
+  const prop = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  decoded.scene.add(prop);
+  const scene = new THREE.Scene();
+  scene.add(decoded.scene);
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  const seen = [];
+  const renderer = {
+    autoClear: true,
+    setRenderTarget() {},
+    getRenderTarget() { return null; },
+    render() {
+      seen.push({ hull: hull.visible, prop: prop.visible });
+    },
+  };
+  const camera = new THREE.PerspectiveCamera();
+  noteOrientationDetachedHold(renderer);
+  touchSubjectOnExactTarget(renderer, null, hull, camera, scene);
+  assert.deepEqual(seen, [{ hull: false, prop: false }],
+    'the touch hides the released hull and leaves the rest of the scene undrawn');
+  const flight = presentedDetachRehydrateInFlight();
+  assert.ok(flight);
+  await flight;
+  assert.equal(hull.visible, true, 'the touch restores the hull after the draw');
+  prop.geometry.dispose();
+  loader.dispose();
+});
+
+test('exact-target touch does not draw a released mesh before the phone turns', async () => {
+  const decoded = decodedFixture();
+  const loader = freshLoader(async () => decoded);
+  await loader.load(packageMetadata('fixture.touch-detached'), { baseUrl: 'https://fixtures.test/' });
+  const hull = decoded.scene.children[0];
+  const scene = new THREE.Scene();
+  scene.add(decoded.scene);
+  assert.equal(detachPackageGeometry(decoded.geometry, {}), true);
+  const seen = [];
+  const renderer = {
+    autoClear: true,
+    setRenderTarget() {},
+    getRenderTarget() { return null; },
+    render() { seen.push(hull.visible); },
+  };
+  touchSubjectOnExactTarget(renderer, null, hull, new THREE.PerspectiveCamera(), scene);
+  assert.deepEqual(seen, [false], 'a released hull is hidden for the admission draw');
+  assert.equal(hull.visible, true, 'the hull is visible again for the presented frame');
+  assert.equal(presentedDetachRehydrateInFlight(), null, 'a steady released hull does not decode the fleet');
+  loader.dispose();
+});
+
+test('an emptied shared atlas borrows the sibling mip chain before upload', () => {
+  resetImageSourceDedupeForTests();
+  const owner = new THREE.CompressedTexture([{ data: new Uint8Array(16), width: 4, height: 4 }], 4, 4);
+  owner.name = 'forge_panel_albedo';
+  claimSharedImageTexture('fixture-panel-albedo', owner);
+  const sibling = sharedImageTextureFor('fixture-panel-albedo');
+  assert.ok(sibling);
+  assert.ok(sibling.mipmaps.length > 0);
+  owner.mipmaps = [];
+  assert.equal(restoreSharedCompressedMips(owner), true);
+  assert.ok(owner.mipmaps.length > 0);
+  assert.equal(owner.mipmaps[0].width, 4);
+  sibling.dispose();
+  owner.dispose();
 });

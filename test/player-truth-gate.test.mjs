@@ -1,8 +1,12 @@
 // Round-2 player-truth checks: gate strictness, round transitions, per-pixel combat VFX vs backdrop, compare table.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { runChecks, overall, checkRoundTransitions, checkRoundsReached, checkVfx, checkBackdrop } from '../scripts/player-truth/checks.mjs';
-import { compareVerdicts, renderComparison } from '../scripts/player-truth/compare.mjs';
+import { compareVerdicts, renderComparison, baselineAssetPlan, sharedAssetsLinkable, sharedTreeMatches, baselineExtractAllowed, baselineDiskMessage, baselineDiskError, BASELINE_EXTRACT_MIN_FREE_BYTES } from '../scripts/player-truth/compare.mjs';
 import { systemChromeCandidates } from '../scripts/player-truth/browser.mjs';
 
 const P = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, hull: 50, hullMax: 100, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
@@ -167,6 +171,130 @@ test('gate process exits non-zero when any verdict is FAIL', async () => {
   assert.equal(gateExitCode(['INCOMPLETE']), 2);
   assert.equal(gateExitCode(['PASS', 'INCOMPLETE']), 2);
   assert.equal(gateExitCode(['FAIL', 'INCOMPLETE']), 1);
+  assert.equal(gateExitCode(['ENVIRONMENT']), 4);
+  assert.equal(gateExitCode(['PASS', 'ENVIRONMENT']), 4);
+  assert.equal(gateExitCode(['FAIL', 'ENVIRONMENT']), 1);
+  assert.equal(gateExitCode(['ENVIRONMENT', 'FAIL']), 1);
+  const { environmentReportLines, absorbBaselineEnvironment } = await import('../scripts/player-truth/run.mjs');
+  const disk = baselineDiskError(1024, '/tmp/wt');
+  const passed = [{ verdict: 'PASS', label: 'swarm' }];
+  assert.equal(absorbBaselineEnvironment(passed, disk), true);
+  assert.equal(gateExitCode(passed.map((o) => o.verdict)), 4);
+  assert.equal(passed[1].label, 'baseline-assets');
+  const failed = [{ verdict: 'FAIL', label: 'swarm' }];
+  assert.equal(absorbBaselineEnvironment(failed, disk), true);
+  assert.equal(gateExitCode(failed.map((o) => o.verdict)), 1);
+  assert.equal(absorbBaselineEnvironment([], new Error('boom')), false);
+  assert.deepEqual(environmentReportLines([
+    { verdict: 'FAIL', label: 'swarm-active' },
+    { verdict: 'ENVIRONMENT', label: 'adventure-idle' },
+  ]), ['player-truth ENVIRONMENT: adventure-idle — harness environment, not a gameplay FAIL']);
+});
+
+test('an environment verdict is not a gameplay regression, and software frame time regrades against baseline', async () => {
+  const { applyBaselineToHead } = await import('../scripts/player-truth/compare.mjs');
+  const base = { overall: 'FAIL', meta: { commit: 'aaa' }, results: [{ id: 'route', title: 'Route', status: 'ENVIRONMENT', value: 'HARNESS ENVIRONMENT' }] };
+  const head = { overall: 'PASS', meta: { commit: 'bbb' }, results: [{ id: 'route', title: 'Route', status: 'PASS', value: 'menu' }] };
+  const c = compareVerdicts(base, head);
+  assert.equal(c.regressed, 0);
+  assert.equal(c.rows[0].change, 'cleared');
+  const stale = compareVerdicts(head, base);
+  assert.equal(stale.regressed, 0);
+  assert.equal(stale.rows[0].change, 'environment');
+  const recorded = {
+    overall: 'INCOMPLETE',
+    meta: { label: 'adv', mode: 'adventure', commit: 'head', seed: 1, renderer: 'sw', resolution: '960x540', softwareGl: true },
+    results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'UNKNOWN', value: 'software-renderer evidence · p50 94 ms · p99 904 ms · 962 long tasks ≥250 ms', threshold: 'no regression vs --baseline', detail: 'software-renderer evidence only; no --baseline to grade regression', frame: { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 400 } }, { id: 'readability', title: 'Readable', status: 'PASS', value: 'ok' }],
+  };
+  const baseline = { overall: 'INCOMPLETE', meta: { commit: 'd88f4d5881' }, results: [{ id: 'frame_time', frame: { p50: 94, p99: 904, longTasks: 962, softwareGl: true } }] };
+  assert.equal(applyBaselineToHead(recorded, baseline), true);
+  assert.equal(recorded.results[0].status, 'PASS');
+  assert.equal(recorded.overall, 'PASS');
+  const worse = structuredClone(recorded);
+  worse.results[0].status = 'UNKNOWN';
+  worse.results[0].frame = { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 400 };
+  applyBaselineToHead(worse, { meta: { commit: 'old' }, results: [{ id: 'frame_time', frame: { p99: 200, longTasks: 10, softwareGl: true } }] });
+  assert.equal(worse.results[0].status, 'FAIL');
+  assert.equal(worse.overall, 'FAIL');
+  const absent = { overall: 'INCOMPLETE', meta: { commit: 'head' }, results: [{ id: 'frame_time', status: 'UNKNOWN', frame: { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 10 }, value: 'x', threshold: 't', detail: 'software-renderer evidence only; no --baseline to grade regression' }] };
+  applyBaselineToHead(absent, null, { baselineMissing: true });
+  assert.match(absent.results[0].detail, /baseline baseline produced no frame-time measurement|produced no frame-time measurement/);
+  assert.equal(absent.overall, 'INCOMPLETE');
+  const noisyHead = structuredClone(recorded);
+  noisyHead.results[0].status = 'UNKNOWN';
+  noisyHead.results[0].frame = { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 400 };
+  noisyHead.meta.loadavg = { start: [13, 12, 11], end: [13, 12, 11] };
+  applyBaselineToHead(noisyHead, {
+    meta: { commit: 'd88f4d5881', loadavg: { start: [8, 8, 8], end: [8, 8, 8] } },
+    results: [{ id: 'frame_time', frame: { p99: 200, longTasks: 10, softwareGl: true } }],
+  });
+  assert.equal(noisyHead.results[0].status, 'ADVISORY');
+  assert.match(noisyHead.results[0].detail, /not a FAIL/);
+  assert.equal(noisyHead.overall, 'PASS');
+  const cmp = compareVerdicts(
+    { results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'PASS', value: 'ok' }] },
+    { results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'ADVISORY', value: 'software-renderer evidence' }] },
+  );
+  assert.equal(cmp.regressed, 0);
+  assert.equal(cmp.rows[0].change, 'advisory');
+  const blowup = renderComparison(
+    { overall: 'PASS', meta: { commit: 'd88f4d5881', label: 'swarm' }, results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'PASS', value: 'software-renderer evidence · p99 200 ms · 10 long tasks' }] },
+    { overall: 'PASS', meta: { commit: 'head', label: 'swarm', mode: 'swarm', seed: 4242, resolution: '960x540', softwareGl: true }, results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'ADVISORY', value: 'software-renderer evidence · p50 94 ms · p99 904 ms · 962 long tasks ≥250 ms', detail: '400 play frames · baseline p99 200 ms · 10 long tasks — advisory, numbers would FAIL; not a FAIL' }] },
+  );
+  assert.match(blowup, /Advisory \(not a regression/);
+  assert.match(blowup, /p99 904/);
+  assert.match(blowup, /baseline p99 200/);
+  assert.match(blowup, /962 long tasks/);
+  assert.match(blowup, /1 advisory/);
+  assert.doesNotMatch(blowup, /REGRESSED/);
+});
+
+test('baseline assets link a matching shared checkout and refuse a stale or partial one', () => {
+  assert.equal(baselineAssetPlan({ manifestPresent: true, sharedMatches: true, canLink: true }), 'present');
+  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: true, canLink: true }), 'link');
+  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: false, canLink: true }), 'extract');
+  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: true, canLink: false }), 'extract');
+  assert.equal(sharedAssetsLinkable({ treeMatches: true, assetsStatus: '' }), true);
+  assert.equal(sharedAssetsLinkable({ treeMatches: true, assetsStatus: ' M assets/AGENTS.md\n' }), false);
+  assert.equal(sharedAssetsLinkable({ treeMatches: false, assetsStatus: '' }), false);
+  const min = BASELINE_EXTRACT_MIN_FREE_BYTES;
+  assert.equal(baselineExtractAllowed(min), true);
+  assert.equal(baselineExtractAllowed(min - 1), false);
+  assert.equal(baselineExtractAllowed(null), false);
+  assert.equal(baselineExtractAllowed(Number.NaN), false);
+  const low = baselineDiskMessage(3.2 * 1024 * 1024 * 1024);
+  assert.match(low, /HARNESS ENVIRONMENT: not enough disk to extract baseline assets/);
+  assert.match(low, /not a gameplay FAIL/);
+  assert.match(low, /3\.20 GB free/);
+  assert.match(low, /8\.00 GB free/);
+  assert.match(low, /was not started/);
+  const err = baselineDiskError(1024, '/tmp/wt');
+  assert.equal(err.environment, true);
+  assert.match(err.message, /\/tmp\/wt has/);
+});
+
+test('sharedTreeMatches refuses a dirty assets worktree and ignores design dirt', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'pt-share-'));
+  try {
+    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
+    execFileSync('git', ['-C', dir, 'config', 'user.email', 't@example.com']);
+    execFileSync('git', ['-C', dir, 'config', 'user.name', 't']);
+    mkdirSync(path.join(dir, 'assets'), { recursive: true });
+    writeFileSync(path.join(dir, 'assets', 'a.txt'), 'v1\n');
+    execFileSync('git', ['-C', dir, 'add', 'assets']);
+    execFileSync('git', ['-C', dir, 'commit', '-q', '-m', 'a']);
+    const sha = execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    assert.equal(sharedTreeMatches(dir, sha, 'assets'), true);
+    writeFileSync(path.join(dir, 'assets', 'a.txt'), 'v2\n');
+    assert.equal(sharedTreeMatches(dir, sha, 'assets'), false);
+    writeFileSync(path.join(dir, 'assets', 'a.txt'), 'v1\n');
+    mkdirSync(path.join(dir, 'design'), { recursive: true });
+    writeFileSync(path.join(dir, 'design', 'x.txt'), 'overlay\n');
+    assert.equal(sharedTreeMatches(dir, sha, 'assets'), true);
+    assert.equal(sharedTreeMatches(dir, sha, 'design'), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('pinned spans name the solid body the ship sits on', async () => {

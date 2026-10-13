@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { syncSwarmThreatPlate } from '../src/render/visualFactory.js';
+
+test('Swarm threat marks are an intentional x-ray: depthTest false draws through cover', () => {
+  const world = new THREE.Group(), hull = new THREE.Group(); world.rotation.y = .4; hull.rotation.x = .2; world.add(hull);
+  const camera = new THREE.PerspectiveCamera(); camera.rotation.x = -.7;
+  const enemy = { type: 'ship', team: 1, radius: 12 };
+  syncSwarmThreatPlate(hull, enemy, camera);
+  const plate = hull.getObjectByName('sf-swarm-threat-plate');
+  assert.equal(hull.getObjectByName('sf-swarm-threat-core'), undefined, 'no filled card behind the hull');
+  assert.equal(plate.material.depthTest, false, 'marks-through-cover is intentional x-ray; the hull must not hide the plate');
+  const chevron = hull.getObjectByName('sf-swarm-threat-chevron');
+  assert.ok(chevron, 'a hostile hull wears a heading wedge');
+  const glyph = hull.getObjectByName('sf-swarm-threat-glyph');
+  assert.ok(glyph, 'a hostile hull wears an in-hull glyph');
+  assert.equal(glyph.material, plate.material);
+  assert.equal(glyph.material.depthTest, false, 'the glyph draws through cover with the rim');
+  assert.equal(plate.material.depthWrite, false, 'the mark cannot occlude authored hull geometry');
+  const orientation = new THREE.Quaternion(); plate.getWorldQuaternion(orientation);
+  assert.ok(orientation.angleTo(camera.quaternion) < 1e-6, 'parent rotation does not tip the camera-facing rim');
+  const glyphFacing = new THREE.Quaternion(); glyph.getWorldQuaternion(glyphFacing);
+  assert.ok(new THREE.Vector3(0, 0, 1).applyQuaternion(glyphFacing).dot(new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion)) > 0.999, 'parent rotation does not tip the glyph off the camera');
+  syncSwarmThreatPlate(hull, { ...enemy, team: 0 }, camera);
+  assert.equal(plate.visible, false);
+  assert.equal(chevron.visible, false);
+  assert.equal(glyph.visible, false);
+  syncSwarmThreatPlate(hull, enemy, camera); assert.equal(plate.visible, true);
+  assert.equal(glyph.visible, true);
+});

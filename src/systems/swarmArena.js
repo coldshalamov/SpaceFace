@@ -734,6 +734,12 @@ export const swarmArena = {
     this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
     this._cullWrecks();
+    // Wave 1 stays in motion. Seed 4242 idle: settling the opener, then again
+    // every 0.4s until the pilot acted, parked foundry rocks under 6 u/s (max
+    // 5.8). The lesson wasp rammed that field at sim 31.167. Master settles
+    // only wave > 1, left those rocks up to 44 u/s, and the same wasp lived
+    // the 45s hold. Later rounds still settle so leftover 12–16 u/s rocks do
+    // not enter the next breath.
     if (wave > 1) this._settleRoom();
     this._topUp(run, wave);
     this._installSlalomWells(run);
@@ -758,7 +764,8 @@ export const swarmArena = {
     } else if (this._brood) this._brood.spawnWave(this.state);
     // The planning settle runs before the draft; the last round's fields and ricochets keep working
     // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
-    // hulls in its first second (player-truth m4-active, round 2). Settle again as the round opens.
+    // hulls in its first second (player-truth m4-active, round 2). The opener is the exception:
+    // parking it is what the lesson hull rammed. Settle again only as a later round opens.
     if (Number.isInteger(run.wave) && run.wave > 1) this._settleRoom();
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);

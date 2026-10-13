@@ -77,8 +77,15 @@ function boot(hullId = 'ship_hornet') {
   return { state, bus, emitted, registry };
 }
 
+// New survival parameters on the SAME run object: runSession stamps lifetimes by
+// object identity at init and propagates them through owned commits, so replacing
+// state.run orphans the preparation guard. Assigning keeps the stamped lifetime.
+function resetRun(h) {
+  Object.assign(h.state.run, createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED }));
+}
+
 function openSwarmDraft(h, wave = 2) {
-  h.state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED });
+  resetRun(h);
   h.state.run.phase = 'draft';
   h.state.run.wave = wave;
   h.state.run.credits = 500;
@@ -146,7 +153,7 @@ test('the armory presents distinct physical intentions across all three build fa
 
 test('drafted picks feed the next wave — build pressure bends roster share, not the budget', () => {
   const h = boot();
-  h.state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED });
+  resetRun(h);
   h.state.run.phase = 'active';
   h.state.run.wave = 4;
   // Two collision-family picks: the rope/ram build.
@@ -179,7 +186,7 @@ test('drafted picks feed the next wave — build pressure bends roster share, no
 
 test('the pressure follows the current build — a later pick re-points the same wave', () => {
   const h = boot();
-  h.state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED });
+  resetRun(h);
   h.state.run.phase = 'active';
   h.state.run.wave = 4;
   recordPick(h, { verb: 'Throw', offerId: 'throw', defId: 'wpn_concussion_cannon_m' });
@@ -208,7 +215,7 @@ test('the pressure follows the current build — a later pick re-points the same
 
 test('a defensive-only build has no dominant — the wave stays the wave', () => {
   const h = boot();
-  h.state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED });
+  resetRun(h);
   h.state.run.phase = 'active';
   h.state.run.wave = 4;
   recordPick(h, { verb: 'Screen', offerId: 'booster', defId: 'mod_shield_booster_s' });
@@ -222,7 +229,7 @@ test('a defensive-only build has no dominant — the wave stays the wave', () =>
 
 test('pressure bends the stream roster and the opening alike, deterministically', () => {
   const h = boot();
-  h.state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED });
+  resetRun(h);
   h.state.run.phase = 'active';
   h.state.run.wave = 4;
   recordPick(h, { verb: 'Arc', offerId: 'relay', defId: 'mod_relay_arc' });
@@ -239,7 +246,7 @@ test('pressure bends the stream roster and the opening alike, deterministically'
 
 test('a malformed pick note is refused before it can pollute the run memory', () => {
   const h = boot();
-  h.state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED });
+  resetRun(h);
   h.state.run.phase = 'active';
   h.state.run.wave = 4;
   const bad = runModifierRecord({ kind: 'weapon', offerId: 'x', verb: 'Gun', defId: 'wpn_x', wave: 1 });

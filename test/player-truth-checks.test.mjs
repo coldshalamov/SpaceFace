@@ -2,14 +2,16 @@
 // traces — no browser — so the checks themselves are regression-tested.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
-  CLS, VIS, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
+  CLS, VIS, E, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
-  isLoadingAssetState,
+  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
-import { separation } from '../scripts/player-truth/readability.mjs';
+import { separation, sampleBox, rimMatchesThreat, threatMarkerCredit, THREAT_MARKER } from '../scripts/player-truth/readability.mjs';
+import { offscreenShooterMarker } from '../src/ui/threatHalo.js';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 import { performanceRunContext } from '../scripts/player-truth/run.mjs';
 
@@ -142,9 +144,26 @@ test('loadout audit flags a cargo scanner in Swarm and a silent swap', () => {
   assert.equal(r.status, 'FAIL'); assert.equal(r.offenders.length, 3);
 });
 
-test('frame_time is UNKNOWN on software GL and grades on a GPU', () => {
-  assert.equal(checkFrameTime(trace({ meta: { softwareGl: true } })).status, 'UNKNOWN');
+test('frame_time is software-renderer evidence on SwiftShader and grades on a GPU', () => {
+  const sw = checkFrameTime(trace({ meta: { softwareGl: true } }));
+  assert.equal(sw.status, 'UNKNOWN');
+  assert.match(sw.value, /software-renderer evidence/);
+  assert.match(sw.detail, /no --baseline to grade regression/);
+  assert.equal(sw.frame.softwareGl, true);
   assert.equal(checkFrameTime(trace()).status, 'PASS');
+  const same = checkFrameTime(trace({ meta: { softwareGl: true, frameBaseline: { p99: 800, longTasks: 400, commit: 'base' } } }));
+  assert.equal(same.status, 'PASS');
+  assert.match(same.threshold, /no regression vs base/);
+  const slow = trace({ n: 20, meta: { softwareGl: true, frameBaseline: { p99: 200, longTasks: 10, commit: 'old' } } });
+  for (const s of slow.samples) s.dt = 800;
+  slow.longTasks = Array.from({ length: 80 }, (_, i) => ({ t: (i % 20) * 100, d: 300, sim: 10, f: i }));
+  const regressed = checkFrameTime(slow);
+  assert.equal(regressed.status, 'FAIL');
+  assert.match(regressed.value, /software-renderer evidence/);
+  const missing = checkFrameTime(trace({ meta: { softwareGl: true, frameBaseline: { commit: 'e617', p99: null, longTasks: null } } }));
+  assert.equal(missing.status, 'UNKNOWN');
+  assert.match(missing.detail, /baseline e617 produced no frame-time measurement/);
+  assert.doesNotMatch(missing.detail, /no --baseline/);
 });
 
 test('performance context reads only the dedicated marker and records observer cadence', () => {
@@ -189,19 +208,218 @@ test('diagnostic frame context is visible in the verdict and cannot erase a game
   assert.match(md, /\*\*UNKNOWN\*\*/); assert.match(md, /quiet-host performance unmeasured/);
 });
 
-test('readability: overlapping classes fail, distinct classes pass, thin data is UNKNOWN', () => {
+test('readability: overlapping classes fail, a measured class can fail alone, thin data is UNKNOWN', () => {
   const S = (L, a, b, r, n) => Array.from({ length: n }, (_, i) => ({ lab: [L + (i % 3) * 4, a, b], r }));
   assert.ok(separation(S(50, 10, 10, 8, 6), S(51, 10, 11, 8, 6)).sep < 1);
   assert.ok(separation(S(80, 60, 40, 8, 6), S(30, -5, -20, 30, 6)).sep > 3);
+  const marked = separation(S(50, 10, 10, 8, 6), S(51, 10, 11, 8, 6), { markerCredit: 1.5 });
+  assert.ok(marked.sep >= separation(S(50, 10, 10, 8, 6), S(51, 10, 11, 8, 6)).sep + 1.5);
   const bad = { meta: { mode: 'swarm' }, readability: { classes: { enemy: { n: 6 }, asteroid: { n: 6 } }, pairs: [{ a: 'enemy', b: 'asteroid', nA: 6, nB: 6, sep: 0.4, dColor: 3, sizeRatio: 1 }] } };
   assert.equal(checkReadability(bad).status, 'FAIL');
   assert.equal(checkReadability({ meta: {}, readability: { classes: { enemy: { n: 1 } }, pairs: [{ a: 'enemy', b: 'asteroid', nA: 1, nB: 0, sep: null }] } }).status, 'UNKNOWN');
+  const asteroids = checkReadability({ meta: {}, readability: {
+    classes: { enemy: { n: 0, lowContrastFrac: 0 }, asteroid: { n: 8, lowContrastFrac: 1, exampleT: 5, exampleBox: [1, 2, 3, 4], worst: [{ t: 5, box: [1, 2, 3, 4], deltaL: 1.2 }] }, projectile: { n: 0, lowContrastFrac: 0 } },
+    pairs: [{ a: 'enemy', b: 'asteroid', nA: 0, nB: 8, sep: null }],
+  } });
+  assert.equal(asteroids.status, 'FAIL');
+  assert.match(asteroids.value, /asteroid 100% low-contrast/);
+  assert.match(asteroids.detail, /not graded \(under 5\): enemy, projectile/);
+  assert.equal(asteroids.moments.length, 1);
+  const clear = checkReadability({ meta: {}, readability: { classes: { enemy: { n: 0 }, asteroid: { n: 8, lowContrastFrac: 0.1 }, projectile: { n: 0 } }, pairs: [] } });
+  assert.equal(clear.status, 'PASS');
 });
 
-test('overall: any FAIL fails, UNKNOWN is never PASS', () => {
+test('overall: any FAIL fails, UNKNOWN is never PASS, ENVIRONMENT outranks both, ADVISORY is neither', () => {
   assert.equal(overall([{ status: 'PASS' }, { status: 'FAIL' }]), 'FAIL');
   assert.equal(overall([{ status: 'PASS' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');
   assert.equal(overall([{ status: 'PASS' }, { status: 'N/A' }]), 'PASS');
+  assert.equal(overall([{ status: 'FAIL' }, { status: 'ENVIRONMENT' }]), 'ENVIRONMENT');
+  assert.equal(overall([{ status: 'ADVISORY' }, { status: 'PASS' }]), 'PASS');
+  assert.equal(overall([{ status: 'ADVISORY' }, { status: 'FAIL' }]), 'FAIL');
+  assert.equal(overall([{ status: 'ADVISORY' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');
+  const md = renderVerdict({
+    meta: { label: 'adv', mode: 'adventure', seed: 1, commit: 'abc', renderer: 'sw', softwareGl: true, headed: false, browserVersion: '1', resolution: '960x540', when: 't', wallSeconds: 1, simSeconds: 1, frames: 1, shots: 1, script: 's' },
+    results: [
+      { id: 'readability', status: 'UNKNOWN', value: null, threshold: 't', detail: 'not enough on-screen samples' },
+      { id: 'frame_time', status: 'UNKNOWN', value: 'p50 94 ms', threshold: 't', detail: 'software-renderer evidence only; no --baseline to grade regression' },
+    ],
+    overall: 'INCOMPLETE', paths: null,
+  });
+  assert.match(md, /Incomplete because:/);
+  assert.match(md, /readability — not enough on-screen samples/);
+  assert.match(md, /frame_time — software-renderer evidence only; no --baseline to grade regression/);
+  const adv = renderVerdict({
+    meta: { label: 'adv', mode: 'adventure', seed: 1, commit: 'abc', renderer: 'sw', softwareGl: true, headed: false, browserVersion: '1', resolution: '960x540', when: 't', wallSeconds: 1, simSeconds: 1, frames: 1, shots: 1, script: 's' },
+    results: [{ id: 'frame_time', status: 'ADVISORY', value: 'software-renderer evidence', threshold: 't', detail: 'load 1m mean differs' }],
+    overall: 'PASS', paths: null,
+  });
+  assert.match(adv, /Advisory \(not a FAIL\)/);
+  assert.match(adv, /frame_time — load 1m mean differs/);
+});
+
+test('frame_time load noise is advisory, and a missing load is not', () => {
+  const stats = { p50: 94, p99: 904, longTasks: 962, samples: 400 };
+  const baseline = { p99: 200, longTasks: 10, commit: 'd88f' };
+  const quiet = { start: [8, 8, 8], end: [8, 8, 8] };
+  const busy = { start: [13, 12, 11], end: [13, 12, 11] };
+  const matched = gradeSoftwareFrameTime(stats, baseline, { head: quiet, base: quiet });
+  assert.equal(matched.status, 'FAIL');
+  const noisy = frameLoadNoise(busy, quiet);
+  assert.ok(noisy.noisy, noisy.rel);
+  assert.ok(noisy.rel > 0.30);
+  const advisory = gradeSoftwareFrameTime(stats, baseline, { head: busy, base: quiet });
+  assert.equal(advisory.status, 'ADVISORY');
+  assert.match(advisory.detail, /advisory, numbers would FAIL; not a FAIL/);
+  assert.equal(advisory.frame.load.advisory, true);
+  const close = gradeSoftwareFrameTime(stats, baseline, { head: { start: [10, 0, 0], end: [10, 0, 0] }, base: { start: [12, 0, 0], end: [12, 0, 0] } });
+  assert.equal(close.status, 'FAIL');
+  assert.equal(frameLoadNoise({ start: [10, 0, 0], end: [10, 0, 0] }, { start: [12, 0, 0], end: [12, 0, 0] }).noisy, false);
+  const missing = gradeSoftwareFrameTime(stats, baseline, { head: busy, base: { start: [8, 8, 8], end: null } });
+  assert.equal(missing.status, 'FAIL');
+  assert.doesNotMatch(missing.detail, /advisory/);
+  const wouldPass = gradeSoftwareFrameTime({ p50: 90, p99: 200, longTasks: 10, samples: 40 }, baseline, { head: busy, base: quiet });
+  assert.equal(wouldPass.status, 'ADVISORY');
+  assert.match(wouldPass.detail, /numbers would PASS/);
+});
+
+test('threat-hue marker credit: crimson 0xff1a3a matches, a bright glow does not, and an orange backdrop does not paint an unmarked rock', () => {
+  const paint = ({ fill, rim, bg }) => {
+    const size = 48; const cx = 24; const cy = 24; const r = 12;
+    const raw = Buffer.alloc(size * size * 3);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const d = Math.max(Math.abs(x - cx), Math.abs(y - cy));
+      const inner = Math.max(1, Math.round(r * 0.7));
+      const rgb = d <= inner ? fill : d <= r * 1.15 ? rim : bg;
+      const i = (y * size + x) * 3;
+      raw[i] = rgb[0]; raw[i + 1] = rgb[1]; raw[i + 2] = rgb[2];
+    }
+    return sampleBox(raw, size, size, 3, cx, cy, r);
+  };
+  const dark = [12, 14, 18];
+  const body = [30, 30, 36];
+  const crimson = paint({ fill: body, rim: [255, 26, 58], bg: dark });
+  assert.ok(crimson.rim[0] > 45 && crimson.rim[0] < 65, `crimson L ${crimson.rim[0]}`);
+  assert.ok(crimson.rim[0] < 75);
+  assert.equal(crimson.marker, 0);
+  assert.equal(rimMatchesThreat(crimson.rim), true);
+  // The L≥75 fraction is not a threat-match rate. Crimson's fraction is 0, so it buys nothing.
+  assert.equal(threatMarkerCredit(crimson.marker, 0), 0);
+  assert.equal(threatMarkerCredit(1, 0), 1.5);
+  const white = paint({ fill: body, rim: [255, 255, 255], bg: dark });
+  assert.ok(white.marker >= 0.4, white.marker);
+  assert.equal(rimMatchesThreat(white.rim), false);
+  assert.equal(threatMarkerCredit(0, 0), 0);
+  const yellow = paint({ fill: body, rim: [255, 240, 80], bg: dark });
+  assert.equal(rimMatchesThreat(yellow.rim), false);
+  // [215, 40, 20] sits inside the threat hue window. On a dark field it is a mark.
+  // The same orange as the backdrop of an unmarked rock is not.
+  const orange = [215, 40, 20];
+  const distinct = paint({ fill: body, rim: orange, bg: dark });
+  assert.equal(rimMatchesThreat(distinct.rim), true);
+  const rock = paint({ fill: [70, 68, 66], rim: orange, bg: orange });
+  assert.equal(rock.rim, null);
+  assert.equal(rimMatchesThreat(rock.rim), false);
+  const marked = paint({ fill: body, rim: [255, 26, 58], bg: orange });
+  assert.equal(rimMatchesThreat(marked.rim), true);
+});
+
+test('threat marker colour is the swarm threat-ring material', () => {
+  const src = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
+  const at = src.indexOf("getMaterial('swarm:threat-rim'");
+  assert.ok(at >= 0, 'swarm:threat-ring material missing');
+  const m = src.slice(at, at + 500).match(/color:\s*(0x[0-9a-fA-F]+)/);
+  assert.ok(m, 'threat-ring material has no color literal');
+  assert.equal(Number(m[1]), THREAT_MARKER.rgb);
+});
+
+test('offscreen marker: edge chip matches the hostile side, and a center chip or an in-frame mark fails', () => {
+  const frame = { frameWidth: 960, frameHeight: 540 };
+  for (const [sx, sy, side] of [[-80, 270, 'left'], [1400, 270, 'right'], [480, -40, 'top'], [480, 800, 'bottom']]) {
+    assert.equal(edgeMarkerSide(sx, sy, frame.frameWidth, frame.frameHeight), side);
+    assert.equal(offscreenShooterMarker({ alive: true, canShoot: true, onScreen: false, screenX: sx, screenY: sy, ...frame }).side, side);
+  }
+  const ent = (vis, sx, sy) => [2, CLS.enemy, 0, 0, 0, 0, sx, sy, 8, vis, -1, 0];
+  const sample = (e, markers) => ({ mode: 'flight', run: { ph: 'active' }, vw: 960, vh: 540, t: 10, sim: 12, e, edgeMarkers: markers });
+  const played = (samples) => ({ meta: { rounds: true, playStartSim: 1 }, samples });
+  const left = { edge: 'left', x: 12, y: 270 };
+  const matched = checkOffscreenMarker(played([sample([ent(VIS.offscreen, -80, 270)], [left])]));
+  assert.equal(matched.status, 'PASS');
+  const wrong = checkOffscreenMarker(played([sample([ent(VIS.offscreen, -80, 270)], [{ edge: 'right', x: 948, y: 270 }])]));
+  assert.equal(wrong.status, 'FAIL');
+  assert.match(wrong.offenders[0].line, /on the left has an edge marker on the right/);
+  const center = checkOffscreenMarker(played([sample([ent(VIS.offscreen, -80, 270)], [{ edge: 'left', x: 480, y: 270 }])]));
+  assert.equal(center.status, 'FAIL');
+  assert.match(center.offenders[0].line, /not on the screen edge/);
+  const inFrame = checkOffscreenMarker(played([sample([ent(VIS.onscreen, 480, 270)], [left])]));
+  assert.equal(inFrame.status, 'FAIL');
+  assert.match(inFrame.offenders[0].line, /every hostile is in frame/);
+  const none = checkOffscreenMarker(played(Array.from({ length: 5 }, () => sample([ent(VIS.offscreen, -80, 270)], []))));
+  assert.equal(none.status, 'UNKNOWN');
+  assert.match(none.detail, /not a FAIL/);
+  const quiet = checkOffscreenMarker(played([sample([ent(VIS.onscreen, 480, 270)], [])]));
+  assert.equal(quiet.status, 'N/A');
+  assert.equal(checkOffscreenMarker({ meta: {}, samples: [{ mode: 'flight', run: { ph: 'active' }, e: [], edgeMarkers: undefined }] }).status, 'N/A');
+  assert.equal(checkOffscreenMarker({ meta: { playStartSim: 1 }, samples: [{ mode: 'flight', run: { ph: 'active' }, e: [] }] }).status, 'UNKNOWN');
+});
+
+test('loadout names a game-empty shelf, a harness miss, and a fit count with no items', () => {
+  const empty = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [{ name: 'Bank Stream', category: 'fitted', desc: '' }], irrelevant: [], undescribed: [{ name: 'Bank Stream' }], silentSwaps: [],
+    swapProbe: 'no install possible', offerSource: 'game-empty', offerQuote: 'Wave 0 cleared. Nothing new fits this hull.',
+  } });
+  assert.equal(empty.status, 'FAIL');
+  assert.match(empty.detail, /game offered nothing: "Wave 0 cleared\. Nothing new fits this hull\."/);
+  assert.match(empty.value, /game offered nothing \("Wave 0 cleared\. Nothing new fits this hull\."\)/);
+  assert.match(empty.offenders[0].line, /no description: Bank Stream/);
+  const shelf = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'no install possible',
+    offerSource: 'game-empty', offerQuote: 'Wave 0 cleared. Nothing new fits this hull. · No equipment matches this search.',
+  } });
+  assert.equal(shelf.status, 'PASS');
+  assert.match(shelf.value, /game offered nothing \("Wave 0 cleared\. Nothing new fits this hull\. · No equipment matches this search\."\)/);
+  assert.match(shelf.detail, /game offered nothing/);
+  const miss = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'not-run',
+    offerSource: 'harness-miss', offerQuote: 'All, 4 offers',
+  } });
+  assert.equal(miss.status, 'FAIL');
+  assert.match(miss.value, /harness failed to read the screen \("All, 4 offers"\)/);
+  assert.match(miss.detail, /harness failed to read the screen/);
+  const clipped = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [{ name: 'Pulse Laser S', category: 'Weapons', desc: 'A pulse laser for the hardpoint.', explanationSurface: 'reading' }],
+    fitted: [{ name: 'Bank Stream', category: 'fitted', desc: '', explanationSurface: 'clipped' }],
+    irrelevant: [], undescribed: [{ name: 'Bank Stream', explanationSurface: 'clipped' }], silentSwaps: [],
+    swapProbe: '1 installs', offerSource: 'cards',
+  } });
+  assert.equal(clipped.status, 'FAIL');
+  assert.match(clipped.offenders[0].line, /no description: Bank Stream \(clipped\)/);
+  assert.match(clipped.detail, /explanation surface: reading, clipped/);
+  const door = checkLoadout({ meta: { mode: 'gauntlet', hasLoadout: true }, loadout: {
+    items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [],
+    swapProbe: 'gauntlet preparation has no armory shelf', offerSource: 'door-only',
+    offerQuote: 'Hornet · 4 hardpoints fitted', fittedClaimed: 4,
+  } });
+  // Gauntlet's door-only preparation has no shelf by design: the door sentence is the whole
+  // claim and the fit-count rule exempts it, so a normal Gauntlet gate passes loadout.
+  assert.equal(door.status, 'PASS');
+  assert.match(door.value, /no item shelf \("Hornet · 4 hardpoints fitted"\)/);
+  const mismatch = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [{ name: 'Pulse Laser S', category: 'Weapons', desc: '', explanationSurface: 'reading-mismatch', panel: 'Reads what a hull carries in the hold.', expected: 'A pulse laser for the hardpoint.' }],
+    fitted: [], irrelevant: [],
+    undescribed: [{ name: 'Pulse Laser S', explanationSurface: 'reading-mismatch', panel: 'Reads what a hull carries in the hold.', expected: 'A pulse laser for the hardpoint.' }],
+    silentSwaps: [], swapProbe: 'no install possible', offerSource: 'cards',
+  } });
+  assert.equal(mismatch.status, 'FAIL');
+  assert.match(mismatch.offenders[0].line, /reading panel does not match lit row Pulse Laser S: panel "Reads what a hull carries in the hold\." vs blurb "A pulse laser for the hardpoint\."/);
+  assert.equal(mismatch.offenders.filter((o) => /no description: Pulse Laser S/.test(o.line)).length, 0);
+  const inferred = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [{ name: 'Pulse Laser S', category: 'fitted', desc: 'Hits harder than the fitted gun.', explanationSurface: 'row-on-select' }],
+    irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'no install possible',
+    offerSource: 'cards',
+  } });
+  assert.equal(inferred.status, 'PASS');
+  assert.match(inferred.detail, /explanation surface: row-on-select \(inferred\)/);
+  assert.match(inferred.value, /row-on-select \(inferred\)/);
 });
 
 test('menu clicks are not flight input; canvas presses and keys are', async () => {
@@ -258,4 +476,19 @@ test('Open armory is ready on the draft screen and lost in a non-draft world', (
   assert.match(tutorialLine, /mode=flight kind=adventure phase=inactive/);
   assert.match(tutorialLine, /at -1900,-2200 helios_core spawn/);
   assert.ok(tutorialLine.length < 180);
+});
+
+
+test('crucible_realm: Adventure objective in a swarm play frame or an empty armory FAILs', async () => {
+  const { checkCrucibleRealm } = await import('../scripts/player-truth/checks.mjs');
+  const meta = { mode: 'swarm', hasLoadout: true };
+  const clean = { meta, loadout: { items: [{}, {}], shotT: 1 }, realm: [{ t: 2, sim: 1, file: 'f/0003.jpg', advText: [], onboarding: false, sector: 'sector_crucible' }] };
+  assert.equal(checkCrucibleRealm(clean).status, 'PASS');
+  const leak = { ...clean, realm: [{ t: 2, sim: 1, file: 'f/0003.jpg', advText: ['Recover the 47-A sample from the marker'], onboarding: false, sector: 'sector_helios_prime' }] };
+  assert.equal(checkCrucibleRealm(leak).status, 'FAIL');
+  const empty = { ...clean, loadout: { items: [], shotT: 1 } };
+  assert.equal(checkCrucibleRealm(empty).status, 'FAIL');
+  const gauntlet = { meta: { mode: 'gauntlet', hasLoadout: false }, realm: [{ t: 2, advText: [], onboarding: true, sector: 'x' }] };
+  assert.equal(checkCrucibleRealm(gauntlet).status, 'FAIL');
+  assert.equal(checkCrucibleRealm({ meta: { mode: 'adventure' } }).status, 'N/A');
 });

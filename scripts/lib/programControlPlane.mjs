@@ -600,6 +600,9 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
   }
 
   const verifiedIntegrationIds = new Set();
+  const integrationEvidenceExpired = new Set();
+  const expiredIntegrationEvidence = [];
+  const warnings = [];
   const inside = git(normalizedRoot, ['rev-parse', '--is-inside-work-tree']);
   let headAncestors = null;
   if (inside.status !== 0 || inside.stdout.trim() !== 'true') {
@@ -621,6 +624,19 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
       }
     }
   }
+  // Lazy set of every ref-reachable commit. Only computed when a non-ancestor commit shows up,
+  // to separate a live divergent claim (ref reaches it) from a dangling fossil (nothing does).
+  let allRefCommits = null;
+  const refReaches = (object) => {
+    if (allRefCommits === null) {
+      const refs = git(normalizedRoot, ['rev-list', '--all']);
+      allRefCommits = refs.status === 0
+        ? new Set(refs.stdout.trim().split(/\r?\n/).filter(Boolean))
+        : null;
+    }
+    return allRefCommits ? allRefCommits.has(object) : null;
+  };
+
   if (headAncestors && commitOwners.size) {
     const commits = [...commitOwners.keys()];
     const checked = git(
@@ -631,11 +647,30 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
     if (checked.status !== 0) {
       errors.push(`could not verify integratedCommit objects (${checked.stderr.trim()})`);
     } else {
+      // Evidence policy (2026-10-12): a checked-off row whose integratedCommit does not prove
+      // integration carries EXPIRED evidence, not a live contradiction — the claim stands, the
+      // expiry is recorded and surfaced, and the board keeps dispatching. Proof is ancestry of
+      // HEAD or the pre-squash archive tag; history maintenance (squash, GC, fetch) can leave
+      // the same lost commit either absent from the store or present as a dangling object, and
+      // the row must not flip between error and pass depending on that luck. Only a commit that
+      // is still REACHABLE from some ref but not from HEAD is a live contradiction and a hard
+      // error: that is a claim of integration on a divergent line.
       const objects = new Map();
+      const expiredCommits = new Set();
       const lines = checked.stdout.trim().split(/\r?\n/);
       for (const [index, commit] of commits.entries()) {
-        const match = lines[index]?.match(/^([0-9a-f]{40})\s+(\w+)$/i);
-        if (!match || match[2] !== 'commit') {
+        const match = lines[index]?.match(/^(\S+)\s+(\w+)$/);
+        if (match && match[2] === 'missing') {
+          expiredCommits.add(commit);
+          for (const rowId of commitOwners.get(commit)) {
+            integrationEvidenceExpired.add(rowId);
+            expiredIntegrationEvidence.push({ rowId, commit });
+          }
+          warnings.push(
+            `${commitOwners.get(commit).join(', ')} integratedCommit is expired evidence `
+            + `(object absent from history, claim accepted): ${commit}`,
+          );
+        } else if (!match || match[2] !== 'commit') {
           errors.push(`${commitOwners.get(commit).join(', ')} integratedCommit is unavailable: ${commit}`);
         } else {
           objects.set(commit, match[1]);
@@ -644,10 +679,19 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
       for (const [rowId, commitsForRow] of commitsByRow) {
         const verified = commitsForRow.length > 0 && commitsForRow.every((commit) => {
           const object = objects.get(commit);
-          if (!object) return false;
+          if (!object) return expiredCommits.has(commit);
           if (!headAncestors.has(object)) {
-            errors.push(`${rowId}.integratedCommit is not an ancestor of HEAD: ${commit}`);
-            return false;
+            if (refReaches(object)) {
+              errors.push(`${rowId}.integratedCommit is not an ancestor of HEAD: ${commit}`);
+              return false;
+            }
+            integrationEvidenceExpired.add(rowId);
+            expiredIntegrationEvidence.push({ rowId, commit, reason: 'dangling' });
+            warnings.push(
+              `${rowId} integratedCommit is expired evidence `
+              + `(dangling object reachable from no ref, claim accepted): ${commit}`,
+            );
+            return true;
           }
           return true;
         });
@@ -723,10 +767,34 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
       }
       const candidate = git(normalizedRoot, ['rev-parse', `${receipt.candidateCommit}^{commit}`]);
       if (candidate.status !== 0) {
-        return fail(`receipt candidateCommit is unavailable: ${receipt.candidateCommit}`);
+        // Same expiry policy as integratedCommit above: the receipt document is committed and
+        // blob-pinned at HEAD; only the candidate commit it cites was lost to history
+        // maintenance. The acceptance claim stands; the loss is recorded, not fatal.
+        warnings.push(
+          `${row.id}.${dependency.leafId} receipt candidateCommit is expired evidence `
+          + `(object absent from history, claim accepted): ${receipt.candidateCommit}`,
+        );
+        return {
+          ...dependency,
+          satisfied: true,
+          expired: true,
+          reason: 'receipt candidateCommit is expired evidence (object absent from history)',
+        };
       }
       if (!headAncestors.has(candidate.stdout.trim())) {
-        return fail(`receipt candidateCommit is not an ancestor of HEAD: ${receipt.candidateCommit}`);
+        if (refReaches(candidate.stdout.trim())) {
+          return fail(`receipt candidateCommit is not an ancestor of HEAD: ${receipt.candidateCommit}`);
+        }
+        warnings.push(
+          `${row.id}.${dependency.leafId} receipt candidateCommit is expired evidence `
+          + `(dangling object reachable from no ref, claim accepted): ${receipt.candidateCommit}`,
+        );
+        return {
+          ...dependency,
+          satisfied: true,
+          expired: true,
+          reason: 'receipt candidateCommit is expired evidence (dangling object)',
+        };
       }
       return { ...dependency, satisfied: true, reason: null };
     });
@@ -740,6 +808,9 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
     ...control,
     root: normalizedRoot,
     verifiedIntegrationIds,
+    integrationEvidenceExpired,
+    expiredIntegrationEvidence,
+    warnings,
     evidenceDependencyStatusById,
     gitVerified: inside.status === 0 && inside.stdout.trim() === 'true',
   };

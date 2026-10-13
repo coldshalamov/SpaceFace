@@ -107,3 +107,25 @@ test('native settling guards ships, fixed bodies, slow passive bodies and recycl
     assert.ok(Math.abs(recycled.vel.x - 40) < 1e-4);
   } finally { owner.dispose(); }
 });
+
+test('a quiet live round does not keep settling rocks', () => {
+  const calls = [];
+  const sys = Object.create(swarmArena);
+  sys._brood = null;
+  sys._nextTerrainCheck = 1e9;
+  sys.helpers = { combatPhysics: { applyImpulse: (input) => { calls.push(input); return true; } } };
+  sys.state = {
+    tick: 3,
+    simTime: 1,
+    mode: 'flight',
+    input: { fire: false, moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, autoFire: true },
+    run: Object.assign(createRunState({ kind: 'survival', ruleset: 'swarm', seed: 1 }), { phase: 'active', wave: 1 }),
+    entities: new Map([[1, { id: 1, type: 'asteroid', alive: true, mass: 40, vel: { x: 16, z: 0 }, pos: { x: 0, z: 0 } }]]),
+  };
+  sys.update();
+  sys.state.simTime = 1.5;
+  sys.update();
+  sys.state.simTime = 3;
+  sys.update();
+  assert.deepEqual(calls, [], 'wave 1 keeps the field moving until the pilot meets it');
+});

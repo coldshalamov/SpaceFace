@@ -376,6 +376,30 @@ export function sharedImageSourceEntry(texture) {
   return (key && entries.get(key)) || null;
 }
 
+/**
+ * A resident user's mip chain was cleared while a sibling still holds the records.
+ * Copy that chain back so the next upload reads real levels instead of mipmaps[0]
+ * on an empty array. Shallow slice: the mip records stay shared, which is how
+ * Texture.clone already shares them.
+ */
+export function restoreSharedCompressedMips(texture) {
+  if (!texture || texture.isCompressedTexture !== true || texture.isCompressedArrayTexture === true) {
+    return false;
+  }
+  const own = texture.mipmaps;
+  if (Array.isArray(own) && own.length > 0 && own[0] && Number(own[0].width) > 0) return false;
+  const entry = sharedImageSourceEntry(texture);
+  if (!entry) return false;
+  for (const user of entry.users) {
+    if (!user || user === texture) continue;
+    const donor = user.mipmaps;
+    if (!Array.isArray(donor) || donor.length === 0 || !donor[0] || !(Number(donor[0].width) > 0)) continue;
+    texture.mipmaps = donor.slice();
+    return true;
+  }
+  return false;
+}
+
 export function sharedImageSourceUsers(texture) {
   const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
   const entry = key && entries.get(key);

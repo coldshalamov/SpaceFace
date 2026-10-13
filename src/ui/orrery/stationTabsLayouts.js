@@ -9,6 +9,8 @@ import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 
 const STYLE_ID = 'sf-orrery-station-tabs';
 const T = 'html body #screens > .sx-berth.orr-station';
+// the desktop berth only: a phone on its side is also short and narrow, but it lays the berth out as one page
+const D = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station';
 const BONE = '236 230 216';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
@@ -1714,6 +1716,81 @@ ${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .9) !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::after { display:none !important; }
 ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)}, ${BAND(3, '0 0 / 100% 100%', .38)} !important; }
+
+/* ================================ THE 960 BERTH: INDUSTRY, FACTIONS, BAR ======================= */
+/* at ≤1100 wide the berth head keeps its vitals, so a short screen leaves each tab ~190px (960×540);
+   every tab's working parts stand inside that body instead of falling under the foot rail */
+@media (max-width:1100px) and (max-height:800px) {
+  /* Industry: the ladder's head reads in two lines (the process, then why it is shut) */
+  ${D} .sx-ind-process__head .sx-ind-process__block { display:block !important; margin:2px 0 0 !important; }
+  ${D} .sx-ind-process__head .sx-ind-process__block::before { content:none !important; }
+  /* Factions: the ring's west names (FULFILLMENT) stand past the orbit's box; the stage gives them room */
+  ${D} .sx-fac__stage { padding-left:22px !important; }
+  /* Bar: the name is one line; the words stop short of the voice arc and its reply dial */
+  ${D} .sx-talk__name { font-size:24px !important; line-height:1.05 !important; white-space:nowrap !important; }
+  ${D} .sx-talk__id { max-width:calc(100% - 330px) !important; }
+  /* her portrait stands at the bay's right edge and no taller than 300px, so the arc keeps clear of her words */
+  ${D} .sx-talk__avatar { height:min(104%, 300px) !important; right:-4% !important; }
+  ${D} .sx-talk__memory { font-size:13px !important; line-height:1.4 !important; max-width:none !important; }
+  ${D} .sx-talk__reply { max-width:calc(100% - 330px) !important; }
+}
+@media (max-width:1100px) and (max-height:640px) {
+  /* Industry: the blueprint's tier is on the ladder's head; the chain takes the rest of the body,
+     so both inputs, the ring, the output and FABRICATE stand on glass */
+  ${D} .sx-fab-head__cat { display:none !important; }
+  ${D} .sx-fab-head__name { font-size:20px !important; margin-top:0 !important; }
+  ${D} .sx-fab { grid-template-rows:auto auto auto minmax(0, 1fr) auto auto auto auto auto !important; }
+  ${D} .orr-ind-chain { height:170px !important; min-height:0 !important; margin:-10px 0 0 !important; }
+  /* the chain's right side is one column -- why it cannot run, what a run makes, the key -- since the
+     reason's twelve o'clock slot and the key's place under the product both fall outside a 190px body */
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { left:auto !important; right:0 !important; top:-12px !important; width:auto !important; max-width:none !important; text-align:right !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb { align-items:flex-end !important; text-align:right !important; }
+  ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:nowrap !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:nowrap !important; font-size:11px !important; letter-spacing:.1em !important; }
+  ${D} .orr-ind-chain .orr-chain__verb > .orr-chain__wayout { margin-top:2px !important; }
+  ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
+  ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
+  ${D} .sx-fab-foot { left:auto !important; right:0 !important; top:auto !important; bottom:0 !important; transform:none !important; }
+  /* a material's three lines close up so three inputs stack in the chain's 50px pitch without touching */
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) { transform:translateY(4px); }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__name { font-size:13px !important; line-height:15px !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { font-size:11px !important; line-height:13px !important; margin:0 !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { line-height:13px !important; margin:0 !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > * { font-size:10.5px !important; line-height:13px !important; padding:0 !important; min-height:0 !important; }
+  ${D} .sx-fab-build.orr-lampkey { min-height:34px !important; font-size:13px !important; }
+  /* Factions: a ring of fourteen crests would be ~27px a crest here, so the powers stand on the
+     ladder like every other tab's index, and the reading keeps the standing scale */
+  ${D} .sx-fac { grid-template-columns:260px minmax(0, 1fr) !important; column-gap:28px !important; }
+  ${D} .sx-fac__rail { display:block !important; }
+  ${D} .sx-fac__stage { grid-template-columns:minmax(0, 1fr) !important; }
+  ${D} .orr-fac-orbit { display:none !important; }
+  ${D} .sx-fac__rows .sx-fac-row { padding-top:3px !important; padding-bottom:3px !important; }
+  /* the reading's head is one band: who holds the station on the left, your standing and their crest
+     on the right; the standing scale runs the full width under it */
+  ${D} .sx-fac-overview { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:16px; align-items:end; padding-right:0 !important; }
+  ${D} .sx-fac-overview > * + * { margin-top:0 !important; }
+  ${D} .sx-fac-overview > .k-caps { grid-column:1; grid-row:1; margin:0 !important; }
+  ${D} .sx-fac-ident__name { grid-column:1; grid-row:2; font-size:20px !important; margin-top:2px !important; }
+  ${D} .sx-fac-heroes { grid-column:2; grid-row:1 / 3; margin:0 !important; }
+  ${D} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:30px !important; text-align:right; }
+  ${D} .sx-fac-heroes .k-hero__n .sx-fac-tier { margin-bottom:0 !important; }
+  ${D} .sx-fac__detail > .sx-fac-ladder:first-child { margin:0 !important; padding:0 !important; }
+  /* the scale's svg keeps a rung band under its values that sleeps at this size; the next rung reads in it */
+  ${D} .sx-fac-rung-next { margin-top:-16px !important; }
+  /* the authority's watermark stands behind your standing, as it does on a wide screen */
+  ${D} .sx-fac-overview > :is(.sx-fac-crest, .sx-fac-crest.is-authority) { position:absolute !important; left:auto !important; right:-4px !important; top:0 !important; width:72px !important; height:72px !important; }
+  ${D} .sx-fac__detail { grid-column:1 / -1; grid-row:3; margin-top:2px !important; }
+  ${D} .orr-standing { margin-top:-4px !important; max-width:none !important; }
+  ${D} .sx-fac__detail { row-gap:2px !important; }
+  /* Bar: the replies stay on glass under her line */
+  ${D} .sx-bar__stage .sx-talk > * + * { margin-top:6px !important; }
+  ${D} .sx-talk__id > * + * { margin-top:4px !important; }
+  ${D} .sx-talk__choices { margin-top:6px !important; }
+  ${D} .sx-choice { font-size:13px !important; padding-top:3px !important; padding-bottom:3px !important; }
+  ${D} .sx-talk__keys { display:none !important; }
+}
 
 `;
 

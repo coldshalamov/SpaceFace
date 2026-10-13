@@ -6,6 +6,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRewards, estimateBoardScore } from '../src/systems/survivalRewards.js';
 import { createComboState, recordTrick, bankActive } from '../src/systems/stuntCombo.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 function boot() {
   const state = createGameState(17402); const bus = createBus(); const drops = [];
   state.playerId = 0;
@@ -17,6 +18,7 @@ function boot() {
     bus.emit('run:transitionRequested', { expectedPhase: phase, nextPhase }); phase = nextPhase;
   }
   state.stunts.combo = createComboState();
+  noteSwarmPilotAction(state);
   bus.emit('run:wavePlanned', { wave: 1, plan: { rewards: { credits: 12, xp: 10 } } });
   let nextId = 1;
   return { state, bus, drops, kill({ weaponId = 'wpn_pulse_laser_s', playerOwned = true, threatClass = 'fodder' } = {}) {

@@ -19,10 +19,11 @@
 // userData, so a structured manifest reference on userData would throw on its own cycle, and a
 // clone carrying a copied mark is rejected by the entry.texture identity check.
 
-import { BufferAttribute } from 'three';
+import { BufferAttribute, Box3, Sphere, Vector3 } from 'three';
 import {
   bumpPackageDetachSerial,
   noteSharedImageSourceRefilled,
+  restoreSharedCompressedMips,
   sharedImageSourceEntry,
   sharedImageSourceUserCount,
 } from './imageSourceDedupe.js';
@@ -53,7 +54,14 @@ let presentedDetachRehydrate = null;
 // be read off the entries' own released state each time (a Set of "detached manifests" would
 // silently miss every shared-source release).
 function sharedTextureReleased(entry) {
-  const shared = entry.sharedEntry;
+  // Adoption can land after the manifest cached its link. A release that only
+  // flipped the live dedupe entry would otherwise stay invisible to the gate,
+  // and the next upload would read the emptied chain.
+  let shared = entry.sharedEntry;
+  if (!shared && entry.texture) {
+    shared = sharedImageSourceEntry(entry.texture);
+    if (shared) entry.sharedEntry = shared;
+  }
   if (!shared) return false;
   if (shared.sourceReleased === true) return true;
   return !!(shared.releasedUsers && shared.releasedUsers.has(entry.texture));
@@ -288,8 +296,10 @@ export function createPackageDetachManifest(loaded, options = {}) {
     // bounds query (asteroidInstancePool culls, raycast early-outs) hits the cached fields once
     // the sibling buffers' arrays are released.
     for (const name of GEOMETRY_CPU_KEEP_ATTRIBUTES) deinterleaveKeptAttribute(geometry, name);
-    try { geometry.computeBoundingSphere(); } catch (_) {}
-    try { geometry.computeBoundingBox(); } catch (_) {}
+    if (!computePlainFloat32Bounds(geometry)) {
+      try { geometry.computeBoundingSphere(); } catch (_) {}
+      try { geometry.computeBoundingBox(); } catch (_) {}
+    }
     entry.fingerprint = geometryFingerprint(geometry);
     geometry.userData = {
       ...(geometry.userData || {}),
@@ -297,6 +307,56 @@ export function createPackageDetachManifest(loaded, options = {}) {
     };
   });
   return manifest;
+}
+
+/**
+ * Bounds straight off a de-interleaved Float32 position array. Identical results to three's
+ * computeBoundingBox/computeBoundingSphere (same min/max, sphere centered on the box, radius =
+ * max vertex distance) without a getX/getY/getZ call per vertex. Those generic accessors were
+ * ~350 ms of main-thread JS across the swarm arena's package admissions (two full passes for
+ * the sphere plus one for the box). Returns false — caller falls back to three — for anything
+ * outside the plain case (morph targets, interleaved/normalized/non-Float32, itemSize ≠ 3).
+ * One deliberate difference: an empty position array yields an empty box with a (0,0,0)/0
+ * sphere instead of three's NaN-centered sphere, so downstream cull/raycast math stays finite.
+ */
+export function computePlainFloat32Bounds(geometry) {
+  const position = geometry && geometry.attributes && geometry.attributes.position;
+  if (!position || position.isInterleavedBufferAttribute || position.normalized
+    || position.itemSize !== 3 || !(position.array instanceof Float32Array)) return false;
+  if (geometry.morphAttributes && geometry.morphAttributes.position
+    && geometry.morphAttributes.position.length) return false;
+  const a = position.array;
+  const n = position.count * 3;
+  if (n > a.length) return false;
+  if (!geometry.boundingBox) geometry.boundingBox = new Box3();
+  if (!geometry.boundingSphere) geometry.boundingSphere = new Sphere();
+  const box = geometry.boundingBox;
+  if (n === 0) {
+    box.makeEmpty();
+    geometry.boundingSphere.set(new Vector3(), 0);
+    return true;
+  }
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (let i = 0; i < n; i += 3) {
+    const x = a[i], y = a[i + 1], z = a[i + 2];
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+  }
+  box.min.set(minX, minY, minZ);
+  box.max.set(maxX, maxY, maxZ);
+  const center = geometry.boundingSphere.center;
+  box.getCenter(center);
+  const cx = center.x, cy = center.y, cz = center.z;
+  let maxRadiusSq = 0;
+  for (let i = 0; i < n; i += 3) {
+    const dx = a[i] - cx, dy = a[i + 1] - cy, dz = a[i + 2] - cz;
+    const d = dx * dx + dy * dy + dz * dz;
+    if (d > maxRadiusSq) maxRadiusSq = d;
+  }
+  geometry.boundingSphere.radius = Math.sqrt(maxRadiusSq);
+  return true;
 }
 
 /**
@@ -717,6 +777,88 @@ export function noteOrientationDetachedHold(renderer) {
   orientationHolds.add(renderer);
   queuePresentedDetachRehydrate(renderer);
   return true;
+}
+
+/** True while a drawing-buffer aspect flip is waiting on one package refill. */
+export function orientationDetachedHoldActive(renderer) {
+  return !!(renderer && orientationHolds.has(renderer));
+}
+
+/**
+ * Hide this drawable for the aspect-flip hold so three's projectObject cannot
+ * upload a released CPU mirror. A renderBufferDirect skip is too late: the
+ * attribute update runs first and creates a zero-length buffer. Uploads that
+ * are pending outside the hold stay visible — hiding those until the upload
+ * lands never reaches the draw that clears the pending bit.
+ */
+function compressedMipsMissing(texture) {
+  if (!texture || texture.isCompressedTexture !== true || texture.isCompressedArrayTexture === true) {
+    return false;
+  }
+  const mips = texture.mipmaps;
+  return !(Array.isArray(mips) && mips.length > 0 && mips[0] && Number(mips[0].width) > 0);
+}
+
+/**
+ * Put a sibling's compressed chain back on every presented slot that lost its own.
+ * Returns true when at least one slot was refilled.
+ */
+export function restorePresentedCompressedMips(material) {
+  const materials = presentedMaterialList(material);
+  if (!materials) return false;
+  let restored = false;
+  for (let i = 0; i < materials.length; i++) {
+    const mat = materials[i];
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (texture && texture.isTexture === true && restoreSharedCompressedMips(texture)) restored = true;
+    }
+  }
+  return restored;
+}
+
+/**
+ * True when the next bind of a presented compressed map would enter three's
+ * uploader and read mipmaps[0] on an empty chain. A stamp-matched GPU copy is
+ * left alone: the CPU mirror is supposed to be empty after a proven upload.
+ */
+export function presentedCompressedUploadUnsafe(renderer, material) {
+  const materials = presentedMaterialList(material);
+  if (!materials) return false;
+  const properties = renderer && renderer.properties;
+  for (let i = 0; i < materials.length; i++) {
+    const mat = materials[i];
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (!compressedMipsMissing(texture)) continue;
+      if (!(texture.version > 0)) continue;
+      const props = properties && typeof properties.get === 'function'
+        ? properties.get(texture)
+        : null;
+      // Same gate as three's setTexture2D: a matching stamp does not upload.
+      if (props && props.__version === texture.version) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+export function orientationHoldHidesDrawable(renderer, object) {
+  if (!orientationDetachedHoldActive(renderer) || !object) return false;
+  if (isPackageGeometryDetached(object.geometry)) return true;
+  const materials = presentedMaterialList(object.material);
+  if (!materials) return false;
+  for (let i = 0; i < materials.length; i++) {
+    const mat = materials[i];
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (texture && texture.isTexture === true && isPackageTextureDetached(texture)) return true;
+    }
+  }
+  return false;
 }
 
 async function rehydrateManifest(manifest) {

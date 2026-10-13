@@ -113,7 +113,7 @@ test('R2 radial-facing starts swing onto the tangent at full authority, then hol
     'holding the orbit chord requests the exact inverse-radius angular velocity');
 });
 
-test('R2 signed heading offsets preserve feed-forward; releasing either chord key falls back to swing carry', () => {
+test('R2 signed heading offsets preserve feed-forward; releasing turn carries the swing and releasing thrust allows manual yaw', () => {
   const tangentHeading = -Math.PI / 2;
   for (const offset of [-0.1, 0.1]) {
     const long = orbitStep({
@@ -145,13 +145,13 @@ test('R2 signed heading offsets preserve feed-forward; releasing either chord ke
   });
   const noTurn = orbitStep({
     radius: 72, tangentialSpeed: 60, hostRot: 0, anchorAhead: true,
-    input: raw, forward: 1, lateral: 0,
+    input: { ...raw, turn: 0 }, forward: 1, lateral: 0,
   });
-  for (const released of [noForward, noTurn]) {
-    assert.equal(released.active, true);
-    assert.equal(released.telemetry.carry, true, 'the chord is gone but the swing is still carried');
-    assert.equal(released.input.throttle, raw.throttle, 'thrust is untouched');
-  }
+  assert.equal(noForward.active, false, 'turn without thrust belongs to the pilot');
+  assert.deepEqual(noForward.input, raw);
+  assert.equal(noTurn.active, true);
+  assert.equal(noTurn.telemetry.carry, true, 'releasing turn still carries the swing');
+  assert.equal(noTurn.input.throttle, raw.throttle, 'thrust is untouched');
 });
 
 test('R2 heading recovery is symmetric across direction, strength, angle wrap, and capture boundary', () => {
@@ -260,9 +260,10 @@ test('a loaded swing carries the hull round with no keys held', () => {
   const fwd = orbitStep({ input: { ...idle, throttle: 1 }, forward: 1, lateral: 0, tangentialSpeed: 80 });
   assert.equal(fwd.telemetry.carry, true);
 
-  // The pilot's own steering rides on top of the carry.
+  // Manual steering takes ownership rather than adding the line's rotation to the held key.
   const steered = orbitStep({ input: { ...idle, turn: 0.5 }, forward: 0, lateral: 0, tangentialSpeed: 80 });
-  assert.ok(steered.input.turn * steered.telemetry.maxYawRate > carried.input.turn * carried.telemetry.maxYawRate);
+  assert.equal(steered.active, false);
+  assert.equal(steered.input.turn, 0.5);
 
   // A slack line is not a swing: nothing is carried.
   const slack = orbitStep({ input: idle, forward: 0, lateral: 0, tangentialSpeed: 80, phase: 'slack' });
@@ -314,7 +315,7 @@ test('Flight V3 wires the yaw-only helper without adding a tether impulse', () =
   assert.equal(harness.player._flightFrame.orbitAssist.intentSource, 'flight');
 });
 
-test('a loaded line carries the hull with the swing even with no chord held', () => {
+test('Flight V3 preserves manual yaw when turning without forward thrust on a loaded line', () => {
   const loaded = makeFlightHarness();
   loaded.state.input.moveZ = 0;
   loaded.state.input.turnIntent = 1;
@@ -322,8 +323,10 @@ test('a loaded line carries the hull with the swing even with no chord held', ()
   system.init({ state: loaded.state, bus: loaded.bus });
   system.update(DT, loaded.state);
   const frame = loaded.player._flightFrame.orbitAssist;
-  assert.equal(frame.active, true);
-  assert.equal(frame.carry, true, 'turn without forward is carried, not left to raw yaw');
+  assert.equal(frame.active, false);
+  assert.equal(frame.reason, 'manual-override');
+  const command = consumePhysicsCommand(loaded.player);
+  assert.ok(command.control.torque.y > 0, 'the held turn still reaches the physics owner');
 });
 
 test('swing coordination leaves trackable orbits at full throttle', () => {

@@ -16,6 +16,7 @@ import { normalizePerkLoadout } from '../data/swarmPerks.js';
 import { normalizeThreatIds } from '../data/swarmThreats.js';
 import { crucibleEarnedPerkIds, loadCrucibleMeta } from './survivalRecords.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { swarmPilotHasActed } from './swarmSafety.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
 // Ephemeral identity survives the owner's immutable wallet/ledger commits. A new run or an
@@ -213,7 +214,14 @@ export const runSession = {
     if (run.phase === 'inactive') return false;
     const credits = toNonNegativeInt(request && request.credits);
     const xp = toNonNegativeInt(request && request.xp);
-    const score = Math.round(toNonNegativeInt(request && request.score) * swarmScoreScale(run));
+    // A quiet swarm wave has not been played. Seed 4242 idle paid +202 at sim
+    // 41.1, in the same sample gap as the second pre-input death's resolve,
+    // before any flight input. Credits and XP still settle; the score line
+    // stays 0 until this wave's pilot acts. No live swarm fight counts as
+    // already acting, so adventure and scored runs are unchanged.
+    let scorePoints = toNonNegativeInt(request && request.score);
+    if (scorePoints > 0 && !swarmPilotHasActed(this.state)) scorePoints = 0;
+    const score = Math.round(scorePoints * swarmScoreScale(run));
     if (credits === 0 && xp === 0 && score === 0) return false;
     const next = cloneRun(run);
     if (!next) return false;

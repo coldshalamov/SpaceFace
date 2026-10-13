@@ -82,10 +82,13 @@ export function orbitSwingThrottleScale(telemetry, commandedSpeed) {
     // Line-locked yaw: the nose can follow the line up to the physics ceiling. Compare the swing
     // in the pair's centre-of-mass frame (the ship's own speed is only armShare of it on a
     // movable anchor) against that ceiling, held a margin under it.
-    const share = clamp(positive(t.armShare, 1), 0.05, 1);
+    // A light target gives the ship a genuinely tiny COM arm. Flooring that share invents
+    // turning radius and allows a swing faster than the nose can follow, eventually sending
+    // thrust back across the line. Preserve the actual share, however small.
+    const share = Math.min(positive(t.armShare, 1), 1);
     const trackableL = ceiling * positive(t.radius, 0) * ORBIT_LINE_YAW_LOCK.governorMargin * share;
     const demandL = Math.max(Math.abs(finite(t.tangentialSpeed)) * share, Math.max(0, finite(commandedSpeed)));
-    if (!(trackableL > 1e-6) || !(demandL > trackableL)) return 1;
+    if (!(trackableL > 0) || !(demandL > trackableL)) return 1;
     return clamp(trackableL / demandL, 0, 1);
   }
   const trackable = positive(t.maxYawRate, 0) * positive(t.radius, 0) * ORBIT_SWING_TRACK_MARGIN;
@@ -234,12 +237,16 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
 
 /**
  * Swing carry. On a loaded line the hull turns with the swing: the orbital yaw rate
- * (cross(radius, relative velocity) / radius^2) is added to whatever the pilot steers, so the nose
+ * (cross(radius, relative velocity) / radius^2) carries the unsteered nose, so the nose
  * keeps its bearing to the anchor and forward thrust stays tangent instead of rotating onto the
- * radius and diving the ship in. The pilot's own turn input rides on top, relative to the line.
- * It needs no key, speed or heading condition: only a taut line, which is what makes a swing real.
+ * radius and diving the ship in. A manual turn takes ownership instead: adding the swing rate
+ * to countersteering could turn the hull the opposite way to the held key on a fast line.
  */
 function carrySwing(options, input, strength, inactive) {
+  if (Math.abs(finite(input.turn)) > ORBIT_ASSIST_TUNING_V1.minIntent
+      || Math.abs(finite(options.flightIntent && options.flightIntent.lateral)) > ORBIT_ASSIST_TUNING_V1.minIntent) {
+    return inactive('manual-override');
+  }
   const phase = String((options.tether && options.tether.phase) || 'slack');
   if (!(phase === 'capture' || phase === 'loaded' || phase === 'overload')) return inactive('line-slack');
   const host = options.host;
@@ -261,8 +268,7 @@ function carrySwing(options, input, strength, inactive) {
       ORBIT_LINE_YAW_LOCK.absoluteYawCap);
     maxYawRate = Math.max(hullMaxYawRate, lentYawRate);
   }
-  const pilotRate = clamp(finite(input.turn), -1, 1) * hullMaxYawRate;
-  const desiredYawRate = clamp(orbitalYawRate + pilotRate, -maxYawRate, maxYawRate);
+  const desiredYawRate = clamp(orbitalYawRate, -maxYawRate, maxYawRate);
   const anchorMass = positive(anchor.mass, positive(anchor.physicsBody && anchor.physicsBody.mass, 0));
   const hostMass = positive(host.mass, 1);
   return {
