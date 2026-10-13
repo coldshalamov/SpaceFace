@@ -219,7 +219,7 @@ export class DeepSkyPlateResidency {
    * Advance the transition. Call once per rendered frame, before the sky strength is computed.
    * Performs at most one GPU upload, and only on a frame that has room for it.
    */
-  pump() {
+  pump(options = {}) {
     if (this.disposed || !this.pendingId || !this.pendingDecoded) return false;
     const lastPresentDtMs = this.state && this.state.render
       ? this.state.render.lastPresentDtMs : undefined;
@@ -227,7 +227,8 @@ export class DeepSkyPlateResidency {
     // A forced start still needs room on the forced wallet — the same consult
     // the mesh-build gates got. Forced-but-broke defers without resetting the
     // skip streak, so the next frame's consult re-earns the start at once.
-    const startAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+    const beforeFlight = options.beforeFlight === true && this.state?.mode === 'loading';
+    const startAllowed = beforeFlight || (gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS);
     if (!startAllowed) {
       if (!gate.start) this.lateSkips = gate.skippedCount;
       return false;

@@ -13875,6 +13875,21 @@ export const render = {
           left: this._meshBuildQueue.length - this._meshBuildQueueHead,
         });
       };
+      if (state.mode === 'loading' && this.spaceBg) {
+        const bg = this.spaceBg;
+        for (const [lane, adopt] of [
+          [bg.deepSkyPlates, () => bg._adoptActiveSkyPlate()],
+          [bg.deepSkyBases, () => bg._adoptActiveSkyBase()],
+        ]) {
+          while (lane?.transitioning) {
+            if (cookStale()) return cookSuperseded;
+            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS) throw new Error('Opening sky upload exceeded the loading budget');
+            await yieldLiveSectorGpu();
+            if (cookStale()) return cookSuperseded;
+            if (lane.pump({ beforeFlight: true })) adopt();
+          }
+        }
+      }
       if (!scene.environment) this._bakeEnv({ force: true });
       // The envMap stamp walk is a full-scene traverse — drive its chunked twin
       // on the cook's slice clock instead of one atomic block behind the shell.
