@@ -59,7 +59,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `orrery-flight` | SURVEYED | |
 | `comms-radial` | SURVEYED | |
 | `wingman-radial` | SURVEYED | |
-| `ship` | SURVEYED | Ledger DONE earlier |
+| **`ship`** | **DONE** (ui-polish-27) | See § THE SHIP flight host below — blurb off gauges; heroes two-up ≤1100 |
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
@@ -696,3 +696,12 @@ Shots: `ui-shots/shipworks28/{before,after,compare}/` (not committed).
 
 Portrait keeps the live/poster hull (jig still requires W ≥ 480). Landscape keeps the jig. 960×540 / 1280×720 / 1920×1080 spot-checks stay clean (960 Drive/Cargo still kiss as before). Selectors/IDs unchanged. Shots: `ui-shots/shipworks-phone/{before,after,compare}/` (not committed).
 
+## THE SHIP flight host — session notes (2026-10-13, ui-polish-27)
+
+**Before:** the in-flight F2 host (`#sf-ship`) kept the hull sentence on the nameplate. At 1920×1080 it ran ~16 lines and printed over the Mass/Energy gauge strip under the stage; at 960/1024 it tangled with Cargo/Weapon callouts. The dock ORRERY sheet already sleeps that blurb on short jig frames; flight had no equivalent. Separately, ≤1100 forced four 30px heroes onto one nowrap row so +12/s landed on DOCKED.
+
+**After (`styles/station.css` only, `#sf-ship`):**
+1. Hide `.sx-sw__blurb` on the flight host (`display:none`). Handling heroes already say CAN TOW; dock (`.orr-station`) still paints the sentence.
+2. At ≤1100 wide, the four heroes become a 2×2 grid at 24px so each reading stays whole.
+
+Bench clean at 960×540 / 1024×768 / 1280×720 / 1920×1080 / 390×844 / 844×390. Station Shipworks unchanged. Shots: `ui-shots/ship-inspect/{before2,after2,compare}/` (not committed).

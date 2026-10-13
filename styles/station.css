@@ -1959,7 +1959,6 @@ html body #screens #sf-ship .sx-sw__stats .k-caps { font-size: 12px; }
 /* S1: at narrow widths the prose column ends by ~460 so the clamped callout stack (x>=560)
    never touches it. */
 @media (max-width: 1366px) {
-  html body #screens #sf-ship .sx-sw__blurb { max-width: 200px; }
   /* S2: the four heroes hold one row; the handling bars fold to two columns, so Brake
      and SAVE FIT sit above the 720 fold. */
   html body #screens #sf-ship .sx-sw-bands { flex-wrap: nowrap; gap: 0 18px; }
@@ -1970,6 +1969,16 @@ html body #screens #sf-ship .sx-sw__stats .k-caps { font-size: 12px; }
   html body #screens #sf-ship .sx-sw-band { margin-top: 10px; }
   html body #screens #sf-ship .sx-sw-band--presets { margin-top: 8px; }
   html body #screens #sf-ship .sx-sw__stats { margin-top: 10px; }
+}
+/* Under ~1100 the main column is too narrow for four 30px heroes on one row
+   (+12/s landed on DOCKED, top speed on power). Two-up grid keeps each reading whole. */
+@media (max-width: 1100px) {
+  html body #screens #sf-ship .sx-sw-bands {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px 18px; flex-wrap: unset;
+  }
+  html body #screens #sf-ship .sx-sw-hero { padding: 2px 6px 4px; }
+  html body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: 24px; }
+  html body #screens #sf-ship .sx-sw-hero .k-hero__w { font-size: 11px; letter-spacing: .12em; }
 }
 /* S2: on a short frame the rail compresses — dial, rows, helper, rack — so the helper
    and DOCK TO EXTEND keep their floor above y=700. */
@@ -2043,23 +2052,17 @@ html body #screens #sf-ship .sx-sw-row.fh-row.is-selected {
 html body #screens #sf-ship .sx-sw-bar__track > .k-bar__fill {
   box-shadow: 0 0 4px 1px rgb(255 240 214 / .5);
 }
-/* SH1 follow-through: the restored hull sits behind the prose — the blurb carries its
-   own dissolved-glass pad + halo (the callouts' r1 rule), so the ink holds 4.5:1 over
-   the brightest wing, not just the dark bay. */
-html body #screens #sf-ship .sx-sw__blurb { position: relative; z-index: 0;
-  text-shadow: 0 0 7px rgb(4 6 9 / .9), 0 1px 2px rgb(4 6 9 / .9); }
-html body #screens #sf-ship .sx-sw__blurb::before {
-  content: ""; position: absolute; inset: -8px -14px; z-index: -1; pointer-events: none;
-  background: radial-gradient(ellipse at center, rgb(6 8 11 / .72) 30%, rgb(6 8 11 / .4) 55%, transparent 75%);
-}
+/* SH1 follow-through: on the flight host the hull sentence is retired.
+   At every size it either spilled onto the Mass/Energy gauge strip under the
+   stage (ui-bench ON TOP OF — at 1920×1080 it ran ~16 lines over MASS · 18t)
+   or, when line-clamped, left ghost line boxes the audit still tangled. The
+   handling heroes already say CAN TOW / the rest; the dock ORRERY sheet still
+   paints the blurb inside `.orr-station`. */
+html body #screens #sf-ship .sx-sw__blurb { display: none !important; }
 /* SH8: in choosing mode the hang column keeps to itself — rules and lines end
    inside x<=300, and the prose steps down one shade so focus stays on the choice. */
 html body #screens #sf-ship .sx-sw__chooser { overflow: hidden; }
 html body #screens #sf-ship .sx-modrow { max-width: 235px; }
-html body #screens #sf-ship .sx-sw.is-choosing .sx-sw__blurb { color: rgb(236 230 216 / .62); }
-html body #screens #sf-ship .sx-sw.is-choosing .sx-sw__blurb::before {
-  background: radial-gradient(ellipse at center, rgb(6 8 11 / .6) 30%, rgb(6 8 11 / .32) 55%, transparent 75%);
-}
 /* SH2 follow-through: the flight chooser's rows stack in the hang column. The shared
    row is a flex pair (body + act) that crushes the body to ~13px in 230px, wrapping
    every name one letter per line; here the act rides under the body, full width. */
