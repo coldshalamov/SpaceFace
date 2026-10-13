@@ -158,6 +158,8 @@ test('G4 places and publishes the submitted local hull pose in its global frame'
     assert.equal(placement.x, 1600); assert.equal(placement.y, 360);
     assert.equal(placement.onScreen, false); assert.equal(placement.tick, state.tick);
     assert.ok(Number.isFinite(placement.at)); assert.ok(placement.expiresAt > placement.at);
+    assert.equal(placement.checkedAt, placement.at);
+    assert.equal(placement.frame, Number(slot.parentNode.getAttribute('data-placement-frame')));
     root.position.x = 100;
     halo.update(player, state, project);
     assert.equal(visibleArcs(mock).length, 0, 'the submitted hull entering frame retires the marker');

@@ -560,6 +560,7 @@ export function createThreatHalo(root, busOrOpts) {
   let tetherPass = 0;
   let haloTick = 0;
   let haloSim = 0;
+  let haloPublication = 0;
   let lastHarvestIndexVersion = null;
   let lastHarvestAtS = -Infinity;
 
@@ -1009,6 +1010,7 @@ export function createThreatHalo(root, busOrOpts) {
     setAttr(slot, 'data-telegraph-kind', null);
     setAttr(slot, 'data-entity-id', null);
     setAttr(slot, 'data-placement-read', null);
+    slot._sfPlacementRead = null;
     if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
       slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
     }
@@ -1357,12 +1359,15 @@ export function createThreatHalo(root, busOrOpts) {
   // placement solver fail for a frame and the slot strobe off. A recently-shown slot holds its
   // last placement through a short window; only a sustained failure retires it.
   const SLOT_GRACE_MS = 250;
-  function slotInGrace(slot) {
-    return !!slot._sfShownAt && performance.now() - slot._sfShownAt < SLOT_GRACE_MS;
+  function slotInGrace(slot, at = performance.now()) {
+    return !!slot._sfShownAt && at - slot._sfShownAt < SLOT_GRACE_MS;
   }
 
   function applySlots(cmState) {
     let shown = 0;
+    const publicationAt = performance.now();
+    haloPublication += 1;
+    setAttr(layer, 'data-placement-frame', haloPublication);
 
     for (let i = 0; i < HOSTILE_LIMIT; i++) {
       const slot = hostileSlots[i];
@@ -1370,7 +1375,10 @@ export function createThreatHalo(root, busOrOpts) {
         // Grace belongs to a placement failure for this same eligible shooter. An actor
         // entering the frame, dying or leaving the halo must retire its old arc now.
         if (i < hostileCount && slot.getAttribute('data-entity-id') === String(hostileId[i])
-          && slotInGrace(slot)) {
+          && slot._sfPlacementRead?.generation === hostileLife[i] && slotInGrace(slot, publicationAt)) {
+          slot._sfPlacementRead.frame = haloPublication;
+          slot._sfPlacementRead.checkedAt = publicationAt;
+          setAttr(slot, 'data-placement-read', JSON.stringify(slot._sfPlacementRead));
           shown++;
           continue;
         }
@@ -1378,7 +1386,7 @@ export function createThreatHalo(root, busOrOpts) {
         setDisplay(slot, false);
         continue;
       }
-      slot._sfShownAt = performance.now();
+      slot._sfShownAt = publicationAt;
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
@@ -1388,10 +1396,12 @@ export function createThreatHalo(root, busOrOpts) {
       // Bind observer custody to the pose that placed this chip, rather than a newer sim
       // point read between overlay ticks. Grace is bounded by the existing placement window.
       const placedAt = slot._sfShownAt;
-      setAttr(slot, 'data-placement-read', JSON.stringify({ version: 1, id: hostileId[i],
+      slot._sfPlacementRead = { version: 1, id: hostileId[i],
         generation: hostileLife[i], tick: haloTick, sim: haloSim, at: placedAt,
         expiresAt: placedAt + SLOT_GRACE_MS, x: hostileX[i], y: hostileY[i],
-        onScreen: false, behind: hostileBehind[i] === 1 }));
+        frame: haloPublication, checkedAt: publicationAt,
+        onScreen: false, behind: hostileBehind[i] === 1 };
+      setAttr(slot, 'data-placement-read', JSON.stringify(slot._sfPlacementRead));
       const cue = cueForIds(hostileId[i], null);
       setOpacity(slot, cue ? '1' : hostileOpacity[i].toFixed(2));
       if (cue) {

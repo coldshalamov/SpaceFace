@@ -75,15 +75,25 @@ export function observeEdgeMarkers({ drain = false } = {}) {
         const weapons = data.weapons || shooter?.weapons;
         const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
           && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
-        const fresh = placed?.version === 1 && placed.id === id
-          && placed.generation === (shooter?.occupantGeneration ?? null)
-          && Number.isFinite(placed.at) && Number.isFinite(placed.expiresAt)
-          && placed.at <= observedAt && observedAt <= placed.expiresAt
-          && placed.expiresAt <= placed.at + 250
-          && Number.isFinite(placed.x) && Number.isFinite(placed.y) && typeof placed.onScreen === 'boolean';
-        if (eligible && fresh) marker.shooter = { id, alive: true,
+        const rawFrame = (el.parentElement || el.parentNode)?.getAttribute?.('data-placement-frame');
+        const publication = rawFrame != null && rawFrame !== '' ? Number(rawFrame) : null;
+        let reason = null;
+        if (!eligible) reason = 'ineligible shooter';
+        else if (placed?.version !== 1) reason = 'missing producer placement';
+        else if (placed.id !== id || placed.generation !== (shooter.occupantGeneration ?? null)) reason = 'different shooter life';
+        else if (!Number.isFinite(placed.at) || !Number.isFinite(placed.expiresAt)
+          || !Number.isFinite(placed.checkedAt) || placed.at > placed.checkedAt
+          || placed.checkedAt > observedAt || placed.expiresAt > placed.at + 250
+          || !Number.isFinite(placed.x) || !Number.isFinite(placed.y)
+          || typeof placed.onScreen !== 'boolean') reason = 'invalid producer placement';
+        else if (!Number.isSafeInteger(publication) || publication < 1 || placed.frame !== publication) reason = 'older halo publication';
+        else if (placed.checkedAt > placed.expiresAt) reason = 'expired at halo publication';
+        // A producer-approved grace chip is the painted chip until the next publication.
+        // Observation wall time alone cannot revoke an otherwise unchanged HUD frame.
+        if (!reason) marker.shooter = { id, alive: true,
           onScreen: placed.onScreen, behind: placed.behind === true, x: placed.x, y: placed.y };
-      }
+        else marker.placementFailure = { reason, id, generation: shooter?.occupantGeneration ?? null, placement: placed };
+      } else marker.placementFailure = { reason: 'missing shooter identity', placement: null };
       out.push(marker);
     }
     if (!drain) return out;
@@ -248,7 +258,40 @@ function readCombatPhaseEnded() {
     || !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'active');
 }
 
+/** The painted payload readout is a public line cue, including the older HUD layout. */
+function readAttachedMassline() {
+  for (const selector of ['.orr-cluster__payload', '#sf-tetherstat']) {
+    const node = document.querySelector?.(selector);
+    if (!node?.offsetParent || node.hidden || typeof node.getBoundingClientRect !== 'function') continue;
+    const style = getComputedStyle(node); const box = node.getBoundingClientRect();
+    if (style.display !== 'none' && style.visibility !== 'hidden' && style.visibility !== 'collapse'
+      && Number(style.opacity) >= 0.05 && box.width > 0 && box.height > 0) return true;
+  }
+  return false;
+}
+
 async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
+  // A prior combat latch keeps orbit assist in charge of this W/turn chord. A public tap
+  // cuts the visible line before chasing; otherwise the fighter circles its distant load.
+  if (await page.evaluate(readAttachedMassline)) {
+    if (await page.evaluate(readCombatPhaseEnded)) return;
+    const cutCode = await page.evaluate(async () => {
+      const { resolveActionCodes } = await import('../../src/systems/input.js');
+      return resolveActionCodes(window.SF.state, 'tether')[0] || null;
+    });
+    if (!cutCode) return;
+    noteKey(page, cutCode);
+    try { await page.keyboard.press(cutCode); }
+    finally { await page.keyboard.up(cutCode).catch(() => {}); }
+    // Let the fixed-tick tap grammar and the painted payload update finish. Do not
+    // chase through a modal or assume a still-visible line has released successfully.
+    const cut = await waitSim(page, 0.6, { maxWallMs: 30000, until: combatPhaseEnded,
+      onPoll: async () => !await page.evaluate(readAttachedMassline) });
+    if (cut.watch || cut.timeout || await page.evaluate(readCombatPhaseEnded)
+      || await page.evaluate(readAttachedMassline)) return;
+    tg = await page.evaluate(readTarget).catch(() => null);
+    if (!tg || (!tg.none && minimumSearchS === 0)) return;
+  }
   if (Number.isFinite(tg?.radarRel)) {
     const boostCode = await page.evaluate(async () => {
       const { resolveActionCodes } = await import('../../src/systems/input.js');
