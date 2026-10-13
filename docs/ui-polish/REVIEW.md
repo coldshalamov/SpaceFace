@@ -674,3 +674,19 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28/{before,after,compare}/`.
 
 **Branch:** `ui-polish-28` pushed; no PR (freeze on #371/#374).
+
+## Chart inspector tabs — session notes (2026-10-13, ui-polish-28, second commit)
+
+**Main-menu SANDBOX-over-nose @1080p:** re-checked, no change. The live title paints the same authored plate (`backdrop-title.jpg`, `.k-world--plate`, cover/center) as the bench. Since #331's three-line reference line, SANDBOX ends ~240px left of the hull nose at 1920×1080 (~40px at 960×540). The "Was remaining" line under § Main menu is stale.
+
+**Before (all desktop sizes):** the nine inspector tabs (Overview … History) were one row of ~875px in a 288px column (wide) or 227px column (compact 761–1179). The deckplate `repeat(auto-fill, minmax(84px, 1fr))` template still sized every track at 84px, so OVERVIEW (87px of type) lost its O to the inspector's clip. ECONOMY through HISTORY sat past the right edge, where no pointer could reach them. On short screens ZOOM: SHIP AND DESTINATION was clipped too (`ZOOM: SHIP ▯` @720, `ZOOM` @540).
+
+**After (`src/ui/orrery/chartLayouts.js` only, ≥761px wide):** the tab words wrap onto the scales the tab instrument already draws per row (the same wrap non-English locales already used). That's 3 rows at 1280/1920 and 4 rows at 960/1024 (11px, .08em). The row gap clears the major ticks. The Hand springs to the open tab on any row (checked: Discovery @960). The framing words wrap to a second row instead of clipping, and in compact mode ZOOM breaks onto two lines. Phone (≤760, `mobileScreenLayouts.js`, frozen on #374) is unchanged. Selectors/IDs are unchanged.
+
+**Trade-off:** at 960×540 the extra tab rows take ~90px from the inspector body. The body already scrolls under its fade, and ENGAGE ROUTE stays pinned.
+
+**Checked:** 1920×1080, 1280×720, 1024×768, 960×540, 390×844 (phone identical apart from map animation). `check:map-information-depth` passes all 18 sections. `test/map-one-answer.test.mjs` fails the same way on master without this change.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28b/{before,after,compare}/`.
+
+*If #374's REVIEW.md leftovers sections conflict with this file on merge, keep both. This section only covers `chartLayouts.js`.*

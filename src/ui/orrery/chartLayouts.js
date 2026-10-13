@@ -175,6 +175,22 @@ html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-char
   min-width:0 !important; max-width:100% !important;
   white-space:normal !important; overflow-wrap:anywhere !important;
 }
+/* Desktop English too: the one-row strip was ~875px of words in a 288px (wide) / ~227px (compact)
+   column. The deckplate repeat(auto-fill, minmax(84px, 1fr)) template still sized every track at
+   84px, so OVERVIEW (87px of type) lost its O to the inspector's clip, and ECONOMY…HISTORY sat past
+   the right edge where no pointer could reach them. Above phone width the words wrap onto the
+   scales the tab instrument already draws per row, so all nine stand inside the column. Phone
+   (<=760) keeps its own strip in the mobile deck. */
+@media (min-width: 761px) {
+  ${C} .gm-tabs.k-words { display:flex !important; flex-wrap:wrap !important; align-items:end; grid-template-columns:none !important;
+    width:100% !important; max-width:100% !important; min-width:0 !important; gap:10px 16px !important; }
+  ${C} .gm-tab.k-word { flex:0 0 auto !important; }
+}
+/* compact chart (761-1179, ~227px column): smaller, tighter words so three share a row (4 rows, not 5) */
+@media (min-width: 761px) and (max-width: 1179px) {
+  ${C} .gm-tabs.k-words { gap:9px 12px !important; }
+  ${C} .gm-tab.k-word { font-size:11px !important; letter-spacing:.08em !important; padding:2px 0 9px !important; }
+}
 ${C} .orr-chart-tabscale { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:0; }
 /* the two ways back: words with their notch */
 ${C} .gm-frame-group { gap:2px 18px !important; }
@@ -368,6 +384,15 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} :is(#gm-set-course-btn, .gm-plot-btn) { font-size:14px !important; padding:2px 0 4px 12px !important; }
   ${C} #gm-engage-route-btn.orr-lampkey { margin-top:2px !important; }
   ${C} .gm-place-actions { gap:0 14px !important; }
+}
+
+/* the two ways back keep their whole words above phone width: a second row, never a clipped ZOOM
+   (after the short-screen block, which folds them onto one nowrap row) */
+@media (min-width: 761px) {
+  ${C} .gm-frame-group { flex-wrap:wrap !important; row-gap:0 !important; }
+}
+@media (min-width: 761px) and (max-width: 1179px) {
+  ${C} .gm-frame-group .gm-frame-btn { max-width:100% !important; white-space:normal !important; text-align:left !important; line-height:1.25 !important; }
 }
 
 @media (forced-colors:active) {
