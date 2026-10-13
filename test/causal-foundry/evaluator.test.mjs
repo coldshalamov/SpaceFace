@@ -8,6 +8,8 @@ import { bodyClassOf, criticSample, evaluateCandidate, signatureOf } from '../..
 import { contrastFails, deriveHappened } from '../../tools/causal-foundry/observe.js';
 import { gameableHoles } from '../../tools/causal-foundry/critic.js';
 import { buildCandidates } from '../../tools/causal-foundry/generate.js';
+import { ACCEPTED_SCENES } from '../../src/data/causalFoundry/accepted.js';
+import { PRESENTATION_SCENES } from '../../src/data/causalFoundry/presentation.js';
 
 const ACCEPT = {
   id: 'syn.reel',
@@ -123,6 +125,17 @@ test('generator candidates are deterministic and stay on runnable atoms', () => 
   assert.deepEqual(first, second);
   assert.ok(first.length >= 100);
   assert.equal(new Set(first).size, first.length);
+});
+
+test('presentation rows are the operable primary control, not an unverified caption', () => {
+  assert.equal(PRESENTATION_SCENES.length, 10);
+  for (const card of PRESENTATION_SCENES) {
+    const scene = ACCEPTED_SCENES.find((entry) => entry.id === card.id);
+    assert.ok(scene, card.id);
+    assert.deepEqual(card.trace, scene.primary);
+    assert.equal(card.verified, true, card.id);
+    assert.ok(card.controls.length > 0, card.id);
+  }
 });
 
 test('speed changes and harmless projectile drift are not hull contacts without an owner receipt', () => {

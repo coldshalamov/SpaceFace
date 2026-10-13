@@ -1,5 +1,8 @@
-// Profile bindings for the ten scenes the public lab run operates.
-// The sentences are not captures. Operability is runLabScenario on each id.
+// Operable control traces for the ten scenes the public lab run operates.
+// `trace` is the scene's primary tape. `controls` are the labels for that tape.
+// A row with no runnable trace is unverified and must not be treated as a capture.
+
+import { ACCEPTED_SCENES } from './accepted.js';
 
 export const PRESENTATION_SCENES = Object.freeze([
   row('cf.reel-berth', ['ship.starter', 'asteroid.heavy'], ['KeyF hold', 'KeyQ reel']),
@@ -14,12 +17,23 @@ export const PRESENTATION_SCENES = Object.freeze([
   row('cf.moving-fire', ['ship.starter', 'wasp_swarmer'], ['thrust', 'fire']),
 ]);
 
+function operableTrace(trace) {
+  if (!trace) return false;
+  return !!(trace.hold || trace.reelFrom != null || trace.payoutFrom != null
+    || trace.tap != null || trace.fire || trace.boost
+    || Math.abs(trace.moveZ || 0) > 0 || Math.abs(trace.turnIntent || 0) > 0);
+}
+
 function row(id, profiles, controls) {
+  const scene = ACCEPTED_SCENES.find((entry) => entry.id === id);
+  const trace = scene && scene.primary ? Object.freeze({ ...scene.primary }) : null;
   return Object.freeze({
     id,
     profiles: Object.freeze(profiles),
     controls: Object.freeze(controls),
+    trace,
+    verified: operableTrace(trace),
   });
 }
 
-export const PRESENTATION_IDS = Object.freeze(PRESENTATION_SCENES.map((row) => row.id));
+export const PRESENTATION_IDS = Object.freeze(PRESENTATION_SCENES.map((entry) => entry.id));
