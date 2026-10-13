@@ -21,10 +21,10 @@ defects, create another starter plan in this file, or hand a smaller model an un
 
 ## How to take a line
 
-1. Take the first OPEN line whose paths are not in a live `NOW.md` row, not named by a
-   CLAIMED line, and not inside a §1C seam another agent has claimed. Normally take one line. Under
-   the owner's batching direction, a bounded group of already-resolved leaves of the same cause
-   and owner family may share setup/checks; claim each selected line and exact paths once.
+1. Take a bounded group of OPEN lines — same cause and owner family, paths disjoint from every
+   other live `NOW.md` row, CLAIMED line, and claimed §1C seam; a single line is fine when that is
+   all that shares a cause. A group shares setup/checks; claim each selected line and exact paths
+   once. (Owner 2026-10-12: the one-line-per-sitting norm is retired — groups are the default.)
 2. Mark it CLAIMED with today's date and your thread, in the same edit as your NOW row.
 3. Change only the owners the line names. Prove the done sentence on a fixed seed (4242
    unless the line says otherwise) with the live owner or a focused test. Do not add a package

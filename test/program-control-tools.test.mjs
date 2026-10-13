@@ -248,7 +248,7 @@ test('selection requires verified integration evidence and skips ready leaf cont
   assert.equal(selectNextPacket(onlyContainer, root), null);
 });
 
-test('dispatch rejects missing, non-commit, and unavailable integration evidence', () => {
+test('integration evidence: wrong-type commits are rejected; history-lost commits are recorded expiry', () => {
   const { root, commit } = controlRoot();
   const valid = integrated('PQ-001', 1, commit);
   assert.doesNotThrow(() => validateControlPlane(root, queue([valid])));
@@ -268,12 +268,63 @@ test('dispatch rejects missing, non-commit, and unavailable integration evidence
       && error.details.some((detail) => detail.includes('integratedCommit is unavailable')),
   );
 
-  const unavailable = { ...valid, integratedCommit: 'deadbeef' };
-  assert.throws(
-    () => validateControlPlane(root, queue([unavailable])),
-    (error) => error instanceof ProgramControlError
-      && error.details.some((detail) => detail.includes('integratedCommit is unavailable')),
+  // Evidence policy (2026-10-12): a commit absent from history entirely is EXPIRED evidence, not
+  // a live contradiction — the integration claim stands, the loss is recorded, and the control
+  // plane keeps dispatching. The 2026-09-08 squash left 40+ rows in this state and hard-failed
+  // the whole board; blocking the program on an unprovable historical claim was the failure mode.
+  const expired = { ...valid, integratedCommit: 'deadbeef' };
+  const expiredControl = validateControlPlane(root, queue([expired]));
+  assert.ok(
+    expiredControl.warnings.some(
+      (warning) => warning.includes('expired evidence') && warning.includes('deadbeef'),
+    ),
+    'expired evidence must be recorded as a warning',
   );
+  assert.ok(
+    expiredControl.verifiedIntegrationIds.has('PQ-001'),
+    'expired evidence still proves integration for dependency gates',
+  );
+  assert.ok(expiredControl.integrationEvidenceExpired.has('PQ-001'));
+  assert.ok(
+    expiredControl.expiredIntegrationEvidence.some(
+      (entry) => entry.rowId === 'PQ-001' && entry.commit === 'deadbeef',
+    ),
+  );
+});
+
+test('a dangling commit is expired evidence; a ref-reachable divergent commit is a live contradiction', () => {
+  const { root, commit } = controlRoot();
+  const writeAndCommit = (message) => {
+    fs.writeFileSync(path.join(root, 'design', `${message.replace(/\s+/g, '-')}.txt`), `${message}\n`);
+    runGit(root, ['add', '.']);
+    runGit(root, ['commit', '--quiet', '-m', message]);
+    return runGit(root, ['rev-parse', 'HEAD']);
+  };
+
+  // A commit left reachable from no ref — exactly the shape a fetch or GC leaves behind for a
+  // lost pre-squash commit. Its presence in the object store is luck, not proof of anything.
+  runGit(root, ['checkout', '--quiet', '--detach']);
+  const dangling = writeAndCommit('dangling evidence commit');
+  runGit(root, ['checkout', '--quiet', '-']);
+  const fossil = { ...integrated('PQ-010', 10, dangling), receipt: 'design/receipt.md', acceptanceRef: 'design/receipt.md' };
+  const fossilControl = validateControlPlane(root, queue([fossil]));
+  assert.ok(
+    fossilControl.warnings.some((warning) => warning.includes('expired evidence') && warning.includes('dangling')),
+    'a dangling commit must read as expired evidence, not an error',
+  );
+  assert.ok(fossilControl.verifiedIntegrationIds.has('PQ-010'));
+
+  // The same commit reachable from a live branch is a real claim on a divergent line: error.
+  runGit(root, ['checkout', '--quiet', '-b', 'divergent']);
+  const divergent = writeAndCommit('divergent evidence commit');
+  runGit(root, ['checkout', '--quiet', '-']);
+  const contradiction = integrated('PQ-011', 11, divergent);
+  assert.throws(
+    () => validateControlPlane(root, queue([contradiction])),
+    (error) => error instanceof ProgramControlError
+      && error.details.some((detail) => detail.includes('not an ancestor of HEAD')),
+  );
+  void commit;
 });
 
 test('structured leaf evidence is a semantic, committed-blob dispatch gate', () => {

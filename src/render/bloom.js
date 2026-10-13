@@ -40,7 +40,12 @@ import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from 
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
-import { detachedPresentedDrawBlocked, queuePresentedDetachRehydrate } from './packageCpuDetach.js';
+import {
+  detachedPresentedDrawBlocked,
+  orientationDetachedHoldActive,
+  orientationHoldHidesDrawable,
+  queuePresentedDetachRehydrate,
+} from './packageCpuDetach.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 // The `bloomLevels` setting is a quality tier (1 = tight glow only, 2 = the full halo), not a
@@ -1204,6 +1209,10 @@ export function createUnreadyDrawableGuard(renderer) {
   function hideUnreadySceneDrawables(scene) {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
     unreadySceneCount = 0;
+    // Aspect-flip hold: three uploads attributes inside projectObject, before the
+    // draw guard can refuse. Force this walk even when the program set is steady,
+    // and hide the released meshes so that upload never sees a zero-length array.
+    const orientationHold = orientationDetachedHoldActive(renderer);
     // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
     // drivers, so the program-readiness scan below can never see them — drawing one would link
     // its variants synchronously inside this presented frame. Hide the root (subtree included)
@@ -1262,7 +1271,7 @@ export function createUnreadyDrawableGuard(renderer) {
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
     // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
     // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
-    if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+    if (!orientationHold && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
       && programs[programs.length - 1] === unreadyProgramTail
       && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
     unreadyProgramsPending = false;
@@ -1278,7 +1287,7 @@ export function createUnreadyDrawableGuard(renderer) {
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
     }
-    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
+    if (!orientationHold && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
       && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
     unreadyCheckedMaterials.clear();
     unreadyHiddenMaterials.clear();
@@ -1298,7 +1307,8 @@ export function createUnreadyDrawableGuard(renderer) {
     // sweep window — the draw-time renderBufferDirect guard already refuses
     // on-glass links for stamped materials in the meantime).
     const scopedPendingWindow = pendingOnlyWindow || unreadyProgramsPending === true;
-    if ((sceneSetChanged && drainRoots === null)
+    if (orientationHold
+        || (sceneSetChanged && drainRoots === null)
         || (!scopedPendingWindow && !drainRoots)) {
       // Uninstrumented growth with nothing queued, or no pending latch at all:
       // any existing drawable could hold the unready program — full traverse.
@@ -1345,6 +1355,12 @@ export function createUnreadyDrawableGuard(renderer) {
       return;
     }
     if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
+    if (orientationHoldHidesDrawable(renderer, object)) {
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneCount += 1;
+      object.visible = false;
+      return;
+    }
     const props = renderer.properties;
     const list = object.material;
     if (Array.isArray(list)) {
