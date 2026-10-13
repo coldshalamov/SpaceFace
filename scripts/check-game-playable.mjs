@@ -148,6 +148,66 @@ async function clickButton(page, label) {
   }, label);
 }
 
+async function exerciseSaveScreen(page, { protectedSession = false } = {}) {
+  await page.evaluate(() => {
+    const slots = () => Object.keys(localStorage).filter(key => /^sf\.(save|recovery)\./.test(key))
+      .sort().map(key => [key, localStorage.getItem(key)]);
+    window.__playableSave = { before: JSON.stringify(slots()), completed: [], errors: [], refused: [], attempts: 0 };
+    window.SF.bus.on('game:save', payload => { if (payload?.slot === 'quick') window.__playableSave.attempts++; });
+    window.SF.bus.on('save:completed', payload => {
+      if (payload?.slot === 'quick' && payload.reason === 'manual') window.__playableSave.completed.push(payload);
+    });
+    window.SF.bus.on('save:error', payload => {
+      if (payload?.slot === 'quick') window.__playableSave.errors.push(payload);
+    });
+    window.SF.bus.on('toast', payload => {
+      if (String(payload?.text || '').includes('campaign save slots are protected')) window.__playableSave.refused.push(payload.text);
+    });
+  });
+  await page.keyboard.press('Escape');
+  const pause = page.locator('[data-screen="pause"]');
+  await pause.waitFor({ state: 'visible', timeout: 15000 });
+  await pause.getByRole('button', { name: /^Save\b/ }).click();
+  const saves = page.locator('[data-screen="saveLoad"]');
+  await saves.waitFor({ state: 'visible', timeout: 15000 });
+  await saves.locator('.sf-slot[data-id="quick"]').click();
+  const overwrite = await page.evaluate(() => !!localStorage.getItem('sf.save.quick'));
+  await saves.locator('button[data-action="save"]').click();
+  if (overwrite) await page.getByRole('dialog', { name: 'Overwrite save?', exact: true })
+    .getByRole('button', { name: 'Overwrite', exact: true }).click();
+  try {
+    await page.waitForFunction(() => {
+      const result = window.__playableSave;
+      return result.completed.length > 0 || result.errors.length > 0 || result.refused.length > 0;
+    }, null, { timeout: 30000 });
+  } catch (error) {
+    const pending = await page.evaluate(() => ({ attempts: window.__playableSave.attempts,
+      completed: window.__playableSave.completed.length, errors: window.__playableSave.errors,
+      refused: window.__playableSave.refused, slotWritten: !!localStorage.getItem('sf.save.quick'),
+      indexWritten: !!localStorage.getItem('sf.save.index'), mode: window.SF.state.mode,
+      paused: window.SF.state.ui?.paused, save: window.SF.state.save,
+      lane: window.SF.simLaneDiag?.() }));
+    throw new Error(`Save UI receipt timed out: ${JSON.stringify(pending)} (${error.message})`);
+  }
+  const result = await page.evaluate(() => {
+    const result = window.__playableSave;
+    const after = Object.keys(localStorage).filter(key => /^sf\.(save|recovery)\./.test(key))
+      .sort().map(key => [key, localStorage.getItem(key)]);
+    const receipt = result.completed.at(-1);
+    const index = JSON.parse(localStorage.getItem('sf.save.index') || '{}');
+    return { attempts: result.attempts, saved: receipt?.ok === true && !!localStorage.getItem('sf.save.quick') && !!index.quick,
+      completed: result.completed.length, errors: result.errors, refused: result.refused,
+      slotsUnchanged: result.before === JSON.stringify(after) };
+  });
+  if (protectedSession) {
+    await page.keyboard.press('Escape');
+    await saves.waitFor({ state: 'hidden', timeout: 15000 });
+    await page.keyboard.press('Escape');
+    await pause.waitFor({ state: 'hidden', timeout: 15000 });
+  }
+  return result;
+}
+
 // Read the player's real saves off disk (READ ONLY) and hand back the localStorage pairs the game
 // expects. Filenames map 1:1 to keys: sf.save.quick.json -> 'sf.save.quick' (saveSystem.js:48).
 // Only sf.save.* is taken: recovery blobs and the settings profile are not part of the load path.
@@ -367,6 +427,8 @@ try {
         // means a duplicated replay/emit, 0 on a new game means the receipt
         // never bridged back to main-side subscribers.
         window.__gameStartedCount = 0;
+        window.__playableRacingSession = false;
+        window.SF.bus.on('game:new', opts => { window.__playableRacingSession = opts?.racingSession === true; });
         window.SF.bus.on('game:started', () => { window.__gameStartedCount += 1; });
         window.SF.bus.on('game:loadingProgress', stage => { window.__playableStart.stage = stage; });
         window.SF.bus.on('game:startFailed', error => { window.__playableStart.error = error; });
@@ -556,7 +618,7 @@ try {
     if (SIM_LANE_ARG === 'worker' || laneLive) {
       try {
         await page.evaluate(() => {
-          window.__laneFwdReceipts = { waypoint: 0, probe: 0, denied: 0 };
+          window.__laneFwdReceipts = { waypoint: 0, probe: 0, denied: 0, routeResponses: [], awaitingRoute: false };
           // The bridged nav:waypoint replay carries the worker's own emit; the
           // tracked mission re-owns nav.waypoint each tick, so match OUR emit by
           // reason+pos on the receipt rather than on state.nav.waypoint.
@@ -564,7 +626,12 @@ try {
             window.__laneFwdReceipts.waypoint++;
             if (w && w.reason === 'laneFwdCheck') window.__laneFwdReceipts.probe++;
           });
-          window.SF.bus.on('nav:routeExecutorDenied', () => window.__laneFwdReceipts.denied++);
+          window.SF.bus.on('nav:routeExecutorDenied', payload => {
+            if (window.__laneFwdReceipts.awaitingRoute && payload?.reason) window.__laneFwdReceipts.denied++;
+          });
+          window.SF.bus.on('nav:routeExecutor', payload => {
+            if (window.__laneFwdReceipts.awaitingRoute) window.__laneFwdReceipts.routeResponses.push(payload);
+          });
           const st = window.SF.state;
           const p = st.entities.get(st.playerId);
           const pos = { x: (p ? p.pos.x : 0) + 4000, y: 0, z: (p ? p.pos.z : 0) + 4000 };
@@ -604,6 +671,9 @@ try {
           const route = st.nav && st.nav.route;
           let engaged = null;
           if (route && Array.isArray(route.legs) && route.legs.length) {
+            window.__laneFwdReceipts.awaitingRoute = true;
+            window.__laneFwdReceipts.routeResponses.length = 0;
+            window.__laneFwdReceipts.denied = 0;
             window.SF.bus.emit('nav:engageRoute', {});
             engaged = 'sent';
           } else {
@@ -624,7 +694,14 @@ try {
             workerGameStarted = probe && probe.result ? probe.result.gameStartedEmits : null;
           } catch (_) { workerGameStarted = null; }
           return {
-            executor: !!(st.nav && st.nav.executor && st.nav.executor.status === 'engaged'),
+            executor: window.__laneFwdReceipts.routeResponses.some(response =>
+              ['engaged', 'resumed'].includes(response?.transition))
+              && ((st.nav?.executor?.engaged === true
+                && ['acquiring', 'transiting', 'approaching'].includes(st.nav.executor.status))
+                || window.__laneFwdReceipts.routeResponses.some(response =>
+                  ['interrupted', 'arrived'].includes(response?.transition) && !!response.reason)),
+            executorStatus: st.nav?.executor?.status, executorInterruptReason: st.nav?.executor?.interruptReason,
+            routeResponses: window.__laneFwdReceipts.routeResponses,
             denied: window.__laneFwdReceipts.denied,
             unforwarded: diag.unforwardedEmitCount ?? null,
             unforwardedTypes: diag.unforwardedEmitTypes || null,
@@ -658,9 +735,17 @@ try {
           && coverageOk && startedOk;
         record('LANE-FWD' + tag, ok, ok
           ? `ui:setCourse -> nav.waypoint (${fwd.waypointReceipts} receipt), settings:changed -> profile write, engage=${fwd3.engaged}${fwd4.executor ? '/executor' : fwd4.denied ? '/denied' : ''}, unfwd=0, game:started=${fwd4.gameStartedWorker}/w+${fwd4.gameStartedMain}/m`
-          : `waypoint=${JSON.stringify(fwd.waypointLabel)} receipts=${fwd.waypointReceipts} probeReceipts=${fwd.probeReceipts} profile=${fwd2.profileWritten} route=${fwd3.engaged} exec=${fwd4.executor} denied=${fwd4.denied} unfwd=${fwd4.unforwarded}/${JSON.stringify(unforwardedForProbe)} types=${JSON.stringify(fwd4.unforwardedTypes)} started w=${fwd4.gameStartedWorker} m=${fwd4.gameStartedMain}`);
+          : `waypoint=${JSON.stringify(fwd.waypointLabel)} receipts=${fwd.waypointReceipts} probeReceipts=${fwd.probeReceipts} profile=${fwd2.profileWritten} route=${fwd3.engaged} exec=${fwd4.executor} status=${fwd4.executorStatus} reason=${fwd4.executorInterruptReason} responses=${JSON.stringify(fwd4.routeResponses)} denied=${fwd4.denied} unfwd=${fwd4.unforwarded}/${JSON.stringify(unforwardedForProbe)} types=${JSON.stringify(fwd4.unforwardedTypes)} started w=${fwd4.gameStartedWorker} m=${fwd4.gameStartedMain}`);
       } catch (err) {
         record('LANE-FWD' + tag, false, 'forwarded-surface exercise threw: ' + err.message);
+      } finally {
+        if (CIRCUIT) {
+          // The exercise intentionally leaves the circuit for an inter-sector course.
+          // Return control through the public owner before the remaining Circuit checks.
+          await page.evaluate(() => window.SF.bus.emit('nav:abortRoute', { reason: 'laneFwdCheckComplete' }));
+          await page.waitForFunction(() => window.SF.state.nav?.executor?.engaged !== true
+            && window.SF.state.nav?.autopilot?.active !== true, null, { timeout: 15000 });
+        }
       }
     }
   }
@@ -672,13 +757,13 @@ try {
         const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
         return { hull:ship?.defId, sprint:ship?.fittings?.includes('mod_engine_sprint_m'),
           course:race?.params?.courseId, view:st.settings.gameplay.steeringView,
-          saveIsolated:window.SF.registry.get('save')._campaignSaveSuppressed(),
+          temporarySession:window.__playableRacingSession === true,
           onboardingActive:!!st.onboarding?.active, tutorialWaypoint:!!st.nav?.waypoint?.onboarding,
           tutorialActors:[...st.entities.values()].filter(e => e.alive !== false
             && (e.data?.onboarding || e.data?.onboardingTraining || e.data?.rescue)).length };
       });
       record('CIRCUIT', circuit.hull === 'ship_wasp' && circuit.sprint
-        && circuit.course === 'circuit_helios_belt' && circuit.view === 'racing' && circuit.saveIsolated
+        && circuit.course === 'circuit_helios_belt' && circuit.view === 'racing' && circuit.temporarySession
         && !circuit.onboardingActive && !circuit.tutorialWaypoint && circuit.tutorialActors === 0,
       JSON.stringify(circuit));
       // The race deliberately suppresses propulsion during its simulation-clock countdown.
@@ -688,6 +773,29 @@ try {
         return st.missions.active.every(m => m.status !== 'active' || !m.params?.racingContractId
           || !Number.isFinite(m.params.gridUntilSimS) || st.simTime >= m.params.gridUntilSimS);
       }, null, { timeout: 60000 });
+      // Observe the physical pack at its starting course, before LANE-FWD deliberately
+      // engages off-course navigation and the camera's normal culling hides those rivals.
+      try {
+        await page.waitForFunction(() => {
+          const rivals = [...window.SF.state.entities.values()].filter(e => e.data?.raceOpponent);
+          return rivals.length === 2 && rivals.every(e => e.mesh?.parent && e.mesh.visible
+            && Math.hypot(e.vel?.x || 0, e.vel?.z || 0) > 1);
+        }, null, { timeout: 60000 });
+        const pack = await page.evaluate(() => {
+          const st = window.SF.state;
+          const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
+          return { mode: race?.params.raceMode, entrants: race?.params.raceEntrants,
+            anchors: [...st.entities.values()].filter(e => e.data?.raceSetPiece?.kind === 'anchor'
+              && e.alive !== false && e.collides !== false).length,
+            rivals: [...st.entities.values()].filter(e => e.data?.raceOpponent).map(e => ({
+              name: e.data.name, speed: Math.hypot(e.vel?.x || 0, e.vel?.z || 0),
+              assetState: e.mesh?.userData?.authoredAssetState, visible: !!e.mesh?.visible,
+              renderedMeshes: (() => { let n = 0; e.mesh?.traverse(o => { if (o.isMesh && o.visible) n++; }); return n; })(),
+            })) };
+        });
+        record('RIVALS', pack.mode === 'race' && pack.entrants === 3 && pack.rivals.length === 2 && pack.anchors === 2
+          && pack.rivals.every(rival => rival.visible && rival.renderedMeshes > 0 && rival.speed > 1), JSON.stringify(pack));
+      } catch (error) { record('RIVALS', false, error.message); }
     }
     await assertPlayable(page);
     if (PHYSICS_VENUE) {
@@ -719,25 +827,12 @@ try {
       }
     }
     if (CIRCUIT) {
-      await page.waitForFunction(() => {
-        const st = window.SF.state;
-        const rivals = [...st.entities.values()].filter(e => e.data?.raceOpponent);
-        return rivals.length === 2 && rivals.every(e => e.mesh?.parent && e.mesh.visible);
-      }, null, { timeout: 60000 });
-      const pack = await page.evaluate(() => {
-        const st = window.SF.state;
-        const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
-        return { mode: race?.params.raceMode, entrants: race?.params.raceEntrants,
-          anchors: [...st.entities.values()].filter(e => e.data?.raceSetPiece?.kind === 'anchor'
-            && e.alive !== false && e.collides !== false).length,
-          rivals: [...st.entities.values()].filter(e => e.data?.raceOpponent).map(e => ({
-            name: e.data.name, speed: Math.hypot(e.vel?.x || 0, e.vel?.z || 0),
-            assetState: e.mesh?.userData?.authoredAssetState, visible: !!e.mesh?.visible,
-            renderedMeshes: (() => { let n = 0; e.mesh?.traverse(o => { if (o.isMesh && o.visible) n++; }); return n; })(),
-          })) };
-      });
-      record('RIVALS', pack.mode === 'race' && pack.entrants === 3 && pack.rivals.length === 2 && pack.anchors === 2
-        && pack.rivals.every(rival => rival.visible && rival.renderedMeshes > 0 && rival.speed > 1), JSON.stringify(pack));
+      try {
+        const refusal = await exerciseSaveScreen(page, { protectedSession: true });
+        record('CIRCUIT-SAVE', refusal.attempts > 0 && refusal.refused.length > 0
+          && refusal.completed === 0 && !refusal.saved && refusal.errors.length === 0 && refusal.slotsUnchanged,
+        JSON.stringify(refusal));
+      } catch (error) { record('CIRCUIT-SAVE', false, error.message); }
     }
 
     // -- 9-12. THE CONTINUE ROUND TRIP -------------------------------------------------------
@@ -750,13 +845,10 @@ try {
     let saved = false;
     let roundTrip = !REAL_SAVES && !NO_ROUNDTRIP;
     if (roundTrip) try {
-      saved = await page.evaluate(async () => {
-        const save = window.SF.registry && window.SF.registry.get('save');
-        if (!save || typeof save.save !== 'function') return false;
-        return (await save.save('quick', { reason: 'playable-check' })) === true;
-      });
-      if (saved) await page.waitForTimeout(1200);
-      record('SAVE', saved, saved ? 'wrote the quick slot' : 'the save system did not accept a save');
+      const save = await exerciseSaveScreen(page);
+      saved = save.saved && save.errors.length === 0 && save.refused.length === 0;
+      record('SAVE', saved, saved ? 'Save screen wrote the quick slot with an authoritative completed receipt'
+        : `Save screen did not complete: ${JSON.stringify(save)}`);
     } catch (err) {
       record('SAVE', false, 'saving threw: ' + err.message);
     }
@@ -786,6 +878,9 @@ try {
         await page.evaluate(() => {
           window.__gameStartedCount = 0;
           window.SF.bus.on('game:started', () => { window.__gameStartedCount += 1; });
+          window.__playableLoad = { stage: null, error: null };
+          window.SF.bus.on('game:loadingProgress', stage => { window.__playableLoad.stage = stage; });
+          window.SF.bus.on('save:error', error => { window.__playableLoad.error = error; });
         });
         // Press the real Continue button. mainMenu.js:254 reads the save index and emits
         // game:load with the latest slot; firing the event directly would skip the index lookup,
@@ -816,7 +911,30 @@ try {
         loaded = true;
         record('CONTINUE', true, 'loaded the save back into flight');
       } catch (err) {
-        record('CONTINUE', false, `Continue did not return to flight (stage: ${continueStage}): ` + err.message);
+        const resumed = await page.evaluate(async () => {
+          const st = window.SF?.state;
+          let worker = null;
+          try {
+            const reply = await window.SF?.laneRpc?.('probeState', {});
+            const result = reply?.result;
+            worker = result ? { tick: result.tick, simTime: result.simTime, mode: result.mode,
+              timeScale: result.timeScale, timeEffects: result.timeEffects, skipFullTick: result.skipFullTick,
+              ui: result.ui, render: result.render, saveDiag: result.saveDiag,
+              gameStartedEmits: result.gameStartedEmits, lastRpcAck: result.lastRpcAck } : null;
+          } catch (_) { /* the frozen route may have no responding worker */ }
+          return { tick: st?.tick, simTime: st?.simTime, mode: st?.mode, paused: st?.ui?.paused,
+            timeScale: st?.timeScale, timeEffects: window.SF?.timeEffects?.describeRequests?.(),
+            docked: st?.ui?.docked, screenStack: st?.ui?.screenStack,
+            sectorShellAdmission: st?.render?.sectorShellAdmission, loading: window.__playableLoad,
+            loop: { lifecycle: window.SF?.loop?.getLifecycleState?.(), suspended: window.SF?.loop?.isSuspended?.(),
+              diagnostics: window.SF?.loop?.getDiagnostics?.() },
+            veils: [...document.querySelectorAll('#boot-overlay, .sf-loading, #sf-loading, [data-screen="loading"]')]
+              .map(el => ({ id: el.id, display: getComputedStyle(el).display, visible: !!el.getClientRects().length })),
+            topScreen: st?.ui?.topScreen, worker, lane: window.SF?.simLaneDiag?.(),
+            screens: [...document.querySelectorAll('[data-screen]')].filter(el => el.getClientRects().length)
+              .map(el => el.dataset.screen) };
+        }).catch(() => null);
+        record('CONTINUE', false, `Continue did not return to flight (stage: ${continueStage}): ${err.message} — ${JSON.stringify(resumed)}`);
       }
       if (loaded) await assertPlayable(page, '~LOAD');
       else for (const step of ['PILOT', 'HULL', 'WORLD', 'CONTROLS']) record(step + '~LOAD', false, 'skipped (Continue failed)');

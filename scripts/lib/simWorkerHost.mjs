@@ -38,7 +38,7 @@ import {
   spawn47aScenarioCast,
 } from '../../src/data/scenarios/47aLiveScene.js';
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
-import { applyBudgetedLabPackage, armWorkerCrucibleSetup } from '../../src/ui/sandbox/sandboxSetup.js';
+import { applyBudgetedLabPackage, applyPreparedCrucibleSetup } from '../../src/ui/sandbox/sandboxSetup.js';
 import { getCombatKernel } from '../../src/combat/kernel.js';
 import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
@@ -69,14 +69,14 @@ import {
   update47aScenarioActorIntents,
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
-import { snapshotSurvivalDraft } from '../../src/core/simLaneCommands.js';
-import { projectBridgeEvent } from './simEventBridge.mjs';
+import { projectBridgeEvent, resolveEventEntityRef } from './simEventBridge.mjs';
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
 import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js';
 import { partitionUpdateSystems } from '../../src/core/catchupPolicy.js';
 import { createBus } from '../../src/core/eventBus.js';
 import { createGameState } from '../../src/core/gameState.js';
+import { readTimeEffectsRequests } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
@@ -289,6 +289,9 @@ function entityInfoBlock(state, entityId) {
   return {
     v: 2,
     entityId,
+    // Native occupants carry a non-enumerable token; explicit transport keeps
+    // recycled numeric ids distinct without adding the token to saved entities.
+    occupantGeneration: Number.isSafeInteger(e.occupantGeneration) ? e.occupantGeneration : null,
     type: typeof e.type === 'string' ? e.type : null,
     alive: e.alive !== false,
     team: Number.isFinite(e.team) ? e.team : 0,
@@ -638,23 +641,42 @@ export function createSimHost() {
     return breaches;
   }
 
-  // Armory read view for the main-side survivalDraft facade: ships only when it changed.
-  let lastDraftViewSig = 'null';
-  function survivalDraftViewIfChanged(state) {
-    const run = state && state.run;
-    // Armory phases only: currentOffers() re-evaluates legality, too heavy for every flight tick.
-    const live = run && run.kind === 'survival' && (run.phase === 'loadout' || run.phase === 'draft' || run.phase === 'refit');
-    let view = null;
-    if (live) {
-      try { view = snapshotSurvivalDraft(host.registry && host.registry.get('survivalDraft')); } catch (_) { view = null; }
+  function refreshDraftReadView(state) {
+    const owner = host.registry?.get('survivalDraft');
+    const run = state.run;
+    if (!owner || run?.kind !== 'survival' || !['draft', 'refit'].includes(run.phase)) {
+      state.survivalDraftPublic = null;
+      host.draftReadKey = null;
+      host.draftReadRun = null;
+      return;
     }
-    const sig = JSON.stringify(view);
-    if (sig === lastDraftViewSig) return undefined;
-    lastDraftViewSig = sig;
-    return view;
+    if (host.draftReadBus !== host.bus) {
+      host.draftReadUnsubscribe?.();
+      host.draftReadBus = host.bus;
+      host.draftReadUnsubscribe = host.bus.on('run:draftLockChanged', () => { host.draftReadDirty = true; });
+      host.draftReadDirty = true;
+    }
+    const owned = state.player.ownedShips?.[state.player.activeShipIndex];
+    const preparation = owner.preparationReceipt();
+    const notice = owner.lastNotice();
+    // Recompute stock only on native settlement/custody changes, not every
+    // paused presentation frame. No native RNG or owner references cross over.
+    const key = JSON.stringify([run.phase, run.wave, run.credits, owner.preparationGeneration(),
+      owner.rerollCount(), notice, preparation, owned?.defId, owned?.fittings,
+      (state.player.moduleInventory || []).map(row => [row.instanceId, row.defId])]);
+    if (host.draftReadRun === run && host.draftReadKey === key && !host.draftReadDirty) return;
+    state.survivalDraftPublic = structuredClone({
+      offers: owner.currentOffers(), wave: owner.currentWave(), notice,
+      reroll: owner.rerollState(), recommended: owner.recommendedOffers(),
+      preparation, generation: owner.preparationGeneration(), refitRows: owner.refitRows(),
+    });
+    host.draftReadRun = run;
+    host.draftReadKey = key;
+    host.draftReadDirty = false;
   }
 
   function diffDomains(state, seq) {
+    refreshDraftReadView(state);
     const r = host.domainDiffer.diff(state, seq);
     host.domainDiffNsTotal += BigInt(Math.round(r.diffMs * 1e6));
     if (r.diffMs > host.domainDiffMsMax) host.domainDiffMsMax = r.diffMs;
@@ -725,7 +747,32 @@ export function createSimHost() {
   // and the capture-all emit wrap (production lane — the sim owns events main
   // has never seen, so whitelisting there would silently drop real traffic).
   function recordBridgeEvent(type, payload) {
-    const projected = projectBridgeEvent(type, payload);
+    let receipt = payload;
+    if ((type === 'entity:killed' || type === 'entity:destroyed' || type === 'asteroid:destroyed'
+      || type === 'environment:detonated' || type === 'entity:retired')
+      && payload && typeof payload === 'object') {
+      // Capture at emit/queue time, before core recycles the id and before a reply's journal
+      // removes the victim. Plain {id,pos,...} receipts retain their complete event meaning.
+      // Combat/fracture mark the actor dead before emitting, so the live presentation resolver
+      // deliberately omits it. The authoritative map still owns it until core's sweep.
+      const victim = payload.entity || host.state.entities?.get(payload.id)
+        || resolveWorldPresentationEntity(host.state, payload.id);
+      const killer = type === 'entity:killed'
+        ? resolveWorldPresentationEntity(host.state, payload.killerId) : null;
+      receipt = {
+        ...payload,
+        // Cook-off is an actual material-body death; its existing VFX cue also needs the
+        // dying body's type before the same slot can become a projectile or another rock.
+        ...(type === 'environment:detonated' && payload.type == null && victim
+          && (payload.occupantGeneration == null || payload.occupantGeneration === victim.occupantGeneration)
+          ? { type: victim.type } : {}),
+        occupantGeneration: Number.isSafeInteger(payload.occupantGeneration)
+          ? payload.occupantGeneration : (victim?.occupantGeneration ?? null),
+        simTime: host.state.simTime,
+        ...(killer ? { killerOccupantGeneration: killer.occupantGeneration ?? null } : {}),
+      };
+    }
+    const projected = projectBridgeEvent(type, receipt);
     host.emittedEventCounts[type] = (host.emittedEventCounts[type] || 0) + 1;
     if (projected.dropped) {
       host.droppedEventCount++;
@@ -886,28 +933,26 @@ export function createSimHost() {
         // A fresh boot supersedes any earlier pending receipt (aborted or
         // never-consumed lifecycle) — stage only on a completed boot.
         host.pendingGameStarted = null;
-        // Crucible launch (Swarm / Gauntlet / scored): apply the staged setup HERE, on the
-        // authoritative registry, at the same scenePrepared beat the main lane uses — tech,
-        // hull, fittings, arena relocation, run begin and purse all land in the sim that runs.
-        const offScene = armWorkerCrucibleSetup(
-          { state, helpers: sim.helpers, registry, bus: host.bus },
-          (args && args.opts) || null,
-        );
-        let result;
-        try {
-          result = await runNewGameSimBoot({
-            state,
-            helpers: sim.helpers,
-            bus: host.bus,
-            registry,
-            opts: (args && args.opts) || {},
-            newGamePlus: (args && args.newGamePlus) || null,
-            awaitPhysicsPrep: true,
-          });
-        } finally {
-          offScene();
-        }
+        const result = await runNewGameSimBoot({
+          state,
+          helpers: sim.helpers,
+          bus: host.bus,
+          registry,
+          opts: (args && args.opts) || {},
+          newGamePlus: (args && args.newGamePlus) || null,
+          awaitPhysicsPrep: true,
+        });
         if (result && result.ok === true) {
+          if (args?.opts?.crucibleLaunch === true) {
+            const prepared = applyPreparedCrucibleSetup(
+              { state, helpers: sim.helpers, registry, bus: host.bus },
+              args.opts.crucibleSetup,
+            );
+            // A refused preparation rejects the existing boot RPC, so the main
+            // loading owner aborts rather than admitting an incomplete arena.
+            if (!prepared.ok) throw new Error(prepared.reason || 'crucible-setup-incomplete');
+            result.crucible = prepared;
+          }
           host.pendingGameStarted = { newGamePlus: (args && args.newGamePlus) || null };
           // A Crucible/Swarm launch: the receipt says so, so onboarding stands down even if
           // the main-side sandbox hook's run:beginRequested has not landed yet.
@@ -1089,6 +1134,7 @@ export function createSimHost() {
           simTime: state.simTime,
           mode: state.mode,
           timeScale: state.timeScale,
+          timeEffects: readTimeEffectsRequests(state),
           playerId: state.playerId,
           skipFullTick: shouldSkipFullTickSystems(state),
           input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ, boost: state.input.boost, blocked: state.input.blocked } : null,
@@ -1190,6 +1236,8 @@ export function createSimHost() {
     setLaneViewport(Number(msg.viewport && msg.viewport.w), Number(msg.viewport && msg.viewport.h));
     const bus = createBus();
     const helpers = {
+      // The main presentation owner admits restored flight after its visual/physics gates.
+      deferFlightAdmission: true,
       scenarioContract: contract.document || null,
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
@@ -1580,10 +1628,10 @@ export function createSimHost() {
           const ref = (v) => v && typeof v === 'object' && Number.isFinite(v.entityRef);
           for (const k of Object.keys(payload)) {
             const v = payload[k];
-            if (ref(v)) payload[k] = state.entities.get(v.entityRef) || v;
+            if (ref(v)) payload[k] = resolveEventEntityRef(v, state.entities);
             else if (Array.isArray(v)) {
               for (let i = 0; i < v.length; i++) {
-                if (ref(v[i])) v[i] = state.entities.get(v[i].entityRef) || v[i];
+                if (ref(v[i])) v[i] = resolveEventEntityRef(v[i], state.entities);
               }
             }
           }
@@ -1816,7 +1864,6 @@ export function createSimHost() {
       spawnInfos,
       events,
       warmStubs,
-      draftView: survivalDraftViewIfChanged(state),
       commandsProbe: msg.commandsProbe ? { farId: host.cmdProbeFarId != null ? host.cmdProbeFarId : null } : undefined,
       foldsApplied: drain.foldsApplied || 0,
       rpcAcks: drain.rpcAcks,
@@ -1893,6 +1940,8 @@ export function createSimHost() {
   }
 
   function handleShutdown() {
+    host.draftReadUnsubscribe?.();
+    host.draftReadUnsubscribe = null;
     try {
       if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
       else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();

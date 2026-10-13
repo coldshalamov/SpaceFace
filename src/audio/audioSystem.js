@@ -560,6 +560,39 @@ export function resolveAudioThreatContext(state, player, rt) {
   };
 }
 
+/**
+ * A working pocket is heard where the crews are, not where their lanes run. `jobPhase` is the
+ * runtime stamp (npcJobsRuntime owns it — audio reads, never writes): only the at-face phases
+ * count. Transit, return, and patrols are traffic, not din; a hauler gliding by in the lane
+ * does not make the place sound like work.
+ */
+export const AUDIO_WORK_RADIUS_WU = 600;
+export const AUDIO_WORK_SATURATION = 3;
+const AUDIO_WORK_PHASES = new Set(['work', 'load', 'unload']);
+
+export function resolveAudioWorkPresence(state, player, scratch = []) {
+  if (!state || !player || !player.pos) {
+    return Object.freeze({ working: false, actors: 0, presence: 0 });
+  }
+  const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
+  const candidates = queryNearbyEntities(state, player.pos, AUDIO_WORK_RADIUS_WU, scratch, fallback);
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  const r2 = AUDIO_WORK_RADIUS_WU * AUDIO_WORK_RADIUS_WU;
+  let actors = 0;
+  for (const e of candidates) {
+    if (!e || !e.alive || e.type !== 'ship' || e.id === player.id || !e.pos) continue;
+    const d = e.data || {};
+    if (!d.jobKind || d.jobKind === 'patrol' || !AUDIO_WORK_PHASES.has(d.jobPhase)) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz > r2) continue;
+    actors++;
+    if (actors >= AUDIO_WORK_SATURATION) break;
+  }
+  return Object.freeze({ working: actors > 0, actors, presence: clamp(actors / AUDIO_WORK_SATURATION, 0, 1) });
+}
+
 /** Silence floor for the combat pressure bed once nothing is still threatening. */
 export const QUIET_BED_GAIN = 0.0001;
 
@@ -2284,6 +2317,7 @@ export const audio = {
     rt._loopPositionDirty = true;
     rt._nextLoopPositionUpdate = 0;
     rt._musicThreatScratch = [];
+    rt._musicWorkScratch = [];
     // SF-297 committed-threat ledger: the last observed hostile commitment to the player, so the
     // committed-clear release fires only after a poll actually saw a commitment (fresh loads,
     // quiet sectors, and sector changes never exhale).
@@ -7150,6 +7184,10 @@ export const audio = {
     rt._encounterPhase = arc.phase;
     rt._encounterPending = arc.pendingPhase;
     rt._encounterPendingSince = arc.pendingSince;
+    // Crews working a face near the player feed the score's authored work register: a pocket
+    // of miners, a salvor on a wreck, a hauler loading. Threat, law, and docking still outrank
+    // it inside the director, so the read can never muffle a fight.
+    const work = resolveAudioWorkPresence(state, player, rt._musicWorkScratch || []);
     const theme = resolveThemeMatrix({
       docked,
       wanted,
@@ -7161,6 +7199,8 @@ export const audio = {
       factionId: rt._themeFactionId,
       // SWARM-06: the kill chain's lift — the same theme row, mixed hotter as the run climbs.
       swarmLift: swarmChainLift(rt._swarmChain),
+      working: work.working,
+      workPresence: work.presence,
     });
     rt._themeMatrix = theme;
     this._applySectorBed(theme);

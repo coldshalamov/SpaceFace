@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "18fc0470cd7b61448824477235f9083fa0f4a35234f87c0b7875eaef3f274e93",
+  "contentHash": "8f258d892ea2e33cdebe20ce6395bb441e158950f6e10b02c9db781bf743201c",
   "dynamicGroups": [
     {
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-port-hull.dynamic",
@@ -643,7 +643,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ac0795923ac31ff137fc051a529525b0245906afaa623c316b68c6fe89fa273",
+      "geometryHash": "907e9f320f0b6200450ba360ea856f9e73cece9df47f7e5cd6dc2cf4e29dee79",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -668,7 +668,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdab63b85f2d6bd2cb5a0f6dcfa8d1b50cd402d784d1622da32ff696f69c9d8d",
+      "geometryHash": "c246c076e4b4d7cbb682557cc4a8cc991f4d3dc805c43ec007657fc60f705757",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 6933,
       "indexed": true,
@@ -743,7 +743,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3d5af46bc137400ce4ca2b5d708b91fc985003231e949d5db7e0dfc8386cbc4",
+      "geometryHash": "79cb7d93f147034dfd52b76ef6390f0eb665fbc4e126322ea814ab448a22f7cd",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-port-hull.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -768,7 +768,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0710fc410974cc746cc1e8860ed0c9fb8cc6cd180daf15258015737378158039",
+      "geometryHash": "53326ee10d77b800b6f7e527e75dfc5c8b8a371498a89cf2e0b705eda5f7ce32",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 405,
       "indexed": true,
@@ -918,7 +918,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5539471dadec5fabd5e4bdf191c0be3dd7c71d7f36624dd257fd4f06ff575424",
+      "geometryHash": "05f1a9ecd668e5147185be1fcd61ea2a1abab29917a61cc14dd02d650b47bce4",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-hook-secondary-turret-mechanical.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -968,7 +968,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7527067d85cea30ea18c05cf802e0266871d117bd4f52a6d5f800b114fd5254e",
+      "geometryHash": "0968d5a66eb04b678e8cbf5101cc85e5005024208071b9fb0cc7dfe10c421f00",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-hook-sensor-spire-armor.primitive.0",
       "indexCount": 114,
       "indexed": true,
@@ -1043,7 +1043,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87d11210afab898b588e0e35f56db8b9e2b0cd95336afc1f89fb0261e7041abb",
+      "geometryHash": "2623e2422a8408cbef898cd23e60ede7aecbafd6a2d290720a20e3417aad5cab",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 6276,
       "indexed": true,
@@ -1143,7 +1143,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b112c599b8987e0ed73fd9c01a3685a9449a032cdbca3ff1f2914cbcb9ce9b41",
+      "geometryHash": "c39cb67f476f4b6e904d51ce5085c139dd5ea55fe5bbba07e44d43b508e7f5a6",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 6105,
       "indexed": true,
@@ -1168,7 +1168,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56bf96a477ef150b40e40ad7552cb05157e8aa7831817e6b2663f1626b7a1213",
+      "geometryHash": "827a1d2773de44f1ccff1b64ee62deb87af751fef7a367cd1b0e5982d261796c",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 12807,
       "indexed": true,
@@ -1193,16 +1193,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9552c3a109354c8e14efb4b1c406ee37e630b92f3a9a7bd3f2582ed77510c160",
+      "geometryHash": "d619e9328a1ec06fa1c8450221a4d67be46a467ac61b7b3d6d450ce116760597",
       "id": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 8454,
+      "indexCount": 8466,
       "indexed": true,
       "materialHash": "50d0f08d06a3bd24077e72346eb04456efbaeb8961edc323f6cbf180465d9390",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark.001",
       "nodeId": "sf.render.leviathan-production-v1-lod1.mesh.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 3625
+      "vertexCount": 3626
     }
   ],
   "hlods": [],
@@ -2679,19 +2679,19 @@
       "sha256": "d40838a75d8116dd34bb1807aa5a2c9145738304ae130dc6512324fd3d7f2fa5"
     },
     "sourceGlb": {
-      "bytes": 775536,
-      "sha256": "fe7bbc34a95b250043c232b37e81bbea9d42b769c893943b2126c25dbc6cd4ad",
+      "bytes": 775804,
+      "sha256": "ffdc10993cedfd60592658ccb75d54ec79e269cc14dc2dab96ea58407abfb8ea",
       "uri": "leviathan_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1155000,
-    "sha256": "09060619b781f38a867488476d3736d9465ed4c867c7c9bd29d385817b4ec060",
+    "bytes": 1155128,
+    "sha256": "a34c407f1ad5c825dbbc8264ed37a333e6781757390e6cc23f0276f5bb92e6a7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4179,7 +4179,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1_lod1.glb"
   },
-  "runtimeHash": "3090b092b55b443a61f11db02b2d18085d53b205e3eea11affd9a0dcfe290f28",
+  "runtimeHash": "e222fedd8e696bbb207419fde5a410408dc8fdd8f1c3f3013e7af7c41073843f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

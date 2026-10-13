@@ -366,45 +366,6 @@ export const SCENARIO_PRESETS = Object.freeze([
   },
 ]);
 
-function canonicalLaunchConfig(config) {
-  // Structured-clone safe: the config is plain validated data; drop anything that is not.
-  return JSON.parse(JSON.stringify(config));
-}
-
-/** True when this config's setup is applied inside the worker (see gameNewOptionsForSandboxConfig). */
-export function sandboxSetupRunsInWorker(config) {
-  return !!(config && config.survivalSetup != null && laneCommandSink());
-}
-
-/**
- * Worker realm: arm the Crucible setup carried on game:new (opts.crucibleSetupConfig) to apply
- * on the worker's own game:scenePrepared — the same beat the main lane applies it — against the
- * authoritative ctx { state, helpers, registry, bus }. Fires at most once. Returns a disarm fn.
- */
-export function armWorkerCrucibleSetup(ctx, opts) {
-  const cfg = opts && opts.crucibleSetupConfig;
-  const bus = ctx && ctx.bus;
-  if (!cfg || typeof cfg !== 'object' || !bus || typeof bus.on !== 'function') return () => {};
-  let armed = true;
-  const onScene = () => {
-    if (!armed) return;
-    disarm();
-    try {
-      applySandboxSetup(ctx, cfg);
-    } catch (err) {
-      console.error('[sandbox] worker crucible setup failed', err);
-      bus.emit('toast', { text: 'Sandbox setup failed: ' + (err && err.message), kind: 'error', ttl: 6 });
-    }
-  };
-  bus.on('game:scenePrepared', onScene);
-  function disarm() {
-    if (!armed) return;
-    armed = false;
-    if (typeof bus.off === 'function') bus.off('game:scenePrepared', onScene);
-  }
-  return disarm;
-}
-
 function gameNewOptionsForSandboxConfig(config) {
   if (!config || typeof config !== 'object') return {};
   const out = {};
@@ -418,12 +379,16 @@ function gameNewOptionsForSandboxConfig(config) {
   // and the run lands in the Adventure tutorial instead of the armory.
   if (config.survivalSetup != null) {
     out.crucibleLaunch = true;
-    // Worker lane: the sim (ships, world, tech, run wallet) lives in the worker, and main's
-    // registry has no 'ships'/'world' facades — applySandboxSetup on main silently no-ops the
-    // tech unlock, hull, fittings and arena relocation, so the run began in the Adventure world
-    // (Helios, rescue objective, empty armory). Ship the whole config with game:new; the
-    // worker's newGameBoot applies it at its own game:scenePrepared (see simWorkerHost).
-    if (laneCommandSink()) out.crucibleSetupConfig = canonicalLaunchConfig(config);
+    // The worker owns hulls, fittings, research and the run wallet. Carry the
+    // validated preparation inside the already-awaited native boot transaction.
+    out.crucibleSetup = buildSandboxLaunchConfig({}, {
+      survivalSetup: config.survivalSetup,
+      survivalRuleset: config.survivalRuleset,
+      swarmStake: config.swarmStake,
+      swarmThreats: config.swarmThreats,
+      swarmPerks: config.swarmPerks,
+      openingLesson: config.openingLesson,
+    });
   }
   return out;
 }
@@ -480,14 +445,9 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     const cfg = pendingConfig;
     pendingConfig = null;
     if (!cfg) return; // a normal new game, not a sandbox launch
-    // Worker lane + Crucible (Swarm/Gauntlet/scored): the worker already applied the setup
-    // inside its boot. Only main-owned presentation (camera) remains for this realm.
-    if (sandboxSetupRunsInWorker(cfg)) {
-      if (cfg.cameraCandidate) {
-        try { applyCameraCandidate(resolveCtx(), cfg.cameraCandidate); } catch (_) { /* presentation only */ }
-      }
-      return;
-    }
+    // Native newGameBoot settles this setup before its acknowledgement. Replaying
+    // facade calls here would silently skip ships and race the native run wallet.
+    if (cfg.survivalSetup && laneCommandSink()) return;
     const apply = () => {
       try {
         applySandboxSetup(resolveCtx(), cfg);
@@ -1076,6 +1036,26 @@ export function applyCombatLabSetup(ctx, validatedSetup) {
   return receipt;
 }
 
+/** Apply a scored arena preparation only within its native loading transaction. */
+export function applyPreparedCrucibleSetup(ctx, config) {
+  if (!ctx?.state || ctx.state.mode !== 'loading'
+    || (ctx.state.run?.phase && ctx.state.run.phase !== 'inactive')) {
+    return { ok: false, reason: 'crucible-not-preparing' };
+  }
+  const cfg = buildSandboxLaunchConfig({}, config || {});
+  if (!cfg.survivalSetup) return { ok: false, reason: 'invalid-crucible-setup' };
+  const result = applySandboxSetup(ctx, cfg);
+  if (result?.ok !== true) return result || { ok: false, reason: 'crucible-setup-incomplete' };
+  const owned = ctx.state.player.ownedShips[ctx.state.player.activeShipIndex];
+  const player = ctx.state.entities.get(ctx.state.playerId);
+  if (owned?.defId !== cfg.survivalSetup.hullId || !player?.alive
+    || ctx.state.run?.kind !== 'survival' || ctx.state.run.phase === 'inactive') {
+    return { ok: false, reason: 'crucible-native-settlement-mismatch' };
+  }
+  return { ok: true, hullId: owned.defId, playerId: player.id,
+    fitted: result.fitted, arenaId: cfg.survivalSetup.arenaId, phase: ctx.state.run.phase };
+}
+
 /** Spawn a Combat Lab enemy package through spawnBudget.request / bindEntity. Fail closed if the budget is missing. */
 export function spawnBudgetedLabPackage(ctx, packageSpec) {
   // The admission loop (request → spawn → bind → release) is sim-owned end to end: under a
@@ -1363,7 +1343,10 @@ export function applySandboxSetup(ctx, config) {
         }
       }
       // 3. Hull and fittings through the ships writers.
-      applyCombatLabSetup(ctx, setup);
+      const fitted = applyCombatLabSetup(ctx, setup);
+      if (!fitted.hullApplied || fitted.notFitted.length) {
+        return { ok: false, reason: 'crucible-loadout-incomplete', ...fitted };
+      }
       // 4. Player into the arena.
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
       const sectorId = cfg.sectorId || (arena && arena.sectorId);
@@ -1379,6 +1362,7 @@ export function applySandboxSetup(ctx, config) {
         ctx.bus.emit('run:loadoutReady', { source: 'crucible:launch', arenaId: setup.arenaId });
         ctx.bus.emit('run:openingPrepareRequested', { source: 'crucible:launch' });
       }
+      return { ok: true, fitted: fitted.fitted };
     }
   }
 

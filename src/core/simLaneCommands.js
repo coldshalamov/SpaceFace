@@ -270,27 +270,3 @@ export function laneBusEmit(type, payload) {
   _sink({ kind: 'busEmit', emit: type, payload });
   return true;
 }
-
-// ---------------------------------------------------------------------------
-// survivalDraft read view. The armory owner (offers, wave, notice, receipts) is a
-// worker-side system with instance state; under the worker lane main had no facade,
-// so the Swarm armory read "No equipment matches this search". The worker ships a
-// snapshot of the owner's read surface whenever it changes; the registry facade
-// answers the screen's synchronous reads from it. Intents still ride the bus.
-// ---------------------------------------------------------------------------
-let _laneDraftView = null;
-export function setLaneDraftView(view) { _laneDraftView = view && typeof view === 'object' ? view : null; }
-export function laneDraftView() { return _laneDraftView; }
-export const SURVIVAL_DRAFT_READS = Object.freeze([
-  'currentOffers', 'currentWave', 'lastNotice', 'recommendedOffers', 'refitRows',
-  'rerollState', 'preparationGeneration', 'preparationReceipt',
-]);
-/** Worker side: snapshot the owner's read surface (plain JSON). */
-export function snapshotSurvivalDraft(owner) {
-  if (!owner) return null;
-  const out = {};
-  for (const name of SURVIVAL_DRAFT_READS) {
-    try { out[name] = typeof owner[name] === 'function' ? owner[name]() : null; } catch (_) { out[name] = null; }
-  }
-  return JSON.parse(JSON.stringify(out));
-}

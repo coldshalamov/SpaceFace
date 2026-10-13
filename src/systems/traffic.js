@@ -47,6 +47,7 @@ import {
   registerEntityWorldRecordId,
 } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { getFarActor } from '../world/farActorTable.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
@@ -592,6 +593,31 @@ const CERES_CAPSULE_LAUNCH_CLEARANCE_WU = 12;
 // the catalog aftermath is "fresh faces are visibly brighter ore", so the re-armed window is the
 // richer one. The target panel names it FRESH SEAM and the Hold's lot row shows the bonus size.
 const CERES_CALVED_SEAM_BONUS_U = 12;
+// ev_pod_breaks_clamp: one loaded pod shears off the refinery's cargo face while the day's ore
+// is in custody (ore_handoff). The cast flies no tug, so the catalog's "no tug available"
+// interruption IS the legible story — the pod drifts free on a slow tumble as a real
+// player-reserved pickup. Catching it is the authored finders-keepers-with-a-witness: the
+// station files the same payload_theft kind the disabled hauler uses. A pod nobody grabs
+// clears the pocket on its TTL, dragged home offscreen. The traffic-bulge steering and the
+// re-stack close stay unwired with the tug.
+const CERES_CLAMP_POD_U = 4;
+const CERES_CLAMP_POD_DRIFT_WU_S = 7;
+const CERES_CLAMP_POD_TTL_S = 60;
+const CERES_CLAMP_POD_CLEARANCE_WU = 4;
+// ev_meteor_passage (microevent catalog, environmental): one wild rock crosses the pocket the
+// player is actually in on a ballistic chord — no drive glow, three to four times the freighter
+// read, mineable on the way through. Rare enough to stay an event (the catalog's 1-2 per hour
+// class), and transient by construction: no field, no slot, no resource record — the ordinary
+// despawnAt sweep owns its exit.
+const METEOR_PASS_MEAN_INTERVAL_S = 1800;
+const METEOR_PASS_SPAWN_RADIUS_WU = 2600;
+const METEOR_PASS_MISS_MAX_WU = 900;
+const METEOR_PASS_SPEED_LO_WU_S = 120;
+const METEOR_PASS_SPEED_HI_WU_S = 170;
+const METEOR_PASS_RADIUS_LO_WU = 10;
+const METEOR_PASS_RADIUS_HI_WU = 18;
+const METEOR_PASS_TYPE_ID = 'ast_common_rock';
+const METEOR_PASS_EXIT_PAD_S = 6;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -757,6 +783,29 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
       Object.freeze({ name: 'launch', durationS: 6, cue: 'clean_burn' }),
       Object.freeze({ name: 'coast', durationS: 20, cue: 'clean_burn' }),
       Object.freeze({ name: 'exit', durationS: 8, cue: null }),
+    ]),
+  }),
+  Object.freeze({
+    // ev_pod_breaks_clamp (catalog accident, first15 tier) plays the cargo face's bad minute:
+    // a clamp lets go while the face is running and one loaded pod tumbles off the stack
+    // toward the lane — the catalog's "one pod in the stack blinking its clamp strobe out of
+    // rhythm" wrongness, then the physical escape. It binds no cast slot like the capsule: the
+    // station is the participant, nothing in the world can interrupt it, and both outcomes
+    // read the same, so it carries no seed bag. The pod is a real pickup the player can read
+    // and chase; see _shearCeresClampPod for the spawn and the law consequence.
+    id: 'ev_pod_breaks_clamp',
+    actorSlots: Object.freeze([]),
+    requires: Object.freeze(['ore_handoff']),
+    seedAtPhase: 'drift',
+    seeds: Object.freeze([]),
+    interruptSeeds: Object.freeze([]),
+    jobHints: Object.freeze([]),
+    phases: Object.freeze([
+      // The shear is the catalog's out-of-rhythm strobe: the wrongness reads before the pod
+      // lets go (a player watching the stack gets the tell, not the accident).
+      Object.freeze({ name: 'shear', durationS: 10, cue: 'breaking_the_pattern' }),
+      Object.freeze({ name: 'drift', durationS: 30, cue: 'breaking_the_pattern' }),
+      Object.freeze({ name: 'clear', durationS: 12, cue: null }),
     ]),
   }),
   Object.freeze({
@@ -1713,6 +1762,7 @@ export const traffic = {
     this.bus.on('freight:recovery', (p) => this._onCeresDisabledHaulerRecovery(p || {}));
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
+    this.bus.on('pickup:collected', (p) => this._onCeresClampPodPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
@@ -5319,6 +5369,7 @@ export const traffic = {
     }
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
+    this._stepPocketMeteorPass(dt, state);
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
     // Even with zero freighters, a wreck can still call a cutter into the sector.
@@ -10900,6 +10951,128 @@ export const traffic = {
     live.countSpilled = true;
   },
 
+  /** The refinery dock the chain's station-owned links (capsule, clamp pod) shear/launch from. */
+  _ceresCausalRefineryStation() {
+    const stations = this._sectorStations();
+    for (let i = 0; i < stations.length; i++) {
+      const candidate = stations[i];
+      if (candidate && candidate.alive !== false && candidate.pos
+        && candidate.data && candidate.data.stationId === 'station_ceres') {
+        return candidate;
+      }
+    }
+    return null;
+  },
+
+  /**
+   * ev_meteor_passage cadence: one pass per roll, ~1-2 per hour class (the catalog's rarity).
+   * The clock lives in the persisted traffic bag so a Continue keeps the schedule instead of
+   * re-rolling it; the live-pass record stays instance-local — a restored rock re-derives the
+   * "one at a time" guard through the live-entity scan in _spawnPocketMeteor.
+   */
+  _stepPocketMeteorPass(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const pass = this._meteorPass;
+    if (pass) {
+      const rock = pass.rockId != null && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(pass.rockId) : null;
+      if (!rock || rock.alive === false) this._meteorPass = null;
+    }
+    if (!Number.isFinite(bag.nextMeteorPassAt)) {
+      bag.nextMeteorPassAt = now + this._meteorPassIntervalS();
+      return;
+    }
+    if (now < bag.nextMeteorPassAt) return;
+    bag.nextMeteorPassAt = now + this._meteorPassIntervalS();
+    if (this._meteorPass) return;
+    this._spawnPocketMeteor(state);
+  },
+
+  _meteorPassIntervalS() {
+    return METEOR_PASS_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The catalog's arrangement: one large rock on a straight chord across the pocket at 3-4x
+   * traffic speed, entering and leaving at the speed-revealed band. Ballistic by physicsBody —
+   * dynamic membership puts it on the movables/spatial lanes so radar, the despawn sweep and
+   * the mining beam all resolve it at its live pose under either physics authority, and the
+   * body keeps its spawn linvel under Rapier the same way the compat integrator keeps vel.
+   * The chord is aimed past the player's own lane within the miss band — the rock crosses
+   * where the player is actually looking. Cracking it is the authored interruption: the
+   * ordinary mining path owns the ore spray and the fracture debris.
+   */
+  _spawnPocketMeteor(state) {
+    const helpers = this.helpers;
+    const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
+    if (!state || !spawn) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return null;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e && e.alive !== false && e.data && e.data.meteorPassage === true) return null;
+    }
+    const bearing = this._rng() * Math.PI * 2;
+    const dirX = Math.cos(bearing);
+    const dirZ = Math.sin(bearing);
+    const miss = (this._rng() - 0.5) * 2 * METEOR_PASS_MISS_MAX_WU;
+    const speed = METEOR_PASS_SPEED_LO_WU_S
+      + this._rng() * (METEOR_PASS_SPEED_HI_WU_S - METEOR_PASS_SPEED_LO_WU_S);
+    const radius = METEOR_PASS_RADIUS_LO_WU
+      + this._rng() * (METEOR_PASS_RADIUS_HI_WU - METEOR_PASS_RADIUS_LO_WU);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const entry = {
+      x: player.pos.x - dirX * METEOR_PASS_SPAWN_RADIUS_WU - dirZ * miss,
+      z: player.pos.z - dirZ * METEOR_PASS_SPAWN_RADIUS_WU + dirX * miss,
+    };
+    // Beam mk1 needs ~4-8 s of contact to crack it inside a ~30 s crossing — a fast window,
+    // paid by the second rather than all-or-nothing, exactly like an ordinary rock.
+    const oreHP = Math.round(radius * 8);
+    const yieldU = Math.max(3, Math.round(radius * 0.5));
+    const travelS = (METEOR_PASS_SPAWN_RADIUS_WU * 2) / speed;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const entity = spawn({
+      type: 'asteroid',
+      pos: entry,
+      vel: { x: dirX * speed, z: dirZ * speed },
+      rot: this._rng() * Math.PI * 2,
+      angVel: (this._rng() - 0.5) * 0.5,
+      radius,
+      mass: Math.max(1, Math.round(radius * radius * radius * 0.25)),
+      physicsBody: {
+        radius: asteroidColliderRadius(METEOR_PASS_TYPE_ID, radius),
+        dynamic: true,
+      },
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      homeSectorId: sectorId,
+      data: {
+        typeId: METEOR_PASS_TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU,
+        size: radius,
+        meteorPassage: true,
+        despawnAt: now + travelS + METEOR_PASS_EXIT_PAD_S,
+      },
+    });
+    if (entity) {
+      this._meteorPass = {
+        rockId: typeof entity === 'object' ? entity.id : entity,
+        sectorId,
+        bornAt: now,
+      };
+    }
+    return entity || null;
+  },
+
   /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
@@ -10911,16 +11084,7 @@ export const traffic = {
   _launchCeresCargoCapsule(live) {
     if (!live || live.capsuleLaunched) return;
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
-    const stations = this._sectorStations();
-    let station = null;
-    for (let i = 0; i < stations.length; i++) {
-      const candidate = stations[i];
-      if (candidate && candidate.alive !== false && candidate.pos
-        && candidate.data && candidate.data.stationId === 'station_ceres') {
-        station = candidate;
-        break;
-      }
-    }
+    const station = this._ceresCausalRefineryStation();
     if (!station) return;
     const bearing = (hash32('ev_cargo_capsule_launch', 0, 'capsule-leg') % 6284) / 1000;
     const launchDist = (station.radius || 30) + CERES_CAPSULE_LAUNCH_CLEARANCE_WU;
@@ -11049,6 +11213,87 @@ export const traffic = {
     if (entity) live.probeDrops.push(dropIndex);
   },
 
+  /**
+   * ev_pod_breaks_clamp's drift phase: the sheared pod as one real pickup on a slow tumble out
+   * of the refinery's cargo face. The drift bearing is hash-seeded per cycle — every cycle's
+   * clamp fails the same way but never on the same leg, and shared rng stays untouched. Same
+   * pickup pipeline as the capsule/spill/probes: player-reserved (near traffic does the math
+   * and dodges; nobody pockets station cargo), the collecting player owns the cargo write, and
+   * the TTL bounds the loose-pod window so the stack never fills the pocket with prizes.
+   * No resolvable face → the link completes as the strobe-blinks-wrong minute (nothing left).
+   */
+  _shearCeresClampPod(live) {
+    if (!live || live.clampPodSheared) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const station = this._ceresCausalRefineryStation();
+    if (!station) return;
+    const cycle = this._ceresCausal && this._ceresCausal.cycle | 0;
+    const bearing = (hash32('ev_pod_breaks_clamp', cycle, 'clamp-pod-drift') % 6284) / 1000;
+    const launchDist = (station.radius || 30) + CERES_CLAMP_POD_CLEARANCE_WU;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const entity = this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: {
+        x: station.pos.x + Math.cos(bearing) * launchDist,
+        z: station.pos.z + Math.sin(bearing) * launchDist,
+      },
+      vel: {
+        x: Math.cos(bearing) * CERES_CLAMP_POD_DRIFT_WU_S,
+        z: Math.sin(bearing) * CERES_CLAMP_POD_DRIFT_WU_S,
+      },
+      radius: 3.2, mass: 30, collides: true,
+      homeSectorId: CERES_ACTIVITY_SECTOR_ID,
+      data: {
+        kind: 'cargo',
+        commodityId: 'cmdty_refined_metals',
+        amount: CERES_CLAMP_POD_U,
+        name: 'Loose Refinery Pod',
+        despawnAt: now + CERES_CLAMP_POD_TTL_S,
+        playerCollectOnly: true,
+        homeSectorId: CERES_ACTIVITY_SECTOR_ID,
+        lotSource: {
+          lotId: `ceres:clamp-pod:${cycle}`,
+          provenanceId: 'station_ceres',
+          sourceKind: 'station_clamp_break',
+          sourceOwner: 'station',
+        },
+        ceresClampPod: {
+          schema: CERES_CAUSAL_CHAIN_SCHEMA,
+          eventId: live.eventId,
+          cycle,
+          podStableId: `ceres-clamp-pod:${cycle}`,
+        },
+      },
+    });
+    if (entity) live.clampPodSheared = true;
+  },
+
+  /**
+   * The witness half of the escape: pocketing a Loose Refinery Pod files one payload_theft with
+   * the station's law — same kind as the disabled-hauler steal, latched on the pickup's own
+   * marker so a repeat collect cannot double-file a pod that is already gone.
+   */
+  _onCeresClampPodPickup(payload) {
+    if (!payload || payload.collectorId !== this.state.playerId || payload.pickupId == null) return false;
+    const pickup = this.state.entities && this.state.entities.get && this.state.entities.get(payload.pickupId);
+    const marker = pickup && pickup.data && pickup.data.ceresClampPod;
+    if (!marker || marker.schema !== CERES_CAUSAL_CHAIN_SCHEMA || marker.theftFiled === true) return false;
+    const law = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('lawSecurity') : null;
+    if (!law || typeof law.reportIncident !== 'function') return null;
+    const receipt = law.reportIncident({
+      reportId: `ev_pod_breaks_clamp:law:${marker.cycle | 0}`,
+      kind: CERES_DISABLED_HAULER_LAW_KIND,
+      offenderStableId: CERES_DISABLED_HAULER_OFFENDER_STABLE_ID,
+      offenderEntityId: this.state.playerId,
+      payloadStableId: marker.podStableId,
+      causalTick: Math.max(0, this.state.tick | 0),
+      pos: { x: pickup.pos.x, z: pickup.pos.z },
+    });
+    if (receipt && receipt.accepted === true) marker.theftFiled = true;
+    return receipt;
+  },
+
   _restoreCeresCausalJobs(live) {
     if (!live || !Array.isArray(live.redirectedSlots) || !live.redirectedSlots.length) return;
     const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
@@ -11077,13 +11322,14 @@ export const traffic = {
 
   _applyCeresCausalPhaseEffects(def, live, phaseName) {
     if (!def || !live) return;
-    // Choreography-only for every link except three authored exceptions: the surveyor's drop
+    // Choreography-only for every link except four authored exceptions: the surveyor's drop
     // phases plant real probe pickups on its sweep line (see _dropCeresSurveyProbe), the salvor's
     // stack phase spills its cutting count as real pickups at the wreck (catalog: "scrap pickups
-    // persist"), and the capsule launch puts the refinery's outbound batch on the lane as one real
-    // pickup (see _launchCeresCargoCapsule). All ride the standard pickup pipeline — the
-    // collecting player owns the cargo write, exactly like the disabled-hauler spill — so
-    // traffic mints no cargo onto any hull.
+    // persist"), the capsule launch puts the refinery's outbound batch on the lane as one real
+    // pickup (see _launchCeresCargoCapsule), and the clamp pod's drift phase tumbles one real
+    // cargo pod off the refinery face (see _shearCeresClampPod). All ride the standard pickup
+    // pipeline — the collecting player owns the cargo write, exactly like the disabled-hauler
+    // spill — so traffic mints no cargo onto any hull.
     if (def.id === 'ev_surveyor_probe_line') {
       const phaseDef = (def.phases || []).find((phase) => phase && phase.name === phaseName);
       if (phaseDef && Number.isSafeInteger(phaseDef.probe)) {
@@ -11095,6 +11341,9 @@ export const traffic = {
     }
     if (def.id === 'ev_cargo_capsule_launch' && phaseName === 'launch') {
       this._launchCeresCargoCapsule(live);
+    }
+    if (def.id === 'ev_pod_breaks_clamp' && phaseName === 'drift') {
+      this._shearCeresClampPod(live);
     }
     this._applyCeresCausalJobHints(def, live, phaseName);
     void phaseName;
@@ -11989,6 +12238,8 @@ export const traffic = {
         this.state.traffic.disruptedStationIds,
       ),
       ...(heliosFreightTallies.length ? { heliosFreightTallies } : {}),
+      ...(Number.isFinite(this.state.traffic.nextMeteorPassAt)
+        ? { nextMeteorPassAt: this.state.traffic.nextMeteorPassAt } : {}),
     };
   },
 
@@ -12056,6 +12307,10 @@ export const traffic = {
       ? normalizeHeliosFreightTallyList(data.heliosFreightTallies) : [];
     if (tallies.length) this.state.traffic.heliosFreightTallies = tallies;
     else delete this.state.traffic.heliosFreightTallies;
+    // The sky clock survives a Continue; a save without it re-rolls on the next step.
+    this.state.traffic.nextMeteorPassAt = validTrafficSave && Number.isFinite(data.nextMeteorPassAt)
+      ? data.nextMeteorPassAt : undefined;
+    this._meteorPass = null;
   },
 
   newGame() {
@@ -12074,6 +12329,7 @@ export const traffic = {
     this._resetCeresDisabledHaulerRuntime();
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
+    this._meteorPass = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.

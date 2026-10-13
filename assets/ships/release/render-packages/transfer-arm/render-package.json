@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "97f4844d46dbad49a48eb99ea6f47a8e245f7bfed9934a16463f8599631e75f8",
+  "contentHash": "c86ffeb78139dffdc7a19df49972fb00389945acd437abc6be2bfdf28529738a",
   "dynamicGroups": [
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.dynamic",
@@ -163,7 +163,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61a89e64379bf3fde3c806806c83778be70d0436107f40cffdf6b7c6ae00a4e0",
+      "geometryHash": "906c9c59d58c933672c45da5cf906f1c000ce3e46ef8a9ae3a0ffdc2c34b764c",
       "id": "sf.render.transfer-arm.mesh.lod0-armor.primitive.0",
       "indexCount": 5850,
       "indexed": true,
@@ -188,16 +188,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2cf7b96fbd94d6e111bf7d4b4c46428420bee0d32845a1356cef19c7a34188dd",
+      "geometryHash": "c570e05e37511417d6b66ed4482f5d6a030e9d2b0887c3dc259c594e624515e7",
       "id": "sf.render.transfer-arm.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 2814,
+      "indexCount": 3186,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.transfer-arm.mesh.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 956
+      "vertexCount": 1154
     },
     {
       "bounds": {
@@ -213,7 +213,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41f8ddb4010e2ea6707243db9bad4bb78d08449f1e51715c9d55f0a262312a73",
+      "geometryHash": "2f39d29946b806c97c624d3ca875d31537421b685432b2c90ad5feed1d7315bb",
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -238,7 +238,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ca02118fa690a379b17e5f399b849099258a83801b2d0e35094ca9c83320abb",
+      "geometryHash": "2176a9863e85ac7d7c996973f31fe7ad0b5e1d8b243d851abff0e3a5dfb15058",
       "id": "sf.render.transfer-arm.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -313,7 +313,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9af51caba4ddc0970bb64e45b11c72de8adc485425491bb55c6fe095e8c5773",
+      "geometryHash": "979d8f0f286d4a25e31648bfdc0df7116dabc72815eb5ca391adfd93cbdabe92",
       "id": "sf.render.transfer-arm.mesh.lod0-mechanical.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -338,7 +338,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e10fc0009185bf3357cf78e7c8263e17ec7116f853d021a6f95c165553385e6",
+      "geometryHash": "3934f8372a341786c435a4d9d9185f4e1fc91bf40e38f43bac44b6de1e01b455",
       "id": "sf.render.transfer-arm.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 1416,
       "indexed": true,
@@ -363,7 +363,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "efc859d251b726552713fd60488ced1e1683019501d81c67c002f4f6c97a1bc1",
+      "geometryHash": "11f7268ed3ccad62815fded8ed5be1aabb7df724028238148077c1766ea92c73",
       "id": "sf.render.transfer-arm.mesh.lod0-warning.primitive.0",
       "indexCount": 1548,
       "indexed": true,
@@ -388,7 +388,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee101b12b1dd6f553ffad87bd48409670b58a3be191cc171b3427d37d3dfce9b",
+      "geometryHash": "0abd7e5d3d47f1ca327502a952abe23b64f983452a3df1b4b4c5cf885237ddb2",
       "id": "sf.render.transfer-arm.mesh.lod1-armor.primitive.0",
       "indexCount": 2838,
       "indexed": true,
@@ -413,16 +413,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf0e9d38b07c9de76dfc34b35717d43bc5816588dce6b6f6ccc871a9ec4a6b62",
+      "geometryHash": "6b0b0bc9660ba8f0591cfef0e2a1081bd3fcb1b96b87a1741e409d604ae6a5cf",
       "id": "sf.render.transfer-arm.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 1170,
+      "indexCount": 1218,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.transfer-arm.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 439
+      "vertexCount": 505
     },
     {
       "bounds": {
@@ -438,7 +438,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfae499a7eafea3850b512748eed260d2c4b133031cdcd7350894c1e638b9814",
+      "geometryHash": "c482b216dbfdc328ae2a2ffec5670de09d2af71ba54afb471ad36523e06efb34",
       "id": "sf.render.transfer-arm.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -463,7 +463,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c7ff36c6e1f61ad46e7d9890dda163cc4b243bb7328e3f8720849fe47ed8e90",
+      "geometryHash": "08892c4a3e6ad6964806a78b65840d958cfb2181e53d97b8e94fa1473d4da3b3",
       "id": "sf.render.transfer-arm.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -488,7 +488,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa2cb2ca71f939c2d967f302c4f0b3d481bf26b26a1ae29d401d3a0884df43a4",
+      "geometryHash": "225ba7b87f108d4728e442c8e329c00c65172f44d11b1f802ab761d3ea070baf",
       "id": "sf.render.transfer-arm.mesh.lod1-hull.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -538,7 +538,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac8c3467e48c48ec885037f0d43f1b7ec3d0389aa3dd9ddda98ee68e6a42526e",
+      "geometryHash": "a721e1baf8ed3c51116f6afc4b64f9e6bb05cb7f04d7bbba10d9cb48d8f06d03",
       "id": "sf.render.transfer-arm.mesh.lod1-mechanical.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -588,7 +588,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5ba3657151e5e9d79b7449d4e9327308e1266c43f7a5b7c6a84e8aee73d8775",
+      "geometryHash": "267c5e7d7a106471525264cb3eebacec2472d23e87011fbf205156fa87ef5178",
       "id": "sf.render.transfer-arm.mesh.lod1-warning.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -613,7 +613,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "064ce7ed4864e60fe31fde5b3bffe8b6adb1ad09e48070ad52f201ea362331e2",
+      "geometryHash": "1d7b47ecd816b8a4b3e0c6a24bc4c62429b1ed613232c208fe6ef3390f132609",
       "id": "sf.render.transfer-arm.mesh.lod2-armor.primitive.0",
       "indexCount": 1710,
       "indexed": true,
@@ -638,16 +638,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf29dbac04ef67f6ffed578aa96c44f88c03d1c5684452945342b21a86bb53ed",
+      "geometryHash": "87d8e427ceb6428ee2d0a6847d20b182117b88c757909c3e09d203d98b914dcb",
       "id": "sf.render.transfer-arm.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 396,
+      "indexCount": 444,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.transfer-arm.mesh.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 241
+      "vertexCount": 269
     },
     {
       "bounds": {
@@ -2396,19 +2396,19 @@
       "sha256": "ca15db6e39b491a87c70523f3d962fbdeb80508432399396f5cc46273af43919"
     },
     "sourceGlb": {
-      "bytes": 356900,
-      "sha256": "bb32685fe23f5bfa9bec7389aaba606782a0d6f6aef9699d9d83f49ba4a583db",
+      "bytes": 357984,
+      "sha256": "c420b58972a63e3544173a346e99b616e8df68dda3f144ec5267539c7b145e61",
       "uri": "place_transfer_arm.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 562708,
-    "sha256": "20ec7aa4dbcd47b1088ba6b0fb0fd984bf6aacdd6bbb14c32a3eda72b25870c6",
+    "bytes": 552528,
+    "sha256": "a7c97e3f985a541062c6cf8184cd82b6caf5f9c9e7254a4947b00b7c728353cc",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3377,7 +3377,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transfer_arm.glb"
   },
-  "runtimeHash": "ee1592e2cf6462f3b93f36a3e90c6443deaab47b89cc3e0baec343b43b5581dc",
+  "runtimeHash": "81df436a26e9e3ea59fc51724b099b79e19924d48073f937fbabcacb0577c441",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

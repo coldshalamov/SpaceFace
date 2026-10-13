@@ -992,12 +992,26 @@ export function hasActiveTrackedMission(state) {
 }
 
 /**
+ * A swarm match is on screen. Victory, ended, and inactive hand the campaign back.
+ * Pure. Used to keep the Helios dock errand off the crucible.
+ */
+function swarmScreenIsLive(state) {
+  const run = state && state.run;
+  if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm') return false;
+  const phase = run.phase;
+  if (!phase || phase === 'inactive' || phase === 'ended' || phase === 'victory') return false;
+  return true;
+}
+
+/**
  * Resolve the pre-first-dock corridor idle objective when no mission is tracked.
- * Returns null after first dock, or when a tracked active mission owns the tracker.
+ * Returns null after first dock, when a tracked active mission owns the tracker,
+ * or while a swarm match is on screen.
  * Pure presenter truth for G05 hierarchy tests and the HUD idle path.
  */
 export function resolveCorridorOpeningObjective(state) {
   if (!state || typeof state !== 'object') return null;
+  if (swarmScreenIsLive(state)) return null;
   if (hasCorridorFirstDock(state)) return null;
   if (hasActiveTrackedMission(state)) return null;
   return {
@@ -1683,6 +1697,7 @@ export const missions = {
   // PER-TICK: TTL decrement, expiry, story-gate checks, stale-target GC.
   // =========================================================================================
   update(dt, state) {
+    this._releaseCampaignNavForSwarm(state);
     this._racingOpponents?.reconcile(state.missions?.active || []);
     this._racingSetPieces?.reconcile(state.missions?.active || []);
     this._adventureSpeedSetPieces?.reconcile();
@@ -4402,6 +4417,11 @@ export const missions = {
   },
 
   _refreshNavigation(options = {}) {
+    // A Crucible swarm boot is a full Helios new game, so the starter contract
+    // ("Recover the 47-A sample") auto-tracks and the corridor fallback then
+    // paints "Dock at Helios Station". Park both while the match is on screen.
+    // The mission stays active for the campaign; it is only off the live list.
+    if (this._releaseCampaignNavForSwarm(this.state)) return false;
     // Staged first-session rail owns the opening marker while it is actively teaching.
     // Mission/story nav resumes on tutorial:finished (active clears; release refreshes).
     if (this._onboardingOwnsOpeningNav()) {
@@ -12099,6 +12119,66 @@ export const missions = {
     return !ob || (ob.active && !ob.finished) || ob.finished === false;
   },
 
+  // The mission log prints "15m left" from deadline_s - simTime. Parking already
+  // takes the row off the expiry walk. Shift the deadline with simTime so that
+  // window does not shrink, and does not expire, while the swarm match is the screen.
+  _holdParkedContractClocks(state) {
+    const parked = state && state.missions && state.missions._swarmParkedActive;
+    if (!Array.isArray(parked)) return;
+    const now = Number(state.simTime);
+    if (!Number.isFinite(now)) return;
+    for (const mission of parked) {
+      if (!mission || !Number.isFinite(Number(mission.deadline_s))) continue;
+      if (!Number.isFinite(mission._swarmClockParkedAt)) {
+        mission._swarmClockParkedAt = now;
+        mission._swarmClockDeadline = mission.deadline_s;
+      }
+      mission.deadline_s = mission._swarmClockDeadline + (now - mission._swarmClockParkedAt);
+    }
+  },
+
+  // A swarm run boots a full Helios game, so the starter contract would stay tracked
+  // and, once untracked, the corridor idle objective would say "Dock at Helios Station".
+  // Park the live list and clear both waypoint kinds. The mission status stays active.
+  // Restore when the match is over, including a quit straight to the menu (run phase
+  // inactive). Idempotent: missions.update calls this every tick.
+  // The HUD's next owner after this is the story beat ("choose the next story action").
+  // Hiding that line, and the RADIO / COMMS / HAIL tape, is the crucible-focus stylesheet.
+  _releaseCampaignNavForSwarm(state = this.state) {
+    const bag = state && state.missions;
+    if (!swarmScreenIsLive(state)) {
+      if (bag && Array.isArray(bag._swarmParkedActive)) {
+        this._holdParkedContractClocks(state);
+        const parked = bag._swarmParkedActive;
+        bag._swarmParkedActive = null;
+        if (!Array.isArray(bag.active)) bag.active = [];
+        for (const mission of parked) {
+          if (!mission) continue;
+          delete mission._swarmClockParkedAt;
+          delete mission._swarmClockDeadline;
+          if (!bag.active.includes(mission)) bag.active.push(mission);
+        }
+      }
+      return false;
+    }
+    if (state.ui && state.ui.trackedMissionId) state.ui.trackedMissionId = null;
+    const nav = state.nav;
+    const wp = nav && nav.waypoint;
+    if (wp && (wp.kind === 'mission' || wp.kind === 'corridor')) {
+      nav.waypoint = null;
+      if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('nav:waypoint', null);
+    }
+    if (bag && Array.isArray(bag.active) && bag.active.length) {
+      if (!Array.isArray(bag._swarmParkedActive)) bag._swarmParkedActive = [];
+      for (const mission of bag.active) {
+        if (mission && !bag._swarmParkedActive.includes(mission)) bag._swarmParkedActive.push(mission);
+      }
+      bag.active = [];
+    }
+    this._holdParkedContractClocks(state);
+    return true;
+  },
+
   /** True only while the staged tutorial is actively teaching — not the pre-init / unfinished-flag
    *  breadth of _tutorialOwnsOpening. Used to suppress mission/story nav claims without breaking
    *  headless harnesses that never materialize an onboarding subtree. */
@@ -12114,9 +12194,14 @@ export const missions = {
 
   serialize() {
     const m = this.state.missions;
+    // A live swarm parks the campaign off `active`. Snapshot the parked list so a
+    // mid-run save does not drop the contract. The key stays `active`.
+    const source = Array.isArray(m._swarmParkedActive) && m._swarmParkedActive.length
+      ? m._swarmParkedActive
+      : (m.active || []);
     // Strip transient runtime fields (entity ids) from active missions.
-    const active = (m.active || []).map((a) => {
-      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, ...rest } = a;
+    const active = source.map((a) => {
+      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, _swarmClockParkedAt, _swarmClockDeadline, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema

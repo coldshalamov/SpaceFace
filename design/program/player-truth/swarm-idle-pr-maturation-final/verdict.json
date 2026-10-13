@@ -1,0 +1,842 @@
+{
+ "meta": {
+  "mode": "swarm",
+  "rounds": true,
+  "hasLoadout": true,
+  "gate": "idle",
+  "requireRounds": null,
+  "performanceContext": {
+   "quietHost": false,
+   "contended": true,
+   "authority": "diagnostic-only",
+   "observer": {
+    "pixelSplitPasses": 3,
+    "pixelSplitEveryFrames": 24,
+    "screenshotEveryMs": 1000
+   }
+  },
+  "playStartSim": 1.6999999999999988,
+  "runSeed": 4242,
+  "commit": "2268b7ae7",
+  "dirty": true,
+  "startCommit": "2268b7ae7",
+  "startDirtySourcePaths": [
+   "scripts/check-tether-gameplay.mjs",
+   "src/core/flight/orbitAssist.js",
+   "src/systems/onboarding.js"
+  ],
+  "endCommit": "2268b7ae7",
+  "endDirty": true,
+  "endDirtySourcePaths": [
+   "scripts/check-tether-gameplay.mjs",
+   "src/core/flight/orbitAssist.js",
+   "src/systems/onboarding.js"
+  ],
+  "label": "swarm-idle-pr-maturation-final",
+  "browserExecutable": "playwright-bundled",
+  "hullPicked": null,
+  "hullsOffered": [
+   {
+    "id": "web_weaver",
+    "face": "Web Weaverrun Web to wave 5Hornet · 4/8 ",
+    "locked": true
+   },
+   {
+    "id": "ricochet_runner",
+    "face": "Ricochet RunnerHornet · 4/8 fitted",
+    "locked": false
+   },
+   {
+    "id": "energy_baseline",
+    "face": "Baseline EnergyHitch · 1/7 fitted",
+    "locked": false
+   },
+   {
+    "id": "kinetic_baseline",
+    "face": "Baseline KineticHornet · 1/8 fitted",
+    "locked": false
+   },
+   {
+    "id": "physics_toolkit",
+    "face": "Physics Toolkitrun Tag to wave 5Hornet ·",
+    "locked": true
+   },
+   {
+    "id": "massline_rig",
+    "face": "Massline Rigrun Whip to wave 8Drifter · ",
+    "locked": true
+   },
+   {
+    "id": "storm_carom_forge",
+    "face": "Storm Carom ForgeClosed.Ranger · 6/13 fi",
+    "locked": true
+   },
+   {
+    "id": "hornet_fast_clumsy",
+    "face": "Boltclear wave 10Hornet · 3/8 fitted",
+    "locked": true
+   },
+   {
+    "id": "hornet_nimble_slow",
+    "face": "Hingeclear wave 15Hornet · 3/8 fitted",
+    "locked": true
+   },
+   {
+    "id": "mirror_demonstrator",
+    "face": "Mirror DemonstratorDrifter · 4/10 fitted",
+    "locked": false
+   }
+  ],
+  "idleSeconds": 40,
+  "seedSet": true,
+  "arena": "Ricochet Foundry",
+  "seed": 4242,
+  "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "softwareGl": false,
+  "headed": true,
+  "browserVersion": "149.0.7827.55",
+  "resolution": "1280x720",
+  "when": "2026-10-12T19:08:20.157Z",
+  "wallSeconds": 115,
+  "simSeconds": 46.4,
+  "frames": 1737,
+  "shots": 48,
+  "script": "idle 40 s → thrust/yaw probes → kiting fighter: aim+fire at nearest hostile, hold 230–400 u range, burn away from packs of 3+ inside 450 u, strafe, break off under fire, latch every 7th beat; probes + shots at every round start · gate idle pass · no invulnerability (the only toggle is the physics-lab practice rack, not offered in Swarm/Gauntlet)",
+  "stopReason": "duration 45 sim s reached",
+  "pageErrors": [],
+  "arenasOffered": [
+   {
+    "name": "Ricochet Foundry",
+    "disabled": false,
+    "pressed": true
+   },
+   {
+    "name": "Lagrange Crucible",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Cinder Sluice",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Cryo Drift",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Storm Lattice",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Asteroid Mill",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "The Hive",
+    "disabled": true,
+    "pressed": false
+   }
+  ],
+  "overall": "FAIL"
+ },
+ "overall": "FAIL",
+ "results": [
+  {
+   "id": "route",
+   "title": "Public route plays end to end",
+   "status": "PASS",
+   "value": "main menu → mode select → preparation → spawn → play",
+   "threshold": "every step through public controls",
+   "detail": "5 steps",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "round_resolution",
+   "title": "Round resolves by play",
+   "status": "UNKNOWN",
+   "value": null,
+   "threshold": "≥20 s and player input",
+   "detail": "no round was won inside the run",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "kills_before_input",
+   "title": "Kills before the player acts",
+   "status": "PASS",
+   "value": "0 kills",
+   "threshold": "0",
+   "detail": "non-player kills between round start and first flight input · whole run: 0 hostile deaths, 0 not credited to the player (info)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "reward_before_input",
+   "title": "Score before the player acts",
+   "status": "PASS",
+   "value": "+0 score",
+   "threshold": "0",
+   "detail": "HUD score credited between round start and the first flight input — the player is rewarded for doing nothing",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "spawn_motion",
+   "title": "Unexplained motion at spawn",
+   "status": "PASS",
+   "value": "0 bodies",
+   "threshold": "0 passive bodies >8 u/s within 900 u",
+   "detail": "1 spawn moment(s) checked",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_control",
+   "title": "Ship answers input",
+   "status": "PASS",
+   "value": "0/2 probes dead · 0 pinned spans",
+   "threshold": "thrust Δv≥3 u/s and moves ≥25% of its velocity · yaw Δ≥0.2 rad",
+   "detail": "round 1 thrust 182.64 · round 1 yaw 2.62",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "tumble",
+   "title": "Ship stays in the play plane",
+   "status": "PASS",
+   "value": "longest 0 s",
+   "threshold": "<0.5 s out of plane / uncommanded spin",
+   "detail": "0 s total; limits pitch 0.35, bank 0.75 rad, |y| 4, spin 2.5 rad/s",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_ship",
+   "title": "Player ship visible as hero model",
+   "status": "PASS",
+   "value": "0% frames bad (0/1111)",
+   "threshold": "≤0.5%",
+   "detail": "missing / hidden / off-frame / non-lod0 / placeholder (<300 tris) while alive in play",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "lod_churn",
+   "title": "LOD / model swap churn",
+   "status": "FAIL",
+   "value": "max 10/10s per entity · 0.97/s total · 16 real LOD · 29 loading",
+   "threshold": "≤3/10s per entity · ≤1/s total",
+   "detail": "16 real LOD/model swaps · 29 visible loading-state swaps (awaiting/loading/compiling, still counted) over 46.5 sim s across 25 entities (21 more off screen, not graded)",
+   "offenders": [
+    {
+     "line": "entity 343 (asteroid) 10 swaps in 10 s (0 real LOD, 10 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/loading → DIRECT_AUTHORED_ADMISSION@-/unavailable at sim 41 s",
+     "t": 101108.9,
+     "sim": 41.033,
+     "box": [
+      1102.7,
+      223.7,
+      1197.3,
+      318.3
+     ]
+    },
+    {
+     "line": "entity 351 (enemy) 4 swaps in 10 s (1 real LOD, 3 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/loading → DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines at sim 48.1 s",
+     "t": 109849.5,
+     "sim": 48.117,
+     "box": [
+      453.1,
+      162.1,
+      494.9,
+      203.9
+     ]
+    },
+    {
+     "line": "entity 335 (enemy) 3 swaps in 10 s (1 real LOD, 3 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_8e10602e@lod1 at sim 3.5 s",
+     "t": 60107.6,
+     "sim": 3.467,
+     "box": [
+      838.1,
+      462.1,
+      921.9,
+      545.9
+     ]
+    },
+    {
+     "line": "entity 381 (enemy) 3 swaps in 10 s (0 real LOD, 3 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_6fcb24f1@lod1 at sim 47 s",
+     "t": 108341.5,
+     "sim": 46.95,
+     "box": [
+      1005.4,
+      314.4,
+      1052.6,
+      361.6
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 343 (asteroid) 10 swaps in 10 s (0 real LOD, 10 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/loading → DIRECT_AUTHORED_ADMISSION@-/unavailable at sim 41 s",
+     "t": 101108.9,
+     "sim": 41.033,
+     "box": [
+      1102.7,
+      223.7,
+      1197.3,
+      318.3
+     ]
+    },
+    {
+     "line": "entity 351 (enemy) 4 swaps in 10 s (1 real LOD, 3 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/loading → DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines at sim 48.1 s",
+     "t": 109849.5,
+     "sim": 48.117,
+     "box": [
+      453.1,
+      162.1,
+      494.9,
+      203.9
+     ]
+    },
+    {
+     "line": "entity 335 (enemy) 3 swaps in 10 s (1 real LOD, 3 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_8e10602e@lod1 at sim 3.5 s",
+     "t": 60107.6,
+     "sim": 3.467,
+     "box": [
+      838.1,
+      462.1,
+      921.9,
+      545.9
+     ]
+    }
+   ]
+  },
+  {
+   "id": "popping",
+   "title": "Pop-in / pop-out on screen",
+   "status": "PASS",
+   "value": "2.6/min · worst entity 0 toggles · 2 visibility · 0 loading",
+   "threshold": "≤6/min · ≤2 toggles",
+   "detail": "2 visibility pops · 0 visible loading-state pops (awaiting/loading/compiling, still counted) inside the inner 80% of the view; 8 non-projectile bodies born on screen (info)",
+   "offenders": [
+    {
+     "line": "entity 372 (asteroid) removed without death on screen 1× (1 visibility, 0 loading-state) — first sim 44.9 s",
+     "t": 105313,
+     "sim": 44.883,
+     "box": [
+      200.4,
+      447.4,
+      327.6,
+      574.6
+     ]
+    },
+    {
+     "line": "entity 351 (asteroid) removed without death on screen 1× (1 visibility, 0 loading-state) — first sim 47.7 s",
+     "t": 109398.9,
+     "sim": 47.717,
+     "box": [
+      157,
+      110,
+      257,
+      210
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 372 (asteroid) removed without death on screen 1× (1 visibility, 0 loading-state) — first sim 44.9 s",
+     "t": 105313,
+     "sim": 44.883,
+     "box": [
+      200.4,
+      447.4,
+      327.6,
+      574.6
+     ]
+    },
+    {
+     "line": "entity 351 (asteroid) removed without death on screen 1× (1 visibility, 0 loading-state) — first sim 47.7 s",
+     "t": 109398.9,
+     "sim": 47.717,
+     "box": [
+      157,
+      110,
+      257,
+      210
+     ]
+    }
+   ]
+  },
+  {
+   "id": "readability",
+   "title": "Enemy / asteroid / projectile readable",
+   "status": "FAIL",
+   "value": "min separation 1.15",
+   "threshold": "≥1 per class pair; ≤50% low-contrast",
+   "detail": "samples: enemy 33, asteroid 453, projectile 0, pickup 2",
+   "offenders": [
+    {
+     "line": "enemy: 76% of samples barely differ from the background (ΔL < 8)",
+     "t": 58553.80500000715,
+     "sim": null,
+     "box": [
+      893.7,
+      352.7,
+      986.3,
+      445.3
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "enemy: 76% of samples barely differ from the background (ΔL < 8)",
+     "t": 58553.80500000715,
+     "sim": null,
+     "box": [
+      893.7,
+      352.7,
+      986.3,
+      445.3
+     ]
+    }
+   ]
+  },
+  {
+   "id": "vfx_coverage",
+   "title": "Combat VFX coverage / occlusion",
+   "status": "FAIL",
+   "value": "p95 1% screen · player hidden 0% · threats hidden p95 100% · 0 s persist",
+   "threshold": "≤25% · ≤10% · ≤30% · ≤3 s",
+   "detail": "46 per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom 160×90; backdrop layers graded separately)",
+   "offenders": [
+    {
+     "line": "peak combat-VFX pixels 2% of screen at sim 11.1 s (21 combat layers lit)",
+     "t": 68770,
+     "sim": 11.05,
+     "box": null
+    }
+   ],
+   "moments": []
+  },
+  {
+   "id": "backdrop_coverage",
+   "title": "Backdrop stays behind the play",
+   "status": "PASS",
+   "value": "backdrop lights median 5% / p95 5% of screen · threats on bright backdrop p95 0%",
+   "threshold": "threats on bright backdrop p95 ≤30%",
+   "detail": "46 per-pixel splits with backdrop layers hidden vs shown",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "loadout",
+   "title": "Loadout readable and relevant",
+   "status": "PASS",
+   "value": "0 irrelevant · 0 undescribed · 0 silent swaps",
+   "threshold": "0 · 0 · 0",
+   "detail": "0 offers read; swap probe: no install possible",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "frame_time",
+   "title": "Frame time / long tasks",
+   "status": "UNKNOWN",
+   "value": "p50 42 ms · p99 110 ms · 0 long tasks ≥250 ms",
+   "threshold": "p99 ≤50 ms · 0 long tasks ≥250 ms",
+   "detail": "1111 play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Observer readbacks and screenshots remain included in these measurements.",
+   "offenders": [
+    {
+     "line": "frame 666: 825 ms at sim 3.3 s (128 entities, 0 draws)",
+     "t": 59863.2,
+     "sim": 3.267,
+     "box": null
+    },
+    {
+     "line": "frame 747: 231 ms at sim 7.2 s (129 entities, 0 draws)",
+     "t": 64642.7,
+     "sim": 7.183,
+     "box": null
+    },
+    {
+     "line": "frame 1713: 136 ms at sim 46.8 s (168 entities, 0 draws)",
+     "t": 108209.3,
+     "sim": 46.833,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "frame 666: 825 ms at sim 3.3 s (128 entities, 0 draws)",
+     "t": 59863.2,
+     "sim": 3.267,
+     "box": null
+    },
+    {
+     "line": "frame 747: 231 ms at sim 7.2 s (129 entities, 0 draws)",
+     "t": 64642.7,
+     "sim": 7.183,
+     "box": null
+    }
+   ]
+  },
+  {
+   "id": "round_transitions",
+   "title": "Every round starts playable",
+   "status": "UNKNOWN",
+   "value": null,
+   "threshold": "ship whole · probes answer · in plane, first 8 s of each round",
+   "detail": "no round after round 1 was reached",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "rounds_reached",
+   "title": "Run reaches the gate round",
+   "status": "N/A",
+   "value": null,
+   "threshold": null,
+   "detail": "not a gate active pass",
+   "offenders": [],
+   "moments": []
+  }
+ ],
+ "rounds": [
+  {
+   "wave": 1,
+   "startSim": 1.6999999999999988,
+   "startT": 57441.77999997139,
+   "endSim": null,
+   "endT": null,
+   "endPhase": null,
+   "startHull": 1,
+   "cutSim": 47.583333333331915
+  }
+ ],
+ "probes": [
+  {
+   "label": "round 1 thrust",
+   "key": "KeyW",
+   "kind": "thrust",
+   "startSim": 41.9999999999989,
+   "endSim": 43.98333333333212,
+   "startT": 102359.00499999523,
+   "endT": 104299.95999997854,
+   "value": 182.63657821208218,
+   "moved": 193.55324569496182,
+   "expect": 209.3675465829967
+  },
+  {
+   "label": "round 1 yaw",
+   "key": "KeyD",
+   "kind": "yaw",
+   "startSim": 44.04999999999878,
+   "endSim": 45.11666666666539,
+   "startT": 104419.69999998808,
+   "endT": 105689.38499999046,
+   "value": 2.6166528062131715
+  }
+ ],
+ "route": {
+  "steps": [
+   {
+    "name": "main menu",
+    "ok": true,
+    "detail": "menu visible",
+    "t": null
+   },
+   {
+    "name": "mode select",
+    "ok": true,
+    "detail": "Crucible · swarm · arena Ricochet Foundry · seed 4242",
+    "t": null
+   },
+   {
+    "name": "preparation",
+    "ok": true,
+    "detail": "hull Ricochet RunnerHornet · 4/8 fitted · 0 armory offers read · no install possible",
+    "t": null
+   },
+   {
+    "name": "spawn",
+    "ok": true,
+    "detail": "flight · round 1 active at sim 1.7 s",
+    "t": null
+   },
+   {
+    "name": "play",
+    "ok": true,
+    "detail": "1 round(s): 1:cut",
+    "t": null
+   }
+  ]
+ },
+ "pacing": null,
+ "readability": {
+  "classes": {
+   "enemy": {
+    "n": 33,
+    "lowContrastFrac": 0.7575757575757576,
+    "exampleT": 58553.80500000715,
+    "exampleBox": [
+     893.7,
+     352.7,
+     986.3,
+     445.3
+    ],
+    "meanLab": [
+     13.6,
+     6.4,
+     1.7
+    ]
+   },
+   "asteroid": {
+    "n": 453,
+    "lowContrastFrac": 0.7417218543046358,
+    "exampleT": 58553.80500000715,
+    "exampleBox": [
+     194.2,
+     379.2,
+     237.8,
+     422.8
+    ],
+    "meanLab": [
+     17,
+     0.5,
+     0.7
+    ]
+   },
+   "projectile": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   },
+   "pickup": {
+    "n": 2,
+    "lowContrastFrac": 0.5,
+    "exampleT": 106959.62000000477,
+    "exampleBox": [
+     1189.3,
+     232.3,
+     1196.7,
+     239.7
+    ],
+    "meanLab": [
+     5,
+     1.7,
+     -2.1
+    ]
+   }
+  },
+  "pairs": [
+   {
+    "a": "enemy",
+    "b": "asteroid",
+    "nA": 33,
+    "nB": 453,
+    "sep": 1.150328966163693,
+    "dColor": 6.902637963450801,
+    "sizeRatio": 2.2661290322580645,
+    "exampleT": 58553.80500000715,
+    "exampleBox": [
+     893.7,
+     352.7,
+     986.3,
+     445.3
+    ]
+   },
+   {
+    "a": "enemy",
+    "b": "projectile",
+    "nA": 33,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "asteroid",
+    "b": "projectile",
+    "nA": 453,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "pickup",
+    "nA": 33,
+    "nB": 2,
+    "sep": 3.2525726524321614,
+    "dColor": 10.552122051843954,
+    "sizeRatio": 5.511111111111111,
+    "exampleT": 58553.80500000715,
+    "exampleBox": [
+     893.7,
+     352.7,
+     986.3,
+     445.3
+    ]
+   }
+  ],
+  "census": [
+   {
+    "cls": "asteroid",
+    "ty": 1,
+    "n": 453,
+    "litLab": [
+     30,
+     0.4,
+     2.1
+    ],
+    "look": "dark",
+    "meanRadiusPx": 54.9,
+    "overPlayerFrac": 0.033,
+    "exampleT": 76543.63499999046,
+    "exampleBox": [
+     490,
+     248,
+     704,
+     462
+    ],
+    "name": "asteroid:"
+   },
+   {
+    "cls": "other",
+    "ty": 3,
+    "n": 43,
+    "litLab": [
+     36.1,
+     -1.1,
+     6.8
+    ],
+    "look": "dark",
+    "meanRadiusPx": 71.6,
+    "overPlayerFrac": 0,
+    "exampleT": 81705.74500000477,
+    "exampleBox": [
+     337.4,
+     4.399999999999999,
+     448.6,
+     115.6
+    ],
+    "name": "wreck:"
+   },
+   {
+    "cls": "enemy",
+    "ty": 5,
+    "n": 33,
+    "litLab": [
+     37.2,
+     12.3,
+     7.2
+    ],
+    "look": "red",
+    "meanRadiusPx": 25.7,
+    "overPlayerFrac": 0,
+    "exampleT": 58553.80500000715,
+    "exampleBox": [
+     893.7,
+     352.7,
+     986.3,
+     445.3
+    ],
+    "name": "ship:"
+   },
+   {
+    "cls": "other",
+    "ty": 186,
+    "n": 28,
+    "litLab": [
+     40.3,
+     0,
+     5.5
+    ],
+    "look": "grey",
+    "meanRadiusPx": 7.3,
+    "overPlayerFrac": 0,
+    "exampleT": 85786.06999999285,
+    "exampleBox": [
+     447,
+     106,
+     459,
+     118
+    ],
+    "name": "wreck:wreck"
+   },
+   {
+    "cls": "station",
+    "ty": 110,
+    "n": 12,
+    "litLab": [
+     25.6,
+     0.1,
+     2.4
+    ],
+    "look": "dark",
+    "meanRadiusPx": 28.6,
+    "overPlayerFrac": 0,
+    "exampleT": 88797.24500000477,
+    "exampleBox": [
+     1089.7,
+     29.7,
+     1136.3,
+     76.3
+    ],
+    "name": "station:gate"
+   },
+   {
+    "cls": "station",
+    "ty": 109,
+    "n": 8,
+    "litLab": [
+     31.4,
+     0.1,
+     -0.6
+    ],
+    "look": "dark",
+    "meanRadiusPx": 39.2,
+    "overPlayerFrac": 0,
+    "exampleT": 82769.344999969,
+    "exampleBox": [
+     984.2,
+     8.200000000000003,
+     1059.8,
+     83.8
+    ],
+    "name": "station:plate"
+   },
+   {
+    "cls": "pickup",
+    "ty": 221,
+    "n": 2,
+    "litLab": [
+     8.3,
+     5,
+     1.4
+    ],
+    "look": "dark",
+    "meanRadiusPx": 4.1,
+    "overPlayerFrac": 0,
+    "exampleT": 106959.62000000477,
+    "exampleBox": [
+     1189.3,
+     232.3,
+     1196.7,
+     239.7
+    ],
+    "name": "pickup:credit_chip"
+   }
+  ]
+ },
+ "loadout": {
+  "items": [],
+  "irrelevant": [],
+  "undescribed": [],
+  "silentSwaps": [],
+  "announcedSwaps": 0,
+  "buys": 0,
+  "swapProbe": "no install possible",
+  "shotT": 53812.91499996185
+ }
+}

@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "33b3f9c0a4ce804d8ac5d53ad4ea1dfa73817b9fef227b28cb8033ef043831ff",
+  "contentHash": "835a88e7e4dfc4278ab71bfa6dbb6cbc80b880e540c08f65fb834fc1c4705194",
   "dynamicGroups": [
     {
       "id": "sf.render.mining-drone.node.lod0-hook-drive-core.dynamic",
@@ -122,7 +122,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "358255c1630b7949eac4c2cb42a15731656fb9aaba90d99418c36adb2b725a36",
+      "geometryHash": "22414cca094e7babbf51fe2e4ba7039b4f3f8af663779193cf25ad7d0799cc6f",
       "id": "sf.render.mining-drone.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -147,16 +147,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b9f1b9b954132db94015212834154efeca8ea27d7327d5c5abc5dc4eb690cc3f",
+      "geometryHash": "c5e175cf421ba4336c159892ffb9a5ca935fa53f67d43a74c8114d1699b416ae",
       "id": "sf.render.mining-drone.node.lod0-armor.primitive.0",
-      "indexCount": 15291,
+      "indexCount": 15423,
       "indexed": true,
       "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.mining-drone.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 4858
+      "vertexCount": 4898
     },
     {
       "bounds": {
@@ -172,7 +172,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e895f45ef092c84403ffabdcf69ef74fd336ecceb3842cce03634b95c0c58117",
+      "geometryHash": "2231cc3e4eb1c30fdfe9e21569b3db17a3218d7cbf451d1a0bda7458abc244e5",
       "id": "sf.render.mining-drone.node.lod0-beacon-amber.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -272,16 +272,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07625d4f4ff27b151ebef99cf88268d45f2787a3bc6d1ca33c8b6d5e0f99464f",
+      "geometryHash": "eabc1f2ac2eb0cef838bebc2c3534c553ff43692aa13acb92cef084e2c6305ca",
       "id": "sf.render.mining-drone.node.lod0-hull.primitive.0",
-      "indexCount": 6714,
+      "indexCount": 6771,
       "indexed": true,
       "materialHash": "f1de7defd297fd6e20382622da2ed9723c262e218d9563d95a157879905c2cb4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.mining-drone.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 2016
+      "vertexCount": 2027
     },
     {
       "bounds": {
@@ -322,7 +322,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49d2714f7ae3737f6f5f4e081a80dd7afd391448caa7977af51793495341463c",
+      "geometryHash": "3de0ae561808e1404ab65947253099d896879072f97d1630d79df8e315222296",
       "id": "sf.render.mining-drone.node.lod0-mechanical.primitive.0",
       "indexCount": 10386,
       "indexed": true,
@@ -347,7 +347,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a989d8ecab9373d7c0d277d90c5b2dc16349e959c89f3c26eb15d0a226e9ad86",
+      "geometryHash": "dc329b57cd862ae06373bdfc83156bb3718f03af8cda87b557a28b93871cf70e",
       "id": "sf.render.mining-drone.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 2616,
       "indexed": true,
@@ -372,7 +372,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab584622963452ea759ac7f3d311e845f0bdeb19b3aedb046e53c4c84a2bf099",
+      "geometryHash": "75f5fceb8f1de461c78135c0bc7e7e11deb04a75b7ef0d2fd22679493d863d13",
       "id": "sf.render.mining-drone.node.lod0-motion-drone-drum-armor.primitive.0",
       "indexCount": 1716,
       "indexed": true,
@@ -397,7 +397,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8eea5dd50fab425f08fedfa97fa5714d873b2d46f5aa59f3eb231d66f35f148",
+      "geometryHash": "a4ef3abada04e41601327ac8965f86c708c355519448ffe70897192c51b503e4",
       "id": "sf.render.mining-drone.node.lod0-motion-drone-drum-brushedmetal.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -422,7 +422,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f3a561606b17389ac1e9bb91c1c9418d70d80e32c5ee13c873f2c19385c21ff",
+      "geometryHash": "0c5057b9beb164b464cf53f94fc6ea546240b5638cc1437f9d6abac52cc750a7",
       "id": "sf.render.mining-drone.node.lod0-motion-drone-drum-mechanicaldark.primitive.0",
       "indexCount": 372,
       "indexed": true,
@@ -447,7 +447,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e91761f9a39e6466df4810d5711e82c4b28299aa0eacf48edeff7305493235c4",
+      "geometryHash": "50f2a78c2d95aa6c92e54d2533df863851b0e681595aeeaf3b7fc05aa1c07b79",
       "id": "sf.render.mining-drone.node.lod0-motion-drone-drum-warning.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -472,7 +472,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40e27a7ee86d652a12ec35aa226e3ecf29a0c81af28a01ce03747f4809ce728d",
+      "geometryHash": "421bd42e8406aacb2ded9fe97c8ac2f0e6c1d4cb28b7faf70c59bd0e1577a9ba",
       "id": "sf.render.mining-drone.node.lod0-motion-drone-vane-armor.primitive.0",
       "indexCount": 453,
       "indexed": true,
@@ -497,7 +497,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1e91e9c19b35061af604c2b402339f766111682aa5de4d384839205e64e5b5a",
+      "geometryHash": "62d3a1aed245225325c8810067dd7bce2e7f664bbca2814ec646a3a0282d0b14",
       "id": "sf.render.mining-drone.node.lod0-motion-drone-vane-lights-cyan.primitive.0",
       "indexCount": 111,
       "indexed": true,
@@ -522,7 +522,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76db76ac85ef29896ce41cca04c54c69b1250e4ef5ab38a7c392cb9ccde65c6d",
+      "geometryHash": "f945260ac294c05ed1cad88760a1a27c0b8976368e7cc47f9799d70ed6800f79",
       "id": "sf.render.mining-drone.node.lod0-warning.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -547,7 +547,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85d679946c1647106aa2c1a04de3db4e8e094c0963d407e48a79e78c08a5408b",
+      "geometryHash": "82e42dcfe754ce8293c4ccbf3863e078161c62dd8864c8d548e5af859a0ac916",
       "id": "sf.render.mining-drone.node.lod1-armor.primitive.0",
       "indexCount": 5349,
       "indexed": true,
@@ -572,7 +572,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f81366c268ef37756a35d1942c1dd152f3a434c6f67ca9dd6d7d584340d72163",
+      "geometryHash": "63fcf06d39e2575afee44abf2ea56c37099084a02f596b445c3e6f94d115da4a",
       "id": "sf.render.mining-drone.node.lod1-beacon-amber.primitive.0",
       "indexCount": 426,
       "indexed": true,
@@ -672,7 +672,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8b706dd8ba4870e26682ad5c5d020d6cdf1e8049e57a23976deaae463caec8e",
+      "geometryHash": "bda5675b3744133673745830931dc305886ff1293649763b5d1740718fbee6e5",
       "id": "sf.render.mining-drone.node.lod1-hull.primitive.0",
       "indexCount": 1209,
       "indexed": true,
@@ -722,7 +722,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cabbac5a6b7e909ab73a3519c380c2e674fc32ede7c694118fa60646687e8d4",
+      "geometryHash": "e7b3323336e6ab4a5cdc8f05062acbf22ad858c04ecf6746641d9358dc255ecf",
       "id": "sf.render.mining-drone.node.lod1-mechanical.primitive.0",
       "indexCount": 5115,
       "indexed": true,
@@ -747,7 +747,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0715fba72d07fd114994c67b64c23cadb7f73ab5f90567fd2a77c3b2d45d8887",
+      "geometryHash": "db08c67004681bacc70c803a30067476c4b1c7c9cb516f9f3d25f70a92c16eeb",
       "id": "sf.render.mining-drone.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 1113,
       "indexed": true,
@@ -797,7 +797,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5e967cef99f8445860f6eedf88f2a71a49704e9d73d4eee13ddb0dda8511950",
+      "geometryHash": "17d15f6b0d7d65dc5f39db462a3fdde052c821e86ca8bd16d3575c0d40ae0dbe",
       "id": "sf.render.mining-drone.node.lod1-motion-drone-drum-brushedmetal.primitive.0",
       "indexCount": 1170,
       "indexed": true,
@@ -847,7 +847,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7c61514a49b88ea13bff2ed16ddd45ee9eaa79f1aeb9cd267644d197efcf6ce",
+      "geometryHash": "6dab37269255dae6d2889da1fe5b63d2ae5f63deeb6ff1d0949876e2a97c1d1c",
       "id": "sf.render.mining-drone.node.lod1-motion-drone-drum-warning.primitive.0",
       "indexCount": 183,
       "indexed": true,
@@ -872,7 +872,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4bad34ca0e042c6526476478e9877aebdc553dbb8eb822d29c3c116805ff82c",
+      "geometryHash": "31f0cff863eb907e7ed16f4b01c1c8a45d518579a31085abc4c9b00415b1fbc5",
       "id": "sf.render.mining-drone.node.lod1-motion-drone-vane-armor.primitive.0",
       "indexCount": 162,
       "indexed": true,
@@ -922,7 +922,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1e67301eaf9cc455227274f42f8a6358ff9f45a42b370db6dca25ffbfb1a398",
+      "geometryHash": "afb239d6b131b713df8b1c53f86c0ab32a51d393a93c98a7f619cfcba5081616",
       "id": "sf.render.mining-drone.node.lod1-warning.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -947,7 +947,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8db055888dbdfb84622bdcab822f001dd06486ddfbfc0b276b345565f609ab31",
+      "geometryHash": "7801d0b9d28075d877fd0d25009bcdeab247d3dc2731a38186c8d32f45555f2f",
       "id": "sf.render.mining-drone.node.lod2-armor.primitive.0",
       "indexCount": 2481,
       "indexed": true,
@@ -972,7 +972,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21ec2c4096190f277d12d9858770067a6c883fc81f995be00bb4073fdd1e2071",
+      "geometryHash": "5b7eb5537f8f5a2966603d53eaeff94f5761ab62b8be24d73b8f8173d33ec588",
       "id": "sf.render.mining-drone.node.lod2-beacon-amber.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -1072,7 +1072,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e9bd63787671fd42716aa7881ddc24f3655b109900bf17c7fcaefd38c760bfa",
+      "geometryHash": "66fe05d86c79a6ed319d1e0eef52d33380bf734a44d89ce3bbafec48995e794a",
       "id": "sf.render.mining-drone.node.lod2-hull.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -1122,7 +1122,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38a8167debf27f4700f63ca0692a8eaa7df7b57783681a1f4eb0e25c6059e1aa",
+      "geometryHash": "fedff0a9886a18ac661323ed49d593342731c6b9e2524e45f9277e1a47532e6d",
       "id": "sf.render.mining-drone.node.lod2-mechanical.primitive.0",
       "indexCount": 1989,
       "indexed": true,
@@ -1197,7 +1197,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "637b1005bbb7bc1ba9032d069b05e8c6e03b3cae4a97c8556729eff8c2861ebf",
+      "geometryHash": "bc30a863ebe5dca2d1d09a24d3c50cfd6aeeab99998c0f6a0e917fc6db2c1e97",
       "id": "sf.render.mining-drone.node.lod2-motion-drone-drum-brushedmetal.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -1322,7 +1322,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3f5f97fbd8088690d99f1931b5ac2cc1e33eb9601d1e20a61731d096e5be55b",
+      "geometryHash": "9f24f09873ed81332eae87e234baee3cabe67ecf4af307a35f0f58ddfda8a5fa",
       "id": "sf.render.mining-drone.node.lod2-warning.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -4187,19 +4187,19 @@
       "sha256": "7cd8c028331d51d601f37aa16b0ac703b7077ce53dcc9ec22ed8b66ffb2f28ea"
     },
     "sourceGlb": {
-      "bytes": 551384,
-      "sha256": "d2360bc34e18ab039c48aa01b36cdf79b6710d733fb58da85c15cc47245e644d",
+      "bytes": 551088,
+      "sha256": "91294b3376110e72248889d06965b0222b17e06d90af108483e1447295acb0e2",
       "uri": "place_mining_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 973752,
-    "sha256": "bd52123d8f638a9b8d206b2aed2b835298a055764eef4604b7267ca48c5ce3c5",
+    "bytes": 975800,
+    "sha256": "02fb7300c9ded10ef5f789f8bbbb9eea303951efd6597a97a0d8ab5556b49b5d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6054,7 +6054,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_mining_drone.glb"
   },
-  "runtimeHash": "cc9ebba5459180433f0f43f458761bafc4a8d2f408abdb00fa24277b7a26d3f5",
+  "runtimeHash": "c4c224bc6b4bac93b9948bd70bdbbf4d74a2892008cc6a741ed249ba5d9fb759",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

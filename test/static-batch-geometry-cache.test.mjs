@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { BoxGeometry } from 'three';
 
 import {
   clearStaticBatchGeometryCacheForTests,
@@ -9,7 +10,7 @@ import {
   takeCachedStaticBatchGeometry,
 } from '../src/render/staticBatchGeometryCache.js';
 
-test('same urls and part matrices share a cloneable merged geometry', () => {
+test('same urls and part matrices share one immutable marked geometry', () => {
   clearStaticBatchGeometryCacheForTests();
   const matrix = { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] };
   const bucket = {
@@ -21,9 +22,16 @@ test('same urls and part matrices share a cloneable merged geometry', () => {
   };
   const key = staticBatchGeometryCacheKey(bucket);
   assert.equal(key, staticBatchGeometryCacheKey(bucket));
-  rememberStaticBatchGeometry(key, { clone() { return { shared: true }; } });
+  const geometry = new BoxGeometry(2, 3, 4);
+  const positions = [...geometry.attributes.position.array];
+  rememberStaticBatchGeometry(key, geometry);
   assert.equal(staticBatchGeometryCacheSize(), 1);
   const taken = takeCachedStaticBatchGeometry(key);
-  assert.deepEqual(taken, { shared: true });
+  assert.equal(taken, geometry);
+  assert.equal(takeCachedStaticBatchGeometry(key), taken, 'repeat consumers reuse the same upload');
+  assert.equal(taken.userData.spacefaceSharedAsset, true, 'entity teardown must not dispose the cache owner');
+  assert.deepEqual([...taken.attributes.position.array], positions);
   assert.equal(takeCachedStaticBatchGeometry('missing'), null);
+  clearStaticBatchGeometryCacheForTests();
+  geometry.dispose();
 });

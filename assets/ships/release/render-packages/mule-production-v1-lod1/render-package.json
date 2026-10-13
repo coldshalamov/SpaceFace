@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "de2b3a9c439c42d87d6e2f3fc42fe7bcdb4b6352b74077be689f834d9d076132",
+  "contentHash": "381949cda01733dfb50663abe6c892b985cfa5434a2852fd0d45c7d9e53903cf",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.dynamic",
@@ -638,7 +638,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0af78d39311564141d524df66cd28b1db57ddacd3ec8fe8d4d986ad265988fc7",
+      "geometryHash": "c1bce56018d56b994e0253d6da308c852e0465b03e2ff916be0eadd48d1965e8",
       "id": "sf.render.mule-production-v1-lod1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -663,16 +663,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2afa6b9aa72e559df4dd625e93f04bc600f8d09c428e38878c2aa2b760299f9",
+      "geometryHash": "0227b027204a38b3830acaf78a2b5d840b1cff54d5186f7ecedc8dc0bab6772c",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-armor.primitive.0",
-      "indexCount": 4032,
+      "indexCount": 4110,
       "indexed": true,
       "materialHash": "cd33f261b3299189b508fd96ac6363e52774e7f21dd0d921f1b80f5dfa57a4a6",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Armor.001",
       "nodeId": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1330
+      "vertexCount": 1375
     },
     {
       "bounds": {
@@ -713,7 +713,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8fe7266d12750e48cb211434825d6ae9fd9a9ad161631d87643d5033ff46f278",
+      "geometryHash": "2f2c85671543e09d93db8dd90d0b4b3cf988026c6af717563026ea8347afa8d1",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -738,7 +738,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1fd19dab72f7a1b14791b413b49a2083efb60522baa032c02551960dc06d0d25",
+      "geometryHash": "54bd315ff136b4375a395c4c6ed0aec1ebab61c0c3ca9d6b86a34ee120055838",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -863,7 +863,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4d07649ef061886ef2c195127adf2dcc180dc6d2c7de50feac8dd812fb7ea14",
+      "geometryHash": "8594cf1bf05aa0d0db3d25f3349f98e9f999a4b8326f738fd36dcf27eb0d9588",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-mast-mechanical.primitive.0",
       "indexCount": 246,
       "indexed": true,
@@ -888,7 +888,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7462ea202622d84a04a8a4294b4b0e95325f16dc06948987f5b1f0d198e02458",
+      "geometryHash": "80269c9d72bbdddbb18a573b4c4d2b1a92620e6e2d69ac3061fe6adc40c67496",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-turret-hull.primitive.0",
       "indexCount": 492,
       "indexed": true,
@@ -913,7 +913,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8b3a8886a0f96629e6e169c9be2d9b1bd8a2b1457c7adc1d99446c174449747",
+      "geometryHash": "9cc76face62d5d81b4b16f7b2710ec405105cbc06009dd903a4a84c770af49cd",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-turret-mechanical.primitive.0",
       "indexCount": 957,
       "indexed": true,
@@ -938,7 +938,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cdb05faf9dbdf8058d46a4403191d4885e228d459c8b6b5b9a8a9ac2764fddf2",
+      "geometryHash": "02798cb2f05f33a40a8ae3593fddc68d0ecd4d47fc6eed65197655fad0a5ec81",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-turret-mechanicaldark.primitive.0",
       "indexCount": 447,
       "indexed": true,
@@ -988,7 +988,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "508eb48e06d99f75ad0ca91b56e4177e6c8fbd01f64d909c42848b152c9ea3af",
+      "geometryHash": "eba019d99925b66544333a1b8233acbbd25a57ff4c96e6412ebfc8356f1e62b2",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical.primitive.0",
       "indexCount": 258,
       "indexed": true,
@@ -1013,7 +1013,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e568f870dd45f24397a5db0e7d5addbbe000e7d967d172ba254b305126601591",
+      "geometryHash": "b6a52efb1316d490842e4cab3d4cf58d7c3e2956096786aa2e579654f0531ad1",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 4758,
       "indexed": true,
@@ -1113,7 +1113,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0744c6a00f028b6f8eec7ee332c29e12309339fd4b06eb28bd6a33ad3ab846c",
+      "geometryHash": "e19b6c06dc905929c8a78457ecfea1961f31a9be8b0ea01270ebc6c0ee606d74",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 9591,
       "indexed": true,
@@ -1138,7 +1138,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c72f1cd4f9a6260903c335ea81688da9f727110639573f5f0c8bb2325252124",
+      "geometryHash": "3dbfb2dd6fe26f51911172de6e6185ea5ee7e4fe8b4a24a656223aac7cdf14c4",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 5448,
       "indexed": true,
@@ -1163,7 +1163,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5af776183967ca1e7692b3cfccc8f5047bbc5c3c5603fcf29bdc7bde51ba0306",
+      "geometryHash": "9f5dd5b3554aedee57f99e858d5ecdad5e4805b83233f387d7e43ee9c75c1424",
       "id": "sf.render.mule-production-v1-lod1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 888,
       "indexed": true,
@@ -3219,19 +3219,19 @@
       "sha256": "7823318c6df7498fa35a2be60b05a219e3780c98e3c6899125af15f3a41a511e"
     },
     "sourceGlb": {
-      "bytes": 505748,
-      "sha256": "7c5d10f1886260d0c175b15c3470a0f476b57b22524f822bae2261150c3bd145",
+      "bytes": 506320,
+      "sha256": "b72b99dc4a36f933b2f5a433a3f55d3f19688161b7da5fa326293cb597cd9a06",
       "uri": "mule_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 701588,
-    "sha256": "5bc606c5824269631fe9535fa44da069485ceef6eed6d6c07a3cd5d7879e4298",
+    "bytes": 703188,
+    "sha256": "268dec116d565e66fbdfcbfabfeee58b0bc00de70ba8ca21de16c4f1c9244262",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4698,7 +4698,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb"
   },
-  "runtimeHash": "9716bbe4c67069ab4d1430b1d975c1fee2ae6f7e062a52f2e4350d08fe9aa451",
+  "runtimeHash": "0a1b30dd6a32db0c6f9bf046793abd114f00b012d81973ae1493f0211810a68a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

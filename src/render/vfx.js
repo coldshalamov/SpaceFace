@@ -9090,6 +9090,8 @@ export const vfx = {
       sigil.clear(dt, settings);
       return false;
     }
+    // Active swarm fights never reach this: resolveSelectionSigil withholds them.
+    // Other survival runs pull the same figures onto the hull.
     if (state.run && state.run.kind === 'survival') resolved.tight = true;
     const local = this._toLocalXZ(resolved.x, resolved.z, this._spawnLocalXZ);
     return sigil.setSubject(resolved, local.x, local.z, dt, settings);

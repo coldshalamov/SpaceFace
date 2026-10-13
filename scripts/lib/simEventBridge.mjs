@@ -4,7 +4,7 @@
 // The bridge applies a depth-bounded flat projection: cloneable scalars pass
 // through (undefined included — structuredClone preserves it), arrays/objects
 // flatten recursively to depth EVENT_BRIDGE_DEPTH, and live sim objects
-// (entities/rows — anything carrying pos/vel/alive markers plus a numeric id)
+// (entities/rows — a live flag or a pose AND velocity plus a numeric id)
 // collapse to { entityRef: <id> } tokens the main-side read model resolves.
 // Payloads whose live members don't project cleanly (non-plain objects like the
 // cargo singleton's Map-backed store) get explicit per-type adapters; a payload
@@ -28,7 +28,18 @@ const REJECT = Symbol('sf.bridge.reject');
 export function isSimObjectRef(value) {
   return !!(value && typeof value === 'object'
     && Number.isFinite(value.id)
-    && ('pos' in value || 'vel' in value || 'alive' in value));
+    && ('alive' in value || ('pos' in value && 'vel' in value)));
+}
+
+// A receipt can outlive its entity's numeric slot. Never turn an old-life reference into the
+// slot's new occupant after the reply applies its destroy/spawn journal ahead of its events.
+export function resolveEventEntityRef(value, entities) {
+  if (!value || typeof value !== 'object' || !Number.isFinite(value.entityRef)) return value;
+  const entity = entities && typeof entities.get === 'function' ? entities.get(value.entityRef) : null;
+  if (!entity) return value;
+  if (Number.isSafeInteger(value.occupantGeneration)
+    && entity.occupantGeneration !== value.occupantGeneration) return value;
+  return entity;
 }
 
 function isPlainObject(value) {
@@ -42,7 +53,10 @@ export function flattenEventPayload(value, depth = 0, hits = null, path = '') {
   const t = typeof value;
   if (t === 'number') return Number.isFinite(value) ? value : 0;
   if (t === 'string' || t === 'boolean' || t === 'bigint') return value;
-  if (isSimObjectRef(value)) return { entityRef: value.id };
+  if (isSimObjectRef(value)) return {
+    entityRef: value.id,
+    ...(Number.isSafeInteger(value.occupantGeneration) ? { occupantGeneration: value.occupantGeneration } : {}),
+  };
   if (t === 'object' && depth >= EVENT_BRIDGE_DEPTH) {
     if (hits) { hits.depth += 1; hits.path = hits.path || path || '(root)'; }
     return REJECT;
@@ -95,7 +109,9 @@ export const EVENT_BRIDGE_ADAPTERS = {
   // entity:spawned carries the live entity — consumers resolve it via the
   // main-side read model by entityId (the spawn already rode the journal).
   'entity:spawned': (p) => (p && typeof p === 'object'
-    ? { id: p.id ?? null, type: p.type ?? null, entityId: (p.entity && p.entity.id) ?? null }
+    ? { id: p.id ?? null, type: p.type ?? null, entityId: (p.entity && p.entity.id) ?? null,
+      ...(Number.isSafeInteger(p.entity?.occupantGeneration)
+        ? { occupantGeneration: p.entity.occupantGeneration } : {}) }
     : undefined),
   // cargo:changed carries the live cargo singleton (Map-backed; not
   // deep-flattenable). The volume/mass scalars are what listeners read.

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d6a7e120d88dbd7ca5249fa183b8802e5e70775ac746ab1ebceb89864897a3d9",
+  "contentHash": "484e42226774fc364a14f94c0ffcce1c50ecadb3e2592dae3aa3f8ad4f78cabf",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,8 +344,8 @@
       "uri": "fin_delta.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_delta.glb"
   },
-  "runtimeHash": "f4be089debfacec3797b43170167fef831d2963091ec834323c06301a1adc976",
+  "runtimeHash": "eb8da60c2cfd6cee66b3d3ca5251272fa5b33639fb24d271a5a7824a278fb363",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

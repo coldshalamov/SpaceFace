@@ -69,7 +69,9 @@ samples live telemetry through the observer-only `src/testing/playerTruth/reader
 `--evidence` copies the compact verdict and sheet into `design/program/player-truth/<label>/`.
 
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
-  renderer string; frame-time is graded only here.
+  renderer string. Frame-time grades require the dedicated machine's `SPACEFACE_QUIET_HOST=1`
+  marker (`QUIET_HOST_PROGRAM.md` §0); unmarked hosts retain numeric diagnostic timings as UNKNOWN.
+  Verdicts record the observer's render/readback and screenshot cadence within those timings.
 - **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then
   `CHROME_PATH`, `/opt/google/chrome/chrome`, or `google-chrome`/`chromium` on PATH.
 - **Software GL (fallback):** the default headless run uses SwiftShader. It plays the same route at a

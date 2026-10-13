@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bb929ed79bced7e1d479b737b03394c2ec39485e90dc391e5fc5673ece8fd0ea",
+  "contentHash": "398b854c2ae3a0c86aad6a2d8f6cca80dcea66bfe3b4d2295403994f5d60c3d9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -141,7 +141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00e9aa5aefb67c3f0bd11c51a4431da1a6531df38f660fb1b1179915e043a03f",
+      "geometryHash": "9601a2fd88ad3c8ac93baa4b56694d55477901e7aca419d47b26ab850fe9a18a",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.0",
       "indexCount": 2748,
       "indexed": true,
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c24772ce99611c6b0e5bca066fd17d77a2535193365b2c66fd9be793efb5cb1",
+      "geometryHash": "275e7ebc96e22f55920cf3edeab10e8c60a5385ff6861b091a8d46a3a3681060",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.1",
       "indexCount": 1248,
       "indexed": true,
@@ -191,9 +191,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1257e4d10d2d494da8012f5bb3d412530fee1f0dd1213440f5b919f6858e512",
+      "geometryHash": "01603305b68fefdd42a398fc8b022c63c9a1da357a76f37cc0aa4b3bfc8036e6",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.2",
-      "indexCount": 2748,
+      "indexCount": 2760,
       "indexed": true,
       "materialHash": "4e85f4b12211dce9496ca638d96cd779448e7cedac9aab38dd65da2871c14a4d",
       "materialPipelineKey": "opaque",
@@ -216,7 +216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90b9b7bb73c15858ab93a96b7fa43d705be2edbce9ad31778974fc73a66740d9",
+      "geometryHash": "54fc7ad113402bec8a0a8a2016d25a542bd2f428bf99c7e8c737767f36644965",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.3",
       "indexCount": 2880,
       "indexed": true,
@@ -491,7 +491,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed85c42b320181f0ab7aee4abea16fe670ec200ec1b55554537eb9ad87809b13",
+      "geometryHash": "98aa30cf7bc9b735d7b75296dae0e00e05bf306c87cca79a232187615dafe9f3",
       "id": "sf.render.aftermath-aft-cockpit-section.node.lampbar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -741,7 +741,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42add377f49f0a9b2276e99d74e291958fd0c28fc69eed075649fb9a066f6e46",
+      "geometryHash": "c4f378936556825e51b126b65e71a1bfe6fcc369e1877260b2f4ae9792ce3565",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase.primitive.0",
       "indexCount": 3084,
       "indexed": true,
@@ -2621,19 +2621,19 @@
       "sha256": "70352c6e5fba6fcbad9f713aa9a348906b329f41bce7939376274814b250f8f0"
     },
     "sourceGlb": {
-      "bytes": 211732,
-      "sha256": "fea83f38e5a5da046f275b40718b53622815384807cd78612d1f6d967847a77a",
+      "bytes": 211860,
+      "sha256": "32f36c764537d0e52833e3d3328875086ab76d771d0b774ce38810cb0fc7478f",
       "uri": "place_aftermath_aft_cockpit_section.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 279712,
-    "sha256": "80219afbae8dcfcd15fbf0c2bed13e3904e458599142aadc57eb0f8e1010cfb7",
+    "bytes": 279720,
+    "sha256": "d4df5f01d5afce0b79dcda38267ae8e50085f2b43ccff95a94e1f4a82913df23",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3748,7 +3748,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
   },
-  "runtimeHash": "cd7c8f84df378379d50361a41b48e2eadf59dd8b6fdf98eec211a8721da29709",
+  "runtimeHash": "63ad5c7d1dfe47c3326ee1fea73f8a9edfcb875186cdc30bf804d5fa3ab5163d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

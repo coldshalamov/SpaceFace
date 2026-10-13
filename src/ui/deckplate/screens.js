@@ -1355,6 +1355,10 @@ const RACING = `
 .race-tape-actions .k-word { min-height:44px; padding:6px 10px; font:inherit; color:var(--dp-ink); background:transparent; border:1px solid var(--dp-metal-hi); cursor:pointer; }
 .race-tape-actions .k-word:focus-visible { outline:2px solid var(--dp-lamp); outline-offset:2px; }
 .race-tape-actions .k-word:disabled { cursor:default; color:var(--dp-ink-dim); }
+.race-tape-actions { transition:opacity 160ms ease; }
+.race-tape[data-combat-lock="true"] .race-tape-actions { pointer-events:none; opacity:.42; }
+.race-tape[data-combat-lock="true"] .race-tape-actions .k-word { border-style:dashed; color:var(--dp-ink-dim); }
+@media (prefers-reduced-motion: reduce) { .race-tape-actions { transition:none; } }
 .race-tape [hidden] { display:none; }
 .race-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .race-board { overflow-y:auto; }

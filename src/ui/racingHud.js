@@ -8,7 +8,9 @@ import { toggleSteeringView, rememberRacingResult } from './racingControls.js';
 import { createRacingMap, formatRaceTime } from './racingMap.js';
 import { finishRacingCupHeat, releaseRacingCupHeat, recordRaceMeeting } from '../systems/racingCareer.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { isRunSealed } from '../core/runSeal.js';
 import { applyWorldObjectSelection } from './worldObjectInteraction.js';
+import { createHudCombatLock } from './hudCombatLock.js';
 
 export function mountRacingHud({ root, bus, state, screens }) {
   if (!root || typeof document === 'undefined') return null;
@@ -27,7 +29,11 @@ export function mountRacingHud({ root, bus, state, screens }) {
   const row = make('div','race-tape-actions');
   const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
   const button = (text, action) => {
-    const b = make('button','k-word',text); b.type='button'; b.addEventListener('click',action); row.appendChild(b); return b;
+    const b = make('button','k-word',text); b.type='button';
+    // Blur after a pointer click so a later Space/Enter cannot re-fire a HUD button mid-combat.
+    // Keyboard activation (detail 0) keeps focus, so keyboard players do not lose their place.
+    b.addEventListener('click', (ev) => { action(ev); if (ev?.detail > 0) { try { b.blur(); } catch {} } });
+    row.appendChild(b); return b;
   };
   const view = button(`View ${BINDINGS.steeringView.label}`,()=>toggleSteeringView(state,bus));
   const reset = button('Recover',()=>bus?.emit?.('race:reset',{}));
@@ -43,6 +49,17 @@ export function mountRacingHud({ root, bus, state, screens }) {
   readings.append(line,sub,pack,goal,hints,courseCue); panel.append(mapHost,readings,row,live); root.appendChild(panel);
   let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
   const offs = [];
+  const combatLock = createHudCombatLock({ bus, state });
+  let rowLocked = false;
+  const setRowLocked = (locked) => {
+    if (locked === rowLocked) return;
+    rowLocked = locked;
+    // Weapons hot: the action row leaves the pointer path (clicks fall through to the flight
+    // canvas and fire) and the tab order, so Circuits cannot open the race board mid-fight.
+    panel.dataset.combatLock = locked ? 'true' : 'false';
+    row.inert = locked;
+    if (locked && row.contains?.(document.activeElement)) { try { document.activeElement.blur(); } catch {} }
+  };
   const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
   listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
   listen('settings:changed',()=>{lastTick=-Infinity;});
@@ -76,8 +93,13 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const st = liveState || state;
       const inFlight = st?.mode === 'flight' && !st.ui?.docked && !screens?.isOpen?.()
         && !st.render?.photoMode?.active && st.entities?.get?.(st.playerId)?.alive !== false;
-      panel.hidden=!inFlight || st.physicsVenuePublic?.active === true;
-      if(!inFlight)return;
+      // Crucible (Swarm/Gauntlet/boss_circuit/block): sealed survival run. Racing does not
+      // exist there; the compact Circuits tape was stealing combat mouse-fire clicks
+      // (player-truth swarm frame ~0212 → raceBoard, sim frozen at 140.1 s).
+      const crucibleLive = !!(st?.run && st.run.kind === 'survival' && isRunSealed(st));
+      panel.hidden = !inFlight || st.physicsVenuePublic?.active === true || crucibleLive;
+      if (!inFlight || crucibleLive) return;
+      setRowLocked(combatLock.hot(st));
       const now=st.simTime||0;
       if(now>=lastTick&&now-lastTick<0.1)return;
       lastTick=now;
@@ -166,6 +188,6 @@ export function mountRacingHud({ root, bus, state, screens }) {
         `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} wu`+
         (tape.delta===null||personal?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`))+personal+precision;
     },
-    dispose(){ for(const off of offs)off();panel.remove(); },
+    dispose(){ for(const off of offs)off();combatLock.dispose();panel.remove(); },
   };
 }

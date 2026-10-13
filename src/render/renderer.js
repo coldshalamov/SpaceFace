@@ -457,6 +457,7 @@ import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  noteOrientationDetachedHold,
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
@@ -1947,6 +1948,33 @@ export function stableMeshKeyForEntity(entity) {
   return null;
 }
 
+/** A numeric id may be reused; a mesh belongs to its occupant or an explicit restore identity. */
+export function presentationMeshMatchesEntity(entity, mesh, state = null) {
+  const data = mesh && mesh.userData;
+  if (!entity || !mesh) return false;
+  if (!data) return true;
+  if (data.presentationEntityType != null && data.presentationEntityType !== entity.type) return false;
+  const key = stableMeshKeyForEntity(entity);
+  if (data.sfStableEntityKey != null) return data.sfStableEntityKey === key;
+  if (data.sfStableEntityKey === null && key != null) return false;
+  const priorLife = data.presentationOccupantGeneration;
+  if (priorLife == null || entity.occupantGeneration == null || priorLife === entity.occupantGeneration) return true;
+  // Save restore explicitly maps the outgoing actor to its fresh native occupant.
+  // The map is authoritative only during loading; ordinary births cannot borrow it.
+  const remap = state && state.mode === 'loading' && state.sessionEntityIdRemap;
+  return remap instanceof Map && data.presentationEntityId != null
+    && remap.get(String(data.presentationEntityId)) === entity.id;
+}
+
+/** A delayed destruction must not cancel or release a new occupant's presentation owner. */
+export function destructionReceiptMatchesPresentationOwner(receipt, entity, mesh) {
+  const life = receipt?.occupantGeneration ?? receipt?.entity?.occupantGeneration;
+  if (!Number.isSafeInteger(life)) return true; // local compatibility fixtures without life tokens
+  if (Number.isSafeInteger(entity?.occupantGeneration) && entity.occupantGeneration !== life) return false;
+  const meshLife = mesh?.userData?.presentationOccupantGeneration;
+  return !Number.isSafeInteger(meshLife) || meshLife === life;
+}
+
 /**
  * Same-sector F9 keeps GPU Object3Ds in `_meshes` while `_clearEntities` replaces entity
  * objects. authoredCriticalVisualReadiness reads `entity.mesh`; presentation bind alone
@@ -2034,7 +2062,8 @@ export function* reattachResidentGpuMeshesSteps(owner) {
     const entity = resolveWorldPresentationEntity(state, id);
     if (entity && entity.alive !== false) {
       const entityKey = stableMeshKeyForEntity(entity);
-      const matches = stamped != null ? entityKey === stamped : entityKey == null;
+      const matches = (stamped != null ? entityKey === stamped : entityKey == null)
+        && presentationMeshMatchesEntity(entity, mesh, state);
       if (matches) {
         entity.mesh = mesh;
         if (entity.view) entity.view.root = mesh;
@@ -2070,10 +2099,12 @@ export function* reattachResidentGpuMeshesSteps(owner) {
       const candidate = mapped != null ? resolveWorldPresentationEntity(state, mapped) : null;
       if (candidate && candidate.alive !== false) {
         const candidateKey = stableMeshKeyForEntity(candidate);
-        if (stamped == null || candidateKey == null || candidateKey === stamped) target = candidate;
+        if ((stamped == null || candidateKey == null || candidateKey === stamped)
+            && presentationMeshMatchesEntity(candidate, mesh, state)) target = candidate;
       }
     }
-    if (target && !owner._meshes.has(target.id)) rekeys.push([id, mesh, target]);
+    if (target && presentationMeshMatchesEntity(target, mesh, state)
+        && !owner._meshes.has(target.id)) rekeys.push([id, mesh, target]);
   }
   owner._meshReleaseBatchBegin?.();
   try {
@@ -4260,7 +4291,9 @@ function liveFlyDefersOnGlassAuthoredUpgrade(state) {
 }
 
 function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state, scan = null) {
-  if (ceresWorkfleetRole(entity)) owner?._retryAppearanceReplacement?.(entity, mesh);
+  if (ceresWorkfleetRole(entity) || mesh?.userData?.appearanceReplacementFailure) {
+    owner?._retryAppearanceReplacement?.(entity, mesh);
+  }
   if (!canRequestAuthoredUpgrade(entity, state, owner && owner._authoredSectorPrewarmPendingId)) return;
   // A terminal verdict that published nothing drawable is retryable while the entity stays
   // relevant — a transient fetch/decode miss must not blank the owner for the session. The
@@ -10412,6 +10445,9 @@ export const render = {
     // The tier now bounds the pixel ratio (applyRendererSize); re-apply before the bloom chain
     // and LOD viewport below are sized from drawSize (the shared _drawSize vector).
     if (gpu.tier === 'integrated' || gpu.tier === 'software') applyRendererSize(renderer, state);
+    // Record the class now. The first resize used to look like the initial size and
+    // skipped the hold, so the phone's first rotation redrew released ship buffers.
+    this._drawBufferAspectClass = aspectClassFromSize(_drawSize);
 
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
@@ -10425,7 +10461,7 @@ export const render = {
     state.render.spaceBg = spaceBg;
     // Generated backdrop producers publish their exact construction recipe in their constructors;
     // renderer only consumes those immutable boundaries.
-    const vf = createVisualFactory();
+    const vf = createVisualFactory({ renderer });
     if (this._livingHullPresentation) this._livingHullPresentation.dispose();
     this._livingHullPresentation = createLivingHullPresentation();
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.dispose();
@@ -10579,6 +10615,7 @@ export const render = {
         // its dead handles through the lost generation's managers (the v6 Electron delete storm).
         stashStaleWebGlDisposeProvenance(preparedPoolResources.provenance);
         if (this._assetResidency) this._assetResidency.handleContextLost();
+        vf.clearReadyPackagedBodies('context-lost');
         retireAppearanceGpuGeneration(this, 'webgl-context-lost');
         // The restored WebGL context has a fresh driver program cache. Drop only our JS-side
         // admission receipts here; the detached warmup graph belongs to the lost context and must
@@ -18723,9 +18760,16 @@ export const render = {
         }
       }
     });
-    onBus('entity:destroyed', ({ id }) => {
-      this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
+    onBus('entity:destroyed', (receipt = {}) => {
+      const { id } = receipt;
       const still = resolveWorldPresentationEntity(this.state, id);
+      if (!destructionReceiptMatchesPresentationOwner(receipt, still, this._meshes.get(id))) {
+        // The journal already admitted a different occupant. Its normal reconcile sweep owns
+        // any predecessor graph; this old receipt cannot cancel the fresh admission or pool.
+        this._meshReconcileDirty = true;
+        return;
+      }
+      this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
       if (still && still.alive !== false && isPresentationLedgerRow(still)) {
         const kept = this._meshes.get(id);
         if (kept) this._bindPresentationMesh(still, kept);
@@ -18917,6 +18961,7 @@ export const render = {
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
     onBus('game:new', () => {
+      vf.clearReadyPackagedBodies('game-new');
       // New Game (including Crucible retry) destroys the entity graph and reuses numeric
       // ids. The same-sector save recook cannot identify those replacement hulls by id.
       // Retain resource caches, but prepare a fresh visible composition for the new run.
@@ -20213,6 +20258,7 @@ export const render = {
       preparation.catch(() => {});
     });
     onBus('mode:changed', ({ mode } = {}) => {
+      if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
       if (mode === 'loading') {
         const recook = this._sessionLiveSectorCookedId != null
           && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
@@ -20350,6 +20396,7 @@ export const render = {
   },
 
   destroy() {
+    this.vf?.clearReadyPackagedBodies?.('renderer-destroyed');
     this._racingCourseView?.dispose();
     this._racingCourseView = null;
     try { this._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
@@ -23966,6 +24013,10 @@ export const render = {
   _bindPresentationMesh(entity, mesh) {
     const world = this._presentationWorld;
     if (!entity || !mesh) return false;
+    if (!presentationMeshMatchesEntity(entity, mesh, this.state)) {
+      this._meshReconcileDirty = true;
+      return false;
+    }
     // A mesh rebound inside the release window must not drain against its old
     // owner's pending release — the registries resolve the pending entry
     // through the side index and would clear the NEW owner's record.
@@ -23988,6 +24039,13 @@ export const render = {
       mesh.userData.spacefaceProgramKeyStamp = mesh.userData.authoredVisualRoot || '';
     }
     mesh.userData.presentationEntityId = entity.id;
+    mesh.userData.presentationEntityType = entity.type;
+    mesh.userData.presentationOccupantGeneration = entity.occupantGeneration ?? null;
+    // This describes the bound graph, not a later hull selection on the mutable entity.
+    if (entity.type === 'ship' && mesh.userData.presentationShipDefId == null) {
+      mesh.userData.presentationShipDefId = mesh.userData.openingSubmissionPackage?.manifest?.defId
+        || entity.data?.defId || null;
+    }
     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
     // Injection seam for composition paths outside renderer scope (partsLibrary's
     // whole-ship LOD swap/family refresh) that attach and detach live subtrees:
@@ -24879,8 +24937,8 @@ export const render = {
         // A recycled numeric id can resolve to a different logical entity after a save restore;
         // the mesh's stamped stable key disproves that pairing so the stale mesh is released
         // instead of drawn on the wrong boundary.
-        const stampedKey = m && m.userData ? m.userData.sfStableEntityKey : undefined;
-        const mismatched = !!(e && e.alive !== false && stampedKey != null && stableMeshKeyForEntity(e) !== stampedKey);
+        const mismatched = !!(e && e.alive !== false
+          && !presentationMeshMatchesEntity(e, m, state));
         // Residency eviction of an on-glass entity is the visible "pop out of
         // existence" defect — count it so probes can prove the class stays at 0.
         const residencyEvict = !liveShellLatched()
@@ -25903,11 +25961,9 @@ export const render = {
     return built;
   },
 
-  // Rebuild one ship's mesh after a hull swap or loadout change. Disposes the old Object3D, builds a
-  // fresh one from the (now-updated) entity, and re-seats it from the entity's live transform so it
-  // doesn't snap. Player-only in practice, but safe for any ship id. Textures/geo/materials are
-  // cached in the factory (never disposed), so only the per-entity Object3D graph is freed here —
-  // exactly the same lifecycle the per-entity disposer in disposeObject() already assumes.
+  // Refit an admitted hull through the shared appearance transaction: retain its exact graph until
+  // the replacement is ready. A different hull selection still owns an initial admission for that
+  // definition; the previous ship cannot certify the newly selected hull as ready.
   rebuildShipMesh(id, options = {}) {
     if (ceresWorkfleetRole(this.state?.entities?.get(id))) return this._rebuildCeresMachineryMesh(id, options);
     if (this._sectorBoundaryPreparations?.has(id)) {
@@ -25918,6 +25974,13 @@ export const render = {
     const e = this.state.entities.get(id);
     if (!e || e.alive === false) return;
     const old = this._meshes.get(id);
+    const oldData = old?.userData;
+    if (e.type === 'ship' && e.data?.defId
+        && oldData?.presentationShipDefId === e.data.defId && oldData.authoredCompositionId
+        && ['authored', 'authored-with-cleanup-error'].includes(oldData.authoredAssetState)) {
+      return this._replaceShipAppearance(id, options);
+    }
+    this._appearanceReplacements?.get(id)?.cancel('appearance-remounted');
     const m = this.vf.build(e);
     if (old) {
       this._unbindPresentationMesh(id, old);
@@ -25993,6 +26056,10 @@ export const render = {
 
   _rebuildCeresMachineryMesh(id, options = {}) {
     if (!ceresWorkfleetRole(this.state?.entities?.get(id))) return;
+    return this._replaceShipAppearance(id, options);
+  },
+
+  _replaceShipAppearance(id, options = {}) {
     if (this._sectorBoundaryPreparations?.has(id)) {
       this._sectorBoundaryPreparations.abortEntity(id, 'ship-rebuild-during-sector-prewarm');
       this._meshReconcileDirty = true;
@@ -26002,6 +26069,10 @@ export const render = {
     const e = state.entities.get(id);
     if (!e || e.alive === false) return;
     const occupantGeneration = e.occupantGeneration;
+    const requestedDefId = e.data?.defId || null;
+    const compositionFingerprint = authoredCompositionFingerprintForEntity(e);
+    const compositionIsCurrent = () => (e.data?.defId || null) === requestedDefId
+      && authoredCompositionFingerprintForEntity(e) === compositionFingerprint;
     const pending = this._appearanceReplacements || (this._appearanceReplacements = new Map());
     pending.get(id)?.cancel('appearance-superseded');
     const retirements = this._appearanceRetirements || (this._appearanceRetirements = new Map());
@@ -26053,6 +26124,7 @@ export const render = {
       && this.renderer === nativeRenderer && renderState?.renderer === renderPortRenderer
       && this.scene === scene && state.world?.currentSectorId === sector
       && state.entities.get(id) === e && e.alive !== false && e.occupantGeneration === occupantGeneration
+      && compositionIsCurrent()
       && (!machineryKind || ((ceresWorkfleetRole(e) ? `ceres_${ceresWorkfleetRole(e)}` : null) === machineryKind
         && machineryRequestedPresentation(e) === machineryRequestedPlace))
       && this._meshes.get(id) === old && (e.mesh === old || (!e.mesh && !old));
@@ -26144,6 +26216,21 @@ export const render = {
       if (authored && publishPreparedAuthoredBoundary(m) !== true) {
         throw new Error('Appearance authored publication declined');
       }
+      // Collect the motion hooks on the paced lane before replacing the public mesh. Activating
+      // needs the new binding (Ceres propulsion checks it), but walking/yielding after that binding
+      // exposed an invisible current player while its retained predecessor was still on screen.
+      const motionActivations = [];
+      {
+        const stack = [m]; let visited = 0;
+        while (stack.length) {
+          const node = stack.pop();
+          if (typeof node.userData?.activateAuthoredMotionRegistration === 'function') motionActivations.push(node);
+          for (let i = node.children.length - 1; i >= 0; i--) stack.push(node.children[i]);
+          if ((++visited % 128) === 0) { await yieldToBrowser(); assertActive(); }
+        }
+      }
+      assertActive();
+      seat(m);
       const previousView = e.view;
       const previousAdmission = e.presentationAdmission;
       try {
@@ -26152,36 +26239,23 @@ export const render = {
         this._meshes.set(id, m);
         if (this._bindPresentationMesh(e, m) === false) throw new Error('Appearance binding declined');
         if (snapshot.presentationAdmission !== undefined) e.presentationAdmission = snapshot.presentationAdmission;
+        for (const node of motionActivations) {
+          const activated = node.userData.activateAuthoredMotionRegistration(e);
+          // A permanently declined activation must remain visible in lane diagnostics.
+          if (activated === false && node.userData.__authoredMotionDeclined === true) {
+            noteLaneFault(this.state, 'authoredMotion');
+          }
+        }
+        m.visible = old ? old.visible : true;
+        record.committed = true;
       } catch (error) {
+        m.visible = false;
         this._unbindPresentationMesh(id, m);
         e.mesh = old; e.view = previousView; e.presentationAdmission = previousAdmission;
         if (old) { this._meshes.set(id, old); this._bindPresentationMesh(e, old); }
         else this._meshes.delete(id);
         throw error;
       }
-      // Authored-motion activation walks the whole committed subtree per
-      // commit — traverse() can't early-exit and has no slice budget, so a
-      // squadron spawn burst stacks O(subtree) walks frame-adjacent. Explicit
-      // stack, same preorder, browser-yield every 128 nodes.
-      {
-        const motionActivateStack = [m];
-        let motionActivateVisited = 0;
-        while (motionActivateStack.length > 0) {
-          const node = motionActivateStack.pop();
-          const activated = node.userData?.activateAuthoredMotionRegistration?.(e);
-          // A permanently-declined activate (retired controller, propulsion
-          // veto) means the motion silently never runs — count it so the
-          // class is observable in laneFaults.
-          if (activated === false && node.userData?.__authoredMotionDeclined === true) {
-            noteLaneFault(this.state, 'authoredMotion');
-          }
-          const kids = node.children;
-          for (let i = kids.length - 1; i >= 0; i--) motionActivateStack.push(kids[i]);
-          if ((++motionActivateVisited % 128) === 0) await yieldToBrowser();
-        }
-      }
-      m.visible = old ? old.visible : true;
-      record.committed = true;
       this._meshesVersion += 1;
       if (old) {
         old.removeFromParent();
@@ -26232,11 +26306,13 @@ export const render = {
           cancelled: error.name === 'AbortError', attempts: record.gpuLifetimeRetired ? 0 : (waitingForClearance ? attempts - 1 : attempts),
           isCurrentOwner: (entity) => entity === e && this.state === state
             && state.entities.get(id) === e && e.alive !== false && e.occupantGeneration === occupantGeneration
+            && compositionIsCurrent()
             && state.world?.currentSectorId === sector
             && (!machineryKind || ((ceresWorkfleetRole(e) ? `ceres_${ceresWorkfleetRole(e)}` : null) === machineryKind
               && machineryRequestedPresentation(e) === machineryRequestedPlace)),
           phase: record.phase, waitingForGpuRetirement: record.gpuPending > 0 || record.phase === 'waiting-for-gpu-retirement',
-          retryable: state.entities.get(id) === e && e.alive !== false && e.occupantGeneration===occupantGeneration && this._meshes.get(id) === old,
+          retryable: state.entities.get(id) === e && e.alive !== false && e.occupantGeneration===occupantGeneration
+            && compositionIsCurrent() && this._meshes.get(id) === old,
           // Occupancy spends no asset retry and adds no backoff. Preserve any genuine
           // failure budget/deadline; the residency poll recomputes clearance every time.
           retryAt: record.gpuLifetimeRetired ? 0 : waitingForClearance ? (priorFailure?.retryAt || 0)
@@ -32375,7 +32451,21 @@ export const render = {
   // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
+    // Arm before setSize. Construction already recorded the class, so the phone's
+    // first rotation is a real flip. setSize can redraw before this function returns.
+    const cssAspect = (typeof window !== 'undefined' && (window.innerWidth || 0) >= (window.innerHeight || 0))
+      ? 'land' : 'port';
+    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect) {
+      noteOrientationDetachedHold(this.renderer);
+    }
     const drawSize = applyRendererSize(this.renderer, this.state);
+    // setSize can land a different class than the CSS viewport. Hold that flip
+    // too. A same-aspect resize does not.
+    const nextAspect = aspectClassFromSize(drawSize);
+    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
+      noteOrientationDetachedHold(this.renderer);
+    }
+    this._drawBufferAspectClass = nextAspect;
     // Drawing buffer / RT pool sized at max (no dynResScale). Dyn scale is a content sub-rect.
     const dyn = finiteInRange(this.state?.render?.dynResScale, 0.2, 1, 1);
     if (this.bloom) {
@@ -32698,6 +32788,10 @@ function renderGraphDynResBlocked(state) {
   if (render && render.dynResAllowed !== true) return false;
   if (render && render.gpu && render.gpu.software === true) return true;
   return video.dynamicResolution !== false;
+}
+
+function aspectClassFromSize(size) {
+  return size.x >= size.y ? 'land' : 'port';
 }
 
 function applyRendererSize(renderer, state) {

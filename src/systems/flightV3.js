@@ -151,6 +151,7 @@ export const flightV3 = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this._clearAngularIntent();
     this._warnedBackend = false;
     // Boost gesture tracking (player only). `_prevBoost`/`_suppressBoostUntilRelease` mirror
     // src/systems/flight.js so a held key does not re-boost immediately after a menu dismiss.
@@ -194,6 +195,7 @@ export const flightV3 = {
         boost.energy = Math.min(boost.max, boost.energy + credit);
       });
       this.bus.on('save:loaded', () => {
+        this._clearAngularIntent();
         this._masslineSlingUntil = 0;
         this._dashEarnedUntil = 0;
         this._clearSwingCommit();
@@ -202,9 +204,9 @@ export const flightV3 = {
         this._cancelPlayerBoostOnRestore();
         this._setFlightMode('manual', 'load');
       });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._clearSwingCommit(); this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
-      this.bus.on('player:death', () => this._clearSwingCommit());
-      this.bus.on('player:respawn', () => this._clearSwingCommit());
+      this.bus.on('game:started', () => { this._clearAngularIntent(); this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._clearSwingCommit(); this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('player:death', () => { this._clearAngularIntent(); this._clearSwingCommit(); });
+      this.bus.on('player:respawn', () => { this._clearAngularIntent(); this._clearSwingCommit(); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -222,6 +224,8 @@ export const flightV3 = {
 
   update(dt, state) {
     const t0 = perfNow();
+    // One-tick publication: a parked/dead ship or a backend change cannot retain steering authority.
+    this._clearAngularIntent(state);
     const backend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
     this._diag.physicsBackend = backend || 'custom';
 
@@ -504,6 +508,22 @@ export const flightV3 = {
     _stepCtl.maxSpeed = result.maxSpeed;
     _stepCtl.authority = driveAuthority;
     writePhysicsControl(entity, _stepCtl);
+    if (isPlayer && !saucer && !gridHeld && orbitAssist?.active === true
+      && Number.isFinite(result.telemetry?.targetYawRate)
+      && Number.isFinite(helmCommand.torque?.y)) {
+      // This describes the final command already queued above, never a tether-derived guess.
+      // The runtime leaf is transient; no entity/save record gains a steering exemption.
+      state.flightRuntime.angularIntent = {
+        version: 1, source: _stepCtl.source, active: true,
+        kind: orbitAssist.telemetry.carry === true ? 'swing-carry' : 'orbit-assist',
+        reason: orbitAssist.telemetry.reason,
+        playerId: entity.id,
+        occupantGeneration: Number.isSafeInteger(entity.occupantGeneration) ? entity.occupantGeneration : null,
+        tick: state.tick, sim: state.simTime, dt,
+        targetYawRate: result.telemetry.targetYawRate,
+        angularAcceleration: helmCommand.torque.y / body.inertia,
+      };
+    }
     if (helmCommand.impulse) queuePhysicsImpulse(entity, helmCommand.impulse);
     entity.data = entity.data || {};
     assignPropulsionRuntime(entity, result.runtime, input.boost);
@@ -905,6 +925,12 @@ export const flightV3 = {
     latch.contactId = advisory.contactId;
     latch.sliding = advisory.sliding;
     return advisory;
+  },
+
+  _clearAngularIntent(state = this.state) {
+    if (!state) return;
+    const runtime = state.flightRuntime || (state.flightRuntime = {});
+    runtime.angularIntent = null;
   },
 
   _publishPlayerDiagnostics(player, state) {

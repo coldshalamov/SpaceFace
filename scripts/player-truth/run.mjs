@@ -18,7 +18,7 @@
 
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -34,6 +34,121 @@ import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat } from '
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
+
+// QUIET_HOST_PROGRAM §0: unmarked development hosts produce diagnostics, not performance
+// acceptance. Read the existing machine marker; never promote this process into a quiet host.
+export function performanceRunContext(env = process.env, { screenshotEveryMs = 1000 } = {}) {
+  const quietHost = env.SPACEFACE_QUIET_HOST === '1';
+  return {
+    quietHost, contended: !quietHost, authority: quietHost ? 'quiet-host' : 'diagnostic-only',
+    observer: { pixelSplitPasses: 3, pixelSplitEveryFrames: 24, screenshotEveryMs },
+  };
+}
+
+/** Observe the preparation the public door actually produced, including its enabled Rearm choice. */
+export function preparationSnapshot({ ruleset, includeButton = true }) {
+  const state = window.SF?.state; const run = state?.run;
+  if (!run || !['draft', 'refit', 'active', 'ended', 'victory'].includes(run.phase)) return null;
+  if (run.kind !== 'survival' || run.ruleset !== ruleset) {
+    return { kind: 'mode-mismatch', actualKind: run.kind, ruleset: run.ruleset, phase: run.phase };
+  }
+  if (run.phase === 'ended' || run.phase === 'victory') return { kind: 'terminal', phase: run.phase };
+  if (state.mode === 'flight' && run.phase === 'active') {
+    return { kind: 'active', ruleset: run.ruleset, wave: run.wave, sim: state.simTime, t: performance.now() };
+  }
+  if (!includeButton || !['draft', 'refit'].includes(run.phase)) return null;
+  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+  const button = [...document.querySelectorAll('#screens button')].find((b) => b.offsetParent && !b.disabled
+    && /^(Launch round \d+|Keep current loadout|Continue)/.test(norm(b.textContent)));
+  return button ? { kind: 'launch', word: norm(button.textContent).replace(/Esc$/, '').trim(),
+    ruleset: run.ruleset, phase: run.phase } : null;
+}
+
+export async function awaitPreparationChoice(page, { ruleset, includeButton = true, timeoutMs = 600000 }) {
+  const handle = await page.waitForFunction(preparationSnapshot, { ruleset, includeButton }, { timeout: timeoutMs });
+  let next;
+  try { next = await handle.jsonValue(); } finally { await handle.dispose?.(); }
+  if (next.kind === 'mode-mismatch') {
+    throw new Error(`preparation expected survival/${ruleset}, saw ${next.actualKind || 'none'}/${next.ruleset || 'none'} in ${next.phase}`);
+  }
+  if (next.kind === 'terminal') throw new Error(`preparation ended in ${next.phase} before active play`);
+  return next;
+}
+
+export async function launchPreparationChoice(page, { ruleset, word }) {
+  await clickText(page, word);
+  return awaitPreparationChoice(page, { ruleset, includeButton: false });
+}
+
+/** Keep all play/opening data; a paused preparation needs only its latest diagnostic frames. */
+export function appendReaderDrain(trace, data) {
+  trace.samples.push(...data.samples);
+  if (trace.meta.playStartSim == null) {
+    let preparationLeft = 120;
+    let omitted = 0;
+    // Keep recent nonplaying frames without dropping an actual opening, even if native
+    // active preceded the actor's spawn acknowledgement.
+    const kept = [];
+    for (let i = trace.samples.length - 1; i >= 0; i--) {
+      const sample = trace.samples[i];
+      const actualPlay = sample.run?.ph === 'active'
+        || (sample.mode === 'flight' && (!sample.run || !trace.meta.rounds));
+      if (actualPlay || preparationLeft-- > 0) kept.push(sample); else omitted++;
+    }
+    trace.samples = kept.reverse();
+    if (omitted) trace.meta.preparationSamplesOmitted = (trace.meta.preparationSamplesOmitted || 0) + omitted;
+  }
+  trace.events.push(...data.events);
+  trace.longTasks.push(...data.longTasks);
+  trace.keys = data.keys;
+  if (data.firstInput != null) trace.firstInput = data.firstInput;
+}
+
+/** Observer predicate executed in the page; native automatic launches need no button click. */
+export function roundHandoffSnapshot({ previousWave, simLimit = null, includeButton = true }) {
+  const state = window.SF?.state; const run = state?.run;
+  if (!run) return null;
+  if (run.phase === 'ended' || run.phase === 'victory') return { kind: 'terminal', phase: run.phase };
+  if (simLimit != null && state.simTime > simLimit) return { kind: 'cap', sim: state.simTime };
+  if (run.phase === 'active' && run.wave > previousWave) {
+    return { kind: 'active', wave: run.wave, sim: state.simTime, t: performance.now() };
+  }
+  if (!includeButton || !['draft', 'cleanup', 'refit'].includes(run.phase)) return null;
+  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+  const button = [...document.querySelectorAll('#screens button')].find((b) => b.offsetParent && !b.disabled
+    && /^(Launch round \d+|Keep current loadout|Continue)/.test(norm(b.textContent)));
+  return button ? { kind: 'launch', word: norm(button.textContent).replace(/Esc$/, '').trim() } : null;
+}
+
+export async function awaitRoundHandoff(page, {
+  previousWave, simLimit = null, timeoutMs = 300000, beforeLaunch = async () => {},
+}) {
+  const deadline = Date.now() + timeoutMs;
+  const observe = async (includeButton) => {
+    const remaining = deadline - Date.now(); if (remaining <= 0) return null;
+    const handle = await page.waitForFunction(roundHandoffSnapshot,
+      { previousWave, simLimit, includeButton }, { timeout: remaining }).catch(() => null);
+    if (!handle) return null;
+    try { return await handle.jsonValue(); } finally { await handle.dispose?.(); }
+  };
+  while (Date.now() < deadline) {
+    const next = await observe(true); if (!next || next.kind !== 'launch') return next;
+    await beforeLaunch(next.word);
+    // A public screen can disappear while its screenshot settles; observe native progress
+    // again instead of parking clickText on a launch word that no longer exists.
+    const current = await page.evaluate(roundHandoffSnapshot, { previousWave, simLimit, includeButton: false });
+    if (current) return current;
+    const button = page.locator('#screens button:visible').filter({ hasText: next.word }).first();
+    if (!await button.isVisible().catch(() => false) || !await button.isEnabled().catch(() => false)) continue;
+    try { await button.click({ timeout: Math.max(1, Math.min(1000, deadline - Date.now())) }); }
+    catch (error) {
+      const progressed = await page.evaluate(roundHandoffSnapshot, { previousWave, simLimit, includeButton: false });
+      return progressed || { kind: 'launch-error', message: String(error?.message || error) };
+    }
+    return observe(false);
+  }
+  return null;
+}
 
 export function parseArgs(argv) {
   const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
@@ -127,7 +242,32 @@ export function runOutputDirectory(args, label, multiple = false) {
   return path.resolve(ROOT, args.out && multiple ? path.join(requested, label) : requested);
 }
 
+export function readSourceState(cwd = ROOT) {
+  let commit = 'unknown';
+  try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch {}
+  let dirtySourcePaths = null;
+  try {
+    const entries = execFileSync('git', ['status', '--porcelain=v1', '-z', '--', 'src', 'scripts', 'styles', 'index.html'],
+      { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0');
+    dirtySourcePaths = [];
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (!entry) continue;
+      dirtySourcePaths.push(entry.slice(3));
+      if (/[RC]/.test(entry.slice(0, 2))) i++; // -z supplies the original rename/copy path next.
+    }
+  } catch {}
+  return { commit, dirty: dirtySourcePaths === null ? null : dirtySourcePaths.length > 0, dirtySourcePaths };
+}
+
+export function sourceRunMetadata(start, end) {
+  return { commit: start.commit, dirty: start.dirty, startCommit: start.commit,
+    startDirtySourcePaths: start.dirtySourcePaths, endCommit: end.commit,
+    endDirty: end.dirty, endDirtySourcePaths: end.dirtySourcePaths };
+}
+
 async function runOne(args, arena, extra = {}) {
+  const sourceAtStart = readSourceState();
   const label = [args.mode, arena ? slug(arena) : null, extra.hull ? slug(extra.hull) : null, extra.vpTag ? args.viewport : null, args.tag ? slug(args.tag) : null].filter(Boolean).join('-');
   const outDir = runOutputDirectory(args, label, extra.multiple);
   rmSync(outDir, { recursive: true, force: true }); mkdirSync(path.join(outDir, 'frames'), { recursive: true });
@@ -136,7 +276,7 @@ async function runOne(args, arena, extra = {}) {
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm', gate: args.gatePass || null, requireRounds: args.requireRounds || null }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
@@ -161,13 +301,16 @@ async function runOne(args, arena, extra = {}) {
     for (const line of String(buf).split('\n')) if (/FATAL|oom|killed|crash|SwiftShader|GL out|aw, snap/i.test(line)) note(line);
   });
   let lastProgress = 0; let progressMark = null;
-  let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false;
+  let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
 
   const drain = async () => {
-    if (!readerOn) return;
-    const d = await page.evaluate(() => window.__playerTruth && window.__playerTruth.drain()).catch(() => null);
+    if (!readerOn || draining) return;
+    draining = true;
+    let d;
+    try { d = await page.evaluate(() => window.__playerTruth && window.__playerTruth.drain()).catch(() => null); }
+    finally { draining = false; }
     if (!d) return;
-    trace.samples.push(...d.samples); trace.events.push(...d.events); trace.longTasks.push(...d.longTasks); trace.keys = d.keys;
+    appendReaderDrain(trace, d);
     const last = trace.samples[trace.samples.length - 1];
     if (last && Date.now() - lastProgress > 30000) {
       const prev = progressMark; progressMark = { wall: Date.now(), sim: last.sim, f: trace.samples.length };
@@ -189,7 +332,9 @@ async function runOne(args, arena, extra = {}) {
       });
       const file = path.join(outDir, 'frames', `${String(shots.length).padStart(4, '0')}.jpg`);
       await page.screenshot({ path: file, type: 'jpeg', quality: 72 });
-      shots.push({ t: info.t, sim: info.sim, file, play, label: tag, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
+      const end = await page.evaluate(() => ({ t: performance.now(), sim: window.SF ? window.SF.state.simTime : null }));
+      shots.push({ t: info.t, endT: end.t, sim: info.sim, endSim: end.sim,
+        file, play, label: tag, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
       if (play && info.realm) (trace.realm || (trace.realm = [])).push({ t: info.t, sim: info.sim, file, ...info.realm });
     } catch { /* page navigating */ } finally { busy = false; }
   };
@@ -201,6 +346,9 @@ async function runOne(args, arena, extra = {}) {
     await page.addScriptTag({ type: 'module', content: "import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24 }).start(); window.__playerTruthReady = true;" });
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
+    // Preparation can legitimately pause the simulation. Drain from installation, before
+    // the actor enters flight, so a route timeout remains reportable without one huge RPC.
+    if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
   const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
@@ -218,19 +366,22 @@ async function runOne(args, arena, extra = {}) {
     if (args.mode === 'swarm' || args.mode === 'gauntlet') {
       doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step);
       if (args.mode === 'swarm') {
-        await page.waitForFunction(() => { const n = (s) => String(s || '').replace(/\s+/g, ' '); return [...document.querySelectorAll('#screens button')].some((x) => x.offsetParent && !x.disabled && /Launch round 1/.test(n(x.textContent))); }, null, { timeout: 600000 });
+        const preparation = await awaitPreparationChoice(page, { ruleset: RULESET[args.mode] });
         await waitBootOverlayGone(page);
-        await shoot('armory', false);
-        const items = await readArmory(page);
-        const audit = auditItems(args.mode, items);
-        const probe = await swapProbe(page, 3);
-        trace.loadout = { items, ...audit, ...probe, shotT: shots[shots.length - 1].t };
-        await shoot('armory after installs', false);
-        step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${items.length} armory offers read · ${probe.swapProbe}`);
-        const word = await armoryLaunchWord(page);
-        await clickText(page, word || 'Launch round 1');
+        if (preparation.kind === 'launch') {
+          await shoot('armory', false);
+          const items = await readArmory(page);
+          const audit = auditItems(args.mode, items);
+          const probe = await swapProbe(page, 3);
+          trace.loadout = { items, ...audit, ...probe, shotT: shots[shots.length - 1].t };
+          await shoot('armory after installs', false);
+          step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${items.length} armory offers read · ${probe.swapProbe}`);
+          const word = await armoryLaunchWord(page);
+          await launchPreparationChoice(page, { ruleset: RULESET[args.mode], word: word || preparation.word });
+        } else step('preparation', true, `public door entered ${preparation.ruleset} round ${preparation.wave} active`);
       }
-      await page.waitForFunction(() => window.SF.state.mode === 'flight' && window.SF.state.run && window.SF.state.run.phase === 'active', null, { timeout: 600000 });
+      const nativeActive = await awaitPreparationChoice(page, { ruleset: RULESET[args.mode], includeButton: false });
+      trace.meta.nativeRuleset = nativeActive.ruleset;
       await waitBootOverlayGone(page);
       const st0 = await phaseNow();
       step('spawn', true, `flight · round ${st0.w} active at sim ${st0.sim.toFixed(1)} s`);
@@ -273,14 +424,21 @@ async function runOne(args, arena, extra = {}) {
         }
         if (ph.ph === 'draft' || ph.ph === 'cleanup' || ph.ph === 'refit') {
           if (trace.rounds.length >= args.rounds) { stopReason = `${args.rounds} rounds played`; break; }
-          const word = await page.waitForFunction(() => { const n = (s) => String(s || '').replace(/\s+/g, ' ').trim(); const b = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && !x.disabled && /^(Launch round \d+|Keep current loadout|Continue)/.test(n(x.textContent))); return b ? n(b.textContent) : null; }, null, { timeout: 300000 }).then((h) => h.jsonValue()).catch(() => null);
-          if (!word) { stopReason = 'between-round screen had no launch word'; trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break; }
-          await shoot(`between rounds (${word.replace(/Esc$/, '')})`, false);
-          await clickText(page, word.replace(/Esc$/, '').trim());
-          await page.waitForFunction(() => window.SF.state.run && window.SF.state.run.phase === 'active', null, { timeout: 300000 }).catch(() => null);
-          const s1 = await phaseNow();
-          if (s1.ph !== 'active') { stopReason = `next round did not start (phase ${s1.ph})`; trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break; }
-          round = { wave: s1.w, startSim: s1.sim, startT: s1.t, endSim: null, endT: null, endPhase: null };
+          const next = await awaitRoundHandoff(page, { previousWave: round.wave,
+            simLimit: trace.meta.playStartSim + args.duration,
+            timeoutMs: Math.max(1, Math.min(300000, wallCapMs - (Date.now() - T0))),
+            beforeLaunch: (word) => shoot(`between rounds (${word})`, false) });
+          if (next?.kind === 'terminal') continue;
+          if (!next || next.kind === 'cap') {
+            const current = await phaseNow();
+            stopReason = overBudget(trace.meta.playStartSim, current.sim) || 'between-round transition timed out';
+            trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break;
+          }
+          if (next.kind !== 'active') {
+            stopReason = `next round launch failed: ${next.message || next.kind}`;
+            trace.route.steps.push({ name: 'next round', ok: false, detail: stopReason }); break;
+          }
+          round = { wave: next.wave, startSim: next.sim, startT: next.t, endSim: null, endT: null, endPhase: null };
           trace.rounds.push(round); first = true;
           log(`round ${round.wave} active`);
           continue;
@@ -322,7 +480,7 @@ async function runOne(args, arena, extra = {}) {
     await shoot('route failure', false);
   } finally {
     clearInterval(shotTimer); clearInterval(drainTimer);
-    while (busy) await new Promise((r) => setTimeout(r, 100));
+    while (busy || draining) await new Promise((r) => setTimeout(r, 100));
     await drain().catch(() => {});
   }
   if (args.fight) {
@@ -335,12 +493,11 @@ async function runOne(args, arena, extra = {}) {
     }).catch((e) => ({ error: String(e) }));
   }
   const t1 = trace.samples.length ? trace.samples[trace.samples.length - 1] : null;
-  const commit = (() => { try { return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch { return 'unknown'; } })();
-  const dirty = (() => { try { return execSync('git status --porcelain -- src scripts', { cwd: ROOT }).toString().trim().length > 0; } catch { return false; } })();
+  Object.assign(trace.meta, sourceRunMetadata(sourceAtStart, readSourceState()));
   const softwareGl = /swiftshader|llvmpipe|software|softpipe/i.test(renderer);
   const playStart = trace.meta.playStartSim;
   Object.assign(trace.meta, {
-    label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, commit, dirty, renderer, softwareGl, headed: args.headed, browserVersion,
+    label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: aim+fire at nearest hostile, hold 230–400 u range, burn away from packs of 3+ inside 450 u, strafe, break off under fire, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · no invulnerability (the only toggle is the physics-lab practice rack, not offered in Swarm/Gauntlet)`,
@@ -381,7 +538,7 @@ export async function exitAfterFlush(code, { stdout = process.stdout, stderr = p
 /** Grade a recorded trace and write verdict.md/json, contact sheet and (with evidence) the compact copy. */
 export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pruneFrames = false, vw, vh }) {
   const nearestSample = (t) => { let best = null; let bd = Infinity; for (const s of trace.samples) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } } return bd < 2000 ? best : null; };
-  trace.readability = await analyzeReadability(shots, nearestSample).catch((e) => ({ error: String(e) }));
+  trace.readability = await analyzeReadability(shots, nearestSample, trace.samples).catch((e) => ({ error: String(e) }));
   for (const c of (trace.readability && trace.readability.census) || []) c.name = trace.keys[c.ty] || null;
   const results = runChecks(trace);
   const verdict = overall(results);

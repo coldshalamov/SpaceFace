@@ -96,7 +96,9 @@ export function parseSelectedPlaceIds(args) {
     for (const value of String(raw).split(',')) {
       const id = value.trim();
       if (!id) continue;
-      if (!/^place_[a-z0-9_]+$/.test(id)) throw new Error(`invalid place id: ${id}`);
+      // Canonical place variants may have a var_ prefix. The manifest resolver
+      // below owns category admission; CLI syntax only rejects unsafe IDs.
+      if (!/^[a-z0-9][a-z0-9_]*$/.test(id)) throw new Error(`invalid place id: ${id}`);
       if (ids.includes(id)) throw new Error(`duplicate place id: ${id}`);
       ids.push(id);
     }

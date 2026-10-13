@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "25a80f67baad50ecab50d324cbec3888ca874f1c80e5a5bf9d8c6f1b2b4ceefe",
+  "contentHash": "b229f4fb7388fdde0cdf8e96d1535bb5d2a6eaa72983d4f2be3bd930c826968d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d4f40408412fc839a567799d314fa8ee1a14eed7f9128a246f84c2e6f16ec74",
+      "geometryHash": "75d4459de84301123e4d53d3ade3f546d210f9d441fa7b26ee5c5b222ef79ca2",
       "id": "sf.render.cockpit-dome.node.cockpit-dome-material-accent-merged.primitive.0",
       "indexCount": 1776,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c6133ca3ce52031dfc704f9ed68d4e246ad7cc0045ebbd24cc6931da901ba9a",
+      "geometryHash": "ad9a9f090d01c03e554e32209739099227bd81c5f462f4b804cc6fbebc46322a",
       "id": "sf.render.cockpit-dome.node.cockpit-dome-material-mechanical-merged.primitive.0",
       "indexCount": 1572,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c9d18b68104d41e4201c261e37cbe8d4075ec7149b2e3e6e25d4b09c69f408a5",
+      "geometryHash": "53622ae8bb5b78ee678b48fea7493cef9145e52ffbd5e07126eb83246916fa68",
       "id": "sf.render.cockpit-dome.node.det-collar-seam.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f406c4621ff1169c454c36dfe753359e875ab7f3899a4415cdbb957af37cfaa",
+      "geometryHash": "0fa8cf466a25580c34ba60949564217f6ef75e42882260be15272d7167c3be2a",
       "id": "sf.render.cockpit-dome.node.det-core-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fdedcb5805dff479c6997e8fc5c7207e915036dfb5990d9599b3a752cbede433",
+      "geometryHash": "144b8ebe33ce02afa4519d3dfb83342c1db8d057c9eb6910f2676efcc8dcc00d",
       "id": "sf.render.cockpit-dome.node.det-frame-rib-l.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe216644164dfce02b036f851431a2b43584319a6ecdfe754819b6c8d2ee5371",
+      "geometryHash": "1dc4b20c8c92e1bc1e37e5f4bd9c053d6c154f64b161a424882007214d9a0f8c",
       "id": "sf.render.cockpit-dome.node.det-frame-rib-r.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58a0669f30733021af1d07996638cbbe58b9ba65fc2583bc115af45ac652027d",
+      "geometryHash": "094988a89b8bc59fa3aeb4e87fc2e33badb73439c23556fa67fcdf60e5baded9",
       "id": "sf.render.cockpit-dome.node.det-glass-scratch.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e1c02a98540d4e1d39ff13de1c5b7df99973f8469c565657e776024d176a6ed",
+      "geometryHash": "c4f032b15f8d2903f0490e126660a16d36eccdb6bd9e9d57adcb2399c1418368",
       "id": "sf.render.cockpit-dome.node.det-mount-bolt-001.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8dae273cbfedfc694fa569646c4a02e9899ad6bde41964e1fbcd3452f702c02",
+      "geometryHash": "694a425f01af3f60a0545a47ad58cdf8301a98a26adf976e89100e5aa0d475ad",
       "id": "sf.render.cockpit-dome.node.det-mount-bolt.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -248,16 +248,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1fad0aac6637b39d43402c1c0f483ad000cdb2335ae17699c8dc1bf534c1cfcc",
+      "geometryHash": "f4bf2d5723631bbf78c49d2a024ba9e6bae7d1c38123f55f9791872a0e539c77",
       "id": "sf.render.cockpit-dome.node.dome-glass.primitive.0",
-      "indexCount": 2352,
+      "indexCount": 3042,
       "indexed": true,
       "materialHash": "edc0a6b05e51ffa8e859178fdcfb0d7d1d977b36808d0af7271af31c66624f70",
       "materialPipelineKey": "blend",
       "meshName": "Dome_Glass",
       "nodeId": "sf.render.cockpit-dome.node.dome-glass",
       "primitiveIndex": 0,
-      "vertexCount": 464
+      "vertexCount": 698
     },
     {
       "bounds": {
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d985a7003f9b055d9747fae5a4d4eba1305f59e78247ad629c580fb9b50b2c7",
+      "geometryHash": "e3c2dbee14dc3602dec7ea51dd5cf2097e0f8f09b036d43625fe129bd303c903",
       "id": "sf.render.cockpit-dome.node.dome-mount-collar.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -1591,19 +1591,19 @@
       "sha256": "25e762159b3b4c72b169aea1baa03072cb03e6179a6bd56ab0f87c59b61246e7"
     },
     "sourceGlb": {
-      "bytes": 124840,
-      "sha256": "cf5bdff0a3eae89d8fff9c4aaddd7d5671881ac52f66ceae759cafc8c15fc212",
+      "bytes": 129216,
+      "sha256": "0bb75c5c282adf791cfcb796f765d897f9e8339852680dd6ee3a16a73d686d3d",
       "uri": "cockpit_dome.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 164268,
-    "sha256": "03180fae2a781bb0cc2bf303d6d4a1954725164960b64e445b7ad3321c4de010",
+    "bytes": 164700,
+    "sha256": "3606a803ab920575b8796a55a3c646cbbc6e29812f447eb68a20a8f87b9ba39c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2023,7 +2023,7 @@
     "slot": "cockpit",
     "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
   },
-  "runtimeHash": "35d312a03114a777cef95bd1d2e0112b03c9f63a04a5384c0b9c7b9ad8999fd7",
+  "runtimeHash": "8d0d74aa05e4243e3af989330f7757ef5e405f1f0ce973bdeec39f26b1a867fb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

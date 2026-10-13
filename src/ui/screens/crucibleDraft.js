@@ -45,6 +45,7 @@ import { createSlotJig } from '../orrery/slotJig.js';
 import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
 import { createVisualArmory } from '../orrery/crucibleArmory.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectCruciblePreparation } from '../orrery/cruciblePreparationLayouts.js';
 
 /**
  * Show or hide a footer word. `.k-word { display: inline-block }` beats the `hidden`
@@ -1455,6 +1456,7 @@ export const crucibleRefitScreen = {
     this._spareChoice = new Map(); // INF-060: chosen spare per hardpoint, kept across refreshes.
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
     injectOrreryScreens();
+    injectCruciblePreparation();
     rootEl.classList.add('orr-crucible');
     rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REFIT';

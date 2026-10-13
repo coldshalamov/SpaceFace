@@ -657,7 +657,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c057c36acc01c163cc2e1b1465f080863e76a4c3d414357a87a49fff998c803e",
+  "contentHash": "e39347ba105c4263c626fa32b345b3cec8b5be1bcb55fd99613f66088d2c86bd",
   "dynamicGroups": [
     {
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.dynamic",
@@ -725,7 +725,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c34632c05c947de761043f5bc1f3f0d04db3a461ff6133ac41649e3a8f46cae",
+      "geometryHash": "805ea0c6ad87a42c1bee5fe71baaf1304832f2266eca0cbeffc79d6c00722c12",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 5250,
       "indexed": true,
@@ -750,7 +750,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6434077fb832fa3b0eb405716d341b0f0405f9071180674377064d39587da6f5",
+      "geometryHash": "6f2471870a37820ff552da15d0d0d5fdf4aa3896d613736295acefbcd6784edb",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 438,
       "indexed": true,
@@ -775,7 +775,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4340297d2ab3a69ee0fd894c66fcfae13d1111e7e72e7a41d70d6c42246f670e",
+      "geometryHash": "8b6f605666766af4a998b650785c40ad2155b87ad2d3c3b7191a88cfb615c61a",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 738,
       "indexed": true,
@@ -800,7 +800,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e8857d3a6fd423dee3d3bdefbe139f3a6bcbb32a89209c5154cda9b82a455ab",
+      "geometryHash": "655125c4697e44c7ed75082c730b8d391088ed90541b69036a648d24f6ab97e0",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -875,7 +875,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1387fb4a2d9abdde6d842b2827dd0fde8b905c57bb6410a2553a9c649323f440",
+      "geometryHash": "4e763a3307a05d5b5bf1381efdfa0a805a32daf0af159de752e24289df82120f",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -900,7 +900,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0d90742064deeab91810f897f18c0777769ebd4479bdf8555c2acbb907df5b5",
+      "geometryHash": "7af7d9ea9cc1080f1cfe0f5cc8f865c24dfa13751292caf59d85719303902072",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-hook-sensor-dome-mechanical.primitive.0",
       "indexCount": 114,
       "indexed": true,
@@ -925,7 +925,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d4d6e2ffe8584d80a1f2937d08d869b22d2569842a3de02ab41c69316a69317",
+      "geometryHash": "c64a6ce9cce5a9d5039d312063d03ea0b6193823aadb0b55870d1095fd2387ea",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 1779,
       "indexed": true,
@@ -950,7 +950,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af9bb6f67b94685d55c5341251500842325daee636db1f178b423ad4eb0d4729",
+      "geometryHash": "880a5935af9748cffa52bfba1bc37e6e3d3c2367512f1a454566c8c676b11b61",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-lights-cyan.primitive.0",
       "indexCount": 4734,
       "indexed": true,
@@ -975,7 +975,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f9fb424c08ca5a76c949e864f4de0be63a82806b484f46b0505ed6509023df4",
+      "geometryHash": "f096f60cf020dcee673b58ea1d849e7100652767f61422c43d2c94275d011e2e",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1000,7 +1000,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8fc387990946941402aaa61aef47fdcee9cce89b1512fd79e99496742634d88c",
+      "geometryHash": "afd5850e487154a10a79feeb787d3075c36cef13176c29301494f6c2b17c7306",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1025,7 +1025,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4749c7b9eb9a02e99e591ae45dd5541eb355ac71ed4bba87eddfa332d57eaf82",
+      "geometryHash": "2e9e3f54a7b29aaf888daf8251931731ea76e5a1a62d6db5a9dc3ab41a79e36c",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 6162,
       "indexed": true,
@@ -1050,16 +1050,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b02fbc27fbcd3b5204ef8169e2221c29693bc4e91099cc08a4d2c03725eb478",
+      "geometryHash": "7019d563d32be109f2fa31d2f4003912d11b7c5d640be767b3afc84cb7c05bed",
       "id": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 9240,
+      "indexCount": 10353,
       "indexed": true,
       "materialHash": "4c813c6941c62a7442f951138b24bb6e9fec4afe19bcd26ae8dfa7e9056fe7bb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark.002",
       "nodeId": "sf.render.saucer-production-v1-lod2.node.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 5142
+      "vertexCount": 5607
     }
   ],
   "hlods": [],
@@ -2815,19 +2815,19 @@
       "sha256": "e54a9bc656c832526d306b5a52716fbc1915a180cdd91a64dc3add1e98cee049"
     },
     "sourceGlb": {
-      "bytes": 521716,
-      "sha256": "921c8a7ffdbd5acc5ec3046107a9e2ee1accbfa4d5827352a89a4c7c2fe7fb0f",
+      "bytes": 529960,
+      "sha256": "143ef58e1d07acca894580aa9f0ab83e46f83cbc36accbf7f0a4ebb02fa520da",
       "uri": "saucer_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 744324,
-    "sha256": "6ca64d95cf13243f529f8c22d829b567f44a89f3cedac59c34e53c48614aba92",
+    "bytes": 754812,
+    "sha256": "4fc21879dfd373a054432704ac52c3cab944e4b683e1fcdd1c303393b8c2205a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4159,7 +4159,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1_lod2.glb"
   },
-  "runtimeHash": "bdf62613e344e6dc76d2994566590ec32e4d007bd3202a31aa056aa7b674f007",
+  "runtimeHash": "3dbcd5a182c82d533f804ec9e20004870cbd46c0b9242ccbeb216f365db0dcad",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

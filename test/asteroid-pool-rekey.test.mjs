@@ -10,9 +10,9 @@ import {
   releaseAsteroidInstancesForEntity,
   syncAsteroidInstancePool,
 } from '../src/render/asteroidInstancePool.js';
-import { makeEntity } from '../src/core/entity.js';
+import { makeEntity, stampOccupantGeneration } from '../src/core/entity.js';
 import { createPersistentSubmitLanes, SUBMIT_LANE } from '../src/render/persistentSubmitLanes.js';
-import { reattachResidentGpuMeshes, render } from '../src/render/renderer.js';
+import { presentationMeshMatchesEntity, reattachResidentGpuMeshes, render } from '../src/render/renderer.js';
 
 function makeCommonRock(id, variant, geometry, material) {
   const root = new THREE.Group();
@@ -212,4 +212,55 @@ test('presentation bind restores mesh/view refs on a promoted same-id entity', (
   assert.equal(render._bindPresentationMesh.call(context, reissued, warmedRoot), true);
   assert.equal(reissued.view, keptView, 'an existing view object is updated, not replaced');
   assert.equal(reissued.view.root, warmedRoot);
+});
+
+test('a native recycled slot cannot rebind its predecessor mesh or disguise its lifetime', () => {
+  const tokenState = { nextOccupantGeneration: 1 };
+  const first = makeEntity({ id: 343, type: 'ship', data: {} });
+  stampOccupantGeneration(tokenState, first);
+  const mesh = new THREE.Group(), bound = [];
+  const context = {
+    state: { playerId: 1, mode: 'flight', entities: new Map([[343, first]]) },
+    _livingHullPresentation: null, _presentationHandleScratch: {},
+    _persistentSubmitLanes: createPersistentSubmitLanes(),
+    _queueHiddenSubtreeFreeze: render._queueHiddenSubtreeFreeze,
+    _presentationWorld: {
+      handleForEntityId: id => ({ slot: id }),
+      bindMesh: (handle, root, entity) => { bound.push(entity); return true; },
+    },
+  };
+  assert.equal(render._bindPresentationMesh.call(context, first, mesh), true);
+  const next = makeEntity({ id: 343, type: 'asteroid', data: {} });
+  stampOccupantGeneration(tokenState, next);
+  context.state.entities.set(343, next);
+  assert.equal(render._bindPresentationMesh.call(context, next, mesh), false);
+  assert.equal(next.mesh, null, 'the asteroid cannot inherit a ship boundary');
+  assert.equal(mesh.userData.presentationOccupantGeneration, first.occupantGeneration);
+  assert.equal(mesh.userData.presentationEntityType, 'ship');
+  assert.equal(context._meshReconcileDirty, true, 'the residency owner releases the stale graph');
+  assert.equal(bound.length, 1, 'no new world-slot binding was published');
+  const successorShip = makeEntity({ id: 343, type: 'ship', data: {} });
+  stampOccupantGeneration(tokenState, successorShip);
+  assert.equal(presentationMeshMatchesEntity(successorShip, mesh, context.state), false,
+    'the same hull type still needs its own native life');
+});
+
+test('stable semantic restore and loading-only actor remap retain the intended authored mesh', () => {
+  const mesh = new THREE.Group();
+  mesh.userData.presentationEntityId = 42;
+  mesh.userData.presentationEntityType = 'asteroid';
+  mesh.userData.presentationOccupantGeneration = 10;
+  mesh.userData.sfStableEntityKey = 'wr:durable-rock';
+  const restored = { id: 7, type: 'asteroid', occupantGeneration: 11,
+    data: { worldRecordId: 'durable-rock' } };
+  assert.equal(presentationMeshMatchesEntity(restored, mesh, { mode: 'loading' }), true);
+  assert.equal(presentationMeshMatchesEntity({ ...restored, type: 'ship' }, mesh, { mode: 'loading' }), false);
+  mesh.userData.sfStableEntityKey = null;
+  mesh.userData.presentationEntityType = 'ship';
+  const player = { id: 7, type: 'ship', occupantGeneration: 11, data: {} };
+  const state = { mode: 'loading', sessionEntityIdRemap: new Map([['42', 7]]) };
+  assert.equal(presentationMeshMatchesEntity(player, mesh, state), true);
+  state.mode = 'flight';
+  assert.equal(presentationMeshMatchesEntity(player, mesh, state), false,
+    'a completed restore map cannot authorize a later ordinary birth');
 });

@@ -143,7 +143,9 @@ const allAssets = [
 ];
 const assets = ONLY_IDS.size ? allAssets.filter((asset) => ONLY_IDS.has(asset.id)) : allAssets;
 if (ONLY_IDS.size) {
-  const placeOnlyIds = [...ONLY_IDS].filter((id) => id.startsWith('place_'));
+  const placeOwnedIds = new Set((partManifest.parts || [])
+    .filter((part) => PLACE_OWNED_CATEGORIES.has(part.category)).map((part) => part.id));
+  const placeOnlyIds = [...ONLY_IDS].filter((id) => placeOwnedIds.has(id));
   if (placeOnlyIds.length) {
     throw new Error(
       `place assets are owned by scripts/build-place-release-assets.mjs: ${placeOnlyIds.join(', ')}`,
@@ -252,7 +254,7 @@ for (let index = 0; index < assets.length; index++) {
     }
     // Graphics bar: rebuild lost smooth-by-angle normals, fix flipped normals, drop zero-area triangles.
     // Exact-anatomy parts (frozen admission contracts, D187) skip the repair: its zero-area drop
-    // and coincident-face dedup rewrite the index buffer those contracts pin to the source.
+    // rewrites the index buffer those contracts pin to the source.
     if (!EXACT_ANATOMY_PART_IDS.has(asset.id)) transforms.push(shadingRepair());
     transforms.push(meshopt({
       encoder: MeshoptEncoder,

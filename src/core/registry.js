@@ -227,7 +227,7 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
 import { isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
-import { laneRpc, laneDomEvent, laneKeepalive, laneDraftView, SURVIVAL_DRAFT_READS } from './simLaneCommands.js';
+import { laneRpc, laneDomEvent, laneKeepalive } from './simLaneCommands.js';
 import {
   computeDiscoveredRoute,
   activeDriveForState,
@@ -923,6 +923,22 @@ export function createRegistry(ctx) {
   function laneSystemFacade(name) {
     const st = ctx && ctx.state;
     switch (name) {
+      case 'survivalDraft': {
+        // Ephemeral stock and custody are computed by the native draft owner.
+        // UI mutations continue through its existing run:* intents.
+        const read = (key, fallback) => structuredClone(st?.survivalDraftPublic?.[key] ?? fallback);
+        return {
+          name: 'survivalDraft',
+          currentOffers: () => read('offers', []),
+          currentWave: () => read('wave', 0),
+          lastNotice: () => read('notice', null),
+          rerollState: () => read('reroll', null),
+          recommendedOffers: () => read('recommended', []),
+          preparationReceipt: () => read('preparation', null),
+          preparationGeneration: () => read('generation', 0),
+          refitRows: () => read('refitRows', []),
+        };
+      }
       case 'save':
         return {
           name: 'save',
@@ -1006,21 +1022,6 @@ export function createRegistry(ctx) {
             return q;
           },
         };
-      }
-      case 'survivalDraft': {
-        // Read-only view of the worker's armory owner (see simLaneCommands). Arrays come back
-        // as fresh copies so a screen cannot mutate the shared snapshot.
-        const facade = { name: 'survivalDraft' };
-        const EMPTY = { currentOffers: [], recommendedOffers: [], refitRows: [], currentWave: 0 };
-        for (const read of SURVIVAL_DRAFT_READS) {
-          facade[read] = () => {
-            const view = laneDraftView();
-            const v = view ? view[read] : undefined;
-            if (v === undefined || v === null) return read in EMPTY ? (Array.isArray(EMPTY[read]) ? [] : EMPTY[read]) : null;
-            return Array.isArray(v) ? v.map((x) => (x && typeof x === 'object' ? { ...x } : x)) : v;
-          };
-        }
-        return facade;
       }
       case 'cargo':
         return {

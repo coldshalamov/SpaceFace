@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f250f07c7242b9aa120fb93c0ecd5fee03d7bfc28dbac3a709454b38dfa1539b",
+  "contentHash": "befa65dc88efab1735d50a575d1db4b99520b6cd674c4a0740960b14acb0ed5f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8439f9d6929d77c1a1d3246d16a698cfa45d4607204930cc2c3de80a0dfb294",
+      "geometryHash": "5a9f35a59867cc115efcf39c5216f21b1a4fff9a83effb13e1b5953b64ba6a9e",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-hopper-cube-v1.primitive.0",
       "indexCount": 3774,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "LOD0_SF_INCL_EXOTIC_HOPPER_CUBE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-hopper-cube-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1054
+      "vertexCount": 1052
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ecc8f54b458eac5d90280b90ab85510d4905616e770478640e0109e6d5aa3925",
+      "geometryHash": "d5e95f3a52e483fd49a0aa047ab8d79dcdb47a082d00a15ad98e6e793fcf3931",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-octahedral-cage-v1.primitive.0",
       "indexCount": 4440,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "LOD0_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-octahedral-cage-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1677
+      "vertexCount": 1676
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cee47a73fb773f83baf2e4b5b48b0402d1d474cc025e17d4066ac9c2230dd75",
+      "geometryHash": "5fe4c3f7d6e2f52b2dfe282132dc329c32e0cb26fd8fc4ad56abf8e6f15aa87b",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-prismatic-truss-v1.primitive.0",
       "indexCount": 4128,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "LOD0_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-exotic-prismatic-truss-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1360
+      "vertexCount": 1367
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "509a951d95cca8b12a5ffeffd452697f5ef17e9a9b899d4633a98f122ba14495",
+      "geometryHash": "cceea8bb320f243f94b2e3fc759a4412de15de519353c58726979e80ee08a979",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-branch-v1.primitive.0",
       "indexCount": 3684,
       "indexed": true,
@@ -107,7 +107,7 @@
       "meshName": "LOD0_SF_INCL_GAS_FISSURE_BRANCH_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-branch-v1",
       "primitiveIndex": 0,
-      "vertexCount": 987
+      "vertexCount": 984
     },
     {
       "bounds": {
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1aaec7780c54578ef90946d01794464831d90745bb8f92579ee1ae43a43fd62",
+      "geometryHash": "5cbd10bc50ec631183f87e732031c5b9f545ffd2a0b6da0bdfdab52e918af547",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-radial-v1.primitive.0",
       "indexCount": 4308,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73ed0d577106bc9508b8716dcc36ed0ef9bc9a4c314e31b50d9618df13c63fb6",
+      "geometryHash": "fba56ddf300c6472a24aa59f3ac88b7daabae18c77fd6b47a89ad13e91f2eb49",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-shear-v1.primitive.0",
       "indexCount": 3408,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "LOD0_SF_INCL_GAS_FISSURE_SHEAR_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gas-fissure-shear-v1",
       "primitiveIndex": 0,
-      "vertexCount": 732
+      "vertexCount": 728
     },
     {
       "bounds": {
@@ -173,16 +173,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f7a675d0e05f7f190b3fe9ac73d2c837a723eb2d1cda6f004fa840528ab5a53",
+      "geometryHash": "bd0fe8e612e4cf7585347b2a94c2c6c1e6e2873f89cfe6868014aadf6387afd0",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-leaf-v1.primitive.0",
-      "indexCount": 4575,
+      "indexCount": 4578,
       "indexed": true,
       "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_SF_INCL_GOLD_LEAF_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-leaf-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1305
+      "vertexCount": 1307
     },
     {
       "bounds": {
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ceeeabdebda38345614a6b137d1124d8cb0af8b2657b4c4c95f1647217293db1",
+      "geometryHash": "829f964442e3e6e53c69a1c7fad04f2d98acfe0d8fe4baa9d7fc17b84763c08c",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-ribbon-v1.primitive.0",
       "indexCount": 3678,
       "indexed": true,
@@ -207,7 +207,7 @@
       "meshName": "LOD0_SF_INCL_GOLD_RIBBON_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-gold-ribbon-v1",
       "primitiveIndex": 0,
-      "vertexCount": 997
+      "vertexCount": 1004
     },
     {
       "bounds": {
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37fa9b61f5fccefc61a830ec349fd4db3527799ebd7c7a88d2ce02ae25625e71",
+      "geometryHash": "ea924f56133c26243589273b5215ad205928e3b5a72dd6e5f301e488c0df3123",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-fracture-vein-v1.primitive.0",
       "indexCount": 3498,
       "indexed": true,
@@ -232,7 +232,7 @@
       "meshName": "LOD0_SF_INCL_ICE_FRACTURE_VEIN_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-fracture-vein-v1",
       "primitiveIndex": 0,
-      "vertexCount": 3289
+      "vertexCount": 3291
     },
     {
       "bounds": {
@@ -248,7 +248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15ce1b22bc60c460bfda13ee76f971311bd8b06e757d9c87190c53537a91d18a",
+      "geometryHash": "4cb28c265e3934491d5359c3e114dfdb76ee93b737cfdf23f897e1deefbc3d9a",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-sheen-plate-v1.primitive.0",
       "indexCount": 3552,
       "indexed": true,
@@ -257,7 +257,7 @@
       "meshName": "LOD0_SF_INCL_ICE_SHEEN_PLATE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-ice-sheen-plate-v1",
       "primitiveIndex": 0,
-      "vertexCount": 3322
+      "vertexCount": 3325
     },
     {
       "bounds": {
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5aefa34cc8b55d8c88213ea3e743073310b1ce82cfb8af8d05c86b601a09b035",
+      "geometryHash": "eec916944958bea7f75eba1a08772b76633d3e8c5adc0de6f8301873ccceda40",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-chip-ridge-v1.primitive.0",
       "indexCount": 3516,
       "indexed": true,
@@ -282,7 +282,7 @@
       "meshName": "LOD0_SF_INCL_IRON_CHIP_RIDGE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-chip-ridge-v1",
       "primitiveIndex": 0,
-      "vertexCount": 983
+      "vertexCount": 984
     },
     {
       "bounds": {
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7adbcbac0cfe391b8cea998b99a5eb8c0aa732cf21df9d67da7725d9641f0335",
+      "geometryHash": "d5b2e299f3e517130ded122ac4a6560fd4573fc61201bbd251587378236153de",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-specular-v1.primitive.0",
       "indexCount": 3441,
       "indexed": true,
@@ -307,7 +307,7 @@
       "meshName": "LOD0_SF_INCL_IRON_SPECULAR_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-iron-specular-v1",
       "primitiveIndex": 0,
-      "vertexCount": 877
+      "vertexCount": 872
     },
     {
       "bounds": {
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ee0bcea758954cc3ff339d1f023008418887900b26ace215633dc8d229ecd7b",
+      "geometryHash": "31f61e021f4658aa5840e9f9da9b2556f08db25867bcf3f77055f31bb4332699",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-mk-lock-plate-v1.primitive.0",
       "indexCount": 4764,
       "indexed": true,
@@ -332,7 +332,7 @@
       "meshName": "LOD0_SF_INCL_MK_LOCK_PLATE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-mk-lock-plate-v1",
       "primitiveIndex": 0,
-      "vertexCount": 2343
+      "vertexCount": 2032
     },
     {
       "bounds": {
@@ -348,7 +348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2db56c9fb3755b19db7eec8addaaf43b8909334a4366f0f4e2c777f167bc3bc3",
+      "geometryHash": "cc9c733dd3f78631858deb959b068ca1300fadcd58696eebb29aaae52be8ae33",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-cubic-v1.primitive.0",
       "indexCount": 3693,
       "indexed": true,
@@ -357,7 +357,7 @@
       "meshName": "LOD0_SF_INCL_NICKEL_CUBIC_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-cubic-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1098
+      "vertexCount": 1105
     },
     {
       "bounds": {
@@ -373,7 +373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b96017ce69e297da6d7d462f2ca9505a672eb3a64a06778d28240a73ea515f8e",
+      "geometryHash": "aaf0f719a699359c26a23269dd8d1b2975ae670d7559429cf5c52fdd96bf3d98",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-dendrite-v1.primitive.0",
       "indexCount": 4068,
       "indexed": true,
@@ -382,7 +382,7 @@
       "meshName": "LOD0_SF_INCL_NICKEL_DENDRITE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-nickel-dendrite-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1296
+      "vertexCount": 1298
     },
     {
       "bounds": {
@@ -398,7 +398,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53623cfbf1771adcf04471b1bf031e66d47cef4c83c8e991dbcbbb042bafc0af",
+      "geometryHash": "44f7f18c18fdd88cae7f2f69ef9f8a08f6178bd5cfa40dbd423f73c1c902b4b9",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-sheet-v1.primitive.0",
       "indexCount": 4344,
       "indexed": true,
@@ -407,7 +407,7 @@
       "meshName": "LOD0_SF_INCL_SILVER_SHEET_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-sheet-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1196
+      "vertexCount": 1198
     },
     {
       "bounds": {
@@ -423,7 +423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8cba7fac08033eb594b2e85d621dd59991418e7f2f3eaf9b00b0461efb3aa2e1",
+      "geometryHash": "e886b739845f493fc44aec968147303c24c7667d69202bbc230cf9a47b97466d",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-wire-v1.primitive.0",
       "indexCount": 4440,
       "indexed": true,
@@ -432,7 +432,7 @@
       "meshName": "LOD0_SF_INCL_SILVER_WIRE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-silver-wire-v1",
       "primitiveIndex": 0,
-      "vertexCount": 1480
+      "vertexCount": 1477
     },
     {
       "bounds": {
@@ -448,7 +448,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4925c6e0527ef979dccdc1c821610d7cbb04540c859c90663177f920ef87a06",
+      "geometryHash": "e99bfdaeb29830d30bc8ee3560729a9b9c30f1089ffbdcf56dafa6e7122a1b3b",
       "id": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-vented-scar-v1.primitive.0",
       "indexCount": 3612,
       "indexed": true,
@@ -457,7 +457,7 @@
       "meshName": "LOD0_SF_INCL_VENTED_SCAR_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod0-sf-incl-vented-scar-v1",
       "primitiveIndex": 0,
-      "vertexCount": 909
+      "vertexCount": 901
     },
     {
       "bounds": {
@@ -473,7 +473,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6042852f23f9082b7b428f2f76a9a2e6486fdf6049a77f89e7dce8efd1dafc1",
+      "geometryHash": "7f17660a231ea2ae38b746c0b04cb99c00163a5ad88c05c0baa97aba95580ac9",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-hopper-cube-v1.primitive.0",
       "indexCount": 1014,
       "indexed": true,
@@ -498,7 +498,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e05239f2bc353bcf8f827a623848c528b8d08d28389e275064692fc5ce54aeaa",
+      "geometryHash": "a8670a9869cbfb75df2a46742ff7517a16e67140b8fa0fe702186df370db4ba4",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-octahedral-cage-v1.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -507,7 +507,7 @@
       "meshName": "LOD1_SF_INCL_EXOTIC_OCTAHEDRAL_CAGE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-octahedral-cage-v1",
       "primitiveIndex": 0,
-      "vertexCount": 906
+      "vertexCount": 818
     },
     {
       "bounds": {
@@ -523,7 +523,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f52e59f7640ed32bed9ddf8db61974dfb1c156c09601f28392252f5b9023d0cd",
+      "geometryHash": "773c865106f4890b8e98ad648c82a8371bc626603502ecec166f639ead877b69",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-prismatic-truss-v1.primitive.0",
       "indexCount": 1152,
       "indexed": true,
@@ -532,7 +532,7 @@
       "meshName": "LOD1_SF_INCL_EXOTIC_PRISMATIC_TRUSS_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-exotic-prismatic-truss-v1",
       "primitiveIndex": 0,
-      "vertexCount": 642
+      "vertexCount": 551
     },
     {
       "bounds": {
@@ -548,7 +548,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fe64abc885c90c2c28c8005199f00c7edde31d460a16225570fd6852f655cc0",
+      "geometryHash": "55b57c875503ca29c6db427a16d2ac25e7126fac7f65a8301f50149705faea61",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-branch-v1.primitive.0",
       "indexCount": 936,
       "indexed": true,
@@ -557,7 +557,7 @@
       "meshName": "LOD1_SF_INCL_GAS_FISSURE_BRANCH_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-branch-v1",
       "primitiveIndex": 0,
-      "vertexCount": 349
+      "vertexCount": 346
     },
     {
       "bounds": {
@@ -573,7 +573,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b94bddd7ec6191bd3002a1adaa608b1195776f9cd003f10bb1d9fac6ab34a84c",
+      "geometryHash": "ea6b78d4e20d5fd2e0aa6f5e977c309eb0cf6888ab90731b7dcd780d4d8e0399",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-radial-v1.primitive.0",
       "indexCount": 1254,
       "indexed": true,
@@ -598,7 +598,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23a1fcc1246c4de3ba026e908bd381e5e0ce7dd0a2c6799829340260dcd6a7c1",
+      "geometryHash": "f4626a35ba97c0bde1e00c1726b0bf4f6917e57d5a35d33c41514ed22ef7026e",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gas-fissure-shear-v1.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -623,7 +623,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57d904df077839cb261dc47ab554b9c289b86db5ad54c0a35dbadf041cc268dc",
+      "geometryHash": "65277cfe1634e3725266fbdab372eb6fdd52dc58f2d7cc6c893b7973f4fd265c",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-leaf-v1.primitive.0",
       "indexCount": 1530,
       "indexed": true,
@@ -632,7 +632,7 @@
       "meshName": "LOD1_SF_INCL_GOLD_LEAF_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-leaf-v1",
       "primitiveIndex": 0,
-      "vertexCount": 785
+      "vertexCount": 638
     },
     {
       "bounds": {
@@ -648,7 +648,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f575266b2f5338da542be9f4209b52d43f6637b2eeee37432bafb4b9b252179a",
+      "geometryHash": "008429a57489c8515faff54f2f17907d0adbca13e9a52a3b994323d8bbb4d8ed",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-ribbon-v1.primitive.0",
       "indexCount": 990,
       "indexed": true,
@@ -657,7 +657,7 @@
       "meshName": "LOD1_SF_INCL_GOLD_RIBBON_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-gold-ribbon-v1",
       "primitiveIndex": 0,
-      "vertexCount": 489
+      "vertexCount": 409
     },
     {
       "bounds": {
@@ -673,7 +673,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c04aac5d12fd93df575297fbd0b0847e215d478c77723bfe46197660f936617",
+      "geometryHash": "f949b8c3c2c38d7abd699d339cb66bf747109ddb74be5af1773f87d33b04e815",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-fracture-vein-v1.primitive.0",
       "indexCount": 810,
       "indexed": true,
@@ -682,7 +682,7 @@
       "meshName": "LOD1_SF_INCL_ICE_FRACTURE_VEIN_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-fracture-vein-v1",
       "primitiveIndex": 0,
-      "vertexCount": 756
+      "vertexCount": 688
     },
     {
       "bounds": {
@@ -698,7 +698,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99353f84a01dbc40b22dc65eca4aa90e12e4f86959363f175cae0e10c04c903f",
+      "geometryHash": "de156f939c9f08ca2c5e7a40a405324895b297be55f3881811cd500d722556f2",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-sheen-plate-v1.primitive.0",
       "indexCount": 780,
       "indexed": true,
@@ -707,7 +707,7 @@
       "meshName": "LOD1_SF_INCL_ICE_SHEEN_PLATE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-ice-sheen-plate-v1",
       "primitiveIndex": 0,
-      "vertexCount": 719
+      "vertexCount": 648
     },
     {
       "bounds": {
@@ -723,7 +723,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89e69170eb7e38b2f4e70d6875dda8e5aa33bffa86504f43e85e9025189e93fb",
+      "geometryHash": "a25ea7f3b68518f03897aba571eb6f615ed8fb83501efec9cc9bbdb0eefe5f85",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-chip-ridge-v1.primitive.0",
       "indexCount": 780,
       "indexed": true,
@@ -748,7 +748,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6763681c2c0c94d3421ff681b16fa9a4ef1065593d1918c62231e70831ea1c53",
+      "geometryHash": "6e88dc4b6c5ab429ab548b3b9015b684a5336b5b1efb1c6ca00f3c36e412c943",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-specular-v1.primitive.0",
       "indexCount": 717,
       "indexed": true,
@@ -757,7 +757,7 @@
       "meshName": "LOD1_SF_INCL_IRON_SPECULAR_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-iron-specular-v1",
       "primitiveIndex": 0,
-      "vertexCount": 360
+      "vertexCount": 296
     },
     {
       "bounds": {
@@ -773,7 +773,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19be215fb74f9da3ab0b2e7b8f6946cf83f60a8469be21ba525818711707042d",
+      "geometryHash": "98140badb4baebf6aa9ad0b4af735b606401c8248adbe8ff5e6fb3d3f777ba84",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-mk-lock-plate-v1.primitive.0",
       "indexCount": 1488,
       "indexed": true,
@@ -782,7 +782,7 @@
       "meshName": "LOD1_SF_INCL_MK_LOCK_PLATE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-mk-lock-plate-v1",
       "primitiveIndex": 0,
-      "vertexCount": 932
+      "vertexCount": 748
     },
     {
       "bounds": {
@@ -798,16 +798,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "707c7cbef3e9417fa040d6bf0bf2f13b6425d14bfefdda15fc9ea92dba6ddc12",
+      "geometryHash": "a2c4806c1cf62a44a2e9219b310ad1b801a480068a1c0481643954723b84b583",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-cubic-v1.primitive.0",
-      "indexCount": 861,
+      "indexCount": 864,
       "indexed": true,
       "materialHash": "4de517ea62645ece77cc39880ba1fa980da6c9a9084a50204f17ff90c5f591f4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_SF_INCL_NICKEL_CUBIC_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-cubic-v1",
       "primitiveIndex": 0,
-      "vertexCount": 491
+      "vertexCount": 400
     },
     {
       "bounds": {
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f535c2e5b06dd0f14030fc3553d7f4bb4b7f40b9c98579eb654fce4544e83ae2",
+      "geometryHash": "fef7831dc2794112dee9b528cd872f019ae13f6d3c6e73457c0ae58f5fbe047f",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-dendrite-v1.primitive.0",
       "indexCount": 1044,
       "indexed": true,
@@ -832,7 +832,7 @@
       "meshName": "LOD1_SF_INCL_NICKEL_DENDRITE_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-nickel-dendrite-v1",
       "primitiveIndex": 0,
-      "vertexCount": 612
+      "vertexCount": 518
     },
     {
       "bounds": {
@@ -848,7 +848,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77f1379f52fedace64f62d4d90030dbe3366b721c9bb4376e476ded0333da770",
+      "geometryHash": "650476d70f1e3487fd8e5f293dcd59d7fc154eca19b41d41b1699b5619c467b3",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-sheet-v1.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -857,7 +857,7 @@
       "meshName": "LOD1_SF_INCL_SILVER_SHEET_V1",
       "nodeId": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-sheet-v1",
       "primitiveIndex": 0,
-      "vertexCount": 650
+      "vertexCount": 527
     },
     {
       "bounds": {
@@ -873,7 +873,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4750ae58a6b39440fb8d288f8daf940b8e35775eedb11647f23229cbe19a5bd",
+      "geometryHash": "7362799c87858829525834799bd0260d0ea4381db23ddf7395b651108af1c409",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-silver-wire-v1.primitive.0",
       "indexCount": 1032,
       "indexed": true,
@@ -898,7 +898,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c613ec35f29edbd5666d561ad3e92ca61b8984d4a5fa5af1e852f41a6d4e2bd",
+      "geometryHash": "3482de906e511d324c407ffe3dd034546e4244883bb709c84e00af9735c83f78",
       "id": "sf.render.works-inclusion-kit.mesh.lod1-sf-incl-vented-scar-v1.primitive.0",
       "indexCount": 822,
       "indexed": true,
@@ -2796,19 +2796,19 @@
       "sha256": "28b090e1a27b0511dd704426913752c268c57aae9c8e931b2ec577e835223ce4"
     },
     "sourceGlb": {
-      "bytes": 1449076,
-      "sha256": "8a7b899ab44d4f79a12441d2b726d0ee2f4c9a8405494849c033dfb5283b0963",
+      "bytes": 1445268,
+      "sha256": "3a9788318ed4f049524273f534d92646007703ab65dba3d549b31e9ecfb2d739",
       "uri": "place_works_inclusion_kit.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1410436,
-    "sha256": "6fc1084186199cc0a0271f88398404ea2c2616df028b87a84441bb791d1bb7c8",
+    "bytes": 1387980,
+    "sha256": "265c381ec013cc47120c6a6249b3f805e045355ef4472dbfd9725f524d498066",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4001,7 +4001,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_inclusion_kit.glb"
   },
-  "runtimeHash": "0a17571cd95e6aafd854e8185b4e764e6588bea477672395d0edee8a4338fd30",
+  "runtimeHash": "785ccfd0cd044823bdcaa6e463af902b01b4dbe95eba765e14d5cb9cac04476b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

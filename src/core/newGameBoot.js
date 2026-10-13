@@ -53,7 +53,9 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   // Split the two heaviest scene-build halves so the 'preparing' stage gets a paint between
   // world regen and opening composition instead of one frozen monolith.
   if (typeof options.yield === 'function') await options.yield();
-  spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
+  if (!state.physicsVenueSession) {
+    spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
+  }
 }
 
 // PQ-156.00 — apply a New Game starter pick to the run's first owned ship. Runs inside

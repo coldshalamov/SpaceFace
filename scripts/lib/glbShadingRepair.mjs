@@ -14,9 +14,8 @@
 // tangents; authored tangent animation and deforming geometry retain their original basis.
 //
 // Exact-anatomy parts skip this repair entirely: their admission contracts freeze the authored
-// triangle set to the source, and both the zero-area drop and the coincident-face dedup rewrite
-// the index buffer. The cathedral (PQ-018) lost 65,821 triangles in one such rebuild — only
-// 24,444 of them provably degenerate (D187). Builders consult this set before applying the repair.
+// triangle set to the source, including zero-area authored faces. Builders consult this set
+// before applying the repair. Coincident nondegenerate layers are retained for every part.
 export const EXACT_ANATOMY_PART_IDS = new Set([
   'place_ceres_second_measure',
   'place_landmark_wreck_cathedral',
@@ -67,7 +66,6 @@ export function analysePrimitive(prim, { creaseDeg = 35, minShallow = 12 } = {})
   const P = new Array(n); for (let i = 0; i < n; i++) P[i] = pos.getElement(i, []);
   const N = nrm ? Array.from({ length: n }, (_, i) => nrm.getElement(i, [])) : null;
   let scale = 0; for (const p of P) scale = Math.max(scale, Math.abs(p[0]), Math.abs(p[1]), Math.abs(p[2]));
-  const eps = Math.max(1e-12, (scale * 1e-6) ** 2);
   const key = (i) => P[i].map((x) => Math.round(x / Math.max(scale, 1e-9) * 1e6)).join(',');
   const keys = P.map((_, i) => key(i));
   const tris = []; let degen = 0;
@@ -75,7 +73,8 @@ export function analysePrimitive(prim, { creaseDeg = 35, minShallow = 12 } = {})
     const a = I[t], b = I[t + 1], c = I[t + 2];
     const fn = cross(sub(P[b], P[a]), sub(P[c], P[a]));
     const A2 = len(fn);
-    if (A2 * A2 < eps * eps || keys[a] === keys[b] || keys[b] === keys[c] || keys[a] === keys[c]) { degen++; continue; }
+    if (!Number.isFinite(A2)) throw new Error('Shading repair cannot classify a nonfinite authored triangle');
+    if (A2 === 0) { degen++; continue; }
     tris.push({ v: [a, b, c], fn: fn.map((x) => x / A2), area: A2 / 2 });
   }
   const cosCrease = Math.cos(creaseDeg * Math.PI / 180);
@@ -289,74 +288,9 @@ export function addMissingUVs(document, prim, densityFor) {
   return { uvAdded: n };
 }
 
-// 5. Z-fighting: the same triangle (same three world-space corners, same facing) authored in two
-//    materials, typically a hull plate and the armour/livery/warning/light panel laid on it. The two
-//    flicker against each other at range. Keep the triangle in the overlay material and drop the
-//    copy underneath; nothing visible is lost and the draw gets cheaper.
-const OVERLAY_RANK = [
-  [/emissive|light|beacon|nav/i, 6], [/warning|hazard|decal|stencil/i, 5], [/livery|accent|stripe|torn|scorch/i, 4],
-  [/armou?r/i, 3], [/mechanical(?!dark)|brushed|metal/i, 2], [/mechanicaldark/i, 1], [/hull|primer/i, 0],
-];
-const overlayRank = (name) => { for (const [re, r] of OVERLAY_RANK) if (re.test(name || '')) return r; return 0; };
-
-export function repairCoincidentFaces(document) {
-  const users = new Map();
-  for (const node of document.getRoot().listNodes()) { const m = node.getMesh(); if (m) users.set(m, (users.get(m) || 0) + 1); }
-  const animated = new Set();
-  for (const animation of document.getRoot().listAnimations()) {
-    for (const channel of animation.listChannels()) animated.add(channel.getTargetNode());
-  }
-  const moving = (node) => {
-    for (let parent = node; parent; parent = parent.getParentNode()) {
-      if (animated.has(parent) || parent.getSkin() || /^(ANIM|HOOK)_/i.test(parent.getName())) return true;
-    }
-    return false;
-  };
-  const faces = new Map();
-  for (const node of document.getRoot().listNodes()) {
-    const mesh = node.getMesh();
-    if (!mesh || users.get(mesh) > 1 || moving(node) || /COLLISION/i.test((mesh.getName() || '') + (node.getName() || ''))) continue;
-    const lod = (/^LOD([012])_/i.exec(node.getName() || '') || [, '0'])[1];
-    const M = node.getWorldMatrix();
-    for (const prim of mesh.listPrimitives()) {
-      const mat = prim.getMaterial(); const pos = prim.getAttribute('POSITION'); const idx = prim.getIndices();
-      if (!mat || !pos || !idx || prim.getMode() !== 4) continue;
-      if (deforms(prim)) continue;
-      const I = idx.getArray(); const rank = overlayRank(mat.getName());
-      for (let t = 0; t + 2 < I.length; t += 3) {
-        const w = [I[t], I[t + 1], I[t + 2]].map((i) => { const p = pos.getElement(i, []);
-          return [M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12], M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13], M[2]*p[0]+M[6]*p[1]+M[10]*p[2]+M[14]]; });
-        const n = cross(sub(w[1], w[0]), sub(w[2], w[0])); const A = len(n); if (A < 1e-8) continue;
-        // Positions are quantized per primitive, so twins differ by a fraction of a millimetre:
-        // bucket by centroid (4 mm) and facing, then confirm every corner within 3 mm.
-        const c = [0, 1, 2].map((k) => (w[0][k] + w[1][k] + w[2][k]) / 3);
-        const key = lod + '|' + c.map((x) => Math.round(x * 250)).join(',') + '|' + n.map((x) => Math.round((x / A) * 10)).join(',');
-        if (!faces.has(key)) faces.set(key, []);
-        faces.get(key).push({ prim, t, rank, mat, w });
-      }
-    }
-  }
-  const drop = new Map();
-  for (const list of faces.values()) {
-    if (list.length < 2 || new Set(list.map((f) => f.mat)).size < 2) continue;
-    const keep = list.reduce((a, b) => (b.rank > a.rank ? b : a));
-    // A see-through keeper would open a hole where the dropped copy used to be.
-    if (keep.mat.getAlphaMode() !== 'OPAQUE' || /canopy|glass|window/i.test(keep.mat.getName() || '')) continue;
-    const twin = (f) => f.w.every((q) => keep.w.some((r) => Math.hypot(q[0] - r[0], q[1] - r[1], q[2] - r[2]) < 0.003));
-    for (const f of list) if (f !== keep && f.mat !== keep.mat && twin(f)) {
-      if (!drop.has(f.prim)) drop.set(f.prim, new Set()); drop.get(f.prim).add(f.t);
-    }
-  }
-  let dropped = 0;
-  for (const [prim, ts] of drop) {
-    const idx = prim.getIndices(); const I = idx.getArray(); const keep = [];
-    for (let t = 0; t + 2 < I.length; t += 3) if (!ts.has(t)) keep.push(I[t], I[t + 1], I[t + 2]);
-    if (!keep.length) continue; // never empty a primitive (primitive count is a release contract)
-    dropped += ts.size;
-    prim.setIndices(document.createAccessor().setType('SCALAR').setArray(new (I.constructor)(keep)).setBuffer(idx.getBuffer()));
-  }
-  return dropped;
-}
+// Coincident faces in different materials, nodes or vertex sets remain authored topology.
+// Position similarity cannot establish that one layer is disposable: repair shading and UVs
+// without choosing a material winner or deleting its nondegenerate underlying faces.
 
 export function repairDocumentShading(document, opts = {}) {
   // Certified geometry (Ceres workfleet) promises exact source anatomy, down to triangle counts.
@@ -383,8 +317,6 @@ export function repairDocumentShading(document, opts = {}) {
       if (r) rows.push(r);
     }
   }
-  const zDropped = opts.zfight === false ? 0 : repairCoincidentFaces(document);
-  if (zDropped) rows.push({ mesh: '*', material: '*', zFightTrisDropped: zDropped });
   // Orphaned accessors from replaced attributes.
   for (const acc of document.getRoot().listAccessors()) if (acc.listParents().length <= 1) acc.dispose();
   return rows;

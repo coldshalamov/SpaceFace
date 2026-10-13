@@ -2,7 +2,7 @@
 // fresh arrivals hold a beat, and a hull the pilot just hit may always answer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { survivalWave } from '../src/systems/survivalWave.js';
+import { survivalWave, SWARM_THREAT_MARK_SCALE } from '../src/systems/survivalWave.js';
 
 function world(n, { wave = 1, simTime = 10 } = {}) {
   const entities = new Map([[1, { id: 1, alive: true, pos: { x: 0, z: 0 } }]]);
@@ -47,6 +47,43 @@ test('a hull the pilot just hit may answer even when it is not the nearest', () 
   assert.equal(held(sys, 15), false);
   assert.equal(held(sys, 10), false);
   assert.equal(held(sys, 11), true, 'the cap still holds: the answering hull takes a slot');
+});
+
+test('an idle swarm round holds every gun until the pilot acts', () => {
+  const sys = world(6);
+  sys.state.entities.get(10).radius = 12;
+  sys.state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
+  sys.state.input = { fire: false, moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, autoFire: true };
+  sys._shapeSwarmFire();
+  sys.state.simTime += 3;
+  sys._cursor = 30;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12, 13, 14, 15].map((id) => held(sys, id)), [true, true, true, true, true, true]);
+  // Radius-12 wasp: 12 × 1.12 = 13.44. The stroke ends inside 1.2× body radius,
+  // which is where the readability background ring starts.
+  const mark = sys.state.entities.get(10).data.swarmMarkRadius;
+  assert.equal(mark, 12 * SWARM_THREAT_MARK_SCALE);
+  assert.ok(mark > 12 && mark <= 12 * 1.2);
+  sys.state.input.fire = true;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12, 13, 14, 15].map((id) => held(sys, id)), [false, false, true, true, true, true]);
+});
+
+test('combat-stick axes written under autoFire do not count as a pilot act', () => {
+  const sys = world(3);
+  sys.state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
+  // followAutoTargetPath writes these three while autoFire is on. They are the assist.
+  sys.state.input = {
+    fire: false, moveX: 0.6, moveZ: -1, turnIntent: 0.4, boost: false, brake: false, autoFire: true,
+  };
+  sys._shapeSwarmFire();
+  sys.state.simTime += 3;
+  sys._cursor = 30;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12].map((id) => held(sys, id)), [true, true, true]);
+  sys.state.input.autoFire = false;
+  sys._shapeSwarmFire();
+  assert.equal(held(sys, 10), false, 'a real stick with autoFire off still latches');
 });
 
 test('later waves clear more guns at once', () => {

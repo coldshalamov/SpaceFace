@@ -24,6 +24,10 @@ const SERVICE_BY_STATE = new WeakMap();
 // extra work and would only shed backlog.
 export const LAB_SPEED_MAX = 4;
 
+export function readTimeEffectsRequests(state) {
+  return SERVICE_BY_STATE.get(state)?.describeRequests() || {};
+}
+
 function assertState(state) {
   if (!state || typeof state !== 'object' || Array.isArray(state)) {
     throw new TypeError('time-effects state must be an object');
