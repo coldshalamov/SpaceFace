@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { recordAnomalyBearing } from '../src/systems/scanner.js';
 import { admitReceipt } from '../src/ui/hudAttention.js';
 import { SPECTRUM_PROP_KINDS } from '../src/data/spectrum/props.js';
-import { SPECTRUM_APPROXIMATION } from '../src/data/spectrum/constants.js';
+import { REVEAL_AREA_WU2, SPECTRUM_APPROXIMATION } from '../src/data/spectrum/constants.js';
 import {
   bearingDeg,
   bounceOnSegment,
@@ -16,6 +16,7 @@ import {
 } from '../src/systems/spectrum/geometry.js';
 import { solveTrack } from '../src/systems/spectrum/solve.js';
 import {
+  applyFocus,
   applyMeasure,
   createSpectrumModel,
   hydrateSpectrum,
@@ -216,4 +217,81 @@ test('two hundred measurements stay inside the sample cap and a small time budge
   }
   assert.ok(model.log.length <= 24);
   assert.ok(model.ops < 200 * 16);
+});
+
+function ellipseRadius(frame, fix) {
+  if (!frame || !frame.ellipse || !fix) return null;
+  return Math.hypot(frame.ellipse[0].x - fix.x, frame.ellipse[0].z - fix.z);
+}
+
+function splitWake() {
+  const model = createSpectrumModel('spectrum_split_wake', 0, 1);
+  const points = [[200, 900, 1], [0, 600, 12], [400, 1100, 24], [-80, 480, 36]];
+  for (let i = 0; i < points.length; i++) {
+    applyMeasure(model, { x: points[i][0], z: points[i][1] }, { x: 0, z: 0 }, points[i][2]);
+  }
+  return model;
+}
+
+test('focusing the stationary return logs its posterior and keeps the held hull ellipse', () => {
+  const model = splitWake();
+  applyFocus(model, 'DRIFTING');
+  const held = publicSpectrum(model);
+  const heldFrame = buildSpectrumFrame(held);
+  assert.equal(held.revealed, true);
+  assert.equal(held.area, 25334);
+  assert.ok(held.log.some((row) => row.area === 5448));
+  assert.equal(held.log[held.log.length - 1].area, 25334);
+  assert.ok(Math.abs(ellipseRadius(heldFrame, held.fix) - 90) < 1.5, ellipseRadius(heldFrame, held.fix));
+
+  const before = held.log.length;
+  applyFocus(model, 'STATIONARY');
+  const parked = publicSpectrum(model);
+  const glint = parked.tracks.find((track) => track.contradiction);
+  assert.equal(parked.revealed, false);
+  assert.equal(parked.fix, null);
+  assert.equal(buildSpectrumFrame(parked).ellipse, null);
+  assert.equal(parked.log.length, before + 1);
+  assert.equal(parked.area, glint.area);
+  assert.equal(parked.log[parked.log.length - 1].area, glint.area);
+  assert.equal(parked.log[parked.log.length - 1].focus, glint.key);
+  assert.notEqual(parked.area, 25334);
+
+  applyFocus(model, 'DRIFTING');
+  const again = publicSpectrum(model);
+  assert.equal(again.revealed, true);
+  assert.equal(again.area, 25334);
+  assert.ok(Math.abs(ellipseRadius(buildSpectrumFrame(again), again.fix) - 90) < 1.5);
+  assert.notEqual(again.area, 5448);
+});
+
+test('a widened split-wake posterior omits the ellipse and reports the current area', () => {
+  const model = splitWake();
+  applyFocus(model, 'DRIFTING');
+  const held = publicSpectrum(model);
+  assert.equal(held.area, 25334);
+  applyMeasure(model, { x: 400, z: 1100 }, { x: 0, z: 0 }, 70);
+  const wide = publicSpectrum(model);
+  const hull = wide.tracks.find((track) => track.motionClass === 'DRIFTING');
+  assert.ok(hull.area > REVEAL_AREA_WU2, hull.area);
+  assert.equal(wide.revealed, false);
+  assert.equal(wide.fix, null);
+  assert.equal(buildSpectrumFrame(wide).ellipse, null);
+  assert.equal(wide.area, hull.area);
+  assert.ok(wide.area > held.area);
+  assert.notEqual(wide.area, 5448);
+
+  const before = wide.log.length;
+  applyFocus(model, 'STATIONARY');
+  const parked = publicSpectrum(model);
+  const glint = parked.tracks.find((track) => track.contradiction);
+  assert.equal(parked.log.length, before + 1);
+  assert.equal(parked.revealed, false);
+  assert.equal(parked.fix, null);
+  assert.equal(buildSpectrumFrame(parked).ellipse, null);
+  assert.equal(parked.area, glint.area);
+  assert.equal(parked.log[parked.log.length - 1].area, glint.area);
+  assert.equal(parked.log[parked.log.length - 1].focus, glint.key);
+  assert.notEqual(parked.area, hull.area);
+  assert.notEqual(parked.area, 5448);
 });

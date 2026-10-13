@@ -506,6 +506,17 @@ function publicTracks(model) {
   }));
 }
 
+function posteriorArea(model, last) {
+  // A held fix keeps the area it was revealed with, including a backtrack agreement.
+  // After revoke, the focused track's own posterior replaces a stale log line.
+  if (model.revealed && model.area != null) return Math.round(model.area);
+  const focus = model.tracks && model.focusKey ? model.tracks[model.focusKey] : null;
+  if (focus && focus.area != null) return Math.round(focus.area);
+  if (model.area != null) return Math.round(model.area);
+  if (last && last.area != null) return last.area;
+  return null;
+}
+
 export function publicSpectrum(model) {
   if (!model) return null;
   const last = model.log.length ? model.log[model.log.length - 1] : null;
@@ -517,7 +528,7 @@ export function publicSpectrum(model) {
     resolved: model.resolved === true,
     reversed: model.reversed === true,
     focusKey: model.focusKey,
-    area: model.area == null ? (last && last.area != null ? last.area : null) : Math.round(model.area),
+    area: posteriorArea(model, last),
     fix: model.revealed && model.fix ? clonePoint(model.fix) : null,
     velocity: model.revealed && model.velocity
       ? { x: round3(model.velocity.x), z: round3(model.velocity.z) }
@@ -797,6 +808,25 @@ export function applyFocus(model, keyOrClass) {
   const def = definitionOf(model);
   if (def) considerReveal(def, model);
   maybeFinishMechanism(model);
+  const focused = model.tracks[model.focusKey] || found;
+  const sample = focused.samples.length ? focused.samples[focused.samples.length - 1] : null;
+  const prior = model.log.length ? model.log[model.log.length - 1] : null;
+  pushLog(model, {
+    t: round3(model.lastTime || 0),
+    reason: focused.lastReason || 'ok',
+    accepted: !focused.lastReason && focused.samples.length > 0,
+    bearingDeg: focused.lastApparent == null ? null : round3(focused.lastApparent),
+    via: focused.lastVia,
+    chirp: sample ? round3(sample.chirp) : null,
+    area: focused.area == null ? null : Math.round(focused.area),
+    observer: sample && sample.player
+      ? clonePoint(sample.player)
+      : (prior && prior.observer ? clonePoint(prior.observer) : null),
+    identity: model.identity,
+    revealed: model.revealed === true,
+    motionClass: focused.motionClass,
+    focus: focused.key,
+  });
   return true;
 }
 
