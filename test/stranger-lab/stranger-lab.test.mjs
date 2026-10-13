@@ -344,11 +344,18 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.equal(closeContact.failures.some((row) => row.id === 'unresponsive-commands'), false);
-  const pressed = Array.from({ length: 40 }, (_, tick) => ({
-    tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
-    x: -16.75, z: 222.19, speed: 217.72, rot: 0.2, angVel: 0,
-    nearest: { kind: 'station', dist: 16.9, radius: 42 },
-  }));
+  const pressed = Array.from({ length: 80 }, (_, tick) => {
+    const pinned = tick >= 40;
+    return {
+      tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
+      x: pinned ? 39 * 3.5 : tick * 3.5,
+      z: 0,
+      speed: pinned ? 217.72 : 210,
+      rot: 0.2,
+      angVel: 0,
+      nearest: { kind: 'station', dist: pinned ? 16.9 : 80, radius: 42 },
+    };
+  });
   const pressedFrames = pressed.map((sample) => ({
     tick: sample.tick, moveZ: 0.75, moveX: 0, turnIntent: 0, brake: false, issuedMoveZ: 0.75, commands: [],
   }));
@@ -359,8 +366,27 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.equal(pressedHull.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
-  const yawing = pressed.map((sample, tick) => ({ ...sample, speed: 0, rot: tick * 0.05 }));
-  const yawFrames = pressedFrames.map((frame) => ({ ...frame, moveZ: 1, turnIntent: 0.8 }));
+  const reversed = pressed.map((sample) => (
+    sample.tick < 40 ? sample : { ...sample, speed: sample.tick < 50 ? 217.72 : 40 }
+  ));
+  const reverseFrames = pressedFrames.map((frame) => (
+    frame.tick < 50 ? frame : { ...frame, moveZ: -0.75, issuedMoveZ: -0.75 }
+  ));
+  const reverseHeld = detectFailures({
+    samples: reversed,
+    frames: reverseFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(reverseHeld.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const yawing = Array.from({ length: 40 }, (_, tick) => ({
+    tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
+    x: -16.75, z: 222.19, speed: 0, rot: tick * 0.05, angVel: 0.05,
+    nearest: { kind: 'station', dist: 16.9, radius: 42 },
+  }));
+  const yawFrames = yawing.map((sample) => ({
+    tick: sample.tick, moveZ: 1, moveX: 0, turnIntent: 0.8, brake: false, issuedMoveZ: 1, commands: [],
+  }));
   const yawHeld = detectFailures({
     samples: yawing,
     frames: yawFrames,
@@ -368,9 +394,13 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.equal(yawHeld.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
-  const deadInside = pressed.map((sample) => ({ ...sample, speed: 0, rot: 0.4 }));
-  const deadFrames = pressedFrames.map((frame) => ({
-    ...frame, moveZ: 1, moveX: 1, turnIntent: 1, issuedMoveZ: 1,
+  const deadInside = Array.from({ length: 40 }, (_, tick) => ({
+    tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
+    x: -16.75, z: 222.19, speed: 0, rot: 0.4, angVel: 0,
+    nearest: { kind: 'station', dist: 16.9, radius: 42 },
+  }));
+  const deadFrames = deadInside.map((sample) => ({
+    tick: sample.tick, moveZ: 1, moveX: 1, turnIntent: 1, brake: false, issuedMoveZ: 1, commands: [],
   }));
   const deadStick = detectFailures({
     samples: deadInside,

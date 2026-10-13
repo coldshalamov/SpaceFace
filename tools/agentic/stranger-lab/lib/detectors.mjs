@@ -2,6 +2,8 @@
 // Intended settle, an initial berth, a detached renderer, and an idempotent trade
 // must not become confirmed defects.
 
+import { SIM_DT } from '../../../../src/core/sim.js';
+
 const UNRESPONSIVE_WINDOW = 24;
 const TURN_WINDOW = 30;
 
@@ -130,15 +132,15 @@ function detectUnresponsive(samples, frames) {
     if (!frame || frame.moveZ < 0.5 || frame.brake) continue;
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
-    // Approach does not hide a dead stick. A station contact closes this window
-    // when that contact is what cut the speed, or when it is holding the hull
-    // and some other axis still answers.
+    // A station that is actually slowing the ship closes the window, including
+    // inside 20. A flat speed with no displacement is a dead stick unless this
+    // window is the post-impact pin of a hull that was still integrating.
     if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160
       && end.speed + 0.05 < start.speed) continue;
     const moved = Math.hypot(end.x - start.x, end.z - start.z);
     const sped = end.speed - start.speed;
     if (moved < 0.25 && sped < 0.05) {
-      if (stationHoldsLiveStick(start, end, frame)) continue;
+      if (postImpactPin(samples, i, start, end)) continue;
       return {
         id: 'unresponsive-commands',
         tick: start.tick,
@@ -149,18 +151,34 @@ function detectUnresponsive(samples, frames) {
   return null;
 }
 
-function stationHoldsLiveStick(start, end, frame) {
+function postImpactPin(samples, index, start, end) {
   const nearest = start.nearest;
   if (!nearest || nearest.kind !== 'station') return false;
-  const yaw = rotationDelta(start.rot, end.rot);
-  if (nearest.dist < 160 && yaw > 0.02) return true;
   const radius = Number.isFinite(nearest.radius) ? nearest.radius : null;
   const inside = radius != null && nearest.dist < radius;
-  const liveStick = frame.moveZ >= 0.5 || Math.abs(frame.moveX) >= 0.2 || Math.abs(frame.turnIntent) >= 0.2;
-  // A pinned hull keeps its speed. A motionless ship whose strafe and yaw also
-  // do nothing is still a dead channel, even inside the radius.
-  const speedHeld = start.speed > 1 && !(end.speed + 0.05 < start.speed);
-  return inside && liveStick && speedHeld;
+  if (!inside) return false;
+  if (rotationDelta(start.rot, end.rot) > 0.02) return true;
+  return earlierStepMatchedSpeed(samples, index);
+}
+
+function earlierStepMatchedSpeed(samples, index) {
+  const last = index - UNRESPONSIVE_WINDOW;
+  for (let j = 0; j <= last; j += 1) {
+    if (stepMatchedSpeed(samples[j], samples[j + UNRESPONSIVE_WINDOW])) return true;
+  }
+  return false;
+}
+
+function stepMatchedSpeed(start, end) {
+  if (!start || !end) return false;
+  const ticks = (end.tick | 0) - (start.tick | 0);
+  if (ticks <= 0) return false;
+  const moved = Math.hypot(end.x - start.x, end.z - start.z);
+  const speed = (Number(start.speed) + Number(end.speed)) / 2;
+  const expected = speed * SIM_DT * ticks;
+  if (!(expected > 8)) return false;
+  const ratio = moved / expected;
+  return ratio > 0.55 && ratio < 1.45;
 }
 
 function rotationDelta(from, to) {
