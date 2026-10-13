@@ -1777,6 +1777,77 @@ test('a nested box toJSON, a null inside an array object, and a snapshot getter 
   assert.notEqual(rebuilt.grid, null);
 });
 
+test('a toJSON getter, an index getter, and a new nested null are not stored', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const grid = history.present.grid;
+  Object.defineProperty(history.present, 'toJSON', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      this.grid = [{ pad: [null] }];
+      return function () { return this; };
+    },
+  });
+  const planted = commit(history, history.present);
+  assert.equal(planted, history);
+  assert.equal(planted.present.grid, grid);
+  assert.equal(Array.isArray(planted.present.grid), false);
+
+  const indexed = getComposition('dock.intercept-cargo');
+  const indexedHistory = createHistory(indexed);
+  const indexedGrid = indexedHistory.present.grid;
+  const events = indexedHistory.present.inputEvents;
+  Object.defineProperty(events, '0', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      indexedHistory.present.grid = [{ pad: [null] }];
+      return { tick: 0 };
+    },
+  });
+  events.length = Math.max(events.length, 1);
+  const indexedCommit = commit(indexedHistory, indexedHistory.present);
+  assert.equal(indexedCommit, indexedHistory);
+  assert.equal(indexedCommit.present.grid, indexedGrid);
+  assert.equal(Array.isArray(indexedCommit.present.grid), false);
+
+  const nest = getComposition('dock.intercept-cargo');
+  nest.grid.toJSON = function () { return { nest: { box: null } }; };
+  const nestCommit = commit(history, nest);
+  assert.equal(nestCommit, history);
+  assert.equal(nestCommit.present.grid.nest, undefined);
+  assert.notEqual(nestCommit.present.grid, null);
+
+  const extra = getComposition('dock.intercept-cargo');
+  extra.grid.toJSON = function () {
+    this.extra = { box: null };
+    return this;
+  };
+  assert.equal(commit(history, extra), history);
+  assert.equal(history.present.grid.extra, undefined);
+
+  const parent = getComposition('dock.intercept-cargo');
+  parent.toJSON = function () {
+    return { ...this, extra: { box: null } };
+  };
+  assert.equal(commit(history, parent), history);
+  assert.equal(history.present.extra, undefined);
+
+  const wrapped = getComposition('dock.intercept-cargo');
+  wrapped.grid.toJSON = function () {
+    return { wrap: { inner: [{ pad: [null] }] } };
+  };
+  assert.equal(commit(history, wrapped), history);
+  assert.equal(history.present.grid.wrap, undefined);
+
+  const padWrap = getComposition('dock.intercept-cargo');
+  padWrap.grid.toJSON = function () {
+    return { wrap: { pad: [null] } };
+  };
+  assert.equal(commit(history, padWrap), history);
+  assert.equal(history.present.grid.wrap, undefined);
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {

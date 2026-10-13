@@ -37,14 +37,40 @@ export const OBJECT_KEY_SETS = Object.freeze({
 
 const CLONE_REJECT = Symbol('clone-reject');
 
+function isDataDescriptor(descriptor) {
+  return !!descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value');
+}
+
 function ownDataEntries(object) {
   const entries = [];
   for (const key of Object.keys(object)) {
     const descriptor = Object.getOwnPropertyDescriptor(object, key);
-    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (!isDataDescriptor(descriptor)) continue;
     entries.push([key, descriptor.value]);
   }
   return entries;
+}
+
+function arrayDataAt(array, index) {
+  const descriptor = Object.getOwnPropertyDescriptor(array, String(index));
+  if (!descriptor) return { kind: 'hole' };
+  if (!isDataDescriptor(descriptor)) return { kind: 'getter' };
+  return { kind: 'data', value: descriptor.value };
+}
+
+function readToJSON(value) {
+  let current = value;
+  const chain = new Set();
+  while (current && typeof current === 'object' && !chain.has(current)) {
+    chain.add(current);
+    const descriptor = Object.getOwnPropertyDescriptor(current, 'toJSON');
+    if (descriptor) {
+      if (isDataDescriptor(descriptor)) return descriptor.value;
+      if (typeof descriptor.get === 'function') return descriptor.get.call(value);
+    }
+    current = Object.getPrototypeOf(current);
+  }
+  return undefined;
 }
 
 function snapshot(value, seen = new Map()) {
@@ -54,8 +80,8 @@ function snapshot(value, seen = new Map()) {
     const out = [];
     seen.set(value, out);
     for (let i = 0; i < value.length; i += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
-      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) out[i] = snapshot(descriptor.value, seen);
+      const slot = arrayDataAt(value, i);
+      if (slot.kind === 'data') out[i] = snapshot(slot.value, seen);
       else out.length = i + 1;
     }
     return out;
@@ -73,13 +99,14 @@ function containsForbiddenNull(value, seen = new Set()) {
   seen.add(value);
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
-      if (!Object.prototype.hasOwnProperty.call(value, i) || containsForbiddenNull(value[i], seen)) return true;
+      const slot = arrayDataAt(value, i);
+      if (slot.kind !== 'data' || containsForbiddenNull(slot.value, seen)) return true;
     }
     return false;
   }
-  for (const key of Object.keys(value)) {
+  for (const [key, child] of ownDataEntries(value)) {
     if (key === 'isPlayer') continue;
-    if (containsForbiddenNull(value[key], seen)) return true;
+    if (containsForbiddenNull(child, seen)) return true;
   }
   return false;
 }
@@ -98,8 +125,9 @@ function introducedNull(original, produced) {
   if (Array.isArray(produced)) {
     if (!Array.isArray(original)) return containsForbiddenNull(produced);
     for (let i = 0; i < produced.length; i += 1) {
-      if (!Object.prototype.hasOwnProperty.call(produced, i)) return true;
-      const next = produced[i];
+      const slot = arrayDataAt(produced, i);
+      if (slot.kind !== 'data') return true;
+      const next = slot.value;
       if (nullWasIntroduced(original, i, next)) return true;
       if (next && typeof next === 'object') {
         const prev = original[i];
@@ -114,7 +142,11 @@ function introducedNull(original, produced) {
     if (nullWasIntroduced(original, key, next)) return true;
     const prev = original[key];
     if (Array.isArray(next) && !Array.isArray(prev) && containsForbiddenNull(next)) return true;
-    if (next && typeof next === 'object' && prev && typeof prev === 'object' && introducedNull(prev, next)) return true;
+    if (next && typeof next === 'object') {
+      if (prev && typeof prev === 'object') {
+        if (introducedNull(prev, next)) return true;
+      } else if (containsForbiddenNull(next)) return true;
+    }
   }
   return false;
 }
@@ -124,11 +156,11 @@ function captureFields(object) {
     ? Object.getOwnPropertyDescriptor(object, 'toJSON')
     : null;
   if (Array.isArray(object)) {
-    const items = [];
+    const descriptors = [];
     for (let i = 0; i < object.length; i += 1) {
-      if (Object.prototype.hasOwnProperty.call(object, i)) items[i] = object[i];
+      descriptors[i] = Object.getOwnPropertyDescriptor(object, String(i)) || null;
     }
-    return { kind: 'array', object, length: object.length, items, toJSON };
+    return { kind: 'array', object, length: object.length, descriptors, toJSON };
   }
   const entries = ownDataEntries(object);
   const keys = entries.map(([key]) => key);
@@ -142,7 +174,8 @@ function captureTree(value, seen, records) {
   records.push(captureFields(value));
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
-      if (Object.prototype.hasOwnProperty.call(value, i)) captureTree(value[i], seen, records);
+      const slot = arrayDataAt(value, i);
+      if (slot.kind === 'data') captureTree(slot.value, seen, records);
     }
     return;
   }
@@ -154,7 +187,8 @@ function restoreRecord(record) {
   if (record.kind === 'array') {
     object.length = 0;
     for (let i = 0; i < record.length; i += 1) {
-      if (Object.prototype.hasOwnProperty.call(record.items, i)) object[i] = record.items[i];
+      const descriptor = record.descriptors[i];
+      if (descriptor) Object.defineProperty(object, String(i), descriptor);
     }
     object.length = record.length;
   } else {
@@ -182,10 +216,11 @@ function materialize(value, key, seen) {
   if (type === 'bigint') throw new TypeError('Do not know how to serialize a BigInt');
   if (type !== 'object') return undefined;
   if (seen.has(value)) throw new TypeError('Converting circular structure to JSON');
-  if (typeof value.toJSON === 'function') {
-    const before = snapshot(value);
+  const before = snapshot(value);
+  const toJSON = readToJSON(value);
+  if (typeof toJSON === 'function') {
     seen.add(value);
-    const produced = value.toJSON(key);
+    const produced = toJSON.call(value, key);
     if (produced === null) return CLONE_REJECT;
     if (produced === undefined) return undefined;
     if (produced && typeof produced === 'object') {
@@ -202,8 +237,9 @@ function materialize(value, key, seen) {
   if (Array.isArray(value)) {
     const out = [];
     for (let i = 0; i < value.length; i += 1) {
-      if (!Object.prototype.hasOwnProperty.call(value, i)) return CLONE_REJECT;
-      const item = materialize(value[i], String(i), seen);
+      const slot = arrayDataAt(value, i);
+      if (slot.kind !== 'data') return CLONE_REJECT;
+      const item = materialize(slot.value, String(i), seen);
       if (item === CLONE_REJECT || item === undefined) return CLONE_REJECT;
       out.push(item);
     }
