@@ -1145,7 +1145,13 @@ export const lawSecurity = {
     if (attacker && attacker.id === state.playerId) {
       for (const other of state.entityList || []) reopenLawFireForNewCause(other, incident.id);
     }
-    this._say('alert', `CONTROL: distress logged. Patrol ETA ${incident.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
+    // The citation quotes the reason and target this receipt stores. A generic
+    // distress line let two incidents read as the same event, and a numeric
+    // target id never survived into the provenance record.
+    const targetKey = victim && victim.id != null ? String(victim.id) : '';
+    const citation = incidentCitation(cause, incidentVictimLabel(state, victim), incident.dispatchDelayS)
+      || `CONTROL: distress logged. Patrol ETA ${incident.dispatchDelayS.toFixed(2)} seconds.`;
+    this._say('alert', citation, `law:distress:${incident.id}`, jurisdiction.factionId);
     this._emit('law:distressRaised', publicIncident(incident));
     this._emit('law:incidentOpened', publicIncident(incident));
     this._lawResponse('incident_opened', {
@@ -1154,9 +1160,9 @@ export const lawSecurity = {
       dispatchAt: incident.dispatchAt,
     });
     this._recordReceipt({
-      incidentId: incident.id, cause, outcome: 'distress_received', attackerId: attacker.id,
-      targetId: victim.id, stationId: jurisdiction.stationId,
-      text: `DISTRESS RECEIVED — patrol dispatch in ${incident.dispatchDelayS.toFixed(2)} seconds.`,
+      incidentId: incident.id, cause, reason: cause, outcome: 'distress_received',
+      attackerId: attacker.id, targetId: targetKey, stationId: jurisdiction.stationId,
+      text: citation,
     });
     return incident;
   },
@@ -5798,6 +5804,31 @@ function publicWantedWarrant(warrant) {
     postedAt: warrant.postedAt,
     arrival: warrant.arrival ? { x: warrant.arrival.x, z: warrant.arrival.z } : null,
   };
+}
+
+// What CONTROL calls each incident cause on the air. The machine cause stays on the receipt.
+const INCIDENT_CAUSE_PHRASE = Object.freeze({
+  player_assault: 'Assault',
+  player_piracy: 'Piracy',
+  hostile_fire: 'Hostile fire',
+  npc_piracy: 'Piracy',
+});
+
+function incidentVictimLabel(state, victim) {
+  if (!victim) return null;
+  if (state && victim.id === state.playerId) return 'your ship';
+  const data = victim.data || {};
+  for (const name of [data.callsign, data.scanLabel]) {
+    if (typeof name === 'string' && name.trim()) return name.trim();
+  }
+  return null;
+}
+
+function incidentCitation(cause, victimLabel, etaS) {
+  const why = INCIDENT_CAUSE_PHRASE[cause];
+  if (!why) return null;
+  const eta = Number.isFinite(Number(etaS)) ? ` Patrol ETA ${Number(etaS).toFixed(2)} seconds.` : '';
+  return victimLabel ? `CONTROL: ${why} against ${victimLabel}.${eta}` : `CONTROL: ${why} reported.${eta}`;
 }
 
 function publicIncident(incident) {

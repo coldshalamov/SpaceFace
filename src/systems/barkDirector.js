@@ -453,6 +453,12 @@ export const CARGO_SPILL_BARKS = Object.freeze({
   thanks: '{owner} sends thanks. The cargo is home.',
 });
 
+function killReceiptId(payload) {
+  if (!payload) return null;
+  const id = payload.id != null ? payload.id : payload.entityId;
+  return id == null ? null : String(id);
+}
+
 /** Map a live spill/jettison/kill seam onto a reactionForSpill cause. */
 export function cargoSpillCauseOf(eventName, payload = {}) {
   const raw = payload && (payload.cause || payload.reason || payload.kind) || '';
@@ -552,8 +558,23 @@ export const barkDirector = {
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
     this._onRaiderEscaped = (payload) => this._speakRaiderEscape(payload || {});
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
-    this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
-    this._onVictimKilled = (payload) => this._speakVictimDistress(payload || {});
+    // One death, two listeners. The cargo citation is the specific line; the
+    // distress transmission still speaks when that citation does not. The claim
+    // is this receipt's id only — a later death is a different id.
+    this._killBarkReceipt = null;
+    this._onCargoKilled = (payload) => {
+      this._killBarkReceipt = null;
+      const spoke = this._speakCargoSpill(payload || {}, 'entity:killed');
+      if (spoke) this._killBarkReceipt = killReceiptId(payload);
+    };
+    this._onVictimKilled = (payload) => {
+      const key = killReceiptId(payload);
+      if (key != null && this._killBarkReceipt === key) {
+        this._killBarkReceipt = null;
+        return;
+      }
+      this._speakVictimDistress(payload || {});
+    };
     this._onBodyReleased = (payload) => { this.noteBarkWake(); this._trackBodyNearMiss(payload && payload.targetId, 'throw', this.state && this.state.playerId); };
     this._onBodyShoved = (payload) => {
       if (!payload || payload.attackerId !== (this.state && this.state.playerId) || !(Number(payload.deltaV) > 0)) return;

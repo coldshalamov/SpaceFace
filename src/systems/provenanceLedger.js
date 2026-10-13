@@ -955,7 +955,7 @@ export const provenanceLedger = {
       outcome: incidentOutcome(payload.outcome),
       incidentId,
       cause: asString(payload.cause),
-      reason: null,
+      reason: asString(payload.reason),
       sectorId,
       delta: null,
       newRep: null,
