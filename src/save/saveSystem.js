@@ -7658,8 +7658,29 @@ export const save = {
   // sync serialize + stringify — a mature world used to brick the export click in one task.
   async _finishExportJsonAsync(json, slot) {
     if (!json) {
+      if (this._campaignSaveSuppressed()) {
+        this.bus.emit('save:error', { slot, reason: 'temporary_session' });
+        this.bus.emit('toast', { text: 'Temporary flight cannot be exported as an Adventure save. Choose an existing campaign slot.', kind: 'info', ttl: 4 });
+        return null;
+      }
       try {
+        const runEpoch = this._runEpoch;
+        const restoreSequence = this._restoreSequence;
+        const restoringAtStart = this._restoring === true;
         const data = await this._serializeDataFrozenAsync();
+        // A paced capture yields to New Game/run transitions. Recheck before giving
+        // its bytes an Adventure envelope; the previous campaign no longer owns them.
+        if (this._campaignSaveSuppressed()) {
+          this.bus.emit('save:error', { slot, reason: 'temporary_session' });
+          this.bus.emit('toast', { text: 'Temporary flight cannot be exported as an Adventure save. Choose an existing campaign slot.', kind: 'info', ttl: 4 });
+          return null;
+        }
+        if (runEpoch !== this._runEpoch || restoreSequence !== this._restoreSequence
+          || restoringAtStart || this._restoring === true) {
+          this.bus.emit('save:error', { slot, reason: 'superseded' });
+          this.bus.emit('toast', { text: 'Flight changed during export. Export again from the campaign you want to keep.', kind: 'info', ttl: 4 });
+          return null;
+        }
         const envelope = {
           fmt: FMT,
           version: CURRENT_VERSION,
@@ -7676,6 +7697,11 @@ export const save = {
   },
 
   _finishExportJson(json, slot) {
+    if (!json && this._campaignSaveSuppressed()) {
+      this.bus.emit('save:error', { slot, reason: 'temporary_session' });
+      this.bus.emit('toast', { text: 'Temporary flight cannot be exported as an Adventure save. Choose an existing campaign slot.', kind: 'info', ttl: 4 });
+      return null;
+    }
     if (!json) { try { json = JSON.stringify(this.serialize(slot)); } catch (e) { json = null; } }
     if (!json) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); return null; }
     // FB-104 — the file is the transport for a machine move, so the profile side bags ride

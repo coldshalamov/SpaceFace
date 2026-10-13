@@ -4,6 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
+import { dockIntentStatus } from '../core/dockIntent.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '../core/coreSystem.js';
@@ -511,6 +512,7 @@ export const factionPresence = {
     this._presenceQuiet = null;
     this._presenceWakeSeq = 0;
     this._conductAt = -Infinity;
+    this._serviceBerth = null;
     ensureOwnState(this.state);
     this._unsub = [
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
@@ -522,6 +524,10 @@ export const factionPresence = {
       }),
       this.bus.on('sector:exit', (payload) => this._onSectorExit(payload || {})),
       this.bus.on('dock:docked', (payload) => this._onDocked(payload || {})),
+      this.bus.on('dock:undocked', () => { this._serviceBerth = null; }),
+      this.bus.on('sector:exit', () => { this._serviceBerth = null; }),
+      this.bus.on('save:loaded', () => { this._serviceBerth = null; }),
+      this.bus.on('game:started', () => { this._serviceBerth = null; }),
       this.bus.on('lossLedger:recorded', (payload) => this._onLossRecorded(payload || {})),
       this.bus.on('combat:subsystemDisabled', (payload) => this._onSubsystemDisabled(payload || {})),
       this.bus.on('combat:subsystemEnabled', (payload) => this._onSubsystemEnabled(payload || {})),
@@ -1410,8 +1416,10 @@ export const factionPresence = {
   },
 
   _onDocked(payload) {
+    if (dockIntentStatus(this.state, payload) === 'stale') return;
     const stationId = payload.stationId || payload.id || null;
     if (!stationId) return;
+    this._serviceBerth = stationId;
     const service = presenceServiceForStation(stationId, factionReps(this.state), conductStances(this.state));
     if (!service) return;
     const own = ensureOwnState(this.state);
@@ -1426,6 +1434,14 @@ export const factionPresence = {
     const stationId = typeof payload.stationId === 'string' ? payload.stationId : null;
     const serviceId = typeof payload.serviceId === 'string' ? payload.serviceId : null;
     if (!stationId || !serviceId) return;
+    // servicesByStation is durable discovery, not permission to operate a remote desk.
+    // The world dock event owns this transient berth even in headless game routes.
+    const berth = this.state.ui?.docked === true
+      ? this.state.ui.dockedStationId : this._serviceBerth;
+    if (berth !== stationId) {
+      this.bus.emit('toast', { text: 'Dock at this berth to use its faction desk.', kind: 'warn', ttl: 3 });
+      return;
+    }
     const own = ensureOwnState(this.state);
     const stored = own.servicesByStation[stationId];
     if (!stored) return;

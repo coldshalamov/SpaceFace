@@ -1095,6 +1095,7 @@ export const onboarding = {
 
   _begin(payload) {
     const st = this.state;
+    this._resumeMainTutorial = false;
     // Temporary physics challenges share New Game, but own their actors and instructions.
     if (st.physicsVenueSession === true) {
       this._teardown({ removeActors: false });
@@ -1219,11 +1220,13 @@ export const onboarding = {
     const rescue = ob.rescue && typeof ob.rescue === 'object' ? ob.rescue : null;
     const railDone = !rail || rail.completed === true || ob.finished === true;
     const rescueDone = !rescue || rescue.completed === true;
+    const mainRailActive = ob.active === true && ob.finished !== true;
     // A finished or never-started first hour carries nothing durable; writing it would
     // risk a mature save re-firing the tutorial on load.
-    if (railDone && rescueDone) return null;
+    if (railDone && rescueDone && !mainRailActive) return null;
     return {
       version: 1,
+      mainRailActive,
       active: ob.active === true,
       finished: ob.finished === true,
       currentBeat: typeof ob.currentBeat === 'number' ? ob.currentBeat : -1,
@@ -1248,6 +1251,7 @@ export const onboarding = {
   deserialize(d) {
     const st = this.state;
     if (!st) return;
+    this._resumeMainTutorial = !!(d && d.mainRailActive === true && d.finished !== true);
     const ob = st.onboarding && typeof st.onboarding === 'object' ? st.onboarding : {};
     if (!d || typeof d !== 'object') {
       // Pre-rail saves carry no slice: reset to the pre-begin baseline so a live
@@ -1265,7 +1269,7 @@ export const onboarding = {
     ob.tetherReeled = d.tetherReeled === true;
     ob.tetherBreaks = d.tetherBreaks | 0;
     ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
-    if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence);
+    if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence); else delete ob.storeSentence;
     // B5's berth and offers survive a docked save, so the board keeps its choice framing.
     if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
     if (Array.isArray(d.choiceOfferIds)) ob.choiceOfferIds = d.choiceOfferIds.slice(); else delete ob.choiceOfferIds;
@@ -1287,6 +1291,10 @@ export const onboarding = {
     // raid/claimed active flags — the resume gate is the rail records' completion
     // state, not flags the teardown just rewrote.
     if (!ob || ob.finished === true) return false;
+    if (st.settings?.gameplay?.tutorialHints === false) {
+      this._resumeMainTutorial = false;
+      return false;
+    }
     const rescue = ob.rescue;
     if (rescue && rescue.active === true && rescue.completed !== true) {
       ob.active = true;
@@ -1325,6 +1333,26 @@ export const onboarding = {
         three.beats[cur].state = 'pending';
         this._startMissingThreeBeat(cur);
       }
+      return true;
+    }
+    // Side rails can finish while flight, mining or the first berth is still being taught.
+    // save:loaded has cleared active; the saved marker retains the main rail's ownership.
+    if (this._resumeMainTutorial) {
+      this._resumeMainTutorial = false;
+      ob.active = true;
+      this._storyMode = false;
+      this._injectStyle();
+      this._buildPanel();
+      const beat = BEATS[ob.currentBeat];
+      if (beat && ob.beatDoneAt[beat.key] == null) {
+        this._enterBeat(beat);
+        this._sayTutorial(beat.line);
+      } else {
+        // A completed tether beat already dropped its salvage. Let the normal cadence
+        // advance to its successor instead of replaying entry/reward work.
+        this._lastTextAtS = -Infinity;
+      }
+      this._refreshBeatPanel();
       return true;
     }
     return false;

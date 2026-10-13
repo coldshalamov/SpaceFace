@@ -7859,10 +7859,14 @@ export const audio = {
     if (!p) return;
     const category = p.category || 'ambient';
     const rt = this.rt, ctx = rt.ctx;
-    if (!ctx) return;
+    if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return;
 
     const now = ctx.currentTime;
-    const startTime = Math.max(now, rt._lastSquelchEndTime || 0);
+    const urgent = ['story', 'priority', 'danger', 'warning', 'alert'].includes(category);
+    // A burst of world chatter must not reserve seconds of future carrier noise or
+    // put an immediate danger warning at the tail of that backlog.
+    const startTime = urgent ? now : Math.max(now, rt._lastSquelchEndTime || 0);
+    if (!urgent && startTime > now + 0.24) return;
     rt._lastSquelchEndTime = startTime + 0.12;
 
     this._playSquelch(category, startTime);
