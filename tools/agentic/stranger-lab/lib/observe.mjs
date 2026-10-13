@@ -70,12 +70,16 @@ function nearestContact(state, player) {
     const dist = Math.hypot(dx, dz);
     if (dist < bestD) {
       bestD = dist;
+      const collisionRadius = entity.data && Number.isFinite(entity.data.collisionRadius)
+        ? entity.data.collisionRadius
+        : entity.radius;
       best = {
         id: entity.id,
         kind: entity.type || 'unknown',
         dist: round6(dist),
         x: round6(entity.pos.x),
         z: round6(entity.pos.z),
+        radius: Number.isFinite(collisionRadius) ? round6(collisionRadius) : null,
         mass: Number.isFinite(entity.mass) ? round6(entity.mass) : null,
       };
     }

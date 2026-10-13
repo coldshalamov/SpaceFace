@@ -344,6 +344,41 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.equal(closeContact.failures.some((row) => row.id === 'unresponsive-commands'), false);
+  const pressed = Array.from({ length: 40 }, (_, tick) => ({
+    tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
+    x: -16.75, z: 222.19, speed: 217.72, rot: 0.2, angVel: 0,
+    nearest: { kind: 'station', dist: 16.9, radius: 42 },
+  }));
+  const pressedFrames = pressed.map((sample) => ({
+    tick: sample.tick, moveZ: 0.75, moveX: 0, turnIntent: 0, brake: false, issuedMoveZ: 0.75, commands: [],
+  }));
+  const pressedHull = detectFailures({
+    samples: pressed,
+    frames: pressedFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(pressedHull.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const yawing = pressed.map((sample, tick) => ({ ...sample, speed: 0, rot: tick * 0.05 }));
+  const yawFrames = pressedFrames.map((frame) => ({ ...frame, moveZ: 1, turnIntent: 0.8 }));
+  const yawHeld = detectFailures({
+    samples: yawing,
+    frames: yawFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(yawHeld.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const deadInside = pressed.map((sample) => ({ ...sample, speed: 0, rot: 0.4 }));
+  const deadFrames = pressedFrames.map((frame) => ({
+    ...frame, moveZ: 1, moveX: 1, turnIntent: 1, issuedMoveZ: 1,
+  }));
+  const deadStick = detectFailures({
+    samples: deadInside,
+    frames: deadFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(deadStick.failures.some((row) => row.id === 'unresponsive-commands' && row.origin === 'product'));
 
   const menu = detectFailures({
     samples: flying({ mode: 'menu' }),

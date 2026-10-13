@@ -6,7 +6,7 @@ The 120-tick canary (seed 7, first-time pilot, flight, `drop-thrust`) fingerprin
 
 `artifacts/stranger-lab/sample-failure.json` is the 9-frame shrunk tape. Replaying it reproduces fingerprint `35c547e6b523044e876f2fa691eff4171ec35e64335c64c40fedeee7598364a9`.
 
-Sweep: `node tools/agentic/stranger-lab/cli.mjs sweep` — 12 journeys × 12 seeds = 144 runs. Personas rotate, and each run uses only that persona's own policy. Counts: 47 pass, 36 incomplete, 61 fail, 3 confirmed product defects. The confirmed rows are `unresponsive-commands` on docking for massline seed 7, first-time seed 101, and massline seed 1601: forward thrust did not move the ship and the station contact did not cut the speed. A persona that never takes the route is a miss. Every non-pass row keeps its tape (97 tapes). A detector confirmation exits 1. Route misses are not hidden by the headed status. Seed 7 meticulous docking with `drop-thrust` still fails `unresponsive-commands` with no applied closure thrust.
+Sweep: `node tools/agentic/stranger-lab/cli.mjs sweep` — 12 journeys × 12 seeds = 144 runs. Personas rotate, and each run uses only that persona's own policy. Counts: 47 pass, 39 incomplete, 58 fail, confirmedCount 0. A hull held inside the station collision radius with a live stick is not `unresponsive-commands`. The three docking touch rows that previously confirmed (massline seeds 7 and 1601, first-time seed 101) are incomplete route misses. A persona that never takes the route is a miss. Every non-pass row keeps its tape (97 tapes). Route misses exit 1 and are not hidden by the headed status. Seed 7 meticulous docking with `drop-thrust` still fails `unresponsive-commands` with no applied closure thrust.
 
 ## Headed
 

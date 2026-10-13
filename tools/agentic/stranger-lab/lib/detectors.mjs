@@ -131,12 +131,14 @@ function detectUnresponsive(samples, frames) {
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
     // Approach does not hide a dead stick. A station contact closes this window
-    // only when that contact is what actually cut the speed.
+    // when that contact is what cut the speed, or when it is holding the hull
+    // and some other axis still answers.
     if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160
       && end.speed + 0.05 < start.speed) continue;
     const moved = Math.hypot(end.x - start.x, end.z - start.z);
     const sped = end.speed - start.speed;
     if (moved < 0.25 && sped < 0.05) {
+      if (stationHoldsLiveStick(start, end, frame)) continue;
       return {
         id: 'unresponsive-commands',
         tick: start.tick,
@@ -145,6 +147,28 @@ function detectUnresponsive(samples, frames) {
     }
   }
   return null;
+}
+
+function stationHoldsLiveStick(start, end, frame) {
+  const nearest = start.nearest;
+  if (!nearest || nearest.kind !== 'station') return false;
+  const yaw = rotationDelta(start.rot, end.rot);
+  if (nearest.dist < 160 && yaw > 0.02) return true;
+  const radius = Number.isFinite(nearest.radius) ? nearest.radius : null;
+  const inside = radius != null && nearest.dist < radius;
+  const liveStick = frame.moveZ >= 0.5 || Math.abs(frame.moveX) >= 0.2 || Math.abs(frame.turnIntent) >= 0.2;
+  // A pinned hull keeps its speed. A motionless ship whose strafe and yaw also
+  // do nothing is still a dead channel, even inside the radius.
+  const speedHeld = start.speed > 1 && !(end.speed + 0.05 < start.speed);
+  return inside && liveStick && speedHeld;
+}
+
+function rotationDelta(from, to) {
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return 0;
+  let delta = to - from;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  return Math.abs(delta);
 }
 
 function detectDroppedCommand(frames) {
