@@ -2679,11 +2679,119 @@ test('a parked toJSON cannot null a live grid through its setter', () => {
   const again = restoreHistory(undone.history, 'undo');
   assert.equal(slot, grid);
   assert.equal(live.grid, grid);
-  assert.notEqual(live.grid, null);
-  assert.equal(again.ok && slot === null, false);
-  if (again.ok) {
-    for (const scene of [again.history.present, ...again.history.past, ...again.history.future]) {
-      assert.notEqual(scene.grid, null);
+  assert.equal(live.grid == null, false);
+  assert.equal(again.ok && slot == null, false);
+  assert.equal(again.ok, true, (again.issues || []).join('\n'));
+  const returnedLive = again.history.future[0];
+  assert.equal(returnedLive.grid == null, false);
+  assert.equal(returnedLive.grid, grid);
+  for (const scene of [again.history.present, ...again.history.past, ...again.history.future]) {
+    assert.equal(scene.grid == null, false);
+  }
+});
+
+test('a parked toJSON cannot null a live grid through an inherited setter', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const first = getComposition('dock.intercept-cargo');
+  first.title = 'First rename';
+  const second = getComposition('dock.intercept-cargo');
+  second.title = 'Second rename';
+  const twice = commit(commit(history, first), second);
+  const undone = restoreHistory(twice, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const live = undone.history.present;
+  const grid = live.grid;
+  const proto = {};
+  let slot = grid;
+  Object.defineProperty(proto, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return slot; },
+    set(value) { slot = value; },
+  });
+  const previous = Object.getPrototypeOf(live);
+  delete live.grid;
+  Object.setPrototypeOf(live, proto);
+  const parked = undone.history.future[0];
+  const parkedGrid = parked.grid;
+  parked.toJSON = function () {
+    live.grid = null;
+    return this;
+  };
+  Object.defineProperty(parked, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return parkedGrid; },
+  });
+  try {
+    const again = restoreHistory(undone.history, 'undo');
+    assert.equal(slot, grid);
+    assert.equal(live.grid, grid);
+    assert.equal(live.grid == null, false);
+    assert.equal(parked.grid == null, false);
+    assert.equal(again.ok && live.grid == null, false);
+    assert.equal(again.ok && parked.grid == null, false);
+    if (again.ok) {
+      for (const scene of [again.history.present, ...again.history.past, ...again.history.future]) {
+        assert.equal(scene.grid == null, false);
+      }
+    }
+  } finally {
+    Object.setPrototypeOf(live, previous);
+  }
+});
+
+test('a getter pad push(null) does not keep the extra length', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const first = getComposition('dock.intercept-cargo');
+  first.title = 'First rename';
+  const once = commit(history, first);
+  const parked = once.past[0];
+  const backing = parked.grid;
+  backing.pad = ['keep'];
+  const length = backing.pad.length;
+  Object.defineProperty(parked, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return backing; },
+  });
+  parked.toJSON = function () {
+    this.grid.pad.push(null);
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Second rename';
+  const committed = commit(once, next);
+  assert.equal(backing.pad.length, length);
+  assert.equal(backing.pad[0], 'keep');
+  assert.equal(backing.pad.includes(null), false);
+  for (const scene of [committed.present, ...committed.past, ...committed.future]) {
+    if (Array.isArray(scene.grid && scene.grid.pad)) {
+      assert.equal(scene.grid.pad.includes(null), false);
+      assert.equal(scene.grid.pad.length, length);
     }
   }
+
+  const dataHistory = createHistory(getComposition('dock.intercept-cargo'));
+  const dataOnce = commit(dataHistory, first);
+  const live = dataOnce.present;
+  live.grid.pad = ['keep'];
+  const liveLength = live.grid.pad.length;
+  const dataParked = dataOnce.past[0];
+  const dataParkedGrid = dataParked.grid;
+  dataParked.toJSON = function () {
+    live.grid.pad.push(null);
+    return this;
+  };
+  Object.defineProperty(dataParked, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return dataParkedGrid; },
+  });
+  const renamed = getComposition('dock.intercept-cargo');
+  renamed.title = 'Third rename';
+  commit(dataOnce, renamed);
+  assert.equal(live.grid.pad.length, liveLength);
+  assert.equal(live.grid.pad[0], 'keep');
+  assert.equal(live.grid.pad.includes(null), false);
 });

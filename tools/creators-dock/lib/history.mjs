@@ -146,6 +146,13 @@ function writeGridFields(grid, shape) {
       for (let i = 0; i < saved.items.length; i += 1) {
         if (saved.value[i] !== saved.items[i] && !writeField(saved.value, String(i), saved.items[i], true)) ok = false;
       }
+      if (saved.value.length !== saved.items.length) {
+        try {
+          saved.value.length = saved.items.length;
+        } catch (error) {
+          ok = false;
+        }
+      }
     }
   }
   for (const key of [...Object.getOwnPropertyNames(grid)]) {
@@ -305,14 +312,30 @@ function readAccessorGrid(scene) {
   }
 }
 
+function findGridAccessor(scene) {
+  let current = scene;
+  const seen = new Set();
+  while (canHostGrid(current) && !seen.has(current)) {
+    seen.add(current);
+    const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
+    if (descriptor) {
+      if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+      if (typeof descriptor.get === 'function') return descriptor;
+      return null;
+    }
+    current = Object.getPrototypeOf(current);
+  }
+  return null;
+}
+
 function snapshotAccessors(scenes) {
   const entries = [];
   const seen = new Set();
   for (const scene of scenes) {
     if (!canHostGrid(scene) || seen.has(scene)) continue;
     seen.add(scene);
-    const descriptor = Object.getOwnPropertyDescriptor(scene, 'grid');
-    if (!descriptor || typeof descriptor.get !== 'function') continue;
+    const descriptor = findGridAccessor(scene);
+    if (!descriptor) continue;
     let value;
     try {
       value = descriptor.get.call(scene);
@@ -327,6 +350,16 @@ function snapshotAccessors(scenes) {
     });
   }
   return entries;
+}
+
+function setterGridValue(project) {
+  const descriptor = findGridAccessor(project);
+  if (!descriptor || typeof descriptor.set !== 'function') return undefined;
+  try {
+    return descriptor.get.call(project);
+  } catch (error) {
+    return undefined;
+  }
 }
 
 function restoreAccessors(entries) {
@@ -373,10 +406,14 @@ function guardedClone(project, protect) {
 
 function withoutGridAccessor(project, protect = []) {
   if (!gridReadsThroughAccessor(project)) return project;
+  const carried = setterGridValue(project);
   const { stored, mutated } = guardedClone(project, protect);
   // A toJSON that nulls another scene's grid is not a successful strip.
   if (mutated) return null;
   if (!stored || typeof stored !== 'object' || Array.isArray(stored) || gridReadsThroughAccessor(stored)) return null;
+  // A setter's pre-call value is the grid the strip clone must keep. A getter
+  // with no setter is left unread so a counting getter stays at zero reads.
+  if (carried != null && stored.grid == null && !writeField(stored, 'grid', carried, true)) return null;
   return stored;
 }
 

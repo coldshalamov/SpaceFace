@@ -335,6 +335,13 @@ function restoreGridFields(grid, fields) {
       for (let i = 0; i < saved.items.length; i += 1) {
         if (saved.value[i] !== saved.items[i]) writeGridField(saved.value, String(i), saved.items[i], true);
       }
+      if (saved.value.length !== saved.items.length) {
+        try {
+          saved.value.length = saved.items.length;
+        } catch (error) {
+          // A non-writable length keeps the pushed null; the clone must not store it.
+        }
+      }
     }
   }
   for (const key of [...Object.getOwnPropertyNames(grid)]) {
