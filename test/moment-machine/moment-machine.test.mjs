@@ -266,6 +266,19 @@ test('authoritative sessions store poses; absent live pixels stay unverified', {
   assert.equal(sessions.evidenceClass, 'production-manifest');
   assert.equal(sessions.rows.every((row) => row.ok && row.tapeTicks === 60 && row.hasInputRing), true);
   assert.equal(sessions.rows.every((row) => row.positionSource === 'tape-samples' && row.sampleCount > 0), true);
+  assert.equal(sessions.rows.every((row) => row.playbackVerified === true), true);
+  for (const row of sessions.rows) {
+    assert.equal(row.playback.length, row.samples.length);
+    for (let i = 0; i < row.samples.length; i += 1) {
+      const sample = row.samples[i];
+      const played = row.playback[i];
+      assert.equal(played.tick, sample.tick);
+      assert.equal(played.id, sample.id);
+      assert.equal(played.x, sample.x);
+      assert.equal(played.z, sample.z);
+      assert.equal(played.heading, sample.heading);
+    }
+  }
   assert.equal(sessions.rows.some((row) => (row.dropped || []).some((item) => item.reason === 'tape-positions-unrecorded')), false);
   for (const shape of SHAPE_IDS) {
     assert.equal(sessions.selectedShapes.includes(shape), false, shape);

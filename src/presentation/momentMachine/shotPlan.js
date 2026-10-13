@@ -327,3 +327,26 @@ export function visualContinuity(samples, subject, inTick, outTick) {
 export function poseAt(samples, actor, tick) {
   return lastPose(samples, actor, tick);
 }
+
+/** Headless playback. Each stored sample is read back through poseAt. */
+export function playRecordedPoses(samples) {
+  const rows = Array.isArray(samples) ? samples : [];
+  const played = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    const sample = rows[i];
+    if (!sample) {
+      played.push(null);
+      continue;
+    }
+    const pose = poseAt(rows, { id: sample.id, generation: sample.generation }, sample.tick);
+    played.push(pose ? {
+      tick: pose.tick,
+      id: pose.id,
+      generation: pose.generation,
+      x: pose.x,
+      z: pose.z,
+      heading: pose.heading,
+    } : null);
+  }
+  return played;
+}
