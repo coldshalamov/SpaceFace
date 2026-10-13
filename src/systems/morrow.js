@@ -2,6 +2,7 @@
 // No renderer, inventory, economy, HP healing, timers, or ambient random stream. Motion crosses
 // the same additive command membrane used by Massline. The player keeps their own controls.
 import { MORROW, MORROW_LINES, freshMorrowMemory, normalizeMorrowMemory } from '../data/morrow.js';
+import { isAnonymousMorrowTwin } from '../world/farActorTable.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 
@@ -150,6 +151,34 @@ export function createMorrow() {
       }
       // A live update() sweep can run the sync twin while this pass sleeps between
       // slices — re-resolve before minting or the suspended snapshot mints a double.
+      // D189: old saves (and long pre-fix sessions) can also hold LIVE markerless twins —
+      // promoted anonymous rows with Morrow's immutable spec (see isAnonymousMorrowTwin).
+      // With a true body present they are proven shells beside their owner: retire them.
+      // With none, adopt the first twin and retire the rest instead of minting beside them.
+      let twins = null;
+      for (const e of (this.state.entityList || []).slice()) {
+        yield;
+        if (!e?.alive || e.data?.morrow === true) continue;
+        if (!isAnonymousMorrowTwin(e)) continue;
+        (twins || (twins = [])).push(e);
+      }
+      if (twins) {
+        if (!found) {
+          // Adopt the first twin instead of minting beside it, so the shelved position
+          // and hull carry over instead of resetting to the anchor. Backfill every other
+          // resident field the lean far row could not retain (morrowPose, physicsBody,
+          // callsign/identity) or update() bricks on the missing pose.
+          found = twins[0];
+          const spec = morrowEntitySpec(this.state.morrow);
+          if (!found.data || typeof found.data !== 'object') found.data = {};
+          Object.assign(found.data, spec.data, { morrow: true });
+          found.physicsBody = spec.physicsBody;
+          if (found.name == null) found.name = spec.name;
+        }
+        for (const twin of twins) {
+          if (twin !== found) this.helpers.removeEntity?.(twin.id);
+        }
+      }
       if (!found) found = this._entity();
       if (!found && this.helpers.spawnEntity) found = this.helpers.spawnEntity(morrowEntitySpec(this.state.morrow));
       // Adopted/restored owned bodies need the same resident identity as newly minted ones.

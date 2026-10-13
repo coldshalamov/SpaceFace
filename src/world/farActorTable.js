@@ -1,6 +1,7 @@
 // LAST_ARGUMENT_INTEGRATION_V1
 
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
+import { MORROW } from '../data/morrow.js';
 import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 // Far ships and wrecks beyond the combat table. They stay as compact records and
 // rematerialize when the player approaches, or when a projectile's flight reaches
@@ -45,6 +46,24 @@ export function discardWorldSiteStaticFarRows(state, siteId) {
     removeFarRecord(table,row); removed++;
   }
   return removed;
+}
+
+// D189: pre-fix Morrow bodies shelved without authoredCharacter (the 026e628e5 custody
+// marker), so old saves carry anonymous far rows that promote as markerless twins beside the
+// deterministically re-minted owner. A row is provably such a shell by immutable spec alone —
+// type drone, Morrow's mass/radius, Morrow's home sector when the row carries one — never by
+// position. No ambient spawner builds that tuple (ambient drones are single-digit mass and
+// radius), and rows carrying any identity (authoredCharacter, morrow, mission pins) are never
+// eligible, so unrelated actors are untouched by construction.
+export function isAnonymousMorrowTwin(candidate) {
+  if (!candidate || typeof candidate !== 'object') return false;
+  if (candidate.type !== 'drone') return false;
+  if (candidate.mass !== MORROW.mass || candidate.radius !== MORROW.radius) return false;
+  const data = candidate.data && typeof candidate.data === 'object' ? candidate.data : {};
+  if (data.authoredCharacter || data.morrow === true || data.missionId || data.missionPinned) return false;
+  const home = candidate.homeSectorId ?? data.homeSectorId ?? data.sectorId ?? null;
+  if (home != null && home !== MORROW.sectorId) return false;
+  return true;
 }
 
 /** Bench A/B: production default ON. Quiet latch skips shelve-candidate walk when far empty. */
@@ -179,11 +198,15 @@ export function restoreFarActorTable(state, data) {
     return null;
   }
   resetFarActors(state);
+  // D189: drop pre-fix anonymous Morrow shells at restore (see isAnonymousMorrowTwin). The
+  // morrow system deterministically re-mints exactly one canonical body on save:loaded from
+  // state.morrow memory, so keeping these rows would promote markerless twins beside it.
+  // Idempotent: a healed save no longer carries them, and unrelated rows never match.
   world.farActors = {
     schema: FAR_ACTOR_SCHEMA,
     version: Number.isSafeInteger(data.version) ? data.version : 0,
     rows: data.rows.filter((row) => row && row.alive !== false && Number.isSafeInteger(row.id)
-      && !isWorldSiteStaticAnatomy(row)),
+      && !isWorldSiteStaticAnatomy(row) && !isAnonymousMorrowTwin(row)),
   };
   // Shelved ids stay reserved through allocateEntityId's ledger check — no counter bump needed
   // here (bumping nextEntityId would shift the post-load spawn order and break save hash parity).
