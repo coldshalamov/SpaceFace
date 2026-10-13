@@ -139,9 +139,12 @@ function injectStyle() {
      sits at the stage's 64px gutter; every row carries its own tick. The ladder is its own scroll
      region ending at y940 with a 60px void fade, so the list clips at the fold and the Launch dock
      below stays clear at every scroll offset. */
+  /* Ladder fills the plate above the Launch dock. Combat Lab and fine-tune wait below the fold
+     (stage scroll), so Hull / Hornet / COMBAT LAB never share the Launch key's first-paint band. */
   .sf-sandbox-tiles {
     display: flex; flex-direction: column; position: relative; margin: 24px 0 0 -14px; padding: 0 0 0 42px;
-    max-height: calc(100vh - 352px); min-height: 200px; overflow-y: auto; overflow-x: hidden;
+    height: calc(100vh - 320px); max-height: calc(100vh - 320px); min-height: 160px;
+    overflow-y: auto; overflow-x: hidden;
     scrollbar-width: thin; scrollbar-color: rgb(236 230 216 / .25) transparent;
     -webkit-mask-image: linear-gradient(180deg, black calc(100% - 60px), transparent 100%);
     mask-image: linear-gradient(180deg, black calc(100% - 60px), transparent 100%);
@@ -154,7 +157,8 @@ function injectStyle() {
     background: rgb(236 230 216 / .4);
   }
   .sf-sandbox-tile {
-    position: relative; text-align: left; cursor: pointer; border: none; border-radius: 0;
+    /* flex-shrink was crushing title+desc into 44px phone hit-boxes and stacking them. */
+    position: relative; flex: 0 0 auto; text-align: left; cursor: pointer; border: none; border-radius: 0;
     background: transparent; color: rgb(236 230 216); padding: 20px 8px 12px 0;
     font-family: var(--sf-body-face);
   }
@@ -197,7 +201,8 @@ function injectStyle() {
      follows the chosen row. */
   .sf-sandbox-railfoot {
     position: relative; display: flex; align-items: center; gap: 12px;
-    margin: 12px 0 0; padding-left: 26px;
+    /* 120px clears the fixed Launch key (56 + 25 bottom) and the foot scrim on first paint. */
+    margin: 12px 0 120px; padding-left: 26px;
     font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 112%;
     font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
     color: var(--sf-calm);
@@ -315,6 +320,28 @@ function injectStyle() {
     .sf-sandbox-finetune { grid-template-columns: 1fr; }
     .sf-sandbox-picker { grid-template-columns: 1fr; }
     .sf-sandbox-lab-form { grid-template-columns: 1fr; }
+    .sf-sandbox-tiles {
+      height: auto; max-height: min(48vh, 380px); min-height: 200px;
+    }
+    /* Keep Combat Lab / Hull below the fixed Launch key on first paint. */
+    .sf-sandbox-railfoot { margin-bottom: 260px; }
+    .sf-sandbox-tile { min-height: 0 !important; height: auto !important; padding: 14px 8px 10px 0; }
+    .sf-sandbox-tile__title { font-size: 13px; }
+    .sf-sandbox-tile__desc { font-size: 13px; }
+  }
+  /* Touch / phone deck: same crush + Launch clearance (data-sf-mobile, any width). */
+  html:root[data-sf-mobile="1"] .sf-sandbox-tile {
+    flex: 0 0 auto; min-height: 0 !important; height: auto !important;
+  }
+  html:root[data-sf-mobile="1"] .sf-sandbox-tiles {
+    height: auto; max-height: min(48vh, 380px); min-height: 200px;
+  }
+  html:root[data-sf-mobile="1"] .sf-sandbox-railfoot { margin-bottom: 260px; }
+  /* Short desktop: keep the rail foot above the Launch key, not under it. */
+  @media (max-height: 640px) {
+    .sf-sandbox-tiles {
+      height: calc(100vh - 300px); max-height: calc(100vh - 300px); min-height: 140px;
+    }
   }
   @media (forced-colors: active) {
     .sf-sandbox-tile, .sf-sandbox-lab {

@@ -76,7 +76,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `automation` | SURVEYED | |
 | `replay` | SURVEYED | |
 | `clips` | SURVEYED | |
-| `sandbox` | SURVEYED | Ledger DONE for overflow |
+| **`sandbox`** | **DONE** (ui-polish-24) | Launch no longer buries Combat Lab / Hull / Hornet; phone tiles no longer stack — see § Sandbox Launch below |
 | `localmap` / `localmap-legacy` | SURVEYED | |
 | `starmap` / `starmap-legacy` | SURVEYED | |
 
@@ -568,6 +568,22 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 - **Fixed (P1, 720p):** SHIELD BOOSTER ran into its size letter. The loadout name column is wider at ≤1366px.
 - **Fixed (P1, 390×844):** PELICAN and WASP ran together in the *Start as* row. Names now size to their content, slightly smaller, with a fixed gap.
 - Checked at 1280×720, 1366×768, 1920×1080, 2560×1440 and 390×844; `--walk` exercised 12 controls with all three hulls brought to the front. `test/yard-carousel` and the new-game tests pass (50/50). Shots are in `/workspace/spaceface-scratch/ui-shots/ng5/` (not committed).
+
+
+
+## Sandbox Launch / phone tiles — session notes (2026-10-13, ui-polish-24)
+
+**Before:** On first paint the Combat Lab and fine-tune (Hull / Hornet) sat in the fixed Launch key's band at 960×540, 1280×720 and 1920×1080 (ui-bench: buried / overlap). On phone (`data-sf-mobile`), the ladder's flex shrink crushed each scenario tile to the global 44px touch min-height, so titles and descriptions stacked on each other.
+
+**After (`src/ui/screens/sandbox.js` only):**
+1. The scenario ladder fills the plate above the Launch dock (`height: calc(100vh - 320px)`), and the rail foot keeps a 120px (260px on phone) margin so Combat Lab waits below the fold.
+2. Scenario tiles are `flex: 0 0 auto` (and on phone `min-height:0` / `height:auto`) so they keep their title+desc height inside the scrolling ladder.
+3. Short desktop (`max-height:640`) and phone media/`data-sf-mobile` tweaks keep the same clearance without stacking.
+
+Bench: `measured: no tangled…` at 960 / 1280 / 1920; phone 390×844 and 844×390 clear of burial and tile-on-tile (lab fields OFF FRAME below the fold by design). Selectors/IDs unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/sandbox-launch/final/`.
+
+**Still open (elsewhere):** Shipworks left-rail "Starter / systems fitted" clip at 960 (wait for #359/#365); phone Shipworks callouts; focused rename-field spacing once those land.
+
 
 ## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
 
