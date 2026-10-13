@@ -11,7 +11,7 @@ export const EXPORT_SCHEMA = 'spaceface.creatorsDockExport.v1';
 export const ID_RE = /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/;
 
 const ACTOR_KEYS = [
-  'id', 'kind', 'role', 'profile', 'x', 'z', 'heading', 'velX', 'velZ',
+  'id', 'kind', 'role', 'profile', 'x', 'y', 'z', 'heading', 'velX', 'velY', 'velZ',
   'angularVelocity', 'team', 'factionId', 'isPlayer', 'persistent',
   'overrides', 'loadout', 'groupId', 'label',
 ];
@@ -111,6 +111,55 @@ export function issuesForObject(object) {
     issues.push('id must match [A-Za-z_][A-Za-z0-9_-]{0,63}');
   }
   return issues;
+}
+
+export function placePlayer(project) {
+  const existing = (project.objects || []).find((object) => object && object.kind === 'actor' && object.isPlayer);
+  if (existing) return { ok: true, project, id: existing.id, issues: [] };
+  let id = 'player';
+  let n = 1;
+  while (objectById(project, id)) {
+    n += 1;
+    id = `player_${n}`;
+  }
+  const added = addObject(project, {
+    id,
+    kind: 'actor',
+    role: 'player',
+    profile: 'ship.starter',
+    x: 0,
+    y: 0,
+    z: 0,
+    heading: 0,
+    velX: 0,
+    velY: 0,
+    velZ: 0,
+    angularVelocity: 0,
+    team: 0,
+    isPlayer: true,
+    persistent: true,
+    label: 'player',
+  });
+  return added.ok ? { ...added, id } : added;
+}
+
+export function setPlayer(project, id) {
+  const target = objectById(project, id);
+  if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
+  const next = clone(project);
+  for (const object of next.objects || []) {
+    if (object.kind === 'actor') object.isPlayer = object.id === id;
+  }
+  return { ok: true, project: next, id, issues: [] };
+}
+
+export function clearPlayerFlag(project, id) {
+  const target = objectById(project, id);
+  if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
+  const next = clone(project);
+  const object = next.objects.find((row) => row.id === id);
+  object.isPlayer = false;
+  return { ok: true, project: next, issues: [] };
 }
 
 export function addObject(project, object) {

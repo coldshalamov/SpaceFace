@@ -12,8 +12,11 @@ import {
   expandIds,
   groupObjects,
   nudgeObjects,
+  emptyProject,
   objectById,
+  placePlayer,
   projectIssues,
+  setPlayer,
 } from '../lib/scene.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
 
@@ -93,4 +96,21 @@ test('three agent requests are deterministic and the undo puts the rock back', (
   assert.equal(objectById(edited.project, 'cargo_b').isPlayer, false);
   assert.equal(objectById(edited.project, 'cargo_b').velX, -8);
   assert.equal(edited.project.encounter.id, 'dock_agent_edited');
+});
+
+test('an empty dock can place exactly one player', () => {
+  const empty = emptyProject({ id: 'dock.player', title: 'Player', seed: 1 });
+  assert.equal(projectIssues(empty).some((issue) => issue.includes('player')), true);
+  const placed = placePlayer(empty);
+  assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
+  assert.equal(projectIssues(placed.project).some((issue) => issue.includes('player')), false);
+  const player = objectById(placed.project, placed.id);
+  assert.equal(player.isPlayer, true);
+  assert.equal(player.profile, 'ship.starter');
+  const again = placePlayer(placed.project);
+  assert.equal(again.id, placed.id);
+  assert.equal(again.project.objects.filter((object) => object.isPlayer).length, 1);
+  const named = setPlayer(placed.project, placed.id);
+  assert.equal(named.ok, true);
+  assert.equal(named.project.objects.filter((object) => object.isPlayer).length, 1);
 });

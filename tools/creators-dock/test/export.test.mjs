@@ -6,6 +6,7 @@ import test from 'node:test';
 import { applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject, importScenario, packFileText } from '../lib/export.mjs';
+import { objectById } from '../lib/scene.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
 import { probePackFiles, probeUserContentDir } from '../lib/userProbe.mjs';
 
@@ -49,6 +50,24 @@ test('eight compositions export schema-valid scenarios and round-trip', async ()
     const saved = JSON.parse(stableStringify(project));
     assert.equal(firstDiff(saved, project), null);
   }
+});
+
+test('actor height and vertical velocity survive export and import', async () => {
+  const project = structuredClone(getComposition('dock.intercept-cargo'));
+  const player = project.objects.find((object) => object.isPlayer);
+  player.y = 4.5;
+  player.velY = -1.25;
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, exported.issues.join('\n'));
+  const entity = exported.scenario.entities.find((row) => row.isPlayer);
+  assert.equal(entity.pos.y, 4.5);
+  assert.equal(entity.vel.y, -1.25);
+  const imported = importScenario(exported.scenario);
+  assert.equal(imported.ok, true, imported.issues.join('\n'));
+  const back = imported.project.objects.find((object) => object.isPlayer);
+  assert.equal(back.y, 4.5);
+  assert.equal(back.velY, -1.25);
+  assert.equal(objectById(imported.project, player.id).y, 4.5);
 });
 
 test('lab-only motion is withheld from the encounter file and a force field is refused', async () => {

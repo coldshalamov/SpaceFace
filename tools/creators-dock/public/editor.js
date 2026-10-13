@@ -2,6 +2,7 @@ import { commit, createHistory, redo, undo } from '/lib/history.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
   addObject,
+  clearPlayerFlag,
   cloneObject,
   deleteObjects,
   emptyProject,
@@ -10,9 +11,11 @@ import {
   hitTest,
   nudgeObjects,
   objectById,
+  placePlayer,
   projectIssues,
   screenToWorld,
   setCamera,
+  setPlayer,
   ungroupObjects,
   worldToScreen,
 } from '/lib/scene.mjs';
@@ -149,6 +152,12 @@ function paintInspector() {
       else input.value = object[field.key] ?? '';
     }
     input.addEventListener('change', () => {
+      if (field.key === 'isPlayer') {
+        const result = input.checked ? setPlayer(project(), object.id) : clearPlayerFlag(project(), object.id);
+        if (!result.ok) return showReport(result);
+        commitProject(result.project);
+        return;
+      }
       const next = structuredClone(project());
       const target = next.objects.find((row) => row.id === object.id);
       if (!target) return;
@@ -176,8 +185,11 @@ function fieldsFor(object) {
       ...common,
       { key: 'role', label: 'Role', kind: 'text' },
       { key: 'profile', label: 'Profile', kind: 'select', options: profileOptions(object.profile) },
+      { key: 'isPlayer', label: 'Player', kind: 'checkbox' },
+      { key: 'y', label: 'Y', kind: 'number' },
       { key: 'heading', label: 'Heading (radians)', kind: 'number' },
       { key: 'velX', label: 'Velocity X (lab-only)', kind: 'number' },
+      { key: 'velY', label: 'Velocity Y (lab-only)', kind: 'number' },
       { key: 'velZ', label: 'Velocity Z (lab-only)', kind: 'number' },
       { key: 'team', label: 'Team', kind: 'number' },
       { key: 'factionId', label: 'Faction', kind: 'text' },
@@ -611,6 +623,13 @@ document.querySelector('#add-actor').addEventListener('click', () => addTemplate
   id: uniqueId('actor'), kind: 'actor', role: 'prop', profile: 'asteroid.light', x: 20, z: 20,
   heading: 0, velX: 0, velZ: 0, angularVelocity: 0, team: 2, isPlayer: false, persistent: true, label: 'prop',
 }));
+document.querySelector('#add-player').addEventListener('click', () => {
+  const result = placePlayer(project());
+  if (!result.ok) return showReport(result);
+  selected = [result.id];
+  if (result.project !== project()) commitProject(result.project);
+  else render();
+});
 document.querySelector('#add-trigger').addEventListener('click', () => addTemplate({
   id: uniqueId('trigger'), kind: 'trigger', shape: 'circle', x: 0, z: 20, radius: 16, labOnly: true, label: 'trigger',
   assertion: { kind: 'eventByTick', signal: 'playerX', op: '>', value: 0.5, byTick: Math.max(0, project().ticks - 1) },
