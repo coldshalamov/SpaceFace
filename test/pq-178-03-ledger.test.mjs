@@ -247,7 +247,7 @@ test('the berth mechanic reads the campaign back', () => {
   const frame = stationFrameHtml();
   assert.match(frame, /sxb-berth__ledger/);
   const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
-  assert.match(appSrc, /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl \}\s*,\s*arrival\s*,/);
+  assert.match(appSrc, /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl(?:, state: s)? \}\s*,\s*arrival\s*,/);
   assert.match(appSrc, /sxb-berth__ledger/);
 
   const ledgerEl = berthCardHost();
