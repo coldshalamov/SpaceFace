@@ -1365,6 +1365,115 @@ test('setMeta does not return ok when JSON.stringify of the result would throw',
   }
 });
 
+test('a self-deleting toJSON that returns null is not stored on grid', () => {
+  function withGrid() {
+    const scene = getComposition('dock.intercept-cargo');
+    scene.grid.toJSON = function () {
+      delete this.toJSON;
+      return null;
+    };
+    return scene;
+  }
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const committedScene = withGrid();
+  const committed = commit(history, committedScene);
+  assert.equal(committed, history);
+  assert.notEqual(committed.present.grid, null);
+  assert.equal(committed.present.grid.size, history.present.grid.size);
+  const opened = openDockHistory(withGrid());
+  assert.equal(opened.ok, false);
+  assert.equal(opened.history, null);
+
+  const addedScene = withGrid();
+  const added = addObject(addedScene, plainActor('rock'));
+  assert.equal(added.ok, false);
+  assert.equal(added.project, addedScene);
+  assert.notEqual(added.project.grid, null);
+  assert.equal(objectById(added.project, 'rock'), null);
+
+  const spedScene = withGrid();
+  const sped = setVelocity(spedScene, 'cargo', 1, 0);
+  assert.equal(sped.ok, false);
+  assert.equal(sped.project, spedScene);
+  assert.notEqual(sped.project.grid, null);
+
+  const metaScene = withGrid();
+  const meta = applyDockOp(metaScene, { op: 'setMeta', meta: { title: 'Nope' } });
+  assert.equal(meta.ok, false);
+  assert.equal(meta.project, metaScene);
+  assert.notEqual(meta.project.grid, null);
+  assert.equal(meta.project.title.includes('Nope'), false);
+
+  const placed = getComposition('dock.intercept-cargo');
+  Object.defineProperty(placed, 'toJSON', {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      delete body.toJSON;
+      body.grid = null;
+      return body;
+    },
+  });
+  assert.equal(commit(history, placed), history);
+  assert.notEqual(history.present.grid, null);
+
+  const boxed = getComposition('dock.intercept-cargo');
+  const boxedMeta = applyDockOp(boxed, {
+    op: 'setMeta',
+    meta: {
+      box: {
+        inner: {
+          label: 'inner',
+          toJSON() {
+            delete this.toJSON;
+            return null;
+          },
+        },
+      },
+    },
+  });
+  assert.equal(boxedMeta.ok, false);
+  assert.equal(boxedMeta.project, boxed);
+  assert.equal(boxedMeta.project.box, undefined);
+
+  const framesScene = getComposition('dock.intercept-cargo');
+  const frames = applyDockOp(framesScene, {
+    op: 'setFrames',
+    frames: [{
+      tick: 4,
+      input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, fire: false },
+      mark: {
+        toJSON() {
+          delete this.toJSON;
+          return null;
+        },
+      },
+    }],
+  });
+  assert.equal(frames.ok, false);
+  assert.equal(frames.project, framesScene);
+  assert.notEqual(frames.project.frames[0], null);
+  assert.equal(frames.project.frames[0].mark, undefined);
+});
+
+test('formatReport does not throw when the error message getter throws', () => {
+  const failure = new Error('hidden');
+  Object.defineProperty(failure, 'message', {
+    get() { throw new Error('message'); },
+  });
+  const value = {
+    toJSON() { throw failure; },
+  };
+  let text;
+  assert.doesNotThrow(() => {
+    text = formatReport(value);
+  });
+  assert.equal(typeof text, 'string');
+  assert.equal(text.includes('scene could not be cloned'), true);
+  const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
+  assert.equal(/function showReport\(value\) \{\s*try \{/.test(editor), true);
+});
+
 test('stableStringify does not throw out of commit', () => {
   const history = createHistory(getComposition('dock.intercept-cargo'));
   history.present.grid.toJSON = function () { throw new Error('boom'); };

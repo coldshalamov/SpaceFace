@@ -35,22 +35,80 @@ export const OBJECT_KEY_SETS = Object.freeze({
   attachment: ATTACHMENT_KEYS,
 });
 
+const CLONE_REJECT = Symbol('clone-reject');
+
+function introducedNull(original, produced) {
+  if (!produced || typeof produced !== 'object' || !original || typeof original !== 'object') return false;
+  if (produced === original) return false;
+  if (Array.isArray(produced)) {
+    if (!Array.isArray(original)) return false;
+    for (let i = 0; i < produced.length; i += 1) {
+      if (produced[i] === null && original[i] != null) return true;
+      if (produced[i] && typeof produced[i] === 'object' && introducedNull(original[i], produced[i])) return true;
+    }
+    return false;
+  }
+  for (const key of Object.keys(produced)) {
+    if (key === 'isPlayer') continue;
+    const next = produced[key];
+    const prev = original[key];
+    if (next === null && prev != null) return true;
+    if (next && typeof next === 'object' && prev && typeof prev === 'object' && introducedNull(prev, next)) return true;
+  }
+  return false;
+}
+
+function materialize(value, key, seen) {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  const type = typeof value;
+  if (type === 'string' || type === 'boolean') return value;
+  if (type === 'number') return Number.isFinite(value) ? value : null;
+  if (type === 'bigint') throw new TypeError('Do not know how to serialize a BigInt');
+  if (type !== 'object') return undefined;
+  if (seen.has(value)) throw new TypeError('Converting circular structure to JSON');
+  if (typeof value.toJSON === 'function') {
+    seen.add(value);
+    const produced = value.toJSON(key);
+    if (produced === null) return CLONE_REJECT;
+    if (produced === undefined) return undefined;
+    if (produced !== value) {
+      if (produced && typeof produced === 'object' && introducedNull(value, produced)) return CLONE_REJECT;
+      return materialize(produced, key, seen);
+    }
+  } else if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+    return materialize(value.valueOf(), key, seen);
+  } else {
+    seen.add(value);
+  }
+  if (Array.isArray(value)) {
+    const out = [];
+    for (let i = 0; i < value.length; i += 1) {
+      const item = materialize(value[i], String(i), seen);
+      if (item === CLONE_REJECT) return CLONE_REJECT;
+      out.push(item === undefined ? null : item);
+    }
+    return out;
+  }
+  const out = {};
+  for (const childKey of Object.keys(value)) {
+    const child = materialize(value[childKey], childKey, seen);
+    if (child === CLONE_REJECT) return CLONE_REJECT;
+    if (child !== undefined) out[childKey] = child;
+  }
+  return out;
+}
+
 export function clone(value) {
   if (value == null) return value;
   try {
-    // A nested toJSON that returns null would replace that field in the clone.
-    // Refuse the whole clone instead of adopting the null.
-    let nestedNull = false;
-    const text = JSON.stringify(value, function (key, val) {
-      if (!nestedNull && key !== '' && val === null) {
-        const original = this[key];
-        if (original && typeof original === 'object' && typeof original.toJSON === 'function') {
-          nestedNull = true;
-        }
-      }
-      return val;
-    });
-    if (nestedNull) return null;
+    // A toJSON that returns null, deletes itself then returns null, or places
+    // null over another field must not be stored. isPlayer null still clones
+    // so the player canon can name that flag.
+    const plain = materialize(value, '', new Set());
+    if (plain === CLONE_REJECT || plain === undefined) return null;
+    const text = JSON.stringify(plain);
+    if (typeof text !== 'string') return null;
     return JSON.parse(text);
   } catch (error) {
     return null;
@@ -626,7 +684,15 @@ export function formatReport(value) {
   try {
     return JSON.stringify(value, null, 2);
   } catch (error) {
-    return JSON.stringify({ ok: false, issues: issues.length ? issues : [String(error && error.message || error)] }, null, 2);
+    let detail = 'scene could not be cloned';
+    if (!issues.length) {
+      try {
+        detail = String(error && error.message);
+      } catch (inner) {
+        detail = 'scene could not be cloned';
+      }
+    }
+    return JSON.stringify({ ok: false, issues: issues.length ? issues : [detail] }, null, 2);
   }
 }
 

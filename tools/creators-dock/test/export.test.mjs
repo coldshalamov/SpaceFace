@@ -6,8 +6,10 @@ import test from 'node:test';
 import { applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject, importScenario, packFileText } from '../lib/export.mjs';
+import { validateProject, runProject } from '../lib/labRun.mjs';
 import { objectById } from '../lib/scene.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
+import { send } from '../serve.mjs';
 import { probePackFiles, probeUserContentDir } from '../lib/userProbe.mjs';
 
 function firstDiff(a, b, where = '$') {
@@ -293,6 +295,49 @@ function writePack(root, exported) {
     fs.writeFileSync(file, text);
   }
 }
+
+test('a throwing toJSON on project.id does not escape the export manifest', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const boxed = new String(project.id);
+  Object.defineProperty(boxed, 'toJSON', {
+    enumerable: true,
+    value() { throw new Error('boom'); },
+  });
+  project.id = boxed;
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, false);
+  assert.equal(exported.issues.some((issue) => issue.includes('scene could not be cloned')), true);
+  assert.equal(typeof exported.manifest.projectId, 'string');
+  assert.doesNotThrow(() => stableStringify(exported.manifest));
+  assert.doesNotThrow(() => stableStringify({
+    ok: false,
+    issues: exported.issues,
+    manifest: exported.manifest,
+  }));
+  assert.equal(project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+
+  const validated = await validateProject(project);
+  assert.doesNotThrow(() => stableStringify(validated));
+  assert.equal(validated.ok, false);
+  const ran = await runProject(project);
+  assert.doesNotThrow(() => stableStringify({
+    ok: ran.ok,
+    issues: ran.issues,
+    manifest: ran.manifest,
+    run: ran.run,
+  }));
+  assert.equal(ran.ok, false);
+
+  const chunks = [];
+  const res = {
+    writeHead() {},
+    end(body) { chunks.push(body); },
+  };
+  assert.doesNotThrow(() => send(res, 200, { manifest: { projectId: boxed } }));
+  const posted = JSON.parse(chunks[0]);
+  assert.equal(posted.ok, false);
+  assert.equal(posted.issues.some((issue) => issue.includes('scene could not be cloned')), true);
+});
 
 test('exportProject records a throwing toJSON instead of throwing', async () => {
   const project = getComposition('dock.intercept-cargo');

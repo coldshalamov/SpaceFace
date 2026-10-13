@@ -45,8 +45,23 @@ export async function exportProject(project) {
   return exportProjectWithDialect(project, dialect);
 }
 
+function plainProjectId(id, issues) {
+  if (typeof id === 'string') return id;
+  try {
+    const text = JSON.stringify(id);
+    const parsed = typeof text === 'string' ? JSON.parse(text) : undefined;
+    if (typeof parsed === 'string') return parsed;
+  } catch (error) {
+    issues.push('scene could not be cloned');
+    return '';
+  }
+  issues.push('project id must match the lab id pattern');
+  return '';
+}
+
 export function exportProjectWithDialect(project, dialect) {
   const issues = [];
+  const projectId = plainProjectId(project && project.id, issues);
   issues.push(...inspectValue(project));
   issues.push(...assertProjectSize(project));
   issues.push(...closedProjectKeys(project));
@@ -63,7 +78,7 @@ export function exportProjectWithDialect(project, dialect) {
 
   const manifest = {
     schema: 'spaceface.creatorsDockExport.v1',
-    projectId: project && project.id,
+    projectId,
     withheldFromUserContent: [],
     editorOnly: [],
     written: {},
@@ -135,7 +150,7 @@ export function exportProjectWithDialect(project, dialect) {
     });
   }
 
-  const scenario = buildScenario(project, actors, triggers, objectives, attachments, issues);
+  const scenario = buildScenario(project, actors, triggers, objectives, attachments, issues, projectId);
   if (scenario) {
     const validation = validateSimScenario(scenario);
     if (!validation.ok) {
@@ -196,7 +211,7 @@ function explainField(field, issues, manifest) {
   issues.push(`${field.id}: unknown fieldKind "${field.fieldKind}"`);
 }
 
-function buildScenario(project, actors, triggers, objectives, attachments, issues) {
+function buildScenario(project, actors, triggers, objectives, attachments, issues, projectId) {
   if (!project || project.schema !== PROJECT_SCHEMA) return null;
   const entities = [];
   for (const actor of actors) {
@@ -346,7 +361,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
 
   const scenario = {
     schema: SIM_SCENARIO_SCHEMA,
-    id: project.id,
+    id: projectId,
     version: project.version ?? 1,
     title: project.title,
     description: project.description || '',

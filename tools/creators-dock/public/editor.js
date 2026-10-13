@@ -733,7 +733,11 @@ async function post(url, body) {
 }
 
 function showReport(value) {
-  report.textContent = formatReport(value);
+  try {
+    report.textContent = formatReport(value);
+  } catch (error) {
+    report.textContent = '{"ok":false,"issues":["scene could not be cloned"]}';
+  }
 }
 
 new ResizeObserver(resize).observe(canvas);

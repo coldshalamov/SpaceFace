@@ -5,6 +5,14 @@ export function stableStringify(value) {
   return `${JSON.stringify(sortValue(value), null, 2)}\n`;
 }
 
+export function safeStableStringify(value) {
+  try {
+    return stableStringify(value);
+  } catch (error) {
+    return stableStringify({ ok: false, issues: ['scene could not be cloned'] });
+  }
+}
+
 export function sortValue(value) {
   if (Array.isArray(value)) return value.map(sortValue);
   if (!value || typeof value !== 'object') return value;

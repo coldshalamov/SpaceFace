@@ -9,7 +9,7 @@ import { exportProject } from './lib/export.mjs';
 import { readJson, writeExportTree } from './lib/io.mjs';
 import { runProject, validateProject } from './lib/labRun.mjs';
 import { examplesRoot, resolveDockRead, resolveWorkspace } from './lib/paths.mjs';
-import { stableStringify } from './lib/stableJson.mjs';
+import { safeStableStringify, stableStringify } from './lib/stableJson.mjs';
 import { probeUserContentDir } from './lib/userProbe.mjs';
 import { startServer } from './serve.mjs';
 
@@ -131,7 +131,18 @@ function parseFlags(args) {
 }
 
 function emit(value, code) {
-  process.stdout.write(stableStringify(value));
+  let text;
+  try {
+    text = stableStringify(value);
+  } catch (error) {
+    text = safeStableStringify({ ok: false, issues: ['scene could not be cloned'] });
+    return writeEmit(text, EXIT_FAIL);
+  }
+  return writeEmit(text, code);
+}
+
+function writeEmit(text, code) {
+  process.stdout.write(text);
   return code;
 }
 

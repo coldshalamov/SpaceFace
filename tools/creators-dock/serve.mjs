@@ -12,7 +12,7 @@ import { writeExportTree } from './lib/io.mjs';
 import { runProject, validateProject } from './lib/labRun.mjs';
 import { resolveWorkspace, workspaceRoot } from './lib/paths.mjs';
 import { PROJECT_SCHEMA } from './lib/scene.mjs';
-import { stableStringify } from './lib/stableJson.mjs';
+import { safeStableStringify, stableStringify } from './lib/stableJson.mjs';
 
 const ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)));
 const PUBLIC = path.join(ROOT, 'public');
@@ -215,8 +215,13 @@ function readBody(req) {
   });
 }
 
-function send(res, status, value) {
-  const body = stableStringify(value);
+export function send(res, status, value) {
+  let body;
+  try {
+    body = stableStringify(value);
+  } catch (error) {
+    body = safeStableStringify({ ok: false, issues: ['scene could not be cloned'] });
+  }
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   res.end(body);
 }
