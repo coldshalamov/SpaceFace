@@ -2524,7 +2524,7 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   /** quote(stationId, cmdtyId, side, qty) -> { ok, unitAvg, total, priceImpactPct, stockAfter,
    *  legalityWarning, reason } — no transaction writes; may initialize a lazy market/cycle. side = 'buy' | 'sell'. */
-  quote(stationId, commodityId, side, qty) {
+  quote(stationId, commodityId, side, qty, opts = null) {
     qty = normalizedTradeQuantity(qty);
     if (side !== 'buy' && side !== 'sell') return { ok: false, reason: 'side' };
     if (qty === null) return { ok: false, reason: 'qty' };
@@ -2565,7 +2565,7 @@ export const economy = {
         : this.mintUnseededListing(stationId, def);
       if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
     }
-    if (side === 'sell') {
+    if (side === 'sell' && opts?.operationCustody !== true) {
       const free = sealedSellFree(state, commodityId, qty);
       if (free != null) {
         return {
@@ -2712,7 +2712,7 @@ export const economy = {
    * Player manual quote/execute is unchanged. Does not move stock or credits.
    * Intake target is ceil(2 * effectiveEq): operating stock plus one reserve, at least 1.
    */
-  quoteAutomationIntake(stationId, commodityId, qty) {
+  quoteAutomationIntake(stationId, commodityId, qty, opts = null) {
     const state = this.state;
     const requested = Math.max(0, Math.floor(Number(qty) || 0));
     const refuse = (reason, stock = 0, intakeTarget = 0) => ({
@@ -2732,22 +2732,35 @@ export const economy = {
     const eff = Number(effectiveEq(entry, state, stationId, commodityId));
     const intakeTarget = Math.max(1, Math.ceil(2 * (Number.isFinite(eff) ? eff : 0)));
     const stock = entry.stock;
-    const sellable = reservedCargoQuantity(state, commodityId) > 0
+    const operation = opts?.operation;
+    const operationOwned = operation && state.automation?.drones?.includes(operation)
+      && operation.shipment?.owner === `operation:${operation.id}`;
+    if (operation && !operationOwned) return refuse('invalid_custody', stock, intakeTarget);
+    const operationQty = operationOwned
+      ? Math.max(0, Math.floor(Number(operation.shipment.items?.[commodityId]) || 0)) : null;
+    const sellable = !operationOwned && reservedCargoQuantity(state, commodityId) > 0
       ? sellableCargoQuantity(state, commodityId)
       : null;
     if (sellable !== null && (sellable <= 0 || requested > sellable)) {
       return refuse('mission_cargo_locked', stock, intakeTarget);
     }
     const headroom = Math.max(0, Math.floor(intakeTarget - stock));
-    const fillable = sellable === null
+    const fillable = operationOwned ? Math.min(requested, headroom, operationQty) : sellable === null
       ? Math.min(requested, headroom)
       : Math.min(requested, headroom, sellable);
     if (fillable <= 0) {
       return refuse(headroom <= 0 ? 'demand_saturation' : 'qty', stock, intakeTarget);
     }
-    const quoted = this.quote(stationId, commodityId, 'sell', fillable);
+    const quoted = this.quote(stationId, commodityId, 'sell', fillable, { operationCustody: operationOwned === true });
     if (!quoted || quoted.ok !== true) {
       return refuse((quoted && quoted.reason) || 'untraded', stock, intakeTarget);
+    }
+    if (operationOwned) {
+      const payout = Math.round(Number(quoted.total));
+      const receivingRoom = CREDITS_MAX - normalizeCredits(state.player && state.player.credits);
+      if (!Number.isSafeInteger(payout) || payout > receivingRoom) {
+        return refuse('credit_limit', stock, intakeTarget);
+      }
     }
     return {
       ok: true,

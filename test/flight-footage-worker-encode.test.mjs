@@ -333,3 +333,44 @@ test('an unanswered frame retires the encoder after the timeout; late replies ar
   const ok = answered.encode({ close() {} }, 640, 360);
   await ok; assert.equal(timers.at(-1).live, false, 'an answered frame clears its timer');
 });
+
+test('three failed frames in a row retire the worker path, and the main-thread path keeps the ring filling', async () => {
+  const browser = fakeBrowser();
+  try {
+    const footage = installFlightFootage({ on: () => () => {} }, { stateOf: () => browser.state, startDelayMs: 0 });
+    await browser.poll();
+    globalThis.createImageBitmap = async () => { throw new Error('InvalidStateError'); };
+    await browser.captureFrame();
+    await browser.captureFrame();
+    await browser.captureFrame();
+    assert.equal(footage.ring.frames.length, 0, 'three frames were lost');
+    assert.equal(browser.calls.toBlob, 0, 'no fallback yet: a single bad frame is only dropped');
+    assert.equal(FakeWorker.instances[0].terminated, true, 'the third consecutive failure retired the worker');
+    await browser.captureFrame();
+    assert.equal(browser.calls.toBlob, 1, 'the next capture uses the main-thread path');
+    assert.equal(footage.ring.frames.length, 1);
+    footage.dispose();
+  } finally {
+    browser.restore();
+  }
+});
+
+test('a good frame between failures resets the count: two failures, a success, two failures never retire the worker', async () => {
+  const browser = fakeBrowser();
+  try {
+    const footage = installFlightFootage({ on: () => () => {} }, { stateOf: () => browser.state, startDelayMs: 0 });
+    await browser.poll();
+    const good = globalThis.createImageBitmap;
+    const bad = async () => { throw new Error('InvalidStateError'); };
+    for (const bitmap of [bad, bad, good, bad, bad]) {
+      globalThis.createImageBitmap = bitmap;
+      await browser.captureFrame();
+    }
+    assert.equal(FakeWorker.instances[0].terminated, false);
+    assert.equal(footage.ring.frames.length, 1);
+    assert.equal(browser.calls.toBlob, 0);
+    footage.dispose();
+  } finally {
+    browser.restore();
+  }
+});

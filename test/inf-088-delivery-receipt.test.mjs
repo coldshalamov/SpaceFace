@@ -30,7 +30,12 @@ function boot({ buy, sell, hotness = 0 }) {
     _routeFuelCost: () => 3,
     _traderLossProb: () => 0,
     _applyTradePressure: () => {},
-    creditPassive: (amount, source) => { credited.push({ amount, source }); },
+    creditPassive: (gross, source) => {
+      const amount = Math.round(gross);
+      state.player.credits += amount;
+      credited.push({ amount, source });
+      return amount;
+    },
   });
   const a = state.automation;
   return { state, inst, a, trader, def, credited, emitted };
@@ -48,8 +53,9 @@ test('INF-088 paid delivery records purchase/sale/cost/result and credits exactl
   assert.equal(r.revenue, 120 * 14 * 0.9);
   assert.equal(r.fuelCost, 3);
   assert.equal(r.result, 'paid');
-  // entries reconcile: revenue - outlay - fuel === the credited net (capital is not profit).
-  assert.ok(Math.abs((r.revenue - r.outlay - r.fuelCost) - r.credited) < 1e-9);
+  // Capital is not profit; the whole-credit payout settles the actual profitable spread.
+  assert.ok(Math.abs((r.revenue - r.outlay - r.fuelCost) - r.grossProfit) < 1e-9);
+  assert.equal(r.credited, Math.round(r.grossProfit));
   assert.equal(credited.length, 1);
   assert.strictEqual(credited[0].amount, r.credited);
   assert.equal(credited[0].source, 'trader');

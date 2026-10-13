@@ -123,7 +123,7 @@ export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {})
   const subscriptions = [];
   const clock = () => globalThis.performance?.now?.() ?? Date.now();
   const openingDelay = Number.isFinite(startDelayMs) ? Math.max(0, startDelayMs) : 5000;
-  let openingSince = null, context = null, encoder = null, encoderTried = false;
+  let openingSince = null, context = null, encoder = null, encoderTried = false, encodeFailures = 0;
   const stopStream = () => {
     epoch += 1;
     if (video && callback != null) video.cancelVideoFrameCallback?.(callback);
@@ -164,9 +164,16 @@ export function installFlightFootage(bus, { stateOf, startDelayMs = 5000 } = {})
       // failure retires it and this capture's successors take the main-thread path below, so the ring
       // never silently stops filling.
       if (encoder?.usable) {
+        const worker = encoder;
         createImageBitmap(video, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' })
-          .then((bitmap) => encoder.encode(bitmap, width, height))
-          .then(land, () => { if (token === epoch && !stopped) encoding = false; });
+          .then((bitmap) => worker.encode(bitmap, width, height))
+          .then((blob) => { encodeFailures = 0; land(blob); }, () => {
+            // One bad frame is dropped; three in a row means the worker path cannot work here (no resized
+            // bitmaps, a codec refusal), so retire it and let the main-thread path keep the ring filling.
+            encodeFailures += 1;
+            if (encodeFailures >= 3 && encoder === worker) { worker.dispose(); encoder = null; }
+            if (token === epoch && !stopped) encoding = false;
+          });
       } else {
         if (canvas.width !== width) canvas.width = width;
         if (canvas.height !== height) canvas.height = height;

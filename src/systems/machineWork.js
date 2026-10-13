@@ -1,7 +1,7 @@
 // Finite procedures for the existing maintenance pylon, foundry and reclamation frame.
 // The durable job lives on its machine-site row; the physics owner moves workpieces.
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
-import { MACHINE_SITES } from '../data/precursorMachines.js';
+import { MACHINE_SITES, machineKindById } from '../data/precursorMachines.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { markDressingRowPoseDirty } from '../world/dressingTable.js';
 
@@ -14,6 +14,106 @@ function siteRecord(state, siteId) {
 function log(world, from, text) { world.bus.emit('comms:log', { from, text, kind: 'machine' }); }
 function distance(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 const workpieceBodies = new WeakMap();
+
+function cycleRecord(rec) {
+  return rec.workCycle ||= { status: 'awaiting_mail', commissioned: false };
+}
+
+function foundryReceipt(rec) {
+  const token = rec.courierToken;
+  return token?.status === 'delivered' && token.destSiteId === 'pallas_empty_foundry'
+    && rec.courierReceiver?.stored > 0 && rec.courierReceiver.acceptedReceipts?.[token.receiptId] > 0;
+}
+
+function tickFoundryRepair(world, entity, dt, site, rec) {
+  const cycle = cycleRecord(rec);
+  const job = rec.maintenance ||= { integrity: 0.25, material: site.workCycle.charges, work: 0, completed: false };
+  const component = world.state.world?.dressing?.rows?.find(row => row.alive !== false
+    && row.data?.machineSite === site.siteId && row.data.placeId === 'machine_gantry');
+  if (!component) return true;
+  component.data.machineIntegrity = job.integrity;
+  component.data.name = `Foundry gantry — ${Math.round(job.integrity * 100)}% integrity`;
+  component.data.scanLabel = component.data.name;
+  if (job.completed) return true;
+  if (!foundryReceipt(rec)) {
+    if (!job.mailHinted) { job.mailHinted = true; log(world, site.name,
+      'REPAIR HELD. RETURN THE ROUTE AUTHORITY TOKEN TO THE CENTRAL INTAKE. THREE GANTRY CHARGES REMAIN RESERVED.'); }
+    return true;
+  }
+  cycle.status = 'repairing';
+  const faceDistance = distance(entity.pos, component.pos);
+  entity.rot = Math.atan2(component.pos.z - entity.pos.z, component.pos.x - entity.pos.x);
+  if (faceDistance > 90) {
+    const travel = Math.min(faceDistance - 90, machineKindById('custodian').speed * dt);
+    entity.pos.x += Math.cos(entity.rot) * travel;
+    entity.pos.z += Math.sin(entity.rot) * travel;
+    return true;
+  }
+  const player = world.state.entities.get(world.state.playerId);
+  if (player?.alive !== false && player?.pos && distance(player.pos, component.pos) < (player.radius || 10) + 38) {
+    if (!job.paused) log(world, site.name, 'GANTRY REPAIR PAUSED. CLEAR THE WORK FACE; USED CHARGES AND PARTIAL WORK ARE RETAINED.');
+    job.paused = true;
+    return true;
+  }
+  job.paused = false;
+  job.work += dt;
+  while (job.work >= site.workCycle.repairS && job.material > 0) {
+    job.work -= site.workCycle.repairS;
+    job.material--;
+    job.integrity = Math.min(1, job.integrity + 0.25);
+    component.data.machineIntegrity = job.integrity;
+    component.data.name = `Foundry gantry — ${Math.round(job.integrity * 100)}% integrity`;
+    component.data.scanLabel = component.data.name;
+    markDressingRowPoseDirty(world.state, component.id);
+    world.bus.emit('audio:cue', { id: 'scan_resolve', position: component.pos });
+    log(world, site.name, `GANTRY REPAIRED TO ${Math.round(job.integrity * 100)}%. ${job.material} CHARGES REMAIN.`);
+  }
+  if (job.material === 0 && !job.completed) {
+    job.completed = true;
+    cycle.status = 'jurisdiction';
+    world.bus.emit('machine:repairCompleted', { siteId: site.siteId, component: 'foundry_gantry', integrity: job.integrity });
+  }
+  return true;
+}
+
+// Two finite procedures claim one ballast, rather than two fields fighting forever.
+// The pilot resolves the disagreement by moving that body into one named volume.
+// Preservation retains it but spends the repaired gantry without commissioning the
+// foundry; east-cradle placement commits that same ballast to construction.
+function tickFoundryJurisdiction(world, body, dt, center, site, rec) {
+  const cycle = cycleRecord(rec);
+  const jurisdiction = rec.jurisdiction ||= { status: 'waiting', settled: 0, choice: null };
+  if (jurisdiction.status === 'resolved') return jurisdiction.choice === 'construction';
+  if (!jurisdiction.announced) {
+    jurisdiction.announced = true;
+    log(world, 'Conservator', `PRESERVE THIS BALLAST. WEST CRADLE ${Math.round(center.x + site.workCycle.preserveDx)}, ${Math.round(center.z)}; RADIUS ${site.workCycle.intakeRadius}. THE THREE REPAIR CHARGES CANNOT BE REFUNDED; THE FOUNDRY WILL STAY UNCOMMISSIONED.`);
+    log(world, 'Mason', `RETURN THIS SAME BALLAST TO EAST CRADLE ${Math.round(center.x + site.workCycle.cradleDx)}, ${Math.round(center.z)}; RADIUS ${site.workCycle.intakeRadius}. HOLD BELOW SPEED 5 FOR ${site.workCycle.settleS} SECONDS TO COMMIT CONSTRUCTION. BOTH FIELDS WAIT FOR YOUR CHOICE.`);
+  }
+  body.data.scanLabel = 'FOUNDRY BALLAST — WEST PRESERVATION / EAST CONSTRUCTION';
+  const calm = Math.hypot(body.vel?.x || 0, body.vel?.z || 0) < 5;
+  const west = distance(body.pos, { x: center.x + site.workCycle.preserveDx, z: center.z }) < site.workCycle.intakeRadius;
+  const east = distance(body.pos, { x: center.x + site.workCycle.cradleDx, z: center.z }) < site.workCycle.intakeRadius;
+  const choice = calm && west ? 'preservation' : calm && east ? 'construction' : null;
+  jurisdiction.settled = choice && choice === jurisdiction.choice ? jurisdiction.settled + dt : 0;
+  jurisdiction.choice = choice;
+  if (jurisdiction.settled < site.workCycle.settleS) return false;
+  jurisdiction.status = 'resolved';
+  jurisdiction.resolvedAt = Number(world.state.simTime) || 0;
+  jurisdiction.workpiece = site.siteId;
+  if (choice === 'preservation') {
+    rec.masonry.status = 'preserved';
+    body.data.scanLabel = 'PRESERVED FOUNDRY BALLAST — GANTRY CHARGES SPENT';
+    cycle.status = 'preserved';
+    cycle.commissioned = false;
+    log(world, 'Conservator', 'PRESERVATION CUSTODY ACCEPTED. BALLAST RETAINED; FOUNDRY UNCOMMISSIONED. THREE GANTRY CHARGES SPENT.');
+  } else {
+    cycle.status = 'placing';
+    log(world, 'Mason', 'CONSTRUCTION CUSTODY ACCEPTED. PRESERVATION CLAIM RELEASED. EAST CRADLE TRANSFER RESUMES.');
+  }
+  world.bus.emit('machine:jurisdictionResolved', { siteId: site.siteId, choice, entityId: body.id, chargesSpent: site.workCycle.charges });
+  world.bus.emit('audio:cue', { id: 'presentation.dock.capture', position: body.pos });
+  return choice === 'construction';
+}
 
 // This is velocity-matched work, not a second pose writer. Player pulls and collisions
 // can overcome it; a job completes only after the real body reaches the work envelope.
@@ -31,6 +131,10 @@ function drawWorkpiece(world, body, destination, dt, speed = 18) {
 
 export function tickCustodianWork(world, entity, dt) {
   const m = entity.data.machine;
+  if (MACHINE_SITES[m.siteId]?.workCycle) {
+    const site = MACHINE_SITES[m.siteId];
+    return tickFoundryRepair(world, entity, dt, site, siteRecord(world.state, m.siteId));
+  }
   if (m.siteId !== 'ashfall_maintenance_scene') return false;
   const state = world.state, site = MACHINE_SITES[m.siteId];
   const rec = siteRecord(state, m.siteId);
@@ -79,6 +183,10 @@ export function tickMasonWork(world, entity, dt) {
   const state = world.state, rec = siteRecord(state, m.siteId);
   const site = MACHINE_SITES[m.siteId];
   const center = world._toGlobal(site.center, site.sectorId);
+  if (site.workCycle && (!foundryReceipt(rec) || rec.maintenance?.completed !== true)) {
+    cycleRecord(rec);
+    return true;
+  }
   const job = rec.masonry ||= { status: 'moving', pos: { x: center.x - 260, z: center.z }, settled: 0 };
   if (job.status === 'lost') return true;
   let body = state.entityList.find(e => e.alive !== false && e.data?.machineWorkpiece === m.siteId);
@@ -91,6 +199,7 @@ export function tickMasonWork(world, entity, dt) {
       type: 'asteroid', pos: { ...job.pos }, vel: { x: 0, z: 0 }, rot: 0,
       radius: 34, hull: 1800, hullMax: 1800, mass: 180,
       collides: true, homeSectorId: site.sectorId,
+      flags: { persistent: true },
       physicsBody: { dynamic: true, radius: 34, mass: 180, material: 'asteroid' },
       data: { typeId: 'ast_metallic', tier: 0, tierCap: 0, yieldU: 0, oreHP: 1800, oreHPMax: 1800,
         name: 'Foundry ballast workpiece', machineWorkpiece: m.siteId,
@@ -101,6 +210,7 @@ export function tickMasonWork(world, entity, dt) {
   }
   workpieceBodies.set(job, body);
   job.pos = { x: body.pos.x, z: body.pos.z };
+  if (site.workCycle && !tickFoundryJurisdiction(world, body, dt, center, site, rec)) return true;
   if (job.status === 'placed') return true;
   const destination = { x: center.x + 180, z: center.z };
   drawWorkpiece(world, body, destination, dt, 14);
@@ -112,6 +222,7 @@ export function tickMasonWork(world, entity, dt) {
   job.settled = aligned ? job.settled + dt : 0;
   if (job.settled >= 3) {
     job.status = 'placed';
+    if (site.workCycle) { cycleRecord(rec).status = 'complete'; rec.workCycle.commissioned = true; }
     body.data.scanLabel = 'FOUNDRY BALLAST — EAST CRADLE COMPLETE';
     log(world, site.name, 'BALLAST SEATED. TRANSFER FIELD RELEASED.');
     world.bus.emit('machine:workpiecePlaced', { siteId: m.siteId, entityId: body.id });

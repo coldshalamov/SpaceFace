@@ -17,6 +17,8 @@ import { berthImage } from './saveBerth.js';
 const STYLE_ID = 'sf-orrery-save-layouts';
 const BONE = '236 230 216';
 const SL = 'html body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload';
+/** SL for desktop-only rules, after `html:root:not([data-sf-mobile="1"])`. */
+const SLD = 'body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
 const DISPLAY = 'font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wght" 800, "wdth" 125; font-weight:800; text-transform:uppercase;';
 const BODY = 'font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-variation-settings:normal; font-stretch:100%; text-transform:none;';
@@ -197,6 +199,38 @@ ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand
   ${SL} > .k-hang { height:calc(226px * var(--sv)); }
   ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
   ${SL} { row-gap:clamp(8px, 1.4vh, 30px) !important; padding-bottom:clamp(16px, 2.6vh, 84px) !important; }
+}
+/* UI polish: the reading runs the full height of the left column and the filmstrip stands under the
+   hull only, so LOAD, the name field and the hull record never print over the strip's berths (they
+   did at 960, 1280 and 1920). Desktop only; the phone has its own stack. */
+html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "page stage" "page hang" "foot foot" !important; }
+@media (max-width:1100px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-columns:minmax(356px, 38%) minmax(0, 1fr) !important; column-gap:28px !important; }
+  /* the context line (QUICK SAVE · CURRENT · FLOWN 20 DAYS AGO) fits the column on one line */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:10px; letter-spacing:.12em; }
+  /* a ~95px frame: the badge (CURRENT) takes its own line instead of running into the next slot */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badges { display:block !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { margin:0 !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:none; }
+}
+/* ≤860px-wide desktop: the strip under the hull is ~300–390px for five stations, so a slot's name,
+   badge and line set smaller and tighter and neighbouring words keep a gap (at 761 they touched) */
+@media (max-width:860px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { font-size:10px !important; letter-spacing:.08em !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { font-size:9px; letter-spacing:.1em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__sub.sf-slot-sub { font-size:10.5px !important; line-height:1.25; }
+}
+/* 960×540-class frames: the credits numeral steps down and the hull
+   record reads in two columns, so LOAD stands clear above EXPORT / IMPORT / BACK */
+@media (max-width:1100px) and (max-height:640px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-fact-n { font-size:calc(48px * var(--sv)); }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-save-portrait { display:grid; grid-template-columns:max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+    column-gap:6px; row-gap:5px; align-items:baseline; margin-bottom:4px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-head { grid-column:1 / -1; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line { display:contents; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(even) > .sf-ledger-k { padding-left:8px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait .sf-ledger-k { letter-spacing:.08em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait .sf-ledger-line .k-sentence { font-size:12px; line-height:1.3; }
 }
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }

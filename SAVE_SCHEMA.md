@@ -362,6 +362,21 @@ Current save version: `15`
 | `$.player.researchedNodes` | array | length 0 |
 | `$.player.researchPoints` | number | 0 |
 | `$.player.salvageRights` | number | 0 |
+| `$.player.stationLife` | object | {} |
+| `$.player.stationLife.deeds` | object | {} |
+| `$.player.stationLife.deeds.sector_helios_prime` | object | {} |
+| `$.player.stationLife.deeds.sector_helios_prime.encounterId` | string | schema-encounter |
+| `$.player.stationLife.deeds.sector_helios_prime.outcome` | string | defended |
+| `$.player.stationLife.deeds.sector_helios_prime.sectorId` | string | sector_helios_prime |
+| `$.player.stationLife.deeds.sector_helios_prime.shapeId` | string | schema-hauler |
+| `$.player.stationLife.deeds.sector_helios_prime.simTime` | number | 0 |
+| `$.player.stationLife.deeds.sector_helios_prime.text` | string | A hauler returned safely. |
+| `$.player.stationLife.rescueNotices` | object | {} |
+| `$.player.stationLife.rescueNotices.sector_helios_prime` | object | {} |
+| `$.player.stationLife.rescueNotices.sector_helios_prime.recordId` | string | schema-rescue |
+| `$.player.stationLife.rescueNotices.sector_helios_prime.sectorId` | string | sector_helios_prime |
+| `$.player.stationLife.rescueNotices.sector_helios_prime.simTime` | number | 0 |
+| `$.player.stationLife.schemaVersion` | number | 1 |
 | `$.player.stats` | object | {} |
 | `$.player.stats.biggestSingleProfit` | number | 0 |
 | `$.player.stats.creditsEarned` | number | 0 |

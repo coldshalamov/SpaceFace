@@ -81,6 +81,16 @@ const TRACE = process.argv.includes('--trace');
 // --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
 const CRUCIBLE = process.argv.includes('--crucible');
 const SETTLE_MS = Math.max(0, Number(argValue('--settle-ms')) || 0);
+// --gpu-timers turns the capability-gated GPU timer queries on for the profile window and prints the per-pass report
+// (drawPreparedFrame, bloom passes): which GPU pass the frame is waiting on, where the main thread cannot see it.
+const GPU_TIMERS = process.argv.includes('--gpu-timers');
+// --eval-file=PATH runs a script in the page once the flight has settled (instead of the profile window): the file is
+// one expression that evaluates to a Promise, and its resolved value is saved as eval-result.json. This is how a
+// within-session A/B (alternating blocks in the same flight) controls for this machine's noisy background load.
+const EVAL_FILE = argValue('--eval-file');
+// --heap-sampling starts the V8 sampling heap profiler before New Game and, at the end of the held-thrust tail, writes
+// which allocation sites still hold live memory (heap-sampling.json / heap-sampling.md), with the JS heap at each milestone.
+const HEAP_SAMPLING = process.argv.includes('--heap-sampling');
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
 ];
@@ -709,6 +719,15 @@ async function runSteadyFlightProfile(page, cdp) {
   if (CRUCIBLE) await launchCrucible(page); else await clickNewGameAndLaunch(page);
   await waitForFlight(page, 180_000, 1000);
   if (SETTLE_MS > 0) { log(`flying ${SETTLE_MS} ms before the profile window`); await page.waitForTimeout(SETTLE_MS); }
+  if (EVAL_FILE) {
+    const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
+    log(`running ${EVAL_FILE} in the page`);
+    const result = await page.evaluate(source);
+    fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
+    log(`eval result: ${JSON.stringify(result).slice(0, 3000)}`);
+    fs.writeFileSync(path.join(OUT_DIR, 'report.md'), ['# Eval run', '', 'See eval-result.json.', ''].join('\n'), 'utf8');
+    return;
+  }
 
   await page.evaluate(() => {
     window.__SF_PROFILE_LONGTASKS__ = [];
@@ -723,6 +742,15 @@ async function runSteadyFlightProfile(page, cdp) {
     } catch { /* longtask observation is best-effort */ }
   });
 
+  if (GPU_TIMERS) {
+    const gpuOn = await page.evaluate(() => {
+      const timers = window.SF?.state?.render?.gpuTimers;
+      if (!timers || typeof timers.setEnabled !== 'function') return 'no gpuTimers on state.render';
+      timers.setEnabled(true);
+      return timers.getCapability ? JSON.stringify(timers.getCapability()) : 'enabled';
+    }).catch((error) => String(error));
+    log(`gpu timers: ${gpuOn}`);
+  }
   log(`profiling ${WINDOW_MS} ms of held-thrust flight`);
   await cdp.send('Profiler.start');
   await page.keyboard.down('KeyW');
@@ -747,6 +775,16 @@ async function runSteadyFlightProfile(page, cdp) {
     return { installed: true, ...active.status(), lastBytes: last ? last.blob.size : 0, decoded };
   }).catch((error) => ({ error: String(error) }));
   log(`flight footage: ${JSON.stringify(footage)}`);
+  if (GPU_TIMERS) {
+    const report = await page.evaluate(() => {
+      const timers = window.SF?.state?.render?.gpuTimers;
+      return timers && typeof timers.getReport === 'function' ? timers.getReport() : null;
+    }).catch(() => null);
+    if (report) {
+      fs.writeFileSync(path.join(OUT_DIR, 'gpu-timers.json'), JSON.stringify(report, null, 1), 'utf8');
+      log(`gpu timers report: ${JSON.stringify(report).slice(0, 1800)}`);
+    } else log('gpu timers: no report');
+  }
   await page
     .evaluate(() => {
       try { window.__SF_PROFILE_LONGTASK_OBSERVER__?.disconnect(); } catch { /* already gone */ }
@@ -792,6 +830,41 @@ function writeTraceSummary(traceFile, clockSyncWallMs, timeline, stages) {
   log(`trace summary ${path.join(OUT_DIR, 'trace-summary.md')} (${events.length} events)`);
 }
 
+/** Live allocation sites from V8's sampling heap profiler, rolled up by function and by source file. */
+async function writeHeapSampling(cdp, heapMarks) {
+  // stopSampling returns the profile of objects still alive when it is called.
+  const { profile } = await cdp.send('HeapProfiler.stopSampling');
+  const byFunction = new Map();
+  const byFile = new Map();
+  let total = 0;
+  const shortUrl = (url) => String(url || '(native)').replace(/^.*\/(src|vendor|scripts)\//, '$1/').replace(/^.*SpaceFace\//, '');
+  const walk = (node) => {
+    const self = node.selfSize || 0;
+    if (self > 0) {
+      const frame = node.callFrame || {};
+      const file = shortUrl(frame.url);
+      const fn = `${frame.functionName || '(anonymous)'} @ ${file}:${(frame.lineNumber ?? 0) + 1}`;
+      byFunction.set(fn, (byFunction.get(fn) || 0) + self);
+      byFile.set(file, (byFile.get(file) || 0) + self);
+      total += self;
+    }
+    for (const child of node.children || []) walk(child);
+  };
+  walk(profile.head);
+  const top = (map, n) => [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n)
+    .map(([name, bytes]) => ({ name, mb: +(bytes / 1048576).toFixed(1) }));
+  const result = { liveSampledMB: +(total / 1048576).toFixed(1), heapMarks, byFile: top(byFile, 25), byFunction: top(byFunction, 40) };
+  fs.writeFileSync(path.join(OUT_DIR, 'heap-sampling.json'), JSON.stringify(result, null, 1), 'utf8');
+  const rows = (list) => list.map((row) => `| ${row.mb} | \`${row.name}\` |`).join('\n');
+  fs.writeFileSync(path.join(OUT_DIR, 'heap-sampling.md'), [
+    '# Live heap by allocation site (V8 sampling profiler, 16 KB interval)', '',
+    `Sampled live total: ${result.liveSampledMB} MB. JS heap at milestones: ${heapMarks.map((m) => `${m.label} ${m.usedMB} MB`).join(', ')}.`, '',
+    '## By source file', '', '| MB | file |', '|---:|---|', rows(result.byFile), '',
+    '## By function', '', '| MB | function |', '|---:|---|', rows(result.byFunction), '',
+  ].join('\n'), 'utf8');
+  log(`heap sampling: ${result.liveSampledMB} MB live sampled; ${heapMarks.map((m) => `${m.label} ${m.usedMB} MB`).join(', ')}`);
+}
+
 async function runLaunchProfile(page, cdp, profileNote) {
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
@@ -799,6 +872,16 @@ async function runLaunchProfile(page, cdp, profileNote) {
   await page.waitForFunction(() => typeof window.SF?.bus?.on === 'function', null, { timeout: 60_000 })
     .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
   await installLaunchObservers(page);
+  const heapMarks = [];
+  const markHeap = async (label) => {
+    const used = await page.evaluate(() => (performance.memory ? performance.memory.usedJSHeapSize : null)).catch(() => null);
+    heapMarks.push({ label, usedMB: used == null ? null : Math.round(used / 1048576) });
+  };
+  if (HEAP_SAMPLING) {
+    await cdp.send('HeapProfiler.enable');
+    await cdp.send('HeapProfiler.startSampling', { samplingInterval: 16384 });
+    await markHeap('before New Game');
+  }
   await cdp.send('Profiler.start');
   if (TRACE) await startTrace(cdp);
   // One user-timing mark on both clocks: the trace's monotonic microseconds <-> Date.now().
@@ -821,6 +904,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const launchWallMs = Date.now();
 
   const flightWallMs = await waitForFlight(page, 240_000, 250);
+  if (HEAP_SAMPLING) await markHeap('first flight frame');
   const atFlight = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
   log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; holding thrust ${FLIGHT_TAIL_MS} ms`);
 
@@ -829,6 +913,10 @@ async function runLaunchProfile(page, cdp, profileNote) {
   await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
+  if (HEAP_SAMPLING) {
+    await markHeap('end of flight tail');
+    await writeHeapSampling(cdp, heapMarks);
+  }
   const traceFile = TRACE ? path.join(OUT_DIR, 'trace.json') : null;
   if (TRACE) await stopTraceToFile(cdp, traceFile);
 

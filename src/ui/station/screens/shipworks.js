@@ -304,6 +304,21 @@ export function variantBonusWords(bonuses) {
   return parts.join(' · ');
 }
 
+let fieldMeasureCtx = null;
+/** Width of `text` set in an input's computed font (canvas metrics; 0 when there is no canvas). */
+function fieldTextWidth(text, cs) {
+  if (!fieldMeasureCtx) {
+    const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    fieldMeasureCtx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+    if (!fieldMeasureCtx) return 0;
+  }
+  fieldMeasureCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  // Tracking is added by hand: this private context never sets ctx.letterSpacing, so measureText
+  // returns untracked width and the two never double-count.
+  const spacing = parseFloat(cs.letterSpacing) || 0;
+  return fieldMeasureCtx.measureText(text).width + spacing * text.length;
+}
+
 /**
  * The system labels around the hull. Every bead is inside the hull's box (`keepOut`: the render's
  * ink on the poster, the beads' own spread on the live hull, never narrower than centre +-100);
@@ -3252,6 +3267,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           : { left: rr.left, top: rr.top, right: rr.right, bottom: rr.bottom };
       }
     }
+    // The rename field prints its value (or, empty, its placeholder) without a text node, so the
+    // walk above never sees it and a card could land on "Name this hull". Measure that string in
+    // the field's own font from its content edge.
+    for (const input of nameplateEl.querySelectorAll('input')) {
+      const text = input.value || input.placeholder || '';
+      const box = input.getBoundingClientRect();
+      if (!text.trim() || box.width <= 0 || box.height <= 0) continue;
+      const cs = getComputedStyle(input);
+      const padL = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.borderLeftWidth) || 0);
+      const w = Math.min(box.width - padL, fieldTextWidth(text, cs));
+      if (!(w > 0)) continue;
+      const rr = { left: box.left + padL, top: box.top, right: box.left + padL + w, bottom: box.bottom };
+      ink = ink
+        ? { left: Math.min(ink.left, rr.left), top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
+        : rr;
+    }
     if (!ink) return null;
     return { left: ink.left, top: ink.top, right: ink.right, bottom: ink.bottom, width: ink.right - ink.left, height: ink.bottom - ink.top };
   }
@@ -4895,6 +4926,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!input) return;
     ev.stopPropagation(); // typing must never reach canvas or station hotkeys
     if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+  });
+  // A card may sit to the right of a short name (the ink zone follows the text, not the field's
+  // empty right side), so re-place the cards as the name grows under typing, not only on change.
+  nameplateEl.addEventListener('input', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
   });
   nameplateEl.addEventListener('change', (ev) => {
     const input = ev.target.closest('input[data-ship-name]');

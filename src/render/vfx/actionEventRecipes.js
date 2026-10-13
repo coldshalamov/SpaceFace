@@ -98,6 +98,16 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       abandoned:SURVIVOR_POD_RETIRE.abandoned,
       captured:SURVIVOR_POD_RETIRE.captured,
     }},
+  // A kilnback field has no hull to blame: the burn itself primes on the hull it is cooking.
+  'fields:thermalHit': {verb:'prime',primitive:'capture',color:0xff8a4a,life:.5,continuous:false},
+  // The hunter visibly stands down when the pod errand ends; the reason rides as the kind.
+  'survivorPod:huntEnded': {verb:'cool',primitive:'deposition',color:0x9fc4d4,life:.6,continuous:false},
+  // Anvil custody moves hull to hull: a transfer bead along the pair, not a market toast.
+  'traffic:anvilTransfer': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.6,continuous:false},
+  // A discovery has no honest world anchor yet: it ticks at the player's own instrument.
+  'formation:discovered': {verb:'survey',primitive:'induction',color:0x9fd4e8,life:.55,continuous:false},
+  // Swapping holds with a parked hull answers on the player's hull, units named in the receipt.
+  'cargo:parkedTransfer': {verb:'transfer',primitive:'connection',color:0xd8c49a,life:.55,continuous:false},
   // Departure is the cradle run backwards: a vent along the nose, not a second inbound chevron.
   'dock:undocked': {verb:'vent',primitive:'compression',color:0xc8dff5,life:.7,continuous:false},
   // Cargo leaves along the ship's impulse. The receipt supplies the point; the sim event does not.
@@ -280,6 +290,27 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
       return out;
     }
     return {...p, kind: p.outcome, pos: copyPoint(p.pos), targetId: null, sourceId: p.entityId, attachToTarget: false};
+  }
+  if (name === 'fields:thermalHit') {
+    const target = body(state, p && p.targetId);
+    if (!target || target.alive === false || !point(target.pos)) return null;
+    return {...p, targetId: target.id, sourceId: target.id, attachToTarget: true};
+  }
+  if (name === 'survivorPod:huntEnded') {
+    const hunter = body(state, p && p.hunterId);
+    if (!hunter || hunter.alive === false || !point(hunter.pos)) return null;
+    return {...p, kind: p.reason || undefined, targetId: hunter.id, sourceId: hunter.id, attachToTarget: true};
+  }
+  if (name === 'traffic:anvilTransfer') {
+    const source = body(state, p && p.sourceId), receiver = body(state, p && p.receiverId);
+    if (!point(source?.pos) || !point(receiver?.pos)) return null;
+    return {...p, targetId: receiver.id, sourceId: source.id, attachToTarget: true,
+      direction: {x: receiver.pos.x - source.pos.x, z: receiver.pos.z - source.pos.z}};
+  }
+  if (name === 'formation:discovered' || name === 'cargo:parkedTransfer') {
+    const ship = body(state, state && state.playerId);
+    if (!point(ship?.pos) || ship.alive === false) return null;
+    return {...p, targetId: ship.id, sourceId: ship.id, attachToTarget: true};
   }
   if (name === 'mines:triggered' || name === 'mines:detonated') {
     if (!point(p && p.pos)) return null;
