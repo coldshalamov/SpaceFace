@@ -64,6 +64,9 @@
   <!-- bootEntry gates the gate itself (video kick, ring arm, gate arm) — its fetch must
        dominate the warming tide, not ride it (W140-B2). -->
   <link rel="modulepreload" fetchpriority="high" href="./src/ui/bootEntry.js" />
+  <!-- bootEntry imports the startup-failure responder statically; hint it with the entry so the
+       failure path adds no round trip to the critical boot chain. -->
+  <link rel="modulepreload" fetchpriority="high" href="./src/ui/bootStartupFailure.js" />
   <!-- Station sheet set (~230KB) injected by ensureStationStylesheet() inside the title
        window — warm the bytes now so the later injection is a CSSOM parse, not fetches
        (W140-B4 safe half; cascade order untouched). -->
@@ -223,7 +226,7 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-                                  <!-- modulepreload:registry:begin -->
+                                    <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -1087,6 +1090,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmOpticArenas.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmPerks.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmStakes.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmThreatMark.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmThreats.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/synergies.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/tallyThree.js" />

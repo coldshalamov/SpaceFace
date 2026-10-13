@@ -2,6 +2,11 @@
 import { mountBootRing } from './orrery/bootRing.js';
 import { yieldForBootPaint } from '../core/bootScheduler.js';
 import { getBootVisualizer } from './bootVisualizer.js';
+import { clearStartupRetry, presentStartupFailure } from './bootStartupFailure.js';
+
+function sessionStore() {
+  try { return window.sessionStorage; } catch { return null; }
+}
 
 async function start() {
   const overlay = document.getElementById('boot-overlay');
@@ -25,20 +30,18 @@ async function start() {
   await yieldForBootPaint();
   try {
     await import('../main.js');
+    clearStartupRetry(sessionStore());
     // Boot's rich optics are baked into its clip. The live remix remains on the
     // title route, but cannot put a frozen opaque GL canvas over native boot media.
     void import('./introSignalRemixBoot.js').then(module => module.installIntroSignalRemix())
       .catch(() => { /* Decoration cannot block boot. */ });
   } catch (error) {
     ring?.stop(); artwork?.stop();
-    if (overlay) {
-      overlay.classList.remove('hidden'); overlay.style.display = 'flex';
-      overlay.setAttribute('aria-busy', 'false');
-      const label = overlay.querySelector('[data-loading-label]');
-      const detail = overlay.querySelector('[data-loading-detail]');
-      if (label) label.textContent = 'Startup could not finish';
-      if (detail) { detail.textContent = 'Reload to retry. Your saved games have not been changed.'; detail.classList.add('boot-error'); }
-    }
+    // A failed dynamic import is cached for the document's life, so the one recovery that works
+    // is a fresh load: reload once on our own, then stop and say what failed rather than loop.
+    presentStartupFailure({
+      overlay, error, storage: sessionStore(), reload: () => window.location.reload(),
+    });
     console.error('[SpaceFace] game module failed to load', error);
   }
 }
