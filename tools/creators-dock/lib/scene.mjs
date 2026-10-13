@@ -157,14 +157,22 @@ function exactlyOnePlayerIssue(found) {
   return `scene needs exactly one player actor (found ${found})`;
 }
 
+function badStoredFlagIssue(object) {
+  if (!object || typeof object !== 'object') return null;
+  if (!Object.prototype.hasOwnProperty.call(object, 'isPlayer')) return null;
+  if (object.isPlayer === true || object.isPlayer === false) return null;
+  return `${object.id ? `${object.id}: ` : ''}isPlayer must be a boolean`;
+}
+
 export function playerCanonIssues(project) {
   const issues = [];
   let players = 0;
   for (const object of (project && project.objects) || []) {
-    if (!isActorKind(object)) continue;
-    if (object.isPlayer === true) players += 1;
-    const issue = nonBooleanPlayerIssue(object);
-    if (issue) issues.push(issue);
+    const label = object && object.id ? `${object.id}: ` : '';
+    for (const issue of issuesForObject(object)) issues.push(`${label}${issue}`);
+    const flag = badStoredFlagIssue(object);
+    if (flag) issues.push(flag);
+    if (isPlayerActor(object)) players += 1;
   }
   if (players !== 1) issues.push(exactlyOnePlayerIssue(players));
   return issues;
@@ -193,7 +201,11 @@ export function placePlayer(project) {
   const found = countPlayers(project.objects);
   if (found > 1) return { ok: false, project, issues: [exactlyOnePlayerIssue(found)] };
   const existing = (project.objects || []).find((object) => isPlayerActor(object));
-  if (existing) return { ok: true, project, id: existing.id, issues: [] };
+  if (existing) {
+    const stored = clone(project);
+    const gated = requireOnePlayer(project, { ok: true, project: stored, id: existing.id, issues: [] });
+    return gated.ok ? gated : { ok: false, project, issues: gated.issues };
+  }
   let id = 'player';
   let n = 1;
   while (objectById(project, id)) {
@@ -442,7 +454,6 @@ export function projectIssues(project) {
   if (!Number.isInteger(project.ticks) || project.ticks < 1) issues.push('ticks must be a positive integer');
   const ids = new Set();
   for (const object of project.objects || []) {
-    for (const issue of issuesForObject(object)) issues.push(`${object && object.id}: ${issue}`);
     if (object && ids.has(object.id)) issues.push(`duplicate id "${object.id}"`);
     if (object && object.id) ids.add(object.id);
   }

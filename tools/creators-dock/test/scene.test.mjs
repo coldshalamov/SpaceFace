@@ -705,3 +705,59 @@ test('a player toJSON that clears isPlayer is not committed or opened', () => {
   const created = createHistory(project);
   assert.equal(created.present, null);
 });
+
+test('placePlayer rejects a sibling toJSON that clears isPlayer', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const cargo = objectById(scene, 'cargo');
+  Object.defineProperty(cargo, 'toJSON', {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      body.isPlayer = null;
+      return body;
+    },
+  });
+  const placed = placePlayer(scene);
+  assert.equal(placed.ok, false);
+  assert.equal(placed.project, scene);
+  assert.equal(objectById(placed.project, 'player').isPlayer, true);
+  assert.equal(placed.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+});
+
+test('a toJSON that turns an actor into a trigger cannot keep isPlayer null', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const cargo = objectById(scene, 'cargo');
+  Object.defineProperty(cargo, 'toJSON', {
+    enumerable: false,
+    value() {
+      return {
+        id: this.id,
+        kind: 'trigger',
+        shape: 'circle',
+        x: this.x,
+        z: this.z,
+        radius: 10,
+        labOnly: true,
+        isPlayer: null,
+      };
+    },
+  });
+  const added = addObject(scene, plainActor('rock'));
+  assert.equal(added.ok, false);
+  assert.equal(added.project, scene);
+  assert.equal(objectById(added.project, 'rock'), null);
+  assert.equal(added.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+  assert.equal(playerIds(added.project).length, 1);
+
+  const player = objectById(scene, 'player');
+  const replaced = replaceObject(scene, 'player', { ...player });
+  assert.equal(replaced.ok, false);
+  assert.equal(replaced.project, scene);
+  assert.equal(objectById(replaced.project, 'player').isPlayer, true);
+
+  const cloned = cloneObject(scene, 'player', 'player_copy');
+  assert.equal(cloned.ok, false);
+  assert.equal(cloned.project, scene);
+  assert.equal(objectById(cloned.project, 'player_copy'), null);
+  assert.equal(objectById(cloned.project, 'cargo').kind, 'actor');
+});
