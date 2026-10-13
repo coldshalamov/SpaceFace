@@ -5,7 +5,9 @@ import { openSession, resetSession } from './session.js';
 import { validateCatalog } from './validate.js';
 
 export async function runScenario(scenario, strategyId, options = {}) {
-  const session = await openSession(scenario.id, { strategyId, scenario, trace: !!options.trace, tape: options.tape });
+  const session = await openSession(scenario.id, {
+    strategyId, scenario, trace: !!options.trace, tape: options.tape, exhibit: true,
+  });
   try {
     const result = await session.play();
     return {

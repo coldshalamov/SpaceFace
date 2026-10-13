@@ -140,6 +140,7 @@ function stepMotor(entity, motor, simTime, dt) {
   const accelCap = motor.accel > 0 ? motor.accel : 60;
   const accel = Math.max(-accelCap, Math.min(accelCap, err / dt));
   const mass = (entity.physicsBody && entity.physicsBody.mass) || entity.mass || 1;
+  entity.data.galleryMotorWorked = true;
   queuePhysicsImpulse(entity, {
     x: hx * accel * mass * dt,
     y: 0,

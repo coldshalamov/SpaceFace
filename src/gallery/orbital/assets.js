@@ -23,6 +23,8 @@ export const GALLERY_ASSETS = Object.freeze({
   bumper: Object.freeze({
     id: 'helios-rock-a',
     label: 'Rock bumper',
+    named: true,
+    fracture: Object.freeze({ closingSpeed: 40, into: 'mass' }),
     lod: Object.freeze([
       'assets/ships/release/render-packages/helios-rock-a/render.glb',
     ]),
@@ -30,6 +32,8 @@ export const GALLERY_ASSETS = Object.freeze({
   anchor: Object.freeze({
     id: 'helios-rock-b',
     label: 'Anchor rock',
+    named: true,
+    fracture: Object.freeze({ closingSpeed: 80, into: 'mass' }),
     lod: Object.freeze([
       'assets/ships/release/render-packages/helios-rock-b/render.glb',
     ]),
@@ -37,6 +41,8 @@ export const GALLERY_ASSETS = Object.freeze({
   traffic: Object.freeze({
     id: 'welding-drone',
     label: 'Lane drone',
+    named: true,
+    fracture: Object.freeze({ closingSpeed: 36, into: 'mass' }),
     lod: Object.freeze([
       'assets/ships/release/render-packages/welding-drone/render.glb',
     ]),
@@ -44,6 +50,8 @@ export const GALLERY_ASSETS = Object.freeze({
   survivor: Object.freeze({
     id: 'tally-three',
     label: 'Survivor pod',
+    named: true,
+    fracture: Object.freeze({ closingSpeed: 48, into: 'mass' }),
     lod: Object.freeze([
       'assets/ships/release/render-packages/tally-three/render.glb',
     ]),
