@@ -41,6 +41,29 @@ function texturePayloadIntact(texture) {
 
 export { texturePayloadIntact };
 
+// Admission draws retain a texture's CPU chain across the bind. Detach and the
+// shared-source release both empty mipmaps after a proven upload; a bind that
+// still has to upload (copied mark, fresh properties, version bump) must keep
+// the bytes until that draw returns.
+const textureUploadLeases = new WeakMap();
+
+export function retainTextureUploadLease(texture) {
+  if (!texture || texture.isTexture !== true) return () => {};
+  textureUploadLeases.set(texture, (textureUploadLeases.get(texture) || 0) + 1);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const next = (textureUploadLeases.get(texture) || 1) - 1;
+    if (next <= 0) textureUploadLeases.delete(texture);
+    else textureUploadLeases.set(texture, next);
+  };
+}
+
+export function textureUploadLeased(texture) {
+  return (textureUploadLeases.get(texture) || 0) > 0;
+}
+
 const entries = new Map(); // key -> { owner: Texture, users: Set<Texture> }
 let hits = 0;
 let misses = 0;
@@ -465,6 +488,12 @@ export function releaseSharedImageSource(texture, isResident, isDetachCovered) {
     if (!covered(user)) {
       // Resident but gate-blind: its payload is unrecoverable once cleared.
       if (source && user.source === source) uncoveredSharesSource = true;
+      continue;
+    }
+    // An exact-target draw is about to upload this user. Clearing the chain
+    // here is the release-after-refill throw (mipmaps[0].width).
+    if (textureUploadLeased(user)) {
+      allResident = false;
       continue;
     }
     if (Array.isArray(user.mipmaps) && user.mipmaps.length > 0) {

@@ -40,6 +40,7 @@
   background: var(--bg);
   transition: opacity .8s ease;
   overflow: hidden;
+  contain: layout paint;
 }
 #boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 

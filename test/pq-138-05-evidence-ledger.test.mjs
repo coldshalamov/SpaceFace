@@ -492,7 +492,7 @@ test('one Ceres kill leaves wreck, thinned traffic, a moved price, a rumor, and 
     assert.match(frame, /sxb-berth__route/, 'the Orbital berth frame has the leftover route line');
     assert.match(
       appSrc,
-      /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl \}\s*,\s*arrival\s*,/,
+      /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl(?:, state: s)? \}\s*,\s*arrival\s*,/,
       'stationApp still hands the cached berth article to writeBerthArrival',
     );
     assert.equal(view.news, rumorHeadline, 'the berth news line is the leftover rumor, not only world state');

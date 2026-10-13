@@ -45,6 +45,7 @@ import { insertDressingRow } from '../world/dressingTable.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan, bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
+import { dockIntentStatus } from '../core/dockIntent.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
@@ -525,6 +526,10 @@ export function handleAlienEcologyEvent(world, type, payload) {
       const e = payload.id != null && state.entities.get(payload.id);
       const eco = e && e.data && e.data.ecology;
       if (eco && eco.speciesId) {
+        // A death receipt is once per body. Duplicate drains must not mint another
+        // harvest, bloom patch or juvenile brood from the same carcass.
+        if (eco.deathProcessed || eco.captureCommitted) break;
+        eco.deathProcessed = true;
         const r = eco.siteId ? siteRecord(state, eco.siteId) : null;
         const now = Number(state.simTime) || 0;
         if (eco.faunaKey && r) r.deadFauna[eco.faunaKey] = true;
@@ -577,18 +582,27 @@ export function handleAlienEcologyEvent(world, type, payload) {
       const e = payload.targetId != null && state.entities.get(payload.targetId);
       const eco = e && e.data && e.data.ecology;
       if (!eco || !eco.faunaKey) break;
+      if (e.alive === false || eco.captureCommitted) break;
       if (eco.driveState !== 'captured') break;
       const cradle = fittedModuleDefs(state).reduce(
         (m, d) => Math.max(m, Number(d && d.mods && d.mods.captureSurvivalMult) || 0), 0,
       );
       if (cradle <= 0) break;
+      if ((eco.captureStress || 0) >= 1) {
+        eco.driveState = 'flee';
+        eco.fleeFrom = { x: e.pos.x, z: e.pos.z };
+        toast('Capture refused — the tow agitated the specimen. Release it to settle, then approach gently.', 'warn', 5);
+        break;
+      }
       eco.driveState = 'captured'; // keep latched state consistent for despawn
       const added = addCargo(state, LIVE_SPECIMEN_CMDTY, 1, 'capture_cradle');
       if (added <= 0) {
+        eco.driveState = 'drift';
         toast('Hold full — the cradled specimen could not be berthed.', 'warn', 4);
         break;
       }
       const species = faunaSpeciesById(eco.speciesId);
+      eco.captureCommitted = true;
       if (world.helpers && typeof world.helpers.removeEntity === 'function') {
         world.helpers.removeEntity(e.id, { immediate: true });
       } else {
@@ -602,9 +616,18 @@ export function handleAlienEcologyEvent(world, type, payload) {
       break;
     }
     case 'dock:docked': {
+      // Berth care belongs to the current actor/sector. A delayed receipt from an old
+      // hull or departed station cannot purge the body that now occupies the player id.
+      if (dockIntentStatus(state, payload) === 'stale') break;
       // AE-125 (G08): a fitted Hull Purge Ring fires once per berth — fouled hulls leave clean.
       const ae = ensureAlienEcologyState(state);
       if (!fittedFlag(state, 'hullPurgeRing')) break;
+      for (const entity of indexedTypeScan(state, 'fauna')) {
+        if (entity?.data?.ecology?.speciesId === 'hull_leech'
+          && entity.data.ecology.attachTargetId === state.playerId) {
+          detachHullLeech(world, entity, 'purge');
+        }
+      }
       if ((ae.exposure || 0) <= 0.02) break;
       ae.exposure = 0;
       ae._exposureWarned = false;
@@ -1207,10 +1230,11 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
 
   // AE-171 — juvenile promotion: rupture-spawned juveniles that survive on an awake/bloom
   // site mature into full adults (transient — they still never persist in deadFauna).
-  if (eco.juvenile && (now - (eco.bornAt || now)) > 120
+  if (eco.juvenile && Number.isFinite(eco.bornAt) && (now - eco.bornAt) > 120
       && (rec.state === 'awake' || rec.state === 'bloom')) {
     eco.juvenile = false;
     e.radius = species.radius;
+    e.data.scannerSignalKind = 'anomaly';
     // Radius grew: invalidate footprint-epoch caches (hash query pads, uncovered-static
     // lists) that are sized from the member's spawn-stable radius assumption.
     bumpCollidesFlipEpoch();
@@ -1223,11 +1247,52 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   const tether = state.player && state.player.tether;
   const latched = !!(species.capturable && tether && tether.active && tether.targetId === e.id);
   if (latched) {
+    const rel = Math.hypot((e.vel?.x || 0) - (player?.vel?.x || 0),
+      (e.vel?.z || 0) - (player?.vel?.z || 0));
+    const vx = e.vel?.x || 0, vz = e.vel?.z || 0;
+    const acceleration = eco.captureLastVelocity
+      ? Math.hypot(vx - eco.captureLastVelocity.x, vz - eco.captureLastVelocity.z) / dt : 0;
+    eco.captureLastVelocity = { x: vx, z: vz };
+    const cradle = fittedModuleDefs(state).reduce((mult, def) => {
+      const value = Number(def?.mods?.captureSurvivalMult);
+      return Number.isFinite(value) && value > 0 ? Math.min(mult, value) : mult;
+    }, 1);
+    const load = Math.max(0, (rel - 20) / 40) + Math.max(0, (acceleration - 40) / 80);
+    eco.captureStress = Math.min(2, Math.max(0, (eco.captureStress || 0) + dt * (load * cradle - 0.15)));
+    if (eco.captureStress >= 0.5 && !eco.captureWarned) {
+      eco.captureWarned = true;
+      world.bus.emit('toast', { text: 'Specimen struggling — ease the tow before cradling it.', kind: 'warn', ttl: 4 });
+    }
     eco.driveState = 'captured';
     eco.driveT = 0;
     return; // physics tows it; no self-motion
   }
+  eco.captureLastVelocity = null;
+  eco.captureStress = Math.max(0, (eco.captureStress || 0) - dt * 0.25);
+  if (eco.captureStress < 0.5) eco.captureWarned = false;
   if (eco.driveState === 'captured') eco.driveState = 'drift';
+
+  if (eco.speciesId === 'hull_leech' && eco.attachTargetId != null) {
+    const target = state.entities.get(eco.attachTargetId);
+    if (!target || target.alive === false || target.occupantGeneration !== eco.attachGeneration
+      || target.id !== state.playerId || target.homeSectorId && target.homeSectorId !== sectorId) {
+      detachHullLeech(world, e, 'target_lost');
+    } else {
+      const quiet = Math.hypot(target.vel?.x || 0, target.vel?.z || 0) < 8;
+      eco.quietT = quiet ? (eco.quietT || 0) + dt : 0;
+      if (eco.quietT >= 8) detachHullLeech(world, e, 'quiet');
+      else {
+        const angle = (target.rot || 0) + (eco.attachAngle ?? Math.PI / 2);
+        const radius = (target.radius || 10) + species.radius * 0.5;
+        e.pos.x = target.pos.x + Math.cos(angle) * radius;
+        e.pos.z = target.pos.z + Math.sin(angle) * radius;
+        e.rot = angle;
+        const ae = ensureAlienEcologyState(state);
+        ae.exposure = Math.min(1, (ae.exposure || 0) + dt * 0.015);
+        return;
+      }
+    }
+  }
 
   // ── AE-096 precursor_tone: inside a suppression field, fauna scatter outward — the
   // machine's volume overrides every other drive. ──
@@ -1271,7 +1336,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   // Furnace Maw heat rule: shadow at range until the target is heat-saturated, then charge.
   if (species.heatHunter && px != null) {
     eco.heatSat = Math.max(0, (eco.heatSat || 0)
-      + (playerSpeed > 55 ? dt * (sens.heat || 1) : -dt * 0.5));
+      + (playerSpeed > 55 && playerD < alertR * 1.4 ? dt * (sens.heat || 1) : -dt * 0.5));
   }
 
   // Relay broadcast: coherent fauna bias headings toward the shepherd's slow consensus turn.
@@ -1348,6 +1413,10 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       if (eco.driveState !== 'flee') setDrive(eco, 'flee');
     }
   }
+
+  // A quiet/purge release outranks nearby hull curiosity during its recovery window.
+  // Resolve flee before the switch so the body actually leaves reattachment range.
+  if (species.id === 'hull_leech' && now < (eco.detachUntil || 0)) setDrive(eco, 'flee');
 
   // ── drive behaviors: kinematic steering toward intent ──
   const speedMult = coherent ? 1 : species.coherenceLoss.speedMult;
@@ -1542,6 +1611,14 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
       let tz = siteGlobalAnchor.z;
       if (px != null && playerD < (species.attachR || 70) + species.preferredR) { tx = px; tz = pz; }
       const d = Math.sqrt(dist2(e.pos.x, e.pos.z, tx, tz));
+      if (species.id === 'hull_leech' && player?.pos && tx === px && tz === pz
+        && d <= (player.radius || 10) + species.radius + 6) {
+        eco.attachTargetId = player.id;
+        eco.attachGeneration = player.occupantGeneration;
+        eco.attachAngle = Math.atan2(e.pos.z - pz, e.pos.x - px) - (player.rot || 0);
+        eco.quietT = 0;
+        world.bus.emit('toast', { text: 'Hull leech attached — come to rest for eight seconds, or dock with a Hull Purge Ring.', kind: 'warn', ttl: 6 });
+      }
       if (d > 6) {
         targetX = tx;
         targetZ = tz;
@@ -1591,6 +1668,22 @@ function setDrive(eco, next) {
   if (!next || eco.driveState === next) return;
   eco.driveState = next;
   eco.driveT = 0;
+}
+
+function detachHullLeech(world, entity, reason) {
+  const eco = entity.data.ecology;
+  if (eco.attachTargetId == null) return;
+  const host = world.state.entities.get(eco.attachTargetId);
+  const origin = host && host.occupantGeneration === eco.attachGeneration && host.pos
+    ? host.pos : entity.pos;
+  eco.attachTargetId = null;
+  eco.attachGeneration = null;
+  eco.quietT = 0;
+  eco.detachUntil = (Number(world.state.simTime) || 0) + 15;
+  eco.fleeFrom = { ...origin };
+  setDrive(eco, 'flee');
+  world.bus.emit('toast', { text: reason === 'purge' ? 'Purge ring dislodges the hull leech.'
+    : 'Hull leech releases its grip — your hull is clear.', kind: 'good', ttl: 4 });
 }
 
 // ── Phase 27 (L-table): the evidence ledger — what the player has proven, persisted. ────

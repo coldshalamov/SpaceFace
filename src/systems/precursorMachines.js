@@ -29,6 +29,7 @@ import { commodityIsBiohazard } from '../data/commodities.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSiteRuntime.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -219,7 +220,9 @@ export function tickMachineLayer(world, dt) {
           rec.directiveIssued = true;
           world.bus.emit('comms:log', {
             from: site.name,
-            text: directiveText(state, site.directive),
+            text: (site.directive === 'HOLD' || site.directive === 'WITNESS')
+              ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
+              : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`,
             kind: 'machine',
           });
         }
@@ -280,6 +283,7 @@ export function tickMachineLayer(world, dt) {
       } else if (site.directive === 'HOLD' || site.directive === 'WITNESS') {
         const pv = player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;
         if (d < site.radius + 120 && pv < 8) {
+          rec.holdFailure = null;
           rec.holdT = (rec.holdT || 0) + dt;
           if (rec.holdT > holdWindowS(state)) {
             rec.directiveResolved = true;
@@ -322,10 +326,18 @@ export function tickMachineLayer(world, dt) {
             refreshMachineLabels(world);
           }
         } else {
+          const cause = d >= site.radius + 120 ? 'OUTSIDE HOLD VOLUME' : 'SPEED ABOVE HOLD LIMIT';
+          if (rec.holdT > 0 && rec.holdFailure !== cause) {
+            rec.holdFailure = cause;
+            world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+              text: `${cause}. HOLD TIMER RESET; RETURN INSIDE RADIUS ${site.radius + 120} AT SPEED BELOW 8.` });
+          }
           rec.holdT = 0;
           if (rec.directiveT > windowS) {
             rec.directiveResolved = true;
             advanceMachineProtocol(state, 'violated');
+            world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+              text: 'HOLD WINDOW EXPIRED. PROTOCOL VIOLATION LOGGED. THE EXCEPTION CHAMBER ACCEPTS COUNTER-EVIDENCE.' });
             refreshMachineLabels(world);
           }
         }
@@ -357,6 +369,7 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'custodian': {
+        if (tickCustodianWork(world, e, dt)) break;
         // Patrol the structure, pause for a repair beat.
         const w = now * 0.07 + m.phase;
         const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
@@ -418,6 +431,7 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'mason': {
+        if (tickMasonWork(world, e, dt)) break;
         // AE-234 (I07): orbits its workpiece; the weld cadence emits a ping beat.
         const w = now * 0.10 + m.phase;
         const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
@@ -439,13 +453,16 @@ export function tickMachineLayer(world, dt) {
         const fault = ae.machineProtocol === 'revoked' || ae.machineProtocol === 'violation';
         if (!fault) {
           m.awakened = false;
+          m.sweepT = 0;
+          m.enforcementInRange = false;
           break;
         }
         if (!m.awakened) {
           m.awakened = true;
+          m.sweepT = 0;
           world.bus.emit('comms:log', {
             from: 'Verge lattice', kind: 'machine',
-            text: 'ENFORCEMENT FRAME ACTIVE. REMAIN WITHIN COMPLIANCE RADIUS.',
+            text: `ENFORCEMENT FRAME ACTIVE. BIOLOGICAL MANIFEST SUBJECT TO PURGE AFTER ${kind.pulsePeriodS} SECONDS INSIDE ${kind.quarantinePulseR}. JETTISON BIOLOGICAL CARGO, CLEAR THE PULSE RADIUS, OR PRESENT DEEP EVIDENCE TO THE APPEALS CLERK.`,
           });
         }
         if (player && player.pos) {
@@ -456,7 +473,13 @@ export function tickMachineLayer(world, dt) {
             e.pos.x += Math.cos(e.rot) * kind.speed * dt;
             e.pos.z += Math.sin(e.rot) * kind.speed * dt;
           }
-          m.sweepT += dt;
+          const inRange = d < kind.quarantinePulseR;
+          if (!inRange && m.enforcementInRange) {
+            world.bus.emit('comms:log', { from: 'Executor', kind: 'machine',
+              text: 'PURGE WINDOW CANCELLED. HULL OUTSIDE QUARANTINE RADIUS.' });
+          }
+          m.enforcementInRange = inRange;
+          m.sweepT = inRange ? m.sweepT + dt : 0;
           if (m.sweepT >= kind.pulsePeriodS && d < kind.quarantinePulseR) {
             m.sweepT = 0;
             // M09 quarantine pulse: biohazard cargo in radius is scrubbed without sale.
@@ -477,6 +500,8 @@ export function tickMachineLayer(world, dt) {
                 : 'QUARANTINE PULSE. MANIFEST CLEAN.',
             });
             world.bus.emit('ecology:quarantinePulse', { sectorId, scrubbed, t: now });
+            const enforcement = machineSiteRec(state, m.siteId);
+            enforcement.lastEnforcement = { t: now, scrubbed, resolved: scrubbed === 0 ? 'clean' : 'purged' };
           }
         }
         break;
@@ -588,44 +613,7 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'debris_sorter': {
-        // AE-240 (I14): drifts to the nearest wreck/pickup and collects it on a delay —
-        // salvage you want is on a timer while the sorter works the field.
-        if (m.collectAt && now >= m.collectAt) {
-          const target = m.collectId != null && state.entities ? state.entities.get(m.collectId) : null;
-          if (target && target.alive !== false) {
-            target.alive = false;
-            world.bus.emit('comms:log', {
-              from: 'Debris sorter', kind: 'machine',
-              text: 'MAINTENANCE WASTE RECOVERED.',
-            });
-          }
-          m.collectId = null;
-          m.collectAt = 0;
-        }
-        if (!m.collectId) {
-          let best = null;
-          let bestD = Infinity;
-          for (const t2 of sorterTargetsForSector(state, sectorId)) {
-            if (!t2 || t2.alive === false || !t2.pos) continue;
-            if (t2.homeSectorId !== sectorId) continue;
-            if (t2.data && t2.data.machineClaimed) continue;
-            const dd = dist2(e.pos.x, e.pos.z, t2.pos.x, t2.pos.z);
-            if (dd < kind.sweepR * kind.sweepR && dd < bestD) { bestD = dd; best = t2; }
-          }
-          if (best) {
-            const desired = Math.atan2(best.pos.z - e.pos.z, best.pos.x - e.pos.x);
-            e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
-            if (Math.sqrt(bestD) > 60) {
-              e.pos.x += Math.cos(e.rot) * kind.speed * dt;
-              e.pos.z += Math.sin(e.rot) * kind.speed * dt;
-            } else {
-              best.data = best.data || {};
-              best.data.machineClaimed = true;
-              m.collectId = best.id;
-              m.collectAt = now + kind.collectDelayS;
-            }
-          }
-        }
+        tickSorterWork(world, e, dt, sorterTargetsForSector(state, sectorId));
         break;
       }
       case 'sleeping_jury': {

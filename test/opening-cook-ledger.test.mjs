@@ -94,7 +94,8 @@ test('the opening wait records how each gate ended', async () => {
   const lines = [];
   console.info = (line) => { lines.push(line); };
   try {
-    assert.equal(await waitForOpeningGpuResources(state, 20), false);
+    // presentBudgetMs: the live-sector gate's own ceiling is 120 s; shrink it so the timeout path runs in ms.
+    assert.equal(await waitForOpeningGpuResources(state, 20, { presentBudgetMs: 20 }), false);
   } finally {
     console.info = info;
   }
@@ -149,7 +150,8 @@ test('the live-sector cook flushes the admission lane while it waits', async () 
     assert.match(cook, new RegExp(`timeoutMs: Math\\.min\\(${timeout}, remainingMs\\(\\)\\),\\s*yieldToMain: yieldAndFlushLiveSectorGpu`));
   }
   // PR #218 moved the stale-material settle onto the sliced lane: its cap is a
-  // deadlineMs argument and the yield is the createSlicedYield twin.
+  // deadlineMs argument and, in the loading shell, the yield is the createSlicedYield twin (it takes a frame
+  // budget so stragglers share frames; the jump shell keeps the plain flush-per-item yield).
   assert.match(cook, /deadlineMs: Math\.min\(6000, remainingMs\(\)\)/);
-  assert.match(cook, /createSlicedYield\(yieldAndFlushLiveSectorGpu\)/);
+  assert.match(cook, /state\.mode === 'loading'\s*\?\s*createSlicedYield\(yieldAndFlushLiveSectorGpu, \{[\s\S]*?\}\)\s*:\s*yieldAndFlushLiveSectorGpu/);
 });

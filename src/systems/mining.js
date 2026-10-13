@@ -1258,7 +1258,7 @@ export const mining = {
       ? (srcEnt.radius || 6) * 0.45 + rng() * 2.5
       : (srcEnt.radius || 6) + 2 + rng() * 4;
     const speed = tight ? 2 + rng() * 3.5 : 8 + rng() * 10;
-    this.helpers.spawnEntity({
+    const pickup = this.helpers.spawnEntity({
       type: 'pickup',
       pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },
       vel: { x: Math.cos(ang) * speed, z: Math.sin(ang) * speed },
@@ -1277,7 +1277,7 @@ export const mining = {
         ...(lotSource ? { richLotSource: lotSource } : {}),
       },
     });
-    return amount;
+    return pickup && pickup.alive !== false ? amount : 0;
   },
 
   _updatePickups(dt, state) {
@@ -1754,23 +1754,36 @@ export const mining = {
     // Site bookkeeping: the pool moved onto the spilled pickups; the durable record reads
     // empty until the payload capture folds live spills back into remainingPool.
     this._syncWorldSiteRemainingPool(data);
+    const retained = {};
     for (const [commodityId, qty] of spills) {
       let remaining = qty;
       const bodies = Math.min(3, remaining);
       for (let i = 0; i < bodies; i++) {
         const share = i === bodies - 1 ? remaining : Math.ceil(remaining / (bodies - i));
         if (!(share > 0)) continue;
-        this._spawnPickup(pod, commodityId, share, null, { tight: true });
-        remaining -= share;
+        const released = this._spawnPickup(pod, commodityId, share, null, { tight: true });
+        remaining -= released;
+        if (released < share) break;
       }
-      this.bus.emit('mining:podSplit', {
+      if (remaining > 0) retained[commodityId] = remaining;
+      if (remaining < qty) this.bus.emit('mining:podSplit', {
         minerId: player ? player.id : null,
         podId: pod.id,
         commodityId,
-        qty,
+        qty: qty - remaining,
         position: { x: pod.pos.x, z: pod.pos.z },
       });
     }
+    // Admission can refuse a pickup. Keep only that unspawned balance in the source body;
+    // already emitted freight remains loose, so retry never repeats a successful spill.
+    data.salvagePool = retained;
+    const remainingU = Object.values(retained).reduce((sum, qty) => sum + qty, 0);
+    writePickupRemainder(data, remainingU);
+    if (remainingU > 0) {
+      pod.alive = true;
+      data.beamSplitProgress = 0;
+    }
+    this._syncWorldSiteRemainingPool(data);
     this._stopBeam();
   },
 

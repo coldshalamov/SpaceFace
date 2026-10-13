@@ -110,6 +110,9 @@ Also retain dimensions, coordinate/orientation assumptions, material/color-space
 
 Runtime activation, 2026-10-10: `saveSystem.js` imports the unmodified fflate supplied by the
 installed Three 0.184.0 dependency at `node_modules/three/examples/jsm/libs/fflate.module.js`.
+2026-10-13: the file is now vendored byte-for-byte at `vendor/fflate.module.js` and imported from there, because a relative
+import into `node_modules` fails the clean-checkout import test (`test/performance-dirty-ranges.test.mjs`). Same version,
+same MIT notice (it is in the file header); no code change.
 Source: https://github.com/101arrowz/fflate/tree/v0.8.2; author Arjun Barrett; MIT notice in `NOTICE`.
 SHA-256: `209a4412eb48ce609edb4391992a792ffcc3983d30ee7e2b0b89a8c470f3cd8a` (89,384 source bytes).
 The production JS bundle includes the imported compressor. No new package or sim clock is added.

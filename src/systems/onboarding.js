@@ -238,6 +238,20 @@ const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall be
 const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
 // INF-062 — consecutive genuine latch denials before the one contextual hint.
 const LATCH_DENIAL_HINT_AFTER = 3;
+
+// The denial event already carries the cause. The hint used to collapse every cause
+// except cooldown and a missing target into the range line. Unknown causes still use
+// that line — INF-062 pins owner_attachment_limit there. Prefixes match the HUD strip.
+function latchDenialHintLine(reason) {
+  const raw = typeof reason === 'string' ? reason.replace(/^(snare|bridle)_/, '') : '';
+  if (raw === 'cooldown') return 'Line resetting. Wait a breath, then latch.';
+  if (raw === 'no-target' || raw === 'no_target') return 'Target a rock or wreck first. Then latch.';
+  if (raw === 'protected') return 'That body is protected. Latch something else.';
+  if (raw === 'scripted-body') return 'That body is locked in place. Latch something else.';
+  if (raw === 'blocked') return 'The line of sight is blocked.';
+  if (raw === 'out-of-range' || raw === 'out_of_range') return 'Latch needs a target in range.';
+  return 'Latch needs a target in range.';
+}
 const RAID_WHIP_KILL_WINDOW_S = 12;  // kill credited to the throw inside this window after a whip
 // Claimed-salvage tableau (the wanted beat). Spilled cargo from the raid is lawfully claimed; a
 // law cutter stands witness. Taking it reports the theft through the real law owner entry
@@ -709,12 +723,7 @@ export const onboarding = {
       if (!massline2Flag('throw')) return;
       this._latchDenialStreak = (this._latchDenialStreak || 0) + 1;
       if (this._latchDenialStreak < LATCH_DENIAL_HINT_AFTER) return;
-      const reason = payload && payload.reason;
-      const line = reason === 'cooldown'
-        ? 'Line resetting. Wait a breath, then latch.'
-        : reason === 'no-target'
-          ? 'Target a rock or wreck first. Then latch.'
-          : 'Latch needs a target in range.';
+      const line = latchDenialHintLine(payload && payload.reason);
       this._showHint('masslineLatchDenied', line, payload);
     });
     bus.on('tether:latched', () => {
@@ -1095,6 +1104,7 @@ export const onboarding = {
 
   _begin(payload) {
     const st = this.state;
+    this._resumeMainTutorial = false;
     // Temporary physics challenges share New Game, but own their actors and instructions.
     if (st.physicsVenueSession === true) {
       this._teardown({ removeActors: false });
@@ -1219,11 +1229,13 @@ export const onboarding = {
     const rescue = ob.rescue && typeof ob.rescue === 'object' ? ob.rescue : null;
     const railDone = !rail || rail.completed === true || ob.finished === true;
     const rescueDone = !rescue || rescue.completed === true;
+    const mainRailActive = ob.active === true && ob.finished !== true;
     // A finished or never-started first hour carries nothing durable; writing it would
     // risk a mature save re-firing the tutorial on load.
-    if (railDone && rescueDone) return null;
+    if (railDone && rescueDone && !mainRailActive) return null;
     return {
       version: 1,
+      mainRailActive,
       active: ob.active === true,
       finished: ob.finished === true,
       currentBeat: typeof ob.currentBeat === 'number' ? ob.currentBeat : -1,
@@ -1248,6 +1260,7 @@ export const onboarding = {
   deserialize(d) {
     const st = this.state;
     if (!st) return;
+    this._resumeMainTutorial = !!(d && d.mainRailActive === true && d.finished !== true);
     const ob = st.onboarding && typeof st.onboarding === 'object' ? st.onboarding : {};
     if (!d || typeof d !== 'object') {
       // Pre-rail saves carry no slice: reset to the pre-begin baseline so a live
@@ -1265,7 +1278,7 @@ export const onboarding = {
     ob.tetherReeled = d.tetherReeled === true;
     ob.tetherBreaks = d.tetherBreaks | 0;
     ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
-    if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence);
+    if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence); else delete ob.storeSentence;
     // B5's berth and offers survive a docked save, so the board keeps its choice framing.
     if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
     if (Array.isArray(d.choiceOfferIds)) ob.choiceOfferIds = d.choiceOfferIds.slice(); else delete ob.choiceOfferIds;
@@ -1287,6 +1300,10 @@ export const onboarding = {
     // raid/claimed active flags — the resume gate is the rail records' completion
     // state, not flags the teardown just rewrote.
     if (!ob || ob.finished === true) return false;
+    if (st.settings?.gameplay?.tutorialHints === false) {
+      this._resumeMainTutorial = false;
+      return false;
+    }
     const rescue = ob.rescue;
     if (rescue && rescue.active === true && rescue.completed !== true) {
       ob.active = true;
@@ -1325,6 +1342,26 @@ export const onboarding = {
         three.beats[cur].state = 'pending';
         this._startMissingThreeBeat(cur);
       }
+      return true;
+    }
+    // Side rails can finish while flight, mining or the first berth is still being taught.
+    // save:loaded has cleared active; the saved marker retains the main rail's ownership.
+    if (this._resumeMainTutorial) {
+      this._resumeMainTutorial = false;
+      ob.active = true;
+      this._storyMode = false;
+      this._injectStyle();
+      this._buildPanel();
+      const beat = BEATS[ob.currentBeat];
+      if (beat && ob.beatDoneAt[beat.key] == null) {
+        this._enterBeat(beat);
+        this._sayTutorial(beat.line);
+      } else {
+        // A completed tether beat already dropped its salvage. Let the normal cadence
+        // advance to its successor instead of replaying entry/reward work.
+        this._lastTextAtS = -Infinity;
+      }
+      this._refreshBeatPanel();
       return true;
     }
     return false;
@@ -1779,11 +1816,27 @@ export const onboarding = {
     if (!player || !player.pos) return;
     // A seam rock destroyed in crossfire (the wanted-escape chaos) restages — retry,
     // never a wall: the seam beat respawns its marked rock the moment it is gone.
-    const beatNow = BEATS[ob.currentBeat];
-    if (beatNow && beatNow.key === 'seam'
-      && (this._miningRockId == null
-        || !(this.state.entities.get(this._miningRockId)?.alive !== false))) {
+    const miningRock = this._miningRockId != null && this.state.entities.get(this._miningRockId);
+    if (beat.key === 'seam'
+      && (!miningRock || miningRock.alive === false || !miningRock.data?.trainingMining)) {
       this._spawnMiningRock();
+      this._setObjectiveWaypoint(true);
+    }
+    const derelict = this._derelictId != null && this.state.entities.get(this._derelictId);
+    if (beat.key === 'tether' && (!derelict || derelict.alive === false
+      || derelict.data?.onboarding !== true || derelict.data?.kind !== 'derelict')) {
+      const oldId = this._derelictId;
+      this._spawnDerelict();
+      const replacement = this.state.entities.get(this._derelictId);
+      if (replacement && replacement !== derelict) {
+        ob.tetherReeled = false;
+        for (const key of Object.keys(ob.firedFollowups || {})) {
+          if (key.startsWith('tether:')) delete ob.firedFollowups[key];
+        }
+        if (this.state.player.targetId === oldId) this.state.player.targetId = this._derelictId;
+        this._setObjectiveWaypoint(true);
+      }
+      return;
     }
     const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
     let trainer = this._trainingActor();
@@ -1921,7 +1974,7 @@ export const onboarding = {
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return null;
     const existing = this._miningRockId != null && st.entities.get(this._miningRockId);
-    if (existing && existing.alive !== false) return existing;
+    if (existing && existing.alive !== false && existing.data?.trainingMining) return existing;
     const angle = onboardingRandom(st) * TAU;
     const rock = this.helpers.spawnEntity({
       type: 'asteroid',

@@ -398,6 +398,9 @@ function richLotSource(source, commodityId, qty) {
     ...(source.richResolution || source.resolution
       ? { resolution: source.richResolution || source.resolution }
       : {}),
+    ...(typeof source.legalStatus === 'string' && source.legalStatus
+      ? { legalStatus: source.legalStatus }
+      : {}),
     sourceOwner: source.sourceOwner || (source.claimedByKind === 'npc' ? 'npc' : 'player'),
   };
 }
@@ -410,6 +413,7 @@ function appendRichLot(cargo, source, commodityId, qty) {
   const existing = cargo.richLots.find((row) => row && row.lotId === lot.lotId);
   if (existing) {
     existing.qty += lot.qty;
+    if (existing.legalStatus == null && lot.legalStatus != null) existing.legalStatus = lot.legalStatus;
     return;
   }
   cargo.richLots.push(lot);
@@ -884,7 +888,7 @@ export const cargo = {
       store.items[id] = (store.items[id] || 0) + parkedQty;
       if (keep > 0) live.items[id] = keep;
       else delete live.items[id];
-      for (const lot of richLotSourcesForQty(live, id, parkedQty)) store.richLots.push({ ...lot });
+      for (const lot of richLotSourcesForQty(live, id, parkedQty)) appendRichLot(store, lot, id, lot.richQty);
       decrementRichLots(live, id, parkedQty);
     }
 

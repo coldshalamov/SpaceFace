@@ -1812,6 +1812,10 @@ const ENEMY_FAMILY_BUILDERS = {
   patrol_interdict: buildPatrolInterdict,
   dreadnought_enemy: buildDreadnoughtEnemy,
   detonator_dart: buildDetonatorDart,
+  last_argument: buildDreadnoughtEnemy,
+  kilnback: buildBruiserArmor,
+  mothlight: buildSniperLance,
+  pallet_jack: buildTraderHaul,
 };
 
 const FAMILY_BUILDERS = {
@@ -4585,11 +4589,11 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
   // fracture fragments are hull pieces of the same kill and deaden identically.
   const deadHulk = relativeFile === hulkPackagedFileForEntity(entity)
     || relativeFile === fractureFragmentFileForEntity(entity);
-  // Same-envelope body: the packaged group is fitted to entity.radius, so the procedural
-  // wreck stays drawn through admission (the geology-skin precedent — hiding it produced a
-  // guaranteed pop-in window). The commit at publish re-hides; the flag exempts this boundary
-  // from the authoredPending submit deny while the fallback is the visible stand-in.
-  root.userData.authoredPendingFallbackDrawn = true;
+  // The procedural children are the stand-in a stranger must not see (D192). They stay
+  // in the graph, hidden, so a terminal load miss can restore them. The authored commit
+  // publishes the packaged body; until then this boundary has no drawable stand-in.
+  hideProceduralChildren(root);
+  root.userData.authoredPendingFallbackDrawn = false;
   root.userData.authoredAssetState = 'awaiting-authored-admission';
   root.userData.authoredPackageUrl = url;
   root.userData.authoredVisualRoot = 'none-pending-admission';

@@ -1,5 +1,5 @@
-// Frame-measured readability: for each screenshot, sample the pixels inside each on-screen enemy,
-// asteroid and projectile (screen positions from the telemetry sample nearest the shot), then ask
+// Frame-measured readability: for each screenshot, sample a radius square around each on-screen
+// enemy, asteroid and projectile (screen positions from recorded capture telemetry), then ask
 // whether the classes separate in colour (CIELAB) and apparent size. Uses sharp (already a dep).
 
 import sharp from 'sharp';
@@ -66,22 +66,28 @@ export function threatMarkerCredit(rateA, rateB) {
 }
 
 /** Mean Lab of the pixels inside a box, and of a ring around it (background). Exported for tests.
+ *  `r` may cap the interior colour patch; `backdropRadius` still encloses the complete body.
  *  `marker` is the share of the mid rim whose L is ≥ 75. It does not buy credit.
  *  `rim` is the mean Lab of mid-band pixels that pass the chroma floor and differ from the backdrop
  *  by at least `RIM_BG_DE_MIN`. A warm backdrop therefore cannot paint the mean into the threat hue.
  *  `rim` is null when those pixels are under `RIM_THREAT_SHARE` of the band. */
-export function sampleBox(raw, W, H, ch, cx, cy, r) {
-  const inner = Math.max(1, Math.round(r * INNER_SCALE)); const ring = Math.round(Math.max(r * 1.6, r + 4));
+export function sampleBox(raw, W, H, ch, cx, cy, r, backdropRadius = r) {
+  const inner = Math.max(1, Math.round(r * INNER_SCALE));
+  const bodyRadius = Math.max(r, backdropRadius);
+  const ring = Math.round(Math.max(bodyRadius * 1.6, bodyRadius + 4));
   const acc = [0, 0, 0]; let n = 0; const bg = [0, 0, 0]; let nb = 0; const inn = [];
   let markerN = 0; let midN = 0; const mid = [];
   for (let y = Math.max(0, cy - ring); y <= Math.min(H - 1, cy + ring); y++) {
     for (let x = Math.max(0, cx - ring); x <= Math.min(W - 1, cx + ring); x++) {
       const dx = x - cx; const dy = y - cy; const d = Math.max(Math.abs(dx), Math.abs(dy));
+      // A large body can extend well beyond the bounded pigment/marker patch. Its outer
+      // surface is neither that patch nor the backdrop; skip the unused interval cheaply.
+      if (d > r * 1.15 && d <= bodyRadius * 1.2) continue;
       const i = (y * W + x) * ch;
       const L = srgbToLab(raw[i], raw[i + 1], raw[i + 2]);
       if (d <= inner) { acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2]; n++; inn.push(L); }
       else if (d <= r * 1.15) { midN++; mid.push(L); if (L[0] >= 75) markerN++; }
-      else if (d > r * 1.2) { bg[0] += L[0]; bg[1] += L[1]; bg[2] += L[2]; nb++; }
+      else if (d > bodyRadius * 1.2) { bg[0] += L[0]; bg[1] += L[1]; bg[2] += L[2]; nb++; }
     }
   }
   if (!n) return null;
@@ -204,7 +210,7 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
       const r = e[E.pr] * sc; if (r < 2.5) continue;
       const cx = Math.round(e[E.sx] * sc); const cy = Math.round(e[E.sy] * sc);
       if (cx < r || cy < r || cx > W - r || cy > H - r) continue;
-      const m = sampleBox(data, W, H, info.channels, cx, cy, Math.min(r, 60));
+      const m = sampleBox(data, W, H, info.channels, cx, cy, Math.min(r, 60), r);
       if (!m) continue;
       const box = [e[E.sx] - e[E.pr], e[E.sy] - e[E.pr], e[E.sx] + e[E.pr], e[E.sy] + e[E.pr]]; const pb = s.p && s.p.onScreen ? s.p.box : null;
       const overPlayer = !!(pb && box[0] < pb[2] && box[2] > pb[0] && box[1] < pb[3] && box[3] > pb[1]);
@@ -222,7 +228,11 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
     const threat = S.filter((x) => rimMatchesThreat(x.rim)).length;
     classes[c] = { n: S.length, lowContrastFrac: S.length ? low.length / S.length : 0, exampleT: (low[0] || S[0] || {}).t, exampleBox: (low[0] || S[0] || {}).box,
       markerRate: S.length ? marked / S.length : 0, threatRate: S.length ? threat / S.length : 0, worst,
-      meanLab: S.length ? [0, 1, 2].map((k) => +(S.reduce((s, x) => s + x.lab[k], 0) / S.length).toFixed(1)) : null };
+      meanLab: S.length ? [0, 1, 2].map((k) => +(S.reduce((s, x) => s + x.lab[k], 0) / S.length).toFixed(1)) : null,
+      // A fitted fighter is not an opaque radius square. This statistic mixes hull and sky;
+      // no enemy silhouette ownership was recorded to attribute the screenshot's pixels.
+      ...(c === 'enemy' && S.length ? { contrast: { status: 'unmeasured', method: 'radius-square',
+        reason: 'missing enemy silhouette pixel ownership; inner radius square mixes hull and backdrop' } } : {}) };
   }
   const markerCreditFor = (a, b) => threatMarkerCredit(classes[a] ? classes[a].threatRate : 0, classes[b] ? classes[b].threatRate : 0);
   const pairs = [];

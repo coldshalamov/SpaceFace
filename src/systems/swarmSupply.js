@@ -35,7 +35,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
-import { runOwnsReward } from '../combat/rewardEligibility.js';
+import { runOwnsReward, createRewardDeathLedger } from '../combat/rewardEligibility.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { addCargo } from './cargo.js';
 
@@ -45,6 +45,8 @@ export const SWARM_REPAIR_KIND = 'swarm_repair';
 export const SWARM_REPAIR_FRACTION = 0.22;
 /** Seconds a cell survives on the board before the ordinary despawn sweep takes it. */
 export const SWARM_REPAIR_TTL_S = 16;
+/** A room wipe opens a few risky pickups, rather than an unbounded medicine pile. */
+export const SWARM_REPAIR_MAX_LIVE = 3;
 /** Kills between cells at full health. */
 export const SWARM_REPAIR_INTERVAL_HEALTHY = 14;
 /** Kills between cells when the hull is nearly gone. */
@@ -99,6 +101,7 @@ export const swarmSupply = {
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
+    this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:loadoutReady', () => this._resupplyCharges(true)));
     this._unsubs.push(this.bus.on('run:transitioned', p => {
       if (p?.phase === 'draft') this._resupplyCharges(false);
@@ -139,6 +142,7 @@ export const swarmSupply = {
     this._dropIndex = 0;
     this._live = new Set();
     this._spent = new Set();
+    this._deathLedger = createRewardDeathLedger();
   },
 
   _player() {
@@ -165,7 +169,25 @@ export const swarmSupply = {
       : null;
     // Same gate the run economy uses: the cohort mark on the body, never a global "is a run live?"
     // question that would also catch ambient traffic.
-    if (!runOwnsReward(victim)) return;
+    if (!runOwnsReward(victim) || !this._deathLedger.claim(victim)) return;
+
+    this._advanceSupply(run, 1, victim, payload);
+  },
+
+  _onBroodKills(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || run.phase !== 'active' || this.state.mode !== 'flight' || !payload) return;
+    if (payload.wave !== run.wave) return;
+    const count = Number(payload.count);
+    if (!Number.isFinite(count) || count < 1) return;
+    // Only the Brood owner's credited count is eligible. Environmental removals are not
+    // player kills, and these bodies deliberately never emit entity:killed.
+    this._advanceSupply(run, Math.trunc(count), null, payload);
+  },
+
+  _advanceSupply(run, count, victim, payload) {
+    const pos = victim?.pos || payload?.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
 
     const player = this._player();
     // A full hull earns nothing — the cell would be litter, and the clock should not start until
@@ -175,10 +197,19 @@ export const swarmSupply = {
       return;
     }
 
-    this._sinceDrop += 1;
-    if (this._sinceDrop < swarmRepairInterval(this._hullFraction(player))) return;
-    this._sinceDrop = 0;
-    this._drop(run, victim, payload);
+    const interval = swarmRepairInterval(this._hullFraction(player));
+    const tally = this._sinceDrop + count;
+    const earned = Math.floor(tally / interval);
+    this._sinceDrop = tally % interval;
+    if (earned <= 0) return;
+    // Despawn/collection usually removes these ids through receipts. Prune the dead
+    // entries as well so a missed retirement receipt cannot close recovery forever.
+    for (const id of this._live) {
+      const cell = this.state.entities?.get(id);
+      if (!cell || cell.alive === false) this._live.delete(id);
+    }
+    const drops = Math.min(earned, Math.max(0, SWARM_REPAIR_MAX_LIVE - this._live.size));
+    for (let i = 0; i < drops; i++) this._drop(run, victim, payload);
   },
 
   _drop(run, victim, payload) {

@@ -11,6 +11,7 @@
 
 import { ContactKind, distance2, finite, stableId } from './contracts.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { isHostileForAI } from './engagementAuthority.js';
 
 export const PD_SCREEN_DEFAULT_RADIUS = 320;
 export const PD_SCREEN_MAX_INTERCEPTS = 2;
@@ -42,13 +43,17 @@ export function isPdScreenActor(entityOrSelf) {
  * Prefer explicit escortTargetId / activity.targetId / squad leader.
  */
 export function resolvePdCharge(self, state, perception = null) {
+  // An incident can make two coarse-team/squad peers enemies. Revalidate every ward
+  // source through the same live relation that chooses threats before protecting it.
+  const eligible = (entity) => entity && entity.alive !== false && entity !== self
+    && !isHostileForAI(state, self, entity);
   const data = (self && self.data) || {};
   const ai = data.ai || {};
   const explicit = ai.escortTargetId != null ? ai.escortTargetId
     : (ai.activity && ai.activity.targetId != null ? ai.activity.targetId : null);
   if (explicit != null && state && state.entities && state.entities.get) {
     const ent = state.entities.get(explicit);
-    if (ent && ent.alive) return ent;
+    if (eligible(ent)) return ent;
   }
   // Squad leader (if this member is not the leader).
   const squadId = ai.squadId;
@@ -56,7 +61,7 @@ export function resolvePdCharge(self, state, perception = null) {
     let leader = null;
     const list = indexedShipLikeScan(state);
     for (const e of list) {
-      if (!e || !e.alive || e.id === self.id) continue;
+      if (!eligible(e)) continue;
       const eAi = e.data && e.data.ai;
       if (!eAi || eAi.squadId !== squadId) continue;
       if (eAi.encounterRole === 'leader' || eAi.role === 'leader') return e;
@@ -70,7 +75,7 @@ export function resolvePdCharge(self, state, perception = null) {
     let bestScore = -Infinity;
     const list = indexedShipLikeScan(state);
     for (const e of list) {
-      if (!e || !e.alive || e.id === self.id || e.team !== self.team) continue;
+      if (!eligible(e) || e.team !== self.team) continue;
       const eData = e.data || {};
       const eAi = eData.ai || {};
       let score = 0;
@@ -88,7 +93,7 @@ export function resolvePdCharge(self, state, perception = null) {
   // Perception self formation slot as soft anchor is not an entity; fall back to self (screen self).
   if (perception && perception.self && perception.self.escortTargetId != null) {
     const ent = state && state.entities && state.entities.get(perception.self.escortTargetId);
-    if (ent && ent.alive) return ent;
+    if (eligible(ent)) return ent;
   }
   return self;
 }

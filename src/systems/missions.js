@@ -229,6 +229,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
+import { EGRESS_DISTANCE_WU, EGRESS_FADE_S, fleeOrderActive } from '../ai/egressExit.js';
 import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
 import {
   LANDMARK_QUEST_SOURCE,
@@ -992,12 +993,12 @@ export function hasActiveTrackedMission(state) {
 }
 
 /**
- * A swarm match is on screen. Victory, ended, and inactive hand the campaign back.
+ * A Crucible match is on screen. Victory, ended, and inactive hand the campaign back.
  * Pure. Used to keep the Helios dock errand off the crucible.
  */
-function swarmScreenIsLive(state) {
+function crucibleScreenIsLive(state) {
   const run = state && state.run;
-  if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm') return false;
+  if (!run || run.kind !== 'survival') return false;
   const phase = run.phase;
   if (!phase || phase === 'inactive' || phase === 'ended' || phase === 'victory') return false;
   return true;
@@ -1006,12 +1007,12 @@ function swarmScreenIsLive(state) {
 /**
  * Resolve the pre-first-dock corridor idle objective when no mission is tracked.
  * Returns null after first dock, when a tracked active mission owns the tracker,
- * or while a swarm match is on screen.
+ * or while a Crucible match is on screen.
  * Pure presenter truth for G05 hierarchy tests and the HUD idle path.
  */
 export function resolveCorridorOpeningObjective(state) {
   if (!state || typeof state !== 'object') return null;
-  if (swarmScreenIsLive(state)) return null;
+  if (crucibleScreenIsLive(state)) return null;
   if (hasCorridorFirstDock(state)) return null;
   if (hasActiveTrackedMission(state)) return null;
   return {
@@ -1288,6 +1289,9 @@ function missionNavReason(m, station, sector) {
   if (m.type === 'recon_scan' && p.landmarkProbe) {
     return `Fire one close scanner pulse at ${p.landmarkProbe.poiLabel || 'the Caved Shaft'}`;
   }
+  if (m.type === 'recon_scan' && p.poiSignalFollowup) {
+    return `Scan the ${plainFollowupPlace(p.poiSignalFollowup)} in ${sectorName}`;
+  }
   switch (m.type) {
     case 'cargo_delivery': return `Deliver ${p.qty || ''}u ${cargo} to ${stationName}`.trim();
     case 'bulk_trade': return `Sell ${remaining || p.qty || ''}u ${cargo} at ${stationName}`.trim();
@@ -1308,6 +1312,12 @@ function missionNavReason(m, station, sector) {
     case AUTHORED_SET_PIECE_TYPE: return m.title || `Finish the physical job in ${sectorName}`;
     default: return stationName || sectorName;
   }
+}
+
+function plainFollowupPlace(follow) {
+  if (follow && follow.targetType === 'wreck') return 'linked derelict';
+  if (follow && follow.targetType === 'anomaly') return 'linked anomaly';
+  return 'linked return';
 }
 
 const B6_DEPLOYMENT_KINDS = new Set(['drone', 'trader', 'outpost']);
@@ -3739,6 +3749,16 @@ export const missions = {
     }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
+    // A row can remain displayed across a refresh boundary. Revalidate its own published
+    // window before collateral, freight, or branch selection can commit the stale contract.
+    if (Number.isFinite(offer.expiresAtEpoch) && offer.expiresAtEpoch <= this._epoch()) {
+      if (board && Array.isArray(board.slots)) {
+        board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+      }
+      this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+      this.bus.emit('toast', { text: 'That contract offer has expired — choose current work from the board', kind: 'warn', ttl: 4 });
+      return false;
+    }
     if (offer.params && SET_PIECE_DISPOSITION_OBJECTIVES.has(offer.params.setPieceObjective)) {
       const wreckId = offer.params.wreckId || offer.wreckId || offer.cause && offer.cause.wreckId;
       const bearing = this.state.player && this.state.player.uniqueWrecks
@@ -4417,7 +4437,7 @@ export const missions = {
   },
 
   _refreshNavigation(options = {}) {
-    // A Crucible swarm boot is a full Helios new game, so the starter contract
+    // A Crucible boot is a full Helios new game, so the starter contract
     // ("Recover the 47-A sample") auto-tracks and the corridor fallback then
     // paints "Dock at Helios Station". Park both while the match is on screen.
     // The mission stays active for the campaign; it is only off the live list.
@@ -11295,6 +11315,11 @@ export const missions = {
       if (sharedIds.has(id)) continue; // another live contract still owns this subject
       const e = this.state.entities.get(id);
       if (e && e.alive && e.id !== this.state.playerId) {
+        if (this._handoffFleeingTarget(e)) {
+          const budget = this.helpers && this.helpers.spawnBudget;
+          if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(e.id);
+          continue;
+        }
         e.alive = false; // swept end-of-step
         // PB-MIS-E: the yard tug is the one yard body with a durable world record — a silent
         // sweep would leave the record live and the hull would rematerialize on re-entry.
@@ -11311,6 +11336,55 @@ export const missions = {
     m.targetEntityIds = [];
     m._escorteeId = null;
     if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+  },
+
+  /**
+   * A target already under a flee order leaves on the existing egress exit
+   * instead of vanishing at settlement. True means the body stays alive for
+   * that path. Exclusions match stepEgressExits so a hull that path will not
+   * take is still swept.
+   */
+  _handoffFleeingTarget(entity) {
+    const data = entity && entity.data;
+    if (!data || !fleeOrderActive(data.ai)) return false;
+    const ai = data.ai || {};
+    if (ai.moraleImmune === true) return false;
+    if (data.runCohort === 'survival') return false;
+    if (data.encounter) return false;
+    const state = this.state;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (player && entity.team != null && player.team != null && entity.team === player.team) return false;
+    const live = state.encounterDirector && state.encounterDirector.live;
+    if (live && typeof live === 'object') {
+      for (const id of Object.keys(live)) {
+        const row = live[id];
+        if (row && row.phase !== 'done' && Array.isArray(row.ids) && row.ids.includes(entity.id)) return false;
+      }
+    }
+    data.missionPinned = false;
+    if (data.flags) data.flags.missionPinned = false;
+    data.missionTag = null;
+    data.missionId = null;
+    const ours = Number.isFinite(data._egressExitAt) && data.despawnAt === data._egressExitAt;
+    if (ours || data.despawnAt != null) return true;
+    if (!player || !player.pos || !entity.pos) return true;
+    const dx = entity.pos.x - player.pos.x;
+    const dz = entity.pos.z - player.pos.z;
+    if (dx * dx + dz * dz < EGRESS_DISTANCE_WU * EGRESS_DISTANCE_WU) return true;
+    const now = Number(state.simTime) || 0;
+    data.despawnAt = now + EGRESS_FADE_S;
+    data._egressExitAt = data.despawnAt;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('ai:egressExit', {
+        entityId: entity.id,
+        reason: ai.fsm === 'flee' ? 'fsm:flee' : (ai.forceFlee === true ? 'forceFlee' : 'activity'),
+        factionId: entity.factionId || data.factionId || null,
+        separation: Math.round(Math.sqrt(dx * dx + dz * dz)),
+        t: now,
+      });
+    }
+    return true;
   },
 
   _onSectorEnter(p) {
@@ -12137,7 +12211,7 @@ export const missions = {
     }
   },
 
-  // A swarm run boots a full Helios game, so the starter contract would stay tracked
+  // A Crucible run boots a full Helios game, so the starter contract would stay tracked
   // and, once untracked, the corridor idle objective would say "Dock at Helios Station".
   // Park the live list and clear both waypoint kinds. The mission status stays active.
   // Restore when the match is over, including a quit straight to the menu (run phase
@@ -12146,7 +12220,7 @@ export const missions = {
   // Hiding that line, and the RADIO / COMMS / HAIL tape, is the crucible-focus stylesheet.
   _releaseCampaignNavForSwarm(state = this.state) {
     const bag = state && state.missions;
-    if (!swarmScreenIsLive(state)) {
+    if (!crucibleScreenIsLive(state)) {
       if (bag && Array.isArray(bag._swarmParkedActive)) {
         this._holdParkedContractClocks(state);
         const parked = bag._swarmParkedActive;

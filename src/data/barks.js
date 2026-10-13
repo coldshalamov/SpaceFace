@@ -2551,12 +2551,79 @@ export function haulerRegisterBarkFor(rng) {
   return HAULER_REGISTER[pickIndex(rng, HAULER_REGISTER.length)];
 }
 
-/** Tourist, hauler, and Grandee lines. Freighter and every other role stay on the faction hail. */
+// Mute-role work hails: the seven working silhouettes that used to fly past in
+// silence name their work on a close pass. Three lines each, deterministic pick.
+export const COURIER_HAIL_REGISTER = Object.freeze([
+  'Packet run. Sealed and timed — do not slow me down.',
+  'Courier on the clock. The lane is my manifest.',
+  'Small hull, fast lane. Clear the wake, pilot.',
+]);
+export const CUSTOMS_HAIL_REGISTER = Object.freeze([
+  'Customs pass. Papers ready keeps us both moving.',
+  'Patrol on the beat. Fly clean and we stay friendly.',
+  'Inspection lane. Nothing personal — hold your line.',
+]);
+export const SALVOR_HAIL_REGISTER = Object.freeze([
+  'Salvor working. That wreck is spoken for — the pool knows.',
+  'Cutter on the hull. Mind the shear line, friend.',
+  'Scrap claim. I cut where I please and log what I take.',
+]);
+export const SURVEYOR_HAIL_REGISTER = Object.freeze([
+  'Survey pin. I am mapping, not mining — mind the sweep.',
+  'Surveyor on station. The rock gets measured before it gets cut.',
+  'Pin running. Hold clear of the scan cone.',
+]);
+export const TENDER_HAIL_REGISTER = Object.freeze([
+  'Tender on call. Somebody out there needs a wrench, not a gun.',
+  'Yard tender. I fix what the lane breaks — wave if you need me.',
+  'Repair tender passing. Keep it slow near the work face.',
+]);
+export const TUG_HAIL_REGISTER = Object.freeze([
+  'Tug on the tow. Heavy line out — give us room.',
+  'Yard tug. The load decides where we go, not me.',
+  'Tow working. Stay out of the line and we all get home.',
+]);
+export const RESCUE_HAIL_REGISTER = Object.freeze([
+  'Rescue lifter. If you are breathing, you are my business.',
+  'Rescue on patrol. Pods first, questions later.',
+  'Lifter passing. Nobody gets left on a cold rock today.',
+]);
+
+export function courierHailFor(rng) {
+  return COURIER_HAIL_REGISTER[pickIndex(rng, COURIER_HAIL_REGISTER.length)];
+}
+export function customsHailFor(rng) {
+  return CUSTOMS_HAIL_REGISTER[pickIndex(rng, CUSTOMS_HAIL_REGISTER.length)];
+}
+export function salvorHailFor(rng) {
+  return SALVOR_HAIL_REGISTER[pickIndex(rng, SALVOR_HAIL_REGISTER.length)];
+}
+export function surveyorHailFor(rng) {
+  return SURVEYOR_HAIL_REGISTER[pickIndex(rng, SURVEYOR_HAIL_REGISTER.length)];
+}
+export function tenderHailFor(rng) {
+  return TENDER_HAIL_REGISTER[pickIndex(rng, TENDER_HAIL_REGISTER.length)];
+}
+export function tugHailFor(rng) {
+  return TUG_HAIL_REGISTER[pickIndex(rng, TUG_HAIL_REGISTER.length)];
+}
+export function rescueHailFor(rng) {
+  return RESCUE_HAIL_REGISTER[pickIndex(rng, RESCUE_HAIL_REGISTER.length)];
+}
+
+/** Tourist, hauler, Grandee, and working-role pass-by lines. */
 export function trafficRoleHail(role, rng) {
   const key = String(role || '').toLowerCase();
   if (key === 'tourist') return { register: 'tourist', text: touristHailFor(rng) };
   if (key === 'hauler') return { register: 'hauler', text: haulerRegisterBarkFor(rng) };
   if (key === 'grandee') return { register: 'grandee', text: grandeeHailFor(rng) };
+  if (key === 'courier') return { register: 'courier', text: courierHailFor(rng) };
+  if (key === 'customs') return { register: 'customs', text: customsHailFor(rng) };
+  if (key === 'salvor') return { register: 'salvor', text: salvorHailFor(rng) };
+  if (key === 'surveyor') return { register: 'surveyor', text: surveyorHailFor(rng) };
+  if (key === 'tender') return { register: 'tender', text: tenderHailFor(rng) };
+  if (key === 'tug') return { register: 'tug', text: tugHailFor(rng) };
+  if (key === 'rescue') return { register: 'rescue', text: rescueHailFor(rng) };
   return null;
 }
 
@@ -2596,7 +2663,21 @@ export default {
   syncWitnessSeamVoice,
   TOURIST_HAIL_REGISTER,
   HAULER_REGISTER,
+  COURIER_HAIL_REGISTER,
+  CUSTOMS_HAIL_REGISTER,
+  SALVOR_HAIL_REGISTER,
+  SURVEYOR_HAIL_REGISTER,
+  TENDER_HAIL_REGISTER,
+  TUG_HAIL_REGISTER,
+  RESCUE_HAIL_REGISTER,
   touristHailFor,
   haulerRegisterBarkFor,
+  courierHailFor,
+  customsHailFor,
+  salvorHailFor,
+  surveyorHailFor,
+  tenderHailFor,
+  tugHailFor,
+  rescueHailFor,
   trafficRoleHail,
 };

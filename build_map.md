@@ -1101,6 +1101,126 @@ Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/19
 
 ### M. The rest of the plan — reservoirs that are this board
 
+2026-10-13 bounded production batch (codex-batch20-oct13): family 15-machines
+residuals use band 292–305; economy/people-law residuals use band 306–319.
+Prerequisite B003 is merged; B021/B141 physical interaction/courier custody is live.
+Only new production below counts. Ten independent look-and-rotate INFERENCE repairs
+run alongside these rows; existing foreign dirty work remains outside this batch.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 292 | SFQ-B142 | Custodian restores the maintenance pylon with finite material and interruptible work | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 293 | SFQ-B143 | Mason relocates one physical workpiece through the shared physics owner | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 294 | SFQ-B144 | Sorter stages unowned material before finite reclamation; recoverable and protected objects stay safe | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 295 | SFQ-B146 | Directive readout names the real hold volume, speed and failure cause | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 296 | SFQ-B149 | Executor gives an in-range grace window and usable compliance/escape remedy | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 306 | SFQ-B085 | Parked-hull cargo transfer splits rich custody lots without duplicating quantity | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 307 | SFQ-B086 | A broke damaged hull can book bounded restoration on an honest yard note | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 308 | SFQ-B089 | Invalid settlement amounts cannot corrupt or erase debt | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 309 | SFQ-B095 | Duplicate repair bookings charge once and completion reports actual restoration | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 310 | SFQ-B115 | Fine work advances while docked and stops in flight | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+
+INFERENCE batch 2026-10-13 (10 new production repairs, independent review before commits):
+- INF-OCT13-01 (`6cc112828d`): deployed decoy remains effective after pilot departure.
+- INF-OCT13-02 (`4a94f8d76f`): NPC reaction slots prioritize imminent thrown bodies.
+- INF-OCT13-03 (`c1412d3cf6`): armed charge plates survive host destruction and remain manually detonatable.
+- INF-OCT13-04 (`6a5ac5c0d0`): saucer translation honors movement rebinds and joystick ownership.
+- INF-OCT13-05 (`19e7fbf6d6`): native Brood kills earn bounded, ordinary repair pickups.
+- INF-OCT13-06 (`e84ca45c49`): expired cached contracts retire before fees/freight acceptance.
+- INF-OCT13-07 (`4fd4021364`): boot save merges preserve writes and deletion tombstones across yields.
+- INF-OCT13-08 (`a311d3ba64`): stale audio lifecycle promises cannot restart replaced graphs.
+- INF-OCT13-09 (`2dca544adf`): missing lesson bodies restage correctly even when core reuses their ids.
+- INF-OCT13-10 (`0ba4ab912c`): parked hull builds do not capture or purchase the active hull bomb rack.
+
+Implementation checks: focused owner/lifecycle regressions green; save-schema and both
+save/reload determinism comparisons passed. Adventure player-truth reached ordinary flight
+and passed controls, hull, LOD continuity and interruption checks; overall INCOMPLETE
+(combat visual sample coverage and quiet-host timing unmeasured). Swarm gate evidence
+is retained under `.devshots/batch20-oct13/`; its public preparation never reached play,
+so the capped run was stopped and the unisolated preparation/driver stall recorded as local
+ledger row D195. That shared ledger already carries foreign uncommitted work and stays
+unstaged here; the twenty production outcomes above are published independently.
+These are implemented production outcomes, not full Adventure/Swarm acceptance or FPS
+certification. Startup hints cover the owned machine module and already-published imports;
+the foreign uncommitted Candle encounter is deliberately excluded from publication.
+
+2026-10-13 second bounded production batch (codex-batch20-oct13-b): ten new build
+residuals and ten independently inferred repairs, followed by three review/improvement
+passes: completeness, interruption/recovery, and integrated default-owner wiring. Prior
+published outcomes above do not count again. Ecology prerequisites B003/B021/B121 and
+industrial cargo/site/job/recognition owners are already live; these rows name the actual
+remaining production changes, not full catalog-candidate certification.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 311 | SFQ-B122-R | Furnace Maw heat arming comes from a nearby moving pilot, with readable preparation before charge | BUILD | SHIPPED 2026-10-13 — 5359066594; new local stimulus residual of B122 |
+| 312 | SFQ-B125-R | Violent towing stresses live capture; cradle padding helps, refusal leaves one living organism, settled retry captures once | BUILD | SHIPPED 2026-10-13 — 5359066594; new handling residual of B125 |
+| 313 | SFQ-B127-R | Duplicate fauna death delivery cannot multiply harvest, brood or carcass aftermath | BUILD | SHIPPED 2026-10-13 — 5359066594; new finite-carcass residual of B127 |
+| 314 | SFQ-B128-R | A hull leech follows its real host; quiet rest and a current authorized Purge Ring berth detach it and end its effect | BUILD | SHIPPED 2026-10-13 — 5359066594; new removable-parasite residual of B128 |
+| 315 | SFQ-B130-R | A juvenile born at simulation time zero matures once into its existing adult ecological role | BUILD | SHIPPED 2026-10-13 — 5359066594; new role-lifecycle residual of B130 |
+| 325 | SFQ-B093-R | Refused freight pickup admission leaves the unspawned remainder in its physical pod for recovery | BUILD | SHIPPED 2026-10-13 — 53f390adce; new freight-recovery residual of B093 |
+| 326 | SFQ-B094-R | Rescanning worked or empty wrecks preserves their finite existing salvage custody | BUILD | SHIPPED 2026-10-13 — 53f390adce; new finite-yield residual of B094 |
+| 327 | SFQ-B096-R | Dismantling requires room for the actual control-unit refund before removing the installed machine | BUILD | SHIPPED 2026-10-13 — 53f390adce; new construction-recovery residual of B096 |
+| 328 | SFQ-B098-R | A booked industrial salvor waits for its real displaced workpiece instead of taking unrelated salvage | BUILD | SHIPPED 2026-10-13 — 53f390adce; new disruption residual of B098 |
+| 329 | SFQ-B113-R | A rescued worker retries refused job assignment on its same returning hull before acknowledging return to work | BUILD | SHIPPED 2026-10-13 — 53f390adce; new recognition residual of B113 |
+
+INFERENCE second batch (ten new production repairs; SHIPPED after three improvement passes):
+- INF-OCT13-B-01 (`48bc65195d`): flak selects eligible arc contacts before threat/distance priority.
+- INF-OCT13-B-02 (`48bc65195d`): disabled or destroyed live turrets silence an ongoing heavy tumble rake.
+- INF-OCT13-B-03 (`48bc65195d`): cloak and ECM compose authored seeker authority and recover without bypassing either effect.
+- INF-OCT13-B-04 (`48bc65195d`): lead pips describe ballistic gun mounts and exclude seekers, deployments and hitscan.
+- INF-OCT13-B-05 (`48bc65195d`): point-defense ward selection revalidates incident hostility across every binding source.
+- INF-OCT13-B-06 (`6364a8ea6f`): Continue preserves unfinished main onboarding lessons.
+- INF-OCT13-B-07 (`6364a8ea6f`): paid yard work stays with its booked hull and refunds before a hull switch can transfer it.
+- INF-OCT13-B-08 (`6364a8ea6f`): faction desk actions require the actual authorized berth and retire stale bindings.
+- INF-OCT13-B-09 (`6364a8ea6f`): ambient comms cannot build a carrier backlog that delays urgent cues or survives suspension.
+- INF-OCT13-B-10 (`6364a8ea6f`): an arena/circuit run cannot become an Adventure export when persisted save recovery fails.
+
+Review/improvement outcomes: pass 1 fixed capture padding, released-leech motion,
+control-unit footprint, and post-ECM cloak residual guidance; pass 2 fixed stale dock
+purges, stale worker jobs/recycled hull loss, exact salvor workpiece identity, pending
+radio suspension and export across session transitions; pass 3 fixed leech socket angle,
+restricted salvage replenishment, active-content refund footprint, stale faction desk
+admission and autonomous disabled-flak interception. Every material fix has a focused
+regression. Production owners remain the existing default systems; no second gameplay
+or cargo/physics writer was introduced.
+
+Direct integration: save schema v15 (374 paths) passed; seed-47 normal and V3
+save/reload comparisons both remained deterministic. The generated preload closure
+is synchronized (36 main + 2020 registry imports), including the now-landed Candle
+encounter and published vendored fflate path. Focused affected-owner regressions passed.
+
+Required-route repairs after the three review rounds do not count as extra tasks:
+Swarm/Gauntlet cohort harm and score await a deliberate pilot act; Gauntlet then
+releases its ordinary full firing roster. Every live Crucible ruleset parks campaign
+objectives and their clocks. Armory explanations stay with their live fit; authored
+rock pigment separates from the sky; edge markers follow submitted hull poses and
+expire with their exact life. Native finite-cohort resolution, retained cleanup
+aftermath, reader clock precision, public aiming/recovery and marker observation
+were corrected without changing gameplay thresholds. Enemy radius-square colour
+statistics remain diagnostic: missing silhouette pixel ownership is explicitly
+UNKNOWN, so the gate cannot certify hull paint contrast from averaged sky pixels.
+
+Local public-route evidence: `.devshots/batch20-oct13-b/adventure/` reached tutorial-on
+New Game → launch → 302 simulated seconds of flight with route, control, hull and
+continuity checks passing. Swarm idle evidence at `swarm-final/swarm-idle/` had zero
+pre-input cohort deaths or score; `swarm-tracking/` cleared rounds 1 and 2 and reached
+round 3, with every core check passing and no FAIL. Adventure and Swarm verdicts
+remain INCOMPLETE for missing visual/combat coverage and unmeasured quiet-host
+performance; diagnostic timings on this contended machine are not FPS certification.
+Gauntlet idle evidence at `gauntlet-final/gauntlet-idle/` has zero pre-input
+cohort deaths or score and no campaign or marker failure. Fresh active recovery at
+`gauntlet-tether-recovery/` cleared all three native waves (40.8, 70.7 and
+211.3 simulated seconds), with every core check passing and no FAIL. Its verdict
+remains INCOMPLETE solely for missing silhouette/class coverage and quiet-host
+performance: 0/6 dead control probes, 0/2 broken transitions, 0 pre-input cohort
+deaths/score, no Adventure objective leak, and 244 valid offscreen-marker samples. The public actor cuts its own visible Massline before
+pursuit, preserving the native orbit physics; marker grace is validated at the
+HUD publication that actually painted the chip (`d7c4217f3a`). Native Gauntlet
+first-action admission, campaign isolation and rendered-pose marker ownership are
+`7e21448368`, `e4017994d8` and `10b33e300c`; unsupported enemy silhouette contrast
+is explicitly unmeasured in `879df33bfe`.
+
 Owner ruling, 2026-10-08: **there is no plan about building this game that is not part of this
 map.** The task banks below are admitted scope. A bank is not run like a queue — every candidate
 is outcome-mapped against landed work before it becomes a row (already-true → close with evidence;

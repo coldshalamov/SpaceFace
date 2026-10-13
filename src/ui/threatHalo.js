@@ -1,5 +1,5 @@
 import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
-import { nameThreatFromVisibleRead, specialistPlanById } from '../ai/specialistPlans.js';
+import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -77,6 +77,8 @@ export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
   'return_fire_warning',
   'pd_curtain_closing',
   'warden_screen_closing',
+  'furnace_preheat',
+  'mothlight_iris',
 ]);
 
 export const TELEGRAPH_CUE_TICKS = 30;
@@ -165,6 +167,10 @@ export function leftoverTelegraphKind(payload) {
   if (doctrineId === 'ranged_stalker') return 'sensor_ghost';
   if (doctrineId === 'mine_layer_wake') return 'wake_mines';
   if (doctrineId === 'detonator_run') return 'detonator_fuse';
+  // A specialist omitted from the hand list still publishes a telegraph on its plan.
+  // Read that kind. Do not invent a glyph, and do not key the mark off the hull name.
+  const plan = specialistPlanByDoctrine(doctrineId);
+  if (plan && TELEGRAPH_KIND_SET.has(plan.telegraphKind)) return plan.telegraphKind;
   return null;
 }
 
@@ -542,6 +548,8 @@ export function createThreatHalo(root, busOrOpts) {
   const hostileToken = new Array(HOSTILE_LIMIT);
   const hostileFaction = new Array(HOSTILE_LIMIT);
   const hostileId = new Array(HOSTILE_LIMIT);
+  const hostileLife = new Array(HOSTILE_LIMIT);
+  const hostileBehind = new Uint8Array(HOSTILE_LIMIT);
   let hostileCount = 0;
   const telegraphCues = [];
   let busUnsub = null;
@@ -551,6 +559,8 @@ export function createThreatHalo(root, busOrOpts) {
   const tetherPhaseById = new Map();
   let tetherPass = 0;
   let haloTick = 0;
+  let haloSim = 0;
+  let haloPublication = 0;
   let lastHarvestIndexVersion = null;
   let lastHarvestAtS = -Infinity;
 
@@ -999,6 +1009,8 @@ export function createThreatHalo(root, busOrOpts) {
     if (!slot) return;
     setAttr(slot, 'data-telegraph-kind', null);
     setAttr(slot, 'data-entity-id', null);
+    setAttr(slot, 'data-placement-read', null);
+    slot._sfPlacementRead = null;
     if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
       slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
     }
@@ -1056,7 +1068,7 @@ export function createThreatHalo(root, busOrOpts) {
     return String(id) < String(hostileId[i]);
   }
 
-  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null) {
+  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null, life = null, behind = false) {
     if (hostileCount < HOSTILE_LIMIT) {
       const i = hostileCount++;
       hostileX[i] = x;
@@ -1070,6 +1082,8 @@ export function createThreatHalo(root, busOrOpts) {
       hostileToken[i] = token;
       hostileFaction[i] = faction;
       hostileId[i] = id;
+      hostileLife[i] = life;
+      hostileBehind[i] = behind ? 1 : 0;
       return;
     }
 
@@ -1090,6 +1104,8 @@ export function createThreatHalo(root, busOrOpts) {
     hostileToken[worst] = token;
     hostileFaction[worst] = faction;
     hostileId[worst] = id;
+    hostileLife[worst] = life;
+    hostileBehind[worst] = behind ? 1 : 0;
   }
 
   function pushMissileCandidate(x, y, dist) {
@@ -1130,6 +1146,8 @@ export function createThreatHalo(root, busOrOpts) {
       const tk = hostileToken[i];
       const tf = hostileFaction[i];
       const tid = hostileId[i];
+      const tLife = hostileLife[i];
+      const tBehind = hostileBehind[i];
       hostileX[i] = hostileX[best];
       hostileY[i] = hostileY[best];
       hostileTier[i] = hostileTier[best];
@@ -1141,6 +1159,8 @@ export function createThreatHalo(root, busOrOpts) {
       hostileToken[i] = hostileToken[best];
       hostileFaction[i] = hostileFaction[best];
       hostileId[i] = hostileId[best];
+      hostileLife[i] = hostileLife[best];
+      hostileBehind[i] = hostileBehind[best];
       hostileX[best] = tx;
       hostileY[best] = ty;
       hostileTier[best] = tt;
@@ -1152,6 +1172,8 @@ export function createThreatHalo(root, busOrOpts) {
       hostileToken[best] = tk;
       hostileFaction[best] = tf;
       hostileId[best] = tid;
+      hostileLife[best] = tLife;
+      hostileBehind[best] = tBehind;
     }
   }
 
@@ -1195,9 +1217,16 @@ export function createThreatHalo(root, busOrOpts) {
       const hostile = isHostileToPlayer(entity, playerTeam, state);
       if (!hostile) continue;
 
-      projectionWorld.x = entity.pos.x;
+      // The submitted root is frame-local and may trail the simulation by one fixed tick.
+      // Project that visible pose through the canonical global helper. Unavailable roots
+      // (including pooled hulls) keep the same authoritative global fallback as before.
+      const root = state.render?.meshes?.get?.(entity.id);
+      const pos = root?.visible === true && Number.isFinite(root.position?.x)
+        && Number.isFinite(root.position?.z) ? root.position : null;
+      const origin = state.world?.frameOrigin;
+      projectionWorld.x = pos ? pos.x + (Number.isFinite(origin?.x) ? origin.x : 0) : entity.pos.x;
       projectionWorld.y = 0;
-      projectionWorld.z = entity.pos.z;
+      projectionWorld.z = pos ? pos.z + (Number.isFinite(origin?.z) ? origin.z : 0) : entity.pos.z;
       const projected = worldToScreen(projectionWorld, projectionScreen);
       const cue = cueForIds(entity.id, null);
       const telegraphed = !!cue;
@@ -1239,7 +1268,7 @@ export function createThreatHalo(root, busOrOpts) {
       pushHostileCandidate(
         sx, sy, tier,
         telegraphed ? 1 : 0, closingBucketOf(closing), Math.floor(dist / DIST_BAND_WU),
-        opacity, role, token, faction, entity.id,
+        opacity, role, token, faction, entity.id, entity.occupantGeneration ?? null, projected.behind === true,
       );
     }
 
@@ -1330,17 +1359,26 @@ export function createThreatHalo(root, busOrOpts) {
   // placement solver fail for a frame and the slot strobe off. A recently-shown slot holds its
   // last placement through a short window; only a sustained failure retires it.
   const SLOT_GRACE_MS = 250;
-  function slotInGrace(slot) {
-    return !!slot._sfShownAt && performance.now() - slot._sfShownAt < SLOT_GRACE_MS;
+  function slotInGrace(slot, at = performance.now()) {
+    return !!slot._sfShownAt && at - slot._sfShownAt < SLOT_GRACE_MS;
   }
 
   function applySlots(cmState) {
     let shown = 0;
+    const publicationAt = performance.now();
+    haloPublication += 1;
+    setAttr(layer, 'data-placement-frame', haloPublication);
 
     for (let i = 0; i < HOSTILE_LIMIT; i++) {
       const slot = hostileSlots[i];
       if (i >= hostileCount || !resolvePlacement(hostileX[i], hostileY[i], false)) {
-        if (slotInGrace(slot)) {
+        // Grace belongs to a placement failure for this same eligible shooter. An actor
+        // entering the frame, dying or leaving the halo must retire its old arc now.
+        if (i < hostileCount && slot.getAttribute('data-entity-id') === String(hostileId[i])
+          && slot._sfPlacementRead?.generation === hostileLife[i] && slotInGrace(slot, publicationAt)) {
+          slot._sfPlacementRead.frame = haloPublication;
+          slot._sfPlacementRead.checkedAt = publicationAt;
+          setAttr(slot, 'data-placement-read', JSON.stringify(slot._sfPlacementRead));
           shown++;
           continue;
         }
@@ -1348,13 +1386,22 @@ export function createThreatHalo(root, busOrOpts) {
         setDisplay(slot, false);
         continue;
       }
-      slot._sfShownAt = performance.now();
+      slot._sfShownAt = publicationAt;
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
       setAttr(slot, 'data-role', hostileRole[i] || 'unknown');
       setAttr(slot, 'data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
       setAttr(slot, 'data-entity-id', hostileId[i] != null ? hostileId[i] : null);
+      // Bind observer custody to the pose that placed this chip, rather than a newer sim
+      // point read between overlay ticks. Grace is bounded by the existing placement window.
+      const placedAt = slot._sfShownAt;
+      slot._sfPlacementRead = { version: 1, id: hostileId[i],
+        generation: hostileLife[i], tick: haloTick, sim: haloSim, at: placedAt,
+        expiresAt: placedAt + SLOT_GRACE_MS, x: hostileX[i], y: hostileY[i],
+        frame: haloPublication, checkedAt: publicationAt,
+        onScreen: false, behind: hostileBehind[i] === 1 };
+      setAttr(slot, 'data-placement-read', JSON.stringify(slot._sfPlacementRead));
       const cue = cueForIds(hostileId[i], null);
       setOpacity(slot, cue ? '1' : hostileOpacity[i].toFixed(2));
       if (cue) {
@@ -1415,6 +1462,7 @@ export function createThreatHalo(root, busOrOpts) {
       }
       const tick = Number.isInteger(state.tick) ? state.tick : 0;
       haloTick = tick;
+      haloSim = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
       expireTelegraphCues(tick);
       // Hazard harvest is a fallback for silently-stamped telegraph data, so it only needs to
       // run when entity membership changed or on a slow heartbeat (in-place _attackTelegraph

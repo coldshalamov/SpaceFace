@@ -170,8 +170,11 @@ export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
       const object = stack.pop();
       if (!object) continue;
       if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
-        strideAt = clockNow();
         yield;
+        // Reset AFTER the yield: the driver awaits a present (a whole frame) before resuming, and a stride
+        // clock stamped before that wait reads as >= 2 ms over on the very next node, so every node after the
+        // first stride yielded too (680 frame-long waits for no work in the 2026-10-13 warm launch).
+        strideAt = clockNow();
       }
       const materials = Array.isArray(object.material)
         ? object.material
@@ -269,8 +272,11 @@ export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sl
       const object = stack.pop();
       if (!object) continue;
       if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
-        strideAt = clockNow();
         yield;
+        // Reset AFTER the yield: the driver awaits a present (a whole frame) before resuming, and a stride
+        // clock stamped before that wait reads as >= 2 ms over on the very next node, so every node after the
+        // first stride yielded too (680 frame-long waits for no work in the 2026-10-13 warm launch).
+        strideAt = clockNow();
       }
       visit(object);
       const children = object.children;
@@ -363,8 +369,11 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
       const object = stack.pop();
       if (!object) continue;
       if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
-        strideAt = clockNow();
         yield;
+        // Reset AFTER the yield: the driver awaits a present (a whole frame) before resuming, and a stride
+        // clock stamped before that wait reads as >= 2 ms over on the very next node, so every node after the
+        // first stride yielded too (680 frame-long waits for no work in the 2026-10-13 warm launch).
+        strideAt = clockNow();
       }
       visit(object);
       const children = object.children;

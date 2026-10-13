@@ -200,9 +200,10 @@ export function createRescuedWorkerReturn(owner) {
       }
     }
     const who = persona && (persona.callsign || persona.name);
+    const working = record.outcome === 'returned';
     d.scanLabel = who
-      ? `${String(who).toUpperCase()} · BACK AT WORK`
-      : `${ROLE_LABELS[record.role] || 'Crew'} · returned to work`;
+      ? `${String(who).toUpperCase()} · ${working ? 'BACK AT WORK' : 'AWAITING SHIFT'}`
+      : `${ROLE_LABELS[record.role] || 'Crew'} · ${working ? 'returned to work' : 'AWAITING SHIFT'}`;
   };
 
   // ── capture: who just died, and what was their actual job? ────────────────────────────────
@@ -218,7 +219,9 @@ export function createRescuedWorkerReturn(owner) {
     const dyingEntity = state.entities?.get?.(payload.id);
     const returnedRecord = dyingEntity?.data?.rescuedWorkerPerson
       ? recordOf(String(dyingEntity.data.rescuedWorkerPerson))
-      : Object.values(own().people).find((rec) => rec.returnedEntityId === payload.id) || null;
+      : !dyingEntity
+        ? Object.values(own().people).find((rec) => rec.returnedEntityId === payload.id) || null
+        : null;
     if (returnedRecord) {
       noteReturnedLoss(returnedRecord, now);
       return;
@@ -343,7 +346,14 @@ export function createRescuedWorkerReturn(owner) {
 
   // ── the return itself: one hull, one world record, the real job ───────────────────────────
   const assignReturnJob = (entity, record) => {
-    if (entity.data.jobId) return entity.data.jobId;
+    const liveJob = (jobId) => {
+      const entry = jobId && helpers?.npcJobs?.get?.(jobId);
+      return !!(entry?.job && entry.job.corrupt !== true
+        && entry.worldRecordId === record.worldRecordId && entry.entityId === entity.id);
+    };
+    if (liveJob(entity.data.jobId)) return entity.data.jobId;
+    // A label restored from a hull is only a join hint. A missing/virtual/foreign job
+    // still needs the workplace owner to admit this person before we acknowledge return.
     if (!helpers?.npcJobs?.assign || !record.workplace) return null;
     const spec = {
       kind: record.workplace.kind,
@@ -355,7 +365,8 @@ export function createRescuedWorkerReturn(owner) {
     for (const field of ['commissionS', 'departS', 'approachS', 'workS', 'loadS', 'unloadS', 'dwellS']) {
       if (record.workplace[field] != null) spec[field] = record.workplace[field];
     }
-    return helpers.npcJobs.assign(entity, spec);
+    const jobId = helpers.npcJobs.assign(entity, spec);
+    return liveJob(jobId) ? jobId : null;
   };
 
   function sync() {
@@ -374,11 +385,13 @@ export function createRescuedWorkerReturn(owner) {
         // A world-resident copy is already here (restore rematerialized it first): adopt it,
         // heal its identity stamp, finish its job link, and charge the transition once.
         stampIdentity(existing, record);
-        if (!existing.data.jobId) assignReturnJob(existing, record);
+        const jobId = assignReturnJob(existing, record);
+        if (!jobId) continue;
         if (record.returnedAtS == null) {
           record.returnedAtS = now;
           record.returnedEntityId = existing.id;
           record.outcome = 'returned';
+          stampIdentity(existing, record);
           emitReturned(record, existing.id);
         }
         continue;
@@ -408,10 +421,16 @@ export function createRescuedWorkerReturn(owner) {
         entity = null; // an unknown defId must not fabricate a wrong body
       }
       if (!entity) continue;
+      // Keep the admitted person while the job owner is temporarily unable to accept the
+      // captured shift. A later sync retries this same hull rather than spawning a duplicate.
+      actors.set(record.personKey, entity);
+      record.returnedEntityId = entity.id;
       const jobId = assignReturnJob(entity, record);
+      if (!jobId) continue;
       record.returnedAtS = now;
       record.returnedEntityId = entity.id;
       record.outcome = 'returned';
+      stampIdentity(entity, record);
       emitReturned(record, entity.id, jobId);
     }
   }
@@ -436,7 +455,8 @@ export function createRescuedWorkerReturn(owner) {
   // A returned worker's death is final: outcome 'lost', charged once, never respawned.
 
   function noteReturnedLoss(record, now) {
-    if (!record || record.outcome !== 'returned' || record.lostAtS != null) return;
+    if (!record || record.lostAtS != null
+      || !(record.outcome === 'returned' || (record.outcome === 'rescued' && record.returnedEntityId != null))) return;
     record.outcome = 'lost';
     record.lostAtS = now;
   }

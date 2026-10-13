@@ -286,7 +286,11 @@ test('opening GPU admission waits for the rock maps, and rocks that went out bar
   assert.match(source, /prepareOpeningGpuResources = async \(\) => \{[\s\S]{0,600}?await Promise\.race\(\[\s*this\.rockSurfaceLibraryReady/,
     'the loading presenter waits for common-rock maps up to its opening budget before first publication');
   assert.match(source, /upgradeBareRockMaterials/, 'the renderer imports the bare-rock re-skin');
-  assert.match(source, /this\.rockSurfaceLibraryReady\.then\(\(\) => \{[\s\S]{0,400}?upgradeBareRockMaterials\(mesh\)/,
+  const readyCallback = source.match(/this\.rockSurfaceLibraryReady\.then\((?:async\s+)?\(\) => \{([\s\S]*?)\n\s*\}\)\.catch/);
+  assert.ok(readyCallback, 'rock publication owns a completion callback');
+  // The paced continuation can prewarm roots and yield before visiting live meshes.
+  // Scope the assertion to that callback rather than its old synchronous character budget.
+  assert.match(readyCallback[1], /for \(const mesh of this\._meshes\.values\(\)\) \{\s*const swapped = upgradeBareRockMaterials\(mesh\)/,
     'every live rock that published bare is re-skinned when the library lands');
   const factory = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
   assert.match(factory, /astmat:\$\{typeId\}:\$\{tint \|\| 'def'\}\$\{variantKey\}\$\{bare \? ':bare' : ''\}/,

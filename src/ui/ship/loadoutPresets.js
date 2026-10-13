@@ -237,6 +237,7 @@ export function formatLoadoutApplyReason(applyResult, { dockLabel = 'Dock to ref
 
 const RACK_REJECTION_SPEECH = Object.freeze({
   rack_not_docked: 'Dock to prepare the bomb rack',
+  rack_inactive_hull: 'Switch to this hull before preparing its bomb rack',
   rack_credits: 'Not enough credits for the rack on this build',
   rack_no_stock: 'That bomb is not in stock',
   rack_empty_rack: 'The rack on this build is empty',

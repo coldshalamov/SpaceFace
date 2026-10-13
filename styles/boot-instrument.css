@@ -11,6 +11,7 @@
 #boot-overlay.boot-overlay--orrery .boot-progress-row > .boot-progress,
 #boot-overlay.boot-overlay--orrery .boot-progress-row > [data-loading-pct] { display:none; }
 .boot-instrument .boot-ring__emblem { opacity:.44; }
+.boot-instrument .boot-ring__emblem-layer { position:absolute; left:38px; top:38px; width:100px; height:100px; object-fit:contain; will-change:transform; }
 .boot-instrument .boot-ring__grad { fill:none; stroke:rgb(232 226 212 / .30); stroke-width:.65; }
 .boot-ring__filigree { fill:none; stroke:rgb(232 226 212 / .32); stroke-width:.6; }
 .boot-instrument .boot-ring__track { fill:none; stroke:rgb(232 226 212 / .16); stroke-width:1; }

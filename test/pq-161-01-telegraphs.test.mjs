@@ -376,7 +376,7 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
     'field_spool', 'pd_curtain', 'sensor_ghost', 'broadside_charge', 'swarmer_vent',
     'broadside_desperation', 'shield_lance',
     'pirate_stalk', 'scan_sweep', 'return_fire_warning', 'pd_curtain_closing',
-    'warden_screen_closing',
+    'warden_screen_closing', 'furnace_preheat', 'mothlight_iris',
   ]);
   assert.equal(leftoverTelegraphKind({ kind: 'engine_flare' }), 'engine_flare');
   assert.equal(leftoverTelegraphKind({ kind: 'weapon_charge' }), 'weapon_charge');
@@ -414,6 +414,8 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
     warden_screen_closing: 'shields',
     attackRun: 'impulses',
     alphaStrike: 'impulses',
+    furnace_preheat: 'repulsors',
+    mothlight_iris: 'impulses',
   });
   assert.equal(forceChannelForTelegraphKind('engine_flare'), 'impulses');
   assert.equal(forceChannelForTelegraphKind('weapon_charge'), 'impulses');
