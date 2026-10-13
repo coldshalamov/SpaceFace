@@ -57,6 +57,8 @@ test('a draw that waits on a still-linking program is recorded with its name and
   slow.getUniforms();
 
   assert.equal(ledger.count, 1);
+  assert.equal(ledger.waits, 1, 'one real wait');
+  assert.equal(ledger.programs, 1, 'on one program');
   assert.ok(ledger.totalMs >= 20, `recorded the wait: ${ledger.totalMs.toFixed(1)} ms`);
   assert.equal(ledger.worst.length, 1);
   assert.equal(ledger.worst[0].name, 'SlowHullPaint');
@@ -85,6 +87,8 @@ test('the second accessor of one program adds a draw-path call but no wait', () 
   const afterFirst = ledger.totalMs;
   p.getAttributes();
   assert.equal(ledger.count, 2, 'the second accessor is still a draw-path call (and costs ~nothing)');
+  assert.equal(ledger.waits, 1, 'only the first-use call was a real wait');
+  assert.equal(ledger.programs, 1);
   assert.ok(ledger.totalMs - afterFirst < 5, 'but it adds no wait: the first-use work was already done');
 });
 

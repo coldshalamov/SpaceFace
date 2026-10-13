@@ -185,7 +185,13 @@ const LINK_BLOCK_WORST = 24;
 
 export function createLinkBlockLedger() {
   return {
+    // Every draw-path first-use call on a still-unsettled program (most cost nothing: three caches
+    // the discovery after the first). `waits` counts the ones that really blocked (>= 1 ms) and
+    // `programs` the distinct programs that did.
     count: 0,
+    waits: 0,
+    programs: 0,
+    seen: new WeakSet(),
     totalMs: 0,
     maxMs: 0,
     // The N longest waits, longest first: { ms, name, atMs, stack }.
@@ -193,7 +199,8 @@ export function createLinkBlockLedger() {
     // name -> { count, totalMs }: which shader families pay.
     byName: Object.create(null),
     reset() {
-      this.count = 0; this.totalMs = 0; this.maxMs = 0; this.worst.length = 0;
+      this.count = 0; this.waits = 0; this.programs = 0; this.seen = new WeakSet();
+      this.totalMs = 0; this.maxMs = 0; this.worst.length = 0;
       for (const key of Object.keys(this.byName)) delete this.byName[key];
     },
   };
@@ -209,9 +216,17 @@ function recordLinkBlock(ledger, program, ms) {
   ledger.totalMs += ms;
   if (ms > ledger.maxMs) ledger.maxMs = ms;
   const name = String(program.name || program.type || 'program');
-  const family = ledger.byName[name] || (ledger.byName[name] = { count: 0, totalMs: 0 });
+  const family = ledger.byName[name] || (ledger.byName[name] = { count: 0, waits: 0, totalMs: 0 });
   family.count += 1;
   family.totalMs += ms;
+  if (ms >= 1) {
+    ledger.waits += 1;
+    family.waits += 1;
+    if (!ledger.seen.has(program)) {
+      ledger.seen.add(program);
+      ledger.programs += 1;
+    }
+  }
   const worst = ledger.worst;
   if (worst.length >= LINK_BLOCK_WORST && ms <= worst[worst.length - 1].ms) return;
   let stack = null;

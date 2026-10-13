@@ -453,6 +453,12 @@ export function beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, rendere
   const currentRegistration = authoredInstancedMeshDisposeRegistrationByRenderer.get(renderer);
   if (currentRegistration?.complete === true) return null;
   if (authoredInstancedMeshDisposeProbeByRenderer.has(renderer)) return null;
+  // How many times the private probe actually rendered: it should be once per context generation.
+  // A count that keeps climbing in flight means registration never completes and every frame pays
+  // a probe scene render (read by the launch probes).
+  if (renderer.userData && typeof renderer.userData === 'object') {
+    renderer.userData.spacefaceDisposeProbeRuns = (renderer.userData.spacefaceDisposeProbeRuns || 0) + 1;
+  }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute([

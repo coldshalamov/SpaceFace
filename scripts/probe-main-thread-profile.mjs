@@ -122,16 +122,18 @@ function readGpuAndOpeningInPage() {
     geometries: info?.memory?.geometries ?? null,
     textures: info?.memory?.textures ?? null,
     heapMb: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
+    disposeProbeRuns: window.SF?.registry?.get?.('render')?.renderer?.userData?.spacefaceDisposeProbeRuns ?? null,
     // Draws that waited on a driver link (src/render/shaderLinkReporter.js link-block ledger).
     linkBlocks: (() => {
       try {
         const ledger = window.SF?.registry?.get?.('render')?.renderer?.userData?.spacefaceLinkBlocks;
         if (!ledger) return null;
         const families = Object.entries(ledger.byName || {})
-          .map(([name, row]) => ({ name, count: row.count, totalMs: Math.round(row.totalMs) }))
+          .map(([name, row]) => ({ name, count: row.count, waits: row.waits, totalMs: Math.round(row.totalMs) }))
           .sort((a, b) => b.totalMs - a.totalMs).slice(0, 12);
         return {
-          count: ledger.count, totalMs: Math.round(ledger.totalMs), maxMs: Math.round(ledger.maxMs),
+          count: ledger.count, waits: ledger.waits, programs: ledger.programs,
+          totalMs: Math.round(ledger.totalMs), maxMs: Math.round(ledger.maxMs),
           families,
           worst: (ledger.worst || []).slice(0, 8).map((row) => ({
             ms: Math.round(row.ms), name: row.name, stack: row.stack ? String(row.stack).slice(0, 700) : null,
@@ -415,9 +417,9 @@ function resourceLines(resources, from, to) {
 function linkBlockLines(blocks) {
   if (!blocks) return ['Link-block ledger unavailable (renderer.userData.spacefaceLinkBlocks missing).', ''];
   const lines = ['## Draws that waited on a driver link', '',
-    `${blocks.count} waits, ${(blocks.totalMs / 1000).toFixed(1)} s on the main thread, longest ${blocks.maxMs} ms.`, '',
-    '| shader family | waits | total ms |', '|---|---:|---:|'];
-  for (const row of blocks.families || []) lines.push(`| ${row.name} | ${row.count} | ${row.totalMs} |`);
+    `${blocks.waits} waits of 1 ms or more across ${blocks.programs} programs (${blocks.count} draw-path calls), ${(blocks.totalMs / 1000).toFixed(1)} s on the main thread, longest ${blocks.maxMs} ms.`, '',
+    '| shader family | waits (>= 1 ms) | total ms |', '|---|---:|---:|'];
+  for (const row of blocks.families || []) lines.push(`| ${row.name} | ${row.waits} | ${row.totalMs} |`);
   lines.push('');
   for (const row of blocks.worst || []) {
     lines.push(`- ${row.ms} ms \`${row.name}\`${row.stack ? ` — ${row.stack}` : ''}`);
@@ -491,6 +493,7 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
     lines.push(`| ${moment} | ${snapshot?.programs ?? '?'} | ${snapshot?.geometries ?? '?'} | ${snapshot?.textures ?? '?'} | ${snapshot?.heapMb ?? '?'} |`);
   }
   lines.push('');
+  lines.push(`Dispose-registration probe renders: ${atFlight?.disposeProbeRuns ?? '?'} at flight, ${atEnd?.disposeProbeRuns ?? '?'} at end of profile (once per context generation is right).`, '');
   lines.push(...linkBlockLines(atEnd?.linkBlocks || atFlight?.linkBlocks));
   if (atFlight?.openingPending?.length) {
     lines.push(`Opening work still pending when flight began: ${atFlight.openingPending.map((id) => `\`${id}\``).join(', ')}.`, '');
