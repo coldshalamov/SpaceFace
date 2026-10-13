@@ -95,14 +95,17 @@ test('a retired default preview parks its live context for the next preview inst
   const renderer = { setPixelRatio() {}, setClearColor() {}, setSize() {}, render() {}, info: { programs: [] },
     getContext: () => ({ isContextLost: () => lostCtx }), renderLists: { dispose() {} },
     dispose() { counts.dispose++; }, forceContextLoss() { counts.lost++; } };
-  const canvasOf = () => ({ getContext() {}, clientWidth: 360, clientHeight: 216, attributes: [], setAttribute() {},
+  const canvasOf = (attrs = {}) => ({ getContext() {}, clientWidth: 360, clientHeight: 216, attrs,
+    get attributes() { return Object.entries(this.attrs).map(([name, value]) => ({ name, value })); },
+    hasAttribute(n) { return n in this.attrs; }, setAttribute(n, v) { this.attrs[n] = v; }, removeAttribute(n) { delete this.attrs[n]; },
     addEventListener() {}, removeEventListener() {}, replaced: null, replaceWith(next) { this.replaced = next; } });
   const open = canvas => createPipSpannerPreview({ canvas, doc: { defaultView: {} }, reuseRenderer: true,
     rendererFactory: () => { made++; return renderer; }, leaseFactory: () => ({ load: () => Promise.resolve(null), release() { counts.release++; } }) });
-  const first = canvasOf(); const a = open(first); a.dispose();
+  const first = canvasOf({ 'aria-hidden': 'true', 'data-old': '1' }); const a = open(first); a.dispose();
   assert.deepEqual(counts, { dispose: 0, lost: 0, release: 1 }, 'no context destroy on retire');
-  const second = canvasOf(); const b = open(second);
+  const second = canvasOf({ 'aria-hidden': 'true', class: 'new' }); const b = open(second);
   assert.equal(made, 1, 'renderer reused'); assert.equal(second.replaced, first, 'parked canvas takes the new slot');
+  assert.deepEqual(first.attrs, { 'aria-hidden': 'true', class: 'new' }, 'reused canvas carries exactly the new attributes');
   lostCtx = true; b.dispose();
   assert.equal(counts.dispose, 1, 'a lost context is never parked'); assert.equal(counts.lost, 1);
   lostCtx = false; open(canvasOf()).dispose(); assert.equal(made, 2, 'nothing was parked after the lost context');

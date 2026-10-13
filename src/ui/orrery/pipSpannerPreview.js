@@ -127,6 +127,7 @@ const takeParked = (canvas) => {
   try { lost = !!entry.renderer.getContext?.().isContextLost?.(); } catch (_) {}
   if (lost) { try { entry.renderer.dispose(); } catch (_) {} return null; }
   const reused = entry.canvas;
+  for (const { name } of Array.from(reused.attributes || [])) if (!canvas.hasAttribute?.(name)) reused.removeAttribute(name);
   for (const { name, value } of Array.from(canvas.attributes || [])) reused.setAttribute(name, value);
   // The caller's freshly created canvas is detached here and the parked one takes its slot. Any
   // reference the caller kept to its own canvas is now stale; pipSpannerCrew finds the live one with
