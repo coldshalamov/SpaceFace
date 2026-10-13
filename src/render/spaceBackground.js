@@ -1725,7 +1725,7 @@ export class SpaceBackground {
 
     // L0 — deep field base
     const l0 = this._makeRT(sizes.L0_void);
-    const l0Mat = new THREE.ShaderMaterial({
+    const l0Mat = this._l0BakeMaterial || (this._l0BakeMaterial = new THREE.ShaderMaterial({
       vertexShader: QUAD_VERT,
       fragmentShader: L0_FRAG,
       uniforms: {
@@ -1733,9 +1733,13 @@ export class SpaceBackground {
         uSeed: { value: bakeSeed + 17.0 },
         uResolution: { value: sizes.L0_void },
       },
-    });
+    }));
+    l0Mat.uniforms.uVoid.value.copy(p.void);
+    l0Mat.uniforms.uHaze.value.copy(p.haze);
+    l0Mat.uniforms.uCore.value.copy(p.core);
+    l0Mat.uniforms.uSeed.value = bakeSeed + 17.0;
+    l0Mat.uniforms.uResolution.value = sizes.L0_void;
     this._bakeLayer(l0Mat, l0);
-    l0Mat.dispose();
     this.l0Target = l0;
 
     // L1/L2 — nebula tiles, baked only when something can actually see them.
@@ -1790,6 +1794,7 @@ export class SpaceBackground {
       // The bake rig is intentionally off-scene. Expose its retained compiled resources so the
       // context-loss lifecycle can detach Three's old-context dispose listeners before reuse.
       this._planetBakeMaterial,
+      this._l0BakeMaterial,
       this.bakePlane?.geometry,
     ].filter(Boolean);
   }
@@ -3676,6 +3681,8 @@ export class SpaceBackground {
 
   dispose() {
     this._disposed = true;
+    this._l0BakeMaterial?.dispose();
+    this._l0BakeMaterial = null;
     this.deepSkyPlates?.dispose();
     this.deepSkyBases?.dispose();
     this.paintedSky = null;
