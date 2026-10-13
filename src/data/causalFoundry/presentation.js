@@ -3,9 +3,10 @@
 // `controls` name every input on that tape.
 // `verified` on the stored card stays false at import. certifyPresentationCard runs
 // runLabScenario on the document it is given and returns verified true only when
-// that document is compileScene of the scene's primary tape (same input events
-// and frames, not merely the same id and schema), the public run of that document
-// returns pass with certifying true, and the card controls name that tape.
+// that document is the full compileScene result for the scene (seed, entities,
+// attachments, systems, assertions, title, and input tape — not the input tape
+// alone), the public run of that document returns pass with certifying true, and
+// the card controls name that scene's primary tape.
 // The shipping CLI writes that result for the stored card document.
 
 import { ACCEPTED_SCENES } from './accepted.js';
@@ -85,23 +86,14 @@ export async function certifyPresentationDocument(card, document) {
 }
 
 function isPrimaryCompile(document, scene) {
-  if (!scene || !document || document.schema !== 'spaceface.simScenario.v1' || document.id !== scene.id) {
-    return false;
-  }
+  if (!scene || !document || typeof document !== 'object') return false;
   let expected;
   try {
     expected = compileScene(scene);
   } catch {
     return false;
   }
-  return sameStructure(inputTapeOf(document), inputTapeOf(expected));
-}
-
-function inputTapeOf(document) {
-  return {
-    inputEvents: document.inputEvents || [],
-    frames: document.frames || [],
-  };
+  return sameStructure(document, expected);
 }
 
 function sameStructure(a, b) {

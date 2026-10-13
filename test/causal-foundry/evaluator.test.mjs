@@ -204,6 +204,58 @@ test('presentation cards are verified only after the public lab accepts the comp
   assert.equal(substituted.certifying, true);
   assert.equal(substituted.verified, false);
   assert.equal(reelCard.verified, false);
+
+  const unattached = structuredClone(reelCard.document);
+  delete unattached.attachments;
+  assert.notEqual(JSON.stringify(unattached), JSON.stringify(compileScene(reel)));
+  const missingAttachment = await certifyPresentationCard({
+    id: reelCard.id,
+    controls: reelCard.controls,
+    document: unattached,
+  });
+  assert.equal(missingAttachment.ok, true, `${missingAttachment.status} ${missingAttachment.error || ''}`);
+  assert.equal(missingAttachment.status, 'pass');
+  assert.equal(missingAttachment.certifying, true);
+  assert.equal(missingAttachment.verified, false);
+
+  const towCard = PRESENTATION_SCENES.find((card) => card.id === 'cf.tow-light');
+  const relabeled = structuredClone(towCard.document);
+  relabeled.id = 'cf.reel-berth';
+  assert.notEqual(JSON.stringify(relabeled), JSON.stringify(compileScene(reel)));
+  const otherBody = await certifyPresentationCard({
+    id: reelCard.id,
+    controls: reelCard.controls,
+    document: relabeled,
+  });
+  assert.equal(otherBody.ok, true, `${otherBody.status} ${otherBody.error || ''}`);
+  assert.equal(otherBody.status, 'pass');
+  assert.equal(otherBody.certifying, true);
+  assert.equal(otherBody.verified, false);
+
+  const reseeded = structuredClone(reelCard.document);
+  reseeded.seed = 1;
+  assert.notEqual(JSON.stringify(reseeded), JSON.stringify(compileScene(reel)));
+  const otherSeed = await certifyPresentationCard({
+    id: reelCard.id,
+    controls: reelCard.controls,
+    document: reseeded,
+  });
+  assert.equal(otherSeed.ok, true, `${otherSeed.status} ${otherSeed.error || ''}`);
+  assert.equal(otherSeed.status, 'pass');
+  assert.equal(otherSeed.verified, false);
+
+  const retitledDoc = structuredClone(reelCard.document);
+  retitledDoc.title = 'not the compiled title';
+  retitledDoc.description = 'not the compiled description';
+  assert.notEqual(JSON.stringify(retitledDoc), JSON.stringify(compileScene(reel)));
+  const retitled = await certifyPresentationCard({
+    id: reelCard.id,
+    controls: reelCard.controls,
+    document: retitledDoc,
+  });
+  assert.equal(retitled.ok, true, `${retitled.status} ${retitled.error || ''}`);
+  assert.equal(retitled.status, 'pass');
+  assert.equal(retitled.verified, false);
 });
 
 test('speed changes and harmless projectile drift are not hull contacts without an owner receipt', () => {
