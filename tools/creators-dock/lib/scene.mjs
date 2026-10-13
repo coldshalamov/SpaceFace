@@ -539,7 +539,35 @@ function materialize(value, key, seen) {
     if (child !== undefined) writeData(out, 'grid', child);
   }
   copyGetterGrid(value, out);
+  copyInheritedFields(value, out);
   return out;
+}
+
+function copyInheritedFields(source, out) {
+  if (!source || typeof source !== 'object' || !out || typeof out !== 'object' || Array.isArray(out)) return;
+  let proto = Object.getPrototypeOf(source);
+  const chain = new Set();
+  while (proto && proto !== Object.prototype && typeof proto === 'object' && !chain.has(proto)) {
+    chain.add(proto);
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      if (key === 'constructor' || key === 'toJSON' || Object.prototype.hasOwnProperty.call(out, key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+      if (!descriptor) continue;
+      if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        if (typeof descriptor.value === 'function') continue;
+        const child = detachData(descriptor.value);
+        if (child !== undefined) writeData(out, key, child);
+      } else if (typeof descriptor.get === 'function' && key !== 'grid') {
+        try {
+          const read = descriptor.get.call(source);
+          if (read && typeof read === 'object') writeData(out, key, detachData(read));
+        } catch (error) {
+          // An inherited getter refused. The stored scene omits that key.
+        }
+      }
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
 }
 
 export function clone(value) {

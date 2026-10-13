@@ -80,6 +80,30 @@ export function detachData(value, seen = new Map()) {
     if (typeof descriptor.value === 'function') continue;
     writeData(out, key, detachData(descriptor.value, seen));
   }
+  let proto = Object.getPrototypeOf(value);
+  const chain = new Set();
+  while (proto && proto !== Object.prototype && typeof proto === 'object' && !chain.has(proto)) {
+    chain.add(proto);
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      if (key === 'constructor' || key === 'toJSON' || Object.prototype.hasOwnProperty.call(out, key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+      if (!descriptor) continue;
+      if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        if (typeof descriptor.value === 'function') continue;
+        writeData(out, key, detachData(descriptor.value, seen));
+      } else if (typeof descriptor.get === 'function' && key !== 'grid') {
+        // Grid getters are copied by the walk below. Reading every inherited
+        // getter would count a function-prototype grid that must stay unread.
+        try {
+          const read = descriptor.get.call(value);
+          if (read && typeof read === 'object') writeData(out, key, detachData(read, seen));
+        } catch (error) {
+          // An inherited getter refused. Leave that key off the detach.
+        }
+      }
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
   if (!Object.prototype.hasOwnProperty.call(out, 'grid')) {
     let current = value;
     const chain = new Set();
