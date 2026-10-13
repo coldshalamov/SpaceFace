@@ -76,7 +76,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `automation` | SURVEYED | |
 | `replay` | SURVEYED | |
 | `clips` | SURVEYED | |
-| `sandbox` | SURVEYED | Ledger DONE for overflow |
+| **`sandbox`** | **DONE** (ui-polish-24) | Launch no longer buries Combat Lab / Hull / Hornet; phone tiles no longer stack — see § Sandbox Launch below |
 | `localmap` / `localmap-legacy` | SURVEYED | |
 | `starmap` / `starmap-legacy` | SURVEYED | |
 
@@ -568,6 +568,24 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 - **Fixed (P1, 720p):** SHIELD BOOSTER ran into its size letter. The loadout name column is wider at ≤1366px.
 - **Fixed (P1, 390×844):** PELICAN and WASP ran together in the *Start as* row. Names now size to their content, slightly smaller, with a fixed gap.
 - Checked at 1280×720, 1366×768, 1920×1080, 2560×1440 and 390×844; `--walk` exercised 12 controls with all three hulls brought to the front. `test/yard-carousel` and the new-game tests pass (50/50). Shots are in `/workspace/spaceface-scratch/ui-shots/ng5/` (not committed).
+
+## Sandbox Launch / phone tiles — session notes (2026-10-13, ui-polish-24)
+
+**Before:** On first paint the Combat Lab and fine-tune (Hull / Hornet) sat in the fixed Launch key's band at 960×540, 1280×720 and 1920×1080. On phone (`data-sf-mobile`), the ladder's flex shrink crushed each scenario tile to the global 44px touch min-height, so titles and descriptions stacked on each other.
+
+**Root cause found in review (Code Work real-game check, 07:37):** `screenManager` writes an inline `display:grid` on every `.dp-frame` root, so in the game this frame was the deckplate head/body/foot grid: the stage got an 8px row at 960×540 and the apron (LIVE TOOLS, pickers, Back) painted over the ladder; at 844×390 the Module/Enemy pickers sat under Launch at first paint and at the end of the scroll. The bench never sets that inline style, so it kept `display:block` and never showed it.
+
+**After (`src/ui/screens/sandbox.js` only):**
+1. One layout model in the game and on the bench: the frame pins `display:grid !important` (crest, then the stage as the only scroller) and never scrolls itself. Its `padding-bottom` reserves the Launch band, so the stage box ends above the key and nothing in it can sit under Launch at first paint or at any scroll offset. The hide path's inline `display:none !important` still wins.
+2. All the Launch geometry is in one custom property, `--sf-sandbox-dock` (key height + floor gap + air). The frame's reserve, the foot scrim and the key itself read it, and the phone deck restates it over its `!important` 20px `.screen` foot pad. The old 320 / 300 / 120 / 260px numbers are gone.
+3. Content keeps its natural height. The ladder is bounded by the stage, not by the viewport (`max(160px, 100% − --sf-sandbox-peek)`), so the rail foot, the COMBAT LAB tick and the panel's first row are always on first paint as the cue that the lab sits below. There's no forced `100vh − 320px` and no dead gap.
+4. LIVE TOOLS and Back (the apron) moved into the stage's normal flow after fine-tune, so they can no longer paint over the ladder.
+5. At ≤500px tall (844×390) the ladder drops its own bound and the stage alone scrolls. That retires the `min-height:200px > max-height:min(48vh,380px)` fight. Short frames (≤640px) also give back crest top air.
+6. Kept from the first pass: tiles are `flex: 0 0 auto`, and the phone deck's `min-height:0 !important` overrides the global 44px touch floor.
+
+Bench, with the game's inline grid forced to match the real cascade, at 960 / 1280 / 1920 / 390×844 / 844×390, on first paint and at the end of the stage scroll: nothing sits under Launch, LIVE TOOLS never overlaps the ladder, and there's no tile-on-tile overlap. COMBAT LAB is on first paint everywhere except 844×390, where the stage is 189px tall. Module/Enemy are reachable above Launch at 844×390. `ui-bench` reports `measured: no tangled…` at all five sizes (phone was previously OFF FRAME). Selectors and IDs are unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/sandbox-launch/review-fix/` (not committed).
+
+**Still open (elsewhere):** the Shipworks left-rail "Starter / systems fitted" clip at 960 (waiting on #359/#365), phone Shipworks callouts, and focused rename-field spacing once those land.
 
 ## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
 
