@@ -231,6 +231,66 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 13px; padding-top: 0; padding-bottom: 0; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 40px; height: 40px; }
 }
+/* Mid-height desktop frames (641–900px tall at any width, or ≤640px past 1100px wide; e.g.
+   1280×720, 1024×768, 1366×768, 1440×900): the kit's 48px row gaps, the 64px top pad, a
+   four-row ladder at 42px a row and the 64px run gauge left the course ~85px at 1280×720.
+   The gaps, the ladder rows, the dossier and the gauge close up so the course gets ~200px.
+   960×540 keeps the short-frame block above; 1920×1080 is past 900px and unchanged. */
+@media (min-width: 1101px) and (max-height: 900px), (min-height: 641px) and (max-height: 900px) {
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range { padding-top: 40px; row-gap: 22px; }
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range > .k-corner { top: 40px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs { margin-top: 10px !important; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-foot { row-gap: 8px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder { row-gap: 0; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li { padding-bottom: 10px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li::before { height: 6px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder .sf-range__word { padding: 3px 2px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 7px 2px; font-size: 14px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 14px; padding-top: 0; padding-bottom: 0; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 48px; height: 48px; }
+}
+/* Phone (data-sf-mobile): the 16 rules wrapped into a ten-row ladder (44px touch rows) and the
+   four-line title took the whole frame, so the course was 0px. Here the ladder is one row that
+   scrolls sideways (the spine rides the scroll; the right edge fades to say "more"), the title
+   and score close up, the run gauge shrinks, and the course keeps a real floor. */
+html:root[data-sf-mobile="1"] body #screens #sf-range { row-gap: 12px; grid-template-rows: auto minmax(200px, 1fr) auto; }
+html:root[data-sf-mobile="1"] body #screens #sf-range > .k-title { padding-right: 0 !important; }
+html:root[data-sf-mobile="1"] body #screens #sf-range > .k-title > .sf-range__rule { font-size: var(--k-fs-menu); padding-right: 88px; }
+html:root[data-sf-mobile="1"] #sf-range .k-title > p { font-size: 15px; line-height: 20px; }
+html:root[data-sf-mobile="1"] #sf-range .k-title > p + p { font-size: 13px; line-height: 18px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__verbs { margin-top: 8px !important; column-gap: 18px; row-gap: 6px; }
+html:root[data-sf-mobile="1"] #sf-range .k-hero__n { font-size: 22px; line-height: 1; }
+html:root[data-sf-mobile="1"] #sf-range .k-foot { row-gap: 6px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__ladder { flex-wrap: nowrap; overflow: auto hidden; width: 100%; max-width: 100%; box-sizing: border-box; column-gap: 22px; row-gap: 0;
+  padding-top: 11px; scrollbar-width: none; overscroll-behavior-x: contain; scroll-padding-inline: 2px;
+  background: linear-gradient(rgb(236 230 216 / .46), rgb(236 230 216 / .46)) 0 4px / 100% 1.5px no-repeat local,
+    linear-gradient(rgb(236 230 216 / .085), rgb(236 230 216 / .085)) 0 0 / 100% 9px no-repeat local;
+  -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0) calc(100% - 32px), transparent);
+  mask-image: linear-gradient(90deg, rgb(0 0 0) calc(100% - 32px), transparent); }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__ladder::-webkit-scrollbar { display: none; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__ladder::before { display: none; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__ladder > li { flex: 0 0 auto; padding-bottom: 12px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__ladder > li:last-child { padding-right: 32px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__ladder .sf-range__word { white-space: nowrap; padding: 3px 2px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__dossier { padding: 6px 2px; gap: 16px; font-size: 13px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__tabs { column-gap: 16px; row-gap: 0; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__run { gap: 8px; padding: 0; font-size: 12px; letter-spacing: .1em; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__run svg { width: 36px; height: 36px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__drawer { width: min(var(--k-hang), 100%); }
+/* Landscape phone (≤500px tall): one 390px column cannot hold title, course and foot, so the
+   course takes the right half at full height and the title sits over the foot on the left. */
+@media (orientation: landscape) and (max-height: 500px) {
+  html:root[data-sf-mobile="1"] body #screens #sf-range { grid-template-columns: minmax(0, 56fr) minmax(0, 44fr);
+    grid-template-rows: auto 1fr; grid-template-areas: "title stage" "foot stage"; column-gap: 20px; row-gap: 10px; }
+  html:root[data-sf-mobile="1"] #sf-range .k-foot { align-self: end; }
+  html:root[data-sf-mobile="1"] #sf-range .k-stage { margin-top: 52px; }
+  html:root[data-sf-mobile="1"] body #screens #sf-range > .k-title > .sf-range__rule { font-size: 22px; padding-right: 0; }
+  html:root[data-sf-mobile="1"] #sf-range .sf-range__verbs { margin-top: 6px !important; }
+  html:root[data-sf-mobile="1"] #sf-range .sf-range__tabs { column-gap: 12px; }
+  html:root[data-sf-mobile="1"] #sf-range .k-title > p { font-size: 14px; line-height: 18px; }
+  html:root[data-sf-mobile="1"] #sf-range .k-title > p + p { font-size: 12px; line-height: 16px; }
+  html:root[data-sf-mobile="1"] body #screens #sf-range > .k-corner { top: max(12px, env(safe-area-inset-top)); }
+}
 `;
 
 function injectStyle() {
@@ -2578,6 +2638,7 @@ export const rangeScreen = {
     this._root = rootEl;
     rootEl.id = 'sf-range';
     rootEl.innerHTML = '';
+    this._rungInViewId = null;
     rootEl.classList.remove('sf-range', 'panel', 'sf-menu');
     rootEl.classList.add('k-screen', 'k-screen--stage', 'of-range');
     rootEl.dataset.kReady = '0';
@@ -3879,6 +3940,7 @@ export const rangeScreen = {
       const check = button.parentElement ? button.parentElement.querySelector('[data-range-check]') : null;
       if (check) check.hidden = state !== 'cleared';
       if (typeof button._fhSync === 'function') button._fhSync();
+      if (active) this._keepRungInView(button, id);
     }
     for (const row of this._els.railRows) {
       const id = row.dataset.id;
@@ -3894,6 +3956,26 @@ export const rangeScreen = {
         sub.classList.toggle('k-good', state === 'cleared');
       }
     }
+  },
+
+  // Phone: the ladder is one sideways-scrolling row, so a rung picked by NEXT RULE (or any
+  // route but a tap on the ladder) may sit off its edge. Bring the live rung into view once per
+  // change; a ladder that does not scroll (every desktop size) is left alone.
+  _keepRungInView(button, id) {
+    if (this._rungInViewId === id) return;
+    const li = button && button.parentElement;
+    const ladder = li && li.parentElement;
+    if (!ladder || !(ladder.scrollWidth > ladder.clientWidth + 1)) return;
+    if (!(ladder.clientWidth > 0)) return;
+    this._rungInViewId = id;
+    const left = li.offsetLeft;
+    const right = left + li.offsetWidth;
+    const view = ladder.scrollLeft;
+    const fade = 40;
+    if (left >= view && right <= view + ladder.clientWidth - fade) return;
+    const target = Math.max(0, left - 2);
+    if (typeof ladder.scrollTo === 'function') ladder.scrollTo({ left: target, behavior: this._reducedMotion ? 'auto' : 'smooth' });
+    else ladder.scrollLeft = target;
   },
 
   _syncBestiary() {
