@@ -11,6 +11,8 @@
 // unfiled charge is deliberately excluded at the binder — that door's staged prompt owns its
 // own moment.
 
+import { techDisplayName } from '../data/tech.js';
+
 export const JUMP_ABORT_TTL_S = 3.5;
 
 /** One sim window in which repeated aborts of the same shape collapse to one line. */
@@ -50,6 +52,16 @@ export function jumpAbortText(payload) {
   if (reason === 'cooldown') {
     const s = Number(payload && payload.cooldownS);
     return Number.isFinite(s) && s > 0 ? `Drive cooling — ${Math.ceil(s)}s` : 'Drive still cooling';
+  }
+  if (reason === 'wormhole_locked') {
+    const permitId = payload && typeof payload.permitId === 'string' ? payload.permitId : '';
+    if (permitId.startsWith('tech_')) {
+      const name = techDisplayName(permitId);
+      if (name && !String(name).includes('tech_')) {
+        return `The wormhole is sealed — needs ${name}`;
+      }
+    }
+    return ABORT_LINE.wormhole_locked;
   }
   if (ABORT_LINE[reason]) return ABORT_LINE[reason];
   // Unknown reason codes still read as a phrase, never a raw slug.

@@ -1789,19 +1789,42 @@ export function installAftermathChartListener(bus, state) {
   };
 }
 
+// The durable marker is rewritten only when the wreck unbinds. While the body is
+// still in the sector, the chart has to read that live position or a drift keeps
+// the pin on the kill point.
+function liveBoundWreckPositions(state) {
+  const found = new Map();
+  const consider = (entity) => {
+    if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) return;
+    const data = entity.data;
+    const markerId = data && data.markerId;
+    if (markerId == null || markerId === '') return;
+    if (!data.provenance || data.provenance.markerId !== markerId) return;
+    if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return;
+    found.set(String(markerId), { x: entity.pos.x, z: entity.pos.z });
+  };
+  const index = state && state.entityIndex;
+  const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.wrecks);
+  const list = indexed ? index.wrecks : entityIterator(state);
+  for (let i = 0; i < list.length; i++) consider(list[i]);
+  return found;
+}
+
 /** Aftermath wrecks the chart still lists. A retired id drops the marker and its cause line. */
 export function aftermathChartMarkers(state, sectorId) {
   const own = state && state.aftermathWrecks;
   const list = own && own.bySector && sectorId ? own.bySector[sectorId] : null;
   if (!Array.isArray(list)) return [];
   const retired = state && state.ui && state.ui.retiredAftermathChart;
+  const livePos = liveBoundWreckPositions(state);
   const rows = [];
   for (const marker of list) {
     if (!marker || marker.markerId == null || marker.markerId === '') continue;
     const markerId = String(marker.markerId);
     if (retired && retired[markerId]) continue;
     const causeLine = aftermathCauseLine(marker);
-    const pos = marker.pos || { x: 0, z: 0 };
+    const pos = livePos.get(markerId) || marker.pos || { x: 0, z: 0 };
     rows.push({
       id: `wreck:${markerId}`,
       markerId,

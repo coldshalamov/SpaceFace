@@ -328,6 +328,29 @@ const WIRE_REPORT_COOLDOWN_S = 300; // min simTime gap between wire reports for 
 // short names already (single lookup, never re-derived per call).
 const FACTION_SHORT_NAMES = new Map(FACTION_META.map((f) => [f.id, f.short || f.name || f.id]));
 
+/**
+ * Permit id already stored on a tech-gated wormhole, when the pilot has not
+ * researched it and naming it is still a way through. Flag locks and a machine
+ * protocol fault stay unnamed: the destination and the lock cause are not a remedy.
+ */
+function wormholeMissingPermitId(state, sector) {
+  const link = sector && sector.wormholeTo;
+  const gatedBy = link && link.gatedBy;
+  if (typeof gatedBy !== 'string') return null;
+  const splitAt = gatedBy.indexOf(':');
+  if (splitAt <= 0) return null;
+  const kind = gatedBy.slice(0, splitAt);
+  const key = gatedBy.slice(splitAt + 1);
+  if (kind !== 'tech' || !key) return null;
+  const researched = ((state.player && state.player.researchedNodes) || []).includes(key);
+  if (researched) return null;
+  if (link.machineGate) {
+    const protocol = state.world && state.world.alienEcology && state.world.alienEcology.machineProtocol;
+    if (MACHINE_PROTOCOL_FAULTS.includes(protocol)) return null;
+  }
+  return key;
+}
+
 /** One bounded phrase for a 0..1 danger read — the lane-brief and wire-report vocabulary. */
 function laneDangerPhrase(danger) {
   if (danger >= 0.82) return 'contested space — heavy raider presence';
@@ -5478,7 +5501,10 @@ export const world = {
     const isNeighbor = !!(sector && (sector.neighbors || []).includes(targetSectorId));
     const isWormhole = !!(sector && sector.wormholeTo && sector.wormholeTo.sectorId === targetSectorId);
     if (!isNeighbor && !isWormhole) return reject('not_a_neighbor');
-    if (isWormhole && !this._wormholeUnlocked(sector)) return reject('wormhole_locked');
+    if (isWormhole && !this._wormholeUnlocked(sector)) {
+      const permitId = wormholeMissingPermitId(state, sector);
+      return reject('wormhole_locked', permitId ? { permitId } : null);
+    }
 
     via = (via === 'gate' || via === 'drive') ? via : 'gate';
     const drive = this._activeDrive();
