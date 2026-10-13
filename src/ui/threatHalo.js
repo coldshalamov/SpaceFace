@@ -548,6 +548,8 @@ export function createThreatHalo(root, busOrOpts) {
   const hostileToken = new Array(HOSTILE_LIMIT);
   const hostileFaction = new Array(HOSTILE_LIMIT);
   const hostileId = new Array(HOSTILE_LIMIT);
+  const hostileLife = new Array(HOSTILE_LIMIT);
+  const hostileBehind = new Uint8Array(HOSTILE_LIMIT);
   let hostileCount = 0;
   const telegraphCues = [];
   let busUnsub = null;
@@ -557,6 +559,7 @@ export function createThreatHalo(root, busOrOpts) {
   const tetherPhaseById = new Map();
   let tetherPass = 0;
   let haloTick = 0;
+  let haloSim = 0;
   let lastHarvestIndexVersion = null;
   let lastHarvestAtS = -Infinity;
 
@@ -1005,6 +1008,7 @@ export function createThreatHalo(root, busOrOpts) {
     if (!slot) return;
     setAttr(slot, 'data-telegraph-kind', null);
     setAttr(slot, 'data-entity-id', null);
+    setAttr(slot, 'data-placement-read', null);
     if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
       slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
     }
@@ -1062,7 +1066,7 @@ export function createThreatHalo(root, busOrOpts) {
     return String(id) < String(hostileId[i]);
   }
 
-  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null) {
+  function pushHostileCandidate(x, y, tier, tele, bucket, band, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null, life = null, behind = false) {
     if (hostileCount < HOSTILE_LIMIT) {
       const i = hostileCount++;
       hostileX[i] = x;
@@ -1076,6 +1080,8 @@ export function createThreatHalo(root, busOrOpts) {
       hostileToken[i] = token;
       hostileFaction[i] = faction;
       hostileId[i] = id;
+      hostileLife[i] = life;
+      hostileBehind[i] = behind ? 1 : 0;
       return;
     }
 
@@ -1096,6 +1102,8 @@ export function createThreatHalo(root, busOrOpts) {
     hostileToken[worst] = token;
     hostileFaction[worst] = faction;
     hostileId[worst] = id;
+    hostileLife[worst] = life;
+    hostileBehind[worst] = behind ? 1 : 0;
   }
 
   function pushMissileCandidate(x, y, dist) {
@@ -1136,6 +1144,8 @@ export function createThreatHalo(root, busOrOpts) {
       const tk = hostileToken[i];
       const tf = hostileFaction[i];
       const tid = hostileId[i];
+      const tLife = hostileLife[i];
+      const tBehind = hostileBehind[i];
       hostileX[i] = hostileX[best];
       hostileY[i] = hostileY[best];
       hostileTier[i] = hostileTier[best];
@@ -1147,6 +1157,8 @@ export function createThreatHalo(root, busOrOpts) {
       hostileToken[i] = hostileToken[best];
       hostileFaction[i] = hostileFaction[best];
       hostileId[i] = hostileId[best];
+      hostileLife[i] = hostileLife[best];
+      hostileBehind[i] = hostileBehind[best];
       hostileX[best] = tx;
       hostileY[best] = ty;
       hostileTier[best] = tt;
@@ -1158,6 +1170,8 @@ export function createThreatHalo(root, busOrOpts) {
       hostileToken[best] = tk;
       hostileFaction[best] = tf;
       hostileId[best] = tid;
+      hostileLife[best] = tLife;
+      hostileBehind[best] = tBehind;
     }
   }
 
@@ -1201,9 +1215,16 @@ export function createThreatHalo(root, busOrOpts) {
       const hostile = isHostileToPlayer(entity, playerTeam, state);
       if (!hostile) continue;
 
-      projectionWorld.x = entity.pos.x;
+      // The submitted root is frame-local and may trail the simulation by one fixed tick.
+      // Project that visible pose through the canonical global helper. Unavailable roots
+      // (including pooled hulls) keep the same authoritative global fallback as before.
+      const root = state.render?.meshes?.get?.(entity.id);
+      const pos = root?.visible === true && Number.isFinite(root.position?.x)
+        && Number.isFinite(root.position?.z) ? root.position : null;
+      const origin = state.world?.frameOrigin;
+      projectionWorld.x = pos ? pos.x + (Number.isFinite(origin?.x) ? origin.x : 0) : entity.pos.x;
       projectionWorld.y = 0;
-      projectionWorld.z = entity.pos.z;
+      projectionWorld.z = pos ? pos.z + (Number.isFinite(origin?.z) ? origin.z : 0) : entity.pos.z;
       const projected = worldToScreen(projectionWorld, projectionScreen);
       const cue = cueForIds(entity.id, null);
       const telegraphed = !!cue;
@@ -1245,7 +1266,7 @@ export function createThreatHalo(root, busOrOpts) {
       pushHostileCandidate(
         sx, sy, tier,
         telegraphed ? 1 : 0, closingBucketOf(closing), Math.floor(dist / DIST_BAND_WU),
-        opacity, role, token, faction, entity.id,
+        opacity, role, token, faction, entity.id, entity.occupantGeneration ?? null, projected.behind === true,
       );
     }
 
@@ -1364,6 +1385,13 @@ export function createThreatHalo(root, busOrOpts) {
       setAttr(slot, 'data-role', hostileRole[i] || 'unknown');
       setAttr(slot, 'data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
       setAttr(slot, 'data-entity-id', hostileId[i] != null ? hostileId[i] : null);
+      // Bind observer custody to the pose that placed this chip, rather than a newer sim
+      // point read between overlay ticks. Grace is bounded by the existing placement window.
+      const placedAt = slot._sfShownAt;
+      setAttr(slot, 'data-placement-read', JSON.stringify({ version: 1, id: hostileId[i],
+        generation: hostileLife[i], tick: haloTick, sim: haloSim, at: placedAt,
+        expiresAt: placedAt + SLOT_GRACE_MS, x: hostileX[i], y: hostileY[i],
+        onScreen: false, behind: hostileBehind[i] === 1 }));
       const cue = cueForIds(hostileId[i], null);
       setOpacity(slot, cue ? '1' : hostileOpacity[i].toFixed(2));
       if (cue) {
@@ -1424,6 +1452,7 @@ export function createThreatHalo(root, busOrOpts) {
       }
       const tick = Number.isInteger(state.tick) ? state.tick : 0;
       haloTick = tick;
+      haloSim = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
       expireTelegraphCues(tick);
       // Hazard harvest is a fallback for silently-stamped telegraph data, so it only needs to
       // run when entity membership changed or on a slow heartbeat (in-place _attackTelegraph

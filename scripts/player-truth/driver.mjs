@@ -57,23 +57,32 @@ export function observeEdgeMarkers({ drain = false } = {}) {
     if (drain && !batch) return null;
     const sf = window.SF;
     const state = sf && sf.state;
-    const project = sf && sf.ctx && sf.ctx.helpers && sf.ctx.helpers.worldToScreen;
+    const observedAt = performance.now();
     const out = [];
     for (const el of document.querySelectorAll('.sf-threat-halo__slot--arc')) {
       const cs = getComputedStyle(el);
       if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) continue;
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
-      const marker = { edge: el.getAttribute('data-edge'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+      const marker = { edge: el.getAttribute('data-edge'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), shooter: null };
       const rawId = el.getAttribute('data-entity-id');
-      if (rawId != null && rawId !== '' && typeof project === 'function') {
+      if (rawId != null && rawId !== '') {
         const id = Number.isFinite(Number(rawId)) ? Number(rawId) : rawId;
         const shooter = state && state.entities && state.entities.get(id);
-        const projected = shooter?.pos && project({ x: shooter.pos.x, y: 0, z: shooter.pos.z });
-        marker.shooter = projected ? { id, alive: shooter.alive !== false,
-          onScreen: projected.onScreen === true, behind: projected.behind === true,
-          x: projected.behind === true ? window.innerWidth - projected.x : projected.x,
-          y: projected.behind === true ? window.innerHeight - projected.y : projected.y } : null;
+        let placed = null;
+        try { placed = JSON.parse(el.getAttribute('data-placement-read')); } catch { /* missing producer read fails closed */ }
+        const data = shooter?.data || {};
+        const weapons = data.weapons || shooter?.weapons;
+        const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
+          && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
+        const fresh = placed?.version === 1 && placed.id === id
+          && placed.generation === (shooter?.occupantGeneration ?? null)
+          && Number.isFinite(placed.at) && Number.isFinite(placed.expiresAt)
+          && placed.at <= observedAt && observedAt <= placed.expiresAt
+          && placed.expiresAt <= placed.at + 250
+          && Number.isFinite(placed.x) && Number.isFinite(placed.y) && typeof placed.onScreen === 'boolean';
+        if (eligible && fresh) marker.shooter = { id, alive: true,
+          onScreen: placed.onScreen, behind: placed.behind === true, x: placed.x, y: placed.y };
       }
       out.push(marker);
     }
