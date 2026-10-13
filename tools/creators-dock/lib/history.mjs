@@ -2,11 +2,15 @@ import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, 
 
 const CAP = 100;
 
+function canHostGrid(value) {
+  return !!value && (typeof value === 'object' || typeof value === 'function');
+}
+
 function gridReadsThroughAccessor(project) {
-  if (!project || typeof project !== 'object') return false;
+  if (!canHostGrid(project)) return false;
   let current = project;
   const seen = new Set();
-  while (current && typeof current === 'object' && !seen.has(current)) {
+  while (canHostGrid(current) && !seen.has(current)) {
     seen.add(current);
     const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
     if (descriptor) {
@@ -29,6 +33,21 @@ function withoutGridAccessor(project) {
   const stored = clone(project);
   if (!stored || typeof stored !== 'object' || Array.isArray(stored) || gridReadsThroughAccessor(stored)) return null;
   return stored;
+}
+
+function stripScenes(scenes) {
+  const out = [];
+  for (const scene of scenes) {
+    const stripped = withoutGridAccessor(scene);
+    if (!stripped) return null;
+    out.push(stripped);
+  }
+  return out;
+}
+
+function stackHidesGrid(history) {
+  return history.past.some((scene) => gridReadsThroughAccessor(scene))
+    || history.future.some((scene) => gridReadsThroughAccessor(scene));
 }
 
 function storedPresent(present) {
@@ -70,13 +89,17 @@ export function commit(history, next) {
   }
   // A grid getter is skipped by clone and sameProject, so the scene looks unchanged
   // while present.grid still reads null. Keep the cloned data instead of that accessor.
-  if (unchanged && !gridReadsThroughAccessor(history.present)) return history;
+  if (unchanged && !gridReadsThroughAccessor(history.present) && !stackHidesGrid(history)) return history;
   if (unchanged) {
-    return { past: history.past, present: stored.present, future: history.future };
+    const past = stripScenes(history.past);
+    const future = stripScenes(history.future);
+    if (!past || !future) return historyOrShielded(history);
+    return { past, present: stored.present, future };
   }
   const prior = withoutGridAccessor(history.present);
-  const past = (prior ? history.past.concat([prior]) : history.past).slice(-CAP);
-  return { past, present: stored.present, future: [] };
+  const older = stripScenes(history.past);
+  if (!prior || !older) return historyOrShielded(history);
+  return { past: older.concat([prior]).slice(-CAP), present: stored.present, future: [] };
 }
 
 export function openDockHistory(project) {
@@ -99,19 +122,22 @@ export function loadExampleHistory(project) {
 
 function undo(history) {
   if (!history.past.length) return history;
-  const past = history.past.slice(0, -1);
+  const past = stripScenes(history.past.slice(0, -1));
   const present = history.past[history.past.length - 1];
   const leaving = withoutGridAccessor(history.present);
-  if (!leaving) return null;
-  return { past, present, future: [leaving, ...history.future] };
+  const future = stripScenes(history.future);
+  if (!past || !leaving || !future) return null;
+  return { past, present, future: [leaving, ...future] };
 }
 
 function redo(history) {
   if (!history.future.length) return history;
-  const [present, ...future] = history.future;
+  const [present, ...futureTail] = history.future;
   const leaving = withoutGridAccessor(history.present);
-  if (!leaving) return null;
-  return { past: history.past.concat([leaving]), present, future };
+  const past = stripScenes(history.past);
+  const future = stripScenes(futureTail);
+  if (!leaving || !past || !future) return null;
+  return { past: past.concat([leaving]), present, future };
 }
 
 export function newDockHistory(meta = {}) {

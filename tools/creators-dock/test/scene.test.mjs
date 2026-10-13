@@ -2084,7 +2084,7 @@ test('a grid getter already on the present is not kept by commit', () => {
 function gridGetter(object) {
   let current = object;
   const seen = new Set();
-  while (current && typeof current === 'object' && !seen.has(current)) {
+  while (current && (typeof current === 'object' || typeof current === 'function') && !seen.has(current)) {
     seen.add(current);
     const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
     if (descriptor && typeof descriptor.get === 'function') return descriptor.get;
@@ -2155,13 +2155,108 @@ test('commit does not keep an inherited grid getter', () => {
       return null;
     },
   });
+  const previous = Object.getPrototypeOf(history.present);
   delete history.present.grid;
   Object.setPrototypeOf(history.present, proto);
-  const committed = commit(history, history.present);
+  try {
+    const committed = commit(history, history.present);
+    assert.equal(reads, 0);
+    assert.notEqual(committed, history);
+    assert.equal(gridGetter(committed.present), undefined);
+    assert.notEqual(committed.present.grid, null);
+  } finally {
+    Object.setPrototypeOf(history.present, previous);
+  }
+});
+
+test('a function prototype grid getter is not returned or parked', () => {
+  const proto = function gridHost() {};
+  let reads = 0;
+  Object.defineProperty(proto, 'grid', {
+    configurable: true,
+    get() {
+      reads += 1;
+      return null;
+    },
+  });
+  const restored = [];
+  function useProto(object) {
+    restored.push([object, Object.getPrototypeOf(object)]);
+    delete object.grid;
+    Object.setPrototypeOf(object, proto);
+  }
+  try {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    useProto(history.present);
+    const committed = commit(history, history.present);
+    assert.notEqual(committed, history);
+    assert.equal(reads, 0);
+    assert.notEqual(committed.present.grid, null);
+    assert.equal(gridGetter(committed.present), undefined);
+
+    const fresh = createHistory(getComposition('dock.intercept-cargo'));
+    useProto(fresh.present);
+    const next = getComposition('dock.intercept-cargo');
+    next.title = 'Renamed dock';
+    const renamed = commit(fresh, next);
+    assert.equal(reads, 0);
+    assert.notEqual(renamed.past[0], fresh.present);
+    assert.notEqual(renamed.past[0].grid, null);
+    assert.equal(gridGetter(renamed.past[0]), undefined);
+
+    const base = createHistory(getComposition('dock.intercept-cargo'));
+    const stepped = commit(base, next);
+    useProto(stepped.present);
+    const undone = restoreHistory(stepped, 'undo');
+    assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+    assert.equal(reads, 0);
+    assert.notEqual(undone.history.future[0], stepped.present);
+    assert.notEqual(undone.history.future[0].grid, null);
+    assert.equal(gridGetter(undone.history.future[0]), undefined);
+
+    const again = createHistory(getComposition('dock.intercept-cargo'));
+    const renamedAgain = commit(again, next);
+    const back = restoreHistory(renamedAgain, 'undo');
+    assert.equal(back.ok, true, (back.issues || []).join('\n'));
+    useProto(back.history.present);
+    const redone = restoreHistory(back.history, 'redo');
+    assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+    const parked = redone.history.past[redone.history.past.length - 1];
+    assert.equal(reads, 0);
+    assert.notEqual(parked, back.history.present);
+    assert.notEqual(parked.grid, null);
+    assert.equal(gridGetter(parked), undefined);
+  } finally {
+    for (const [object, previous] of restored) Object.setPrototypeOf(object, previous);
+  }
+});
+
+test('a second undo strips a grid getter that was parked on future', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const first = getComposition('dock.intercept-cargo');
+  first.title = 'First rename';
+  const second = getComposition('dock.intercept-cargo');
+  second.title = 'Second rename';
+  const once = commit(history, first);
+  const twice = commit(once, second);
+  const undone = restoreHistory(twice, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  let reads = 0;
+  Object.defineProperty(undone.history.future[0], 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      reads += 1;
+      return null;
+    },
+  });
+  const again = restoreHistory(undone.history, 'undo');
+  assert.equal(again.ok, true, (again.issues || []).join('\n'));
   assert.equal(reads, 0);
-  assert.notEqual(committed, history);
-  assert.equal(gridGetter(committed.present), undefined);
-  assert.notEqual(committed.present.grid, null);
+  const parked = again.history.future[1];
+  assert.equal(gridGetter(parked), undefined);
+  assert.notEqual(parked.grid, null);
+  assert.notEqual(parked, undone.history.future[0]);
 });
 
 function withObjectPrototypeGrid(body) {
