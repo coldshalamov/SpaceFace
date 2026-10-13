@@ -2,8 +2,11 @@
 // `document` is the compiled spaceface.simScenario.v1 for that scene's primary tape.
 // `controls` name every input on that tape.
 // `verified` on the stored card stays false at import. certifyPresentationCard runs
-// runLabScenario on that card's compiled document and returns verified true only
-// when the public run passes. The shipping CLI writes that result.
+// runLabScenario on the document it is given and returns verified true only when
+// that document is compileScene of the scene's primary tape (same input events
+// and frames, not merely the same id and schema), the public run of that document
+// returns pass with certifying true, and the card controls name that tape.
+// The shipping CLI writes that result for the stored card document.
 
 import { ACCEPTED_SCENES } from './accepted.js';
 import { runLabScenario } from '../../testing/lab/runScenario.js';
@@ -56,6 +59,7 @@ export async function certifyPresentationCard(card) {
 export async function certifyPresentationDocument(card, document) {
   const scene = sceneFor(card);
   const tape = scene && scene.primary;
+  const sameDocument = isPrimaryCompile(document, scene);
   let lab;
   try {
     lab = await runLabScenario(document);
@@ -68,22 +72,58 @@ export async function certifyPresentationDocument(card, document) {
     };
   }
   const accepted = !!(lab && lab.ok === true && lab.status === 'pass' && lab.certifying === true);
-  const named = !!(tape && card && controlsCoverTape(card.controls, tape));
-  const compiled = !!(
-    scene
-    && document
-    && document.schema === 'spaceface.simScenario.v1'
-    && document.id === scene.id
-  );
+  const named = !!(tape && card && controlsCoverTape(card.controls, tape) && sameDocument);
   return {
     id: card && card.id,
-    verified: accepted && named && compiled,
+    verified: accepted && named && sameDocument,
     ok: !!(lab && lab.ok === true),
     status: lab && lab.status ? lab.status : 'invalid-config',
     certifying: !!(lab && lab.certifying === true),
     traceHash: lab && lab.traceHash ? lab.traceHash : null,
     error: lab && lab.error ? lab.error : null,
   };
+}
+
+function isPrimaryCompile(document, scene) {
+  if (!scene || !document || document.schema !== 'spaceface.simScenario.v1' || document.id !== scene.id) {
+    return false;
+  }
+  let expected;
+  try {
+    expected = compileScene(scene);
+  } catch {
+    return false;
+  }
+  return sameStructure(inputTapeOf(document), inputTapeOf(expected));
+}
+
+function inputTapeOf(document) {
+  return {
+    inputEvents: document.inputEvents || [],
+    frames: document.frames || [],
+  };
+}
+
+function sameStructure(a, b) {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a == null || b == null || typeof a !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (!sameStructure(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  const aKeys = Object.keys(a).sort();
+  const bKeys = Object.keys(b).sort();
+  if (aKeys.length !== bKeys.length) return false;
+  for (let i = 0; i < aKeys.length; i += 1) {
+    if (aKeys[i] !== bKeys[i]) return false;
+    if (!sameStructure(a[aKeys[i]], b[bKeys[i]])) return false;
+  }
+  return true;
 }
 
 function sceneFor(card) {

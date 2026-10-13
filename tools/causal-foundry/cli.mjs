@@ -60,7 +60,7 @@ const ranked = {
 };
 const accepted = {
   schema: 'spaceface.causalFoundry.acceptedProof.v1',
-  note: 'presentation[].verified is true only when runLabScenario accepts that card\'s stored document. The module constant stays false at import.',
+  note: 'presentation[].verified is true only when the stored document is the compile of that scene primary tape and runLabScenario returns pass. The module constant stays false at import.',
   sceneCount: proofs.length,
   presentationIds: PRESENTATION_IDS,
   presentation,

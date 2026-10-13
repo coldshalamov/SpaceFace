@@ -186,6 +186,24 @@ test('presentation cards are verified only after the public lab accepts the comp
   assert.equal(omitted.ok, true, omitted.error || omitted.status);
   assert.notEqual(omitted.status, 'invalid-config');
   assert.equal(omitted.verified, false);
+
+  const reelCard = PRESENTATION_SCENES.find((card) => card.id === 'cf.reel-berth');
+  const swapped = structuredClone(reelCard.document);
+  swapped.inputEvents = swapped.inputEvents.filter((event) => event.code !== 'KeyQ');
+  swapped.frames[0].input.moveZ = 0;
+  assert.equal(controlsCoverTape(reelCard.controls, reel.primary), true);
+  assert.notDeepEqual(swapped, compileScene(reel));
+  const substituted = await certifyPresentationCard({
+    id: reelCard.id,
+    controls: reelCard.controls,
+    document: swapped,
+    verified: false,
+  });
+  assert.equal(substituted.ok, true, `${substituted.status} ${substituted.error || ''}`);
+  assert.equal(substituted.status, 'pass');
+  assert.equal(substituted.certifying, true);
+  assert.equal(substituted.verified, false);
+  assert.equal(reelCard.verified, false);
 });
 
 test('speed changes and harmless projectile drift are not hull contacts without an owner receipt', () => {
