@@ -3100,7 +3100,9 @@ export const audio = {
     rt._lifecycleReason = reason;
     rt._lastWallTime = undefined;
     if (rt._lifecycleSuspendPromise) {
+      const ctx = rt.ctx;
       rt._lifecycleSuspendPromise.then(() => {
+        if (this.rt !== rt || rt._destroyed || rt.ctx !== ctx) return;
         if (!rt._lifecycleSuspended) this._resumeAudioContext(false);
       });
       return;
@@ -3246,6 +3248,7 @@ export const audio = {
     const pending = Promise.resolve(result)
       .catch(() => {})
       .then(() => {
+        if (this.rt !== rt || rt._destroyed || rt.ctx !== ctx) return;
         if (!rt._lifecycleSuspended && rt._resumeAfterLifecycle) {
           this._resumeAudioContext(false);
         }
@@ -3258,7 +3261,7 @@ export const audio = {
 
   _resumeAudioContext(allowAutoplayResume) {
     const rt = this.rt, ctx = rt && rt.ctx;
-    if (!ctx || rt._lifecycleSuspended || ctx.state === 'closed') return null;
+    if (!ctx || rt._destroyed || rt._lifecycleSuspended || ctx.state === 'closed') return null;
     if (rt._resumePromise) return rt._resumePromise;
     if (ctx.state === 'running') {
       rt._contextEverRan = true;
@@ -3285,6 +3288,7 @@ export const audio = {
     }
     const pending = Promise.resolve(result)
       .then(() => {
+        if (this.rt !== rt || rt._destroyed || rt.ctx !== ctx) return;
         if (rt._lifecycleSuspended) {
           this._suspendRunningContext();
           return;
