@@ -915,8 +915,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // re-verify (recook/F9/context restore) would otherwise run the whole
       // O(N) scan atomically: detach + DOM progress write per row.
       if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
-        scanStrideAt = now();
         await yieldToMain();
+        // Stamp AFTER the wait: the wait is a whole frame, so a stamp before it leaves the next row 16 ms over
+        // the 2 ms stride and every resident row after the first yields its own frame.
+        scanStrideAt = now();
       }
       continue;
     }
@@ -929,8 +931,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       residentTextures += 1;
       textureProgress.update(index + 1);
       if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
-        scanStrideAt = now();
         await yieldToMain();
+        // Stamp AFTER the wait: the wait is a whole frame, so a stamp before it leaves the next row 16 ms over
+        // the 2 ms stride and every resident row after the first yields its own frame.
+        scanStrideAt = now();
       }
       continue;
     }

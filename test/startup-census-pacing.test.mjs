@@ -95,3 +95,55 @@ for (const [name, steps, sync] of GENERATORS) {
     });
   });
 }
+
+// The async texture scan of an already-resident set (recook, F9, context-restore re-verify, a second New Game) had the same
+// defect in its await form: it stamped the stride clock BEFORE `await yieldToMain()`, so after the frame-long wait the next
+// resident row read >= 2 ms over and yielded again, one frame per texture. 600 resident textures cost ~600 frame waits.
+test('re-verifying an already-resident texture set yields on the stride, not once per texture', async () => {
+  const { prepareStartupGpuResidency } = await import('../src/render/startupGpuResidency.js');
+  const textures = Array.from({ length: SUBJECTS }, (_, index) => {
+    const texture = new THREE.Texture();
+    texture.name = `resident-${index}`;
+    texture.version = 1;
+    return texture;
+  });
+  const subject = { isObject3D: true };
+  const renderer = { initTexture() {}, info: { memory: { textures: 0 } } };
+  {
+    const clock = { now: 0 };
+    let yields = 0;
+    const options = {
+      textures,
+      now: () => clock.now,
+      paceQueue: async () => {},
+      yieldToMain: async () => { yields += 1; clock.now += FRAME_MS; },
+    };
+    await prepareStartupGpuResidency(renderer, [subject], options); // first pass uploads and stamps every texture
+    const firstPassYields = yields;
+    yields = 0;
+    const second = await prepareStartupGpuResidency(renderer, [subject], options);
+    assert.ok(firstPassYields >= SUBJECTS, `the first pass waits per upload (${firstPassYields})`);
+    assert.equal(second.textures ?? SUBJECTS, SUBJECTS);
+    assert.ok(yields <= Math.ceil(SUBJECTS / STRIDE) + 2,
+      `a resident re-verify yields on the ${STRIDE}-row stride, not per texture: ${yields} yields for ${SUBJECTS} textures`);
+  }
+});
+
+// The renderer's stepped census/sweep generators (census, reattach, rebind, spawned, view sweep, upgrade) carry the same
+// stride clock. Each stamp must sit directly after its `yield;` for the reason above; a stamp before it, or none, brings
+// the per-node frame wait back. 9 stamps today; the source shape is uniform, so the pin reads it.
+test('renderer.js stamps every stride clock directly after its yield', async () => {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n').split('\n');
+  const stamp = /^\s*(\w+StrideAt) = \w+Now\(\);$/;
+  const stamped = [];
+  source.forEach((line, index) => {
+    const match = line.match(stamp);
+    if (!match) return;
+    stamped.push(match[1]);
+    assert.match(source[index - 1], /^\s*yield;$/, `${match[1]} (renderer.js:${index + 1}) must follow a bare yield, found: ${source[index - 1].trim()}`);
+  });
+  assert.equal(stamped.length, 9, `the nine stepped sites: ${stamped.join(', ')}`);
+  assert.deepEqual([...new Set(stamped)].sort(),
+    ['censusStrideAt', 'rebindStrideAt', 'reattachStrideAt', 'spawnedStrideAt', 'upgradeStrideAt', 'viewSweepStrideAt'].sort());
+});
