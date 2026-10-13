@@ -35,7 +35,7 @@ import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
 import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
-import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, readEdgeMarkers, noteKey } from './driver.mjs';
+import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -327,16 +327,11 @@ async function runOne(args, arena, extra = {}) {
     if (!readerOn || draining) return;
     draining = true;
     let d;
-    try { d = await page.evaluate(() => window.__playerTruth && window.__playerTruth.drain()).catch(() => null); }
+    try { d = await drainPlayerTruth(page).catch(() => null); }
     finally { draining = false; }
     if (!d) return;
     appendReaderDrain(trace, d);
     const last = trace.samples[trace.samples.length - 1];
-    // One DOM read per drain. Stamp the newest sample only: older samples in the batch are not this frame.
-    if (last) {
-      const marks = await readEdgeMarkers(page).catch(() => null);
-      if (marks) last.edgeMarkers = marks;
-    }
     if (last && Date.now() - lastProgress > 30000) {
       const prev = progressMark; progressMark = { wall: Date.now(), sim: last.sim, f: trace.samples.length };
       if (prev) log(`progress: sim ${last.sim.toFixed(1)} s · ${((progressMark.f - prev.f) / ((progressMark.wall - prev.wall) / 1000)).toFixed(1)} fps · ${((progressMark.sim - prev.sim) / ((progressMark.wall - prev.wall) / 1000)).toFixed(2)} sim s per wall s · phase ${last.run ? last.run.ph : last.mode}`);
@@ -598,7 +593,7 @@ async function runOne(args, arena, extra = {}) {
     label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
-    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: aim+fire at nearest hostile, hold 230–400 u range, burn away from packs of 3+ inside 450 u, strafe, break off under fire, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · no invulnerability (the only toggle is the physics-lab practice rack, not offered in Swarm/Gauntlet)`,
+    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, hold 230–400 u range, burn away from packs of 3+ inside 450 u, strafe, break off under fire, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · public gameplay admission; no probe-owned invulnerability toggle`,
     stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
   });
   trace.playWatch = playWatch.snapshot();

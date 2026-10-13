@@ -12,7 +12,7 @@ export const VIS = Object.freeze({ unknown: 0, hidden: 1, offscreen: 2, onscreen
 
 /** Mode design numbers the checks grade against. Sources are named so a reviewer can argue them. */
 export const MODE_DESIGN = Object.freeze({
-  swarm: { minRoundSeconds: 20, source: 'SWARM_WAVE_DURATION_TICKS = 3600 (60 s wave), src/data/swarmMode.js; N = one third of the designed wave' },
+  swarm: { completion: 'cohort', source: 'src/data/swarmMode.js rules 2–3: the finite cohort must arrive and resolve; no fixed time-to-death target' },
   gauntlet: { minRoundSeconds: 20, source: 'Crucible gauntlet waves (build_map §12); N = 20 s, same floor as Swarm' },
   adventure: { minRoundSeconds: null, source: 'no rounds' },
   racing: { minRoundSeconds: null, source: 'no rounds' },
@@ -408,24 +408,42 @@ export function checkRewardBeforeInput(trace) {
 
 export function checkRoundResolution(trace) {
   const rounds = roundsOf(trace); const design = MODE_DESIGN[trace.meta.mode] || {};
-  if (!design.minRoundSeconds) return result('round_resolution', 'Round resolves by play', 'N/A', null, null, 'mode has no rounds');
-  const done = rounds.filter((r) => r.endSim != null && (r.endPhase === 'cleanup' || r.endPhase === 'draft' || r.endPhase === 'victory'));
+  const cohort = design.completion === 'cohort';
+  if (!design.minRoundSeconds && !cohort) return result('round_resolution', 'Round resolves by play', 'N/A', null, null, 'mode has no rounds');
+  const threshold = cohort ? `finite quota materialized and resolved, and ≥1 input (${design.source})`
+    : `≥${design.minRoundSeconds} s and ≥1 input (${design.source})`;
+  const done = rounds.filter((r) => r.endSim != null && ['cleanup', 'draft', 'refit', 'victory'].includes(r.endPhase));
   if (!done.length) {
     const lost = rounds.filter((r) => r.endSim != null && r.endPhase === 'ended');
     const why = lost.length ? `no round was won; ${lost.map((r) => `round ${r.wave} ended (run over) after ${fmt(r.endSim - r.startSim, 1)} s`).join('; ')}` : rounds.length ? 'no round was won inside the run' : 'no round started';
-    return result('round_resolution', 'Round resolves by play', 'UNKNOWN', null, `≥${design.minRoundSeconds} s and player input`, why);
+    return result('round_resolution', 'Round resolves by play', 'UNKNOWN', null, threshold, why);
   }
-  const offenders = []; let minDur = Infinity; let fail = false;
+  const offenders = []; let minDur = Infinity; let fail = false; let unknown = 0;
   for (const r of done) {
     const dur = r.endSim - r.startSim; minDur = Math.min(minDur, dur);
     const inputs = inputsBetween(trace, r.startSim, r.endSim).length;
     const why = [];
-    if (dur < design.minRoundSeconds) why.push(`won in ${fmt(dur, 1)} s < ${design.minRoundSeconds} s`);
+    if (cohort) {
+      const next = rounds.find((other) => other.startSim > r.startSim);
+      const sameRound = trace.samples.filter((s) => s.run?.w === r.wave && s.sim >= r.startSim
+        && (!next || s.sim < next.startSim));
+      // Cleanup may be sampled before the death receipt updates its census. Grade the
+      // settled armory/cleanup record for this cohort, never the next round's counters.
+      const terminal = sameRound.filter((s) => ['cleanup', 'draft', 'refit', 'victory'].includes(s.run.ph)).at(-1);
+      const census = terminal?.run;
+      if (!census || ![census.bud, census.sp, census.res].every(Number.isInteger)) unknown++;
+      else {
+        const quota = Math.max(census.bud, ...sameRound.map((s) => Number.isInteger(s.run.bud) ? s.run.bud : 0));
+        if (quota <= 0 || census.bud !== quota || census.sp !== quota || census.res !== quota) {
+          why.push(`finite cohort incomplete: quota ${quota}, materialized ${census.sp}, resolved ${census.res}`);
+        }
+      }
+    } else if (dur < design.minRoundSeconds) why.push(`won in ${fmt(dur, 1)} s < ${design.minRoundSeconds} s`);
     if (!inputs) why.push('won with zero player input');
     if (why.length) { fail = true; offenders.push({ line: `round ${r.wave}: ${why.join('; ')}`, t: r.endT, sim: r.endSim, box: null }); }
   }
-  return result('round_resolution', 'Round resolves by play', fail ? 'FAIL' : 'PASS', `shortest ${fmt(minDur, 1)} s`, `≥${design.minRoundSeconds} s and ≥1 input (${design.source})`,
-    `${done.length} round(s) resolved`, offenders, offenders.slice(0, 2));
+  return result('round_resolution', 'Round resolves by play', fail ? 'FAIL' : unknown ? 'UNKNOWN' : 'PASS', `shortest ${fmt(minDur, 1)} s`, threshold,
+    `${done.length} round(s) resolved${unknown ? `; ${unknown} without a terminal cohort census` : ''}`, offenders, offenders.slice(0, 2));
 }
 
 export function checkPlayerControl(trace) {
@@ -984,7 +1002,7 @@ function oneAxisOutside(sx, sy, vw, vh) {
 /**
  * Build-map G4, as the player sees it. The driver stamps `edgeMarkers` from the visible
  * `.sf-threat-halo__slot--arc` chips. This does not edit the HUD.
- * A marker in the middle of the frame fails. A marker while every hostile is in frame fails.
+ * A marker in the middle of the frame fails. A marker for an in-frame shooter fails.
  * One off-screen hostile and one marker must agree on the side when the hostile is outside on one axis.
  * Off-screen hostiles with no marker stay UNKNOWN: the halo only marks shooters inside its range,
  * and the trace does not carry that. No off-screen hostile is N/A.
@@ -1002,20 +1020,35 @@ export function checkOffscreenMarker(trace) {
   for (const s of samples) {
     const vw = s.vw || 960; const vh = s.vh || 540;
     const enemies = (s.e || []).filter((e) => e[E.cls] === CLS.enemy);
-    const off = enemies.filter((e) => e[E.vis] === VIS.offscreen);
-    const on = enemies.filter((e) => e[E.vis] === VIS.onscreen);
+    // The halo projects shooter centers. VIS.onscreen instead means a rendered hull's
+    // bounds overlap the frame, including a center beyond the rim with a visible sliver.
+    const off = enemies.filter((e) => e[E.vis] === VIS.offscreen
+      || Number.isFinite(e[E.sx]) && Number.isFinite(e[E.sy])
+        && (e[E.sx] < 0 || e[E.sx] > vw || e[E.sy] < 0 || e[E.sy] > vh));
+    const on = enemies.filter((e) => e[E.vis] === VIS.onscreen && !off.includes(e));
     const markers = s.edgeMarkers.filter((m) => m && Number.isFinite(m.x) && Number.isFinite(m.y));
-    if (off.length) offscreenSamples++;
-    if (off.length && markers.length) markedOffscreen++;
+    const bound = markers.filter((m) => Object.hasOwn(m, 'shooter'));
+    const boundOff = bound.filter((m) => m.shooter?.alive && m.shooter.onScreen === false);
+    if (off.length || boundOff.length) offscreenSamples++;
+    if (boundOff.length || off.length && markers.length) markedOffscreen++;
     for (const m of markers) {
       if (markerInset(m, vw, vh) > EDGE_MARKER_INSET) {
         offenders.push({ line: `edge marker at (${Math.round(m.x)}, ${Math.round(m.y)}) is not on the screen edge`, t: s.t ?? null, sim: s.sim ?? null, box: null });
       }
+      if (Object.hasOwn(m, 'shooter')) {
+        if (!m.shooter?.alive || m.shooter.onScreen) {
+          offenders.push({ line: !m.shooter?.alive ? 'edge marker has no living shooter'
+            : `edge marker for in-frame shooter ${m.shooter.id}`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+        } else if (!m.shooter.behind && oneAxisOutside(m.shooter.x, m.shooter.y, vw, vh)) {
+          const want = edgeMarkerSide(m.shooter.x, m.shooter.y, vw, vh);
+          if (m.edge !== want) offenders.push({ line: `off-screen hostile on the ${want} has an edge marker on the ${m.edge || 'unmarked side'}`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+        }
+      }
     }
-    if (markers.length && enemies.length && off.length === 0 && on.length === enemies.length) {
+    if (!bound.length && markers.length && enemies.length && off.length === 0 && on.length === enemies.length) {
       offenders.push({ line: `edge marker while every hostile is in frame (${on.length} on screen)`, t: s.t ?? null, sim: s.sim ?? null, box: null });
     }
-    if (off.length === 1 && markers.length === 1 && oneAxisOutside(off[0][E.sx], off[0][E.sy], vw, vh)) {
+    if (!bound.length && off.length === 1 && markers.length === 1 && oneAxisOutside(off[0][E.sx], off[0][E.sy], vw, vh)) {
       const want = edgeMarkerSide(off[0][E.sx], off[0][E.sy], vw, vh);
       const got = markers[0].edge;
       if (got !== want) {

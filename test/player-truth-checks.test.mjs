@@ -100,13 +100,40 @@ test('round_resolution and kills_before_input reproduce the four-second idle win
   const events = [{ ev: 'killed', sim: 11, t: 1000, id: 50, type: 'ship', killerId: 60, killerType: 'asteroid', byPlayer: false }];
   const t = trace({ rounds, events });
   const rr = checkRoundResolution(t);
-  assert.equal(rr.status, 'FAIL'); assert.match(rr.offenders[0].line, /zero player input/); assert.match(rr.offenders[0].line, /< 20 s/);
+  assert.equal(rr.status, 'FAIL'); assert.match(rr.offenders[0].line, /zero player input/);
   const kb = checkKillsBeforeInput(t);
   assert.equal(kb.status, 'FAIL'); assert.match(kb.offenders[0].line, /asteroid×1/);
   const ok = trace({ rounds: [{ wave: 1, startSim: 10, endSim: 45, endPhase: 'draft' }], events: [{ ev: 'input', kind: 'keydown', code: 'KeyW', sim: 12 }, { ev: 'killed', sim: 20, type: 'ship', byPlayer: true }] });
+  ok.samples.push({ sim: 45, run: { ph: 'draft', w: 1, bud: 15, sp: 15, res: 15 } });
   assert.equal(checkRoundResolution(ok).status, 'PASS');
   assert.equal(checkKillsBeforeInput(ok).status, 'PASS');
   assert.equal(checkRoundResolution(trace({ mode: 'adventure' })).status, 'N/A');
+});
+
+test('Swarm round resolution grades its settled finite cohort, including fast clears', () => {
+  const t = trace({ rounds: [{ wave: 1, startSim: 10, endSim: 14, endPhase: 'cleanup' }, { wave: 2, startSim: 16 }],
+    events: [{ ev: 'input', kind: 'keydown', code: 'KeyW', sim: 11 }] });
+  t.samples = [
+    { sim: 12, run: { ph: 'active', w: 1, bud: 15, sp: 15, res: 12 } },
+    { sim: 14, run: { ph: 'cleanup', w: 1, bud: 15, sp: 15, res: 14 } },
+    { sim: 15, run: { ph: 'draft', w: 1, bud: 15, sp: 15, res: 15 } },
+    { sim: 16, run: { ph: 'active', w: 2, bud: 24, sp: 8, res: 0 } },
+  ];
+  const good = checkRoundResolution(t);
+  assert.equal(good.status, 'PASS'); assert.match(good.threshold, /finite quota/);
+  for (const bad of [{ sp: 14 }, { res: 14 }, { sp: 16 }, { bud: 14, sp: 14, res: 14 }, { bud: 0, sp: 0, res: 0 }]) {
+    const prior = t.samples[2].run;
+    t.samples[2].run = { ...prior, ...bad };
+    assert.equal(checkRoundResolution(t).status, 'FAIL', JSON.stringify(bad));
+    t.samples[2].run = prior;
+  }
+  t.samples.splice(1, 2);
+  assert.equal(checkRoundResolution(t).status, 'UNKNOWN', 'another wave cannot supply the missing census');
+  t.events = [];
+  assert.equal(checkRoundResolution(t).status, 'FAIL', 'unmeasured census cannot hide an input-free clear');
+  const gauntlet = trace({ mode: 'gauntlet', rounds: [{ wave: 1, startSim: 10, endSim: 14, endPhase: 'draft' }],
+    events: [{ ev: 'input', kind: 'keydown', code: 'KeyW', sim: 11 }] });
+  assert.equal(checkRoundResolution(gauntlet).status, 'FAIL', 'the separate timed Gauntlet contract remains');
 });
 
 test('spawn_motion flags a rock already flying at the round start', () => {
@@ -360,6 +387,24 @@ test('offscreen marker: edge chip matches the hostile side, and a center chip or
   assert.equal(quiet.status, 'N/A');
   assert.equal(checkOffscreenMarker({ meta: {}, samples: [{ mode: 'flight', run: { ph: 'active' }, e: [], edgeMarkers: undefined }] }).status, 'N/A');
   assert.equal(checkOffscreenMarker({ meta: { playStartSim: 1 }, samples: [{ mode: 'flight', run: { ph: 'active' }, e: [] }] }).status, 'UNKNOWN');
+});
+
+test('offscreen markers grade their bound shooter center, including a hull sliver at the rim', () => {
+  const played = (markers, entities = []) => ({ meta: { playStartSim: 1 }, samples: [{
+    mode: 'flight', run: { ph: 'active' }, vw: 960, vh: 540, e: entities, edgeMarkers: markers,
+  }] });
+  const sliver = [2, CLS.enemy, 0, 0, 0, 0, 480, 545, 12, VIS.onscreen, -1, 0];
+  const bottom = { edge: 'bottom', x: 480, y: 528 };
+  assert.equal(checkOffscreenMarker(played([bottom], [sliver])).status, 'PASS',
+    'render bounds overlap does not mean the shooter center is in frame');
+  const newlyObserved = { ...bottom, shooter: { id: 3, alive: true, onScreen: false, x: 480, y: 600 } };
+  const olderActor = [2, CLS.enemy, 0, 0, 0, 0, 480, 270, 12, VIS.onscreen, -1, 0];
+  assert.equal(checkOffscreenMarker(played([newlyObserved], [olderActor])).status, 'PASS',
+    'the marker belongs to its observed shooter rather than an older trace actor');
+  const stale = { ...bottom, shooter: { id: 2, alive: true, onScreen: true, x: 480, y: 270 } };
+  assert.equal(checkOffscreenMarker(played([stale])).status, 'FAIL');
+  assert.equal(checkOffscreenMarker(played([{ ...newlyObserved, edge: 'left' }])).status, 'FAIL');
+  assert.equal(checkOffscreenMarker(played([{ ...bottom, shooter: null }])).status, 'FAIL');
 });
 
 test('loadout names a game-empty shelf, a harness miss, and a fit count with no items', () => {

@@ -1,12 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readTarget, fightBeat } from '../scripts/player-truth/driver.mjs';
+import { applyWorldObjectSelection, clearWorldObjectSelection } from '../src/ui/worldObjectInteraction.js';
 
-test('fighter aims at a visible gameplay target rather than a nearer off-canvas or HUD target', () => {
+const drawnMeshes = rows => new Map(rows.map(e => [e.id, { visible: true, matrixWorld: e.pos }]));
+
+test('fighter aims at a visible gameplay target rather than a nearer off-canvas or HUD target', async () => {
   const savedWindow = globalThis.window; const savedDocument = globalThis.document;
   const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
   class Vector3 {
     set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
+    setFromMatrixPosition(m) { return this.set(m.x, m.y || 0, m.z); }
     project() { this.x /= 100; this.y = -this.z / 100; this.z = 0; return this; }
   }
   const me = { id: 1, alive: true, team: 0, pos: { x: 190, z: 0 }, rot: 0, hull: 100, hullMax: 100 };
@@ -14,17 +18,75 @@ test('fighter aims at a visible gameplay target rather than a nearer off-canvas 
   const rows = [me, enemy(2, 180, 0), enemy(3, 90, 0), enemy(4, 0, 0)];
   try {
     globalThis.window = { SF: { THREE: { Vector3 }, state: { playerId: 1, entityList: rows,
-      render: { camera: {}, renderer: { domElement: canvas } } } } };
+      render: { camera: {}, meshes: drawnMeshes(rows), renderer: { domElement: canvas } } } } };
     globalThis.document = { elementFromPoint: (x, y) => x > 850 ? { tagName: 'DIV' } : canvas };
-    const target = readTarget();
+    const target = (await readTarget());
     assert.equal(target.x, 500);
     assert.equal(target.y, 300);
     assert.equal(target.dist, 190);
     rows.push({ ...enemy(5, 40, 0), team: me.team, data: { runRole: 'companion' } });
-    assert.equal(readTarget().x, 500, 'a reachable friendly companion cannot outrank the real enemy');
+    assert.equal((await readTarget()).x, 500, 'a reachable friendly companion cannot outrank the real enemy');
     rows.pop();
     rows.pop();
-    assert.equal(readTarget().none, true, 'unreachable enemies cannot produce false firing attempts');
+    assert.equal((await readTarget()).none, true, 'unreachable enemies cannot produce false firing attempts');
+    rows.push(enemy(6, 40, 0));
+    window.SF.state.render.scene = {};
+    rows.at(-1).presentationAdmission = 'pending';
+    window.SF.ctx = { helpers: { worldToScreen: () => ({ x: 700, y: 300, onScreen: true }) } };
+    assert.equal((await readTarget()).none, true, 'a staged pending contact cannot mask the real visible hunt');
+    rows.at(-1).presentationAdmission = 'ready';
+    assert.equal((await readTarget()).x, 700, 'an admitted pooled body uses the renderer projection without needing a private root');
+    window.SF.state.render.meshes.set(6, { visible: true, matrixWorld: { x: 0, z: 0 } });
+    assert.equal((await readTarget()).x, 500, 'a drawn hull uses the render frame rather than global simulation coordinates');
+  } finally {
+    if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
+    if (savedDocument === undefined) delete globalThis.document; else globalThis.document = savedDocument;
+  }
+});
+
+for (const pickAccepted of [true, false]) test(`fighter publicly selects the visible subject by ${pickAccepted ? 'RMB' : 'keyboard fallback'} and follows its painted lead pip`, async () => {
+  const savedWindow = globalThis.window; const savedDocument = globalThis.document;
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
+  class Vector3 {
+    set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
+    setFromMatrixPosition(m) { return this.set(m.x, m.y || 0, m.z); }
+    project() { this.x /= 100; this.y = -this.z / 100; this.z = 0; return this; }
+  }
+  const player = { id: 1, alive: true, type: 'ship', team: 0, pos: { x: 0, z: 0 }, rot: 0, hull: 260, hullMax: 260 };
+  const target = { id: 3, alive: true, type: 'ship', team: 1, pos: { x: 10, z: 0 }, data: {} };
+  const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: 2 }, input: {}, ui: {},
+    run: { kind: 'survival', phase: 'active' }, entityList: [player, target],
+    render: { camera: {}, meshes: drawnMeshes([player, target]), renderer: { domElement: canvas } } };
+  let pipPainted = false; const moves = []; const clicks = []; const pressed = [];
+  const pip = { classList: { contains: () => pipPainted }, offsetParent: {},
+    getBoundingClientRect: () => ({ left: 600, top: 320, width: 22, height: 22 }) };
+  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => { state.simTime += 0.2; },
+    keyboard: { down: async () => {}, up: async () => {}, press: async key => {
+      pressed.push(key);
+      if (key === 'Backspace') clearWorldObjectSelection(state);
+      if (key === 'Tab') { applyWorldObjectSelection(state, target, 'keyboard'); pipPainted = true; }
+    } }, mouse: {
+      move: async (x, y) => moves.push([x, y]),
+      click: async (x, y, options) => {
+        clicks.push({ x, y, button: options.button });
+        if (pickAccepted) { applyWorldObjectSelection(state, target, 'pointer'); pipPainted = true; }
+        else clearWorldObjectSelection(state);
+        const nearer = { ...target, id: 4, pos: { x: 5, z: 0 } };
+        state.entityList.push(nearer); state.render.meshes.set(4, { visible: true, matrixWorld: nearer.pos });
+      }, down: async () => assert.equal(state.player.targetId, target.id, 'the gun assist shares this visible subject'), up: async () => {},
+    } };
+  try {
+    globalThis.window = { SF: { THREE: { Vector3 }, state } };
+    globalThis.document = { elementFromPoint: () => canvas, querySelector: (selector) => selector === '.sf-leadpip.visible' ? pip : null };
+    await fightBeat(page, 1);
+    assert.deepEqual(pressed, pickAccepted ? [] : ['Backspace', 'Tab']);
+    assert.deepEqual(clicks, [{ x: 550, y: 300, button: 'right' }]);
+    assert.deepEqual(moves, [[550, 300], [611, 331]], 'aim uses the already painted cue rather than hidden velocity');
+    pip.offsetParent = null;
+    assert.deepEqual([(await readTarget({ selectedOnly: true })).x, (await readTarget({ selectedOnly: true })).y], [550, 300], 'a hidden lead cue cannot drive the actor');
+    pip.offsetParent = {};
+    globalThis.document.elementFromPoint = (x) => x === 611 ? { tagName: 'DIV' } : canvas;
+    assert.deepEqual([(await readTarget({ selectedOnly: true })).x, (await readTarget({ selectedOnly: true })).y], [550, 300], 'a HUD-covered lead cue falls back to the reachable subject');
   } finally {
     if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
     if (savedDocument === undefined) delete globalThis.document; else globalThis.document = savedDocument;
@@ -37,12 +99,14 @@ for (const hasTarget of [false, true]) {
     const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
     class Vector3 {
       set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
+      setFromMatrixPosition(m) { return this.set(m.x, m.y || 0, m.z); }
       project() { this.x /= 100; this.y = -this.z / 100; this.z = 0; return this; }
     }
     const me = { id: 1, alive: true, team: 0, pos: { x: 0, z: 0 }, rot: 0, hull: 100, hullMax: 100 };
-    const state = { mode: 'flight', simTime: 10, playerId: 1, run: { kind: 'survival', phase: 'active' },
+    const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: hasTarget ? 2 : null }, run: { kind: 'survival', phase: 'active' },
       entityList: [me, ...(hasTarget ? [{ id: 2, alive: true, type: 'ship', team: 1, pos: { x: 10, z: 0 }, data: {} }] : [])],
       render: { camera: {}, renderer: { domElement: canvas } } };
+    state.render.meshes = drawnMeshes(state.entityList);
     const held = new Set(); let fire = false; const pressed = [];
     const page = { evaluate: async (fn, arg) => fn(arg),
       waitForTimeout: async () => { throw new Error('the actor waited on a legitimately frozen sim clock'); },

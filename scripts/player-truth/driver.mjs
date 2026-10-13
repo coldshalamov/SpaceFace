@@ -50,19 +50,45 @@ export function noteKey(page, code) {
 }
 
 /** One flight sample for the play watcher. `boot` is the opening overlay, which is a loading state. */
-/** Visible Wave G4 arc chips. Hidden slots stay `display: none` and are not marks. */
-export async function readEdgeMarkers(page) {
-  return page.evaluate(() => {
+/** Visible G4 chips and the exact shooter centers the live halo projects. Observer only. */
+export function observeEdgeMarkers({ drain = false } = {}) {
+    const batch = drain ? window.__playerTruth && window.__playerTruth.drain() : null;
+    if (drain && !batch) return null;
+    const sf = window.SF;
+    const state = sf && sf.state;
+    const project = sf && sf.ctx && sf.ctx.helpers && sf.ctx.helpers.worldToScreen;
     const out = [];
     for (const el of document.querySelectorAll('.sf-threat-halo__slot--arc')) {
       const cs = getComputedStyle(el);
       if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) continue;
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
-      out.push({ edge: el.getAttribute('data-edge'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) });
+      const marker = { edge: el.getAttribute('data-edge'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+      const rawId = el.getAttribute('data-entity-id');
+      if (rawId != null && rawId !== '' && typeof project === 'function') {
+        const id = Number.isFinite(Number(rawId)) ? Number(rawId) : rawId;
+        const shooter = state && state.entities && state.entities.get(id);
+        const projected = shooter?.pos && project({ x: shooter.pos.x, y: 0, z: shooter.pos.z });
+        marker.shooter = projected ? { id, alive: shooter.alive !== false,
+          onScreen: projected.onScreen === true, behind: projected.behind === true,
+          x: projected.behind === true ? window.innerWidth - projected.x : projected.x,
+          y: projected.behind === true ? window.innerHeight - projected.y : projected.y } : null;
+      }
+      out.push(marker);
     }
-    return out;
-  });
+    if (!drain) return out;
+    const last = batch.samples && batch.samples[batch.samples.length - 1];
+    if (last) { last.edgeMarkers = out; last.edgeMarkerAt = performance.now(); }
+    return batch;
+}
+
+export async function readEdgeMarkers(page) {
+  return page.evaluate(observeEdgeMarkers);
+}
+
+/** Drain and observe the DOM in one task, before another render can replace its actors. */
+export async function drainPlayerTruth(page) {
+  return page.evaluate(observeEdgeMarkers, { drain: true });
 }
 
 export async function readPlaySample(page) {
@@ -106,9 +132,13 @@ export async function controlProbes(page, tag, probes) {
   return yaw && yaw.watch ? yaw.watch : null;
 }
 
-export function readTarget() {
+export async function readTarget({ selectedOnly = false } = {}) {
+  const [{ presentationAllowsTargetLock }, { collectPresentedBodyLeaves }] = await Promise.all([
+    import('../../src/core/presentationAdmission.js'), import('../../src/render/worldObjectPicking.js'),
+  ]);
   const st = window.SF.state; const cam = st.render && st.render.camera; const THREE = window.SF.THREE;
   const me = st.entityList.find((e) => e.id === st.playerId);
+  const meshes = st.render && st.render.meshes;
   if (!me || !cam) return null;
   const canvas = st.render.renderer.domElement; const r = canvas.getBoundingClientRect();
   const v = new THREE.Vector3();
@@ -118,19 +148,35 @@ export function readTarget() {
       || !!(d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget))
       || (e.team !== me.team && e.team !== 0 && e.team !== 2);
   };
-  let best = null; let bd = Infinity;
+  let best = null; let bd = Infinity; let bestX = 0; let bestY = 0;
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
     if (!hostile(e)) continue;
-    v.set(e.pos.x, e.pos.y || 0, e.pos.z).project(cam);
-    const x = r.left + (v.x * 0.5 + 0.5) * r.width;
-    const y = r.top + (-v.y * 0.5 + 0.5) * r.height;
+    // Use the same authored-presentation receipt as the live Tab/overview producer.
+    // A staged pending hull must not mask an admitted contact; pooled bodies stay eligible.
+    if (!presentationAllowsTargetLock(e, st)) continue;
+    if (selectedOnly && e.id !== st.player?.targetId) continue;
+    const root = meshes?.get(e.id);
+    let x; let y; let depth = 0;
+    if (root?.matrixWorld) {
+      if (root.visible === false) continue;
+      if (typeof root.traverse === 'function' && !collectPresentedBodyLeaves(root).length) continue;
+      v.setFromMatrixPosition(root.matrixWorld).project(cam);
+      x = r.left + (v.x * 0.5 + 0.5) * r.width;
+      y = r.top + (-v.y * 0.5 + 0.5) * r.height; depth = v.z;
+    } else {
+      // Instanced/pooled contacts need no per-entity root. Read the renderer's current
+      // frame projection instead of treating a simulation coordinate as camera-local.
+      const point = window.SF.ctx?.helpers?.worldToScreen?.(e.pos);
+      if (!point?.onScreen || point.behind) continue;
+      x = point.x; y = point.y;
+    }
     // A public shot must hit the gameplay canvas, not an off-screen coordinate
     // or a HUD control covering the target. Match the real DOM input boundary.
-    if (v.z < -1 || v.z > 1 || x < r.left || x >= r.right || y < r.top || y >= r.bottom
+    if (depth < -1 || depth > 1 || x < r.left || x >= r.right || y < r.top || y >= r.bottom
       || document.elementFromPoint(Math.round(x), Math.round(y)) !== canvas) continue;
     const dist = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
-    if (dist < bd) { bd = dist; best = e; }
+    if (dist < bd) { bd = dist; best = e; bestX = x; bestY = y; }
   }
   let cx = 0; let cz = 0; let near = 0;
   for (const e of st.entityList) {
@@ -160,11 +206,21 @@ export function readTarget() {
     }
     return { none: true, hull, radarRel, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
   }
-  v.set(best.pos.x, best.pos.y || 0, best.pos.z).project(cam);
   // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).
   const ang = Math.atan2(best.pos.z - me.pos.z, best.pos.x - me.pos.x);
   let rel = ang - me.rot; while (rel > Math.PI) rel -= 2 * Math.PI; while (rel < -Math.PI) rel += 2 * Math.PI;
-  return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height, dist: bd, rel, away, near, packDist, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  const selected = st.player?.targetId === best.id;
+  let x = bestX; let y = bestY;
+  // Follow the game's painted "aim here" cue only for this selected visible subject.
+  // No velocity, solver or hidden intercept enters the actor's decision.
+  const pip = selected ? document.querySelector?.('.sf-leadpip.visible') : null;
+  if (pip?.offsetParent) {
+    const box = pip.getBoundingClientRect();
+    const px = box.left + box.width / 2; const py = box.top + box.height / 2;
+    if (box.width > 0 && box.height > 0 && px >= r.left && px < r.right && py >= r.top && py < r.bottom
+      && document.elementFromPoint(Math.round(px), Math.round(py)) === canvas) { x = px; y = py; }
+  }
+  return { x, y, selected, dist: bd, rel, away, near, packDist, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
 }
 
 const fighterMemory = { hull: null, breakBeats: 0 };
@@ -183,16 +239,16 @@ function readCombatPhaseEnded() {
 }
 
 /**
- * One beat of a kiting fighter (public input only): aim the mouse at the nearest hostile and fire,
+ * One beat of a kiting fighter (public input only): select the nearest reachable hostile with RMB,
+ * aim at its visible lead pip (or the hull when no pip is painted), and fire,
  * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when 3+ hostiles
  * close inside 450 u, when hit, or when low, instead of trading hits. Latch (Space) every 7th beat.
  *
- * The aim point is the hostile's projected position even when that pixel is a HUD control
- * (the race-tape Circuits button is one). The click is recorded with elementFromPoint before
- * mouseup. The driver does not steer around DOM controls; the play watcher reports them.
+ * Both the hull pick and aim point must reach the gameplay canvas. The click is recorded with
+ * elementFromPoint before mouseup, and the play watcher reports any later DOM interruption.
  */
 export async function fightBeat(page, beat) {
-  const tg = await page.evaluate(readTarget).catch(() => null);
+  let tg = await page.evaluate(readTarget).catch(() => null);
   if (!tg) { await page.waitForTimeout(300); return null; }
   const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
   fighterMemory.hull = tg.hull;
@@ -222,8 +278,27 @@ export async function fightBeat(page, beat) {
     }
     return;
   }
-  const x = Math.round(tg.x);
-  const y = Math.round(tg.y);
+  if (!tg.selected) {
+    // Default gun assist retains a valid old lock. A cursor over a different hull does not
+    // release it: use the same quick RMB selection a person would before this shot.
+    const pickX = Math.round(tg.x); const pickY = Math.round(tg.y);
+    await page.mouse.move(pickX, pickY, { steps: 2 });
+    await page.mouse.click(pickX, pickY, { button: 'right' });
+    await waitSim(page, 1 / 60, { maxWallMs: 30000, until: combatPhaseEnded });
+    if (await page.evaluate(readCombatPhaseEnded)) return;
+    tg = await page.evaluate(readTarget, { selectedOnly: true }).catch(() => null);
+    if (!tg || tg.none || !tg.selected) {
+      // A hull can move behind cover between observation and the real ray pick. Use the
+      // shipped keyboard lock controls, then shoot only a selection visible on the canvas.
+      noteKey(page, 'Backspace'); await page.keyboard.press('Backspace');
+      noteKey(page, 'Tab'); await page.keyboard.press('Tab');
+      await waitSim(page, 1 / 60, { maxWallMs: 30000, until: combatPhaseEnded });
+      if (await page.evaluate(readCombatPhaseEnded)) return;
+      tg = await page.evaluate(readTarget, { selectedOnly: true }).catch(() => null);
+      if (!tg || tg.none || !tg.selected) return;
+    }
+  }
+  const x = Math.round(tg.x); const y = Math.round(tg.y);
   await page.mouse.move(x, y, { steps: 2 });
   // Record the element under the aim before the button goes down, and again before mouseup,
   // which is when a HUD button's click listener runs.
