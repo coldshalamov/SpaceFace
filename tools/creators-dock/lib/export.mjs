@@ -626,9 +626,16 @@ export function importScenario(doc) {
       velY: entity.vel && Number.isFinite(entity.vel.y) ? entity.vel.y : 0,
       velZ: entity.vel ? entity.vel.z : 0,
       angularVelocity: entity.angularVelocity || 0,
-      isPlayer: !!entity.isPlayer,
       persistent: entity.persistent !== false,
     };
+    if (entity && Object.prototype.hasOwnProperty.call(entity, 'isPlayer') && typeof entity.isPlayer !== 'boolean') {
+      return {
+        ok: false,
+        issues: [`${entity.alias || 'entity'}: isPlayer must be a boolean`],
+        project: null,
+      };
+    }
+    actor.isPlayer = entity.isPlayer === true;
     if (entity.team != null) actor.team = entity.team;
     if (entity.factionId) actor.factionId = entity.factionId;
     if (entity.overrides && Object.keys(entity.overrides).length) actor.overrides = clone(entity.overrides);

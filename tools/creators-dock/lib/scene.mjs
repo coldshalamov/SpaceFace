@@ -39,6 +39,24 @@ export function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
+function cloneScene(project) {
+  let next;
+  try {
+    next = clone(project);
+  } catch (error) {
+    return null;
+  }
+  if (!next || typeof next !== 'object' || Array.isArray(next) || !Array.isArray(next.objects)) return null;
+  for (const object of next.objects) {
+    if (!object || typeof object !== 'object' || Array.isArray(object)) return null;
+  }
+  return next;
+}
+
+function refuseUnstored(project) {
+  return { ok: false, project, issues: ['scene could not be cloned'] };
+}
+
 export function sameProject(a, b) {
   return sameJson(a, b);
 }
@@ -279,14 +297,16 @@ export function replaceObject(project, id, object) {
     if (found !== 1) issues.push(exactlyOnePlayerIssue(found));
   }
   if (issues.length) return { ok: false, project, issues };
-  const next = clone(project);
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
   next.objects = next.objects.map((entry) => (entry.id === id ? applySnap(object, next.grid) : entry));
   return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function deleteObjects(project, ids) {
   const drop = new Set(ids || []);
-  const next = clone(project);
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
   const before = next.objects.length;
   next.objects = next.objects.filter((object) => !drop.has(object.id));
   if (next.objects.length === before) return { ok: false, project, issues: ['nothing deleted'] };
@@ -304,6 +324,7 @@ export function cloneObject(project, id, newId) {
   pushPlayerFlagIssues(flags, project.objects);
   if (flags.length) return { ok: false, project, issues: flags };
   const copy = clone(source);
+  if (!copy || typeof copy !== 'object' || Array.isArray(copy)) return refuseUnstored(project);
   copy.id = newId;
   copy.groupId = undefined;
   delete copy.groupId;
@@ -337,7 +358,8 @@ export function expandIds(project, ids) {
 export function nudgeObjects(project, ids, dx, dz) {
   const move = new Set(expandIds(project, ids));
   if (!move.size) return { ok: false, project, issues: ['nothing to nudge'] };
-  const next = clone(project);
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
   for (const object of next.objects) {
     if (!move.has(object.id)) continue;
     if (!Number.isFinite(object.x) || !Number.isFinite(object.z)) continue;
@@ -348,7 +370,8 @@ export function nudgeObjects(project, ids, dx, dz) {
 }
 
 export function setVelocity(project, id, velX, velZ) {
-  const next = clone(project);
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
   const object = objectById(next, id);
   if (!object || object.kind !== 'actor') {
     return { ok: false, project, issues: [`"${id}" is not an actor`] };
@@ -367,7 +390,8 @@ export function groupObjects(project, ids, groupId) {
   }
   const wanted = new Set(ids || []);
   if (wanted.size < 2) return { ok: false, project, issues: ['group needs at least two ids'] };
-  const next = clone(project);
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
   let n = 0;
   for (const object of next.objects) {
     if (wanted.has(object.id)) {
@@ -381,7 +405,8 @@ export function groupObjects(project, ids, groupId) {
 
 export function ungroupObjects(project, ids) {
   const wanted = new Set(expandIds(project, ids));
-  const next = clone(project);
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
   for (const object of next.objects) {
     if (wanted.has(object.id)) delete object.groupId;
   }
@@ -436,8 +461,10 @@ export function hitTest(project, sx, sy, camera, view) {
 }
 
 export function setCamera(project, camera) {
-  const next = clone(project);
-  next.camera = { ...next.camera, ...camera };
+  const next = cloneScene(project);
+  if (!next) return project;
+  next.camera = { ...(next.camera || {}), ...camera };
+  if (playerCanonIssues(next).length) return project;
   return next;
 }
 
@@ -462,5 +489,22 @@ export function projectIssues(project) {
 }
 
 export function sortedClone(value) {
-  return sortValue(clone(value));
+  let stored;
+  try {
+    stored = sortValue(clone(value));
+  } catch (error) {
+    return value;
+  }
+  if (stored && typeof stored === 'object' && stored.schema === PROJECT_SCHEMA && playerCanonIssues(stored).length) {
+    return value;
+  }
+  return stored;
+}
+
+export function savedProjectText(project) {
+  const stored = cloneScene(project);
+  if (!stored) return { ok: false, issues: ['scene could not be cloned'], text: null };
+  const issues = playerCanonIssues(stored);
+  if (issues.length) return { ok: false, issues, text: null };
+  return { ok: true, issues: [], text: JSON.stringify(stored, null, 2) };
 }

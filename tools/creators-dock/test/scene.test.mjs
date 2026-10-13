@@ -22,8 +22,11 @@ import {
   projectIssues,
   replaceObject,
   REQUEST_SCHEMA,
+  savedProjectText,
+  setCamera,
   setPlayer,
   setVelocity,
+  sortedClone,
   ungroupObjects,
 } from '../lib/scene.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
@@ -704,6 +707,74 @@ test('a player toJSON that clears isPlayer is not committed or opened', () => {
 
   const created = createHistory(project);
   assert.equal(created.present, null);
+});
+
+function nullFlagToJSON(kind) {
+  return {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      if (kind) body.kind = kind;
+      body.isPlayer = null;
+      return body;
+    },
+  };
+}
+
+test('pan and setCamera do not install a clone that fails the player canon', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(objectById(scene, 'cargo'), 'toJSON', nullFlagToJSON('trigger'));
+  const panned = setCamera(scene, { x: 30, z: 12 });
+  assert.equal(panned, scene);
+  assert.equal(panned.camera.x, 0);
+  assert.equal(objectById(panned, 'cargo').kind, 'actor');
+  assert.equal(playerIds(panned).length, 1);
+  assert.equal(sortedClone(scene), scene);
+
+  for (const flag of [null, 1, 'yes']) {
+    const flagged = getComposition('dock.intercept-cargo');
+    Object.defineProperty(objectById(flagged, 'cargo'), 'toJSON', {
+      enumerable: false,
+      value() {
+        const body = { ...this };
+        body.isPlayer = flag;
+        return body;
+      },
+    });
+    const moved = setCamera(flagged, { zoom: 4 });
+    assert.equal(moved, flagged);
+    assert.equal(moved.camera.zoom, 3.2);
+    assert.equal(objectById(moved, 'player').isPlayer, true);
+  }
+
+  const clean = getComposition('dock.intercept-cargo');
+  const zoomed = setCamera(clean, { x: 8, z: -6, zoom: 4 });
+  assert.equal(zoomed.camera.x, 8);
+  assert.equal(zoomed.camera.z, -6);
+  assert.equal(playerIds(zoomed).length, 1);
+  assert.equal(objectById(zoomed, 'player').isPlayer, true);
+});
+
+test('save refuses a toJSON that writes isPlayer null', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(objectById(scene, 'cargo'), 'toJSON', nullFlagToJSON('trigger'));
+  const saved = savedProjectText(scene);
+  assert.equal(saved.ok, false);
+  assert.equal(saved.text, null);
+  assert.equal(saved.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+});
+
+test('deleteObjects returns the previous project when toJSON returns null', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(objectById(scene, 'cargo'), 'toJSON', {
+    enumerable: false,
+    value() { return null; },
+  });
+  const removed = deleteObjects(scene, ['player']);
+  assert.equal(removed.ok, false);
+  assert.equal(removed.project, scene);
+  assert.equal(objectById(removed.project, 'player').isPlayer, true);
+  assert.equal(objectById(removed.project, 'cargo').kind, 'actor');
 });
 
 test('placePlayer rejects a sibling toJSON that clears isPlayer', () => {

@@ -116,6 +116,22 @@ test('import refuses a second player and a single player keeps height', async ()
   const zeroExport = await exportProject(zero);
   assert.equal(zeroExport.ok, false);
   assert.equal(zeroExport.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+
+  const stringFalse = structuredClone(exported.scenario);
+  const playerEntity = stringFalse.entities.find((row) => row.isPlayer === true);
+  playerEntity.isPlayer = 'false';
+  const refusedFalse = importScenario(stringFalse);
+  assert.equal(refusedFalse.ok, false);
+  assert.equal(refusedFalse.project, null);
+  assert.equal(refusedFalse.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+
+  const withFalse = structuredClone(exported.scenario);
+  const falseDonor = withFalse.entities.find((row) => row.isPlayer === true);
+  withFalse.entities.push({ ...falseDonor, alias: 'not_the_player', isPlayer: false });
+  const keptFalse = importScenario(withFalse);
+  assert.equal(keptFalse.ok, true, keptFalse.issues.join('\n'));
+  assert.equal(keptFalse.project.objects.filter((object) => object.isPlayer === true).length, 1);
+  assert.equal(keptFalse.project.objects.find((object) => object.id === 'not_the_player').isPlayer, false);
 });
 
 test('actor height and vertical velocity survive export and import', async () => {

@@ -14,6 +14,7 @@ import {
   placePlayer,
   playerCanonIssues,
   projectIssues,
+  savedProjectText,
   screenToWorld,
   setCamera,
   setPlayer,
@@ -464,13 +465,20 @@ canvas.addEventListener('pointermove', (event) => {
   if (moved.ok) replacePresent(moved.project);
 });
 
-canvas.addEventListener('pointerup', () => {
+function endDrag(commitGesture) {
   if (drag && drag.before) {
-    history = commit({ past: history.past, present: drag.before, future: [] }, project());
+    if (commitGesture) {
+      history = commit({ past: history.past, present: drag.before, future: [] }, project());
+    } else {
+      history = { ...history, present: drag.before };
+    }
   }
   drag = null;
   render();
-});
+}
+
+canvas.addEventListener('pointerup', () => endDrag(true));
+canvas.addEventListener('pointercancel', () => endDrag(false));
 
 canvas.addEventListener('wheel', (event) => {
   event.preventDefault();
@@ -678,7 +686,9 @@ function addTemplate(object) {
 }
 
 async function saveProject() {
-  const blob = new Blob([JSON.stringify(project(), null, 2)], { type: 'application/json' });
+  const download = savedProjectText(project());
+  if (!download.ok) return showReport(download);
+  const blob = new Blob([download.text], { type: 'application/json' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = `${project().id}.dock.json`;
