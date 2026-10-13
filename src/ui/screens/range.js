@@ -225,11 +225,19 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-foot { row-gap: 6px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder { column-gap: 12px; row-gap: 0; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li { padding-bottom: 9px; }
-  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li::before { height: 5px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li::before { bottom: 1px; width: 2px; height: 7px; background: rgb(236 230 216 / .74); }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder .sf-range__word { padding: 3px 1px; letter-spacing: .07em; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 5px 2px; font-size: 13px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 13px; padding-top: 0; padding-bottom: 0; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 40px; height: 40px; }
+  /* The drawer is glass here: narrower, so the stage's beasts (BRUISER) stay clear of it, and
+     tinted rather than filled, so the gates under it still read. Its words carry their own shadow. */
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range .sf-range__drawer.fh-plate { width: 280px; border-width: 12px 14px;
+    background: linear-gradient(90deg, rgb(10 12 16 / .34), rgb(10 12 16 / .6) 28%, rgb(10 12 16 / .66));
+    -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px); box-shadow: inset 1px 0 0 rgb(236 230 216 / .18);
+    -webkit-mask-image: linear-gradient(black calc(100% - 18px), transparent); mask-image: linear-gradient(black calc(100% - 18px), transparent); }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(280px + var(--k-gap)); }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__drawer :is(.fh-legend, .k-row__name, .k-row__sub) { text-shadow: 0 1px 2px rgb(4 6 9 / .9); }
 }
 `;
 
