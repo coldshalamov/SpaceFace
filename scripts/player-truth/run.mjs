@@ -17,17 +17,19 @@
 // Exit code: 0 PASS, 1 FAIL (any arena, even when another arena is ENVIRONMENT),
 //            2 INCOMPLETE (a check could not measure), 3 harness error,
 //            4 HARNESS ENVIRONMENT only when no arena FAILed (stale served assets/ vs HEAD,
-//            or a quoted route load error). ENVIRONMENT is printed on its own line.
+//            a quoted route load error, or the browser closed by the environment).
+//            A proven environment browser loss is retried once and named in the verdict.
+//            ENVIRONMENT is printed on its own line.
 
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
-import { loadavg } from 'node:os';
+import { freemem, loadavg, totalmem } from 'node:os';
 import { gzipSync } from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { loadPlaywright } from '../lib/load-playwright.mjs';
-import { launchChromium } from './browser.mjs';
+import { BROWSER_LOSS_SETTLE_MS, chromeStderrNotes, classifyBrowserLoss, launchChromium, readRecentKernelOom, signalsSince, installSessionSignalGuard } from './browser.mjs';
 import { startBenchServer } from '../lib/benchServer.mjs';
 import { runChecks, overall } from './checks.mjs';
 import { analyzeReadability } from './readability.mjs';
@@ -40,6 +42,7 @@ import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
+let sessionGuard = null;
 
 // QUIET_HOST_PROGRAM §0: unmarked development hosts produce diagnostics, not performance
 // acceptance. Read the existing machine marker; never promote this process into a quiet host.
@@ -207,13 +210,26 @@ export function gatePasses(args) {
   throw new Error(`--gate must be idle, active, or omitted for both (got ${which})`);
 }
 
-/** One line when the route dies. A SwiftShader OOM often SIGKILLs Chrome before Playwright's close events flush, so the exit code and signal are part of the line. */
-export function formatRouteFailure(message, { notes = [], exitCode = null, signal = null } = {}) {
+/** One line when the route dies. Exit code, signal, kernel OOM, and free memory stay on the line so a later read can tell a dead renderer from a dead box. */
+export function formatRouteFailure(message, { notes = [], exitCode = null, signal = null, oom = [], freeMemory = null, totalMemory = null, chrome = false } = {}) {
   const head = String(message || 'unknown').split('\n')[0].slice(0, 180);
-  const bits = notes.map((n) => String(n).replace(/\s+/g, ' ').trim()).filter(Boolean);
-  if (exitCode != null || signal) bits.push(`chrome exit ${exitCode == null ? 'null' : exitCode} signal ${signal || 'none'}`);
+  const mib = (n) => `${Math.round(n / (1024 * 1024))} MiB`;
+  const bits = [];
+  if (chrome || exitCode != null || signal) bits.push(`chrome exit ${exitCode == null ? 'null' : exitCode} signal ${signal || 'none'}`);
+  if (freeMemory != null) bits.push(totalMemory == null ? `free memory ${mib(freeMemory)}` : `free memory ${mib(freeMemory)} / ${mib(totalMemory)}`);
+  for (const line of oom) {
+    const flat = String(line).replace(/\s+/g, ' ').trim();
+    if (flat) bits.push(`oom ${flat.slice(0, 160)}`);
+  }
+  bits.push(...notes.map((n) => String(n).replace(/\s+/g, ' ').trim()).filter(Boolean));
   const extra = bits.length ? ` [${bits.join(' | ')}]` : '';
   return `harness/route error: ${head}${extra}`.slice(0, 400);
+}
+
+/** Verdict sentence for the one allowed retry. Null unless this loss is a proven environment browser kill. */
+export function environmentRetryNote(loss) {
+  if (!loss || loss.environment !== true || !loss.reason) return null;
+  return `retried once after environment browser loss (${loss.reason})`;
 }
 
 /** Process status for a finished matrix. A gameplay FAIL exits 1 even when another arena is ENVIRONMENT.
@@ -311,18 +327,26 @@ async function runOne(args, arena, extra = {}) {
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), loadavg: { start: [...loadavg()], end: null } }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), loadavg: { start: [...loadavg()], end: null }, environmentRetry: args.environmentRetry || null }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
   const server = await startBenchServer();
   const { chromium } = await loadPlaywright();
-  const { browser, executable } = await launchChromium(chromium, {
-    headless: !args.headed,
-    args: args.headed
-      ? ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows']
-      : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
-  });
+  let browser; let executable; let chrome;
+  try {
+    ({ browser, executable, chrome } = await launchChromium(chromium, {
+      headless: !args.headed,
+      args: args.headed
+        ? ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows']
+        : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
+    }));
+  } catch (err) {
+    await server.close().catch(() => {});
+    throw err;
+  }
+  if (chrome.pid) log(`chrome pid ${chrome.pid} pgid ${chrome.pgid} sid ${chrome.sid} own session ${chrome.ownGroup === true}`);
+  else log('chrome child not captured; exit code unavailable');
   const page = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1 });
   const pageErrors = [];
   const browserNotes = [];
@@ -331,12 +355,8 @@ async function runOne(args, arena, extra = {}) {
   browser.on('disconnected', () => note('browser disconnected'));
   page.on('crash', () => note('page crashed'));
   page.on('close', () => note('page closed'));
-  const child = typeof browser.process === 'function' ? browser.process() : null;
-  if (child && child.stderr) child.stderr.on('data', (buf) => {
-    for (const line of String(buf).split('\n')) if (/FATAL|oom|killed|crash|SwiftShader|GL out|aw, snap/i.test(line)) note(line);
-  });
   let lastProgress = 0; let progressMark = null;
-  let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
+  let readerOn = false; let stopReason = null; let environmentLoss = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
 
   const drain = async () => {
     if (!readerOn || draining) return;
@@ -575,15 +595,42 @@ async function runOne(args, arena, extra = {}) {
       console.error(stopReason);
       await shoot('route load error', false);
     } else {
-      if (child) {
-        await new Promise((r) => setTimeout(r, 400));
-        if (child.exitCode != null || child.signalCode) note(`chrome exit ${child.exitCode} signal ${child.signalCode || 'none'}`);
-        else if (typeof browser.isConnected === 'function' && !browser.isConnected()) note('browser not connected');
+      // Disconnect and the Chrome exit trail the page "close" event. Snapshotting immediately
+      // records only "page closed" and hides a SIGHUP/SIGTERM CDP close or a SIGKILL.
+      await new Promise((r) => setTimeout(r, BROWSER_LOSS_SETTLE_MS));
+      const exitCode = chrome.exitCode();
+      const signal = chrome.signal();
+      let connected = null;
+      try { connected = typeof browser.isConnected === 'function' ? browser.isConnected() : null; } catch { connected = false; }
+      if (connected === false) note('browser not connected');
+      for (const line of chromeStderrNotes(chrome.stderrTail())) note(line);
+      const oom = readRecentKernelOom(T0);
+      if (oom.error) note(`dmesg unavailable: ${oom.error}`);
+      const freeMemory = freemem();
+      const totalMemory = totalmem();
+      const loss = classifyBrowserLoss({
+        notes: browserNotes,
+        exitCode,
+        signal,
+        oom: oom.lines,
+        browserConnected: connected,
+        signalsSeen: signalsSince(sessionGuard, T0),
+      });
+      const formatted = formatRouteFailure(err && err.message || err, {
+        notes: browserNotes, exitCode, signal, oom: loss.oom, freeMemory, totalMemory, chrome: true,
+      });
+      if (loss.environment) {
+        stopReason = `HARNESS ENVIRONMENT: page closed by the environment (${loss.reason}). ${formatted}`.slice(0, 500);
+        environmentLoss = { environment: true, reason: loss.reason, detail: stopReason, exitCode, signal };
+        trace.meta.environmentLoss = environmentLoss;
+        trace.route.steps.push({ name: 'route', ok: false, detail: stopReason, environment: true });
+        console.error(stopReason);
+      } else {
+        stopReason = formatted;
+        trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
+        console.error(err);
       }
-      stopReason = formatRouteFailure(err && err.message || err, { notes: browserNotes });
-      trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
       if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
-      console.error(err);
       await shoot('route failure', false);
     }
   } finally {
@@ -606,18 +653,21 @@ async function runOne(args, arena, extra = {}) {
   const softwareGl = /swiftshader|llvmpipe|software|softpipe/i.test(renderer);
   const playStart = trace.meta.playStartSim;
   if (trace.meta.loadavg) trace.meta.loadavg.end = [...loadavg()];
+  const seenSignals = signalsSince(sessionGuard, T0).map((s) => s.name);
+  if (seenSignals.length && !environmentLoss) log(`session signal ignored, chrome left running: ${seenSignals.join(', ')}`);
   Object.assign(trace.meta, {
     label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: RMB select a reachable hostile, track its visible lead pip or hull while firing, hold 230–400 u range, burn away from packs, chase a fresh public radar bearing with sustained forward thrust and aligned boost, reposition after selection misses, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · public gameplay admission; no probe-owned invulnerability toggle`,
     stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
+    sessionSignals: seenSignals, chromePid: chrome.pid, chromePgid: chrome.pgid, chromeSid: chrome.sid, chromeOwnSession: chrome.ownGroup,
   });
   trace.playWatch = playWatch.snapshot();
   await browser.close().catch(() => {}); await server.close().catch(() => {});
 
   const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, pruneFrames: args.pruneFrames, vw, vh });
-  return { label, verdict, outDir };
+  return { label, verdict, outDir, environmentLoss };
 }
 
 /** Scratch frames stay for review. They are removed only when --evidence and --prune-frames are both set. */
@@ -706,6 +756,7 @@ async function assertHarnessEnvironment() {
 }
 
 async function main() {
+  sessionGuard = installSessionSignalGuard(process);
   const args = parseArgs(process.argv.slice(2));
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
   await assertHarnessEnvironment();
@@ -744,7 +795,14 @@ async function main() {
   const multiple = args.viewportList.length * hulls.length * arenas.length * passes.length > 1;
   for (const viewport of args.viewportList) for (const hull of hulls) for (const arena of arenas) for (const pass of passes) {
     const a = { ...args, viewport, ...pass, tag: pass.tag !== undefined ? [pass.tag, args.tag].filter(Boolean).join('-') || null : args.tag };
-    outcomes.push(await runOne(a, arena, { hull, vpTag: args.viewportList.length > 1, multiple }));
+    const extra = { hull, vpTag: args.viewportList.length > 1, multiple };
+    let outcome = await runOne(a, arena, extra);
+    const retryNote = environmentRetryNote(outcome.environmentLoss);
+    if (retryNote) {
+      console.error(`player-truth ${retryNote}`);
+      outcome = await runOne({ ...a, environmentRetry: retryNote }, arena, extra);
+    }
+    outcomes.push(outcome);
   }
   if (outcomes.length > 1) {
     console.log('\nplayer-truth matrix:');

@@ -20,6 +20,8 @@ export function renderVerdict({ meta, results, overall, paths }) {
   }
   L.push(`- Run: ${meta.wallSeconds} s wall, ${meta.simSeconds} s of play sim time, ${meta.frames} frames sampled, ${meta.shots} screenshots · player script: ${meta.script}`);
   if (meta.stopReason) L.push(`- Stopped: ${meta.stopReason}`);
+  if (meta.environmentRetry) L.push(`- Environment retry: ${meta.environmentRetry}`);
+  if (meta.sessionSignals && meta.sessionSignals.length) L.push(`- Session signals ignored (Chrome left running): ${meta.sessionSignals.join(', ')}`);
   if (overall === 'INCOMPLETE') {
     const unknown = results.filter((r) => r.status === 'UNKNOWN');
     L.push('');
@@ -68,6 +70,8 @@ export function printSummary({ meta, results, overall, paths }, log = console.lo
     for (const r of unknown) log(`    ${r.id}: ${r.detail}`);
   }
   if (overall === 'ENVIRONMENT') log('  harness environment — not a gameplay FAIL');
+  if (meta.environmentRetry) log(`  environment retry: ${meta.environmentRetry}`);
+  if (meta.sessionSignals && meta.sessionSignals.length) log(`  session signals ignored, chrome left running: ${meta.sessionSignals.join(', ')}`);
   for (const r of results) if (r.status === 'ADVISORY') log(`  advisory ${r.id}: ${r.detail}`);
   for (const r of results) log(`  ${String(r.status).padEnd(12)} ${r.id.padEnd(19)} ${r.value == null ? '' : r.value}`);
   for (const [k, v] of Object.entries(paths || {})) log(`  ${k}: ${v}`);

@@ -957,6 +957,12 @@ export function checkFrameTime(trace) {
 }
 
 export function checkRoute(trace) {
+  const loss = trace.meta && trace.meta.environmentLoss;
+  if (loss && loss.environment !== false && (loss.detail || loss.reason)) {
+    const detail = loss.detail || loss.reason;
+    return result('route', 'Public route plays end to end', 'ENVIRONMENT', 'HARNESS ENVIRONMENT', 'the browser stays up for the route',
+      detail, [{ line: detail, t: null, box: null }], []);
+  }
   const quote = trace.meta && trace.meta.environmentQuote;
   if (quote) {
     return result('route', 'Public route plays end to end', 'ENVIRONMENT', 'HARNESS ENVIRONMENT', 'served assets match HEAD, and the route loads',
