@@ -127,7 +127,7 @@ export async function fightBeat(page, beat) {
   if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
   if (tg.none) {
     if (Number.isFinite(tg.radarRel)) {
-      const turn = Math.abs(tg.radarRel) > 0.12 ? (tg.radarRel > 0 ? 'KeyA' : 'KeyD') : null;
+      const turn = Math.abs(tg.radarRel) > 0.12 ? (tg.radarRel > 0 ? 'KeyD' : 'KeyA') : null;
       const turnS = turn ? Math.min(0.6, Math.abs(tg.radarRel) / 4.5) : 0;
       try {
         if (turn) {
@@ -162,7 +162,7 @@ export async function fightBeat(page, beat) {
     if (tg.dist < 230) keys.push('KeyS');
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
-  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyA' : 'KeyD'; // KeyD lowers rot (measured by the yaw probes)
+  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
   try {
     for (const k of keys) await page.keyboard.down(k);
     const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;

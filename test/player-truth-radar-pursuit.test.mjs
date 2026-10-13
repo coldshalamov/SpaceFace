@@ -48,7 +48,7 @@ test('the actor pursues the actual public radar bearing, then reacquires a canva
       courseText: radarHostileCourseText([{ x: 50, y: 10 }], 50), mode: 'flight', simTime: 10 });
     assert.equal(readTarget().radarRel, Math.PI / 2, 'the visible 12 oclock bearing maps to +Z');
     await fightBeat(page, 0);
-    assert.deepEqual(keys, ['KeyA', 'KeyW']); assert.equal(fireDown, 0);
+    assert.deepEqual(keys, ['KeyD', 'KeyW']); assert.equal(fireDown, 0);
     assert.equal(held.size, 0);
     state.entityList.push({ id: 2, alive: true, type: 'ship', team: 3, pos: { x: 10, z: 0 }, data: { runRole: 'enemy' } });
     assert.equal(readTarget().none, undefined, 'a reachable hostile takes precedence over the radar search');
