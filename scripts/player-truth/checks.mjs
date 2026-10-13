@@ -20,7 +20,8 @@ export const MODE_DESIGN = Object.freeze({
 
 export const THRESHOLDS = Object.freeze({
   lodSwapsPer10s: 3, // any one entity: more than this many model/LOD swaps inside a 10 s window
-  lodTotalPerSec: 1.0, // all entities together, per sim second
+  lodTotalPerSec: 1.0, // all entities together, per sim second; above this the run needs a master baseline window
+  lodTotalVsBaseline: 1.5, // ...and FAILs above max(lodTotalPerSec, this × master's rate over the same first sim seconds)
   playerBadFrac: 0.005, // share of play frames where the ship is missing / hidden / off-frame / placeholder
   playerMinTris: 300, // a hero ship below this is a box/card, not a ship
   popsPerMin: 6, // on-screen appear/vanish toggles of live bodies, per sim minute
@@ -119,7 +120,42 @@ export function swapIsLoading(fromName, toName) {
 // Reader life ids are id + 1e6·n for recycled slots; show the game's own entity id.
 const bodyId = (id) => id % 1e6;
 
-export function checkLodChurn(trace) {
+/** Grade the all-entity swap rate against a master baseline over the same sim window.
+ *  A swarm opening churns ~1.1-1.6/s for its first ~20 sim s while bodies admit (master 826c: 1.57/s over its first
+ *  20 s, 0.19/s over 300 s), so a short or stalled run cannot be held to the whole-run 1/s; it is held to master's
+ *  own opening instead. `base` is a baseline lod_churn result's `churn` ({ span, times }); without a baseline
+ *  window covering this run's span, a rate above lodTotalPerSec is UNKNOWN, never PASS. */
+export function gradeLodTotal(churn, base = null) {
+  const T = THRESHOLDS; const span = churn.span; const rate = churn.times.length / span;
+  const covered = !!(base && Array.isArray(base.times) && base.span >= span - 0.5);
+  const baseRate = covered ? base.times.filter((t) => t <= span).length / span : null;
+  const limit = covered ? Math.max(T.lodTotalPerSec, T.lodTotalVsBaseline * baseRate) : T.lodTotalPerSec;
+  const status = rate <= limit ? 'PASS' : covered ? 'FAIL' : 'UNKNOWN';
+  const note = covered ? ` vs master ${fmt(baseRate)}/s over the same ${fmt(span, 1)} sim s` : rate > T.lodTotalPerSec ? ` (no master baseline window over ${fmt(span, 1)} sim s)` : '';
+  return { status, rate, baseRate, limit, note };
+}
+
+function lodChurnVerdict(churn, base) {
+  const T = THRESHOLDS; const tot = gradeLodTotal(churn, base);
+  const perFail = churn.maxPer10 > T.lodSwapsPer10s;
+  return {
+    status: perFail || tot.status === 'FAIL' ? 'FAIL' : tot.status,
+    value: `max ${churn.maxPer10}/10s per entity · ${fmt(tot.rate)}/s total${tot.note} · ${churn.lodN} real LOD · ${churn.loadN} loading`,
+    threshold: `≤${T.lodSwapsPer10s}/10s per entity · ≤max(${T.lodTotalPerSec}, ${T.lodTotalVsBaseline}× master same-window)/s total`,
+  };
+}
+
+/** Rewrite a recorded lod_churn result once the baseline verdict exists. Returns true when it changed the result. */
+export function regradeLodChurn(results, baseResults) {
+  const row = results.find((x) => x.id === 'lod_churn');
+  if (!row || !row.churn) return false;
+  const baseRow = baseResults && baseResults.find((x) => x.id === 'lod_churn');
+  const v = lodChurnVerdict(row.churn, baseRow && baseRow.churn);
+  row.status = v.status; row.value = v.value; row.threshold = v.threshold;
+  return true;
+}
+
+export function checkLodChurn(trace, base = trace.meta && trace.meta.lodBaseline || null) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('lod_churn', 'LOD / model swap churn', 'UNKNOWN', null, T.lodSwapsPer10s, 'too few play frames sampled');
   const last = new Map(); const swaps = new Map(); let measured = 0; let unseen = 0;
@@ -169,19 +205,25 @@ export function checkLodChurn(trace) {
     worst.push({ id, per10: best, n: list.length, at });
   }
   worst.sort((a, b) => b.per10 - a.per10 || b.n - a.n);
-  const total = lodN + loadN;
-  const totalRate = total / span;
-  const maxPer10 = worst.length ? worst[0].per10 : 0;
-  const fail = maxPer10 > T.lodSwapsPer10s || totalRate > T.lodTotalPerSec;
+  // The player ship flapping is churn too, so it joins the per-entity window.
+  let playerPer10 = 0;
+  for (let i = 0, j = 0; i < playerSwaps.length; i++) {
+    while (playerSwaps[i].sim - playerSwaps[j].sim > 10) j++;
+    playerPer10 = Math.max(playerPer10, i - j + 1);
+  }
+  const maxPer10 = Math.max(worst.length ? worst[0].per10 : 0, playerPer10);
+  const t0 = samples[0].sim;
+  const times = [...playerSwaps, ...[...swaps.values()].flat()].map((x) => Math.round((x.sim - t0) * 100) / 100).sort((a, b) => a - b);
+  const churn = { span: Math.round(span * 100) / 100, times, maxPer10, lodN, loadN };
+  const v = lodChurnVerdict(churn, base);
   const splitOf = (list) => { const load = list.filter((x) => x.loading).length; return `${list.length - load} real LOD, ${load} loading-state`; };
   const offenders = worst.slice(0, 4).map((w) => ({
     line: `entity ${bodyId(w.id)} (${PLAYER_TRUTH_CLASSES[w.at.cls]}) ${w.per10} swaps in 10 s (${splitOf(swaps.get(w.id))}) — last ${shortKey(keyName(trace, w.at.from))} → ${shortKey(keyName(trace, w.at.to))} at sim ${fmt(w.at.sim, 1)} s`,
     t: w.at.t, sim: w.at.sim, box: w.at.on ? w.at.box : null,
   }));
   if (playerSwaps.length) offenders.unshift({ line: `player ship swapped model/LOD ${playerSwaps.length}× (${splitOf(playerSwaps)}; first sim ${fmt(playerSwaps[0].sim, 1)} s: ${playerSwaps[0].from} → ${playerSwaps[0].to})`, t: playerSwaps[0].t, sim: playerSwaps[0].sim, box: playerSwaps[0].box });
-  return result('lod_churn', 'LOD / model swap churn', fail ? 'FAIL' : 'PASS',
-    `max ${maxPer10}/10s per entity · ${fmt(totalRate)}/s total · ${lodN} real LOD · ${loadN} loading`, `≤${T.lodSwapsPer10s}/10s per entity · ≤${T.lodTotalPerSec}/s total`,
-    `${lodN} real LOD/model swaps · ${loadN} visible loading-state swaps (awaiting/loading/compiling, still counted) over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded); ${stateN} metadata-only transitions with unchanged drawn contents (diagnostic)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
+  return { ...result('lod_churn', 'LOD / model swap churn', v.status, v.value, v.threshold,
+    `${lodN} real LOD/model swaps · ${loadN} visible loading-state swaps (awaiting/loading/compiling, still counted) over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded); ${stateN} metadata-only transitions with unchanged drawn contents (diagnostic)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3)), churn };
 }
 
 function shortKey(k) { if (!k) return '?'; const [, model, lod, st] = k.split('|'); return `${(model || '').replace(/^GLTFKIT_/, '').slice(0, 28)}@${lod || '-'}${st && st !== 'authored' ? '/' + st : ''}`; }

@@ -82,6 +82,18 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 ---
 
+## Save / Load reading clears the filmstrip — session notes (2026-10-13, ui-polish-26)
+
+**Before (master 9ee2924f04):** the filmstrip spanned both columns under the reading, so the reading ran into it. At 960×540 the hull record, NAME, LOAD / SAVE HERE / DELETE and the QUICK / SLOT 1 labels printed on top of each other, and LOAD sat on EXPORT. At 1280×720 and 1920×1080, LOAD and the name field sat on the Quick slot's berth and the beam.
+
+**After (`src/ui/orrery/saveLayouts.js` only, desktop only via `html:root:not([data-sf-mobile="1"])`):**
+- The grid areas become `"title stage" "page stage" "page hang" "foot foot"`. The reading has the whole left column, and the filmstrip stands under the hull, where the beam already ran. `saveFilmstrip.js` re-lays the stations from the host width (ResizeObserver), so no JS changed.
+- At ≤1100px wide the reading column is `minmax(356px, 38%)`, the context line fits on one line (10px, .12em), and a slot's badge (CURRENT) takes its own line under its name.
+- At ≤1100×≤640 the credits numeral is 48px×scale and the hull record reads in two columns, with keys sized to their words, so LOAD ends 30px above the foot.
+- 1280 and 1920 change only in the grid areas. Phone (portrait and landscape) is untouched. The empty slot (`save-load-empty`) is clean at every size. Selectors and IDs are unchanged.
+
+Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: the readings' decode animation is sometimes caught mid-scramble (for example "03:4█ &3"); that's the capture timing, not the layout.
+
 ## Station berth — session notes (2026-10-12, ui-polish-10)
 
 **Before (960×540):** `station.css` still reserves a 292px right gutter (228px under 900) for the legacy corner crown, but the ORRERY crown sits in the head grid, so a third of the screen was empty. The vitals strip is capped at 326px and nowrap, so it spilled left over the mechanic's note. The tab rail clipped at FAC, and every tab body was squeezed into 636px. At every size, the word reading CREDIT LINE OPEN crossed the Ledger's empty ring. At ≤800px tall, the `/ 100` denominators sat on the dial ends.
@@ -136,11 +148,36 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 
 **After (`crestOrbit.js` only):** when a flush end name would need two lines, force stagger; when an even tier still splits under stagger, lift the odd row (rise 24 + 12px headroom) so SWORN ENEMY clears HATED. 960×540 (≤640 ladder) and 1280×720 pixel-identical to master; 1920 gets the same end-name stagger so the flush label no longer shares a baseline with HATED. Shots: `/workspace/spaceface-scratch/ui-shots/factions-standing/`.
 
+## Codex @960×540 and 1024×768 — session notes (2026-10-13, ui-polish-19)
+
+**Before:** at 960 and 1024 wide the seven unlock dials (about 600px, no wrap) ran over the subtitle, so it printed on top of STORY. The plate (34vw) took the stage's right half, leaving the reading about 150px wide, so the entry title broke into three words and the lore fell below the fold. At 960×540 the plate's top met the ENDGAME dial label, and LEDGER sat on CLOSE.
+
+**After (`src/ui/orrery/archiveLayouts.js`, Codex CSS only):** at 801–1100px wide the dials are 44px on 64px columns, the plate is `min(300px, 48vh, 29vw)` and sits a little lower, and the hang column is 316px. The reading has about 250–300px, with a 44px numeral, a 22px title and 14px lore, and record rows stack label over line. At ≤640px tall, section rungs are 22px and the search and foot close up, so LEDGER clears CLOSE. Selectors and IDs are unchanged. 1280, 1920 and phone portrait don't match the query. A phone on its side (844×390) is better but still has the scale over CLOSE, which is a follow-up. Shots: `ui-shots/codex960/`.
+
+## Shipworks nameplate vs callouts @960 — session notes (2026-10-13, ui-polish-20)
+
+**Before:** at 960×540 the dock stage is 162px tall, and the left callout column shared it with the nameplate (title, then DOCKED, then the rename field) and the camera words. `nameplateInkRect` read text nodes only, so the field's "Name this hull" placeholder was no obstacle: Utility / Shield Capacitor M printed on it, and the column's overflow ran Drive and Cargo onto LEFT · CENTER · RIGHT.
+
+**Fix:** `nameplateInkRect` now adds the rename field's value or placeholder, measured in its own font from its content edge (`shipworks.js`). `shipworksLayouts.js`, `@media (max-width:1100px) and (max-height:640px) and (hover:hover)` only: DOCKED rides the title's line, the field is one compact 12px line, and the live stage's camera words sit at the right end of the verb row under the stage. The left column gets ~85px instead of ~15px, so three cards fit between the field and the verbs.
+
+**Checked:** 960×540, 1024×576, 1100×640, stock and longest-name injected, live hull and render; no card touches the field or the camera words. 1024×768, 1280×720, 1920×1080, 390×844 and 844×390 don't match the query: field box unchanged and screenshots match master. Shots: `ui-shots/shipworks-nameplate/{before,after2}/`.
+
 ## Proving Range @960×540 — session notes (2026-10-13, ui-polish-17)
 
 **Before:** the title block (180px) and the foot (338px: a five-row rule ladder, the dossier and a 64px run gauge) plus the 48px kit row gap outgrew 540px. The stage, which holds the course itself, was squeezed to 0px, and RULES / BESTIARY / CLOSE and the run instrument fell below the frame.
 
 **After (`src/ui/screens/range.js`, local style block only, `@media (max-width:1100px) and (max-height:640px)`, desktop only):** frame padding 20/40/12 and an 8px row gap, the corner count moves up with the title (40px), and the lamp key is 34px tall. The ladder words are tracked tighter, with 5px ticks and a 12px gap, so the 16 rules take four rows. The dossier and the run row close up, and the gauge is 40px. The course keeps ~146px (~110px when a long rule name wraps to two lines). The whole foot is on glass, and RULES and BESTIARY open their drawer over the stage. Type stays on the grammar scale. Selectors and IDs are unchanged. 1024×768, 1280, 1920 and phone don't match the query. Shots: `ui-shots/range960/`.
+
+## Proving Range nits, Shipworks place() and menu clicks @960 — session notes (2026-10-13, ui-polish-18)
+
+**#346 nits (`src/ui/screens/range.js`, same `≤1100×≤640` desktop query only):**
+- **RULES / BESTIARY drawer is glass:** 280px wide (was 360px), tinted (`rgb(10 12 16 / .34→.66)`), 1.5px blur, a bone hairline on its left edge and an 18px fade at its foot to show the list scrolls. Its words carry a shadow. The course box makes way by the same 280px. BRUISER and its gate now sit clear of the drawer, and the gate ticks show through it.
+- **Ladder ticks:** 7px × 2px at .74 (the old ticks were 5px × 1.5px at .52), inside the same 9px foot, so the four-row ladder and the ~146px course are unchanged.
+- 1024×768, 1280, 1920 and phone don't match the query; their computed drawer box and fill are unchanged. Shots: `ui-shots/range960-nits/{before,after}/`.
+
+**#342 place() check (no code change):** at 960×540, 1024×576 and 1100×640, with the longest fitted names injected (Gimbal Thruster Array L, Industrial Massline Spool, Pale-Coil Warp Drive), the right column ends at 882 / 942 / 1030px. The stage edges are at 928 / 992 / 1068px, so nothing clips off screen. **Open:** at 960, the widest left card (Regular Mass-Shifter) prints over the nameplate's "Name this hull" placeholder. `nameplateInkRect` reads text nodes only, so an input placeholder is not an obstacle. Shots: `ui-shots/shipworks-place/`.
+
+**Menu clicks (live boot, `?dev=screen:mainMenu`, 1280×720 and 960×540):** Archive opens Codex (~1.2s), Achievements opens (~1.3s), and Esc returns to the menu. Quit is hidden in the web build (`li[hidden]`, 0×0), so there is no dead button. No console errors. Evidence: `ui-shots/menu-clicks/live2-{1280,960}/report.json` + PNGs. **Open:** at 960×540 the Codex subtitle runs into the unlock dials, GATE APPROACH clips, and LEDGER sits on CLOSE.
 
 ## Proving Range @1280 + phone course — session notes (2026-10-13, ui-polish-23)
 
@@ -494,6 +531,14 @@ New overlay `src/ui/orrery/pauseLayouts.js`, injected from `pause.js` (one impor
 
 **Next:** HUD chrome / dialogs / stations; re-verify earlier screens on fresh assets; SANDBOX-over-nose remaining on main menu @1080p.
 
+
+## Shipworks stage takes the pointer again — session notes (2026-10-13, ui-polish-21)
+
+**Before:** two pointer bugs on the Shipworks dock, found while checking the rename field. (1) The rename field ("Name this hull") couldn't be clicked at any size, including phone; only Tab reached it. `.sx-sw__nameplate` is `pointer-events:none` and the input inherits it, and the kit's `input.k-input:hover { pointer-events:unset }` hands the `none` back on hover. (2) At ≤1100 wide, where the hull drawing doesn't lay out and the live hull shows, the empty jig box (z3) still took the pointer. Slot callouts, LEFT / CENTER / RIGHT and the hull drag all hit the jig instead, so nothing on the stage responded to the mouse.
+
+**Fix:** `station.css`: the rename field takes the pointer back, with `:hover`/`:focus` arms that outrank the kit rule. `shipworksLayouts.js`: `.orr-sw-jig:not(.orr-hull--on) { pointer-events:none }`. When the jig is laid out it keeps the pointer, and the nameplate's existing z4 keeps the field above it.
+
+**Checked:** click then type works at 960×540, 1280×720, 1920×1080, 390×844 and 844×390. At 960, 1024 and 1100 the hit-tests reach the callout, the camera word and the canvas, and a click on the Weapon callout opens its chooser. Idle screenshots are pixel-identical to master at every size. Shots: `ui-shots/rename-click/`.
 
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
 
