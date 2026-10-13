@@ -133,7 +133,35 @@ test('Swarm round resolution grades its settled finite cohort, including fast cl
   assert.equal(checkRoundResolution(t).status, 'FAIL', 'unmeasured census cannot hide an input-free clear');
   const gauntlet = trace({ mode: 'gauntlet', rounds: [{ wave: 1, startSim: 10, endSim: 14, endPhase: 'draft' }],
     events: [{ ev: 'input', kind: 'keydown', code: 'KeyW', sim: 11 }] });
-  assert.equal(checkRoundResolution(gauntlet).status, 'FAIL', 'the separate timed Gauntlet contract remains');
+  assert.equal(checkRoundResolution(gauntlet).status, 'UNKNOWN', 'a Gauntlet clear needs its native census and phase evidence');
+});
+
+test('Gauntlet fast clears require the native scored scheduled cohort and player input', () => {
+  const t = trace({ mode: 'gauntlet', rounds: [{ wave: 1, startSim: 10, endSim: 14, endPhase: 'cleanup' }],
+    events: [{ ev: 'input', kind: 'keydown', code: 'KeyW', sim: 11 }] });
+  const native = { kind: 'survival', rs: 'scored', w: 1, bud: 6, sp: 6 };
+  t.samples = [
+    { sim: 11, run: { ...native, ph: 'active', res: 4 } },
+    { sim: 14, run: { ...native, ph: 'cleanup', res: 5 } },
+    { sim: 15, run: { ...native, ph: 'draft', res: 6 } },
+  ];
+  const good = checkRoundResolution(t);
+  assert.equal(good.status, 'PASS'); assert.doesNotMatch(good.threshold, /20 s/);
+  for (const bad of [{ sp: 5 }, { res: 5 }, { sp: 7 }, { bud: 5, sp: 5, res: 5 }, { bud: 0, sp: 0, res: 0 }, { rs: 'swarm' }, { kind: 'adventure' }]) {
+    const prior = t.samples[2].run;
+    t.samples[2].run = { ...prior, ...bad };
+    assert.equal(checkRoundResolution(t).status, 'FAIL', JSON.stringify(bad));
+    t.samples[2].run = prior;
+  }
+  const complete = t.samples[2].run;
+  t.samples[2].run = { ...complete, rs: undefined };
+  assert.equal(checkRoundResolution(t).status, 'UNKNOWN', 'unidentified terminal state cannot certify a native clear');
+  t.samples[2].run = complete;
+  const active = t.samples.shift();
+  assert.equal(checkRoundResolution(t).status, 'UNKNOWN', 'a preparation record alone cannot stand in for the played wave');
+  t.samples.unshift(active);
+  t.events = [];
+  assert.equal(checkRoundResolution(t).status, 'FAIL', 'cohort completion does not excuse an input-free clear');
 });
 
 test('spawn_motion flags a rock already flying at the round start', () => {

@@ -13,7 +13,7 @@ export const VIS = Object.freeze({ unknown: 0, hidden: 1, offscreen: 2, onscreen
 /** Mode design numbers the checks grade against. Sources are named so a reviewer can argue them. */
 export const MODE_DESIGN = Object.freeze({
   swarm: { completion: 'cohort', source: 'src/data/swarmMode.js rules 2–3: the finite cohort must arrive and resolve; no fixed time-to-death target' },
-  gauntlet: { minRoundSeconds: 20, source: 'Crucible gauntlet waves (build_map §12); N = 20 s, same floor as Swarm' },
+  gauntlet: { completion: 'cohort', ruleset: 'scored', source: 'src/systems/survivalWave.js _checkCleared and survivalWavePlanner.js: scheduled Gauntlet cohort resolves before native cleanup; no duration floor' },
   adventure: { minRoundSeconds: null, source: 'no rounds' },
   racing: { minRoundSeconds: null, source: 'no rounds' },
 });
@@ -329,14 +329,15 @@ export function checkSpawnMotion(trace) {
     const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
     checked++;
-    // Swarm retains displaced cover and debris as the next round's terrain. These exact
-    // lives already belonged to active play; their earned motion is not a new spawn. New
+    // Crucible retains displaced cover and cleanup aftermath as the next round's terrain.
+    // These exact lives already belonged to the prior round; their motion is not a new spawn. New
     // occupants use distinct reader life ids, and preparation-only bodies still grade below.
     const carriedLives = new Map();
     if (st.wave != null && hasRunMetadata) {
       for (let i = 0; i < index; i++) {
         const prior = trace.samples[i];
-        if (prior.mode !== 'flight' || prior.run?.ph !== 'active' || !(prior.run.w < st.wave)) continue;
+        if (prior.mode !== 'flight' || !['active', 'cleanup', 'draft', 'refit'].includes(prior.run?.ph)
+          || !(prior.run.w < st.wave)) continue;
         for (const e of prior.e || []) carriedLives.set(e[E.id], e[E.cls]);
       }
     }
@@ -443,19 +444,32 @@ export function checkRoundResolution(trace) {
       // settled armory/cleanup record for this cohort, never the next round's counters.
       const terminal = sameRound.filter((s) => ['cleanup', 'draft', 'refit', 'victory'].includes(s.run.ph)).at(-1);
       const census = terminal?.run;
-      if (!census || ![census.bud, census.sp, census.res].every(Number.isInteger)) unknown++;
+      let missing = false;
+      if (!census || ![census.bud, census.sp, census.res].every(Number.isInteger)) missing = true;
       else {
         const quota = Math.max(census.bud, ...sameRound.map((s) => Number.isInteger(s.run.bud) ? s.run.bud : 0));
         if (quota <= 0 || census.bud !== quota || census.sp !== quota || census.res !== quota) {
           why.push(`finite cohort incomplete: quota ${quota}, materialized ${census.sp}, resolved ${census.res}`);
         }
       }
+      if (design.ruleset) {
+        // Native Gauntlet is the scored survival arc. Its preparation or another mode's
+        // counters cannot supply the played wave's active-to-clear receipt.
+        const active = sameRound.find(s => s.run.ph === 'active' && s.run.bud > 0)?.run;
+        for (const record of [active, census]) {
+          if (!record || typeof record.kind !== 'string' || typeof record.rs !== 'string') missing = true;
+          else if (record.kind !== 'survival' || record.rs !== design.ruleset) {
+            why.push(`native clear has ${record.kind}/${record.rs}, expected survival/${design.ruleset}`);
+          }
+        }
+      }
+      if (missing) unknown++;
     } else if (dur < design.minRoundSeconds) why.push(`won in ${fmt(dur, 1)} s < ${design.minRoundSeconds} s`);
     if (!inputs) why.push('won with zero player input');
     if (why.length) { fail = true; offenders.push({ line: `round ${r.wave}: ${why.join('; ')}`, t: r.endT, sim: r.endSim, box: null }); }
   }
   return result('round_resolution', 'Round resolves by play', fail ? 'FAIL' : unknown ? 'UNKNOWN' : 'PASS', `shortest ${fmt(minDur, 1)} s`, threshold,
-    `${done.length} round(s) resolved${unknown ? `; ${unknown} without a terminal cohort census` : ''}`, offenders, offenders.slice(0, 2));
+    `${done.length} round(s) resolved${unknown ? `; ${unknown} without required native cohort evidence` : ''}`, offenders, offenders.slice(0, 2));
 }
 
 export function checkPlayerControl(trace) {
@@ -549,7 +563,10 @@ function commandedOrbitYaw(sample) {
     || intent.playerId !== p.id || !Number.isSafeInteger(p.occupantGeneration)
     || intent.occupantGeneration !== p.occupantGeneration
     || !Number.isSafeInteger(sample.tick) || intent.tick !== sample.tick
-    || !Number.isFinite(intent.sim) || Math.abs(intent.sim - sample.sim) > 1e-6
+    // The reader rounds sample.sim to milliseconds but preserves the raw intent clock.
+    // Compare their recorded precision; exact tick/life guards above still own freshness.
+    || !Number.isFinite(intent.sim) || !Number.isFinite(sample.sim)
+    || +intent.sim.toFixed(3) !== +sample.sim.toFixed(3)
     || !(Number.isFinite(intent.dt) && intent.dt > 0) || !Number.isFinite(intent.angularAcceleration)) return false;
   const ownsYaw = intent.kind === 'swing-carry' && intent.reason === 'swing-carry'
     || intent.kind === 'orbit-assist' && (intent.reason === 'engaged' || intent.reason === 'line-slack');

@@ -50,6 +50,15 @@ test('displaced terrain carried from a played wave is not a fresh spawn', () => 
   assert.equal(result.value, '0 bodies');
 });
 
+test('a wreck born in the previous wave cleanup is retained aftermath, not a new spawn', () => {
+  const result = checkSpawnMotion(trace([
+    sample(46.95, 105, { w: 1, ph: 'cleanup' }),
+    sample(47.417, 105, { w: 2, ph: 'wave_intro' }), sample(47.483, 105),
+  ]));
+  assert.equal(result.status, 'PASS');
+  assert.equal(result.value, '0 bodies');
+});
+
 test('a recycled occupant of an old terrain id is still a new moving spawn', () => {
   const opening = sample(47.483, 13.4);
   opening.e[0][0] = 37000427; // Same raw id427, new life/generation from the continuous reader.
