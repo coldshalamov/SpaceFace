@@ -212,7 +212,7 @@ html body #screens #sf-range { padding-bottom: 24px; }
    (338px: a five-row rule ladder, the dossier, a 64px run gauge) outgrew the frame, so the
    stage — the course itself — was squeezed to 0px and RULES / BESTIARY / CLOSE and the run
    instrument fell below the frame. Here the title block, the ladder and the run gauge close up
-   so the course keeps ~130px and the whole foot stays on glass. Desktop only. */
+   so the course keeps ~146px (~110px when a long rule name wraps) and the whole foot stays on glass. Desktop only. */
 @media (max-width: 1100px) and (max-height: 640px) {
   html:root:not([data-sf-mobile="1"]) body #screens #sf-range { padding: 20px 40px 12px; row-gap: 8px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-title { padding-right: 150px; }
