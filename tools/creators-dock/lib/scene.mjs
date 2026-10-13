@@ -192,10 +192,17 @@ function collectNestedPlayerFlags(value, path, issues, seen) {
   }
 }
 
+function sceneObjects(project) {
+  const objects = project && project.objects;
+  return Array.isArray(objects) ? objects : null;
+}
+
 export function playerCanonIssues(project) {
   const issues = [];
+  const objects = sceneObjects(project);
+  if (project && project.objects != null && !objects) issues.push('objects must be an array');
   let players = 0;
-  for (const object of (project && project.objects) || []) {
+  for (const object of objects || []) {
     const label = object && object.id ? `${object.id}: ` : '';
     for (const issue of issuesForObject(object)) issues.push(`${label}${issue}`);
     if (isPlayerActor(object)) players += 1;
@@ -308,7 +315,9 @@ export function replaceObject(project, id, object) {
   if (issues.length) return { ok: false, project, issues };
   const next = cloneScene(project);
   if (!next) return refuseUnstored(project);
-  next.objects = next.objects.map((entry) => (entry.id === id ? applySnap(object, next.grid) : entry));
+  const snapped = applySnap(object, next.grid);
+  if (!snapped) return refuseUnstored(project);
+  next.objects = next.objects.map((entry) => (entry.id === id ? snapped : entry));
   return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
@@ -434,7 +443,13 @@ export function round6(n) {
 }
 
 function applySnap(object, grid) {
-  const next = clone(object);
+  let next;
+  try {
+    next = clone(object);
+  } catch (error) {
+    return null;
+  }
+  if (!next || typeof next !== 'object' || Array.isArray(next)) return null;
   if (Number.isFinite(next.x)) next.x = snapCoord(next.x, grid);
   if (Number.isFinite(next.z)) next.z = snapCoord(next.z, grid);
   return next;

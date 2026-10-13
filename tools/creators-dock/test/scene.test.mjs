@@ -840,6 +840,35 @@ test('sortedClone recounts a schema-dropping toJSON and does not return null', (
   assert.notEqual(sortedClone(wiped), null);
 });
 
+test('sortedClone returns the previous value when objects is not iterable', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(scene, 'toJSON', {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      body.objects = { notAnArray: true };
+      return body;
+    },
+  });
+  const sorted = sortedClone(scene);
+  assert.equal(sorted, scene);
+  assert.equal(Array.isArray(sorted.objects), true);
+  assert.equal(objectById(sorted, 'player').isPlayer, true);
+});
+
+test('replaceObject returns the previous project when the replacement toJSON is null', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const cargo = objectById(scene, 'cargo');
+  const replacement = Object.assign(Object.create({
+    toJSON() { return null; },
+  }), { ...cargo, label: 'broken cargo' });
+  const replaced = replaceObject(scene, 'cargo', replacement);
+  assert.equal(replaced.ok, false);
+  assert.equal(replaced.project, scene);
+  assert.equal(objectById(replaced.project, 'cargo').label, cargo.label);
+  assert.equal(objectById(replaced.project, 'player').isPlayer, true);
+});
+
 test('deleteObjects returns the previous project when toJSON returns null', () => {
   const scene = getComposition('dock.intercept-cargo');
   Object.defineProperty(objectById(scene, 'cargo'), 'toJSON', {
