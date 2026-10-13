@@ -122,6 +122,23 @@ function readGpuAndOpeningInPage() {
     geometries: info?.memory?.geometries ?? null,
     textures: info?.memory?.textures ?? null,
     heapMb: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
+    // Draws that waited on a driver link (src/render/shaderLinkReporter.js link-block ledger).
+    linkBlocks: (() => {
+      try {
+        const ledger = window.SF?.registry?.get?.('render')?.renderer?.userData?.spacefaceLinkBlocks;
+        if (!ledger) return null;
+        const families = Object.entries(ledger.byName || {})
+          .map(([name, row]) => ({ name, count: row.count, totalMs: Math.round(row.totalMs) }))
+          .sort((a, b) => b.totalMs - a.totalMs).slice(0, 12);
+        return {
+          count: ledger.count, totalMs: Math.round(ledger.totalMs), maxMs: Math.round(ledger.maxMs),
+          families,
+          worst: (ledger.worst || []).slice(0, 8).map((row) => ({
+            ms: Math.round(row.ms), name: row.name, stack: row.stack ? String(row.stack).slice(0, 700) : null,
+          })),
+        };
+      } catch { return null; }
+    })(),
     openingPending: Array.isArray(authored?.openingPending)
       ? authored.openingPending.slice(0, 12).map((entry) => (
         [entry.id, entry.status, entry.type, entry.defId].filter((bit) => bit != null && bit !== '').join(':')
@@ -394,6 +411,21 @@ function resourceLines(resources, from, to) {
   return lines;
 }
 
+/** The link-block ledger: how long draws waited on a driver link, by shader family, with the worst stacks. */
+function linkBlockLines(blocks) {
+  if (!blocks) return ['Link-block ledger unavailable (renderer.userData.spacefaceLinkBlocks missing).', ''];
+  const lines = ['## Draws that waited on a driver link', '',
+    `${blocks.count} waits, ${(blocks.totalMs / 1000).toFixed(1)} s on the main thread, longest ${blocks.maxMs} ms.`, '',
+    '| shader family | waits | total ms |', '|---|---:|---:|'];
+  for (const row of blocks.families || []) lines.push(`| ${row.name} | ${row.count} | ${row.totalMs} |`);
+  lines.push('');
+  for (const row of blocks.worst || []) {
+    lines.push(`- ${row.ms} ms \`${row.name}\`${row.stack ? ` — ${row.stack}` : ''}`);
+  }
+  lines.push('');
+  return lines;
+}
+
 function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote }) {
   const index = profileIndex(profile);
   const toMicros = (wallMs) => Math.max(0, (wallMs - timeline.profileStartWallMs) * 1000);
@@ -459,6 +491,7 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
     lines.push(`| ${moment} | ${snapshot?.programs ?? '?'} | ${snapshot?.geometries ?? '?'} | ${snapshot?.textures ?? '?'} | ${snapshot?.heapMb ?? '?'} |`);
   }
   lines.push('');
+  lines.push(...linkBlockLines(atEnd?.linkBlocks || atFlight?.linkBlocks));
   if (atFlight?.openingPending?.length) {
     lines.push(`Opening work still pending when flight began: ${atFlight.openingPending.map((id) => `\`${id}\``).join(', ')}.`, '');
   }

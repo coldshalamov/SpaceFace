@@ -42,7 +42,12 @@ export function installShaderLinkReporter(renderer, options = {}) {
     settleArmed: new Set(),
     settleArmedAt: new WeakMap(),
     settlePollTimer: null,
+    ledger: createLinkBlockLedger(),
   };
+  // Where the main thread waited on a driver link inside a draw. Read by the launch probes
+  // (renderer.userData.spacefaceLinkBlocks) so a stall is named by program, time and stack.
+  if (!renderer.userData || typeof renderer.userData !== 'object') renderer.userData = {};
+  renderer.userData.spacefaceLinkBlocks = context.ledger;
   guardProgramList(renderer, context);
   const canvas = renderer.domElement;
   if (canvas && typeof canvas.addEventListener === 'function') {
@@ -89,18 +94,19 @@ function guardFirstUse(program, context) {
   const getUniforms = program.getUniforms;
   const getAttributes = program.getAttributes;
   const beforeFirstUse = (self) => {
-    if (!programSettled(self, context)) return;
+    if (!programSettled(self, context)) return false;
     self.getUniforms = getUniforms;
     self.getAttributes = getAttributes;
     checkLinkStatus(self, context);
+    return true;
   };
   program.getUniforms = function getUniformsAfterLinkCheck() {
-    beforeFirstUse(this);
-    return getUniforms.call(this);
+    if (beforeFirstUse(this)) return getUniforms.call(this);
+    return timedBlockingFirstUse(context.ledger, this, getUniforms);
   };
   program.getAttributes = function getAttributesAfterLinkCheck() {
-    beforeFirstUse(this);
-    return getAttributes.call(this);
+    if (beforeFirstUse(this)) return getAttributes.call(this);
+    return timedBlockingFirstUse(context.ledger, this, getAttributes);
   };
 }
 
@@ -165,6 +171,66 @@ function armSettlePoll(program, context) {
   context.settlePollTimer = setTimeout(tick, SETTLE_POLL_MS);
   if (context.settlePollTimer && typeof context.settlePollTimer.unref === 'function') {
     context.settlePollTimer.unref();
+  }
+}
+
+// ── The link-block ledger ────────────────────────────────────────────────────────────────────────
+// A draw whose program is still linking falls through to three's own first-use introspection, which
+// waits for the driver: the main thread blocks inside the draw. The 2026-10-13 launch profile put 19 s
+// of a 61 s launch there (getProgramParameter under WebGLUniforms), and a CPU profile can only say
+// "somewhere in render". This records each such wait — milliseconds, program name, a short stack for
+// the long ones — so the next change is judged by the stall it removes, on any host load.
+const LINK_BLOCK_STACK_MS = 8;
+const LINK_BLOCK_WORST = 24;
+
+export function createLinkBlockLedger() {
+  return {
+    count: 0,
+    totalMs: 0,
+    maxMs: 0,
+    // The N longest waits, longest first: { ms, name, atMs, stack }.
+    worst: [],
+    // name -> { count, totalMs }: which shader families pay.
+    byName: Object.create(null),
+    reset() {
+      this.count = 0; this.totalMs = 0; this.maxMs = 0; this.worst.length = 0;
+      for (const key of Object.keys(this.byName)) delete this.byName[key];
+    },
+  };
+}
+
+function nowMs() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+}
+
+function recordLinkBlock(ledger, program, ms) {
+  if (!ledger) return;
+  ledger.count += 1;
+  ledger.totalMs += ms;
+  if (ms > ledger.maxMs) ledger.maxMs = ms;
+  const name = String(program.name || program.type || 'program');
+  const family = ledger.byName[name] || (ledger.byName[name] = { count: 0, totalMs: 0 });
+  family.count += 1;
+  family.totalMs += ms;
+  const worst = ledger.worst;
+  if (worst.length >= LINK_BLOCK_WORST && ms <= worst[worst.length - 1].ms) return;
+  let stack = null;
+  if (ms >= LINK_BLOCK_STACK_MS) {
+    try {
+      stack = String(new Error().stack || '').split(/\r?\n/).slice(2, 14).map((line) => line.trim()).join(' | ');
+    } catch (_) { stack = null; }
+  }
+  worst.push({ ms, name, atMs: nowMs(), stack });
+  worst.sort((a, b) => b.ms - a.ms);
+  if (worst.length > LINK_BLOCK_WORST) worst.length = LINK_BLOCK_WORST;
+}
+
+function timedBlockingFirstUse(ledger, program, firstUse) {
+  const started = nowMs();
+  try {
+    return firstUse.call(program);
+  } finally {
+    recordLinkBlock(ledger, program, nowMs() - started);
   }
 }
 
