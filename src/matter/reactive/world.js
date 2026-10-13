@@ -69,6 +69,15 @@ function lawsFromModel(model) {
   };
 }
 
+export function clearReactiveLaws(body) {
+  if (!body || !body.laws) return body;
+  body.laws.ferromagnetic = false;
+  body.laws.volatile = false;
+  body.laws.brittle = false;
+  body.laws.elastic = false;
+  return body;
+}
+
 function clampSpeed(vx, vz, cap) {
   const v = Math.hypot(vx, vz);
   if (!(v > cap) || v === 0) return { vx, vz };
@@ -96,9 +105,12 @@ export function spawnReactiveBody(world, spec) {
   // Saved or derived mass may shrink (a spent shell, a shard). It may not grow
   // past the catalog mass unless the model is a runtime fragment.
   if (Number.isFinite(Number(spec.mass)) && Number(spec.mass) > 0) {
+    const requested = finite(spec.mass);
+    // A runtime fragment keeps the mass it was given, including a shard lighter
+    // than 0.25. Catalog bodies still cannot shrink into dust or grow past the model.
     mass = model.derived
-      ? clamp(finite(spec.mass), 0.25, 80)
-      : clamp(finite(spec.mass), 0.25, model.mass);
+      ? Math.min(80, requested)
+      : clamp(requested, 0.25, model.mass);
   }
   if (Number.isFinite(Number(spec.radius))) {
     radius = model.derived
