@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar/Ledger still open at 960 |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -106,6 +106,18 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Follow-up (not in #333):** Shipworks slot callouts (Utility/Drive/Cargo) sit on the hull at 960 — they are placed by the jig in JS.
 
+### Industry / Factions / Bar @960×540 (ui-polish-13)
+
+**Before:** each body is ~192px at 960×540. Industry's 240px chain fell under the foot rail (second input, ring, output and FABRICATE gone; the reason ran off the top). Factions' 330px ring lost its south half and the standing scale. Bar's name wrapped to two lines, her line ran under the voice arc, and the replies fell off.
+
+**After (`stationTabsLayouts.js` ≤1100×≤800 and ≤1100×≤640, plus `crestOrbit.js`):**
+- **Industry:** the blueprint tier sleeps (the ladder head says T1), and the chain is 170px. Its right side is one column: why it can't run, then the yield, then FABRICATE. Input labels close up so three materials fit in the 50px pitch. The ladder head reads in two lines (process, then why it's shut).
+- **Factions:** at ≤640 tall a ring of 14 crests would be ~27px a crest, so the powers stand on the ladder, like every other tab's index. The reading's head is one band (authority and name on the left, standing and watermark on the right), with the scale full width and the next rung under it. At 1024×768 the ring stays, and the west names no longer clip.
+- **Standing scale (all sizes):** on a staggered scale a tier name may use two bands before it splits, so SWORN ENEMY is one line at 1280. The end names sit flush with the rule's ends. The name width estimate is 9.4px a glyph (8.4 let neighbours touch).
+- **Bar:** the name is one 24px line, the words stop 330px short of the bay's right edge, and the portrait is capped at 300px at the right edge, so the arc and reply dial never cross her line. At ≤640 tall the three replies stay on glass (the 1–3 hint sleeps; the dial carries the numbers).
+
+At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are pixel-identical to master; Factions changes only in its scale names. The rules are desktop-only (`:not([data-sf-mobile="1"])`). **Still open:** at 1024×768 SWORN ENEMY still splits and its top line touches HATED (as on master). Shots: `ui-shots/tabs960/`.
+
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 
 **Before (390×844):** the berth was one long scroll (~2180px). Title and mechanic scrolled off; vitals alone were ~454px (44px min-height on every act); destination tabs sat at y≈1810 under the whole tab body; Munitions spanned the vitals grid.
@@ -123,9 +135,9 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 8. Tab badges are amber pills after their own word. The tabs sit on a 4-column grid.
 Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with the foot pinned. Desktop 960×540 is pixel-identical; at 1280×720 only the animated rule differs.
 
-**Still open on phone:** Shipworks callouts; Industry/Factions/Bar/Ledger tab bodies at 960. At ≤1100×≤800 on desktop, the market decision is still hidden by #333's 960 rule.
+**Still open on phone:** Shipworks callouts.
 
-**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. Industry/Factions/Bar/Ledger tab bodies not walked this session.
+**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960.
 
 ---
 
