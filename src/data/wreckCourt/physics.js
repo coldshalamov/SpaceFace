@@ -140,7 +140,15 @@ function tetherForces(body, bodies, tethers) {
     const force = tether.stiffness * stretch;
     if (Math.abs(force) > tether.breakForce) {
       tether.broken = true;
-      tether.brokeAt = { x: (body.x + other.x) / 2, z: (body.z + other.z) / 2 };
+      if (!tether.brokeAt) {
+        tether.brokeAt = { x: (body.x + other.x) / 2, z: (body.z + other.z) / 2 };
+        // dx points from this end toward the other. The torn face looks that way.
+        if (tether.shearOnBreak) {
+          tether.shearFrom = body.id;
+          tether.shearNx = dx / dist;
+          tether.shearNz = dz / dist;
+        }
+      }
       continue;
     }
     // Pull toward the other when stretched (stretch > 0). dx points at the other.
@@ -305,6 +313,11 @@ function fireEvent(event, bodies, tethers, log, t) {
       broken: false,
       brokeAt: null,
       partOnBreak: !!event.partOnBreak,
+      shearOnBreak: !!event.shearOnBreak,
+      shearFrom: null,
+      shearNx: 0,
+      shearNz: 0,
+      sheared: false,
       spawned: false,
     });
     return;
@@ -415,6 +428,28 @@ function partCables(bodies, tethers, t) {
   }
 }
 
+function stampShear(body, nx, nz) {
+  const faces = (body.scar?.faces || []).filter((f) => f.kind !== 'shear').map((f) => ({ ...f }));
+  faces.push({ kind: 'shear', nx, nz });
+  body.scar = { nx, nz, material: 'torn_alloy', faces };
+}
+
+// A clamp parts when the line force exceeds breakForce. The faces are the
+// direction of that load, written here, not on the spawned bodies.
+function shearClamps(bodies, tethers, log, t) {
+  for (const tether of tethers) {
+    if (!tether.shearOnBreak || !tether.broken || tether.sheared || !tether.brokeAt || tether.shearFrom == null) continue;
+    const from = bodies.find((b) => b.id === tether.shearFrom);
+    const toId = tether.a === tether.shearFrom ? tether.b : tether.a;
+    const to = bodies.find((b) => b.id === toId);
+    if (!from || !to) continue;
+    tether.sheared = true;
+    stampShear(from, tether.shearNx, tether.shearNz);
+    stampShear(to, -tether.shearNx, -tether.shearNz);
+    log.push({ t, kind: 'shear', id: from.id, note: 'clamp parted under load' });
+  }
+}
+
 function cutGrooves(bodies, log, t) {
   for (const round of bodies) {
     if (round.variant !== 'wc_round' || round.destroyed || round.departed || round._grooved) continue;
@@ -480,6 +515,7 @@ export function runIncident({ bodies, events = [], until, assayPoints = [], grav
     }
     resolveCircles(live);
     partCables(live, tethers, t);
+    shearClamps(live, tethers, log, t);
     cutGrooves(live, log, t);
     sweepDepart(live);
   }

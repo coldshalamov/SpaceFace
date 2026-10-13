@@ -908,21 +908,18 @@ export const WRECK_COURT_CASES = [
           makeBody({
             id: 'pylon', variant: 'wc_station', mass: 5e6, radius: 70,
             x: 0, z: 0, fixed: true, integrity: 0.74, heading: 0,
-            scar: { nx: 1, nz: 0, material: 'torn_alloy', faces: [{ kind: 'shear', nx: 1, nz: 0 }] },
             flavor: 'Station loop: "the pilot drove into the clamp."',
           }),
           makeBody({
             id: 'ship', variant: 'wc_tug', mass: 380, radius: 14,
             x: 168 + j(), z: j() * 0.2, vx: 0, vz: 0, heading: 0,
             integrity: 0.48, fuel: 8, fuelCapacity: 20,
-            scar: { nx: -1, nz: 0, material: 'torn_alloy', faces: [{ kind: 'shear', nx: -1, nz: 0 }] },
             flavor: 'The ship is off the pylon, nose outward.',
           }),
         ],
         events: [
-          { t: 1, kind: 'tether', a: 'ship', b: 'pylon', rest: 168, stiffness: 4000, breakForce: 1e9, note: 'clamp held' },
-          { t: 2, kind: 'thrust_heading', id: 'ship', accel: 7, spin: 0, duration: 18, note: 'ship thrust against the clamp, then kept thrusting after it sheared' },
-          { t: 8, kind: 'untether', a: 'ship', b: 'pylon', note: 'clamp sheared' },
+          { t: 1, kind: 'tether', a: 'ship', b: 'pylon', rest: 'current', stiffness: 4000, breakForce: 4000, shearOnBreak: true, note: 'clamp held taut' },
+          { t: 2, kind: 'thrust_heading', id: 'ship', accel: 7, spin: 0, duration: 18, note: 'ship thrust against the clamp until the line sheared' },
         ],
       };
     },
