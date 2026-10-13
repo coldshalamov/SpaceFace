@@ -4294,11 +4294,14 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
   assert.equal(result.conflictSnapshot.initialCount, 1,
     'the live director must prove this was authored singleton authority, not a degraded pair');
   assert.equal(result.conflictSnapshot.boundHostiles.length, 1);
+  // This unprovoked authored raid targets its hauler; player-directed combat is a separate route.
+  assert.equal(result.authoredAmbushPrey.worldRecordId, 'wr_convoy_743b2d60');
+  assert.equal(result.authoredAmbushPrey.activityActorSlotId, 'ceres_ambush_loaded_hauler');
   assert.ok(result.conflictSnapshot.boundHostiles.every((hostile) => (
     hostile.alive === true && hostile.phase === 'conflict'
       && hostile.passive === false && hostile.roe === 'weapons_free'
-      && hostile.targetId === result.playerEntityId
-  )), 'the first post-stage conflict read must retain the exact live player-bound cohort');
+      && hostile.targetId === result.authoredAmbushPrey.entityId
+  )), 'the first post-stage conflict read must retain the exact live cohort bound to its authored hauler');
   const pointable = result.conflictSnapshot.boundHostiles.filter((hostile) => (
     hostile.distanceWU <= 320
       && Math.abs(hostile.projection.x) <= 0.98
@@ -4378,6 +4381,7 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
     collisionPulses: result.collisionReceipt.pulses,
     stagePulses: result.receipts.reduce((sum, receipt) => sum + receipt.pulses, 0),
     stageBoostPulses: result.boostPulses,
+    stageMinimumHullGaps: result.stageMinimumHullGaps,
     pointableNdc: result.pointingStartSample.projection,
     transitStartTick: result.transitStartTick,
     transitEndTick: result.transitEndTick,
@@ -4392,7 +4396,7 @@ test('seed-47 singleton Hornet traverses the toolkit camera corridor with produc
   }));
 });
 
-test('seed-47 production Massline relatch retains and leads the Reaver through off-frustum fire', async () => {
+test('seed-47 production Massline relatch retains and leads the Reaver through off-frustum fire', async (t) => {
   const result = await runSeed47OffFrustumMasslineCombat();
 
   assert.deepEqual(result.runtime, {
@@ -4473,6 +4477,13 @@ test('seed-47 production Massline relatch retains and leads the Reaver through o
     'the regression must continue materially beyond the Browser hit-only fingerprint');
   assert.deepEqual(result.finalAimPoint, result.fixedAimPoint,
     'the harness cursor must remain fixed after relatch instead of privately following the Reaver');
+  t.diagnostic(JSON.stringify({
+    killTicks: result.combatTicks,
+    firstOffFrustumHitTicks: result.firstHitCombatTicks,
+    playerFireCount: result.playerFireCount,
+    targetHitCount: result.targetHitCount,
+    maxDistanceWU: result.maxDistanceWU,
+  }));
 });
 
 test('public pocket settle holds the brake to the speed condition outside the steering budget', async () => {
@@ -7043,6 +7054,10 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
       `production world must materialize captured traffic ${traffic.worldRecordId}`);
     trafficEntities.push(existing);
   }
+  const authoredAmbushPrey = trafficEntities.find((entity) => (
+    entity.data?.activityActorSlotId === 'ceres_ambush_loaded_hauler'
+  ));
+  assert.ok(authoredAmbushPrey, 'the production ambush requires its exact authored hauler');
   const readAuthoredCohort = () => state.entityList.filter((entity) => (
     entity?.alive !== false && entity?.type === 'ship'
       && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
@@ -7068,7 +7083,7 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
   // materialized wr_convoy_743b2d60 hull before its route has advanced. This player-only staging
   // point keeps that authored traffic and the Throughline actor untouched while preserving the
   // required off-camera approach to the exact collision anchor.
-  player.pos = { x: -9_300, z: 7_460 };
+  player.pos = { x: -9_310, z: 7_480 };
   player.vel = { x: 5.204785346984863, z: 0.5644223690032959 };
   player.rot = 0.1080208501048273;
   player.angVel = 0;
@@ -7354,23 +7369,17 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
       const distanceWU = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       const projection = projectThroughSettledChaseCamera(player.pos, entity.pos);
       const score = Math.max(Math.abs(projection.x), Math.abs(projection.y));
-      pointingStartSample ||= {
+      const sample = {
         tick,
         score,
         hostilePos: { x: entity.pos.x, z: entity.pos.z },
         playerPos: { x: player.pos.x, z: player.pos.z },
         projection,
       };
-      if (!bestPointingSample || score < bestPointingSample.score) {
-        bestPointingSample = {
-          tick,
-          score,
-          hostilePos: { x: entity.pos.x, z: entity.pos.z },
-          playerPos: { x: player.pos.x, z: player.pos.z },
-          projection,
-        };
-      }
-      return distanceWU <= 320 && score <= 0.98;
+      if (!bestPointingSample || score < bestPointingSample.score) bestPointingSample = sample;
+      const pointable = distanceWU <= 320 && score <= 0.98;
+      if (pointable) pointingStartSample ||= sample;
+      return pointable;
     });
     // The public harness polls the live camera for up to forty 150-ms attempts after movement.
     // Advance the same neutral fixed-tick window here so production AI motion participates without
@@ -7502,6 +7511,11 @@ async function runSeed47ToolkitCameraReposition({ cohortSize = 1 } = {}) {
       stagePlayerImpactEvents,
       stageMinimumHullGaps: { ...stageMinimumHullGaps },
       conflictSnapshot,
+      authoredAmbushPrey: {
+        entityId: authoredAmbushPrey.id,
+        worldRecordId: authoredAmbushPrey.data.worldRecordId,
+        activityActorSlotId: authoredAmbushPrey.data.activityActorSlotId,
+      },
       authoredHostileStartPos,
       playerSetup,
       postCameraPlayerImpactEvents,
@@ -7693,7 +7707,8 @@ async function runSeed47OffFrustumMasslineCombat() {
     player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
       isPlayer: true,
       player: state.player,
-      pos: { x: -8982.0283203125, z: 7171.980773925781 },
+      // Leave enough lateral camera clearance for an off-frustum round before tick 240.
+      pos: { x: -8952.0283203125, z: 7171.980773925781 },
       rot: -1.471084233247489,
       fittings: [...TOOLKIT_WEAPON_IDS],
     }));
@@ -7725,6 +7740,17 @@ async function runSeed47OffFrustumMasslineCombat() {
       lockProgress: 1,
     };
     target = runtime.spawn(targetSpec);
+
+    // Conflict tags alone omit the live encounter's morale ownership and let this kill fixture
+    // surrender, handing the guns back to its fixed cursor. Adopt through that production owner.
+    const adopted = runtime.getSystem('encounterDirector').adoptCeresActivityAmbush({
+      id: 'ceres:activity:throughline-ambush',
+      ids: [],
+      roles: {},
+      data: { ceresActivityAmbush: true },
+    }, 'conflict');
+    assert.deepEqual(adopted, [target.id]);
+    assert.equal(target.data.ai.moraleImmune, true);
 
     const physicsSystem = runtime.getSystem('physics');
     const ready = await physicsSystem.prepareBackend(state, { reset: true });
