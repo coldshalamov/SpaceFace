@@ -168,6 +168,17 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 
 **After (`src/ui/screens/range.js`, local style block only, `@media (max-width:1100px) and (max-height:640px)`, desktop only):** frame padding 20/40/12 and an 8px row gap, the corner count moves up with the title (40px), and the lamp key is 34px tall. The ladder words are tracked tighter, with 5px ticks and a 12px gap, so the 16 rules take four rows. The dossier and the run row close up, and the gauge is 40px. The course keeps ~146px (~110px when a long rule name wraps to two lines). The whole foot is on glass, and RULES and BESTIARY open their drawer over the stage. Type stays on the grammar scale. Selectors and IDs are unchanged. 1024×768, 1280, 1920 and phone don't match the query. Shots: `ui-shots/range960/`.
 
+## Proving Range nits, Shipworks place() and menu clicks @960 — session notes (2026-10-13, ui-polish-18)
+
+**#346 nits (`src/ui/screens/range.js`, same `≤1100×≤640` desktop query only):**
+- **RULES / BESTIARY drawer is glass:** 280px wide (was 360px), tinted (`rgb(10 12 16 / .34→.66)`), 1.5px blur, a bone hairline on its left edge and an 18px fade at its foot to show the list scrolls. Its words carry a shadow. The course box makes way by the same 280px. BRUISER and its gate now sit clear of the drawer, and the gate ticks show through it.
+- **Ladder ticks:** 7px × 2px at .74 (the old ticks were 5px × 1.5px at .52), inside the same 9px foot, so the four-row ladder and the ~146px course are unchanged.
+- 1024×768, 1280, 1920 and phone don't match the query; their computed drawer box and fill are unchanged. Shots: `ui-shots/range960-nits/{before,after}/`.
+
+**#342 place() check (no code change):** at 960×540, 1024×576 and 1100×640, with the longest fitted names injected (Gimbal Thruster Array L, Industrial Massline Spool, Pale-Coil Warp Drive), the right column ends at 882 / 942 / 1030px. The stage edges are at 928 / 992 / 1068px, so nothing clips off screen. **Open:** at 960, the widest left card (Regular Mass-Shifter) prints over the nameplate's "Name this hull" placeholder. `nameplateInkRect` reads text nodes only, so an input placeholder is not an obstacle. Shots: `ui-shots/shipworks-place/`.
+
+**Menu clicks (live boot, `?dev=screen:mainMenu`, 1280×720 and 960×540):** Archive opens Codex (~1.2s), Achievements opens (~1.3s), and Esc returns to the menu. Quit is hidden in the web build (`li[hidden]`, 0×0), so there is no dead button. No console errors. Evidence: `ui-shots/menu-clicks/live2-{1280,960}/report.json` + PNGs. **Open:** at 960×540 the Codex subtitle runs into the unlock dials, GATE APPROACH clips, and LEDGER sits on CLOSE.
+
 ## Proving Range @1280 + phone course — session notes (2026-10-13, ui-polish-23)
 
 **Before (master c8f43e53ee):** at 1280×720 the course (`.k-stage`) was ~85px; the 64px top pad, two 48px kit row gaps, a four-row ladder at ~42px a row and the 64px gauge took the rest. On phone 390×844 the course was **0px**: the 40px title ran four lines, the kit's title padding (it reserves the corner's width) squeezed every title line to 182px, and the 16 rules wrapped into a ten-row ladder (44px touch rows), so the foot alone was 641px. On phone 844×390 the course was also 0px.
