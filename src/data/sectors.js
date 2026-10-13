@@ -92,6 +92,10 @@ const CORE_SECTORS = [
         type: 'beacon',
         name: 'The Candle Fleet',
         scannerSignalKind: 'archive',
+        // Landmark-quest contract (landmark_c3_pit_bearing): the close pulse must be
+        // retakeable after the signal investigation, because the accepted filing asks for
+        // one more pass at the plinth.
+        repeatableScannerSignal: true,
         flavorTargetRef: 'landmark_c3_candle_fleet',
         discoveryPlate: {
           title: 'What Was the Pit?',
@@ -138,6 +142,22 @@ const CORE_SECTORS = [
       },
       { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD' },
       { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle' },
+      {
+        // The Pit convoy's final leg: the dark plinth's black-box smear (landmark
+        // quest landmark_c3_pit_bearing) resolves to this drift line, and the
+        // relighting procession walks its bearing. Investigating the sealed cache
+        // marker pops one real pod (world.js _spawnCachePayoffs) — the Pit's own
+        // relief air, still waiting on the escort that was sold elsewhere.
+        id: 'poi_helios_pit_line',
+        type: 'cache',
+        scannerSignalKind: 'cache',
+        name: 'The Pit Line',
+        contents: { commodityId: 'cmdty_volatiles', amount: 3 },
+        discoveryPlate: {
+          title: 'The Pit Line',
+          body: 'Sealed relief pods hold formation along a dead-straight drift line, nose-on to the old toll cut. The convoy ran dark to slip it, and the escort was sold on before the rendezvous. A recall notice, re-stamped and redirected, is still lashed to the lead pod. One compartment reads full.',
+        },
+      },
       {
         // The chart names the real wreck, not a second derelict prop: the unique-wreck
         // program owns the body (rumor -> bearing ring -> fixed position), so this row

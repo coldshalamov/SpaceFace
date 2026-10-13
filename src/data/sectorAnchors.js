@@ -60,6 +60,14 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'poi_helios_bay7', pos: { x: 1410, z: -310 }, landmarkGlb: 'place_cold_locker', visualRadius: 14 },
       { id: 'poi_helios_ash_pin', pos: { x: 1642, z: -792 }, landmarkGlb: 'place_ash_pin', visualRadius: 6 },
       { id: 'poi_helios_whistle', pos: { x: -1704, z: -1212 }, landmarkGlb: 'place_whistle', visualRadius: 6 },
+      {
+        // The Pit Line — the Candle Fleet's dark plinth resolves its black-box smear to this
+        // bearing (landmark_c3_pit_bearing), off the memorial's dark side toward the rim.
+        id: 'poi_helios_pit_line',
+        pos: { x: 2450, z: -1600 },
+        landmarkGlb: 'place_debris_chunk',
+        visualRadius: 14,
+      },
     ],
   },
   sector_ceres_belt: {
