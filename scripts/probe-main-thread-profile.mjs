@@ -77,6 +77,10 @@ const EXTRA_CHROMIUM_ARGS = process.argv
 // --trace records a Chrome timeline alongside the CPU profile and writes trace-summary.md: the
 // main-thread self time per event inside each loading stage, which names the non-JS "(program)" work.
 const TRACE = process.argv.includes('--trace');
+// --crucible profiles the swarm mode (seed 4242, default kit, drafts auto-answered) instead of open flight;
+// --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
+const CRUCIBLE = process.argv.includes('--crucible');
+const SETTLE_MS = Math.max(0, Number(argValue('--settle-ms')) || 0);
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
 ];
@@ -684,9 +688,27 @@ async function waitForFlight(page, timeoutMs, pollMs) {
   throw new Error(`never entered flight (mode=${mode})`);
 }
 
+/** The Crucible button's own route (default kit, fixed seed); every armory draft is answered with 'keep'. */
+async function launchCrucible(page) {
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
+  const launched = await page.evaluate(async () => {
+    const launch = await import('/src/ui/crucibleLaunch.js');
+    const setup = launch.crucibleSetupFor({ seed: 4242 });
+    if (!setup || !setup.ok) return false;
+    window.__SF_PROFILE_DRAFT_ANSWER__ = setInterval(() => {
+      const st = window.SF && window.SF.state;
+      if (st && st.run && st.run.phase === 'draft') window.SF.bus.emit('run:draftPickRequested', { offerId: null });
+    }, 250);
+    return launch.requestCrucibleRun(window.SF.bus, setup.value, setup.ruleset) !== false;
+  });
+  if (!launched) throw new Error('Crucible run did not launch');
+  log('Crucible run requested (seed 4242, default kit)');
+}
+
 async function runSteadyFlightProfile(page, cdp) {
-  await clickNewGameAndLaunch(page);
+  if (CRUCIBLE) await launchCrucible(page); else await clickNewGameAndLaunch(page);
   await waitForFlight(page, 180_000, 1000);
+  if (SETTLE_MS > 0) { log(`flying ${SETTLE_MS} ms before the profile window`); await page.waitForTimeout(SETTLE_MS); }
 
   await page.evaluate(() => {
     window.__SF_PROFILE_LONGTASKS__ = [];
