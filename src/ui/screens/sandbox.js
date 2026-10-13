@@ -55,7 +55,27 @@ function injectStyle() {
   // in styles/menu.css. We deliberately use the same .sf-menu tokens so the testing screen reads as
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
-  .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
+  /* --sf-sandbox-dock is the ONE number for the Launch key's band: key height + its floor gap +
+     air above it. The frame reserves it below the stage scroller, the foot scrim covers it, and
+     nothing else may restate it. Resize the key here and every clearance follows. */
+  .screen.sf-sandbox {
+    --sf-sandbox-key: 56px; --sf-sandbox-key-floor: 25px;
+    --sf-sandbox-dock: calc(var(--sf-sandbox-key) + var(--sf-sandbox-key-floor) + 16px);
+    --sf-sandbox-fade: 36px;   /* the stage's own bottom fade, just above the dock band */
+    --sf-sandbox-peek: 128px;  /* rail foot + COMBAT LAB tick + the panel's first row under the ladder */
+    max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face);
+  }
+  /* One layout model in the game AND on the bench. screenManager writes an inline display:grid on
+     every .dp-frame root, which turned this frame into the deckplate head/body/foot grid: the stage
+     got an 8px row at 960x540 and the apron (LIVE TOOLS) painted over the ladder, while the bench
+     kept display:block and never showed it. Pin the grid here (!important outranks the inline grid
+     but not the hide path's inline important none): crest, then the stage as the only scroller,
+     ending at the dock band. The frame itself never scrolls, so the fixed Launch key never moves
+     and nothing in the stage can ever sit under it, at first paint or at any scroll offset. */
+  .screen.sf-sandbox.dp-frame--screen {
+    display: grid !important; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: none;
+    overflow: hidden; padding-bottom: var(--sf-sandbox-dock);
+  }
   /* F2 seam dissolve: the plate's own fill melts into the hero art over its last 120px. Only the
      background fades — the type on it stays at full weight. */
   .screen.sf-sandbox.dp-frame--screen {
@@ -66,14 +86,20 @@ function injectStyle() {
      fine-tune section below the tiles was unreachable. */
   /* The root already carries the 64px deckplate margin: the stage adds no left gutter of its
      own, so the ladder rail lands exactly on x64 with the Lamp Key below it. */
-  .sf-sandbox .sf-stage { overflow-y: auto; overflow-x: hidden; padding: 8px 40px 140px 0; }
-  /* The screen itself is the scroller, and the Launch key stands pinned in its bottom ~80px. A foot
-     scrim in the plate's own tone dissolves whatever scrolls up under that zone (the Combat Lab
-     form), so the key never sits on live text. It sits under the key (z 5) and above the text. */
+  /* Content keeps its natural height inside the stage; the stage box ends at the dock band, and
+     its last --sf-sandbox-fade px sit under the foot scrim's fade, so "more below" always reads.
+     The bottom padding lets the last row (Back) scroll clear of that fade. */
+  .sf-sandbox .sf-stage {
+    min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+    padding: 8px 40px var(--sf-sandbox-fade) 0; scroll-padding-bottom: var(--sf-sandbox-fade);
+  }
+  /* The foot scrim covers the reserved dock band plus the stage's fade, in the plate's own tone:
+     the stage's last rows dissolve into it, and the key (z 5) stands on a clean field. */
   .screen.sf-sandbox.dp-frame--screen::after {
-    content: ""; position: fixed; left: 0; bottom: 0; width: min(100%, 760px); height: 132px;
+    content: ""; position: fixed; left: 0; bottom: 0; width: min(100%, 760px);
+    height: calc(var(--sf-sandbox-dock) + var(--sf-sandbox-fade));
     pointer-events: none; z-index: 4;
-    background: linear-gradient(0deg, var(--dp-metal-0) 0, var(--dp-metal-0) 62%, rgb(11 13 16 / 0) 100%);
+    background: linear-gradient(0deg, var(--dp-metal-0) 0, var(--dp-metal-0) var(--sf-sandbox-dock), rgb(11 13 16 / 0) 100%);
     -webkit-mask-image: linear-gradient(90deg, black 0, black calc(100% - 120px), transparent 100%);
     mask-image: linear-gradient(90deg, black 0, black calc(100% - 120px), transparent 100%);
   }
@@ -139,11 +165,12 @@ function injectStyle() {
      sits at the stage's 64px gutter; every row carries its own tick. The ladder is its own scroll
      region ending at y940 with a 60px void fade, so the list clips at the fold and the Launch dock
      below stays clear at every scroll offset. */
-  /* Ladder fills the plate above the Launch dock. Combat Lab and fine-tune wait below the fold
-     (stage scroll), so Hull / Hornet / COMBAT LAB never share the Launch key's first-paint band. */
+  /* The ladder is bounded by the stage, not the viewport: it stops --sf-sandbox-peek short of the
+     stage's height, so the rail foot, the COMBAT LAB tick and the top of its panel are always on
+     first paint as the cue that the lab sits below. 160px floor = two rows. */
   .sf-sandbox-tiles {
     display: flex; flex-direction: column; position: relative; margin: 24px 0 0 -14px; padding: 0 0 0 42px;
-    height: calc(100vh - 320px); max-height: calc(100vh - 320px); min-height: 160px;
+    max-height: max(160px, calc(100% - var(--sf-sandbox-peek)));
     overflow-y: auto; overflow-x: hidden;
     scrollbar-width: thin; scrollbar-color: rgb(236 230 216 / .25) transparent;
     -webkit-mask-image: linear-gradient(180deg, black calc(100% - 60px), transparent 100%);
@@ -201,8 +228,7 @@ function injectStyle() {
      follows the chosen row. */
   .sf-sandbox-railfoot {
     position: relative; display: flex; align-items: center; gap: 12px;
-    /* 120px clears the fixed Launch key (56 + 25 bottom) and the foot scrim on first paint. */
-    margin: 12px 0 120px; padding-left: 26px;
+    margin: 12px 0 0; padding-left: 26px;
     font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 112%;
     font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
     color: var(--sf-calm);
@@ -235,8 +261,8 @@ function injectStyle() {
      The doubled class outranks the kit's k-word chrome; the goal token seasons the hover.
      F1: docked in the reserved y985-1055 zone the ladder can never enter. */
   .sf-sandbox-launch.sf-sandbox-launch {
-    position: fixed; left: var(--dp-margin); bottom: 25px; z-index: 5;
-    width: 200px; min-height: 56px; margin: 0; padding: 0 20px;
+    position: fixed; left: var(--dp-margin); bottom: var(--sf-sandbox-key-floor); z-index: 5;
+    width: 200px; min-height: var(--sf-sandbox-key); margin: 0; padding: 0 20px;
     display: inline-flex; align-items: center; justify-content: center; text-align: center;
     background: rgb(242 185 80); color: rgb(5 7 10);
     font-family: "Archivo", "Instrument Sans", system-ui, sans-serif; font-stretch: 112%;
@@ -261,9 +287,9 @@ function injectStyle() {
     border-color: rgb(236 230 216 / .25);
   }
   .sf-sandbox .sf-chip--good .sf-chip__dot { background: rgb(236 230 216); box-shadow: none; }
-  /* The apron is the grid pinned foot: its rows start on x64 with the rail and stop above
-     the pinned Key, so the last row (Back) is never under it. */
-  .sf-sandbox .sf-apron { padding: 0 40px 40px 0; }
+  /* The apron (LIVE TOOLS, Back) rides at the end of the stage scroll, in normal flow below the
+     lab and fine-tune: it is no longer a grid foot that can paint over the ladder. */
+  .sf-sandbox .sf-apron { padding: 0; margin-top: 12px; }
   .sf-sandbox-livehint {
     font-size: 12px; color: var(--sf-calm);
     font-style: italic; margin-bottom: var(--sp-2);
@@ -320,27 +346,33 @@ function injectStyle() {
     .sf-sandbox-finetune { grid-template-columns: 1fr; }
     .sf-sandbox-picker { grid-template-columns: 1fr; }
     .sf-sandbox-lab-form { grid-template-columns: 1fr; }
-    .sf-sandbox-tiles {
-      height: auto; max-height: min(48vh, 380px); min-height: 200px;
-    }
-    /* Keep Combat Lab / Hull below the fixed Launch key on first paint. */
-    .sf-sandbox-railfoot { margin-bottom: 260px; }
     .sf-sandbox-tile { min-height: 0 !important; height: auto !important; padding: 14px 8px 10px 0; }
     .sf-sandbox-tile__title { font-size: 13px; }
     .sf-sandbox-tile__desc { font-size: 13px; }
   }
-  /* Touch / phone deck: same crush + Launch clearance (data-sf-mobile, any width). */
+  /* Touch / phone deck (data-sf-mobile, any width): the global 44px touch floor crushed each
+     title+desc tile and stacked them, so the tiles opt out of it and keep their own height. */
   html:root[data-sf-mobile="1"] .sf-sandbox-tile {
     flex: 0 0 auto; min-height: 0 !important; height: auto !important;
   }
-  html:root[data-sf-mobile="1"] .sf-sandbox-tiles {
-    height: auto; max-height: min(48vh, 380px); min-height: 200px;
+  /* The phone deck shrinks the key to its 44px touch row and pads every .screen's foot with an
+     !important 20px; restate the dock band over it (plus the home-indicator inset) so the stage
+     still ends above the key on 390x844 and 844x390. */
+  html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
+    --sf-sandbox-key: 44px;
+    padding-bottom: calc(var(--sf-sandbox-dock) + env(safe-area-inset-bottom, 0px)) !important;
   }
-  html:root[data-sf-mobile="1"] .sf-sandbox-railfoot { margin-bottom: 260px; }
-  /* Short desktop: keep the rail foot above the Launch key, not under it. */
+  /* Short frames (desktop 960x540, landscape phone 844x390): the crest gives back its top air.
+     At <=500px tall the stage is too short to host a second scroller (two 160px ladder rows would
+     not fit beside the lab cue), so the ladder drops its own bound and the stage alone scrolls.
+     That also retires the old min-height:200px > max-height:min(48vh,380px) fight at 844x390. */
   @media (max-height: 640px) {
+    .screen.sf-sandbox.dp-frame--screen { padding-top: 16px; row-gap: 8px; }
+    .sf-sandbox .sf-crest { padding-top: 8px; }
+  }
+  @media (max-height: 500px) {
     .sf-sandbox-tiles {
-      height: calc(100vh - 300px); max-height: calc(100vh - 300px); min-height: 140px;
+      margin-top: 8px; max-height: none; overflow-y: visible; -webkit-mask-image: none; mask-image: none;
     }
   }
   @media (forced-colors: active) {
@@ -1037,7 +1069,8 @@ export const sandboxScreen = {
       if (mgr && typeof mgr.popScreen === 'function') mgr.popScreen();
     });
     apron.appendChild(back);
-    rootEl.appendChild(apron);
+    // In the stage's flow, after fine-tune: see the .sf-apron rule in injectStyle.
+    stage.appendChild(apron);
 
     sandboxScreen._ctx = ctx;
   },
