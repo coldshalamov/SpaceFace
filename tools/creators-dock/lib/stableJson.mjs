@@ -88,9 +88,9 @@ export function detachData(value, seen = new Map(), readGrid = true) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor || typeof descriptor.get !== 'function') continue;
     const hasSetter = typeof descriptor.set === 'function';
-    if (!hasSetter && key !== 'pocket') continue;
+    if (!hasSetter && ACCESSOR_SKIP.has(key)) continue;
     try {
-      const read = descriptor.get.call(value);
+      const read = hasSetter ? descriptor.get.call(value) : readAccessor(value, descriptor);
       if (!hasSetter && !(read && typeof read === 'object')) continue;
       const child = detachData(read, seen, readGrid);
       if (child !== undefined) writeData(out, key, child);
@@ -328,8 +328,74 @@ export function restoreInheritedArrays(entries) {
   }
 }
 
+const ACCESSOR_SKIP = new Set(['constructor', 'toJSON', 'objects', 'grid']);
+
+export function readAccessor(object, descriptor) {
+  const snapshot = [];
+  if (object && (typeof object === 'object' || typeof object === 'function')) {
+    for (const key of Object.getOwnPropertyNames(object)) {
+      const current = Object.getOwnPropertyDescriptor(object, key);
+      if (!current || !Object.prototype.hasOwnProperty.call(current, 'value')) continue;
+      if (typeof current.value === 'function') continue;
+      snapshot.push({
+        key,
+        value: current.value,
+        enumerable: current.enumerable !== false,
+      });
+    }
+  }
+  let read;
+  let failed = false;
+  try {
+    read = descriptor.get.call(object);
+  } catch (error) {
+    failed = true;
+  }
+  for (const entry of snapshot) {
+    const current = Object.getOwnPropertyDescriptor(object, entry.key);
+    const value = current && Object.prototype.hasOwnProperty.call(current, 'value') ? current.value : undefined;
+    if (current && Object.prototype.hasOwnProperty.call(current, 'value') && Object.is(value, entry.value)) continue;
+    writeLive(object, entry.key, entry.value, entry.enumerable);
+  }
+  return failed ? undefined : read;
+}
+
+export function captureAccessorTrees(value, seen = new Set(), records = []) {
+  if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return records;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        captureAccessorTrees(descriptor.value, seen, records);
+      }
+    }
+    return records;
+  }
+  for (const key of Object.getOwnPropertyNames(value)) {
+    if (ACCESSOR_SKIP.has(key)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor) continue;
+    if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      if (typeof descriptor.value === 'function') continue;
+      if (descriptor.value && typeof descriptor.value === 'object') {
+        captureAccessorTrees(descriptor.value, seen, records);
+      }
+      continue;
+    }
+    if (typeof descriptor.get !== 'function' || typeof descriptor.set === 'function') continue;
+    const read = readAccessor(value, descriptor);
+    if (read && typeof read === 'object') {
+      captureLive(read, new Set(), records);
+      captureAccessorTrees(read, seen, records);
+    }
+  }
+  return records;
+}
+
 const protectedStack = [];
 export let definePropertyBase = null;
+let freezeBase = null;
 
 function protectedHas(obj) {
   for (let i = protectedStack.length - 1; i >= 0; i -= 1) {
@@ -338,10 +404,20 @@ function protectedHas(obj) {
   return false;
 }
 
+function accessorValue(current, obj) {
+  if (!current || typeof current.get !== 'function') return { read: false, value: undefined };
+  try {
+    return { read: true, value: current.get.call(obj) };
+  } catch (error) {
+    return { read: false, value: undefined };
+  }
+}
+
 export function protectLiveObjects(objects) {
   const set = objects instanceof Set ? objects : new Set(objects || []);
   if (protectedStack.length === 0) {
     definePropertyBase = Object.defineProperty;
+    freezeBase = Object.freeze;
     Object.defineProperty = function shieldedDefine(obj, prop, desc) {
       if (protectedHas(obj) && desc && typeof desc === 'object') {
         const current = Object.getOwnPropertyDescriptor(obj, prop);
@@ -349,10 +425,20 @@ export function protectLiveObjects(objects) {
           && Object.prototype.hasOwnProperty.call(current, 'value')
           && Object.prototype.hasOwnProperty.call(desc, 'value')
           && !Object.is(desc.value, current.value);
+        const read = accessorValue(current, obj);
+        const sealsAccessor = !!current
+          && typeof current.get === 'function'
+          && Object.prototype.hasOwnProperty.call(desc, 'value')
+          && read.read
+          && !Object.is(desc.value, read.value);
         const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
-        if (changesValue || freezesLength) return obj;
+        if (changesValue || sealsAccessor || freezesLength) return obj;
       }
       return definePropertyBase.call(Object, obj, prop, desc);
+    };
+    Object.freeze = function shieldedFreeze(obj) {
+      if (protectedHas(obj)) return obj;
+      return freezeBase.call(Object, obj);
     };
   }
   protectedStack.push(set);
@@ -364,6 +450,10 @@ export function unprotectLiveObjects() {
   if (protectedStack.length === 0 && definePropertyBase) {
     Object.defineProperty = definePropertyBase;
     definePropertyBase = null;
+    if (freezeBase) {
+      Object.freeze = freezeBase;
+      freezeBase = null;
+    }
   }
 }
 

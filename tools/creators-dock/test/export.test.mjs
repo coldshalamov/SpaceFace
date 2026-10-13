@@ -8,6 +8,7 @@ import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject, importScenario, packFileText } from '../lib/export.mjs';
 import { validateProject, runProject } from '../lib/labRun.mjs';
 import { objectById } from '../lib/scene.mjs';
+import { inspectValue } from '../lib/security.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
 import { send } from '../serve.mjs';
 import { probePackFiles, probeUserContentDir } from '../lib/userProbe.mjs';
@@ -511,11 +512,96 @@ test('a place disc edits the exported place and objectives follow the lab metric
   const metric = exported.scenario.metrics.find((row) => row.name === 'trace.final');
   assert.deepEqual(metric.threshold, { op: '<', value: -0.25 });
   assert.deepEqual(metric.params, { signal: 'playerRot' });
-  assert.equal(Object.hasOwn(metric, 'x'), false);
-  assert.equal(Object.hasOwn(metric, 'z'), false);
+  const scenarioText = JSON.stringify(exported.scenario);
+  assert.equal(scenarioText.includes('12'), true);
+  assert.equal(scenarioText.includes('-8'), true);
+  const turned = exported.scenario.assertions.find((row) => row.metric === 'trace.final');
+  assert.deepEqual(turned.expected, { x: 12, z: -8 });
+  const imported = importScenario(exported.scenario);
+  assert.equal(imported.ok, true, (imported.issues || []).join('\n'));
+  const importedTurned = imported.project.objects.find((object) => object.kind === 'objective' && object.metric === 'trace.final');
+  assert.equal(importedTurned.x, 12);
+  assert.equal(importedTurned.z, -8);
+  const moved = getComposition('dock.bank-shot');
+  const along = objectById(moved, 'along_x');
+  along.x = 400;
+  along.z = 400;
+  along.radius = 99;
+  const movedExport = await exportProject(moved);
+  assert.equal(movedExport.ok, true, (movedExport.issues || []).join('\n'));
+  const movedText = JSON.stringify(movedExport.scenario);
+  assert.equal(movedText.includes('400'), true);
+  assert.equal(movedText.includes('99'), true);
+  const alongAssertion = movedExport.scenario.assertions.find((row) => row.kind === 'eventByTick' && row.signal === 'playerX');
+  assert.equal(alongAssertion.expected.x, 400);
+  assert.equal(alongAssertion.expected.z, 400);
+  assert.equal(alongAssertion.expected.radius, 99);
+  const movedImport = importScenario(movedExport.scenario);
+  assert.equal(movedImport.ok, true, (movedImport.issues || []).join('\n'));
+  const importedAlong = movedImport.project.objects.find((object) => object.kind === 'trigger' && object.assertion && object.assertion.signal === 'playerX');
+  assert.equal(importedAlong.x, 400);
+  assert.equal(importedAlong.z, 400);
+  assert.equal(importedAlong.radius, 99);
   const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
   assert.equal(editor.includes("key: 'metric'"), true);
   assert.equal(editor.includes("key: 'signal'"), true);
   assert.equal(editor.includes("key: 'op'"), true);
   assert.equal(editor.includes("key: 'value'"), true);
+});
+
+test('export does not invoke a frames element grid getter', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const grid = project.grid;
+  const size = grid.size;
+  project.frames = [{ tick: 0, input: { moveX: 1 } }];
+  let reads = 0;
+  Object.defineProperty(project.frames[0], 'grid', {
+    enumerable: false,
+    configurable: true,
+    get() {
+      reads += 1;
+      grid.size = null;
+      return 1;
+    },
+  });
+  const inspected = inspectValue(project);
+  assert.equal(inspected.length, 0);
+  assert.equal(reads, 0);
+  assert.equal(grid.size, size);
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  assert.equal(exported.issues.length, 0);
+  assert.equal(reads, 0);
+  assert.equal(grid.size, size);
+  assert.equal(size, 10);
+});
+
+test('validate runs the certifying lab and a run report keeps the failure window', { timeout: 180000 }, async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const validated = await validateProject(project);
+  assert.equal(validated.ok, true, (validated.issues || []).join('\n'));
+  assert.equal(validated.certifying, true);
+  assert.equal(validated.seed, project.seed);
+  assert.equal(typeof validated.oracle, 'object');
+  assert.notEqual(validated.oracle, null);
+  assert.equal(validated.oracle.ok, true);
+  assert.equal(typeof validated.trace, 'string');
+  assert.equal(validated.trace.length > 10, true);
+
+  const failing = getComposition('dock.intercept-cargo');
+  failing.ticks = 60;
+  const objective = failing.objects.find((object) => object.id === 'final_z');
+  objective.value = 50000;
+  const trigger = failing.objects.find((object) => object.id === 'cross');
+  trigger.assertion.value = 50000;
+  trigger.assertion.byTick = 59;
+  const ran = await runProject(failing);
+  assert.equal(ran.ok, false);
+  assert.equal(ran.run.certifying, true);
+  assert.notEqual(ran.run.failure, null);
+  assert.equal(Array.isArray(ran.run.failure.metricWindow), true);
+  assert.ok('stateSlice' in ran.run.failure);
+  assert.equal(Array.isArray(ran.run.failure.inputWindow), true);
+  assert.notEqual(ran.run.failure.checkpoints, null);
+  assert.notEqual(ran.run.checkpoints, null);
 });

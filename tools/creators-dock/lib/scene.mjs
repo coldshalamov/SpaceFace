@@ -2,8 +2,9 @@
 // No Node builtins, no physics step. The lab is the only simulator.
 
 import {
-  captureLive, detachData, liveObjectsIn, protectLiveObjects, restoreInheritedArrays,
-  restoreLive, sameJson, snapshotInheritedArrays, sortValue, unprotectLiveObjects,
+  captureAccessorTrees, captureLive, detachData, liveObjectsIn, protectLiveObjects,
+  readAccessor, restoreInheritedArrays, restoreLive, sameJson, snapshotInheritedArrays,
+  sortValue, unprotectLiveObjects,
 } from './stableJson.mjs';
 
 export const PROJECT_SCHEMA = 'spaceface.creatorsDock.v1';
@@ -491,7 +492,7 @@ function wipedObject(original, produced) {
   return dataFields(produced).length === 0;
 }
 
-function materialize(value, key, seen) {
+function materialize(value, key, seen, readGrid = true) {
   if (value === null) return null;
   if (value === undefined) return undefined;
   const type = typeof value;
@@ -505,23 +506,32 @@ function materialize(value, key, seen) {
   let carriedGrid;
   if (typeof toJSON === 'function') {
     seen.add(value);
-    const gridAccessor = gridAccessorState(value);
+    const gridAccessor = readGrid ? gridAccessorState(value) : null;
     const gridFields = gridAccessor ? snapshotGridFields(gridAccessor.value) : null;
     const callerRecords = captureLive(value);
     const inheritedArrays = snapshotInheritedArrays(value);
+    const accessorRecords = captureAccessorTrees(value);
     if (gridAccessor && gridAccessor.value && typeof gridAccessor.value === 'object') {
       captureLive(gridAccessor.value, new Set(), callerRecords);
       inheritedArrays.push(...snapshotInheritedArrays(gridAccessor.value));
+      captureAccessorTrees(gridAccessor.value, new Set(), accessorRecords);
     }
     // toJSON runs on a detached tree so a non-configurable write cannot stick to the live scene.
     const detached = detachData(value);
     const live = liveObjectsIn([value, gridAccessor && gridAccessor.value]);
+    for (const entry of inheritedArrays) {
+      if (entry && entry.array) live.add(entry.array);
+    }
+    for (const record of accessorRecords) {
+      if (record && record.object) live.add(record.object);
+    }
     protectLiveObjects(live);
     let produced;
     try {
       produced = toJSON.call(detached, key);
     } finally {
       unprotectLiveObjects();
+      restoreLive(accessorRecords);
       restoreLive(callerRecords);
       restoreInheritedArrays(inheritedArrays);
     }
@@ -542,18 +552,18 @@ function materialize(value, key, seen) {
       if (accessorHidData(before, produced) || introducedNull(before, produced)) return CLONE_REJECT;
       // {} must not erase a world that still has credits and the rest of its fields.
       if (!wipedObject(value, produced)) {
-        const nested = materialize(produced, key, seen);
-        if (nested && typeof nested === 'object' && !Array.isArray(nested) && nested.grid == null) {
+        const nested = materialize(produced, key, seen, readGrid);
+        if (readGrid && nested && typeof nested === 'object' && !Array.isArray(nested) && nested.grid == null) {
           copyGetterGrid(value, nested);
         }
         return nested;
       }
     } else if (produced !== value) {
-      return materialize(produced, key, seen);
+      return materialize(produced, key, seen, readGrid);
     }
     if (gridAccessor && gridAccessor.value != null) carriedGrid = gridAccessor.value;
   } else if (value instanceof String || value instanceof Number || value instanceof Boolean) {
-    return materialize(value.valueOf(), key, seen);
+    return materialize(value.valueOf(), key, seen, readGrid);
   } else {
     seen.add(value);
   }
@@ -562,7 +572,7 @@ function materialize(value, key, seen) {
     for (let i = 0; i < value.length; i += 1) {
       const slot = arrayDataAt(value, i);
       if (slot.kind !== 'data') return CLONE_REJECT;
-      const item = materialize(slot.value, String(i), seen);
+      const item = materialize(slot.value, String(i), seen, false);
       if (item === CLONE_REJECT || item === undefined) return CLONE_REJECT;
       out.push(item);
     }
@@ -570,16 +580,16 @@ function materialize(value, key, seen) {
   }
   const out = {};
   for (const [childKey, childValue] of ownDataEntries(value)) {
-    const child = materialize(childValue, childKey, seen);
+    const child = materialize(childValue, childKey, seen, readGrid);
     if (child === CLONE_REJECT) return CLONE_REJECT;
     if (child !== undefined) writeData(out, childKey, child);
   }
   if (carriedGrid !== undefined && !Object.prototype.hasOwnProperty.call(out, 'grid')) {
-    const child = materialize(carriedGrid, 'grid', seen);
+    const child = materialize(carriedGrid, 'grid', seen, readGrid);
     if (child === CLONE_REJECT) return CLONE_REJECT;
     if (child !== undefined) writeData(out, 'grid', child);
   }
-  copyGetterGrid(value, out);
+  if (readGrid) copyGetterGrid(value, out);
   copyAccessors(value, out);
   copyInheritedFields(value, out);
   return out;
@@ -592,9 +602,9 @@ function copyAccessors(source, out) {
     const descriptor = Object.getOwnPropertyDescriptor(source, key);
     if (!descriptor || typeof descriptor.get !== 'function') continue;
     const hasSetter = typeof descriptor.set === 'function';
-    if (!hasSetter && key !== 'pocket') continue;
+    if (!hasSetter && (key === 'objects' || key === 'grid')) continue;
     try {
-      const read = descriptor.get.call(source);
+      const read = hasSetter ? descriptor.get.call(source) : readAccessor(source, descriptor);
       if (!hasSetter && !(read && typeof read === 'object')) continue;
       const child = detachData(read);
       if (child !== undefined) writeData(out, key, child);

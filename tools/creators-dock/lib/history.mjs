@@ -1,5 +1,8 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
-import { definePropertyBase, detachData, liveObjectsIn, protectLiveObjects, snapshotInheritedArrays, unprotectLiveObjects } from './stableJson.mjs';
+import {
+  definePropertyBase, detachData, liveObjectsIn, protectLiveObjects, readAccessor,
+  snapshotInheritedArrays, unprotectLiveObjects,
+} from './stableJson.mjs';
 
 const CAP = 100;
 
@@ -436,6 +439,9 @@ function runShielded(scenes, fn) {
       for (const object of liveObjectsIn([entry.value])) protectedLive.add(object);
     }
   }
+  for (const entry of activeArrays) {
+    if (Array.isArray(entry.array)) protectedLive.add(entry.array);
+  }
   protectLiveObjects(protectedLive);
   try {
     return publish(fn());
@@ -488,13 +494,10 @@ function collectSetters(value, entries, seen) {
         if (read && typeof read === 'object') collectSetters(read, entries, seen);
         continue;
       }
-      if (typeof descriptor.get === 'function' && key === 'pocket') {
-        try {
-          const read = descriptor.get.call(value);
-          if (read && typeof read === 'object') collectSetters(read, entries, seen);
-        } catch (error) {
-          // A get-only accessor refused. Setters behind it stay unrecorded.
-        }
+      if (typeof descriptor.get === 'function') {
+        if (key === 'objects' || key === 'grid') continue;
+        const read = readAccessor(value, descriptor);
+        if (read && typeof read === 'object') collectSetters(read, entries, seen);
         continue;
       }
       if (current !== value) continue;
@@ -556,6 +559,17 @@ function snapshotArrays(scenes) {
       });
     }
   }
+  for (const entry of activeAccessors || []) {
+    if (!entry.value || typeof entry.value !== 'object') continue;
+    for (const extra of snapshotInheritedArrays(entry.value)) {
+      if (entries.some((row) => row.array === extra.array)) continue;
+      entries.push({
+        array: extra.array,
+        length: extra.length,
+        items: extra.items.map((value) => ({ kind: 'data', value })),
+      });
+    }
+  }
   return entries;
 }
 
@@ -577,7 +591,14 @@ function collectArrays(value, entries, seen) {
   for (const key of Object.getOwnPropertyNames(value)) {
     if (key === 'toJSON') continue;
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (!descriptor) continue;
+    if (typeof descriptor.get === 'function' && typeof descriptor.set !== 'function') {
+      if (key === 'objects' || key === 'grid') continue;
+      const read = readAccessor(value, descriptor);
+      if (read && typeof read === 'object') collectArrays(read, entries, seen);
+      continue;
+    }
+    if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
     if (typeof descriptor.value === 'function') continue;
     collectArrays(descriptor.value, entries, seen);
   }

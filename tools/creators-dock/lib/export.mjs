@@ -309,7 +309,13 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
     };
     if (objective.signal) metric.params = { signal: objective.signal };
     metrics.push(metric);
-    const assertion = { kind: 'metric', metric: objective.metric, op: objective.op, value: objective.value };
+    const assertion = {
+      kind: 'metric',
+      metric: objective.metric,
+      op: objective.op,
+      value: objective.value,
+      expected: layoutGeometry(objective),
+    };
     assertions.push(assertion);
     rememberOracle(assertion, seenOracle, issues);
   }
@@ -328,6 +334,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
       issues.push(`${trigger.id}: trigger.assertion could not be cloned`);
       continue;
     }
+    if (canCarryGeometry(assertion)) assertion.expected = layoutGeometry(trigger);
     assertions.push(assertion);
     rememberOracle(assertion, seenOracle, issues);
     if (assertion.signal && !SIGNAL_SET.has(assertion.signal)) {
@@ -411,6 +418,31 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
   if (project.parameterOverlay) scenario.parameterOverlay = clone(project.parameterOverlay);
   if (project.saveLoadEquivalence) scenario.saveLoadEquivalence = project.saveLoadEquivalence;
   return scenario;
+}
+
+function layoutGeometry(source) {
+  const geometry = {
+    x: Number.isFinite(source && source.x) ? round6(source.x) : 0,
+    z: Number.isFinite(source && source.z) ? round6(source.z) : 0,
+  };
+  if (Number.isFinite(source && source.radius)) geometry.radius = round6(source.radius);
+  if (source && source.shape) geometry.shape = source.shape;
+  return geometry;
+}
+
+function canCarryGeometry(assertion) {
+  if (!assertion || assertion.expected == null) return true;
+  if (typeof assertion.expected !== 'object' || Array.isArray(assertion.expected)) return false;
+  return Object.keys(assertion.expected).every((key) => (
+    key === 'x' || key === 'z' || key === 'radius' || key === 'shape'
+  ));
+}
+
+function geometryOf(assertion) {
+  const expected = assertion && assertion.expected;
+  if (!expected || typeof expected !== 'object' || Array.isArray(expected)) return null;
+  if (!Number.isFinite(expected.x) && !Number.isFinite(expected.z) && !Number.isFinite(expected.radius)) return null;
+  return expected;
 }
 
 function rememberOracle(assertion, seen, issues) {
@@ -763,11 +795,12 @@ export function importScenario(doc) {
       if (metric.params && Object.keys(metric.params).some((key) => key !== 'signal')) {
         issues.push(`metric "${metric.name}" has params the dock cannot round-trip`);
       }
+      const objectiveGeometry = geometryOf(assertion);
       objects.push({
         id: `objective_${objectiveIndex}`,
         kind: 'objective',
-        x: 0,
-        z: 0,
+        x: objectiveGeometry && Number.isFinite(objectiveGeometry.x) ? objectiveGeometry.x : 0,
+        z: objectiveGeometry && Number.isFinite(objectiveGeometry.z) ? objectiveGeometry.z : 0,
         metric: assertion.metric,
         ...(metric.params && metric.params.signal ? { signal: metric.params.signal } : {}),
         op: assertion.op,
@@ -779,14 +812,17 @@ export function importScenario(doc) {
       continue;
     }
     if (['holds', 'never', 'eventByTick', 'settles', 'temporal'].includes(assertion.kind)) {
+      const triggerGeometry = geometryOf(assertion);
+      const storedAssertion = clone(assertion);
+      if (storedAssertion && canCarryGeometry(storedAssertion)) delete storedAssertion.expected;
       objects.push({
         id: `trigger_${triggerIndex}`,
         kind: 'trigger',
-        shape: 'circle',
-        x: 0,
-        z: 0,
-        radius: 10,
-        assertion: clone(assertion),
+        shape: triggerGeometry && triggerGeometry.shape ? triggerGeometry.shape : 'circle',
+        x: triggerGeometry && Number.isFinite(triggerGeometry.x) ? triggerGeometry.x : 0,
+        z: triggerGeometry && Number.isFinite(triggerGeometry.z) ? triggerGeometry.z : 0,
+        radius: triggerGeometry && Number.isFinite(triggerGeometry.radius) ? triggerGeometry.radius : 10,
+        assertion: storedAssertion,
         labOnly: true,
         label: assertion.kind,
       });
