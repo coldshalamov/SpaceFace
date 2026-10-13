@@ -449,7 +449,7 @@ export function collectAuthoredInstancePoolRoots(scene) {
 
 /**
  * Capture Three's renderer/context-generation disposal callbacks without relying on Function.name.
- * A private zero-count InstancedMesh is rendered once through the real renderer into a private
+ * A private one-instance InstancedMesh is rendered once through the real renderer into a private
  * target. Its geometry, main/shadow materials, sampled texture, target, and object cannot receive
  * foreign listeners, so every captured callback is exact provenance even after minification.
  */

@@ -281,6 +281,8 @@ test('the opening cook uploads the sky behind the shell and fails open at its bu
   const block = renderer.slice(start, start + 1800);
   assert.match(block, /lane\.pump\(\{ beforeFlight: true \}\)/, 'plates and bases pump on the cook, not in the first seconds of flight');
   assert.match(block, /skyTimedOut = true; break;/, 'a budget overrun leaves the loop');
+  assert.match(block, /SKY_UPLOAD_STEP_BUDGET_MS = 4000/, 'the cosmetic plates have their own few-second step budget');
+  assert.match(block, /skyStarted >= SKY_UPLOAD_STEP_BUDGET_MS/, 'and the loop checks it, not only the whole-cook budget');
   assert.doesNotMatch(block, /throw new Error/, 'the budget never rejects the cook: later census, touch and admission steps must still run');
   assert.match(block, /recordOpeningCookStep\(state\.render, 'cook\.skyUpload', skyStarted, 'timeout'\)/, 'the overrun is on the cook ledger');
 });

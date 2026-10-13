@@ -1525,6 +1525,13 @@ export const lawSecurity = {
       if (!at) return;
       if (Math.hypot(at.x - origin.x, at.z - origin.z) <= reach + (Number(rock.radius) || 0)) near.push(rock);
     });
+    // Tow payloads and pickups are collidable too (a Ceres tow payload can sit beside an offender).
+    forEachJobInteractable(state, (entity) => {
+      if (entity.type !== 'payload' && entity.type !== 'pickup') return;
+      const at = entity.pos;
+      if (!at) return;
+      if (Math.hypot(at.x - origin.x, at.z - origin.z) <= reach + (Number(entity.radius) || 0)) near.push(entity);
+    });
     return near;
   },
 

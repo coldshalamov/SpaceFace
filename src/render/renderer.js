@@ -13890,6 +13890,8 @@ export const render = {
       if (state.mode === 'loading' && this.spaceBg) {
         const bg = this.spaceBg;
         const skyStarted = prepareNow();
+        // The cosmetic plates get their own few seconds: a slow decode must not hold the loading screen for the whole cook budget.
+        const SKY_UPLOAD_STEP_BUDGET_MS = 4000;
         let skyTimedOut = false;
         for (const [lane, adopt] of [
           [bg.deepSkyPlates, () => bg._adoptActiveSkyPlate()],
@@ -13900,7 +13902,8 @@ export const render = {
             // Fail open like every other bounded step of this cook: a plate that has not decoded inside the
             // budget (slow network on the hosted build) finishes uploading in flight, as it always did; throwing
             // here would abandon the census, touch, compile and admission steps after it.
-            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS) { skyTimedOut = true; break; }
+            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS
+              || prepareNow() - skyStarted >= SKY_UPLOAD_STEP_BUDGET_MS) { skyTimedOut = true; break; }
             await yieldLiveSectorGpu();
             if (cookStale()) return cookSuperseded;
             if (lane.pump({ beforeFlight: true })) adopt();

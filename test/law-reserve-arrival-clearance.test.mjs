@@ -215,3 +215,22 @@ test('a field rock on the authored arrival slot moves the launch instead of star
       `responder ${arrival.id} starts at ${JSON.stringify(arrival.pos)}, inside the rock at ${JSON.stringify(authored[0])}`);
   }
 });
+
+test('a tow payload on the authored arrival slot moves the launch too', async () => {
+  const open = boot();
+  await open.sim.registry.get('physics').prepareBackend(open.state);
+  sustainedFireOn(open.bus, open.player.id, open.station.id);
+  open.sim.runTicks(120);
+  const authored = open.log.dispatches[0].arrivals.map((row) => ({ ...row.pos }));
+
+  const loaded = boot();
+  await loaded.sim.registry.get('physics').prepareBackend(loaded.state);
+  loaded.sim.spawn({ type: 'payload', team: 0, pos: { x: authored[0].x, z: authored[0].z }, radius: 30, hull: 1e6, hullMax: 1e6, mass: 1e6, data: {} });
+  sustainedFireOn(loaded.bus, loaded.player.id, loaded.station.id);
+  loaded.sim.runTicks(120);
+  assert.equal(loaded.log.dispatches.length, 1, 'the response still launches');
+  for (const arrival of loaded.log.dispatches[0].arrivals) {
+    assert.ok(Math.hypot(arrival.pos.x - authored[0].x, arrival.pos.z - authored[0].z) >= 30 + arrival.radius,
+      `responder ${arrival.id} starts inside the payload`);
+  }
+});
