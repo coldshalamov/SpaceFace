@@ -325,6 +325,8 @@ function fieldTextWidth(text, cs) {
     if (!fieldMeasureCtx) return 0;
   }
   fieldMeasureCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  // Tracking is added by hand: this private context never sets ctx.letterSpacing, so measureText
+  // returns untracked width and the two never double-count.
   const spacing = parseFloat(cs.letterSpacing) || 0;
   return fieldMeasureCtx.measureText(text).width + spacing * text.length;
 }
@@ -4924,6 +4926,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!input) return;
     ev.stopPropagation(); // typing must never reach canvas or station hotkeys
     if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+  });
+  // A card may sit to the right of a short name (the ink zone follows the text, not the field's
+  // empty right side), so re-place the cards as the name grows under typing, not only on change.
+  nameplateEl.addEventListener('input', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
   });
   nameplateEl.addEventListener('change', (ev) => {
     const input = ev.target.closest('input[data-ship-name]');
