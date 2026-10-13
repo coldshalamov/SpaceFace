@@ -7,6 +7,11 @@ export const TRIGGER_ASSERTION_FIELDS = Object.freeze([
   { key: 'assertion.byTick', label: 'By tick', kind: 'number' },
 ]);
 
+export const ACTOR_OVERRIDE_FIELDS = Object.freeze([
+  { key: 'overrides.radius', label: 'Collider radius', kind: 'number' },
+  { key: 'overrides.mass', label: 'Mass', kind: 'number' },
+]);
+
 export const FRAME_INPUT_FIELDS = Object.freeze([
   { key: 'moveX', label: 'Move X', kind: 'number' },
   { key: 'moveZ', label: 'Move Z', kind: 'number' },
@@ -21,6 +26,10 @@ export function readPath(object, key) {
     const leaf = key.slice('assertion.'.length);
     return object.assertion ? object.assertion[leaf] : undefined;
   }
+  if (key.startsWith('overrides.')) {
+    const leaf = key.slice('overrides.'.length);
+    return object.overrides ? object.overrides[leaf] : undefined;
+  }
   return object[key];
 }
 
@@ -32,6 +41,14 @@ export function writePath(object, key, value) {
       object.assertion = {};
     }
     object.assertion[leaf] = value;
+    return object;
+  }
+  if (key.startsWith('overrides.')) {
+    const leaf = key.slice('overrides.'.length);
+    if (!object.overrides || typeof object.overrides !== 'object' || Array.isArray(object.overrides)) {
+      object.overrides = {};
+    }
+    object.overrides[leaf] = value;
     return object;
   }
   object[key] = value;

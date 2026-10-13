@@ -2,10 +2,14 @@
 // This module intentionally contains no authority executor or node:crypto import.
 
 import { evaluateMetrics, compareThreshold } from './metricRegistry.js';
+// Side-effect: register massline + flight metrics for both Node and Chromium hosts.
+import '../metrics/masslineMetrics.js';
 
 // A dock disc is met when the player comes within five authored radii. That keeps a
 // marker the tape actually crosses, and rejects a distant point such as (999, 999) r=1.
 const DISC_REACH = 5;
+// An objective authored at x,z without its own radius is still a disc of this size.
+const DEFAULT_DISC_RADIUS = 20;
 
 function discOf(assertion) {
   const expected = assertion && assertion.expected;
@@ -14,7 +18,7 @@ function discOf(assertion) {
   return {
     x: expected.x,
     z: expected.z,
-    radius: Number.isFinite(expected.radius) ? expected.radius : null,
+    radius: Number.isFinite(expected.radius) ? expected.radius : DEFAULT_DISC_RADIUS,
   };
 }
 
@@ -40,8 +44,6 @@ function withDisc(base, disc) {
   const fields = base && typeof base === 'object' && !Array.isArray(base) ? base : {};
   return { ...fields, x: disc.x, z: disc.z, radius: disc.radius };
 }
-// Side-effect: register massline + flight metrics for both Node and Chromium hosts.
-import '../metrics/masslineMetrics.js';
 
 /**
  * Evaluate the pure oracle families. Fixed-parent equivalence authority stays in oracleEngine.js.
@@ -81,6 +83,7 @@ export function evaluateOracleKernel({
         ok,
         expected: withDisc(m.threshold, disc),
         actual: m.value,
+        ...(disc ? { closest: approach.closest } : {}),
         signedDelta: m.signedDelta,
         firstBadTick: ok ? null : findMetricFirstBadTick(trace, m, ctx),
       };
@@ -624,6 +627,7 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
       ok,
       expected: withDisc(threshold, disc),
       actual: value,
+      ...(disc ? { closest: approach.closest } : {}),
       signedDelta: cmp.delta,
       firstBadTick: ok ? null : findMetricFirstBadTick(trace, { ...m, threshold }, ctx),
     });
@@ -645,6 +649,22 @@ export const KNOWN_ORACLE_SIGNALS = Object.freeze(new Set([
   'cmdX', 'cmdZ', 'cmdRejected', 'cmdClamped',
 ]));
 
+function numberMatches(v, assertion) {
+  const op = assertion && assertion.op;
+  const value = assertion && assertion.value != null ? assertion.value : 0;
+  switch (op) {
+    case '>': return v > value;
+    case '>=': return v >= value;
+    case '<': return v < value;
+    case '<=': return v <= value;
+    case '==':
+    case 'eq': return v === value;
+    case '!=':
+    case 'ne': return v !== value;
+    default: return v !== 0;
+  }
+}
+
 function truthySignal(sample, signal, assertion) {
   if (!signal) return false;
   if (signal === 'attachmentActive') return sample.attachmentActive !== false && !!sample.attachmentActive;
@@ -652,10 +672,7 @@ function truthySignal(sample, signal, assertion) {
   if (Object.prototype.hasOwnProperty.call(sample, signal)) {
     const v = sample[signal];
     if (typeof v === 'boolean') return v;
-    if (typeof v === 'number') {
-      if (assertion && assertion.op === '>') return v > (assertion.value ?? 0);
-      return v !== 0;
-    }
+    if (typeof v === 'number') return numberMatches(v, assertion);
     return !!v;
   }
   // Unknown field on sample → not truthy. Callers that need hard-fail on unknown

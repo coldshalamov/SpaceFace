@@ -1,5 +1,7 @@
 import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
-import { FRAME_INPUT_FIELDS, TRIGGER_ASSERTION_FIELDS, readPath, writeFrameInput, writePath } from '/lib/inspector.mjs';
+import {
+  ACTOR_OVERRIDE_FIELDS, FRAME_INPUT_FIELDS, TRIGGER_ASSERTION_FIELDS, readPath, writeFrameInput, writePath,
+} from '/lib/inspector.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
   addObject,
@@ -275,6 +277,7 @@ function fieldsFor(object) {
       { key: 'velZ', label: 'Velocity Z (lab-only)', kind: 'number' },
       { key: 'team', label: 'Team', kind: 'number' },
       { key: 'factionId', label: 'Faction', kind: 'text' },
+      ...ACTOR_OVERRIDE_FIELDS,
     ];
   }
   if (object.kind === 'objective') {

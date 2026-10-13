@@ -5,8 +5,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
+import { exportProject } from '../lib/export.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
 import { TRIGGER_ASSERTION_FIELDS, writeFrameInput, writePath } from '../lib/inspector.mjs';
+import { evaluateOracleKernel } from '../../../src/testing/lab/oracleKernel.js';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
 import {
@@ -4014,9 +4016,11 @@ test('commit of the same present does not swap a sealed bias', () => {
   const history = createHistory(getComposition('dock.intercept-cargo'));
   const before = history.present;
   const schema = before.schema;
+  const title = before.title;
   const grid = before.grid;
   grid.bias = 4;
   before.toJSON = function () {
+    Object.defineProperty(before, 'title', { value: 'POISON', writable: false, configurable: false });
     Object.defineProperty(grid, 'bias', { value: 0, writable: false, configurable: false });
     Object.defineProperties(before, {
       schema: { value: 'POISON', writable: false, configurable: false },
@@ -4031,14 +4035,21 @@ test('commit of the same present does not swap a sealed bias', () => {
   assert.equal(committed.present.grid, grid);
   assert.equal(grid.bias, 4);
   assert.equal(committed.present.grid.bias, 4);
-  assert.equal(before.title, committed.present.title);
+  assert.equal(before.title, title);
+  assert.equal(committed.present.title, title);
+  const titleDesc = Object.getOwnPropertyDescriptor(before, 'title');
+  assert.equal(titleDesc.value, title);
+  assert.equal(titleDesc.writable, true);
+  assert.equal(titleDesc.configurable, true);
   const bias = Object.getOwnPropertyDescriptor(grid, 'bias');
   assert.equal(bias.value, 4);
   assert.equal(bias.writable, true);
   assert.equal(bias.configurable, true);
   assert.equal(before.schema, schema);
   assert.equal(committed.present.schema, schema);
-  assert.equal(Object.getOwnPropertyDescriptor(before, 'schema').writable, true);
+  const schemaDesc = Object.getOwnPropertyDescriptor(before, 'schema');
+  assert.equal(schemaDesc.value, schema);
+  assert.equal(schemaDesc.writable, true);
 });
 
 test('a second get-only accessor keeps snap and nested credits', () => {
@@ -4320,6 +4331,7 @@ test('a successful commit does not keep a poisoned title', () => {
   const grid = next.grid;
   grid.bias = 4;
   next.title = 'Renamed dock';
+  const title = next.title;
   next.toJSON = function () {
     Object.defineProperty(next, 'title', { value: 'POISON', writable: false, configurable: false });
     Object.defineProperties(next, {
@@ -4331,17 +4343,21 @@ test('a successful commit does not keep a poisoned title', () => {
   const committed = commit(history, next);
   assert.equal(committed.past.length, 1);
   assert.notEqual(committed.present, next);
-  assert.equal(next.title, 'Renamed dock');
-  assert.equal(committed.present.title, 'Renamed dock');
+  assert.equal(next.title, title);
+  assert.equal(committed.present.title, title);
   assert.equal(next.schema, schema);
   assert.equal(committed.present.schema, schema);
   assert.equal(next.grid, grid);
   assert.equal(grid.bias, 4);
-  const title = Object.getOwnPropertyDescriptor(next, 'title');
-  assert.equal(title.value, 'Renamed dock');
-  assert.equal(title.writable, true);
-  assert.equal(title.configurable, true);
+  const titleDesc = Object.getOwnPropertyDescriptor(next, 'title');
+  assert.equal(titleDesc.value, title);
+  assert.equal(titleDesc.writable, true);
+  assert.equal(titleDesc.configurable, true);
+  const storedTitle = Object.getOwnPropertyDescriptor(committed.present, 'title');
+  assert.equal(storedTitle.value, title);
+  assert.equal(Object.getOwnPropertyDescriptor(next, 'schema').value, schema);
   assert.equal(Object.getOwnPropertyDescriptor(next, 'schema').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(committed.present, 'schema').value, schema);
   assert.equal(Object.getOwnPropertyDescriptor(grid, 'bias').writable, true);
 });
 
@@ -4527,7 +4543,7 @@ test('a prototype array named grid is not frozen', () => {
   assert.equal(Object.isFrozen(again.history.present.grid.grid), false);
 });
 
-test('the inspector edits a trigger oracle and the input tape', () => {
+test('the inspector edits a trigger oracle and the input tape', async () => {
   const trigger = {
     kind: 'trigger',
     x: 0,
@@ -4555,6 +4571,71 @@ test('the inspector edits a trigger oracle and the input tape', () => {
   assert.equal(editor.includes('TRIGGER_ASSERTION_FIELDS'), true);
   assert.equal(editor.includes('paintFrames'), true);
   assert.equal(editor.includes('writeFrameInput'), true);
+
+  const placed = placePlayer(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1, ticks: 30 }));
+  assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
+  const added = addObject(placed.project, {
+    id: 'cross_z',
+    kind: 'trigger',
+    shape: 'circle',
+    x: 0,
+    z: 20,
+    radius: 16,
+    labOnly: true,
+    label: 'trigger',
+    assertion: { kind: 'eventByTick', signal: 'playerX', op: '>', value: 0.5, byTick: 29 },
+  });
+  assert.equal(added.ok, true, (added.issues || []).join('\n'));
+  const authored = added.project.objects.find((object) => object.id === 'cross_z');
+  writePath(authored, 'assertion.signal', 'playerZ');
+  writePath(authored, 'assertion.op', '<');
+  writePath(authored, 'assertion.value', -0.25);
+  writePath(authored, 'assertion.byTick', 4);
+  const exported = await exportProject(added.project);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const event = exported.scenario.assertions.find((row) => row.kind === 'eventByTick' && row.signal === 'playerZ');
+  assert.deepEqual(event, {
+    kind: 'eventByTick',
+    signal: 'playerZ',
+    op: '<',
+    value: -0.25,
+    byTick: 4,
+    expected: { x: 0, z: 20, radius: 16, shape: 'circle' },
+  });
+  const trace = [];
+  for (let tick = 0; tick <= 5; tick += 1) trace.push({ tick, playerX: 10, playerZ: 4 });
+  const judged = (op, value) => evaluateOracleKernel({
+    trace,
+    assertions: [{ ...event, op, value }],
+  });
+  const playerZ = (result) => result.results.find((row) => row.id === 'eventByTick:playerZ');
+  const below = judged('<', -0.25);
+  const belowRow = playerZ(below);
+  assert.equal(belowRow.ok, false);
+  assert.equal(belowRow.actual.foundTick, null);
+  assert.equal(below.ok, false);
+  assert.equal(below.failed.some((row) => row.id === 'eventByTick:playerZ'), true);
+  assert.equal(Number.isFinite(belowRow.actual.closest), true);
+  assert.equal(belowRow.actual.closest <= 16 * 5, true);
+  const atLeastHundred = judged('>=', 100);
+  assert.equal(playerZ(atLeastHundred).ok, false);
+  assert.equal(playerZ(atLeastHundred).actual.foundTick, null);
+  assert.equal(atLeastHundred.failed.some((row) => row.id === 'eventByTick:playerZ'), true);
+  const aboveHundred = judged('>', 100);
+  assert.equal(playerZ(aboveHundred).ok, false);
+  assert.equal(playerZ(aboveHundred).actual.foundTick, null);
+  assert.equal(aboveHundred.failed.some((row) => row.id === 'eventByTick:playerZ'), true);
+  const crossed = judged('>', 0.5);
+  assert.equal(crossed.ok, true);
+  assert.equal(playerZ(crossed).ok, true);
+  assert.equal(playerZ(crossed).actual.foundTick, 0);
+  assert.equal(crossed.failed.some((row) => row.id === 'eventByTick:playerZ'), false);
+  assert.equal(playerZ(judged('>=', 4)).ok, true);
+  assert.equal(playerZ(judged('<=', 4)).ok, true);
+  assert.equal(playerZ(judged('<=', 3)).ok, false);
+  assert.equal(playerZ(judged('==', 4)).ok, true);
+  assert.equal(playerZ(judged('!=', 4)).ok, false);
+  assert.equal(playerZ(judged('!=', 5)).ok, true);
 });
 
 test('prototype tags behind a get-only pocket stay keep', () => {
