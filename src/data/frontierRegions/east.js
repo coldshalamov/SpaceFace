@@ -496,6 +496,13 @@ export const EAST_ANCHORS = Object.freeze({
         landmarkGlb: 'place_asteroid_seamed',
         landmark: true,
       }),
+      // The Archive's field lab (sector row above): the scannable research platform needs a body
+      // to stand on, or its discovery plate points at empty space.
+      Object.freeze({
+        id: 'poi_triton_field_lab',
+        pos: Object.freeze({ x: 1600, z: -700 }),
+        landmarkGlb: 'place_inspection_platform',
+      }),
     ]),
   }),
 });

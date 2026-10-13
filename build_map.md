@@ -6299,6 +6299,30 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   `consigned_hulk` is now a real class row) —
   `test/understory-afterwake-slip.test.mjs` 7/7, berth/desk/world/save/weir surface
   54/54, wreck-provenance surface 59/59.
+- **CR-HOLLOW-4: every sector opens on a shift (wide push, 2026-10-13)** — 18 of the 25 sectors
+  had no authored activity pocket: arriving meant anonymous ambient scatter, and the six hollow
+  rims (Veil, Ashfall, Orcus, Phoebe, Triton, the Bolus) were empty. Measured from the live
+  registry (`ACTIVITY_POCKET_SECTOR_IDS`: 7 of 25), closed by a data-driven factory over the
+  Ceres helpers — all 18 now cast two pockets of two hulls from their own zone ledgers (research
+  tenders and dishes, black-market fences and pickets, ore yards, salvage plates, the Collective's
+  thin escort, lawful toll patrols only where the sector keeps law). Every route is authored from
+  a true bearing to a named place and swept to a clean 15-degree class; the seven pocket objects
+  sit under the mark that names them; the six chain tests no longer pin the registry total to a
+  hand-added sum. DONE caebc16533 + 8c1c6b2ac6 — `test/lived-frontier-pockets.test.mjs` 26/26
+  (registry, laws, 72 aims, live seed-4242 casts for all 18 sectors, determinism, "no sector is
+  left to scatter"); 784-test pocket/traffic/sector regression subset: the same 9 pre-existing
+  reds with or without this change (Ceres census entity count 114 vs "tens", bombs recipe
+  census, model-truth census drift, etc. — foreign, listed in the sitting report).
+- **Red-HEAD sweep beside CR-HOLLOW-4 (2026-10-13)** — the pocket regression run surfaced nine reds
+  that were red with or without the pockets; seven were real small defects, now fixed: the Variance
+  Pier's Tally Three prop resolved no model (invisible prop; `partsLibrary.placeFileForEntity`
+  now admits an authored placement that names it), Orcus Shadow's Archive faction missing from the
+  west-frontier vocabulary, `poi_triton_field_lab` with no anchor row (a scannable platform with no
+  body), the Scissorwake doctrine shipping without an audio voice, the bomb row of the verb census
+  pointing at an actionVfx recipe that the transported-material rewrite replaced, and a stale
+  model-truth census hash. Two stay open as ledger rows D191 (Ceres pocket 114 entities, sim tick
+  12 ms) and D192 (procedural primitives before admission). Boot shell: D185 hardened (reload once,
+  then name the failing import on screen) and the modulepreload registry regenerated.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools

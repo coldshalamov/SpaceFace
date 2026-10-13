@@ -246,6 +246,12 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.TETHER_CONTROL_RAIDER]: Object.freeze({
     recipeId: 'sfx_doctrine_tether_spool', fireRate: 0.86, fireGain: 0.92, fireDetune: -9,
   }),
+  [CombatDoctrineId.SCISSORWAKE]: Object.freeze({
+    // Two crossing wake lines: a brittle double-pass shear, a half-step sharper and lighter than
+    // the interceptor's flyby so the scissor reads as a cut, not a pass (the doctrine shipped
+    // without a voice and fell back to the generic weapon sound).
+    recipeId: 'sfx_doctrine_flyby', fireRate: 1.08, fireGain: 0.74, fireDetune: 15,
+  }),
   [CombatDoctrineId.MINE_LAYER_WAKE]: Object.freeze({
     // The wake belongs to the winch: a slow mechanical churn under the drop line, distinct
     // from the raider's higher spool.

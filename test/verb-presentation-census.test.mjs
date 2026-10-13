@@ -19,7 +19,10 @@ const RECIPE_IDS = new Set(RECIPES.map((r) => r.id));
 // `vfx` = must have an ACTION_VFX_RECIPES entry. `vfxElsewhere` = visual presentation owned
 // outside actionVfx (named owners). `noVfxRow` = deliberately visual-silent.
 const CENSUS = Object.freeze({
-  'bombs:detonated': { audio: 'sfx_bomb_concussion_shove', vfx: true },
+  // The bomb puff handoff was replaced by transported material (fe562c3cca, bdb676f488): the row is
+  // owned by bombDetonationVfx through vfx.js _onBombDetonated, not by an actionVfx recipe, and an
+  // actionVfx row for the same name would double-subscribe.
+  'bombs:detonated': { audio: 'sfx_bomb_concussion_shove', vfxElsewhere: 'bombDetonationVfx via vfx.js _onBombDetonated (transported material)' },
   'hull:fractured': { audio: 'sfx_mining_fracture_break', vfx: true },
   'dock:docked': { audio: 'sfx_dock_clunk', vfxElsewhere: 'docking cradle holo + dock clunk' },
   'dock:undocked': { audio: 'sfx_undock_release', vfxElsewhere: 'docking cradle release' },

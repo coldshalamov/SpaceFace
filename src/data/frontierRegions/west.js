@@ -83,6 +83,8 @@ export const ZONE_TYPES = Object.freeze([
 export const FACTION_IDS = Object.freeze([
   'faction_scn', 'faction_mts', 'faction_dmc', 'faction_reach',
   'faction_quiet', 'faction_vael', 'faction_free', 'faction_choir', 'faction_helix',
+  // Orcus Shadow's outpost is the Archive's (sector, station and zone all say so).
+  'faction_archive',
 ]);
 export const PALETTE_KEYS = Object.freeze(['core', 'belt', 'fringe', 'anomaly']);
 

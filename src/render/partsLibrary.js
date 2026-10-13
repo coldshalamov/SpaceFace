@@ -6031,6 +6031,11 @@ function placeFileForEntity(entity) {
     const authoredSetPiece = entity.type !== 'station'
       && (data.worldOneOff === true || data.landmark === true || data.poi === true
         || (data.berthId != null && !!factionBerthById(data.berthId)));
+    // The Tally Three body is the Ceres assessor's by default (isTallyThreeAssessor above) and is
+    // deliberately absent from the general place maps so random dressing cannot borrow it. An
+    // authored placement that NAMES it — the Variance Pier's crib at Sedna — was placed on purpose,
+    // so it resolves; without this the pier's paper-trail machine was an invisible prop.
+    if (authoredSetPiece && id === 'place_tally_three') return TALLY_THREE_PLACE_FILE;
     if (data.everydaySpaceKit === true || authoredSetPiece) {
       const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
       if (kitFile) return kitFile;
