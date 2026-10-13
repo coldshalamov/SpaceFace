@@ -1,11 +1,10 @@
-import { commit, createHistory, redo, undo } from '/lib/history.mjs';
+import { commit, createHistory, newDockHistory, restoreHistory } from '/lib/history.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
   addObject,
   clearPlayerFlag,
   cloneObject,
   deleteObjects,
-  emptyProject,
   expandIds,
   groupObjects,
   hitTest,
@@ -30,7 +29,8 @@ const inspector = document.querySelector('#inspector');
 const chips = document.querySelector('#chips');
 const snapButton = document.querySelector('#btn-snap');
 
-let history = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+const NEW_DOCK = { id: 'dock.untitled', title: 'Untitled dock', seed: 1 };
+let history = newDockHistory(NEW_DOCK);
 let selected = [];
 let dialect = { draw: {}, profiles: [] };
 let spaceDown = false;
@@ -54,6 +54,13 @@ function resize() {
 
 function commitProject(next) {
   history = commit(history, next);
+  render();
+}
+
+function travel(direction) {
+  const result = restoreHistory(history, direction);
+  if (!result.ok) return showReport(result);
+  history = result.history;
   render();
 }
 
@@ -484,13 +491,11 @@ window.addEventListener('keydown', (event) => {
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
     event.preventDefault();
-    history = undo(history);
-    render();
+    travel('undo');
   }
   if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === 'y' || (event.key.toLowerCase() === 'z' && event.shiftKey))) {
     event.preventDefault();
-    history = redo(history);
-    render();
+    travel('redo');
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
     event.preventDefault();
@@ -578,8 +583,8 @@ function fit() {
 }
 
 document.querySelector('#btn-new').addEventListener('click', () => {
-  history = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
-  selected = [];
+  history = newDockHistory(NEW_DOCK);
+  selected = ['player'];
   render();
 });
 document.querySelector('#btn-open').addEventListener('click', () => document.querySelector('#file-open').click());
@@ -602,8 +607,8 @@ document.querySelector('#file-open').addEventListener('change', async (event) =>
   render();
 });
 document.querySelector('#btn-save').addEventListener('click', saveProject);
-document.querySelector('#btn-undo').addEventListener('click', () => { history = undo(history); render(); });
-document.querySelector('#btn-redo').addEventListener('click', () => { history = redo(history); render(); });
+document.querySelector('#btn-undo').addEventListener('click', () => travel('undo'));
+document.querySelector('#btn-redo').addEventListener('click', () => travel('redo'));
 document.querySelector('#btn-clone').addEventListener('click', cloneSelected);
 document.querySelector('#btn-group').addEventListener('click', groupSelected);
 document.querySelector('#btn-ungroup').addEventListener('click', () => {

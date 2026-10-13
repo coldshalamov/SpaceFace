@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
-import { commit, createHistory, undo } from '../lib/history.mjs';
+import { commit, createHistory, newDockHistory, restoreHistory, undo } from '../lib/history.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { inspectValue } from '../lib/security.mjs';
 import {
@@ -425,4 +425,48 @@ test('agent requests do not succeed unless the committed project has exactly one
   });
   assert.equal(noted.ok, true, noted.issues.join('\n'));
   assert.deepEqual(playerIds(noted.project), ['player']);
+});
+
+test('New does not leave a zero-player scene and undo will not restore one', () => {
+  const created = newDockHistory({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 });
+  assert.equal(created.past.length, 0);
+  assert.equal(playerIds(created.present).length, 1);
+  assert.equal(projectIssues(created.present).some((issue) => issue.includes('exactly one player')), false);
+  const freshUndo = restoreHistory(created, 'undo');
+  assert.equal(freshUndo.ok, true);
+  assert.equal(freshUndo.history, created);
+  assert.equal(playerIds(freshUndo.history.present).length, 1);
+
+  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  const placed = placePlayer(empty.present);
+  assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
+  const committed = commit(empty, placed.project);
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(undone.ok, false);
+  assert.equal(undone.history, committed);
+  assert.equal(undone.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  assert.equal(playerIds(undone.history.present).length, 1);
+
+  const redone = restoreHistory({
+    past: [],
+    present: committed.present,
+    future: [empty.present],
+  }, 'redo');
+  assert.equal(redone.ok, false);
+  assert.equal(redone.history.present, committed.present);
+  assert.equal(playerIds(redone.history.present).length, 1);
+
+  const project = getComposition('dock.intercept-cargo');
+  const startX = objectById(project, 'cargo').x;
+  let history = createHistory(project);
+  const moved = nudgeObjects(history.present, ['cargo'], 10, 0);
+  history = commit(history, moved.project);
+  const back = restoreHistory(history, 'undo');
+  assert.equal(back.ok, true, back.issues.join('\n'));
+  assert.equal(objectById(back.history.present, 'cargo').x, startX);
+  assert.equal(playerIds(back.history.present).length, 1);
+  const forward = restoreHistory(back.history, 'redo');
+  assert.equal(forward.ok, true, forward.issues.join('\n'));
+  assert.equal(objectById(forward.history.present, 'cargo').x, objectById(history.present, 'cargo').x);
+  assert.equal(playerIds(forward.history.present).length, 1);
 });
