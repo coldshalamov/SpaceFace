@@ -1078,10 +1078,24 @@ function enterLoadingMode(state, bus) {
     }
   } catch (_) { /* best effort — the shell still covers the handoff */ }
   // A foundry HDRI that armed while a presented surface was up bakes its PMREM
-  // convolve here — the held frame is already black and the veil is coming up,
-  // so the one bounded convolve lands where presented frames never run.
-  try { state.render && state.render._drainFoundryEnvPending?.(); } catch (_) { /* env optional */ }
+  // convolve under the veil — but not inside this call: enterLoadingMode runs in
+  // the Launch reply, and a 2K float upload + link + convolve there held the click
+  // ~450-510 ms before the loading shell could paint. Run it one veiled frame
+  // later instead, only while still loading; a cook seam that drains first makes
+  // this a no-op, and leaving loading first keeps it armed for the next seam.
+  scheduleVeiledFoundryEnvDrain(state);
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+}
+
+function scheduleVeiledFoundryEnvDrain(state) {
+  const render = state.render;
+  if (!render || render._foundryEnvPending !== true) return;
+  const drain = () => {
+    if (state.mode !== 'loading') return;
+    try { render._drainFoundryEnvPending?.(); } catch (_) { /* env optional */ }
+  };
+  const later = () => setTimeout(drain, 0);
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(later); else later();
 }
 
 function enterFlightMode(state, bus) {
