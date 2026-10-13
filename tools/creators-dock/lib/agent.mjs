@@ -96,21 +96,21 @@ function dispatchOp(project, op) {
       return ungroupObjects(project, op.ids || [op.id]);
     case 'setFrames':
       if (!Array.isArray(op.frames)) return { ok: false, project, issues: ['frames must be an array'] };
-      return { ok: true, project: merge(project, { frames: op.frames }), issues: [] };
+      return merged(project, { frames: op.frames });
     case 'setMeta':
-      return { ok: true, project: merge(project, op.meta || {}), issues: [] };
+      return merged(project, op.meta || {});
     case 'setWorld':
-      return { ok: true, project: merge(project, { world: { ...project.world, ...(op.world || {}) } }), issues: [] };
+      return merged(project, { world: { ...project.world, ...(op.world || {}) } });
     case 'setNotes':
-      return { ok: true, project: merge(project, { notes: { ...project.notes, ...(op.notes || {}) } }), issues: [] };
+      return merged(project, { notes: { ...project.notes, ...(op.notes || {}) } });
     case 'setEncounter':
-      return { ok: true, project: merge(project, { encounter: op.encounter || null }), issues: [] };
+      return merged(project, { encounter: op.encounter || null });
     case 'setWeapon':
-      return { ok: true, project: merge(project, { weapon: op.weapon || null }), issues: [] };
+      return merged(project, { weapon: op.weapon || null });
     case 'setPlace':
-      return { ok: true, project: merge(project, { place: op.place || null }), issues: [] };
+      return merged(project, { place: op.place || null });
     case 'setModule':
-      return { ok: true, project: merge(project, { module: op.module || null }), issues: [] };
+      return merged(project, { module: op.module || null });
     default:
       return { ok: false, project, issues: [`unknown op "${op.op}"`] };
   }
@@ -118,17 +118,42 @@ function dispatchOp(project, op) {
 
 function merge(project, patch) {
   const next = clone(project);
+  if (!next || typeof next !== 'object' || Array.isArray(next)) return project;
   for (const [key, value] of Object.entries(patch || {})) {
-    if (value !== undefined) next[key] = clone(value);
+    if (value === undefined) continue;
+    if (value != null && typeof value === 'object') {
+      const copied = clone(value);
+      if (copied == null || typeof copied !== 'object') return project;
+      next[key] = copied;
+      continue;
+    }
+    next[key] = value;
   }
   return next;
 }
 
+function merged(project, patch) {
+  const next = merge(project, patch);
+  if (next === project) {
+    const probe = clone(project);
+    if (probe == null || typeof probe !== 'object' || Array.isArray(probe)) {
+      return { ok: false, project, issues: ['scene could not be cloned'] };
+    }
+  }
+  return { ok: true, project: next, issues: [] };
+}
+
+export function applyDockOp(project, op) {
+  return applyOp(project, op);
+}
+
 function response(ok, project, issues, applied = []) {
+  if (!project) return { schema: RESPONSE_SCHEMA, ok, project: null, issues, applied };
+  const stored = clone(project);
   return {
     schema: RESPONSE_SCHEMA,
     ok,
-    project: project ? clone(project) : null,
+    project: stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : project,
     issues,
     applied,
   };

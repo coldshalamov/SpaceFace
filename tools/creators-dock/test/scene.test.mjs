@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { applyRequest } from '../lib/agent.mjs';
+import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
@@ -986,6 +986,38 @@ test('a throwing toJSON does not escape add, clone, place, set, or clear', () =>
   assert.equal(cleared.ok, false);
   assert.equal(cleared.project, clearScene);
   assert.equal(objectById(cleared.project, 'player').isPlayer, true);
+});
+
+test('commit, open, and setMeta do not throw when toJSON throws', () => {
+  const boom = {
+    enumerable: false,
+    value() { throw new Error('boom'); },
+  };
+  const bad = getComposition('dock.intercept-cargo');
+  Object.defineProperty(bad, 'toJSON', boom);
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const committed = commit(history, bad);
+  assert.equal(committed, history);
+  assert.equal(objectById(committed.present, 'player').isPlayer, true);
+
+  const opened = openDockHistory(bad);
+  assert.equal(opened.ok, false);
+  assert.equal(opened.history, null);
+
+  const created = createHistory(bad);
+  assert.equal(created.present, null);
+
+  const meta = applyDockOp(bad, { op: 'setMeta', meta: { title: 'Nope' } });
+  assert.equal(meta.ok, false);
+  assert.equal(meta.project, bad);
+  assert.equal(meta.project.title !== 'Nope', true);
+  assert.equal(objectById(meta.project, 'player').isPlayer, true);
+
+  const nulled = getComposition('dock.intercept-cargo');
+  Object.defineProperty(nulled, 'toJSON', { enumerable: false, value() { return null; } });
+  const nullMeta = applyDockOp(nulled, { op: 'setMeta', meta: { title: 'Nope' } });
+  assert.equal(nullMeta.ok, false);
+  assert.equal(nullMeta.project, nulled);
 });
 
 test('deleteObjects returns the previous project when toJSON returns null', () => {
