@@ -259,3 +259,18 @@ test('Open armory is ready on the draft screen and lost in a non-draft world', (
   assert.match(tutorialLine, /at -1900,-2200 helios_core spawn/);
   assert.ok(tutorialLine.length < 180);
 });
+
+
+test('crucible_realm: Adventure objective in a swarm play frame or an empty armory FAILs', async () => {
+  const { checkCrucibleRealm } = await import('../scripts/player-truth/checks.mjs');
+  const meta = { mode: 'swarm', hasLoadout: true };
+  const clean = { meta, loadout: { items: [{}, {}], shotT: 1 }, realm: [{ t: 2, sim: 1, file: 'f/0003.jpg', advText: [], onboarding: false, sector: 'sector_crucible' }] };
+  assert.equal(checkCrucibleRealm(clean).status, 'PASS');
+  const leak = { ...clean, realm: [{ t: 2, sim: 1, file: 'f/0003.jpg', advText: ['Recover the 47-A sample from the marker'], onboarding: false, sector: 'sector_helios_prime' }] };
+  assert.equal(checkCrucibleRealm(leak).status, 'FAIL');
+  const empty = { ...clean, loadout: { items: [], shotT: 1 } };
+  assert.equal(checkCrucibleRealm(empty).status, 'FAIL');
+  const gauntlet = { meta: { mode: 'gauntlet', hasLoadout: false }, realm: [{ t: 2, advText: [], onboarding: true, sector: 'x' }] };
+  assert.equal(checkCrucibleRealm(gauntlet).status, 'FAIL');
+  assert.equal(checkCrucibleRealm({ meta: { mode: 'adventure' } }).status, 'N/A');
+});

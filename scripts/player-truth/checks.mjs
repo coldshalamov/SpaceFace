@@ -696,10 +696,30 @@ export function checkRoundsReached(trace) {
 }
 
 ALL_CHECKS.splice(ALL_CHECKS.indexOf(checkVfx) + 1, 0, checkBackdrop);
-ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached);
+/**
+ * Crucible modes (Swarm / Gauntlet) must play in the Crucible, not in the Adventure world:
+ * no Adventure objective / tutorial text or live onboarding in any play frame, and (Swarm)
+ * an armory that actually offers equipment. The worker-lane regression showed all three.
+ */
+export function checkCrucibleRealm(trace) {
+  const mode = trace.meta.mode;
+  if (mode !== 'swarm' && mode !== 'gauntlet') return result('crucible_realm', 'Crucible plays in the Crucible', 'N/A', null, '0 Adventure frames · armory > 0 offers', 'not a Crucible mode');
+  const frames = trace.realm || [];
+  const offenders = [];
+  const leaks = frames.filter((f) => (f.advText && f.advText.length) || f.onboarding);
+  for (const f of leaks.slice(0, 4)) offenders.push({ line: `Adventure in a ${mode} frame (${f.file ? f.file.split('/').pop() : '?'}, sector ${f.sector}): ${f.onboarding ? 'onboarding live; ' : ''}${(f.advText || []).join(' | ')}`, t: f.t, box: null });
+  const offers = trace.loadout ? (trace.loadout.items || []).length : null;
+  if (mode === 'swarm' && trace.meta.hasLoadout && offers === 0) offenders.push({ line: 'armory offered no equipment ("No equipment matches this search")', t: trace.loadout.shotT, box: null });
+  const status = offenders.length ? 'FAIL' : (frames.length ? 'PASS' : 'UNKNOWN');
+  return result('crucible_realm', 'Crucible plays in the Crucible', status,
+    `${leaks.length}/${frames.length} Adventure frames · armory ${offers == null ? 'n/a' : offers + ' offers'}`, '0 Adventure frames · armory > 0 offers',
+    `sectors seen: ${[...new Set(frames.map((f) => f.sector))].join(', ') || 'n/a'}`, offenders, offenders.filter((o) => o.t != null).slice(0, 1));
+}
+
+ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkCrucibleRealm);
 
 /** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
-export const GATE_STRICT = Object.freeze(['player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
+export const GATE_STRICT = Object.freeze(['crucible_realm', 'player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
 const GATE_STRICT_IDLE = Object.freeze(['player_ship', 'tumble']);
 
 export function runChecks(trace) {
