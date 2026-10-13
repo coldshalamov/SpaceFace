@@ -30,7 +30,7 @@
 import { MODULES } from '../../data/modules.js';
 import { arsenalIdentity } from '../../data/arsenalIdentity.js';
 import { SURVIVAL_DRAFT_CHOICES, swarmSellPrice } from '../../data/survivalDraft.js';
-import { SWARM_CATEGORIES } from '../../data/swarmCatalog.js';
+import { SWARM_CATEGORIES, catalogBlurbFor } from '../../data/swarmCatalog.js';
 import { swarmRoundPreview } from '../../data/swarmLadder.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
@@ -517,6 +517,8 @@ export function refitRowLines(row) {
       disabled: false,
       options: [],
       contrast: null,
+      description: arsenalIdentity(row.defId)?.sentence
+        || catalogBlurbFor(WEAPON_DEF_BY_ID.get(row.defId) || MODULES.find(def => def.id === row.defId)),
     };
   }
   const spares = Array.isArray(row.spares) ? row.spares : [];
@@ -1187,6 +1189,9 @@ export const crucibleDraftScreen = {
   _paintReading(context, offer) {
     const r = this._reading;
     if (!r || !offer) return;
+    // Shelf refreshes replace the row nodes even when the reading's words stay cached.
+    // Rebind the Hand to the new row before deciding whether those words need painting.
+    this._lightReadingOffer(offer);
     // The key must carry every field the painted copy derives from — a free demo or a free
     // hull switch moves none of offer.id/credits, and a refit can leave both unchanged while
     // the jig goes stale, so the fit rides the key too.
@@ -1294,6 +1299,10 @@ export const crucibleDraftScreen = {
       });
       parts.hold.appendChild(hold);
     }
+    this._syncRailScale();
+  },
+
+  _lightReadingOffer(offer) {
     // the rail's Hand sits on the row being read
     if (this._cards) {
       for (const card of this._cards.querySelectorAll('.sf-cru-card')) {
@@ -1308,7 +1317,6 @@ export const crucibleDraftScreen = {
         }
       }
     }
-    this._syncRailScale();
   },
 
   /**
@@ -1902,6 +1910,9 @@ export const crucibleRefitScreen = {
       }
       // INF-036: the honest comparison, under the picker — the picker itself is untouched,
       // so customization is preserved and the contrast only advises.
+      if (lines.description) {
+        left.appendChild(el('div', 'k-row__sub orr-hp__contrast orr-hp__description', lines.description));
+      }
       if (lines.contrast) {
         // drawn as scales above where it can be; the sentence stays for the ear
         left.appendChild(el('div', `k-row__sub orr-hp__contrast${row._drawn ? ' orr-hp__contrast--drawn' : ''}`, lines.contrast));
