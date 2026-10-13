@@ -135,6 +135,23 @@ export function analyzeWitness(witness, prior = null) {
       ));
     }
 
+    const shield = (object.effects || []).find((effect) => effect && effect.kind === 'shield');
+    const geometry = Number(object.shieldGeometryRadius);
+    if (shield && geometry > 0) {
+      const drawn = Number(shield.radius);
+      if (!Number.isFinite(drawn) || Math.abs(drawn - geometry) > 1e-6) {
+        found.push(issue(
+          witness,
+          'shield-geometry-mismatch',
+          'high',
+          [object.objectId],
+          'shield disc radius equals the live shield shell (entity.radius)',
+          `disc=${drawn} liveGeometry=${geometry}`,
+          `${object.objectId} shield disc does not match the live shield geometry.`,
+        ));
+      }
+    }
+
     if (object.alive === false && object.visible === true) {
       found.push(issue(
         witness,

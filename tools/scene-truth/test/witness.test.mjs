@@ -3,6 +3,7 @@ import test from 'node:test';
 import { analyzePack } from '../lib/analyze.mjs';
 import { claimGpuFrame, publishCapture, sceneSvg } from '../lib/atlas.mjs';
 import { analyzeWitness, copiedObservation, highFails } from '../lib/detectors.mjs';
+import { bindEntity } from '../lib/bindVisual.mjs';
 import { healthyWitness } from '../lib/faults.mjs';
 import { sceneCatalog } from '../lib/scenarios.mjs';
 import { witnessScenario } from '../lib/witness.mjs';
@@ -66,6 +67,30 @@ test('a witness whose observed fields copy the expected fields fails', () => {
   assert.equal(fails.length, 1);
   assert.equal(fails[0].kind, 'copied-observation');
   assert.equal(fails[0].failBuild, true);
+});
+
+test('a shield disc is checked against live shield geometry', () => {
+  const live = bindEntity({
+    id: 'pilot',
+    type: 'ship',
+    alive: true,
+    isPlayer: true,
+    radius: 14,
+    shield: 40,
+    shieldMax: 55,
+    pos: { x: 0, z: 0 },
+    data: { defId: 'ship_kestrel' },
+  });
+  assert.equal(live.shieldGeometryRadius, 14);
+  assert.equal(live.effects.find((effect) => effect.kind === 'shield').radius, 14);
+  const witness = healthyWitness();
+  witness.objects[0] = {
+    ...witness.objects[0],
+    shieldGeometryRadius: 14,
+    effects: [{ kind: 'shield', radius: 55, baseCoverage: 0.22, occludesContacts: false }],
+  };
+  const fails = highFails(analyzeWitness(witness));
+  assert.equal(fails.some((row) => row.kind === 'shield-geometry-mismatch'), true);
 });
 
 test('an incomplete lab arm with a usable final surface cannot become a clean verdict', () => {

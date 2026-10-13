@@ -91,14 +91,18 @@ function censusRowFor(entity) {
     || null;
 }
 
-function shieldStat(entity) {
-  const data = entity.data || {};
-  if (data.labProfile && ENEMY_BY_ID.has(data.labProfile)) {
-    const enemy = ENEMY_BY_ID.get(data.labProfile);
-    if (Number(enemy.shield) > 0) return Number(enemy.shield);
-  }
-  const ship = SHIP_BY_ID.get(data.defId);
-  return ship && Number(ship.shield) > 0 ? Number(ship.shield) : 0;
+/**
+ * Live shield disc radius. `createShieldBubble` scales the unit shell by
+ * `entity.radius`. Def shield HP is not that geometry.
+ */
+export function liveShieldGeometryRadius(entity) {
+  if (!entity) return null;
+  const max = Number(entity.shieldMax);
+  const now = Number(entity.shield);
+  const live = Number.isFinite(max) && max > 0 ? max : (Number.isFinite(now) && now > 0 ? now : 0);
+  if (!(live > 0)) return null;
+  const radius = Number(entity.radius);
+  return Number.isFinite(radius) && radius > 0 ? radius : null;
 }
 
 /**
@@ -150,11 +154,12 @@ export function bindEntity(entity) {
   const presentedRadius = measuredPresentation ? Number(entity.presentedRadius) : null;
   const hull = Number(entity.hull);
   const hullMax = Number(entity.hullMax);
+  const shieldGeometryRadius = liveShieldGeometryRadius(entity);
   const effects = [];
-  if (shieldStat(entity) > 0 && Number.isFinite(colliderRadius) && colliderRadius > 0) {
+  if (shieldGeometryRadius != null) {
     effects.push({
       kind: 'shield',
-      radius: colliderRadius * 1.12,
+      radius: shieldGeometryRadius,
       baseCoverage: 0.22,
       occludesContacts: false,
     });
@@ -195,6 +200,7 @@ export function bindEntity(entity) {
     y: Number.isFinite(entity.y) ? entity.y : 0,
     rot: Number(entity.rot) || 0,
     colliderRadius: Number.isFinite(colliderRadius) ? colliderRadius : 0,
+    shieldGeometryRadius,
     expectedRadius: Number.isFinite(expectedRadius) ? expectedRadius : 0,
     presentedRadius,
     presentationSource: measuredPresentation ? 'measured' : 'unmeasured',

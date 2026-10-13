@@ -39,6 +39,8 @@ export function entitiesFromSurface(surface, entry) {
       radius: row.radius,
       hull: row.hull,
       hullMax: row.hullMax,
+      shield: row.shield,
+      shieldMax: row.shieldMax,
       pos: row.pos || { x: 0, z: 0 },
       rot: row.rot || 0,
       data: {

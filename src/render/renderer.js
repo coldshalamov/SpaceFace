@@ -4,6 +4,7 @@ import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { busFaultSummary } from '../core/eventBus.js';
 import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
+import { publishSceneTruthPlayStep } from '../../tools/scene-truth/lib/hook.mjs';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
@@ -29604,6 +29605,7 @@ export const render = {
   renderFrame(alpha, frameDt, presentationFrame = null) {
     if (!this.prepareFrame(alpha, frameDt, presentationFrame)) return;
     this.drawPreparedFrame();
+    publishSceneTruthPlayStep(this);
   },
 
   // Center the key light + its shadow camera on the player each frame. The light direction stays

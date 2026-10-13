@@ -1,9 +1,11 @@
-# Unapplied renderer adapter
+# Renderer adapter
 
 Scene Truth reads lab checkpoint surfaces, `wholeShipVisualForEntity`,
 `authoredPayloadFileForEntity`, `RENDER_PACKAGE_PILOTS`, and model-truth
 keep-outs. Those sources do not carry live mesh visibility, render order,
-shield hit points, or GPU residency.
+or GPU residency. Shield discs use the live shell radius (`entity.radius`
+while `entity.shield` or `entity.shieldMax` is up), the same scale
+`createShieldBubble` applies. They do not use def shield HP.
 
 `window.__THREE_GAME_DIAGNOSTICS__` (`src/render/diagnostics.js`) publishes
 draw counters. Its report has no object ids. Confirmed by
@@ -13,20 +15,21 @@ Do not add a debug overlay to shipping play. The probe below stays off unless
 a witness sets `globalThis.__SF_SCENE_TRUTH_WITNESS__ === true` before boot.
 It assigns one plain object and never creates DOM.
 
-## Proposed call site
+## Call site
 
-File: `src/render/renderer.js`, immediately after the existing diagnostics
-install (`state.render.diagnostics = this.diag`, around the diagnostics
-publish). Do not apply this while graphics and perf PRs own `src/render/**`.
+File: `src/render/renderer.js` `renderFrame`, after `drawPreparedFrame`. The
+probe stays off unless a witness sets `globalThis.__SF_SCENE_TRUTH_WITNESS__ === true`
+before the step. It assigns one plain object and never creates DOM.
 
 ```js
-import { sceneTruthFrameFromSamples } from '../../tools/scene-truth/lib/hook.mjs';
+import { publishSceneTruthPlayStep } from '../../tools/scene-truth/lib/hook.mjs';
 
-function publishSceneTruthFrame(samples, meta) {
-  if (typeof globalThis === 'undefined' || globalThis.__SF_SCENE_TRUTH_WITNESS__ !== true) return;
-  globalThis.__SF_SCENE_TRUTH_FRAME__ = sceneTruthFrameFromSamples(samples, meta);
-}
+// inside renderFrame, after the prepared frame is drawn:
+publishSceneTruthPlayStep(this);
 ```
+
+A non-SVG `state.render.sceneTruthFrameCapture` (`{ format, bytes }`) publishes
+`gpuFrame: true`. An SVG payload stays `gpuFrame: false`.
 
 `samples` would be one record per live render root, copied from data the
 renderer already has: entity id, `userData.assetId`, package content hash,
@@ -34,6 +37,6 @@ renderer already has: entity id, `userData.assetId`, package content hash,
 sim state. `sceneTruthFrameFromSamples` is covered by
 `tools/scene-truth/test/hook.test.mjs`.
 
-Shield hit points are still owned by the combat writer. A later sample may
-read `entity.shield` without writing it. Until this hook lands, shield discs
-in the observatory use the ship and enemy def stats and are labeled as such.
+Shield hit points stay owned by the combat writer. The observatory reads
+`entity.shield` / `entity.shieldMax` and the live shell radius. It does not
+write them.
