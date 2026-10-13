@@ -1568,6 +1568,21 @@ ${T} .sx-ind__list[data-snapped="1"] { -webkit-mask-image:none !important; mask-
 /* ================================ ROUND 10: FACTIONS ======================================== */
 /* the next rung's clause lives under its rung on the scale; the separate row retires there */
 ${T} .sx-fac-rung-next.is-on-scale { display:none !important; }
+/* ...unless the scale was too narrow to hang its rung words and drew them as ticks */
+${T} .sx-fac__detail:has(.orr-standing.is-rung-ticks) .sx-fac-rung-next.is-on-scale { display:block !important; }
+/* a tall screen under 1700 wide: the rail gives the ring room, so its west names (FULFILLMENT,
+   UNDERSTORY) stand inside the stage instead of under its edge, and the rim names track as a short screen's */
+@media (min-width:1101px) and (max-width:1700px) and (min-height:801px) {
+  ${T} .sx-fac { grid-template-columns:290px minmax(0, 1fr) !important; column-gap:24px !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(440px, 50%) minmax(0, 1fr) !important; column-gap:32px !important; }
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { letter-spacing:.08em !important; }
+}
+/* ...and under 1400 the rail cannot spare that room: the index folds into the ring, as on a short screen */
+@media (min-width:1101px) and (max-width:1400px) and (min-height:801px) {
+  ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
+  ${T} .sx-fac__rail { display:none !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(420px, 48%) minmax(0, 1fr) !important; }
+}
 /* a short screen's tier words keep their gaps */
 @media (max-height:800px) { ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { letter-spacing:.04em !important; } }
 

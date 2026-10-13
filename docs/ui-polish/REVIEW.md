@@ -126,7 +126,7 @@ Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 192
 
 **Code:** `shipworks.js` (clamp gate + short-stage keepOut/gap) + `calloutLayout.js` (hull-safe place). Selectors/IDs unchanged.
 
-**Still open:** SWORN ENEMY touching HATED at 1024×768. Phone Shipworks callouts fixed on ui-polish-27 (see § below). Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27 (see § below).
+**Still open:** (SWORN ENEMY / HATED at 1024×768 fixed on ui-polish-27, see § Factions scale and ring.) Phone Shipworks callouts fixed on ui-polish-27 (see § below). Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27 (see § below).
 
 ### Industry / Factions / Bar @960×540 (ui-polish-13)
 
@@ -719,3 +719,12 @@ Bench clean at 960×540 / 1024×768 / 1280×720 / 1920×1080 / 390×844 / 844×3
 - Populated reel geometry is unchanged (no bench fixture for a populated reel; the rail-top media rules apply to it too).
 
 Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and `--phone`), 960×540, 1280×720, 1920×1080.
+
+## Factions scale and ring at every width — session notes (2026-10-13, ui-polish-27)
+
+**Before:** the standing scale's bracket (150 · ABOVE HOSTILE / 30 · TO ACCEPTED) ran through the raised tier words (DISLIKED, ACCEPTED) at 960 and 1024, and its drops touched them at 1280/1920. On tall screens 1280–1700 wide (1440×900, 1600×900) the scale is ~560px, so the five rung words staircased down the column past the foot, SWORN ENEMY ran into HOSTILE, and the rung ticks struck −149 / −29. The ring's west names (FULFILLMENT, UNDERSTORY, ARCHIVE) were cut by the stage edge at 1280×900–1920×1080.
+
+**After:** `crestOrbit.js` — the bracket rides 13px above the tallest tier word; tier-word widths use the tracking the screen really has; an end word splits when it would reach its neighbour; a scale too narrow to hang its rung words on two rows draws them as ticks (and the "Next: …" line under it shows); values step down under rung ticks. The ring radius is bounded by each flank name's measured width (re-measured once the label font loads) instead of a flat 118px. `stationTabsLayouts.js`, `min-height:801px` only: 1101–1700 wide gives the rail 290px, the ring half the stage, and short-screen name tracking; 1101–1400 wide folds the rail into the ring as short screens already do. Selectors and IDs unchanged; the help screen's ring is unchanged.
+
+**Checked:** 960×540, 1024×768, 1280×720, 1280×900, 1366×1024, 1440×900, 1600×900, 1920×1080, 390×844 (phone shows the list, unchanged). Shots: `ui-shots/leftovers28/{before,final}/`, `compare-*.png`.
+
