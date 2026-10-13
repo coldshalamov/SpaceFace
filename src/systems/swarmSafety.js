@@ -1,5 +1,6 @@
-// Swarm admission geometry. This is a placement test, NOT collision immunity or a
-// velocity controller. Existing bodies retain all their momentum and damage rules.
+// Swarm arrival geometry and per-wave first-act admission. Placement never writes velocity.
+// While the pilot waits, canonical damage/fuse owners hold harm; bodies keep their motion
+// and resume ordinary damage after the act. The geometry tests below never park a body.
 export const SWARM_ARRIVAL_GRACE_S = 2.5;
 export const SWARM_SPAWN_LOOKAHEAD_S = 0.75;
 export const SWARM_SPAWN_RETRY_TICKS = 30;
@@ -115,10 +116,11 @@ export function noteSwarmPilotAction(state) {
 }
 
 /**
- * A trigger pull, boost, brake, or a real stick. autoFire is combat-stick mode:
+ * A trigger pull, physical verb, boost, brake, or a real stick. autoFire is combat-stick mode:
  * followAutoTargetPath writes moveX/moveZ/turnIntent every tick, so those axes
  * do not count while autoFire is on. An idle pilot who left the stick on auto
- * has not acted. Fire, boost, and brake still count. Threshold matches
+ * has not acted. Input-owned drawFlightManual distinguishes real device controls
+ * from those assist axes. Explicit physical verbs still count. Threshold matches
  * flight.js hasManualFlightInput.
  */
 export function swarmPilotIsActing(state) {
@@ -126,6 +128,12 @@ export function swarmPilotIsActing(state) {
   if (!input) return false;
   if (input.fire === true) return true;
   if (input.boost || input.brake) return true;
+  const actions = input.actions;
+  if (actions && (actions.tetherFire || actions.tetherCut || actions.chargeThrow
+    || actions.chargeDetonate || actions.dropBomb || actions.gyreSnare || actions.throwArm
+    || actions.deployWell || actions.deployRepulsor || actions.deployMassSeed
+    || Math.abs(actions.reelDelta || 0) > 0.08)) return true;
+  if (input.drawFlightManual === true) return true;
   if (input.autoFire) return false;
   return Math.abs(input.moveX || 0) > 0.08
     || Math.abs(input.moveZ || 0) > 0.08

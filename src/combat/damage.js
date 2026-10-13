@@ -23,6 +23,7 @@ import { isEnvironmentalBody, isPhysicalMissionBody } from '../core/physicalResp
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { addEnvironmentHeat } from '../systems/environmentMaterials.js';
 import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
+import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 
 /** Player id 0 is a real entity id. A truthy check treated that hull as nobody. */
 export function playerIsDamageTarget(state, target) {
@@ -85,6 +86,11 @@ export function createDamageRouter(context, statusService, options = {}) {
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     // Physical contact is independent of hull damage, IFF and invulnerable hit points.
     const impulseResult = applyImpulse(target, attacker, packet, input, origin);
+    // The opening cohort stays a live physical problem until this wave's first pilot act.
+    // Gun holds alone cannot stop idle hulls from dying to terrain contacts or room blasts.
+    if (target.data?.runCohort === 'survival' && !swarmPilotHasActed(state)) {
+      return { ...rejected('swarm_waiting_for_input', input, packet), impulseApplied: impulseResult.applied };
+    }
     if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
     if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target)) {
       const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
