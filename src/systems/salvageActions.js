@@ -6,7 +6,7 @@ import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // the player is working on. This system does not edit salvage.js, mining.js, or combat.js.
 
 import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
-import { salvagePoolForWreck } from '../data/salvageLegality.js';
+import { COMMON_SALVAGE_COMMODITY_ID, salvagePoolForWreck } from '../data/salvageLegality.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { hash32 } from '../core/rng.js';
 
@@ -170,14 +170,17 @@ export const salvageActions = {
       if (!data.salvagePool || typeof data.salvagePool !== 'object') {
         data.salvagePool = salvagePoolForWreck(entity, data.authoredSalvagePool);
       }
-    } else if (data.markerId && data.salvagePool && typeof data.salvagePool === 'object'
-        && Object.keys(data.salvagePool).length > 0) {
-      // The durable aftermath marker owns this pool by reference — overwriting the field would
-      // detach live salvage from the persistent record and lose the victim's manifest residue.
+    } else if (data.salvagePool && typeof data.salvagePool === 'object') {
+      // Existing stock, including an empty worked pool, is authoritative. A scan refreshes
+      // the readout; it must never replenish salvage or detach an aftermath marker's pool.
       // The only adjustment allowed is the legality remap, and it must land in place.
-      const remapped = salvagePoolForWreck(entity, data.salvagePool);
-      for (const key of Object.keys(data.salvagePool)) delete data.salvagePool[key];
-      Object.assign(data.salvagePool, remapped);
+      // The legality helper's initial classified-yield floor belongs to template creation.
+      // A worked pool can remap real electronics, but an absent lot cannot earn that floor again.
+      if ((data.salvagePool[COMMON_SALVAGE_COMMODITY_ID] || 0) > 0) {
+        const remapped = salvagePoolForWreck(entity, data.salvagePool);
+        for (const key of Object.keys(data.salvagePool)) delete data.salvagePool[key];
+        Object.assign(data.salvagePool, remapped);
+      }
     } else {
       data.salvagePool = salvagePoolForWreck(entity, poolForAction(action));
     }
