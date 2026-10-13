@@ -8,6 +8,7 @@ import { publicSpectrum } from '../src/systems/spectrum/model.js';
 import { signalMetaText } from '../src/ui/signalInvestigationPrompt.js';
 import { admitReceipt } from '../src/ui/hudAttention.js';
 import { SPECTRUM_CASES, spectrumCaseById } from '../src/data/spectrum/scenarios.js';
+import { DRIFT_SPEED_WU_S } from '../src/data/spectrum/constants.js';
 import { bearingDeg, dirFromBearing, dist2 } from '../src/systems/spectrum/geometry.js';
 
 function boot(seed) {
@@ -481,4 +482,89 @@ test('stopping within 150 of a known fix does not collect a mechanism survey', (
     assert.equal(run.state.spectrum.resolved, false, id);
     assert.equal(spec.payoff === 'brake', false, id);
   }
+});
+
+function heardSample(run, sourceId) {
+  const track = Object.values(run.state.spectrum.tracks).find((row) => row.sourceId === sourceId);
+  if (!track || !track.samples.length) throw new Error(`no sample ${sourceId} ${summary(run)}`);
+  return track.samples[track.samples.length - 1];
+}
+
+test('a reversed baseline does not name the cold buoy', () => {
+  const run = boot(50311);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_cold_parallax' });
+  pulseAt(run, 1, { x: 0, z: -800 });
+  pulseAt(run, 12, { x: 800, z: -800 });
+  pulseAt(run, 24, { x: 400, z: -800 });
+  const view = publicSpectrum(run.state.spectrum);
+  assert.equal(view.revealed, true, summary(run));
+  assert.equal(view.resolved, false, summary(run));
+});
+
+test('drift tone scores source radial while the ship moves at (40, 0)', () => {
+  const run = boot(50311);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_drift_chord' });
+  const ship = { x: 40, z: 0 };
+  pulseAt(run, 1, { x: 0, z: 0 }, ship);
+  pulseAt(run, 12, { x: 700, z: -180 }, ship);
+  pulseAt(run, 24, { x: -280, z: 360 }, ship);
+  pulseAt(run, 36, { x: 240, z: 80 }, ship);
+  run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
+  const west = heardSample(run, 'west');
+  const east = heardSample(run, 'east');
+  const apex = heardSample(run, 'apex');
+  assert.ok(Math.abs(west.chirp - 39.2) < 0.3, west.chirp);
+  assert.ok(Math.abs(east.chirp + 40) < 0.3, east.chirp);
+  assert.ok(Math.abs(apex.chirp - 9.2) < 0.3, apex.chirp);
+  assert.ok(Math.abs(west.chirp + west.shipRadial) < DRIFT_SPEED_WU_S, west.shipRadial);
+  assert.ok(Math.abs(east.chirp + east.shipRadial) < DRIFT_SPEED_WU_S, east.shipRadial);
+  assert.ok(Math.abs(apex.chirp + apex.shipRadial) >= DRIFT_SPEED_WU_S, apex.chirp + apex.shipRadial);
+  brakeAtFix(run);
+  assert.equal(run.state.spectrum.resolved, false, summary(run));
+  rideEarnedVelocity(run);
+  assert.equal(run.state.spectrum.resolved, true, summary(run));
+});
+
+test('wake spoof compares source radials while the ship moves at (0, 40)', () => {
+  const run = boot(50311);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_split_wake' });
+  const ship = { x: 0, z: 40 };
+  pulseAt(run, 1, { x: 200, z: 900 }, ship);
+  pulseAt(run, 12, { x: 0, z: 600 }, ship);
+  pulseAt(run, 24, { x: 400, z: 1100 }, ship);
+  pulseAt(run, 36, { x: -80, z: 480 }, ship);
+  run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
+  const glint = heardSample(run, 'glint');
+  const hull = heardSample(run, 'hull');
+  const view = publicSpectrum(run.state.spectrum);
+  assert.equal(view.tracks.some((track) => track.contradiction && track.claim === 'DRIFTING'), true, summary(run));
+  assert.ok(Math.abs(glint.chirp - 15.76) < 0.3, glint.chirp);
+  assert.ok(Math.abs(hull.chirp - 22.5) < 0.3, hull.chirp);
+  const glintSource = glint.chirp + glint.shipRadial;
+  const hullSource = hull.chirp + hull.shipRadial;
+  assert.ok(Math.abs(glintSource) + 8 < Math.abs(hullSource), `${glintSource} vs ${hullSource}`);
+  brakeAtFix(run);
+  assert.equal(run.state.spectrum.resolved, false, summary(run));
+  rideEarnedVelocity(run);
+  assert.equal(run.state.spectrum.resolved, true, summary(run));
+});
+
+test('live boat matches its solved radial while the ship moves at (0, 40)', () => {
+  const run = boot(50311);
+  run.bus.emit('spectrum:arm', { caseId: 'spectrum_lifeboat_lie' });
+  const ship = { x: 0, z: 40 };
+  pulseAt(run, 1, { x: 0, z: 0 }, ship);
+  pulseAt(run, 12, { x: 980, z: 240 }, ship);
+  pulseAt(run, 24, { x: 400, z: 900 }, ship);
+  pulseAt(run, 36, { x: 1400, z: -200 }, ship);
+  pulseAt(run, 48, { x: 200, z: 1400 }, ship);
+  run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
+  const live = heardSample(run, 'live');
+  const recording = heardSample(run, 'recording');
+  assert.ok(Math.abs(live.chirp - 39.9) < 0.4, live.chirp);
+  assert.ok(Math.abs(recording.chirp - 31.05) < 0.2, recording.chirp);
+  const source = live.chirp + live.shipRadial;
+  assert.ok(Math.abs(source - 14.14) < 0.4, source);
+  assert.equal(run.state.spectrum.resolved, true, summary(run));
+  assert.equal(run.state.spectrum.revealed, true, summary(run));
 });

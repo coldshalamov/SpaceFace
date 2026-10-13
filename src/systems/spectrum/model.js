@@ -701,6 +701,7 @@ export function applyMeasure(model, origin, velocity, simTime) {
     const sourceRadial = cand.pose.vx * dir.x + cand.pose.vz * dir.z;
     const shipRadial = (velocity && velocity.x || 0) * dir.x + (velocity && velocity.z || 0) * dir.z;
     // Opening range-rate. A stationary return heard from a moving ship is not zero.
+    // shipRadial stays on the sample so a score can add that component back.
     let chirp = sourceRadial - shipRadial;
     let motif = null;
     if (cand.emitter.modulation === 'recording' && cand.emitter.recordedVel) {
@@ -716,6 +717,7 @@ export function applyMeasure(model, origin, velocity, simTime) {
       apparentDeg: cand.bearing,
       sigmaWu,
       chirp,
+      shipRadial,
       motif,
       via: cand.via,
       extra: cand.extra,
@@ -857,7 +859,8 @@ function baselinesDiverge(origins) {
       const al = Math.hypot(a.x, a.z) || 1;
       const bl = Math.hypot(b.x, b.z) || 1;
       const cos = (a.x * b.x + a.z * b.z) / (al * bl);
-      if (cos < 0.94) return true;
+      // A 180° reversal is the same line, not a second baseline.
+      if (Math.abs(cos) < 0.94) return true;
     }
   }
   return false;
@@ -867,10 +870,30 @@ function focusedTrack(model) {
   return model.tracks && model.focusKey ? model.tracks[model.focusKey] : null;
 }
 
-function lastChirp(track) {
-  if (!track || !track.samples || !track.samples.length) return 0;
-  const sample = track.samples[track.samples.length - 1];
-  return Number(sample.chirp) || 0;
+function lastSample(track) {
+  if (!track || !track.samples || !track.samples.length) return null;
+  return track.samples[track.samples.length - 1];
+}
+
+// chirp is ship-relative. Adding the stored ship radial recovers the source radial.
+function sourceTone(track) {
+  const sample = lastSample(track);
+  if (!sample) return 0;
+  if (sample.motif) return Number(sample.chirp) || 0;
+  return (Number(sample.chirp) || 0) + (Number(sample.shipRadial) || 0);
+}
+
+function solvedRadial(track) {
+  const sample = lastSample(track);
+  if (!sample || !track.velocity) return 0;
+  const dir = dirFromBearing(sample.bearingDeg);
+  return track.velocity.x * dir.x + track.velocity.z * dir.z;
+}
+
+function motifSpeed(track) {
+  const sample = lastSample(track);
+  if (!sample || !sample.motif) return 0;
+  return Math.hypot(Number(sample.motif.x) || 0, Number(sample.motif.z) || 0);
 }
 
 function maybeFinishMechanism(model) {
@@ -911,7 +934,9 @@ function maybeFinishMechanism(model) {
   if (def.payoff === 'live' && focus && focus.motionClass === 'DRIFTING' && logHas(model, 'jammed')) {
     const tracks = Object.values(model.tracks);
     const recording = tracks.find((track) => track.motionClass === 'RECORDING');
-    if (recording && Math.abs(lastChirp(focus) - lastChirp(recording)) > RECORDING_GAP_WU_S) {
+    if (recording
+      && Math.abs(sourceTone(focus) - solvedRadial(focus)) < RECORDING_GAP_WU_S
+      && Math.abs(motifSpeed(recording) - solvedRadial(recording)) > RECORDING_GAP_WU_S) {
       finish(model, def);
       return true;
     }
@@ -922,10 +947,10 @@ function maybeFinishMechanism(model) {
 function spoofSeparated(model) {
   const focus = focusedTrack(model);
   if (!focus || focus.motionClass !== 'DRIFTING') return false;
-  if (Math.abs(lastChirp(focus)) < DRIFT_SPEED_WU_S) return false;
+  if (Math.abs(sourceTone(focus)) < DRIFT_SPEED_WU_S) return false;
   const tracks = Object.values(model.tracks);
   return tracks.some((track) => track !== focus && track.contradiction === true
-    && Math.abs(lastChirp(track)) + 8 < Math.abs(lastChirp(focus)));
+    && Math.abs(sourceTone(track)) + 8 < Math.abs(sourceTone(focus)));
 }
 
 function applySpoof(model, def, velocity) {
@@ -944,9 +969,9 @@ function applyTone(model, def, velocity) {
   if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
   const track = focusedTrack(model);
   if (!track || track.motionClass !== 'DRIFTING') return { ok: false, reason: 'wrong-tone' };
-  if (Math.abs(lastChirp(track)) < DRIFT_SPEED_WU_S) return { ok: false, reason: 'tone-quiet' };
+  if (Math.abs(sourceTone(track)) < DRIFT_SPEED_WU_S) return { ok: false, reason: 'tone-quiet' };
   const tracks = Object.values(model.tracks);
-  const quiet = tracks.some((other) => other !== track && other.samples && other.samples.length && Math.abs(lastChirp(other)) < DRIFT_SPEED_WU_S);
+  const quiet = tracks.some((other) => other !== track && other.samples && other.samples.length && Math.abs(sourceTone(other)) < DRIFT_SPEED_WU_S);
   if (!quiet) return { ok: false, reason: 'no-chord' };
   const earned = model.velocity || { x: 0, z: 0 };
   const vx = velocity && velocity.x || 0;
@@ -1101,6 +1126,7 @@ export function serializeSpectrum(model) {
         apparentDeg: sample.apparentDeg,
         sigmaWu: sample.sigmaWu,
         chirp: sample.chirp,
+        shipRadial: Number(sample.shipRadial) || 0,
         motif: sample.motif ? { x: sample.motif.x, z: sample.motif.z } : null,
         via: sample.via,
         extra: sample.extra,
