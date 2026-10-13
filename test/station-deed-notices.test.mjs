@@ -72,6 +72,49 @@ test('deed notices: the bag is bounded and normalized on load', () => {
   assert.equal(Object.keys(t.state.stationLife.deeds).length, 0, 'stale deeds normalize away');
 });
 
+test('deed notices: a finished refinery chain event is dock gossip on its own face', async (t1) => {
+  const t = boot();
+  const rows = [];
+  t.bus.on('stationLife:deedNoticed', (p) => rows.push(p));
+
+  // Only event_complete receipts carry a finished story — starts, phases, interrupts,
+  // and unknown event ids stay silent.
+  t.bus.emit('traffic:ceresCausalChain', { kind: 'event_start', eventId: 'ev_pod_breaks_clamp', sectorId: SECTOR });
+  t.bus.emit('traffic:ceresCausalChain', { kind: 'event_interrupt', eventId: 'ev_pod_breaks_clamp', outcome: 'abort', sectorId: SECTOR });
+  t.bus.emit('traffic:ceresCausalChain', { kind: 'event_complete', eventId: 'ev_not_real', outcome: 'complete', sectorId: SECTOR });
+  assert.equal(rows.length, 0, 'half-stories and strangers write nothing');
+  assert.equal(t.state.stationLife.deeds[SECTOR], undefined);
+
+  t.bus.emit('traffic:ceresCausalChain', {
+    kind: 'event_complete', eventId: 'ev_pod_breaks_clamp', outcome: 'complete',
+    sectorId: SECTOR, cycle: 3,
+  });
+  assert.equal(rows.length, 1);
+  const deed = t.state.stationLife.deeds[SECTOR];
+  assert.equal(deed.outcome, 'ceres_chain');
+  assert.equal(deed.shapeId, 'ev_pod_breaks_clamp');
+  assert.ok(deed.text.includes('clamp let go'), `the dock heard the escape: ${deed.text}`);
+
+  const creditsBefore = t.state.player.credits | 0;
+  // The freshest chain link wins the sector's one slot — same rule as lane deeds.
+  t.bus.emit('traffic:ceresCausalChain', {
+    kind: 'event_complete', eventId: 'ev_rock_calving', outcome: 'complete', sectorId: SECTOR, cycle: 3,
+  });
+  assert.equal(t.state.stationLife.deeds[SECTOR].shapeId, 'ev_rock_calving');
+  assert.equal(t.state.player.credits | 0, creditsBefore, 'record-only: no credits moved');
+
+  let buildDockArrival;
+  try {
+    ({ buildDockArrival } = await import('../src/ui/dockArrival.js'));
+  } catch (err) {
+    t1.skip(`dockArrival graph transiently blocked by an in-flight foreign edit: ${err.message}`);
+    return;
+  }
+  const view = buildDockArrival(t.state, { id: 'station_ceres' });
+  assert.ok(view.news && view.news.includes('DOCK LOG:'), `dock card speaks the chain deed: ${view.news}`);
+  assert.ok(view.news.includes('calved loose rock'));
+});
+
 test('deed notices: the dock card speaks the fresh deed and ages out quietly', async (t1) => {
   let buildDockArrival;
   try {
