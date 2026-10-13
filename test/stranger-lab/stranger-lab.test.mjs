@@ -393,33 +393,51 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.equal(yawIgnoresStrafe.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
-  const sliding = pressed.map((sample) => {
-    if (sample.tick < 40) return sample;
-    const along = (sample.tick - 39) * 0.008;
-    const rot = sample.rot;
+  const creepRot = -0.1309;
+  const creepStep = 0.098 / 24;
+  const creep = pressed.map((sample) => {
+    if (sample.tick < 40) return { ...sample, rot: creepRot };
+    const along = (sample.tick - 39) * creepStep;
     return {
       ...sample,
-      x: 39 * 3.5 + (-Math.sin(rot) * along),
-      z: Math.cos(rot) * along,
+      rot: creepRot,
+      x: 39 * 3.5 + (-Math.sin(creepRot) * along),
+      z: Math.cos(creepRot) * along,
     };
   });
-  const slideFrames = pressedFrames.map((frame) => ({
-    ...frame, moveX: frame.tick >= 40 ? 1 : 0,
-  }));
-  const strafeAnswer = detectFailures({
-    samples: sliding,
-    frames: slideFrames,
+  const creepStart = creep[40];
+  const creepEnd = creep[64];
+  const creepDx = creepEnd.x - creepStart.x;
+  const creepDz = creepEnd.z - creepStart.z;
+  const creepMoved = Math.hypot(creepDx, creepDz);
+  const creepForward = creepDx * Math.cos(creepRot) + creepDz * Math.sin(creepRot);
+  const creepLateral = Math.abs(creepDx * -Math.sin(creepRot) + creepDz * Math.cos(creepRot));
+  assert.ok(creepMoved < 0.25 && creepMoved > 0.09);
+  assert.ok(Math.abs(creepForward) < 0.02);
+  assert.ok(creepLateral > 0.09 && creepLateral < 0.11);
+  const creepStraight = detectFailures({
+    samples: creep,
+    frames: pressedFrames,
     commands: [],
     asset: { essentialModelCheck: 'passed' },
   });
-  assert.equal(strafeAnswer.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
-  const strafeIgnoresYaw = detectFailures({
-    samples: sliding,
-    frames: slideFrames.map((frame) => ({ ...frame, turnIntent: frame.tick >= 40 ? 1 : 0 })),
+  assert.equal(creepStraight.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const creepStrafe = detectFailures({
+    samples: creep,
+    frames: pressedFrames.map((frame) => ({ ...frame, moveX: frame.tick >= 40 ? 1 : 0 })),
     commands: [],
     asset: { essentialModelCheck: 'passed' },
   });
-  assert.equal(strafeIgnoresYaw.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  assert.equal(creepStrafe.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const creepYaw = detectFailures({
+    samples: creep.map((sample, tick) => (
+      tick < 40 ? sample : { ...sample, rot: creepRot + (tick - 40) * 0.05, angVel: 0.05 }
+    )),
+    frames: pressedFrames.map((frame) => ({ ...frame, turnIntent: frame.tick >= 40 ? 1 : 0 })),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(creepYaw.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
   const reversed = pressed.map((sample) => (
     sample.tick < 40 ? sample : { ...sample, speed: sample.tick < 50 ? 217.72 : 40 }
   ));

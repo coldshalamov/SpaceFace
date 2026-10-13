@@ -131,9 +131,10 @@ function detectUnresponsive(samples, frames) {
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
     // A station that is actually slowing the ship closes the window.
-    // Held speed and a forward stick do not. Inside the radius, this window
-    // closes only when every commanded channel answers: yaw changes rotation
-    // or angVel, and strafe changes lateral motion.
+    // Held speed and a forward stick do not. This stuck bucket already
+    // moved less than 0.25, so lateral creep is the pin, not a strafe
+    // answer. The window closes only when commanded yaw changes rotation
+    // or angVel and strafe was not commanded.
     if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160
       && end.speed + 0.05 < start.speed) continue;
     const moved = Math.hypot(end.x - start.x, end.z - start.z);
@@ -163,25 +164,17 @@ function stationWindowAnswered(frames, start, end) {
     if (Math.abs(frame.turnIntent) > 0.2) yawCommand = true;
     if (Math.abs(frame.moveX) > 0.2) strafeCommand = true;
   }
-  if (!yawCommand && !strafeCommand) return false;
-  const yawAnswered = rotationDelta(start.rot, end.rot) > 0.02 || angVelDelta(start, end) > 0.02;
-  const strafeAnswered = lateralShift(start, end) > 0.01;
-  if (yawCommand && !yawAnswered) return false;
-  if (strafeCommand && !strafeAnswered) return false;
-  return true;
+  // A real strafe leaves this stuck bucket. Lateral creep inside it is not
+  // an answer, including when moveX is held.
+  if (strafeCommand) return false;
+  if (!yawCommand) return false;
+  return rotationDelta(start.rot, end.rot) > 0.02 || angVelDelta(start, end) > 0.02;
 }
 
 function angVelDelta(start, end) {
   const from = Number.isFinite(start.angVel) ? start.angVel : 0;
   const to = Number.isFinite(end.angVel) ? end.angVel : 0;
   return Math.abs(to - from);
-}
-
-function lateralShift(start, end) {
-  const dx = (end.x || 0) - (start.x || 0);
-  const dz = (end.z || 0) - (start.z || 0);
-  const rot = Number.isFinite(start.rot) ? start.rot : 0;
-  return Math.abs(dx * -Math.sin(rot) + dz * Math.cos(rot));
 }
 
 function rotationDelta(from, to) {
