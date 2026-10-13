@@ -4,15 +4,19 @@ import { createLoadingProgressModel } from '../loadingProgressModel.js';
 // use the SAME worker, without fragile worker URL rewrites or a second game dependency graph.
 export function bootRingWorkerRuntime(makeModel) {
   const model = makeModel();
-  let canvas, ctx, scale = 1, timer = null, running = false, reduced = false;
+  let canvas, ctx, scale = 1, timer = null, raf = null, running = false, reduced = false;
   let fontReady = false, cellW = 0;
   let frames = 0, lastReport = 0, epoch = 0, lastDrawAt = -Infinity;
   const marks = new Set();
-  // Cadence: the main thread forwards its vsync-aligned rAF as 'frame' beats, so the
-  // instrument paints in the same frame the display presents — no 30 fps setTimeout
-  // stepping. The internal timer is only a safety net for throttled/occluded hosts.
+  // Cadence: the worker owns its own vsync beat. requestAnimationFrame inside a worker that holds
+  // an OffscreenCanvas is display-synced and does not wait on the page's main thread, so a 700 ms
+  // main-thread stall (a shader link, a texture burst) no longer drops the ring to the old 10 Hz
+  // timer net and shows as a hop in the needle. The main thread's forwarded 'frame' beats stay as
+  // a harmless extra trigger (pump's interval guard collapses them), and the setTimeout net is only
+  // for reduced motion (a deliberately slow cadence) and hosts without worker rAF.
   const beatInterval = () => reduced ? 240 : 14;
   const netInterval = () => reduced ? 250 : 100;
+  const workerFrames = () => !reduced && typeof requestAnimationFrame === 'function';
   // The reading is the interface's thin numeral: Archivo 300 once the face has loaded here (a worker does not
   // inherit the page's fonts), the system face until then. Digits sit in fixed cells so 63.9 -> 64.0 never shivers.
   function drawNumeral(text) {
@@ -83,13 +87,23 @@ export function bootRingWorkerRuntime(makeModel) {
     draw();
   }
   function loop() {
-    timer = null;
+    timer = null; raf = null;
     if (!running) return;
-    pump(netInterval());
-    timer = setTimeout(loop, netInterval());
+    if (workerFrames()) {
+      pump(beatInterval());
+      raf = requestAnimationFrame(loop);
+    } else {
+      pump(netInterval());
+      timer = setTimeout(loop, netInterval());
+    }
   }
-  function run() { running = true; if (timer === null) loop(); }
-  function stop() { running = false; if (timer !== null) clearTimeout(timer); timer = null; }
+  function run() { running = true; if (timer === null && raf === null) loop(); }
+  function stop() {
+    running = false;
+    if (timer !== null) clearTimeout(timer);
+    if (raf !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
+    timer = null; raf = null;
+  }
   onmessage = ({ data }) => {
     try {
       if (data.type === 'init') {
