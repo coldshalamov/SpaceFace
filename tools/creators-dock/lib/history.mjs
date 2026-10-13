@@ -2,6 +2,19 @@ import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, 
 
 const CAP = 100;
 
+function gridReadsThroughAccessor(project) {
+  if (!project || typeof project !== 'object') return false;
+  const descriptor = Object.getOwnPropertyDescriptor(project, 'grid');
+  return !!descriptor && !Object.prototype.hasOwnProperty.call(descriptor, 'value') && typeof descriptor.get === 'function';
+}
+
+function withoutGridAccessor(project) {
+  if (!gridReadsThroughAccessor(project)) return project;
+  const stored = clone(project);
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored) || gridReadsThroughAccessor(stored)) return null;
+  return stored;
+}
+
 function storedPresent(present) {
   let stored = null;
   try {
@@ -26,12 +39,20 @@ export function createHistory(present) {
 export function commit(history, next) {
   const stored = storedPresent(next);
   if (!stored.ok) return history;
+  let unchanged = false;
   try {
-    if (sameProject(history.present, stored.present)) return history;
+    unchanged = sameProject(history.present, stored.present);
   } catch (error) {
     return history;
   }
-  const past = history.past.concat([history.present]).slice(-CAP);
+  // A grid getter is skipped by clone and sameProject, so the scene looks unchanged
+  // while present.grid still reads null. Keep the cloned data instead of that accessor.
+  if (unchanged && !gridReadsThroughAccessor(history.present)) return history;
+  if (unchanged) {
+    return { past: history.past, present: stored.present, future: history.future };
+  }
+  const prior = withoutGridAccessor(history.present);
+  const past = (prior ? history.past.concat([prior]) : history.past).slice(-CAP);
   return { past, present: stored.present, future: [] };
 }
 
@@ -78,7 +99,10 @@ export function newDockHistory(meta = {}) {
 
 export function restoreHistory(history, direction) {
   const stepped = direction === 'redo' ? redo(history) : undo(history);
-  const gate = requireOnePlayer(history.present, { ok: true, project: stepped.present, issues: [] });
+  const present = withoutGridAccessor(stepped.present);
+  if (!present) return { ok: false, history, issues: ['scene could not be cloned'] };
+  const next = present === stepped.present ? stepped : { ...stepped, present };
+  const gate = requireOnePlayer(history.present, { ok: true, project: next.present, issues: [] });
   if (!gate.ok) return { ok: false, history, issues: gate.issues };
-  return { ok: true, history: stepped, issues: [] };
+  return { ok: true, history: next, issues: [] };
 }

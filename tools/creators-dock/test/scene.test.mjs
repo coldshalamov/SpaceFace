@@ -2056,6 +2056,31 @@ test('a non-configurable grid getter does not escape commit', () => {
   }
 });
 
+test('a grid getter already on the present is not kept by commit', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  function hideGrid() { return null; }
+  Object.defineProperty(history.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get: hideGrid,
+  });
+  const committed = commit(history, history.present);
+  const descriptor = Object.getOwnPropertyDescriptor(committed.present, 'grid');
+  assert.equal(descriptor && descriptor.get, undefined);
+  assert.notEqual(committed.present.grid, null);
+
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const renamed = commit(history, next);
+  assert.equal(renamed.present.title, 'Renamed dock');
+  const undone = restoreHistory(renamed, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const undoneGrid = Object.getOwnPropertyDescriptor(undone.history.present, 'grid');
+  assert.equal(undoneGrid && undoneGrid.get, undefined);
+  assert.notEqual(undone.history.present.grid, null);
+  assert.notEqual(undone.history.present, history.present);
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {
