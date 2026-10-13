@@ -1,4 +1,4 @@
-import { mayForceWarmSlice } from './idleWarmPolicy.js';
+import { fallbackWarmDelayMs, loadingShellVisible, mayForceWarmSlice } from './idleWarmPolicy.js';
 import { messages as spanishMessages } from './catalogs/es-ES.js';
 import { messages as frenchMessages } from './catalogs/fr-FR.js';
 import { messages as germanMessages } from './catalogs/de-DE.js';
@@ -234,7 +234,20 @@ if (typeof window !== 'undefined') {
   };
   const isIdleWarmLocale = (locale) => locale !== startupLocale && locale !== DEFAULT_LOCALE;
   const scheduleIdleWarm = (step) => {
-    if (typeof window.requestIdleCallback !== 'function') { setTimeout(step, 0); return; }
+    if (typeof window.requestIdleCallback !== 'function') {
+      // No idle callback (Safari, older browsers, Node). Re-queueing the same step re-entered this
+      // branch without ever taking a slice (warmIndex never moved), a permanent zero-delay timer spin.
+      // Take one slice per spaced tick instead, and none while the loading shell animates.
+      const timer = setTimeout(() => {
+        if (!loadingShellVisible(window.document)
+          && warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])
+          && warmTranslatedCatalog(warmQueue[warmIndex], 120)) warmIndex += 1;
+        if (warmIndex < warmQueue.length) step();
+      }, fallbackWarmDelayMs(window.document));
+      // A background warm never holds a Node tool or test process open (a browser timer is a plain number).
+      if (timer && typeof timer.unref === 'function') timer.unref();
+      return;
+    }
     window.requestIdleCallback((deadline) => {
       // A main thread that never idles still converges: a timed-out callback takes one slice.
       if (mayForceWarmSlice({ didTimeout: deadline.didTimeout, doc: window.document })

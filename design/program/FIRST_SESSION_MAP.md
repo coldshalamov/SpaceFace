@@ -70,9 +70,12 @@ discovery plate, atlas green.
 
 1. **First-dock hub dump** — 8 tabs and one one-time hint; the code itself names it the
    biggest cliff (`onboarding.js:649`). Candidate: staged tab reveal keyed to the B12 choice.
-2. **B0 grants a dead unlock** — `mod_mining_laser_s`, already fitted (`missions.js:11825`).
-   Grant the actual next step instead (cargo pod or heat sink). `missions.js` is hot; take it
-   with a checkpoint.
+2. **Beat unlock flags have no reader** — B0 "unlocks" `mod_mining_laser_s` (price 0, already
+   fitted) and B2 `wpn_pulse_laser_s` (already fitted); `_advanceStory` writes
+   `story.flags['unlock_<id>']` and **nothing in ships/tech/outfitting ever reads it**
+   (verified by grep 2026-10-13). Either wire outfitting gating to the flags or re-purpose
+   the reward; changing the id alone is cosmetic. `missions.js` is hot — checkpoint first.
+3. **B0 grants a dead unlock** — folded into (2): the reward needs the reader decision first.
 3. **Broke-at-the-gate cliff** — the gate hard-rejects without credits and Ceres was the only
    toll neighbor; mitigations (hardship rescue, dry-tank grant) are invisible. Candidate: the
    gate rejection line names the hardship rescue.

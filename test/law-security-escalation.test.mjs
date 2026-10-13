@@ -875,8 +875,24 @@ test('9b. saturated reserve response defers under the hard cap, retries, and rel
         },
         frameHalfWu: WITNESS_FRAME_HALF_WU,
       });
-      assert.deepEqual({ x: responderAtOrdinal.pos.x, z: responderAtOrdinal.pos.z }, expected,
-        `reserve ordinal ${ordinal} owns its distinct seed-stable arrival point`);
+      const at = { x: responderAtOrdinal.pos.x, z: responderAtOrdinal.pos.z };
+      if (ordinal === 0) {
+        assert.deepEqual(at, expected, 'the first reserve owns its seed-stable arrival point');
+      } else if (at.x !== expected.x || at.z !== expected.z) {
+        // D197: a later reserve's authored slot can sit inside a hull that is already there (the close
+        // arrival ring is 63 WU wide, hulls are 18 WU); it then launches from the nearest clear slot in
+        // the same frame instead of stacking onto it. The displacement is bounded by that frame.
+        assert.ok(Math.hypot(at.x - expected.x, at.z - expected.z) <= 2 * WITNESS_FRAME_HALF_WU,
+          `reserve ordinal ${ordinal} moved to a clear slot inside the witness frame`);
+      }
+    }
+    const hulls = incident.responderIds.map((id) => t.state.entities.get(id));
+    for (let a = 0; a < hulls.length; a++) {
+      for (let b = a + 1; b < hulls.length; b++) {
+        const gap = Math.hypot(hulls[a].pos.x - hulls[b].pos.x, hulls[a].pos.z - hulls[b].pos.z);
+        assert.ok(gap >= hulls[a].radius + hulls[b].radius,
+          `reserves ${a} and ${b} launch ${gap.toFixed(1)} WU apart, inside their hulls`);
+      }
     }
     assert.equal(new Set(incident.responderIds.map((id) => {
       const responderAtOrdinal = t.state.entities.get(id);

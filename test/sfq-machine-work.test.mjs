@@ -60,6 +60,14 @@ test('B143 a real Rapier body travels to the cradle and the field then releases'
     bounds: { center: site.center, radius: 2000, hardRadius: 2400 } });
   try {
     host.state.world.currentSectorId = site.sectorId;
+    // Isolate the relocation owner after the native foundry's mail, repair and
+    // custody decision. The full acquisition sequence is exercised separately.
+    ensureAlienEcologyState(host.state).machineSites[site.siteId] = {
+      courierToken: { status: 'delivered', destSiteId: site.siteId, receiptId: 'foundry-accepted' },
+      courierReceiver: { stored: 1, acceptedReceipts: { 'foundry-accepted': 1 } },
+      maintenance: { completed: true, integrity: 1, material: 0 },
+      jurisdiction: { status: 'resolved', choice: 'construction' },
+    };
     const frame = host.runtime.spawn({ type: 'machine', pos: { ...site.center }, vel: { x: 0, z: 0 },
       physicsBody: false, homeSectorId: site.sectorId, radius: 26, data: { machine: {
         kind: 'mason', siteId: site.siteId, t: 0, sweepT: 0, phase: 0, anchor: { ...site.center } } } });

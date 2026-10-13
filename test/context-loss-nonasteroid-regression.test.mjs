@@ -218,10 +218,15 @@ function testSyntheticEnvelopeAsteroidScope() {
   assert.ok(hasAsteroidScope(envelope), 'synthetic envelope contains asteroid scope');
 }
 
-// Run the live evidence validation and adversarial integrity checks.
-const result = validateEvidence();
+// Run the live evidence validation and adversarial integrity checks. The packet lives under the
+// git-ignored .campaign/ directory of the machine that captured it, so a clean checkout has nothing to
+// validate: the adversarial integrity checks still run, the live-evidence gate reports a skip instead of
+// a permanent failure. Point SF_CONTEXT_LOSS_EVIDENCE_DIR at a packet to validate one.
+const evidencePresent = existsSync(join(EVIDENCE_DIR, 'error-telemetry-raw.json'));
+const result = evidencePresent ? validateEvidence() : null;
 testSyntheticEnvelopeWithWarnings();
 testSyntheticEnvelopeMissingRecovered();
 testSyntheticEnvelopeAsteroidScope();
 
-console.log(`PASS context-loss-nonasteroid-regression: ${JSON.stringify(result.counts)}`);
+if (result) console.log(`PASS context-loss-nonasteroid-regression: ${JSON.stringify(result.counts)}`);
+else console.log(`PASS context-loss-nonasteroid-regression (integrity checks only; no evidence packet at ${EVIDENCE_DIR})`);

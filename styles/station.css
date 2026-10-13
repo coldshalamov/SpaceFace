@@ -307,6 +307,10 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
    keeps a pointer target. */
 .sx-sw__nameplate { position: absolute; left: 0; top: 0; max-width: var(--k-measure); padding-right: calc(420px * var(--k-s)); pointer-events: none; }
 .sx-sw__nameplate [data-why] { pointer-events: auto; }
+/* The rename field is a control: it takes the pointer back from the nameplate (FB-057). The
+   :hover / :focus arms outrank the kit's `input.k-input:hover { pointer-events: unset }`, which
+   would hand the nameplate's `none` back the moment the pointer arrives. */
+.sx-sw__nameplate input.sx-sw__nameEdit, .sx-sw__nameplate input.sx-sw__nameEdit:hover, .sx-sw__nameplate input.sx-sw__nameEdit:focus { pointer-events: auto; cursor: text; }
 .sx-sw__crestLine { display: flex; align-items: baseline; gap: calc(16px * var(--k-s)); flex-wrap: wrap; }
 .sx-sw__name { margin: 0; max-width: 14ch; }
 .sx-sw__condition { display: inline-flex; gap: 0.5em; }

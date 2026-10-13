@@ -2,10 +2,9 @@
 // stack. The authored probationary wasp cannot kill a parked starter Kestrel (its effective damage
 // sits below shield regeneration — see scripts/check-m3-player-facing-public-route.mjs), so the
 // browser route instead fires on a lawful station inside its own jurisdiction, lets CONTROL
-// dispatch patrol lawmen, and takes the ordinary-combat kill. That response is only lethal once
-// the first-session attacker cap (engagementAuthority MAX_FIRST_SESSION_ATTACKERS=2 until
-// simTime 600) lifts; this test runs the post-cap regime deterministically at 60 Hz instead of
-// waiting out a browser throttle.
+// dispatch patrol lawmen, and takes the ordinary-combat kill. CONTROL-dispatched responders are
+// exempt from the first-session attacker cap; this fixture retains the post-cap clock to isolate
+// the response from ambient opening protection and runs deterministically at 60 Hz.
 //
 // The trigger is the same event weapons emits for a real landed round (combat:damage with the
 // player as attacker and a lawful target); everything downstream — incident, dispatch, doctrine,
@@ -112,7 +111,14 @@ function boot() {
     projSamples: [],
   };
   bus.on('law:incidentOpened', (p) => log.incidents.push({ cause: p && p.cause, stationId: p && p.stationId }));
-  bus.on('law:dispatchStarted', (p) => log.dispatches.push({ incidentId: p && p.id, responders: p && p.responderIds }));
+  bus.on('law:dispatchStarted', (p) => log.dispatches.push({
+    incidentId: p && p.id,
+    responders: p && p.responderIds,
+    arrivals: (p?.responderIds || []).map((id) => {
+      const responder = state.entities.get(id);
+      return { id, pos: { ...responder.pos }, radius: responder.radius };
+    }),
+  }));
   bus.on('player:death', (p) => log.deaths.push(p));
   bus.on('game:over', (p) => log.gameOvers.push(p));
   bus.on('combat:damage', (p) => {
@@ -253,6 +259,16 @@ test('lawful assault on Coalition HQ draws a lethal security response past the f
   };
   try { writeFileSync('.devshots/law-assault-debug.json', JSON.stringify(debug, null, 2)); } catch {}
   assert.ok(log.dispatches.length > 0, `CONTROL must dispatch responders: ${JSON.stringify(debug)}`);
+  for (const dispatch of log.dispatches) {
+    for (let i = 0; i < dispatch.arrivals.length; i++) {
+      for (let j = i + 1; j < dispatch.arrivals.length; j++) {
+        const a = dispatch.arrivals[i];
+        const b = dispatch.arrivals[j];
+        assert.ok(Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z) >= a.radius + b.radius,
+          `reserves must launch without overlapping allied hulls: ${JSON.stringify(dispatch.arrivals)}`);
+      }
+    }
+  }
   assert.ok(diedAt != null, `dispatched response must kill the parked starter within ${maxSeconds}s: ${JSON.stringify(debug)}`);
   assert.ok(log.playerHits.length > 0, 'death must arrive through ordinary combat hits, not a script');
 

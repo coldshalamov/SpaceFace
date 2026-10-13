@@ -858,10 +858,11 @@ export const automation = {
         quantity: have,
       };
     }
-    const quote = this._quoteOperationSale(pending.stationId || dest, pending.good, Math.min(pending.quantity | 0, have));
+    const quote = this._quoteOperationSale(pending.stationId || dest, pending.good, Math.min(pending.quantity | 0, have), g);
     const qty = boundDemandQty(Math.min(pending.quantity | 0, have), quote);
     if (qty <= 0) {
-      const reason = quote && quote.saturated ? 'demand_saturation' : 'poor_destination';
+      const reason = quote && quote.saturated ? 'demand_saturation'
+        : quote && quote.reason === 'credit_limit' ? 'credit_limit' : 'poor_destination';
       g._lastSaleBlock = reason;
       return { ok: false, reason };
     }
@@ -900,11 +901,11 @@ export const automation = {
     return result;
   },
 
-  _quoteOperationSale(stationId, commodityId, qty) {
+  _quoteOperationSale(stationId, commodityId, qty, operation) {
     const quantity = Math.max(0, Math.floor(Number(qty) || 0));
     const econ = this._economy();
     const q = stationId && quantity > 0 && typeof econ?.quoteAutomationIntake === 'function'
-      ? econ.quoteAutomationIntake(stationId, commodityId, quantity)
+      ? econ.quoteAutomationIntake(stationId, commodityId, quantity, { operation })
       : null;
     return {
       unitAvg: q?.ok ? q.unitAvg : 0,
@@ -912,6 +913,7 @@ export const automation = {
       quoteVersion: q?.stock ?? 0,
       fillable: q?.ok ? q.fillable : 0,
       saturated: q?.reason === 'demand_saturation',
+      reason: q?.reason || null,
     };
   },
 
@@ -1656,12 +1658,20 @@ export const automation = {
       outlay: quote.units * quote.buyA * eff,
       revenue: quote.units * quote.sellB * eff,
       fuelCost: quote.fuelCost,
-      credited: profit > 0 ? profit : 0,
+      grossProfit: Math.max(0, profit),
+      credited: 0,
+      overflowDropped: 0,
+      walletWithheld: 0,
       result: profit > 0 ? 'paid' : 'no_spread',
     };
 
     if (profit > 0) {
-      this.creditPassive(t.lastReceipt.credited, 'trader');
+      const before = Number(this.state.player.credits) || 0;
+      const budgetCredited = this.creditPassive(profit, 'trader');
+      t.lastReceipt.credited = Math.max(0, (Number(this.state.player.credits) || 0) - before);
+      t.lastReceipt.overflowDropped = Math.max(0, profit - budgetCredited);
+      t.lastReceipt.walletWithheld = Math.max(0, budgetCredited - t.lastReceipt.credited);
+      t.lastReceipt.result = t.lastReceipt.credited > 0 ? 'paid' : budgetCredited > 0 ? 'wallet_full' : 'capped';
       // self-limit: each cycle pushes prices so the next spread shrinks (§ spec).
       this._applyTradePressure(t);
     }
@@ -2322,7 +2332,12 @@ export const automation = {
     t.route = this._pickRoute(t.route);
     if (t.route) t.route.good = this._currentOreId();
     t.hotness = 0;
-    t.status = 'enroute';
+    t.cycleProgress = 0;
+    t.ratePerMin = 0;
+    // Route selection does not settle the upkeep debt. Only Resume/the upkeep owner
+    // releases distress, and every new route begins a fresh physical travel clock.
+    if (t.status === 'distressed') t._prevStatus = t.route?.from ? 'enroute' : 'idle';
+    else t.status = t.route?.from ? 'enroute' : 'idle';
     this.toast(`Trader re-routed — ${routeLabel(t.route)}`, 'info');
     return true;
   },
