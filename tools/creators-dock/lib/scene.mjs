@@ -38,7 +38,20 @@ export const OBJECT_KEY_SETS = Object.freeze({
 export function clone(value) {
   if (value == null) return value;
   try {
-    return JSON.parse(JSON.stringify(value));
+    // A nested toJSON that returns null would replace that field in the clone.
+    // Refuse the whole clone instead of adopting the null.
+    let nestedNull = false;
+    const text = JSON.stringify(value, function (key, val) {
+      if (!nestedNull && key !== '' && val === null) {
+        const original = this[key];
+        if (original && typeof original === 'object' && typeof original.toJSON === 'function') {
+          nestedNull = true;
+        }
+      }
+      return val;
+    });
+    if (nestedNull) return null;
+    return JSON.parse(text);
   } catch (error) {
     return null;
   }
@@ -60,6 +73,15 @@ function cloneScene(project) {
 
 function refuseUnstored(project) {
   return { ok: false, project, issues: ['scene could not be cloned'] };
+}
+
+function asObjectList(objects) {
+  return Array.isArray(objects) ? objects : [];
+}
+
+function refuseLiveObjects(project) {
+  if (!project || project.objects == null || Array.isArray(project.objects)) return null;
+  return { ok: false, project, issues: ['objects must be an array'] };
 }
 
 export function sameProject(a, b) {
@@ -110,11 +132,11 @@ export function emptyProject(meta = {}) {
 }
 
 export function objectById(project, id) {
-  return (project.objects || []).find((object) => object.id === id) || null;
+  return asObjectList(project && project.objects).find((object) => object.id === id) || null;
 }
 
 export function actorsOf(project) {
-  return (project.objects || []).filter((object) => object.kind === 'actor');
+  return asObjectList(project && project.objects).filter((object) => object.kind === 'actor');
 }
 
 export function issuesForObject(object) {
@@ -162,7 +184,7 @@ function nonBooleanPlayerIssue(object) {
 }
 
 function pushPlayerFlagIssues(issues, objects) {
-  for (const object of objects || []) {
+  for (const object of asObjectList(objects)) {
     const issue = nonBooleanPlayerIssue(object);
     if (issue) issues.push(issue);
   }
@@ -170,7 +192,7 @@ function pushPlayerFlagIssues(issues, objects) {
 
 function countPlayers(objects) {
   let count = 0;
-  for (const object of objects || []) {
+  for (const object of asObjectList(objects)) {
     if (isPlayerActor(object)) count += 1;
   }
   return count;
@@ -226,7 +248,7 @@ export function requireOnePlayer(previous, result) {
 
 function playersAfterReplace(project, id, object) {
   let count = 0;
-  for (const entry of project.objects || []) {
+  for (const entry of asObjectList(project && project.objects)) {
     const row = entry && entry.id === id ? object : entry;
     if (isPlayerActor(row)) count += 1;
   }
@@ -234,12 +256,14 @@ function playersAfterReplace(project, id, object) {
 }
 
 export function placePlayer(project) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const flags = [];
   pushPlayerFlagIssues(flags, project && project.objects);
   if (flags.length) return { ok: false, project, issues: flags };
   const found = countPlayers(project.objects);
   if (found > 1) return { ok: false, project, issues: [exactlyOnePlayerIssue(found)] };
-  const existing = (project.objects || []).find((object) => isPlayerActor(object));
+  const existing = asObjectList(project && project.objects).find((object) => isPlayerActor(object));
   if (existing) {
     const stored = cloneScene(project);
     if (!stored) return refuseUnstored(project);
@@ -274,6 +298,8 @@ export function placePlayer(project) {
 }
 
 export function setPlayer(project, id) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const target = objectById(project, id);
   if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
   const next = cloneScene(project);
@@ -288,6 +314,8 @@ export function setPlayer(project, id) {
 }
 
 export function clearPlayerFlag(project, id) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const target = objectById(project, id);
   if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
   const next = cloneScene(project);
@@ -299,6 +327,8 @@ export function clearPlayerFlag(project, id) {
 }
 
 export function addObject(project, object) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const issues = issuesForObject(object);
   if (objectById(project, object && object.id)) issues.push(`duplicate id "${object && object.id}"`);
   pushPlayerFlagIssues(issues, [object]);
@@ -315,12 +345,14 @@ export function addObject(project, object) {
 }
 
 export function replaceObject(project, id, object) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const issues = issuesForObject(object);
   if (object.id !== id) issues.push('replacement id must match the edited id');
   if (!objectById(project, id)) issues.push(`missing id "${id}"`);
   else {
     pushPlayerFlagIssues(issues, [object]);
-    pushPlayerFlagIssues(issues, (project.objects || []).filter((entry) => entry.id !== id));
+    pushPlayerFlagIssues(issues, asObjectList(project.objects).filter((entry) => entry.id !== id));
     const found = playersAfterReplace(project, id, object);
     if (found !== 1) issues.push(exactlyOnePlayerIssue(found));
   }
@@ -344,6 +376,8 @@ export function deleteObjects(project, ids) {
 }
 
 export function cloneObject(project, id, newId) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const source = objectById(project, id);
   if (!source) return { ok: false, project, issues: [`missing id "${id}"`] };
   if (typeof newId !== 'string' || !ID_RE.test(newId)) {
@@ -374,18 +408,21 @@ export function cloneObject(project, id, newId) {
 
 export function expandIds(project, ids) {
   const wanted = new Set(ids || []);
+  const objects = asObjectList(project && project.objects);
   const groups = new Set();
-  for (const object of project.objects || []) {
+  for (const object of objects) {
     if (wanted.has(object.id) && object.groupId) groups.add(object.groupId);
   }
   const out = new Set(wanted);
-  for (const object of project.objects || []) {
+  for (const object of objects) {
     if (object.groupId && groups.has(object.groupId)) out.add(object.id);
   }
   return [...out];
 }
 
 export function nudgeObjects(project, ids, dx, dz) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const move = new Set(expandIds(project, ids));
   if (!move.size) return { ok: false, project, issues: ['nothing to nudge'] };
   const next = cloneScene(project);
@@ -434,6 +471,8 @@ export function groupObjects(project, ids, groupId) {
 }
 
 export function ungroupObjects(project, ids) {
+  const refused = refuseLiveObjects(project);
+  if (refused) return refused;
   const wanted = new Set(expandIds(project, ids));
   const next = cloneScene(project);
   if (!next) return refuseUnstored(project);
@@ -484,7 +523,7 @@ export function screenToWorld(sx, sy, camera, view) {
 }
 
 export function hitTest(project, sx, sy, camera, view) {
-  const objects = [...(project.objects || [])].reverse();
+  const objects = [...asObjectList(project && project.objects)].reverse();
   for (const object of objects) {
     if (!Number.isFinite(object.x) || !Number.isFinite(object.z)) continue;
     const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
@@ -516,7 +555,7 @@ export function projectIssues(project) {
   if (!Number.isFinite(project.seed)) issues.push('seed must be a finite number');
   if (!Number.isInteger(project.ticks) || project.ticks < 1) issues.push('ticks must be a positive integer');
   const ids = new Set();
-  for (const object of project.objects || []) {
+  for (const object of asObjectList(project && project.objects)) {
     if (object && ids.has(object.id)) issues.push(`duplicate id "${object.id}"`);
     if (object && object.id) ids.add(object.id);
   }

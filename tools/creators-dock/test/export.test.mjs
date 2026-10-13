@@ -294,6 +294,20 @@ function writePack(root, exported) {
   }
 }
 
+test('a null assertion clone is recorded and does not throw', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const trigger = project.objects.find((object) => object.kind === 'trigger');
+  Object.defineProperty(trigger.assertion, 'toJSON', {
+    enumerable: false,
+    value() { return null; },
+  });
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, false);
+  assert.equal(exported.issues.some((issue) => issue.includes(trigger.id) && issue.includes('assertion')), true);
+  assert.equal(project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+  assert.equal(trigger.assertion.signal, 'playerZ');
+});
+
 test('an exported user encounter can reference shipped bark lines without aborting the loader', async () => {
   const exported = await exportProject(getComposition('dock.intercept-cargo'));
   assert.equal(exported.ok, true, exported.issues.join('\n'));

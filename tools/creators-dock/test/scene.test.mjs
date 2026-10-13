@@ -1136,3 +1136,93 @@ test('a toJSON that turns an actor into a trigger cannot keep isPlayer null', ()
   assert.equal(objectById(cloned.project, 'player_copy'), null);
   assert.equal(objectById(cloned.project, 'cargo').kind, 'actor');
 });
+
+test('a nested toJSON that returns null is not adopted', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const grid = { size: scene.grid.size, snap: scene.grid.snap, toJSON() { return null; } };
+  scene.grid = grid;
+  const added = addObject(scene, plainActor('rock'));
+  assert.equal(added.ok, false);
+  assert.equal(added.project, scene);
+  assert.equal(added.project.grid, grid);
+  assert.notEqual(added.project.grid, null);
+  assert.equal(objectById(added.project, 'rock'), null);
+  assert.equal(objectById(added.project, 'player').isPlayer, true);
+
+  const velocity = getComposition('dock.intercept-cargo');
+  const cargo = objectById(velocity, 'cargo');
+  const startVelX = cargo.velX;
+  cargo.overrides = { mass: 2, toJSON() { return null; } };
+  const sped = setVelocity(velocity, 'cargo', 3, -2);
+  assert.equal(sped.ok, false);
+  assert.equal(sped.project, velocity);
+  assert.equal(objectById(sped.project, 'cargo').overrides.mass, 2);
+  assert.notEqual(objectById(sped.project, 'cargo').overrides, null);
+  assert.equal(objectById(sped.project, 'cargo').velX, startVelX);
+
+  const nudgedScene = getComposition('dock.intercept-cargo');
+  const nudgedGrid = { size: 10, snap: true, toJSON() { return null; } };
+  nudgedScene.grid = nudgedGrid;
+  const startX = objectById(nudgedScene, 'cargo').x;
+  const nudged = nudgeObjects(nudgedScene, ['cargo'], 10, 0);
+  assert.equal(nudged.ok, false);
+  assert.equal(nudged.project, nudgedScene);
+  assert.equal(nudged.project.grid, nudgedGrid);
+  assert.equal(objectById(nudged.project, 'cargo').x, startX);
+
+  const cameraScene = getComposition('dock.intercept-cargo');
+  const cameraGrid = { size: 10, snap: true, toJSON() { return null; } };
+  cameraScene.grid = cameraGrid;
+  const cameraX = cameraScene.camera.x;
+  const panned = setCamera(cameraScene, { x: 12, z: 4 });
+  assert.equal(panned, cameraScene);
+  assert.equal(panned.grid, cameraGrid);
+  assert.equal(panned.camera.x, cameraX);
+});
+
+test('addObject returns the previous project when objects is a plain object', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const objects = { notAnArray: true };
+  scene.objects = objects;
+  const added = addObject(scene, plainActor('rock'));
+  assert.equal(added.ok, false);
+  assert.equal(added.project, scene);
+  assert.equal(added.project.objects, objects);
+  assert.equal(added.issues.some((issue) => issue.includes('objects must be an array')), true);
+
+  const text = getComposition('dock.intercept-cargo');
+  text.objects = 'actors';
+  assert.doesNotThrow(() => addObject(text, plainActor('rock')));
+  assert.equal(addObject(text, plainActor('rock')).project, text);
+  assert.equal(setPlayer(text, 'player').project, text);
+  assert.equal(clearPlayerFlag(text, 'player').project, text);
+  assert.equal(replaceObject(text, 'player', plainActor('player', { isPlayer: true })).project, text);
+  assert.equal(cloneObject(text, 'player', 'player_copy').project, text);
+  assert.equal(placePlayer(text).project, text);
+
+  const bag = getComposition('dock.intercept-cargo');
+  bag.objects = { player: true };
+  assert.doesNotThrow(() => placePlayer(bag));
+  assert.equal(placePlayer(bag).project, bag);
+
+  const counted = getComposition('dock.intercept-cargo');
+  counted.objects = 4;
+  assert.doesNotThrow(() => placePlayer(counted));
+  assert.equal(placePlayer(counted).project, counted);
+
+  const nudged = getComposition('dock.intercept-cargo');
+  nudged.objects = { notAnArray: true };
+  assert.doesNotThrow(() => nudgeObjects(nudged, ['cargo'], 10, 0));
+  assert.equal(nudgeObjects(nudged, ['cargo'], 10, 0).project, nudged);
+
+  const ungrouped = getComposition('dock.intercept-cargo');
+  ungrouped.objects = 'actors';
+  assert.doesNotThrow(() => ungroupObjects(ungrouped, ['cargo']));
+  assert.equal(ungroupObjects(ungrouped, ['cargo']).project, ungrouped);
+
+  const cleared = getComposition('dock.intercept-cargo');
+  cleared.objects = null;
+  const nulled = addObject(cleared, plainActor('rock', { isPlayer: true }));
+  assert.equal(nulled.ok, false);
+  assert.equal(nulled.project, cleared);
+});

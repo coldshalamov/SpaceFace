@@ -283,7 +283,16 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
       issues.push(`${trigger.id}: trigger.assertion is required`);
       continue;
     }
-    const assertion = clone(trigger.assertion);
+    let assertion = null;
+    try {
+      assertion = clone(trigger.assertion);
+    } catch (error) {
+      assertion = null;
+    }
+    if (!assertion || typeof assertion !== 'object' || Array.isArray(assertion)) {
+      issues.push(`${trigger.id}: trigger.assertion could not be cloned`);
+      continue;
+    }
     assertions.push(assertion);
     rememberOracle(assertion, seenOracle, issues);
     if (assertion.signal && !SIGNAL_SET.has(assertion.signal)) {
@@ -321,7 +330,11 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
     signals.add('tension');
   }
 
-  const frames = Array.isArray(project.frames) ? clone(project.frames) : [];
+  const clonedFrames = Array.isArray(project.frames) ? clone(project.frames) : [];
+  const frames = Array.isArray(clonedFrames) ? clonedFrames : [];
+  if (Array.isArray(project.frames) && !Array.isArray(clonedFrames)) {
+    issues.push('frames could not be cloned');
+  }
   for (const frame of frames) {
     if (!frame || !frame.input) continue;
     for (const key of Object.keys(frame.input)) {
