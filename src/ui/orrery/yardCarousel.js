@@ -232,10 +232,15 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
         }
       }
     }
+    // every box this pass needs is read here, before the first write below, so the build costs one
+    // layout instead of forcing a fresh one mid-pass (the back layer and grab surface are absolute
+    // and cannot move the stage or the poster)
+    const sb = hr && hr.width ? anchor.getBoundingClientRect() : ab;
+    const posterEl = modelRing && typeof anchor.querySelector === 'function' ? anchor.querySelector('.k-stage__poster') : null;
+    const pr = posterEl ? posterEl.getBoundingClientRect() : null;
     face.setAttribute('viewBox', `0 0 ${W} ${H}`);
     // the back layer lives in the anchor (the stage), under its picture, measured in the host's box
     if (!back.isConnected && anchor.firstChild) anchor.insertBefore(back, anchor.firstChild);
-    const sb = anchor.getBoundingClientRect();
     back.setAttribute('viewBox', `${(sb.left - hb.left).toFixed(1)} ${(sb.top - hb.top).toFixed(1)} ${sb.width.toFixed(1)} ${sb.height.toFixed(1)}`);
     Object.entries({ cx: g.cx, cy: g.cy, rx: rx * 1.02, ry: ry * 1.1 }).forEach(([k, v]) => floor.setAttribute(k, v.toFixed(1)));
     backBand.setAttribute('d', ring(104, 256));
@@ -255,8 +260,6 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     g.grab = { l: g.cx - rx - 30, t: top, r: g.cx + rx + 30, b: g.cy + ry + 26 };
     Object.assign(grab.style, { left: `${(g.cx - rx - 30).toFixed(0)}px`, top: `${top.toFixed(0)}px`, width: `${(2 * rx + 60).toFixed(0)}px`, height: `${(g.cy + ry + 26 - top).toFixed(0)}px` });
     if (modelRing) {
-      const posterEl = typeof anchor.querySelector === 'function' ? anchor.querySelector('.k-stage__poster') : null;
-      const pr = posterEl ? posterEl.getBoundingClientRect() : null;
       g.mw = (pr && pr.width) || (hr && hr.width ? hr.width : ab.width * 0.74) * 1.4;
       g.mh = (pr && pr.height) || (hr && hr.width ? hr.height : ab.height * 0.46) * 1.4;
       for (const m of models) {
