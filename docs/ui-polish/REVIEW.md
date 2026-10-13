@@ -45,7 +45,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
-| **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait/landscape stacked in § Phone Codex below |
+| **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait stack + landscape hang\|reader; review1 fixes in § Phone Codex |
 | **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
 | **`credits`** | **DONE** | See § Credits below — this session |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
@@ -581,4 +581,6 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 **Before (390×844):** the kit hang column is ~480×k-s, so the stage track collapses to 0px. The subtitle prints through the unlock dial labels, the absolute plate sits on the entry ladder, and the wedge fans across the hang. **Before (844×390):** ARCHIVE / LEDGER on the section scale paint past CLOSE.
 
 **After (`archiveLayouts.js` only, `data-sf-mobile="1"`):** one column — title (CODEX → dials → subtitle), plate in flow, hang (sections + ladder, clipped), reading, foot docked on a fade. Landscape ≤560px tall hides the plate and dial words so the scale scrolls inside the hang and CLOSE stays clear. Desktop 801–1100 is unchanged here (#356). Selectors/IDs unchanged. Shots: `ui-shots/codex-phone/` (not committed).
+
+**Code Work review fix (HOLD notes):** Landscape ≤560px is now hang | reader side-by-side (CSS grid) so "THE EIGHT BEATS", the entry title, and the first sentence show on first view with CLOSE clear. The thin rule through the reader "0" was `.orr-extent::before` (scroll thumb at `left:7px`) on the reading article — parked in the entry's left gutter on phone. The ladder Hand's bone dot is pulled left (`--orr-hand-x:6px` / `4px` landscape) with extra row padding so it clears the leading B. Portrait stack kept. Desktop 1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review1/`.
 

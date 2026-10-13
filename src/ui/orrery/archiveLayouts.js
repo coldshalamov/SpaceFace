@@ -424,8 +424,9 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 `;
 
 /** Phone Codex — the kit's hang column is 480×k-s, so at 390 the stage track collapses to 0 and the
- *  absolute plate + title dials paint over the ladder and CLOSE. One column: title, plate, hang,
- *  reading, foot. Scoped to data-sf-mobile only (desktop 801–1100 stays on #356). */
+ *  absolute plate + title dials paint over the ladder and CLOSE. Portrait: one column (title, plate,
+ *  hang, reading, foot). Landscape ≤560px: hang | reader side by side so the entry title and first
+ *  sentence show on first view. Scoped to data-sf-mobile only (desktop 801–1100 stays on #356). */
 const CX_PHONE = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.of-codex.orr-archive.orr-archive';
 const CODEX_PHONE_CSS = `
 ${CX_PHONE} { display:flex !important; flex-direction:column !important; row-gap:10px !important; column-gap:0 !important;
@@ -455,11 +456,17 @@ ${CX_PHONE} > .k-hang > .cx-wedge { display:none !important; }
 ${CX_PHONE} > .k-hang > .sf-tabbar { margin-bottom:0 !important; }
 ${CX_PHONE}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:0 !important; }
 ${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:11px !important; letter-spacing:.1em !important; padding-right:14px !important; }
-${CX_PHONE} .cx-ladder .k-row { padding:4px 4px 4px 28px !important; }
+/* Hand sits on the rail; pull it left of the name so the bone dot clears the leading B. */
+${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:6px; }
+${CX_PHONE} .cx-ladder .k-row { padding:4px 4px 4px 32px !important; }
 ${CX_PHONE} .cx-ladder .k-row::before { top:12px !important; left:2px !important; width:8px !important; }
 ${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
 ${CX_PHONE} > .k-stage { flex:0 1 auto; order:4; min-height:0 !important; max-height:34% !important; overflow:hidden auto !important;
   padding:0 !important; margin:0 !important; }
+/* Scroll-extent thumb (.orr-extent::before at left:7px) was painting through the reader "0". Park it in the entry's left gutter. */
+${CX_PHONE} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-12px !important; width:2px !important; }
+/* If the entry's left gutter is gone, drop the thumb rather than strike the numeral. */
+${CX_PHONE} > .k-stage > .sf-codex-entry { padding-left:16px !important; margin-left:-16px !important; }
 ${CX_PHONE} .cx-reader__num { gap:8px; margin-bottom:2px !important; }
 ${CX_PHONE} .cx-reader__num-n { font-size:28px; line-height:1 !important; }
 ${CX_PHONE} .cx-reader__num-of { font-size:12px; }
@@ -473,16 +480,36 @@ ${CX_PHONE} > .k-foot { flex:none; order:5; z-index:4; margin:0 -14px !important
   background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10) 16px) !important; align-items:center !important; min-height:0 !important; }
 ${CX_PHONE} > .k-foot .sf-back.k-word { padding:8px 0 10px !important; min-height:40px !important; }
 @media (max-height:560px) {
-  ${CX_PHONE} { row-gap:6px !important; padding-top:8px !important; }
-  ${CX_PHONE} > .cx-plate-host { display:none !important; }
+  /* Landscape phone: hang | reader as two columns so section head + entry title + first sentence clear on first view. */
+  ${CX_PHONE} { display:grid !important; grid-template-columns:minmax(0, 1.05fr) minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+    row-gap:6px !important; column-gap:14px !important; padding-top:8px !important; }
+  ${CX_PHONE} > .k-title { grid-column:1 / -1; grid-row:1; order:unset; flex:unset; }
   ${CX_PHONE} > .k-title > p { display:none !important; }
-  ${CX_PHONE} .cx-index__item { grid-template-rows:28px auto; width:44px; }
-  ${CX_PHONE} .cx-index__dial { width:28px; height:28px; }
+  ${CX_PHONE} > .cx-plate-host { display:none !important; }
+  ${CX_PHONE} .cx-index__item { grid-template-rows:26px auto; width:40px; }
+  ${CX_PHONE} .cx-index__dial { width:26px; height:26px; }
   ${CX_PHONE} .cx-index__w { display:none !important; }
-  ${CX_PHONE} .cx-index__n { font-size:10px !important; }
-  ${CX_PHONE} > .k-stage { max-height:38% !important; }
-  ${CX_PHONE} .sf-tabbar .sf-tab { height:20px !important; font-size:10px !important; letter-spacing:.1em !important; }
-  ${CX_PHONE} > .k-foot { padding-top:6px !important; padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
+  ${CX_PHONE} .cx-index__n { font-size:9px !important; }
+  ${CX_PHONE} .cx-index__list { gap:2px 4px !important; }
+  ${CX_PHONE} > .k-hang { grid-column:1; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important;
+    --cx-sections:86px; --cx-gap:8px; }
+  ${CX_PHONE} > .k-stage { grid-column:2; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important; }
+  ${CX_PHONE} > .k-foot { grid-column:1 / -1; grid-row:3; order:unset; flex:unset;
+    padding-top:6px !important; padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
+  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:10px !important; letter-spacing:.08em !important; padding-right:10px !important; }
+  ${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:4px; }
+  ${CX_PHONE} .cx-ladder .k-row { padding:3px 2px 3px 30px !important; }
+  ${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:12px !important; }
+  ${CX_PHONE} .cx-reader__num-n { font-size:22px; }
+  ${CX_PHONE} .cx-reader__num-of { font-size:11px; }
+  ${CX_PHONE} .sf-codex-entry > h2, ${CX_PHONE} .sf-codex-entry > h2 .k-signal, ${CX_PHONE} .sf-codex-entry > h2 .k-38 { font-size:15px !important; }
+  ${CX_PHONE} .sf-codex-entry > h2 { margin-top:4px !important; }
+  ${CX_PHONE} .sf-codex-entry > .fh-legend, ${CX_PHONE} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:11px !important; }
+  ${CX_PHONE} .sf-codex-entry .k-measure { margin-top:8px !important; padding-top:8px !important; }
+  ${CX_PHONE} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.35 !important; }
+  ${CX_PHONE} .cx-reader__turn { margin-top:6px !important; gap:10px; }
+  /* Soften the reading fade so the title isn't half-eaten on first view. */
+  ${CX_PHONE} > .k-stage > .sf-codex-entry[data-overflow="1"]:not(.is-at-end) { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); }
 }
 `;
 
