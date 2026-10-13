@@ -15,6 +15,7 @@ import { buildRouteManifest } from './lib/manifest.mjs';
 import { runSession } from './lib/session.mjs';
 import { shrinkFailure } from './lib/shrink.mjs';
 import { runSweep } from './lib/sweep.mjs';
+import { verifyHeadedBrowser } from './lib/headed.mjs';
 import { triageSweep } from './lib/triage.mjs';
 
 const ROOT = join(import.meta.dirname, '../../..');
@@ -60,11 +61,9 @@ try {
     writeArtifact(join(OUT, 'sweep.json'), { ...sweep, runs: sweep.runs.map(stripTape) });
     writeArtifact(join(OUT, 'triage.json'), triage);
     process.stdout.write(
-      `sweep runs=${sweep.runCount} pass=${sweep.passCount} incomplete=${sweep.incompleteCount} fail=${sweep.failCount} infra=${sweep.infraCount} confirmed=${triage.confirmedCount}\n`,
+      `sweep runs=${sweep.runCount} pass=${sweep.passCount} incomplete=${sweep.incompleteCount} fail=${sweep.failCount} infra=${sweep.infraCount} confirmed=${triage.confirmedCount} headed=${sweep.headedBrowser && sweep.headedBrowser.status}\n`,
     );
-    if (sweep.infraCount) process.exitCode = 2;
-    else if (sweep.failCount) process.exitCode = 1;
-    else if (sweep.incompleteCount) process.exitCode = 3;
+    process.exitCode = sweepExitCode(sweep);
   } else if (command === 'run') {
     const run = await runSession({
       journeyId: args.journey || 'flight',
@@ -121,6 +120,7 @@ async function prove() {
     ticks: shrunk.minimalTicks,
     playbackTape: shrunk.tape,
   }) : null;
+  const headed = await verifyHeadedBrowser([first]);
   writeArtifact(join(OUT, 'canary-failure.json'), publicRun(first));
   writeArtifact(join(OUT, 'canary-replay.json'), publicRun(replay));
   const report = {
@@ -141,7 +141,8 @@ async function prove() {
       && shrunkReplay.failures.some((failure) => failure.id === 'unresponsive-commands' && failure.origin === 'canary')
       && manifest.journeys.length >= 12
       && manifest.personas.length >= 8
-      && manifest.controlSchema.present === true,
+      && manifest.controlSchema.present === true
+      && headed.status === 'replayed',
     canaryFingerprint: first.fingerprint,
     canaryDigest: first.digest,
     replayDigest: replay.digest,
@@ -152,7 +153,7 @@ async function prove() {
     determinism: green.digest === greenAgain.digest,
     journeys: manifest.journeys.length,
     personas: manifest.personas.length,
-    headedBrowser: 'unverified',
+    headedBrowser: headed,
     deviceTested: false,
     fpsClaimed: false,
   };
@@ -202,6 +203,14 @@ function publicRun(run) {
       tapeHash: run.tapeHash,
     },
   };
+}
+
+function sweepExitCode(sweep) {
+  if (sweep.infraCount) return 2;
+  if (sweep.failCount || (sweep.confirmed && sweep.confirmed.length)) return 1;
+  if (!sweep.headedBrowser || sweep.headedBrowser.status !== 'replayed') return 4;
+  if (sweep.incompleteCount) return 3;
+  return 0;
 }
 
 function injectedFaultOf(run) {

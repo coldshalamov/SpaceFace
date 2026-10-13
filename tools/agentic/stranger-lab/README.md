@@ -2,7 +2,7 @@
 
 Autonomous, repeatable adversarial player testing for SpaceFace. Personas read observable sim state and emit the real input contract. The authoritative headless runtime steps. Failures shrink to a tape that replays.
 
-This is a focused-fixture host. It does not claim a headed browser, a measured frame rate, or a physical phone.
+This is a focused-fixture host. It does not claim a physical phone or a frame rate. Headed rows are Chrome replays of the recorded tapes at 390×844, or `unverified` with the browser error.
 
 Each run now separates detected defects from route completion. `incomplete` names
 missing actions or transitions; an unexercised detector is `unmeasured`, never a
@@ -31,7 +31,7 @@ node tools/agentic/stranger-lab/cli.mjs replay --artifact artifacts/stranger-lab
 node tools/agentic/stranger-lab/cli.mjs sweep
 ```
 
-Twelve journeys × twelve seeds. `simulated-touch` drives the worker-lane phone reducer at 390×844. `deviceTested` stays false. Sweep launches Chrome once against the lab host page and records whether that page loaded; it does not claim a physical phone or a frame rate. Tapes and sweep rows are stored whole. Replay applies the recorded axes with the fault injector off.
+Twelve journeys × twelve seeds, rotating through every persona, including the hostile explorer and the weak-hardware pilot. A detector failure fails the sweep. `simulated-touch` quantizes through the phone lane reducer, and those tapes are replayed in Chrome at 390×844. `deviceTested` stays false. The sweep exits 4 when a headed replay did not step. Tapes are stored whole. Node replay applies the recorded axes with the fault injector off.
 
 The docking fixture approaches the manifest's actual berth and measures physical
 berth arrival. Its headless completion does not exercise the station screen or

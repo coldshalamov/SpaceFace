@@ -65,6 +65,11 @@ function masslineJourney(obs) {
   return obs.journeyId === 'tether-attach-cut' || obs.journeyId === 'heavy-object';
 }
 
+// Seed shifts a fixed cue by a few ticks so two seeds are not the same script.
+function seededTick(seed, base, span = 3) {
+  return base + ((seed >>> 0) % span);
+}
+
 const PERSONAS = {
   'first-time-pilot': {
     id: 'first-time-pilot',
@@ -74,7 +79,7 @@ const PERSONAS = {
       const bias = unitFromSeed(seed, obs.tick, 1) * 0.16 - 0.08;
       if (obs.journeyId === 'launch') {
         const commands = [];
-        if (obs.docked && obs.tick === 4) commands.push({ type: 'undock' });
+        if (obs.docked && obs.tick === seededTick(seed, 4)) commands.push({ type: 'undock' });
         if (obs.docked) return base({ brake: true, commands });
         return base({ moveZ: 0.75, turnIntent: clamp(bias, -0.2, 0.2), commands });
       }
@@ -97,10 +102,14 @@ const PERSONAS = {
       const fighting = obs.journeyId === 'combat-death-retry';
       return base({
         moveZ: fighting ? (ctx.recovered ? 0.4 : 0) : 1,
-        moveX: fighting ? 0 : clamp(swing, -1, 1),
-        turnIntent: fighting ? turnToward(obs) : clamp(swing * 0.8 + turnToward(obs) * 0.2, -1, 1),
+        moveX: fighting ? clamp(swing * 0.015, -0.015, 0.015) : clamp(swing, -1, 1),
+        turnIntent: fighting
+          ? clamp(turnToward(obs) + swing * 0.01, -1, 1)
+          : clamp(swing * 0.8 + turnToward(obs) * 0.2, -1, 1),
         boost: fighting ? false : obs.tick > 6,
-        fire: fighting ? obs.tick < 3 : !!(obs.nearest && obs.nearest.dist < 80 && obs.nearest.kind !== 'station'),
+        fire: fighting
+          ? obs.tick < seededTick(ctx.seed, 2)
+          : !!(obs.nearest && obs.nearest.dist < 80 && obs.nearest.kind !== 'station'),
         commands: fighting && obs.alive === false ? [{ type: 'recover' }] : [],
         tether: masslineJourney(obs),
         reel: masslineJourney(obs) && (obs.tick % 20) < 8 ? -1 : 0,
@@ -112,11 +121,12 @@ const PERSONAS = {
     summary: 'Slow approach, no boost, reel when lined, buys and fits only at a berth.',
     decide(obs, ctx) {
       const seed = ctx && ctx.seed || 0;
-      const bias = obs.journeyId === 'docking' ? 0 : unitFromSeed(seed, 3, 5) * 0.2 - 0.1;
+      const dockBias = (unitFromSeed(seed, 3, 5) - 0.5) * 0.03;
+      const bias = obs.journeyId === 'docking' ? dockBias : unitFromSeed(seed, 3, 5) * 0.2 - 0.1;
       const dist = obs.nearest ? obs.nearest.dist : 999;
       const closing = dist > 18 ? 0.45 : 0.15;
       const commands = [];
-      if (obs.journeyId === 'buy-refit' && obs.docked && obs.tick === 8) {
+      if (obs.journeyId === 'buy-refit' && obs.docked && obs.tick === seededTick(seed, 8)) {
         commands.push({
           type: 'buy',
           stationId: 'station_helios',
@@ -125,7 +135,7 @@ const PERSONAS = {
           intentId: `stranger-buy-${obs.journeyId}`,
         });
       }
-      if (obs.journeyId === 'buy-refit' && obs.docked && obs.tick === 24) {
+      if (obs.journeyId === 'buy-refit' && obs.docked && obs.tick === seededTick(seed, 24)) {
         commands.push({
           type: 'refit',
           defId: 'mod_cargo_scanner_s',
@@ -145,6 +155,7 @@ const PERSONAS = {
         return base({
           moveZ: obs.berthed || obs.speed > arrivalSpeed ? 0 : 0.15,
           brake: obs.berthed || obs.speed > arrivalSpeed,
+          moveX: bias,
           turnIntent: obs.berthed ? 0 : turnToward({ ...obs, nearest: obs.dockBerth }),
           commands,
         });
@@ -165,17 +176,17 @@ const PERSONAS = {
     decide(obs, ctx) {
       const seed = ctx && ctx.seed || 0;
       const commands = [];
-      if (obs.journeyId === 'mission' && obs.tick === 6) {
+      if (obs.journeyId === 'mission' && obs.tick === seededTick(seed, 6)) {
         commands.push({ type: 'accept-mission', missionId: 'stranger-recon' });
       }
-      if (obs.journeyId === 'mission' && obs.tick === 48) {
+      if (obs.journeyId === 'mission' && obs.tick === seededTick(seed, 48)) {
         commands.push({ type: 'accept-mission', missionId: 'stranger-unfinishable' });
       }
       if (obs.journeyId === 'mission' && obs.missionActiveId && obs.tick === 70) {
         commands.push({ type: 'abandon-mission', missionId: obs.missionActiveId });
       }
       if (obs.journeyId === 'crucible-wave') {
-        if (obs.runPhase === 'inactive' && obs.tick === 2) {
+        if (obs.runPhase === 'inactive' && obs.tick === seededTick(seed, 2)) {
           commands.push({
             type: 'begin-run',
             kind: 'survival',
@@ -190,7 +201,7 @@ const PERSONAS = {
       return base({
         moveZ: obs.journeyId === 'mission' || obs.journeyId === 'crucible-wave' ? 0.4 : 0.55 + unitFromSeed(seed, 1, 8) * 0.3,
         turnIntent: clamp(turnToward(obs) + unitFromSeed(seed, obs.tick, 8) * 0.1 - 0.05, -0.6, 0.6),
-        scanPulse: obs.journeyId === 'mission' && obs.tick === 24,
+        scanPulse: obs.journeyId === 'mission' && obs.tick === seededTick(seed, 24),
         commands,
       });
     },
@@ -241,7 +252,7 @@ const PERSONAS = {
     decide(obs, ctx) {
       const seed = ctx && ctx.seed || 0;
       const commands = [];
-      if (obs.journeyId === 'save-continue' && obs.tick === 12) {
+      if (obs.journeyId === 'save-continue' && obs.tick === seededTick(seed, 12)) {
         commands.push({
           type: 'jump',
           targetSectorId: 'sector_ceres_belt',

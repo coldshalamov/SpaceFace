@@ -7,6 +7,7 @@ import { PERSONA_IDS, getPersona } from '../../tools/agentic/stranger-lab/lib/pe
 import { redact } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
 import { runSession } from '../../tools/agentic/stranger-lab/lib/session.mjs';
 import { shrinkFailure } from '../../tools/agentic/stranger-lab/lib/shrink.mjs';
+import { personaIdForSweepIndex } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
 
 const CANARY = {
   journeyId: 'flight',
@@ -52,6 +53,12 @@ test('personas are pure functions of the observation and seed', () => {
     const other = persona.decide(obs, { seed: 8, tick: 2 });
     assert.notDeepEqual(left, other, `${id} ignored the seed`);
   }
+});
+
+test('the sweep assigns every persona, including hostile and weak-hardware', () => {
+  const seen = new Set();
+  for (let index = 0; index < 12 * SWEEP_SEEDS.length; index++) seen.add(personaIdForSweepIndex(index));
+  for (const id of PERSONA_IDS) assert.equal(seen.has(id), true, id);
 });
 
 test('redact strips account material and does not truncate tapes', () => {
