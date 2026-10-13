@@ -1754,7 +1754,7 @@ export const input = {
     // fall back to a previously active joystick whose last sample is still nonzero.
     const saucerKeys = isPlayerSaucer(p) && (up || down
       || this._held(state, 'yawLeft') || this._held(state, 'yawRight')
-      || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].some(k => this._keys[k]));
+      || this._held(state, 'strafeLeft') || this._held(state, 'strafeRight'));
     const kbdDrive = !!(saucerKeys || kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
     const pointerOwnsHelm = !!(helm && kbmRecent && this._screen && this._screen.active);
     const pointerHelmEdge = !!(this._pointerHelmEdge && pointerOwnsHelm);

@@ -21,10 +21,12 @@ export function projectSaucerControls({ keys = {}, left, right, up, down,
   } else if (source === 'touch' && touch) {
     x = finite(touch.leftX); z = -finite(touch.leftY);
   } else {
-    x = Number(!!(right || keys.ArrowRight || keys.KeyD))
-      - Number(!!(left || keys.ArrowLeft || keys.KeyA));
-    z = Number(!!(up || keys.ArrowUp || keys.KeyW))
-      - Number(!!(down || keys.ArrowDown || keys.KeyS));
+    // Production passes resolved bindings, including false for a released/unbound key.
+    // Standalone callers can omit them to use defaults; defaults never override a rebind.
+    x = Number(!!(right ?? (keys.ArrowRight || keys.KeyD)))
+      - Number(!!(left ?? (keys.ArrowLeft || keys.KeyA)));
+    z = Number(!!(up ?? (keys.ArrowUp || keys.KeyW)))
+      - Number(!!(down ?? (keys.ArrowDown || keys.KeyS)));
   }
   const direction = brake ? { x: 0, z: 0 } : saucerDirection(x, z);
   return { moveX: direction.x, moveZ: direction.z, turnIntent: 0, brake: !!brake };
