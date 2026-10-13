@@ -85,20 +85,30 @@ test('sandboxed preload remains a one-way lifecycle subscription', () => {
   assert.match(preload, /contextBridge\.exposeInMainWorld\('spacefaceLifecycle'/);
   assert.match(preload, /ipcRenderer\.on\(SHELL_LIFECYCLE_CHANNEL/);
   assert.match(preload, /const SHELL_QUIT_CHANNEL\s*=\s*['"]spaceface:quit['"]/);
+  // Every outbound call by its channel constant - including the payload-carrying ones (achievement unlock,
+  // workshop publish, window-mode set), which a single-argument pattern would not see.
   const outboundIpcCalls = [...preload.matchAll(
-    /ipcRenderer\.(send|sendSync|invoke|postMessage)\s*\(\s*([^,)]+?)\s*\)/g,
+    /ipcRenderer\.(send|sendSync|invoke|postMessage)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/g,
   )].map(([, method, argument]) => [method, argument.trim()]);
-  // The documented quit channel (fire-and-forget) plus read-only status / request-response queries: build identity, Steam
-  // status, workshop status + sync, perf metrics. Every channel is a named constant; any new one must be added here on review.
+  // The documented quit channel (fire-and-forget) plus request-response queries: build identity, Steam status and
+  // achievement unlock (known id only), workshop status / publish (a mod id string, <= 80 chars; the shell resolves the
+  // directory) / sync, perf metrics, the window mode get/set (the sender's own window, three allowed words,
+  // validated again by applyWindowMode), and save-clip (basename only, .gif/.mp4, 24 MB cap, destination chosen by
+  // the player in a native save dialog). Every channel is a named constant; any new one must be added here on review.
   assert.deepEqual(outboundIpcCalls, [
     ['send', 'SHELL_QUIT_CHANNEL'],
     ['send', 'SHELL_QUIT_CHANNEL'],
+    ['invoke', 'SHELL_SAVE_CLIP_CHANNEL'],
     ['invoke', 'SHELL_BUILD_INFO_CHANNEL'],
+    ['invoke', 'SHELL_ACHIEVEMENT_UNLOCK_CHANNEL'],
     ['invoke', 'SHELL_STEAM_STATUS_CHANNEL'],
     ['invoke', 'SHELL_WORKSHOP_STATUS_CHANNEL'],
+    ['invoke', 'SHELL_WORKSHOP_PUBLISH_CHANNEL'],
     ['invoke', 'SHELL_WORKSHOP_SYNC_CHANNEL'],
     ['invoke', 'SHELL_PERF_METRICS_CHANNEL'],
+    ['invoke', 'SHELL_WINDOW_MODE_GET'],
+    ['invoke', 'SHELL_WINDOW_MODE_SET'],
     ['send', 'SHELL_QUIT_CHANNEL'],
-  ], 'preload may only send the quit channel and invoke the reviewed status channels');
+], 'preload may only send the quit channel and invoke the reviewed status channels');
   assert.doesNotMatch(preload, /contextBridge\.exposeInMainWorld\([^)]*(?:ipcRenderer|require|process)/s);
 });
