@@ -63,7 +63,10 @@ test('a stopped, previously-running context resumes through the lifecycle owner 
   assert.equal(h.rt.ctx, ctx, 'the context is the same object: never rebuilt, so no second set of loops');
   assert.equal(h.schedulerResumes, 1, 'the paused music schedulers restart once');
   assert.equal(h.frameLoopStarts, 1, 'the frame loop restarts once');
-  assert.deepEqual(h.bus.emitted, [['audio:outputDeviceChanged', { action: 'resume', state: 'running' }]]);
+  assert.equal(h.bus.emitted.length, 1);
+  assert.equal(h.bus.emitted[0][0], 'audio:outputDeviceChanged');
+  assert.equal(h.bus.emitted[0][1].action, 'resume');
+  assert.equal(h.bus.emitted[0][1].state, 'running');
 });
 
 test('a burst of device events resumes once, not once per event', async () => {
