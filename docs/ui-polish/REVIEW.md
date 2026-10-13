@@ -690,3 +690,18 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28b/{before,after,compare}/`.
 
 *If #374's REVIEW.md leftovers sections conflict with this file on merge, keep both. This section only covers `chartLayouts.js`.*
+
+## Pause — flight brief off the dial's banks on short desktop (ui-polish-28)
+
+**Before (960×540):** the flight brief (TRACKED job, % ring, Next, Saved) is a reading pinned top-right at `top ≈ 82px`, about 230px tall. On a short frame the dial's SHIP and REFERENCE banks (Operations, Local Map, Codex, Achievements, Statistics) run out to x ≈ 720–840 at y ≈ 240–300, the same band where the brief's Next and Saved lines sat, so the two sets of words printed over each other. The same collision showed at 960×641, 800×600, 800×500 and 720×480. On phone portrait, the inline kind word ran into the job's name ("TRACKEDContract 47-A").
+
+**After (`src/ui/orrery/pauseLayouts.js` only, CSS):**
+- **Short desktop** (`≤640` tall, or `≤720` tall at `≤1100` wide): the brief becomes a top-right reading level with PAUSED (`top clamp(40px, 8vh, 52px)`, width `min(400px, 42vw)`). The name is 19px, the ring is 30px with a 22px numeral, and the line gaps are tighter. At 960×540 it ends at y 230, 13px above the first long bank (SHIP at 243). It clears every bank row at 960×540/600/641/700/720, 1024×576/600/700, 1100×640/720 and 1280×600.
+- **Very short window** (`≤520` tall): the FLIGHT BRIEF kicker and the save note are hidden (F5/F9 stay on the foot), so the brief ends at about y 170 and clears the ladder at 800×500 and 720×480.
+- **Phone:** `.orr-brief__kind` is block-level, so TRACKED stands on its own line over the name.
+
+1280×720 and 1920×1080 are pixel-identical to before. Selectors and IDs are unchanged, and arcRail is untouched. The `--walk` at all four sizes reaches all 18 controls.
+
+**Still open (not this pass):** at ≤800 wide × ≤500 tall the foot's keycaps wrap to two lines and the second line rises into EXIT / MAIN MENU. This is a foot/dial height issue that predates this change. Also, the Missions route strip (FROM / ROUTE PENDING / TO) is still clipped at 960×540, and its `H…` names truncate.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28c/{before,after,compare}/`.

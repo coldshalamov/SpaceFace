@@ -88,6 +88,8 @@ ${PH} .sf-pause-words .k-word[data-action="pause-0"] {
   text-shadow:0 0 1px rgb(255 226 178 / .45), 0 0 14px rgb(255 217 140 / .28) !important; }
 ${PH} .sf-pause-brief { margin:0 0 20px !important; padding-bottom:4px !important; }
 ${PH} .sf-pause-brief .sf-slot-name { font-size:21px !important; line-height:1.2 !important; }
+/* the kind word (TRACKED) is an inline span: on its own line it no longer runs into the job's name */
+${PH} .orr-brief__kind { display:block !important; margin:0 0 4px !important; line-height:16px !important; }
 ${PH} .sf-pause-brief .dp-copy { font-size:14.5px !important; color:rgb(${BONE} / .86) !important; }
 ${PH} .k-words--row { gap:12px 22px !important; row-gap:10px !important; }
 ${PH} .sf-pause-words .k-word { letter-spacing:.14em !important; }
@@ -126,6 +128,32 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-brief.orr-brief { top:clamp(72px, 10vh, 110px) !important; width:min(460px, 38vw) !important; }
   ${BOTH} > .sf-pause-foot .sf-pause-key-verb { margin-right:16px !important; }
   ${BOTH} > .sf-pause-foot .sf-pause-foot__keys { padding:6px 0 8px !important; }
+}
+
+/* short desktop (≤640 tall, or ≤720 tall at ≤1100 wide; e.g. 960×540): the dial's SHIP / REFERENCE
+   banks run out to ~x 720–840 at y 240–300, right where the brief's Next / Saved lines sat, so the
+   words printed over each other. The brief becomes a top-right reading level with PAUSED and ends
+   above the first long bank. */
+@media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:720px) {
+  ${P} > .sf-pause-brief.orr-brief { top:clamp(40px, 8vh, 52px) !important; margin-top:0 !important;
+    width:min(400px, 42vw) !important; }
+  ${P} > .sf-pause-brief.orr-brief > .dp-etch.sf-slot-sub:first-child { margin-bottom:6px !important; line-height:16px !important; }
+  ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { margin-top:0 !important; }
+  ${P} .orr-brief__kind { line-height:14px !important; margin-bottom:2px !important; }
+  ${P} .orr-brief__name { font-size:19px !important; line-height:1.08 !important; }
+  ${P} .orr-brief__read { margin-top:4px !important; gap:8px !important; }
+  ${P} .orr-brief__ring { width:30px !important; height:30px !important; }
+  ${P} .orr-brief__read b { font-size:22px !important; }
+  ${P} > .sf-pause-brief.orr-brief > .dp-copy { margin-top:4px !important; line-height:16px !important; }
+  ${P} > .sf-pause-brief.orr-brief > .dp-copy--fine { margin-top:2px !important; padding:0 !important; }
+}
+
+/* a very short window (≤520 tall, e.g. 800×500): the dial climbs to y≈190, so the brief keeps only
+   the tracked job and its next step; the FLIGHT BRIEF kicker and the save note step aside (F5 / F9
+   stay on the foot). */
+@media (min-width:701px) and (max-height:520px) {
+  ${P} > .sf-pause-brief.orr-brief > .dp-etch.sf-slot-sub:first-child,
+  ${P} > .sf-pause-brief.orr-brief > .dp-copy--fine { display:none !important; }
 }
 
 /* 1080p band: lift head + brief + foot only — never the dial stage (arcRail getBoundingClientRect) */
