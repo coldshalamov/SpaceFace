@@ -73,18 +73,42 @@ export function judgeGallery(state) {
   return null;
 }
 
+export function kernelFieldRecord(fieldsSys, id) {
+  if (!fieldsSys || id == null || typeof fieldsSys.hasExternal !== 'function') return null;
+  if (!fieldsSys.hasExternal(id)) return null;
+  const list = typeof fieldsSys.kernelList === 'function' ? fieldsSys.kernelList() : null;
+  if (!list) return null;
+  for (let i = 0; i < list.length; i++) {
+    const field = list[i];
+    if (field && field.id === id) return field;
+  }
+  return null;
+}
+
+function liveKernelField(gallery, id) {
+  if (!gallery || typeof gallery.fieldRecord !== 'function') return null;
+  const record = gallery.fieldRecord(id);
+  const center = record && record.center;
+  if (!record || !(record.radius > 0) || !center) return null;
+  if (!Number.isFinite(center.x) || !Number.isFinite(center.z)) return null;
+  return record;
+}
+
 function markFieldUse(state, gallery) {
-  if (!gallery || gallery.fieldUsed) return;
-  const fields = gallery.plantedFields || [];
-  if (!fields.length || !state.entities) return;
+  if (!gallery || gallery.fieldUsed || !state.entities) return;
+  const authored = getScenario(gallery.scenarioId);
+  const needed = (authored && authored.fields) || [];
+  if (!needed.length) return;
   const roles = gallery.roles || {};
-  for (const role of Object.keys(roles)) {
-    const entity = state.entities.get(roles[role]);
-    if (!entity || !entity.pos) continue;
-    for (const field of fields) {
-      const dx = entity.pos.x - field.x;
-      const dz = entity.pos.z - field.z;
-      if (dx * dx + dz * dz <= field.radius * field.radius) {
+  for (const field of needed) {
+    const live = liveKernelField(gallery, field.id);
+    if (!live) continue;
+    for (const role of Object.keys(roles)) {
+      const entity = state.entities.get(roles[role]);
+      if (!entity || !entity.pos) continue;
+      const dx = entity.pos.x - live.center.x;
+      const dz = entity.pos.z - live.center.z;
+      if (dx * dx + dz * dz <= live.radius * live.radius) {
         gallery.fieldUsed = true;
         return;
       }
@@ -114,6 +138,7 @@ function fieldsReady(state, gallery, authored) {
   for (const field of needed) {
     const row = planted.find((item) => item && item.id === field.id && item.radius > 0);
     if (!row) return false;
+    if (!liveKernelField(gallery, field.id)) return false;
   }
   markFieldUse(state, gallery);
   return gallery.fieldUsed === true;

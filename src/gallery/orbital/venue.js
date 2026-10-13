@@ -28,7 +28,7 @@ export function createPhysicalVenue(ctx, { id, bodies, solids = [], fields = [],
   const kernel = getCombatKernel(ctx);
   let closed = false;
   const venue = {
-    ok: true, id, center: anchor, ids, owned, kernel, returnPosition,
+    ok: true, id, center: anchor, ids, owned, kernel, returnPosition, fieldIds,
     entity(key) { return state.entities.get(ids.get(key)); },
     key(entityId) {
       if (entityId === state.playerId) return 'ship';

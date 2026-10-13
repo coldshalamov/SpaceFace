@@ -2,7 +2,7 @@
 import { createPhysicalVenue } from './venue.js';
 import { getScenario, SCENARIOS } from './catalog.js';
 import { validateScenario } from './validate.js';
-import { judgeGallery, noteImpact, signatureOf } from './judge.js';
+import { judgeGallery, kernelFieldRecord, noteImpact, signatureOf } from './judge.js';
 import { createLedger, normalizeLedger, recordScore, scoreRun } from './score.js';
 const CHALLENGES = SCENARIOS.map(({ id, title, family, inference }) => ({ id, title, family, inference }));
 
@@ -26,6 +26,8 @@ export function createLiveGallery(ctx) {
       venue = createPhysicalVenue(ctx, { id: 'orbital-gallery', bodies: views,
         shipAt: next.player, fields: next.fields || [], markers: next.pockets });
       if (!venue.ok) { const result = venue; venue = null; return result; }
+      const fieldsSys = ctx.registry?.get('fields');
+      const kernelByCatalog = new Map((next.fields || []).map((field, index) => [field.id, venue.fieldIds[index]]));
       const offset = volume => ({ ...volume, x: volume.x + venue.center.x, z: volume.z + venue.center.z });
       const roles = Object.fromEntries(venue.ids);
       state.orbitalGallery = {
@@ -39,6 +41,7 @@ export function createLiveGallery(ctx) {
     fieldUsed: false,
     playStartTick: state.tick, boostTicks: 0, brakeTicks: 0, cuts: 0, contacts: 0,
         playerContactRoles: {}, approachSide: null, styleChip: state.rng(), result: null,
+        fieldRecord(id) { return kernelFieldRecord(fieldsSys, kernelByCatalog.get(id)); },
       };
       spawnTick = state.tick; linesPending = true;
       api.publish();

@@ -7,10 +7,17 @@ import { GALLERY_ASSETS, assetForKind } from '../assets.js';
 import { PLAYABLE_SLICE, SCENARIOS, getScenario } from '../catalog.js';
 import { judgeGallery, noteImpact } from '../judge.js';
 import { runGalleryProof } from '../proof.js';
-import { sessionInput } from '../session.js';
+import { openSession, sessionInput } from '../session.js';
 import { validateCatalog } from '../validate.js';
 
 const ROOT = join(import.meta.dirname, '../../../..');
+
+let galleryHosts = Promise.resolve();
+function withGalleryHost(work) {
+  const run = galleryHosts.then(work, work);
+  galleryHosts = run.then(() => {}, () => {});
+  return run;
+}
 
 test('orbital gallery catalog is 24 launchable challenges on the shipping glass', () => {
   const issues = validateCatalog(SCENARIOS);
@@ -75,9 +82,48 @@ test('an empty planted field list cannot win the eye', () => {
   state.orbitalGallery.fieldUsed = false;
   assert.equal(judgeGallery(state), null);
   state.orbitalGallery.plantedFields = [{ id: field.id, x: field.x, z: field.z, radius: field.radius }];
-  const won = judgeGallery(state);
-  assert.equal(won && won.won, true);
-  assert.equal(won.pocketId, 'eye');
+  state.orbitalGallery.fieldUsed = false;
+  assert.equal(judgeGallery(state), null);
+  assert.equal(state.orbitalGallery.fieldUsed, false);
+});
+
+test('an unregistered repulsor does not win out-east', async () => {
+  const pod = {
+    id: 2, alive: true, pos: { x: 84, z: 0 }, vel: { x: 0, z: 0 },
+    data: { galleryRole: 'pod', gallerySpawnX: 24, gallerySpawnZ: 0, galleryAsset: assetForKind('mass') },
+  };
+  const player = { id: 1, alive: true, hull: 100, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {} };
+  const field = getScenario('og-e2-repulsor-berm').fields[0];
+  const placed = {
+    tick: 20, playerId: 1, entities: new Map([[1, player], [2, pod]]),
+    orbitalGallery: {
+      scenarioId: 'og-e2-repulsor-berm', phase: 'live', playStartTick: 0, limitTicks: 360,
+      roles: { pod: 2 },
+      pockets: [{ id: 'out-east', role: 'pod', x: 96, z: 0, r: 16, minTravel: 20 }],
+      hazards: [], spoils: [], spoiled: {},
+      plantedFields: [{ id: field.id, x: field.x, z: field.z, radius: field.radius }],
+      fieldPlanted: true, fieldUsed: false,
+    },
+  };
+  assert.equal(judgeGallery(placed), null);
+  assert.equal(placed.orbitalGallery.fieldUsed, false);
+
+  await withGalleryHost(async () => {
+    const session = await openSession('og-e2-repulsor-berm', { exhibit: true, strategyId: 'through' });
+    try {
+      const fields = session.host.runtime.getSystem('fields');
+      assert.equal(fields.hasExternal('og-e2-repulsor'), true);
+      assert.equal(fields.unregisterExternal('og-e2-repulsor'), true);
+      assert.equal(fields.hasExternal('og-e2-repulsor'), false);
+      assert.deepEqual(session.state.orbitalGallery.plantedFields.map((row) => row.id), ['og-e2-repulsor']);
+      const result = await session.play();
+      assert.equal(session.state.orbitalGallery.fieldUsed, false);
+      assert.equal(result && result.won, false);
+      assert.notEqual(result && result.pocketId, 'out-east');
+    } finally {
+      session.dispose();
+    }
+  });
 });
 
 test('a missing line or a cut cannot win north-berth', () => {
@@ -258,7 +304,7 @@ test('a hard hit turns the prop into the fracture product the win checks', () =>
 });
 
 test('orbital gallery proof: 24 fixed-seed wins, distinct duals, idle fails, retry, live stick', { timeout: 180000 }, async () => {
-  const report = await runGalleryProof();
+  const report = await withGalleryHost(() => runGalleryProof());
   assert.equal(report.ok, true, report.summary);
   assert.equal(report.physicsProof.backend, 'rapier-dynamic');
   assert.equal(report.physicsProof.sg02Ready, true);

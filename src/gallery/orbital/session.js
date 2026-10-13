@@ -7,7 +7,7 @@ import { getCombatKernel } from '../../combat/kernel.js';
 import { fields } from '../../systems/fields.js';
 import { bootRealPath, OPEN_SPACE_BOUNDS } from '../../../scripts/lib/bench/realPath.mjs';
 import { assetForKind } from './assets.js';
-import { judgeGallery, noteImpact, signatureOf } from './judge.js';
+import { judgeGallery, kernelFieldRecord, noteImpact, signatureOf } from './judge.js';
 import { orbitalGallery } from './system.js';
 import { createLedger, recordScore, scoreRun } from './score.js';
 import { getScenario } from './catalog.js';
@@ -113,6 +113,7 @@ export async function openSession(scenarioId, options = {}) {
     result: null,
     creditsAtOpen,
     trace: options.trace ? [] : null,
+    fieldRecord(id) { return kernelFieldRecord(fieldsSys, id); },
   };
   state.orbitalGallery = gallery;
   host.bus.on('physics:impact', (payload) => noteImpact(state, payload));
