@@ -19,6 +19,10 @@ export const FRONTIER_RUMOR_RECEIPT_LIMIT = 48;
 // The existing bar contact reply presents this copy; the regular purchasable frontier card
 // remains available on the same screen.
 export const AUTHORED_DOCK_RUMORS = Object.freeze({
+  // The starter bar's own lead (every lesser station had one; Helios did not). Names the two
+  // real things a new pilot can fly to from here: the Candle Fleet's relighting shift and the
+  // drift line off its dark side — poi_memorial and poi_helios_pit_line.
+  station_helios: 'The Fleet tenders walk the relight run past the weigh-point most shifts — twenty-four candles for the convoy, the twenty-fifth plinth kept dark on purpose. Out past the Fleet, on its dark side, something still holds formation. The seal tags read older than the toll ledger.',
   station_ceres: 'The Long Berth is an abandoned yard tug still turning beside Ceres Refinery. She is loose: Massline her and pull her clear of the hauler approach.',
   // Charon Expanse hunter exchange: the bar lead names the sector's real distress site —
   // poi_charon_tether_wreck (Snapped-Tether Hab-Pod, survivorPod + recoveryEncounter) — so
@@ -56,6 +60,10 @@ export const AUTHORED_DOCK_RUMORS = Object.freeze({
   // The claim crews burn fuel cells by mid-shift; Ceres Refinery's crackers over-run the belt.
   // Names two real stations — buy at the glut, dock back here and sell into the shortage.
   station_hyperion_claim: 'The crews here burn their cell ration by mid-shift, and the desk still prices the tanks like the pumps run uphill. Back up-lane the Ceres Refinery cracks more cells than its own belt can carry away, and lets them go near scrap. Run an empty rack out through the Ceres gate, fill it at the refinery, and dock it back here — the scale pays without asking what took you so long.',
+  // The ration run, taught at its cheap end: the only four-factor arbitrage with no lead.
+  // The hydroponics racks sell what their vault cannot hold; the Belt Outpost's rock crews
+  // pay dear for exactly that crate (station_beltout cmdty_food 0.1, sectors.js).
+  station_drift: 'Hydroponics over-run the Drift three crates to one — the racks sell ration stock near cost because the vault cannot hold another tray. The Belt Outpost\'s rock crews eat same-shift and pay dear for exactly that crate. Fill a hold here, dock it there; the scale does not ask why the labels are still wet.',
 });
 
 // PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.

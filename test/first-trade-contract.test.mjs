@@ -34,7 +34,10 @@ import { createBus } from '../src/core/eventBus.js';
 
 // Independent hard-coded payout / cargo footprint bounds (not derived from the live template
 // object for bound checks — kills Number.MAX_VALUE payout + cargo-cache desync mutants).
-const EXPECTED_PAYS_CR = 307;
+// 760: the authored corridor rate — the honest 8,900 wu wage quote (~455) would leave the
+// mandatory 440 cr round-trip gate tolls eating the teaching trade alive. The first trade
+// must clear the tolls and leave a worker's margin, in the starter-job band.
+const EXPECTED_PAYS_CR = 760;
 const EXPECTED_PAYS_CR_MAX = 10000;
 const EXPECTED_CMDTY_ID = 'cmdty_fuel_cells';
 const EXPECTED_QTY = 8;

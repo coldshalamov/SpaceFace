@@ -20,7 +20,6 @@
 // missions.js's own salvage_retrieval commodity pair).
 
 import { ECONOMY_BALANCE as BALANCE } from './economyDerived.js';
-import { quoteMissionEconomics } from '../economy/economyMissionTerms.js';
 
 /** Field thresholds that gate an offer at all (a calm field offers NOTHING — golden-sim safe). */
 export const ECON_CONTRACT_THRESHOLDS = Object.freeze({
@@ -280,14 +279,22 @@ export const FIRST_TRADE_CONTRACT = Object.freeze({
   factionId: 'faction_scn',
   destStationId: FIRST_TRADE_CONTRACT_DEST_STATION_ID,
   destSectorId: FIRST_TRADE_CONTRACT_DEST_SECTOR_ID,
-  distance: 1800,
+  // True station-to-station run: Helios → Ceres gate is ~4,200 wu, the Ceres arrival leg is
+  // ~4,700 wu. The old 1,800 quoted a run half as long as the corridor the player actually
+  // flies, and priced it below the ~440 cr round-trip gate tolls — the teaching trade taught
+  // that trade loses money.
+  distance: 8900,
   title: 'First trade: 8u Fuel Cells to Ceres',
-  brief: 'Sealed fuel for Ceres Refinery. Accept, hold the manifest, dock, collect payment.',
+  brief: 'Sealed fuel for Ceres Refinery. Gate tolls come out of the run — this pay clears them. Accept, hold the manifest, dock, collect.',
   reason: 'Helios logistics needs one reliable corridor haul — deliver sealed Fuel Cells to Ceres Refinery so the first trade ledger closes cleanly.',
   preloadedCargo: true,
   terms: Object.freeze({
-    paysCr: quoteMissionEconomics({type:'cargo_delivery',tier:0,riskTier:0,distance:1800,
-      params:{cmdtyId:'cmdty_fuel_cells',qty:8},preloadedCargo:true}).rewardCr,
+    // Authored corridor rate. The wage quote for an honest 8,900 wu tier-0 run is 455 cr,
+    // which the mandatory 440 cr round-trip tolls would eat to +15 — the same trap as before,
+    // one number later. The first trade is a teaching contract: it pays the starter-job band
+    // (760 cr, cf. starterJobs 420-760) so the lesson ends with the tolls cleared and a
+    // worker's margin left over.
+    paysCr: 760,
     clockS: 1200,
     riskTier: 0,
     stakeCr: 0,

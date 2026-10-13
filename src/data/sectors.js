@@ -159,6 +159,26 @@ const CORE_SECTORS = [
         },
       },
       {
+        // Concord customs waypoint on the bare Coalition chord.
+        id: 'poi_helios_picket',
+        type: 'beacon',
+        name: 'Checkpoint Niner',
+        discoveryPlate: {
+          title: 'Checkpoint Niner',
+          body: 'A Concord interdiction buoy holding the mid-chord between the trade ring and Coalition HQ. The scale weighs everything twice here — ore out, resumes in. The lamp has been green for eleven months, and nobody left on the roster remembers who to ask about a yellow one.',
+        },
+      },
+      {
+        // Survey chalk on the Fleet→Pit Line bearing; the relighting procession walks past it.
+        id: 'poi_helios_smear_pin',
+        type: 'beacon',
+        name: 'Smear Marker 7',
+        discoveryPlate: {
+          title: 'Smear Marker 7',
+          body: 'A survey pin with chalk on the flanks: one arrow, no number, laid on the bearing that runs from the Candle Fleet out toward the rim. Whoever drew it pressed hard enough to score the metal, and then never filed the leg.',
+        },
+      },
+      {
         // The chart names the real wreck, not a second derelict prop: the unique-wreck
         // program owns the body (rumor -> bearing ring -> fixed position), so this row
         // carries no pos and runtimeOwner keeps _spawnPOIs from minting a decoy beside it.
@@ -180,12 +200,15 @@ const CORE_SECTORS = [
     trafficPerMin: 10, enemyDensity: 0.18, enemyLevel: [1, 2],
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
     stations: [
-      { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine'],
+      { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine','missions'],
         // The crackers split feed into fuel cells three shifts long — more than the belt burns.
         // This standing cell surplus changes only the listing's stock equilibrium; the commodity
         // price curve and every other market stay shared (cheap end of the west-cut cell run).
+        // A contracts desk: the first gate destination has to be able to give a new pilot work
+        // (the refinery OFFER_MIX posts cargo/bulk/patrol/tow), or the corridor's only station
+        // is a place to sell and leave.
         marketEquilibriumFactors: { cmdty_fuel_cells: 2.4 },
-        chartNote: 'Refinery row — buys ore dear, sells plates cheap.' },
+        chartNote: 'Refinery row — buys ore dear, sells plates cheap, and the yard desk always needs another run moved.' },
       { id: 'station_beltout', name: 'Belt Outpost',   type: 'mining',   factionId: 'faction_dmc', size: 'S', services: ['trade','missions','ore_buy'],
         // Rock crews eat same-shift and the ration skiff never lands enough — a standing
         // provisions shortage. Same shared curve; only this listing's stock equilibrium moves
@@ -202,6 +225,26 @@ const CORE_SECTORS = [
     pois: [
       { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller' },
       { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache', contents: { commodityId: 'cmdty_ore_copper', amount: 4 } },
+      {
+        // First light on the inbound leg from the Helios gate.
+        id: 'poi_ceres_flare_rack',
+        type: 'beacon',
+        name: 'Refinery Flare Rack',
+        discoveryPlate: {
+          title: 'Refinery Flare Rack',
+          body: 'The crackers\' burn-off, racked and shielded so the arrival queue can read it from a belt away — the first light on the leg in from the Helios gate. When the rack goes dark the row is on safety hold and the scale closes with it.',
+        },
+      },
+      {
+        // The arrival queue's tally, two-thirds down the inbound leg.
+        id: 'poi_ceres_weigh_pin',
+        type: 'beacon',
+        name: 'Inbound Weigh Pin',
+        discoveryPlate: {
+          title: 'Inbound Weigh Pin',
+          body: 'The refinery queue\'s tally post. Chalk rows list berth times by shift — eighteen minutes on a good one. The oldest row has been scratched out and rewritten so many times the plate is now a hole.',
+        },
+      },
       {
         id: 'poi_ceres_throughline',
         type: 'beacon',

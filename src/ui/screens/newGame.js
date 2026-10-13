@@ -390,7 +390,7 @@ const FIRST_MINUTES = [
   ['Wake at the beacon', 'Thrust to the beacon. One verb at a time.'],
   ['Tether the derelict', 'Latch, winch, cut. The vacuum shows itself.'],
   ['Mine the first seam', 'Pulse, beam the bright seams, ride the heat.'],
-  ['Dock and pick work', 'Sell at Helios, then choose haul, bounty, or survey.'],
+  ['Dock and pick work', 'Sell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.'],
 ];
 
 /** A form field: a label at body size 62 % and its control beneath, separated from the next by a hairline. */
@@ -722,7 +722,7 @@ export const newGameScreen = {
     const ship = shipDefFor(ctx, DEFAULT_STARTER.shipId);
     // The hull card's name is a content header (the header voice, set by the sheet), not a title.
     const hullName = el('h2', 'k-display k-t-sub fh-title sf-slot-card-title', (ship && ship.name) || DEFAULT_STARTER.name);
-    const hullBlurb = el('p', 'k-sentence', DEFAULT_STARTER.line);
+    const hullBlurb = el('p', 'k-sentence', DEFAULT_STARTER.blurb);
     caption.appendChild(hullName);
     caption.appendChild(hullBlurb);
     stage.appendChild(caption);
@@ -951,7 +951,7 @@ export const newGameScreen = {
     if (this._paintStats) this._paintStats(starter);
     const ship = shipDefFor(refs.ctx, starter.shipId);
     refs.hullName.textContent = (ship && ship.name) || starter.name;
-    refs.hullBlurb.textContent = starter.line;
+    refs.hullBlurb.textContent = starter.blurb;
     refs.renderLoadout(starter);
     // a poster-only stage has no mount but still shows the picked hull
     if (this.hull) {

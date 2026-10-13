@@ -41,6 +41,14 @@ export const trigger = deepFreeze({
   pressureCost: 20,
   cooldownS: 600,
   proximity: true,
+  // The day-2 guaranteed beat for every machine sector. The starter ladder — raid (day 0,
+  // 60-170s) → relighting (day 0, 540-810s) → salvage tail (day 1) — went quiet afterward:
+  // the day-2/5 tether-control beats are maxSecurity-locked out of a 0.98 sector, and the
+  // Rift and Tethys had no guaranteed beat at all. The towout is the right successor — a real
+  // machine, the tow verb, nobody shooting. It is the only windowed shape in these decks, so
+  // the 45s spacing pass can always bump its neighbors; two pinned windows never overlap here.
+  earlyWindowGuaranteeDay: 2,
+  earlyDelayS: [420, 780],
 });
 
 const MACHINE_REACH_WU = 1500;   // zone anchor → nearest machine root; beyond it there is no scene
