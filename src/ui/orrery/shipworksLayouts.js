@@ -1060,6 +1060,68 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W} .sx-sw__nameplate .sx-sw__crestLine { flex-wrap:nowrap !important; gap:0 10px !important; }
   ${W} .sx-sw__nameplate .sx-sw__nameEdit { font-size:12px !important; line-height:16px !important; padding:1px 0 2px !important; }
   ${W} .sx-sw__stage.is-live > .sx-sw__camera { left:auto !important; right:0 !important; bottom:auto !important; top:calc(100% - 2px) !important; z-index:7 !important; }
+  /* Starter / N systems fitted: station-orbital ≤1200 drops the side column so the plate wraps
+     under the stage; orr-sw--jig { overflow:hidden } then clips it entirely at 960×540. Clear the
+     phantom third track, keep the fleet rail stretched, pin a one-line identity beside DOCKED
+     (clear of the hull callouts), and sleep the dial/rack. */
+  ${W}.orr-sw--jig {
+    grid-template-columns: 190px minmax(0, 1fr) !important;
+    grid-template-areas: none !important;
+  }
+  ${W}.orr-sw--jig > .sx-sw__rail,
+  ${W}.orr-sw--jig > .sx-sw__chooser {
+    grid-row: 1 / -1 !important;
+    align-self: stretch !important;
+    height: 100% !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+  ${W}.orr-sw--jig > .sx-sw__side {
+    position: absolute !important;
+    left: 460px !important;
+    right: auto !important;
+    top: 6px !important;
+    bottom: auto !important;
+    width: auto !important;
+    max-width: 220px !important;
+    max-height: none !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+    z-index: 8 !important;
+    grid-column: unset !important;
+    grid-row: unset !important;
+    grid-area: unset !important;
+    pointer-events: none !important;
+  }
+  ${W}.orr-sw--jig > .sx-sw__side > .sx-sw-circuit > :not(.sx-sw-circuit__identity) { display: none !important; }
+  ${W}.orr-sw--jig > .sx-sw__side > .sx-sw-circuit { margin: 0 !important; padding: 0 !important; }
+  ${W}.orr-sw--jig .sx-sw-circuit__identity {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: baseline !important;
+    gap: 0 8px !important;
+    margin: 0 !important;
+    font-size: 11px !important;
+    letter-spacing: .12em !important;
+    line-height: 1.2 !important;
+    color: rgb(${BONE} / .78) !important;
+    text-shadow: 0 1px 2px rgb(7 8 10 / .92);
+  }
+  ${W}.orr-sw--jig .sx-sw-circuit__sub {
+    font-size: 11px !important;
+    letter-spacing: .06em !important;
+    color: rgb(${BONE} / .62) !important;
+  }
+  /* Focused rename field: leave air under the ring before the left callout column. */
+  ${W} .sx-sw__nameplate .sx-sw__nameEdit:is(:focus, :focus-visible) {
+    padding-bottom: 4px !important;
+    margin-bottom: 10px !important;
+  }
 }
 
 `;

@@ -126,7 +126,7 @@ Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 192
 
 **Code:** `shipworks.js` (clamp gate + short-stage keepOut/gap) + `calloutLayout.js` (hull-safe place). Selectors/IDs unchanged.
 
-**Still open:** SWORN ENEMY touching HATED at 1024×768; Shipworks left-rail "Starter / systems fitted" clip at 960; phone Shipworks callouts.
+**Still open:** SWORN ENEMY touching HATED at 1024×768; phone Shipworks callouts. Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27 (see § below).
 
 ### Industry / Factions / Bar @960×540 (ui-polish-13)
 
@@ -221,7 +221,7 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 **Still open on phone:** Shipworks callouts. Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
 
-**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960.
+**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame. Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27.
 
 ## Decision terms @960 + phone-on-its-side foot — session notes (2026-10-12, ui-polish-14)
 
@@ -639,7 +639,7 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 
 Bench, with the game's inline grid forced to match the real cascade, at 960 / 1280 / 1920 / 390×844 / 844×390, on first paint and at the end of the stage scroll: nothing sits under Launch, LIVE TOOLS never overlaps the ladder, and there's no tile-on-tile overlap. COMBAT LAB is on first paint everywhere except 844×390, where the stage is 189px tall. Module/Enemy are reachable above Launch at 844×390. `ui-bench` reports `measured: no tangled…` at all five sizes (phone was previously OFF FRAME). Selectors and IDs are unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/sandbox-launch/review-fix/` (not committed).
 
-**Still open (elsewhere):** the Shipworks left-rail "Starter / systems fitted" clip at 960 (waiting on #359/#365), phone Shipworks callouts, and focused rename-field spacing once those land.
+**Still open (elsewhere):** phone Shipworks callouts. Starter / systems fitted @960 and focused rename spacing addressed on ui-polish-27 (see § below).
 
 ## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
 
@@ -671,4 +671,16 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Code Work review fix (HOLD notes):** Landscape ≤560px is now hang | reader side-by-side (CSS grid) so "THE EIGHT BEATS", the entry title, and the first sentence show on first view with CLOSE clear. The thin rule through the reader "0" was `.orr-extent::before` (scroll thumb at `left:7px`) on the reading article — parked in the entry's left gutter on phone. The ladder Hand's bone dot is pulled left (`--orr-hand-x:6px` / `4px` landscape) with extra row padding so it clears the leading B. Portrait stack kept. Desktop 1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review1/`.
 
 **Code Work re-review fix (04:58 HOLD):** Landscape section rail is 104px (was 86px), so DISCOVERIES shows in full again. Landscape dials put each word beside its dial (row stays 26px), so the fractions keep their category. Phone section leaders are shorter (8/10/12px) so the current tick no longer strikes the label's last letter. Portrait: 7 dials fit one row (SURVEY no longer wraps alone), the plate is 140px, and the reader takes priority over the hang (hang min 150px), so the first entry's full first paragraph shows above PREVIOUS/NEXT at 390×844 (first line at 360×740). The `.orr-extent` comment now says the thumb is clipped out of view, not parked. Desktop 960/1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review2/`.
+
+## Shipworks Starter / systems fitted @960 — session notes (2026-10-13, ui-polish-27)
+
+**Before:** at ≤1200 wide, `station-orbital` drops the side column so the circuit plate (`Starter` + `N/M systems fitted`) wraps under the stage; `orr-sw--jig { overflow:hidden }` at ≤1100×≤800 then clips it entirely at 960×540. The focused rename field also sat ~12px above the left callout column.
+
+**After (`shipworksLayouts.js` ≤1100×≤640 desktop + `shipworks.js` nameplateInkRect focus pad):**
+- Clear the phantom third grid track; keep the fleet rail stretched.
+- Pin a one-line compact identity beside DOCKED (clear of hull callouts); sleep the dial/rack on that size only.
+- Focus grows the nameplate keep-out by 14px and re-places callouts (Utility gap 12→26px).
+- 1280 / 1920 keep the full side plate. Phone callouts still open.
+
+Shots: `ui-shots/shipworks28/{before,after,compare}/` (not committed).
 

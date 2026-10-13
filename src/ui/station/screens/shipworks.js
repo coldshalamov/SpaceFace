@@ -3284,7 +3284,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : rr;
     }
     if (!ink) return null;
-    return { left: ink.left, top: ink.top, right: ink.right, bottom: ink.bottom, width: ink.right - ink.left, height: ink.bottom - ink.top };
+    // When the rename field is focused, grow the keep-out under its ring so a left-column
+    // callout (Utility / Drive) cannot sit on the focus box at short mid-width stages.
+    let bottom = ink.bottom;
+    for (const input of nameplateEl.querySelectorAll('input.sx-sw__nameEdit')) {
+      if (input !== document.activeElement) continue;
+      const box = input.getBoundingClientRect();
+      if (box.height > 0) bottom = Math.max(bottom, box.bottom + 14);
+    }
+    return { left: ink.left, top: ink.top, right: ink.right, bottom, width: ink.right - ink.left, height: bottom - ink.top };
   }
 
   function updateSpatialProjection() {
@@ -4930,6 +4938,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // A card may sit to the right of a short name (the ink zone follows the text, not the field's
   // empty right side), so re-place the cards as the name grows under typing, not only on change.
   nameplateEl.addEventListener('input', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
+  });
+  // Focus grows the nameplate keep-out under the field (see nameplateInkRect); re-place so the
+  // left callout column clears the ring at short mid-width stages.
+  nameplateEl.addEventListener('focusin', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
+  });
+  nameplateEl.addEventListener('focusout', (ev) => {
     if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
   });
   nameplateEl.addEventListener('change', (ev) => {
