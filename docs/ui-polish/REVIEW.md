@@ -449,7 +449,7 @@ Player-truth graded every Swarm armory offer "undescribed" (63 of the 67; the ot
 
 1280×720, 1920×1080 and 390×844 differ only in the lit card (the Hand bar is back). Loadout data untouched. Shots: `ui-shots/armory-desc/{before,after2}/`.
 
-**Not fixed here:** the 4 fitted refit rows have no sentence. `refitRowLines` returns `contrast: null` for a fitted part by design (test `inf-036`), so that needs a decision first.
+**Fitted refit rows:** each fitted hardpoint now also carries `sentence` from `arsenalIdentity` (painted under the name with `orr-hp__contrast`). `contrast` stays `null` for fitted parts (INF-036 unchanged). Spare-vs-spare contrast on empty hardpoints is untouched.
 
 
 

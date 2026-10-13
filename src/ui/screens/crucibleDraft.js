@@ -517,6 +517,9 @@ export function refitRowLines(row) {
       disabled: false,
       options: [],
       contrast: null,
+      // Fitted rows have no spare-vs-spare contrast (INF-036); the arsenal sentence
+      // still explains the part so the hardpoint is not a bare name.
+      sentence: arsenalIdentity(row.defId)?.sentence || '',
     };
   }
   const spares = Array.isArray(row.spares) ? row.spares : [];
@@ -1913,6 +1916,10 @@ export const crucibleRefitScreen = {
       if (lines.contrast) {
         // drawn as scales above where it can be; the sentence stays for the ear
         left.appendChild(el('div', `k-row__sub orr-hp__contrast${row._drawn ? ' orr-hp__contrast--drawn' : ''}`, lines.contrast));
+      }
+      // Fitted part: arsenalIdentity sentence under the name (contrast stays null).
+      if (lines.sentence) {
+        left.appendChild(el('div', 'k-row__sub orr-hp__contrast', lines.sentence));
       }
       item.appendChild(left);
 

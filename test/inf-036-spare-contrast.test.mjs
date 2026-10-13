@@ -12,6 +12,7 @@ import { describeAttackMetrics } from '../src/combat/attackSpec.js';
 import { createRunState } from '../src/core/runState.js';
 import { compileFittedAttackSpec } from '../src/systems/adventureMigration.js';
 import { refitRowLines, weaponSpareContrast } from '../src/ui/screens/crucibleDraft.js';
+import { arsenalIdentity } from '../src/data/arsenalIdentity.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
 const PULSE = WEAPON_BY_ID.get('wpn_pulse_laser_s');
@@ -51,7 +52,10 @@ test('INF-036: no comparison where there is none', () => {
   assert.equal(weaponSpareContrast([spare(PULSE, 1), spare(PULSE, 2)]), null, 'identical twins differ in nothing');
   assert.equal(weaponSpareContrast([{ instanceId: 1, defId: 'mod_unknown', name: 'Mystery' }, spare(PULSE, 2)]), null);
   assert.equal(weaponSpareContrast(null), null);
-  assert.equal(refitRowLines({ slotIndex: 0, defId: 'wpn_pulse_laser_s', name: 'Pulse', spares: [] }).contrast, null);
+  const fitted = refitRowLines({ slotIndex: 0, defId: 'wpn_pulse_laser_s', name: 'Pulse', spares: [] });
+  assert.equal(fitted.contrast, null, 'a fitted part is not a spare comparison');
+  assert.equal(fitted.sentence, arsenalIdentity('wpn_pulse_laser_s').sentence,
+    'fitted rows still carry the arsenalIdentity sentence');
 });
 
 test('INF-036: option labels carry the figures, mod spares stay bare', () => {

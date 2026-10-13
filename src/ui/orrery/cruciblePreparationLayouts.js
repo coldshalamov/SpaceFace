@@ -125,6 +125,7 @@ ${A} .sf-cru-card .sf-cru-key, ${A} .orr-rail-scale, ${A} .orr-rail-wallet { dis
 ${A} .sf-cru-card.is-lit { background:linear-gradient(90deg,rgb(242 185 80 / .09),transparent) !important; }
 ${A} .sf-cru-card.is-lit::before { content:'' !important; display:block !important; position:absolute !important; left:0 !important; top:14px !important; bottom:14px !important; width:2px !important; background:var(--dp-hand) !important; }
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
+/* Doubled .orr-armory-reading.orr-armory-reading is a deliberate specificity bump so these !important reading rules win over earlier stage layout. */
 ${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:grid !important; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr) !important; grid-template-rows:minmax(0,1fr) !important; gap:24px !important; overflow:auto !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 ${A} .orr-armory-visual { display:flex; flex-direction:column; width:100%; min-width:0; gap:16px; }
