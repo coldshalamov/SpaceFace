@@ -8,6 +8,7 @@ import { PLAYABLE_SLICE, SCENARIOS, getScenario } from '../catalog.js';
 import { judgeGallery, noteImpact } from '../judge.js';
 import { runGalleryProof } from '../proof.js';
 import { openSession, sessionInput } from '../session.js';
+import { driveGalleryMotors } from '../system.js';
 import { validateCatalog } from '../validate.js';
 
 const ROOT = join(import.meta.dirname, '../../../..');
@@ -249,11 +250,15 @@ test('a deleted motor cannot win intercept or the gap', () => {
     },
   };
   assert.equal(judgeGallery(motorState), null);
-  pod.data.galleryMotor = { ...motor };
-  pod.data.galleryMotorWorked = false;
+  const resting = { ...motor };
+  pod.data.galleryMotor = resting;
+  pod.data.galleryMotorWorked = resting;
+  pod.vel = { x: 0, z: 0 };
   assert.equal(judgeGallery(motorState), null);
-  pod.data.galleryMotorWorked = true;
-  assert.equal(judgeGallery(motorState), null);
+  driveGalleryMotors(motorState.orbitalGallery, motorState, 1 / 60);
+  const driven = judgeGallery(motorState);
+  assert.equal(driven && driven.won, true);
+  assert.equal(driven.pocketId, 'early');
 
   const gapMotor = getScenario('og-d2-gap').bodies.find((body) => body.role === 'blocker').motor;
   const cargo = {
@@ -300,6 +305,27 @@ test('a deleted motor cannot win intercept or the gap', () => {
     },
   };
   assert.equal(judgeGallery(chain), null);
+
+  const cruiseMotor = { ...crosserMotor };
+  const cruising = {
+    id: 8, alive: true, pos: { x: 30, z: -24 }, vel: { x: 0, z: cruiseMotor.cruise },
+    data: {
+      galleryRole: 'crosser', galleryMotor: cruiseMotor, galleryMotorWorked: cruiseMotor,
+      galleryAsset: assetForKind('mass'),
+    },
+  };
+  const chainLive = {
+    tick: 20, simTime: 0, playerId: 1, entities: new Map([[1, player], [8, cruising], [9, rest]]),
+    orbitalGallery: {
+      scenarioId: 'og-c4-crosser-chain', phase: 'live', playStartTick: 0, limitTicks: 360,
+      roles: { crosser: 8, rest: 9 },
+      pockets: [{ id: 'berth', role: 'rest', x: 90, z: 4, r: 16, minTravel: 12 }],
+      hazards: [], spoils: [], spoiled: {}, plantedFields: [],
+    },
+  };
+  driveGalleryMotors(chainLive.orbitalGallery, chainLive, 1 / 60);
+  assert.equal(cruising.data.galleryMotorWorked, null);
+  assert.equal(judgeGallery(chainLive), null);
 });
 
 test('a hard hit turns the prop into the fracture product the win checks', () => {

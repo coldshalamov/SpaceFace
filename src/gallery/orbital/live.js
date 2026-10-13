@@ -95,7 +95,8 @@ export function createLiveGallery(ctx) {
       const input = state.input || {};
       if (input.boost) gallery.boostTicks += 1;
       if (input.brake || input.actions?.brake) gallery.brakeTicks += 1;
-      // Judge the last completed Rapier solve. Existing actions owns the one Massline step.
+      if (gallery.phase === 'live') { venue.read(views); venue.drive(views, dt); }
+      // Judge the last completed Rapier solve. The motor stamp is this tick's accel.
       const result = judgeGallery(state);
       if (result && !result.scored) {
         result.score = scoreRun({ winTick: result.won ? result.tick - gallery.playStartTick : null,
@@ -105,7 +106,6 @@ export function createLiveGallery(ctx) {
         recordScore(state.orbitalGalleryLedger, scenario.id, result.score);
         bus?.emit('orbital-gallery:finished', api.status());
       }
-      if (gallery.phase === 'live') { venue.read(views); venue.drive(views, dt); }
       api.publish();
     },
     status() {

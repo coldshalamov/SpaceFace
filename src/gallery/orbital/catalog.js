@@ -257,7 +257,7 @@ export const SCENARIOS = [
     bodies: [
       mass('crosser', 30, -24, {
         r: 5, m: 6, focus: true,
-        motor: shuttle(28, 3.4, Math.PI / 2),
+        motor: shuttle(28, 2.4, Math.PI / 2),
       }),
       mass('rest', 52, 4, { r: 5, m: 8 }),
     ],
@@ -318,7 +318,7 @@ export const SCENARIOS = [
         motor: { heading: 0, cruise: 22, accel: 50, periodS: 0, phaseS: 0 },
       }),
     ],
-    pockets: [pocket('side', 'pod', 70, -36, 14, 16)],
+    pockets: [pocket('side', 'pod', 70, -36, 16, 16)],
     strategies: [
       { id: 'nudge', tape: tape([{ t: 16, x: 1 }, { t: 20, z: 1 }, { t: 28, x: -1 }, { t: 80 }]) },
     ],
@@ -337,7 +337,7 @@ export const SCENARIOS = [
       }),
       mass('bank', 58, 18, { r: 8, m: 9000, kind: 'bumper' }),
     ],
-    pockets: [pocket('berth', 'pod', 76, 46, 12, 16)],
+    pockets: [pocket('berth', 'pod', 52, 30, 12, 16)],
     strategies: [
       { id: 'bank', tape: tape([{ t: 16, x: -1 }, { t: 22, z: 1 }, { t: 30, x: 1 }, { t: 90 }]) },
     ],

@@ -152,6 +152,38 @@ export function galleryMotorOf(entity) {
   return motor;
 }
 
+const MOTOR_APPLIED = Symbol('galleryMotorApplied');
+
+/** Accel the live driver applies this step, or null inside the cruise band. */
+export function galleryMotorPlan(entity, motor, simTime, dt) {
+  if (!entity || !motor || !(dt > 0)) return null;
+  let sign = 1;
+  if (motor.periodS > 0) {
+    const phase = (simTime || 0) + (motor.phaseS || 0);
+    const half = motor.periodS * 0.5;
+    sign = Math.floor(phase / Math.max(half, 1e-4)) % 2 === 0 ? 1 : -1;
+  }
+  const heading = motor.heading || 0;
+  const hx = Math.cos(heading) * sign;
+  const hz = Math.sin(heading) * sign;
+  const along = (entity.vel ? entity.vel.x : 0) * hx + (entity.vel ? entity.vel.z : 0) * hz;
+  const err = motor.cruise - along;
+  if (Math.abs(err) < 0.05) return null;
+  const accelCap = motor.accel > 0 ? motor.accel : 60;
+  const accel = Math.max(-accelCap, Math.min(accelCap, err / dt));
+  if (!accel) return null;
+  return { hx, hz, accel };
+}
+
+export function markMotorWorked(entity, motor, tick) {
+  entity.data.galleryMotorWorked = { motor, tick, [MOTOR_APPLIED]: true };
+}
+
+export function motorWorkedThisTick(entity, motor, tick) {
+  const worked = entity && entity.data && entity.data.galleryMotorWorked;
+  return !!(worked && worked[MOTOR_APPLIED] === true && worked.motor === motor && worked.tick === tick);
+}
+
 function mechanismsReady(state, gallery) {
   const authored = getScenario(gallery.scenarioId);
   if (!authored) return false;
@@ -207,7 +239,7 @@ function motorsWorked(state, gallery, authored) {
     found = true;
     const entity = entityOf(state, gallery, body.role);
     const motor = galleryMotorOf(entity);
-    if (!motor || !sameMotor(motor, body.motor) || entity.data.galleryMotorWorked !== motor) return false;
+    if (!motor || !sameMotor(motor, body.motor) || !motorWorkedThisTick(entity, motor, state.tick)) return false;
   }
   return found;
 }

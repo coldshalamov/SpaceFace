@@ -4,7 +4,7 @@
 // touch credits.
 
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
-import { galleryMotorOf } from './judge.js';
+import { galleryMotorOf, galleryMotorPlan, markMotorWorked } from './judge.js';
 import { createLiveGallery } from './live.js';
 
 const NEUTRAL = Object.freeze({
@@ -115,42 +115,30 @@ function cutPlayerLines(gallery, state) {
   return cuts;
 }
 
-function driveMotors(gallery, state, dt) {
+export function driveGalleryMotors(gallery, state, dt) {
   if (!(dt > 0)) return;
-  const roles = gallery.roles;
-  if (!roles) return;
+  const roles = gallery && gallery.roles;
+  if (!roles || !state || !state.entities) return;
   const simTime = state.simTime || 0;
   for (const role of Object.keys(roles)) {
     const entity = state.entities.get(roles[role]);
     const motor = galleryMotorOf(entity);
     if (!motor) continue;
-    stepMotor(entity, motor, simTime, dt);
+    const plan = galleryMotorPlan(entity, motor, simTime, dt);
+    if (!plan) {
+      entity.data.galleryMotorWorked = null;
+      continue;
+    }
+    const mass = (entity.physicsBody && entity.physicsBody.mass) || entity.mass || 1;
+    markMotorWorked(entity, motor, state.tick);
+    queuePhysicsImpulse(entity, {
+      x: plan.hx * plan.accel * mass * dt,
+      y: 0,
+      z: plan.hz * plan.accel * mass * dt,
+    });
   }
 }
 
-function stepMotor(entity, motor, simTime, dt) {
-  let sign = 1;
-  if (motor.periodS > 0) {
-    const phase = simTime + (motor.phaseS || 0);
-    const half = motor.periodS * 0.5;
-    const slot = Math.floor(phase / Math.max(half, 1e-4));
-    sign = slot % 2 === 0 ? 1 : -1;
-  }
-  const heading = motor.heading || 0;
-  const hx = Math.cos(heading) * sign;
-  const hz = Math.sin(heading) * sign;
-  const vx = entity.vel ? entity.vel.x : 0;
-  const vz = entity.vel ? entity.vel.z : 0;
-  const along = vx * hx + vz * hz;
-  const err = motor.cruise - along;
-  if (Math.abs(err) < 0.05) return;
-  const accelCap = motor.accel > 0 ? motor.accel : 60;
-  const accel = Math.max(-accelCap, Math.min(accelCap, err / dt));
-  const mass = (entity.physicsBody && entity.physicsBody.mass) || entity.mass || 1;
-  entity.data.galleryMotorWorked = motor;
-  queuePhysicsImpulse(entity, {
-    x: hx * accel * mass * dt,
-    y: 0,
-    z: hz * accel * mass * dt,
-  });
+function driveMotors(gallery, state, dt) {
+  driveGalleryMotors(gallery, state, dt);
 }
