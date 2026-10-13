@@ -1,5 +1,5 @@
-// Frame-measured readability: for each screenshot, sample the pixels inside each on-screen enemy,
-// asteroid and projectile (screen positions from the telemetry sample nearest the shot), then ask
+// Frame-measured readability: for each screenshot, sample a radius square around each on-screen
+// enemy, asteroid and projectile (screen positions from recorded capture telemetry), then ask
 // whether the classes separate in colour (CIELAB) and apparent size. Uses sharp (already a dep).
 
 import sharp from 'sharp';
@@ -228,7 +228,11 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
     const threat = S.filter((x) => rimMatchesThreat(x.rim)).length;
     classes[c] = { n: S.length, lowContrastFrac: S.length ? low.length / S.length : 0, exampleT: (low[0] || S[0] || {}).t, exampleBox: (low[0] || S[0] || {}).box,
       markerRate: S.length ? marked / S.length : 0, threatRate: S.length ? threat / S.length : 0, worst,
-      meanLab: S.length ? [0, 1, 2].map((k) => +(S.reduce((s, x) => s + x.lab[k], 0) / S.length).toFixed(1)) : null };
+      meanLab: S.length ? [0, 1, 2].map((k) => +(S.reduce((s, x) => s + x.lab[k], 0) / S.length).toFixed(1)) : null,
+      // A fitted fighter is not an opaque radius square. This statistic mixes hull and sky;
+      // no enemy silhouette ownership was recorded to attribute the screenshot's pixels.
+      ...(c === 'enemy' && S.length ? { contrast: { status: 'unmeasured', method: 'radius-square',
+        reason: 'missing enemy silhouette pixel ownership; inner radius square mixes hull and backdrop' } } : {}) };
   }
   const markerCreditFor = (a, b) => threatMarkerCredit(classes[a] ? classes[a].threatRate : 0, classes[b] ? classes[b].threatRate : 0);
   const pairs = [];

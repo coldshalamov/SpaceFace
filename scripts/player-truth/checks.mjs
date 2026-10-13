@@ -623,6 +623,9 @@ export function checkReadability(trace) {
   const pairs = (r.pairs || []).filter((p) => p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
   const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ');
   const measurementNote = r.measurementNote ? `; ${r.measurementNote}` : '';
+  const unsupported = Object.entries(r.classes).filter(([, v]) => v.n > 0 && v.contrast?.status === 'unmeasured');
+  const unsupportedClasses = new Set(unsupported.map(([k]) => k));
+  const contrastNote = unsupported.length ? `; hull contrast UNKNOWN: ${unsupported.map(([k, v]) => `${k}: ${v.contrast.reason || 'silhouette pixel ownership unavailable'}`).join('; ')}; radius-square contrast and affected class separation remain diagnostic` : '';
   // A class the capture threw out is unmeasured. The classes that remain cannot PASS in its place.
   const rejected = (r.captureCoherence && r.captureCoherence.rejected) || {};
   const captureUnmeasured = (r.captureCoherence && r.captureCoherence.unboundedShots > 0)
@@ -638,18 +641,19 @@ export function checkReadability(trace) {
   if (!pairs.length) {
     const measured = ['enemy', 'asteroid', 'projectile']
       .filter((k) => r.classes[k] && r.classes[k].n >= T.readabilityMinSamples);
-    if (!measured.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}`);
+    if (!measured.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}${contrastNote}`);
     const flat = measured
-      .filter((k) => (r.classes[k].lowContrastFrac || 0) > T.readabilityLowContrastFrac)
+      .filter((k) => !unsupportedClasses.has(k) && (r.classes[k].lowContrastFrac || 0) > T.readabilityLowContrastFrac)
       .map((k) => ({ line: `${k}: ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% of samples barely differ from the background (ΔL < ${T.readabilityLowDeltaL})`, t: r.classes[k].exampleT, sim: null, box: r.classes[k].exampleBox }));
-    const single = measured.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast`).join(' · ');
+    const single = measured.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast${unsupportedClasses.has(k) ? ' (radius-square diagnostic)' : ''}`).join(' · ');
     const thin = ['enemy', 'asteroid', 'projectile'].filter((k) => !measured.includes(k));
     const thinNote = thin.length ? `; not graded (under ${T.readabilityMinSamples}): ${thin.join(', ')}` : '';
-    return result('readability', 'Enemy / asteroid / projectile readable', flat.length ? 'FAIL' : captureUnmeasured ? 'UNKNOWN' : 'PASS', single, `separation ≥${T.readabilityMinSeparation}; ≤${T.readabilityLowContrastFrac * 100}% low-contrast per measured class`,
-      `samples: ${counts}${measurementNote}${thinNote}`, flat.slice(0, 4), flat.filter((o) => o.box).slice(0, 2));
+    return result('readability', 'Enemy / asteroid / projectile readable', flat.length ? 'FAIL' : (captureUnmeasured || unsupported.length) ? 'UNKNOWN' : 'PASS', single, `separation ≥${T.readabilityMinSeparation}; ≤${T.readabilityLowContrastFrac * 100}% low-contrast per measured class`,
+      `samples: ${counts}${measurementNote}${thinNote}${contrastNote}`, flat.slice(0, 4), flat.filter((o) => o.box).slice(0, 2));
   }
-  const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
-  const lowContrast = Object.entries(r.classes).filter(([k, v]) => (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
+  const supportedPairs = pairs.filter((p) => !unsupportedClasses.has(p.a) && !unsupportedClasses.has(p.b));
+  const bad = supportedPairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
+  const lowContrast = Object.entries(r.classes).filter(([k, v]) => !unsupportedClasses.has(k) && (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
   const bodies = (r.census || []).filter(c => ['station', 'neutral', 'other'].includes(c.cls));
   const bodyUnknown = bodies.filter(c => c.occlusion
     ? c.occlusion.unknown > 0 || c.occlusion.n < T.readabilityMinSamples
@@ -663,10 +667,10 @@ export function checkReadability(trace) {
       .map(c => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.occlusion.covered / (c.occlusion.n + c.occlusion.unknown) * 100, 0)}% of ${c.occlusion.n + c.occlusion.unknown} native opaque-mask samples — actual body pixels cover the ship`,
         t: c.occlusion.exampleT, sim: null, box: c.occlusion.exampleBox })),
   ];
-  const minSep = Math.min(...pairs.map((p) => p.sep));
+  const minSep = supportedPairs.length ? Math.min(...supportedPairs.map((p) => p.sep)) : null;
   const unknownNote = bodyUnknown.length ? `; opaque body/player coverage UNKNOWN for ${bodyUnknown.map(c => `${c.name || c.cls}: ${c.occlusion ? `${c.occlusion.n} measured/${c.occlusion.unknown} unknown (${Object.keys(c.occlusion.reasons || {}).join(', ') || 'insufficient samples'})` : 'radius overlap has no native mask'}`).join('; ')}` : '';
-  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : (bodyUnknown.length || captureUnmeasured) ? 'UNKNOWN' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
-    `samples: ${counts}${measurementNote}${unknownNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : (bodyUnknown.length || captureUnmeasured || unsupported.length) ? 'UNKNOWN' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
+    `samples: ${counts}${measurementNote}${unknownNote}${contrastNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
 /** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
