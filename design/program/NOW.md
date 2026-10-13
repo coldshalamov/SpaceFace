@@ -55,7 +55,6 @@ working. Product status and remaining tasks live in
 
 
 ## Remaster machine
-<!-- codex-batch20-oct13: active 2026-10-13; machine family 15-machines band 292-305; economy/law band 306-319. Exact controller writes: src/systems/precursorMachines.js, src/data/precursorMachines.js, build_map.md; checkpoint .codex/agent-checkpoints/BUILD-INFERENCE-20-OCT13.json. Worker writes announced in chat and own checkpoints. -->
 
 The other computer does not share this checkout. It only adds finished files under
 [`vm-drop/`](./vm-drop/README.md), on branch `vm-drop`, and the job list is

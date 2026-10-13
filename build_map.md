@@ -1101,6 +1101,47 @@ Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/19
 
 ### M. The rest of the plan — reservoirs that are this board
 
+2026-10-13 bounded production batch (codex-batch20-oct13): family 15-machines
+residuals use band 292–305; economy/people-law residuals use band 306–319.
+Prerequisite B003 is merged; B021/B141 physical interaction/courier custody is live.
+Only new production below counts. Ten independent look-and-rotate INFERENCE repairs
+run alongside these rows; existing foreign dirty work remains outside this batch.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 292 | SFQ-B142 | Custodian restores the maintenance pylon with finite material and interruptible work | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 293 | SFQ-B143 | Mason relocates one physical workpiece through the shared physics owner | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 294 | SFQ-B144 | Sorter stages unowned material before finite reclamation; recoverable and protected objects stay safe | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 295 | SFQ-B146 | Directive readout names the real hold volume, speed and failure cause | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 296 | SFQ-B149 | Executor gives an in-range grace window and usable compliance/escape remedy | BUILD | SHIPPED 2026-10-13 — c172d56378; focused production-owner checks passed |
+| 306 | SFQ-B085 | Parked-hull cargo transfer splits rich custody lots without duplicating quantity | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 307 | SFQ-B086 | A broke damaged hull can book bounded restoration on an honest yard note | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 308 | SFQ-B089 | Invalid settlement amounts cannot corrupt or erase debt | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 309 | SFQ-B095 | Duplicate repair bookings charge once and completion reports actual restoration | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+| 310 | SFQ-B115 | Fine work advances while docked and stops in flight | BUILD | SHIPPED 2026-10-13 — 7d561e843b; focused production-owner checks passed |
+
+INFERENCE batch 2026-10-13 (10 new production repairs, independent review before commits):
+- INF-OCT13-01 (`6cc112828d`): deployed decoy remains effective after pilot departure.
+- INF-OCT13-02 (`4a94f8d76f`): NPC reaction slots prioritize imminent thrown bodies.
+- INF-OCT13-03 (`c1412d3cf6`): armed charge plates survive host destruction and remain manually detonatable.
+- INF-OCT13-04 (`6a5ac5c0d0`): saucer translation honors movement rebinds and joystick ownership.
+- INF-OCT13-05 (`19e7fbf6d6`): native Brood kills earn bounded, ordinary repair pickups.
+- INF-OCT13-06 (`e84ca45c49`): expired cached contracts retire before fees/freight acceptance.
+- INF-OCT13-07 (`4fd4021364`): boot save merges preserve writes and deletion tombstones across yields.
+- INF-OCT13-08 (`a311d3ba64`): stale audio lifecycle promises cannot restart replaced graphs.
+- INF-OCT13-09 (`2dca544adf`): missing lesson bodies restage correctly even when core reuses their ids.
+- INF-OCT13-10 (`0ba4ab912c`): parked hull builds do not capture or purchase the active hull bomb rack.
+
+Implementation checks: focused owner/lifecycle regressions green; save-schema and both
+save/reload determinism comparisons passed. Adventure player-truth reached ordinary flight
+and passed controls, hull, LOD continuity and interruption checks; overall INCOMPLETE
+(combat visual sample coverage and quiet-host timing unmeasured). Swarm gate evidence
+is retained under `.devshots/batch20-oct13/`; its public preparation never reached play,
+so the capped run was stopped and the unisolated preparation/driver stall recorded as D195.
+These are implemented production outcomes, not full Adventure/Swarm acceptance or FPS
+certification. Startup hints cover the owned machine module and already-published imports;
+the foreign uncommitted Candle encounter is deliberately excluded from publication.
+
 Owner ruling, 2026-10-08: **there is no plan about building this game that is not part of this
 map.** The task banks below are admitted scope. A bank is not run like a queue — every candidate
 is outcome-mapped against landed work before it becomes a row (already-true → close with evidence;
