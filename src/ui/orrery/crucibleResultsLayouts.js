@@ -94,6 +94,32 @@ ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot,
   ${R} > .sf-crres__dial { height:min(420px, 52vh); }
 }
 
+/* ≤600 tall desktop: the death-dial caption (LAST 5 HITS strip) printed through
+   BACK TO THE HANGAR / MAIN MENU. Cause: dial host ~400px with overflow:visible, and
+   the caption sits past its floor. The short hitlegend already stands in at ≤820 tall,
+   so hide the strip, clip the dial, and lift the foot above any leftover bleed.
+   Left column tightens so WHAT YOU BUILT peeks above the stage fade. */
+@media (min-width:701px) and (max-height:600px) {
+  ${R} > .sf-crres__dial { top:8px !important; bottom:90px !important; overflow:hidden !important; }
+  ${R} .orr-deathdial__strip { display:none !important; }
+  ${R} .orr-deathdial__caption { padding-bottom:4px !important; }
+  ${R} .orr-crres-hitlegend { display:block !important; margin:4px 0 0 !important; }
+  ${R} > .k-foot { position:relative; z-index:5;
+    background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID} / .94) 12px, rgb(${VOID})) !important; }
+  ${R} .sf-crres__stage { gap:12px !important; padding:0 12px 16px 0 !important; }
+  ${R} .orr-crres-figure__n { font-size:30px !important; }
+  ${R} .orr-crres-figure__w { font-size:11px !important; margin-top:4px !important; }
+  ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { margin:0 0 6px !important; }
+  ${R} > .k-title .k-t-title { font-size:clamp(34px, 7.2vh, 48px) !important; }
+  ${R} > .sf-crres-celebrate { margin:0 !important; }
+}
+
+/* 601–720 tall: keep a thin safety clip so a long killer name cannot bleed into the foot */
+@media (min-width:701px) and (min-height:601px) and (max-height:720px) {
+  ${R} > .sf-crres__dial { overflow:hidden !important; }
+  ${R} > .k-foot { position:relative; z-index:5; }
+}
+
 `;
 
 export function injectCrucibleResultsLayouts(doc = globalThis.document) {

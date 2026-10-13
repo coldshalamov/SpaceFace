@@ -68,7 +68,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
 | **`crucible-refit`** | **DONE** | See § Crucible Refit below |
-| `crucible-results` | OPEN | Follow-up PR (not #322) |
+| `crucible-results` | **DONE** (ui-polish-27 short plate) | Foot vs LAST 5 HITS at ≤600 tall — see § Crucible results @960 below |
 | `demoEnd` | SURVEYED | |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | `base` / `base-claimed` | SURVEYED | |
@@ -612,6 +612,18 @@ New overlay `src/ui/orrery/crucibleResultsLayouts.js`, injected from the results
 - **Fixed (P0, 390×844):** the dial sat on top of the column and the figures overlapped ("6 31 24 88"). The phone layout now stacks title, dial, take, column, with the ways out docked at the bottom on a solid fade. The figures are a 2×2 grid, the wave engraving is hidden where it hit STARBOARD, and the short hit legend replaces the long one.
 - **Finish (P1):** each band title runs into a hairline. The share codes are framed fields with an underlined save link. Story and lead copy is brighter. The 1080p band lifts the figures, copy and build verbs.
 - Checked at 1280×720, 1920×1080 and 390×844, including scrolled to the bottom. Shots are in `/workspace/spaceface-scratch/ui-shots/results/` (not committed).
+
+
+## Crucible results @960×540 — foot clears LAST 5 HITS (2026-10-13, ui-polish-27)
+
+**Before:** At ≤600px tall (960×540) the death-dial caption's LAST 5 HITS strip printed through BACK TO THE HANGAR / MAIN MENU. Cause: the dial host is ~400–440px with `overflow:visible`, and the caption sits past its floor (`cy + Rc + 72`).
+
+**After (`src/ui/orrery/crucibleResultsLayouts.js` only):** At `min-width:701px` and `max-height:600px` the strip hides (the short `orr-crres-hitlegend` already stands in at ≤820), the dial clips and lifts off the foot (`bottom:90px`), and the foot gets z-index + a void fade. The left column tightens so WHAT YOU BUILT peeks above the stage fade. At 601–720 tall the dial only clips and the foot stays above any bleed; 1280/1920 keep the full hit strip. Phone layout unchanged.
+
+Selectors/IDs unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/crucible-results30/{before,after,compare}/` (not committed).
+
+**Still open (elsewhere):** Station Ledger CYCLE/−750 tape collisions (JS geometry); Market "Raw & rare" bury at 960; Contracts TRACKED badge can sit off-frame.
+
 
 ## New Game yard fixes (`new-game`) — ui-polish-5 (2026-10-12)
 
