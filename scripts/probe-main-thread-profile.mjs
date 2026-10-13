@@ -38,7 +38,7 @@
 
 import fs from 'node:fs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
-import { smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
+import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,6 +63,9 @@ const FROM_LAUNCH = process.argv.includes('--from-launch');
 const WINDOW_MS = Number(argValue('--ms') || process.env.SPACEFACE_PROFILE_MS || 20_000);
 const FLIGHT_TAIL_MS = Number(argValue('--flight-ms') || 10_000);
 const LAUNCH_DWELL_MS = Math.max(0, Number(argValue('--launch-dwell-ms')) || 0);
+// --menu-dwell-ms waits on the title menu before the profile starts, the way a person reads it first: the boot-time background
+// residency work finishes there, so New Game is not measured while it is still paying for the boot.
+const MENU_DWELL_MS = Math.max(0, Number(argValue('--menu-dwell-ms')) || 0);
 const LABEL = safeName(argValue('--label'), 48);
 const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
@@ -91,6 +94,12 @@ const EVAL_FILE = argValue('--eval-file');
 // --heap-sampling starts the V8 sampling heap profiler before New Game and, at the end of the held-thrust tail, writes
 // which allocation sites still hold live memory (heap-sampling.json / heap-sampling.md), with the JS heap at each milestone.
 const HEAP_SAMPLING = process.argv.includes('--heap-sampling');
+// --hold-still skips the thrust during the flight tail, so scene content does not change with distance flown: a time-based
+// startup cost then shows up as a cadence trend over the tail, a position-based one does not.
+const HOLD_STILL = process.argv.includes('--hold-still');
+// --sampling-us=N sets the CPU profiler's sampling interval in microseconds (default 500 for a launch, 200 for steady flight).
+// A coarse interval (4000) keeps the profiler's own cost out of a loading-smoothness read.
+const SAMPLING_US = Math.max(100, Number(argValue('--sampling-us')) || 0);
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
 ];
@@ -547,6 +556,17 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
     })));
   }
 
+  if (trace.rafStamps?.length && timeline.endWallMs > timeline.flightWallMs) {
+    lines.push('## Flight cadence by two-second bucket', '', '| seconds into flight | fps | p95 ms | worst ms | frames > 50 ms |', '|---|---:|---:|---:|---:|');
+    for (let at = 0; timeline.flightWallMs + at * 1000 < timeline.endWallMs; at += 2) {
+      const from = timeline.flightWallMs + at * 1000 - trace.timeOrigin;
+      const to = Math.min(timeline.endWallMs, timeline.flightWallMs + (at + 2) * 1000) - trace.timeOrigin;
+      const g = frameGapStats(trace.rafStamps, from, to);
+      lines.push(`| ${at}-${at + 2} | ${g.fps.toFixed(1)} | ${g.p95.toFixed(1)} | ${g.worst.toFixed(0)} | ${g.over50} |`);
+    }
+    lines.push('');
+  }
+
   lines.push(...resourceLines(trace.resources, timeline.launchWallMs, timeline.flightWallMs));
 
   lines.push('## Renderer resources', '', '| moment | programs | geometries | textures | JS heap MB |', '|---|---:|---:|---:|---:|');
@@ -673,11 +693,44 @@ async function collectLaunchObservers(page) {
   }).catch(() => ({ stages: [], longTasks: [], resources: [] }));
 }
 
+/**
+ * A visible button by its text, found with a plain DOM query. Playwright's role locators build an ARIA tree of the page
+ * inside the page's main thread (isElementHiddenForAria, getAriaRole, queryRole) and run actionability polls: that showed
+ * up as 50-100 ms long tasks on the New Game screen and at the Launch click, in the very windows being measured.
+ */
+async function findButtonCenter(page, pattern) {
+  return page.evaluate(([source, flags]) => {
+    const re = new RegExp(source, flags);
+    for (const button of document.querySelectorAll('button')) {
+      if (!re.test((button.textContent || '').trim())) continue;
+      const rect = button.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+    }
+    return null;
+  }, [pattern.source, pattern.flags]);
+}
+
+async function waitForButton(page, pattern, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const center = await findButtonCenter(page, pattern).catch(() => null);
+    if (center) return center;
+    if (Date.now() > deadline) return null;
+    await page.waitForTimeout(150);
+  }
+}
+
+async function clickButton(page, pattern, timeoutMs = 60_000) {
+  const center = await waitForButton(page, pattern, timeoutMs);
+  if (!center) throw new Error(`button ${pattern} never appeared`);
+  await page.mouse.click(center.x, center.y);
+}
+
 async function clickNewGameAndLaunch(page) {
-  await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 60_000 });
+  await clickButton(page, /^New Game$/);
   log(`New Game seed ${FIXED_SEED}`);
   try {
-    await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 60_000 });
+    await clickButton(page, /^Launch$/i);
   } catch {
     log('no Launch button on this route; continuing');
   }
@@ -868,9 +921,10 @@ async function writeHeapSampling(cdp, heapMarks) {
 async function runLaunchProfile(page, cdp, profileNote) {
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
-  await page.getByRole('button', { name: 'New Game', exact: true }).waitFor({ state: 'visible', timeout: 120_000 });
+  if (!(await waitForButton(page, /^New Game$/, 120_000))) throw new Error('the title menu never showed New Game');
   await page.waitForFunction(() => typeof window.SF?.bus?.on === 'function', null, { timeout: 60_000 })
     .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
+  if (MENU_DWELL_MS > 0) { log(`reading the title menu for ${MENU_DWELL_MS} ms first`); await page.waitForTimeout(MENU_DWELL_MS); }
   await installLaunchObservers(page);
   const heapMarks = [];
   const markHeap = async (label) => {
@@ -889,15 +943,15 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const profileStartWallMs = Date.now();
 
   const newGameWallMs = Date.now();
-  await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 60_000 });
+  await clickButton(page, /^New Game$/);
   log(`New Game seed ${FIXED_SEED}`);
   if (LAUNCH_DWELL_MS > 0) {
-    await page.getByRole('button', { name: /^Launch$/i }).waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {});
+    await waitForButton(page, /^Launch$/i, 60_000);
     log(`staying ${LAUNCH_DWELL_MS} ms on the New Game screen before Launch`);
     await page.waitForTimeout(LAUNCH_DWELL_MS);
   }
   try {
-    await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 60_000 });
+    await clickButton(page, /^Launch$/i);
   } catch {
     log('no Launch button on this route; continuing');
   }
@@ -906,11 +960,11 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const flightWallMs = await waitForFlight(page, 240_000, 250);
   if (HEAP_SAMPLING) await markHeap('first flight frame');
   const atFlight = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
-  log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; holding thrust ${FLIGHT_TAIL_MS} ms`);
+  log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; ${HOLD_STILL ? 'holding still' : 'holding thrust'} ${FLIGHT_TAIL_MS} ms`);
 
-  await page.keyboard.down('KeyW');
+  if (!HOLD_STILL) await page.keyboard.down('KeyW');
   await page.waitForTimeout(FLIGHT_TAIL_MS);
-  await page.keyboard.up('KeyW').catch(() => {});
+  if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
   if (HEAP_SAMPLING) {
@@ -957,7 +1011,7 @@ try {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Profiler.enable');
   // A launch window runs ~60 s; half-millisecond sampling keeps the profile a manageable size.
-  await cdp.send('Profiler.setSamplingInterval', { interval: FROM_LAUNCH ? 500 : 200 });
+  await cdp.send('Profiler.setSamplingInterval', { interval: SAMPLING_US > 100 ? SAMPLING_US : (FROM_LAUNCH ? 500 : 200) });
 
   if (FROM_LAUNCH) await runLaunchProfile(page, cdp, profileNote);
   else await runSteadyFlightProfile(page, cdp);

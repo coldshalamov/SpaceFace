@@ -61,12 +61,11 @@ test('the activity-pocket registry is multi-sector, and Ceres is unchanged', () 
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(TETHYS_ACTIVITY_SECTOR_ID));
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(SEDNA_ACTIVITY_SECTOR_ID));
   assert.equal(ACTIVITY_POCKETS_BY_SECTOR[CERES_ACTIVITY_SECTOR_ID], CERES_ACTIVITY_POCKETS);
-  assert.equal(
-    ACTIVITY_POCKETS.length,
-    // The registry is the flat concatenation of every registered sector, so a new sector can join
-    // it without this pin being edited (CR-HOLLOW-4 added seven).
-    Object.values(ACTIVITY_POCKETS_BY_SECTOR).reduce((total, list) => total + list.length, 0),
-  );
+  // The registry is the flat concatenation of every registered sector, so a new sector can join it without this pin
+  // being edited (CR-HOLLOW-4 added seven). A length-equals-sum check is a tautology; what can really break is two
+  // sectors registering the same pocket id, which makes activityPocketById ambiguous.
+  assert.equal(new Set(ACTIVITY_POCKETS.map((pocket) => pocket.id)).size, ACTIVITY_POCKETS.length,
+    'every registered activity pocket id is unique across sectors');
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 
   // Ceres keeps its exact contract: 8 pocket actors, 4 pockets, unchanged topology rows.

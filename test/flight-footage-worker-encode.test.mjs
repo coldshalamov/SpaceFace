@@ -354,3 +354,63 @@ test('a good frame between failures resets the count: two failures, a success, t
     browser.restore();
   }
 });
+
+test('a worker that never replies times the request out instead of holding the recorder forever', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope } = fakeScope();
+  const encoder = createFootageEncoder(scope, { timeoutMs: 25 });
+  FakeWorker.instances[0].mode = 'hold';
+  const started = Date.now();
+  await assert.rejects(encoder.encode({ close() {} }, 640, 340), /timed out/);
+  assert.ok(Date.now() - started < 1000, 'it gave up on the timeout, not on some later event');
+  assert.equal(encoder.usable, true, 'one silent frame is dropped; retirement takes three in a row at the recorder');
+  // A reply that arrives after the timeout is ignored, not applied to a later request.
+  FakeWorker.instances[0].mode = 'echo';
+  const blob = await encoder.encode({ close() {} }, 640, 340);
+  assert.equal(blob.size, 8);
+  encoder.dispose();
+});
+
+test('a reply inside the timeout clears its timer (no timer is left holding a Node process open)', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope } = fakeScope();
+  const encoder = createFootageEncoder(scope, { timeoutMs: 60_000 });
+  await encoder.encode({ close() {} }, 640, 340);
+  assert.deepEqual(process.getActiveResourcesInfo().filter((name) => name === 'Timeout').length <= 1, true);
+  encoder.dispose();
+});
+
+test('a fatal worker error terminates the thread and releases the Blob URL, not only at dispose', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope, revoked } = fakeScope();
+  const encoder = createFootageEncoder(scope);
+  const worker = FakeWorker.instances[0];
+  worker.mode = 'hold';
+  const pending = encoder.encode({ close() {} }, 640, 340);
+  worker.onerror({ message: 'out of memory', preventDefault() {} });
+  await assert.rejects(pending, /out of memory/);
+  assert.equal(worker.terminated, true, 'the errored worker is terminated at once');
+  assert.deepEqual(revoked, ['blob:fake/1'], 'and its Blob URL is revoked');
+  assert.equal(encoder.usable, false);
+  encoder.dispose(); // idempotent: no second terminate/revoke
+  assert.equal(revoked.length, 1);
+
+  const second = createFootageEncoder(scope);
+  FakeWorker.instances.at(-1).onmessageerror();
+  assert.equal(FakeWorker.instances.at(-1).terminated, true, 'a message error retires the worker too');
+  assert.equal(second.usable, false);
+});
+
+test('a transfer that throws releases the bitmap it never handed over and retires the worker', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope, revoked } = fakeScope();
+  const encoder = createFootageEncoder(scope);
+  const worker = FakeWorker.instances[0];
+  worker.postMessage = () => { throw new Error('DataCloneError'); };
+  let closed = 0;
+  await assert.rejects(encoder.encode({ close() { closed += 1; } }, 640, 340), /DataCloneError/);
+  assert.equal(closed, 1, 'the untransferred bitmap is closed');
+  assert.equal(worker.terminated, true);
+  assert.equal(revoked.length, 1);
+  assert.equal(encoder.usable, false);
+});
