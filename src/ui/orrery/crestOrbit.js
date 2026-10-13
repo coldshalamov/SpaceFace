@@ -561,11 +561,13 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   // a narrow scale staggers the tier names on two rows above the rule, so neighbours never
   // overprint: a name that fits its band stays put, otherwise alternate tiers rise one line
   const bandW = (x1 - x0) / n;
+  // a tier name is 12px caps at .1-.12em tracking: ~9.4px a glyph (8.4 under-read it, so neighbours touched)
+  const nameGlyph = 9.4;
   const stagger = tiers.some((t) => {
     const nm = String(t.name).toUpperCase();
     const sp0 = nm.indexOf(' ');
-    const need = nm.length * 8.4 > bandW - 4 && sp0 > 0
-      ? Math.max(sp0, nm.length - sp0 - 1) * 8.4 : nm.length * 8.4;
+    const need = nm.length * nameGlyph > bandW - 4 && sp0 > 0
+      ? Math.max(sp0, nm.length - sp0 - 1) * nameGlyph : nm.length * nameGlyph;
     return need > bandW - 4;
   });
   tiers.forEach((t, i) => {
@@ -576,13 +578,17 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     const name = String(t.name).toUpperCase();
     const anchor = 'middle';
     const nx = xAt(i + 0.5);
-    const band = bandW;
+    // on a staggered scale a name's neighbours stand on the other row, so it may use two bands before it splits
+    const band = stagger ? bandW * 2 : bandW;
     const sp = name.indexOf(' ');
-    const parts = name.length * 8.4 > band - 4 && sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name];
+    const parts = name.length * nameGlyph > band - 4 && sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name];
     const dy = stagger && i % 2 === 1 ? -13 : 0;
     parts.forEach((part, pi) => {
       const py = y - 13 + dy - (parts.length - 1 - pi) * 11;
-      out += `<text class="orr-standing__name${i === current ? ' is-current' : ''}${hostile ? ' is-hostile' : ''}" x="${f(nx)}" y="${py}" text-anchor="${anchor}">${part}</text>`;
+      // the end names stand flush with the rule's own ends, so a long one never runs off the scale
+      const end = i === 0 ? 'start' : i === tiers.length - 1 ? 'end' : anchor;
+      const px = i === 0 ? x0 : i === tiers.length - 1 ? x1 : nx;
+      out += `<text class="orr-standing__name${i === current ? ' is-current' : ''}${hostile ? ' is-hostile' : ''}" x="${f(px)}" y="${py}" text-anchor="${end}">${part}</text>`;
     });
     // the boundary's value under its tick: a ruler is labelled like equipment
     if (i > 0) out += `<text class="orr-standing__val${hostile ? ' is-hostile' : ''}" x="${f(x)}" y="${y + 22}" text-anchor="middle">${t.min > 0 ? '+' : t.min < 0 ? '\u2212' : ''}${Math.abs(t.min)}</text>`;
