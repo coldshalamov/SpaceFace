@@ -101,7 +101,7 @@ test('gauge label escapes text and rejects arbitrary modifier classes', () => {
 });
 test('range input previews; change commits once; paint handles a nonzero minimum', () => {
   const input=new EventTarget(), paint=new Map(), calls=[];
-  Object.assign(input,{min:'20',max:'80',value:'50',style:{setProperty:(k,v)=>paint.set(k,v)}});
+  Object.assign(input,{min:'20',max:'80',value:'50',style:{setProperty:(k,v)=>paint.set(k,v)},attrs:{},setAttribute(k,v){this.attrs[k]=String(v);}});
   const label={textContent:''};bindCommittedRange(input,label,v=>v+'%',(value,persist)=>calls.push({value,persist}));
   assert.equal(paint.get('--sf-range-fill'),'50.0%');assert.deepEqual(calls,[]);
   input.value='65';input.dispatchEvent(new Event('input'));input.dispatchEvent(new Event('change'));
