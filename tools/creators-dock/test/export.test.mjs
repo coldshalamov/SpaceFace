@@ -101,6 +101,13 @@ test('import refuses a second player and a single player keeps height', async ()
     ? none.project.objects.filter((object) => object.isPlayer).length
     : null;
   assert.equal(importedPlayers, null);
+
+  const emptyEntities = structuredClone(exported.scenario);
+  emptyEntities.entities = [];
+  const emptyImport = importScenario(emptyEntities);
+  assert.equal(emptyImport.ok, false);
+  assert.equal(emptyImport.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  assert.equal(emptyImport.project, null);
 });
 
 test('actor height and vertical velocity survive export and import', async () => {

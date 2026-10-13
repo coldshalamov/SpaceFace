@@ -480,7 +480,7 @@ window.addEventListener('keydown', (event) => {
     if (result.ok) {
       selected = [];
       commitProject(result.project);
-    }
+    } else showReport(result);
   }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
     event.preventDefault();
@@ -615,7 +615,7 @@ document.querySelector('#btn-delete').addEventListener('click', () => {
   if (result.ok) {
     selected = [];
     commitProject(result.project);
-  }
+  } else showReport(result);
 });
 snapButton.addEventListener('click', toggleSnap);
 document.querySelector('#btn-validate').addEventListener('click', () => post('/api/validate', { project: project() }));

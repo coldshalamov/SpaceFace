@@ -129,6 +129,13 @@ function exactlyOnePlayerIssue(found) {
   return `scene needs exactly one player actor (found ${found})`;
 }
 
+export function requireOnePlayer(previous, result) {
+  if (!result || result.ok === false) return result;
+  const found = countPlayers(result.project && result.project.objects);
+  if (found !== 1) return { ok: false, project: previous, issues: [exactlyOnePlayerIssue(found)] };
+  return result;
+}
+
 function playersAfterReplace(project, id, object) {
   let count = 0;
   for (const entry of project.objects || []) {
@@ -139,6 +146,8 @@ function playersAfterReplace(project, id, object) {
 }
 
 export function placePlayer(project) {
+  const found = countPlayers(project.objects);
+  if (found > 1) return { ok: false, project, issues: [exactlyOnePlayerIssue(found)] };
   const existing = (project.objects || []).find((object) => isPlayerActor(object));
   if (existing) return { ok: true, project, id: existing.id, issues: [] };
   let id = 'player';
@@ -175,19 +184,17 @@ export function setPlayer(project, id) {
   for (const object of next.objects || []) {
     if (object.kind === 'actor') object.isPlayer = object.id === id;
   }
-  return { ok: true, project: next, id, issues: [] };
+  const gated = requireOnePlayer(project, { ok: true, project: next, id, issues: [] });
+  return gated.ok ? gated : { ok: false, project, issues: gated.issues };
 }
 
 export function clearPlayerFlag(project, id) {
   const target = objectById(project, id);
   if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
-  if (target.isPlayer && countPlayers(project.objects) <= 1) {
-    return { ok: false, project, issues: [exactlyOnePlayerIssue(0)] };
-  }
   const next = clone(project);
   const object = next.objects.find((row) => row.id === id);
   object.isPlayer = false;
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function addObject(project, object) {
@@ -222,7 +229,7 @@ export function deleteObjects(project, ids) {
   const before = next.objects.length;
   next.objects = next.objects.filter((object) => !drop.has(object.id));
   if (next.objects.length === before) return { ok: false, project, issues: ['nothing deleted'] };
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function cloneObject(project, id, newId) {
@@ -272,7 +279,7 @@ export function nudgeObjects(project, ids, dx, dz) {
     object.x = snapCoord(object.x + dx, next.grid);
     object.z = snapCoord(object.z + dz, next.grid);
   }
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function setVelocity(project, id, velX, velZ) {
@@ -286,7 +293,7 @@ export function setVelocity(project, id, velX, velZ) {
   }
   object.velX = velX;
   object.velZ = velZ;
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function groupObjects(project, ids, groupId) {
@@ -304,7 +311,7 @@ export function groupObjects(project, ids, groupId) {
     }
   }
   if (n !== wanted.size) return { ok: false, project, issues: ['group id missing from the scene'] };
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function ungroupObjects(project, ids) {
@@ -313,7 +320,7 @@ export function ungroupObjects(project, ids) {
   for (const object of next.objects) {
     if (wanted.has(object.id)) delete object.groupId;
   }
-  return { ok: true, project: next, issues: [] };
+  return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
 export function snapCoord(n, grid) {

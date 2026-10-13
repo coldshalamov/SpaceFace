@@ -21,6 +21,8 @@ import {
   replaceObject,
   REQUEST_SCHEMA,
   setPlayer,
+  setVelocity,
+  ungroupObjects,
 } from '../lib/scene.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
 
@@ -41,15 +43,21 @@ test('undo restores a nudged actor and clone is not the player', () => {
   assert.notEqual(objectById(copied.project, 'cargo_copy').x, objectById(project, 'cargo').x);
 });
 
-test('grouping moves every member and deleting the player fails the scene check', () => {
+test('grouping moves every member and deleting the only player is refused', () => {
   const project = getComposition('dock.collision-chain');
   const ids = expandIds(project, ['rock_a']);
   assert.deepEqual(ids.sort(), ['rock_a', 'rock_b', 'rock_c']);
   const moved = nudgeObjects(project, ['rock_b'], 10, 0);
   assert.equal(objectById(moved.project, 'rock_a').x, 50);
   assert.equal(objectById(moved.project, 'rock_c').x, 90);
+  const broken = getComposition('dock.collision-chain');
+  objectById(broken, 'player').isPlayer = false;
+  assert.equal(projectIssues(broken).some((issue) => issue.includes('exactly one player')), true);
   const removed = deleteObjects(project, ['player']);
-  assert.equal(projectIssues(removed.project).some((issue) => issue.includes('exactly one player')), true);
+  assert.equal(removed.ok, false);
+  assert.equal(removed.issues.some((issue) => issue.includes('exactly one player')), true);
+  assert.equal(objectById(removed.project, 'player').isPlayer, true);
+  assert.equal(removed.project, project);
 });
 
 test('group and ungroup are explicit', () => {
@@ -257,4 +265,164 @@ test('replaceObject refuses a replace that leaves zero players', () => {
   const promoted = replaceObject(bare, 'cargo', { ...cargo, isPlayer: true, role: 'player' });
   assert.equal(promoted.ok, true, promoted.issues.join('\n'));
   assert.deepEqual(playerIds(promoted.project), ['cargo']);
+});
+
+function countedProject(count) {
+  const project = getComposition('dock.intercept-cargo');
+  const player = objectById(project, 'player');
+  if (count === 0) player.isPlayer = false;
+  if (count >= 2) {
+    for (let n = 2; n <= count; n += 1) {
+      project.objects.push({ ...player, id: `wingman_${n}`, label: `wingman ${n}` });
+    }
+  }
+  return project;
+}
+
+function refused(result, found) {
+  assert.equal(result.ok, false);
+  assert.equal(result.issues.some((issue) => issue.includes('exactly one player') && issue.includes(`found ${found}`)), true);
+  return result;
+}
+
+test('placePlayer, clearPlayerFlag, setPlayer, cloneObject, and delete keep exactly one player', () => {
+  const doubled = countedProject(2);
+  const placed = placePlayer(doubled);
+  refused(placed, 2);
+  assert.equal(placed.project, doubled);
+  assert.equal(playerIds(placed.project).length, 2);
+
+  const bare = emptyProject({ id: 'dock.zero', title: 'Zero', seed: 1 });
+  bare.objects = [plainActor('cargo')];
+  const clearedIdle = clearPlayerFlag(bare, 'cargo');
+  refused(clearedIdle, 0);
+  assert.equal(clearedIdle.project, bare);
+  assert.equal(playerIds(clearedIdle.project).length, 0);
+
+  const three = countedProject(3);
+  const clearedOne = clearPlayerFlag(three, 'wingman_3');
+  refused(clearedOne, 2);
+  assert.equal(clearedOne.project, three);
+  assert.equal(playerIds(clearedOne.project).length, 3);
+
+  const two = countedProject(2);
+  const clearedCargo = clearPlayerFlag(two, 'cargo');
+  refused(clearedCargo, 2);
+  assert.equal(clearedCargo.project, two);
+  const repaired = clearPlayerFlag(two, 'wingman_2');
+  assert.equal(repaired.ok, true, repaired.issues.join('\n'));
+  assert.deepEqual(playerIds(repaired.project), ['player']);
+
+  const twins = countedProject(1);
+  const player = objectById(twins, 'player');
+  twins.objects.push({ ...player });
+  const shared = setPlayer(twins, 'player');
+  refused(shared, 2);
+  assert.equal(shared.project, twins);
+  assert.equal(playerIds(shared.project).length, 2);
+  const moved = setPlayer(getComposition('dock.intercept-cargo'), 'cargo');
+  assert.equal(moved.ok, true, moved.issues.join('\n'));
+  assert.deepEqual(playerIds(moved.project), ['cargo']);
+
+  const cloned = cloneObject(doubled, 'cargo', 'cargo_copy');
+  refused(cloned, 2);
+  assert.equal(objectById(cloned.project, 'cargo_copy'), null);
+  const clonedEmpty = cloneObject(bare, 'cargo', 'cargo_copy');
+  refused(clonedEmpty, 0);
+  assert.equal(bare.objects.length, 1);
+
+  const removed = deleteObjects(getComposition('dock.intercept-cargo'), ['player']);
+  refused(removed, 0);
+  assert.equal(objectById(removed.project, 'player').isPlayer, true);
+  const cargoGone = deleteObjects(getComposition('dock.intercept-cargo'), ['cargo']);
+  assert.equal(cargoGone.ok, true, cargoGone.issues.join('\n'));
+  assert.deepEqual(playerIds(cargoGone.project), ['player']);
+});
+
+test('edits that do not change the player count still refuse a zero or two player scene', () => {
+  for (const count of [0, 2]) {
+    const project = countedProject(count);
+    const beforeX = objectById(project, 'cargo').x;
+    const beforeVel = objectById(project, 'cargo').velX;
+    const nudged = nudgeObjects(project, ['cargo'], 10, 0);
+    refused(nudged, count);
+    assert.equal(nudged.project, project);
+    assert.equal(objectById(project, 'cargo').x, beforeX);
+    const velocity = setVelocity(project, 'cargo', 3, 4);
+    refused(velocity, count);
+    assert.equal(objectById(project, 'cargo').velX, beforeVel);
+    const grouped = groupObjects(project, ['player', 'cargo'], 'pair');
+    refused(grouped, count);
+    assert.equal(objectById(project, 'cargo').groupId, undefined);
+    const ungrouped = ungroupObjects(project, ['player']);
+    refused(ungrouped, count);
+    assert.equal(playerIds(ungrouped.project).length, count);
+  }
+});
+
+test('agent requests do not succeed unless the committed project has exactly one player', () => {
+  const draft = { op: 'create', project: { id: 'dock.draft', title: 'Draft', seed: 1 } };
+  const player = { op: 'addObject', object: secondPlayer('player') };
+  const created = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft] });
+  assert.equal(created.ok, false);
+  assert.equal(created.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+
+  const undone = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, player, { op: 'undo' }] });
+  assert.equal(undone.ok, false);
+  assert.equal(undone.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  assert.equal(playerIds(undone.project).length, 1);
+
+  const removed = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, player, { op: 'delete', ids: ['player'] }] });
+  assert.equal(removed.ok, false);
+  assert.equal(removed.issues.some((issue) => issue.includes('exactly one player')), true);
+  assert.equal(playerIds(removed.project).length, 1);
+
+  const emptied = applyRequest({
+    schema: REQUEST_SCHEMA,
+    ops: [
+      { op: 'loadExample', id: 'dock.intercept-cargo' },
+      { op: 'setMeta', meta: { objects: [] } },
+    ],
+  });
+  assert.equal(emptied.ok, false);
+  assert.equal(emptied.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  assert.deepEqual(playerIds(emptied.project), ['player']);
+
+  const body = objectById(getComposition('dock.intercept-cargo'), 'player');
+  const doubled = applyRequest({
+    schema: REQUEST_SCHEMA,
+    ops: [
+      { op: 'loadExample', id: 'dock.intercept-cargo' },
+      { op: 'setMeta', meta: { objects: [body, { ...body, id: 'wingman', label: 'wingman' }] } },
+    ],
+  });
+  assert.equal(doubled.ok, false);
+  assert.equal(doubled.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 2')), true);
+  assert.deepEqual(playerIds(doubled.project), ['player']);
+
+  const sideOps = [
+    { op: 'setFrames', frames: [] },
+    { op: 'setWorld', world: { credits: 1 } },
+    { op: 'setNotes', notes: { creatorsDock: '1' } },
+    { op: 'setEncounter', encounter: null },
+    { op: 'setWeapon', weapon: null },
+    { op: 'setPlace', place: null },
+    { op: 'setModule', module: null },
+  ];
+  for (const op of sideOps) {
+    const result = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, op] });
+    assert.equal(result.ok, false, op.op);
+    assert.equal(result.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true, op.op);
+    assert.equal(result.applied.includes(op.op), false, op.op);
+  }
+
+  const noted = applyRequest({
+    schema: REQUEST_SCHEMA,
+    ops: [
+      { op: 'loadExample', id: 'dock.intercept-cargo' },
+      { op: 'setNotes', notes: { expectedObservation: 'still one player' } },
+    ],
+  });
+  assert.equal(noted.ok, true, noted.issues.join('\n'));
+  assert.deepEqual(playerIds(noted.project), ['player']);
 });

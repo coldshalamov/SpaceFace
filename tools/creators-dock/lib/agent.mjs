@@ -12,6 +12,7 @@ import {
   groupObjects,
   nudgeObjects,
   REQUEST_SCHEMA,
+  requireOnePlayer,
   RESPONSE_SCHEMA,
   setVelocity,
   ungroupObjects,
@@ -42,13 +43,13 @@ export function applyRequest(request) {
       continue;
     }
     if (!history) return response(false, null, [`${label}: no project yet`], applied);
-    if (op.op === 'undo') {
-      history = undo(history);
-      applied.push(op.op);
-      continue;
-    }
-    if (op.op === 'redo') {
-      history = redo(history);
+    if (op.op === 'undo' || op.op === 'redo') {
+      const stepped = op.op === 'undo' ? undo(history) : redo(history);
+      const gate = requireOnePlayer(history.present, { ok: true, project: stepped.present, issues: [] });
+      if (!gate.ok) {
+        return response(false, history.present, gate.issues.map((issue) => `${label}: ${issue}`), applied);
+      }
+      history = stepped;
       applied.push(op.op);
       continue;
     }
@@ -60,10 +61,18 @@ export function applyRequest(request) {
     applied.push(op.op);
   }
   if (!history) return response(false, null, ['request has no create or loadExample'], applied);
+  const gate = requireOnePlayer(history.present, { ok: true, project: history.present, issues: [] });
+  if (!gate.ok) return response(false, history.present, gate.issues, applied);
   return response(true, history.present, [], applied);
 }
 
 function applyOp(project, op) {
+  const step = dispatchOp(project, op);
+  if (!step || step.ok === false) return step;
+  return requireOnePlayer(project, step);
+}
+
+function dispatchOp(project, op) {
   switch (op.op) {
     case 'addObject':
       return addObject(project, op.object);
