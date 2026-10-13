@@ -81,6 +81,13 @@ const TRACE = process.argv.includes('--trace');
 // --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
 const CRUCIBLE = process.argv.includes('--crucible');
 const SETTLE_MS = Math.max(0, Number(argValue('--settle-ms')) || 0);
+// --gpu-timers turns the capability-gated GPU timer queries on for the profile window and prints the per-pass report
+// (drawPreparedFrame, bloom passes): which GPU pass the frame is waiting on, where the main thread cannot see it.
+const GPU_TIMERS = process.argv.includes('--gpu-timers');
+// --eval-file=PATH runs a script in the page once the flight has settled (instead of the profile window): the file is
+// one expression that evaluates to a Promise, and its resolved value is saved as eval-result.json. This is how a
+// within-session A/B (alternating blocks in the same flight) controls for this machine's noisy background load.
+const EVAL_FILE = argValue('--eval-file');
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
 ];
@@ -709,6 +716,15 @@ async function runSteadyFlightProfile(page, cdp) {
   if (CRUCIBLE) await launchCrucible(page); else await clickNewGameAndLaunch(page);
   await waitForFlight(page, 180_000, 1000);
   if (SETTLE_MS > 0) { log(`flying ${SETTLE_MS} ms before the profile window`); await page.waitForTimeout(SETTLE_MS); }
+  if (EVAL_FILE) {
+    const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
+    log(`running ${EVAL_FILE} in the page`);
+    const result = await page.evaluate(source);
+    fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
+    log(`eval result: ${JSON.stringify(result).slice(0, 3000)}`);
+    fs.writeFileSync(path.join(OUT_DIR, 'report.md'), ['# Eval run', '', 'See eval-result.json.', ''].join('\n'), 'utf8');
+    return;
+  }
 
   await page.evaluate(() => {
     window.__SF_PROFILE_LONGTASKS__ = [];
@@ -723,6 +739,15 @@ async function runSteadyFlightProfile(page, cdp) {
     } catch { /* longtask observation is best-effort */ }
   });
 
+  if (GPU_TIMERS) {
+    const gpuOn = await page.evaluate(() => {
+      const timers = window.SF?.state?.render?.gpuTimers;
+      if (!timers || typeof timers.setEnabled !== 'function') return 'no gpuTimers on state.render';
+      timers.setEnabled(true);
+      return timers.getCapability ? JSON.stringify(timers.getCapability()) : 'enabled';
+    }).catch((error) => String(error));
+    log(`gpu timers: ${gpuOn}`);
+  }
   log(`profiling ${WINDOW_MS} ms of held-thrust flight`);
   await cdp.send('Profiler.start');
   await page.keyboard.down('KeyW');
@@ -747,6 +772,16 @@ async function runSteadyFlightProfile(page, cdp) {
     return { installed: true, ...active.status(), lastBytes: last ? last.blob.size : 0, decoded };
   }).catch((error) => ({ error: String(error) }));
   log(`flight footage: ${JSON.stringify(footage)}`);
+  if (GPU_TIMERS) {
+    const report = await page.evaluate(() => {
+      const timers = window.SF?.state?.render?.gpuTimers;
+      return timers && typeof timers.getReport === 'function' ? timers.getReport() : null;
+    }).catch(() => null);
+    if (report) {
+      fs.writeFileSync(path.join(OUT_DIR, 'gpu-timers.json'), JSON.stringify(report, null, 1), 'utf8');
+      log(`gpu timers report: ${JSON.stringify(report).slice(0, 1800)}`);
+    } else log('gpu timers: no report');
+  }
   await page
     .evaluate(() => {
       try { window.__SF_PROFILE_LONGTASK_OBSERVER__?.disconnect(); } catch { /* already gone */ }
