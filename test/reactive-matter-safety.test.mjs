@@ -7,6 +7,7 @@ import {
   addMachine,
   claimReactiveSalvage,
   createReactiveWorld,
+  clearReactiveLaws,
   destroyReactiveWorld,
   loadReactiveWorld,
   reapReactiveWorld,
@@ -127,6 +128,15 @@ test('catalog mass cannot be inflated through a save', () => {
   saved.bodies[0].mass = 1000;
   const heavy = loadReactiveWorld(saved);
   assert.equal(heavy.bodies.get('crate').mass, REACTIVE_MODELS.ferro_crate.mass);
+  const shard = spawnReactiveBody(sim, { id: 'chip', modelId: 'reactive_shard', x: 4, z: 0, mass: 0.1 });
+  assert.equal(shard.mass, 0.1);
+  const shardSave = saveReactiveWorld(sim);
+  const chip = shardSave.bodies.find((body) => body.id === 'chip');
+  chip.mass = 0.1;
+  const restored = loadReactiveWorld(shardSave);
+  assert.equal(restored.bodies.get('chip').mass, 0.1);
+  chip.mass = 1000;
+  assert.equal(loadReactiveWorld(shardSave).bodies.get('chip').mass, 80);
 });
 
 test('reaction budget defers a crowd and reap clears old debris', () => {
@@ -161,7 +171,7 @@ test('destroy rejects further spawns and the live reel uses the massline cap', (
   assert.equal(PLAYER_EXTERNAL_RESPONSE.maxAcceleration, 8);
 });
 
-test('crowded ferromagnetic picture evaluates every pair; the inert picture evaluates none', () => {
+test('crowded ferromagnetic picture evaluates every pair; laws-off is the same crates', () => {
   function picture(live) {
     const sim = createReactiveWorld({ seed: 11 });
     for (let m = 0; m < 8; m++) {
@@ -170,18 +180,23 @@ test('crowded ferromagnetic picture evaluates every pair; the inert picture eval
       });
     }
     for (let i = 0; i < 48; i++) {
-      spawnReactiveBody(sim, {
+      const body = spawnReactiveBody(sim, {
         id: `b${i}`,
-        modelId: live ? 'ferro_crate' : 'inert_puck',
+        modelId: 'ferro_crate',
         x: (i % 8 - 3.5) * 12,
         z: 8 + Math.floor(i / 8) * 6,
       });
+      if (!live) clearReactiveLaws(body);
     }
     return sim;
   }
   const ticks = 60;
   const live = picture(true);
   const inert = picture(false);
+  const liveIds = [...live.bodies.values()].map((body) => body.modelId).sort();
+  const inertIds = [...inert.bodies.values()].map((body) => body.modelId).sort();
+  assert.deepEqual(inertIds, liveIds);
+  assert.ok(inertIds.every((id) => id === 'ferro_crate'));
   const t0 = performance.now();
   let liveEvals = 0;
   for (let i = 0; i < ticks; i++) liveEvals += stepReactiveMatter(live, { contacts: [] }).lawEvals;

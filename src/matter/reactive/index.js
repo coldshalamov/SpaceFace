@@ -19,6 +19,7 @@ export {
   addMachine,
   claimReactiveSalvage,
   createReactiveWorld,
+  clearReactiveLaws,
   destroyReactiveWorld,
   loadReactiveWorld,
   mintSalvage,
