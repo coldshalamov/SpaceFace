@@ -2155,7 +2155,9 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
 .orr-clip__plate:not(.is-chosen) .orr-clip__sub, .orr-clip__plate:not(.is-chosen) .orr-clip__bounds,
 .orr-clip__plate:not(.is-chosen) .orr-clip__tickcode, .orr-clip__plate:not(.is-chosen) .orr-clip__beam,
 .orr-clip__plate:not(.is-chosen) .orr-clip__gauge { display:none; }
-.orr-clip__plate.is-ghost .orr-clip__sub { display:block; }
+.orr-clip__plate.is-ghost .orr-clip__sub { display:block; white-space:normal; line-height:1.35; }
+.orr-clips__runtime-unit { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600;
+  font-size:12px; letter-spacing:.16em; color:rgb(236 230 216 / .66); }
 .orr-clip__gauge { position:absolute; top:-6px; right:-6px; width:46px; height:46px; pointer-events:none; }
 .orr-clip__beam { position:relative; margin-top:6px; height:30px; }
 .orr-clip__beam svg { position:absolute; inset:0; width:100%; height:100%; }
@@ -2180,6 +2182,23 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
   font-size:12px; letter-spacing:.14em; color:rgb(236 230 216 / .55); cursor:pointer; padding:4px 2px; }
 .orr-clip__dial-opt[aria-checked="true"] { color:rgb(236 230 216); }
 .orr-clip__dial-opt:focus-visible { outline:1px solid rgb(255 217 140 / .9); outline-offset:2px; }
+@media (max-width:640px) {
+  .orr-clips__readline { flex-direction:column; align-items:center; gap:6px; }
+  .orr-clips__readout, .orr-replay__readout { white-space:normal; overflow:visible; text-overflow:clip; }
+  .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; letter-spacing:0; }
+  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:11px; letter-spacing:.08em; }
+}
+@media (max-height:640px) and (min-width:641px) {
+  .orr-clips__rail { top:20%; }
+}
+@media (max-width:640px) and (min-height:700px) {
+  .orr-clips__rail { top:33%; }
+}
+@media (min-width:641px) and (min-height:900px) {
+  .orr-clips__rail { top:calc(27% + 7vh); }
+  .orr-clips__readline { bottom:calc(92px + 5vh); }
+}
+.orr-clips__pos:empty { display:none; }
 html.sf-reduce-motion .orr-clip__plate { transition:none; }
 @media (forced-colors:active) {
   .orr-clips__count, .orr-clips__runtime { color:CanvasText; text-shadow:none; }

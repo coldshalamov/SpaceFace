@@ -74,8 +74,8 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `base` / `base-claimed` | SURVEYED | |
 | `loading` | SURVEYED | |
 | `automation` | SURVEYED | |
-| `replay` | SURVEYED | |
-| `clips` | SURVEYED | |
+| **`replay`** | **DONE** (ui-polish-27) | Empty-tape line wraps on phone instead of ellipsizing — see § Clips reel empty state below |
+| **`clips`** | **DONE** (ui-polish-27) | Empty reel fits every width; see § Clips reel empty state below |
 | **`sandbox`** | **DONE** (ui-polish-24) | Launch no longer buries Combat Lab / Hull / Hornet; phone tiles no longer stack — see § Sandbox Launch below |
 | `localmap` / `localmap-legacy` | SURVEYED | |
 | `starmap` / `starmap-legacy` | SURVEYED | |
@@ -705,3 +705,17 @@ Portrait keeps the live/poster hull (jig still requires W ≥ 480). Landscape ke
 2. At ≤1100 wide, the four heroes become a 2×2 grid at 24px so each reading stays whole.
 
 Bench clean at 960×540 / 1024×768 / 1280×720 / 1920×1080 / 390×844 / 844×390. Station Shipworks unchanged. Shots: `ui-shots/ship-inspect/{before2,after2,compare}/` (not committed).
+
+---
+
+## Clips reel empty state — session notes (2026-10-13, ui-polish-27)
+
+**Before:** the three ghost plates (A STUNT / A KILL / A SAVE) were a populated plate scaled to 0.75 and spaced 1.8 reel steps apart. On a phone, STUNT and SAVE hung off both edges; at 960 they floated a populated plate's height above the rail, and the Hand ran into KILL's line. The legend ellipsized on phone (Replay's too), "0 / 0" led the empty legend, and "0.0 S TOTAL" set the unit larger than the number.
+
+**After (`clips.js` `layoutGhosts` + `styles/ui.css`, `.orr-clips` / `.orr-replay` scoped):**
+- Ghosts are laid out at their own width (≤85% of a plate, always three across the rail with gutters) instead of scaled, so their words keep size; each stands on the rail under it, the middle one clear of the Hand.
+- ≤640 wide: legends wrap (Clips and Replay), ghost names 15px. ≤640 tall: rail at 20% so the arc clears the legend. ≥900 tall: rail and legend step in so the reel isn't stranded above a void.
+- Empty reel drops "0 / 0"; S TOTAL is a 12px label under the numeral's size.
+- Populated reel geometry is unchanged (no bench fixture for a populated reel; the rail-top media rules apply to it too).
+
+Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and `--phone`), 960×540, 1280×720, 1920×1080.
