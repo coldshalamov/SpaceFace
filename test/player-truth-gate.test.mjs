@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runChecks, overall, checkRoundTransitions, checkRoundsReached, checkVfx, checkBackdrop } from '../scripts/player-truth/checks.mjs';
-import { compareVerdicts, renderComparison } from '../scripts/player-truth/compare.mjs';
+import { compareVerdicts, renderComparison, baselineAssetPlan } from '../scripts/player-truth/compare.mjs';
 import { systemChromeCandidates } from '../scripts/player-truth/browser.mjs';
 
 const P = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, hull: 50, hullMax: 100, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
@@ -234,6 +234,13 @@ test('an environment verdict is not a gameplay regression, and software frame ti
   assert.match(blowup, /962 long tasks/);
   assert.match(blowup, /1 advisory/);
   assert.doesNotMatch(blowup, /REGRESSED/);
+});
+
+test('baseline assets link a matching shared checkout and refuse a stale or partial one', () => {
+  assert.equal(baselineAssetPlan({ manifestPresent: true, sharedMatches: true, canLink: true }), 'present');
+  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: true, canLink: true }), 'link');
+  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: false, canLink: true }), 'extract');
+  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: true, canLink: false }), 'extract');
 });
 
 test('pinned spans name the solid body the ship sits on', async () => {

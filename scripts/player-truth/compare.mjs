@@ -5,8 +5,8 @@
 //   npm run player-truth -- --mode=swarm --gate --baseline=origin/master   (runs the same CLI on <ref>, then compares)
 //
 // One markdown table per run pair: check, baseline status/value, branch status/value, change.
-import { readFileSync, writeFileSync, existsSync, mkdirSync, symlinkSync, rmSync } from 'node:fs';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, symlinkSync, rmSync, lstatSync, readdirSync } from 'node:fs';
+import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { overall, regradeSoftwareFrameTime } from './checks.mjs';
@@ -109,6 +109,109 @@ export function renderComparison(base, head) {
   return lines.join('\n');
 }
 
+/** Where a sparse baseline worktree should get `assets/`. Fleet checkouts exclude that tree. */
+export const ASSET_PROBE = 'assets/ships/release/render-packages/kestrel/render-package.json';
+
+/**
+ * `present` — the worktree already has the probe file.
+ * `link` — shared checkout's asset tree matches `ref` and the worktree slot is empty.
+ * `extract` — shared tree differs, or the slot is a partial real directory. Do not link a stale tree.
+ */
+export function baselineAssetPlan({ manifestPresent, sharedMatches, canLink }) {
+  if (manifestPresent) return 'present';
+  if (sharedMatches && canLink) return 'link';
+  return 'extract';
+}
+
+function slotState(dir) {
+  if (!existsSync(dir)) return 'missing';
+  let st;
+  try { st = lstatSync(dir); } catch { return 'missing'; }
+  if (st.isSymbolicLink()) return 'link';
+  if (!st.isDirectory()) return 'other';
+  try { return readdirSync(dir).length === 0 ? 'empty' : 'dir'; } catch { return 'other'; }
+}
+
+/** True when `shared`'s commit tree for `subdir` matches `ref`. A dirty worktree does not count. */
+export function sharedTreeMatches(shared, ref, subdir) {
+  try {
+    execFileSync('git', ['diff-tree', '--quiet', ref, 'HEAD', '--', subdir], { cwd: shared, stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function replaceSlot(dir) {
+  const state = slotState(dir);
+  if (state === 'missing') return true;
+  if (state === 'empty' || state === 'link') {
+    rmSync(dir, { recursive: true, force: true });
+    return true;
+  }
+  return false;
+}
+
+function linkSharedDir(shared, wt, name) {
+  const from = path.join(shared, name);
+  const to = path.join(wt, name);
+  if (!existsSync(from)) return false;
+  if (!replaceSlot(to)) return false;
+  symlinkSync(from, to, 'dir');
+  return true;
+}
+
+function extractAssets(root, ref, wt) {
+  replaceSlot(path.join(wt, 'assets'));
+  return new Promise((resolve, reject) => {
+    const git = spawn('git', ['archive', '--format=tar', ref, 'assets'], { cwd: root });
+    const tar = spawn('tar', ['-x', '-C', wt]);
+    const err = [];
+    git.stderr.on('data', (d) => err.push(d));
+    tar.stderr.on('data', (d) => err.push(d));
+    git.stdout.pipe(tar.stdin);
+    let gitCode = null;
+    let tarCode = null;
+    const finish = () => {
+      if (gitCode == null || tarCode == null) return;
+      if (gitCode !== 0 || tarCode !== 0) {
+        reject(new Error(`baseline asset extract failed git=${gitCode} tar=${tarCode} ${Buffer.concat(err).toString('utf8').slice(0, 500)}`));
+      } else resolve();
+    };
+    git.on('error', reject);
+    tar.on('error', reject);
+    git.on('close', (code) => { gitCode = code ?? 1; finish(); });
+    tar.on('close', (code) => { tarCode = code ?? 1; finish(); });
+  });
+}
+
+/**
+ * A fleet worktree is sparse (`!/assets/`), and `git worktree add` copies that pattern, so the
+ * baseline checkout serves zero asset blobs. Link the shared checkout when its asset tree matches
+ * `ref`. Otherwise extract `assets/` from `ref` so a stale share cannot pass the environment check.
+ */
+export async function attachBaselineAssets(wt, ref, { shared = process.env.SHARED_ASSETS || '/workspace/spaceface-scratch/_assets-master', root = wt } = {}) {
+  const manifestPresent = existsSync(path.join(wt, ASSET_PROBE));
+  const assetsState = slotState(path.join(wt, 'assets'));
+  const canLink = assetsState === 'missing' || assetsState === 'empty' || assetsState === 'link';
+  const sharedMatches = !manifestPresent && existsSync(path.join(shared, ASSET_PROBE)) && sharedTreeMatches(shared, ref, 'assets');
+  const plan = baselineAssetPlan({ manifestPresent, sharedMatches, canLink });
+  if (plan === 'present') {
+    console.log('baseline assets: already present');
+    return plan;
+  }
+  if (plan === 'link') {
+    if (!linkSharedDir(shared, wt, 'assets')) throw new Error(`baseline assets: could not link ${shared}/assets`);
+    if (sharedTreeMatches(shared, ref, 'design')) linkSharedDir(shared, wt, 'design');
+    console.log(`baseline assets: linked ${shared} (asset tree matches ${ref})`);
+    return plan;
+  }
+  console.log(`baseline assets: extracting ${ref} (shared checkout asset tree differs or the worktree slot is partial)`);
+  await extractAssets(root, ref, wt);
+  if (!existsSync(path.join(wt, ASSET_PROBE))) throw new Error(`baseline assets: ${ASSET_PROBE} still missing after extract of ${ref}`);
+  return plan;
+}
+
 /** Run the same CLI on <ref> in a throwaway .worktrees/ checkout (removed before returning), then compare. */
 export async function runBaseline({ ref, argv, outcomes, root }) {
   const wt = path.join(root, '.worktrees', 'player-truth-baseline');
@@ -117,6 +220,7 @@ export async function runBaseline({ ref, argv, outcomes, root }) {
   try { execFileSync('git', ['worktree', 'prune'], { cwd: root }); } catch { /* none */ }
   execFileSync('git', ['worktree', 'add', '--detach', wt, ref], { cwd: root, stdio: 'inherit' });
   try {
+    await attachBaselineAssets(wt, ref, { root });
     if (!existsSync(path.join(wt, 'node_modules'))) symlinkSync(path.join(root, 'node_modules'), path.join(wt, 'node_modules'), 'dir');
     // The baseline runs the branch's harness against the ref's game, so the two tables grade the same way.
     execFileSync('rm', ['-rf', path.join(wt, 'scripts/player-truth'), path.join(wt, 'src/testing/playerTruth')]);

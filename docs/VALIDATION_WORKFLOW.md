@@ -65,7 +65,10 @@ review. `--prune-frames` deletes those frames; it is off unless passed.
 `--viewports=960x540,1280x720,1920x1080` and `--hull=all` (every unlocked hull on the preparation
 screen; or `--hull=<starter id>`) repeat the run per combination. `--baseline=<ref>` re-runs the same
 harness on `<ref>`'s game in a temporary `.worktrees/` checkout (removed when done) and prints a
-before/after table; `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
+before/after table. That checkout inherits the fleet sparse pattern (`!/assets/`). The harness then
+links the shared `share-assets` checkout when its asset tree matches `<ref>`, and extracts `assets/`
+from `<ref>` when it does not, so a missing or stale share aborts as environment rather than grading
+an empty tree. `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
 from two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
 combat additive layers hidden; `backdrop_coverage` grades the deep field / nebula / planets apart.
 
