@@ -100,6 +100,13 @@ export function environmentReportLines(outcomes) {
   return (outcomes || []).filter((o) => o && o.verdict === 'ENVIRONMENT').map((o) => `player-truth ENVIRONMENT: ${o.label} — harness environment, not a gameplay FAIL`);
 }
 
+/** A baseline extract that refused to start (low disk) is an environment result, not a harness crash. */
+export function absorbBaselineEnvironment(outcomes, err) {
+  if (!(err && err.environment)) return false;
+  outcomes.push({ verdict: 'ENVIRONMENT', label: 'baseline-assets' });
+  return true;
+}
+
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
 async function installPacingWatch(page) {
   await page.evaluate(() => {
@@ -567,7 +574,12 @@ async function main() {
   }
   if (args.baseline) {
     const { runBaseline } = await import('./compare.mjs');
-    await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
+    try {
+      await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
+    } catch (err) {
+      if (!absorbBaselineEnvironment(outcomes, err)) throw err;
+      console.error(err.message);
+    }
   }
   for (const line of environmentReportLines(outcomes)) console.log(line);
   const worst = gateExitCode(outcomes.map((o) => o.verdict));

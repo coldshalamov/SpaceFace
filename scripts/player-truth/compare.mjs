@@ -5,7 +5,7 @@
 //   npm run player-truth -- --mode=swarm --gate --baseline=origin/master   (runs the same CLI on <ref>, then compares)
 //
 // One markdown table per run pair: check, baseline status/value, branch status/value, change.
-import { readFileSync, writeFileSync, existsSync, mkdirSync, symlinkSync, rmSync, lstatSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, symlinkSync, rmSync, lstatSync, readdirSync, statfsSync } from 'node:fs';
 import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -132,14 +132,69 @@ function slotState(dir) {
   try { return readdirSync(dir).length === 0 ? 'empty' : 'dir'; } catch { return 'other'; }
 }
 
-/** True when `shared`'s commit tree for `subdir` matches `ref`. A dirty worktree does not count. */
+/** `git archive` of `assets/` is about 3.9 GB. Leave headroom; do not start below this much free. */
+export const BASELINE_EXTRACT_MIN_FREE_BYTES = 8 * 1024 * 1024 * 1024;
+
+/** Commit match is not enough for `assets/`: `diff-tree` ignores a dirty worktree. */
+export function sharedAssetsLinkable({ treeMatches, assetsStatus }) {
+  if (!treeMatches) return false;
+  return String(assetsStatus ?? '').trim() === '';
+}
+
+export function baselineExtractAllowed(freeBytes, minBytes = BASELINE_EXTRACT_MIN_FREE_BYTES) {
+  return Number.isFinite(freeBytes) && freeBytes >= minBytes;
+}
+
+export function freeBytesAt(dir) {
+  const st = statfsSync(dir);
+  return Number(st.bavail) * Number(st.bsize);
+}
+
+function formatGb(bytes) {
+  return `${(Number(bytes) / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+export function baselineDiskMessage(freeBytes, { minBytes = BASELINE_EXTRACT_MIN_FREE_BYTES, where = 'the baseline worktree' } = {}) {
+  const have = Number.isFinite(freeBytes) ? `${formatGb(freeBytes)} free` : 'free space unreadable';
+  return [
+    '# Player-truth verdict: ENVIRONMENT — harness',
+    '',
+    'HARNESS ENVIRONMENT: not enough disk to extract baseline assets',
+    '',
+    'This is not a gameplay FAIL. Extracting assets/ writes about 3.9 GB.',
+    `${where} has ${have}; need ${formatGb(minBytes)} free. The extract was not started.`,
+    '',
+  ].join('\n');
+}
+
+export function baselineDiskError(freeBytes, where) {
+  const err = new Error(baselineDiskMessage(freeBytes, { where }));
+  err.environment = true;
+  return err;
+}
+
+/**
+ * True when `shared`'s commit tree for `subdir` matches `ref`.
+ * For `assets`, also requires `git status --porcelain -- assets` to be empty.
+ * `diff-tree` compares commits only, so a dirty `_assets-master` would still be linked without that check.
+ * Design dirt is ignored here; verdict overlays live under `design/` and are not served.
+ */
 export function sharedTreeMatches(shared, ref, subdir) {
+  let treeMatches = false;
   try {
     execFileSync('git', ['diff-tree', '--quiet', ref, 'HEAD', '--', subdir], { cwd: shared, stdio: 'ignore' });
-    return true;
+    treeMatches = true;
   } catch {
     return false;
   }
+  if (subdir !== 'assets') return treeMatches;
+  let assetsStatus = null;
+  try {
+    assetsStatus = execFileSync('git', ['status', '--porcelain', '--', 'assets'], { cwd: shared, encoding: 'utf8' });
+  } catch {
+    return false;
+  }
+  return sharedAssetsLinkable({ treeMatches, assetsStatus });
 }
 
 function replaceSlot(dir) {
@@ -206,7 +261,9 @@ export async function attachBaselineAssets(wt, ref, { shared = process.env.SHARE
     console.log(`baseline assets: linked ${shared} (asset tree matches ${ref})`);
     return plan;
   }
-  console.log(`baseline assets: extracting ${ref} (shared checkout asset tree differs or the worktree slot is partial)`);
+  const free = (() => { try { return freeBytesAt(wt); } catch { return null; } })();
+  if (!baselineExtractAllowed(free)) throw baselineDiskError(free, wt);
+  console.log(`baseline assets: extracting ${ref} (${formatGb(free)} free; shared checkout asset tree differs, is dirty, or the worktree slot is partial)`);
   await extractAssets(root, ref, wt);
   if (!existsSync(path.join(wt, ASSET_PROBE))) throw new Error(`baseline assets: ${ASSET_PROBE} still missing after extract of ${ref}`);
   return plan;

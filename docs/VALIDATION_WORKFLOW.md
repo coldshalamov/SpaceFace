@@ -66,9 +66,12 @@ review. `--prune-frames` deletes those frames; it is off unless passed.
 screen; or `--hull=<starter id>`) repeat the run per combination. `--baseline=<ref>` re-runs the same
 harness on `<ref>`'s game in a temporary `.worktrees/` checkout (removed when done) and prints a
 before/after table. That checkout inherits the fleet sparse pattern (`!/assets/`). The harness then
-links the shared `share-assets` checkout when its asset tree matches `<ref>`, and extracts `assets/`
-from `<ref>` when it does not, so a missing or stale share aborts as environment rather than grading
-an empty tree. `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
+links the shared `share-assets` checkout when its asset commit matches `<ref>` and
+`git status --porcelain -- assets` is empty there. `diff-tree` ignores working-tree edits, so a dirty
+`assets/` is not linked. Otherwise it extracts `assets/` from `<ref>` (about 3.9 GB). That extract
+starts only when the baseline worktree's filesystem has at least 8 GB free; below that it prints
+`HARNESS ENVIRONMENT: not enough disk to extract baseline assets` and does not write the archive.
+Exit 4 applies when that is the only failure. `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
 from two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
 combat additive layers hidden; `backdrop_coverage` grades the deep field / nebula / planets apart.
 
