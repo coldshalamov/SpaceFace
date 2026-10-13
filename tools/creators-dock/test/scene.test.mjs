@@ -7,13 +7,20 @@ import { commit, createHistory, undo } from '../lib/history.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { inspectValue } from '../lib/security.mjs';
 import {
+  addObject,
+  clearPlayerFlag,
   cloneObject,
   deleteObjects,
   expandIds,
   groupObjects,
   nudgeObjects,
+  emptyProject,
   objectById,
+  placePlayer,
   projectIssues,
+  replaceObject,
+  REQUEST_SCHEMA,
+  setPlayer,
 } from '../lib/scene.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
 
@@ -93,4 +100,104 @@ test('three agent requests are deterministic and the undo puts the rock back', (
   assert.equal(objectById(edited.project, 'cargo_b').isPlayer, false);
   assert.equal(objectById(edited.project, 'cargo_b').velX, -8);
   assert.equal(edited.project.encounter.id, 'dock_agent_edited');
+});
+
+test('an empty dock can place exactly one player', () => {
+  const empty = emptyProject({ id: 'dock.player', title: 'Player', seed: 1 });
+  assert.equal(projectIssues(empty).some((issue) => issue.includes('player')), true);
+  const placed = placePlayer(empty);
+  assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
+  assert.equal(projectIssues(placed.project).some((issue) => issue.includes('player')), false);
+  const player = objectById(placed.project, placed.id);
+  assert.equal(player.isPlayer, true);
+  assert.equal(player.profile, 'ship.starter');
+  const again = placePlayer(placed.project);
+  assert.equal(again.id, placed.id);
+  assert.equal(again.project.objects.filter((object) => object.isPlayer).length, 1);
+  const named = setPlayer(placed.project, placed.id);
+  assert.equal(named.ok, true);
+  assert.equal(named.project.objects.filter((object) => object.isPlayer).length, 1);
+});
+
+function playerIds(project) {
+  return (project.objects || []).filter((object) => object.isPlayer).map((object) => object.id);
+}
+
+function secondPlayer(id) {
+  return {
+    id,
+    kind: 'actor',
+    role: 'player',
+    profile: 'ship.starter',
+    x: 20,
+    y: 8,
+    z: 0,
+    heading: 0,
+    velX: 0,
+    velY: 2.5,
+    velZ: 0,
+    angularVelocity: 0,
+    team: 1,
+    isPlayer: true,
+    persistent: true,
+    label: id,
+  };
+}
+
+test('addObject and replaceObject refuse a second player', () => {
+  const empty = emptyProject({ id: 'dock.player', title: 'Player', seed: 1 });
+  const placed = placePlayer(empty);
+  assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
+  const wingman = addObject(placed.project, secondPlayer('wingman'));
+  assert.equal(wingman.ok, false);
+  assert.equal(wingman.issues.some((issue) => issue.includes('exactly one player')), true);
+  assert.deepEqual(playerIds(wingman.project), [placed.id]);
+  assert.equal(objectById(wingman.project, 'wingman'), null);
+
+  const loaded = applyRequest({
+    schema: REQUEST_SCHEMA,
+    ops: [
+      { op: 'loadExample', id: 'dock.intercept-cargo' },
+      { op: 'addObject', object: secondPlayer('second_player') },
+    ],
+  });
+  assert.equal(loaded.ok, false);
+  assert.equal(loaded.issues.some((issue) => issue.includes('exactly one player')), true);
+  assert.deepEqual(playerIds(loaded.project), ['player']);
+  assert.equal(objectById(loaded.project, 'second_player'), null);
+
+  const project = getComposition('dock.intercept-cargo');
+  const cargo = objectById(project, 'cargo');
+  const replaced = replaceObject(project, 'cargo', { ...cargo, isPlayer: true });
+  assert.equal(replaced.ok, false);
+  assert.equal(replaced.issues.some((issue) => issue.includes('exactly one player')), true);
+  assert.deepEqual(playerIds(replaced.project), ['player']);
+  assert.equal(objectById(replaced.project, 'cargo').isPlayer, undefined);
+
+  const player = objectById(project, 'player');
+  const edited = replaceObject(project, 'player', { ...player, y: 4.5, velY: -1.25 });
+  assert.equal(edited.ok, true, edited.issues.join('\n'));
+  assert.equal(objectById(edited.project, 'player').y, 4.5);
+  assert.equal(objectById(edited.project, 'player').velY, -1.25);
+  assert.deepEqual(playerIds(edited.project), ['player']);
+});
+
+test('clearing the only player is refused and checking another actor moves the flag', () => {
+  const project = getComposition('dock.intercept-cargo');
+  const cleared = clearPlayerFlag(project, 'player');
+  assert.equal(cleared.ok, false);
+  assert.equal(cleared.issues.some((issue) => issue.includes('exactly one player')), true);
+  assert.deepEqual(playerIds(cleared.project), ['player']);
+
+  const dropped = replaceObject(project, 'player', { ...objectById(project, 'player'), isPlayer: false });
+  assert.equal(dropped.ok, false);
+  assert.equal(dropped.issues.some((issue) => issue.includes('exactly one player')), true);
+  assert.deepEqual(playerIds(dropped.project), ['player']);
+
+  const moved = setPlayer(project, 'cargo');
+  assert.equal(moved.ok, true);
+  assert.deepEqual(playerIds(moved.project), ['cargo']);
+  const uncleared = clearPlayerFlag(moved.project, 'cargo');
+  assert.equal(uncleared.ok, false);
+  assert.deepEqual(playerIds(uncleared.project), ['cargo']);
 });

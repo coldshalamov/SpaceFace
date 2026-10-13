@@ -223,8 +223,8 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
       profile: actor.profile,
       role: actor.role || 'prop',
       isPlayer: !!actor.isPlayer,
-      pos: { x: round6(actor.x || 0), y: 0, z: round6(actor.z || 0) },
-      vel: { x: round6(actor.velX || 0), y: 0, z: round6(actor.velZ || 0) },
+      pos: { x: round6(actor.x || 0), y: round6(actor.y || 0), z: round6(actor.z || 0) },
+      vel: { x: round6(actor.velX || 0), y: round6(actor.velY || 0), z: round6(actor.velZ || 0) },
       heading: round6(actor.heading || 0),
       angularVelocity: round6(actor.angularVelocity || 0),
       persistent: actor.persistent !== false,
@@ -619,9 +619,11 @@ export function importScenario(doc) {
       role: entity.role,
       profile: entity.profile,
       x: entity.pos ? entity.pos.x : 0,
+      y: entity.pos && Number.isFinite(entity.pos.y) ? entity.pos.y : 0,
       z: entity.pos ? entity.pos.z : 0,
       heading: entity.heading || 0,
       velX: entity.vel ? entity.vel.x : 0,
+      velY: entity.vel && Number.isFinite(entity.vel.y) ? entity.vel.y : 0,
       velZ: entity.vel ? entity.vel.z : 0,
       angularVelocity: entity.angularVelocity || 0,
       isPlayer: !!entity.isPlayer,
@@ -632,6 +634,14 @@ export function importScenario(doc) {
     if (entity.overrides && Object.keys(entity.overrides).length) actor.overrides = clone(entity.overrides);
     if (entity.loadout != null) actor.loadout = clone(entity.loadout);
     objects.push(actor);
+  }
+  const playerCount = objects.filter((object) => object.kind === 'actor' && object.isPlayer).length;
+  if (playerCount > 1) {
+    return {
+      ok: false,
+      issues: [`scene needs exactly one player actor (found ${playerCount})`],
+      project: null,
+    };
   }
   let linkIndex = 0;
   for (const link of doc.attachments || []) {
