@@ -37,6 +37,7 @@ export function judgeGallery(state) {
   const gallery = state && state.orbitalGallery;
   if (!gallery) return null;
   if (gallery.result) return gallery.result;
+  markFieldUse(state, gallery);
   const player = state.entities && state.entities.get(state.playerId);
   if (!player || player.alive === false || (Number.isFinite(player.hull) && player.hull <= 0)) {
     return finish(gallery, { won: false, reason: 'hull-lost', tick: state.tick });
@@ -92,31 +93,86 @@ function markFieldUse(state, gallery) {
 }
 
 function mechanismsReady(state, gallery) {
-  markFieldUse(state, gallery);
   const authored = getScenario(gallery.scenarioId);
   if (!authored) return false;
-  if ((authored.fields || []).length && !gallery.fieldPlanted) return false;
-  if ((authored.lines || []).length && !gallery.tetherLatched) return false;
+  if (!fieldsReady(state, gallery, authored)) return false;
+  if (!linesReady(state, gallery, authored)) return false;
   if (authored.bodies.some((body) => body.motor) && !motorsWorked(state, gallery, authored)) return false;
   for (const body of authored.bodies) {
     const asset = assetForKind(body.kind || 'mass');
     if (!asset.named) continue;
     const entity = entityOf(state, gallery, body.role);
-    if (!entity || entity.alive === false) return false;
-    const worn = entity.data && entity.data.galleryAsset;
-    if (!worn || worn.id !== asset.id) return false;
+    if (!propReady(entity, asset)) return false;
+  }
+  return true;
+}
+
+function fieldsReady(state, gallery, authored) {
+  const needed = authored.fields || [];
+  if (!needed.length) return true;
+  const planted = gallery.plantedFields || [];
+  for (const field of needed) {
+    const row = planted.find((item) => item && item.id === field.id && item.radius > 0);
+    if (!row) return false;
+  }
+  markFieldUse(state, gallery);
+  return gallery.fieldUsed === true;
+}
+
+function linesReady(state, gallery, authored) {
+  const needed = authored.lines || [];
+  if (!needed.length) return true;
+  if ((gallery.cuts || 0) > 0) return false;
+  const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId) return false;
+  const active = Object.keys(byId).map((id) => byId[id]).filter((line) => line && line.state === 'active');
+  for (const line of needed) {
+    const owner = entityOf(state, gallery, line.owner);
+    const target = entityOf(state, gallery, line.target);
+    if (!owner || !target) return false;
+    const found = active.some((row) => row.defId === line.defId
+      && row.ownerId === owner.id && row.targetId === target.id);
+    if (!found) return false;
   }
   return true;
 }
 
 function motorsWorked(state, gallery, authored) {
-  if (gallery.motorUsed) return true;
+  let found = false;
   for (const body of authored.bodies) {
     if (!body.motor) continue;
+    found = true;
     const entity = entityOf(state, gallery, body.role);
-    if (!entity || !entity.data || !entity.data.galleryMotorWorked) return false;
+    const data = entity && entity.data;
+    if (!data || !sameMotor(data.galleryMotor, body.motor) || !data.galleryMotorWorked) return false;
   }
-  return authored.bodies.some((body) => body.motor);
+  return found;
+}
+
+function sameMotor(live, authored) {
+  if (!live || !authored) return false;
+  return live.heading === authored.heading
+    && live.cruise === authored.cruise
+    && live.accel === authored.accel
+    && live.periodS === authored.periodS
+    && (live.phaseS || 0) === (authored.phaseS || 0);
+}
+
+function propReady(entity, asset) {
+  if (!entity || entity.alive === false) return false;
+  const worn = entity.data && entity.data.galleryAsset;
+  const expected = expectedProp(entity, asset);
+  if (!worn || !expected || worn.id !== expected.id) return false;
+  return worn === expected;
+}
+
+function expectedProp(entity, asset) {
+  const data = entity.data || {};
+  if (data.galleryFractured || data.fractureInto) {
+    const into = data.fractureInto || (asset.fracture && asset.fracture.into);
+    return assetForKind(into);
+  }
+  return asset;
 }
 
 export function noteImpact(state, payload) {
@@ -147,8 +203,10 @@ export function noteImpact(state, payload) {
     const asset = body && body.data && body.data.galleryAsset;
     if (!body || !bodyRole || !asset) continue;
     if (asset.fracture && closing >= asset.fracture.closingSpeed && !body.data.galleryFractured) {
+      const into = asset.fracture.into;
       body.data.galleryFractured = true;
-      body.data.fractureInto = asset.fracture.into;
+      body.data.fractureInto = into;
+      body.data.galleryAsset = assetForKind(into);
       body.hull = 0;
     }
   }

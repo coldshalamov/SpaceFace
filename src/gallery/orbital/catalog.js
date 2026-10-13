@@ -150,8 +150,8 @@ export const SCENARIOS = [
   sc(6, {
     id: 'og-b2-apex-cut',
     family: 'sling',
-    title: 'Apex cut',
-    inference: 'Cutting the line at the fast part of the swing keeps the speed and leaves the circle.',
+    title: 'Held tangent',
+    inference: 'A latched swing carries the slug onto the tangent while the line still holds.',
     bodies: [
       mass('anchor', -40, 0, { r: 8, m: 20000, kind: 'anchor' }),
       mass('slug', -12, 30, { r: 5, m: 6, focus: true }),
@@ -159,7 +159,7 @@ export const SCENARIOS = [
     lines: [{ owner: 'pilot', target: 'anchor', defId: 'tether_standard', restLength: 40 }],
     pockets: [pocket('tangent', 'slug', -42, 70, 14, 14)],
     strategies: [
-      { id: 'release', tape: tape([{ t: 55, x: 1 }, { t: 8, x: 1, cut: true }, { t: 140, brake: true }]) },
+      { id: 'release', tape: tape([{ t: 63, x: 1 }, { t: 140, brake: true }]) },
     ],
     limitTicks: 360,
   }),
@@ -194,7 +194,7 @@ export const SCENARIOS = [
     lines: [{ owner: 'pilot', target: 'anchor', defId: 'tether_standard', restLength: 36 }],
     pockets: [pocket('behind', 'slug', 16, 72, 14, 16)],
     strategies: [
-      { id: 'arc', tape: tape([{ t: 70, x: 1 }, { t: 20, x: 1, cut: true }, { t: 120, brake: true }]) },
+      { id: 'arc', tape: tape([{ t: 90, x: 1 }, { t: 120, brake: true }]) },
     ],
     limitTicks: 360,
   }),
@@ -468,7 +468,7 @@ export const SCENARIOS = [
       mass('pod', 30, 4, { r: 5, m: 6, focus: true, kind: 'survivor', material: 'payload', vx: 12 }),
     ],
     lines: [{ owner: 'pilot', target: 'pod', defId: 'tether_standard', restLength: 30 }],
-    fields: [{ id: 'og-f4-well', defKey: 'well', x: 78, z: 4, radius: 30, strength: 70, damping: 1 }],
+    fields: [{ id: 'og-f4-well', defKey: 'well', x: 78, z: 4, radius: 50, strength: 70, damping: 1 }],
     hazards: [{ id: 'mouth', role: 'pod', x: 78, z: 4, r: 12 }],
     pockets: [pocket('berth', 'pod', 4, 14, 14, 12)],
     strategies: [

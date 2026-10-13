@@ -16,11 +16,10 @@ import { validateScenario } from './validate.js';
 const PLAYER_HULL = 'ship_kestrel';
 
 export function sessionInput(options = {}, strategy = {}) {
-  if (options.exhibit !== true && options.tape === undefined) {
-    return { source: 'live', tape: null };
-  }
-  const tape = options.tape !== undefined ? options.tape : (strategy && strategy.tape) || null;
-  return { source: tape ? 'exhibit' : 'live', tape };
+  if (options.exhibit !== true) return { source: 'live', tape: null };
+  const selected = options.tape !== undefined ? options.tape : (strategy && strategy.tape);
+  if (!Array.isArray(selected) || selected.length === 0) return { source: 'live', tape: null };
+  return { source: 'exhibit', tape: selected };
 }
 
 export async function openSession(scenarioId, options = {}) {
@@ -96,6 +95,7 @@ export async function openSession(scenarioId, options = {}) {
     spoiled: Object.create(null),
     plantedFields: (scenario.fields || []).map((field) => ({ ...field })),
     fieldPlanted: (scenario.fields || []).length > 0,
+    fieldUsed: false,
     tetherLatched: false,
     tape: input.tape,
     strategyId: strategy.id,

@@ -45,7 +45,11 @@ export const orbitalGallery = {
 
   update(dt, state) {
     const gallery = state && state.orbitalGallery;
-    if (gallery?.source === 'live') { this.live.update(dt); return; }
+    if (gallery?.source === 'live') {
+      if (gallery.liveInput) writeGalleryInput(state, gallery.liveInput);
+      this.live.update(dt);
+      return;
+    }
     if (gallery?.source !== 'exhibit') return;
     if (!gallery || gallery.phase !== 'live') return;
     if (gallery.playStartTick == null) gallery.playStartTick = state.tick;
@@ -56,7 +60,9 @@ export const orbitalGallery = {
     if (frame.brake) gallery.brakeTicks = (gallery.brakeTicks || 0) + 1;
     if (frame.cut && gallery.lastCutMark !== frame.mark) {
       gallery.lastCutMark = frame.mark;
-      gallery.cuts = (gallery.cuts || 0) + cutPlayerLines(gallery, state);
+      const cut = cutPlayerLines(gallery, state);
+      gallery.cuts = (gallery.cuts || 0) + cut;
+      if (cut > 0) gallery.tetherLatched = false;
     }
     driveMotors(gallery, state, dt);
     if (gallery.kernel && typeof gallery.kernel.prePhysics === 'function') {

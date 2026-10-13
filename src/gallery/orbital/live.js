@@ -64,6 +64,7 @@ export function createLiveGallery(ctx) {
           && venue.owned.has(payload.targetId)
           && ['cut', 'pilot', 'throw_release', 'action_cut', 'tether_cut'].includes(payload.reason)) {
         gallery.cuts += 1;
+        gallery.tetherLatched = false;
       }
     },
     update(dt) {
