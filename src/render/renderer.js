@@ -10445,6 +10445,9 @@ export const render = {
     // The tier now bounds the pixel ratio (applyRendererSize); re-apply before the bloom chain
     // and LOD viewport below are sized from drawSize (the shared _drawSize vector).
     if (gpu.tier === 'integrated' || gpu.tier === 'software') applyRendererSize(renderer, state);
+    // Record the class now. The first resize used to look like the initial size and
+    // skipped the hold, so the phone's first rotation redrew released ship buffers.
+    this._drawBufferAspectClass = aspectClassFromSize(_drawSize);
 
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
@@ -32448,12 +32451,17 @@ export const render = {
   // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
+    // Arm before setSize. Construction already recorded the class, so the phone's
+    // first rotation is a real flip. setSize can redraw before this function returns.
+    const cssAspect = (typeof window !== 'undefined' && (window.innerWidth || 0) >= (window.innerHeight || 0))
+      ? 'land' : 'port';
+    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect) {
+      noteOrientationDetachedHold(this.renderer);
+    }
     const drawSize = applyRendererSize(this.renderer, this.state);
-    // Phone rotation flips the drawing-buffer aspect and is the window that re-entered
-    // upload on CPU-detached ship resources without a context-loss event. Hold those
-    // draws until one refill restores the mirror. A first size, and a same-aspect
-    // resize, do not.
-    const nextAspect = drawSize.x >= drawSize.y ? 'land' : 'port';
+    // setSize can land a different class than the CSS viewport. Hold that flip
+    // too. A same-aspect resize does not.
+    const nextAspect = aspectClassFromSize(drawSize);
     if (this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
       noteOrientationDetachedHold(this.renderer);
     }
@@ -32780,6 +32788,10 @@ function renderGraphDynResBlocked(state) {
   if (render && render.dynResAllowed !== true) return false;
   if (render && render.gpu && render.gpu.software === true) return true;
   return video.dynamicResolution !== false;
+}
+
+function aspectClassFromSize(size) {
+  return size.x >= size.y ? 'land' : 'port';
 }
 
 function applyRendererSize(renderer, state) {
