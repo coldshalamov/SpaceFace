@@ -246,8 +246,22 @@ export const MOBILE_SCREEN_CSS = `
   @media (max-height:560px) {
     ${B} { overflow-x:hidden !important; overflow-y:auto !important; padding-bottom:0 !important; scroll-padding-bottom:0 !important; }
     ${B} .dp-frame__body--station, ${B} .dp-frame__body--station > .sx-screen__body { flex:none !important; overflow:visible !important; }
-    ${B} footer.sxb-ops { position:sticky !important; bottom:0 !important; background:rgb(5 7 10 / .97) !important; }
-    ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { grid-template-columns:repeat(7, auto) !important; }
+    /* one row, not two: the tabs take what Comms and Undock leave and slide sideways if a narrow phone runs out */
+    ${B} footer.sxb-ops { position:sticky !important; bottom:0 !important; background:rgb(5 7 10) !important; flex-wrap:nowrap !important;
+      gap:0 12px !important; padding:3px 0 calc(3px + env(safe-area-inset-bottom, 0px)) !important; }
+    ${B} .sxb-ops .of-facility-rail { flex:1 1 0 !important; width:auto !important; overflow-x:auto !important; overflow-y:hidden !important;
+      overscroll-behavior-x:contain; scrollbar-width:none; }
+    ${B} .sxb-ops .of-facility-rail::-webkit-scrollbar { display:none; }
+    ${B} .sxb-ops .of-facility-rail .sxb-ops__dock, ${B} .sxb-ops .of-facility-rail .sx-dock { width:max-content !important; min-width:100% !important; max-width:none !important; }
+    ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { grid-template-columns:repeat(7, auto) !important;
+      width:max-content !important; min-width:100% !important; max-width:none !important; gap:0 12px !important; }
+    ${B} .sxb-ops .sx-tile__label { letter-spacing:.07em !important; }
+    ${B} .sxb-ops .sx-tile { min-height:44px !important; }
+    ${B} .sxb-ops :is(.sx-comms, .sxb-launch-seat) { flex:none !important; }
+    @media (max-width:800px) {
+      ${B} .sxb-ops .of-facility-rail { -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+        mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+    }
   }
   /* Market on a phone: the commodity, then the trade (dial, total, Buy/Sell), then the adventure decision, then
      the trace and its words, then the register. One column in normal flow: nothing is drawn over anything. */

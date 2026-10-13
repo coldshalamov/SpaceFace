@@ -127,6 +127,12 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 **Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. Industry/Factions/Bar/Ledger tab bodies not walked this session.
 
+## Decision terms @960 + phone-on-its-side foot — session notes (2026-10-12, ui-polish-14)
+
+**Before:** at 960×540 (≤1100×≤640) each decision verb kept its terms on one nowrap line, so "Pay 22 cr. Hull 86 → 100, armor 2…" lost the armor reading. On a phone on its side (844×390) the pinned foot was two rows (tabs, then Comms/Help and Undock), 91px of 390.
+
+**After:** `marketLayouts.js`: at ≤1100×≤640 the two verbs sit side by side, each with its terms wrapping under it, in about the same height (59px vs 55px); every term reads in full. #339's wrap at 641–800 tall is untouched. `mobileScreenLayouts.js`: at ≤560px tall the foot is one opaque row, with the tabs, then Comms/Help, then Undock, at 51px. The tabs keep 44px hit boxes, and on phones narrower than 800px they slide sideways under a right-edge fade. 1024×768, 1280×720, 1920×1080 and 390×844 match master (only the animated tape differs). Selectors/IDs unchanged.
+
 ---
 
 ## Settings — session notes (2026-10-12)
