@@ -238,12 +238,54 @@ function hasForeignAttachment(service,e,job) {
   return (service?.listForEntity(e.id)||[]).some(a=>a.state==='active'
     &&![job.mountId,job.towId,job.receiverId].includes(a.id));
 }
+// A stopped recovery never resumes its work, but the player can still take its
+// original bodies. Only an accepted same-life player line grants this handoff;
+// a hostile, stale or pending attachment is not a claim on another body's behalf.
+function terminalPlayerClaims(state,job,b,service) {
+  const claims=new Set(),player=state.entities.get(state.playerId);
+  const playerLive=player?.alive!==false&&player?.hull>0&&Number.isSafeInteger(player?.occupantGeneration);
+  for(const [role,e] of Object.entries(b)) {
+    if(!e||e.alive===false||!(e.hull>0)||!Number.isSafeInteger(e.occupantGeneration))continue;
+    if(playerCustody(state,e)){claims.add(role);continue;}
+    if(playerLive&&(service?.listForEntity(e.id)||[]).some(line=>line.state==='active'
+      &&service.get(line.id)===line&&![job.mountId,job.towId,job.receiverId].includes(line.id)
+      &&line.controlMode!=='ceres_workfleet'&&(line.controllerId==null||line.controllerId===player.id)
+      &&line.ownerId===player.id&&line.ownerGeneration===player.occupantGeneration
+      &&line.targetId===e.id&&line.targetGeneration===e.occupantGeneration))claims.add(role);
+  }
+  return claims;
+}
 function finitePose(p) {return p&&[p.x,p.z,p.rot].every(Number.isFinite);}
-function stop(owner,job,phase,reason=phase) {
+// Yield only industrial couplings on each actually claimed body. This may run
+// again for a later claim while player-retained, but unchanged claims write
+// nothing and never replay terminal phase effects or renew a work deadline.
+function yieldTerminalPlayerClaims(owner,job,b,claims) {
+  const service=attachmentsOf(owner);let changed=false;
+  const cut=(id,source,target,reason)=>{
+    const line=id&&service?.get(id);
+    if(source&&target&&line?.state==='active'&&line.controlMode==='ceres_workfleet'
+      &&line.ownerId===source.id&&line.ownerGeneration===source.occupantGeneration
+      &&line.targetId===target.id&&line.targetGeneration===target.occupantGeneration) {
+      if(service.cut(line.id,source.id,reason).ok)changed=true;
+    }
+  };
+  if(claims.has('section')) {
+    cut(job.towId,b.breaker,b.section,'ceres_yield_player');
+    cut(job.receiverId,b.cradle,b.section,'ceres_yield_player');
+    for(const role of ['breaker','cradle'])if(b[role]&&(b[role].data.ceresWorkfleetSlideDisabled!==false||b[role].data.ceresWorkfleetSlideTarget!==0)) {
+      b[role].data.ceresWorkfleetSlideDisabled=false;b[role].data.ceresWorkfleetSlideTarget=0;changed=true;
+    }
+    if(registryOf(owner)?.get('asteroidSites')?.releaseCeresWorkfleetRetention?.(job.id))changed=true;
+  }
+  if(claims.has('cutterHead'))cut(job.mountId,b.cutterHead,b.breaker,'ceres_yield_head');
+  return changed;
+}
+function stop(owner,job,phase,reason=phase,playerClaims=null) {
   job.phase=phase;job.reason=reason;job.updatedTick=owner.state.tick;
   const b=liveBodies(owner.state);
   for(const role of ROLES)if(b[role]) {CONTROL.delete(b[role]);HEAD_CONTROL.delete(b[role]);b[role].data.ceresWorkfleetSlideDisabled=true;publishCeresWorkfleetActuation(b[role],null,owner.state.tick);}
-  if(phase==='player-retained') {
+  if(phase==='player-retained'&&playerClaims)yieldTerminalPlayerClaims(owner,job,b,playerClaims);
+  else if(phase==='player-retained') {
     const service=attachmentsOf(owner);
     const sectionClaimed=b.section&&(controlled(owner.state,b.section)||hasForeignAttachment(service,b.section,job));
     if(sectionClaimed) {
@@ -726,7 +768,16 @@ export function stepCeresWorkfleet(owner,dt) {
   state.npcJobs ||= {byId:{}};
   const job=state.npcJobs.ceresWorkfleet ||= makeJob(state),b=liveBodies(state);
   const {breaker,cradle,cutterHead:head,section}=b;
-  if(TERMINAL.has(job.phase)&&job.phase!=='secured')return;
+  if(TERMINAL.has(job.phase)&&job.phase!=='secured') {
+    if(job.phase==='recovery-interrupted'||job.phase==='player-retained') {
+      const claims=terminalPlayerClaims(state,job,b,attachmentsOf(owner));
+      if(claims.size) {
+        if(job.phase==='recovery-interrupted')stop(owner,job,'player-retained',job.reason||'player-retained',claims);
+        else if(yieldTerminalPlayerClaims(owner,job,b,claims))captureCeresWorkfleetHardware(owner);
+      }
+    }
+    return;
+  }
   if(record.payloads.long_plate.destroyed){stop(owner,job,'section-destroyed');return;}
   for(const [role,e] of [['breaker',breaker],['cutterHead',head],['cradle',cradle]]) {
     const worldRecord=state.world.records?.byId?.[C.identities[role==='breaker'?'worker':role]];
