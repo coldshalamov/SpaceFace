@@ -426,7 +426,7 @@ function chartKeyHtml(hasForecast, origins, statedRate) {
 }
 
 // What each price driver is ABOUT, so its short word can stand alone on the reading line.
-const DRIVER_KIND = Object.freeze({ role: 'Local', geography: 'Spread', conflict: 'Sector', cycle: 'Trend' });
+const DRIVER_KIND = Object.freeze({ role: 'Local', geography: 'Spread', conflict: 'Sector', cycle: 'Trend', standing: 'Standing' });
 const DRIVER_ARROW = Object.freeze({ up: '\u2191', down: '\u2193' });
 
 /**
