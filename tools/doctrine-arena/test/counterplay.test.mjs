@@ -2,9 +2,13 @@
 // The arena boots the authoritative runtime. It does not start tacticalAI.
 
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import { Worker } from 'node:worker_threads';
+import { pathToFileURL } from 'node:url';
 import { CombatDoctrineId } from '../../../src/ai/combatDoctrine.js';
 import {
   COUNTERPLAY_DOCTRINES,
@@ -309,6 +313,85 @@ test('held-out arena separates counters and stays on the real physics', async ()
       .map((row) => row.phaseTrace);
     assert.equal(new Set(traces).size, 10, `phase traces collided on seed ${seed}: ${traces.join(' | ')}`);
   }
+});
+
+test('a doctrine change moves the tape and an edit to tacticalAI.js does not', async () => {
+  const feint = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 17, tape: 'resists', ticks: 80,
+  });
+  const corridor = await runCounterplayScenario({
+    doctrineId: 'cp_corridor_pack_leader', seed: 17, tape: 'resists', ticks: 80,
+  });
+  assert.equal(feint.tacticalAI, false);
+  assert.equal(feint.systems.includes('tacticalAI'), false);
+  assert.notDeepEqual(feint.end, corridor.end);
+  assert.notEqual(feint.goalProgress, corridor.goalProgress);
+
+  const dir = mkdtempSync(path.join(tmpdir(), 'sf-arena-tape-'));
+  const stubPath = path.join(dir, 'tacticalAI-stub.mjs');
+  const markerPath = path.join(dir, 'constructed.txt');
+  const registerPath = path.join(dir, 'register.mjs');
+  const hookPath = path.join(dir, 'hook.mjs');
+  const runnerPath = path.join(dir, 'runner.mjs');
+  writeFileSync(stubPath, `
+import { appendFileSync } from 'node:fs';
+const marker = process.env.SF_TACTICAL_MARKER;
+export const PRODUCTION_ENEMY_MIND_CONFIG = { stub: true };
+export function createTacticalAISystem() {
+  appendFileSync(marker, 'constructed\\n');
+  return {
+    name: 'tacticalAI',
+    init() { appendFileSync(marker, 'init\\n'); },
+    update() { appendFileSync(marker, 'update\\n'); },
+  };
+}
+`);
+  writeFileSync(hookPath, `
+import { pathToFileURL } from 'node:url';
+export async function resolve(specifier, context, nextResolve) {
+  if (typeof specifier === 'string' && specifier.includes('/systems/tacticalAI.js')) {
+    return { url: pathToFileURL(process.env.SF_TACTICAL_STUB).href, shortCircuit: true };
+  }
+  return nextResolve(specifier, context);
+}
+`);
+  writeFileSync(registerPath, `
+import { register } from 'node:module';
+import { pathToFileURL } from 'node:url';
+register(pathToFileURL(process.env.SF_TACTICAL_HOOK).href, import.meta.url);
+`);
+  const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+  const runnerUrl = pathToFileURL(path.join(repoRoot, 'tools/doctrine-arena/run.mjs')).href;
+  writeFileSync(runnerPath, `
+import { runCounterplayScenario } from ${JSON.stringify(runnerUrl)};
+const receipt = await runCounterplayScenario({
+  doctrineId: 'cp_feint_break_courier', seed: 17, tape: 'resists', ticks: 80,
+});
+process.stdout.write(JSON.stringify({
+  end: receipt.end,
+  goalProgress: receipt.goalProgress,
+  tacticalAI: receipt.tacticalAI,
+}));
+`);
+  const child = spawnSync(process.execPath, ['--import', registerPath, runnerPath], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      SF_TACTICAL_STUB: stubPath,
+      SF_TACTICAL_MARKER: markerPath,
+      SF_TACTICAL_HOOK: hookPath,
+    },
+  });
+  assert.equal(child.status, 0, child.stderr);
+  const edited = JSON.parse(child.stdout);
+  assert.equal(edited.tacticalAI, false);
+  assert.deepEqual(edited.end, feint.end);
+  assert.equal(edited.goalProgress, feint.goalProgress);
+  let marker = '';
+  try { marker = readFileSync(markerPath, 'utf8'); } catch { marker = ''; }
+  assert.equal(marker.includes('constructed'), false);
+  assert.equal(marker.includes('update'), false);
 });
 
 test('the same seed repeats and a memory reload does not move the receipt', async () => {

@@ -1,7 +1,10 @@
 # Doctrine arena
 
-Executable counterplay tournament. It boots the authoritative runtime (`flightV3`, `aiPorts`,
-`weapons`, `combat`, `collisionConsequences`, `physics`) and does **not** start `tacticalAI`.
+Executable counterplay tournament. This arena is a separate tape from shipping play.
+It boots the authoritative runtime (`flightV3`, `aiPorts`, `weapons`, `combat`,
+`collisionConsequences`, `physics`) and must not start `tacticalAI`. Shipping play
+still wires `src/systems/tacticalAI.js`. A doctrine change moves the tape. Editing
+only `tacticalAI.js` does not, because the tape never constructs that system.
 Policies live in `src/ai/counterplay/` and only emit intents.
 
 ```bash
