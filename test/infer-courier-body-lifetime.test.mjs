@@ -55,9 +55,13 @@ test('a pod with no finite arrival keeps the short picture', () => {
   const { sites, state, site, spawned } = harness();
   site.fleet.inFlight.push({ worldRecordId: 'site:site_a:pod:9', arriveT: NaN });
 
-  sites._spawnCourierVisual(site, state, 'site:site_a:pod:missing');
+  sites._spawnCourierVisual(site, state, 'site:site_a:pod:9');
 
   assert.equal(spawned.length, 1);
   assert.equal(spawned[0].data.kind, 'site_courier');
+  assert.equal(spawned[0].data.worldRecordId, 'site:site_a:pod:9');
   assert.equal(spawned[0].data.despawnAt, state.simTime + 14);
+
+  sites._spawnCourierVisual(site, state, 'site:site_a:pod:missing');
+  assert.equal(spawned[1].data.despawnAt, state.simTime + 14);
 });
