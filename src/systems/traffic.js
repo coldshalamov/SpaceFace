@@ -47,6 +47,7 @@ import {
   registerEntityWorldRecordId,
 } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { getFarActor } from '../world/farActorTable.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
@@ -603,6 +604,20 @@ const CERES_CLAMP_POD_U = 4;
 const CERES_CLAMP_POD_DRIFT_WU_S = 7;
 const CERES_CLAMP_POD_TTL_S = 60;
 const CERES_CLAMP_POD_CLEARANCE_WU = 4;
+// ev_meteor_passage (microevent catalog, environmental): one wild rock crosses the pocket the
+// player is actually in on a ballistic chord — no drive glow, three to four times the freighter
+// read, mineable on the way through. Rare enough to stay an event (the catalog's 1-2 per hour
+// class), and transient by construction: no field, no slot, no resource record — the ordinary
+// despawnAt sweep owns its exit.
+const METEOR_PASS_MEAN_INTERVAL_S = 1800;
+const METEOR_PASS_SPAWN_RADIUS_WU = 2600;
+const METEOR_PASS_MISS_MAX_WU = 900;
+const METEOR_PASS_SPEED_LO_WU_S = 120;
+const METEOR_PASS_SPEED_HI_WU_S = 170;
+const METEOR_PASS_RADIUS_LO_WU = 10;
+const METEOR_PASS_RADIUS_HI_WU = 18;
+const METEOR_PASS_TYPE_ID = 'ast_common_rock';
+const METEOR_PASS_EXIT_PAD_S = 6;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
 // overflow into the miner's hull merely to make the service call look dramatic.
@@ -5354,6 +5369,7 @@ export const traffic = {
     }
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
+    this._stepPocketMeteorPass(dt, state);
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
     // Even with zero freighters, a wreck can still call a cutter into the sector.
@@ -10949,6 +10965,115 @@ export const traffic = {
   },
 
   /**
+   * ev_meteor_passage cadence: one pass per roll, ~1-2 per hour class (the catalog's rarity).
+   * The clock lives in the persisted traffic bag so a Continue keeps the schedule instead of
+   * re-rolling it; the live-pass record stays instance-local — a restored rock re-derives the
+   * "one at a time" guard through the live-entity scan in _spawnPocketMeteor.
+   */
+  _stepPocketMeteorPass(dt, state) {
+    const bag = state && state.traffic;
+    if (!bag) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const pass = this._meteorPass;
+    if (pass) {
+      const rock = pass.rockId != null && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(pass.rockId) : null;
+      if (!rock || rock.alive === false) this._meteorPass = null;
+    }
+    if (!Number.isFinite(bag.nextMeteorPassAt)) {
+      bag.nextMeteorPassAt = now + this._meteorPassIntervalS();
+      return;
+    }
+    if (now < bag.nextMeteorPassAt) return;
+    bag.nextMeteorPassAt = now + this._meteorPassIntervalS();
+    if (this._meteorPass) return;
+    this._spawnPocketMeteor(state);
+  },
+
+  _meteorPassIntervalS() {
+    return METEOR_PASS_MEAN_INTERVAL_S * (0.6 + this._rng() * 0.8);
+  },
+
+  /**
+   * The catalog's arrangement: one large rock on a straight chord across the pocket at 3-4x
+   * traffic speed, entering and leaving at the speed-revealed band. Ballistic by physicsBody —
+   * dynamic membership puts it on the movables/spatial lanes so radar, the despawn sweep and
+   * the mining beam all resolve it at its live pose under either physics authority, and the
+   * body keeps its spawn linvel under Rapier the same way the compat integrator keeps vel.
+   * The chord is aimed past the player's own lane within the miss band — the rock crosses
+   * where the player is actually looking. Cracking it is the authored interruption: the
+   * ordinary mining path owns the ore spray and the fracture debris.
+   */
+  _spawnPocketMeteor(state) {
+    const helpers = this.helpers;
+    const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
+    if (!state || !spawn) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return null;
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e && e.alive !== false && e.data && e.data.meteorPassage === true) return null;
+    }
+    const bearing = this._rng() * Math.PI * 2;
+    const dirX = Math.cos(bearing);
+    const dirZ = Math.sin(bearing);
+    const miss = (this._rng() - 0.5) * 2 * METEOR_PASS_MISS_MAX_WU;
+    const speed = METEOR_PASS_SPEED_LO_WU_S
+      + this._rng() * (METEOR_PASS_SPEED_HI_WU_S - METEOR_PASS_SPEED_LO_WU_S);
+    const radius = METEOR_PASS_RADIUS_LO_WU
+      + this._rng() * (METEOR_PASS_RADIUS_HI_WU - METEOR_PASS_RADIUS_LO_WU);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const entry = {
+      x: player.pos.x - dirX * METEOR_PASS_SPAWN_RADIUS_WU - dirZ * miss,
+      z: player.pos.z - dirZ * METEOR_PASS_SPAWN_RADIUS_WU + dirX * miss,
+    };
+    // Beam mk1 needs ~4-8 s of contact to crack it inside a ~30 s crossing — a fast window,
+    // paid by the second rather than all-or-nothing, exactly like an ordinary rock.
+    const oreHP = Math.round(radius * 8);
+    const yieldU = Math.max(3, Math.round(radius * 0.5));
+    const travelS = (METEOR_PASS_SPAWN_RADIUS_WU * 2) / speed;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const entity = spawn({
+      type: 'asteroid',
+      pos: entry,
+      vel: { x: dirX * speed, z: dirZ * speed },
+      rot: this._rng() * Math.PI * 2,
+      angVel: (this._rng() - 0.5) * 0.5,
+      radius,
+      mass: Math.max(1, Math.round(radius * radius * radius * 0.25)),
+      physicsBody: {
+        radius: asteroidColliderRadius(METEOR_PASS_TYPE_ID, radius),
+        dynamic: true,
+      },
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      homeSectorId: sectorId,
+      data: {
+        typeId: METEOR_PASS_TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU,
+        size: radius,
+        meteorPassage: true,
+        despawnAt: now + travelS + METEOR_PASS_EXIT_PAD_S,
+      },
+    });
+    if (entity) {
+      this._meteorPass = {
+        rockId: typeof entity === 'object' ? entity.id : entity,
+        sectorId,
+        bornAt: now,
+      };
+    }
+    return entity || null;
+  },
+
+  /**
    * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
    * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
    * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
@@ -12113,6 +12238,8 @@ export const traffic = {
         this.state.traffic.disruptedStationIds,
       ),
       ...(heliosFreightTallies.length ? { heliosFreightTallies } : {}),
+      ...(Number.isFinite(this.state.traffic.nextMeteorPassAt)
+        ? { nextMeteorPassAt: this.state.traffic.nextMeteorPassAt } : {}),
     };
   },
 
@@ -12180,6 +12307,10 @@ export const traffic = {
       ? normalizeHeliosFreightTallyList(data.heliosFreightTallies) : [];
     if (tallies.length) this.state.traffic.heliosFreightTallies = tallies;
     else delete this.state.traffic.heliosFreightTallies;
+    // The sky clock survives a Continue; a save without it re-rolls on the next step.
+    this.state.traffic.nextMeteorPassAt = validTrafficSave && Number.isFinite(data.nextMeteorPassAt)
+      ? data.nextMeteorPassAt : undefined;
+    this._meteorPass = null;
   },
 
   newGame() {
@@ -12198,6 +12329,7 @@ export const traffic = {
     this._resetCeresDisabledHaulerRuntime();
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
+    this._meteorPass = null;
     this._active = [];
     // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
     // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
