@@ -38,6 +38,7 @@
 
 import fs from 'node:fs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
+import { smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -524,6 +525,14 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
   }
   lines.push('');
 
+  if (trace.rafStamps?.length) {
+    const toPerf = (wallMs) => wallMs - trace.timeOrigin;
+    const windows = phases.map((phase) => ({ id: phase.name, fromMs: toPerf(phase.from), toMs: toPerf(phase.to) }));
+    lines.push(...smoothnessMarkdown(summarizeLoadingSmoothness({
+      rafStamps: trace.rafStamps, loaf: trace.loaf, video: trace.video, windows,
+    })));
+  }
+
   lines.push(...resourceLines(trace.resources, timeline.launchWallMs, timeline.flightWallMs));
 
   lines.push('## Renderer resources', '', '| moment | programs | geometries | textures | JS heap MB |', '|---|---:|---:|---:|---:|');
@@ -576,6 +585,47 @@ async function installLaunchObservers(page) {
       resourceObserver.observe({ type: 'resource' });
       trace.observers.push(resourceObserver);
     } catch { /* resource observation is best-effort */ }
+    // What the player sees: the page's own frame cadence, long animation frames (with the scripts that held
+    // them) and the backdrop video's dropped frames. Read by scripts/lib/loadingSmoothness.mjs.
+    trace.rafStamps = [];
+    trace.loaf = [];
+    trace.video = [];
+    trace.timeOrigin = performance.timeOrigin;
+    let rafActive = true;
+    const rafTick = (now) => {
+      if (!rafActive) return;
+      if (trace.rafStamps.length < 60000) trace.rafStamps.push(now);
+      requestAnimationFrame(rafTick);
+    };
+    requestAnimationFrame(rafTick);
+    trace.observers.push({ disconnect() { rafActive = false; } });
+    try {
+      const loafObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (trace.loaf.length >= 800) break;
+          trace.loaf.push({
+            startTime: entry.startTime,
+            duration: entry.duration,
+            blockingDuration: entry.blockingDuration,
+            scripts: (entry.scripts || []).slice(0, 8).map((script) => ({
+              sourceURL: script.sourceURL,
+              sourceFunctionName: script.sourceFunctionName,
+              invoker: script.invoker,
+              duration: script.duration,
+              forcedStyleAndLayoutDuration: script.forcedStyleAndLayoutDuration,
+            })),
+          });
+        }
+      });
+      loafObserver.observe({ type: 'long-animation-frame', buffered: true });
+      trace.observers.push(loafObserver);
+    } catch { /* long-animation-frame needs Chrome 123+; absent means no attribution rows */ }
+    const videoTimer = setInterval(() => {
+      const video = document.querySelector('video');
+      const quality = video && typeof video.getVideoPlaybackQuality === 'function' ? video.getVideoPlaybackQuality() : null;
+      if (quality) trace.video.push({ t: performance.now(), total: quality.totalVideoFrames, dropped: quality.droppedVideoFrames });
+    }, 250);
+    trace.observers.push({ disconnect() { clearInterval(videoTimer); } });
     const bus = window.SF?.bus;
     if (bus && typeof bus.on === 'function') {
       trace.unsubscribe = bus.on('game:loadingProgress', (payload = {}) => {
@@ -591,13 +641,21 @@ async function installLaunchObservers(page) {
 async function collectLaunchObservers(page) {
   return page.evaluate(() => {
     const trace = window.__SF_PROFILE_LAUNCH__;
-    if (!trace) return { stages: [], longTasks: [], resources: [] };
+    if (!trace) return { stages: [], longTasks: [], resources: [], rafStamps: [], loaf: [], video: [], timeOrigin: 0 };
     for (const observer of trace.observers) {
       try { observer.disconnect(); } catch { /* already gone */ }
     }
     try { trace.unsubscribe?.(); } catch { /* bus already torn down */ }
     delete window.__SF_PROFILE_LAUNCH__;
-    return { stages: trace.stages, longTasks: trace.longTasks, resources: trace.resources };
+    return {
+      stages: trace.stages,
+      longTasks: trace.longTasks,
+      resources: trace.resources,
+      rafStamps: trace.rafStamps || [],
+      loaf: trace.loaf || [],
+      video: trace.video || [],
+      timeOrigin: trace.timeOrigin || 0,
+    };
   }).catch(() => ({ stages: [], longTasks: [], resources: [] }));
 }
 
