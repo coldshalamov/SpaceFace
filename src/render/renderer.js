@@ -14777,6 +14777,9 @@ export const render = {
           });
           try {
             if (cookStale()) return cookSuperseded;
+            const settleDrawableSession = state.mode === 'loading'
+              ? await mintTouchDrawableSession(scene) : null;
+            if (cookStale()) return cookSuperseded;
             materialSettle = await admitOpeningUnitsAcrossSlices({
               deadlineMs: Math.min(6000, remainingMs()),
               units: uniqueAdmissionUnits(staleSubjects),
@@ -14799,6 +14802,15 @@ export const render = {
                   restore();
                 }
               },
+              touchMany: async (subjects) => {
+                const restores = subjects.map((subject) => revealSubjectWithAncestors(subject));
+                try {
+                  return await touchExactTargetSubjects(subjects, settleDrawableSession);
+                } finally {
+                  for (let index = restores.length - 1; index >= 0; index--) restores[index]();
+                }
+              },
+              touchBatchSize: state.mode === 'loading' ? 4 : 1,
               // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
               // the owner's laptop. The jump shell keeps one item per frame.
