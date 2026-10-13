@@ -771,6 +771,34 @@ export function noteOrientationDetachedHold(renderer) {
   return true;
 }
 
+/** True while a drawing-buffer aspect flip is waiting on one package refill. */
+export function orientationDetachedHoldActive(renderer) {
+  return !!(renderer && orientationHolds.has(renderer));
+}
+
+/**
+ * Hide this drawable for the aspect-flip hold so three's projectObject cannot
+ * upload a released CPU mirror. A renderBufferDirect skip is too late: the
+ * attribute update runs first and creates a zero-length buffer. Uploads that
+ * are pending outside the hold stay visible — hiding those until the upload
+ * lands never reaches the draw that clears the pending bit.
+ */
+export function orientationHoldHidesDrawable(renderer, object) {
+  if (!orientationDetachedHoldActive(renderer) || !object) return false;
+  if (isPackageGeometryDetached(object.geometry)) return true;
+  const materials = presentedMaterialList(object.material);
+  if (!materials) return false;
+  for (let i = 0; i < materials.length; i++) {
+    const mat = materials[i];
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (texture && texture.isTexture === true && isPackageTextureDetached(texture)) return true;
+    }
+  }
+  return false;
+}
+
 async function rehydrateManifest(manifest) {
   const decoded = await manifest.redecode();
   const template = decodedTemplate(decoded);

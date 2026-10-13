@@ -284,7 +284,15 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
   const bloom = read('src/render/bloom.js');
   assert.match(bloom, /detachedPresentedDrawBlocked\(renderer, geometry, material\)/);
   assert.match(bloom, /queuePresentedDetachRehydrate\(renderer\)/);
-  assert.match(rendererSrc, /noteOrientationDetachedHold\(this\.renderer\)/);
+  assert.match(bloom, /const orientationHold = orientationDetachedHoldActive\(renderer\)/);
+  assert.match(bloom, /if \(!orientationHold && unreadyProgramsPending !== true/);
+  assert.match(bloom, /orientationHoldHidesDrawable\(renderer, object\)/);
+  assert.match(rendererSrc, /this\._drawBufferAspectClass = aspectClassFromSize\(_drawSize\)/);
+  assert.match(
+    rendererSrc,
+    /_applySize\(\) \{[\s\S]*?noteOrientationDetachedHold\(this\.renderer\);[\s\S]*?const drawSize = applyRendererSize\(this\.renderer, this\.state\)/,
+    'the aspect hold arms before setSize, so the first phone rotation is not treated as the initial size',
+  );
 });
 
 test('presented draw skips a detached upload and refills before the next one', async () => {
@@ -342,5 +350,54 @@ test('presented draw skips a detached upload and refills before the next one', a
   assert.equal(detachedPresentedDrawBlocked(renderer, geometry, material), false);
   renderer.renderBufferDirect(null, null, geometry, material, null, null);
   assert.equal(draws, 2, 'the following frame draws the restored payload');
+  loader.dispose();
+});
+
+test('orientation hold hides a detached mesh after the readiness walk has gone steady', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => {
+    decodes += 1;
+    return decodes === 1 ? decoded : decodedFixture();
+  });
+  await loader.load(packageMetadata('fixture.orientation-hide'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const hull = decoded.scene.children[0];
+  const prop = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  prop.name = 'LooseProp';
+  decoded.scene.add(prop);
+  const readyProgram = { isReady() { return true; }, program: { id: 1 } };
+  const renderer = {
+    properties: { get() { return { currentProgram: readyProgram }; } },
+    info: { programs: [readyProgram] },
+    getContext() { return null; },
+  };
+  const guard = createUnreadyDrawableGuard(renderer);
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  assert.equal(geometry.getAttribute('normal').array.byteLength, 0);
+
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'a ready program does not hide the ship');
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'steady-state detached draws keep the live GPU copy');
+
+  noteOrientationDetachedHold(renderer);
+  guard.hide(decoded.scene);
+  assert.equal(hull.visible, false, 'the first aspect flip hides the ship before projectObject uploads');
+  assert.equal(prop.visible, true, 'an ordinary mesh stays on screen through the hold');
+  guard.restore();
+  assert.equal(hull.visible, true, 'the hide lasts one pass');
+
+  const flight = presentedDetachRehydrateInFlight();
+  assert.ok(flight, 'the hold starts one refill');
+  await flight;
+  assert.equal(isPackageGeometryDetached(geometry), false);
+  assert.ok(geometry.getAttribute('normal').array.byteLength > 0, 'normal bytes restored');
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'the refill drops the hold and the ship draws again');
+  prop.geometry.dispose();
   loader.dispose();
 });
