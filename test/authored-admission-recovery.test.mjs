@@ -224,3 +224,16 @@ test('the player plume event light only runs while a hull is published', () => {
 });
 
 
+
+test('a clockless retry (swarm warm re-kick) shares the poll clock, so the backoff holds', (t) => {
+  // Mid-session clock: far past one backoff window from t=0.
+  t.mock.method(performance, 'now', () => 1e6);
+  const boundary = failedBoundary('unavailable');
+  // Re-kick path passes no clock.
+  assert.equal(retryFailedAuthoredAdmission(boundary), true);
+  boundary.userData.authoredAssetState = 'unavailable';
+  // The residency poll a frame later passes performance.now(); it must still be inside the window.
+  assert.equal(retryFailedAuthoredAdmission(boundary, 1e6 + 300), false,
+    'a clockless stamp near t=0 let every later poll bypass the backoff');
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 1);
+});

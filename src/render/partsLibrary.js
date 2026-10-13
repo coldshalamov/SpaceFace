@@ -2908,6 +2908,12 @@ export function markAuthoredBoundaryForReadmission(boundary, reason) {
 export const AUTHORED_ADMISSION_RETRY_MAX = 4;
 export const AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS = 2500;
 
+function authoredAdmissionRetryNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
 export function authoredAdmissionRetriableStatus(status) {
   return status === 'unavailable' || status === 'fallback-after-error';
 }
@@ -2919,7 +2925,11 @@ export function retryFailedAuthoredAdmission(boundary, nowMs) {
   if (data.authoredReadableFallbackRetained === true) return false;
   const attempts = data.authoredAdmissionRetryCount || 0;
   if (attempts >= AUTHORED_ADMISSION_RETRY_MAX) return false;
-  const now = Number.isFinite(nowMs) ? nowMs : 0;
+  // Callers without a clock (the swarm warm re-kick paths) used to read 0 here: the backoff
+  // stamp then landed near t=0 and the next residency-poll call, which passes performance.now(),
+  // was always past it — so all retries fired back to back (~0.3 s cycles of
+  // awaiting/loading/unavailable on glass, swarm seed 4242). Read one shared monotonic clock.
+  const now = Number.isFinite(nowMs) ? nowMs : authoredAdmissionRetryNow();
   const nextAt = data.authoredAdmissionNextRetryAt;
   if (Number.isFinite(nextAt) && now < nextAt) return false;
   data.authoredAdmissionRetryCount = attempts + 1;
