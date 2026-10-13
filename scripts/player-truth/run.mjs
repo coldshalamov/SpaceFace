@@ -17,9 +17,10 @@
 // Exit code: 0 PASS, 1 FAIL (any arena, even when another arena is ENVIRONMENT),
 //            2 INCOMPLETE (a check could not measure), 3 harness error,
 //            4 HARNESS ENVIRONMENT only when no arena FAILed (stale served assets/ vs HEAD,
-//            a quoted route load error, or the browser closed by the environment).
-//            A proven environment browser loss is retried once and named in the verdict.
-//            ENVIRONMENT is printed on its own line.
+//            a quoted route load error, the browser closed by the environment, or a sim
+//            stall that overlaps a harness-process freeze). A proven environment browser
+//            loss is retried once. The graded verdict is that retry and keeps the first
+//            run's stopReason. A sim stall is not retried. ENVIRONMENT is printed on its own line.
 
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { freemem, loadavg, totalmem } from 'node:os';
@@ -39,6 +40,7 @@ import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quo
 import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
+import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
@@ -232,6 +234,17 @@ export function environmentRetryNote(loss) {
   return `retried once after environment browser loss (${loss.reason})`;
 }
 
+/** Meta for the graded run. A retry keeps the first run's stopReason and says so. */
+export function gradedRunFields(args = {}) {
+  const environmentRetry = args.environmentRetry || null;
+  if (!environmentRetry) return { environmentRetry: null, firstStopReason: null, gradedRun: null };
+  return {
+    environmentRetry,
+    firstStopReason: args.firstStopReason || null,
+    gradedRun: 'retry',
+  };
+}
+
 /** Process status for a finished matrix. A gameplay FAIL exits 1 even when another arena is ENVIRONMENT.
  *  ENVIRONMENT exits 4 only when no arena FAILed. It is still printed on its own line. */
 export function gateExitCode(verdicts) {
@@ -327,7 +340,23 @@ async function runOne(args, arena, extra = {}) {
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), loadavg: { start: [...loadavg()], end: null }, environmentRetry: args.environmentRetry || null }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const freezeWatch = createFreezeWatch();
+  freezeWatch.start();
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), loadavg: { start: [...loadavg()], end: null }, ...gradedRunFields(args) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const stampHarnessClock = () => {
+    if (trace.meta.harnessFreezes) return;
+    freezeWatch.stop();
+    trace.meta.harnessFreezes = freezeWatch.snapshot();
+    const pressure = readHostPressure(T0);
+    trace.meta.hostPressure = pressure.lines;
+    if (pressure.error) {
+      trace.meta.hostPressureError = pressure.error;
+      log(`dmesg host pressure unavailable: ${pressure.error}`);
+    } else if (pressure.lines.length) log(`host pressure: ${pressure.lines.length} dmesg line(s) in the run window`);
+    for (const freeze of trace.meta.harnessFreezes) {
+      log(`harness freeze ${Math.round(freeze.lagMs / 1000)} s ${new Date(freeze.startWall).toISOString()} → ${new Date(freeze.endWall).toISOString()}`);
+    }
+  };
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
@@ -342,6 +371,7 @@ async function runOne(args, arena, extra = {}) {
         : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
     }));
   } catch (err) {
+    freezeWatch.stop();
     await server.close().catch(() => {});
     throw err;
   }
@@ -665,9 +695,10 @@ async function runOne(args, arena, extra = {}) {
   });
   trace.playWatch = playWatch.snapshot();
   await browser.close().catch(() => {}); await server.close().catch(() => {});
+  stampHarnessClock();
 
   const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, pruneFrames: args.pruneFrames, vw, vh });
-  return { label, verdict, outDir, environmentLoss };
+  return { label, verdict, outDir, environmentLoss, stopReason };
 }
 
 /** Scratch frames stay for review. They are removed only when --evidence and --prune-frames are both set. */
@@ -800,7 +831,7 @@ async function main() {
     const retryNote = environmentRetryNote(outcome.environmentLoss);
     if (retryNote) {
       console.error(`player-truth ${retryNote}`);
-      outcome = await runOne({ ...a, environmentRetry: retryNote }, arena, extra);
+      outcome = await runOne({ ...a, environmentRetry: retryNote, firstStopReason: outcome.stopReason }, arena, extra);
     }
     outcomes.push(outcome);
   }

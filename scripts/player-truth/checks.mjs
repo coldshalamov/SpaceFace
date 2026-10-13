@@ -5,6 +5,7 @@
 
 import { PLAYER_TRUTH_CLASSES } from '../../src/testing/playerTruth/reader.js';
 import { STALL_MIN_SIM_S, STALL_WINDOW_MS, formatInterruptDetail, isHudTop } from './playWatch.mjs';
+import { formatHarnessFreeze, hostPressureCovering, overlappingHarnessFreezes, stallWallWindow } from './freezeWatch.mjs';
 
 export const E = Object.freeze({ id: 0, cls: 1, x: 2, z: 3, vx: 4, vz: 5, sx: 6, sy: 7, pr: 8, vis: 9, key: 10, type: 11 });
 export const CLS = Object.freeze(Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i])));
@@ -1016,7 +1017,12 @@ export function checkRoundsReached(trace) {
     `stopped: ${trace.meta.stopReason || 'n/a'}`, got >= need ? [] : [{ line: `scripted fighter stopped at round ${got}: ${trace.meta.stopReason || ''}`, t: null, sim: null, box: null }]);
 }
 
-/** Sim froze while the run still said the phase was active. Loading and the boot overlay are not a stall. */
+/**
+ * Sim froze while the run still said the phase was active. Loading and the boot overlay are not a stall.
+ * A stall whose wall window overlaps a recorded harness-process freeze is the box, not the game:
+ * ENVIRONMENT, with the freeze and any balloon / hung-task lines in that window. The sim threshold
+ * is unchanged. A stall while the harness clock kept ticking stays FAIL.
+ */
 export function checkSimStalled(trace) {
   const threshold = `≥${STALL_MIN_SIM_S} s sim per ${Math.round(STALL_WINDOW_MS / 1000)} s wall while phase is active and not loading`;
   const watch = trace.playWatch;
@@ -1028,8 +1034,19 @@ export function checkSimStalled(trace) {
   const stall = (watch.interrupts || []).find((item) => item.kind === 'stall');
   if (stall) {
     const line = formatInterruptDetail(stall);
+    const value = `${Number(stall.simAdvanced).toFixed(2)} s / ${(stall.wallMs / 1000).toFixed(0)} s wall`;
     const moment = stall.t != null ? [{ line, t: stall.t, sim: stall.sim ?? null, box: null }] : [];
-    return result('sim_stalled', 'Sim kept moving', 'FAIL', `${Number(stall.simAdvanced).toFixed(2)} s / ${(stall.wallMs / 1000).toFixed(0)} s wall`, threshold, line, [{ line, t: stall.t ?? null, sim: stall.sim ?? null, box: null }], moment);
+    const offenders = [{ line, t: stall.t ?? null, sim: stall.sim ?? null, box: null }];
+    const hits = overlappingHarnessFreezes(stall, trace.meta && trace.meta.harnessFreezes);
+    if (hits.length) {
+      const freezeBits = hits.map(formatHarnessFreeze);
+      const pressure = hostPressureCovering(trace.meta && trace.meta.hostPressure, stallWallWindow(stall), hits);
+      let detail = `${line}; ${freezeBits.join('; ')}`;
+      if (pressure.length) detail += `; host pressure: ${pressure.slice(0, 4).join(' | ')}`;
+      return result('sim_stalled', 'Sim kept moving', 'ENVIRONMENT', value, threshold, detail,
+        [{ line: freezeBits.join('; '), t: stall.t ?? null, sim: stall.sim ?? null, box: null }, ...offenders], moment);
+    }
+    return result('sim_stalled', 'Sim kept moving', 'FAIL', value, threshold, line, offenders, moment);
   }
   const adv = watch.simAdvanced;
   const wall = watch.wallMs;

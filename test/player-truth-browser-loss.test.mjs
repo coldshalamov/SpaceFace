@@ -13,7 +13,7 @@ import {
   launchChromium, parseKernelOomLines, parseProcStat, signalsSince, withChromeSpawnCapture,
 } from '../scripts/player-truth/browser.mjs';
 import { checkRoute, overall } from '../scripts/player-truth/checks.mjs';
-import { environmentRetryNote, formatRouteFailure } from '../scripts/player-truth/run.mjs';
+import { environmentRetryNote, formatRouteFailure, gradedRunFields } from '../scripts/player-truth/run.mjs';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 
 const OCT12 = '[Mon Oct 12 07:59:23 2026] Out of memory: Killed process 57481 (node) total-vm:64231484kB, anon-rss:10769936kB, file-rss:2648kB, shmem-rss:0kB, UID:1000 pgtables:27652kB oom_score_adj:0';
@@ -94,6 +94,37 @@ test('spawn capture sees a chrome launch and restores spawn', async () => {
   after.on('error', () => {});
   await new Promise((resolve) => after.on('close', resolve));
   assert.notEqual(slot.child, after);
+});
+
+test('a thrown launch restores spawn, and the next launch captures its own chrome', async () => {
+  const original = cp.spawn;
+  const blow = {
+    launch: async () => {
+      const child = cp.spawn('/tmp/no-such/chrome', ['--blow'], { stdio: 'ignore' });
+      child.on('error', () => {});
+      await new Promise((resolve) => child.on('close', resolve));
+      throw new Error('launch blew up');
+    },
+  };
+  await assert.rejects(() => launchChromium(blow, { headless: true }), /launch blew up/);
+  assert.equal(cp.spawn, original, 'spawn wrapper leaked after a thrown launch');
+  const seen = [];
+  const chromium = {
+    launch: async () => {
+      const child = cp.spawn('/tmp/no-such/chrome', ['--again'], { stdio: 'ignore' });
+      child.on('error', () => {});
+      await new Promise((resolve) => child.on('close', resolve));
+      seen.push(child);
+      return { close: async () => {} };
+    },
+  };
+  const first = await launchChromium(chromium, { headless: true });
+  const second = await launchChromium(chromium, { headless: true });
+  assert.equal(cp.spawn, original);
+  assert.equal(seen.length, 2);
+  assert.equal(first.chrome.child, seen[0]);
+  assert.equal(second.chrome.child, seen[1]);
+  assert.notEqual(first.chrome.child, second.chrome.child);
 });
 
 test('chrome must be its own session, and a shared group is not', () => {
@@ -187,10 +218,21 @@ test('the failure line keeps the chrome signal, free memory, and oom, and the re
   assert.equal(note, 'retried once after environment browser loss (harness received SIGHUP)');
   assert.equal(environmentRetryNote({ environment: false, reason: 'browser disconnected' }), null);
   assert.equal(environmentRetryNote(null), null);
+  const firstStop = 'HARNESS ENVIRONMENT: page closed by the environment (harness received SIGHUP)';
+  assert.deepEqual(gradedRunFields({}), { environmentRetry: null, firstStopReason: null, gradedRun: null });
+  assert.deepEqual(gradedRunFields({ environmentRetry: note, firstStopReason: firstStop }), {
+    environmentRetry: note, firstStopReason: firstStop, gradedRun: 'retry',
+  });
   const md = renderVerdict({
-    meta: { label: 'swarm', mode: 'swarm', seed: 4242, environmentRetry: note, sessionSignals: ['SIGHUP'], stopReason: 'duration' },
+    meta: {
+      label: 'swarm', mode: 'swarm', seed: 4242,
+      ...gradedRunFields({ environmentRetry: note, firstStopReason: firstStop }),
+      sessionSignals: ['SIGHUP'], stopReason: 'duration',
+    },
     results: [], overall: 'PASS', paths: {},
   });
+  assert.match(md, /Graded run: this verdict is the retry\. The first run is not graded\./);
+  assert.match(md, /First run stopped: HARNESS ENVIRONMENT: page closed by the environment \(harness received SIGHUP\)/);
   assert.match(md, /Environment retry: retried once after environment browser loss \(harness received SIGHUP\)/);
   assert.match(md, /Session signals ignored \(Chrome left running\): SIGHUP/);
 });
