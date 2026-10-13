@@ -1,0 +1,178 @@
+  fat event payloads:
+    bufferFullUpload@1323.sourceData 1 KB
+    bufferFullUpload@1323.sourceData 1 KB
+    bufferFullUpload@1323.sourceData 1 KB
+    bufferFullUpload@1323.sourceData 1 KB
+    bufferFullUpload@1323.sourceData 2 KB
+    bufferFullUpload@1323.sourceData 2 KB
+    bufferFullUpload@1323.sourceData 1 KB
+    bufferFullUpload@1323.sourceData 0 KB
+    bufferFullUpload@1323.sourceData 0 KB
+    bufferFullUpload@1323.sourceData 0 KB
+    bufferFullUpload@1323.sourceData 0 KB
+    bufferFullUpload@1323.sourceData 0 KB
+    bufferFullUpload@1323.sourceData 1 KB
+    bufferFullUpload@1323.sourceData 0 KB
+    bufferFullUpload@1325.sourceData 0 KB
+    bufferFullUpload@1325.sourceData 0 KB
+    bufferFullUpload@1325.sourceData 0 KB
+    bufferFullUpload@1325.sourceData 0 KB
+    bufferFullUpload@1358.sourceData 4 KB
+    bufferFullUpload@1358.sourceData 4 KB
+
+SMOOTH-FLIGHT WITNESS
+  GPU                         ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)
+  whole-machine CPU busy      46 % of 14 logical cores during the sample (the game alone is ~10-15 %)
+  route                       open flight, new game; at end: 23 other ships, 0 projectiles (peak 0), 160 entities, 0 draw calls, 0k triangles
+  launch to flight            31.2 s
+  sample                      after 0 s of flight: 20 s, 676 frames, 34.3 fps mean
+  frame time p50/p95/p99      33.3 / 50.1 / 83.3 ms; worst 200 ms
+  frames over 33 / 50 / 100   123 (18.2 %) / 67 (9.9 %) / 3
+  typical frame costs (ms)    callback 16.3  sim 0.0  present 16.0  render 12.0  vfx 1.6  ui 2.2  feel 0.2  admission 3.1
+  before a LONG frame (ms)    callback 22.6  sim 0.0  present 22.2  render 15.7  vfx 2.1  ui 4.2  feel 0.2  admission 5.5
+  long frames paid in JS      92 of 122 (the rest: GPU, compositor or GC outside the game's callback)
+  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...
+    # 144   200 <- callback   14  sim    0  present   13  (render 9, vfx 1, ui 4)  admission 0  — no wave event within 2s
+    #  39   117 <- callback   26  sim    0  present   23  (render 18, vfx 3, ui 2)  admission 1  — no wave event within 2s
+    #  29   100 <- callback   16  sim    0  present   16  (render 12, vfx 3, ui 1)  admission 0  — no wave event within 2s
+    # 148   100 <- callback   23  sim    0  present   23  (render 12, vfx 2, ui 9)  admission 0  — no wave event within 2s
+    #  88    83 <- callback   19  sim    0  present   19  (render 13, vfx 1, ui 5)  admission 0  — no wave event within 2s
+    # 131    83 <- callback   27  sim    0  present   26  (render 20, vfx 2, ui 4)  admission 1  — no wave event within 2s
+    # 132    83 <- callback   33  sim    0  present   33  (render 15, vfx 3, ui 15)  admission 0  — no wave event within 2s
+    # 150    83 <- callback   22  sim    0  present   22  (render 11, vfx 1, ui 9)  admission 0  — no wave event within 2s
+    # 116    83 <- callback   29  sim    0  present   29  (render 23, vfx 2, ui 4)  admission 0  — no wave event within 2s
+    # 147    82 <- callback   20  sim    0  present   20  (render 16, vfx 1, ui 2)  admission 0  — no wave event within 2s
+  wave events (s into sample)   none captured
+  every frame >50 ms: +s into sample, interval ms, owner, callback breakdown, nearest wave
+      +0.0s #   2     50  intraFrameTasks          cb   16 (sim 0 ren 13 vfx 1 ui 1 adm 0 untr 0) gap 9 disp 15  — no wave event within 2s
+      +0.2s #   5     50  intraFrameTasks          cb   17 (sim 0 ren 14 vfx 1 ui 1 adm 0 untr 0) gap 16 disp 22  — no wave event within 2s
+      +0.3s #   6     50  render                   cb   31 (sim 0 ren 25 vfx 2 ui 4 adm 0 untr 0) gap 14 disp 2  — no wave event within 2s
+      +0.4s #   9     50  render                   cb   25 (sim 0 ren 21 vfx 2 ui 1 adm 0 untr 0) gap 12 disp 3  — no wave event within 2s
+      +0.4s #  10     50  externalScheduling       cb   25 (sim 0 ren 15 vfx 3 ui 7 adm 0 untr 0) gap 25 disp 2  — no wave event within 2s
+      +0.4s #  11     50  externalScheduling       cb   20 (sim 0 ren 14 vfx 1 ui 4 adm 0 untr 0) gap 25 disp 2  — no wave event within 2s
+      +0.5s #  12     67  render                   cb   29 (sim 0 ren 23 vfx 2 ui 3 adm 0 untr 0) gap 31 disp 2  — no wave event within 2s
+      +0.6s #  15     50  render                   cb   32 (sim 0 ren 27 vfx 2 ui 2 adm 0 untr 0) gap 28 disp 2  — no wave event within 2s
+      +0.6s #  16     67  render                   cb   33 (sim 0 ren 22 vfx 2 ui 9 adm 1 untr 0) gap 17 disp 2  — no wave event within 2s
+      +0.7s #  17     50  externalScheduling       cb   23 (sim 0 ren 18 vfx 1 ui 3 adm 0 untr 1) gap 35 disp 4  — no wave event within 2s
+      +0.7s #  18     51  render                   cb   31 (sim 0 ren 24 vfx 2 ui 4 adm 0 untr 1) gap 26 disp 4  — no wave event within 2s
+      +0.8s #  20     67  render                   cb   32 (sim 0 ren 24 vfx 5 ui 2 adm 0 untr 0) gap 31 disp 13  — no wave event within 2s
+      +0.9s #  22     50  render                   cb   29 (sim 0 ren 19 vfx 3 ui 6 adm 1 untr 0) gap 20 disp 3  — no wave event within 2s
+      +1.0s #  23     50  render                   cb   31 (sim 0 ren 25 vfx 2 ui 4 adm 0 untr 0) gap 21 disp 4  — no wave event within 2s
+      +1.0s #  24     67  render                   cb   29 (sim 0 ren 21 vfx 3 ui 4 adm 0 untr 1) gap 18 disp 4  — no wave event within 2s
+      +1.1s #  25     50  render                   cb   31 (sim 0 ren 22 vfx 2 ui 6 adm 0 untr 0) gap 37 disp 2  — no wave event within 2s
+      +1.1s #  27     50  render                   cb   27 (sim 0 ren 18 vfx 4 ui 4 adm 0 untr 0) gap 29 disp 7  — no wave event within 2s
+      +1.3s #  29    100  intraFrameTasks          cb   16 (sim 0 ren 12 vfx 3 ui 1 adm 0 untr 0) gap 44 disp 49  — no wave event within 2s
+      +1.3s #  30     50  admission                cb   33 (sim 0 ren 24 vfx 3 ui 6 adm 185 untr 0) gap 0 disp 10  — no wave event within 2s
+      +1.4s #  34     50  render                   cb   31 (sim 0 ren 20 vfx 2 ui 9 adm 0 untr 0) gap 7 disp 13  — no wave event within 2s
+      +1.6s #  38     67  intraFrameTasks          cb   15 (sim 0 ren 9 vfx 1 ui 4 adm 0 untr 0) gap 16 disp 17  — no wave event within 2s
+      +1.7s #  39    117  render                   cb   26 (sim 0 ren 18 vfx 3 ui 2 adm 1 untr 3) gap 59 disp 26  — no wave event within 2s
+      +1.7s #  40     67  render                   cb   35 (sim 0 ren 20 vfx 5 ui 9 adm 1 untr 1) gap 73 disp 8  — no wave event within 2s
+      +2.1s #  46     50  intraFrameTasks          cb   15 (sim 0 ren 11 vfx 2 ui 1 adm 0 untr 1) gap 9 disp 15  — no wave event within 2s
+      +2.2s #  48     50  intraFrameTasks          cb   20 (sim 0 ren 16 vfx 2 ui 1 adm 0 untr 0) gap 32 disp 40  — no wave event within 2s
+      +2.2s #  49     67  intraFrameTasks          cb   19 (sim 0 ren 14 vfx 3 ui 2 adm 1 untr 0) gap 16 disp 27  — no wave event within 2s
+      +2.3s #  51     50  intraFrameTasks          cb   22 (sim 0 ren 18 vfx 2 ui 1 adm 1 untr 0) gap 20 disp 28  — no wave event within 2s
+      +2.6s #  56     50  externalScheduling       cb   20 (sim 0 ren 15 vfx 2 ui 3 adm 0 untr 1) gap 22 disp 19  — no wave event within 2s
+      +2.9s #  60     50  intraFrameTasks          cb   22 (sim 0 ren 16 vfx 3 ui 2 adm 0 untr 1) gap 24 disp 27  — no wave event within 2s
+      +3.0s #  65     67  render                   cb   30 (sim 0 ren 16 vfx 3 ui 8 adm 0 untr 2) gap 28 disp 25  — no wave event within 2s
+      +3.4s #  72     50  render                   cb   31 (sim 0 ren 20 vfx 2 ui 9 adm 0 untr 0) gap 19 disp 15  — no wave event within 2s
+      +3.5s #  75     50  intraFrameTasks          cb   25 (sim 0 ren 18 vfx 2 ui 4 adm 0 untr 1) gap 12 disp 22  — no wave event within 2s
+      +3.8s #  82     50  intraFrameTasks          cb   18 (sim 0 ren 14 vfx 2 ui 2 adm 0 untr 0) gap 16 disp 23  — no wave event within 2s
+      +3.9s #  84     50  render                   cb   31 (sim 0 ren 18 vfx 7 ui 6 adm 1 untr 0) gap 9 disp 15  — no wave event within 2s
+      +4.1s #  88     83  externalScheduling       cb   19 (sim 0 ren 13 vfx 1 ui 5 adm 0 untr 0) gap 18 disp 12  — no wave event within 2s
+      +4.2s #  92     50  externalScheduling       cb   17 (sim 0 ren 13 vfx 3 ui 1 adm 0 untr 0) gap 19 disp 12  — no wave event within 2s
+      +4.3s #  94     50  render                   cb   32 (sim 0 ren 19 vfx 4 ui 8 adm 0 untr 1) gap 13 disp 17  — no wave event within 2s
+      +4.5s #  98     50  intraFrameTasks          cb   17 (sim 0 ren 13 vfx 2 ui 1 adm 0 untr 0) gap 28 disp 37  — no wave event within 2s
+      +4.8s # 105     50  render                   cb   26 (sim 0 ren 17 vfx 2 ui 7 adm 0 untr 0) gap 16 disp 21  — no wave event within 2s
+      +4.8s # 107     50  intraFrameTasks          cb   22 (sim 0 ren 17 vfx 2 ui 1 adm 0 untr 0) gap 20 disp 26  — no wave event within 2s
+      +5.1s # 113     50  render                   cb   28 (sim 0 ren 18 vfx 1 ui 8 adm 0 untr 0) gap 17 disp 23  — no wave event within 2s
+      +5.2s # 116     83  render                   cb   29 (sim 0 ren 23 vfx 2 ui 4 adm 0 untr 0) gap 28 disp 35  — no wave event within 2s
+      +5.2s # 117     67  render                   cb   26 (sim 0 ren 17 vfx 2 ui 6 adm 0 untr 1) gap 56 disp 37  — no wave event within 2s
+      +5.3s # 118     50  externalScheduling       cb   21 (sim 0 ren 16 vfx 2 ui 3 adm 0 untr 0) gap 27 disp 23  — no wave event within 2s
+      +5.8s # 131     83  render                   cb   27 (sim 0 ren 20 vfx 2 ui 4 adm 1 untr 0) gap 84 disp 66  — no wave event within 2s
+      +5.8s # 132     83  render                   cb   33 (sim 0 ren 15 vfx 3 ui 15 adm 0 untr 0) gap 18 disp 27  — no wave event within 2s
+      +5.9s # 133     50  render                   cb   29 (sim 0 ren 23 vfx 2 ui 4 adm 0 untr 0) gap 50 disp 28  — no wave event within 2s
+      +5.9s # 135     50  admission                cb   27 (sim 0 ren 21 vfx 2 ui 3 adm 281 untr 0) gap 0 disp 30  — no wave event within 2s
+      +6.1s # 138     50  intraFrameTasks          cb   19 (sim 0 ren 15 vfx 1 ui 3 adm 0 untr 0) gap 21 disp 30  — no wave event within 2s
+      +6.1s # 141     50  render                   cb   30 (sim 0 ren 17 vfx 1 ui 11 adm 1 untr 0) gap 13 disp 17  — no wave event within 2s
+      +6.3s # 144    200  externalScheduling       cb   14 (sim 0 ren 9 vfx 1 ui 4 adm 0 untr 0) gap 192 disp 191  — no wave event within 2s
+      +6.4s # 147     82  intraFrameTasks          cb   20 (sim 0 ren 16 vfx 1 ui 2 adm 0 untr 0) gap 63 disp 68  — no wave event within 2s
+      +6.5s # 148    100  intraFrameTasks          cb   23 (sim 0 ren 12 vfx 2 ui 9 adm 0 untr 0) gap 76 disp 82  — no wave event within 2s
+      +6.5s # 150     83  intraFrameTasks          cb   22 (sim 0 ren 11 vfx 1 ui 9 adm 0 untr 0) gap 51 disp 58  — no wave event within 2s
+      +8.8s # 211     67  render                   cb   36 (sim 0 ren 23 vfx 2 ui 10 adm 0 untr 0) gap 30 disp 29  — no wave event within 2s
+      +9.1s # 225     67  render                   cb   29 (sim 0 ren 23 vfx 1 ui 3 adm 0 untr 0) gap 37 disp 37  — no wave event within 2s
+      +9.2s # 226     67  ui                       cb   57 (sim 0 ren 15 vfx 2 ui 40 adm 1 untr 1) gap 18 disp 18  — no wave event within 2s
+      +9.2s # 227     67  intraFrameTasks          cb   20 (sim 0 ren 15 vfx 2 ui 2 adm 0 untr 0) gap 37 disp 45  — no wave event within 2s
+      +9.6s # 239     67  intraFrameTasks          cb   18 (sim 0 ren 15 vfx 2 ui 1 adm 6 untr 1) gap 27 disp 38  — no wave event within 2s
+     +10.7s # 268     50  externalScheduling       cb   24 (sim 0 ren 12 vfx 2 ui 9 adm 0 untr 0) gap 22 disp 14  — no wave event within 2s
+     +11.4s # 297     50  externalScheduling       cb   10 (sim 0 ren 8 vfx 1 ui 1 adm 0 untr 0) gap 37 disp 36  — no wave event within 2s
+     +11.8s # 312     50  intraFrameTasks          cb   14 (sim 0 ren 12 vfx 1 ui 0 adm 0 untr 0) gap 16 disp 25  — no wave event within 2s
+     +12.0s # 323     50  intraFrameTasks          cb   15 (sim 0 ren 12 vfx 1 ui 2 adm 0 untr 0) gap 39 disp 45  — no wave event within 2s
+     +12.5s # 345     67  intraFrameTasks          cb   20 (sim 0 ren 16 vfx 1 ui 2 adm 0 untr 0) gap 41 disp 45  — no wave event within 2s
+     +16.2s # 498     50  intraFrameTasks          cb   20 (sim 0 ren 15 vfx 2 ui 2 adm 0 untr 0) gap 8 disp 9  — no wave event within 2s
+     +17.5s # 548     67  intraFrameTasks          cb   16 (sim 0 ren 11 vfx 2 ui 2 adm 0 untr 0) gap 42 disp 51  — no wave event within 2s
+  hitch classifier (in-game)    hitches 388 of 707 frames, named 365 (coverage 94 %) — externalScheduling 305 | bloom 36 | unknown 23 | present 9 | compose 8 | admission 4 | ui 3  (scheduling split: gap-dominant 180, dispatch-dominant 125, extGap 5447 ms, dispLag 4656 ms)
+  last hitch verdicts: +s into sample, frame ms, owner, nearest wave
+     +19.3s     33  externalScheduling  — no wave event within 2s
+     +19.4s     33  externalScheduling  — no wave event within 2s
+     +19.5s     33  externalScheduling  — no wave event within 2s
+     +19.6s     33  admission  — no wave event within 2s
+     +19.6s     33  bloom  — no wave event within 2s
+     +19.8s     33  externalScheduling  — no wave event within 2s
+     +19.9s     33  externalScheduling  — no wave event within 2s
+     +20.1s     33  externalScheduling  — no wave event within 2s
+     +20.3s     34  externalScheduling  — no wave event within 2s
+     +20.4s     33  externalScheduling  — no wave event within 2s
+     +20.4s     33  externalScheduling  — no wave event within 2s
+     +20.5s     33  externalScheduling  — no wave event within 2s
+     +20.6s     33  externalScheduling  — no wave event within 2s
+     +20.7s     32  externalScheduling  — no wave event within 2s
+     +20.8s     33  unknown  — no wave event within 2s
+     +21.0s     33  unknown  — no wave event within 2s
+  long tasks ≥100 ms between callbacks (largest first)
+      +7.5s     202 ms  self  unknown:
+  wave arrival in window      NOT COVERED — no wave materialized in this window. The link/upload counts below say nothing about wave-arrival cost, and must not be compared against a run that was covered.
+  kills in sample             n/a (run with --with-kill to force live kills)
+  program links / buffer uploads shaderLinks +4, bufferFullUploads +2265, bufferPartialUploads +37127
+  link placement                1 frame(s) paid a draw-time link; 3 link(s) landed off-frame (async compile); novelty: 0 NOVEL, 0 RELINK, 0 unkeyed
+  admissions queued at flight   pipelines 0, residency 0
+  roster prewarm at flight      1 roots, 1480 unready materials — opening-species-warm(5794m,1480/5802,null)
+  crucible warm at flight     {"profile":"opening","records":35,"instantiated":35,"packageInstances":35,"paletteSubjects":377,"chunkPromotions":0,"shipKicks":0,"shipStates":""}
+  ship pools at flight        0 chunks, 0 slot owners, 0 pending candidates
+  cook ledger                 live.rocksAndLeftoverMeshes 3ms resolved (firstFlightEntities=46) | live.meshBuilds2 22ms resolved (queued=8,passes=1,built=0,buildMs=0,yields=1,left=0) | cook.programs 0ms resolved (method=first-flight-hulls) | cook.touchCompile 759ms resolved (issued=571,unlinked=0,yields=14) | cook.touch 689ms resolved (subjects=571,firstPicture=94,touched=571,notReady=0,noProgram=0,switched=2,touchMs=260,maxTouchMs=6,yields=40) | cook.buffers 1944ms resolved (roots=93,textures=194,yields=19) | cook.layers 105ms resolved (roots=174,yields=24) | cook.crucibleWarm 191ms resolved (progress={"profile":"opening","records":35,"instantiated":35,"packageInstances":35,"paletteSubjects":377,"chunkPromotions":0,"shi) | cook.rockPools 6477ms resolved (roots=52,units=1781,issued=1781,issueDedupeSkips=1680,touched=1781,hiddenTouchSkips=1708,yields=16,issueMs=625,drainMs=3509,touchMs=2311) | live.cook 10601ms resolved | live.leftoverUpgradeIdle 0ms resolved (pending=0,inFlight=0,compiling=false) | live.materialSettle 1913ms resolved (unbound=468,names=Physical racing wakes/Next checkpoint/Draft pace beacon/Massline anchors and crossing refuges/L6_comet/L0-L2_deep-field-composite/L3_stars/L4_) | live.postOpeningPipelines 530ms resolved | live.parkWarmRoots 122ms resolved (roots=1,nodes=129,stampedGeometries=578) | live.firstFramePoolCensus 786ms resolved | live.finalPipelineSeal 0ms resolved (queuedPipelines=0) | wait.prepareLiveSectorBeforeFlight 14170ms resolved | opening.compositionTail 1ms resolved
+  opening tail settle         {"skipped":false,"waitedMs":1,"polls":1,"kicked":0,"kickedIds":[],"settled":true,"pending":0,"inFlight":0,"compiling":false,"residency":0,"budget":20000}
+  boundary census at flight   authored×44
+  buffer uploads in sample:
+    +17s  ×1    bufferData 784B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Shell_Starboard.uv
+    +17s  ×1    bufferData 1224B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Body_Starboard.position
+    +17s  ×1    bufferData 1224B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Body_Starboard.normal
+    +17s  ×1    bufferData 816B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Body_Starboard.uv
+    +17s  ×1    bufferData 1872B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Trim_Starboard.position
+    +17s  ×1    bufferData 1872B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Trim_Starboard.normal
+    +17s  ×1    bufferData 1248B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Trim_Starboard.uv
+    +17s  ×1    bufferData 312B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Throat_Starboard.position
+    +17s  ×1    bufferData 312B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Throat_Starboard.normal
+    +17s  ×1    bufferData 208B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Throat_Starboard.uv
+    +17s  ×1    bufferData 360B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Shell_Starboard.index
+    +17s  ×1    bufferData 432B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Body_Starboard.index
+    +17s  ×1    bufferData 1440B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Trim_Starboard.index
+    +17s  ×1    bufferData 144B  via res:Retro_Shell_Starboard,Retro_Body_Starboard,Retro_Trim_St  <- Retro_Throat_Starboard.index
+    +17s  ×1    bufferData 168B  via res:Retro_Iris_Starboard  <- Retro_Iris_Starboard.position
+    +17s  ×1    bufferData 168B  via res:Retro_Iris_Starboard  <- Retro_Iris_Starboard.normal
+    +17s  ×1    bufferData 112B  via res:Retro_Iris_Starboard  <- Retro_Iris_Starboard.uv
+    +17s  ×1    bufferData 72B  via res:Retro_Iris_Starboard  <- Retro_Iris_Starboard.index
+    +18s  ×1    bufferData 4096B  via wr:wr_convoy_5cb23df6  <- GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Lights_Cyan_rust_0.instanceMatri
+    +18s  ×1    bufferData 4096B  via wr:wr_convoy_5cb23df6  <- GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Lights_Warm_0.instanceMatrix
+    +18s  ×1    bufferData 4096B  via wr:wr_convoy_5cb23df6  <- GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Warning_0.instanceMatrix
+    +18s  ×1    bufferData 9036B  via res:COLLISION_HULL,LOD0_MOTION_HULL_CORE_Armor,LOD0_MOTION_H  <- COLLISION_HULL.position
+    +18s  ×1    bufferData 9036B  via res:COLLISION_HULL,LOD0_MOTION_HULL_CORE_Armor,LOD0_MOTION_H
+    +18s  ×1    bufferData 34208B  via res:COLLISION_HULL,LOD0_MOTION_HULL_CORE_Armor,LOD0_MOTION_H
+  SHIP LOST ITS PLACE         3 presents redrew an already-drawn moment (must be 0)
+  hitch callbacks             2 of 706 (world resumed two ticks on)
+  frames that shed sim time   116
+  game speed vs real time     85.1 % (hit-stop and hitches are the only things allowed to lower it)
+  OS says reduce motion       false
+  game motion setting         full -> effects FULL
+  rock batches                0/1  0/0  0/1  0/0  0/0
+  player speed at end         195 WU/s
+  console errors              0
+
