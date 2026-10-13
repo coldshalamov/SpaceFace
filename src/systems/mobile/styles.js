@@ -306,17 +306,16 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"] #screens .orr-newgame .orr-turntable > .orr-turntable__row { position:static!important; display:flex!important; gap:6px; justify-content:space-between; inset:auto!important; }
  :root[data-sf-mobile="1"] #screens .orr-newgame .orr-turntable > .orr-turntable__row > li { position:static!important; transform:none!important; left:auto!important; top:auto!important; flex:1 1 0; min-width:0; text-align:center; opacity:1!important; }
  :root[data-sf-mobile="1"] #screens .orr-newgame .orr-turntable .k-word[aria-pressed="true"] { color:var(--dp-hand-hot,#ffd98c)!important; }
- /* The station: its desktop frame is header | tab content | foot in one viewport, which leaves the tab content 32px on a phone.
-    Here the berth is one scrolling page (hub overview, then the tab), with the tab rail, Comms and Undock pinned to the
-    foot. Two ids and html:root outrank the layout sheets, which pin these with !important. */
- html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station { display:flex!important; flex-direction:column; overflow-x:hidden!important; overflow-y:auto!important; grid-template-rows:none!important; }
+ /* The station: identity + vitals stay on glass; the tab body scrolls; destinations wrap above Undock.
+    Two ids and html:root outrank the layout sheets, which pin these with !important. */
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station { display:flex!important; flex-direction:column; overflow:hidden!important; grid-template-rows:none!important; height:100%!important; max-height:100dvh!important; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station header.sxb-berth { flex:none!important; height:auto!important; max-height:none!important; }
- html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .dp-frame__body--station { flex:1 0 auto!important; min-height:60vh; height:auto!important; overflow:visible!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .dp-frame__body--station { flex:1 1 0!important; min-height:0!important; height:auto!important; overflow-x:hidden!important; overflow-y:auto!important; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .sx-screen__body { overflow:visible!important; max-height:none!important; height:auto!important; }
- html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station footer.sxb-ops { flex:none!important; position:sticky!important; bottom:0; z-index:6; display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:4px 10px!important; padding:6px 14px calc(10px + env(safe-area-inset-bottom,0px))!important; height:auto!important; background:linear-gradient(0deg,rgb(7 8 10) 62%,rgb(7 8 10 / 0)); }
- html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail { order:1; width:100%!important; flex:0 0 100%!important; max-width:100%!important; min-width:0!important; overflow-x:auto!important; overflow-y:hidden; scrollbar-width:none; height:auto!important; }
- html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sxb-ops__dock { display:block!important; width:max-content!important; min-width:100%; }
- html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sx-dock { width:max-content!important; flex-wrap:nowrap!important; position:relative!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station footer.sxb-ops { flex:none!important; position:relative!important; bottom:auto; z-index:6; display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:4px 10px!important; padding:6px 0 calc(8px + env(safe-area-inset-bottom,0px))!important; height:auto!important; background:linear-gradient(0deg,rgb(7 8 10) 62%,rgb(7 8 10 / 0)); }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail { order:1; width:100%!important; flex:0 0 100%!important; max-width:100%!important; min-width:0!important; overflow:visible!important; height:auto!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sxb-ops__dock { display:block!important; width:100%!important; min-width:0; max-width:100%; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sx-dock { width:100%!important; flex-wrap:wrap!important; position:relative!important; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .sx-comms { order:2; margin-left:0!important; }
  html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .sxb-launch-seat { order:3; margin-left:auto; }
  /* Save/Load: a two-column grid with a fixed-height slot strip overran the footer in one column; it is a page here */
