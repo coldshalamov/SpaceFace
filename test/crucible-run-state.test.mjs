@@ -416,7 +416,8 @@ test('resetFreshRunSystems clears a live survival run through runSession.newGame
 });
 
 test('resetRunState assigns state.run = fresh.run', () => {
-  const source = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  // resetRunState moved out of main.js into the new-game boot module; the invariant is unchanged.
+  const source = fs.readFileSync(new URL('../src/core/newGameBoot.js', import.meta.url), 'utf8');
   const start = source.indexOf('function resetRunState');
   assert.ok(start >= 0);
   const nextFn = source.indexOf('\nfunction ', start + 1);
