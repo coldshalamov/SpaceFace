@@ -14,6 +14,9 @@ function already(inc, key) {
 
 function pushIntent(rt, inc, intent) {
   if (!intent.key || already(inc, intent.key)) return false;
+  if (!rt.appliedGrants) rt.appliedGrants = {};
+  if (rt.appliedGrants[intent.key]) return false;
+  rt.appliedGrants[intent.key] = true;
   inc.settlementReceipt.keys[intent.key] = true;
   const row = {
     key: intent.key,

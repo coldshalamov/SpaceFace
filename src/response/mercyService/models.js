@@ -8,7 +8,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_BEACON: Object.freeze({
     name: 'Distress beacon',
     lod: Object.freeze([18, 70, 160]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_nav_buoy.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: true,
@@ -29,7 +29,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_CAPSULE: Object.freeze({
     name: 'Winchable life capsule',
     lod: Object.freeze([16, 60, 140]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_47a_rescue_capsule.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,
@@ -51,7 +51,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_TRUSS: Object.freeze({
     name: 'Folding rescue truss',
     lod: Object.freeze([20, 80, 180]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_conveyor_truss.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,
@@ -73,7 +73,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_BERTH: Object.freeze({
     name: 'Rescue berth',
     lod: Object.freeze([30, 100, 220]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_improvised_dock.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,
@@ -98,7 +98,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_BARGE: Object.freeze({
     name: 'Evacuation barge',
     lod: Object.freeze([28, 90, 200]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_shuttle_dock.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,
@@ -125,7 +125,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_GANTRY: Object.freeze({
     name: 'Yard gantry arm',
     lod: Object.freeze([24, 90, 200]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_maintenance_gantry.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,
@@ -149,7 +149,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_TANK: Object.freeze({
     name: 'Volatile tank car',
     lod: Object.freeze([22, 80, 180]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_cargo_pod_hazmat.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,
@@ -171,7 +171,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_SHEAR: Object.freeze({
     name: 'Shear and crusher jaw',
     lod: Object.freeze([22, 80, 180]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,
@@ -192,7 +192,7 @@ export const MERCY_MODELS = Object.freeze({
   SF_MERCY_WELL: Object.freeze({
     name: 'Gravity-shear mouth',
     lod: Object.freeze([30, 110, 240]),
-    publishedGlb: null,
+    publishedGlb: 'assets/ships/release/parts/places/place_interdiction_buoy.glb',
     states: Object.freeze({
       intact: Object.freeze({
         emits: false,

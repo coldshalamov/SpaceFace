@@ -552,7 +552,13 @@ export function stepMercy(rt, dt, command) {
   promote(rt);
   syncFocus(rt);
   let cmd = normalizeCommand(command);
-  if (!rt.player.alive) cmd = normalizeCommand({ policy: cmd.policy, cut: true });
+  if (!rt.player.alive) {
+    // A lost ship does not settle or abandon the rescue. The incident stays open.
+    if (!rt.state) rt.simTime += dt;
+    rt.tick += 1;
+    rt.stats.ticks += 1;
+    return { ok: true, phase: rt.focus ? phaseOf(rt.focus) : null, held: 'ship-loss' };
+  }
   if (rt.delegatePlayer) copyPlayerFromState(rt);
   else integratePlayer(rt, cmd, dt);
 
@@ -692,6 +698,7 @@ export function snapshotMercy(rt) {
     known: rt.known.slice(),
     dormant: rt.dormant.map((mark) => ({ ...mark })),
     intentLog: rt.intentLog.map((row) => ({ ...row })),
+    appliedGrants: { ...(rt.appliedGrants || {}) },
     stats: { ...rt.stats },
     bodies: Object.keys(rt.bodies).sort().map((id) => ({ ...rt.bodies[id], pos: { ...rt.bodies[id].pos }, prev: { ...rt.bodies[id].prev }, vel: { ...rt.bodies[id].vel } })),
     incidents: Object.keys(rt.incidents).sort().map((uid) => slimIncident(rt.incidents[uid])),
@@ -755,7 +762,9 @@ export function restoreMercy(rt, snap) {
     vel: { ...snap.player.vel },
   };
   rt.tether = { ...snap.tether };
-  rt.intentLog = snap.intentLog.map((row) => ({ ...row }));
+  rt.intentLog = snap.intentLog.map((row) => ({ ...row, applied: true }));
+  rt.appliedGrants = { ...(snap.appliedGrants || {}) };
+  for (const row of rt.intentLog) if (row.key) rt.appliedGrants[row.key] = true;
   rt.stats = { ...snap.stats };
   rt.known = snap.known.slice();
   rt.dormant = snap.dormant.map((mark) => ({ ...mark }));

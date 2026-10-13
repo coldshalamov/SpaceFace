@@ -161,7 +161,7 @@ export function createLiveMercyServiceSystem() {
     },
     update(dt, state) {
       if (!this.rt || !adventure(state) || dt !== MERCY_DT) return;
-      const player = state.entities.get(state.playerId); if (!player?.alive) { this.leave('rescue-lost'); return; }
+      const player = state.entities.get(state.playerId); if (!player?.alive) { this.noteShipLoss(); return; }
       const rt = this.rt; rt.simTime = state.simTime; rt.tick = state.tick;
       Object.assign(rt.player, { alive: true, pos: { x: player.pos.x, z: player.pos.z }, vel: { x: player.vel.x, z: player.vel.z } });
       for (const inc of Object.values(rt.incidents)) {
@@ -305,6 +305,13 @@ export function createLiveMercyServiceSystem() {
       if (this.rt) for (const b of Object.values(this.rt.bodies)) if (b.alive) this.spawn(b);
       this.ctx.state.mercyService = this.ctx.state.mercyServicePublic = this.report();
       return true;
+    },
+    noteShipLoss() {
+      if (!this.rt) return;
+      for (const inc of Object.values(this.rt.incidents)) {
+        if (inc.latches.settled || inc.failedForward) continue;
+        this.failMission(inc, 'rescue-lost');
+      }
     },
     leave(kind = 'rescue-left') {
       if (!this.rt) return;

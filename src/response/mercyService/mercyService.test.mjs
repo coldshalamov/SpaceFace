@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { LOOP_FIXED_DT } from '../../core/simulationRunner.js';
 import {
@@ -254,18 +254,28 @@ test('leave and ship loss pay nothing; settlement does not repeat', () => {
     if (!dead.focus || dead.focus.latches.settled) break;
     stepMercy(dead, MERCY_DT, commandFor(dead, 'neglect'));
   }
-  assert.equal(incidentOf(dead, 'ms_drift_crusher').outcome, 'ship_loss');
+  const held = incidentOf(dead, 'ms_drift_crusher');
+  assert.equal(held.latches.settled, false);
+  assert.equal(held.outcome, null);
+  assert.equal(dead.focus && dead.focus.uid, held.uid);
   assert.equal(dead.intentLog.some((row) => row.type === 'economy:grantCredits'), false);
 
-  const done = runIncident({ seed: SEED, id: 'ms_pod_traffic', policy: 'tether-berth' });
+  let emitted = 0;
+  const bus = { emit(type) { if (type === 'economy:grantCredits') emitted += 1; } };
+  const done = runIncident({
+    seed: SEED, id: 'ms_pod_traffic', policy: 'tether-berth',
+    runtime: createMercyRuntime({ seed: SEED, bus }),
+  });
   const grants = done.rt.intentLog.filter((row) => row.type === 'economy:grantCredits').length;
+  assert.equal(emitted, grants);
   for (let i = 0; i < 80; i++) stepMercy(done.rt, MERCY_DT, commandFor(done.rt, 'neglect'));
   assert.equal(done.rt.intentLog.filter((row) => row.type === 'economy:grantCredits').length, grants);
   const snap = snapshotMercy(done.rt);
-  const copy = createMercyRuntime({ seed: SEED });
+  const copy = createMercyRuntime({ seed: SEED, bus });
   assert.equal(restoreMercy(copy, JSON.parse(JSON.stringify(snap))).ok, true);
   for (let i = 0; i < 30; i++) stepMercy(copy, MERCY_DT, commandFor(copy, 'neglect'));
   assert.equal(copy.intentLog.filter((row) => row.type === 'economy:grantCredits').length, grants);
+  assert.equal(emitted, grants);
 });
 
 test('save/load reproduces the witness and cleanup drops bodies', () => {
@@ -422,7 +432,9 @@ test('same seed matches, another seed moves jittered ore, and sources stay free 
     assert.equal(text.includes('from \'three\''), false, name);
   }
   for (const model of Object.values(MERCY_MODELS)) {
-    assert.equal(model.publishedGlb, null);
+    assert.equal(typeof model.publishedGlb, 'string');
+    assert.equal(model.publishedGlb.endsWith('.glb'), true);
+    assert.equal(existsSync(new URL(`../../../${model.publishedGlb}`, import.meta.url)), true, model.publishedGlb);
     assert.notDeepEqual(model.states.intact.parts, model.states.damaged.parts);
   }
 });
