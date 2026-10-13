@@ -130,9 +130,10 @@ function detectUnresponsive(samples, frames) {
     if (!frame || frame.moveZ < 0.5 || frame.brake) continue;
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
-    // A station that is actually slowing the ship closes the window, including
-    // inside 20. An earlier step that matched speed does not close this one.
-    // Only yaw or strafe that answers inside this window does.
+    // A station that is actually slowing the ship closes the window.
+    // Held speed and a forward stick do not. Inside the radius, this window
+    // closes only when every commanded channel answers: yaw changes rotation
+    // or angVel, and strafe changes lateral motion.
     if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160
       && end.speed + 0.05 < start.speed) continue;
     const moved = Math.hypot(end.x - start.x, end.z - start.z);
@@ -162,9 +163,12 @@ function stationWindowAnswered(frames, start, end) {
     if (Math.abs(frame.turnIntent) > 0.2) yawCommand = true;
     if (Math.abs(frame.moveX) > 0.2) strafeCommand = true;
   }
-  if (yawCommand && (rotationDelta(start.rot, end.rot) > 0.02 || angVelDelta(start, end) > 0.02)) return true;
-  if (strafeCommand && lateralShift(start, end) > 0.01) return true;
-  return false;
+  if (!yawCommand && !strafeCommand) return false;
+  const yawAnswered = rotationDelta(start.rot, end.rot) > 0.02 || angVelDelta(start, end) > 0.02;
+  const strafeAnswered = lateralShift(start, end) > 0.01;
+  if (yawCommand && !yawAnswered) return false;
+  if (strafeCommand && !strafeAnswered) return false;
+  return true;
 }
 
 function angVelDelta(start, end) {

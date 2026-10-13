@@ -357,13 +357,7 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     };
   });
   const pressedFrames = pressed.map((sample) => ({
-    tick: sample.tick,
-    moveZ: 0.75,
-    moveX: sample.tick >= 40 ? 1 : 0,
-    turnIntent: sample.tick >= 40 ? 1 : 0,
-    brake: false,
-    issuedMoveZ: 0.75,
-    commands: [],
+    tick: sample.tick, moveZ: 0.75, moveX: 0, turnIntent: 0, brake: false, issuedMoveZ: 0.75, commands: [],
   }));
   const pressedHull = detectFailures({
     samples: pressed,
@@ -371,7 +365,16 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     commands: [],
     asset: { essentialModelCheck: 'passed' },
   });
-  assert.ok(pressedHull.confirmed.some((row) => row.id === 'unresponsive-commands'));
+  assert.equal(pressedHull.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const pressedDead = detectFailures({
+    samples: pressed,
+    frames: pressedFrames.map((frame) => (
+      frame.tick < 40 ? frame : { ...frame, moveX: 1, turnIntent: 1 }
+    )),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(pressedDead.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
   const yawOnly = pressed.map((sample, tick) => (
     tick < 40 ? sample : { ...sample, rot: 0.2 + (tick - 40) * 0.05, angVel: 0.05 }
   ));
@@ -383,6 +386,40 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.equal(yawAfterMatch.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const yawIgnoresStrafe = detectFailures({
+    samples: yawOnly,
+    frames: yawOnlyFrames.map((frame) => ({ ...frame, moveX: frame.tick >= 40 ? 1 : 0 })),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(yawIgnoresStrafe.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const sliding = pressed.map((sample) => {
+    if (sample.tick < 40) return sample;
+    const along = (sample.tick - 39) * 0.008;
+    const rot = sample.rot;
+    return {
+      ...sample,
+      x: 39 * 3.5 + (-Math.sin(rot) * along),
+      z: Math.cos(rot) * along,
+    };
+  });
+  const slideFrames = pressedFrames.map((frame) => ({
+    ...frame, moveX: frame.tick >= 40 ? 1 : 0,
+  }));
+  const strafeAnswer = detectFailures({
+    samples: sliding,
+    frames: slideFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(strafeAnswer.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const strafeIgnoresYaw = detectFailures({
+    samples: sliding,
+    frames: slideFrames.map((frame) => ({ ...frame, turnIntent: frame.tick >= 40 ? 1 : 0 })),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(strafeIgnoresYaw.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
   const reversed = pressed.map((sample) => (
     sample.tick < 40 ? sample : { ...sample, speed: sample.tick < 50 ? 217.72 : 40 }
   ));
