@@ -170,6 +170,48 @@ test('the ambush skiff is not in the opening view', () => {
   assert.equal(view.rumors.some((r) => r.bodyId === 'shooter'), false);
 });
 
+test('the seven placed answers are produced by the step', () => {
+  const kinds = (caseId) => proofTruth(openCourt({ caseId, seed: SEED })).events.map((e) => e.kind);
+  assert.ok(kinds('wc_faked_collision').includes('coat'));
+  assert.ok(kinds('wc_faked_collision').includes('thrust'));
+  assert.equal(kinds('wc_industrial_overload').includes('patch'), false);
+  assert.ok(kinds('wc_industrial_overload').includes('split'));
+  assert.ok(kinds('wc_ambush_as_accident').includes('groove'));
+  assert.equal(kinds('wc_ambush_as_accident').includes('patch'), false);
+  assert.ok(kinds('wc_abandoned_tow').includes('tether'));
+  assert.equal(kinds('wc_abandoned_tow').includes('fuel'), false);
+  assert.ok(kinds('wc_massline_snap').includes('impulse'));
+  assert.ok(kinds('wc_massline_snap').includes('shed'));
+  assert.equal(kinds('wc_massline_snap').includes('patch'), false);
+  assert.ok(kinds('wc_cookoff_chain').includes('shed'));
+  assert.equal(kinds('wc_cookoff_chain').includes('patch'), false);
+  assert.ok(kinds('wc_ricochet_blame').includes('reflect'));
+  assert.equal(kinds('wc_ricochet_blame').includes('patch'), false);
+
+  const cook = openCourt({ caseId: 'wc_cookoff_chain', seed: SEED });
+  const pods = cook.bodies.filter((b) => b.id.startsWith('pod_')).sort((a, b) => a.x - b.x);
+  assert.equal(pods.length, 4);
+  assert.ok(pods.every((p) => p.bornAt > 1));
+  const gaps = [];
+  for (let i = 1; i < pods.length; i += 1) gaps.push(pods[i].bornAt - pods[i - 1].bornAt);
+  assert.ok(gaps.every((g) => g > 0.6));
+
+  const fake = openCourt({ caseId: 'wc_faked_collision', seed: SEED });
+  assert.ok(fake.bodies.every((b) => b.scar && b.scar.material === 'polymer_coat'));
+  const tow = openCourt({ caseId: 'wc_abandoned_tow', seed: SEED });
+  const cable = tow.bodies.find((b) => b.id === 'cable_end');
+  const tug = tow.bodies.find((b) => b.id === 'tug');
+  assert.equal(cable.scar.material, 'tensile_neck');
+  assert.equal(tug.fuel, 0);
+  const snap = openCourt({ caseId: 'wc_massline_snap', seed: SEED });
+  assert.equal(snap.bodies.find((b) => b.id === 'skiff').integrity, 0);
+  assert.equal(snap.bodies.find((b) => b.id === 'cable').scar.material, 'tensile_neck');
+  const ambush = openCourt({ caseId: 'wc_ambush_as_accident', seed: SEED });
+  assert.ok(ambush.bodies.find((b) => b.id === 'rock').scar.faces.some((f) => f.kind === 'groove'));
+  const rico = openCourt({ caseId: 'wc_ricochet_blame', seed: SEED });
+  assert.ok(rico.bodies.find((b) => b.id === 'plate').scar.faces.some((f) => f.kind === 'plate'));
+});
+
 test('the slingshot ship has left the scene', () => {
   const session = openCourt({ caseId: 'wc_slingshot_disappearance', seed: SEED });
   assert.equal(session.bodies.some((b) => b.id === 'ship'), false);

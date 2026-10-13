@@ -6,6 +6,7 @@
 // host below observes the normal flight/physics owners and never replays motion.
 
 import { DT, ageFromTemperature, temperatureFromAge, bodyVisible, backIntegratePoint } from '../data/wreckCourt/physics.js';
+import { WRECK_COURT_PLACES } from '../data/wreckCourt/places.js';
 import { hash32 } from '../core/rng.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import {
@@ -477,8 +478,10 @@ function doBringPod(session, targetId, assayId) {
     body.vx += Math.cos(heading) * accel * DT;
     body.vz += Math.sin(heading) * accel * DT;
     // Damp so the pod arrives instead of orbiting the buoy.
-    body.vx *= 0.9;
-    body.vz *= 0.9;
+    // The old 30 Hz step multiplied by 0.9; keep that rate on the sim clock.
+    const damp = Math.pow(0.9, DT / (1 / 30));
+    body.vx *= damp;
+    body.vz *= damp;
     body.x += body.vx * DT;
     body.z += body.vz * DT;
     session.simTime += DT;
@@ -796,18 +799,7 @@ export function evidenceFingerprint(session) {
  * Library shape for a future registry row. update() does not tick unless a
  * session has been mounted by the adapter. Mounting is not done here.
  */
-const LIVE_PLACES = Object.freeze({
-  wc_pod: 'place_cargo_pod_standard', wc_capsule: 'place_47a_rescue_capsule', wc_hauler: 'place_aftermath_wreck_ore_freighter_bow',
-  wc_freighter: 'place_aftermath_wreck_liner_bow', wc_fragment: 'place_aftermath_deb_ore_freighter_hopper_lid',
-  wc_tug: 'place_dead_hulk', wc_nozzle: 'place_aftermath_aft_engine_section', wc_plate: 'place_aftermath_aft_armor_slab',
-  wc_round: 'place_aftermath_frag_strut_shard', wc_rock: 'place_debris_chunk', wc_station: 'place_freight_platform',
-  wc_cable: 'place_aftermath_frag_cable_bundle', wc_tank: 'place_cargo_pod_hazmat', wc_train: 'place_conveyor_barge',
-  wc_barge: 'place_aftermath_wreck_mining_barge_authored_down', wc_liner: 'place_aftermath_wreck_liner_drum',
-  wc_escort: 'place_aftermath_wreck_corvette_forward', wc_gunship: 'place_aftermath_wreck_corvette_turret',
-  wc_skiff: 'place_aftermath_aft_cockpit_section', wc_tender: 'place_conveyor_barge', wc_isotope_pod: 'place_cargo_pod_hazmat',
-  wc_planetoid: 'place_debris_chunk', wc_buoy: 'place_nav_buoy', wc_vent: 'place_aftermath_aft_radiator_panel',
-  wc_decoy: 'place_cold_locker', wc_ballast: 'place_aftermath_deb_ore_freighter_hopper_lid', wc_assay: 'place_nav_buoy',
-});
+const LIVE_PLACES = WRECK_COURT_PLACES;
 const liveAdventure = (s) => s.mode === 'flight' && !s.physicsVenueSession && !s.physicsVenue?.active
   && (!s.run || s.run.phase === 'inactive' || s.run.kind === 'adventure');
 const jsonCopy = (v) => JSON.parse(JSON.stringify(v));
