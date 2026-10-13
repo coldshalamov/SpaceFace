@@ -1221,6 +1221,62 @@ first-action admission, campaign isolation and rendered-pose marker ownership ar
 `7e21448368`, `e4017994d8` and `10b33e300c`; unsupported enemy silhouette contrast
 is explicitly unmeasured in `879df33bfe`.
 
+2026-10-13 third bounded production batch (codex-batch20-oct13-c): ten NEW build
+continuations and ten NEW INFERENCE repairs. Earlier batches do not count again.
+Native machine/custody/nemesis/provenance prerequisites already exist; these rows
+name remaining behavior in those owners. Machine band 330–343 and people/law
+band 344–357 are reserved for this batch's bounded admissions.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 330 | SFQ-B141-R | Fast returned Courier tokens retain custody until actual receiver speed admission | BUILD | SHIPPED 2026-10-13 — 749eea1a6d; three review passes completed |
+| 331 | SFQ-B145 | Courier receipt admits finite Custodian repairs before the real Mason work chain | BUILD | SHIPPED 2026-10-13 — 749eea1a6d; three review passes completed |
+| 332 | SFQ-B147 | Named manifest appeals require a real witnessed clean comparison at the Clerk/Jury | BUILD | SHIPPED 2026-10-13 — 749eea1a6d; three review passes completed |
+| 333 | SFQ-B148 | Settled physical ballast jurisdiction preserves the body or commissions construction with spent material retained | BUILD | SHIPPED 2026-10-13 — 749eea1a6d; three review passes completed |
+| 334 | SFQ-B149-R | Continue restores remaining enforcement grace and never rearms resolved incidents | BUILD | SHIPPED 2026-10-13 — 749eea1a6d; three review passes completed |
+| 344 | SFQ-B111-R | A named claim keeps its own causal history, including remote defense outcomes | BUILD | SHIPPED 2026-10-13 — d331a80435; three review passes completed |
+| 345 | SFQ-B114-R | Hidden tool use cannot suppress a later witnessed rival technique in the same evidence window | BUILD | SHIPPED 2026-10-13 — d331a80435; three review passes completed |
+| 346 | SFQ-B119-R | Late rival spare/escape/death callbacks resolve only the actual current captain | BUILD | SHIPPED 2026-10-13 — d331a80435; three review passes completed |
+| 347 | SFQ-B115-R2 | Native impound recovery settles only its named bill; old recovery cannot erase newer debt | BUILD | SHIPPED 2026-10-13 — d331a80435; three review passes completed |
+| 348 | SFQ-B118-R | Hunter payment requires the current live hailer and an unexpired offer before charging | BUILD | SHIPPED 2026-10-13 — d331a80435; three review passes completed |
+
+INFERENCE third batch (ten NEW production repairs):
+- INF-OCT13-C-01 (`ea3d84e2a6`): jettison debits only accepted physical pods and preserves refused rich custody.
+- INF-OCT13-C-02 (`ea3d84e2a6`): salvage cash-in uses current content prices and keeps unvalued/unpayable lots with their actual footprint.
+- INF-OCT13-C-03 (`ea3d84e2a6`): rerouting starts a fresh travel leg while preserving upkeep arrears and distress.
+- INF-OCT13-C-04 (`ea3d84e2a6`): trader receipts report actual wallet payout and separate cap/credit-limit withholding.
+- INF-OCT13-C-05 (`ea3d84e2a6`): operation-owned shipments quote their actual custody without player sealed-cargo interference.
+- INF-OCT13-C-06 (`ae4101ff7d`): only a living operational rescue carrier with room can receive another survivor.
+- INF-OCT13-C-07 (`ae4101ff7d`): pod residency eviction preserves the player's live tow and removes unattended candidates.
+- INF-OCT13-C-08 (`ae4101ff7d`): committed rescue contracts reject STRIP; failed contracts restore the choice.
+- INF-OCT13-C-09 (`ae4101ff7d`): durable rescue termination precedes rewards and retries refused body retirement without duplicate payoff.
+- INF-OCT13-C-10 (`ae4101ff7d`): Continue carries bounded unclaimed rescue notices and station deeds into the native stationLife owner.
+
+Review/improvement record: round 1 checked spec/default reachability and fixed retained
+unvalued salvage footprint plus replacement-captain observation. Round 2 checked
+failure/recovery and fixed partial-jettison receipts, shipment wallet admission,
+native physical ballast persistence, late survivor disposal after ID reuse, and
+Nemesis private observation windows across Continue. Round 3 checked final quality,
+existing owner contracts and wiring; no material gap remained. These fixes extend
+the twenty named outcomes, rather than adding task-count credits.
+
+Direct verification: all 48 combined new task regressions passed on the final
+candidate. Related native owner checks passed during implementation/repair. Save
+schema remains v15 with 389 documented paths, including optional bounded station
+story transport; 22 save-import/rollback checks and seed-47 normal/V3 save-reload
+comparisons passed. Modulepreload closure remained synchronized.
+
+Adventure public-route evidence is in `.devshots/batch20-oct13-c/adventure/`
+(`verdict.md`, `contact-sheet.jpg`, `verdict.json`). The capped diagnostic run
+reached tutorial-on New Game → preparation → launch → 144.5 simulated seconds
+of flight; route, controls, hull, tumble, LOD/popping and interruption checks
+passed with no core FAIL. Overall INCOMPLETE names missing opaque visual-class,
+VFX/backdrop coverage and software-renderer frame-time authority. The shared
+checkout changed during the run, recorded in its source start/end metadata; this
+route evidence complements the final focused task regressions, and does not certify
+a full session, task-specific visual acceptance or hardware FPS. Foreign dirty
+work remains outside the owned publication groups.
+
 Owner ruling, 2026-10-08: **there is no plan about building this game that is not part of this
 map.** The task banks below are admitted scope. A bank is not run like a queue — every candidate
 is outcome-mapped against landed work before it becomes a row (already-true → close with evidence;
