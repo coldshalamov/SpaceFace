@@ -156,6 +156,34 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-brief.orr-brief > .dp-copy--fine { display:none !important; }
 }
 
+/* narrow desktop (701–900 wide, e.g. 800×500): at the rail's full spacing the six keycaps + verbs need
+   ~790px, so below ~890 wide CATEGORY / ITEM wrapped to a second line. The foot is a grid row sized
+   by its content, so the extra line grew it upward and the first line rose into the dial's EXIT /
+   MAIN MENU bank. Tighter keycaps, verbs and gaps keep the strip on one line down to 701 wide. */
+@media (min-width:701px) and (max-width:900px) {
+  ${P} > .sf-pause-foot .sf-pause-foot__keys { gap:4px 0 !important; }
+  ${P} > .sf-pause-foot .dp-kbd.sf-pause-key,
+  ${P} > .sf-pause-foot .sf-pause-key.dp-kbd {
+    margin-right:5px !important; padding:3px 5px 4px !important; font-size:10.5px !important; letter-spacing:.1em !important; }
+  ${P} > .sf-pause-foot .sf-pause-key-verb {
+    font-size:10.5px !important; letter-spacing:.1em !important; margin-right:clamp(9px, 1.4vw, 14px) !important; }
+}
+
+/* ≤760 wide (e.g. 720×480) the strip has ~620px: tighten once more so it still holds one line. */
+@media (min-width:701px) and (max-width:760px) {
+  ${P} > .sf-pause-foot .dp-kbd.sf-pause-key,
+  ${P} > .sf-pause-foot .sf-pause-key.dp-kbd { margin-right:4px !important; padding:3px 4px 4px !important; font-size:10px !important; letter-spacing:.06em !important; }
+  ${P} > .sf-pause-foot .sf-pause-key-verb { font-size:10px !important; letter-spacing:.07em !important; margin-right:9px !important; }
+}
+/* narrow + short (≤560 tall): the foot's keys line and the version line close up, so the keys sit
+   lower and leave a clear band under EXIT / MAIN MENU. */
+@media (min-width:701px) and (max-width:900px) and (max-height:560px) {
+  ${P} > .sf-pause-foot { row-gap:2px !important; }
+  /* the dial's GAME bank reaches x≈510 at y≈228 here, and the brief starts left of that below 960
+     wide, so the save note (last brief line) would print over LOAD; it steps aside (F5 / F9 stay on the foot). */
+  ${P} > .sf-pause-brief.orr-brief > .dp-copy--fine { display:none !important; }
+}
+
 /* 1080p band: lift head + brief + foot only — never the dial stage (arcRail getBoundingClientRect) */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${P} { --sv:1.12; }

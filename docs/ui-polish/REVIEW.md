@@ -705,3 +705,18 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Still open (not this pass):** at ≤800 wide × ≤500 tall the foot's keycaps wrap to two lines and the second line rises into EXIT / MAIN MENU. This is a foot/dial height issue that predates this change. Also, the Missions route strip (FROM / ROUTE PENDING / TO) is still clipped at 960×540, and its `H…` names truncate.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28c/{before,after,compare}/`.
+
+## Pause — foot keycaps on one line, clear of EXIT / MAIN MENU on narrow short frames (ui-polish-28)
+
+**Before:** the six keycaps + verbs (ESC Resume · P Photo · F5 Quick save · F9 Quick load · ↑↓ Category · ←→ Item) need ~790px at the rail's full spacing, so below ~890 wide CATEGORY / ITEM wrapped onto a second line. The foot is a grid row sized by its content, so the extra line grew the foot upward, and on short frames the first line rose into the dial's last bank. At 800×500 PHOTO / F5 / QUICK SAVE printed on top of EXIT / MAIN MENU, and at 720×480 the strip covered DEV / SANDBOX and EXIT. At 880×540 the brief's save note also printed over the GAME bank's LOAD, because below 960 wide the brief starts left of that bank's end.
+
+**After (`src/ui/orrery/pauseLayouts.js` only, CSS):**
+- **701–900 wide:** keycaps 10.5px / .1em with 5px padding, verbs 10.5px / .1em, verb gap `clamp(9px, 1.4vw, 14px)`. The strip is one line (659px at 800 wide).
+- **701–760 wide:** one more step (10px, .06–.07em, 9px verb gap), so the strip holds one line down to 701 wide (590px at 720).
+- **701–900 wide × ≤560 tall:** the foot's row gap closes to 2px, so the keys sit lower (at 800×500 the keycap top is at about y 386, 20px under EXIT at about y 366), and the brief's save note is hidden (F5 / F9 stay on the foot).
+
+960×540, 1280×720, 1920×1080 and 390×844 are pixel-identical to before. Selectors and IDs are unchanged, and the dial / arcRail is untouched. `--walk` at 800×500 and 720×480 reaches all 18 controls. The bench reports no overlaps at 701×480, 720×480, 761×500, 800×500/520/560/600, 850×540, 880×540, 900×500/560 and 920×500 (before: 10 at 800×500, 10 at 720×480, 4 at 880×540). Focused tests pass: `pause-save-line`, `wave-c3-pause-kit`, `pq-194-06-pause-shell` and `sf-275-pause-ownership`.
+
+**Still open (not this pass):** at ≤800 wide the dial's REFERENCE bank runs STATISTICS (and ACHIEVEMENTS at 701) past the right edge (800×600, 761×500, 720×480, 701×480). That is arcRail bank placement, which this pass did not change. The Missions route strip at 960×540 (archiveLayouts.js, frozen on #374) is also still open.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28d/{before,after,compare}/`.
