@@ -5,7 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
-import { commit, createHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
+import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { inspectValue } from '../lib/security.mjs';
 import {
@@ -762,6 +762,82 @@ test('save refuses a toJSON that writes isPlayer null', () => {
   assert.equal(saved.ok, false);
   assert.equal(saved.text, null);
   assert.equal(saved.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+});
+
+function hideIsPlayer(project, place) {
+  Object.defineProperty(project, 'toJSON', {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      if (place === 'project') body.isPlayer = null;
+      if (place === 'camera') body.camera = { ...this.camera, isPlayer: null };
+      if (place === 'overrides') {
+        body.objects = this.objects.map((object) => (
+          object.isPlayer === true ? { ...object, overrides: { ...(object.overrides || {}), isPlayer: null } } : object
+        ));
+      }
+      return body;
+    },
+  });
+}
+
+test('loadExample refuses a clone that fails the player canon', () => {
+  const project = getComposition('dock.intercept-cargo');
+  hideIsPlayer(project, 'camera');
+  const loaded = loadExampleHistory(project);
+  assert.equal(loaded.ok, false);
+  assert.equal(loaded.history, null);
+  assert.equal(loaded.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+  const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
+  assert.equal(editor.includes('loadExampleHistory'), true);
+  assert.equal(/history = createHistory\(/.test(editor), false);
+});
+
+test('camera, project, and override isPlayer null are not installed or saved', () => {
+  for (const place of ['camera', 'project', 'overrides']) {
+    const scene = getComposition('dock.intercept-cargo');
+    hideIsPlayer(scene, place);
+    const panned = setCamera(scene, { x: 40, z: 5 });
+    assert.equal(panned, scene, place);
+    assert.equal(panned.camera.isPlayer, undefined, place);
+    assert.equal(objectById(panned, 'player').isPlayer, true, place);
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    const committed = commit(history, scene);
+    assert.equal(committed, history, place);
+    assert.equal(committed.present.camera.isPlayer, undefined, place);
+    const saved = savedProjectText(scene);
+    assert.equal(saved.ok, false, place);
+    assert.equal(saved.text, null, place);
+    assert.equal(saved.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true, place);
+  }
+});
+
+test('sortedClone recounts a schema-dropping toJSON and does not return null', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(scene, 'toJSON', {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      delete body.schema;
+      body.objects = this.objects.map((object) => (
+        object.isPlayer === true ? { ...object, isPlayer: null } : object
+      ));
+      return body;
+    },
+  });
+  const sorted = sortedClone(scene);
+  assert.notEqual(sorted, null);
+  assert.equal(sorted, scene);
+  assert.equal(sorted.schema, 'spaceface.creatorsDock.v1');
+  assert.equal(objectById(sorted, 'player').isPlayer, true);
+
+  const wiped = getComposition('dock.intercept-cargo');
+  Object.defineProperty(wiped, 'toJSON', {
+    enumerable: false,
+    value() { return null; },
+  });
+  assert.equal(sortedClone(wiped), wiped);
+  assert.notEqual(sortedClone(wiped), null);
 });
 
 test('deleteObjects returns the previous project when toJSON returns null', () => {

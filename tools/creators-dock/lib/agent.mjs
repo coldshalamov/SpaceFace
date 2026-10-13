@@ -2,7 +2,7 @@
 // exportProject is the validator; this module does not write catalogs.
 
 import { getComposition } from './compositions.mjs';
-import { commit, createHistory, newDockHistory, restoreHistory } from './history.mjs';
+import { commit, loadExampleHistory, newDockHistory, restoreHistory } from './history.mjs';
 import {
   addObject,
   clone,
@@ -41,7 +41,11 @@ export function applyRequest(request) {
     if (op.op === 'loadExample') {
       const project = getComposition(op.id);
       if (!project) return response(false, null, [`${label}: unknown example "${op.id}"`], applied);
-      history = createHistory(project);
+      const loaded = loadExampleHistory(project);
+      if (!loaded.ok) {
+        return response(false, history && history.present, loaded.issues.map((issue) => `${label}: ${issue}`), applied);
+      }
+      history = loaded.history;
       applied.push(op.op);
       continue;
     }

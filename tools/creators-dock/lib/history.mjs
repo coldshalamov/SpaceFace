@@ -29,6 +29,18 @@ export function openDockHistory(project) {
   return { ok: true, history: { past: [], present: stored.present, future: [] }, issues: [] };
 }
 
+export function loadExampleHistory(project) {
+  const opened = openDockHistory(project);
+  if (!opened.ok || !opened.history || opened.history.present == null) {
+    return {
+      ok: false,
+      history: null,
+      issues: opened.issues && opened.issues.length ? opened.issues : ['example could not be opened'],
+    };
+  }
+  return { ok: true, history: opened.history, issues: [] };
+}
+
 function undo(history) {
   if (!history.past.length) return history;
   const past = history.past.slice(0, -1);

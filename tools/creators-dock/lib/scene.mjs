@@ -175,11 +175,21 @@ function exactlyOnePlayerIssue(found) {
   return `scene needs exactly one player actor (found ${found})`;
 }
 
-function badStoredFlagIssue(object) {
-  if (!object || typeof object !== 'object') return null;
-  if (!Object.prototype.hasOwnProperty.call(object, 'isPlayer')) return null;
-  if (object.isPlayer === true || object.isPlayer === false) return null;
-  return `${object.id ? `${object.id}: ` : ''}isPlayer must be a boolean`;
+function collectNestedPlayerFlags(value, path, issues, seen) {
+  if (!value || typeof value !== 'object') return;
+  if (seen.has(value)) return;
+  seen.add(value);
+  if (Object.prototype.hasOwnProperty.call(value, 'isPlayer') && typeof value.isPlayer !== 'boolean') {
+    issues.push(`${path || 'project'}: isPlayer must be a boolean`);
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectNestedPlayerFlags(item, `${path}[${index}]`, issues, seen));
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (key === 'isPlayer') continue;
+    collectNestedPlayerFlags(value[key], path ? `${path}.${key}` : key, issues, seen);
+  }
 }
 
 export function playerCanonIssues(project) {
@@ -188,11 +198,10 @@ export function playerCanonIssues(project) {
   for (const object of (project && project.objects) || []) {
     const label = object && object.id ? `${object.id}: ` : '';
     for (const issue of issuesForObject(object)) issues.push(`${label}${issue}`);
-    const flag = badStoredFlagIssue(object);
-    if (flag) issues.push(flag);
     if (isPlayerActor(object)) players += 1;
   }
   if (players !== 1) issues.push(exactlyOnePlayerIssue(players));
+  collectNestedPlayerFlags(project, 'project', issues, new Set());
   return issues;
 }
 
@@ -491,14 +500,13 @@ export function projectIssues(project) {
 export function sortedClone(value) {
   let stored;
   try {
-    stored = sortValue(clone(value));
+    stored = clone(value);
   } catch (error) {
     return value;
   }
-  if (stored && typeof stored === 'object' && stored.schema === PROJECT_SCHEMA && playerCanonIssues(stored).length) {
-    return value;
-  }
-  return stored;
+  if (stored == null || typeof stored !== 'object' || Array.isArray(stored)) return value;
+  if (playerCanonIssues(stored).length) return value;
+  return sortValue(stored);
 }
 
 export function savedProjectText(project) {

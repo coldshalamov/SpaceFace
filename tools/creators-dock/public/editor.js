@@ -1,4 +1,4 @@
-import { commit, createHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
+import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
   addObject,
@@ -100,7 +100,9 @@ async function boot() {
 async function loadExample(id) {
   const body = await fetch(`/api/examples/${encodeURIComponent(id)}`).then((res) => res.json());
   if (!body.ok) return showReport(body);
-  history = createHistory(body.project);
+  const loaded = loadExampleHistory(body.project);
+  if (!loaded.ok || !loaded.history || loaded.history.present == null) return showReport(loaded);
+  history = loaded.history;
   selected = ['player'];
   render();
   showReport({ ok: true, note: `Opened ${id}. Lab-only marks are on the inspector. Run lab for numbers.` });
