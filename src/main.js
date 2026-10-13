@@ -1094,8 +1094,11 @@ function scheduleVeiledFoundryEnvDrain(state) {
     if (state.mode !== 'loading') return;
     try { render._drainFoundryEnvPending?.(); } catch (_) { /* env optional */ }
   };
-  const later = () => setTimeout(drain, 0);
-  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(later); else later();
+  // One presented veil frame first; the timer covers a starved rAF (the cook seams drain too).
+  let queued = false;
+  const later = () => { if (queued) return; queued = true; setTimeout(drain, 0); };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(later);
+  setTimeout(later, 100);
 }
 
 function enterFlightMode(state, bus) {
