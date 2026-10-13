@@ -84,12 +84,12 @@ export function sceneSvg(witness) {
     const drawn = Number.isFinite(object.presentedRadius) && object.presentedRadius > 0
       ? object.presentedRadius
       : (Number.isFinite(object.colliderRadius) && object.colliderRadius > 0 ? object.colliderRadius : 0.4);
+    const shieldGeometry = Number(object.shieldGeometryRadius);
     const shieldEffect = (object.effects || []).find((effect) => effect && effect.kind === 'shield');
     const shieldDrawn = shieldEffect ? Number(shieldEffect.radius) : NaN;
-    const shieldGeometry = Number(object.shieldGeometryRadius);
-    const shieldRadius = Number.isFinite(shieldDrawn) && shieldDrawn > 0
-      ? shieldDrawn
-      : (Number.isFinite(shieldGeometry) && shieldGeometry > 0 ? shieldGeometry : 0);
+    const shieldRadius = Number.isFinite(shieldGeometry) && shieldGeometry > 0
+      ? shieldGeometry
+      : (Number.isFinite(shieldDrawn) && shieldDrawn > 0 ? shieldDrawn : 0);
     const shieldCircle = shieldRadius > 0
       ? `<circle class="shield" cx="${object.screen.x}" cy="${object.screen.z}" r="${shieldRadius}" fill="none" stroke="#7ee0ff" stroke-opacity="0.9"/>`
       : '';

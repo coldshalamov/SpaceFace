@@ -7,7 +7,8 @@ or GPU residency. The live shield shell is `entity.radius` while
 `entity.shield` is above zero, the same scale `createShieldBubble` applies.
 `shieldMax` alone does not raise the shell. While the shield is up, the
 presented disc is that live shell. A recorded `presentedShieldRadius` or
-bubble scale can disagree with it and fail. A shield of 0 draws no disc.
+bubble scale does not replace it. A witness that claims a different disc
+still fails. A shield of 0 draws no disc.
 The lab checkpoint surface carries `shield` and `shieldMax`.
 
 `window.__THREE_GAME_DIAGNOSTICS__` (`src/render/diagnostics.js`) publishes

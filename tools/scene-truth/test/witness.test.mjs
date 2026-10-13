@@ -207,8 +207,8 @@ test('a live shield shell without a disc fails', () => {
   assert.equal(fails.some((row) => row.kind === 'shield-geometry-mismatch'), true);
 });
 
-test('a presented shield disc is measured independently of the live shell', () => {
-  const mismatched = bindEntity({
+test('an up shield presents the live shell and a claimed disc of 55 still fails', () => {
+  const live = bindEntity({
     id: 'pilot',
     type: 'ship',
     alive: true,
@@ -217,19 +217,57 @@ test('a presented shield disc is measured independently of the live shell', () =
     shield: 40,
     shieldMax: 55,
     presentedShieldRadius: 55,
+    shieldBubble: { scale: { x: 55 } },
     pos: { x: 0, z: 0 },
     data: { defId: 'ship_kestrel' },
   });
-  assert.equal(mismatched.shieldGeometryRadius, 14);
-  assert.equal(mismatched.effects.find((effect) => effect.kind === 'shield').radius, 55);
+  assert.equal(live.shieldGeometryRadius, 14);
+  assert.equal(live.effects.find((effect) => effect.kind === 'shield').radius, 14);
+  const drawn = sceneSvg({
+    seed: 1,
+    tick: 4,
+    zoom: 144,
+    qualityTier: 'medium',
+    frame: { halfH: 40, halfV: 24 },
+    objects: [{ ...live, screen: { x: 0, z: 0, onScreen: true } }],
+  });
+  assert.match(drawn, /class="shield"[^>]*r="14"/);
   const witness = healthyWitness();
   witness.objects[0] = {
     ...witness.objects[0],
-    shieldGeometryRadius: mismatched.shieldGeometryRadius,
-    effects: mismatched.effects,
+    shield: 40,
+    shieldGeometryRadius: 14,
+    effects: [{ kind: 'shield', radius: 55, baseCoverage: 0.22, occludesContacts: false }],
   };
   const fails = highFails(analyzeWitness(witness));
   assert.equal(fails.some((row) => row.kind === 'shield-geometry-mismatch'), true);
+  assert.match(sceneSvg(witness), /class="shield"[^>]*r="14"/);
+});
+
+test('tick 4 observatory draws Kestrel and Wasp discs at their live radii', async () => {
+  const entry = sceneCatalog().find((row) => row.id === 'scene.shields');
+  const pack = await witnessScenario(entry);
+  assert.equal(pack.ok, true, pack.error);
+  assert.equal(pack.tick, 4);
+  const view = pack.views.find((row) => row.tick === 4 && row.qualityTier === 'medium');
+  assert.ok(view);
+  const kestrel = view.objects.find((object) => object.isPlayer);
+  const wasp = view.objects.find((object) => object.alias === 'screen' || object.labProfile === 'wasp_swarmer');
+  assert.ok(kestrel);
+  assert.ok(wasp);
+  assert.equal(kestrel.defId, 'ship_kestrel');
+  assert.equal(wasp.defId, 'ship_wasp');
+  for (const hull of [kestrel, wasp]) {
+    const disc = (hull.effects || []).find((effect) => effect.kind === 'shield');
+    assert.ok(disc);
+    assert.equal(disc.radius, hull.shieldGeometryRadius);
+    assert.equal(disc.radius, hull.colliderRadius);
+    assert.ok(disc.radius > 0);
+  }
+  const svg = sceneSvg(view);
+  assert.match(svg, new RegExp(`class="shield"[^>]*r="${kestrel.shieldGeometryRadius}"`));
+  assert.match(svg, new RegExp(`class="shield"[^>]*r="${wasp.shieldGeometryRadius}"`));
+  assert.notEqual(kestrel.shieldGeometryRadius, wasp.shieldGeometryRadius);
 });
 
 test('copying the expected keep-out into presentedRadius fails', () => {

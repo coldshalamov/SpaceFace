@@ -96,21 +96,14 @@ function censusRowFor(entity) {
 
 /**
  * Presented shield disc. While `entity.shield` is above zero the disc is the
- * live shell (`entity.radius`) unless a recorded disc or bubble scale
- * disagrees. A shield of 0 emits nothing, even if those leftovers are set.
- * A ship def shield stat is not a disc.
+ * live shell (`entity.radius`). A recorded `presentedShieldRadius` or bubble
+ * scale does not replace it. A shield of 0 emits nothing, even if those
+ * leftovers are set. A ship def shield stat is not a disc.
  */
 export function presentedShieldDiscRadius(entity) {
   if (!entity) return null;
   const now = Number(entity.shield);
   if (!(Number.isFinite(now) && now > 0)) return null;
-  if (Object.prototype.hasOwnProperty.call(entity, 'presentedShieldRadius')) {
-    const recorded = Number(entity.presentedShieldRadius);
-    if (Number.isFinite(recorded) && recorded > 0) return recorded;
-  }
-  const scale = entity.shieldBubble && entity.shieldBubble.scale;
-  const measured = scale && typeof scale === 'object' ? Number(scale.x) : Number(scale);
-  if (Number.isFinite(measured) && measured > 0) return measured;
   return liveShieldGeometryRadius(entity);
 }
 
