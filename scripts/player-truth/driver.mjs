@@ -7,7 +7,7 @@ export const wallNow = (page) => page.evaluate(() => performance.now());
 
 /** Wait until sim time advances by `seconds`, or a predicate (in page) becomes true, or wall cap.
  *  `page.__ptObserve`, when set, can end the wait early (sim stall or a screen over the HUD). */
-export async function waitSim(page, seconds, { maxWallMs = 120000, until = null, arg = null } = {}) {
+export async function waitSim(page, seconds, { maxWallMs = 120000, until = null, arg = null, onPoll = null } = {}) {
   const start = await simNow(page); const t0 = Date.now();
   while (Date.now() - t0 < maxWallMs) {
     if (typeof page.__ptObserve === 'function') {
@@ -21,6 +21,7 @@ export async function waitSim(page, seconds, { maxWallMs = 120000, until = null,
       return { done, stop, sim: st.simTime };
     }, [{ start, s: seconds }, until ? until.toString() : null, arg]);
     if (r.done || r.stop) return r;
+    if (onPoll && await onPoll()) return { ...r, stop: true };
     await page.waitForTimeout(150);
   }
   return { done: false, timeout: true };
@@ -238,21 +239,38 @@ function readCombatPhaseEnded() {
     || !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'active');
 }
 
-async function searchFightBeat(page, tg, beat) {
+async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
   if (Number.isFinite(tg?.radarRel)) {
-    const turn = Math.abs(tg.radarRel) > 0.12 ? (tg.radarRel > 0 ? 'KeyD' : 'KeyA') : null;
-    const turnS = turn ? Math.min(0.6, Math.abs(tg.radarRel) / 4.5) : 0;
+    const boostCode = await page.evaluate(async () => {
+      const { resolveActionCodes } = await import('../../src/systems/input.js');
+      return resolveActionCodes(window.SF.state, 'boost')[0] || null;
+    });
+    const held = new Set();
+    const setHeld = async (code, down) => {
+      if (!code || down === held.has(code)) return;
+      if (down) { held.add(code); noteKey(page, code); await page.keyboard.down(code); }
+      else { held.delete(code); await page.keyboard.up(code); }
+    };
+    const searchStart = await simNow(page);
     try {
-      if (turn) {
-        await page.keyboard.down(turn);
-        await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
-        await page.keyboard.up(turn);
-      }
-      if (!await page.evaluate(readCombatPhaseEnded)) {
-        await holdKey(page, 'KeyW', Math.max(0.05, 0.6 - turnS), null, null, combatPhaseEnded);
-      }
+      await setHeld('KeyW', true);
+      await waitSim(page, 2.4, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: async () => {
+        const fresh = await page.evaluate(readTarget);
+        if (!fresh) return true;
+        if (!fresh.none && await simNow(page) - searchStart >= minimumSearchS) return true;
+        // After a failed pick, seeing that same hull is not recovery. Move around the
+        // cover briefly, following its visible bearing, before attempting selection again.
+        const bearing = fresh.none ? fresh.radarRel : fresh.rel;
+        if (!Number.isFinite(bearing)) return true;
+        // Keep forward held while closing. Correct from the newly painted public dial,
+        // and boost only once the nose points along that course rather than burning away.
+        const turn = Math.abs(bearing) > 0.12 ? (bearing > 0 ? 'KeyD' : 'KeyA') : null;
+        await setHeld('KeyA', turn === 'KeyA'); await setHeld('KeyD', turn === 'KeyD');
+        await setHeld(boostCode, Math.abs(bearing) < 0.35);
+        return false;
+      } });
     } finally {
-      for (const key of ['KeyW', 'KeyA', 'KeyD']) await page.keyboard.up(key);
+      for (const key of new Set(['KeyW', 'KeyA', 'KeyD', boostCode].filter(Boolean))) await page.keyboard.up(key).catch(() => {});
     }
     return;
   }
@@ -298,15 +316,14 @@ export async function fightBeat(page, beat) {
       tg = await page.evaluate(readTarget, { selectedOnly: true }).catch(() => null);
       // Selection attempts are not a flight action. A repeated miss must still move
       // through the public search route rather than freezing on the same failed pick.
-      if (!tg || tg.none || !tg.selected) return searchFightBeat(page, tg, beat);
+      if (!tg || tg.none || !tg.selected) return searchFightBeat(page, tg, beat, 0.4);
     }
   }
-  const x = Math.round(tg.x); const y = Math.round(tg.y);
+  let x = Math.round(tg.x); let y = Math.round(tg.y);
   await page.mouse.move(x, y, { steps: 2 });
   // Record the element under the aim before the button goes down, and again before mouseup,
   // which is when a HUD button's click listener runs.
   await noteClick(page, x, y);
-  await page.mouse.down();
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
   // ~5 rad/s; holding it for a whole beat overshoots and the ship spins in place under fire).
   const keys = []; let turn = null; let err = 0;
@@ -319,16 +336,30 @@ export async function fightBeat(page, beat) {
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
   if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
+  const refreshAim = async () => {
+    const fresh = await page.evaluate(readTarget, { selectedOnly: true });
+    if (!fresh || fresh.none || !fresh.selected) return true;
+    const nextX = Math.round(fresh.x); const nextY = Math.round(fresh.y);
+    if (nextX !== x || nextY !== y) {
+      x = nextX; y = nextY;
+      await page.mouse.move(x, y, { steps: 1 });
+    }
+    return false;
+  };
   try {
+    await page.mouse.down();
     for (const k of keys) { noteKey(page, k); await page.keyboard.down(k); }
     const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
+    let waited = null;
     if (turn) {
       noteKey(page, turn);
       await page.keyboard.down(turn);
-      await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
+      waited = await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
       await page.keyboard.up(turn);
     }
-    await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000, until: combatPhaseEnded });
+    if (!waited?.stop && !waited?.watch && !waited?.timeout) {
+      await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
+    }
   } finally {
     for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k).catch(() => {});
     await noteClick(page, x, y);

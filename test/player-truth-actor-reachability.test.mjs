@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readTarget, fightBeat } from '../scripts/player-truth/driver.mjs';
 import { applyWorldObjectSelection, clearWorldObjectSelection } from '../src/ui/worldObjectInteraction.js';
+import { radarHostileCourseText, publishRadarHostileCourse } from '../src/ui/radar.js';
 
 const drawnMeshes = rows => new Map(rows.map(e => [e.id, { visible: true, matrixWorld: e.pos }]));
 
@@ -44,8 +45,8 @@ test('fighter aims at a visible gameplay target rather than a nearer off-canvas 
   }
 });
 
-for (const pickAccepted of [true, false, null]) test(pickAccepted === null
-  ? 'two public selection misses produce bounded search movement and release every key'
+for (const pickAccepted of [true, false, null, undefined]) test(pickAccepted == null
+  ? `two public selection misses produce bounded search movement ${pickAccepted === undefined ? 'with a fresh radar and persistent visible rejected body ' : ''}and release every key`
   : `fighter publicly selects the visible subject by ${pickAccepted ? 'RMB' : 'keyboard fallback'} and follows its painted lead pip`, async () => {
   const savedWindow = globalThis.window; const savedDocument = globalThis.document;
   const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
@@ -59,14 +60,24 @@ for (const pickAccepted of [true, false, null]) test(pickAccepted === null
   const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: 2 }, input: {}, ui: {},
     run: { kind: 'survival', phase: 'active' }, entityList: [player, target],
     render: { camera: {}, meshes: drawnMeshes([player, target]), renderer: { domElement: canvas } } };
-  let pipPainted = false; const moves = []; const clicks = []; const pressed = []; const held = new Set(); const movement = [];
+  let pipPainted = false; const moves = []; const clicks = []; const pressed = []; const held = new Set(); const movement = []; const movementTicks = [];
+  const attributes = new Map();
+  const radar = { offsetParent: {}, getAttribute: key => attributes.get(key) ?? null,
+    setAttribute: (key, value) => attributes.set(key, value), removeAttribute: key => attributes.delete(key) };
+  const refreshRadar = () => {
+    if (pickAccepted === undefined) publishRadarHostileCourse(radar, { baseLabel: 'Local tactical radar.',
+      courseText: radarHostileCourseText([{ x: 10, y: 50 }], 50), mode: 'flight', simTime: state.simTime });
+  };
   const pip = { classList: { contains: () => pipPainted }, offsetParent: {},
     getBoundingClientRect: () => ({ left: 600, top: 320, width: 22, height: 22 }) };
-  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => { state.simTime += 0.2; },
+  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => {
+    if (held.has('KeyW')) movementTicks.push(state.simTime);
+    state.simTime += 0.2; refreshRadar();
+  },
     keyboard: { down: async key => { held.add(key); movement.push(key); }, up: async key => { held.delete(key); }, press: async key => {
       pressed.push(key);
       if (key === 'Backspace') clearWorldObjectSelection(state);
-      if (key === 'Tab' && pickAccepted !== null) { applyWorldObjectSelection(state, target, 'keyboard'); pipPainted = true; }
+      if (key === 'Tab' && pickAccepted != null) { applyWorldObjectSelection(state, target, 'keyboard'); pipPainted = true; }
     } }, mouse: {
       move: async (x, y) => moves.push([x, y]),
       click: async (x, y, options) => {
@@ -76,22 +87,25 @@ for (const pickAccepted of [true, false, null]) test(pickAccepted === null
         const nearer = { ...target, id: 4, pos: { x: 5, z: 0 } };
         state.entityList.push(nearer); state.render.meshes.set(4, { visible: true, matrixWorld: nearer.pos });
       }, down: async () => {
-        assert.notEqual(pickAccepted, null, 'a missed selection must not become a false shot');
+        assert.ok(pickAccepted != null, 'a missed selection must not become a false shot');
         assert.equal(state.player.targetId, target.id, 'the gun assist shares this visible subject');
       }, up: async () => {},
     } };
   try {
     globalThis.window = { SF: { THREE: { Vector3 }, state } };
-    globalThis.document = { elementFromPoint: () => canvas, querySelector: (selector) => selector === '.sf-leadpip.visible' ? pip : null };
+    globalThis.document = { elementFromPoint: () => canvas, querySelector: (selector) => selector === '.sf-leadpip.visible' ? pip
+      : selector === '.sf-radar-semantic-canvas' && pickAccepted === undefined ? radar : null };
+    refreshRadar();
     await fightBeat(page, 1);
     assert.deepEqual(pressed, pickAccepted ? [] : ['Backspace', 'Tab']);
-    if (pickAccepted === null) {
-      assert.deepEqual(movement, ['KeyW'], 'the two failed selection controls still admit deliberate physical movement');
+    if (pickAccepted == null) {
+      assert.deepEqual(movement.filter(key => key !== 'ShiftLeft'), ['KeyW'], 'the two failed selection controls still admit deliberate physical movement');
+      assert.ok(movementTicks.length >= 2, 'seeing the same rejected hull cannot end recovery before meaningful forward movement');
       assert.equal(held.size, 0);
       assert.ok(state.simTime >= 10.6 && state.simTime <= 11.5, 'the miss is a bounded search beat');
       const firstEnd = state.simTime;
       await fightBeat(page, 2);
-      assert.deepEqual(movement, ['KeyW', 'KeyW'], 'another miss progresses through the same public search');
+      assert.deepEqual(movement.filter(key => key !== 'ShiftLeft'), ['KeyW', 'KeyW'], 'another miss progresses through the same public search');
       assert.ok(state.simTime - firstEnd >= 0.6 && state.simTime - firstEnd <= 1.5);
       assert.equal(held.size, 0);
       return;
@@ -145,3 +159,43 @@ for (const hasTarget of [false, true]) {
     }
   });
 }
+
+for (const interruption of [null, 'draft', 'error']) test(`held fire follows a moving painted cue and releases controls on ${interruption || 'completion'}`, async () => {
+  const oldWindow = globalThis.window; const oldDocument = globalThis.document;
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
+  class Vector3 {
+    set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
+    setFromMatrixPosition(m) { return this.set(m.x, m.y || 0, m.z); }
+    project() { this.x /= 100; this.y = -this.z / 100; this.z = 0; return this; }
+  }
+  const player = { id: 1, alive: true, team: 0, pos: { x: 0, z: 0 }, rot: 0, hull: 260, hullMax: 260 };
+  const target = { id: 2, alive: true, type: 'ship', team: 1, pos: { x: 10, z: 0 }, data: {} };
+  const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: 2 },
+    run: { kind: 'survival', phase: 'active' }, entityList: [player, target],
+    render: { camera: {}, meshes: drawnMeshes([player, target]), renderer: { domElement: canvas } } };
+  const held = new Set(); const tracked = []; let firing = false;
+  const pip = { offsetParent: {}, getBoundingClientRect: () => ({ left: 600 + (state.simTime - 10) * 20, top: 300, width: 22, height: 22 }) };
+  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => {
+    state.simTime += 0.2;
+    if (interruption === 'draft' && state.simTime >= 10.35) state.run.phase = 'draft';
+  }, keyboard: { down: async key => held.add(key), up: async key => held.delete(key), press: async () => {} }, mouse: {
+    move: async (x, y) => {
+      if (firing && x > 611) {
+        tracked.push({ x, y, phase: state.run.phase });
+        if (interruption === 'error') throw new Error('painted aim update failed');
+      }
+    }, down: async () => { firing = true; }, up: async () => { firing = false; },
+  } };
+  try {
+    globalThis.window = { SF: { THREE: { Vector3 }, state } };
+    globalThis.document = { elementFromPoint: () => canvas, querySelector: selector => selector === '.sf-leadpip.visible' ? pip : null };
+    if (interruption === 'error') await assert.rejects(fightBeat(page, 1), /painted aim update failed/);
+    else await fightBeat(page, 1);
+    assert.ok(tracked.length >= 1, 'the cursor follows a newly painted cue while the button remains held');
+    assert.ok(tracked.every(point => point.phase === 'active'), 'no combat cursor update leaks into the armory');
+    assert.equal(held.size, 0); assert.equal(firing, false);
+  } finally {
+    if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+    if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
+  }
+});
