@@ -140,7 +140,7 @@ function detectUnresponsive(samples, frames) {
     const moved = Math.hypot(end.x - start.x, end.z - start.z);
     const sped = end.speed - start.speed;
     if (moved < 0.25 && sped < 0.05) {
-      if (postImpactPin(samples, i, start, end)) continue;
+      if (postImpactPin(samples, i, start, end, frame, moved)) continue;
       return {
         id: 'unresponsive-commands',
         tick: start.tick,
@@ -151,13 +151,16 @@ function detectUnresponsive(samples, frames) {
   return null;
 }
 
-function postImpactPin(samples, index, start, end) {
+function postImpactPin(samples, index, start, end, frame, moved) {
   const nearest = start.nearest;
   if (!nearest || nearest.kind !== 'station') return false;
   const radius = Number.isFinite(nearest.radius) ? nearest.radius : null;
   const inside = radius != null && nearest.dist < radius;
   if (!inside) return false;
+  // Held speed is not an answer. Forward thrust is already required to reach
+  // this check, so a live stick alone must not close the window.
   if (rotationDelta(start.rot, end.rot) > 0.02) return true;
+  if (frame && Math.abs(frame.moveX) > 0.2 && moved > 0.01) return true;
   return earlierStepMatchedSpeed(samples, index);
 }
 

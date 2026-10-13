@@ -396,7 +396,7 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
   assert.equal(yawHeld.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
   const deadInside = Array.from({ length: 40 }, (_, tick) => ({
     tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
-    x: -16.75, z: 222.19, speed: 0, rot: 0.4, angVel: 0,
+    x: -16.75, z: 222.19, speed: 217.72, rot: 0.4, angVel: 0,
     nearest: { kind: 'station', dist: 16.9, radius: 42 },
   }));
   const deadFrames = deadInside.map((sample) => ({
