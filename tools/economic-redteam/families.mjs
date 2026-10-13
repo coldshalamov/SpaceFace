@@ -655,9 +655,22 @@ export function writeContrabandArtifact(minimized, fileUrl = CONTRABAND_ARTIFACT
   return body;
 }
 
+function baySnapshot(sim) {
+  const items = sim && sim.state && sim.state.player && sim.state.player.salvageBay
+    && sim.state.player.salvageBay.items;
+  const bay = {};
+  if (!items) return bay;
+  for (const id of Object.keys(items)) {
+    const qty = Math.floor(Number(items[id]) || 0);
+    if (qty > 0) bay[id] = qty;
+  }
+  return bay;
+}
+
 function probeContraband(seed) {
   const killed = runKillRecipe(seed + 3);
   const recipeCommodities = killed.commodities || [];
+  const unpaid = killed.unpaid || {};
   const illicitInBay = killed.illicit || [];
   const bayShadow = killed.ok && killed.sim && killed.sim.state.player && killed.sim.state.player.salvageBay
     ? structuredClone(killed.sim.state.player.salvageBay) : null;
@@ -669,14 +682,17 @@ function probeContraband(seed) {
     : null;
   const cashed = killed.ok ? dock(killed.sim, HOME_STATION) : null;
   const reasons = (cashed && cashed.detail && cashed.detail.reasons) || [];
+  const bayAfterDock = killed.ok ? baySnapshot(killed.sim) : {};
+  const paidRestricted = illicitInBay.filter((id) => (bayAfterDock[id] || 0) < (unpaid[id] || 0));
   const paidBay = reasons.includes('salvage:bay_sale') && (cashed ? cashed.creditsDelta : 0) > 0;
-  const illicitPaid = paidBay && illicitInBay.length > 0;
+  const illicitPaid = paidRestricted.length > 0;
   const again = killed.ok ? dock(killed.sim, HOME_STATION) : null;
   const secondDockDelta = again ? again.creditsDelta : null;
-  const legalBay = recipeCommodities.reduce((sum, id) => sum + (killed.bay[id] || 0), 0);
+  const bayAfterSecondDock = killed.ok ? baySnapshot(killed.sim) : {};
+  const legalBay = recipeCommodities.reduce((sum, id) => sum + ((unpaid[id] ? 0 : (killed.bay[id] || 0))), 0);
   const legalVerdict = bayCashVerdict({
     creditsDelta: cashed ? cashed.creditsDelta : 0,
-    legality: illicitInBay.length ? 'contraband' : 'legal',
+    legality: 'legal',
     fineDelta: 0,
   });
   const commands = [
@@ -693,12 +709,15 @@ function probeContraband(seed) {
     commands,
   });
   const exploit = illicitPaid === true;
+  const munitionsStay = (bayAfterSecondDock.cmdty_munitions || 0) > 0
+    && bayAfterSecondDock.cmdty_munitions === (unpaid.cmdty_munitions || 0)
+    && secondDockDelta === 0;
   return family(
     'contraband_relabel',
     !killed.ok ? 'unavailable' : (exploit ? 'exploit' : 'tested-not-broken'),
     exploit
-      ? 'A real kill recipe put contraband in the bay and Helios cashed it without a fine.'
-      : 'A real kill used the hull recipe. A chosen kill_burst commodity is not a confirmed exploit. Illicit recipe goods were not cashed unpaid.',
+      ? 'A restricted or contraband hull-recipe line was paid at Helios without a fine.'
+      : 'Helios cashed only the legal hull-recipe lines. Restricted munitions stayed in the bay unpaid, and the next dock did not pay them.',
     {
       traces: [{
         name: 'bay_stolen_goods',
@@ -707,24 +726,35 @@ function probeContraband(seed) {
         recipeId: killed.recipeId,
         commodities: recipeCommodities,
         bay: killed.bay,
+        unpaid,
+        restricted: killed.restricted || [],
         illicit: illicitInBay,
+        bayAfterDock,
+        bayAfterSecondDock,
         qty: legalBay,
         ticks: 48,
         creditsDelta: cashed ? cashed.creditsDelta : 0,
         reasons,
         secondDockDelta,
-        cashInCredits: cashPreview ? cashPreview.credits : 0,
-        cashInUnits: cashPreview ? cashPreview.units : 0,
-        creditPath: 'cashInSalvage -> economy:grantCredits salvage:bay_sale',
+        legalCashIn: cashPreview ? { credits: cashPreview.credits, units: cashPreview.units, lots: cashPreview.lots } : null,
+        creditPath: 'cashInSalvage legal lines -> economy:grantCredits salvage:bay_sale; restricted lines stay in the bay',
         reachesIllicitPay: illicitPaid === true,
         artifact: '.devshots/economic-redteam/contraband-minimized.json',
       }],
       controls: [
         {
           name: 'legal_scrap_is_allowed',
-          pass: killed.ok === true && legalBay > 0 && paidBay && legalVerdict.exploit !== true && illicitInBay.length === 0,
+          pass: killed.ok === true && legalBay > 0 && paidBay && legalVerdict.exploit !== true && illicitPaid !== true,
           creditsDelta: cashed && cashed.creditsDelta,
           legalBay,
+        },
+        {
+          name: 'restricted_munitions_stay_unpaid',
+          pass: killed.ok === true && munitionsStay === true && (unpaid.cmdty_munitions || 0) > 0,
+          unpaid,
+          bayAfterDock,
+          bayAfterSecondDock,
+          secondDockDelta,
         },
         {
           name: 'recipe_not_a_chosen_kill_burst',
@@ -734,7 +764,7 @@ function probeContraband(seed) {
         },
         {
           name: 'second_dock_does_not_pay',
-          pass: secondDockDelta != null && secondDockDelta <= 0,
+          pass: secondDockDelta != null && secondDockDelta <= 0 && munitionsStay === true,
           creditsDelta: secondDockDelta,
         },
       ],

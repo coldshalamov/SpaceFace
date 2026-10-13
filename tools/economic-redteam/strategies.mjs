@@ -137,13 +137,16 @@ export function runPirateSalvager(seed) {
   let paid = 0;
   let loops = 0;
   if (killed.ok) {
+    const beforeUnpaid = killed.unpaid || {};
     const cashed = dock(killed.sim, HOME_STATION);
+    const after = killed.sim.state.player.salvageBay && killed.sim.state.player.salvageBay.items || {};
+    const paidRestricted = Object.keys(beforeUnpaid).filter((id) => Math.floor(Number(after[id]) || 0) < beforeUnpaid[id]);
     loops = 1;
-    if (killed.illicit.length && cashed.creditsDelta > 0) paid += cashed.creditsDelta;
+    if (paidRestricted.length && cashed.creditsDelta > 0) paid += cashed.creditsDelta;
     notes.push(`Kill recipe ${killed.recipeId} dropped ${killed.commodities.join(', ') || 'nothing'}.`);
-    notes.push(killed.illicit.length
-      ? `Illicit bay lines: ${killed.illicit.join(', ')}. Dock delta ${cashed.creditsDelta}.`
-      : 'The recipe did not put contraband in the bay.');
+    notes.push(paidRestricted.length
+      ? `Paid restricted lines: ${paidRestricted.join(', ')}. Dock delta ${cashed.creditsDelta}.`
+      : `Restricted lines stayed unpaid (${Object.keys(beforeUnpaid).join(', ') || 'none'}). Legal dock delta ${cashed.creditsDelta}.`);
   } else {
     notes.push(`Kill recipe did not land (${killed.reason}).`);
   }

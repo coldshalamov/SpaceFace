@@ -464,7 +464,9 @@ export function runKillRecipe(seed) {
       recipeId: recipe.id,
       commodities: [],
       bay: {},
+      unpaid: {},
       illicit: [],
+      restricted: [],
       creditsBefore,
       sim,
     };
@@ -482,14 +484,25 @@ export function runKillRecipe(seed) {
   if (items) {
     for (const id of Object.keys(items)) bay[id] = Math.floor(Number(items[id]) || 0);
   }
-  const illicit = Object.keys(bay).filter((id) => bay[id] > 0 && LEGALITY.get(id) === 'contraband');
+  const legalityOf = (id) => LEGALITY.get(id) || 'legal';
+  const unpaid = {};
+  const illicit = [];
+  const restricted = [];
+  for (const id of Object.keys(bay)) {
+    if (!(bay[id] > 0) || legalityOf(id) === 'legal') continue;
+    unpaid[id] = bay[id];
+    illicit.push(id);
+    if (legalityOf(id) === 'restricted') restricted.push(id);
+  }
   return {
     ok: hit && hit.ok === true && foe.alive === false,
     reason: foe.alive === false ? null : 'target_survived',
     recipeId: recipe.id,
     commodities: (recipe.materials || []).map((row) => row.commodityId),
     bay,
+    unpaid,
     illicit,
+    restricted,
     killed: foe.alive === false,
     creditsBefore,
     sim,
