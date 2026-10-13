@@ -1,5 +1,5 @@
 /**
- * PQ-045.causal-chain — nine ambient microevents as one authored Ceres chain.
+ * PQ-045.causal-chain — eleven ambient microevents as one authored Ceres chain.
  *
  * Seconds-scale, seed-pinned characterization of the traffic-owned choreography timer.
  * Does not touch goldens, npcJobsRuntime, or render.
@@ -45,6 +45,7 @@ const EXPECTED_CHAIN = Object.freeze([
   'ev_miner_calls_hauler',
   'ev_patrol_scans_suspect',
   'ev_cargo_capsule_launch',
+  'ev_pod_breaks_clamp',
   'ev_disabled_hauler_recovery',
   'ev_tender_services_miner',
   'ev_patrol_escorts_hauler',
@@ -99,7 +100,7 @@ function pocketActorRows() {
     .map((slot) => ({ pocket, slot })));
 }
 
-function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = false } = {}) {
+function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = false, lawSecurity = null } = {}) {
   const station = makeEntity(10, 'station', { stationId: 'station_ceres' }, { x: 100, z: 100 });
   const asteroid = makeEntity(38, 'asteroid', {
     activityObjectSlotId: 'ceres_seam_ore_clast',
@@ -253,10 +254,12 @@ function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = fa
       return combatKernel;
     },
   };
-  if (withTenderCombat) {
+  if (withTenderCombat || lawSecurity) {
     registry = {
       get(systemId) {
-        return systemId === 'combat' ? combat : null;
+        if (systemId === 'combat') return withTenderCombat ? combat : null;
+        if (systemId === 'lawSecurity') return lawSecurity;
+        return null;
       },
     };
   }
@@ -381,7 +384,7 @@ function runUntil(traffic, state, predicate, { start = state.simTime, maxS = 900
   return null;
 }
 
-test('catalog order is the ten admitted microevents', () => {
+test('catalog order is the eleven admitted microevents', () => {
   assert.deepEqual(CHAIN_EVENT_IDS, [...EXPECTED_CHAIN]);
   assert.equal(CERES_CAUSAL_CHAIN_MAX_CONCURRENT, 2);
   assert.equal(CERES_CAUSAL_CHAIN_SCHEMA, 'spaceface.ceresCausalChain.v1');
@@ -1482,7 +1485,7 @@ test('the refinery outbound capsule leaves the station face once per link as a r
     return entity;
   };
   const capsuleDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_cargo_capsule_launch');
-  assert.ok(capsuleDef, 'the capsule link is the ninth admitted event');
+  assert.ok(capsuleDef, 'the capsule link is the fifth admitted event');
   assert.deepEqual(capsuleDef.requires, ['ore_handoff'],
     'the launch rides the custody transfer, not a cooldown draw');
   const station = state.entityList.find((entity) => entity.data
@@ -1523,6 +1526,112 @@ test('the refinery outbound capsule leaves the station face once per link as a r
   traffic._applyCeresCausalPhaseEffects(capsuleDef, liveNoFace, 'launch');
   traffic._sectorStations = realStations;
   assert.equal(capsules().length, 1, 'no face resolved → the fallback completes without a capsule');
+});
+
+test('the clamp pod shears off the refinery face at drift, once, as a real player-reserved pickup', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  let spawnSeq = 9800;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      homeSectorId: spec.homeSectorId,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const podDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_pod_breaks_clamp');
+  assert.ok(podDef, 'the clamp pod is the sixth admitted event');
+  assert.deepEqual(podDef.requires, ['ore_handoff'],
+    'the escape plays while the cargo face runs the day\'s ore');
+  assert.deepEqual(podDef.actorSlots, [], 'the station binds no cast slot — nothing to kill');
+  const station = state.entityList.find((entity) => entity.data
+    && entity.data.stationId === 'station_ceres');
+  assert.ok(station, 'station_ceres is live in the harness');
+  const live = { eventId: podDef.id, phase: 'drift', actorSlotIds: [] };
+  const pods = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data && entity.data.ceresClampPod);
+  assert.equal(pods().length, 0, 'no pod before the drift phase');
+
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'shear');
+  assert.equal(pods().length, 0, 'the strobe beats the escape — shear drops nothing');
+
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'drift');
+  const drifted = pods();
+  assert.equal(drifted.length, 1, 'the drift phase tumbles one pod off the stack');
+  const pod = drifted[0];
+  assert.equal(pod.data.kind, 'cargo');
+  assert.equal(pod.data.commodityId, 'cmdty_refined_metals', 'the stack holds the refinery product');
+  assert.equal(pod.data.amount, 4);
+  assert.equal(pod.data.name, 'Loose Refinery Pod');
+  assert.equal(pod.data.playerCollectOnly, true,
+    'near traffic dodges the escape — only the player pockets station cargo');
+  assert.equal(pod.homeSectorId, CERES_ACTIVITY_SECTOR_ID);
+  assert.ok(pod.data.despawnAt > state.simTime, 'the pod clears on a timer, not forever');
+  assert.ok(pod.data.lotSource && pod.data.lotSource.sourceKind === 'station_clamp_break',
+    'the pod carries its provenance for the law');
+  const tumble = Math.hypot(pod.vel.x, pod.vel.z);
+  assert.ok(tumble > 0 && tumble <= 10, `the pod tumbles a catchable drift (${tumble.toFixed(1)}wu/s)`);
+  const clearance = Math.hypot(pod.pos.x - station.pos.x, pod.pos.z - station.pos.z);
+  assert.ok(clearance > (station.radius || 30),
+    `the pod clears the clamp face (${clearance.toFixed(1)}wu)`);
+
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'drift');
+  assert.equal(pods().length, 1, 'one pod per link, not per tick');
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'clear');
+  assert.equal(pods().length, 1, 'later phases never re-shear');
+
+  // No resolvable cargo face → the fallback completes as the strobe-blinks-wrong minute.
+  const liveNoFace = { eventId: podDef.id, phase: 'drift', actorSlotIds: [] };
+  const realStations = traffic._sectorStations;
+  traffic._sectorStations = () => [];
+  traffic._applyCeresCausalPhaseEffects(podDef, liveNoFace, 'drift');
+  traffic._sectorStations = realStations;
+  assert.equal(pods().length, 1, 'no face resolved → the fallback completes without a pod');
+});
+
+test('pocketing the escaped pod files the station theft with the law, once', () => {
+  const lawCalls = [];
+  const lawSecurity = {
+    reportIncident(req) {
+      lawCalls.push(req);
+      return { accepted: true, incidentReceiptId: `receipt:${lawCalls.length}` };
+    },
+  };
+  const { traffic, state, bus } = bootCausalHarness({ simTime: 100, lawSecurity });
+  state.playerId = 777;
+  stepTo(traffic, state, 100);
+  let spawnSeq = 9900;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const podDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_pod_breaks_clamp');
+  const live = { eventId: podDef.id, phase: 'drift', actorSlotIds: [] };
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'drift');
+  const pod = state.entityList.find((entity) => entity.data && entity.data.ceresClampPod);
+  assert.ok(pod, 'a pod is loose on the face');
+
+  // A bystander grabbing it is not theft; the player collecting it is the authored witness.
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: 4242, acceptedAmount: 4 });
+  assert.equal(lawCalls.length, 0, 'an NPC-collected pod files nothing');
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: 777, acceptedAmount: 4 });
+  assert.equal(lawCalls.length, 1, 'the station files the pod theft once');
+  assert.equal(lawCalls[0].kind, 'payload_theft');
+  assert.equal(lawCalls[0].offenderStableId, 'player');
+  assert.equal(lawCalls[0].offenderEntityId, 777);
+  assert.equal(lawCalls[0].payloadStableId, pod.data.ceresClampPod.podStableId);
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: 777, acceptedAmount: 4 });
+  assert.equal(lawCalls.length, 1, 'the pod is gone — a repeat collect cannot double-file');
 });
 
 test('the surveyor probe line drops three real probes at its drop phases, once each', () => {
