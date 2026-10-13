@@ -44,7 +44,9 @@ test('fighter aims at a visible gameplay target rather than a nearer off-canvas 
   }
 });
 
-for (const pickAccepted of [true, false]) test(`fighter publicly selects the visible subject by ${pickAccepted ? 'RMB' : 'keyboard fallback'} and follows its painted lead pip`, async () => {
+for (const pickAccepted of [true, false, null]) test(pickAccepted === null
+  ? 'two public selection misses produce bounded search movement and release every key'
+  : `fighter publicly selects the visible subject by ${pickAccepted ? 'RMB' : 'keyboard fallback'} and follows its painted lead pip`, async () => {
   const savedWindow = globalThis.window; const savedDocument = globalThis.document;
   const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
   class Vector3 {
@@ -57,14 +59,14 @@ for (const pickAccepted of [true, false]) test(`fighter publicly selects the vis
   const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: 2 }, input: {}, ui: {},
     run: { kind: 'survival', phase: 'active' }, entityList: [player, target],
     render: { camera: {}, meshes: drawnMeshes([player, target]), renderer: { domElement: canvas } } };
-  let pipPainted = false; const moves = []; const clicks = []; const pressed = [];
+  let pipPainted = false; const moves = []; const clicks = []; const pressed = []; const held = new Set(); const movement = [];
   const pip = { classList: { contains: () => pipPainted }, offsetParent: {},
     getBoundingClientRect: () => ({ left: 600, top: 320, width: 22, height: 22 }) };
   const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => { state.simTime += 0.2; },
-    keyboard: { down: async () => {}, up: async () => {}, press: async key => {
+    keyboard: { down: async key => { held.add(key); movement.push(key); }, up: async key => { held.delete(key); }, press: async key => {
       pressed.push(key);
       if (key === 'Backspace') clearWorldObjectSelection(state);
-      if (key === 'Tab') { applyWorldObjectSelection(state, target, 'keyboard'); pipPainted = true; }
+      if (key === 'Tab' && pickAccepted !== null) { applyWorldObjectSelection(state, target, 'keyboard'); pipPainted = true; }
     } }, mouse: {
       move: async (x, y) => moves.push([x, y]),
       click: async (x, y, options) => {
@@ -73,13 +75,27 @@ for (const pickAccepted of [true, false]) test(`fighter publicly selects the vis
         else clearWorldObjectSelection(state);
         const nearer = { ...target, id: 4, pos: { x: 5, z: 0 } };
         state.entityList.push(nearer); state.render.meshes.set(4, { visible: true, matrixWorld: nearer.pos });
-      }, down: async () => assert.equal(state.player.targetId, target.id, 'the gun assist shares this visible subject'), up: async () => {},
+      }, down: async () => {
+        assert.notEqual(pickAccepted, null, 'a missed selection must not become a false shot');
+        assert.equal(state.player.targetId, target.id, 'the gun assist shares this visible subject');
+      }, up: async () => {},
     } };
   try {
     globalThis.window = { SF: { THREE: { Vector3 }, state } };
     globalThis.document = { elementFromPoint: () => canvas, querySelector: (selector) => selector === '.sf-leadpip.visible' ? pip : null };
     await fightBeat(page, 1);
     assert.deepEqual(pressed, pickAccepted ? [] : ['Backspace', 'Tab']);
+    if (pickAccepted === null) {
+      assert.deepEqual(movement, ['KeyW'], 'the two failed selection controls still admit deliberate physical movement');
+      assert.equal(held.size, 0);
+      assert.ok(state.simTime >= 10.6 && state.simTime <= 11.5, 'the miss is a bounded search beat');
+      const firstEnd = state.simTime;
+      await fightBeat(page, 2);
+      assert.deepEqual(movement, ['KeyW', 'KeyW'], 'another miss progresses through the same public search');
+      assert.ok(state.simTime - firstEnd >= 0.6 && state.simTime - firstEnd <= 1.5);
+      assert.equal(held.size, 0);
+      return;
+    }
     assert.deepEqual(clicks, [{ x: 550, y: 300, button: 'right' }]);
     assert.deepEqual(moves, [[550, 300], [611, 331]], 'aim uses the already painted cue rather than hidden velocity');
     pip.offsetParent = null;

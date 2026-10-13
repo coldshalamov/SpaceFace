@@ -238,6 +238,30 @@ function readCombatPhaseEnded() {
     || !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'active');
 }
 
+async function searchFightBeat(page, tg, beat) {
+  if (Number.isFinite(tg?.radarRel)) {
+    const turn = Math.abs(tg.radarRel) > 0.12 ? (tg.radarRel > 0 ? 'KeyD' : 'KeyA') : null;
+    const turnS = turn ? Math.min(0.6, Math.abs(tg.radarRel) / 4.5) : 0;
+    try {
+      if (turn) {
+        await page.keyboard.down(turn);
+        await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
+        await page.keyboard.up(turn);
+      }
+      if (!await page.evaluate(readCombatPhaseEnded)) {
+        await holdKey(page, 'KeyW', Math.max(0.05, 0.6 - turnS), null, null, combatPhaseEnded);
+      }
+    } finally {
+      for (const key of ['KeyW', 'KeyA', 'KeyD']) await page.keyboard.up(key);
+    }
+    return;
+  }
+  await holdKey(page, 'KeyW', 0.6, null, null, combatPhaseEnded);
+  if (beat % 3 === 0 && !await page.evaluate(readCombatPhaseEnded)) {
+    await holdKey(page, 'KeyA', 0.4, null, null, combatPhaseEnded);
+  }
+}
+
 /**
  * One beat of a kiting fighter (public input only): select the nearest reachable hostile with RMB,
  * aim at its visible lead pip (or the hull when no pip is painted), and fire,
@@ -254,30 +278,7 @@ export async function fightBeat(page, beat) {
   fighterMemory.hull = tg.hull;
   // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
   if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
-  if (tg.none) {
-    if (Number.isFinite(tg.radarRel)) {
-      const turn = Math.abs(tg.radarRel) > 0.12 ? (tg.radarRel > 0 ? 'KeyD' : 'KeyA') : null;
-      const turnS = turn ? Math.min(0.6, Math.abs(tg.radarRel) / 4.5) : 0;
-      try {
-        if (turn) {
-          await page.keyboard.down(turn);
-          await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
-          await page.keyboard.up(turn);
-        }
-        if (!await page.evaluate(readCombatPhaseEnded)) {
-          await holdKey(page, 'KeyW', Math.max(0.05, 0.6 - turnS), null, null, combatPhaseEnded);
-        }
-      } finally {
-        for (const key of ['KeyW', 'KeyA', 'KeyD']) await page.keyboard.up(key);
-      }
-      return;
-    }
-    await holdKey(page, 'KeyW', 0.6, null, null, combatPhaseEnded);
-    if (beat % 3 === 0 && !await page.evaluate(readCombatPhaseEnded)) {
-      await holdKey(page, 'KeyA', 0.4, null, null, combatPhaseEnded);
-    }
-    return;
-  }
+  if (tg.none) return searchFightBeat(page, tg, beat);
   if (!tg.selected) {
     // Default gun assist retains a valid old lock. A cursor over a different hull does not
     // release it: use the same quick RMB selection a person would before this shot.
@@ -295,7 +296,9 @@ export async function fightBeat(page, beat) {
       await waitSim(page, 1 / 60, { maxWallMs: 30000, until: combatPhaseEnded });
       if (await page.evaluate(readCombatPhaseEnded)) return;
       tg = await page.evaluate(readTarget, { selectedOnly: true }).catch(() => null);
-      if (!tg || tg.none || !tg.selected) return;
+      // Selection attempts are not a flight action. A repeated miss must still move
+      // through the public search route rather than freezing on the same failed pick.
+      if (!tg || tg.none || !tg.selected) return searchFightBeat(page, tg, beat);
     }
   }
   const x = Math.round(tg.x); const y = Math.round(tg.y);
