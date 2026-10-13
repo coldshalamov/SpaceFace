@@ -208,8 +208,8 @@ function publicRun(run) {
 function sweepExitCode(sweep) {
   if (sweep.infraCount) return 2;
   if (sweep.failCount || (sweep.confirmed && sweep.confirmed.length)) return 1;
-  if (!sweep.headedBrowser || sweep.headedBrowser.status !== 'replayed') return 4;
   if (sweep.incompleteCount) return 3;
+  if (!sweep.headedBrowser || sweep.headedBrowser.status !== 'replayed') return 4;
   return 0;
 }
 

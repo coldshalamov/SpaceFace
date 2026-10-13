@@ -19,7 +19,7 @@ import { commitDockedUiState } from '../../../../src/ui/dockStateCommit.js';
 import { checkEssentialBodies } from './assets.mjs';
 import { systemsForJourney } from './bundles.mjs';
 import { compareDigests, detectFailures } from './detectors.mjs';
-import { assessJourney, getJourney } from './journeys.mjs';
+import { assessJourney, getJourney, routeCommandIssued } from './journeys.mjs';
 import { observeState, simDigest } from './observe.mjs';
 import { getPersona } from './personas.mjs';
 import { stableStringify } from './rng.mjs';
@@ -159,7 +159,11 @@ export async function runSession(options = {}) {
     const heapDelta = process.memoryUsage().heapUsed - heapStart;
     const confirmed = detection.confirmed;
     const completion = assessJourney({ journeyId: journey.id, samples, commands: commandNotes, milestones });
-    const status = ordered.length ? 'fail' : completion.status === 'complete' ? 'pass' : 'incomplete';
+    const attempted = routeCommandIssued(journey.id, commandNotes);
+    const status = ordered.length ? 'fail'
+      : completion.status === 'complete' ? 'pass'
+        : attempted ? 'incomplete'
+          : 'fail';
     return {
       schema: 'spaceface.strangerRun.v1',
       ok: status === 'pass',

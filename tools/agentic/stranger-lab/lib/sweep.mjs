@@ -82,7 +82,8 @@ export async function runSweep(options = {}) {
 
 export function publicSweepRow(run) {
   if (!run || typeof run !== 'object') return run;
-  const failing = run.status === 'fail' || (Array.isArray(run.confirmed) && run.confirmed.length > 0);
+  const failing = run.status === 'fail' || run.status === 'incomplete'
+    || (Array.isArray(run.confirmed) && run.confirmed.length > 0);
   if (failing) return run;
   const { tape, ...rest } = run;
   return {
@@ -110,7 +111,7 @@ function compact(result) {
     failures: result.failures || [],
     confirmed: result.confirmed || [],
     error: result.error || null,
-    tape: result.status === 'fail' ? result.tape : undefined,
+    tape: result.status === 'fail' || result.status === 'incomplete' ? result.tape : undefined,
     fault: result.fault,
   };
 }

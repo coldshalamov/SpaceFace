@@ -31,7 +31,7 @@ node tools/agentic/stranger-lab/cli.mjs replay --artifact artifacts/stranger-lab
 node tools/agentic/stranger-lab/cli.mjs sweep
 ```
 
-Twelve journeys × twelve seeds, rotating through every persona, including the hostile explorer and the weak-hardware pilot. A detector failure fails the sweep and that row keeps its tape. `simulated-touch` quantizes through the phone lane reducer. Chrome at 390×844 steps recorded axes in the focused flight bundle. Combat and docking rows stay `unverified` because that host does not run those worlds. `deviceTested` stays false. The sweep exits 4 when a headed row did not replay. Node replay applies the recorded axes with the fault injector off.
+Twelve journeys × twelve seeds, rotating through every persona. Each persona attempts that journey's cue. Incomplete means the cue was issued and the milestone is still missing, and that row keeps its tape. A detector confirmation exits 1 even when headed replay did not pass. Chrome at 390×844 replays the selected tapes and records the host result. `deviceTested` stays false. No frame rate is claimed.
 
 The docking fixture approaches the manifest's actual berth and measures physical
 berth arrival. Its headless completion does not exercise the station screen or

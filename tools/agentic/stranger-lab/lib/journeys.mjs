@@ -273,5 +273,26 @@ export function assessJourney({ journeyId, samples = [], commands = [], mileston
     default: need('known route completion', false);
   }
   const missing = checks.filter((check) => !check.measured).map((check) => check.label);
-  return { status: missing.length ? 'incomplete' : 'complete', layer: 'headless-sim', checks, missing };
+  return {
+    status: missing.length ? 'incomplete' : 'complete',
+    attempted: routeCommandIssued(journeyId, commands),
+    layer: 'headless-sim',
+    checks,
+    missing,
+  };
+}
+
+const ROUTE_COMMANDS = Object.freeze({
+  launch: ['undock'],
+  'buy-refit': ['buy', 'refit'],
+  mission: ['accept-mission'],
+  'combat-death-retry': ['recover'],
+  'crucible-wave': ['begin-run'],
+  'save-continue': ['jump', 'save', 'continue'],
+});
+
+export function routeCommandIssued(journeyId, commands = []) {
+  const required = ROUTE_COMMANDS[journeyId];
+  if (!required) return true;
+  return required.every((type) => commands.some((row) => row && row.type === type));
 }

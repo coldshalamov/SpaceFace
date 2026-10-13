@@ -8,7 +8,7 @@ import { redact } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
 import { runSession } from '../../tools/agentic/stranger-lab/lib/session.mjs';
 import { shrinkFailure } from '../../tools/agentic/stranger-lab/lib/shrink.mjs';
 import { personaIdForSweepIndex, publicSweepRow } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
-import { headedWorldLimit } from '../../tools/agentic/stranger-lab/lib/headed.mjs';
+import { canonicalForRun } from '../../tools/agentic/stranger-lab/lib/headed.mjs';
 
 const CANARY = {
   journeyId: 'flight',
@@ -72,9 +72,45 @@ test('failing sweep rows keep their tape, and combat or docking are not a flight
   });
   assert.equal(dropped.tape, undefined);
   assert.equal(dropped.tapeTicks, 2);
-  assert.match(headedWorldLimit('combat-death-retry'), /combat world/);
-  assert.match(headedWorldLimit('docking'), /docking corridor/);
-  assert.equal(headedWorldLimit('flight'), null);
+  const missed = publicSweepRow({
+    status: 'incomplete',
+    tapeHash: 'ghi',
+    confirmed: [],
+    tape: { frames: [{ tick: 3, moveZ: 0.65 }] },
+  });
+  assert.equal(missed.tape.frames.length, 1);
+  const dockingTape = canonicalForRun({
+    journeyId: 'docking', personaId: 'meticulous-cargo-handler', seed: 7, ticks: 2,
+    tape: { frames: [{ tick: 0, moveZ: 0.65, moveX: 0, turnIntent: 0 }] },
+  });
+  assert.equal(dockingTape.ok, true);
+  const combatTape = canonicalForRun({
+    journeyId: 'combat-death-retry', personaId: 'reckless-improvisor', seed: 7, ticks: 2,
+    tape: { frames: [{ tick: 0, moveZ: 0, moveX: 0, turnIntent: 0 }] },
+  });
+  assert.equal(combatTape.ok, true);
+});
+
+test('every persona attempts the journey cue, and docking closure thrust is visible', () => {
+  const dock = {
+    tick: 30, journeyId: 'docking', x: 0, z: 0, rot: 0, speed: 1, alive: true, docked: false,
+    berthed: false, dockBerth: { x: 40, z: 0 }, dockDistToBerth: 40,
+    nearest: { x: 40, z: 0, dist: 40, kind: 'station' },
+  };
+  const thrust = getPersona('meticulous-cargo-handler').decide(dock, { seed: 7, tick: 30 });
+  assert.ok(thrust.moveZ >= 0.5, thrust.moveZ);
+  const launch = {
+    tick: 5, journeyId: 'launch', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: true,
+    nearest: null,
+  };
+  const undock = getPersona('reckless-improvisor').decide(launch, { seed: 7, tick: 5 });
+  assert.ok(undock.commands.some((command) => command.type === 'undock'));
+  const mission = {
+    tick: 7, journeyId: 'mission', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: false,
+    nearest: null, missionActiveId: null,
+  };
+  const accept = getPersona('first-time-pilot').decide(mission, { seed: 7, tick: 7 });
+  assert.ok(accept.commands.some((command) => command.type === 'accept-mission' && command.missionId === 'stranger-recon'));
 });
 
 test('the sweep assigns every persona, including hostile and weak-hardware', () => {
