@@ -99,6 +99,15 @@ const TETHER_CUT_WINDOW_TICKS = tetherPlan && Number.isFinite(tetherPlan.commitT
   ? tetherPlan.commitTicks
   : 45;
 
+export function hostileLabelFor(role, bucket, telegraphed) {
+  const raw = String(role || 'unknown').trim() || 'unknown';
+  const name = raw.toUpperCase().replace(/[_-]+/g, ' ');
+  if (telegraphed) return `${name} — ATTACKING`;
+  if (bucket >= 2) return `${name} — CLOSING`;
+  if (bucket === 1) return `${name} — DRIFTING`;
+  return `${name} — HOLDING`;
+}
+
 /**
  * Name the corsair's cut only while the tether raider's window is open and the
  * visible silhouette / telegraph / verb uniquely match. Anything else stays quiet.
@@ -1368,7 +1377,8 @@ export function createThreatHalo(root, busOrOpts) {
       setAttr(slot, 'data-closing', !cue && hostileBucket[i] >= 2 ? 'boost' : null);
       const latch = tetherCutLatches.get(hostileId[i]);
       const cutLabel = latch && latch._tetherCutLatch ? latch._tetherCutLabel : null;
-      setAttr(slot, 'aria-label', cutLabel);
+      const identityLabel = hostileLabelFor(hostileRole[i], hostileBucket[i], !!cue);
+      setAttr(slot, 'aria-label', cutLabel || identityLabel);
       shown++;
     }
 
