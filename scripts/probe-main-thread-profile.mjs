@@ -38,7 +38,7 @@
 
 import fs from 'node:fs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
-import { smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
+import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -94,6 +94,9 @@ const EVAL_FILE = argValue('--eval-file');
 // --heap-sampling starts the V8 sampling heap profiler before New Game and, at the end of the held-thrust tail, writes
 // which allocation sites still hold live memory (heap-sampling.json / heap-sampling.md), with the JS heap at each milestone.
 const HEAP_SAMPLING = process.argv.includes('--heap-sampling');
+// --hold-still skips the thrust during the flight tail, so scene content does not change with distance flown: a time-based
+// startup cost then shows up as a cadence trend over the tail, a position-based one does not.
+const HOLD_STILL = process.argv.includes('--hold-still');
 // --sampling-us=N sets the CPU profiler's sampling interval in microseconds (default 500 for a launch, 200 for steady flight).
 // A coarse interval (4000) keeps the profiler's own cost out of a loading-smoothness read.
 const SAMPLING_US = Math.max(100, Number(argValue('--sampling-us')) || 0);
@@ -553,6 +556,17 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
     })));
   }
 
+  if (trace.rafStamps?.length && timeline.endWallMs > timeline.flightWallMs) {
+    lines.push('## Flight cadence by two-second bucket', '', '| seconds into flight | fps | p95 ms | worst ms | frames > 50 ms |', '|---|---:|---:|---:|---:|');
+    for (let at = 0; timeline.flightWallMs + at * 1000 < timeline.endWallMs; at += 2) {
+      const from = timeline.flightWallMs + at * 1000 - trace.timeOrigin;
+      const to = Math.min(timeline.endWallMs, timeline.flightWallMs + (at + 2) * 1000) - trace.timeOrigin;
+      const g = frameGapStats(trace.rafStamps, from, to);
+      lines.push(`| ${at}-${at + 2} | ${g.fps.toFixed(1)} | ${g.p95.toFixed(1)} | ${g.worst.toFixed(0)} | ${g.over50} |`);
+    }
+    lines.push('');
+  }
+
   lines.push(...resourceLines(trace.resources, timeline.launchWallMs, timeline.flightWallMs));
 
   lines.push('## Renderer resources', '', '| moment | programs | geometries | textures | JS heap MB |', '|---|---:|---:|---:|---:|');
@@ -946,11 +960,11 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const flightWallMs = await waitForFlight(page, 240_000, 250);
   if (HEAP_SAMPLING) await markHeap('first flight frame');
   const atFlight = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
-  log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; holding thrust ${FLIGHT_TAIL_MS} ms`);
+  log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; ${HOLD_STILL ? 'holding still' : 'holding thrust'} ${FLIGHT_TAIL_MS} ms`);
 
-  await page.keyboard.down('KeyW');
+  if (!HOLD_STILL) await page.keyboard.down('KeyW');
   await page.waitForTimeout(FLIGHT_TAIL_MS);
-  await page.keyboard.up('KeyW').catch(() => {});
+  if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
   if (HEAP_SAMPLING) {
