@@ -31,13 +31,7 @@ const EMPTY = Object.freeze({
 export function getPersona(id) {
   const persona = PERSONAS[id];
   if (!persona) throw new Error(`unknown stranger persona: ${id}`);
-  return {
-    id: persona.id,
-    summary: persona.summary,
-    decide(obs, ctx) {
-      return applyJourneyCue(persona.decide(obs, ctx), obs, ctx);
-    },
-  };
+  return persona;
 }
 
 export function listPersonas() {
@@ -74,106 +68,6 @@ function masslineJourney(obs) {
 // Seed shifts a fixed cue by a few ticks so two seeds are not the same script.
 function seededTick(seed, base, span = 3) {
   return base + ((seed >>> 0) % span);
-}
-
-function hasCommand(commands, type) {
-  return (commands || []).some((command) => command && command.type === type);
-}
-
-// Every assigned persona attempts the journey cue. Incomplete is reserved for a
-// run that issued the command and still missed the milestone.
-function applyJourneyCue(action, obs, ctx) {
-  const seed = (ctx && ctx.seed) || 0;
-  const tick = obs.tick | 0;
-  const commands = Array.isArray(action.commands) ? action.commands.slice() : [];
-  const next = { ...action, commands };
-  if (obs.journeyId === 'launch' && obs.docked && tick === seededTick(seed, 4) && !hasCommand(commands, 'undock')) {
-    commands.push({ type: 'undock' });
-  }
-  if (obs.journeyId === 'buy-refit' && obs.docked && tick === seededTick(seed, 8) && !hasCommand(commands, 'buy')) {
-    commands.push({
-      type: 'buy',
-      stationId: 'station_helios',
-      commodityId: 'cmdty_silicate',
-      qty: 1,
-      intentId: `stranger-buy-${seed}`,
-    });
-  }
-  if (obs.journeyId === 'buy-refit' && obs.docked && tick === seededTick(seed, 24) && !hasCommand(commands, 'refit')) {
-    commands.push({ type: 'refit', defId: 'mod_cargo_scanner_s', intentId: `stranger-refit-${seed}` });
-  }
-  if (obs.journeyId === 'mission' && tick === seededTick(seed, 6) && !hasCommand(commands, 'accept-mission')) {
-    commands.push({ type: 'accept-mission', missionId: 'stranger-recon' });
-  }
-  if (obs.journeyId === 'mission' && tick === seededTick(seed, 24)) next.scanPulse = true;
-  if (obs.journeyId === 'mission' && tick === seededTick(seed, 48)) {
-    commands.push({ type: 'accept-mission', missionId: 'stranger-unfinishable' });
-  }
-  if (obs.journeyId === 'mission' && obs.missionActiveId && tick === 70 && !hasCommand(commands, 'abandon-mission')) {
-    commands.push({ type: 'abandon-mission', missionId: obs.missionActiveId });
-  }
-  if (obs.journeyId === 'crucible-wave') {
-    if (obs.runPhase === 'inactive' && tick === seededTick(seed, 2) && !hasCommand(commands, 'begin-run')) {
-      commands.push({ type: 'begin-run', kind: 'survival', seed: seed >>> 0, arenaId: 'helios_core' });
-    }
-    if (obs.runPhase === 'loadout' && !hasCommand(commands, 'run-loadout-ready')) {
-      commands.push({ type: 'run-loadout-ready' });
-    }
-    if (obs.runPhase === 'arena_intro') commands.push({ type: 'run-continue', event: 'run:arenaIntroComplete' });
-    if (obs.runPhase === 'wave_intro') commands.push({ type: 'run-continue', event: 'run:waveIntroComplete' });
-  }
-  if (obs.journeyId === 'save-continue' && tick === seededTick(seed, 12) && !hasCommand(commands, 'jump')) {
-    commands.push({ type: 'jump', targetSectorId: 'sector_ceres_belt', via: 'gate' });
-  }
-  if (obs.journeyId === 'save-continue' && obs.sectorId === 'sector_ceres_belt' && obs.jumpState !== 'CHARGING' && obs.jumpState !== 'JUMPING') {
-    if (!hasCommand(commands, 'save')) commands.push({ type: 'save', slot: 'stranger' });
-    if (!hasCommand(commands, 'continue')) commands.push({ type: 'continue', slot: 'stranger' });
-  }
-  if (obs.journeyId === 'combat-death-retry') {
-    const swing = unitFromSeed(seed, tick, 2) * 2 - 1;
-    if (!ctx || !ctx.recovered) {
-      next.moveZ = 0;
-      next.moveX = clamp(swing * 0.015, -0.015, 0.015);
-      next.boost = false;
-      next.turnIntent = clamp((obs.nearest ? turnToward(obs) : 0) + swing * 0.01, -1, 1);
-    }
-    if (obs.alive === false && !hasCommand(commands, 'recover')) commands.push({ type: 'recover' });
-  }
-  if (obs.journeyId === 'scan' && tick === seededTick(seed, 15)) next.scanPulse = true;
-  if (obs.journeyId === 'launch' && !obs.docked && (Number(next.moveZ) || 0) < 0.65) {
-    next.moveZ = 0.65;
-    next.brake = false;
-  }
-  if (obs.journeyId === 'mining' && obs.nearest) {
-    next.turnIntent = turnToward(obs);
-    next.boost = false;
-    if (obs.nearest.dist > 22) next.moveZ = Math.max(Number(next.moveZ) || 0, 0.65);
-    else {
-      next.moveZ = 0;
-      next.fireGroup = 2;
-    }
-  }
-  if (obs.journeyId === 'tether-attach-cut') {
-    const phase = tick + (seed % 3);
-    // A long hold never cuts. Latch with a press, then tap once the line is on.
-    next.tether = obs.tetherActive ? (phase % 30) < 4 : (phase % 25) < 12;
-    next.tetherNearest = !obs.tetherActive;
-    if (obs.tetherActive) next.reel = -1;
-  }
-  if (obs.journeyId === 'heavy-object') {
-    next.tether = true;
-    next.reel = -1;
-  }
-  if (obs.journeyId === 'docking' && obs.dockBerth) {
-    const arrivalSpeed = Math.min(16, Math.max(2, (obs.dockDistToBerth || 0) * 0.5));
-    const tooFast = obs.speed > arrivalSpeed;
-    next.boost = false;
-    next.brake = !!obs.berthed || tooFast;
-    next.moveZ = obs.berthed || tooFast ? 0 : 0.65;
-    next.moveX = obs.berthed ? 0 : (unitFromSeed(seed, 3, 5) - 0.5) * 0.03;
-    next.turnIntent = obs.berthed ? 0 : turnToward({ ...obs, nearest: obs.dockBerth });
-  }
-  return next;
 }
 
 const PERSONAS = {
@@ -258,8 +152,10 @@ const PERSONAS = {
       }
       if (obs.journeyId === 'docking' && obs.dockBerth) {
         const arrivalSpeed = Math.min(16, Math.max(2, (obs.dockDistToBerth || 0) * 0.5));
+        // This persona's own closure thrust. It has to stay above the dropped-command
+        // gate or a thrust fault on the approach is invisible.
         return base({
-          moveZ: obs.berthed || obs.speed > arrivalSpeed ? 0 : 0.15,
+          moveZ: obs.berthed || obs.speed > arrivalSpeed ? 0 : 0.65,
           brake: obs.berthed || obs.speed > arrivalSpeed,
           moveX: bias,
           turnIntent: obs.berthed ? 0 : turnToward({ ...obs, nearest: obs.dockBerth }),

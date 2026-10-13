@@ -7,7 +7,7 @@ import { PERSONA_IDS, getPersona } from '../../tools/agentic/stranger-lab/lib/pe
 import { redact, redactString } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
 import { runSession } from '../../tools/agentic/stranger-lab/lib/session.mjs';
 import { shrinkFailure } from '../../tools/agentic/stranger-lab/lib/shrink.mjs';
-import { compactRun, personaIdForSweepIndex, publicSweepRow } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
+import { compactRun, personaIdForSweepIndex, publicSweepRow, selectHeaded } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
 import { journeyWorldStepped, replayJourneyTape } from '../../tools/agentic/stranger-lab/lib/browserJourneyHost.js';
 
 const CANARY = {
@@ -137,26 +137,57 @@ test('the journey host steps docking and combat worlds, not an empty flight', as
   assert.equal(journeyWorldStepped('combat-death-retry', flightOnly), false);
 });
 
-test('every persona attempts the journey cue, and docking closure thrust is visible', () => {
-  const dock = {
-    tick: 30, journeyId: 'docking', x: 0, z: 0, rot: 0, speed: 1, alive: true, docked: false,
-    berthed: false, dockBerth: { x: 40, z: 0 }, dockDistToBerth: 40,
-    nearest: { x: 40, z: 0, dist: 40, kind: 'station' },
-  };
-  const thrust = getPersona('meticulous-cargo-handler').decide(dock, { seed: 7, tick: 30 });
-  assert.ok(thrust.moveZ >= 0.5, thrust.moveZ);
+test('a persona that does not know the route is not given the winning cue', () => {
   const launch = {
     tick: 5, journeyId: 'launch', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: true,
     nearest: null,
   };
-  const undock = getPersona('reckless-improvisor').decide(launch, { seed: 7, tick: 5 });
-  assert.ok(undock.commands.some((command) => command.type === 'undock'));
+  for (const id of ['reckless-improvisor', 'weak-hardware-input-stress']) {
+    const action = getPersona(id).decide(launch, { seed: 7, tick: 5 });
+    assert.equal(action.commands.some((command) => command.type === 'undock'), false, id);
+  }
   const mission = {
     tick: 7, journeyId: 'mission', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: false,
     nearest: null, missionActiveId: null,
   };
   const accept = getPersona('first-time-pilot').decide(mission, { seed: 7, tick: 7 });
-  assert.ok(accept.commands.some((command) => command.type === 'accept-mission' && command.missionId === 'stranger-recon'));
+  assert.equal(accept.commands.some((command) => command.type === 'accept-mission'), false);
+  const crucible = {
+    tick: 3, journeyId: 'crucible-wave', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: false,
+    runPhase: 'inactive', nearest: null,
+  };
+  const begin = getPersona('first-time-pilot').decide(crucible, { seed: 7, tick: 3 });
+  assert.equal(begin.commands.some((command) => command.type === 'begin-run'), false);
+  const save = {
+    tick: 13, journeyId: 'save-continue', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: false,
+    sectorId: 'sector_helios_prime', jumpState: null, nearest: null,
+  };
+  const jump = getPersona('hostile-edge-case-explorer').decide(save, { seed: 7, tick: 13 });
+  assert.equal(jump.commands.some((command) => command.type === 'jump'), false);
+});
+
+test('headed selection covers every journey and keeps touch viewports', () => {
+  const runs = [];
+  let index = 0;
+  for (const journey of listJourneys()) {
+    for (const seed of SWEEP_SEEDS) {
+      runs.push({
+        journeyId: journey.id,
+        seed,
+        surface: index % 4 === 0 ? 'simulated-touch' : 'keyboard',
+        personaId: personaIdForSweepIndex(index),
+      });
+      index += 1;
+    }
+  }
+  const picked = selectHeaded(runs, 25);
+  assert.equal(picked.length, 25);
+  for (const journey of listJourneys()) {
+    assert.equal(picked.some((run) => run.journeyId === journey.id), true, journey.id);
+  }
+  assert.ok(picked.some((run) => run.journeyId === 'crucible-wave'));
+  assert.ok(picked.some((run) => run.journeyId === 'save-continue'));
+  assert.ok(picked.filter((run) => run.surface === 'simulated-touch').length >= 8);
 });
 
 test('the sweep assigns every persona, including hostile and weak-hardware', () => {
@@ -455,6 +486,40 @@ test('launch leaves a real berth and the mission route completes then fails', as
   assert.equal(mission.status, 'pass', JSON.stringify({ completion: mission.completion, commands: mission.commands, error: mission.error }));
   assert.ok(mission.milestones['mission:completed'] > 0);
   assert.ok(mission.milestones['mission:failed'] > 0);
+});
+
+test('personas that do not know the route miss it and keep the tape', async () => {
+  const cases = [
+    ['launch', 'reckless-improvisor', 'fail'],
+    ['launch', 'weak-hardware-input-stress', 'fail'],
+    ['mining', 'first-time-pilot', 'incomplete'],
+    ['mission', 'first-time-pilot', 'fail'],
+    ['crucible-wave', 'first-time-pilot', 'fail'],
+    ['save-continue', 'hostile-edge-case-explorer', 'fail'],
+    ['docking', 'reckless-improvisor', 'incomplete'],
+    ['combat-death-retry', 'massline-stunt-pilot', 'fail'],
+    ['tether-attach-cut', 'first-time-pilot', 'incomplete'],
+  ];
+  for (const [journeyId, personaId, expected] of cases) {
+    const run = await runSession({ journeyId, personaId, seed: 7 });
+    assert.equal(run.status, expected, `${personaId} ${journeyId} ${JSON.stringify(run.completion && run.completion.missing)} ${JSON.stringify((run.failures || []).map((row) => row.id))}`);
+    assert.notEqual(run.status, 'pass');
+    const row = publicSweepRow(run);
+    assert.ok(row.tape && row.tape.frames && row.tape.frames.length > 0, `${personaId} ${journeyId} dropped the tape`);
+  }
+});
+
+test('drop-thrust docking still fails with no applied closure thrust', async () => {
+  const run = await runSession({
+    journeyId: 'docking',
+    personaId: 'meticulous-cargo-handler',
+    seed: 7,
+    fault: 'drop-thrust',
+  });
+  assert.equal(run.status, 'fail');
+  assert.ok(run.failures.some((failure) => failure.id === 'unresponsive-commands'));
+  assert.equal(run.tape.frames.filter((frame) => frame.moveZ > 0.5).length, 0);
+  assert.ok(run.tape.frames.some((frame) => frame.issuedMoveZ > 0.5));
 });
 
 test('combat death is a live wreck and recovery uses the combat owner', async () => {

@@ -31,7 +31,7 @@ node tools/agentic/stranger-lab/cli.mjs replay --artifact artifacts/stranger-lab
 node tools/agentic/stranger-lab/cli.mjs sweep
 ```
 
-Twelve journeys × twelve seeds, rotating through every persona. Each persona attempts that journey's cue. Incomplete means the cue was issued and the milestone is still missing. Every non-pass row keeps its tape. A detector confirmation exits 1 even when headed replay did not pass. Chrome at 390×844 steps the selected tapes on each journey's systems and records that host result. A row whose world was not stepped is `unverified`, not a pass. `deviceTested` stays false. No frame rate is claimed.
+Twelve journeys × twelve seeds, rotating through every persona. Each persona's own policy is the only input. A persona that does not know the route misses it: fail when the route was never taken, incomplete when it was taken and the milestone is still missing. Every non-pass row keeps its tape. A detector confirmation exits 1 even when headed replay did not pass. Chrome at 390×844 steps 25 tapes that cover every journey, including crucible and save/continue, and keeps simulated-touch rows. A row whose world was not stepped is `unverified`, not a pass. `deviceTested` stays false. No frame rate is claimed.
 
 The docking fixture approaches the manifest's actual berth and measures physical
 berth arrival. Its headless completion does not exercise the station screen or

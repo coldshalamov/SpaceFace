@@ -116,14 +116,42 @@ export function compactRun(result) {
   };
 }
 
-function selectHeaded(runs, count) {
+export function selectHeaded(runs, count) {
   const picked = [];
-  const touch = runs.filter((run) => run.surface === 'simulated-touch');
-  const touchStep = Math.max(1, Math.floor(touch.length / 8));
-  for (let i = 0; i < touch.length && picked.length < 8; i += touchStep) picked.push(touch[i]);
+  const seen = new Set();
+  const byJourney = new Map();
+  for (const run of runs) {
+    const list = byJourney.get(run.journeyId) || [];
+    list.push(run);
+    byJourney.set(run.journeyId, list);
+  }
+  for (const list of byJourney.values()) {
+    if (picked.length >= count) break;
+    const touch = list.find((run) => run.surface === 'simulated-touch');
+    const choice = touch || list[0];
+    picked.push(choice);
+    seen.add(choice);
+  }
+  const touch = runs.filter((run) => run.surface === 'simulated-touch' && !seen.has(run));
+  const touchGoal = Math.min(8, count);
+  let touchCount = picked.filter((run) => run.surface === 'simulated-touch').length;
+  const touchStep = Math.max(1, Math.floor(touch.length / touchGoal) || 1);
+  for (let i = 0; i < touch.length && touchCount < touchGoal && picked.length < count; i += touchStep) {
+    picked.push(touch[i]);
+    seen.add(touch[i]);
+    touchCount += 1;
+  }
   const stride = Math.max(1, Math.floor(runs.length / count));
   for (let i = 0; i < runs.length && picked.length < count; i += stride) {
-    if (!picked.includes(runs[i])) picked.push(runs[i]);
+    if (seen.has(runs[i])) continue;
+    picked.push(runs[i]);
+    seen.add(runs[i]);
+  }
+  for (const run of runs) {
+    if (picked.length >= count) break;
+    if (seen.has(run)) continue;
+    picked.push(run);
+    seen.add(run);
   }
   return picked.slice(0, count);
 }
