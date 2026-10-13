@@ -884,6 +884,16 @@ function resetAutoTargetPath(host, state = host && host.state) {
   }
 }
 
+// A map, a pause, or a focus loss used to keep the G-mode knob where the pilot left it.
+// The next flight tick then republished that shove as thrust. Discard the knob and the
+// vector it already published. The mode itself stays; only a fresh packet steers again.
+function discardCombatStick(host) {
+  const { width, height } = centeredPointer();
+  resetDynamicFlightStick(host, width, height);
+  const inp = host && host.state && host.state.input;
+  if (inp) writeAutoTargetVector(inp);
+}
+
 function stickViewport() {
   // Pass a collapsed window through as itself. viewportSize() floors at 1px for the pointer,
   // which would turn a minimize into a real radius and keep commanding thrust.
@@ -1359,6 +1369,9 @@ export const input = {
       committedInput.boost = false;
       committedInput.brake = false;
     }
+    // Focus loss, death, and a hidden page. The knob is not a key, so clearing the
+    // buttons used to leave the shove in place for the tick flight resumed.
+    discardCombatStick(this);
     if (committedInput
       && Object.prototype.hasOwnProperty.call(committedInput, 'aimIntentActive')) {
       committedInput.aimIntentActive = false;
@@ -1558,7 +1571,7 @@ export const input = {
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
       inp.tetherMode = null;
       resetAutoTargetPath(this, state);
-      writeAutoTargetVector(inp);
+      discardCombatStick(this);
       this.cancelWorldObjectGesture('neutralize');
       this._m0 = false; this._m1 = false; this._m2 = false;
       this._edgePrev = this._edgePrev || {};

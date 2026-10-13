@@ -6326,14 +6326,24 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   `standingPriceMultiplier`/`stationSurchargeWaived` on the payload) with no UI consumer. The market
   driver presenter now adds one `standing` row on the selected instrument, worded from the same
   multipliers in percent against a stranger's quote ("Allied −3.1%"; "Surcharge waived" under a
-  commission), absent for a pilot treated as a stranger and never on a commodity card. DONE —
-  `test/econ-price-cause-standing.test.mjs` 7/7; market/quote surface 63/63.
+  commission), absent for a pilot treated as a stranger and never on a commodity card. The
+  selected counter passes the reputation multipliers `quote()` actually applied (conditions
+  excluded), so a rounded book cannot disagree with the price about to be paid. DONE —
+  `test/econ-price-cause-standing.test.mjs`; market quote and the standing row agree on seed 4242.
 - **AUDIO-DEVICE-FOLLOW (row 301) — the mix follows an output-device change (2026-10-13)** — nothing in
   `src/` or `electron/` handled `devicechange`. `src/audio/outputDeviceFollow.js` listens on
   `navigator.mediaDevices`, settles a burst into one call, and resumes a context that RAN and stopped
   through the one lifecycle resume owner; a context that never ran stays locked (no silent launch),
-  a hidden page resumes with the page, and the context is never rebuilt (no doubled loops).
-  DONE — `test/audio-output-device-follow.test.mjs` 7/7; audio lifecycle/session/parity 26/26.
+  a hidden page resumes with the page, and the context is never rebuilt (no doubled loops). A
+  context that is already running is retargeted onto the OS default with `setSinkId('')` on that
+  same context, so a headset that just left does not keep the mix. Muted, closed, and
+  never-started contexts do not open hardware. DONE —
+  `test/audio-output-device-follow.test.mjs`.
+- **CONTROL-BOUNDARY-STICK (SFQ-B014) — a map or a lost window drops a combat-stick shove (2026-10-13)** —
+  clearing the keys left the G-mode knob where the pilot had pushed it, so closing the map or
+  coming back to the window resumed that shove. The knob and the vector it already published
+  now go to neutral. The combat-stick mode stays on, the gun does not keep firing, and the
+  next real shove still steers. DONE — `test/input-modal-release-boundary.test.mjs`.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools

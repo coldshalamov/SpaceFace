@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { input } from '../src/systems/input.js';
+import { recordDynamicFlightStick, projectDynamicFlightStick } from '../src/systems/dynamicFlightStick.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 
@@ -87,5 +88,56 @@ test('a mouse released inside a modal cannot keep the gun firing on resume', () 
     f.state.ui.screenStack.pop();
     f.tick();
     assert.equal(f.state.input.fire, false, 'a consumed release cannot become a held gun command');
+  } finally { f.cleanup(); }
+});
+
+function shoveCombatStick(f) {
+  // A flat raycast collapses the camera basis and the stick publishes nothing.
+  f.host.helpers = {
+    raycastToPlane: (n) => ({ x: (n.x || 0) * 40, z: -(n.y || 0) * 40 }),
+    worldToScreen: () => ({ x: 640, y: 400 }),
+  };
+  f.state.input.autoFire = true;
+  f.tick();
+  recordDynamicFlightStick(f.host, 90, 0, 1280, 800);
+  f.tick();
+  assert.equal(f.state.input.autoTargetVector.active, true);
+  assert.equal(projectDynamicFlightStick(f.host, 1280, 800).active, true);
+}
+
+test('closing the map does not resume a combat-stick shove', () => {
+  const f = fixture();
+  try {
+    shoveCombatStick(f);
+    f.state.ui.screenStack.push('map');
+    f.tick();
+    assert.equal(f.state.input.autoTargetVector.active, false);
+    assert.equal(projectDynamicFlightStick(f.host, 1280, 800).magnitude, 0);
+    assert.equal(f.state.input.fire, false);
+    f.state.ui.screenStack.pop();
+    f.tick();
+    assert.equal(f.state.input.autoTargetVector.active, false, 'the shove does not resume');
+    assert.equal(f.state.input.autoFire, true, 'combat stick stays armed');
+    recordDynamicFlightStick(f.host, 90, 0, 1280, 800);
+    f.tick();
+    assert.equal(f.state.input.autoTargetVector.active, true, 'a fresh shove still steers');
+  } finally { f.cleanup(); }
+});
+
+test('losing focus drops a combat-stick shove and does not leave the gun firing', () => {
+  const f = fixture();
+  try {
+    shoveCombatStick(f);
+    f.state.input.fire = true;
+    f.host.releaseHeldControls('window-blur');
+    assert.equal(f.state.input.fire, false);
+    assert.equal(f.state.input.autoFire, true);
+    assert.equal(f.state.input.autoTargetVector.active, false);
+    assert.equal(projectDynamicFlightStick(f.host, 1280, 800).magnitude, 0);
+    f.tick();
+    assert.equal(f.state.input.autoTargetVector.active, false, 'the next flight tick stays neutral');
+    recordDynamicFlightStick(f.host, 90, 0, 1280, 800);
+    f.tick();
+    assert.equal(f.state.input.autoTargetVector.active, true);
   } finally { f.cleanup(); }
 });
