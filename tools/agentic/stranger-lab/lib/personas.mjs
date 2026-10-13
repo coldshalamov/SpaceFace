@@ -69,9 +69,17 @@ const PERSONAS = {
   'first-time-pilot': {
     id: 'first-time-pilot',
     summary: 'Gentle thrust, rare hesitation, no weapons, tether only when the cue is the line.',
-    decide(obs) {
-      if ((obs.tick % 24) === 0) return base({ brake: false });
-      const turn = clamp(turnToward(obs) * 0.35, -0.25, 0.25);
+    decide(obs, ctx) {
+      const seed = ctx && ctx.seed || 0;
+      const bias = unitFromSeed(seed, obs.tick, 1) * 0.16 - 0.08;
+      if (obs.journeyId === 'launch') {
+        const commands = [];
+        if (obs.docked && obs.tick === 4) commands.push({ type: 'undock' });
+        if (obs.docked) return base({ brake: true, commands });
+        return base({ moveZ: 0.75, turnIntent: clamp(bias, -0.2, 0.2), commands });
+      }
+      if ((obs.tick % 24) === 0) return base({ brake: false, turnIntent: bias });
+      const turn = clamp(turnToward(obs) * 0.35 + bias, -0.4, 0.4);
       return base({
         moveZ: obs.tick < 8 ? 0 : 0.65,
         turnIntent: turn,
@@ -102,7 +110,9 @@ const PERSONAS = {
   'meticulous-cargo-handler': {
     id: 'meticulous-cargo-handler',
     summary: 'Slow approach, no boost, reel when lined, buys and fits only at a berth.',
-    decide(obs) {
+    decide(obs, ctx) {
+      const seed = ctx && ctx.seed || 0;
+      const bias = obs.journeyId === 'docking' ? 0 : unitFromSeed(seed, 3, 5) * 0.2 - 0.1;
       const dist = obs.nearest ? obs.nearest.dist : 999;
       const closing = dist > 18 ? 0.45 : 0.15;
       const commands = [];
@@ -141,6 +151,7 @@ const PERSONAS = {
       }
       return base({
         moveZ: obs.journeyId === 'buy-refit' ? 0 : closing,
+        moveX: bias,
         turnIntent: turnToward(obs),
         tether: masslineJourney(obs) && dist < 80,
         reel: obs.tetherActive ? -1 : 0,
@@ -152,14 +163,16 @@ const PERSONAS = {
     id: 'mission-runner',
     summary: 'Flies the cue, accepts the visible offer, abandons when the contract will not finish.',
     decide(obs, ctx) {
+      const seed = ctx && ctx.seed || 0;
       const commands = [];
-      if (obs.journeyId === 'mission' && obs.missionOfferId && obs.tick === 6) {
-        commands.push({ type: 'accept-mission', missionId: obs.missionOfferId });
+      if (obs.journeyId === 'mission' && obs.tick === 6) {
+        commands.push({ type: 'accept-mission', missionId: 'stranger-recon' });
       }
-      if (obs.journeyId === 'mission' && obs.missionActiveId && obs.tick === 48) {
-        const done = obs.missionTarget != null && obs.missionProgress != null
-          && obs.missionProgress >= obs.missionTarget;
-        if (!done) commands.push({ type: 'abandon-mission', missionId: obs.missionActiveId });
+      if (obs.journeyId === 'mission' && obs.tick === 48) {
+        commands.push({ type: 'accept-mission', missionId: 'stranger-unfinishable' });
+      }
+      if (obs.journeyId === 'mission' && obs.missionActiveId && obs.tick === 70) {
+        commands.push({ type: 'abandon-mission', missionId: obs.missionActiveId });
       }
       if (obs.journeyId === 'crucible-wave') {
         if (obs.runPhase === 'inactive' && obs.tick === 2) {
@@ -175,8 +188,9 @@ const PERSONAS = {
         if (obs.runPhase === 'wave_intro') commands.push({ type: 'run-continue', event: 'run:waveIntroComplete' });
       }
       return base({
-        moveZ: obs.journeyId === 'mission' || obs.journeyId === 'crucible-wave' ? 0.4 : 0.7,
-        turnIntent: clamp(turnToward(obs), -0.6, 0.6),
+        moveZ: obs.journeyId === 'mission' || obs.journeyId === 'crucible-wave' ? 0.4 : 0.55 + unitFromSeed(seed, 1, 8) * 0.3,
+        turnIntent: clamp(turnToward(obs) + unitFromSeed(seed, obs.tick, 8) * 0.1 - 0.05, -0.6, 0.6),
+        scanPulse: obs.journeyId === 'mission' && obs.tick === 24,
         commands,
       });
     },
@@ -184,8 +198,9 @@ const PERSONAS = {
   'massline-stunt-pilot': {
     id: 'massline-stunt-pilot',
     summary: 'Holds the line, strafes, and reels in a seeded orbit attempt.',
-    decide(obs) {
-      const orbit = Math.sin(obs.tick / 8);
+    decide(obs, ctx) {
+      const seed = ctx && ctx.seed || 0;
+      const orbit = Math.sin((obs.tick + Math.floor(unitFromSeed(seed, 0, 6) * 8)) / 8);
       const attaching = obs.journeyId === 'tether-attach-cut';
       const holdLine = attaching
         ? (obs.tetherActive ? (obs.tick % 30) < 4 : (obs.tick % 25) < 12)
@@ -208,10 +223,11 @@ const PERSONAS = {
       const burst = (obs.tick % 17) < 3;
       if (!burst) return base({});
       const chatter = unitFromSeed(ctx.seed, obs.tick, 9) > 0.5 ? 1 : -1;
+      const wobble = unitFromSeed(ctx.seed, obs.tick, 11);
       return base({
         moveZ: chatter > 0 ? 1 : 0,
-        moveX: chatter,
-        turnIntent: chatter,
+        moveX: chatter * (0.5 + wobble * 0.5),
+        turnIntent: chatter * (0.5 + wobble * 0.5),
         fire: obs.journeyId === 'combat-death-retry',
         fireGroup: obs.journeyId === 'mining' ? 2 : 0,
         scanPulse: obs.journeyId === 'scan' && obs.tick === 3,
@@ -222,7 +238,8 @@ const PERSONAS = {
   'save-continue-skeptic': {
     id: 'save-continue-skeptic',
     summary: 'Flies, requests a gate jump, then saves and continues from that envelope.',
-    decide(obs) {
+    decide(obs, ctx) {
+      const seed = ctx && ctx.seed || 0;
       const commands = [];
       if (obs.journeyId === 'save-continue' && obs.tick === 12) {
         commands.push({
@@ -236,8 +253,8 @@ const PERSONAS = {
         commands.push({ type: 'continue', slot: 'stranger' });
       }
       return base({
-        moveZ: obs.tick < 30 ? 0.7 : 0.2,
-        turnIntent: 0.1,
+        moveZ: obs.tick < 30 ? 0.55 + unitFromSeed(seed, 2, 7) * 0.3 : 0.2,
+        turnIntent: unitFromSeed(seed, obs.tick, 7) * 0.4 - 0.2,
         commands,
       });
     },
@@ -270,10 +287,11 @@ const PERSONAS = {
         commands.push({ type: 'recover' });
       }
       const flip = unitFromSeed(ctx.seed, obs.tick, 4) > 0.5 ? 1 : -1;
+      const wobble = unitFromSeed(ctx.seed, obs.tick, 12);
       return base({
-        moveX: flip,
+        moveX: flip * (0.5 + wobble * 0.5),
         moveZ: -flip,
-        turnIntent: flip,
+        turnIntent: flip * (0.5 + wobble * 0.5),
         boost: true,
         brake: true,
         fire: true,

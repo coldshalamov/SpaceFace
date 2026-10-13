@@ -9,54 +9,51 @@ export function detectFailures(input) {
   const samples = input.samples || [];
   const frames = input.frames || [];
   const commands = input.commands || [];
-  const bus = input.bus || [];
-  const fault = input.fault || null;
   const failures = [];
   const closures = [];
 
+  const dropped = detectDroppedCommand(frames);
   const unresponsive = detectUnresponsive(samples, frames);
-  if (unresponsive) failures.push(tag(unresponsive, fault));
+  if (dropped) failures.push(dropped);
+  else if (unresponsive) failures.push(tag(unresponsive));
   else closures.push(closure(
     'unresponsive-commands',
-    'Thrust that was actually applied produced motion, or no thrust was applied.',
+    'Thrust that was actually applied produced motion, or no thrust was issued.',
   ));
 
-  const dropped = detectDroppedCommand(frames, fault);
-  if (dropped) failures.push(tag(dropped, fault));
-
   const menu = detectMenuFallback(samples, frames);
-  if (menu) failures.push(tag(menu, fault));
+  if (menu) failures.push(tag(menu));
   else closures.push(closure('unexpected-menu-fallback', 'Mode stayed off the menu while the pilot was flying.'));
 
   const stalled = detectStalled(samples);
-  if (stalled) failures.push(tag(stalled, fault));
+  if (stalled) failures.push(tag(stalled));
   else closures.push(closure('stalled-loading', 'simTime advanced on flight ticks.'));
 
   const dock = detectImpossibleDock(samples);
-  if (dock) failures.push(tag(dock, fault));
+  if (dock) failures.push(tag(dock));
   else closures.push(closure(
     'impossible-docking',
     'No berth flag flipped on while the nearest station contact was far. A counter fixture that starts docked is not a flip.',
   ));
 
   const pay = detectDoublePayment(commands);
-  if (pay.failure) failures.push(tag(pay.failure, fault));
+  if (pay.failure) failures.push(tag(pay.failure));
   if (pay.closure) closures.push(pay.closure);
 
   const fake = detectFalseSuccess(commands);
-  if (fake) failures.push(tag(fake, fault));
-  else if (commands.some((row) => row.type === 'buy' || row.type === 'refit')) {
-    closures.push(closure('false-success', 'A claimed purchase moved credits or was an honest refusal.'));
+  if (fake) failures.push(tag(fake));
+  else if (commands.some((row) => row.type === 'buy' || row.type === 'refit' || row.type === 'probe-dock')) {
+    closures.push(closure('false-success', 'A claimed purchase or dock matched the station writer, or the probe refused a ship that was not berthed.'));
   }
 
   const stuck = detectStuckMission(samples, commands);
-  if (stuck) failures.push(tag(stuck, fault));
+  if (stuck) failures.push(tag(stuck));
   else if (commands.some((row) => row.type === 'abandon-mission' || row.type === 'accept-mission')) {
     closures.push(closure('stuck-missions', 'Accept and abandon matched the mission status that followed.'));
   }
 
   const controls = detectWrongControls(samples, frames);
-  if (controls) failures.push(tag(controls, fault));
+  if (controls) failures.push(tag(controls));
   else closures.push(closure(
     'wrong-ship-controls',
     'Sustained turn did not yaw the opposite way, or no sustained turn was applied.',
@@ -72,11 +69,11 @@ export function detectFailures(input) {
       id: 'missing-essential-model',
       tick: 0,
       detail: input.asset.detail || 'essential model failed to load',
-    }, fault));
+    }));
   }
 
   const save = detectSaveDiscontinuity(commands);
-  if (save.failure) failures.push(tag(save.failure, fault));
+  if (save.failure) failures.push(tag(save.failure));
   if (save.closure) closures.push(save.closure);
 
   const exposed = new Set();
@@ -85,7 +82,7 @@ export function detectFailures(input) {
   if (samples.some((sample) => sample.mode === 'flight')) exposed.add('unexpected-menu-fallback');
   if (samples.filter((sample) => sample.mode === 'flight' && sample.alive).length > 10) exposed.add('stalled-loading');
   if (samples.some((sample, i) => i && sample.docked && !samples[i - 1].docked)) exposed.add('impossible-docking');
-  if (commands.some((row) => row.type === 'buy' || row.type === 'refit')) exposed.add('false-success');
+  if (commands.some((row) => row.type === 'buy' || row.type === 'refit' || row.type === 'probe-dock')) exposed.add('false-success');
   if (commands.some((row) => row.duplicate)) exposed.add('double-payment');
   if (commands.some((row) => row.type === 'accept-mission' || row.type === 'abandon-mission')) exposed.add('stuck-missions');
   if (save.closure) exposed.add('save-discontinuity');
@@ -104,12 +101,12 @@ export function detectFailures(input) {
   };
 }
 
-function tag(failure, fault) {
+function tag(failure) {
   return {
     id: failure.id,
     tick: failure.tick,
     detail: failure.detail,
-    origin: fault ? 'canary' : 'product',
+    origin: failure.origin || 'product',
   };
 }
 
@@ -133,9 +130,11 @@ function detectUnresponsive(samples, frames) {
     if (!frame || frame.moveZ < 0.5 || frame.brake) continue;
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
     if (start.dockPhase && start.dockPhase !== 'none') continue;
-    if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160) continue;
     if (start.nearest && start.nearest.dist < 20) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
+    // A station contact closes this detector only when the ship actually slowed into it.
+    if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160
+      && end.speed + 0.05 < start.speed) continue;
     const moved = Math.hypot(end.x - start.x, end.z - start.z);
     const sped = end.speed - start.speed;
     if (moved < 0.25 && sped < 0.05) {
@@ -149,14 +148,15 @@ function detectUnresponsive(samples, frames) {
   return null;
 }
 
-function detectDroppedCommand(frames, fault) {
-  if (fault !== 'drop-thrust') return null;
-  const thrust = frames.find((frame) => frame.issuedMoveZ > 0.5 && frame.moveZ < 0.2);
+function detectDroppedCommand(frames) {
+  const thrust = frames.find((frame) => frame.injectedFault === 'drop-thrust'
+    && frame.issuedMoveZ > 0.5 && frame.moveZ < 0.2);
   if (!thrust) return null;
   return {
     id: 'unresponsive-commands',
     tick: thrust.tick | 0,
     detail: 'issued forward thrust was dropped before the sim step',
+    origin: 'canary',
   };
 }
 
@@ -253,6 +253,13 @@ function detectDoublePayment(commands) {
 function detectFalseSuccess(commands) {
   for (const command of commands) {
     if (!command || command.ok !== true) continue;
+    if (command.type === 'probe-dock' && command.berthed !== true) {
+      return {
+        id: 'false-success',
+        tick: command.tick,
+        detail: 'dock probe reported ok while the ship was not berthed',
+      };
+    }
     if (command.type !== 'buy' && command.type !== 'refit') continue;
     if (command.duplicate) continue;
     if (command.refused) {

@@ -1,8 +1,9 @@
 // Bounded sweep: every journey × every seed, one runtime at a time.
 
-import { listJourneys } from './journeys.mjs';
-import { PERSONA_IDS } from './personas.mjs';
+import { getJourney, listJourneys } from './journeys.mjs';
 import { SWEEP_SEEDS } from './manifest.mjs';
+import { compareDigests } from './detectors.mjs';
+import { verifyHeadedBrowser } from './headed.mjs';
 import { runSession } from './session.mjs';
 
 export async function runSweep(options = {}) {
@@ -12,7 +13,7 @@ export async function runSweep(options = {}) {
   let index = 0;
   for (const journeyId of journeys) {
     for (const seed of seeds) {
-      const personaId = options.personaId || PERSONA_IDS[index % PERSONA_IDS.length];
+      const personaId = options.personaId || getJourney(journeyId).defaultPersona;
       const surface = index % 4 === 0 ? 'simulated-touch' : 'keyboard';
       const result = await runSession({
         journeyId,
@@ -35,6 +36,18 @@ export async function runSweep(options = {}) {
     tapeHash: run.tapeHash,
   })));
   const headed = selectHeaded(runs, 25);
+  const repeated = runs[0]
+    ? await runSession({
+      journeyId: runs[0].journeyId,
+      personaId: runs[0].personaId,
+      seed: runs[0].seed,
+      surface: runs[0].surface,
+      fault: null,
+    })
+    : null;
+  const drift = repeated ? compareDigests(runs[0].digest, repeated.digest) : null;
+  if (drift) confirmed.push({ ...drift, journeyId: runs[0].journeyId, seed: runs[0].seed });
+  const headedBrowser = await verifyHeadedBrowser(headed);
   const walls = runs.map((run) => run.wallMs).filter((ms) => Number.isFinite(ms)).sort((a, b) => a - b);
   return {
     schema: 'spaceface.strangerSweep.v1',
@@ -49,11 +62,8 @@ export async function runSweep(options = {}) {
     incompleteCount: runs.filter((run) => run.status === 'incomplete').length,
     infraCount: runs.filter((run) => run.status === 'infra').length,
     confirmed,
-    headedBrowser: {
-      status: 'unverified',
-      reason: 'This host does not claim a headed GPU session. The 25 runs below are the selection, not a browser result.',
-      runs: headed,
-    },
+    determinismDrift: drift,
+    headedBrowser,
     performance: {
       medianWallMs: walls.length ? walls[(walls.length / 2) | 0] : null,
       maxWallMs: walls.length ? walls[walls.length - 1] : null,

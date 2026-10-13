@@ -26,6 +26,7 @@ export function observeState(state, ctx = {}) {
     sectorId: state.world && state.world.currentSectorId || null,
     alive: !!(player && player.alive !== false),
     hull: player && Number.isFinite(player.hull) ? round6(player.hull) : null,
+    shield: player && Number.isFinite(player.shield) ? round6(player.shield) : null,
     x: round6(pos.x || 0),
     z: round6(pos.z || 0),
     vx: round6(vel.x || 0),

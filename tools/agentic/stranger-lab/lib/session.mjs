@@ -8,23 +8,25 @@ import { createMasslineInputGrammar } from '../../../../src/systems/masslineInpu
 import { buildEntitySpawnSpec } from '../../../../src/testing/lab/entityProfiles.js';
 import { CURRENT_VERSION } from '../../../../src/data/saveVersion.js';
 import { NEW_GAME } from '../../../../src/data/newGameDefaults.js';
-import { CombatDoctrineId } from '../../../../src/ai/combatDoctrine.js';
 import {
   collisionProxyIdForStation,
   resolveBerthWorld,
   resolveCorridorAxisWorld,
   resolveCollisionProxyManifest,
 } from '../../../../src/data/collisionProxyManifests.js';
+import { laneInputWrite } from '../../../../src/core/simLaneCommands.js';
+import { commitDockedUiState } from '../../../../src/ui/dockStateCommit.js';
+import { checkEssentialBodies } from './assets.mjs';
 import { systemsForJourney } from './bundles.mjs';
-import { detectFailures } from './detectors.mjs';
+import { compareDigests, detectFailures } from './detectors.mjs';
 import { assessJourney, getJourney } from './journeys.mjs';
 import { observeState, simDigest } from './observe.mjs';
 import { getPersona } from './personas.mjs';
 import { stableStringify } from './rng.mjs';
 import { redact, redactString } from './redact.mjs';
+import { createTouchSession, projectSimulatedTouch, TOUCH_VIEWPORT } from './touchSurface.mjs';
 
 const HOME_SECTOR = 'sector_helios_prime';
-const TOUCH_VIEWPORT = Object.freeze({ width: 390, height: 844, device: 'simulated-touch' });
 
 export async function runSession(options = {}) {
   const journey = getJourney(options.journeyId);
@@ -34,6 +36,7 @@ export async function runSession(options = {}) {
   const surface = options.surface === 'simulated-touch' ? 'simulated-touch' : 'keyboard';
   const ticks = options.ticks != null ? options.ticks | 0 : journey.ticks;
   const playback = options.playbackTape || null;
+  const touchSession = !playback && surface === 'simulated-touch' ? createTouchSession() : null;
   const wallStart = process.hrtime.bigint();
   const heapStart = process.memoryUsage().heapUsed;
   const consoleCapture = hookConsole();
@@ -61,6 +64,11 @@ export async function runSession(options = {}) {
     if (state.world) state.world.currentSectorId = state.world.currentSectorId || HOME_SECTOR;
     if (state.player && !(state.player.credits > 0)) state.player.credits = NEW_GAME.credits;
 
+    if (journey.id === 'combat-death-retry' && state.player) {
+      // Adventure's 3x shield cushion is the career opener. This route is a combat death,
+      // which the derived-stats owner already treats as the crucible profile.
+      state.player.combatProfile = 'crucible';
+    }
     const aliasMap = Object.create(null);
     for (const entity of journey.entities) {
       const built = buildEntitySpawnSpec(entity, state);
@@ -99,7 +107,7 @@ export async function runSession(options = {}) {
         ? actionFromTape(playback, tick)
         : persona.decide(obs, { seed, tick, journeyId: journey.id, surface,
           recovered: milestones['player:respawn'] > 0 });
-      const applied = materializeAction(decided, fault, surface);
+      const applied = materializeAction(decided, playback ? null : fault, playback ? 'keyboard' : surface, touchSession);
       applied.frame.tick = tick;
       frames.push(applied.frame);
       applyAction(state, grammar, applied.frame, SIM_DT);
@@ -114,30 +122,33 @@ export async function runSession(options = {}) {
     if (finalSample && finalSample.dockPhase && finalSample.dockPhase !== 'none') {
       milestones[`docking:${finalSample.dockPhase}`] = 1;
     }
+    const asset = checkEssentialBodies(journey);
+    const digest = sha256(stableStringify(simDigest(samples)));
     const detection = detectFailures({
       samples,
       frames,
       commands: commandNotes,
       bus: busLog,
-      fault,
-      asset: {
-        essentialModelCheck: 'not-run',
-        reason: 'rendering-detached-headless',
-      },
+      asset,
     });
-    const digest = sha256(stableStringify(simDigest(samples)));
+    if (options.referenceDigest && options.referenceDigest !== digest) {
+      const drift = compareDigests(options.referenceDigest, digest);
+      detection.failures.push(drift);
+      detection.confirmed.push(drift);
+    }
     const tape = { schema: 'spaceface.strangerTape.v1', frames };
     const tapeHash = sha256(stableStringify(tape));
     const ordered = detection.failures
       .slice()
       .sort((a, b) => a.id.localeCompare(b.id) || a.tick - b.tick);
     const primary = ordered[0] || null;
+    const recordedFault = frames.find((frame) => frame.injectedFault)?.injectedFault || null;
     const fingerprint = primary
       ? sha256(stableStringify({
         journeyId: journey.id,
         personaId: persona.id,
         seed,
-        fault,
+        fault: recordedFault,
         surface,
         failureId: primary.id,
         tick: primary.tick,
@@ -183,7 +194,7 @@ export async function runSession(options = {}) {
         console: consoleCapture.lines,
         eventTimeline: busLog,
         simDigest: digest,
-        assetStatus: { essentialModelCheck: 'not-run', reason: 'rendering-detached-headless' },
+        assetStatus: asset,
         saveGeneration: commandNotes.some((note) => note.type === 'save') ? CURRENT_VERSION : null,
         resources: {
           wallMs: Math.round(wallMs * 100) / 100,
@@ -239,17 +250,36 @@ function finishInfra(journey, persona, seed, fault, surface, error) {
   };
 }
 
-function materializeAction(action, fault, surface) {
-  const issuedMoveZ = Number(action.moveZ) || 0;
-  let moveZ = issuedMoveZ;
+function materializeAction(action, fault, surface, touchSession) {
+  const playback = action.playback === true;
   let moveX = Number(action.moveX) || 0;
+  let moveZ = Number(action.moveZ) || 0;
   let turnIntent = Number(action.turnIntent) || 0;
-  if (surface === 'simulated-touch') {
-    moveX = Math.round(moveX * 4) / 4;
-    moveZ = Math.round(moveZ * 4) / 4;
-    turnIntent = Math.round(turnIntent * 4) / 4;
+  let boost = !!action.boost;
+  let fire = !!action.fire;
+  let fireGroup = action.fireGroup | 0;
+  let brake = !!action.brake;
+  let tether = !!action.tether;
+  let reel = action.reel < 0 ? -1 : (action.reel > 0 ? 1 : 0);
+  let issuedMoveZ = playback && Number.isFinite(action.issuedMoveZ) ? action.issuedMoveZ : moveZ;
+  let injectedFault = playback ? (action.injectedFault || null) : null;
+  if (!playback && surface === 'simulated-touch' && touchSession) {
+    const touched = projectSimulatedTouch(touchSession, action);
+    moveX = touched.moveX;
+    moveZ = touched.moveZ;
+    turnIntent = touched.turnIntent;
+    boost = touched.boost;
+    fire = touched.fire;
+    fireGroup = touched.fireGroup;
+    brake = touched.brake;
+    tether = touched.tether;
+    reel = touched.reel;
+    issuedMoveZ = moveZ;
   }
-  if (fault === 'drop-thrust') moveZ = 0;
+  if (!playback && fault === 'drop-thrust') {
+    moveZ = 0;
+    injectedFault = 'drop-thrust';
+  }
   const commands = Array.isArray(action.commands) ? action.commands.map((command) => ({ ...command })) : [];
   return {
     frame: {
@@ -257,15 +287,16 @@ function materializeAction(action, fault, surface) {
       moveX,
       moveZ,
       turnIntent,
-      boost: !!action.boost,
-      fire: !!action.fire,
-      fireGroup: action.fireGroup | 0,
-      tether: !!action.tether,
-      reel: action.reel < 0 ? -1 : (action.reel > 0 ? 1 : 0),
+      boost,
+      fire,
+      fireGroup,
+      tether,
+      reel,
       scanPulse: !!action.scanPulse,
-      brake: !!action.brake,
+      brake,
       tetherNearest: !!action.tetherNearest,
       issuedMoveZ,
+      injectedFault,
       commands,
     },
   };
@@ -279,36 +310,42 @@ function actionFromTape(tape, tick) {
     if (frameTick <= tick) current = frame;
     else break;
   }
-  if (!current || (current.tick | 0) !== tick) {
+  const held = current;
+  if (!held || (held.tick | 0) !== tick) {
     return {
-      moveX: current ? current.moveX : 0,
-      moveZ: current ? current.moveZ : 0,
-      turnIntent: current ? current.turnIntent : 0,
-      boost: current ? current.boost : false,
-      fire: current ? current.fire : false,
-      fireGroup: current ? current.fireGroup : 0,
-      tether: current ? current.tether : false,
-      reel: current ? current.reel : 0,
+      playback: true,
+      moveX: held ? held.moveX : 0,
+      moveZ: held ? held.moveZ : 0,
+      issuedMoveZ: held && Number.isFinite(held.issuedMoveZ) ? held.issuedMoveZ : (held ? held.moveZ : 0),
+      injectedFault: held ? held.injectedFault || null : null,
+      turnIntent: held ? held.turnIntent : 0,
+      boost: held ? held.boost : false,
+      fire: held ? held.fire : false,
+      fireGroup: held ? held.fireGroup : 0,
+      tether: held ? held.tether : false,
+      reel: held ? held.reel : 0,
       scanPulse: false,
-      brake: current ? current.brake : false,
+      brake: held ? held.brake : false,
       tetherNearest: false,
       commands: [],
     };
   }
-  const restoreThrust = current.issuedMoveZ > 0.5 && current.moveZ < 0.2;
   return {
-    moveX: current.moveX,
-    moveZ: restoreThrust ? current.issuedMoveZ : current.moveZ,
-    turnIntent: current.turnIntent,
-    boost: current.boost,
-    fire: current.fire,
-    fireGroup: current.fireGroup,
-    tether: current.tether,
-    reel: current.reel,
-    scanPulse: !!current.scanPulse,
-    brake: current.brake,
-    tetherNearest: !!current.tetherNearest,
-    commands: current.commands || [],
+    playback: true,
+    moveX: held.moveX,
+    moveZ: held.moveZ,
+    issuedMoveZ: Number.isFinite(held.issuedMoveZ) ? held.issuedMoveZ : held.moveZ,
+    injectedFault: held.injectedFault || null,
+    turnIntent: held.turnIntent,
+    boost: held.boost,
+    fire: held.fire,
+    fireGroup: held.fireGroup,
+    tether: held.tether,
+    reel: held.reel,
+    scanPulse: !!held.scanPulse,
+    brake: held.brake,
+    tetherNearest: !!held.tetherNearest,
+    commands: held.commands || [],
   };
 }
 
@@ -411,6 +448,18 @@ async function runCommand(runtime, command, tick, held) {
       runtime.bus.emit(command.event, {});
       return { type: command.type, tick, ok: true, event: command.event };
     }
+    if (command.type === 'undock') {
+      const docked = !!(state.ui && state.ui.docked);
+      if (!docked) return { type: 'undock', tick, ok: false, reason: 'not-docked' };
+      // Same committed payload the station undock control emits. uiRoot is not in this
+      // headless bundle, so the flag clear that handler owns is applied here.
+      runtime.bus.emit('dock:undocked', { committed: true, intent: 'explicit', source: 'sx-dock' });
+      laneInputWrite(state, 'ui.docked', false);
+      laneInputWrite(state, 'ui.dockedStationId', null);
+      const combat = runtime.getSystem('combat');
+      if (combat && typeof combat.setPlayerDocked === 'function') combat.setPlayerDocked(false);
+      return { type: 'undock', tick, ok: true };
+    }
     if (command.type === 'recover') {
       const combat = runtime.getSystem('combat');
       const result = combat && typeof combat.recoverPendingPlayer === 'function'
@@ -419,11 +468,32 @@ async function runCommand(runtime, command, tick, held) {
       return { type: command.type, tick, ok: !!(result && result.ok), reason: result && result.reason };
     }
     if (command.type === 'probe-dock') {
+      const corridor = state.dockingCorridor || null;
+      const berthed = !!(corridor && corridor.berthed);
+      if (!berthed) {
+        return {
+          type: 'probe-dock',
+          tick,
+          ok: false,
+          berthed: false,
+          docked: !!(state.ui && state.ui.docked),
+          refused: true,
+          reason: 'not-at-berth',
+        };
+      }
+      const stationId = corridor.stationId || 'station_helios';
+      const committed = commitDockedUiState(state, {
+        stationId,
+        shipId: state.playerId,
+        source: 'stranger-probe',
+      }, runtime.bus);
       return {
-        type: command.type,
+        type: 'probe-dock',
         tick,
-        ok: true,
+        ok: committed === true,
+        berthed: true,
         docked: !!(state.ui && state.ui.docked),
+        stationId,
       };
     }
     return { type: command.type || 'unknown', tick, ok: false, reason: 'unknown-command' };
@@ -558,19 +628,30 @@ async function prepareJourney(runtime, journey, aliasMap) {
   const state = runtime.state;
   if (journey.id === 'combat-death-retry') {
     state.world.currentSectorId = 'sector_ceres_belt';
-    // This is an authored combat fixture, not ambient traffic. Supply the same
-    // motive, response window and attack activity the live encounter producer owns.
+    // The opening ten minutes of a new career cap simultaneous shooters. This fixture is
+    // a combat route, not that opening, so it starts after the cap the way a later sortie does.
+    state.simTime = 601;
+    // Authored combat fixture. Hostility, response window, and attack activity are the
+    // same fields the live encounter producer writes. The player is not pre-wrecked.
     for (const spec of journey.entities.filter((row) => row.role === 'hostile')) {
       const enemy = state.entities.get(aliasMap[spec.alias]);
+      enemy.data.encounter = { id: 'stranger_combat_fixture' };
       Object.assign(enemy.data.ai, {
-        passive: false, roe: 'weapons_free', hostileTeams: [0], huntPlayer: true,
+        passive: false, lawful: false, roe: 'weapons_free', hostileTeams: [0], huntPlayer: true,
         motive: 'hostile_training_encounter', engagementTrigger: 'player_attack',
-        zoneId: 'stranger_combat_fixture', approachTelegraph: 'armed_wasp_approach',
-        noFireResponseWindowS: 2, combatDoctrineId: CombatDoctrineId.RANGED_DISENGAGER,
-        activity: { kind: 'attack_run', reason: 'stranger_combat_fixture', startedTick: 0,
-          targetId: state.playerId, anchor: { ...enemy.pos }, leashRadius: 2000 },
+        zoneId: 'stranger_combat_fixture', approachTelegraph: 'rail_lance_charge',
+        noFireResponseWindowS: 2,
+        retaliationTargetId: state.playerId,
+        factionPresenceDoctrine: null,
       });
     }
+  }
+  if (journey.id === 'launch') {
+    const station = spawnHelios(runtime, aliasMap);
+    placeOnBerth(state, station);
+    state.ui = state.ui || {};
+    laneInputWrite(state, 'ui.docked', true);
+    laneInputWrite(state, 'ui.dockedStationId', 'station_helios');
   }
   if (journey.setup === 'station-counter') {
     state.ui = state.ui || {};
@@ -586,7 +667,11 @@ async function prepareJourney(runtime, journey, aliasMap) {
     state.player.credits = Math.max(state.player.credits || 0, 25000);
     const missions = runtime.getSystem('missions');
     if (missions && typeof missions.ensureBoard === 'function') {
-      missions.ensureBoard('station_helios');
+      const board = missions.ensureBoard('station_helios');
+      const sectorId = state.world && state.world.currentSectorId || HOME_SECTOR;
+      if (board && Array.isArray(board.slots)) {
+        board.slots.unshift(strangerReconOffer(sectorId), strangerUnfinishableOffer(sectorId));
+      }
     }
   }
   if (journey.setup === 'tether-rock' || journey.setup === 'mining') {
@@ -603,36 +688,87 @@ async function prepareJourney(runtime, journey, aliasMap) {
     });
   }
   if (journey.setup === 'docking') {
-    const proxy = collisionProxyIdForStation('station_helios') || 'station_ring_hub';
-    const station = runtime.spawn({
-      type: 'station',
-      factionId: 'faction_scn',
-      pos: { x: 0, z: 220 },
-      radius: 42,
-      mass: 1e6,
-      hull: 1e6,
-      hullMax: 1e6,
-      collides: true,
-      alive: true,
-      data: {
-        stationId: 'station_helios',
-        stationTypeId: 'trade_hub',
-        dockRadius: 90,
-        collisionRadius: 42,
-        collisionProxy: proxy,
-        corridorBearingDeg: 180,
-        services: ['trade', 'shipyard', 'refuel', 'repair', 'missions'],
-        name: 'Helios Station',
-        size: 'L',
-        sectorId: HOME_SECTOR,
-      },
-    });
+    const station = spawnHelios(runtime, aliasMap);
     placeOnApproach(state, station);
-    aliasMap.station = station.id;
   }
   if (journey.setup === 'sector-home' && state.world) {
     state.world.currentSectorId = HOME_SECTOR;
   }
+}
+
+function spawnHelios(runtime, aliasMap) {
+  const proxy = collisionProxyIdForStation('station_helios') || 'station_ring_hub';
+  const station = runtime.spawn({
+    type: 'station',
+    factionId: 'faction_scn',
+    pos: { x: 0, z: 220 },
+    radius: 42,
+    mass: 1e6,
+    hull: 1e6,
+    hullMax: 1e6,
+    collides: true,
+    alive: true,
+    data: {
+      stationId: 'station_helios',
+      stationTypeId: 'trade_hub',
+      dockRadius: 90,
+      collisionRadius: 42,
+      collisionProxy: proxy,
+      corridorBearingDeg: 180,
+      services: ['trade', 'shipyard', 'refuel', 'repair', 'missions'],
+      name: 'Helios Station',
+      size: 'L',
+      sectorId: HOME_SECTOR,
+    },
+  });
+  aliasMap.station = station.id;
+  return station;
+}
+
+function strangerReconOffer(sectorId) {
+  return {
+    id: 'stranger-recon',
+    type: 'recon_scan',
+    stationId: 'station_helios',
+    destStationId: 'station_helios',
+    destSectorId: sectorId,
+    title: 'Pulse this sector',
+    reward_cr: 100,
+    collateral_cr: 0,
+    duration_s: 1000,
+    riskTier: 0,
+    params: { scanTargets: 1 },
+  };
+}
+
+function strangerUnfinishableOffer(sectorId) {
+  return {
+    id: 'stranger-unfinishable',
+    type: 'bounty_hunt',
+    stationId: 'station_helios',
+    destStationId: 'station_helios',
+    destSectorId: sectorId,
+    title: 'A mark that is not in this window',
+    reward_cr: 50,
+    collateral_cr: 0,
+    duration_s: 1000,
+    riskTier: 0,
+    params: {},
+  };
+}
+
+function placeOnBerth(state, station) {
+  const player = state.entities.get(state.playerId);
+  if (!player) return;
+  const manifest = resolveCollisionProxyManifest(station);
+  if (!manifest) return;
+  const berth = resolveBerthWorld(station, manifest);
+  const axis = resolveCorridorAxisWorld(station, manifest);
+  player.pos.x = berth.x;
+  player.pos.z = berth.z;
+  player.vel.x = 0;
+  player.vel.z = 0;
+  player.rot = Math.atan2(axis.z, axis.x);
 }
 
 function placeOnApproach(state, station) {

@@ -82,7 +82,11 @@ try {
     const artifact = JSON.parse(readFileSync(args.artifact, 'utf8'));
     const first = await runSession(replayOptions(artifact));
     const second = await runSession(replayOptions(artifact));
-    const same = first.fingerprint === second.fingerprint && first.digest === second.digest;
+    const matchesArtifact = (!artifact.fingerprint || first.fingerprint === artifact.fingerprint)
+      && (!artifact.digest || first.digest === artifact.digest);
+    const same = first.fingerprint === second.fingerprint
+      && first.digest === second.digest
+      && matchesArtifact;
     process.stdout.write(`replay same=${same} fingerprint ${first.fingerprint}\n`);
     if (!same) process.exitCode = 1;
   } else {
@@ -99,12 +103,26 @@ async function prove() {
   writeArtifact(join(OUT, 'route-manifest.json'), manifest);
   const first = await runSession(CANARY);
   const second = await runSession(CANARY);
-  const replay = await runSession({ ...CANARY, playbackTape: first.tape, ticks: first.ticks });
+  const replay = await runSession({
+    ...CANARY,
+    fault: null,
+    playbackTape: first.tape,
+    ticks: first.ticks,
+  });
   const green = await runSession(GREEN);
   const greenAgain = await runSession(GREEN);
   const shrunk = await shrinkFailure(first, 'unresponsive-commands');
+  const shrunkReplay = shrunk.ok ? await runSession({
+    journeyId: CANARY.journeyId,
+    personaId: CANARY.personaId,
+    seed: CANARY.seed,
+    fault: null,
+    surface: CANARY.surface,
+    ticks: shrunk.minimalTicks,
+    playbackTape: shrunk.tape,
+  }) : null;
   writeArtifact(join(OUT, 'canary-failure.json'), publicRun(first));
-  writeArtifact(join(OUT, 'canary-replay.json'), publicRun(second));
+  writeArtifact(join(OUT, 'canary-replay.json'), publicRun(replay));
   const report = {
     schema: 'spaceface.strangerProve.v1',
     ok: first.status === 'fail'
@@ -117,6 +135,10 @@ async function prove() {
       && green.digest === greenAgain.digest
       && shrunk.ok === true
       && shrunk.minimalTicks < first.ticks
+      && shrunkReplay
+      && shrunkReplay.fingerprint === shrunk.fingerprint
+      && shrunkReplay.digest === shrunk.digest
+      && shrunkReplay.failures.some((failure) => failure.id === 'unresponsive-commands' && failure.origin === 'canary')
       && manifest.journeys.length >= 12
       && manifest.personas.length >= 8
       && manifest.controlSchema.present === true,
@@ -135,7 +157,7 @@ async function prove() {
     fpsClaimed: false,
   };
   writeArtifact(join(OUT, 'prove-report.json'), report);
-  writeArtifact(join(OUT, 'sample-failure.json'), publicRun(first));
+  writeArtifact(join(OUT, 'sample-failure.json'), publicRun(shrunk.run || first));
   return report;
 }
 
@@ -159,7 +181,7 @@ function publicRun(run) {
     journeyId: run.journeyId,
     personaId: run.personaId,
     seed: run.seed,
-    fault: run.fault,
+    fault: injectedFaultOf(run) || run.fault,
     surface: run.surface,
     deviceTested: false,
     fpsClaimed: false,
@@ -175,11 +197,17 @@ function publicRun(run) {
       journeyId: run.journeyId,
       personaId: run.personaId,
       seed: run.seed,
-      fault: run.fault,
+      fault: injectedFaultOf(run) || run.fault,
       surface: run.surface,
       tapeHash: run.tapeHash,
     },
   };
+}
+
+function injectedFaultOf(run) {
+  const frames = run && run.tape && run.tape.frames;
+  const frame = frames && frames.find((row) => row && row.injectedFault);
+  return frame ? frame.injectedFault : null;
 }
 
 function replayOptions(artifact) {
@@ -187,7 +215,7 @@ function replayOptions(artifact) {
     journeyId: artifact.journeyId || artifact.replay.journeyId,
     personaId: artifact.personaId || artifact.replay.personaId,
     seed: artifact.seed != null ? artifact.seed : artifact.replay.seed,
-    fault: artifact.fault || (artifact.replay && artifact.replay.fault) || null,
+    fault: null,
     surface: artifact.surface || 'keyboard',
     playbackTape: artifact.tape,
     ticks: artifact.ticks,

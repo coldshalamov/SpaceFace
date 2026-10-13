@@ -16,7 +16,7 @@ export async function shrinkFailure(run, detectorId) {
       journeyId: run.journeyId,
       personaId: run.personaId,
       seed: run.seed,
-      fault: run.fault,
+      fault: null,
       surface: run.surface,
       ticks: mid,
       playbackTape: run.tape,
@@ -36,7 +36,9 @@ export async function shrinkFailure(run, detectorId) {
     fullTicks: full,
     minimalTicks: best.ticks,
     fingerprint: best.fingerprint,
+    digest: best.digest,
     tape: best.tape,
     tapeHash: best.tapeHash,
+    run: best,
   };
 }

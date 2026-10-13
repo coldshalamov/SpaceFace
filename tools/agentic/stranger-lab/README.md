@@ -31,7 +31,7 @@ node tools/agentic/stranger-lab/cli.mjs replay --artifact artifacts/stranger-lab
 node tools/agentic/stranger-lab/cli.mjs sweep
 ```
 
-Twelve journeys × twelve seeds. Touch-quantized runs are marked `simulated-touch` and `deviceTested: false`. Twenty-five headed-browser candidates are selected and left `unverified`.
+Twelve journeys × twelve seeds. `simulated-touch` drives the worker-lane phone reducer at 390×844. `deviceTested` stays false. Sweep launches Chrome once against the lab host page and records whether that page loaded; it does not claim a physical phone or a frame rate. Tapes and sweep rows are stored whole. Replay applies the recorded axes with the fault injector off.
 
 The docking fixture approaches the manifest's actual berth and measures physical
 berth arrival. Its headless completion does not exercise the station screen or

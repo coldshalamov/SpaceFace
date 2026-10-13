@@ -32,13 +32,13 @@ export const JOURNEYS = Object.freeze([
   {
     id: 'launch',
     title: 'Launch',
-    cue: 'Leave the cradle under your own thrust.',
-    ticks: 90,
+    cue: 'You are berthed. Undock, then leave under your own thrust.',
+    ticks: 160,
     bundle: 'flight',
-    extras: [],
+    extras: ['dockingCorridor'],
     defaultPersona: 'first-time-pilot',
-    entities: [PLAYER],
-    setup: 'flight',
+    entities: [playerAt(0, 0)],
+    setup: 'launch',
   },
   {
     id: 'flight',
@@ -124,7 +124,7 @@ export const JOURNEYS = Object.freeze([
     cue: 'Take the board offer. Finish it if the objective is already met, otherwise abandon it.',
     ticks: 90,
     bundle: 'flight',
-    extras: ['missions', 'economy'],
+    extras: ['missions', 'economy', 'scanner'],
     defaultPersona: 'mission-runner',
     entities: [PLAYER],
     setup: 'mission-board',
@@ -140,34 +140,34 @@ export const JOURNEYS = Object.freeze([
     entities: [
       playerAt(3000, 0),
       {
-        alias: 'wasp',
-        profile: 'wasp_swarmer',
+        alias: 'lancer',
+        profile: 'lancer_sniper',
         role: 'hostile',
         team: 1,
         factionId: 'faction_reach',
-        pos: { x: 3000, z: 160 },
+        pos: { x: 3000, z: 260 },
         vel: { x: 0, z: 0 },
         heading: -Math.PI / 2,
         persistent: true,
       },
       {
-        alias: 'wasp-b',
-        profile: 'wasp_swarmer',
+        alias: 'lancer-b',
+        profile: 'lancer_sniper',
         role: 'hostile',
         team: 1,
         factionId: 'faction_reach',
-        pos: { x: 3080, z: 160 },
+        pos: { x: 3080, z: 240 },
         vel: { x: 0, z: 0 },
         heading: Math.PI,
         persistent: true,
       },
       {
-        alias: 'wasp-c',
-        profile: 'wasp_swarmer',
+        alias: 'lancer-c',
+        profile: 'lancer_sniper',
         role: 'hostile',
         team: 1,
         factionId: 'faction_reach',
-        pos: { x: 2920, z: 160 },
+        pos: { x: 2920, z: 240 },
         vel: { x: 0, z: 0 },
         heading: 0,
         persistent: true,
@@ -230,6 +230,11 @@ export function assessJourney({ journeyId, samples = [], commands = [], mileston
   const flying = samples.some((sample) => sample.mode === 'flight' && sample.alive);
   switch (journeyId) {
     case 'launch':
+      need('started in a berth', first && (first.docked || first.berthed));
+      need('committed undock', command('undock'));
+      need('departure from the cradle', last && first && !last.docked
+        && Math.hypot(last.x - first.x, last.z - first.z) > 8);
+      break;
     case 'flight':
       need('controlled flight motion', flying && first && last && Math.hypot(last.x - first.x, last.z - first.z) > 1);
       break;
@@ -249,7 +254,8 @@ export function assessJourney({ journeyId, samples = [], commands = [], mileston
     case 'scan': need('scanner pulse', event('scan:pulse') || event('scan:completed')); break;
     case 'mission':
       need('mission acceptance', command('accept-mission'));
-      need('mission completion or abandonment', event('mission:completed') || command('abandon-mission'));
+      need('mission completion', event('mission:completed'));
+      need('mission failure', event('mission:failed'));
       break;
     case 'combat-death-retry': {
       const death = samples.find((sample) => sample.alive === false);
