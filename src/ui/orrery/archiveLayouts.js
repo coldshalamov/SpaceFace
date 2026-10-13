@@ -446,7 +446,6 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-ladder .k-row::before { top:12px !important; }
   ${CX} > .k-foot .sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; }
 }
-}
 /* 1080p band: match settings/save-load/credits composition zoom */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${CX} { zoom:1.12; }
