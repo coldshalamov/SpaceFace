@@ -2021,7 +2021,9 @@ export function formatTraderReceipt(t) {
   const r = t && t.lastReceipt;
   if (!r) return '';
   const legs = `${escapeHtml(String(r.qty))}u ${escapeHtml(String(r.from))}→${escapeHtml(String(r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
-  if (r.result === 'paid') return `Last delivery #${r.n}: ${legs} · net +${fmtCr(r.credited)} cr`;
+  if (r.result === 'paid') return `Last delivery #${r.n}: ${legs} · net +${fmtCr(r.credited)} cr${r.overflowDropped > 0 ? ` · ${fmtCr(r.overflowDropped)} cr withheld by the passive income cap` : ''}${r.walletWithheld > 0 ? ` · ${fmtCr(r.walletWithheld)} cr above the credit limit` : ''}`;
+  if (r.result === 'capped') return `Last delivery #${r.n}: ${legs} · no payout — passive income cap reached`;
+  if (r.result === 'wallet_full') return `Last delivery #${r.n}: ${legs} · no payout — credit limit reached`;
   return `Last delivery #${r.n}: ${legs} · no payout — spread covered no costs`;
 }
 

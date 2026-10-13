@@ -524,14 +524,21 @@ export const MACHINE_SITES = Object.freeze({
     poiId: 'poi_pallas_empty_foundry',
     name: 'Empty Foundry',
     kind: 'foundry',
-    // AE-246 (J11): a construction frame building nothing — the plans were rescinded
-    // mid-assembly. The mason still runs its weld cycle on air.
+    // The reserved plan resumes only after route mail, finite gantry repair and a
+    // physical jurisdiction decision on the one surviving ballast workpiece.
     center: Object.freeze({ x: 1200, z: 900 }),
     radius: 460,
     propRing: Object.freeze({ count: 6, radius: 340, propId: 'machine_gantry' }),
-    machines: Object.freeze([Object.freeze({ kind: 'mason', dx: 0, dz: 0 })]),
+    machines: Object.freeze([
+      Object.freeze({ kind: 'mason', dx: 0, dz: 0 }),
+      Object.freeze({ kind: 'courier', dx: -200, dz: 120 }),
+      Object.freeze({ kind: 'custodian', dx: -50, dz: 0 }),
+      Object.freeze({ kind: 'conservator', dx: -440, dz: 0 }),
+    ]),
+    workCycle: Object.freeze({ charges: 3, repairS: 9, preserveDx: -440, cradleDx: 180,
+      intakeRadius: 70, settleS: 3 }),
     directive: 'HOLD',
-    beat: 'Half-built ribwork hangs inside a gantry square. The mason welds to a schedule that was cancelled before your species learned radio.',
+    beat: 'Half-built ribwork waits for route mail. A preservation frame guards the west cradle; the mason requires the same ballast in the east cradle.',
     reveals: null,
     evidence: 'L03',
   }),

@@ -131,7 +131,9 @@ export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', berthSe
 
   function placeHand(deg) {
     if (!geo) return;
-    handG.setAttribute('transform', `rotate(${f(deg)} ${f(geo.cx)} ${f(geo.cy)})`);
+    // six decimals, not f()'s two: a flat rail (no room to sag) has R = 1e6, where 0.01° of turn is
+    // 175px along the rail and parked the Hand beside its station on narrow strips
+    handG.setAttribute('transform', `rotate(${deg.toFixed(6)} ${f(geo.cx)} ${f(geo.cy)})`);
   }
 
   /** The bearing (degrees, about the arc's centre) that puts the Hand under station x. */
@@ -249,7 +251,9 @@ export function createSaveFilmstrip({ host, frameSel = '.sf-slot-frame', berthSe
     const margin = Math.max(8, W * 0.02);
     const spacing = (W - margin * 2) / n;
     const gap = Math.max(12, Math.min(30, spacing * 0.1));
-    const frameW = Math.max(60, spacing - gap);
+    // a 60px floor, but never wider than the station pitch less 8px: on a narrow strip (~300px for five)
+    // a 60px frame overran its 56px pitch and neighbouring slots' words ran together
+    const frameW = Math.max(Math.min(60, spacing - 8), spacing - gap);
     // pass 1: widths, so each row's height is its own; the frame's foot and the words' height measured
     // with the frame's drop taken out (pass 2 sets the drop from the rail's slope under each frame)
     const gapAbove = 8;

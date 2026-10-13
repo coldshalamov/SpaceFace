@@ -260,6 +260,7 @@ test('a pod dragged out of custody goes loose, and a held token returns to the s
   token.readyAt = 0;
   pod.pos.x = token.destPos.x;
   pod.pos.z = token.destPos.z;
+  pod.vel.x = 0; pod.vel.z = 0; // Park the returned body; a fast pass is not an intake.
   tickMachineLayer(world, DT);
   assert.equal(token.status, 'delivered', 'loose mail brought home still delivers');
   assert.equal(pod.alive, false);

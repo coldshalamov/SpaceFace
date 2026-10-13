@@ -20,6 +20,7 @@ import {
 import { NPC_JOB_PHASE } from '../src/systems/npcJobs.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { economy } from '../src/systems/economy.js';
+import { world } from '../src/systems/world.js';
 import { save as saveSystem } from '../src/save/saveSystem.js';
 import {
   MAX_GENERAL_SALVORS_PER_SECTOR,
@@ -48,11 +49,12 @@ function restoreLootFlags() {
   MASSLINE2_FLAGS.lootShards = FLAG_PRIOR.lootShards;
 }
 
-function boot(seed = 47047, { forge = false } = {}) {
+function boot(seed = 47047, { forge = false, worldOwner = false } = {}) {
   enableLootFlags();
   const systems = forge
     ? [npcJobsRuntime, traffic, lootShards, economy, saveSystem]
     : [npcJobsRuntime, traffic, lootShards, saveSystem];
+  if (worldOwner) systems.unshift(world);
   const sim = createSimulation({
     seed,
     systems,
@@ -86,7 +88,9 @@ function boot(seed = 47047, { forge = false } = {}) {
   });
   sim.state.playerId = player.id;
 
-  const yard = sim.spawn({
+  if (worldOwner) sim.registry.get('world').enterSector(FORGE_SECTOR_ID);
+  const yard = worldOwner ? [...sim.state.entities.values()].find((entity) =>
+    entity.type === 'station' && entity.data.stationId === FORGE_ID) : sim.spawn({
     type: 'station',
     pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 },
@@ -519,9 +523,10 @@ test('dispatch is deterministic for identical seed + wreck layout', () => {
 });
 
 test('save/Continue round-trips mid-job salvor and carried payload', () => {
-  const { sim, trafficSys, dispose } = boot(712);
+  const { sim, trafficSys, yard, dispose } = boot(712, { forge: true, worldOwner: true });
   try {
     const wreck = spawnWreck(sim, {
+      pos: { x: yard.pos.x + 320, z: yard.pos.z + 40 },
       pool: { cmdty_scrap_metal: 5, cmdty_alloys: 1 },
     });
     forceNoticeReady(wreck, 0);

@@ -330,6 +330,9 @@ export function countLiveCausalSurvivorPods(state) {
 
 function disposeEntity(state, bus, entity, reason, helpers = null) {
   if (!entity) return false;
+  // A synchronous resolution observer may already retire this body and reuse its
+  // numeric slot. The late disposal belongs to the original resident only.
+  if (state.entities?.get && state.entities.get(entity.id) !== entity) return false;
   if (helpers && typeof helpers.removeEntity === 'function') {
     return helpers.removeEntity(entity.id, { immediate: true, reason }) === true;
   }
@@ -379,6 +382,9 @@ export function enforceCausalSurvivorPodCap(
   let removed = 0;
   for (let i = 0; i < found.length && removed < drop; i++) {
     if (isPlayerWreckPod(found[i])) continue;
+    // Residency pressure must not cut the pilot's live rescue line. Retire an unattended
+    // pod instead; the cap still bounds the world while the held pod remains a real body.
+    if (playerLatchedTo(state, found[i].id)) continue;
     if (disposeEntity(state, bus, found[i], 'survivor_pod_cap', helpers)) removed += 1;
   }
   return removed;
@@ -439,6 +445,19 @@ function findRescueHullNear(state, pos, radius) {
     const data = e.data || {};
     const role = data.trafficRole || data.role;
     if (role !== 'rescue') continue;
+    // A wrecked ambulance cannot take custody, and the ordinary traffic owner has one
+    // passenger berth. Preserve the pod until that hull repairs or finishes its delivery.
+    const runtime = state.combat && state.combat.entities && state.combat.entities[String(e.id)];
+    const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+    if (e.disabled === true || data.disabled || data.derelict || data.engineDead
+      || data.deadInWater || data.surrendered || (e.flags && (e.flags.disabled || e.flags.derelict))
+      || (Number.isFinite(e.hull) && e.hull <= 0)
+      || (runtime && runtime.capabilities && runtime.capabilities.drive === false)
+      || (drive && (drive.destroyed === true || drive.effectiveDisabled === true))) continue;
+    const trafficRec = state.traffic && Array.isArray(state.traffic.freighters)
+      ? state.traffic.freighters.find((rec) => rec && rec.id === e.id) : null;
+    if ((trafficRec && trafficRec.carryingSurvivor) || data.carryingSurvivor
+      || data.civilianReaction === 'transporting_survivor') continue;
     if (distance2(e.pos, pos) <= r2) return e;
   }
   return null;
@@ -972,9 +991,19 @@ export const survivorPod = {
     const list = payloadScanList(state) || [];
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
-      if (!isCausalSurvivorPod(entity) || isPlayerWreckPod(entity)) continue;
+      if (!entity || entity.type !== 'payload' || !entity.data
+        || entity.data.payloadType !== CAUSAL_SURVIVOR_PAYLOAD_TYPE || entity.data.playerWreck) continue;
       const stamp = entity.data && entity.data.survivorPodCausal;
-      if (!stamp || stamp.resolved) continue;
+      if (!stamp) continue;
+      // A terminal receipt owns the outcome even when physical retirement was refused.
+      // Retry disposal directly after Continue, never re-adopt it as a new rescue/debt.
+      if (stamp.resolved) {
+        disposeEntity(state, this._bus, entity, `survivor_pod_${stamp.phase}`, this.helpers);
+        delete own.causal.byEntityId[entity.id];
+        if (list[i] !== entity) i -= 1;
+        continue;
+      }
+      if (!isCausalSurvivorPod(entity)) continue;
       if (!own.causal.byEntityId[entity.id]) {
         own.causal.byEntityId[entity.id] = {
           entityId: entity.id,
@@ -1090,6 +1119,9 @@ export const survivorPod = {
     rec.phase = outcome;
     rec.resolvedAt = Number.isFinite(state.simTime) ? state.simTime : 0;
     const entityId = entity && entity.id != null ? entity.id : rec.entityId;
+    // Stamp the terminal fact before any synchronous event or retirement attempt. Persistent
+    // entities carry this across a refused removal/save; no second tick can pay it again.
+    if (entity && entity.data) entity.data.survivorPodCausal = { ...rec, entityId };
     const posSrc = entity && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)
       ? entity.pos
       : rec.pos;
@@ -1437,7 +1469,18 @@ export const survivorPod = {
       if (rec.rescueSelected) return false;
       return this._chooseRescue(point, rec);
     }
-    if (optionId === 'strip') return this._chooseStrip(point, rec);
+    if (optionId === 'strip') {
+      const committed = ((state.missions && state.missions.active) || [])
+        .some((mission) => mission && mission.status === 'active' && mission.params
+          && mission.params.survivorPodId === point.id);
+      if (committed) {
+        if (this._bus && this._bus.emit) this._bus.emit('survivorPod:stripBlocked', {
+          salvagePointId: point.id, entityId: point.entityId, reason: 'rescue_committed',
+        });
+        return false;
+      }
+      return this._chooseStrip(point, rec);
+    }
     return false;
   },
 

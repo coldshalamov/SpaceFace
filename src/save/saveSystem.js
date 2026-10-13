@@ -28,6 +28,7 @@ import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, hasP
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
+import { stationLifeSaveProjection } from '../systems/stationContactLoadBoundary.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
@@ -8395,6 +8396,13 @@ function serializePlayerRecord(state, capturedCollections = null) {
   delete out.cargo;
   // The salvage bay is saved once, as an optional key of the cargo record (_serializeCargo), never twice.
   delete out.salvageBay;
+  // stationContacts owns these durable station stories; the player envelope carries their
+  // bounded projection, consumed back into the native stationLife owner on Continue.
+  delete out.stationLife;
+  const stationNews = stationLifeSaveProjection(state && state.stationLife, state && state.simTime);
+  if (Object.keys(stationNews.rescueNotices).length || Object.keys(stationNews.deeds).length) {
+    out.stationLife = stationNews;
+  }
   return out;
 }
 

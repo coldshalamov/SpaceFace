@@ -1290,7 +1290,10 @@ export const provenanceLedger = {
     let chain = bodyId
       ? own.chains.find((entry) => newestNodeIndex(entry, (node) => asString(node.bodyId) === bodyId) >= 0)
       : null;
-    if (!chain) chain = latestChainForSector(own, currentSectorId(this.state));
+    // A named claim has its own history; an unrelated recent crime cannot have caused it.
+    if (!chain && !bodyId) {
+      chain = latestChainForSector(own, asString(payload.sectorId) || currentSectorId(this.state));
+    }
     const node = {
       k: 'consequence',
       t: nowTime(this.state),

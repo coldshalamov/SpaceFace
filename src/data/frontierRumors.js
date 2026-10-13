@@ -64,6 +64,13 @@ export const AUTHORED_DOCK_RUMORS = Object.freeze({
   // The hydroponics racks sell what their vault cannot hold; the Belt Outpost's rock crews
   // pay dear for exactly that crate (station_beltout cmdty_food 0.1, sectors.js).
   station_drift: 'Hydroponics over-run the Drift three crates to one — the racks sell ration stock near cost because the vault cannot hold another tray. The Belt Outpost\'s rock crews eat same-shift and pay dear for exactly that crate. Fill a hold here, dock it there; the scale does not ask why the labels are still wet.',
+  // The last four bar-station leads (coalition, beltout, tethys, customs) — each names real,
+  // reachable content: the Coalition capital price and Checkpoint Niner, the ration run's
+  // dear end and the Kettle ledger, the breakaway yard, the weigh clamp and its witness desk.
+  station_coalition: 'The Coalition desk does not buy stories; it buys outcomes — a capital-scale problem crossed this chord last month and nobody has claimed the standing price yet. You will pass Checkpoint Niner on the way out; the lamp there has been green eleven months, and the scale weighs everything twice. Do not carry what you cannot declare.',
+  station_beltout: 'Ration crates come up-lane dear and leave faster than the skiff can stack them — the Drift sells what its own vault cannot hold, if you are heading that way. And if the night shift asks: the convoy that never logged is still a one-line hole in our ledger, and the clerk keeps the page open.',
+  station_tethys: 'Two yards share this junction and only one admits what it launches — the breakaway rig out on the near lane still fires payloads nobody files flight plans for. Mind the weigh clamp on the through-line: it holds any hull that drifts off that route, and it has been holding more of them lately.',
+  station_customs: 'Weigh-and-release runs the whole junction through our clamp — every hull pays its second on the line, no exceptions we admit to. The witness desk buys clean testimony about what the breakaway yard drops when it thinks the clamp is looking away. Clean means clean; the clamp remembers every hull it ever held.',
 });
 
 // PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.

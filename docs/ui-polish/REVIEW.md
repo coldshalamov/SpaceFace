@@ -82,6 +82,18 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 ---
 
+## Save / Load reading clears the filmstrip — session notes (2026-10-13, ui-polish-26)
+
+**Before (master 9ee2924f04):** the filmstrip spanned both columns under the reading, so the reading ran into it. At 960×540 the hull record, NAME, LOAD / SAVE HERE / DELETE and the QUICK / SLOT 1 labels printed on top of each other, and LOAD sat on EXPORT. At 1280×720 and 1920×1080, LOAD and the name field sat on the Quick slot's berth and the beam.
+
+**After (`src/ui/orrery/saveLayouts.js` only, desktop only via `html:root:not([data-sf-mobile="1"])`):**
+- The grid areas become `"title stage" "page stage" "page hang" "foot foot"`. The reading has the whole left column, and the filmstrip stands under the hull, where the beam already ran. `saveFilmstrip.js` re-lays the stations from the host width (ResizeObserver), so no JS changed.
+- At ≤1100px wide the reading column is `minmax(356px, 38%)`, the context line fits on one line (10px, .12em), and a slot's badge (CURRENT) takes its own line under its name.
+- At ≤1100×≤640 the credits numeral is 48px×scale and the hull record reads in two columns, with keys sized to their words, so LOAD ends 30px above the foot.
+- 1280 and 1920 change only in the grid areas. Phone (portrait and landscape) is untouched. The empty slot (`save-load-empty`) is clean at every size. Selectors and IDs are unchanged.
+
+Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: the readings' decode animation is sometimes caught mid-scramble (for example "03:4█ &3"); that's the capture timing, not the layout.
+
 ## Station berth — session notes (2026-10-12, ui-polish-10)
 
 **Before (960×540):** `station.css` still reserves a 292px right gutter (228px under 900) for the legacy corner crown, but the ORRERY crown sits in the head grid, so a third of the screen was empty. The vitals strip is capped at 326px and nowrap, so it spilled left over the mechanic's note. The tab rail clipped at FAC, and every tab body was squeezed into 636px. At every size, the word reading CREDIT LINE OPEN crossed the Ledger's empty ring. At ≤800px tall, the `/ 100` denominators sat on the dial ends.
@@ -135,6 +147,14 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 **Before:** at 1024×768 the standing scale is ~460px wide; SWORN ENEMY still split under stagger and its top line sat ~2px from HATED's raised baseline.
 
 **After (`crestOrbit.js` only):** when a flush end name would need two lines, force stagger; when an even tier still splits under stagger, lift the odd row (rise 24 + 12px headroom) so SWORN ENEMY clears HATED. 960×540 (≤640 ladder) and 1280×720 pixel-identical to master; 1920 gets the same end-name stagger so the flush label no longer shares a baseline with HATED. Shots: `/workspace/spaceface-scratch/ui-shots/factions-standing/`.
+
+## Shipworks nameplate vs callouts @960 — session notes (2026-10-13, ui-polish-20)
+
+**Before:** at 960×540 the dock stage is 162px tall, and the left callout column shared it with the nameplate (title, then DOCKED, then the rename field) and the camera words. `nameplateInkRect` read text nodes only, so the field's "Name this hull" placeholder was no obstacle: Utility / Shield Capacitor M printed on it, and the column's overflow ran Drive and Cargo onto LEFT · CENTER · RIGHT.
+
+**Fix:** `nameplateInkRect` now adds the rename field's value or placeholder, measured in its own font from its content edge (`shipworks.js`). `shipworksLayouts.js`, `@media (max-width:1100px) and (max-height:640px) and (hover:hover)` only: DOCKED rides the title's line, the field is one compact 12px line, and the live stage's camera words sit at the right end of the verb row under the stage. The left column gets ~85px instead of ~15px, so three cards fit between the field and the verbs.
+
+**Checked:** 960×540, 1024×576, 1100×640, stock and longest-name injected, live hull and render; no card touches the field or the camera words. 1024×768, 1280×720, 1920×1080, 390×844 and 844×390 don't match the query: field box unchanged and screenshots match master. Shots: `ui-shots/shipworks-nameplate/{before,after2}/`.
 
 ## Proving Range @960×540 — session notes (2026-10-13, ui-polish-17)
 

@@ -67,6 +67,12 @@ function seedSaveablePlayer(state) {
   state.meta.playtimeS = 0;
   state.player.credits = 5000;
   state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: [] }];
+  // Optional station stories use the existing player envelope, then return to stationLife on load.
+  state.stationLife = {
+    rescueNotices: { sector_helios_prime: { recordId: 'schema-rescue', sectorId: 'sector_helios_prime', simTime: 0 } },
+    deeds: { sector_helios_prime: { sectorId: 'sector_helios_prime', outcome: 'defended',
+      shapeId: 'schema-hauler', encounterId: 'schema-encounter', text: 'A hauler returned safely.', simTime: 0 } },
+  };
   const player = {
     id: 1,
     type: 'ship',

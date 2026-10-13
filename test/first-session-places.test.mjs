@@ -87,6 +87,15 @@ test('the dock rumors name real, reachable things', () => {
     'the Helios lead points at the drift line (poi_helios_pit_line)');
   assert.ok(/Belt Outpost/.test(AUTHORED_DOCK_RUMORS.station_drift),
     'the Drift lead teaches the ration run to the Belt Outpost');
+  // Every bar-station lead names real content — rumors are promises, never vapor.
+  assert.ok(/Checkpoint Niner/.test(AUTHORED_DOCK_RUMORS.station_coalition),
+    'the Coalition lead names its own waypoint');
+  assert.ok(/ledger/.test(AUTHORED_DOCK_RUMORS.station_beltout),
+    'the Belt Outpost lead nods at the Kettle ledger');
+  assert.ok(/weigh clamp/.test(AUTHORED_DOCK_RUMORS.station_tethys),
+    'the Tethys lead names the authored weigh-clamp machine');
+  assert.ok(/witness desk/.test(AUTHORED_DOCK_RUMORS.station_customs),
+    'the Customs lead names the witness-run desk');
 });
 
 test('the first trade clears its own tolls with margin left over', () => {

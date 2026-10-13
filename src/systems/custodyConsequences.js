@@ -324,6 +324,9 @@ export function closeImpoundBill(state, payload) {
   const bill = impoundBillFor(state);
   if (!bill || bill.status !== 'open') return bill;
   if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return bill;
+  // The native recovery receipt names the yard's bill. A late/replayed receipt for an
+  // earlier impound cannot discharge the new obligation occupying this ledger slot.
+  if (typeof payload.billId !== 'string' || payload.billId !== bill.billId) return bill;
   const method = payload.method;
   if (method !== 'pay' && method !== 'work' && method !== 'steal') return bill;
   bill.status = method === 'pay' ? 'paid' : method === 'work' ? 'worked' : 'stolen';
