@@ -283,14 +283,6 @@ export function createPackageDetachManifest(loaded, options = {}) {
 }
 
 /**
- * F4: manifest for a source-GLB's authored textures — same store/schema as package manifests,
- * keyed by the source BYTES digest (`sha256:…` via imageSourceKeyAsync) instead of a render
- * package's content-hash URL. `textures` is the authored blueprint's texture set in
- * deterministic traversal order; `options.redecode` must re-fetch + re-parse the same source
- * (with digest verification inside) and `options.collectResources` re-collects the texture
- * list in that same order so ordinal pairing stays honest.
- */
-/**
  * Bounds straight off a de-interleaved Float32 position array. Identical results to three's
  * computeBoundingBox/computeBoundingSphere (same min/max, sphere centered on the box, radius =
  * max vertex distance) without a getX/getY/getZ call per vertex. Those generic accessors were
@@ -338,6 +330,14 @@ export function computePlainFloat32Bounds(geometry) {
   return true;
 }
 
+/**
+ * F4: manifest for a source-GLB's authored textures — same store/schema as package manifests,
+ * keyed by the source BYTES digest (`sha256:…` via imageSourceKeyAsync) instead of a render
+ * package's content-hash URL. `textures` is the authored blueprint's texture set in
+ * deterministic traversal order; `options.redecode` must re-fetch + re-parse the same source
+ * (with digest verification inside) and `options.collectResources` re-collects the texture
+ * list in that same order so ordinal pairing stays honest.
+ */
 export function createSourceDetachManifest(url, textures, options = {}) {
   if (typeof options.redecode !== 'function' || typeof options.collectResources !== 'function') {
     return null;
