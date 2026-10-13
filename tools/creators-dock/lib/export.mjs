@@ -406,6 +406,17 @@ function oracleId(assertion) {
   return String(assertion.kind || 'assertion');
 }
 
+function placeFromDisc(field) {
+  const place = clone(field.place);
+  if (!place || typeof place !== 'object' || Array.isArray(place)) return place;
+  const center = place.center && typeof place.center === 'object' ? { ...place.center } : {};
+  if (Number.isFinite(field.x)) center.x = field.x;
+  if (Number.isFinite(field.z)) center.z = field.z;
+  place.center = center;
+  if (typeof field.radius === 'number' && field.radius > 0) place.radius = field.radius;
+  return place;
+}
+
 function buildPack(project, fields, dialect, issues, manifest) {
   if (!project || !dialect) return null;
   const files = {};
@@ -438,7 +449,7 @@ function buildPack(project, fields, dialect, issues, manifest) {
     checkPlace(field.place, dialect, issues);
     const file = `places/${field.place.id}.json`;
     if (files[file]) issues.push(`${field.id}: duplicate place file ${file}`);
-    files[file] = clone(field.place);
+    files[file] = placeFromDisc(field);
   }
   if (project.encounter) manifest.written.encounter = `encounters/${project.encounter.id}.json`;
   if (project.weapon) manifest.written.weapon = `weapons/${project.weapon.id}.json`;

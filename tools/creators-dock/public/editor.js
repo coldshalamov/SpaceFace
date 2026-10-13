@@ -222,6 +222,15 @@ function fieldsFor(object) {
       { key: 'factionId', label: 'Faction', kind: 'text' },
     ];
   }
+  if (object.kind === 'objective') {
+    return [
+      ...common,
+      { key: 'metric', label: 'Metric', kind: 'text' },
+      { key: 'signal', label: 'Signal', kind: 'text' },
+      { key: 'op', label: 'Op', kind: 'text' },
+      { key: 'value', label: 'Value', kind: 'number' },
+    ];
+  }
   if (object.kind === 'trigger' || object.kind === 'field') {
     return [...common, { key: 'radius', label: 'Radius', kind: 'number' }];
   }

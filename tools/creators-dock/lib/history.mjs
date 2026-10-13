@@ -1,4 +1,5 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
+import { detachData } from './stableJson.mjs';
 
 const CAP = 100;
 
@@ -561,8 +562,6 @@ function guardedClone(project, protect) {
   const accessors = activeAccessors != null
     ? activeAccessors
     : (treeHasToJSON(project) ? snapshotAccessors(protect) : []);
-  // sameProject may already have run toJSON. Put the pre-call fields back
-  // before this clone snapshots them.
   restoreAccessors(accessors);
   let stored = null;
   try {
@@ -570,6 +569,8 @@ function guardedClone(project, protect) {
   } catch (error) {
     stored = null;
   }
+  // A toJSON that only mutates its receiver must not abort parking the pre-call scene.
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) stored = detachData(project);
   const accessorResult = restoreAccessors(accessors);
   const { mutated } = restoreShieldList(shields);
   return { stored, mutated: mutated || accessorResult.stuck };
@@ -578,9 +579,18 @@ function guardedClone(project, protect) {
 function withoutGridAccessor(project, protect = []) {
   if (!gridReadsThroughAccessor(project)) return project;
   const carried = setterGridValue(project);
-  const { stored, mutated } = guardedClone(project, protect);
+  const cloned = guardedClone(project, protect);
+  let stored = cloned.stored;
   // A toJSON that nulls another scene's grid is not a successful strip.
-  if (mutated) return null;
+  if (cloned.mutated) return null;
+  if (stored && typeof stored === 'object' && !Array.isArray(stored) && gridReadsThroughAccessor(stored)) {
+    const bare = Object.create(null);
+    for (const key of Object.getOwnPropertyNames(stored)) {
+      const descriptor = Object.getOwnPropertyDescriptor(stored, key);
+      if (descriptor) Object.defineProperty(bare, key, descriptor);
+    }
+    if (!gridReadsThroughAccessor(bare)) stored = bare;
+  }
   if (!stored || typeof stored !== 'object' || Array.isArray(stored) || gridReadsThroughAccessor(stored)) return null;
   // A setter's pre-call value is the grid the strip clone must keep. A getter
   // with no setter is left unread so a counting getter stays at zero reads.

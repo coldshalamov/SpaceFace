@@ -1,3 +1,5 @@
+import { detachData, stableStringify } from './stableJson.mjs';
+
 // Closed checks for dock documents and path strings.
 // The lab schema is still the authority for scenario documents; these checks
 // catch payloads the lab would not treat as code but a mod host must refuse.
@@ -18,7 +20,9 @@ function utf8Length(text) {
 export function byteLength(value) {
   if (typeof value === 'string') return utf8Length(value);
   try {
-    const text = JSON.stringify(value);
+    // Probe toJSON on a detached copy so a throw is reported and the live value stays put.
+    stableStringify(value);
+    const text = JSON.stringify(detachData(value));
     if (typeof text !== 'string') return null;
     return utf8Length(text);
   } catch (error) {

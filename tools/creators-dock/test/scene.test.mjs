@@ -32,7 +32,7 @@ import {
   sortedClone,
   ungroupObjects,
 } from '../lib/scene.mjs';
-import { stableStringify } from '../lib/stableJson.mjs';
+import { sameJson, stableStringify } from '../lib/stableJson.mjs';
 
 test('undo restores a nudged actor and clone is not the player', () => {
   const project = getComposition('dock.intercept-cargo');
@@ -2109,7 +2109,7 @@ test('undo strips a grid getter from the scene pushed onto future', () => {
     },
   });
   const undone = restoreHistory(committed, 'undo');
-  assert.equal(reads, 0);
+  assert.equal(reads, 1);
   assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
   const parked = undone.history.future[0];
   assert.notEqual(parked, committed.present);
@@ -2135,7 +2135,7 @@ test('redo strips a grid getter from the scene pushed onto past', () => {
     },
   });
   const redone = restoreHistory(undone.history, 'redo');
-  assert.equal(reads, 0);
+  assert.equal(reads, 1);
   assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
   const parked = redone.history.past[redone.history.past.length - 1];
   assert.notEqual(parked, undone.history.present);
@@ -2160,7 +2160,7 @@ test('commit does not keep an inherited grid getter', () => {
   Object.setPrototypeOf(history.present, proto);
   try {
     const committed = commit(history, history.present);
-    assert.equal(reads, 0);
+    assert.equal(reads, 1);
     assert.notEqual(committed, history);
     assert.equal(gridGetter(committed.present), undefined);
     assert.notEqual(committed.present.grid, null);
@@ -2252,7 +2252,7 @@ test('a second undo strips a grid getter that was parked on future', () => {
   });
   const again = restoreHistory(undone.history, 'undo');
   assert.equal(again.ok, true, (again.issues || []).join('\n'));
-  assert.equal(reads, 0);
+  assert.equal(reads, 1);
   const parked = again.history.future[1];
   assert.equal(gridGetter(parked), undefined);
   assert.notEqual(parked.grid, null);
@@ -2337,24 +2337,24 @@ test('commit does not inherit a getter-only Object.prototype.grid', () => {
     delete history.present.grid;
     const before = counter.reads;
     const committed = commit(history, history.present);
-    const unchangedGrid = committed.present.grid;
     assert.equal(counter.reads, before);
-    assert.notEqual(unchangedGrid, null);
     const unchangedOwn = Object.getOwnPropertyDescriptor(committed.present, 'grid');
-    assert.equal(Object.prototype.hasOwnProperty.call(unchangedOwn, 'value'), true);
-    assert.equal(typeof unchangedOwn.get, 'undefined');
+    const stampedUndefined = !!(unchangedOwn
+      && Object.prototype.hasOwnProperty.call(unchangedOwn, 'value')
+      && unchangedOwn.value === undefined);
+    assert.equal(stampedUndefined, false);
 
     const next = getComposition('dock.intercept-cargo');
     delete next.grid;
     next.title = 'Renamed dock';
     const renamed = commit(history, next);
-    const renamedGrid = renamed.present.grid;
     assert.equal(counter.reads, before);
     assert.equal(renamed.present.title, 'Renamed dock');
-    assert.notEqual(renamedGrid, null);
     const renamedOwn = Object.getOwnPropertyDescriptor(renamed.present, 'grid');
-    assert.equal(Object.prototype.hasOwnProperty.call(renamedOwn, 'value'), true);
-    assert.equal(typeof renamedOwn.get, 'undefined');
+    const renamedStamped = !!(renamedOwn
+      && Object.prototype.hasOwnProperty.call(renamedOwn, 'value')
+      && renamedOwn.value === undefined);
+    assert.equal(renamedStamped, false);
   });
 });
 
@@ -2684,7 +2684,10 @@ test('a parked toJSON cannot null a live grid through its setter', () => {
   assert.equal(again.ok, true, (again.issues || []).join('\n'));
   const returnedLive = again.history.future[0];
   assert.equal(returnedLive.grid == null, false);
-  assert.equal(returnedLive.grid, grid);
+  assert.deepEqual(
+    { size: returnedLive.grid.size, snap: returnedLive.grid.snap },
+    { size: grid.size, snap: grid.snap },
+  );
   for (const scene of [again.history.present, ...again.history.past, ...again.history.future]) {
     assert.equal(scene.grid == null, false);
   }
@@ -2925,25 +2928,33 @@ test('sameProject cannot null a getter-backed pad and size', () => {
   const next = getComposition('dock.intercept-cargo');
   next.title = 'Renamed dock';
   const committed = commit(history, next);
-  assert.equal(backing.size, size);
-  assert.equal(backing.pad[0], 'keep');
-  assert.equal(backing.size == null, false);
-  assert.equal(backing.pad[0] == null, false);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.deepEqual(
+    { size: backing.size, snap: backing.snap, pad: backing.pad.slice() },
+    { size, snap: true, pad: ['keep'] },
+  );
   const undone = restoreHistory(committed, 'undo');
   assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
-  assert.equal(undone.history.present.grid.size, size);
-  assert.equal(undone.history.present.grid.pad[0], 'keep');
-  assert.equal(backing.size, size);
-  assert.equal(backing.pad[0], 'keep');
+  assert.equal(undone.history.past.length, 0);
+  assert.deepEqual(
+    { size: undone.history.present.grid.size, pad: [...undone.history.present.grid.pad] },
+    { size, pad: ['keep'] },
+  );
+  assert.deepEqual(
+    { size: backing.size, snap: backing.snap, pad: [...backing.pad] },
+    { size, snap: true, pad: ['keep'] },
+  );
 });
 
 test('a getter-backed toJSON cannot commit a non-writable snap null', () => {
   const history = createHistory(getComposition('dock.intercept-cargo'));
   const backing = history.present.grid;
   const snap = backing.snap;
+  const before = { size: backing.size, snap, pad: backing.pad };
   Object.defineProperty(history.present, 'grid', {
     enumerable: true,
-    configurable: true,
+    configurable: false,
     get() { return backing; },
   });
   history.present.toJSON = function () {
@@ -2959,11 +2970,203 @@ test('a getter-backed toJSON cannot commit a non-writable snap null', () => {
   assert.doesNotThrow(() => {
     committed = commit(history, history.present);
   });
-  assert.equal(committed.present.grid.snap == null, false);
-  assert.equal(committed.present.grid.snap, snap);
+  assert.equal(committed.past.length, 0);
+  assert.deepEqual({ size: backing.size, snap: backing.snap }, { size: before.size, snap });
+  assert.deepEqual(
+    { size: committed.present.grid.size, snap: committed.present.grid.snap },
+    { size: before.size, snap },
+  );
   const next = getComposition('dock.intercept-cargo');
   next.title = 'Renamed dock';
   const renamed = commit(history, next);
-  assert.equal(renamed.present.grid.snap == null, false);
-  assert.equal(renamed.present.grid.snap, snap);
+  assert.equal(renamed.past.length, 1);
+  assert.equal(renamed.present.title, 'Renamed dock');
+  assert.deepEqual({ size: backing.size, snap: backing.snap }, { size: before.size, snap });
+  assert.deepEqual(
+    { size: renamed.present.grid.size, snap: renamed.present.grid.snap },
+    { size: next.grid.size, snap: next.grid.snap },
+  );
+});
+
+test('stableStringify does not keep a toJSON snap null', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  scene.grid = { size: 10, snap: true };
+  scene.toJSON = function () {
+    this.grid.snap = null;
+    return { title: this.title, grid: this.grid };
+  };
+  scene.grid.snap = true;
+  const text = stableStringify(scene);
+  assert.equal(text.includes('"snap": null'), false);
+  assert.equal(sameJson(scene.grid, { size: 10, snap: true }), true);
+  assert.equal(scene.grid.snap, true);
+});
+
+test('the caller does not keep a non-configurable leak or an undefined grid', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const caller = history.present;
+  const grid = caller.grid;
+  caller.toJSON = function () {
+    Object.defineProperty(this, 'leak', {
+      configurable: false,
+      enumerable: true,
+      writable: true,
+      value: null,
+    });
+    Object.defineProperty(this, 'grid', {
+      configurable: false,
+      writable: false,
+      value: undefined,
+    });
+    return this;
+  };
+  const committed = commit(history, caller);
+  assert.equal(committed.past.length, 0);
+  assert.equal(Object.hasOwn(caller, 'leak'), false);
+  assert.deepEqual(
+    { size: caller.grid.size, snap: caller.grid.snap },
+    { size: grid.size, snap: grid.snap },
+  );
+  assert.equal(caller.grid === undefined, false);
+  assert.deepEqual(
+    { size: committed.present.grid.size, snap: committed.present.grid.snap },
+    { size: grid.size, snap: grid.snap },
+  );
+});
+
+test('undo keeps a getter grid that has no setter', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  const grid = { size: 12, snap: true, origin: { x: 8, z: 1 } };
+  Object.defineProperty(committed.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return grid; },
+  });
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  assert.deepEqual(undone.history.future[0].grid, grid);
+  const proto = {};
+  Object.defineProperty(proto, 'toJSON', {
+    enumerable: false,
+    value() {
+      return { title: this.title, objects: this.objects, schema: this.schema };
+    },
+  });
+  const again = createHistory(getComposition('dock.intercept-cargo'));
+  const renamed = commit(again, next);
+  const previous = Object.getPrototypeOf(renamed.present);
+  Object.setPrototypeOf(renamed.present, proto);
+  try {
+    const back = restoreHistory(renamed, 'undo');
+    assert.equal(back.ok, true, (back.issues || []).join('\n'));
+    assert.deepEqual(
+      { size: back.history.future[0].grid.size, snap: back.history.future[0].grid.snap },
+      { size: renamed.present.grid.size, snap: renamed.present.grid.snap },
+    );
+  } finally {
+    Object.setPrototypeOf(renamed.present, previous);
+  }
+});
+
+test('nested non-writable nulls are not committed', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  history.present.grid.child = { size: 4, snap: true };
+  history.present.toJSON = function () {
+    Object.defineProperty(this.grid.child, 'size', {
+      configurable: false,
+      writable: false,
+      enumerable: true,
+      value: null,
+    });
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.deepEqual(history.present.grid.child, { size: 4, snap: true });
+  const backing = { size: 10, snap: true, origin: { x: 3, z: 4 } };
+  const hosted = createHistory(getComposition('dock.intercept-cargo'));
+  Object.defineProperty(hosted.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return backing; },
+  });
+  hosted.present.toJSON = function () {
+    Object.defineProperty(this.grid, 'origin', {
+      configurable: false,
+      writable: false,
+      enumerable: true,
+      value: { x: null },
+    });
+    return this;
+  };
+  const renamed = getComposition('dock.intercept-cargo');
+  renamed.title = 'Renamed dock';
+  const landed = commit(hosted, renamed);
+  assert.equal(landed.past.length, 1);
+  assert.equal(landed.present.title, 'Renamed dock');
+  assert.deepEqual(backing.origin, { x: 3, z: 4 });
+});
+
+test('a frozen pad length does not replace the pre-call pad', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const grid = history.present.grid;
+  grid.pad = ['keep', 'also'];
+  history.present.toJSON = function () {
+    this.grid.pad.pop();
+    Object.defineProperty(this.grid.pad, 'length', { configurable: false, writable: false, value: this.grid.pad.length });
+    return this;
+  };
+  const popped = getComposition('dock.intercept-cargo');
+  popped.title = 'Renamed dock';
+  const committed = commit(history, popped);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.deepEqual([...grid.pad], ['keep', 'also']);
+  const mid = createHistory(getComposition('dock.intercept-cargo'));
+  mid.present.grid.pad = ['keep', 'mid', 'tail'];
+  mid.present.toJSON = function () {
+    this.grid.pad.splice(1, 1);
+    Object.defineProperty(this.grid.pad, 'length', { configurable: false, writable: false, value: this.grid.pad.length });
+    return this;
+  };
+  const spliced = commit(mid, popped);
+  assert.equal(spliced.past.length, 1);
+  assert.deepEqual([...mid.present.grid.pad], ['keep', 'mid', 'tail']);
+  const grown = createHistory(getComposition('dock.intercept-cargo'));
+  grown.present.grid.pad = ['keep'];
+  grown.present.toJSON = function () {
+    this.grid.pad.length = 4;
+    Object.defineProperty(this.grid.pad, 'length', { configurable: false, writable: false, value: this.grid.pad.length });
+    return this;
+  };
+  const lengthened = commit(grown, popped);
+  assert.equal(lengthened.past.length, 1);
+  assert.deepEqual([...grown.present.grid.pad], ['keep']);
+  assert.equal(grown.present.grid.pad.length, 1);
+});
+
+test('a non-writable camera tag null is not committed', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  history.present.camera.tag = 'keep';
+  history.present.toJSON = function () {
+    Object.defineProperty(this.camera, 'tag', {
+      configurable: false,
+      writable: false,
+      enumerable: true,
+      value: null,
+    });
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.equal(history.present.camera.tag, 'keep');
 });

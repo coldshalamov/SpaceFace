@@ -378,3 +378,89 @@ test('an exported user encounter can reference shipped bark lines without aborti
   assert.equal(probe.ok, true, JSON.stringify(probe.result || probe.stderr));
   assert.ok(probe.result.accepted.encounters.includes(encounter.id));
 });
+
+test('exportProject does not let toJSON null the caller grid', async () => {
+  const project = getComposition('dock.bank-shot');
+  const grid = project.grid;
+  const before = { size: grid.size, snap: grid.snap, pad: ['keep'] };
+  grid.pad = ['keep'];
+  Object.defineProperty(project, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return grid; },
+  });
+  Object.defineProperty(project, 'toJSON', {
+    enumerable: false,
+    value() {
+      this.grid.snap = null;
+      this.grid.size = null;
+      this.grid.pad = [null];
+      return this;
+    },
+  });
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  assert.deepEqual(
+    { size: grid.size, snap: grid.snap, pad: [...grid.pad] },
+    before,
+  );
+});
+
+test('export keeps authored y and velY when toJSON nulls them', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const player = objectById(project, 'player');
+  player.y = 4.5;
+  player.velY = -1.25;
+  Object.defineProperty(project, 'toJSON', {
+    enumerable: false,
+    value() {
+      const actor = this.objects.find((object) => object && object.isPlayer === true);
+      actor.y = null;
+      actor.velY = null;
+      return this;
+    },
+  });
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const entity = exported.scenario.entities.find((row) => row.isPlayer);
+  assert.deepEqual(entity.pos, { ...entity.pos, y: 4.5 });
+  assert.equal(entity.pos.y, 4.5);
+  assert.equal(entity.vel.y, -1.25);
+  assert.equal(player.y, 4.5);
+  assert.equal(player.velY, -1.25);
+  const imported = importScenario(exported.scenario);
+  assert.equal(imported.ok, true, (imported.issues || []).join('\n'));
+  const roundTrip = objectById(imported.project, 'player');
+  assert.equal(roundTrip.y, 4.5);
+  assert.equal(roundTrip.velY, -1.25);
+});
+
+test('a place disc edits the exported place and objectives follow the lab metric', async () => {
+  const project = getComposition('dock.bank-shot');
+  const zone = objectById(project, 'bank_zone');
+  zone.x = 500;
+  zone.z = -200;
+  zone.radius = 5;
+  const objective = objectById(project, 'turned');
+  objective.metric = 'trace.final';
+  objective.signal = 'playerRot';
+  objective.op = '<';
+  objective.value = -0.25;
+  objective.x = 12;
+  objective.z = -8;
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const place = exported.pack.files['places/zone_dock_bank_corridor.json'];
+  assert.deepEqual(place.center, { x: 500, z: -200 });
+  assert.equal(place.radius, 5);
+  const metric = exported.scenario.metrics.find((row) => row.name === 'trace.final');
+  assert.deepEqual(metric.threshold, { op: '<', value: -0.25 });
+  assert.deepEqual(metric.params, { signal: 'playerRot' });
+  assert.equal(Object.hasOwn(metric, 'x'), false);
+  assert.equal(Object.hasOwn(metric, 'z'), false);
+  const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
+  assert.equal(editor.includes("key: 'metric'"), true);
+  assert.equal(editor.includes("key: 'signal'"), true);
+  assert.equal(editor.includes("key: 'op'"), true);
+  assert.equal(editor.includes("key: 'value'"), true);
+});

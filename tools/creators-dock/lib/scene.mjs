@@ -1,7 +1,7 @@
 // Pure XZ scene model for Creator's Dock.
 // No Node builtins, no physics step. The lab is the only simulator.
 
-import { sameJson, sortValue } from './stableJson.mjs';
+import { detachData, sameJson, sortValue } from './stableJson.mjs';
 
 export const PROJECT_SCHEMA = 'spaceface.creatorsDock.v1';
 export const REQUEST_SCHEMA = 'spaceface.creatorsDockRequest.v1';
@@ -440,6 +440,34 @@ function restoreGridAccessor(value, saved) {
   }
 }
 
+function copyGetterGrid(source, out) {
+  if (!out || typeof out !== 'object' || Array.isArray(out)) return;
+  if (Object.prototype.hasOwnProperty.call(out, 'grid') && out.grid != null) return;
+  let current = source;
+  const seen = new Set();
+  while (current && current !== Object.prototype && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current);
+    const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
+    if (descriptor) {
+      if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        if (descriptor.value && typeof descriptor.value === 'object') writeData(out, 'grid', detachData(descriptor.value));
+        return;
+      }
+      if (typeof descriptor.get === 'function') {
+        let read;
+        try {
+          read = descriptor.get.call(source);
+        } catch (error) {
+          return;
+        }
+        if (read && typeof read === 'object') writeData(out, 'grid', detachData(read));
+      }
+      return;
+    }
+    current = Object.getPrototypeOf(current);
+  }
+}
+
 function materialize(value, key, seen) {
   if (value === null) return null;
   if (value === undefined) return undefined;
@@ -456,15 +484,29 @@ function materialize(value, key, seen) {
     seen.add(value);
     const gridAccessor = gridAccessorState(value);
     const gridFields = gridAccessor ? snapshotGridFields(gridAccessor.value) : null;
-    const produced = toJSON.call(value, key);
+    // toJSON runs on a detached tree so a non-configurable write cannot stick to the live scene.
+    const detached = detachData(value);
+    const produced = toJSON.call(detached, key);
     restoreGridAccessor(value, gridAccessor);
     if (gridFields) restoreGridFields(gridAccessor.value, gridFields);
     if (gridFields && gridFieldsStillNull(gridAccessor.value, gridFields)) return CLONE_REJECT;
     if (produced === null) return CLONE_REJECT;
-    if (produced === undefined) return undefined;
-    if (produced && typeof produced === 'object') {
+    if (produced === detached) {
+      const detachedGrid = gridAccessor ? detached.grid : gridFields && detached.grid;
+      if (accessorHidData(before, produced) || introducedNull(before, produced)
+        || (gridFields && gridFieldsStillNull(detachedGrid, gridFields))) {
+        return CLONE_REJECT;
+      }
+      // Other return-this writes stay on the detach. Store the live pre-call data.
+    } else if (produced === undefined) {
+      return undefined;
+    } else if (produced && typeof produced === 'object') {
       if (accessorHidData(before, produced) || introducedNull(before, produced)) return CLONE_REJECT;
-      if (produced !== value) return materialize(produced, key, seen);
+      const nested = materialize(produced, key, seen);
+      if (nested && typeof nested === 'object' && !Array.isArray(nested) && nested.grid == null) {
+        copyGetterGrid(value, nested);
+      }
+      return nested;
     } else if (produced !== value) {
       return materialize(produced, key, seen);
     }
@@ -496,6 +538,7 @@ function materialize(value, key, seen) {
     if (child === CLONE_REJECT) return CLONE_REJECT;
     if (child !== undefined) writeData(out, 'grid', child);
   }
+  copyGetterGrid(value, out);
   return out;
 }
 
@@ -543,7 +586,23 @@ function prototypeGridGetter(object) {
 function ownDataGrid(object) {
   if (!object || typeof object !== 'object' || Array.isArray(object)) return object;
   if (Object.prototype.hasOwnProperty.call(object, 'grid') || !prototypeGridGetter(object)) return object;
-  writeData(object, 'grid', undefined);
+  let host = Object.getPrototypeOf(object);
+  const seen = new Set();
+  let descriptor;
+  while (host && host !== Object.prototype && (typeof host === 'object' || typeof host === 'function') && !seen.has(host)) {
+    seen.add(host);
+    descriptor = Object.getOwnPropertyDescriptor(host, 'grid');
+    if (descriptor) break;
+    host = Object.getPrototypeOf(host);
+  }
+  if (!descriptor || host === Object.prototype || typeof descriptor.get !== 'function') return object;
+  let inherited;
+  try {
+    inherited = descriptor.get.call(object);
+  } catch (error) {
+    return object;
+  }
+  if (inherited && typeof inherited === 'object') writeData(object, 'grid', detachData(inherited));
   return object;
 }
 
