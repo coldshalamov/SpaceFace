@@ -9,9 +9,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { createSimulation } from '../src/core/sim.js';
 import { marketCardDrivers, presentMarketDrivers, standingDriver } from '../src/ui/marketDriverPresenter.js';
 import { priceModForState } from '../src/systems/factions.js';
 import { commodityStandingMultipliers } from '../src/economy/economyMath.js';
+import { economy } from '../src/systems/economy.js';
 import { marketQuoteHtml } from '../src/ui/views/marketPresentation.js';
 import { SECTORS } from '../src/data/sectors.js';
 
@@ -97,4 +99,53 @@ test('no faction record, or a station with no faction, quietly yields no row', (
   assert.equal(standingDriver({ factions: {} }, HELIOS, ENTRY), null);
   assert.equal(standingDriver(stateWith(600, 'Allied'), { id: 'station_x' }, ENTRY), null);
   assert.equal(standingDriver(null, HELIOS, ENTRY), null);
+});
+
+test('the row words the quote\'s reputation multipliers, not the spread implied by rounded prices', () => {
+  const state = stateWith(600, 'Allied');
+  // A rounded book can imply a very different spread than the one quote() applied.
+  const lied = { role: 'none', buy: 180, sell: 40, lastBuy: 180, lastSell: 40 };
+  const fromListing = standingDriver(state, HELIOS, lied);
+  const quoteReputation = { buy: 0.94, sell: 1.03, surchargeWaived: false };
+  const fromQuote = standingDriver(state, HELIOS, lied, quoteReputation);
+  assert.ok(fromListing && fromQuote);
+  assert.notEqual(fromListing.explanation, fromQuote.explanation);
+  assert.match(fromQuote.explanation, /buys run 6% under/);
+  assert.match(fromQuote.explanation, /sales pay 3% over/);
+  assert.doesNotMatch(fromQuote.explanation, /buys run 6[0-9]/, 'the rounded book\'s huge spread is not the sentence');
+  const drivers = presentMarketDrivers({
+    state, stationId: 'station_helios', commodity: FOOD, entry: lied, reputation: quoteReputation,
+  });
+  const standing = drivers.primary.find((d) => d.id === 'standing');
+  assert.equal(standing.explanation, fromQuote.explanation);
+});
+
+test('seed 4242: the Helios food quote\'s reputation component is the row the counter names', () => {
+  const sim = createSimulation({ seed: 4242, systems: [economy] });
+  try {
+    const state = sim.state;
+    state.factions[FACTION] = { rep: 600, tier: 'Allied', aggro: false };
+    const owner = sim.registry.get('economy');
+    owner.ensureMarket('station_helios');
+    const buyQ = owner.quote('station_helios', 'cmdty_food', 'buy', 1);
+    const sellQ = owner.quote('station_helios', 'cmdty_food', 'sell', 1);
+    assert.equal(buyQ.ok, true, buyQ.reason || 'buy quote');
+    assert.equal(sellQ.ok, true, sellQ.reason || 'sell quote');
+    assert.ok(buyQ.reputationBuyMult < 1 && sellQ.reputationSellMult > 1);
+    const entry = state.economy.markets.station_helios.cmdty_food;
+    const row = standingDriver(state, HELIOS, entry, {
+      buy: buyQ.reputationBuyMult,
+      sell: sellQ.reputationSellMult,
+      surchargeWaived: buyQ.stationSurchargeWaived === true,
+    });
+    const buyPct = Math.round(Math.abs(buyQ.reputationBuyMult - 1) * 1000) / 10;
+    const sellPct = Math.round(Math.abs(sellQ.reputationSellMult - 1) * 1000) / 10;
+    assert.match(row.explanation, new RegExp(`buys run ${buyPct}% under`));
+    assert.match(row.explanation, new RegExp(`sales pay ${sellPct}% over`));
+    assert.equal(buyQ.reputationBuyMult, sellQ.reputationBuyMult);
+    assert.equal(buyQ.reputationSellMult, sellQ.reputationSellMult);
+  } finally {
+    sim.dispose();
+    economy._instance = null;
+  }
 });

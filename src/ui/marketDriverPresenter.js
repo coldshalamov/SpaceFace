@@ -82,16 +82,24 @@ const onePlace = (pct) => Math.round(Math.abs(pct) * 10) / 10;
  * quote uses, in percent against a stranger's quote at this berth. A pilot the station treats like a
  * stranger gets no row: nothing was applied.
  */
-export function standingDriver(state, station, entry) {
+export function standingDriver(state, station, entry, reputation = null) {
   const factionId = station && station.factionId;
   const record = factionId && state && state.factions && state.factions[factionId];
   if (!record) return null;
-  const base = priceModForState(state, factionId);
-  const spread = listingSpread(entry);
-  const applied = commodityStandingMultipliers(spread == null ? 0.08 : spread, base, {});
+  // The live quote carries the multipliers it actually applied (the spread the book used, not
+  // the spread implied by rounded lastBuy/lastSell). A caller without a quote falls back to
+  // the same function the quote uses, read off the listing.
+  const quotedBuy = reputation && Number(reputation.buy);
+  const quotedSell = reputation && Number(reputation.sell);
+  const fromQuote = Number.isFinite(quotedBuy) && Number.isFinite(quotedSell);
+  const base = fromQuote ? null : priceModForState(state, factionId);
+  const spread = fromQuote ? null : listingSpread(entry);
+  const applied = fromQuote
+    ? { buy: quotedBuy, sell: quotedSell }
+    : commodityStandingMultipliers(spread == null ? 0.08 : spread, base, {});
   const buyPct = (applied.buy - 1) * 100;
   const sellPct = (applied.sell - 1) * 100;
-  const waived = base.surchargeWaived === true;
+  const waived = fromQuote ? reputation.surchargeWaived === true : base.surchargeWaived === true;
   if (!waived && onePlace(buyPct) === 0 && onePlace(sellPct) === 0) return null;
   const faction = FACTION_SHORT.get(factionId) || factionId;
   const tier = record.tier ? ` (${record.tier})` : '';
@@ -109,7 +117,7 @@ export function standingDriver(state, station, entry) {
     favourable ? 'down' : 'up', Math.round(applied.buy * 1000) / 1000);
 }
 
-export function presentMarketDrivers({ state, stationId, commodity, entry, cycle } = {}) {
+export function presentMarketDrivers({ state, stationId, commodity, entry, cycle, reputation } = {}) {
   const context = stationContext(state, stationId);
   const station = context.station || {};
   const sector = context.sector || {};
@@ -140,7 +148,7 @@ export function presentMarketDrivers({ state, stationId, commodity, entry, cycle
   const cycleDirection = regime === 'rising' ? 'up' : regime === 'falling' ? 'down' : 'variable';
   const cycleDriver = driver('cycle', 'Short-term trend', regimeText.replace(/ demand| pricing| market| curve/i, ''), `The current short-term formula regime is ${regimeText.toLocaleLowerCase()}.`, cycleDirection, regime);
 
-  const standing = standingDriver(state, station, entry);
+  const standing = standingDriver(state, station, entry, reputation);
   const primary = Object.freeze(standing
     ? [roleDriver, geographyDriver, conflictDriver, cycleDriver, standing]
     : [roleDriver, geographyDriver, conflictDriver, cycleDriver]);

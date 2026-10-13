@@ -2588,6 +2588,9 @@ export const economy = {
     const conditionMult = stationTradeMults(state, stationId, info);
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
+    // Reputation alone, before the strike/blockade multiply. The market names this component
+    // separately from scarcity, fees and stale intel (board row 321).
+    const standingOnly = commodityStandingMultipliers(spread, standingBase, {});
     const standing = commodityStandingMultipliers(spread, standingBase, conditionMult);
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
@@ -2685,6 +2688,8 @@ export const economy = {
       priceImpactPct, stockAfter,
       standingPriceMultiplier,
       stationSurchargeWaived: side === 'buy' && standing.surchargeWaived,
+      reputationBuyMult: standingOnly.buy,
+      reputationSellMult: standingOnly.sell,
       legalityWarning: def.legality !== 'legal' ? def.legality : null,
     };
   },

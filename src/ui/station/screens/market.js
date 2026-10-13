@@ -806,17 +806,28 @@ export function createMarketScreen(ctx) {
     return rows;
   }
 
-  function counterUnit(def, side) {
+  function counterQuote(def, side) {
     const owner = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
     const sid = stationId(ctx.state || {});
     if (!owner || typeof owner.quote !== 'function' || !sid || !def) return null;
-    try {
-      const q = owner.quote(sid, def.id, side, 1);
-      return q && q.ok && q.qty === 1 && Number.isSafeInteger(q.total) ? q.total : null;
-    } catch (_) { return null; }
+    try { return owner.quote(sid, def.id, side, 1) || null; } catch (_) { return null; }
+  }
+  function counterUnit(def, side) {
+    const q = counterQuote(def, side);
+    return q && q.ok && q.qty === 1 && Number.isSafeInteger(q.total) ? q.total : null;
   }
   function unitBuy(_entry, def) { return counterUnit(def, 'buy'); }
   function unitSell(_entry, def) { return counterUnit(def, 'sell'); }
+  function reputationFromQuotes(buyQ, sellQ) {
+    const buy = buyQ && Number(buyQ.reputationBuyMult);
+    const sell = sellQ && Number(sellQ.reputationSellMult);
+    if (!Number.isFinite(buy) || !Number.isFinite(sell)) return null;
+    return {
+      buy,
+      sell,
+      surchargeWaived: !!(buyQ && buyQ.stationSurchargeWaived),
+    };
+  }
 
   function quotedRoutes(state, sid) {
     const owner = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
@@ -1216,10 +1227,16 @@ export function createMarketScreen(ctx) {
     ensureMarketHistory(state, sid);
     const hist = priceHistorySeries(laneHistoryPoints(sid, r.id, entry), entry, def, state && state.simTime);
     const forecast = sid ? predictPriceCurve(state, sid, r.id) : [];
-    const buy = unitBuy(entry, def), sell = unitSell(entry, def);
+    const buyQ = counterQuote(def, 'buy');
+    const sellQ = counterQuote(def, 'sell');
+    const quotedUnit = (q) => (q && q.ok && q.qty === 1 && Number.isSafeInteger(q.total) ? q.total : null);
+    const buy = quotedUnit(buyQ), sell = quotedUnit(sellQ);
     const avg = Number(def.basePrice) || buy;
     const demand = demandLevel(entry);
-    const drivers = presentMarketDrivers({ state, stationId: sid, commodity: def, entry });
+    const drivers = presentMarketDrivers({
+      state, stationId: sid, commodity: def, entry,
+      reputation: reputationFromQuotes(buyQ, sellQ),
+    });
     const cause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
     const legal = def.legality || 'legal';
     const isTracked = trackedCmdty(state) === r.id;
