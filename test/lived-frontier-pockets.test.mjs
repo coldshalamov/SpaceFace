@@ -1,7 +1,9 @@
-// CR-HOLLOW-4 — the lived-in frontier. Seven sectors that used to open on anonymous ambient
-// scatter (or, in the hollow rims Veil and Ashfall, on nothing at all) now open with the shift
-// already under way: Veil Nebula, Ashfall Reach, Io Reach, Charon Expanse, Dione Lane, Nereid Shoal
-// and Hyperion Cut — two pockets, four hulls each.
+// CR-HOLLOW-4 — the lived-in frontier. Eighteen sectors that used to open on anonymous ambient
+// scatter (or, in the hollow rims, on nothing at all) now open with the shift already under way:
+// Veil Nebula, Ashfall Reach, Io Reach, Charon Expanse, Dione Lane, Nereid Shoal, Hyperion Cut,
+// Nyx March, Kepler Scar, Orcus Shadow, Rhea Cinder, Haumea Rift, Eris Margin, Phoebe Echo,
+// Proteus Well, Triton Wake, Eunomia Gulf and The Bolus — two pockets, four hulls each. With
+// them every one of the twenty-five sectors has an authored shift.
 //
 // The done sentence: arriving in any of those sectors shows work in progress within the
 // camera-local bands — a tender on its round, a hauler on its lane, a salvor on a plate, a miner on
@@ -50,9 +52,21 @@ const EXPECTED_SECTORS = [
   'sector_dione_lane',
   'sector_nereid_shoal',
   'sector_hyperion_cut',
+  'sector_nyx_march',
+  'sector_kepler_scar',
+  'sector_orcus_shadow',
+  'sector_rhea_cinder',
+  'sector_haumea_rift',
+  'sector_eris_margin',
+  'sector_phoebe_echo',
+  'sector_proteus_well',
+  'sector_triton_wake',
+  'sector_eunomia_gulf',
+  'sector_the_bolus',
 ];
-// The only places this frontier keeps law: the contested lane at Io, the toll spur at Dione.
-const LAW_PATROLS = new Set(['io_cruiser_picket', 'dione_toll_patrol']);
+// The only places this frontier keeps law: the contested lane at Io, the toll spur at Dione, and the
+// Collective's one thin escort at Rhea Cinder.
+const LAW_PATROLS = new Set(['io_cruiser_picket', 'dione_toll_patrol', 'rhea_thin_escort']);
 // Job kinds the pocket runtime owns (a 'tender' jobKind would materialize jobless — see Pallas).
 const RUNTIME_JOB_KINDS = ['hauler', 'miner', 'surveyor', 'patrol', 'salvor'];
 
@@ -105,9 +119,53 @@ const AIMS = [
   ['sector_hyperion_cut', 'hyperion_yard_tender', 'hyperion_tender_claim_leg', 'station:station_hyperion_claim'],
   ['sector_hyperion_cut', 'hyperion_seam_miner', 'hyperion_miner_pod_leg', 'station:station_hyperion_cut'],
   ['sector_hyperion_cut', 'hyperion_seam_surveyor', 'hyperion_surveyor_driller_leg', 'poi:poi_hyperion_driller'],
+  ['sector_nyx_march', 'nyx_fence_runner', 'nyx_runner_cache_leg', 'poi:poi_nyx_cache'],
+  ['sector_nyx_march', 'nyx_fence_appraiser', 'nyx_appraiser_cutlane_face', 'zone:zone_nyx_cutlane'],
+  ['sector_nyx_march', 'nyx_cutlane_skiff', 'nyx_skiff_fence_end', 'station:station_nyx_march'],
+  ['sector_nyx_march', 'nyx_cutlane_picker', 'nyx_picker_plate_face', 'station:station_nyx_march'],
+  ['sector_kepler_scar', 'kepler_bazaar_runner', 'kepler_runner_stash_leg', 'poi:poi_kepler_stash'],
+  ['sector_kepler_scar', 'kepler_scar_picket', 'kepler_picket_glow_end', 'zone:zone_kepler_glow'],
+  ['sector_kepler_scar', 'kepler_hulk_salvor', 'kepler_salvor_plate_face', 'station:station_kepler_scar'],
+  ['sector_kepler_scar', 'kepler_glow_reader', 'kepler_reader_glow_face', 'zone:zone_kepler_glow'],
+  ['sector_orcus_shadow', 'orcus_supply_hauler', 'orcus_hauler_plinth_leg', 'poi:poi_orcus_plinth'],
+  ['sector_orcus_shadow', 'orcus_anomaly_listener', 'orcus_listener_anomaly_face', 'poi:poi_orcus_anomaly'],
+  ['sector_orcus_shadow', 'orcus_vault_scanner', 'orcus_scanner_post_face', 'station:station_orcus_shadow'],
+  ['sector_orcus_shadow', 'orcus_vault_salvor', 'orcus_salvor_dark_face', 'poi:poi_orcus_anomaly'],
+  ['sector_rhea_cinder', 'rhea_ore_hauler', 'rhea_hauler_seam_leg', 'field:f_rhea_1'],
+  ['sector_rhea_cinder', 'rhea_yard_tender', 'rhea_tender_claim_leg', 'poi:poi_rhea_claim'],
+  ['sector_rhea_cinder', 'rhea_seam_miner', 'rhea_miner_yard_face', 'station:station_rhea_cinder'],
+  ['sector_rhea_cinder', 'rhea_thin_escort', 'rhea_escort_ambush_end', 'zone:zone_rhea_ambush'],
+  ['sector_haumea_rift', 'haumea_instrument_tender', 'haumea_tender_fissure_leg', 'poi:poi_haumea_fissure'],
+  ['sector_haumea_rift', 'haumea_probe_tracker', 'haumea_tracker_probe_face', 'poi:poi_haumea_probe'],
+  ['sector_haumea_rift', 'haumea_seam_miner', 'haumea_miner_rift_face', 'field:f_haumea_1'],
+  ['sector_haumea_rift', 'haumea_core_hauler', 'haumea_hauler_rack_leg', 'station:station_haumea_rift'],
+  ['sector_eris_margin', 'eris_fence_runner', 'eris_runner_drop_leg', 'poi:poi_eris_drop'],
+  ['sector_eris_margin', 'eris_gate_picket', 'eris_picket_gate_end', 'zone:zone_eris_ambush'],
+  ['sector_eris_margin', 'eris_drop_picker', 'eris_picker_wreck_face', 'poi:poi_eris_wreck'],
+  ['sector_eris_margin', 'eris_metronome_keeper', 'eris_keeper_metronome_face', 'poi:poi_eris_metronome'],
+  ['sector_phoebe_echo', 'phoebe_shrine_tender', 'phoebe_tender_resonance_leg', 'zone:zone_phoebe_shrine'],
+  ['sector_phoebe_echo', 'phoebe_resonance_listener', 'phoebe_listener_vault_face', 'poi:poi_phoebe_vault'],
+  ['sector_phoebe_echo', 'phoebe_rim_prospector', 'phoebe_prospector_rock_face', 'field:f_phoebe_2'],
+  ['sector_phoebe_echo', 'phoebe_core_hauler', 'phoebe_hauler_shrine_leg', 'station:station_phoebe_echo'],
+  ['sector_proteus_well', 'proteus_den_runner', 'proteus_runner_stash_leg', 'poi:poi_proteus_stash'],
+  ['sector_proteus_well', 'proteus_den_picket', 'proteus_picket_choke_end', 'zone:zone_proteus_choke'],
+  ['sector_proteus_well', 'proteus_seam_crew', 'proteus_crew_face', 'station:station_proteus'],
+  ['sector_proteus_well', 'proteus_seam_hauler', 'proteus_hauler_pod_leg', 'poi:poi_proteus_buoy'],
+  ['sector_triton_wake', 'triton_lab_tender', 'triton_tender_wake_leg', 'poi:poi_triton_anomaly'],
+  ['sector_triton_wake', 'triton_wake_sampler', 'triton_sampler_glow_face', 'zone:zone_triton_glow'],
+  ['sector_triton_wake', 'triton_wreck_salvor', 'triton_salvor_plate_face', 'station:station_triton'],
+  ['sector_triton_wake', 'triton_sample_courier', 'triton_courier_watcher_leg', 'poi:poi_triton_watcher'],
+  ['sector_eunomia_gulf', 'eunomia_fence_runner', 'eunomia_runner_hush_leg', 'poi:poi_hush'],
+  ['sector_eunomia_gulf', 'eunomia_choke_picket', 'eunomia_picket_hulk_end', 'poi:poi_eunomia_hulk'],
+  ['sector_eunomia_gulf', 'eunomia_rib_salvor', 'eunomia_salvor_rib_face', 'station:station_eunomia'],
+  ['sector_eunomia_gulf', 'eunomia_ledger_clerk', 'eunomia_clerk_ledger_face', 'poi:poi_eunomia_ledger'],
+  ['sector_the_bolus', 'bolus_rib_tender', 'bolus_tender_wall_leg', 'zone:zone_bolus_wall'],
+  ['sector_the_bolus', 'bolus_grit_hauler', 'bolus_hauler_grit_leg', 'field:f_bolus_grit'],
+  ['sector_the_bolus', 'bolus_pile_salvor', 'bolus_salvor_plate_face', 'station:station_bolus_rib'],
+  ['sector_the_bolus', 'bolus_lumen_reader', 'bolus_reader_lumen_face', 'zone:zone_bolus_lumen'],
 ];
 
-test('the lived frontier joins the registry: seven sectors, two pockets and four hulls each', () => {
+test('the lived frontier joins the registry: eighteen sectors, two pockets and four hulls each', () => {
   assert.deepEqual([...LIVED_FRONTIER_SECTOR_IDS].sort(), [...EXPECTED_SECTORS].sort());
   for (const sectorId of EXPECTED_SECTORS) {
     assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(sectorId), `${sectorId} is in the registry`);
@@ -154,8 +212,12 @@ test('lived-frontier pockets obey the Ceres band, anchor and topology laws', () 
           assert.ok(zone, `${pocket.id}: station claims a real zone`);
           assert.deepEqual(a.localPos, { x: zone.center.x, z: zone.center.z });
         }
+      } else if (a.kind === 'poi') {
+        const poi = anchors.pois.find((x) => x.id === a.id);
+        assert.ok(poi, `${pocket.id}: anchor poi exists`);
+        assert.deepEqual(a.localPos, { x: poi.pos.x, z: poi.pos.z });
       } else {
-        assert.equal(a.kind, 'zone', `${pocket.id}: station or zone anchors only`);
+        assert.equal(a.kind, 'zone', `${pocket.id}: station, poi or zone anchors only`);
         const zone = zones.find((z) => z.id === a.zoneId);
         assert.ok(zone, `${pocket.id}: anchors on a real zone`);
         assert.deepEqual(a.localPos, { x: zone.center.x, z: zone.center.z });
@@ -248,17 +310,26 @@ test('every pocket object sits on the bearing of the route mark that names it', 
       }
     }
   }
-  assert.equal(checked, 7, 'seven authored objects across the frontier');
+  assert.equal(checked, 14, 'fourteen authored objects across the frontier');
 });
 
-test('the hollow rims keep their silence by count: Veil and Ashfall add four hulls each, nothing more', () => {
-  for (const sectorId of ['sector_veil_nebula', 'sector_ashfall_reach']) {
+test('the hollow rims keep their silence by count: six rims add four hulls each, nothing more', () => {
+  const rims = [
+    'sector_veil_nebula', 'sector_ashfall_reach', 'sector_orcus_shadow',
+    'sector_phoebe_echo', 'sector_triton_wake', 'sector_the_bolus',
+  ];
+  for (const sectorId of rims) {
     const def = SECTORS.find((s) => s.id === sectorId);
     assert.equal(def.trafficPerMin, 0, `${sectorId} is a hollow rim`);
     assert.equal(LIVED_FRONTIER_SETS[sectorId].capacity, 4);
     assert.equal(LIVED_FRONTIER_SETS[sectorId].pockets
       .flatMap((p) => p.actorSlots).filter((s) => s.lawful).length, 0, 'no law in a hollow rim');
   }
+});
+
+test('every sector in the game now opens on an authored shift', () => {
+  const uncovered = SECTORS.filter((s) => activityPocketsForSector(s.id).length === 0).map((s) => s.id);
+  assert.deepEqual(uncovered, [], 'no sector is left to anonymous ambient scatter');
 });
 
 function enterSector(sectorId) {
