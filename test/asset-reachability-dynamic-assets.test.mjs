@@ -28,6 +28,10 @@ test('asset reachability reports every dynamic runtime media registry', () => {
 
   const report = JSON.parse(result.stdout);
   assert.equal(report.pass, true, JSON.stringify(report.issues));
+  assert.ok(report.dynamicRegistries.modelTruthRuntime.includes(
+    'assets/ships/release/parts/places/place_ceres_second_measure.glb'));
+  assert.ok(!report.dynamicRegistries.modelTruthRuntime.includes(
+    'assets/ships/parts/parts_manifest.json'));
   assert.equal(report.dynamicRegistries.portraits.length, 23);
   assert.equal(report.dynamicRegistries.wreckCathedralEvidence.length, 5);
   assert.equal(report.dynamicRegistries.thrusterTextures.length, 9);

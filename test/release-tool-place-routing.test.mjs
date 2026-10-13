@@ -34,6 +34,15 @@ test('sg04 refuses --only on place-owned release ids', () => {
   assert.match(result.stderr, new RegExp(PLACE_PUBLISHER));
 });
 
+test('sg04 does not invent publisher ownership from an unknown place prefix', () => {
+  if (existsSync(RELEASE_LOCK)) return;
+  const result = runScript(SG04, ['--no-clean', '--only', 'place_unknown_routing_probe']);
+  assert.notEqual(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stderr, /unknown --only release asset id/);
+  assert.doesNotMatch(result.stderr, /place assets are owned by/);
+  assert.equal(existsSync(resolve(ROOT, 'assets/ships/release/parts/places/place_unknown_routing_probe.glb')), false);
+});
+
 test('sg04 excludes place-owned categories from its own build set', () => {
   const source = String(
     // The routing rules live in the script itself; pin each enforcement point.

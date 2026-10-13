@@ -49,7 +49,6 @@ export function noteKey(page, code) {
   return input;
 }
 
-/** One flight sample for the play watcher. `boot` is the opening overlay, which is a loading state. */
 /** Visible Wave G4 arc chips. Hidden slots stay `display: none` and are not marks. */
 export async function readEdgeMarkers(page) {
   return page.evaluate(() => {
@@ -65,6 +64,7 @@ export async function readEdgeMarkers(page) {
   });
 }
 
+/** One flight sample for the play watcher. `boot` is the opening overlay, which is a loading state. */
 export async function readPlaySample(page) {
   return page.evaluate(() => {
     const st = window.SF && window.SF.state;
@@ -86,12 +86,12 @@ export async function readPlaySample(page) {
   });
 }
 
-export async function holdKey(page, code, seconds, label, probes) {
+export async function holdKey(page, code, seconds, label, probes, until = null) {
   const startSim = await simNow(page); const startT = await wallNow(page);
   noteKey(page, code);
   await page.keyboard.down(code);
   let waited = null;
-  try { waited = await waitSim(page, seconds, { maxWallMs: 90000 }); } finally { await page.keyboard.up(code); }
+  try { waited = await waitSim(page, seconds, { maxWallMs: 90000, until }); } finally { await page.keyboard.up(code); }
   const endSim = await simNow(page); const endT = await wallNow(page);
   const rec = { label, key: code, kind: code === 'KeyW' ? 'thrust' : 'yaw', startSim, endSim, startT, endT, watch: waited && waited.watch };
   if (probes) probes.push(rec);
@@ -106,15 +106,29 @@ export async function controlProbes(page, tag, probes) {
   return yaw && yaw.watch ? yaw.watch : null;
 }
 
-function readTarget() {
+export function readTarget() {
   const st = window.SF.state; const cam = st.render && st.render.camera; const THREE = window.SF.THREE;
   const me = st.entityList.find((e) => e.id === st.playerId);
   if (!me || !cam) return null;
+  const canvas = st.render.renderer.domElement; const r = canvas.getBoundingClientRect();
+  const v = new THREE.Vector3();
+  const hostile = (e) => {
+    const d = e.data || {};
+    return d.runRole === 'enemy' || d.runRole === 'hostile'
+      || !!(d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget))
+      || (e.team !== me.team && e.team !== 0 && e.team !== 2);
+  };
   let best = null; let bd = Infinity;
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
-    const d = e.data || {};
-    if (!(d.runRole || (d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget)) || (e.team !== me.team && e.team !== 0 && e.team !== 2))) continue;
+    if (!hostile(e)) continue;
+    v.set(e.pos.x, e.pos.y || 0, e.pos.z).project(cam);
+    const x = r.left + (v.x * 0.5 + 0.5) * r.width;
+    const y = r.top + (-v.y * 0.5 + 0.5) * r.height;
+    // A public shot must hit the gameplay canvas, not an off-screen coordinate
+    // or a HUD control covering the target. Match the real DOM input boundary.
+    if (v.z < -1 || v.z > 1 || x < r.left || x >= r.right || y < r.top || y >= r.bottom
+      || document.elementFromPoint(Math.round(x), Math.round(y)) !== canvas) continue;
     const dist = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
     if (dist < bd) { bd = dist; best = e; }
   }
@@ -122,15 +136,30 @@ function readTarget() {
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
     if (Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) > 700) continue;
-    const d = e.data || {}; if (!(d.runRole || (d.ai && (d.ai.huntPlayer || d.ai.forcePlayerTarget)) || (e.team !== me.team && e.team !== 0 && e.team !== 2))) continue;
+    if (!hostile(e)) continue;
     cx += e.pos.x; cz += e.pos.z; near++;
   }
   let away = null; const packDist = near ? Math.hypot(me.pos.x - cx / near, me.pos.z - cz / near) : Infinity;
   if (near) { const a = Math.atan2(me.pos.z - cz / near, me.pos.x - cx / near); away = a - me.rot; while (away > Math.PI) away -= 2 * Math.PI; while (away < -Math.PI) away += 2 * Math.PI; }
   const hull = me.hullMax ? me.hull / me.hullMax : 1;
-  const canvas = st.render.renderer.domElement; const r = canvas.getBoundingClientRect();
-  const v = new THREE.Vector3();
-  if (!best) return { none: true, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  if (!best) {
+    // The off-screen hostile is a public radar glyph, not a hidden world target. Follow its
+    // accessible dial bearing until a real target is reachable by the gameplay canvas.
+    const radar = document.querySelector?.('.sf-radar-semantic-canvas');
+    const text = radar?.getAttribute('aria-label') || '';
+    const bearing = /Nearest hostile at \d+ o'clock, dial bearing (\d+) degrees\./.exec(text);
+    const stampText = radar?.getAttribute('data-radar-bearing-sim');
+    const stamp = stampText == null ? NaN : Number(stampText);
+    let radarRel = null;
+    if (radar?.offsetParent && bearing && Number.isFinite(stamp) && Number.isFinite(st.simTime)
+      && st.simTime - stamp >= 0 && st.simTime - stamp <= 0.5) {
+      // The radar's +X reads left, +Z reads up: a clockwise dial bearing maps to XZ heading.
+      radarRel = Math.PI / 2 + Number(bearing[1]) * Math.PI / 180 - me.rot;
+      while (radarRel > Math.PI) radarRel -= 2 * Math.PI;
+      while (radarRel < -Math.PI) radarRel += 2 * Math.PI;
+    }
+    return { none: true, hull, radarRel, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  }
   v.set(best.pos.x, best.pos.y || 0, best.pos.z).project(cam);
   // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).
   const ang = Math.atan2(best.pos.z - me.pos.z, best.pos.x - me.pos.x);
@@ -140,14 +169,27 @@ function readTarget() {
 
 const fighterMemory = { hull: null, breakBeats: 0 };
 
+// A pausing arena surface legitimately stops the simulation clock. Finish the
+// current public-input beat and let run.mjs use its real between-round controls.
+function combatPhaseEnded(st) {
+  return st.mode !== 'flight'
+    || !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'active');
+}
+
+function readCombatPhaseEnded() {
+  const st = window.SF.state;
+  return st.mode !== 'flight'
+    || !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'active');
+}
+
 /**
  * One beat of a kiting fighter (public input only): aim the mouse at the nearest hostile and fire,
  * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when 3+ hostiles
  * close inside 450 u, when hit, or when low, instead of trading hits. Latch (Space) every 7th beat.
  *
- * The aim point is the hostile's projected position even when that pixel is a HUD control
- * (the race-tape Circuits button is one). The click is recorded with elementFromPoint before
- * mouseup. The driver does not steer around DOM controls; the play watcher reports them.
+ * A shot is taken only when that pixel is the gameplay canvas. readTarget skips a HUD control
+ * covering the hostile, so this beat does not click the HUD. The play watcher still names a
+ * non-HUD screen that opens during the beat; it is not a second click failure.
  */
 export async function fightBeat(page, beat) {
   const tg = await page.evaluate(readTarget).catch(() => null);
@@ -157,13 +199,28 @@ export async function fightBeat(page, beat) {
   // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
   if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
   if (tg.none) {
-    const coast = await holdKey(page, 'KeyW', 0.6, null, null);
-    if (coast && coast.watch) return coast.watch;
-    if (beat % 3 === 0) {
-      const yaw = await holdKey(page, 'KeyA', 0.4, null, null);
-      if (yaw && yaw.watch) return yaw.watch;
+    if (Number.isFinite(tg.radarRel)) {
+      const turn = Math.abs(tg.radarRel) > 0.12 ? (tg.radarRel > 0 ? 'KeyD' : 'KeyA') : null;
+      const turnS = turn ? Math.min(0.6, Math.abs(tg.radarRel) / 4.5) : 0;
+      try {
+        if (turn) {
+          await page.keyboard.down(turn);
+          await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
+          await page.keyboard.up(turn);
+        }
+        if (!await page.evaluate(readCombatPhaseEnded)) {
+          await holdKey(page, 'KeyW', Math.max(0.05, 0.6 - turnS), null, null, combatPhaseEnded);
+        }
+      } finally {
+        for (const key of ['KeyW', 'KeyA', 'KeyD']) await page.keyboard.up(key);
+      }
+      return;
     }
-    return null;
+    await holdKey(page, 'KeyW', 0.6, null, null, combatPhaseEnded);
+    if (beat % 3 === 0 && !await page.evaluate(readCombatPhaseEnded)) {
+      await holdKey(page, 'KeyA', 0.4, null, null, combatPhaseEnded);
+    }
+    return;
   }
   const x = Math.round(tg.x);
   const y = Math.round(tg.y);
@@ -183,34 +240,21 @@ export async function fightBeat(page, beat) {
     if (tg.dist < 230) keys.push('KeyS');
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
-  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyA' : 'KeyD'; // KeyD lowers rot (measured by the yaw probes)
-  let watchHit = null;
+  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
   try {
-    for (const k of keys) { noteKey(page, k); await page.keyboard.down(k); }
+    for (const k of keys) await page.keyboard.down(k);
     const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
     if (turn) {
-      noteKey(page, turn);
       await page.keyboard.down(turn);
-      const turned = await waitSim(page, turnS, { maxWallMs: 30000 });
+      await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
       await page.keyboard.up(turn);
-      if (turned && turned.watch) watchHit = turned.watch;
     }
-    if (!watchHit) {
-      const held = await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000 });
-      if (held && held.watch) watchHit = held.watch;
-    }
+    await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000, until: combatPhaseEnded });
   } finally {
-    for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k).catch(() => {});
-    await noteClick(page, x, y);
-    await page.mouse.up().catch(() => {});
+    for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k);
+    await page.mouse.up();
   }
-  if (typeof page.__ptObserve === 'function') {
-    const after = await page.__ptObserve();
-    if (after) return after;
-  }
-  if (watchHit) return watchHit;
-  if (beat % 7 === 3) { noteKey(page, 'Space'); await page.keyboard.press('Space'); }
-  return null;
+  if (beat % 7 === 3 && !await page.evaluate(readCombatPhaseEnded)) { await page.keyboard.press('Space'); }
 }
 
 /** A non-combat flyer for Adventure / racing: thrust bursts and gentle turns, never idle long. */

@@ -16,7 +16,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 
 | Task | Start here |
 |---|---|
-| **No instruction, "next", "go", or "make it better"** | **`build_map.md` §1C seams** — `node scripts/board-chunks.mjs`, claim a `free` seam, do its open rows. `program-dispatch --next` only when it returns a real packet. A drained queue is the board, not the inference catalog; when the seams are all `done` the §M reservoir-admission rows are the remaining plan — every build plan lives on the build map |
+| **No instruction, "next", "go", or "make it better"** | **`node scripts/program-dispatch.mjs --next`** — the plan front door. It always returns one real unit (defect ledger → stale `NOW.md` rows → queue → ledger change-loops → free §1C seam → §M admission → vm-drop; the inference catalog only with `--lane=inference`) or an honest all-closed, and never errors while any surface is open; `--status` shows every surface on one screen. Claim what it names on the board (`build_map.md` §1C) and finish it — a drained queue advances the chain, it is never an empty plan |
 | Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
 | Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
 | Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |

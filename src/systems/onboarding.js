@@ -426,6 +426,8 @@ export const onboarding = {
     this._preparedRescue = null;
 
     const bus = this.bus;
+    bus.on('orbital-gallery:started', () => this._teardown());
+    bus.on('kinetic-league:started', () => this._teardown());
     // The first-run splash is the sole opening line. B0 waits until it is physically removed.
     bus.on('ui:firstRunSplash:active', () => { this._firstRunSplashPending = true; });
     bus.on('ui:firstRunSplash:done', () => {
@@ -1107,7 +1109,7 @@ export const onboarding = {
     this._latchDenialStreak = 0;
     this._shelfPending = null;
     this._shelfStraightS = 0;
-    if (isRacingCorridorSession(st) || payload?.crucibleLaunch === true
+    if (st.physicsVenueSession || isRacingCorridorSession(st) || payload?.crucibleLaunch === true
       || (st.run?.kind === 'survival' && st.run.phase !== 'inactive')) {
       // The fresh world may already have reused the old tutorial actor IDs.
       this._teardown({ removeActors: false });

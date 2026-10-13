@@ -93,13 +93,18 @@ export function pixelSplits(trace) {
 
 function keyName(trace, k) { return k >= 0 ? (trace.keys[k] || String(k)) : null; }
 
-// Mesh keys are `uuid|model|lod|authoredAssetState` (reader.js). A visible swap into or out of
-// awaiting / loading / compiling is pop-in the player sees. It is reported on its own line and
-// still counted; it is not dropped from the FAIL threshold.
+// New captures append the actual drawn-content signature. Admission status alone can change
+// while the same stand-in stays drawn; legacy captures cannot distinguish that and stay strict.
 export function assetKeyParts(name) {
   const parts = String(name || '').split('|');
-  if (parts.length < 4) return { id: parts[0] || '', model: '', lod: '', state: '' };
-  return { id: parts[0], model: parts[1], lod: parts[2], state: parts.slice(3).join('|') };
+  if (parts.length < 4) return { id: parts[0] || '', model: '', lod: '', state: '', drawn: null };
+  return { id: parts[0], model: parts[1], lod: parts[2], state: parts[3],
+    drawn: parts[4]?.startsWith('draw:') ? parts[4].slice(5) : null };
+}
+
+export function visibleContentChanged(fromName, toName) {
+  const from = assetKeyParts(fromName); const to = assetKeyParts(toName);
+  return from.drawn != null && to.drawn != null ? from.drawn !== to.drawn : fromName !== toName;
 }
 
 export function isLoadingAssetState(state) {
@@ -118,18 +123,18 @@ export function checkLodChurn(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('lod_churn', 'LOD / model swap churn', 'UNKNOWN', null, T.lodSwapsPer10s, 'too few play frames sampled');
   const last = new Map(); const swaps = new Map(); let measured = 0; let unseen = 0;
-  let lodN = 0; let loadN = 0;
+  let lodN = 0; let loadN = 0; let stateN = 0;
   const playerSwaps = [];
   const tally = (fromName, toName) => { if (swapIsLoading(fromName, toName)) loadN++; else lodN++; };
   for (const s of samples) {
     if (s.p && s.p.meshId) {
-      const pk = `${s.p.meshId}|${s.p.model}|${s.p.lod}|${s.p.state}`;
+      const pk = `${s.p.meshId}|${s.p.model}|${s.p.lod}|${s.p.state}${s.p.drawn != null ? `|draw:${s.p.drawn}` : ''}`;
       const prev = last.get('P');
-      if (prev && prev.k !== pk) {
+      if (prev && prev.k !== pk && visibleContentChanged(prev.k, pk)) {
         const loading = swapIsLoading(prev.k, pk);
         tally(prev.k, pk);
         playerSwaps.push({ t: s.t, sim: s.sim, from: prev.k, to: pk, box: s.p.box, loading });
-      }
+      } else if (prev && prev.k !== pk) stateN++;
       last.set('P', { k: pk });
     }
     for (const e of s.e) {
@@ -141,6 +146,11 @@ export function checkLodChurn(trace) {
       if (prev && prev.k !== k) {
         if (on || prev.on) {
           const fromName = keyName(trace, prev.k); const toName = keyName(trace, k);
+          if (!visibleContentChanged(fromName, toName)) {
+            stateN++;
+            last.set(e[E.id], { k, on });
+            continue;
+          }
           const loading = swapIsLoading(fromName, toName);
           tally(fromName, toName);
           const list = swaps.get(e[E.id]) || []; list.push({ sim: s.sim, t: s.t, from: prev.k, to: k, cls: e[E.cls], box: boxOf(e), on, loading });
@@ -171,7 +181,7 @@ export function checkLodChurn(trace) {
   if (playerSwaps.length) offenders.unshift({ line: `player ship swapped model/LOD ${playerSwaps.length}× (${splitOf(playerSwaps)}; first sim ${fmt(playerSwaps[0].sim, 1)} s: ${playerSwaps[0].from} → ${playerSwaps[0].to})`, t: playerSwaps[0].t, sim: playerSwaps[0].sim, box: playerSwaps[0].box });
   return result('lod_churn', 'LOD / model swap churn', fail ? 'FAIL' : 'PASS',
     `max ${maxPer10}/10s per entity · ${fmt(totalRate)}/s total · ${lodN} real LOD · ${loadN} loading`, `≤${T.lodSwapsPer10s}/10s per entity · ≤${T.lodTotalPerSec}/s total`,
-    `${lodN} real LOD/model swaps · ${loadN} visible loading-state swaps (awaiting/loading/compiling, still counted) over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
+    `${lodN} real LOD/model swaps · ${loadN} visible loading-state swaps (awaiting/loading/compiling, still counted) over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded); ${stateN} metadata-only transitions with unchanged drawn contents (diagnostic)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
 }
 
 function shortKey(k) { if (!k) return '?'; const [, model, lod, st] = k.split('|'); return `${(model || '').replace(/^GLTFKIT_/, '').slice(0, 28)}@${lod || '-'}${st && st !== 'authored' ? '/' + st : ''}`; }
@@ -223,26 +233,48 @@ const REMOVAL_CLASSES = new Set([CLS.enemy, CLS.asteroid, CLS.neutral, CLS.stati
 export function checkPopping(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('popping', 'Pop-in / pop-out on screen', 'UNKNOWN', null, `≤${T.popsPerMin}/min`, 'too few play frames');
-  const killedIds = new Set(trace.events.filter((ev) => ev.ev === 'killed').map((ev) => ev.id));
+  // Combat kills and mining depletion are explicit deaths. Generic entity:destroyed also
+  // serves shelving/cleanup, so it never excuses an unexplained on-screen removal.
+  const deathReceipts = new Map();
+  for (const ev of trace.events) {
+    const detonation = ev.ev === 'environment-detonated' && ev.type === 'asteroid';
+    const retirement = ev.ev === 'retired' && ev.reason === 'survival-room-wave-cleared'
+      && ev.owner === 'survival-arena' && ev.type === 'station'
+      && Number.isFinite(ev.pos?.x) && Number.isFinite(ev.pos?.z)
+      && Number.isSafeInteger(ev.wave) && ev.wave > 0
+      && typeof ev.roomSolidId === 'string' && ev.roomSolidId.startsWith(`survival-room-w${ev.wave}-`);
+    if ((ev.ev !== 'killed' && ev.ev !== 'asteroid-destroyed' && !detonation && !retirement)
+      || !Number.isFinite(ev.id)) continue;
+    const list = deathReceipts.get(ev.id) || []; list.push(ev); deathReceipts.set(ev.id, list);
+  }
   const inner = (e, s) => e[E.sx] > s.vw * 0.1 && e[E.sx] < s.vw * 0.9 && e[E.sy] > s.vh * 0.1 && e[E.sy] < s.vh * 0.9 && e[E.pr] >= 2;
+  const previousRecorded = new Map(); let recorded = null;
+  for (const sample of trace.samples) { previousRecorded.set(sample, recorded); recorded = sample; }
   let prev = null; const pops = []; const flaps = new Map(); let births = 0; let measured = 0;
   for (const s of samples) {
     const cur = new Map(s.e.map((e) => [e[E.id], e]));
     if (prev) {
+      const renderPrevious = previousRecorded.get(s);
+      const togglePreviousMap = renderPrevious === prev.s ? prev.map
+        : new Map((renderPrevious?.e || []).map(e => [e[E.id], e]));
       for (const [id, e] of cur) {
         const p = prev.map.get(id);
         if (e[E.vis] === VIS.unknown || e[E.vis] === VIS.pooled) continue;
         measured++;
         if (!p) { if (e[E.vis] === VIS.onscreen && inner(e, s) && e[E.cls] !== CLS.projectile && e[E.cls] !== CLS.fx) births++; continue; }
-        const toggled = (p[E.vis] === VIS.onscreen && e[E.vis] === VIS.hidden) || (p[E.vis] === VIS.hidden && e[E.vis] === VIS.onscreen);
+        const renderedBefore = togglePreviousMap.get(id);
+        const toggled = renderedBefore && ((renderedBefore[E.vis] === VIS.onscreen && e[E.vis] === VIS.hidden)
+          || (renderedBefore[E.vis] === VIS.hidden && e[E.vis] === VIS.onscreen));
         if (toggled && inner(e, s)) {
-          const loading = entityLoading(trace, e) || entityLoading(trace, p);
+          const loading = entityLoading(trace, e) || entityLoading(trace, renderedBefore);
           pops.push({ id, kind: e[E.vis] === VIS.onscreen ? 'appeared' : 'vanished', s, e, loading });
           flaps.set(id, (flaps.get(id) || 0) + 1);
         }
       }
       for (const [id, p] of prev.map) {
-        if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || killedIds.has(id) || !REMOVAL_CLASSES.has(p[E.cls])) continue;
+        const confirmedDeath = deathReceipts.get(id)?.some((ev) => ev.sim >= prev.s.sim - 1 / 60
+          && ev.sim <= s.sim + 1 / 60);
+        if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || confirmedDeath || !REMOVAL_CLASSES.has(p[E.cls])) continue;
         pops.push({ id, kind: 'removed without death', s: prev.s, e: p, loading: entityLoading(trace, p) });
       }
     }
@@ -278,27 +310,55 @@ function inputsBetween(trace, a, b) { return trace.events.filter((ev) => isFligh
 
 export function checkSpawnMotion(trace) {
   const T = THRESHOLDS; const rounds = roundsOf(trace);
-  const starts = rounds.length ? rounds.map((r) => ({ label: `round ${r.wave}`, sim: r.startSim })) : (trace.meta.playStartSim != null ? [{ label: 'spawn', sim: trace.meta.playStartSim }] : []);
+  const starts = rounds.length ? rounds.map((r) => ({ label: `round ${r.wave}`, wave: r.wave, sim: r.startSim })) : (trace.meta.playStartSim != null ? [{ label: 'spawn', sim: trace.meta.playStartSim }] : []);
   if (!starts.length) return result('spawn_motion', 'Unexplained motion at spawn', 'UNKNOWN', null, `0 bodies >${T.spawnSpeed} u/s`, 'no spawn moment recorded');
-  const offenders = []; let count = 0;
+  const hasRunMetadata = trace.samples.some((s) => s.run?.w != null && s.run?.ph != null);
+  const offenders = []; let count = 0; let checked = 0; let missing = 0;
   for (const st of starts) {
-    const s = trace.samples.find((x) => x.sim >= st.sim && x.mode === 'flight');
-    if (!s || !s.p) continue;
-    const firstIn = inputsBetween(trace, st.sim, st.sim + 1e9)[0];
+    // Actor polls can notice the round several physics ticks after it opens. The continuous
+    // reader already recorded the actual first active frame; later contacts are not spawn motion.
+    const nonRound = rounds.length === 0;
+    const index = trace.samples.findIndex((x) => x.mode === 'flight' && (nonRound
+      || (st.wave != null && hasRunMetadata ? x.run?.w === st.wave && x.run.ph === 'active' : x.sim >= st.sim)));
+    const s = trace.samples[index];
+    if (!s || !s.p) { missing++; continue; }
+    const previous = trace.samples[index - 1];
+    if (nonRound && s.sim !== 0 && (!previous || previous.mode === 'flight')) { missing++; continue; }
+    const inputStart = st.wave != null && hasRunMetadata
+      ? Math.min(st.sim, previous?.sim ?? s.sim) : nonRound ? s.sim : st.sim;
+    const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
-    for (const e of s.e) {
-      if (!(e[E.cls] === CLS.asteroid || e[E.cls] === CLS.pickup || e[E.cls] === CLS.other)) continue;
-      const d = Math.hypot(e[E.x] - s.p.x, e[E.z] - s.p.z); if (d > T.spawnRadius) continue;
-      const sp = Math.hypot(e[E.vx], e[E.vz]);
-      if (sp > T.spawnSpeed) {
-        count++;
-        offenders.push({ sp, line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input`, t: s.t, sim: s.sim, box: e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled ? boxOf(e) : null });
+    checked++;
+    // The actor can announce opening several ticks late. Record each initial passive life's
+    // first observed state through that announcement, rather than regrade post-solve drift.
+    // Include the announcement's first sample: reader sim stamps are rounded to milliseconds.
+    const announced = nonRound ? trace.samples.findIndex((x, i) => i >= index && x.sim >= st.sim) : index;
+    const cohort = nonRound ? trace.samples.slice(index, announced < 0 ? trace.samples.length : announced + 1) : [s];
+    const seen = new Set(); let prev = previous; let incomplete = nonRound && announced < 0;
+    for (const frame of cohort) {
+      if (nonRound && (frame.mode !== 'flight' || !frame.p
+        || (Number.isSafeInteger(prev?.f) && Number.isSafeInteger(frame.f) && frame.f !== prev.f + 1))) {
+        incomplete = true; break;
+      }
+      prev = frame;
+      if (firstIn && firstIn.sim < frame.sim) break;
+      for (const e of frame.e) {
+        if (!(e[E.cls] === CLS.asteroid || e[E.cls] === CLS.pickup || e[E.cls] === CLS.other)) continue;
+        if (seen.has(e[E.id])) continue;
+        seen.add(e[E.id]);
+        const d = Math.hypot(e[E.x] - frame.p.x, e[E.z] - frame.p.z); if (d > T.spawnRadius) continue;
+        const sp = Math.hypot(e[E.vx], e[E.vz]);
+        if (sp > T.spawnSpeed) {
+          count++;
+          offenders.push({ sp, line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input`, t: frame.t, sim: frame.sim, box: e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled ? boxOf(e) : null });
+        }
       }
     }
+    if (incomplete) missing++;
   }
   offenders.sort((a, b) => b.sp - a.sp);
-  return result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
-    `${starts.length} spawn moment(s) checked`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  return result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : missing ? 'UNKNOWN' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
+    `${checked} spawn moment(s) checked${missing ? `; ${missing} opening frame(s) missing` : ''}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
 export function checkKillsBeforeInput(trace) {
@@ -453,6 +513,21 @@ function nearestSample(trace, sim) {
   return bd < 1 ? best : null;
 }
 
+function commandedOrbitYaw(sample) {
+  const p = sample.p; const intent = p.angularIntent;
+  if (!intent || intent.version !== 1 || intent.source !== 'player-flight-v3' || intent.active !== true
+    || intent.playerId !== p.id || !Number.isSafeInteger(p.occupantGeneration)
+    || intent.occupantGeneration !== p.occupantGeneration
+    || !Number.isSafeInteger(sample.tick) || intent.tick !== sample.tick
+    || !Number.isFinite(intent.sim) || Math.abs(intent.sim - sample.sim) > 1e-6
+    || !(Number.isFinite(intent.dt) && intent.dt > 0) || !Number.isFinite(intent.angularAcceleration)) return false;
+  const ownsYaw = intent.kind === 'swing-carry' && intent.reason === 'swing-carry'
+    || intent.kind === 'orbit-assist' && (intent.reason === 'engaged' || intent.reason === 'line-slack');
+  const rate = intent.targetYawRate;
+  return ownsYaw && Number.isFinite(rate) && Math.abs(rate) > THRESHOLDS.tumbleAngVel
+    && rate * p.angVel > 0 && Math.abs(p.angVel - rate) <= THRESHOLDS.tumbleAngVel;
+}
+
 export function checkTumble(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace).filter((s) => s.p && s.p.alive);
   if (samples.length < 10) return result('tumble', 'Ship stays in the play plane', 'UNKNOWN', null, null, 'too few play frames');
@@ -464,7 +539,8 @@ export function checkTumble(trace) {
     if (Math.abs(p.pitch) > T.tumblePitch) why.push(`pitch ${fmt(p.pitch, 2)}`);
     if (Math.abs(p.bank) > T.tumbleBank) why.push(`bank ${fmt(p.bank, 2)}`);
     if (Math.abs(p.y) > T.tumbleY) why.push(`y ${fmt(p.y, 1)}`);
-    if (Math.abs(p.angVel) > T.tumbleAngVel && !inIntervals(yawHeld, s.sim)) why.push(`spin ${fmt(p.angVel, 1)} rad/s uncommanded`);
+    if (Math.abs(p.angVel) > T.tumbleAngVel && !inIntervals(yawHeld, s.sim)
+      && !commandedOrbitYaw(s)) why.push(`spin ${fmt(p.angVel, 1)} rad/s uncommanded`);
     if (why.length) { if (!run) run = { start: s, why }; run.end = s; } else if (run) { close(); }
   }
   if (run) close();
@@ -497,25 +573,32 @@ function readabilityThreshold() {
 export function checkReadability(trace) {
   const T = THRESHOLDS; const r = trace.readability;
   const threshold = readabilityThreshold();
-  if (!r || !r.classes || r.error) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, threshold, r && r.error ? `no frame analysis (${r.error})` : 'no frame analysis');
+  const measurementNote = r && r.measurementNote ? `; ${r.measurementNote}` : '';
+  if (!r || !r.classes || r.error) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, threshold, (r && r.error ? `no frame analysis (${r.error})` : 'no frame analysis') + measurementNote);
   const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ') || 'none';
   const graded = READABILITY_CLASSES.filter((k) => r.classes[k] && r.classes[k].n >= T.readabilityMinSamples);
   const pairs = (r.pairs || []).filter((p) => p.sep != null && p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
   // A measured class can pass or fail on its own backdrop contrast. UNKNOWN only when no combat class reached the sample floor.
   if (!graded.length && !pairs.length) {
-    return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, threshold, `not enough on-screen samples (${counts}; need ${T.readabilityMinSamples} of one class)`);
+    return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, threshold, `not enough on-screen samples (${counts}; need ${T.readabilityMinSamples} of one class)${measurementNote}`);
   }
   const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
   const lowContrast = graded.filter((k) => (r.classes[k].lowContrastFrac || 0) > T.readabilityLowContrastFrac);
+  const bodies = (r.census || []).filter((c) => ['station', 'neutral', 'other'].includes(c.cls));
+  // Radius overlap without a native mask cannot prove cover. Opaque pixels can.
+  const bodyUnknown = bodies.filter((c) => (c.occlusion
+    ? c.occlusion.unknown > 0 || c.occlusion.n < T.readabilityMinSamples
+    : c.n >= T.readabilityMinSamples && c.overPlayerFrac > 0));
   const offenders = [
     ...bad.map((p) => ({ line: `${p.a} vs ${p.b}: separation ${fmt(p.sep)} (colour Δ ${fmt(p.dColor, 1)}, size ratio ${fmt(p.sizeRatio, 2)}${p.markerCredit ? `, marker +${fmt(p.markerCredit, 1)}` : ''}) over ${p.nA}/${p.nB} samples`, t: p.exampleT, sim: null, box: p.exampleBox })),
     ...lowContrast.map((k) => {
       const v = r.classes[k];
       return { line: `${k}: ${fmt((v.lowContrastFrac || 0) * 100, 0)}% of samples barely differ from the background (ΔL < ${T.readabilityLowDeltaL})`, t: v.exampleT, sim: null, box: v.exampleBox };
     }),
-    // Big play-space bodies that are neither enemy nor asteroid (e.g. a white station sphere) sitting on the player.
-    ...(r.census || []).filter((c) => ['station', 'neutral', 'other'].includes(c.cls) && c.n >= T.readabilityMinSamples && c.overPlayerFrac >= 0.2)
-      .map((c) => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.overPlayerFrac * 100, 0)}% of ${c.n} samples — a play-space body that reads as neither enemy nor asteroid`, t: c.exampleT, sim: null, box: c.exampleBox })),
+    ...bodies.filter((c) => c.occlusion && c.occlusion.n >= T.readabilityMinSamples
+      && c.occlusion.covered / (c.occlusion.n + c.occlusion.unknown) >= 0.2)
+      .map((c) => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.occlusion.covered / (c.occlusion.n + c.occlusion.unknown) * 100, 0)}% of ${c.occlusion.n + c.occlusion.unknown} native opaque-mask samples — actual body pixels cover the ship`,
+        t: c.occlusion.exampleT, sim: null, box: c.occlusion.exampleBox })),
   ];
   const moments = [];
   for (const k of lowContrast) {
@@ -524,11 +607,27 @@ export function checkReadability(trace) {
     else if (r.classes[k].exampleBox) moments.push({ line: `${k} low contrast`, t: r.classes[k].exampleT, sim: null, box: r.classes[k].exampleBox });
   }
   for (const p of bad) if (p.exampleBox) moments.push({ line: `${p.a} vs ${p.b} separation ${fmt(p.sep)}`, t: p.exampleT, sim: null, box: p.exampleBox });
+  for (const c of bodies) {
+    if (!c.occlusion || c.occlusion.n < T.readabilityMinSamples) continue;
+    if (c.occlusion.covered / (c.occlusion.n + c.occlusion.unknown) < 0.2) continue;
+    if (c.occlusion.exampleBox) moments.push({ line: `${c.name || c.cls} covers the player`, t: c.occlusion.exampleT, sim: null, box: c.occlusion.exampleBox });
+  }
   const thin = READABILITY_CLASSES.filter((k) => !graded.includes(k));
+  // A class the capture threw out is unmeasured. The classes that remain cannot PASS in its place.
+  const rejected = (r.captureCoherence && r.captureCoherence.rejected) || {};
+  const captureUnmeasured = (r.captureCoherence && r.captureCoherence.unboundedShots > 0)
+    || READABILITY_CLASSES.some((k) => {
+      const reasons = rejected[k];
+      const dropped = reasons && Object.values(reasons).some((n) => n > 0);
+      const kept = r.classes[k] ? r.classes[k].n : 0;
+      return dropped && kept < T.readabilityMinSamples;
+    });
   const contrastValue = graded.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast`).join(' · ');
   const value = pairs.length ? `min separation ${fmt(Math.min(...pairs.map((p) => p.sep)))}` : contrastValue;
-  const detail = `samples: ${counts}${thin.length ? `; not graded (under ${T.readabilityMinSamples}): ${thin.join(', ')}` : ''}`;
-  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : 'PASS', value, threshold, detail, offenders.slice(0, 6), moments.slice(0, 6));
+  const unknownNote = bodyUnknown.length ? `; opaque body/player coverage UNKNOWN for ${bodyUnknown.map((c) => `${c.name || c.cls}: ${c.occlusion ? `${c.occlusion.n} measured/${c.occlusion.unknown} unknown (${Object.keys(c.occlusion.reasons || {}).join(', ') || 'insufficient samples'})` : 'radius overlap has no native mask'}`).join('; ')}` : '';
+  const detail = `samples: ${counts}${thin.length ? `; not graded (under ${T.readabilityMinSamples}): ${thin.join(', ')}` : ''}${measurementNote}${unknownNote}`;
+  const status = offenders.length ? 'FAIL' : (bodyUnknown.length || captureUnmeasured) ? 'UNKNOWN' : 'PASS';
+  return result('readability', 'Enemy / asteroid / projectile readable', status, value, threshold, detail, offenders.slice(0, 6), moments.slice(0, 6));
 }
 
 /** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
@@ -548,7 +647,7 @@ function checkVfxPixels(trace, px) {
   return result('vfx_coverage', 'Combat VFX coverage / occlusion', fail ? 'FAIL' : 'PASS',
     `p95 ${fmt(p95 * 100, 0)}% screen · player hidden ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threats hidden p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
     `≤${T.vfxCoverP95 * 100}% · ≤${T.vfxPlayerOccludedFrac * 100}% · ≤${T.vfxThreatOccludedP95 * 100}% · ≤${T.vfxPersistSeconds} s`,
-    `${px.length} per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom 160×90; backdrop layers graded separately)`,
+    `${px.length} per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom reader target; backdrop layers graded separately)`,
     offenders, offenders.filter((o) => o.box).slice(0, 2));
 }
 
@@ -733,19 +832,39 @@ export function gradeSoftwareFrameTime(stats, baseline, load = null) {
   };
 }
 
-/** Rewrite a recorded software-GL frame_time result once the baseline verdict exists. Returns true when it changed the result. */
+/** Quiet-host program §0. Unmarked or contended hosts keep the numbers and do not grade them. */
+function contendedFrameDetail(samples) {
+  return `${samples} play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Observer readbacks and screenshots remain included in these measurements.`;
+}
+
+/** Rewrite a recorded software-GL frame_time result once the baseline verdict exists. Returns true when it changed the result.
+ *  On a contended host the comparison may only add a FAIL. PASS and ADVISORY stay diagnostic UNKNOWN. */
 export function regradeSoftwareFrameTime(results, baselineFrame, { commit, baselineMissing = false, headLoad = null, baseLoad = null } = {}) {
   const row = results.find((x) => x.id === 'frame_time');
   if (!row || !row.frame || !row.frame.softwareGl) return false;
+  const contended = row.frame.contended === true;
   const baseline = baselineMissing || !baselineFrame
     ? { commit: commit || '?', p99: null, longTasks: null }
     : { ...baselineFrame, commit: commit || baselineFrame.commit || '?' };
   const graded = gradeSoftwareFrameTime(row.frame, baseline, { head: headLoad, base: baseLoad });
+  if (contended && graded.status !== 'FAIL') {
+    const T = THRESHOLDS;
+    const detail = contendedFrameDetail(row.frame.samples);
+    const threshold = `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`;
+    const frame = { ...graded.frame, contended: true };
+    const changed = row.status !== 'UNKNOWN' || row.value !== graded.value || row.threshold !== threshold || row.detail !== detail;
+    row.status = 'UNKNOWN';
+    row.value = graded.value;
+    row.threshold = threshold;
+    row.detail = detail;
+    row.frame = frame;
+    return changed;
+  }
   row.status = graded.status;
   row.value = graded.value;
   row.threshold = graded.threshold;
   row.detail = graded.detail;
-  row.frame = graded.frame;
+  row.frame = contended ? { ...graded.frame, contended: true } : graded.frame;
   return true;
 }
 
@@ -753,14 +872,25 @@ export function checkFrameTime(trace) {
   const T = THRESHOLDS;
   const stats = frameStats(trace);
   if (!stats) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', null, null, 'too few frames');
+  const gpuValue = `p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
+  const gpuThreshold = `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`;
+  const moments = stats.offenders.filter((o) => o.t != null).slice(0, 2);
+  const contended = trace.meta.performanceContext?.contended === true;
   if (trace.meta.softwareGl) {
     const graded = gradeSoftwareFrameTime(stats, trace.meta.frameBaseline || null);
-    const row = result('frame_time', 'Frame time / long tasks', graded.status, graded.value, graded.threshold, graded.detail, stats.offenders.slice(0, 4), graded.status === 'FAIL' ? stats.offenders.filter((o) => o.t != null).slice(0, 2) : []);
-    row.frame = graded.frame;
+    if (contended && graded.status !== 'FAIL') {
+      const row = result('frame_time', 'Frame time / long tasks', 'UNKNOWN', graded.value, gpuThreshold, contendedFrameDetail(stats.samples), stats.offenders.slice(0, 4), moments);
+      row.frame = { ...graded.frame, contended: true };
+      return row;
+    }
+    const row = result('frame_time', 'Frame time / long tasks', graded.status, graded.value, graded.threshold, graded.detail, stats.offenders.slice(0, 4), graded.status === 'FAIL' ? moments : []);
+    row.frame = contended ? { ...graded.frame, contended: true } : graded.frame;
     return row;
   }
-  const value = `p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
-  const row = result('frame_time', 'Frame time / long tasks', stats.p99 > T.frameP99Ms || stats.longTasks ? 'FAIL' : 'PASS', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, `${stats.samples} play frames`, stats.offenders.slice(0, 4), stats.offenders.filter((o) => o.t != null).slice(0, 2));
+  if (contended) {
+    return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', gpuValue, gpuThreshold, contendedFrameDetail(stats.samples), stats.offenders.slice(0, 4), moments);
+  }
+  const row = result('frame_time', 'Frame time / long tasks', stats.p99 > T.frameP99Ms || stats.longTasks ? 'FAIL' : 'PASS', gpuValue, gpuThreshold, `${stats.samples} play frames`, stats.offenders.slice(0, 4), moments);
   row.frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: false, samples: stats.samples };
   return row;
 }
@@ -942,10 +1072,31 @@ export function checkOffscreenMarker(trace) {
 }
 
 ALL_CHECKS.splice(ALL_CHECKS.indexOf(checkVfx) + 1, 0, checkBackdrop);
-ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkSimStalled, checkPlayInterrupted, checkOffscreenMarker);
+
+/**
+ * Crucible modes (Swarm / Gauntlet) must play in the Crucible, not in the Adventure world:
+ * no Adventure objective / tutorial text or live onboarding in any play frame, and (Swarm)
+ * an armory that actually offers equipment. The worker-lane regression showed all three.
+ */
+export function checkCrucibleRealm(trace) {
+  const mode = trace.meta.mode;
+  if (mode !== 'swarm' && mode !== 'gauntlet') return result('crucible_realm', 'Crucible plays in the Crucible', 'N/A', null, '0 Adventure frames · armory > 0 offers', 'not a Crucible mode');
+  const frames = trace.realm || [];
+  const offenders = [];
+  const leaks = frames.filter((f) => (f.advText && f.advText.length) || f.onboarding);
+  for (const f of leaks.slice(0, 4)) offenders.push({ line: `Adventure in a ${mode} frame (${f.file ? f.file.split('/').pop() : '?'}, sector ${f.sector}): ${f.onboarding ? 'onboarding live; ' : ''}${(f.advText || []).join(' | ')}`, t: f.t, box: null });
+  const offers = trace.loadout ? (trace.loadout.items || []).length : null;
+  if (mode === 'swarm' && trace.meta.hasLoadout && offers === 0) offenders.push({ line: 'armory offered no equipment ("No equipment matches this search")', t: trace.loadout.shotT, box: null });
+  const status = offenders.length ? 'FAIL' : (frames.length ? 'PASS' : 'UNKNOWN');
+  return result('crucible_realm', 'Crucible plays in the Crucible', status,
+    `${leaks.length}/${frames.length} Adventure frames · armory ${offers == null ? 'n/a' : offers + ' offers'}`, '0 Adventure frames · armory > 0 offers',
+    `sectors seen: ${[...new Set(frames.map((f) => f.sector))].join(', ') || 'n/a'}`, offenders, offenders.filter((o) => o.t != null).slice(0, 1));
+}
+
+ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkSimStalled, checkPlayInterrupted, checkOffscreenMarker, checkCrucibleRealm);
 
 /** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
-export const GATE_STRICT = Object.freeze(['player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
+export const GATE_STRICT = Object.freeze(['crucible_realm', 'player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
 const GATE_STRICT_IDLE = Object.freeze(['player_ship', 'tumble']);
 
 export function runChecks(trace) {

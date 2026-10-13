@@ -2825,7 +2825,15 @@ export function boundaryLiveEntity(boundary, fallback) {
   const resolved = id != null && live && live.entities && typeof live.entities.get === 'function'
     ? live.entities.get(id)
     : null;
-  return resolved && resolved.alive !== false ? resolved : fallback;
+  const data = boundary && boundary.userData;
+  // A recycled id is not a reattached owner. Only the renderer's explicit bind
+  // may move this boundary to a new life (including a verified semantic restore).
+  const sameType = data?.presentationEntityType == null
+    || resolved?.type === data.presentationEntityType;
+  const sameLife = data?.presentationOccupantGeneration == null
+    || resolved?.occupantGeneration == null
+    || resolved.occupantGeneration === data.presentationOccupantGeneration;
+  return resolved && resolved.alive !== false && sameType && sameLife ? resolved : fallback;
 }
 
 /** True when the admission's residency owner is gone — the entity record died mid-admission. */
@@ -4318,7 +4326,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     const refill = await waitForAuthoredAdmission(rehydrateDetachedGeometries(sourceGeometries), options);
     assertQueuedAuthoredAdmissionActive(options, 'after-place-cpu-refill');
     if (refill.errors.length || sourceGeometries.some(isPackageGeometryDetached)) {
-      throw new Error(`[partsLibrary] Authored place CPU refill failed: ${JSON.stringify(refill.errors)}`);
+      const unresolved = [record, overlayRecord].filter(Boolean).filter(source =>
+        (source.primitives || []).some(primitive => isPackageGeometryDetached(primitive.geometry)))
+        .map(source => ({ url: source.url, contentHash: source.renderPackage?.contentHash }));
+      throw new Error(`[partsLibrary] Authored place CPU refill failed: ${JSON.stringify({ errors: refill.errors, unresolved })}`);
     }
     authored = await driveAuthoredBuildStepsAsync(
       buildPlacePropRootSteps(entity, record, scene, boundary, {
@@ -4375,20 +4386,13 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
 
   registerPreparedAuthoredAdmission(scene, boundary, authored);
   let authoredDisposed = false;
-  const disposePreparedPlace = () => {
+  const disposePreparedPlace = async () => {
     if (authoredDisposed) return false;
     try {
-      // Logical publication and motion ownership retire now; only the detached
-      // GPU traversal waits for the paced drain. A retained keeper callback must
-      // never revive a cancelled preparation between those two moments.
-      authored.root.userData?.ceresCradleLayoutGuard?.dispose();
-      // Paced — the pipeline-fail/orphan abort legs used to tear the prepared
-      // tree down atomically inside the commit continuation (the same class the
-      // commit disposes already pace). Registry release stays synchronous.
-      queuePacedDetachedTeardown(
-        authored.root,
-        detachedFallbackTeardownThenClearSteps(authored.root),
-      );
+      // Preparation owns a settlement verdict, not a fire-and-forget reclaim. Retain its
+      // exact resource journal and await paced cleanup before allowing a fallback publish.
+      await collectPreparedPlaceCleanupResources(authored, options.state);
+      await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch);
       authoredDisposed = true;
     } finally {
       // A disposal throw must not strand the registry entry — it pins the boundary and the
@@ -4549,13 +4553,12 @@ function failAuthoredPlaceAdmission(
   return false;
 }
 
-async function commitAuthoredPlaceBoundary(
+export async function commitAuthoredPlaceBoundary(
   boundary, fallbackRoot, authored, setActive, admissionEntity, options = {},
   disposePrepared = null,
 ) {
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
-  detachBoundaryResolvingMarker(boundary);
   // Each contiguous leg debits the shared paced ledger — the freeze stretch, the atomic
   // graft+publish tail and the deferred dispose all land in inter-present windows other
   // slicers budget against.
@@ -4595,6 +4598,7 @@ async function commitAuthoredPlaceBoundary(
     else unregisterPreparedAuthoredAdmission(authored);
     return false;
   }
+  detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
   // The swap mutated the tree under no park key — a withheld/parked verdict
@@ -8028,7 +8032,8 @@ function admitNextUpgradeJob(state) {
     // the abortedStalled guard below keeps its boundary state off the replacement owner's.
     if (diagnostic.endedAtMs == null) {
       diagnostic.status = timedOut ? 'stalled-slot-released'
-        : cancelled ? 'awaiting-authored-admission' : 'fallback-after-error';
+        : job.boundary?.userData?.authoredAssetState === 'unavailable' ? 'unavailable'
+          : cancelled ? 'awaiting-authored-admission' : 'fallback-after-error';
       diagnostic.error = error && error.message ? error.message : String(error);
     }
     // A retired queue may already have a fresh job for this same mounted boundary. Its old
@@ -8062,7 +8067,8 @@ function admitNextUpgradeJob(state) {
         job.boundary.userData.authoredAssetState = 'unavailable';
         job.boundary.userData.authoredFailureReason = 'admission-deadline';
         setPresentationAdmission(job.entity, PRESENTATION_ADMISSION.unavailable);
-      } else if (cancelled || job.entity && job.entity.alive === false) {
+      } else if ((cancelled || job.entity && job.entity.alive === false)
+          && job.boundary.userData.authoredAssetState !== 'unavailable') {
         markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
         if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
           // The job's owner died under a kept boundary (save recook) — a terminal verdict would
@@ -8071,7 +8077,9 @@ function admitNextUpgradeJob(state) {
           console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
         }
       } else {
-        job.boundary.userData.authoredAssetState = 'fallback-after-error';
+        if (job.boundary.userData.authoredAssetState !== 'unavailable') {
+          job.boundary.userData.authoredAssetState = 'fallback-after-error';
+        }
       }
     }
     if (!cancelled && !timedOut) {
@@ -9383,6 +9391,42 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
   }
 }
 
+async function collectPreparedPlaceCleanupResources(authored, state) {
+  if (authored.preparedPlaceCleanupOwnership) return;
+  const root = authored.root;
+  const geometries = new Set(authored.ownerLocalGeometries || EMPTY_ARRAY);
+  const materials = new Set(authored.ownerLocalMaterials || EMPTY_ARRAY);
+  const instances = new Set(authored.renderPackageInstances || EMPTY_ARRAY);
+  const objects = new Set(authored.ownerLocalObjects || EMPTY_ARRAY);
+  for (const key of ['admissionStandInRelease', 'disposeWorldSitePresentation', 'detachAuthoredMotion']) {
+    const hook = root.userData?.[key];
+    if (typeof hook === 'function') objects.add({ dispose: () => hook.call(root.userData, state) });
+  }
+  const guard = root.userData?.ceresCradleLayoutGuard;
+  if (guard && typeof guard.dispose === 'function') objects.add(guard);
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) await composeYield();
+    const geometry = object.geometry;
+    if (geometry && geometry.userData?.spacefaceSharedAsset !== true
+        && geometry.userData?.spacefaceSharedFallback !== true) geometries.add(geometry);
+    const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : EMPTY_ARRAY;
+    for (const material of list) if (material && material.userData?.spacefaceSharedAsset !== true) materials.add(material);
+    const instance = object.userData?.renderPackageInstance;
+    if (instance && typeof instance.dispose === 'function') instances.add(instance);
+    const children = object.children || EMPTY_ARRAY;
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  authored.ownerLocalGeometries = [...geometries];
+  authored.ownerLocalMaterials = [...materials];
+  authored.renderPackageInstances = [...instances];
+  authored.ownerLocalObjects = [...objects];
+  authored.preparedPlaceCleanupOwnership = true;
+}
+
 async function disposePreparedAuthoredShip(authored) {
   const root = authored && authored.root;
   if (!root) return false;
@@ -10004,6 +10048,12 @@ async function commitAuthoredBoundary(
     (ownedDisposer ? ownedDisposer() : disposePreparedShipBoundaryResources(boundary, target, options.admissionEpoch))
       || disposeOwnedPreparedBoundary(boundary, ownedDisposer)
   );
+  // A detached owner has no publication left to validate. Settle its parked cleanup first;
+  // the admission error handler can then drain any remaining journal after a cleanup refusal.
+  if (!boundary.parent) {
+    if (preparedAuthored) await disposePreparedShip(preparedAuthored);
+    return false;
+  }
   assertQueuedAuthoredAdmissionActive(options, 'before-ship-publication');
   // A readable ship admitted after first paint has already passed the exact compile/upload gate.
   // The global publication freeze only fences leftover opening work; making this ship wait on it
@@ -14821,12 +14871,15 @@ function admitRenderPackageShipPoolCandidate(
   const orphanOptions = livePoolAdmissionOptions();
   for (const allocation of allocations) {
     if (!allocation?.admission) continue;
-    poolAdmissions?.add(allocation.admission);
-    // The boundary prepare normally claims these admissions, but this promotion path can also
-    // run for an owner whose boundary never reaches prepareAuthoredShipVisualPipelines — then
-    // the chunk would sit unpublished forever and the pool never forms. The orphan lane is
-    // memoized on admission.preparation, so racing a real boundary prepare is safe.
-    drivePoolAdmissionIfUnclaimed(allocation.admission, orphanOptions);
+    if (poolAdmissions) {
+      poolAdmissions.add(allocation.admission);
+      // A composition collecting this admission owns its prepare/publish or abort path.
+      // An orphan pump must not steal a still-composing hidden boundary's publication.
+      allocation.admission.boundaryManaged = true;
+    }
+    // A promotion outside composition has no boundary collector to settle its admission;
+    // only that unclaimed path belongs to the orphan pump.
+    if (!allocation.admission.boundaryManaged) drivePoolAdmissionIfUnclaimed(allocation.admission, orphanOptions);
   }
   return object;
 }
@@ -14862,12 +14915,12 @@ function livePoolAdmissionOptions() {
 let poolAdmissionOrphanPump = Promise.resolve();
 let poolAdmissionLateSkips = 0;
 function drivePoolAdmissionIfUnclaimed(admission, options) {
-  if (!admission || !options || admission.prepared || admission.activated || admission.cancelled) return;
+  if (!admission || !options || admission.boundaryManaged || admission.prepared || admission.activated || admission.cancelled) return;
   poolAdmissionOrphanPump = poolAdmissionOrphanPump.then(async () => {
     if (typeof options.yieldToNextPresent === 'function') {
       try { await options.yieldToNextPresent(); } catch { /* present wait is pacing only */ }
     }
-    if (admission.preparation || admission.prepared || admission.activated || admission.cancelled) return;
+    if (admission.boundaryManaged || admission.preparation || admission.prepared || admission.activated || admission.cancelled) return;
     const live = authoredRuntimeState();
     const gate = shouldStartHeavyAdmissionEventually(
       live && live.render && live.render.lastPresentDtMs,
@@ -16233,7 +16286,7 @@ function isOwnerInCullContext(owner, context, stats) {
   return visible;
 }
 
-function registerOwnerRelease(owner, release) {
+export function registerOwnerRelease(owner, release) {
   let state = ownerReleaseState.get(owner);
   if (!state) {
     state = { releases: new Set(), pending: new Set(), errors: [] };

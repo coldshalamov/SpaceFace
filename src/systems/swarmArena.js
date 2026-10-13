@@ -40,6 +40,9 @@ import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } f
 import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
+import { hullEnvelopeWu, proxyOuterRadiusWu, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
@@ -162,6 +165,56 @@ export const SWARM_DEBRIS_SIZE_MAX = 44;
 
 /** Rocks further than this from the player are released to the engine's ordinary despawn sweep. */
 export const SWARM_DEBRIS_KEEP_RADIUS = 900;
+
+// A fresh rigid stamp must clear the bodies the native solver actually holds. A tiny gameplay
+// radius can describe a long offset wreck or compound hull; it is not their contact footprint.
+function opticPlacementFootprints(state, native) {
+  const footprints = [];
+  for (const entity of state.entities?.values?.() || state.entityList || []) {
+    if (!entity || entity.alive === false || entity.collides === false || entity.physicsBody === false
+      || !entity.pos || !WELL_SOLID_TYPES.has(entity.type) && entity.type !== 'ship' && entity.type !== 'drone') continue;
+    const spec = resolvePhysicsBodySpec(entity);
+    if (!spec || spec.material === 'sensor' || spec.material === 'massline_sensor') continue;
+    const rec = native?.records.get(entity.id);
+    if (rec?.entity === entity && rec.body.isEnabled() !== false) {
+      if (rec.colliders.every(collider => collider.isSensor() || !collider.isEnabled())) continue;
+      const pos = rec.body.translation(), vel = rec.body.linvel();
+      footprints.push({ alive: true, radius: articulatedColliderRadius(rec),
+        pos: { x: pos.x + native._frameOrigin.x, z: pos.z + native._frameOrigin.z },
+        vel: { x: vel.x, z: vel.z } });
+    } else {
+      const proxy = resolveCollisionProxyManifest(entity);
+      // Conservative cold bounds include the same resolved compound as the next native sync.
+      const radius = Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
+        spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
+      footprints.push({ alive: true, radius, pos: entity.pos, vel: entity.vel });
+    }
+  }
+  return footprints;
+}
+
+function opticLatticeOrigin(state, layout, anchor, native) {
+  const footprints = opticPlacementFootprints(state, native);
+  const offsets = [{ x: 0, z: 0 }];
+  // Whole-lattice translations retain every emitter, mirror and fuse relationship on the same
+  // 64-unit grid. Search stays in the existing fight bubble, without moving earned debris.
+  for (let ring = 1; ring <= 4; ring++) {
+    const d = ring * OPTIC_LATTICE_SPACING;
+    offsets.push({ x: d, z: 0 }, { x: -d, z: 0 }, { x: 0, z: d }, { x: 0, z: -d },
+      { x: d, z: d }, { x: -d, z: d }, { x: d, z: -d }, { x: -d, z: -d });
+  }
+  for (const offset of offsets) {
+    const origin = { x: anchor.x + layout.origin.x + offset.x, z: anchor.z + layout.origin.z + offset.z };
+    // A displaced origin must not itself immediately trip the existing restamp boundary.
+    if (Math.hypot(origin.x - anchor.x, origin.z - anchor.z) >= SWARM_OPTIC_RESTAMP) continue;
+    if (layout.bodies.every(body => {
+      const pos = { x: origin.x + body.x, z: origin.z + body.z };
+      return Math.hypot(pos.x - anchor.x, pos.z - anchor.z) + body.radius <= SWARM_DEBRIS_KEEP_RADIUS
+        && !footprints.some(other => sweptDiscsOverlap(pos, body.radius, other, { clearance: 8 }));
+    })) return origin;
+  }
+  return null;
+}
 
 /**
  * SF-067 — cover that stays useful. A monolith is not an invulnerable wall: a hard impact
@@ -681,6 +734,12 @@ export const swarmArena = {
     this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
     this._cullWrecks();
+    // Wave 1 stays in motion. Seed 4242 idle: settling the opener, then again
+    // every 0.4s until the pilot acted, parked foundry rocks under 6 u/s (max
+    // 5.8). The lesson wasp rammed that field at sim 31.167. Master settles
+    // only wave > 1, left those rocks up to 44 u/s, and the same wasp lived
+    // the 45s hold. Later rounds still settle so leftover 12–16 u/s rocks do
+    // not enter the next breath.
     if (wave > 1) this._settleRoom();
     this._topUp(run, wave);
     this._installSlalomWells(run);
@@ -705,7 +764,8 @@ export const swarmArena = {
     } else if (this._brood) this._brood.spawnWave(this.state);
     // The planning settle runs before the draft; the last round's fields and ricochets keep working
     // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
-    // hulls in its first second (player-truth m4-active, round 2). Settle again as the round opens.
+    // hulls in its first second (player-truth m4-active, round 2). The opener is the exception:
+    // parking it is what the lesson hull rammed. Settle again only as a later round opens.
     if (Number.isInteger(run.wave) && run.wave > 1) this._settleRoom();
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
@@ -771,12 +831,22 @@ export const swarmArena = {
   _settleRoom() {
     const physics = this.helpers && this.helpers.combatPhysics;
     const entities = this.state && this.state.entities;
-    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    if (!physics || (typeof physics.settlePassiveBody !== 'function' && typeof physics.applyImpulse !== 'function')) return;
     if (!entities || typeof entities.values !== 'function') return;
     const SETTLE_SPEED = 6;
     const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
     for (const e of entities.values()) {
       if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
+      if (typeof physics.settlePassiveBody === 'function') {
+        // Field response can change solver mass without changing the authored spec. The native
+        // owner samples that mass and velocity, then publishes its post-impulse mirror now:
+        // run:waveStarted happens after physics in the production update order.
+        physics.settlePassiveBody({ entityId: e.id, occupantGeneration: e.occupantGeneration,
+          entity: e, entities,
+          minSpeed: SETTLE_SPEED, reason: 'swarm_round_settle', tick,
+          provenance: { actorId: null, tag: 'swarm_round_settle' } });
+        continue;
+      }
       const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
       const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
       if (vx * vx + vz * vz < SETTLE_SPEED * SETTLE_SPEED) continue;
@@ -1462,20 +1532,21 @@ export const swarmArena = {
     if (ids.length && this._opticAnchor) {
       const drifted = Math.hypot(anchor.x - this._opticAnchor.x, anchor.z - this._opticAnchor.z);
       if (drifted < SWARM_OPTIC_RESTAMP) return;
-      this._releaseOpticIds();
     } else if (ids.length) {
       return;
     }
     const layout = compileSwarmOptic(run && run.arenaId);
     if (!layout || !layout.bodies || !layout.bodies.length) return;
+    const origin = opticLatticeOrigin(state, layout, anchor, this.registry?.get?.('physics')?._sg02);
+    if (!origin) return; // Keep the prior coherent stamp and retry when the fight leaves room.
     const spawned = [];
     for (let i = 0; i < layout.bodies.length; i++) {
       const body = layout.bodies[i];
       const ent = helpers.spawnEntity({
         type: 'asteroid',
         pos: {
-          x: anchor.x + layout.origin.x + body.x,
-          z: anchor.z + layout.origin.z + body.z,
+          x: origin.x + body.x,
+          z: origin.z + body.z,
         },
         vel: { x: 0, z: 0 },
         radius: body.radius,
@@ -1498,13 +1569,19 @@ export const swarmArena = {
       });
       if (ent && ent.id != null) spawned.push(ent.id);
     }
+    if (spawned.length !== layout.bodies.length) {
+      // A refused birth cannot publish half a fuse or retire the still-coherent old stamp.
+      for (const id of spawned) {
+        const entity = state.entities?.get?.(id);
+        if (entity?.data?.[SWARM_OPTIC_TAG] && entity.data.opticStructureId === layout.id) entity.alive = false;
+      }
+      return;
+    }
+    this._releaseOpticIds();
     this._opticIds = spawned;
-    this._opticAnchor = {
-      x: anchor.x + layout.origin.x,
-      z: anchor.z + layout.origin.z,
-    };
+    this._opticAnchor = origin;
     if (spawned.length) {
-      this._emit('swarmArena:optic', { arenaId: run.arenaId, id: layout.id, count: spawned.length });
+      this._emit('swarmArena:optic', { arenaId: run.arenaId, id: layout.id, count: spawned.length, origin: { ...origin } });
     }
   },
 

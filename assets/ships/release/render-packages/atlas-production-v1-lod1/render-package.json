@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ca60f7315c97aa9a635c5626ac0aca7bfe29a31d908aeea5f427a42ef70b4ecc",
+  "contentHash": "d4b490ae740cfe535e93ee4763b86bc8583f04c5f5e107279fd0b91ca9e20d56",
   "dynamicGroups": [
     {
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -683,7 +683,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d06fb890f700739fc9b0235bbf9fb21e855befe232aba2ce3e8019ce0308aec",
+      "geometryHash": "8989891a67c10d7f30a42cfd788becf9ca3c4dbdaec1a2903c0a48609a5ccbfe",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-armor-orange.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -708,7 +708,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de81cf6a830c15f8446c9d76fc1569182701be5711c4245199ad4a18163629ee",
+      "geometryHash": "5718cd78454cf1c3b90e40423f875d0b8ac2956120a849023b7ed4d493d9fbab",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 2562,
       "indexed": true,
@@ -883,7 +883,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a292d22158639dc9f97c155d5bdddff4e986569b7b73942c49910479dd45082",
+      "geometryHash": "052a2517eccfb311e420353fda985f8c2afeb8e67db8aad727bc619e357c632e",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-hull.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -933,7 +933,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76bf23e7764d0040b2a4a851088262eb114e8ef59d60e0b2b89af8a2369cbbe8",
+      "geometryHash": "23c0bab5bf363aac44b81858b8a42c70d556818c9a33c229d8b712467dbb2a20",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-mechanical.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -983,7 +983,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff334d249afbcbace451bb87250c0de6b361ebce05456bb9dded1fc41b256b24",
+      "geometryHash": "15f21f6761ed27c3b6cacd5a800461c7efdad01390d4e8d1bebe1123dd11f975",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-crane-warning.primitive.0",
       "indexCount": 810,
       "indexed": true,
@@ -1033,7 +1033,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fcfa43e929cbb1842a69e2dd02fe0cc8a093460760fa465b9fbb0dc004e0d9e",
+      "geometryHash": "0f944b844e94a3869aa1a4da9392767869a2240080cb43f1fdddced89413dc00",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical.primitive.0",
       "indexCount": 786,
       "indexed": true,
@@ -1058,16 +1058,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19d4f38674aa8691df02e073a96e5165b4ce3476a58ecd628b742cd47bba02fd",
+      "geometryHash": "79c96efaa8e7119b36c91fb9b52dcf0a59175926149d7dd2a7b8a3afae74e5ed",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 4971,
+      "indexCount": 4977,
       "indexed": true,
       "materialHash": "0bccda5c25a860799a5e1a0af0eb0819f60574b621d09bda487abbe12b559c84",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull.001",
       "nodeId": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1501
+      "vertexCount": 1502
     },
     {
       "bounds": {
@@ -1083,7 +1083,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf7d235ebd61ebabf3a366c20648d455aa6ed7c1e1267cf8e53dd47a640169de",
+      "geometryHash": "c8c08d8f6144a6a171559866e3b20fc74d6b38c18a2e84d24a7d409b1131f006",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-lights-cyan-orange.primitive.0",
       "indexCount": 45,
       "indexed": true,
@@ -1133,16 +1133,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fc5e8aea77d0dd65bd4fe28612ae0501c54ad0160e02c7b33bd7362c13b39eb",
+      "geometryHash": "b5c19d2f1770e062fb638981ae3079ad5ad775d0a577972304b28a667993a51b",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-livery.primitive.0",
-      "indexCount": 5424,
+      "indexCount": 5466,
       "indexed": true,
       "materialHash": "f9fc589b87ff7daf914d6ce154bf07e6f783dab843df22709ca406c093ce0083",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Livery.001",
       "nodeId": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-livery",
       "primitiveIndex": 0,
-      "vertexCount": 1908
+      "vertexCount": 1925
     },
     {
       "bounds": {
@@ -1158,7 +1158,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a2a8d42dd8b2a4c914841ba88c99284411b9d3b6b61b1aa4d4dcb72e224a1343",
+      "geometryHash": "8a8a1562fd9aa55c5200a3e8110a33f3a7f1f3c9edb7b11ce3dc4cb0535d1521",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 17700,
       "indexed": true,
@@ -1183,7 +1183,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b23aaf821a7cf2a5076b92136ec37c2f227a8e6ddf09cffea4c8aeb0a270e476",
+      "geometryHash": "43bdd1348c95810478279e9158cf1bd1cd80412d4cd4088d5c7bce5d8f03b0c6",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 8094,
       "indexed": true,
@@ -1208,7 +1208,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b8ba916af7923033d546c12fe9a35778a6fa84ccc02f91f73e8296096335165",
+      "geometryHash": "c6a2e9f977af152077b8b7f57f0328e8343c4edf4b751f6aef4bbab25a785e5e",
       "id": "sf.render.atlas-production-v1-lod1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 2352,
       "indexed": true,
@@ -3453,19 +3453,19 @@
       "sha256": "9be80988afb650351225ccdf782d9785b556e32655d536268f0809e4cd6824b1"
     },
     "sourceGlb": {
-      "bytes": 616568,
-      "sha256": "1fc1e296799d9bb60341e167673a1844232e70650da21a94d45652dd3949412a",
+      "bytes": 616736,
+      "sha256": "a39d1dc6c543ac32daf2c849e7a72094d4dbfe3538f6afe9ba2bf5ebb4f819cf",
       "uri": "atlas_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 944364,
-    "sha256": "1ea256d4cc67d4aebf83163600616c243edaf73d0a0508d28419bb873b8216f6",
+    "bytes": 944968,
+    "sha256": "593506c6d8625a394cff3b3ba145b7ec7dcfd27820dcc10f93a8f5716268b814",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4997,7 +4997,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/atlas_production_v1_lod1.glb"
   },
-  "runtimeHash": "9aa1ebae961decbcd4a6e3ca632127e521e19026ece4d962579b35d83030e429",
+  "runtimeHash": "d70fc6ae312a38bb737b7deeeb63bfbdca58a0c0e53dabeec906b3f8a0fea7cb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

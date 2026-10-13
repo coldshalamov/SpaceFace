@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bd4512ad55bbed6c398e851f755bb204762066fdfec6cd7e70a23c55c53ad1c6",
+  "contentHash": "c993693b267427c4c1a2988ea4cc09b36a9a0dc7ffc8d8fe2975cbffeae183d9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71b39c60c294f9438bb8ddeff58b5491485fb03f4a538efa0ed50012baf04a0d",
+      "geometryHash": "689d7f3f46a764636f295e104c4c5e7a6902559908e87dbf3b4e1e8b6ca673c5",
       "id": "sf.render.engine-ion-twin.node.det-cyan-nav-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25bd020390ddefa238f2b247be9537f09436bf6d9efbf1682b837f06c6c9b83d",
+      "geometryHash": "0772391bb0b630b756f2799547fc34ccf3caff7f457fe1c3bdb1bce798afe6d2",
       "id": "sf.render.engine-ion-twin.node.det-dock-collar-scuff.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4758b424f0b226990d23f7556ed57b378f3aae9a087419efa3e3530aa758b1c6",
+      "geometryHash": "64d5b6956b31373b7b7bcee50c12f7ef2975d01d3d38f49faf2557f68354dbb8",
       "id": "sf.render.engine-ion-twin.node.det-inspection-stencil.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Cube.001",
       "nodeId": "sf.render.engine-ion-twin.node.det-inspection-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 100
+      "vertexCount": 104
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "895870c51f405b7af24eaeb9ce30b1825cf41629f0539df89b609ff019818de1",
+      "geometryHash": "2360ee77368e3597230b8d16eaed1ea0ec23c34ce45d2e1be489e98929f11a38",
       "id": "sf.render.engine-ion-twin.node.det-maintenance-tick.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "358ce046530f946693ac0f47deffb3a499a9ba490d67b461acf04250dad9b9f2",
+      "geometryHash": "f23ec52d89d88c143e8bda4917387d56f04fdc6968f19107b5d0793e1aeddc98",
       "id": "sf.render.engine-ion-twin.node.det-panel-respray-edge.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "326a766051bd8485072cedba1f1db9da7868e6a8fde1a5e29d316f9ae255a2a6",
+      "geometryHash": "807eeb58bab4b0a3522336a7178456496bb4ff8a25783c570656ae9a1032fc7c",
       "id": "sf.render.engine-ion-twin.node.det-sync-ring-bridge.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45078c144f638806c0a2dbf8c8b99cd4f7522d5d35408260bf72b76e520c64da",
+      "geometryHash": "c6d5598510e395f1bcff9e06f2d194b645cd3bec19a339954c72261b1fadbb31",
       "id": "sf.render.engine-ion-twin.node.det-torque-witness-001.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "250f261afdeede4080e5de97cae826fc126d4a5ac3c272d5167eb47fc8d34c56",
+      "geometryHash": "0ef5645d7efabf25728ba9e2d8a8105d877f0543d4db247ac90974cabf1a68b6",
       "id": "sf.render.engine-ion-twin.node.det-torque-witness.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f0b24b14428ea4182da31d215583cce5b900c1ffb749beb637a306ef5cf5cc1",
+      "geometryHash": "f3dcc9b85c09dc16871fe3ba7a2e46527d2a71a40f0a2803e907ba1923304904",
       "id": "sf.render.engine-ion-twin.node.hook-drive-core-p.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -248,7 +248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c90f610178d03a4f75ffe101bacd3ab925d42f3a0da0b740cbc145f60437ffa5",
+      "geometryHash": "f0e753dbce3f576cb72c084136efc1c29e86843cdbc44c354b291e274b3cef9c",
       "id": "sf.render.engine-ion-twin.node.hook-drive-core-s.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72e5cf45c06b5fab4b30304083059a823239d1e92933e674fcfffd7d844060de",
+      "geometryHash": "cd0847be67f1d122c75c9e9ab9b8c7b19eabe68a02501554c81576679ae335ef",
       "id": "sf.render.engine-ion-twin.node.hook-drive-fan-p.primitive.0",
       "indexCount": 1824,
       "indexed": true,
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23c77355f3aff566018c5607a2a0fc86f34e4fd7b7645c8b9e70fa2d0e9204b1",
+      "geometryHash": "558a9da8b702a9a21cc0aca41a9df18c91a7551eb963bd0b4995c711fac41c3f",
       "id": "sf.render.engine-ion-twin.node.hook-drive-fan-s.primitive.0",
       "indexCount": 1824,
       "indexed": true,
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "187a0548e142ff6280ce8f342a7fcf497ce1658040e07d18471eab4dd6817bc7",
+      "geometryHash": "8f74f45853d047bb93cf4a67d941486225d9aab7429835d2561ebb8c07d03659",
       "id": "sf.render.engine-ion-twin.node.hook-drive-plume-p.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -348,7 +348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8dd8a4bf21f972b912e8edbaeac903a7209ba37bf5069e06d3a5b566beb3b545",
+      "geometryHash": "d3f9ba2aa8004fd589822259a59acb3a00b49bae7221ddcb41ae0f4adc1e71d9",
       "id": "sf.render.engine-ion-twin.node.hook-drive-plume-s.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -373,7 +373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "010cda71312714139959f813832224d8d04a32997d912bce854fcf7fc3230645",
+      "geometryHash": "78f370c583db705a7f9665df146b331977e765b3e6083fb830bbe7c464c6a01e",
       "id": "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -398,7 +398,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1baf3635e41d79f187ea1d748712ff76adb1069395a0f916c939beb69217764",
+      "geometryHash": "e1c1973ce2f8e3a0005b017a30b67c71812f1253cc5041f491569d4ed5a24b9a",
       "id": "sf.render.engine-ion-twin.node.static-hull-merged.primitive.0",
       "indexCount": 2496,
       "indexed": true,
@@ -407,7 +407,7 @@
       "meshName": "Static_Hull_Merged",
       "nodeId": "sf.render.engine-ion-twin.node.static-hull-merged",
       "primitiveIndex": 0,
-      "vertexCount": 661
+      "vertexCount": 624
     },
     {
       "bounds": {
@@ -423,7 +423,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fe46b4a3ab5affc405fbf9a05716a18e8b9f0b2dea08b1fa48e864069f90088",
+      "geometryHash": "153eb866706aaab08f1a46c2441673e3bd14c3c800e311e57a94512a2457e17d",
       "id": "sf.render.engine-ion-twin.node.static-mechanical-merged.primitive.0",
       "indexCount": 5184,
       "indexed": true,
@@ -1751,19 +1751,19 @@
       "sha256": "d1f6dcd06a1b3eeef8930479d567864a525f5cf1d4affeb152fb3e20419950c0"
     },
     "sourceGlb": {
-      "bytes": 156036,
-      "sha256": "1c921641b2f68476c06ba4cac51758460c381cfd2424420f3cf524baf2c3ddf3",
+      "bytes": 157040,
+      "sha256": "35671120a12639a92091b01828384941ee5fbc8e9b453d012319a2a80819dabf",
       "uri": "engine_ion_twin.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 236832,
-    "sha256": "458abdd24ab1cf1c7b5fd2bddc4911e252195f44948ee45708ee22ae9e9da7dd",
+    "bytes": 235440,
+    "sha256": "f631ae55b0d0d5f1f7ad7966f259c042748e75a6cfcbf3587a3700d26a2c02ab",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2499,7 +2499,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_ion_twin.glb"
   },
-  "runtimeHash": "099e10c3c66b01985d17433a0e251f92e078b8cb84bc7140f319eaaeabced153",
+  "runtimeHash": "c878060600f4b05c7129c45d44d5f183ab1eb704b3de11a1d0412d59638bcb84",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

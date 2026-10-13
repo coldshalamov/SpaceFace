@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "24d3bd1ea4e3300d213156076356afaafbad1bf6d9a2c09fec31620918fe98f0",
+  "contentHash": "99bab0796daa28501556df9fe169f2c7573b5be7a3ff8938b652580f5c499154",
   "dynamicGroups": [
     {
       "id": "sf.render.dead-hulk.node.lod0-hook-nav-port.dynamic",
@@ -138,7 +138,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e2e9d5793fb51d686f1782dca3b8d4891bba7680ea0cce7942e4f92babddddc",
+      "geometryHash": "885753db7dec598176c10b6a57edc0d4d1f00e3185913bc49f7560cc0ac6a88e",
       "id": "sf.render.dead-hulk.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -147,7 +147,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.dead-hulk.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 758
+      "vertexCount": 760
     },
     {
       "bounds": {
@@ -188,16 +188,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68131347712eb77c92e932e5ce1e2eaed24cce46c4ac745acbb543b8b1d9e122",
+      "geometryHash": "73803e39d64c2c2475d4be081ed1a983fa92bc09ae94182a9043d3ac82d2f278",
       "id": "sf.render.dead-hulk.node.lod0-brushedmetal.primitive.0",
-      "indexCount": 6876,
+      "indexCount": 7020,
       "indexed": true,
       "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.dead-hulk.node.lod0-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 3354
+      "vertexCount": 3444
     },
     {
       "bounds": {
@@ -213,7 +213,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a2433aebe5cc28a24835920a011ca861a4a2527b35544a74f0bc4908fd8f7ff",
+      "geometryHash": "ba5f13266545535677b472459282145d149851062f8e04a6ff416e7848d52ae6",
       "id": "sf.render.dead-hulk.node.lod0-deadmetal-deep.primitive.0",
       "indexCount": 5880,
       "indexed": true,
@@ -238,7 +238,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e7e8c98f1bc952125aec5ecd4b4df762c9be18cfb91b437bf1d1028a47141b1",
+      "geometryHash": "64bf32fde895e5749fff8c790c6e674be0329bd32053fa601177f3b983e444e7",
       "id": "sf.render.dead-hulk.node.lod0-deadmetal-faded.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -263,7 +263,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a531d1f3cb689045623ee4323262160562617d665fd6a74044cb9a619ce92a0d",
+      "geometryHash": "723cecacd21c7da935f18b67013cb14588622effb449f8986d90d3571f78041b",
       "id": "sf.render.dead-hulk.node.lod0-deadmetal-rust.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -288,7 +288,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3828302a77810195d91385bb0444f1901ff4c46222020ea1952c6a5638a38919",
+      "geometryHash": "59b231321566f77e0209ea75bf07316585b66dbcf24a0c15d749deecb935ed91",
       "id": "sf.render.dead-hulk.node.lod0-deadmetal.primitive.0",
       "indexCount": 2520,
       "indexed": true,
@@ -338,7 +338,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c96b38406b29b6f0e4023b5672c2afe55edab99f9b99ae5529a38b285b48317a",
+      "geometryHash": "863fd061690242ccb3be924cc696321b497b8288422d06479855f80d00815f8e",
       "id": "sf.render.dead-hulk.node.lod0-livery.primitive.0",
       "indexCount": 1344,
       "indexed": true,
@@ -363,7 +363,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39cc9d901c4825b4d28f300a34b23043f271ce8afdffc9f8b72a40d8f7ba82cc",
+      "geometryHash": "5af54ecbb6c463b19e569de7e33122ed0c7b25eed97448148fb78b5587b35c56",
       "id": "sf.render.dead-hulk.node.lod0-mechanical.primitive.0",
       "indexCount": 8508,
       "indexed": true,
@@ -413,7 +413,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b3209c55dbf7887e565af505c950238db9be826d359d1b2b87a55bb8e6b186e",
+      "geometryHash": "ae56d29c1f1f1da05f30f1ca6c8feaf27be8d33348c42fbb7c3ed0e0f3717e05",
       "id": "sf.render.dead-hulk.node.lod0-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -463,16 +463,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f63d18155d857264528faafe6ec1b7b57c26f262d18bd2e667225df79f8659bb",
+      "geometryHash": "f6f5b755bbdebec319459652ad144e253982093aeaebb71ba42b09d6b90c2d7f",
       "id": "sf.render.dead-hulk.node.lod1-brushedmetal.primitive.0",
-      "indexCount": 5115,
+      "indexCount": 5163,
       "indexed": true,
       "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.dead-hulk.node.lod1-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 2637
+      "vertexCount": 2685
     },
     {
       "bounds": {
@@ -563,7 +563,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "535b8a59364f35f921432b367e1ba809b3db87c8fe9145de0157fc8f1843a836",
+      "geometryHash": "a5bab5491582fcb756c91c95d7dc4b9a1d98a792728acb1dec57f8c6d6ebac92",
       "id": "sf.render.dead-hulk.node.lod1-deadmetal.primitive.0",
       "indexCount": 528,
       "indexed": true,
@@ -613,7 +613,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3dc3a52575bbc94727fe20f41ac6346266a4f79254858d6bc7b1cbc250c1577",
+      "geometryHash": "4ab64885df117cf8b46d7b690ec1b8e8459abd4cc66c11403cee38c6912b3ebf",
       "id": "sf.render.dead-hulk.node.lod1-livery.primitive.0",
       "indexCount": 1344,
       "indexed": true,
@@ -688,7 +688,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bad7a12a8d5899fdb9bff2faaeb646d71e8498615aa806a063275617201bec4",
+      "geometryHash": "78f7cf78731bae85887d32cd8ec581acbd45c7bc5c83bc69fff1e7d2d938a432",
       "id": "sf.render.dead-hulk.node.lod1-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -738,16 +738,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2aa660cacfab1ae1e3b334ad0da11377f2ded55a48ba287cc391207b34a1d693",
+      "geometryHash": "f15746cf26e2728527b1a0a34bfcbdf3feb253443dce738c2d6ff0abcf6d4582",
       "id": "sf.render.dead-hulk.node.lod2-brushedmetal.primitive.0",
-      "indexCount": 1728,
+      "indexCount": 1776,
       "indexed": true,
       "materialHash": "4fde330edaca6a54f3f7322a71d31a52f8f4307debbecff6fb90bd20219a5a5d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.dead-hulk.node.lod2-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 1240
+      "vertexCount": 1286
     },
     {
       "bounds": {
@@ -763,7 +763,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67c7f6f2b6fea8485620ce6de8b4d5916d8e31fded46a4dfe525b78e5114d8db",
+      "geometryHash": "81946927961e5b3614d67d5118702417d0baf44d24bc6e2c23aa96194ecb34b5",
       "id": "sf.render.dead-hulk.node.lod2-deadmetal-deep.primitive.0",
       "indexCount": 1116,
       "indexed": true,
@@ -772,7 +772,7 @@
       "meshName": "LOD2_deadmetal_deep",
       "nodeId": "sf.render.dead-hulk.node.lod2-deadmetal-deep",
       "primitiveIndex": 0,
-      "vertexCount": 896
+      "vertexCount": 897
     },
     {
       "bounds": {
@@ -838,7 +838,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f98adc22828fd6387e9f395d459fa89462cae0dbef97b97ea4f9d0c4f7355d0",
+      "geometryHash": "6077c0c2eaef47e9c71b7362294bd45074e9d3628f5cd8ead322413b1872a00e",
       "id": "sf.render.dead-hulk.node.lod2-deadmetal.primitive.0",
       "indexCount": 276,
       "indexed": true,
@@ -888,7 +888,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3a5dc635c69e6e203db6e39cccbb9f125d3cc35059e3b7a6fa8e4048fbd3aeb",
+      "geometryHash": "712a2d59e8d3e0475918a7c92a2abe68c275723ab17ec14cc20e021513e6da84",
       "id": "sf.render.dead-hulk.node.lod2-livery.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -963,7 +963,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aaed6d6112b53f9fb4301cebf4bfe79dc5452bea4d9c8375efa24b93253baa4d",
+      "geometryHash": "b4556d4f147e7aed29276360b0f69191112062b8a1bae5dd34337b32ed4f1b7e",
       "id": "sf.render.dead-hulk.node.lod2-warning.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -3101,19 +3101,19 @@
       "sha256": "41610826f5589fe69d9ee90d604059b20c2d379a37f604132535e6516e8fb2e9"
     },
     "sourceGlb": {
-      "bytes": 498712,
-      "sha256": "3954d3e8341b2bd6cbc1f179eaa95416a80728f3fc1a0b0fad6ba4920f6f72dd",
+      "bytes": 501908,
+      "sha256": "06dc4302db1ef6064891d66714c13b65dd50b97f8f592a1496e18683b216c88f",
       "uri": "place_dead_hulk.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 849856,
-    "sha256": "a90172f6abf42e68483acab6928d79b1f6f01a2b108b0afbb4c230dabd1e5342",
+    "bytes": 855884,
+    "sha256": "f1704f1842c463398a9675664b13a3c844eb241889c8f657fc71c19efa94b87a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4333,7 +4333,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_dead_hulk.glb"
   },
-  "runtimeHash": "dd87a2b8bf3f43c7a32bd435560d95b0581995e1a5cf0aef3ec18bf24e064ad2",
+  "runtimeHash": "384ac6ded6d7d9e85ee92b9799d596798857087cff26fcc020f0c8d28fcea122",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

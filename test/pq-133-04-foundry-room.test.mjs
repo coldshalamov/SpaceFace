@@ -75,6 +75,7 @@ function boot({ seed = SEED, anchor = ANCHOR } = {}) {
     alive: true,
     type: 'ship',
     team: 0,
+    radius: 8,
     pos: { ...anchor },
     vel: { x: 0, z: 0 },
   };
@@ -212,8 +213,16 @@ test('materialization agrees with the authored geometry, tag for tag, on every p
       const entity = h.state.entityList.find((e) => e.data && e.data.roomSolidId === solidId);
       assert.ok(entity, `${phase} ${toy.id} materialized`);
       assert.equal(entity.type, 'station', `${phase} ${toy.id} type`);
-      assert.equal(entity.pos.x, toy.pos.x, `${phase} ${toy.id} pos x`);
-      assert.equal(entity.pos.z, toy.pos.z, `${phase} ${toy.id} pos z`);
+      const gap = entity.radius + h.player.radius + 64;
+      const authoredDistance = Math.hypot(toy.pos.x - h.player.pos.x, toy.pos.z - h.player.pos.z);
+      if (authoredDistance >= gap) {
+        assert.equal(entity.pos.x, toy.pos.x, `${phase} ${toy.id} clear authored pos x`);
+        assert.equal(entity.pos.z, toy.pos.z, `${phase} ${toy.id} clear authored pos z`);
+      } else {
+        assert.ok(Math.hypot(entity.pos.x - h.player.pos.x, entity.pos.z - h.player.pos.z) >= gap - 1e-6,
+          `${phase} ${toy.id} physically clears the pilot`);
+      }
+      assert.equal(entity.data.roomToyId, toy.id, `${phase} ${toy.id} keeps its authored role`);
       assert.equal(entity.radius, toy.radius, `${phase} ${toy.id} radius`);
       assert.equal(entity.physicsBody.dynamic, toy.kind === 'shutter', `${phase} ${toy.id} dynamic`);
       assert.equal(entity.data.surfaceMaterial, toy.material, `${phase} ${toy.id} material tag`);

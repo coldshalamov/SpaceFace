@@ -377,7 +377,19 @@ function gameNewOptionsForSandboxConfig(config) {
   // (and onboarding's scenePrepared staging) runs in the worker, which never sees this
   // module's pendingConfig — without the mark it stages the Training Derelict rescue opening
   // and the run lands in the Adventure tutorial instead of the armory.
-  if (config.survivalSetup != null) out.crucibleLaunch = true;
+  if (config.survivalSetup != null) {
+    out.crucibleLaunch = true;
+    // The worker owns hulls, fittings, research and the run wallet. Carry the
+    // validated preparation inside the already-awaited native boot transaction.
+    out.crucibleSetup = buildSandboxLaunchConfig({}, {
+      survivalSetup: config.survivalSetup,
+      survivalRuleset: config.survivalRuleset,
+      swarmStake: config.swarmStake,
+      swarmThreats: config.swarmThreats,
+      swarmPerks: config.swarmPerks,
+      openingLesson: config.openingLesson,
+    });
+  }
   return out;
 }
 
@@ -433,6 +445,9 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     const cfg = pendingConfig;
     pendingConfig = null;
     if (!cfg) return; // a normal new game, not a sandbox launch
+    // Native newGameBoot settles this setup before its acknowledgement. Replaying
+    // facade calls here would silently skip ships and race the native run wallet.
+    if (cfg.survivalSetup && laneCommandSink()) return;
     const apply = () => {
       try {
         applySandboxSetup(resolveCtx(), cfg);
@@ -1021,6 +1036,26 @@ export function applyCombatLabSetup(ctx, validatedSetup) {
   return receipt;
 }
 
+/** Apply a scored arena preparation only within its native loading transaction. */
+export function applyPreparedCrucibleSetup(ctx, config) {
+  if (!ctx?.state || ctx.state.mode !== 'loading'
+    || (ctx.state.run?.phase && ctx.state.run.phase !== 'inactive')) {
+    return { ok: false, reason: 'crucible-not-preparing' };
+  }
+  const cfg = buildSandboxLaunchConfig({}, config || {});
+  if (!cfg.survivalSetup) return { ok: false, reason: 'invalid-crucible-setup' };
+  const result = applySandboxSetup(ctx, cfg);
+  if (result?.ok !== true) return result || { ok: false, reason: 'crucible-setup-incomplete' };
+  const owned = ctx.state.player.ownedShips[ctx.state.player.activeShipIndex];
+  const player = ctx.state.entities.get(ctx.state.playerId);
+  if (owned?.defId !== cfg.survivalSetup.hullId || !player?.alive
+    || ctx.state.run?.kind !== 'survival' || ctx.state.run.phase === 'inactive') {
+    return { ok: false, reason: 'crucible-native-settlement-mismatch' };
+  }
+  return { ok: true, hullId: owned.defId, playerId: player.id,
+    fitted: result.fitted, arenaId: cfg.survivalSetup.arenaId, phase: ctx.state.run.phase };
+}
+
 /** Spawn a Combat Lab enemy package through spawnBudget.request / bindEntity. Fail closed if the budget is missing. */
 export function spawnBudgetedLabPackage(ctx, packageSpec) {
   // The admission loop (request → spawn → bind → release) is sim-owned end to end: under a
@@ -1308,7 +1343,10 @@ export function applySandboxSetup(ctx, config) {
         }
       }
       // 3. Hull and fittings through the ships writers.
-      applyCombatLabSetup(ctx, setup);
+      const fitted = applyCombatLabSetup(ctx, setup);
+      if (!fitted.hullApplied || fitted.notFitted.length) {
+        return { ok: false, reason: 'crucible-loadout-incomplete', ...fitted };
+      }
       // 4. Player into the arena.
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
       const sectorId = cfg.sectorId || (arena && arena.sectorId);
@@ -1324,6 +1362,7 @@ export function applySandboxSetup(ctx, config) {
         ctx.bus.emit('run:loadoutReady', { source: 'crucible:launch', arenaId: setup.arenaId });
         ctx.bus.emit('run:openingPrepareRequested', { source: 'crucible:launch' });
       }
+      return { ok: true, fitted: fitted.fitted };
     }
   }
 

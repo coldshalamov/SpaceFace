@@ -14,13 +14,19 @@ import {
 } from '../src/contracts/renderPackage.js';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
+import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 import {
   createPackageDetachManifest,
   detachPackageGeometry,
+  detachPackageTexture,
   detachedGeometryUploadPending,
+  detachedPresentedDrawBlocked,
   isPackageGeometryDetached,
+  isPackageTextureDetached,
   noteGeometryGpuResident,
+  noteOrientationDetachedHold,
   packageDetachDiagnostics,
+  presentedDetachRehydrateInFlight,
   rehydrateDetachedGeometries,
   resetPackageDetachManifestsForTests,
 } from '../src/render/packageCpuDetach.js';
@@ -275,4 +281,123 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
   assert.match(asteroid, /detachedGeometryUploadPending\(geometry, renderer\)/);
   assert.match(asteroid, /armGeometryGpuResidentLedger\(drawable\);/);
   assert.match(asteroid, /dropGeometryGpuResidencyLedger\(renderer\);/);
+  const bloom = read('src/render/bloom.js');
+  assert.match(bloom, /detachedPresentedDrawBlocked\(renderer, geometry, material\)/);
+  assert.match(bloom, /queuePresentedDetachRehydrate\(renderer\)/);
+  assert.match(bloom, /const orientationHold = orientationDetachedHoldActive\(renderer\)/);
+  assert.match(bloom, /if \(!orientationHold && unreadyProgramsPending !== true/);
+  assert.match(bloom, /orientationHoldHidesDrawable\(renderer, object\)/);
+  assert.match(rendererSrc, /this\._drawBufferAspectClass = aspectClassFromSize\(_drawSize\)/);
+  assert.match(
+    rendererSrc,
+    /_applySize\(\) \{[\s\S]*?noteOrientationDetachedHold\(this\.renderer\);[\s\S]*?const drawSize = applyRendererSize\(this\.renderer, this\.state\)/,
+    'the aspect hold arms before setSize, so the first phone rotation is not treated as the initial size',
+  );
+});
+
+test('presented draw skips a detached upload and refills before the next one', async () => {
+  const decoded = decodedFixture();
+  const compressed = new THREE.CompressedTexture(
+    [{ data: new Uint8Array(64), width: 4, height: 4 }],
+    4, 4, THREE.RGBAFormat,
+  );
+  compressed.name = 'HullKtx2';
+  decoded.material.map = compressed;
+  let decodes = 0;
+  const loader = freshLoader(async () => {
+    decodes += 1;
+    if (decodes === 1) return decoded;
+    const fresh = decodedFixture();
+    const freshMap = new THREE.CompressedTexture(
+      [{ data: new Uint8Array(64), width: 4, height: 4 }],
+      4, 4, THREE.RGBAFormat,
+    );
+    freshMap.name = 'HullKtx2';
+    fresh.material.map = freshMap;
+    return fresh;
+  });
+  await loader.load(packageMetadata('fixture.presented-draw'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const material = decoded.material;
+  let draws = 0;
+  const renderer = {
+    properties: new Map(),
+    info: { programs: [] },
+    renderBufferDirect() { draws += 1; },
+  };
+  renderer.properties.set(compressed, { __version: compressed.version });
+  createUnreadyDrawableGuard(renderer);
+  detachPackageGeometry(geometry, renderer);
+  assert.equal(detachPackageTexture(compressed), true);
+  assert.equal(geometry.getAttribute('normal').array.byteLength, 0);
+  assert.equal(compressed.mipmaps.length, 0);
+  assert.equal(detachedPresentedDrawBlocked(renderer, geometry, material), false,
+    'a resident upload whose version still matches keeps drawing');
+  renderer.renderBufferDirect(null, null, geometry, material, null, null);
+  assert.equal(draws, 1);
+
+  noteOrientationDetachedHold(renderer);
+  assert.equal(detachedPresentedDrawBlocked(renderer, geometry, material), true);
+  renderer.renderBufferDirect(null, null, geometry, material, null, null);
+  assert.equal(draws, 1, 'aspect-flip hold skips the draw that would upload the empty mirror');
+  const flight = presentedDetachRehydrateInFlight();
+  assert.ok(flight, 'the skipped draw shares one refill');
+  await flight;
+  assert.equal(isPackageGeometryDetached(geometry), false);
+  assert.equal(isPackageTextureDetached(compressed), false);
+  assert.ok(geometry.getAttribute('normal').array.byteLength > 0, 'normal bytes restored');
+  assert.ok(compressed.mipmaps.length > 0, 'compressed mip chain restored');
+  assert.equal(detachedPresentedDrawBlocked(renderer, geometry, material), false);
+  renderer.renderBufferDirect(null, null, geometry, material, null, null);
+  assert.equal(draws, 2, 'the following frame draws the restored payload');
+  loader.dispose();
+});
+
+test('orientation hold hides a detached mesh after the readiness walk has gone steady', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => {
+    decodes += 1;
+    return decodes === 1 ? decoded : decodedFixture();
+  });
+  await loader.load(packageMetadata('fixture.orientation-hide'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const hull = decoded.scene.children[0];
+  const prop = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+  prop.name = 'LooseProp';
+  decoded.scene.add(prop);
+  const readyProgram = { isReady() { return true; }, program: { id: 1 } };
+  const renderer = {
+    properties: { get() { return { currentProgram: readyProgram }; } },
+    info: { programs: [readyProgram] },
+    getContext() { return null; },
+  };
+  const guard = createUnreadyDrawableGuard(renderer);
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  assert.equal(geometry.getAttribute('normal').array.byteLength, 0);
+
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'a ready program does not hide the ship');
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'steady-state detached draws keep the live GPU copy');
+
+  noteOrientationDetachedHold(renderer);
+  guard.hide(decoded.scene);
+  assert.equal(hull.visible, false, 'the first aspect flip hides the ship before projectObject uploads');
+  assert.equal(prop.visible, true, 'an ordinary mesh stays on screen through the hold');
+  guard.restore();
+  assert.equal(hull.visible, true, 'the hide lasts one pass');
+
+  const flight = presentedDetachRehydrateInFlight();
+  assert.ok(flight, 'the hold starts one refill');
+  await flight;
+  assert.equal(isPackageGeometryDetached(geometry), false);
+  assert.ok(geometry.getAttribute('normal').array.byteLength > 0, 'normal bytes restored');
+  guard.hide(decoded.scene);
+  guard.restore();
+  assert.equal(hull.visible, true, 'the refill drops the hold and the ship draws again');
+  prop.geometry.dispose();
+  loader.dispose();
 });

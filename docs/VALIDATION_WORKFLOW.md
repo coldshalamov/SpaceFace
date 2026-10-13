@@ -96,7 +96,7 @@ a prepare/boot failure of the same family) instead of grading it as a route FAIL
 samples. It fails when more than half of those samples have ΔL < 8 against the local backdrop, or
 when a pair that both cleared 5 samples separates by less than 1.0. Separation is colour distance
 over spread, plus a silhouette term from the size ratio, plus 1.5 when one class's rim matches the
-declared threat hue `0xff1a3a` (the `swarm:threat-ring` material, Lab L ≈ 54, hue ≈ 30°) and the
+declared threat hue `0xff1a3a` (the `swarm:threat-rim` material, Lab L ≈ 54, hue ≈ 30°) and the
 other does not. The hue is the mean of mid-band pixels that clear a chroma floor and differ from
 the local backdrop by ΔE ≥ 12, so an orange backdrop cannot paint an unmarked rock into that hue.
 A bright rim (L ≥ 75) does not buy that credit. The crimson ring is below L 75, so a brightness
@@ -131,23 +131,22 @@ started but was not watched.
 `offscreen_marker` grades the Wave G4 edge chip the player sees (`.sf-threat-halo__slot--arc`), not a second radar and not `weapons.js`. A marker whose center is more than 48 px from every screen edge fails. A marker while every hostile is in frame fails. One off-screen hostile and one marker must name the same side when that hostile is outside on one axis. Off-screen hostiles with no chip stay UNKNOWN: the HUD marks shooters inside the threat halo, and the trace cannot see that. No off-screen hostile is N/A. The check is not gate-strict.
 
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
-  renderer string. Frame time is graded here on absolute numbers: p99 ≤ 50 ms and 0 long tasks ≥ 250 ms.
+  renderer string. Frame-time grades require the dedicated machine's `SPACEFACE_QUIET_HOST=1`
+  marker (`QUIET_HOST_PROGRAM.md` §0); unmarked hosts retain numeric diagnostic timings as UNKNOWN.
+  Verdicts record the observer's render/readback and screenshot cadence within those timings.
 - **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then
   `CHROME_PATH`, `/opt/google/chrome/chrome`, or `google-chrome`/`chromium` on PATH.
 - **Software GL (fallback):** the default headless run uses SwiftShader. It plays the same route at a
   fraction of real speed (sim time is the clock, so bounds still hold) and takes a few minutes of wall
-  time per bounded run. Absolute frame times are labeled `software-renderer evidence` and are not a
-  PASS/FAIL. With `--baseline`, frame time FAILs only on a regression: p99 above 125% of baseline and
-  above baseline + 100 ms, or long-task count above 125% and above baseline + 30. Each run records
-  `os.loadavg()` at start and end in `verdict.json` (`meta.loadavg`). When the mean of the
-  1-minute samples differs by more than 30% of the louder side, the regrade is ADVISORY instead of
-  FAIL. On this shared box the 1-minute load swings between about 5 and 12 during a gate, which is
-  more than 30% for most head/baseline pairs, so software-GL `frame_time` will usually be ADVISORY
-  and will not gate. That is accepted for SwiftShader. The compare output still prints each advisory
-  row, including the head p99, the baseline p99, and the long-task counts, so a large blowup stays
-  visible. It is not a REGRESSED row and it is not a FAIL. A missing load does not claim noise.
-  Without a baseline measurement the check stays UNKNOWN and is named in the INCOMPLETE cause list.
-  Long-task counts are always kept. The verdict says SOFTWARE GL.
+  time per bounded run. Absolute frame times are labeled `software-renderer evidence`. An unmarked or
+  contended host stays diagnostic UNKNOWN; a `--baseline` comparison may add a FAIL when the run
+  regresses, and it does not turn that host into a PASS. On a quiet host, frame time FAILs only on a
+  regression: p99 above 125% of baseline and above baseline + 100 ms, or long-task count above 125%
+  and above baseline + 30. Each run records `os.loadavg()` at start and end in `verdict.json`
+  (`meta.loadavg`). When the mean of the 1-minute samples differs by more than 30% of the louder side,
+  the quiet-host regrade is ADVISORY instead of FAIL. A missing load does not claim noise. Without a
+  baseline measurement the check stays UNKNOWN and is named in the INCOMPLETE cause list. Long-task
+  counts are always kept. The verdict says SOFTWARE GL.
 - Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
   `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
 - Check logic is fixture-tested without a browser: `npm run check:player-truth`. Thresholds live in

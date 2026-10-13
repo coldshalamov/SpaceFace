@@ -26,7 +26,7 @@ assert.equal(typeof writerAuditModule.auditTimeScaleWriters, 'function',
 assert.equal(typeof writerAuditModule.formatTimeScaleFindings, 'function',
   'writer audit must expose stable diagnostics');
 
-const { createTimeEffects } = timeEffectsModule;
+const { createTimeEffects, readTimeEffectsRequests } = timeEffectsModule;
 const { createRunTransitionGuard } = runTransitionModule;
 const { scanTimeScaleMutations, auditTimeScaleWriters, formatTimeScaleFindings } = writerAuditModule;
 
@@ -40,6 +40,8 @@ assert.deepEqual(Object.keys(effects).sort(), ['clear', 'describeRequests', 'get
 assert.equal(effects.getEffectiveScale(), 1);
 
 const staleScalarState = { timeScale: 0 };
+assert.deepEqual(readTimeEffectsRequests(staleScalarState), {});
+assert.equal(staleScalarState.timeScale, 0, 'a diagnostic read must not create a service or release a freeze');
 const staleScalarEffects = createTimeEffects(staleScalarState);
 assert.equal(staleScalarEffects.getEffectiveScale(), 1);
 assert.equal(staleScalarState.timeScale, 1,
@@ -60,6 +62,11 @@ effects.set('feel:hit-stop', { scale: 0.12 });
 assert.equal(state.timeScale, 0.12);
 effects.set('ui:pausing-screen', { scale: 0 });
 assert.equal(state.timeScale, 0);
+const freezeSnapshot = readTimeEffectsRequests(state);
+assert.equal(freezeSnapshot['ui:pausing-screen'].scale, 0);
+freezeSnapshot['ui:pausing-screen'].scale = 1;
+assert.equal(readTimeEffectsRequests(state)['ui:pausing-screen'].scale, 0,
+  'diagnostic snapshots cannot mutate the real freeze owners');
 effects.set('feel:hit-stop', { scale: 0.2 });
 assert.equal(state.timeScale, 0, 'same-source replacement must not defeat a lower request');
 effects.clear('unknown-source');

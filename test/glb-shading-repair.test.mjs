@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Document } from '@gltf-transform/core';
-import { repairCollapsedUVs, repairPrimitive, repairCoincidentFaces } from '../scripts/lib/glbShadingRepair.mjs';
+import { repairCollapsedUVs, repairPrimitive, repairDocumentShading } from '../scripts/lib/glbShadingRepair.mjs';
 
 function fixture() {
   const document = new Document(), buffer = document.createBuffer();
@@ -110,8 +110,48 @@ test('coincident faces on moving or morphed parts remain available after the par
     else scene.addChild(node);
     if (motion === 'channel') document.createAnimation().addChannel(document.createAnimationChannel().setTargetNode(node).setTargetPath('translation'));
     if (motion === 'morph') movingPrimitive.addTarget(document.createPrimitiveTarget().setAttribute('POSITION', accessor('VEC3', new Float32Array(12))));
-    assert.equal(repairCoincidentFaces(document), 0);
+    repairDocumentShading(document);
     assert.equal(prim.getIndices().getCount(), 6);
     assert.equal(movingPrimitive.getIndices().getCount(), 6);
   }
+});
+
+test('release shading preserves coincident authored material topology, winding and corner attributes', () => {
+  const { document, prim, accessor } = fixture();
+  prim.setIndices(accessor('SCALAR', new Uint16Array([0, 1, 2, 0, 2, 3, 0, 0, 1])));
+  const overlay = document.createPrimitive()
+    .setAttribute('POSITION', prim.getAttribute('POSITION'))
+    .setAttribute('TEXCOORD_0', accessor('VEC2', new Float32Array([0, 0, 1, 0, 1, 1, 0, 1])))
+    .setAttribute('COLOR_0', accessor('VEC4', new Uint8Array([3, 4, 5, 255, 6, 7, 8, 255, 9, 10, 11, 255, 12, 13, 14, 255]), true))
+    .setIndices(accessor('SCALAR', new Uint16Array([0, 1, 2])))
+    .setMaterial(document.createMaterial('warning_light'));
+  const mesh = document.createMesh('designed_panel').addPrimitive(prim).addPrimitive(overlay);
+  document.createScene().addChild(document.createNode('LOD0_designed_panel').setMesh(mesh));
+  const triangleCorners = primitive => {
+    const pos = primitive.getAttribute('POSITION');
+    return Array.from(primitive.getIndices().getArray()).map(i => pos.getElement(i, []));
+  };
+  const authoredBase = triangleCorners(prim).slice(0, 6);
+  const authoredOverlay = triangleCorners(overlay);
+  const colors = overlay.getAttribute('COLOR_0').getArray().slice();
+  const rows = repairDocumentShading(document, { uv: false });
+  assert.equal(rows.reduce((sum, row) => sum + (row.degenRemoved || 0), 0), 1, 'only the zero-area face is removed');
+  assert.deepEqual(triangleCorners(prim), authoredBase, 'the full base remains under its authored overlay');
+  assert.deepEqual(triangleCorners(overlay), authoredOverlay);
+  assert.deepEqual(overlay.getAttribute('COLOR_0').getArray(), colors);
+  assert.equal(overlay.getAttribute('COLOR_0').getNormalized(), true);
+  assert.deepEqual(repairDocumentShading(document, { uv: false }), [], 'a second repair does not prune more topology');
+});
+
+test('finite thin authored triangles survive degeneracy repair despite scale and weld quantization', () => {
+  const { document, prim, accessor } = fixture();
+  prim.setAttribute('POSITION', accessor('VEC3', new Float32Array([
+    1000, 0, 0, 1000, 0.000001, 0, 1001, 0, 0,
+    0, 0, 0, 1, 0, 0, 2, 0, 0,
+  ])));
+  prim.setAttribute('NORMAL', null).setAttribute('TEXCOORD_0', null).setAttribute('COLOR_0', null);
+  prim.setIndices(accessor('SCALAR', new Uint16Array([0, 1, 2, 3, 4, 5])));
+  const row = repairPrimitive(document, prim, 'thin_authored_seam', 'metal');
+  assert.equal(row.degenRemoved, 1);
+  assert.deepEqual(Array.from(prim.getIndices().getArray()), [0, 1, 2], 'small nonzero-area details are designed topology');
 });

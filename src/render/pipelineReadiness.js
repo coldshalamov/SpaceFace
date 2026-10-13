@@ -21,12 +21,12 @@ function gpuContextIsLost(state) {
   }
 }
 
-function timeout(ms) {
+function timeout(ms, value = { ok: false, timeout: true }) {
   let timer = null;
   const promise = new Promise((resolve) => {
     timer = setTimeout(() => {
       timer = null;
-      resolve({ ok: false, timeout: true });
+      resolve(value);
     }, ms);
   });
   return {
@@ -38,6 +38,13 @@ function timeout(ms) {
       }
     },
   };
+}
+
+// A settled admission must release the losing timer, including rejection paths.
+// This only owns the deadline; it does not cancel the underlying GPU operation.
+function raceDeadline(promise, timeoutMs, timeoutValue) {
+  const limit = timeout(timeoutMs, timeoutValue);
+  return Promise.race([promise, limit.promise]).finally(() => limit.cancel());
 }
 
 async function settleWithin(promise, timeoutMs) {
@@ -414,10 +421,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       spec.subjects, spec.path, spec.compileOptions,
     ));
     observePipelineAdmission(run, onRejected);
-    const bounded = Promise.race([
-      run,
-      new Promise((resolve) => setTimeout(() => resolve(LINK_TAIL_TIMEOUT_RESULT), LINK_RUN_TAIL_TIMEOUT_MS)),
-    ]);
+    const bounded = raceDeadline(run, LINK_RUN_TAIL_TIMEOUT_MS, LINK_TAIL_TIMEOUT_RESULT);
     spec.resolveRun(bounded);
     tailSettle = tailSettle.then(() => bounded.catch(() => null));
     const next = () => { linkActive = false; pumpLinks(); };
@@ -559,10 +563,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     if (timeoutMs == null) {
       await completions;
     } else {
-      const outcome = await Promise.race([
-        completions.then(() => 'resolved', () => 'rejected'),
-        new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs)),
-      ]);
+      const outcome = await raceDeadline(
+        completions.then(() => 'resolved', () => 'rejected'), timeoutMs, 'timeout',
+      );
       if (outcome === 'timeout') return { ...result(), timedOut: true };
       await completions;
     }
@@ -590,10 +593,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       if (deadline == null) {
         await completions;
       } else {
-        const outcome = await Promise.race([
+        const outcome = await raceDeadline(
           completions.then(() => 'resolved', () => 'rejected'),
-          new Promise((resolve) => setTimeout(() => resolve('timeout'), Math.max(0, deadline - Date.now()))),
-        ]);
+          Math.max(0, deadline - Date.now()), 'timeout',
+        );
         if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
         await completions;
       }
@@ -791,10 +794,9 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     if (timeoutMs == null) {
       await completions;
     } else {
-      const outcome = await Promise.race([
-        completions.then(() => 'resolved', () => 'rejected'),
-        new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs)),
-      ]);
+      const outcome = await raceDeadline(
+        completions.then(() => 'resolved', () => 'rejected'), timeoutMs, 'timeout',
+      );
       if (outcome === 'timeout') return { ...result(), timedOut: true };
       await completions;
     }
@@ -819,10 +821,10 @@ export function createGpuResidencyAdmissionTracker(prepare) {
       if (deadline == null) {
         await completions;
       } else {
-        const outcome = await Promise.race([
+        const outcome = await raceDeadline(
           completions.then(() => 'resolved', () => 'rejected'),
-          new Promise((resolve) => setTimeout(() => resolve('timeout'), Math.max(0, deadline - Date.now()))),
-        ]);
+          Math.max(0, deadline - Date.now()), 'timeout',
+        );
         if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
         await completions;
       }

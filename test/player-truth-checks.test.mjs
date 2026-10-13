@@ -6,13 +6,14 @@ import { readFileSync } from 'node:fs';
 import {
   CLS, VIS, E, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
-  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
+  isLoadingAssetState, gradeSoftwareFrameTime, regradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS, classifyPreparationScreen, notePreparationWait, waitForPreparationLaunch, PREPARATION_UNEXPECTED_MS } from '../scripts/player-truth/routes.mjs';
 import { separation, sampleBox, rimMatchesThreat, threatMarkerCredit, THREAT_MARKER } from '../scripts/player-truth/readability.mjs';
 import { offscreenShooterMarker } from '../src/ui/threatHalo.js';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
+import { performanceRunContext } from '../scripts/player-truth/run.mjs';
 
 const goodPlayer = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
 function trace({ n = 60, dt = 0.1, player = () => goodPlayer(), ents = () => [], events = [], rounds = [], probes = [], vfx = null, mode = 'swarm', meta = {} } = {}) {
@@ -165,6 +166,71 @@ test('frame_time is software-renderer evidence on SwiftShader and grades on a GP
   assert.doesNotMatch(missing.detail, /no --baseline/);
 });
 
+test('performance context reads only the dedicated marker and records observer cadence', () => {
+  const env = {SPACEFACE_QUIET_HOST: '0'};
+  const context = performanceRunContext(env, {screenshotEveryMs: 1500});
+  assert.deepEqual(context, {quietHost: false, contended: true, authority: 'diagnostic-only',
+    observer: {pixelSplitPasses: 3, pixelSplitEveryFrames: 24, screenshotEveryMs: 1500}});
+  assert.deepEqual(env, {SPACEFACE_QUIET_HOST: '0'}, 'the runner cannot mark its own host');
+  assert.equal(performanceRunContext({}).contended, true);
+  assert.equal(performanceRunContext({SPACEFACE_QUIET_HOST: true}).quietHost, false);
+  assert.equal(performanceRunContext({SPACEFACE_QUIET_HOST: '1'}).quietHost, true);
+});
+
+test('contended frame times stay diagnostic UNKNOWN with all measurements; quiet hardware still fails', () => {
+  const slow = trace(); for (const sample of slow.samples) sample.dt = 100;
+  slow.longTasks = [{t: 200, d: 338, sim: 10.2, f: 2}];
+  const hardware = checkFrameTime(slow); assert.equal(hardware.status, 'FAIL');
+  slow.meta.performanceContext = performanceRunContext({});
+  const contended = checkFrameTime(slow);
+  assert.equal(contended.status, 'UNKNOWN');
+  assert.equal(contended.value, hardware.value); assert.equal(contended.threshold, hardware.threshold);
+  assert.deepEqual(contended.offenders, hardware.offenders);
+  assert.match(contended.detail, /quiet-host performance unmeasured/);
+  slow.meta.performanceContext = performanceRunContext({SPACEFACE_QUIET_HOST: '1'});
+  assert.equal(checkFrameTime(slow).status, 'FAIL');
+  const fast = trace({meta: {performanceContext: performanceRunContext({})}});
+  assert.equal(checkFrameTime(fast).status, 'UNKNOWN', 'fast contended measurements cannot certify performance');
+  fast.meta.performanceContext = performanceRunContext({SPACEFACE_QUIET_HOST: '1'});
+  assert.equal(checkFrameTime(fast).status, 'PASS');
+  fast.meta.softwareGl = true; assert.equal(checkFrameTime(fast).status, 'UNKNOWN');
+});
+
+test('diagnostic frame context is visible in the verdict and cannot erase a gameplay failure', () => {
+  const recorded = trace({meta: {performanceContext: performanceRunContext({})}});
+  const frame = checkFrameTime(recorded);
+  const badShip = checkPlayerShip(trace({player: () => goodPlayer({mesh: false})}));
+  assert.equal(badShip.status, 'FAIL'); assert.equal(overall([frame, badShip]), 'FAIL');
+  assert.equal(overall([frame]), 'INCOMPLETE');
+  const md = renderVerdict({meta: {...recorded.meta, label: 'diagnostic'}, results: [frame], overall: 'INCOMPLETE'});
+  assert.match(md, /Performance context: unmarked\/contended development host · diagnostic-only/);
+  assert.match(md, /3 render\/readback passes every 24 frames; screenshots every 1000 ms/);
+  assert.match(md, /\*\*UNKNOWN\*\*/); assert.match(md, /quiet-host performance unmeasured/);
+});
+
+test('contended software-GL frame time stays UNKNOWN unless a baseline comparison FAILs', () => {
+  const quiet = trace({ meta: { softwareGl: true, performanceContext: performanceRunContext({ SPACEFACE_QUIET_HOST: '1' }), frameBaseline: { p99: 800, longTasks: 400, commit: 'base' } } });
+  assert.equal(checkFrameTime(quiet).status, 'PASS');
+  const matched = trace({ meta: { softwareGl: true, performanceContext: performanceRunContext({}), frameBaseline: { p99: 800, longTasks: 400, commit: 'base' } } });
+  const held = checkFrameTime(matched);
+  assert.equal(held.status, 'UNKNOWN');
+  assert.match(held.detail, /quiet-host performance unmeasured/);
+  assert.equal(held.frame.contended, true);
+  const slow = trace({ n: 20, meta: { softwareGl: true, performanceContext: performanceRunContext({}), frameBaseline: { p99: 200, longTasks: 10, commit: 'old' } } });
+  for (const s of slow.samples) s.dt = 800;
+  slow.longTasks = Array.from({ length: 80 }, (_, i) => ({ t: (i % 20) * 100, d: 300, sim: 10, f: i }));
+  const regressed = checkFrameTime(slow);
+  assert.equal(regressed.status, 'FAIL');
+  assert.equal(regressed.frame.contended, true);
+  const recorded = { id: 'frame_time', status: 'UNKNOWN', value: 'x', threshold: 't', detail: 'software-renderer evidence only; no --baseline to grade regression', frame: { ...held.frame } };
+  assert.equal(regradeSoftwareFrameTime([recorded], { p99: 800, longTasks: 400 }, { commit: 'base' }), true);
+  assert.equal(recorded.status, 'UNKNOWN');
+  assert.match(recorded.detail, /quiet-host performance unmeasured/);
+  const failing = { id: 'frame_time', status: 'UNKNOWN', value: 'x', threshold: 't', detail: 'd', frame: { ...regressed.frame } };
+  assert.equal(regradeSoftwareFrameTime([failing], { p99: 200, longTasks: 10 }, { commit: 'old' }), true);
+  assert.equal(failing.status, 'FAIL');
+});
+
 test('readability: overlapping classes fail, a measured class can fail alone, thin data is UNKNOWN', () => {
   const S = (L, a, b, r, n) => Array.from({ length: n }, (_, i) => ({ lab: [L + (i % 3) * 4, a, b], r }));
   assert.ok(separation(S(50, 10, 10, 8, 6), S(51, 10, 11, 8, 6)).sep < 1);
@@ -280,10 +346,10 @@ test('threat-hue marker credit: crimson 0xff1a3a matches, a bright glow does not
   assert.equal(rimMatchesThreat(marked.rim), true);
 });
 
-test('threat marker colour is the swarm threat-ring material', () => {
+test('threat marker colour is the swarm threat-rim material', () => {
   const src = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
-  const at = src.indexOf("getMaterial('swarm:threat-ring'");
-  assert.ok(at >= 0, 'swarm:threat-ring material missing');
+  const at = src.indexOf("getMaterial('swarm:threat-rim'");
+  assert.ok(at >= 0, 'swarm:threat-rim material missing');
   const m = src.slice(at, at + 500).match(/color:\s*(0x[0-9a-fA-F]+)/);
   assert.ok(m, 'threat-ring material has no color literal');
   assert.equal(Number(m[1]), THREAT_MARKER.rgb);
@@ -470,4 +536,19 @@ test('Open armory is ready on the draft screen and lost in a non-draft world', (
   assert.match(tutorialLine, /mode=flight kind=adventure phase=inactive/);
   assert.match(tutorialLine, /at -1900,-2200 helios_core spawn/);
   assert.ok(tutorialLine.length < 180);
+});
+
+
+test('crucible_realm: Adventure objective in a swarm play frame or an empty armory FAILs', async () => {
+  const { checkCrucibleRealm } = await import('../scripts/player-truth/checks.mjs');
+  const meta = { mode: 'swarm', hasLoadout: true };
+  const clean = { meta, loadout: { items: [{}, {}], shotT: 1 }, realm: [{ t: 2, sim: 1, file: 'f/0003.jpg', advText: [], onboarding: false, sector: 'sector_crucible' }] };
+  assert.equal(checkCrucibleRealm(clean).status, 'PASS');
+  const leak = { ...clean, realm: [{ t: 2, sim: 1, file: 'f/0003.jpg', advText: ['Recover the 47-A sample from the marker'], onboarding: false, sector: 'sector_helios_prime' }] };
+  assert.equal(checkCrucibleRealm(leak).status, 'FAIL');
+  const empty = { ...clean, loadout: { items: [], shotT: 1 } };
+  assert.equal(checkCrucibleRealm(empty).status, 'FAIL');
+  const gauntlet = { meta: { mode: 'gauntlet', hasLoadout: false }, realm: [{ t: 2, advText: [], onboarding: true, sector: 'x' }] };
+  assert.equal(checkCrucibleRealm(gauntlet).status, 'FAIL');
+  assert.equal(checkCrucibleRealm({ meta: { mode: 'adventure' } }).status, 'N/A');
 });

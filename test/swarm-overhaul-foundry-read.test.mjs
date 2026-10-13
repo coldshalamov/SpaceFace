@@ -1,7 +1,7 @@
 // Swarm residual readability contracts outside the Perf Lane.
-// Threat markers are camera-facing crimson rims. A filled disk the size of the hull hid the
-// ship. The harness counts a layer only when it is additive, or transparent with depthWrite
-// false and a Points/Sprite/Shader. An opaque MeshBasic rim must not join that budget.
+// Threat markers are a thin camera-facing crimson rim plus a heading wedge.
+// There is no filled faction card: a disc the size of the hull reads as a red coin.
+// The rim is a thin stroke, depthTest off, so cover cannot hide it.
 // Foundry room solids are dark furniture. The generic station (white greeble, rings, blinkers)
 // read as a geodesic sitting on the pilot.
 import test from 'node:test';
@@ -30,7 +30,7 @@ test('a hostile ship wears one opaque threat rim that faces the camera', () => {
   assert.ok(plate && plate.isMesh, 'hostile team 1 mounts a mesh rim');
   assert.equal(plate.isSprite, undefined);
   assert.equal(plate.geometry.type, 'RingGeometry');
-  assert.equal(plate.geometry.parameters.innerRadius, 0.84);
+  assert.equal(plate.geometry.parameters.innerRadius, 0.92);
   assert.equal(plate.geometry.parameters.outerRadius, 1);
   const pos = plate.geometry.attributes.position;
   let minR = Infinity;
@@ -40,7 +40,7 @@ test('a hostile ship wears one opaque threat rim that faces the camera', () => {
     if (r < minR) minR = r;
     if (r > maxR) maxR = r;
   }
-  assert.ok(minR >= 0.84 - 1e-3, `ring reaches into the hull (min ${minR})`);
+  assert.ok(minR >= 0.92 - 1e-3, `ring reaches into the hull (min ${minR})`);
   assert.ok(maxR <= 1 + 1e-3, `ring extends past the silhouette (max ${maxR})`);
   assert.equal(plate.renderOrder, 12);
   assert.equal(plate.frustumCulled, true);
@@ -54,36 +54,19 @@ test('a hostile ship wears one opaque threat rim that faces the camera', () => {
   assert.equal(plate.material.depthTest, false);
   assert.equal(plate.material.blending, THREE.NormalBlending);
   assert.notEqual(plate.material.blending, THREE.AdditiveBlending);
+  assert.equal(plate.material.toneMapped, true, 'an unmapped rim blooms into a white ring');
   assert.ok(plate.material.opacity > 0.02);
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined, 'a filled card paints the ship into a red coin');
 
   const worldQ = plate.getWorldQuaternion(new THREE.Quaternion());
   const plateZ = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQ);
   const camZ = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
   assert.ok(plateZ.dot(camZ) > 0.999, 'plate +Z matches the camera +Z, so the face looks back at the lens');
 
-  // The silhouette rim sits outside the inner 70% disk the readability sample
-  // reads. This hoop is inside that disk and leaves the center open. It shares
-  // the rim material, so it stays MeshBasic and out of the additive budget.
-  const core = mesh.getObjectByName('sf-swarm-threat-core');
-  assert.ok(core && core.isMesh, 'hostile team 1 mounts an inner hoop');
-  assert.equal(core.geometry.type, 'RingGeometry');
-  assert.equal(core.geometry.parameters.innerRadius, 0.42);
-  assert.equal(core.geometry.parameters.outerRadius, 0.62);
-  assert.ok(core.geometry.parameters.outerRadius < 0.7, 'the hoop sits inside the readability sample');
-  assert.ok(core.geometry.parameters.innerRadius > 0.2, 'the center of the hull stays open');
-  assert.equal(core.material, plate.material);
-  assert.equal(core.scale.x, plate.scale.x);
-  assert.equal(core.scale.y, plate.scale.y);
-  assert.equal(core.renderOrder, 12);
-  assert.equal(core.visible, true);
-  const coreZ = new THREE.Vector3(0, 0, 1).applyQuaternion(core.getWorldQuaternion(new THREE.Quaternion()));
-  assert.ok(coreZ.dot(camZ) > 0.999, 'the inner hoop faces the camera with the rim');
-
   const again = mesh.getObjectByName('sf-swarm-threat-plate');
-  const againCore = mesh.getObjectByName('sf-swarm-threat-core');
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
   assert.equal(mesh.getObjectByName('sf-swarm-threat-plate'), again, 'a second sync reuses the plate');
-  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), againCore, 'a second sync reuses the inner hoop');
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined);
 
   const other = plateOn(hostile(3, 1), null, null).plate;
   assert.ok(other);
@@ -100,17 +83,152 @@ test('a scaled hull does not inflate the threat plate past the ship', () => {
   mesh.updateMatrixWorld(true);
   const plate = mesh.getObjectByName('sf-swarm-threat-plate');
   const world = plate.getWorldScale(new THREE.Vector3());
-  const core = mesh.getObjectByName('sf-swarm-threat-core');
-  const coreWorld = core.getWorldScale(new THREE.Vector3());
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined);
   assert.ok(Math.abs(world.x - 8) < 1e-3, `world radius ${world.x} should be 1×8`);
   assert.ok(Math.abs(world.y - 8) < 1e-3);
-  assert.ok(Math.abs(coreWorld.x - world.x) < 1e-3, 'the inner hoop uses the rim scale');
-  assert.ok(Math.abs(coreWorld.y - world.y) < 1e-3);
   // Outer edge sits on the silhouette. It must not grow past the ship into the
   // readability background ring (d > 1.2r).
   assert.ok(world.x <= 8 * 1.05);
   assert.ok(world.x >= 8 * 0.99);
 });
+
+test('a cohort mark is clamped to 1.12× and the wedge stays on the nose', () => {
+  const mesh = new THREE.Group();
+  // entity.rot = PI/2 is world heading +Z. The renderer applies mesh.rotation.y = -entity.rot.
+  mesh.rotation.y = -Math.PI / 2;
+  const camera = new THREE.Object3D();
+  camera.quaternion.setFromEuler(new THREE.Euler(0.4, 1.2, 0.2));
+  const entity = { type: 'ship', team: 1, radius: 12, alive: true, data: { swarmMarkRadius: 20 } };
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
+  const plateWorld = plate.getWorldScale(new THREE.Vector3());
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), undefined, 'the cohort mark is a rim, not a filled card');
+  assert.ok(Math.abs(plateWorld.x - 12 * 1.12) < 1e-3, `bracket world radius ${plateWorld.x} should clamp to 1.12×12`);
+  assert.ok(chevron && chevron.isMesh);
+  assert.equal(chevron.geometry.type, 'ConeGeometry');
+  assert.equal(chevron.material, plate.material);
+  assert.equal(chevron.material.depthTest, false);
+  // Cone tip is geometric +Y. After the mount it must agree with the mesh nose (+X),
+  // which this yaw sends to world +Z. The camera quat above is a different direction.
+  const tip = new THREE.Vector3(0, 1, 0).applyQuaternion(chevron.getWorldQuaternion(new THREE.Quaternion()));
+  const nose = new THREE.Vector3(1, 0, 0).applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(tip.dot(nose) > 0.99, `chevron tip ${tip.x.toFixed(2)},${tip.y.toFixed(2)},${tip.z.toFixed(2)} leaves the nose`);
+  assert.ok(tip.z > 0.99 && Math.abs(tip.x) < 0.05, 'yawed hull points the wedge at world +Z');
+  const camFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+  assert.ok(Math.abs(tip.dot(camFwd)) < 0.95, 'the wedge is not a camera billboard');
+  // A requested bracket of 20 is clamped to 1.12× the hull. The wedge stays on
+  // the nose, inside the hull sample, even when the caller asks for a sky-sized halo.
+  const plateReach = chebyshevReach(mesh, plate);
+  const chevronReach = chebyshevReach(mesh, chevron);
+  assert.ok(plateReach <= 12 * 1.12 + 1e-3, `rim reaches ${plateReach}, past the 1.12 cap`);
+  assert.ok(chevronReach <= 12 * 0.7 + 1e-3, `wedge reaches ${chevronReach}, into the background ring`);
+  assert.ok(chevronReach > 12 * 0.4, 'the wedge still reads as a nose, not a speck at the origin');
+  syncSwarmThreatPlate(mesh, { type: 'ship', team: 0, radius: 12 }, camera);
+  assert.equal(chevron.visible, false);
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-glyph').visible, false);
+});
+
+test('the hostile glyph fills the hull sample and follows the projected nose', () => {
+  const mesh = new THREE.Group();
+  // rotation.y = π sends mesh +X to world −X. Identity camera looks down −Z,
+  // so the nose lies in the plate and the glyph must aim at world −X.
+  mesh.rotation.y = Math.PI;
+  const camera = new THREE.Object3D();
+  const entity = {
+    type: 'ship', team: 1, radius: 12, alive: true,
+    data: { ai: { swarmFireHeld: false } },
+  };
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
+  const lamp = glyph.getObjectByName('sf-swarm-threat-lamp');
+  assert.equal(glyph.geometry.type, 'ShapeGeometry');
+  assert.notEqual(glyph.geometry.type, 'CircleGeometry');
+  assert.equal(glyph.material, plate.material, 'the glyph cannot become its own additive layer');
+  assert.equal(glyph.material.blending, THREE.NormalBlending);
+  assert.equal(glyph.material.depthTest, false);
+  assert.equal(lamp.material.isMeshBasicMaterial, true);
+  assert.equal(lamp.material.blending, THREE.NormalBlending);
+  assert.notEqual(lamp.material.blending, THREE.AdditiveBlending);
+  assert.equal(lamp.material.depthTest, false);
+  assert.equal(lamp.material.depthWrite, false);
+  assert.equal(lamp.material.toneMapped, true);
+  assert.equal(lamp.visible, true, 'a live gun shows the nose lamp');
+  const nose = new THREE.Vector3(1, 0, 0).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(nose.dot(new THREE.Vector3(-1, 0, 0)) > 0.99, `glyph nose ${nose.x.toFixed(2)},${nose.y.toFixed(2)},${nose.z.toFixed(2)} leaves world −X`);
+  const glyphZ = new THREE.Vector3(0, 0, 1).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  const camZ = new THREE.Vector3(0, 0, 1);
+  assert.ok(glyphZ.dot(camZ) > 0.999, 'glyph +Z faces the camera, same as the rim');
+  const reach = chebyshevReach(mesh, glyph);
+  assert.ok(reach <= 12 * 0.7 + 1e-3, `glyph reaches ${reach}, outside the hull sample`);
+  assert.ok(reach > 12 * 0.5, `glyph reach ${reach} is a speck`);
+  const lampReach = chebyshevReach(mesh, lamp);
+  assert.ok(lampReach <= 12 * 0.7 + 1e-3, `lamp reaches ${lampReach}, into the background ring`);
+  const pos = glyph.geometry.attributes.position;
+  let maxEuclid = 0;
+  for (let i = 0; i < pos.count; i++) {
+    maxEuclid = Math.max(maxEuclid, Math.hypot(pos.getX(i), pos.getY(i), pos.getZ(i)));
+  }
+  assert.ok(maxEuclid <= 1 + 1e-3, `unit glyph vertex at ${maxEuclid} can leave the 0.7r sample when the camera tilts`);
+  const filled = geometryAreaXY(glyph.geometry);
+  const frac = filled * (glyph.scale.x / 12) ** 2 / (1.4 ** 2);
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = (r, g, b) => {
+    const y = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const f = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116;
+    return 116 * f - 16;
+  };
+  const lift = frac * (L(1, 0x1a / 255, 0x3a / 255) - L(0.02, 0.02, 0.03));
+  assert.ok(lift >= 8, `glyph covers ${frac.toFixed(3)} of the hull sample, mean ΔL ${lift.toFixed(1)}`);
+
+  syncSwarmThreatPlate(mesh, { ...entity, data: { ai: { swarmFireHeld: true } } }, camera);
+  assert.equal(lamp.visible, false, 'a held gun keeps the mark and drops the muzzle lamp');
+  assert.equal(glyph.visible, true);
+  syncSwarmThreatPlate(mesh, { type: 'ship', team: 1, radius: 12 }, camera);
+  assert.equal(lamp.visible, true, 'no swarmFireHeld field (gauntlet) leaves the lamp on');
+
+  // Nose parallel to an identity camera (local +X → world −Z). The heading
+  // falls back to plate +X, which is world +X, and must not invent −Z.
+  mesh.rotation.y = Math.PI / 2;
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const fallback = new THREE.Vector3(1, 0, 0).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(fallback.dot(new THREE.Vector3(1, 0, 0)) > 0.99, `parallel nose fallback ${fallback.x.toFixed(2)},${fallback.y.toFixed(2)},${fallback.z.toFixed(2)}`);
+  assert.ok(Math.abs(fallback.z) < 0.05, 'a nose along the view does not spin the glyph onto the view axis');
+});
+
+function geometryAreaXY(geometry) {
+  const pos = geometry.attributes.position;
+  const index = geometry.index;
+  let area = 0;
+  const tri = (i0, i1, i2) => {
+    const ax = pos.getX(i0); const ay = pos.getY(i0);
+    area += Math.abs((pos.getX(i1) - ax) * (pos.getY(i2) - ay) - (pos.getX(i2) - ax) * (pos.getY(i1) - ay)) * 0.5;
+  };
+  if (index) {
+    for (let i = 0; i < index.count; i += 3) tri(index.getX(i), index.getX(i + 1), index.getX(i + 2));
+  } else {
+    for (let i = 0; i < pos.count; i += 3) tri(i, i + 1, i + 2);
+  }
+  return area;
+}
+
+/** Farthest vertex from the mesh origin, Chebyshev, in the mesh's local frame. */
+function chebyshevReach(mesh, child) {
+  const pos = child.geometry.attributes.position;
+  const v = new THREE.Vector3();
+  const inv = new THREE.Matrix4().copy(mesh.matrixWorld).invert();
+  let maxD = 0;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(child.matrixWorld).applyMatrix4(inv);
+    const d = Math.max(Math.abs(v.x), Math.abs(v.y), Math.abs(v.z));
+    if (d > maxD) maxD = d;
+  }
+  return maxD;
+}
 
 test('the threat crimson clears the low-contrast bar against a dark field', () => {
   const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -128,12 +246,53 @@ test('friendly teams and non-ships grow no threat plate', () => {
   for (const team of [null, undefined, 0, 2]) {
     const built = plateOn({ type: 'ship', team, radius: 8 }, null, null);
     assert.equal(built.plate, undefined, `team ${team} stays unmarked`);
-    assert.equal(built.mesh.getObjectByName('sf-swarm-threat-core'), undefined, `team ${team} grows no inner hoop`);
+    assert.equal(built.mesh.getObjectByName('sf-swarm-threat-core'), undefined, `team ${team} grows no card`);
   }
   const rockBuilt = plateOn({ type: 'asteroid', team: 1, radius: 8 }, null, null);
   assert.equal(rockBuilt.plate, undefined);
   assert.equal(rockBuilt.mesh.getObjectByName('sf-swarm-threat-core'), undefined);
   assert.equal(syncSwarmThreatPlate(null, hostile(1, 8), null), undefined);
+});
+
+test('a hostile hull is tinted on a clone and the shared material stays put', () => {
+  const shared = new THREE.MeshStandardMaterial({
+    color: 0x222222, emissive: 0x111111, emissiveIntensity: 0.2,
+  });
+  const mesh = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared);
+  hull.name = 'hull';
+  mesh.add(hull);
+  const camera = new THREE.Object3D();
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  assert.notEqual(hull.material, shared);
+  assert.equal(hull.material.emissive.getHex(), 0xff2438);
+  assert.equal(hull.material.emissiveIntensity, 0.5);
+  assert.equal(hull.material.userData.spacefaceSharedAsset, true, 'despawn must not free a tint shared by other hulls');
+  assert.equal(shared.emissive.getHex(), 0x111111);
+  assert.equal(shared.emissiveIntensity, 0.2);
+  assert.equal(shared.color.getHex(), 0x222222);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  assert.ok(plate);
+  assert.notEqual(plate.material, hull.material);
+  assert.equal(plate.material.userData && plate.material.userData.swarmHostileTint, undefined);
+  const stamped = hull.material;
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  assert.equal(hull.material, stamped, 'a stable child count does not clone again');
+  const other = new THREE.Group();
+  const otherHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared);
+  other.add(otherHull);
+  syncSwarmThreatPlate(other, hostile(1, 8), camera);
+  assert.equal(otherHull.material, stamped, 'one tinted clone per source material');
+  const basicShared = new THREE.MeshBasicMaterial({ color: 0x8899aa });
+  const basicMesh = new THREE.Group();
+  const basicHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), basicShared);
+  basicMesh.add(basicHull);
+  syncSwarmThreatPlate(basicMesh, hostile(1, 8), camera);
+  const mixed = new THREE.Color(0x8899aa).lerp(new THREE.Color(0xff2438), 0.22);
+  assert.equal(basicHull.material.color.getHex(), mixed.getHex());
+  assert.equal(basicShared.color.getHex(), 0x8899aa);
+  assert.notEqual(basicHull.material, basicShared);
 });
 
 function foundry(kind, radius = 16) {

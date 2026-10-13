@@ -46,7 +46,7 @@ import {
   sabEnvelopePost,
   SAB_ENV_KIND,
 } from '../../scripts/lib/simSabEnvelope.mjs';
-import { flattenEventPayload } from '../../scripts/lib/simEventBridge.mjs';
+import { flattenEventPayload, resolveEventEntityRef } from '../../scripts/lib/simEventBridge.mjs';
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
@@ -216,19 +216,21 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     return !!v && typeof v === 'object' && Number.isFinite(v.entityRef);
   }
   function remapEventPayload(p) {
+    if (isEntityRef(p)) return resolveEventEntityRef(p, readModel.entities);
     if (!p || typeof p !== 'object') {
-      return isEntityRef(p) ? (readModel.entities.get(p.entityRef) || p) : p;
+      return p;
     }
     if (p.entity === undefined && Number.isFinite(p.entityId)) {
       const row = readModel.entities.get(p.entityId);
-      if (row) p.entity = row;
+      if (row) p.entity = resolveEventEntityRef({ entityRef: p.entityId,
+        occupantGeneration: p.occupantGeneration }, readModel.entities);
     }
     for (const k of Object.keys(p)) {
       const v = p[k];
-      if (isEntityRef(v)) p[k] = readModel.entities.get(v.entityRef) || v;
+      if (isEntityRef(v)) p[k] = resolveEventEntityRef(v, readModel.entities);
       else if (Array.isArray(v)) {
         for (let i = 0; i < v.length; i++) {
-          if (isEntityRef(v[i])) v[i] = readModel.entities.get(v[i].entityRef) || v[i];
+          if (isEntityRef(v[i])) v[i] = resolveEventEntityRef(v[i], readModel.entities);
         }
       }
     }
@@ -712,6 +714,14 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   // ---- directive posting ---------------------------------------------------------------------
   const advanceResult = { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
   let pendingSteps = 0;
+  let queuedShedSteps = 0;
+
+  function capPendingSteps(stepCap) {
+    const shed = Math.max(0, pendingSteps - stepCap);
+    pendingSteps -= shed;
+    queuedShedSteps += shed;
+    return shed;
+  }
 
   function watchFlight(flight, delayMs = LANE_WATCHDOG_SAMPLE_MS, confirm = false) {
     const dueMs = nowMs() + delayMs;
@@ -743,6 +753,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     if (inFlight) return;
     const commands = envelopeRing.drain();
     if (pendingSteps <= 0 && commands.length === 0 && pendingAckEnd === 0) return;
+    capPendingSteps(MAX_CATCHUP_STEPS);
 
     const seq = nextToken();
     const msg = {
@@ -942,6 +953,16 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         LOOP_FIXED_DT,
         effectiveStepCap,
       );
+      // While a directive is in flight, multiple presentation frames can owe the next
+      // batch. Apply the same catch-up ceiling to that combined debt: replaying all of
+      // it makes each reply slower and the next batch larger. Only whole overdue ticks
+      // are shed; command order and the accumulator's fractional phase remain intact.
+      const queuedOverflow = capPendingSteps(effectiveStepCap);
+      if (queuedOverflow > 0) {
+        advanceResult.shedBacklog = true;
+        advanceResult.shedSteps += queuedOverflow;
+        advanceResult.steps = Math.max(0, advanceResult.steps - queuedOverflow);
+      }
       advanceResult.stepCap = effectiveStepCap;
       advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
@@ -1030,6 +1051,8 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         replyCount,
         postedDirectives,
         postedSteps,
+        pendingSteps,
+        queuedShedSteps,
         inFlight: inFlight != null,
         inFlightWallMs: inFlight ? Math.max(0, nowMs() - inFlight.sentMs) : null,
         inFlightMainThreadDelayedMs: inFlight ? inFlight.mainThreadDelayedMs : null,

@@ -1,6 +1,7 @@
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
 import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
+import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
@@ -74,7 +75,9 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { attachAuthoredMotionDriver, bindInstanceMotionSteps } from './authoredMotion.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
+import { createReadyPackagedBodyCache } from './readyPackagedBodies.js';
+import { getAssetResidency } from './assetResidency.js';
 import { primeDrawnCullStamps } from './visualCullRadius.js';
 import {
   admissionOwnerInactive,
@@ -87,6 +90,7 @@ import {
   prepareAuthoredVisualPipelines,
   queuePacedDetachedTeardown,
   releaseBoundaryResidency,
+  registerOwnerRelease,
   residencyOptionsForBoundary,
   staleAuthoredRunVerdict,
   waitForOpeningGraphPublicationRelease,
@@ -94,6 +98,7 @@ import {
 } from './partsLibrary.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
+import { foundryPlateShape } from '../data/foundryPlate.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -2553,37 +2558,167 @@ function buildAsteroid(e) {
 const _threatPlateQuat = new THREE.Quaternion();
 const _threatPlateScale = new THREE.Vector3();
 const _threatCameraQuat = new THREE.Quaternion();
+const _glyphNose = new THREE.Vector3();
+const _glyphInv = new THREE.Quaternion();
 const _swarmThreatMarks = new WeakMap();
+// Fraction of body radius. sampleBox reads Chebyshev d ≤ 0.7r. 0.66 keeps a
+// unit-circle silhouette inside that square after any camera tilt, and still
+// covers enough of the square that mean ΔL against a dark field clears 8.
+const SWARM_GLYPH_OF_BODY = 0.66;
+// Nose parallel to the view: plate-local XY of mesh +X collapses, so keep the
+// glyph's nose on plate +X instead of inventing a heading from noise.
+const SWARM_GLYPH_NOSE_PARALLEL = 0.2;
 
 /**
- * Hostile swarm hulls are dark metal on a dark field. A filled disk the size of the
- * hull painted the ship out — enemies read as red circles. This is a camera-facing
- * crimson rim on the silhouette: the center stays open so the hull shows through.
- * Outer radius is entity.radius (floor 2). MeshBasic with normal blending, so
- * the rim is a mark on the silhouette rather than a glow that washes the hull
- * out. depthWrite is off so the rim does not occlude the ship. Created once
- * per boundary; the per-frame work is a quaternion write.
+ * Camera-facing fighter in the plate XY plane. Nose is local +X, the same
+ * axis the hull uses. Vertices stay inside the unit circle so the mesh-local
+ * Chebyshev reach cannot exceed SWARM_GLYPH_OF_BODY × body radius.
  */
+function swarmThreatGlyphGeometry() {
+  const shape = new THREE.Shape();
+  const upper = [
+    [0.98, 0],
+    [0.15, 0.62],
+    [-0.08, 0.94],
+    [-0.40, 0.50],
+    [-0.90, 0.40],
+    [-0.58, 0.16],
+  ];
+  shape.moveTo(upper[0][0], upper[0][1]);
+  for (let i = 1; i < upper.length; i++) shape.lineTo(upper[i][0], upper[i][1]);
+  for (let i = upper.length - 1; i >= 1; i--) shape.lineTo(upper[i][0], -upper[i][1]);
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+}
+
+/**
+ * Point the glyph's +X at the mesh nose projected into the camera plane.
+ * plate.quaternion already equals the camera orientation in mesh space
+ * (plate world quat = camera world quat). atan2(y, x) is that plane's angle
+ * from plate +X; rotateZ applies it in the same plane the shape was built in.
+ * A world-yaw formula would disagree once the camera leaves the horizontal.
+ */
+function aimSwarmThreatGlyph(glyph, plate) {
+  glyph.quaternion.copy(plate.quaternion);
+  _glyphInv.copy(plate.quaternion).invert();
+  _glyphNose.set(1, 0, 0).applyQuaternion(_glyphInv);
+  if (Math.hypot(_glyphNose.x, _glyphNose.y) < SWARM_GLYPH_NOSE_PARALLEL) return;
+  glyph.rotateZ(Math.atan2(_glyphNose.y, _glyphNose.x));
+}
+
+const _hostileTint = new THREE.Color(0xff2438);
+const _hostileTintOf = new WeakMap();
+// A light crimson cast. 0.9 emissive plus a filled disc painted every wasp into
+// a red coin. 0.5 keeps the hull a ship. MeshBasic hulls (no emissive) take a
+// small lerp so they do not become a flat crimson circle either.
+const SWARM_HOSTILE_EMISSIVE = 0.5;
+const SWARM_HOSTILE_COLOR_MIX = 0.22;
+
+/**
+ * One tinted clone per source material, shared by every hostile that uses it.
+ * A fresh clone per wasp, and another on each LOD swap, leaked and broke
+ * batching. The clone is marked spacefaceSharedAsset so disposeObjectNode
+ * leaves it when one wasp despawns or a LOD child is torn down. The WeakMap
+ * drops the clone when the source material itself is collected.
+ */
+function hostileTintMaterial(mat) {
+  if (!mat) return mat;
+  if (mat.userData && mat.userData.swarmHostileTint) return mat;
+  const cached = _hostileTintOf.get(mat);
+  if (cached) return cached;
+  const clone = mat.clone();
+  clone.userData = { ...(mat.userData || {}), swarmHostileTint: true, spacefaceSharedAsset: true };
+  if (clone.emissive && clone.emissive.isColor) {
+    clone.emissive.copy(_hostileTint);
+    clone.emissiveIntensity = Math.max(Number(clone.emissiveIntensity) || 0, SWARM_HOSTILE_EMISSIVE);
+  } else if (clone.color && clone.color.isColor) {
+    clone.color.lerp(_hostileTint, SWARM_HOSTILE_COLOR_MIX);
+  }
+  _hostileTintOf.set(mat, clone);
+  return clone;
+}
+
+/**
+ * Paint this hull crimson without touching a shared material. Authored wasp
+ * metal and a grey rock were the same dark read on the foundry sky (idle
+ * aaca743840: 82% of enemy samples within ΔL 8 of the field). The guard keys
+ * on the first body child, not the child count: a LOD swap that replaces
+ * children 1:1 keeps the count, and the new body would read grey again.
+ */
+function tintSwarmHostileHull(mesh) {
+  const kids = mesh.children || [];
+  let body = null;
+  for (const child of kids) {
+    if (child && child.isMesh) { body = child; break; }
+  }
+  if (mesh.userData.swarmHostileTintBody === body) return;
+  mesh.userData.swarmHostileTintBody = body;
+  mesh.traverse((obj) => {
+    if (!obj.isMesh || !obj.material) return;
+    if (typeof obj.name === 'string' && obj.name.startsWith('sf-swarm-threat')) return;
+    const list = Array.isArray(obj.material) ? obj.material : [obj.material];
+    let changed = false;
+    const next = list.map((mat) => {
+      const tinted = hostileTintMaterial(mat);
+      if (tinted !== mat) changed = true;
+      return tinted;
+    });
+    if (changed) obj.material = Array.isArray(obj.material) ? next : next[0];
+  });
+}
+
+/**
+ * Hostile swarm hulls are dark metal on a dark field. A thick reticle, and a
+ * filled disc the size of the hull, painted the ship out: enemies read as red
+ * coins. Marks are MeshBasic, normal blending, tone-mapped so they do not
+ * bloom into a white ring:
+ *   - a thin camera-facing rim at 0.92–1 of the capped mark, depthTest off.
+ *     An identity stroke in the 0.7–1.2 sample gap, not a disc.
+ *   - a heading wedge on the nose, inside the hull sample, along +X
+ *     (the renderer yaws with mesh.rotation.y = -entity.rot)
+ *   - a camera-facing fighter glyph at SWARM_GLYPH_OF_BODY × body, sharing
+ *     the rim material (DoubleSide). It sits in the d ≤ 0.7 sample, which
+ *     the rim never reaches. Not named a core, not a circle.
+ *   - a small nose lamp, same non-additive material family, on while the
+ *     gun is live (ai.swarmFireHeld !== true). Held guns stay marked, dark.
+ * The hull itself carries a light crimson emissive (see hostileTintMaterial).
+ * The rim is capped at SWARM_THREAT_MARK_SCALE × body radius. Created once per boundary.
+ * The scale lives in src/data/swarmThreatMark.js, the same leaf the wave owner
+ * uses when it stamps swarmMarkRadius. This file does not import survivalWave.
+ */
+function hideSwarmThreatMarks(mesh) {
+  const marks = _swarmThreatMarks.get(mesh);
+  if (marks) {
+    marks.plate.visible = false;
+    if (marks.chevron) marks.chevron.visible = false;
+    if (marks.glyph) marks.glyph.visible = false;
+    if (marks.lamp) marks.lamp.visible = false;
+  }
+  const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
+  if (staleCard) mesh.remove(staleCard);
+}
+
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
-    const marks = _swarmThreatMarks.get(mesh);
-    if (marks) { marks.plate.visible = false; marks.core.visible = false; }
+    hideSwarmThreatMarks(mesh);
     return;
   }
+  tintSwarmHostileHull(mesh);
+  const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
+  if (staleCard) mesh.remove(staleCard);
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');
   if (!plate) {
-    // Unit ring. 0.84–1.0 leaves the middle of the hull open and keeps the
-    // stroke on the silhouette. Scaled by entity.radius below.
+    // Thin stroke. 0.92–1.0 sits outside the hull sample and short of the sky.
     plate = new THREE.Mesh(
-      getGeometry('swarm:threat-ring', () => new THREE.RingGeometry(0.84, 1, 40)),
-      getMaterial('swarm:threat-ring', () => new THREE.MeshBasicMaterial({
+      getGeometry('swarm:threat-rim', () => new THREE.RingGeometry(0.92, 1, 48)),
+      getMaterial('swarm:threat-rim', () => new THREE.MeshBasicMaterial({
         color: 0xff1a3a,
         side: THREE.DoubleSide,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
         fog: false,
-        toneMapped: false,
+        toneMapped: true,
       })),
     );
     plate.name = 'sf-swarm-threat-plate';
@@ -2591,43 +2726,96 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     plate.frustumCulled = true;
     mesh.add(plate);
   }
-  // The silhouette rim sits outside the inner 70% of the hull, which is the
-  // disk a readability sample actually reads. A second hoop inside that disk
-  // pulls the hull off the dark field and off grey rock. The center stays open.
-  let core = mesh.getObjectByName('sf-swarm-threat-core');
-  if (!core) {
-    core = new THREE.Mesh(
-      getGeometry('swarm:threat-core', () => new THREE.RingGeometry(0.42, 0.62, 40)),
+  // Heading wedge. ConeGeometry's tip is +Y. Hull noses are +X (visualFactory
+  // contract). rotateZ(-PI/2) sends that tip to local +X. Not camera-facing.
+  let chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
+  if (!chevron) {
+    chevron = new THREE.Mesh(
+      getGeometry('swarm:threat-chevron', () => new THREE.ConeGeometry(0.22, 0.46, 3)),
       plate.material,
     );
-    core.name = 'sf-swarm-threat-core';
-    core.renderOrder = 12;
-    core.frustumCulled = true;
-    mesh.add(core);
+    chevron.name = 'sf-swarm-threat-chevron';
+    chevron.renderOrder = 12;
+    chevron.frustumCulled = true;
+    chevron.rotation.z = -Math.PI / 2;
+    mesh.add(chevron);
+  }
+  // In-hull silhouette. Shares the rim's DoubleSide material. The lens sits
+  // on plate +Z, so the face it sees is the shape's +Z side. Not a disc, and
+  // not an additive VFX layer (those hid the threat pixels).
+  let glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
+  let lamp = glyph && glyph.getObjectByName('sf-swarm-threat-lamp');
+  if (!glyph) {
+    glyph = new THREE.Mesh(
+      getGeometry('swarm:threat-glyph', swarmThreatGlyphGeometry),
+      plate.material,
+    );
+    glyph.name = 'sf-swarm-threat-glyph';
+    glyph.renderOrder = 12;
+    glyph.frustumCulled = true;
+    mesh.add(glyph);
+    lamp = new THREE.Mesh(
+      getGeometry('swarm:threat-lamp', () => new THREE.SphereGeometry(0.11, 10, 8)),
+      getMaterial('swarm:threat-lamp', () => new THREE.MeshBasicMaterial({
+        color: 0xffe4ea,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        toneMapped: true,
+      })),
+    );
+    lamp.name = 'sf-swarm-threat-lamp';
+    lamp.renderOrder = 13;
+    lamp.frustumCulled = true;
+    // 0.72 of the unit glyph, inside the nose, still under the 0.7r sample
+    // once the glyph is scaled by SWARM_GLYPH_OF_BODY.
+    lamp.position.set(0.72, 0, 0.06);
+    glyph.add(lamp);
   }
   // Local scale is divided by the parent so a scaled hull cannot inflate the rim
-  // past the ship. A rim larger than the hull crowds the picture.
-  const worldR = Math.max(2, Number(entity.radius) || 2);
+  // past the ship. The cohort mark may ask for a wider bracket; the cap keeps
+  // the outer edge inside the readability background ring.
+  const bodyR = Math.max(2, Number(entity.radius) || 2);
+  const markAuth = Number(entity.data && entity.data.swarmMarkRadius);
+  const requested = Number.isFinite(markAuth) && markAuth > bodyR ? markAuth : bodyR;
+  const markR = Math.min(requested, bodyR * SWARM_THREAT_MARK_SCALE);
   mesh.updateWorldMatrix(true, false);
   mesh.getWorldScale(_threatPlateScale);
-  plate.scale.set(
-    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.x)),
-    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.y)),
-    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.z)),
+  const inv = (n) => 1 / Math.max(1e-4, Math.abs(n));
+  const bodyScaleX = bodyR * inv(_threatPlateScale.x);
+  const bodyScaleY = bodyR * inv(_threatPlateScale.y);
+  const bodyScaleZ = bodyR * inv(_threatPlateScale.z);
+  const markScaleX = markR * inv(_threatPlateScale.x);
+  const markScaleY = markR * inv(_threatPlateScale.y);
+  const markScaleZ = markR * inv(_threatPlateScale.z);
+  plate.scale.set(markScaleX, markScaleY, markScaleZ);
+  // ConeGeometry(0.22, 0.46) half-height is 0.23. Center at 0.36 of the hull:
+  // tip at 0.59 body radii, tail at 0.13. Both sit inside d ≤ 0.7, so the wedge
+  // lifts the hull sample and does not tint the background ring. Not the bracket.
+  chevron.scale.set(bodyScaleX, bodyScaleY, bodyScaleZ);
+  chevron.position.set(bodyScaleX * 0.36, 0, 0);
+  glyph.scale.set(
+    bodyScaleX * SWARM_GLYPH_OF_BODY,
+    bodyScaleY * SWARM_GLYPH_OF_BODY,
+    bodyScaleZ * SWARM_GLYPH_OF_BODY,
   );
-  core.scale.copy(plate.scale);
   const marks = _swarmThreatMarks.get(mesh);
-  if (marks) { marks.plate = plate; marks.core = core; }
-  else _swarmThreatMarks.set(mesh, { plate, core });
+  if (marks) { marks.plate = plate; marks.chevron = chevron; marks.glyph = glyph; marks.lamp = lamp; }
+  else _swarmThreatMarks.set(mesh, { plate, chevron, glyph, lamp });
   plate.visible = true;
-  core.visible = true;
+  chevron.visible = true;
+  glyph.visible = true;
+  // Guns live unless this wave has stamped a hold. Gauntlet hulls have no
+  // swarmFireHeld field, so the lamp stays on and the nose still reads armed.
+  const gunsHeld = !!(entity.data && entity.data.ai && entity.data.ai.swarmFireHeld === true);
+  if (lamp) lamp.visible = !gunsHeld;
   if (camera && camera.quaternion && mesh.quaternion) {
     mesh.getWorldQuaternion(_threatPlateQuat);
     camera.getWorldQuaternion(_threatCameraQuat);
     _threatPlateQuat.invert().multiply(_threatCameraQuat);
     plate.quaternion.copy(_threatPlateQuat);
-    core.quaternion.copy(_threatPlateQuat);
   }
+  aimSwarmThreatGlyph(glyph, plate);
 }
 
 /** Dark industrial furniture. Matte, no white rings, no hostile-red lamps. */
@@ -2644,7 +2832,9 @@ function buildFoundryToy(e) {
   }), SHARED_MATERIAL_ROLE.STATION));
   let body;
   if (kind === 'plate') {
-    body = new THREE.Mesh(getGeometry('foundry:slab', () => new THREE.BoxGeometry(2.6, 0.16, 1.3)), mat);
+    const shape = foundryPlateShape(e);
+    body = new THREE.Mesh(getGeometry('foundry:bank-slab', () => new THREE.BoxGeometry(2, 2, 2)), mat);
+    body.scale.set(shape.halfWidth, shape.halfHeight, shape.halfDepth);
   } else if (kind === 'gate') {
     body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(0.16, 0.2, 1.5, 6)), mat);
   } else if (kind === 'furnace') {
@@ -2652,7 +2842,7 @@ function buildFoundryToy(e) {
   } else {
     body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(1.5, 0.32, 0.42)), mat);
   }
-  body.scale.setScalar(R);
+  if (kind !== 'plate') body.scale.setScalar(R);
   body.castShadow = true;
   body.receiveShadow = true;
   g.add(body);
@@ -4331,7 +4521,55 @@ function disposeDetachedPackagedGroup(group) {
   });
 }
 
-function attachPackagedBody(root, relativeFile, entity) {
+function packagedBodyTemplateKey(relativeFile, entity) {
+  const dead = relativeFile === hulkPackagedFileForEntity(entity) || relativeFile === fractureFragmentFileForEntity(entity);
+  return `${relativeFile}|${dead ? 'dead' : 'normal'}|${dead && entity.data?.fracturePiece ? 'residual' : 'quiet'}`;
+}
+
+function readyPackagedWreck(cache, relativeFile, entity) {
+  if (!cache) return null;
+  const ready = cache.acquire(packagedBodyTemplateKey(relativeFile, entity), {
+    fitRadius: fractureFragmentFitRadius(entity) || entity.radius,
+    patchMaterial: material => {
+      if (material.envMap) material.envMap = SHIP_ENV_MAP;
+      if (material.userData?.hulkEmberGain != null) material.emissiveIntensity = 0;
+    },
+  });
+  if (!ready) return null;
+  const root = new THREE.Group(); const packaged = ready.root;
+  const identity = interactionProfileForEntity(entity);
+  root.userData.kind = 'wreck';
+  root.userData.interactionKind = identity.kind;
+  root.userData.visualLanguage = identity.hazardous ? 'mechanical-reactor-hazard' : 'mechanical-wreckage';
+  root.add(packaged);
+  try {
+    const controller = bindInstanceMotion(packaged, ready.motionBank);
+    if (controller) {
+      attachAuthoredMotionDriver(root, entity, [controller]);
+      if (entity.data?.fracturePiece && entity.data.fractureRuptureFired !== true) {
+        controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, factoryPresentationNow() ?? 0);
+        entity.data.fractureRuptureFired = true;
+      }
+    }
+    const emberMats = ready.materials.filter(material => material.userData?.hulkEmberGain != null);
+    if (emberMats.length) root.userData.hulkEmber = { mats: emberMats, killedAt: Number(entity.data?.killedAt) || 0 };
+    root.userData.hull = packaged;
+    carryAdmittedOnceStamp(packaged, root);
+    root.userData.assetId = ready.record.assetId || relativeFile;
+    root.userData.authoredAssetState = 'authored';
+    root.userData.authoredPackageUrl = packagedPartUrl(relativeFile);
+    root.userData.authoredVisualRoot = ready.record.assetId || root.userData.authoredPackageUrl;
+    root.userData.renderContract = { assetBoundary: 'admitted packaged wreck', gracefulFallback: false };
+    registerOwnerRelease(root, ready.release);
+    return root;
+  } catch (error) {
+    root.userData.detachAuthoredMotion?.(); ready.release();
+    for (const material of ready.materials) material.dispose();
+    throw error;
+  }
+}
+
+function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
   if (!root || !relativeFile) {
     // No packaged file resolved — stamp the terminal identity so the root never sits
     // 'missing' in front of the readiness gate (same wedge class as buildFallback).
@@ -4395,6 +4633,7 @@ function attachPackagedBody(root, relativeFile, entity) {
     // so every verdict write and the commit guard below compare this run's own epoch — including
     // the pre-mint legs and the outer catch, which a .then-scoped mint could not reach.
     const mintedAdmissionOptions = admissionOptions();
+    const readyGeneration = readyBodies?.generation;
     // Same admission barrier as the scenario-prop packaged path (visualOverrides.js): the group
     // is compiled and its buffers uploaded while still detached, and publication waits on the
     // opening-graph release. Attaching straight to the live root linked the packaged materials
@@ -4644,11 +4883,17 @@ function attachPackagedBody(root, relativeFile, entity) {
       if (typeof packagedShadowSync === 'function') {
         try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
-      notePacedFrameSpend(legNow() - legStarted);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
+      // The roster's normal admission paid every geometry/program/motion preparation cost.
+      // Future wrecks can draw that complete identity immediately rather than substitute rubble.
+      readyBodies?.capture(packagedBodyTemplateKey(relativeFile, entity), packaged, {
+        record, fitRadius: fractureFragmentFitRadius(entity) || entity.radius,
+        motionBank: record.motionBank, gpuAdmitted: true, admissionGeneration: readyGeneration,
+      });
+      notePacedFrameSpend(legNow() - legStarted);
       return true;
     }).catch((error) => {
       if (detachedCommitGroup && !detachedCommitGroup.parent) {
@@ -6128,8 +6373,12 @@ function stampBuiltVisual(root) {
   return root;
 }
 
-export function createVisualFactory() {
+export function createVisualFactory({ renderer = null, readyPackagedBodies = null } = {}) {
+  const readyBodies = readyPackagedBodies || (renderer
+    ? createReadyPackagedBodyCache({ residency: getAssetResidency(renderer) }) : null);
   return {
+    clearReadyPackagedBodies(reason) { readyBodies?.clear(reason); },
+    readyPackagedBodyDiagnostics() { return readyBodies?.diagnostics() || { templates: 0, geometryBytes: 0 }; },
     build(e) {
       try {
         if (!e) return null;
@@ -6161,7 +6410,11 @@ export function createVisualFactory() {
           case 'bomb': return stampBuiltVisual(buildBomb(e));
           case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
           case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
-          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), wreckPackagedFile(e), e));
+          case 'wreck': {
+            const file = wreckPackagedFile(e);
+            return stampBuiltVisual(readyPackagedWreck(readyBodies, file, e)
+              || attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), file, e, readyBodies));
+          }
           // Alien Ecology: organic fauna — procedural bodies, no authored GLB in the slice.
           case 'fauna': return stampBuiltVisual(buildFaunaMesh(e));
           // Verge-Layer: machine entities — kinematic procedural bodies (prism/custodian/auditor).

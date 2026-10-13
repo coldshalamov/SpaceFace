@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { admitAuthoredAssetTask } from '../src/render/assetLoader.js';
 import {
   admissionOwnerInactive,
+  boundaryLiveEntity,
   AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS,
   AUTHORED_ADMISSION_RETRY_MAX,
   markAuthoredBoundaryForReadmission,
@@ -17,6 +18,29 @@ import { vfx } from '../src/render/vfx.js';
 function freshRuntime() {
   return { assets: new Map(), failures: new Map(), retiring: false };
 }
+
+test('captured admission cannot resolve a recycled id into another native owner', () => {
+  const previousWindow = globalThis.window;
+  const old = { id: 343, type: 'ship', occupantGeneration: 1, alive: false };
+  const next = { id: 343, type: 'ship', occupantGeneration: 2, alive: true };
+  const boundary = new THREE.Group();
+  Object.assign(boundary.userData, { presentationEntityId: 343,
+    presentationEntityType: 'ship', presentationOccupantGeneration: 1 });
+  globalThis.window = { SF: { state: { entities: new Map([[343, next]]) } } };
+  try {
+    assert.strictEqual(boundaryLiveEntity(boundary, old), old);
+    assert.equal(admissionOwnerInactive({}, boundaryLiveEntity(boundary, old)), true);
+    assert.equal(next.presentationAdmission, undefined, 'the successor receives no stale verdict');
+    boundary.userData.presentationOccupantGeneration = 2; // Explicit renderer restore bind.
+    assert.strictEqual(boundaryLiveEntity(boundary, old), next);
+    next.type = 'asteroid';
+    assert.strictEqual(boundaryLiveEntity(boundary, old), old,
+      'a type-changing slot cannot borrow the captured ship callback');
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
 
 test('a settled-null authored task evicts itself so the next request refetches', async () => {
   const runtime = freshRuntime();

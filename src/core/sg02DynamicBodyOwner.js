@@ -249,7 +249,7 @@ export function directContactCausalActorId(aId, bId, aVx, aVz, bVx, bVz, nx, nz)
   return aContribution > bContribution ? aId : bId;
 }
 
-// Radial pre-solve closing speed along A-to-B center separation. Static bodies pass 0 velocity.
+// Pre-solve closing speed along an A-to-B separation or contact-normal axis. Static bodies pass 0 velocity.
 // Separating and tangential pairs are 0; this is not total relative speed and never abs().
 export function preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz) {
   const normalLength = Math.hypot(finite(nABx), finite(nABz));
@@ -272,6 +272,7 @@ export function createSg02CombatPhysicsPort(owner) {
   }
   return Object.freeze({
     applyImpulse(input) { return owner.applyImpulse(input); },
+    settlePassiveBody(input) { return typeof owner.settlePassiveBody === 'function' ? owner.settlePassiveBody(input) : false; },
     applyTorqueImpulse(input) { return owner.applyTorqueImpulse(input); },
     createAttachment(input) { return owner.createAttachment(input); },
     setAttachmentReel(input) { return owner.setAttachmentReel(input); },
@@ -1187,6 +1188,44 @@ export class Sg02DynamicBodyOwner {
       rec.body.applyImpulse(impulse, true);
     }
     if (evidenceBefore) observeAppliedImpulse(rec.entity, evidenceBefore, rec.body.linvel(), input.provenance, input.tick, input.reason);
+    return true;
+  }
+
+  /** Boundary-owned passive settling. Native mass includes the live field/body response;
+   * publish the impulse result immediately when the boundary runs after this tick's solve. */
+  settlePassiveBody(input = {}) {
+    let rec = this.records.get(input.entityId);
+    const entity = input.entity ?? rec?.entity;
+    if (input.reason !== 'swarm_round_settle' || !entity || entity.id !== input.entityId
+      || entity.alive === false || entity.isPlayer === true || entity.physicsBody === false
+      || (entity.type !== 'asteroid' && entity.type !== 'wreck')
+      || (input.occupantGeneration != null && input.occupantGeneration !== entity.occupantGeneration)) return false;
+    // New debris may arrive after the preceding physics slot while the public shop is paused.
+    // Only the arena's exact current live object may admit that one body at the opening boundary.
+    // A detached object or an old occupant must never replace an existing native record here.
+    if (input.entity != null && (typeof input.entities?.get !== 'function'
+      || input.entities.get(input.entityId) !== entity || (rec && rec.entity !== entity))) return false;
+    const minSpeed = Number.isFinite(input.minSpeed) && input.minSpeed >= 0 ? input.minSpeed : 6;
+    if (!rec) {
+      if (input.entity == null || !Number.isSafeInteger(entity.occupantGeneration) || entity.occupantGeneration < 1
+        || input.occupantGeneration !== entity.occupantGeneration
+        || Math.hypot(finite(entity.vel?.x), finite(entity.vel?.z)) < minSpeed) return false;
+      const spec = resolvePhysicsBodySpec(entity);
+      if (!spec?.dynamic || !(spec.radius > 0)) return false;
+      rec = this._syncRecord(entity, spec);
+    }
+    if (!rec?.spec.dynamic) return false;
+    const velocity = rec.body.linvel();
+    if (Math.hypot(velocity.x, velocity.z) < minSpeed) return false;
+    const mass = rec.body.mass();
+    if (!(Number.isFinite(mass) && mass > 0)) return false;
+    const applied = this.applyImpulse({ ...input, point: null,
+      impulse: { x: -velocity.x * mass, z: -velocity.z * mass } });
+    if (!applied) return false;
+    writeEntityVelFromBody(rec);
+    rec.snapshot.vx = quantize(rec.entity.vel.x, this.quantum);
+    rec.snapshot.vz = quantize(rec.entity.vel.z, this.quantum);
+    if (rec.postStep) rec.postStep.vDirty = true;
     return true;
   }
 
@@ -2875,7 +2914,6 @@ export class Sg02DynamicBodyOwner {
         nABx,
         nABz,
       );
-      const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz);
       let byB = merged.get(a.entity.id);
       if (!byB) {
         byB = this._impactByBPool.length ? this._impactByBPool.pop() : new Map();
@@ -2895,6 +2933,11 @@ export class Sg02DynamicBodyOwner {
       const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
         ? { x: -rawNormal.x, z: -rawNormal.z }
         : rawNormal;
+      // A compound hull's center can lie far along the wall from the actual surface the
+      // player is driving into. Classify its stopping response by that surface normal;
+      // the centroid axis otherwise mistakes native wall braking for an external shove
+      // and restores thrust velocity while the solver correctly keeps the hull outside.
+      const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const receipt = {
         schemaVersion: 1,

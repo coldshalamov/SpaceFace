@@ -34,6 +34,8 @@ import {
 } from '../src/data/opticStructures.js';
 import { RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
 import { projectileHitPayload } from '../src/core/physics.js';
+import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
+import { OPTIC_MATERIALS } from '../src/combat/opticField.js';
 
 
 function opticGalleryBodies(state, structureId = CERES_PRISM_GALLERY_ID) {
@@ -476,7 +478,15 @@ test('optic lattices promote inside the decode disc and shelve past exit', async
   stamped = opticGalleryBodies(state);
   assert.ok(stamped.live.length >= 1, 'approach must lift optic bodies onto the combat list');
   for (const ent of stamped.live) {
-    assert.equal(ent.physicsBody && ent.physicsBody.radius, ent.radius);
+    const referenceRadius = OPTIC_MATERIALS[ent.data.opticMaterial].radius;
+    assert.equal(ent.radius, referenceRadius, 'visual and optical receiver radius stays authored');
+    const previousBody = resolvePhysicsBodySpec({ type: 'asteroid', radius: referenceRadius,
+      data: ent.data, physicsBody: { radius: referenceRadius } });
+    const body = resolvePhysicsBodySpec(ent);
+    assert.equal(body.radius, ent.data.opticMaterial === 'stone'
+      ? Math.min(referenceRadius, ent.data.opticLatticeSpacing / 2) : referenceRadius);
+    assert.equal(body.mass, previousBody.mass, 'calibration preserves native mass');
+    assert.equal(body.inertiaY, previousBody.inertiaY, 'calibration preserves native inertia');
     assert.equal(ent.data.masslineTetherable, false);
   }
 

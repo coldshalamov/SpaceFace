@@ -48,6 +48,23 @@ const DEED_OUTCOME_LINES = Object.freeze({
   robbed: 'A freighter was robbed on the lane; the thief left with the hold.',
   hauler_destroyed: 'A freighter went down on the lane under watch.',
 });
+// The Ceres dock-face chain is the sector's loudest story, but it is not an encounter — the
+// dock card heard about far-off lanes and stayed silent about the drama on its own face.
+// Completed chain events speak through the same deed slot (traffic:ceresCausalChain,
+// kind event_complete), keyed by event id so each link keeps its own wording.
+const CERES_CHAIN_DEED_LINES = Object.freeze({
+  ev_surveyor_probe_line: 'A surveyor ran a probe line off the refinery — the seam maps went out fresh.',
+  ev_rich_seam_strike: 'A seam miner struck it rich under the refinery\u2019s nose; the face is still loud about the take.',
+  ev_miner_calls_hauler: 'A miner called a hauler to the face and the day\u2019s ore changed hands on the lane.',
+  ev_patrol_scans_suspect: 'The watch put a loaded hauler under the beam and read its hold bow to stern.',
+  ev_cargo_capsule_launch: 'The refinery fired a metals capsule down-lane; somebody out there holds the catch.',
+  ev_pod_breaks_clamp: 'A clamp let go on the refinery\u2019s cargo face and a loaded pod walked — the lane is still arguing who caught it.',
+  ev_disabled_hauler_recovery: 'A dead hauler went home under tow off the dock face.',
+  ev_tender_services_miner: 'A service tender put a worn seam miner back on the face inside the watch\u2019s clock.',
+  ev_patrol_escorts_hauler: 'The watch walked a recovered hauler out of the pocket under guns.',
+  ev_cutter_strips_wreck: 'A cutter picked a wreck clean off the refinery lane — nothing left worth a tow.',
+  ev_rock_calving: 'The worked seam calved loose rock on the lane; the survey buoys logged every shard.',
+});
 
 function ensureContactBag(state) {
   const player = state.player || (state.player = {});
@@ -225,6 +242,7 @@ export const stationContacts = {
     on('aftermathWreck:completed', (payload = {}) => this._recordVonnWreckCompletion(payload));
     on('recovery:completed', (payload = {}) => this._noteRescueNotice(payload));
     on('encounter:resolved', (payload = {}) => this._noteDeed(payload));
+    on('traffic:ceresCausalChain', (payload = {}) => this._noteCeresChainDeed(payload));
     on('survivorPod:promoted', (payload = {}) => this._notePodReceipt(payload, 'promoted'));
     on('survivorPod:delivered', (payload = {}) => this._notePodReceipt(payload, 'delivered'));
     on('survivorPod:rescued', (payload = {}) => this._notePodReceipt(payload, 'rescued'));
@@ -482,6 +500,34 @@ export const stationContacts = {
     const line = DEED_OUTCOME_LINES[payload.outcome];
     const sectorId = String(payload.sectorId || '').trim();
     if (!line || !sectorId) return false;
+    return this._commitDeed(sectorId, {
+      outcome: String(payload.outcome).slice(0, 48),
+      shapeId: String(payload.shape || '').slice(0, 64),
+      encounterId: String(payload.encounterId || '').slice(0, 96),
+      text: line,
+    });
+  },
+
+  /**
+   * The refinery's own face: a finished causal-chain event is dock gossip the station cannot
+   * ignore — it happened on its doorstep. Only event_complete receipts write (an interrupted
+   * link tells no finished story), and only authored event ids — evidence-backed by the same
+   * construction as encounter deeds. Record-only: nothing moves on this path.
+   */
+  _noteCeresChainDeed(payload) {
+    if (!payload || payload.kind !== 'event_complete') return false;
+    const line = CERES_CHAIN_DEED_LINES[payload.eventId];
+    const sectorId = String(payload.sectorId || '').trim();
+    if (!line || !sectorId) return false;
+    return this._commitDeed(sectorId, {
+      outcome: 'ceres_chain',
+      shapeId: String(payload.eventId || '').slice(0, 64),
+      encounterId: `ceres-chain:${String(payload.eventId || '')}:${payload.cycle | 0}`.slice(0, 96),
+      text: line,
+    });
+  },
+
+  _commitDeed(sectorId, fields) {
     const life = ensureLifeState(this.state);
     const keys = Object.keys(life.deeds);
     if (!life.deeds[sectorId] && keys.length >= DEED_MAX_SECTORS) {
@@ -490,10 +536,11 @@ export const stationContacts = {
     }
     const rec = {
       sectorId: sectorId.slice(0, 96),
-      outcome: String(payload.outcome).slice(0, 48),
-      shapeId: String(payload.shape || '').slice(0, 64),
-      encounterId: String(payload.encounterId || '').slice(0, 96),
-      text: line,
+      outcome: '',
+      shapeId: '',
+      encounterId: '',
+      text: '',
+      ...fields,
       simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
     };
     life.deeds[sectorId] = rec;

@@ -27,7 +27,7 @@ function builtEntry(asset) {
 
 test('default retains the full pack; explicit selection uses canonical order', () => {
   assert.equal(selectPackReleaseAssets(), PACK_RELEASE_ASSETS);
-  assert.equal(selectPackReleaseAssets().length, 74);
+  assert.equal(selectPackReleaseAssets().length, 75);
   const ids = [PACK_RELEASE_ASSETS[8].id, PACK_RELEASE_ASSETS[2].id];
   assert.deepEqual(selectPackReleaseAssets(ids), [PACK_RELEASE_ASSETS[2], PACK_RELEASE_ASSETS[8]]);
   assert.deepEqual(parsePackReleaseArgs([]), {});
@@ -70,7 +70,7 @@ test('subset validation cannot silently replace the full-build default or alter 
   const selected = [PACK_RELEASE_ASSETS[1], PACK_RELEASE_ASSETS[4]];
   const built = selected.map(builtEntry);
   assert.equal(validateCompletePackBuild(built, selected), true);
-  assert.throws(() => validateCompletePackBuild(built), /74 selected assets/);
+  assert.throws(() => validateCompletePackBuild(built), /75 selected assets/);
   assert.throws(() => validateCompletePackBuild(built.slice(0, 1), selected), /2 selected assets/);
   assert.throws(() => validateCompletePackBuild([...built].reverse(), selected), /order|membership/);
   assert.throws(() => validateCompletePackBuild(built, [...selected].reverse()), /canonical order/);

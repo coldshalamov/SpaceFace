@@ -48,7 +48,7 @@ import {
   sectorGlobalOrigin,
 } from '../data/sectorCoordinates.js';
 import { SpatialHash } from './spatialHash.js';
-import { opticGenerationOf } from '../combat/opticField.js';
+import { opticGenerationOf, opticMaterialOf, isOpticEnergyBolt, isOpticOrdnance } from '../combat/opticField.js';
 import { projectileTravelLimit } from '../combat/projectileFlight.js';
 import { traumaFromContact } from '../render/feel.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
@@ -97,6 +97,12 @@ const SG02_INIT_PREPARE_TIMEOUT_MS = 60000;
 // The parent bolt — generation 0 — stays owner-immune on every contact path.
 function opticSplinterHitsOwner(proj) {
   return opticGenerationOf(proj) > 0;
+}
+
+function authoredOpticReceiver(target, projectile) {
+  return target.type === 'asteroid' && typeof target.data?.opticStructureId === 'string'
+    && target.data.opticStructureId.length > 0 && !!opticMaterialOf(target)
+    && (isOpticEnergyBolt(projectile) || isOpticOrdnance(projectile));
 }
 
 // Compact physical hulls may extend beyond their nominal gameplay radius. Keep
@@ -1156,7 +1162,8 @@ export const physics = {
       // receipt binds proj.id/target.id/tick and publishes exactly the payload's own values.
       const receipt = surfaceContactFromBodies(proj, bestTarget, {
         point: hitPos,
-        normal: projectileContactFrame(proj, bestTarget, hitPos).normal,
+        normal: foundryBankPlateProxy(bestTarget) && !(bestTarget.shield > 0)
+          ? { x: bestHit.nx, z: bestHit.nz } : projectileContactFrame(proj, bestTarget, hitPos).normal,
         velocity: proj.vel,
       }, state && Number.isInteger(state.tick) ? state.tick : 0);
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, hitPos, receipt));
@@ -1201,7 +1208,9 @@ export const physics = {
       // passes through it (PQ-205.02) exactly as if it had hit the owner ship itself.
       if (tgt.type === 'bomb' && tgt.data && tgt.data.ownerId === proj.ownerId) continue;
       if (!canCollide(proj, tgt, honorAuthored) && !canCollide(tgt, proj, honorAuthored)) continue;
-      const manifest = tgt.shield > 0 ? null : resolveCollisionProxyManifest(tgt);
+      // Optic recipes own circular receiver geometry at the reference radius; the visual
+      // asset proxy and calibrated moving-body envelope cannot change their bank/fuse paths.
+      const manifest = tgt.shield > 0 || authoredOpticReceiver(tgt, proj) ? null : resolveCollisionProxyManifest(tgt);
       if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + projectileProxyRadius(tgt, manifest))) continue;
       // The broad circle is not a solid hull: authored/measured compounds can have
       // open mouths and corridors. Active shields retain their spherical interception
@@ -1809,6 +1818,10 @@ function createDeferredSg02CombatPhysicsPort(host) {
       const runtime = owner();
       return runtime ? runtime.applyImpulse(input) : false;
     },
+    settlePassiveBody(input) {
+      const runtime = owner();
+      return runtime ? runtime.settlePassiveBody(input) : false;
+    },
     applyTorqueImpulse(input) {
       const runtime = owner();
       return runtime ? runtime.applyTorqueImpulse(input) : false;
@@ -1901,6 +1914,11 @@ function projectileContactFrame(proj, target, pos) {
   return { approach, normal: { x: nx, z: nz } };
 }
 
+function foundryBankPlateProxy(target) {
+  return target?.physicsBody?.collisionProxyManifest?.id === 'foundry:bank-plate'
+    && target?.data?.roomOwner === 'survival-arena' && target?.data?.roomKind === 'plate';
+}
+
 export function projectileHitPayload(proj, targetOrId, pos, receipt) {
   const pd = proj.data || {};
   const target = targetOrId && typeof targetOrId === 'object' ? targetOrId : null;
@@ -1911,6 +1929,9 @@ export function projectileHitPayload(proj, targetOrId, pos, receipt) {
   const vx = Number.isFinite(velocityX) ? velocityX : Math.cos(rotation);
   const vz = Number.isFinite(velocityZ) ? velocityZ : Math.sin(rotation);
   const frame = projectileContactFrame(proj, target, pos);
+  if (foundryBankPlateProxy(target) && !(target.shield > 0) && receipt?.normal) {
+    frame.normal = { x: receipt.normal.x, z: receipt.normal.z };
+  }
   const payload = {
     targetId,
     projectileId: proj.id,

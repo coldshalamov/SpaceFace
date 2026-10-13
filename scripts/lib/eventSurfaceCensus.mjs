@@ -73,7 +73,7 @@ function* walk(dir) {
 }
 
 // call sites: receiver.bus.(on|once|emit|queue)('type' | `tpl` | expr)
-const CALL_RE = /([A-Za-z_$][\w$.[\]]*)\s*\.\s*(on|once|emit|queue)\s*\(\s*([^,)\n]+)/g;
+const CALL_RE = /([A-Za-z_$][\w$.[\]]*)\s*(?:\?\.|\.)\s*(on|once|emit|queue)\s*(?:\?\.)?\s*\(\s*([^,)\n]+)/g;
 // per-system wrapper subscriptions: receiver._listen('type' | IDENT.PROP | expr).
 // Stage-9 remediation: systems subscribe through a `this._listen(event, fn)`
 // helper that delegates to this.bus.on — the literal scan above sees the

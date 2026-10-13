@@ -57,6 +57,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'lawfulInspection:choose',
   'mercyService:order',
   'mercyService:tool',
+  'mission:abandon',
   'mode:changed',
   'moralTrap:choose',
   'nav:abortRoute',
@@ -74,6 +75,9 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'pirateDisengage:verdict',
   'pirateParley:choose',
   'player:recoveryRequested',
+  'race:abort',
+  'race:launchFailed',
+  'race:reset',
   'range:opened',
   'recovery:choose',
   'recovery:vent',
@@ -90,6 +94,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'run:refitFitRequested',
   'run:refitSellRequested',
   'run:refitStripRequested',
+  'sable:demonstrated',
   'salvage:reactorVented',
   'save:error',
   'save:loadSpeculationTarget',
@@ -104,6 +109,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'sim:pause',
   'spectrum:focus',
   'survivorPod:choose',
+  'touch:guide',
   'ui:abandonMission',
   'ui:acceptMission',
   'ui:applyLoadoutPreset',
@@ -214,6 +220,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'presentation:audioCue',
   'presentation:caption',
   'presentation:vfxCue',
+  'race:armed',
   'race:toggleView',
   'ship:deathFlash',
   'ship:deathPop',
@@ -222,7 +229,6 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'station:exitRequest',
   'station:navigate',
   'toast',
-  'touch:guide',
   'ui:bulkHaulTag',
   'ui:bulkHaulTagCleared',
   'ui:cancel',
@@ -258,4 +264,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=129 dynamic=22 legacy=7 excluded=6 total=149 knownUnforwarded=76
+// provenance: census=135 dynamic=22 legacy=7 excluded=6 total=155 knownUnforwarded=76

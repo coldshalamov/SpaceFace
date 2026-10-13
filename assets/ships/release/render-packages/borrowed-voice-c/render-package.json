@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5f6e15b6641628d415a68ac96dc24d07640883c87c439eb1c23e4e5a3545ebc9",
+  "contentHash": "61be5f83921b5f673c5cb7fd6054c2a43f3e47ba713ea797e132ba491d50e3a0",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-c.node.lod0-motion-borrowed-voice-receiver-brushedmetal.dynamic",
@@ -208,7 +208,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0789e7566ac99f135d425c19ce0ff0fb2f29d8f3d17d189f9f6201f215c12fc9",
+      "geometryHash": "d8955f9a991791b14bcb6475f1c5675e40b01bdb4b391bdbef18710b1566d712",
       "id": "sf.render.borrowed-voice-c.node.lod0-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -233,7 +233,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be2f122ade2cd37cd96f00b3d840387273091acc3e57d1d749acde4e6b9d6a8b",
+      "geometryHash": "332a1d2cf48c10b6322aa378d9bbe1427b160208e6b6064efef2e820af494379",
       "id": "sf.render.borrowed-voice-c.node.lod0-brushedmetal.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -258,7 +258,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b180d1234270efb35d07cf0749eaf706522eb52b30c513e749568904a3b5677e",
+      "geometryHash": "5d428a299d773cc31e2bdf2bd49d336ae206883361a0609de70b8e92bc1a2e63",
       "id": "sf.render.borrowed-voice-c.node.lod0-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -283,7 +283,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8e1f9f2b6e043f3154a14bfe2166cd6c41868e6986f515bed28dc6460732d57",
+      "geometryHash": "44ad5314a41b021fbb8ae2d2b9968ea1881438447227522c9538ea73c1c3cbd3",
       "id": "sf.render.borrowed-voice-c.node.lod0-lights-cyan.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -308,7 +308,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c59d92aebdebabd459d079d8a147b91deba334b1872190d7cba4fd2892626e2c",
+      "geometryHash": "5fcd9c98310f8b7cf84c97114d4eaa1c3a5a26a3e79535a4322c595a62e4267d",
       "id": "sf.render.borrowed-voice-c.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -358,7 +358,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79b9a8d5e3013a9c4bb69bba210b7c1baf4f1ed687dbc44d3f3bdd0ea9156ee2",
+      "geometryHash": "10aa50ceb5fe10ffef2539af9f783068073378e767e617ff9303454559991bc0",
       "id": "sf.render.borrowed-voice-c.node.lod0-motion-borrowed-voice-receiver-mechanicaldark.primitive.0",
       "indexCount": 912,
       "indexed": true,
@@ -383,16 +383,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb010f2845a3de3314489e78ee464e0141a4c5118d9327a7c22cbb06cf883663",
+      "geometryHash": "42a956255fc1d86228a91b8eb97b19eff2815a4d7e165230f25ef89ac130d481",
       "id": "sf.render.borrowed-voice-c.node.lod0-motion-borrowed-voice-receiver-stone.primitive.0",
-      "indexCount": 8652,
+      "indexCount": 8673,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_BORROWED_VOICE_RECEIVER_Stone",
       "nodeId": "sf.render.borrowed-voice-c.node.lod0-motion-borrowed-voice-receiver-stone",
       "primitiveIndex": 0,
-      "vertexCount": 2481
+      "vertexCount": 2488
     }
   ],
   "hlods": [],
@@ -1237,19 +1237,19 @@
       "sha256": "e159735f158ee1747beb57226df70ef118816bbdfbdf52a25f5146fb9139f0b0"
     },
     "sourceGlb": {
-      "bytes": 379928,
-      "sha256": "76749fd119a0b75651db3c621ac4aaeb3be95b6161dd93a83274d5d989efd95a",
+      "bytes": 379984,
+      "sha256": "b78c51fccda8c90f169c554a6d61605c6ff0fe623b223d9715696e4a7efc9338",
       "uri": "borrowed_voice_c.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 419520,
-    "sha256": "d569a3af36d282d4078e3788e7deb0ddb75e30e9ad224c0a1a77cb7591b9c98f",
+    "bytes": 419532,
+    "sha256": "5bf1fac7fff8d872a21cc28b5cbbe617e03de473cd3f093f466ecf5bb80dc427",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1789,7 +1789,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_c.glb"
   },
-  "runtimeHash": "053eafdc901609c139ff77880aaaf68e65a42288149e8cc2d4fee9d5547338b1",
+  "runtimeHash": "702a0813246007dfe1277e44b9b1ae940441a38768f233a0607650c0457c6462",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

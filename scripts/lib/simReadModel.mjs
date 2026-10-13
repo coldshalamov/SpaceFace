@@ -113,7 +113,15 @@ export function applySpawnInfos(readModel, spawnInfos) {
     // dead twin collects the stamp — entity identity is the map slot, the way
     // entityList swap semantics preserve row identity on the main lane.
     const existing = readModel.entities.get(info.entityId);
-    if (existing && typeof existing === 'object') {
+    const life = Number.isSafeInteger(info.occupantGeneration) ? info.occupantGeneration : null;
+    const newOccupant = existing && life != null && existing.occupantGeneration != null
+      && existing.occupantGeneration !== life;
+    if (newOccupant) existing.alive = false; // Captured admissions now lose their old owner.
+    const target = existing && typeof existing === 'object' && !newOccupant ? existing : row;
+    if (life != null) Object.defineProperty(target, 'occupantGeneration', {
+      value: life, writable: true, configurable: true, enumerable: false,
+    });
+    if (target === existing) {
       delete row.prevPos;
       Object.assign(existing, row);
       // A stamped admission verdict outranks the fresh spawn's 'pending' —
@@ -187,7 +195,10 @@ export function applyEntityVitals(readModel, vitals) {
 // the live far-row check (`state.entities.has(rec.id)`).
 export function applyDestroyIds(readModel, ids) {
   for (const id of ids || []) {
-    if (Number.isSafeInteger(id)) readModel.entities.delete(id);
+    if (!Number.isSafeInteger(id)) continue;
+    const row = readModel.entities.get(id);
+    if (row) row.alive = false;
+    readModel.entities.delete(id);
   }
 }
 
@@ -474,9 +485,11 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
   'cursor',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
+  'survivalDraftPublic',
   'physicsVenueSession', 'world.wreckCourtRulings',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
+  'flightRuntime.angularIntent',
   'sectorSim.field', 'npcJobs.byId', 'factionPresence.boarding',
   'automation.meta', 'automation.traders', 'automation.fleet',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
@@ -541,11 +554,13 @@ export function resolveDomainValue(state, key) {
 // last-signed digest per leaf path, so it stays consistent with the facade
 // state between cold/warm re-signs (facades trail live by the tier interval
 // at worst — the signed digest still describes the shipped content).
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
 // showing pre-trade credits for up to a full cold period.
+// run: 1 — phase identity travels with the body reply; other top-level run
+// values keep their existing slow cadence and nested bags remain bounded leaves.
 // Path-prefix expansion overrides: a matching prefix raises the expansion
 // depth for that subtree. None active — measured 2026-10: expanding
 // economy.markets one more level (per-commodity rows) balloons the leaf set
@@ -575,6 +590,9 @@ export const DOMAIN_CADENCE = Object.freeze({
   sectorSim: 10, npcJobs: 30, factionPresence: 10, automation: 30,
   sites: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
+  // Native phase identity shares the body reply's clock. A paced intro label over already-live
+  // field motion misrepresents the public round; score/history retain the run root cadence.
+  'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1,
   // The accept beat must reach the facade inside its own publish window, not the
   // missions root cadence — Mission Log / HUD / contracts render off the mirror.
   'missions.active': 1,
@@ -1088,10 +1106,22 @@ export function createDomainDiffer(options = {}) {
 
   function walk(path, segs, v, tick, updates, stats) {
     const node = ensureNode(path, segs);
+    // This owner publishes detached immutable snapshots only at settlement.
+    // A new stock/hold receipt must not wait for the large-leaf cold cadence.
+    const freshDraftSnapshot = segs[0] === 'survivalDraftPublic' && node.draftSnapshotSource !== v;
+    if (segs[0] === 'survivalDraftPublic') node.draftSnapshotSource = v;
     if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
-      if (node.leaf) releaseProbeSlot(node); // leaf -> container
+      if (node.leaf) {
+        releaseProbeSlot(node); // leaf -> container
+        if (segs[0] === 'run' && segs.length === 1) {
+          // A reset/null run must enumerate the new identity on its first reply.
+          node.lastEnum = null;
+          node.lastSign = -1;
+          node.digest = null;
+        }
+      }
       node.leaf = false;
-      const enumDue = node.lastEnum == null
+      const enumDue = freshDraftSnapshot || node.lastEnum == null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
         const liveKids = new Set(Object.keys(v));
@@ -1133,13 +1163,19 @@ export function createDomainDiffer(options = {}) {
         dropNode(`${path}.${c}`);
       }
       node.kids = null;
+      if (segs[0] === 'run' && segs.length === 1) {
+        // A previously shipped null still has to replace a newer expanded run.
+        node.lastSign = -1;
+        node.digest = null;
+      }
     }
     node.leaf = true;
     const leafRule = domainLeafViewFor(segs);
-    if (node.lastSign >= 0) {
+    const cadence = domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]);
+    if (node.lastSign >= 0 && !freshDraftSnapshot) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
-      const interval = Math.max(tierTicks, domainCadenceFor(segs[0]));
+      const interval = Math.max(tierTicks, cadence);
       if (interval > 1) {
         // Stage-6 semantics: cold leaves fire in an aligned burst (the
         // amortized pass the p95 exclusion covers); every other interval
@@ -1152,13 +1188,13 @@ export function createDomainDiffer(options = {}) {
           return;
         }
       }
-    } else if (leafRule && leafRule.deferFirstSign) {
+    } else if (!freshDraftSnapshot && leafRule && leafRule.deferFirstSign) {
       // Mass-mint smoothing for leaf-view rules: a first sign waits for the
       // leaf's slot instead of firing immediately, spreading mint bursts
       // (e.g. station markets materializing on one economy:tick) over
       // firstSignTicks — default the root cadence. Kept paths only — non-rule
       // leaves still mint eagerly.
-      const interval = Math.max(1, leafRule.firstSignTicks || domainCadenceFor(segs[0]));
+      const interval = Math.max(1, leafRule.firstSignTicks || cadence);
       if (interval > 1 && tick % interval !== node.slot % interval) return;
     }
     const pv = projectDomainLeaf(leafRule, v);

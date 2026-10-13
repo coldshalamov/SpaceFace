@@ -144,6 +144,19 @@ test('selected assets resolve only canonical, unblocked place rows', () => {
   );
 });
 
+test('canonical place variants use place publication without requiring a place prefix', () => {
+  const id = 'var_station_trade_hub_scn_overlay_v01';
+  const manifest = { parts: [...PART_MANIFEST.parts,
+    { id, category: 'places', file: `places/${id}.glb` }] };
+  const ids = parseSelectedPlaceIds(['--ids', id]);
+  assert.deepEqual(resolveSelectedPlaceAssets(manifest, ids), [{
+    id, kind: 'part:places', source: `assets/ships/parts/places/${id}.glb`,
+    release: `assets/ships/release/parts/places/${id}.glb`,
+  }]);
+  assert.throws(() => resolveSelectedPlaceAssets(manifest, parseSelectedPlaceIds(['--ids', 'hull_starter'])),
+    /not a place asset/);
+});
+
 test('selected build and manifest patch preserve membership, order, and untouched rows', () => {
   const selected = resolveSelectedPlaceAssets(
     PART_MANIFEST,

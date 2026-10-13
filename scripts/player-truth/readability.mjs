@@ -8,6 +8,7 @@ import { E, CLS, VIS, THRESHOLDS } from './checks.mjs';
 const CLASSES = ['enemy', 'asteroid', 'projectile', 'pickup'];
 // Play-space bodies that are none of the combat classes (stations, neutral hulls, props): census only.
 const BODY_CLASSES = ['station', 'neutral', 'other'];
+const INNER_SCALE = 0.7;
 
 function srgbToLab(r, g, b) {
   const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -33,7 +34,7 @@ function labOfRgb(rgb) {
   };
 }
 
-/** Crimson of `getMaterial('swarm:threat-ring')` in src/render/visualFactory.js. Lab comes from that rgb.
+/** Crimson of `getMaterial('swarm:threat-rim')` in src/render/visualFactory.js. Lab comes from that rgb.
  *  L is about 54, so a brightness test (L≥75) never sees this ring. A drift test reads the source literal. */
 export const THREAT_MARKER = Object.freeze(labOfRgb(0xff1a3a));
 export const THREAT_HUE_TOLERANCE_DEG = 18;
@@ -70,7 +71,7 @@ export function threatMarkerCredit(rateA, rateB) {
  *  by at least `RIM_BG_DE_MIN`. A warm backdrop therefore cannot paint the mean into the threat hue.
  *  `rim` is null when those pixels are under `RIM_THREAT_SHARE` of the band. */
 export function sampleBox(raw, W, H, ch, cx, cy, r) {
-  const inner = Math.max(1, Math.round(r * 0.7)); const ring = Math.round(Math.max(r * 1.6, r + 4));
+  const inner = Math.max(1, Math.round(r * INNER_SCALE)); const ring = Math.round(Math.max(r * 1.6, r + 4));
   const acc = [0, 0, 0]; let n = 0; const bg = [0, 0, 0]; let nb = 0; const inn = [];
   let markerN = 0; let midN = 0; const mid = [];
   for (let y = Math.max(0, cy - ring); y <= Math.min(H - 1, cy + ring); y++) {
@@ -116,17 +117,90 @@ export function separation(A, B, { markerCredit = 0 } = {}) {
   return { sep, dColor, sizeRatio, markerCredit };
 }
 
-export async function analyzeReadability(shots, nearestSample) {
+function captureWindow(shot, nearestSample, samples) {
+  if (!Number.isFinite(shot.endT) || shot.endT < shot.t) return null;
+  const start = nearestSample(shot.t); const end = nearestSample(shot.endT);
+  if (!start || !end) return null;
+  return [...new Set([start, ...samples.filter((s) => s.t >= shot.t && s.t <= shot.endT), end])];
+}
+
+function capturePose(entity, window) {
+  const entries = window.map((s) => s.e.find((e) => e[E.id] === entity[E.id]));
+  if (entries.some((e, i) => !e || e[E.cls] !== entity[E.cls]
+      || e[E.key] !== entity[E.key] || e[E.type] !== entity[E.type]
+      || ![VIS.onscreen, VIS.pooled].includes(e[E.vis])
+      || window[i].vw !== window[0].vw || window[i].vh !== window[0].vh)) {
+    return { reason: 'capture-identity-or-visibility' };
+  }
+  const radius = Math.min(...entries.map((e) => e[E.pr]));
+  const xs = entries.map((e) => e[E.sx]); const ys = entries.map((e) => e[E.sy]);
+  const x0 = Math.min(...xs); const x1 = Math.max(...xs);
+  const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+  // The sampled inner patch occupies 70% of the body radius. Require the observed
+  // motion to fit within its remaining margin throughout capture, including out-and-back
+  // motion. Screenshot encoding has no exact exposed frame timestamp; unstable images
+  // cannot honestly assign their pixels to one of these poses.
+  if (!Number.isFinite(radius) || radius <= 0
+      || Math.hypot(x1 - x0, y1 - y0) > radius * (1 - INNER_SCALE)) {
+    return { reason: 'capture-motion' };
+  }
+  const pose = [...entity];
+  pose[E.sx] = (x0 + x1) / 2; pose[E.sy] = (y0 + y1) / 2; pose[E.pr] = radius;
+  return { pose };
+}
+
+/** Native rendered geometry owns cover; screenshot radius boxes are only diagnostics. */
+export function summarizeBodyOcclusion(samples) {
+  const types = new Map();
+  for (const sample of samples) {
+    if (sample.mode !== 'flight' || (sample.run && sample.run.ph !== 'active')) continue;
+    const receipt = sample.px?.bodyOcclusion;
+    if (receipt?.version !== 1 || receipt.method !== 'native-opaque-id-depth') continue;
+    for (const row of receipt.rows || []) {
+      if (!BODY_CLASSES.includes(row.cls)) continue;
+      const entity = sample.e?.find(e => e[E.id] === row.id && e[E.type] === row.ty && e[E.cls] === CLS[row.cls]);
+      const key = `${row.cls}|${row.ty}`;
+      const group = types.get(key) || { cls: row.cls, ty: row.ty, n: 0, covered: 0, unknown: 0,
+        reasons: {}, radiusSum: 0, exampleT: null, exampleBox: null };
+      const measured = entity && row.status === 'measured' && Number.isFinite(row.pixels) && row.pixels >= 0;
+      if (measured) {
+        group.n++; group.radiusSum += entity[E.pr];
+        if (row.pixels > 0) {
+          group.covered++;
+          if (group.exampleT == null) { group.exampleT = sample.t; group.exampleBox = row.box; }
+        }
+      } else {
+        group.unknown++;
+        const reason = entity ? row.reason || 'unmeasured' : 'stale-body-identity';
+        group.reasons[reason] = (group.reasons[reason] || 0) + 1;
+      }
+      types.set(key, group);
+    }
+  }
+  return types;
+}
+
+export async function analyzeReadability(shots, nearestSample, samples = []) {
   const per = Object.fromEntries([...CLASSES, ...BODY_CLASSES].map((c) => [c, []]));
+  const rejected = Object.fromEntries([...CLASSES, ...BODY_CLASSES].map((c) => [c, {}]));
+  let unboundedShots = 0;
   for (const shot of shots) {
     if (!shot.play) continue;
-    const s = nearestSample(shot.t); if (!s) continue;
+    const window = captureWindow(shot, nearestSample, samples);
+    if (!window) { unboundedShots++; continue; }
+    const s = window[0];
     let img;
     try { img = await sharp(shot.file).removeAlpha().raw().toBuffer({ resolveWithObject: true }); } catch { continue; }
     const { data, info } = img; const W = info.width; const H = info.height; const sc = W / s.vw;
-    for (const e of s.e) {
+    for (const entity of s.e) {
+      const aligned = capturePose(entity, window);
+      const e = aligned.pose || entity;
       const cls = [...CLASSES, ...BODY_CLASSES].find((c) => CLS[c] === e[E.cls]); if (!cls) continue;
       if (!(e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled)) continue;
+      if (!aligned.pose) {
+        rejected[cls][aligned.reason] = (rejected[cls][aligned.reason] || 0) + 1;
+        continue;
+      }
       const r = e[E.pr] * sc; if (r < 2.5) continue;
       const cx = Math.round(e[E.sx] * sc); const cy = Math.round(e[E.sy] * sc);
       if (cx < r || cy < r || cx > W - r || cy > H - r) continue;
@@ -165,11 +239,19 @@ export async function analyzeReadability(shots, nearestSample) {
     if (x.overPlayer) { r.over++; if (!r.overT) { r.overT = x.t; r.overBox = x.box; } }
     r.n++; r.L += x.lit[0]; r.a += x.lit[1]; r.b += x.lit[2]; r.r += x.r; types.set(k, r);
   }
+  const occlusion = summarizeBodyOcclusion(samples);
   const census = [...types.values()].sort((p, q) => q.n - p.n).slice(0, 16).map((r) => {
     const L = r.L / r.n; const a = r.a / r.n; const b = r.b / r.n; const chroma = Math.hypot(a, b);
     const hue = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
     const look = chroma < 12 ? (L > 70 ? 'white' : L > 40 ? 'grey' : 'dark') : hue < 35 || hue > 340 ? 'red' : hue < 85 ? 'orange' : hue < 110 ? 'yellow' : hue < 200 ? 'green' : hue < 260 ? 'cyan/blue' : 'violet';
-    return { cls: r.cls, ty: r.ty, n: r.n, litLab: [+L.toFixed(1), +a.toFixed(1), +b.toFixed(1)], look, meanRadiusPx: +(r.r / r.n).toFixed(1), overPlayerFrac: +(r.over / r.n).toFixed(3), exampleT: r.overT || r.t, exampleBox: r.overBox || r.box };
+    return { cls: r.cls, ty: r.ty, n: r.n, litLab: [+L.toFixed(1), +a.toFixed(1), +b.toFixed(1)], look, meanRadiusPx: +(r.r / r.n).toFixed(1), overPlayerFrac: +(r.over / r.n).toFixed(3), exampleT: r.overT || r.t, exampleBox: r.overBox || r.box,
+      ...(occlusion.has(`${r.cls}|${r.ty}`) ? { occlusion: occlusion.get(`${r.cls}|${r.ty}`) } : {}) };
   });
-  return { classes, pairs, census };
+  for (const [key, group] of occlusion) if (!census.some(c => `${c.cls}|${c.ty}` === key)) {
+    census.push({ cls: group.cls, ty: group.ty, n: 0, look: 'unmeasured',
+      meanRadiusPx: group.n ? group.radiusSum / group.n : 0, occlusion: group });
+  }
+  const rejectedCount = Object.values(rejected).reduce((n, reasons) => n + Object.values(reasons).reduce((a, b) => a + b, 0), 0);
+  const measurementNote = `capture coherence: ${rejectedCount} body samples rejected for capture-motion or identity/visibility changes; ${unboundedShots} screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic`;
+  return { classes, pairs, census, captureCoherence: { rejected, unboundedShots }, measurementNote };
 }
