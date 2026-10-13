@@ -340,7 +340,12 @@ export const WRECK_COURT_CASES = [
     uncertainty: 'Momentum closure is only as good as the mass samples. A body that left the scene cannot be weighed. Radiant soot is not a contact fold.',
     build(ctx) {
       const j = ctx.j;
-      const pieces = balancedRadial(6, 34, 64, 0.2);
+      const turn = 0.2;
+      const pieces = balancedRadial(6, 34, 64, turn);
+      // The tender holds station in the gap between two plate rays, matching the barge's
+      // drift, so the field expands past it instead of driving a plate into the hull.
+      const gap = turn + Math.PI / 6;
+      const hold = 140;
       return {
         until: 68,
         assayPoints: [],
@@ -353,7 +358,7 @@ export const WRECK_COURT_CASES = [
           }),
           makeBody({
             id: 'tender', variant: 'wc_tender', mass: 170, radius: 12,
-            x: 280 + j(), z: 50 + j(), vx: -2.4, vz: 0.8, heading: Math.PI,
+            x: Math.cos(gap) * hold + j(), z: Math.sin(gap) * hold + j(), vx: 1.2, vz: 0.3, heading: Math.PI,
             integrity: 1,
             flavor: 'Tender pilot: "we were alongside when it went."',
           }),
@@ -365,6 +370,9 @@ export const WRECK_COURT_CASES = [
             children: pieces.map((p, i) => ({
               id: `barge_${i}`, variant: 'wc_fragment', mass: p.mass, radius: 6,
               dvx: p.dvx, dvz: p.dvz, integrity: 0.18, transponderGroup: 'barge',
+              // Radiant soot is the tender's damage. A contact solve against the tender
+              // is a strike, and on some seeds it pushes the shared-origin residual over 48.
+              noCollide: true,
               flavor: 'Plate from the core bay.',
             })),
           },
@@ -794,6 +802,14 @@ export const WRECK_COURT_CASES = [
       const tangent = radial + Math.PI / 2;
       const speed = 10;
       const whipMass = 70;
+      // Neck stays beyond the rock from the court start (260, 200). The offset is from
+      // the skiff's layout point; the shed cancels the whip so the end does not ride along.
+      const far = 90;
+      const aim = Math.hypot(260, 200);
+      const cableOx = (-260 / aim) * far - 150;
+      const cableOz = (-200 / aim) * far - 24;
+      const whipVx = Math.cos(tangent) * speed;
+      const whipVz = Math.sin(tangent) * speed;
       return {
         until: 2.2,
         assayPoints: [],
@@ -839,8 +855,10 @@ export const WRECK_COURT_CASES = [
             part: true,
             note: 'the necked end left with the whip',
             child: {
-              id: 'cable', variant: 'wc_cable', mass: 4, radius: 4, dvx: 0, dvz: 0,
-              integrity: 0.6, noCollide: true,
+              id: 'cable', variant: 'wc_cable', mass: 4, radius: 4,
+              ox: cableOx, oz: cableOz,
+              dvx: -(0.4 + whipVx), dvz: -(whipVz),
+              integrity: 0.6, noCollide: true, occultedBy: 'rock',
               flavor: 'Cable remnant. The end is necked, not cut.',
             },
           },

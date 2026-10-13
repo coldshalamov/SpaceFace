@@ -21,8 +21,9 @@ import {
   openCourtFromOffer,
   listCourtCases,
 } from '../src/systems/wreckCourt.js';
-import { WRECK_COURT_ENTRY_CASE, WRECK_COURT_EVIDENCE, caseDef } from '../src/data/wreckCourt/index.js';
-import { jitterSource, runIncident } from '../src/data/wreckCourt/physics.js';
+import { WRECK_COURT_ENTRY_CASE, WRECK_COURT_EVIDENCE, caseDef, materializeCase } from '../src/data/wreckCourt/index.js';
+import { jitterSource, runIncident, segmentBlocked } from '../src/data/wreckCourt/physics.js';
+import { ballisticFit } from '../src/data/wreckCourt/reconstruct.js';
 
 const SEED = 40404;
 const SEED_B = 909;
@@ -249,6 +250,46 @@ test('clamp shear faces are written when the line parts', () => {
   const missed = act(quiet, { verb: 'scan', targetId: 'ship', mode: 'structure' });
   assert.equal(missed.ok, true, missed.error);
   assert.equal(missed.measurement.data.facesStation, false);
+});
+
+test('internal overload stays an internal release', () => {
+  for (const seed of [4, 286, 40404]) {
+    const session = openCourt({ caseId: 'wc_industrial_overload', seed });
+    carefulInvestigation(session);
+    assert.equal(session.ruling && session.ruling.hypothesisId, 'internal_overload', `seed ${seed}`);
+  }
+  for (let seed = 0; seed < 400; seed += 1) {
+    const scene = materializeCase('wc_industrial_overload', seed);
+    const plates = scene.bodies.filter((b) => b.transponderGroup === 'barge');
+    const fit = ballisticFit(plates.map((b) => ({ x: b.x, z: b.z, vx: b.vx, vz: b.vz, mass: b.mass })));
+    assert.equal(plates.length >= 5, true, String(seed));
+    assert.equal(fit.residual < 48, true, `${seed} residual ${fit.residual}`);
+    assert.equal(fit.spreadSpeed > 12, true, `${seed} spread ${fit.spreadSpeed}`);
+  }
+  const spec = caseDef('wc_industrial_overload').build({ seed: 40404, j: jitterSource(40404, 'wc_industrial_overload') });
+  spec.events = spec.events.filter((e) => e.kind !== 'split');
+  const stripped = runIncident({ bodies: spec.bodies, events: spec.events, until: spec.until });
+  assert.equal(stripped.bodies.some((b) => b.id === 'barge'), true);
+  assert.equal(stripped.bodies.some((b) => b.id.startsWith('barge_')), false);
+  assert.equal(stripped.bodies.find((b) => b.id === 'tender').integrity, 1);
+});
+
+test('the necked cable sits on the far side of the rock', () => {
+  const seed = 40404;
+  const session = openCourt({ caseId: 'wc_massline_snap', seed });
+  const cable = session.bodies.find((b) => b.id === 'cable');
+  const skiff = session.bodies.find((b) => b.id === 'skiff');
+  const rock = session.bodies.find((b) => b.id === 'rock');
+  assert.equal(session.player.x, 260);
+  assert.equal(session.player.z, 200);
+  assert.ok(Math.hypot(cable.x - skiff.x, cable.z - skiff.z) > skiff.radius + cable.radius);
+  assert.equal(segmentBlocked(session.player.x, session.player.z, cable.x, cable.z, rock), true);
+  assert.equal(cable.scar && cable.scar.material, 'tensile_neck');
+  const spec = caseDef('wc_massline_snap').build({ seed, j: jitterSource(seed, 'wc_massline_snap') });
+  spec.events = spec.events.filter((e) => e.kind !== 'impulse' && e.kind !== 'shed');
+  const stripped = runIncident({ bodies: spec.bodies, events: spec.events, until: spec.until });
+  assert.equal(stripped.bodies.find((b) => b.id === 'skiff').integrity, 1);
+  assert.equal(stripped.bodies.some((b) => b.id === 'cable'), false);
 });
 
 test('the slingshot ship has left the scene', () => {
