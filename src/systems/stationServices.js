@@ -269,14 +269,18 @@ export const stationServices = {
   },
 
   _abortJobs(player, reason) {
-    if (!player || !Array.isArray(player.jobs)) return;
-    const count = player.jobs.length;
+    if (!player || !Array.isArray(player.jobs) || player.jobs.length === 0) return;
+    // Drop the hold before the refund emit. A listener that cancels again must see an
+    // empty queue, or the same undelivered charge is granted twice.
+    const jobs = player.jobs;
+    player.jobs = [];
+    const count = jobs.length;
     // The price was charged in full at booking, so paid work the yard never delivers comes
     // straight back — an abort that kept the credits would be a silent money leak. The same
     // pro-rata share releases undelivered note debt (FB-101 hardship fuel filed on the note).
     let refundCr = 0;
     let releaseCr = 0;
-    for (const job of player.jobs) {
+    for (const job of jobs) {
       const total = Number(job.total) || 0;
       const undelivered = total > 0 ? Math.max(0, total - Math.min(Number(job.applied) || 0, total)) : 0;
       if (undelivered > 0) {
@@ -310,7 +314,7 @@ export const stationServices = {
           ? ` The ${releaseCr} cr note was released with it.`
           : '';
     if (this.bus) {
-      for (const job of player.jobs) {
+      for (const job of jobs) {
         this.bus.emit('service:aborted', {
           jobId: job.id, type: job.type, stationId: job.stationId,
           applied: job.applied, total: job.total, reason,
@@ -322,7 +326,7 @@ export const stationServices = {
         });
         // The completion toast's mirror: the service was paid up front, so an abort destroyed
         // paid work — the refund above hands the undelivered share back and the toast names it.
-        if (job === player.jobs[0]) {
+        if (job === jobs[0]) {
           const label = job.type === 'refuel' ? 'refuel' : 'repair';
           const pct = job.total > 0 && job.applied > 0
             ? Math.round(Math.max(0, Math.min(1, job.applied / job.total)) * 100)
@@ -336,7 +340,6 @@ export const stationServices = {
         }
       }
     }
-    player.jobs = [];
   },
 
   _abortForeignHullJobs(player) {

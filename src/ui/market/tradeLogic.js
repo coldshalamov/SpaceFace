@@ -218,14 +218,43 @@ export function formatCargoUnits(value) {
   return (Math.round(value * 10) / 10).toLocaleString('en-US');
 }
 
+/**
+ * True when a route entry is a real run the player can review or plot a course for. A refused-load entry
+ * (computeBestTrades returns those only when no real run exists) explains why and has nowhere to go.
+ */
+export function routeIsActionable(trade) {
+  return !!trade && trade.denied !== true && Math.floor(Number(trade.loadUnits) || 0) > 0;
+}
+
+/**
+ * Player sentence for a load the quote or hold predicate already refused.
+ * Volume, legality, and service availability stay three different sentences.
+ * Reason codes are not copied into the sentence.
+ */
+export function explainDeniedLoad(denial) {
+  if (!denial || typeof denial !== 'object') return null;
+  if (denial.reason === 'contamination_refusal') {
+    return 'This berth will not accept that cargo.';
+  }
+  if (denial.reason === 'tier_unavailable' || denial.reason === 'black_market_locked'
+    || (denial.outage && Number(denial.outage.remainingS) > 0)) {
+    return 'That trade is not available at this berth.';
+  }
+  const noRoom = denial.reason === 'cargo_full'
+    || denial.loadReason === 'hold full'
+    || (denial.holdLimited === true && !(Number(denial.acceptQty) > 0));
+  if (noRoom) return 'The hold has no free volume for this load.';
+  return null;
+}
+
 function tradeFailureText(reason) {
+  const explained = explainDeniedLoad({ reason });
+  if (explained) return explained;
   switch (reason) {
     case 'credits': return 'insufficient credits';
-    case 'cargo_full': return 'cargo hold full';
     case 'no_cargo': return 'nothing to sell';
     case 'no_stock': return 'station out of stock';
     case 'not_docked': return 'not docked';
-    case 'contamination_refusal': return 'custody refused — quarantine lot must be surrendered';
     default: return 'trade failed';
   }
 }
@@ -576,6 +605,8 @@ function tradeRunCapacity(state, def, buyHere, margin) {
  */
 export function formatRouteCard(trade) {
   const units = Math.max(0, Math.floor(Number(trade && trade.loadUnits) || 0));
+  const denied = units <= 0 ? explainDeniedLoad(trade) : null;
+  if (denied) return { units: 0, sub: denied, profitText: '—' };
   const buy = Math.round(Number(trade && trade.buyHere) || 0);
   const sell = Math.round(Number(trade && trade.sellThere) || 0);
   const cost = Math.round(Number(trade && trade.loadCost) || 0);
@@ -670,6 +701,35 @@ export function computeBestTrades(state, hereStationId, options = {}) {
   if (!hereMarket) return [];
   const knownMarkets = knownMarketSnapshots(state);
   const out = [];
+  const denied = [];
+  const noteDenied = (cmdtyId, def, denial) => {
+    if (!explainDeniedLoad(denial)) return;
+    if (denied.some((row) => row.cmdtyId === cmdtyId)) return;
+    denied.push({
+      denied: true,
+      cmdtyId,
+      cmdtyName: def.name,
+      buyHere: 0,
+      sellThere: 0,
+      margin: 0,
+      perVol: 0,
+      destStation: hereStationId,
+      age: 0,
+      seenAtT: 0,
+      intelSource: 'unknown',
+      intelLabel: 'unknown intel',
+      loadUnits: 0,
+      loadProfit: 0,
+      loadCost: 0,
+      holdUnits: 0,
+      loadBound: 'none',
+      reason: denial.reason,
+      holdLimited: denial.holdLimited === true,
+      acceptQty: denial.acceptQty,
+      loadReason: denial.loadReason,
+      outage: denial.outage,
+    });
+  };
   for (const cmdtyId in hereMarket) {
     const entry = hereMarket[cmdtyId];
     if (!entry || !(Number(entry.lastBuy) > 0)) continue;
@@ -682,7 +742,10 @@ export function computeBestTrades(state, hereStationId, options = {}) {
       ? (n) => options.quote(hereStationId, cmdtyId, 'buy', n) : null;
     let unitQuote = null;
     if (quote) { try { unitQuote = quote(1); } catch (_) { unitQuote = null; } }
-    if (quote && (!unitQuote || !unitQuote.ok || unitQuote.qty !== 1)) continue;
+    if (quote && (!unitQuote || !unitQuote.ok || unitQuote.qty !== 1)) {
+      noteDenied(cmdtyId, def, unitQuote);
+      continue;
+    }
     const buyHere = unitQuote ? unitQuote.total : entry.lastBuy;
     let bestSell = -1, bestStation = null, bestSeen = 0, bestSource = 'unknown', bestDemand = null;
     for (const sid in knownMarkets) {
@@ -710,7 +773,10 @@ export function computeBestTrades(state, hereStationId, options = {}) {
         stockUnits: Math.max(0, Math.floor(Number(entry.stock) - 1)),
         sellEstimate: bestSell, quote,
       });
-      if (!planned) continue;
+      if (!planned) {
+        noteDenied(cmdtyId, def, unitQuote && explainDeniedLoad(unitQuote) ? unitQuote : load);
+        continue;
+      }
       const handling = loadHandlingForecast(state, def, planned.loadUnits);
       load = { ...planned, loadVolume: Math.round(planned.loadUnits * vol * 10) / 10,
         ...(handling ? { loadMassT: handling.loadMassT, loadThrustPct: handling.thrustPct } : {}),
@@ -749,5 +815,9 @@ export function computeBestTrades(state, hereStationId, options = {}) {
     out.push(trade);
   }
   out.sort((a, b) => (b.loadProfit - a.loadProfit) || (b.perVol - a.perVol) || a.cmdtyId.localeCompare(b.cmdtyId) || a.destStation.localeCompare(b.destStation));
+  if (!out.length && denied.length) {
+    denied.sort((a, b) => a.cmdtyId.localeCompare(b.cmdtyId));
+    return denied.slice(0, 5);
+  }
   return out.slice(0, 5);
 }
