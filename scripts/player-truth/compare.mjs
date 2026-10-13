@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, symlinkSync, rmSync
 import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { overall, regradeSoftwareFrameTime } from './checks.mjs';
+import { overall, regradeSoftwareFrameTime, regradeLodChurn } from './checks.mjs';
 import { renderVerdict } from './verdict.mjs';
 
 const RANK = { PASS: 0, 'N/A': 0, UNKNOWN: 1, INCOMPLETE: 1, FAIL: 2 };
@@ -51,11 +51,13 @@ export function applyBaselineToHead(head, base, { baselineMissing = false, commi
     headLoad: head.meta && head.meta.loadavg,
     baseLoad: base && base.meta && base.meta.loadavg,
   });
-  if (changed) {
+  // lod_churn's total rate is graded against the baseline's churn over the same first sim seconds.
+  const churnChanged = regradeLodChurn(head.results, base && base.results);
+  if (changed || churnChanged) {
     head.overall = overall(head.results);
     if (head.meta) head.meta.overall = head.overall;
   }
-  return changed;
+  return changed || churnChanged;
 }
 
 function writeRegraded(outDir, head, root) {

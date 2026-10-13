@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CLS, VIS, E, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
+  CLS, VIS, E, checkLodChurn, regradeLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
   isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
 } from '../scripts/player-truth/checks.mjs';
@@ -603,4 +603,34 @@ test('crucible_realm: Adventure objective in a swarm play frame or an empty armo
   const gauntlet = { meta: { mode: 'gauntlet', hasLoadout: false }, realm: [{ t: 2, advText: [], onboarding: true, sector: 'x' }] };
   assert.equal(checkCrucibleRealm(gauntlet).status, 'FAIL');
   assert.equal(checkCrucibleRealm({ meta: { mode: 'adventure' } }).status, 'N/A');
+});
+
+test('lod_churn grades the total rate against master over the same sim window; per-entity and player flapping fail at any length', () => {
+  // 12 visible bodies each swapping once, early: a high total rate for a short run, but no flapping.
+  const opening = (n, dt) => trace({ n, dt, ents: (i) => Array.from({ length: 12 }, (_, k) => ent(100 + k, CLS.enemy, { 10: i > k * 2 ? 1 : 0 })) });
+  const short = checkLodChurn(opening(60, 0.2)); // 12 swaps over ~12 sim s, above 1/s
+  assert.equal(short.status, 'UNKNOWN', `no baseline window: neither PASS nor FAIL (${short.value})`);
+  assert.equal(short.churn.times.length, 12);
+  const masterOpening = { span: 300, times: [...Array.from({ length: 14 }, (_, k) => k * 0.8), 200, 250] };
+  assert.equal(checkLodChurn(opening(60, 0.2), masterOpening).status, 'PASS', 'master churns the same over its own opening');
+  assert.equal(checkLodChurn(opening(60, 0.2), { span: 300, times: [1, 150] }).status, 'FAIL', 'above max(1, 1.5x) a quiet master');
+  assert.equal(checkLodChurn(opening(60, 0.2), { span: 5, times: [1, 2] }).status, 'UNKNOWN', 'a baseline shorter than the run is no window');
+  // Code Work's case: 40 bodies each swapping every 4 s for 30 s: at most 3 per body per 10 s, ~9/s total.
+  const wave = trace({ n: 300, dt: 0.1, ents: (i) => Array.from({ length: 40 }, (_, k) => ent(200 + k, CLS.enemy, { 10: Math.floor((i + k) / 40) % 2 })) });
+  const w = checkLodChurn(wave, masterOpening);
+  assert.equal(w.churn.maxPer10 <= 3, true, w.value);
+  assert.equal(w.status, 'FAIL', w.value);
+  assert.notEqual(checkLodChurn(wave).status, 'PASS', 'never PASS without a baseline');
+  // A calm idle run stays graded with no baseline at all.
+  const idle = trace({ n: 450, dt: 0.1, ents: (i) => [ent(9, CLS.enemy, { 10: i > 200 ? 1 : 0 })] });
+  assert.equal(checkLodChurn(idle).status, 'PASS');
+  // The compare step regrades a recorded result once the baseline verdict exists.
+  const results = [checkLodChurn(opening(60, 0.2))];
+  assert.equal(regradeLodChurn(results, [{ id: 'lod_churn', churn: masterOpening }]), true);
+  assert.equal(results[0].status, 'PASS'); assert.match(results[0].value, /vs master/);
+  const flap = trace({ n: 30, ents: (i) => [ent(7, CLS.enemy, { 10: i % 2 })] });
+  assert.equal(checkLodChurn(flap, masterOpening).status, 'FAIL', 'one flapping body fails a 3 s run');
+  const player = trace({ n: 30, player: (i) => goodPlayer({ state: i % 2 ? 'compiling-pipelines' : 'authored' }), ents: () => [ent(7, CLS.enemy, { 10: 0 })] });
+  player.keys = ['a|m|lod0|authored'];
+  assert.equal(checkLodChurn(player, masterOpening).status, 'FAIL', 'a flapping player ship fails a short run');
 });
