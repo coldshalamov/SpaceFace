@@ -993,12 +993,12 @@ export function hasActiveTrackedMission(state) {
 }
 
 /**
- * A swarm match is on screen. Victory, ended, and inactive hand the campaign back.
+ * A Crucible match is on screen. Victory, ended, and inactive hand the campaign back.
  * Pure. Used to keep the Helios dock errand off the crucible.
  */
-function swarmScreenIsLive(state) {
+function crucibleScreenIsLive(state) {
   const run = state && state.run;
-  if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm') return false;
+  if (!run || run.kind !== 'survival') return false;
   const phase = run.phase;
   if (!phase || phase === 'inactive' || phase === 'ended' || phase === 'victory') return false;
   return true;
@@ -1007,12 +1007,12 @@ function swarmScreenIsLive(state) {
 /**
  * Resolve the pre-first-dock corridor idle objective when no mission is tracked.
  * Returns null after first dock, when a tracked active mission owns the tracker,
- * or while a swarm match is on screen.
+ * or while a Crucible match is on screen.
  * Pure presenter truth for G05 hierarchy tests and the HUD idle path.
  */
 export function resolveCorridorOpeningObjective(state) {
   if (!state || typeof state !== 'object') return null;
-  if (swarmScreenIsLive(state)) return null;
+  if (crucibleScreenIsLive(state)) return null;
   if (hasCorridorFirstDock(state)) return null;
   if (hasActiveTrackedMission(state)) return null;
   return {
@@ -4437,7 +4437,7 @@ export const missions = {
   },
 
   _refreshNavigation(options = {}) {
-    // A Crucible swarm boot is a full Helios new game, so the starter contract
+    // A Crucible boot is a full Helios new game, so the starter contract
     // ("Recover the 47-A sample") auto-tracks and the corridor fallback then
     // paints "Dock at Helios Station". Park both while the match is on screen.
     // The mission stays active for the campaign; it is only off the live list.
@@ -12211,7 +12211,7 @@ export const missions = {
     }
   },
 
-  // A swarm run boots a full Helios game, so the starter contract would stay tracked
+  // A Crucible run boots a full Helios game, so the starter contract would stay tracked
   // and, once untracked, the corridor idle objective would say "Dock at Helios Station".
   // Park the live list and clear both waypoint kinds. The mission status stays active.
   // Restore when the match is over, including a quit straight to the menu (run phase
@@ -12220,7 +12220,7 @@ export const missions = {
   // Hiding that line, and the RADIO / COMMS / HAIL tape, is the crucible-focus stylesheet.
   _releaseCampaignNavForSwarm(state = this.state) {
     const bag = state && state.missions;
-    if (!swarmScreenIsLive(state)) {
+    if (!crucibleScreenIsLive(state)) {
       if (bag && Array.isArray(bag._swarmParkedActive)) {
         this._holdParkedContractClocks(state);
         const parked = bag._swarmParkedActive;
