@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { installDiagnostics } from '../../../src/render/diagnostics.js';
+import { runRenderUpdatePhase } from '../../../src/core/renderUpdatePhase.js';
 import { frameIsGpuPayload, hookInstallsOverlay, publishSceneTruthFrame, sceneTruthFrameFromSamples } from '../lib/hook.mjs';
 import { repoPath } from '../lib/root.mjs';
 
@@ -40,8 +41,43 @@ test('the scene-truth hook does not draw and does not install an overlay', () =>
   const cli = fs.readFileSync(repoPath('tools/scene-truth/cli.mjs'), 'utf8');
   assert.equal(cli.includes('check-visual-regression'), false);
   const renderer = fs.readFileSync(repoPath('src/render/renderer.js'), 'utf8');
-  assert.equal(renderer.includes('publishSceneTruthPlayStep'), true);
-  assert.match(renderer, /drawPreparedFrame\(\);\s*publishSceneTruthPlayStep\(this\);/);
+  assert.match(renderer, /if \(this\.drawPreparedFrame\(\) === true\) publishSceneTruthPlayStep\(this\);/);
+  const phase = fs.readFileSync(repoPath('src/core/renderUpdatePhase.js'), 'utf8');
+  assert.match(phase, /const submitted = render\.drawPreparedFrame\(\);\s*if \(submitted === true\) publishSceneTruthPlayStep\(render\);/);
+});
+
+test('the play update publishes after a submitted draw and skips a draw that returns early', () => {
+  globalThis.__SF_SCENE_TRUTH_WITNESS__ = true;
+  delete globalThis.__SF_SCENE_TRUTH_FRAME__;
+  const state = {
+    mode: 'flight',
+    tick: 8,
+    meta: { seed: 3 },
+    render: { sceneTruthFrameCapture: { format: 'png', bytes: new Uint8Array([137, 80, 78, 71]) } },
+    entityList: [{ id: 1, alive: true, pos: { x: 1, z: 2 }, radius: 14, shieldMax: 55, data: {} }],
+  };
+  const render = {
+    state,
+    prepareFrame() { return true; },
+    drawPreparedFrame() { return true; },
+  };
+  const submitted = runRenderUpdatePhase({ state, render, alpha: 1, frameDt: 1 / 60 });
+  assert.equal(submitted, true);
+  assert.equal(globalThis.__SF_SCENE_TRUTH_FRAME__.gpuFrame, true);
+  assert.equal(globalThis.__SF_SCENE_TRUTH_FRAME__.objects[0].shieldGeometryRadius, 14);
+
+  delete globalThis.__SF_SCENE_TRUTH_FRAME__;
+  render.drawPreparedFrame = () => false;
+  runRenderUpdatePhase({ state, render, alpha: 1, frameDt: 1 / 60 });
+  assert.equal(globalThis.__SF_SCENE_TRUTH_FRAME__, undefined);
+
+  delete globalThis.__SF_SCENE_TRUTH_FRAME__;
+  state.render.sceneTruthFrameCapture = { format: 'svg', svg: '<svg xmlns="http://www.w3.org/2000/svg"/>' };
+  render.drawPreparedFrame = () => true;
+  runRenderUpdatePhase({ state, render, alpha: 1, frameDt: 1 / 60 });
+  assert.equal(globalThis.__SF_SCENE_TRUTH_FRAME__.gpuFrame, false);
+  globalThis.__SF_SCENE_TRUTH_WITNESS__ = false;
+  delete globalThis.__SF_SCENE_TRUTH_FRAME__;
 });
 
 test('existing diagnostics expose counters and not object ids', () => {

@@ -29604,8 +29604,7 @@ export const render = {
 
   renderFrame(alpha, frameDt, presentationFrame = null) {
     if (!this.prepareFrame(alpha, frameDt, presentationFrame)) return;
-    this.drawPreparedFrame();
-    publishSceneTruthPlayStep(this);
+    if (this.drawPreparedFrame() === true) publishSceneTruthPlayStep(this);
   },
 
   // Center the key light + its shadow camera on the player each frame. The light direction stays

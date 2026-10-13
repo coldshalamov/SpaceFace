@@ -17,16 +17,21 @@ It assigns one plain object and never creates DOM.
 
 ## Call site
 
-File: `src/render/renderer.js` `renderFrame`, after `drawPreparedFrame`. The
-probe stays off unless a witness sets `globalThis.__SF_SCENE_TRUTH_WITNESS__ === true`
-before the step. It assigns one plain object and never creates DOM.
+The play loop draws on the split path in `src/core/renderUpdatePhase.js`:
+`prepareFrame`, then `drawPreparedFrame`. That draw returns true only after a
+frame was submitted. The publish runs on that true return:
 
 ```js
-import { publishSceneTruthPlayStep } from '../../tools/scene-truth/lib/hook.mjs';
-
-// inside renderFrame, after the prepared frame is drawn:
-publishSceneTruthPlayStep(this);
+const submitted = render.drawPreparedFrame();
+if (submitted === true) publishSceneTruthPlayStep(render);
 ```
+
+`renderFrame` in `src/render/renderer.js` is the fallback used when the render
+object does not define both methods. It publishes only when `drawPreparedFrame()`
+returns true, so a return before submit does not publish.
+
+The probe stays off unless a witness sets `globalThis.__SF_SCENE_TRUTH_WITNESS__ === true`
+before the step. It assigns one plain object and never creates DOM.
 
 A non-SVG `state.render.sceneTruthFrameCapture` (`{ format, bytes }`) publishes
 `gpuFrame: true`. An SVG payload stays `gpuFrame: false`.

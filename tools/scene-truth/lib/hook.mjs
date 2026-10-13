@@ -2,8 +2,9 @@ import { HOOK_SCHEMA } from './constants.mjs';
 
 /**
  * Pure read-only scene sample. No DOM, no draw, no sim write.
- * `renderer.js` `renderFrame` calls `publishSceneTruthPlayStep` when a witness
- * set `globalThis.__SF_SCENE_TRUTH_WITNESS__` before boot.
+ * The play loop publishes from `runRenderUpdatePhase` after `drawPreparedFrame`
+ * returns true. `renderFrame` is only the fallback and publishes on that same
+ * submitted return. A witness must set `globalThis.__SF_SCENE_TRUTH_WITNESS__`.
  *
  * @param {object[]} samples objects already resolved by the caller
  * @param {object} meta tick, seed, zoom, qualityTier, frameCapture
