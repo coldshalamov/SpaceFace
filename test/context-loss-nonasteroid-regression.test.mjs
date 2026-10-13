@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -218,15 +219,18 @@ function testSyntheticEnvelopeAsteroidScope() {
   assert.ok(hasAsteroidScope(envelope), 'synthetic envelope contains asteroid scope');
 }
 
-// Run the live evidence validation and adversarial integrity checks. The packet lives under the
-// git-ignored .campaign/ directory of the machine that captured it, so a clean checkout has nothing to
-// validate: the adversarial integrity checks still run, the live-evidence gate reports a skip instead of
-// a permanent failure. Point SF_CONTEXT_LOSS_EVIDENCE_DIR at a packet to validate one.
+// The captured packet lives under the git-ignored .campaign/ directory of the machine that took it, so a clean checkout has
+// nothing to validate: the live-evidence gate is reported as SKIPPED (not as a pass) there, and the adversarial integrity
+// checks always run. Point SF_CONTEXT_LOSS_EVIDENCE_DIR at a packet to validate one.
 const evidencePresent = existsSync(join(EVIDENCE_DIR, 'error-telemetry-raw.json'));
-const result = evidencePresent ? validateEvidence() : null;
-testSyntheticEnvelopeWithWarnings();
-testSyntheticEnvelopeMissingRecovered();
-testSyntheticEnvelopeAsteroidScope();
 
-if (result) console.log(`PASS context-loss-nonasteroid-regression: ${JSON.stringify(result.counts)}`);
-else console.log(`PASS context-loss-nonasteroid-regression (integrity checks only; no evidence packet at ${EVIDENCE_DIR})`);
+test('the captured context-loss evidence packet passes every gate', {
+  skip: evidencePresent ? false : `no evidence packet at ${EVIDENCE_DIR}`,
+}, () => {
+  const result = validateEvidence();
+  console.log(`PASS context-loss-nonasteroid-regression: ${JSON.stringify(result.counts)}`);
+});
+
+test('a synthetic envelope carrying warnings is rejected', () => testSyntheticEnvelopeWithWarnings());
+test('a synthetic envelope missing recovered is rejected', () => testSyntheticEnvelopeMissingRecovered());
+test('a synthetic envelope with asteroid scope is recognised', () => testSyntheticEnvelopeAsteroidScope());
