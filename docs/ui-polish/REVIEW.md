@@ -136,6 +136,14 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 
 **After (`crestOrbit.js` only):** when a flush end name would need two lines, force stagger; when an even tier still splits under stagger, lift the odd row (rise 24 + 12px headroom) so SWORN ENEMY clears HATED. 960×540 (≤640 ladder) and 1280×720 pixel-identical to master; 1920 gets the same end-name stagger so the flush label no longer shares a baseline with HATED. Shots: `/workspace/spaceface-scratch/ui-shots/factions-standing/`.
 
+## Shipworks nameplate vs callouts @960 — session notes (2026-10-13, ui-polish-20)
+
+**Before:** at 960×540 the dock stage is 162px tall, and the left callout column shared it with the nameplate (title, then DOCKED, then the rename field) and the camera words. `nameplateInkRect` read text nodes only, so the field's "Name this hull" placeholder was no obstacle: Utility / Shield Capacitor M printed on it, and the column's overflow ran Drive and Cargo onto LEFT · CENTER · RIGHT.
+
+**Fix:** `nameplateInkRect` now adds the rename field's value or placeholder, measured in its own font from its content edge (`shipworks.js`). `shipworksLayouts.js`, `@media (max-width:1100px) and (max-height:640px) and (hover:hover)` only: DOCKED rides the title's line, the field is one compact 12px line, and the live stage's camera words sit at the right end of the verb row under the stage. The left column gets ~95px instead of ~25px, so three cards fit between the field and the verbs.
+
+**Checked:** 960×540, 1024×576, 1100×640, stock and longest-name injected, live hull and render; no card touches the field or the camera words. 1024×768, 1280×720, 1920×1080, 390×844 and 844×390 don't match the query: field box unchanged and screenshots match master. Shots: `ui-shots/shipworks-nameplate/{before,after2}/`.
+
 ## Proving Range @960×540 — session notes (2026-10-13, ui-polish-17)
 
 **Before:** the title block (180px) and the foot (338px: a five-row rule ladder, the dossier and a 64px run gauge) plus the 48px kit row gap outgrew 540px. The stage, which holds the course itself, was squeezed to 0px, and RULES / BESTIARY / CLOSE and the run instrument fell below the frame.

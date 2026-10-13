@@ -316,6 +316,19 @@ export function variantBonusWords(bonuses) {
  * right edge for a left card, which the CSS pulls left by its own width), the card in stage
  * coordinates, and the leader as an SVG path relative to the bead.
  */
+let fieldMeasureCtx = null;
+/** Width of `text` set in an input's computed font (canvas metrics; 0 when there is no canvas). */
+function fieldTextWidth(text, cs) {
+  if (!fieldMeasureCtx) {
+    const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    fieldMeasureCtx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+    if (!fieldMeasureCtx) return 0;
+  }
+  fieldMeasureCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const spacing = parseFloat(cs.letterSpacing) || 0;
+  return fieldMeasureCtx.measureText(text).width + spacing * text.length;
+}
+
 export function calculateSpatialSlotLayout({
   projectedSlots = [],
   stageWidth = 1100,
@@ -3251,6 +3264,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           ? { left: Math.min(ink.left, rr.left), top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
           : { left: rr.left, top: rr.top, right: rr.right, bottom: rr.bottom };
       }
+    }
+    // The rename field prints its value (or, empty, its placeholder) without a text node, so the
+    // walk above never sees it and a card could land on "Name this hull". Measure that string in
+    // the field's own font from its content edge.
+    for (const input of nameplateEl.querySelectorAll('input')) {
+      const text = input.value || input.placeholder || '';
+      const box = input.getBoundingClientRect();
+      if (!text.trim() || box.width <= 0 || box.height <= 0) continue;
+      const cs = getComputedStyle(input);
+      const padL = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.borderLeftWidth) || 0);
+      const w = Math.min(box.width - padL, fieldTextWidth(text, cs));
+      if (!(w > 0)) continue;
+      const rr = { left: box.left + padL, top: box.top, right: box.left + padL + w, bottom: box.bottom };
+      ink = ink
+        ? { left: Math.min(ink.left, rr.left), top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
+        : rr;
     }
     if (!ink) return null;
     return { left: ink.left, top: ink.top, right: ink.right, bottom: ink.bottom, width: ink.right - ink.left, height: ink.bottom - ink.top };
