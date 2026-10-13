@@ -540,6 +540,112 @@ export async function swapProbe(page, maxBuys = 3) {
   return out;
 }
 
+/** A wrong preparation screen may stay up this long before the route fails. The expected armory still has the long budget. */
+export const PREPARATION_UNEXPECTED_MS = 30000;
+
+function prepText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Name painted on a preparation screen that is not the swarm armory.
+ * The draft stamp stays "CRUCIBLE / REARM" on the Armory screen too, so the heading wins.
+ */
+export function preparationScreenName(snap) {
+  const title = prepText(snap && snap.title);
+  if (/^rearm$/i.test(title)) return 'REARM';
+  if (title) return title.toUpperCase();
+  const stamp = prepText(snap && snap.stamp);
+  if (/\brearm\b/i.test(stamp)) return 'REARM';
+  if (snap && snap.top) return String(snap.top);
+  return 'unknown';
+}
+
+/**
+ * Swarm preparation is ready when an enabled "Launch round 1" is on screen.
+ * The opening armory (heading Armory, or "Fit out before round 1") is that same
+ * screen while the button is still warming, so it keeps waiting. A different
+ * #screens screen, such as Rearm after "Wave 0 cleared", is unexpected.
+ * Nothing visible yet is waiting.
+ * @returns {{ status: 'ready'|'waiting'|'unexpected', name?: string }}
+ */
+export function classifyPreparationScreen(snap) {
+  if (!snap || typeof snap !== 'object') return { status: 'waiting' };
+  if (snap.launch === true) return { status: 'ready' };
+  if (snap.visible !== true) return { status: 'waiting' };
+  const title = prepText(snap.title);
+  const sub = prepText(snap.sub);
+  if (/^armory$/i.test(title)) return { status: 'waiting' };
+  if (/fit out before round 1/i.test(sub)) return { status: 'waiting' };
+  if (!title && !sub) return { status: 'waiting' };
+  return { status: 'unexpected', name: preparationScreenName(snap) };
+}
+
+/**
+ * Hold an unexpected preparation screen until `unexpectedMs`. A return to waiting,
+ * or a different name, starts the clock over.
+ * @returns {{ status: 'ready'|'waiting'|'unexpected', name: string|null, since: number|null, due: boolean }}
+ */
+export function notePreparationWait(hold, snap, now, unexpectedMs = PREPARATION_UNEXPECTED_MS) {
+  const cls = classifyPreparationScreen(snap);
+  if (cls.status !== 'unexpected') return { status: cls.status, name: null, since: null, due: false };
+  const since = hold && hold.name === cls.name && Number.isFinite(hold.since) ? hold.since : now;
+  return { status: 'unexpected', name: cls.name, since, due: now - since >= unexpectedMs };
+}
+
+/** DOM snap for the preparation wait. Null when the page cannot be read. */
+export async function readPreparationSnap(page) {
+  return page.evaluate(() => {
+    const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const root = document.getElementById('screens');
+    const visible = !!(root && root.style.display !== 'none' && root.getAttribute('aria-hidden') !== 'true');
+    const titleEl = document.querySelector('#screens #sf-crucible-draft-title, #screens h1');
+    const subEl = document.querySelector('#screens .sf-cru-sub');
+    const screen = document.querySelector('#screens .k-screen');
+    const stamp = screen && screen.dataset ? screen.dataset.stamp || '' : '';
+    const launch = [...document.querySelectorAll('#screens button')].some((x) => x.offsetParent && !x.disabled && /Launch round 1/.test(n(x.textContent)));
+    const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+    return {
+      visible,
+      title: titleEl ? n(titleEl.textContent) : '',
+      sub: subEl ? n(subEl.textContent) : '',
+      stamp: n(stamp),
+      top: sm && typeof sm.top === 'function' ? sm.top() : null,
+      launch,
+    };
+  }).catch(() => null);
+}
+
+/**
+ * Wait for swarm preparation's Launch round 1. The expected armory may use the
+ * full timeout. A different #screens screen held for about 30s throws
+ * `unexpected screen: <NAME>` so the route fails with that name.
+ */
+export async function waitForPreparationLaunch(page, {
+  timeoutMs = 600000,
+  unexpectedMs = PREPARATION_UNEXPECTED_MS,
+  pollMs = 250,
+  now = Date.now,
+  read = null,
+} = {}) {
+  const deadline = now() + timeoutMs;
+  let hold = null;
+  let last = null;
+  const load = read || (() => readPreparationSnap(page));
+  while (now() < deadline) {
+    last = await load();
+    const note = notePreparationWait(hold, last, now(), unexpectedMs);
+    if (note.status === 'ready') return last;
+    if (note.due) throw new Error(`unexpected screen: ${note.name}`);
+    hold = note.status === 'unexpected' ? { name: note.name, since: note.since } : null;
+    const left = deadline - now();
+    if (left <= 0) break;
+    await page.waitForTimeout(Math.min(pollMs, left));
+  }
+  const name = last && (last.title || last.top) ? preparationScreenName(last) : '';
+  throw new Error(name ? `preparation: Launch round 1 did not appear (screen ${name})` : 'preparation: Launch round 1 did not appear');
+}
+
 export async function armoryLaunchWord(page) {
   return page.evaluate(() => {
     const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();

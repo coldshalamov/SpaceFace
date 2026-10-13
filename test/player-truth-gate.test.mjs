@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runChecks, overall, checkRoundTransitions, checkRoundsReached, checkVfx, checkBackdrop } from '../scripts/player-truth/checks.mjs';
+import { screensOverlayOpen } from '../src/testing/playerTruth/reader.js';
 import { compareVerdicts, renderComparison, baselineAssetPlan, sharedAssetsLinkable, sharedTreeMatches, baselineExtractAllowed, baselineDiskMessage, baselineDiskError, BASELINE_EXTRACT_MIN_FREE_BYTES } from '../scripts/player-truth/compare.mjs';
 import { systemChromeCandidates } from '../scripts/player-truth/browser.mjs';
 
@@ -47,10 +48,42 @@ test('rounds_reached grades the gate round', () => {
 test('per-pixel split: a lit backdrop does not fail combat VFX; it fails backdrop_coverage when threats sit on it', () => {
   const t = trace({ px: () => ({ c: 0.04, b: 0.9, cp: 0, bp: 0.9, ct: 0, bt: 0.8, nC: 3, nB: 4 }) });
   assert.equal(checkVfx(t).status, 'PASS'); assert.match(checkVfx(t).detail, /per-pixel/);
+  assert.match(checkVfx(t).detail, /skipped 0/);
   assert.equal(checkBackdrop(t).status, 'FAIL');
+  assert.match(checkBackdrop(t).detail, /skipped 0/);
   const column = trace({ px: () => ({ c: 0.4, b: 0.1, cp: 0.9, bp: 0, ct: 0.5, bt: 0, nC: 9, nB: 4 }) });
   assert.equal(checkVfx(column).status, 'FAIL'); assert.equal(checkBackdrop(column).status, 'PASS');
   assert.equal(checkBackdrop(trace()).status, 'UNKNOWN');
+  assert.match(checkBackdrop(trace()).detail, /skipped 0/);
+});
+
+test('per-pixel splits skip a #screens overlay and anything before the flight phase', () => {
+  const clean = () => ({ c: 0.02, b: 0.1, cp: 0, bp: 0, ct: 0, bt: 0, nC: 1, nB: 2 });
+  const covered = () => ({ c: 0.9, b: 0.9, cp: 1, bp: 1, ct: 1, bt: 1, nC: 8, nB: 4 });
+  const sample = (extra) => ({ f: 1, t: 1000, dt: 16, sim: 1.6, mode: 'flight', top: null, screens: false, run: { ph: 'active', w: 1 }, vw: 960, vh: 540, p: P(), e: [], px: covered(), vfx: { cov: 0.9, od: 4, pOcc: 1, tOcc: 1, top: [['flash', null, 0.9]], unb: 0 }, ...extra });
+  const samples = [
+    sample({ sim: 0, run: { ph: 'draft', w: 0 }, top: 'crucibleDraft' }),
+    sample({ sim: 1.6, top: null, screens: true }),
+    ...Array.from({ length: 6 }, (_, i) => sample({ f: 10 + i, t: 3000 + i * 100, sim: 3 + i * 0.4, px: clean(), vfx: null })),
+  ];
+  const t = { meta: { mode: 'swarm', rounds: true }, samples, events: [], longTasks: [], keys: [], rounds: [], probes: [] };
+  const backdrop = checkBackdrop(t);
+  const vfx = checkVfx(t);
+  assert.equal(backdrop.status, 'PASS');
+  assert.equal(vfx.status, 'PASS');
+  assert.match(backdrop.detail, /skipped 2/);
+  assert.match(vfx.detail, /skipped 2/);
+  const onlyCovered = { meta: { mode: 'swarm', rounds: true }, samples: Array.from({ length: 8 }, (_, i) => sample({ f: i, sim: 1.6 + i, screens: true })), events: [], longTasks: [], keys: [], rounds: [], probes: [] };
+  assert.equal(checkBackdrop(onlyCovered).status, 'UNKNOWN');
+  assert.match(checkBackdrop(onlyCovered).detail, /skipped 8/);
+  assert.equal(checkVfx(onlyCovered).status, 'UNKNOWN');
+  assert.match(checkVfx(onlyCovered).detail, /skipped 8/);
+  const root = (display, aria, rects = 0) => ({ style: { display }, getAttribute: (name) => (name === 'aria-hidden' ? aria : null), getClientRects: () => ({ length: rects }) });
+  assert.equal(screensOverlayOpen(root('none', 'true')), false);
+  assert.equal(screensOverlayOpen(root('flex', null)), true);
+  assert.equal(screensOverlayOpen(root('', 'true', 1)), false);
+  assert.equal(screensOverlayOpen(root('', null, 1)), true);
+  assert.equal(screensOverlayOpen(null), false);
 });
 
 test('compare: before/after table marks regressions and improvements', () => {
