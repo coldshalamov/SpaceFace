@@ -106,6 +106,7 @@ import {
 } from './cuePriorityBus.js';
 import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
 import { entityNeedsExactAudio } from './audioActiveSet.js';
+import { bindOutputDeviceFollow, planDeviceChange } from './outputDeviceFollow.js';
 import { heatLevelFor } from '../systems/heat.js';
 import {
   createSampleRuntime,
@@ -2425,6 +2426,8 @@ export const audio = {
       window.addEventListener('pointerdown', this._gestureHandler, { once: false });
       window.addEventListener('keydown', this._gestureHandler, { once: false });
     }
+    // Row 301: a headset plugged in or a speaker going away is not a gesture and not a settings change.
+    this._bindOutputDeviceFollow();
 
     // --- event subscriptions (ARCHITECTURE §4.4 names + payloads) ---
     bus.on('combat:fire', (p) => this._onFire(p));
@@ -2989,6 +2992,7 @@ export const audio = {
       window.removeEventListener('keydown', this._gestureHandler);
     }
     this._gestureHandler = null;
+    this._unbindOutputDeviceFollow();
     this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
     rt.bandBed = null;
@@ -3003,6 +3007,47 @@ export const audio = {
         if (closing && typeof closing.catch === 'function') closing.catch(() => {});
       } catch (_) {}
     }
+  },
+
+  _bindOutputDeviceFollow() {
+    this._unbindOutputDeviceFollow();
+    const rt = this.rt;
+    if (!rt) return;
+    rt._unbindOutputDeviceFollow = bindOutputDeviceFollow({ onChange: () => this._onOutputDeviceChange() });
+  },
+
+  _unbindOutputDeviceFollow() {
+    const rt = this.rt;
+    if (rt && typeof rt._unbindOutputDeviceFollow === 'function') rt._unbindOutputDeviceFollow();
+    if (rt) rt._unbindOutputDeviceFollow = null;
+  },
+
+  /**
+   * AUDIO-DEVICE-FOLLOW (board row 301). An output-device change must carry the mix to the new device
+   * without a silent launch (an unlocked-never context stays locked until a gesture) and without doubled
+   * loops (the context is resumed, never rebuilt: the schedulers and frame loop that paused when the
+   * context stopped are restarted by the one resume owner). A context that kept running followed the
+   * default sink on its own.
+   */
+  _onOutputDeviceChange() {
+    const rt = this.rt;
+    const ctx = rt && rt.ctx;
+    if (!rt || !ctx) return 'none';
+    const action = planDeviceChange({
+      ctxState: ctx.state,
+      lifecycleSuspended: rt._lifecycleSuspended === true,
+      everRan: rt._contextEverRan === true,
+      muted: this._isMuted(),
+    });
+    if (action === 'resume') {
+      // The sink that stopped the context is gone: the resume is the lifecycle owner's own path.
+      rt._resumeAfterLifecycle = true;
+      this._resumeAudioContext(false);
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('audio:outputDeviceChanged', { action, state: ctx.state });
+    }
+    return action;
   },
 
   _markMusicDirty() {
