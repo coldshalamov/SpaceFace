@@ -4,8 +4,18 @@ const CAP = 100;
 
 function gridReadsThroughAccessor(project) {
   if (!project || typeof project !== 'object') return false;
-  const descriptor = Object.getOwnPropertyDescriptor(project, 'grid');
-  return !!descriptor && !Object.prototype.hasOwnProperty.call(descriptor, 'value') && typeof descriptor.get === 'function';
+  let current = project;
+  const seen = new Set();
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current);
+    const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
+    if (descriptor) {
+      if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) return false;
+      return typeof descriptor.get === 'function';
+    }
+    current = Object.getPrototypeOf(current);
+  }
+  return false;
 }
 
 function withoutGridAccessor(project) {
@@ -78,13 +88,17 @@ function undo(history) {
   if (!history.past.length) return history;
   const past = history.past.slice(0, -1);
   const present = history.past[history.past.length - 1];
-  return { past, present, future: [history.present, ...history.future] };
+  const leaving = withoutGridAccessor(history.present);
+  if (!leaving) return null;
+  return { past, present, future: [leaving, ...history.future] };
 }
 
 function redo(history) {
   if (!history.future.length) return history;
   const [present, ...future] = history.future;
-  return { past: history.past.concat([history.present]), present, future };
+  const leaving = withoutGridAccessor(history.present);
+  if (!leaving) return null;
+  return { past: history.past.concat([leaving]), present, future };
 }
 
 export function newDockHistory(meta = {}) {
@@ -99,6 +113,7 @@ export function newDockHistory(meta = {}) {
 
 export function restoreHistory(history, direction) {
   const stepped = direction === 'redo' ? redo(history) : undo(history);
+  if (!stepped) return { ok: false, history, issues: ['scene could not be cloned'] };
   const present = withoutGridAccessor(stepped.present);
   if (!present) return { ok: false, history, issues: ['scene could not be cloned'] };
   const next = present === stepped.present ? stepped : { ...stepped, present };

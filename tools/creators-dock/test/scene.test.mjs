@@ -2081,6 +2081,89 @@ test('a grid getter already on the present is not kept by commit', () => {
   assert.notEqual(undone.history.present, history.present);
 });
 
+function gridGetter(object) {
+  let current = object;
+  const seen = new Set();
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current);
+    const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
+    if (descriptor && typeof descriptor.get === 'function') return descriptor.get;
+    if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) return undefined;
+    current = Object.getPrototypeOf(current);
+  }
+  return undefined;
+}
+
+test('undo strips a grid getter from the scene pushed onto future', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  let reads = 0;
+  Object.defineProperty(committed.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      reads += 1;
+      return null;
+    },
+  });
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(reads, 0);
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const parked = undone.history.future[0];
+  assert.notEqual(parked, committed.present);
+  assert.equal(gridGetter(parked), undefined);
+  assert.notEqual(parked.grid, null);
+  assert.notEqual(undone.history.present.grid, null);
+});
+
+test('redo strips a grid getter from the scene pushed onto past', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  let reads = 0;
+  Object.defineProperty(undone.history.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      reads += 1;
+      return null;
+    },
+  });
+  const redone = restoreHistory(undone.history, 'redo');
+  assert.equal(reads, 0);
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  const parked = redone.history.past[redone.history.past.length - 1];
+  assert.notEqual(parked, undone.history.present);
+  assert.equal(gridGetter(parked), undefined);
+  assert.notEqual(parked.grid, null);
+});
+
+test('commit does not keep an inherited grid getter', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const proto = {};
+  let reads = 0;
+  Object.defineProperty(proto, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      reads += 1;
+      return null;
+    },
+  });
+  delete history.present.grid;
+  Object.setPrototypeOf(history.present, proto);
+  const committed = commit(history, history.present);
+  assert.equal(reads, 0);
+  assert.notEqual(committed, history);
+  assert.equal(gridGetter(committed.present), undefined);
+  assert.notEqual(committed.present.grid, null);
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {
