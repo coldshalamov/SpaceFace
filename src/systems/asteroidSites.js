@@ -2495,8 +2495,9 @@ export const asteroidSites = {
 
   /**
    * Player-present launches are physical (brief §8): a small drone entity rises off the site
-   * rock and coasts out toward the lane, then despawns. Visual only — the economics resolved in
-   * _tryLaunch/_resolvePods regardless of who is watching. Coasting uses plain vel integration.
+   * rock and coasts toward the lane until the matching in-flight pod arrives. Visual only — the
+   * economics resolved in _tryLaunch/_resolvePods regardless of who is watching. Coasting uses
+   * plain vel integration. A pod with no finite arrival keeps the short 14s picture.
    */
   _spawnCourierVisual(site, state, worldRecordId) {
     if (!state.world || state.world.currentSectorId !== site.sectorId) return;
@@ -2506,6 +2507,17 @@ export const asteroidSites = {
     const ang = ((hash32(site.id, site.fleet.launches) % 628) / 100);
     const dist = (rock.radius || 8) + 4;
     const speed = 90;
+    const recordId = worldRecordId || `site:${site.id}:pod:${site.fleet.launches}`;
+    let despawnAt = state.simTime + 14;
+    const pods = site.fleet && site.fleet.inFlight;
+    if (Array.isArray(pods)) {
+      for (let i = 0; i < pods.length; i++) {
+        const pod = pods[i];
+        if (!pod || pod.worldRecordId !== recordId) continue;
+        if (Number.isFinite(pod.arriveT)) despawnAt = pod.arriveT;
+        break;
+      }
+    }
     spawnEntity({
       type: 'drone',
       team: 0,
@@ -2523,8 +2535,8 @@ export const asteroidSites = {
         siteId: site.id,
         sectorId: site.sectorId,
         homeSectorId: site.sectorId,
-        worldRecordId: worldRecordId || `site:${site.id}:pod:${site.fleet.launches}`,
-        despawnAt: state.simTime + 14,
+        worldRecordId: recordId,
+        despawnAt,
       },
     });
   },
