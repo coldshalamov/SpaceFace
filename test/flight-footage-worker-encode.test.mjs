@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  createFootageEncoder,
+  createFootageEncoder, FOOTAGE_ENCODE_TIMEOUT_MS,
   footageEncoderRuntime,
   installFlightFootage,
 } from '../src/ui/screens/flightFootage.js';
@@ -312,4 +312,24 @@ test('a frame that lands after clear() is dropped, not pushed into the new game\
   } finally {
     browser.restore();
   }
+});
+
+test('an unanswered frame retires the encoder after the timeout; late replies are ignored', async () => {
+  const timers = [];
+  const { scope } = fakeScope({
+    setTimeout: (fn, ms) => { timers.push({ fn, ms, live: true }); return timers.length; },
+    clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].live = false; },
+  });
+  const encoder = createFootageEncoder(scope);
+  const worker = FakeWorker.instances.at(-1); worker.mode = 'hold';
+  const job = encoder.encode({ close() {} }, 640, 360);
+  assert.equal(timers.at(-1).ms, FOOTAGE_ENCODE_TIMEOUT_MS);
+  timers.at(-1).fn();
+  await assert.rejects(job, /timed out/);
+  assert.equal(encoder.usable, false, 'a timed-out worker is retired so captures fall back to toBlob');
+  assert.equal(worker.terminated, true);
+  worker.reply(worker.posted[0].data.id); // late reply: no throw, no entry
+  const answered = createFootageEncoder(scope); const w2 = FakeWorker.instances.at(-1);
+  const ok = answered.encode({ close() {} }, 640, 360);
+  await ok; assert.equal(timers.at(-1).live, false, 'an answered frame clears its timer');
 });

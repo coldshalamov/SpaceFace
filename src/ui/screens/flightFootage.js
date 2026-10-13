@@ -50,6 +50,9 @@ export function footageEncoderRuntime() {
   };
 }
 
+/** A frame the worker has not answered in this long retires the encoder (see encode). */
+export const FOOTAGE_ENCODE_TIMEOUT_MS = 2000;
+
 /** The off-main-thread JPEG encoder, or null where Worker/OffscreenCanvas/createImageBitmap are missing. */
 export function createFootageEncoder(scope = globalThis) {
   if (typeof scope.Worker !== 'function' || typeof scope.OffscreenCanvas !== 'function'
@@ -59,7 +62,7 @@ export function createFootageEncoder(scope = globalThis) {
   const waiting = new Map();
   const failAll = (reason) => {
     broken = true;
-    for (const entry of waiting.values()) entry.reject(new Error(reason));
+    for (const entry of waiting.values()) { scope.clearTimeout?.(entry.timer); entry.reject(new Error(reason)); }
     waiting.clear();
   };
   try {
@@ -75,6 +78,7 @@ export function createFootageEncoder(scope = globalThis) {
     const entry = waiting.get(data?.id);
     if (!entry) return;
     waiting.delete(data.id);
+    scope.clearTimeout?.(entry.timer);
     if (data.failed || !data.blob) entry.reject(new Error(data.failed || 'footage worker returned no frame'));
     else entry.resolve(data.blob);
   };
@@ -85,9 +89,20 @@ export function createFootageEncoder(scope = globalThis) {
       if (broken) { bitmap.close?.(); return Promise.reject(new Error('footage worker retired')); }
       const id = ++nextId;
       return new Promise((resolve, reject) => {
-        waiting.set(id, { resolve, reject });
+        // A worker that never answers would hold the capture's `encoding` flag forever and the ring
+        // would silently stop filling. A frame unanswered for FOOTAGE_ENCODE_TIMEOUT_MS retires the
+        // worker like any other failure (every waiting frame rejects, the caller clears `encoding`,
+        // later captures take the canvas.toBlob path); a late reply then finds no entry.
+        const timer = typeof scope.setTimeout === 'function'
+          ? scope.setTimeout(() => {
+            if (!waiting.has(id)) return;
+            failAll('footage worker timed out');
+            try { worker.terminate(); } catch { /* already gone */ }
+          }, FOOTAGE_ENCODE_TIMEOUT_MS)
+          : null;
+        waiting.set(id, { resolve, reject, timer });
         try { worker.postMessage({ id, bitmap, width, height }, [bitmap]); }
-        catch (error) { waiting.delete(id); failAll(String(error)); reject(error); }
+        catch (error) { scope.clearTimeout?.(timer); waiting.delete(id); failAll(String(error)); reject(error); }
       });
     },
     dispose() {
