@@ -1,4 +1,6 @@
 import { HOOK_SCHEMA } from './constants.mjs';
+import { isSvgPayload } from './payload.mjs';
+import { liveShieldGeometryRadius } from './shieldShell.mjs';
 
 /**
  * Pure read-only scene sample. No DOM, no draw, no sim write.
@@ -9,16 +11,6 @@ import { HOOK_SCHEMA } from './constants.mjs';
  * @param {object[]} samples objects already resolved by the caller
  * @param {object} meta tick, seed, zoom, qualityTier, frameCapture
  */
-function payloadText(payload) {
-  if (typeof payload === 'string') return payload;
-  if (!payload || typeof payload !== 'object') return '';
-  if (typeof payload.svg === 'string') return payload.svg;
-  if (typeof payload.markup === 'string') return payload.markup;
-  if (typeof payload.bytes === 'string') return payload.bytes;
-  if (typeof payload.pixels === 'string') return payload.pixels;
-  return '';
-}
-
 function payloadByteLength(payload) {
   if (!payload || typeof payload !== 'object') return 0;
   const bytes = payload.bytes ?? payload.pixels ?? payload.image ?? null;
@@ -32,10 +24,7 @@ export function frameIsGpuPayload(meta = {}) {
     return false;
   }
   const payload = meta.frameCapture ?? meta.pixels ?? null;
-  if (payload == null) return false;
-  if (payload && typeof payload === 'object' && (payload.format === 'svg' || payload.source === 'semantic-svg')) return false;
-  const text = payloadText(payload).trim();
-  if (text.startsWith('<svg') || text.startsWith('<?xml') || text.includes('<svg')) return false;
+  if (payload == null || isSvgPayload(payload)) return false;
   if (typeof payload === 'string') return false;
   return payloadByteLength(payload) > 0;
 }
@@ -73,12 +62,6 @@ export function sceneTruthSamplesFromState(state) {
   const visit = (entity) => {
     if (!entity || entity.alive === false || entity.id == null) return;
     const data = entity.data || {};
-    const shieldMax = Number(entity.shieldMax);
-    const shield = Number(entity.shield);
-    const liveShield = Number.isFinite(shieldMax) && shieldMax > 0
-      ? shieldMax
-      : (Number.isFinite(shield) && shield > 0 ? shield : 0);
-    const radius = Number(entity.radius);
     rows.push({
       objectId: data.scenarioAlias ? `entity:${entity.id}` : `entity:${entity.id}`,
       entityId: entity.id,
@@ -88,7 +71,7 @@ export function sceneTruthSamplesFromState(state) {
       packageKey: data.defId || null,
       contentHash: data.packageContentHash || null,
       lodLevel: data.lodLevel || null,
-      shieldGeometryRadius: liveShield > 0 && Number.isFinite(radius) && radius > 0 ? radius : null,
+      shieldGeometryRadius: liveShieldGeometryRadius(entity),
     });
   };
   if (state && Array.isArray(state.entityList)) {

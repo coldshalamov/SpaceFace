@@ -64,8 +64,17 @@ export function copiedObservation(witness) {
     if (!object) continue;
     if (object.presentationSource === 'expected-copy') return true;
     if (object.observed && object.expected && sameRecord(object.observed, object.expected)) return true;
+    if (copiedPresentedKeepOut(object)) return true;
   }
   return false;
+}
+
+/** True when presentedRadius repeats the expected keep-out without a measurement. */
+export function copiedPresentedKeepOut(object) {
+  if (!object || object.presentationSource === 'measured') return false;
+  const presented = Number(object.presentedRadius);
+  const expected = Number(object.expectedRadius);
+  return Number.isFinite(presented) && expected > 0 && Math.abs(presented - expected) <= 1e-6;
 }
 
 function hullReach(object) {
@@ -84,14 +93,21 @@ export function analyzeWitness(witness, prior = null) {
   const found = [];
   const objects = Array.isArray(witness.objects) ? witness.objects : [];
   if (copiedObservation(witness)) {
+    const copiedRadius = objects.some((object) => copiedPresentedKeepOut(object));
     found.push(issue(
       witness,
       'copied-observation',
       'high',
       objects.map((object) => object && object.objectId).filter(Boolean).slice(0, 8),
-      'observed fields measured independently of the expected fields',
-      'observed fields are a copy of the expected fields',
-      'The witness repeated the expected record as the observation.',
+      copiedRadius
+        ? 'presentedRadius measured independently of the expected keep-out'
+        : 'observed fields measured independently of the expected fields',
+      copiedRadius
+        ? 'presentedRadius was copied from the expected keep-out'
+        : 'observed fields are a copy of the expected fields',
+      copiedRadius
+        ? 'A copied presentedRadius is not a measured scale.'
+        : 'The witness repeated the expected record as the observation.',
     ));
     return found;
   }
@@ -215,11 +231,11 @@ export function analyzeWitness(witness, prior = null) {
       ));
     }
 
-    const scaleRatio = object.presentationSource === 'measured' && object.expectedRadius > 0
+    const scaleRatio = object.presentationSource === 'measured'
+      && object.expectedRadius > 0
+      && Number.isFinite(object.presentedRadius)
       ? object.presentedRadius / object.expectedRadius
-      : (Number.isFinite(object.presentedRadius) && object.expectedRadius > 0
-        ? object.presentedRadius / object.expectedRadius
-        : null);
+      : null;
     if (object.alive !== false && object.required && Number.isFinite(scaleRatio) && scaleRatio > TOL.scaleMismatchRatio) {
       found.push(issue(
         witness,

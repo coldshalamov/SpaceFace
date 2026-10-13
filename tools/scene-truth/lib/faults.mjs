@@ -222,6 +222,7 @@ export function faultCases() {
         station.colliderRadius = 80;
         station.expectedRadius = 80;
         station.presentedRadius = 80;
+        station.presentationSource = 'measured';
         next.objects.push({ ...station, screen: projectScreen(station, next.focus, next.frame) });
         return next;
       })(),

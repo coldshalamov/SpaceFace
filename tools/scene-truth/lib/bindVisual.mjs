@@ -16,6 +16,9 @@ import {
 import { renderPackagePilotForSourceUrl } from '../../../src/render/renderPackageManifest.js';
 import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION } from '../../../src/render/wholeShipLodPolicy.js';
 import { repoPath } from './root.mjs';
+import { liveShieldGeometryRadius } from './shieldShell.mjs';
+
+export { liveShieldGeometryRadius };
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((enemy) => [enemy.id, enemy]));
@@ -92,17 +95,20 @@ function censusRowFor(entity) {
 }
 
 /**
- * Live shield disc radius. `createShieldBubble` scales the unit shell by
- * `entity.radius`. Def shield HP is not that geometry.
+ * Presented shield disc. This is a draw measurement: an explicit
+ * `presentedShieldRadius`, or the shield bubble's own scale. It does not
+ * call `liveShieldGeometryRadius`, so a disc of 55 can disagree with a live
+ * shell of 14. A ship def shield stat is not a disc.
  */
-export function liveShieldGeometryRadius(entity) {
+export function presentedShieldDiscRadius(entity) {
   if (!entity) return null;
-  const max = Number(entity.shieldMax);
-  const now = Number(entity.shield);
-  const live = Number.isFinite(max) && max > 0 ? max : (Number.isFinite(now) && now > 0 ? now : 0);
-  if (!(live > 0)) return null;
-  const radius = Number(entity.radius);
-  return Number.isFinite(radius) && radius > 0 ? radius : null;
+  if (Object.prototype.hasOwnProperty.call(entity, 'presentedShieldRadius')) {
+    const recorded = Number(entity.presentedShieldRadius);
+    return Number.isFinite(recorded) && recorded > 0 ? recorded : null;
+  }
+  const scale = entity.shieldBubble && entity.shieldBubble.scale;
+  const measured = scale && typeof scale === 'object' ? Number(scale.x) : Number(scale);
+  return Number.isFinite(measured) && measured > 0 ? measured : null;
 }
 
 /**
@@ -148,18 +154,25 @@ export function bindEntity(entity) {
     pos: entity.pos || { x: 0, z: 0 },
     rot: entity.rot || 0,
   });
-  // A missing draw measurement stays unmeasured. Copying the keep-out into
-  // presentedRadius would make the scale check compare a field to itself.
-  const measuredPresentation = Number.isFinite(entity.presentedRadius);
-  const presentedRadius = measuredPresentation ? Number(entity.presentedRadius) : null;
+  // A missing draw measurement stays unmeasured. A presentedRadius that repeats
+  // the expected keep-out is a copy unless the caller marked it measured.
+  const rawPresented = Number(entity.presentedRadius);
+  const keepOutCopy = Number.isFinite(rawPresented)
+    && Number.isFinite(expectedRadius)
+    && expectedRadius > 0
+    && Math.abs(rawPresented - expectedRadius) <= 1e-6
+    && entity.presentationSource !== 'measured';
+  const measuredPresentation = Number.isFinite(rawPresented) && !keepOutCopy;
+  const presentedRadius = Number.isFinite(rawPresented) ? rawPresented : null;
   const hull = Number(entity.hull);
   const hullMax = Number(entity.hullMax);
   const shieldGeometryRadius = liveShieldGeometryRadius(entity);
+  const shieldDiscRadius = presentedShieldDiscRadius(entity);
   const effects = [];
-  if (shieldGeometryRadius != null) {
+  if (shieldDiscRadius != null) {
     effects.push({
       kind: 'shield',
-      radius: shieldGeometryRadius,
+      radius: shieldDiscRadius,
       baseCoverage: 0.22,
       occludesContacts: false,
     });

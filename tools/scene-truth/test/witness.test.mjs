@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzePack } from '../lib/analyze.mjs';
-import { claimGpuFrame, publishCapture, sceneSvg } from '../lib/atlas.mjs';
+import { buildVerdict, claimGpuFrame, LIMITATIONS, publishCapture, sceneSvg } from '../lib/atlas.mjs';
 import { analyzeWitness, copiedObservation, highFails } from '../lib/detectors.mjs';
-import { bindEntity } from '../lib/bindVisual.mjs';
+import { bindEntity, liveShieldGeometryRadius } from '../lib/bindVisual.mjs';
 import { healthyWitness } from '../lib/faults.mjs';
 import { sceneCatalog } from '../lib/scenarios.mjs';
+import { sceneTruthSamplesFromState } from '../lib/hook.mjs';
 import { witnessScenario } from '../lib/witness.mjs';
-import { buildVerdict } from '../lib/atlas.mjs';
+import { buildDeterministicSurface } from '../../../src/testing/lab/deterministicSurface.js';
 
 test('starter scene runs on the lab runtime and stays semantically clean', async () => {
   const entry = sceneCatalog().find((row) => row.id === 'scene.starter-rest');
@@ -19,6 +20,9 @@ test('starter scene runs on the lab runtime and stays semantically clean', async
   assert.ok(player);
   assert.equal(player.presentationSource, 'unmeasured');
   assert.equal(player.presentedRadius, null);
+  assert.equal(player.shieldGeometryRadius, player.colliderRadius);
+  assert.ok(player.shieldGeometryRadius > 0);
+  assert.equal((player.effects || []).some((effect) => effect.kind === 'shield'), false);
   assert.equal(pack.views.every((view) => view.gpuFrame === false && view.captureKind === 'semantic-projection'), true);
   assert.equal(player.package.sourceExists, true);
   assert.equal(player.package.metadataExists, true);
@@ -52,6 +56,12 @@ test('semantic SVG is not a GPU frame', () => {
     captureKind: 'gpu-frame',
     frameCapture: { format: 'png', bytes: new Uint8Array([1, 2, 3, 4]) },
   }), true);
+  const svgBytes = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+  const xmlBytes = new TextEncoder().encode('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"/>');
+  assert.equal(claimGpuFrame({ captureKind: 'gpu-frame', frameCapture: { bytes: svgBytes } }), false);
+  assert.equal(claimGpuFrame({ captureKind: 'gpu-frame', frameCapture: { bytes: xmlBytes } }), false);
+  const pngBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(claimGpuFrame({ captureKind: 'gpu-frame', frameCapture: { bytes: pngBytes } }), true);
   const published = publishCapture({ captureKind: 'gpu-frame', gpuFrame: true, pixels: svg });
   assert.equal(published.gpuFrame, false);
   assert.equal(published.captureKind, 'semantic-projection');
@@ -69,8 +79,77 @@ test('a witness whose observed fields copy the expected fields fails', () => {
   assert.equal(fails[0].failBuild, true);
 });
 
-test('a shield disc is checked against live shield geometry', () => {
-  const live = bindEntity({
+test('a current shield of 0 does not keep the raised shell radius', () => {
+  const entity = {
+    id: 7,
+    alive: true,
+    radius: 14,
+    shield: 0,
+    shieldMax: 55,
+    pos: { x: 0, z: 0 },
+    data: {},
+  };
+  assert.equal(liveShieldGeometryRadius(entity), null);
+  const [sample] = sceneTruthSamplesFromState({ entityList: [entity] });
+  assert.equal(sample.shieldGeometryRadius, null);
+});
+
+test('the lab surface carries shield hit points and a def id alone wears no disc', () => {
+  const surface = buildDeterministicSurface({
+    tick: 1,
+    simTime: 0,
+    mode: 'flight',
+    playerId: 1,
+    meta: { seed: 1 },
+    entityList: [{
+      id: 1,
+      type: 'ship',
+      alive: true,
+      team: 0,
+      pos: { x: 0, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      mass: 18,
+      radius: 14,
+      hull: 140,
+      hullMax: 140,
+      shield: 40,
+      shieldMax: 55,
+      data: { defId: 'ship_kestrel', scenarioAlias: 'player' },
+    }],
+    input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, keys: {} },
+  });
+  assert.equal(surface.entities[0].shield, 40);
+  assert.equal(surface.entities[0].shieldMax, 55);
+  const fromSurface = bindEntity({
+    id: surface.entities[0].id,
+    type: 'ship',
+    alive: true,
+    isPlayer: true,
+    radius: surface.entities[0].radius,
+    shield: surface.entities[0].shield,
+    shieldMax: surface.entities[0].shieldMax,
+    pos: surface.entities[0].pos,
+    data: { defId: 'ship_kestrel' },
+  });
+  assert.equal(fromSurface.shieldGeometryRadius, 14);
+  assert.equal((fromSurface.effects || []).some((effect) => effect.kind === 'shield'), false);
+  const defOnly = bindEntity({
+    id: 'pilot',
+    type: 'ship',
+    alive: true,
+    radius: 14,
+    pos: { x: 0, z: 0 },
+    data: { defId: 'ship_kestrel' },
+  });
+  assert.equal(defOnly.shieldGeometryRadius, null);
+  assert.equal((defOnly.effects || []).some((effect) => effect.kind === 'shield'), false);
+  assert.equal(LIMITATIONS.some((line) => /def shield stat/.test(line)), false);
+  assert.equal(LIMITATIONS.some((line) => line.includes('shieldMax') && line.includes('separate measurement')), true);
+});
+
+test('a presented shield disc is measured independently of the live shell', () => {
+  const mismatched = bindEntity({
     id: 'pilot',
     type: 'ship',
     alive: true,
@@ -78,19 +157,75 @@ test('a shield disc is checked against live shield geometry', () => {
     radius: 14,
     shield: 40,
     shieldMax: 55,
+    presentedShieldRadius: 55,
     pos: { x: 0, z: 0 },
     data: { defId: 'ship_kestrel' },
   });
-  assert.equal(live.shieldGeometryRadius, 14);
-  assert.equal(live.effects.find((effect) => effect.kind === 'shield').radius, 14);
+  assert.equal(mismatched.shieldGeometryRadius, 14);
+  assert.equal(mismatched.effects.find((effect) => effect.kind === 'shield').radius, 55);
   const witness = healthyWitness();
   witness.objects[0] = {
     ...witness.objects[0],
-    shieldGeometryRadius: 14,
-    effects: [{ kind: 'shield', radius: 55, baseCoverage: 0.22, occludesContacts: false }],
+    shieldGeometryRadius: mismatched.shieldGeometryRadius,
+    effects: mismatched.effects,
   };
   const fails = highFails(analyzeWitness(witness));
   assert.equal(fails.some((row) => row.kind === 'shield-geometry-mismatch'), true);
+});
+
+test('copying the expected keep-out into presentedRadius fails', () => {
+  const witness = healthyWitness();
+  const player = witness.objects.find((object) => object.isPlayer);
+  player.presentedRadius = player.expectedRadius;
+  player.presentationSource = 'unmeasured';
+  assert.equal(copiedObservation(witness), true);
+  const fails = highFails(analyzeWitness(witness));
+  assert.equal(fails.some((row) => row.kind === 'copied-observation'), true);
+  assert.equal(fails.some((row) => row.kind === 'silhouette-scale-mismatch'), false);
+
+  const bloated = healthyWitness();
+  const hull = bloated.objects.find((object) => object.isPlayer);
+  hull.presentedRadius = hull.expectedRadius * 4;
+  hull.presentationSource = 'unmeasured';
+  const ignored = highFails(analyzeWitness(bloated));
+  assert.equal(ignored.some((row) => row.kind === 'silhouette-scale-mismatch'), false);
+
+  const measured = healthyWitness();
+  const drawn = measured.objects.find((object) => object.isPlayer);
+  drawn.presentedRadius = drawn.expectedRadius * 4;
+  drawn.presentationSource = 'measured';
+  const scaled = highFails(analyzeWitness(measured));
+  assert.equal(scaled.some((row) => row.kind === 'silhouette-scale-mismatch'), true);
+
+  const sample = bindEntity({
+    id: 'pilot',
+    type: 'ship',
+    alive: true,
+    isPlayer: true,
+    radius: 14,
+    pos: { x: 0, z: 0 },
+    data: { defId: 'ship_kestrel' },
+  });
+  const copiedThroughBind = bindEntity({
+    id: 'pilot',
+    type: 'ship',
+    alive: true,
+    isPlayer: true,
+    radius: 14,
+    pos: { x: 0, z: 0 },
+    presentedRadius: sample.expectedRadius,
+    data: { defId: 'ship_kestrel' },
+  });
+  assert.equal(copiedThroughBind.presentationSource, 'unmeasured');
+  assert.equal(copiedThroughBind.presentedRadius, sample.expectedRadius);
+  const boundWitness = healthyWitness();
+  boundWitness.objects[0] = {
+    ...boundWitness.objects[0],
+    presentedRadius: copiedThroughBind.presentedRadius,
+    expectedRadius: copiedThroughBind.expectedRadius,
+    presentationSource: copiedThroughBind.presentationSource,
+  };
+  assert.equal(highFails(analyzeWitness(boundWitness)).some((row) => row.kind === 'copied-observation'), true);
 });
 
 test('an incomplete lab arm with a usable final surface cannot become a clean verdict', () => {

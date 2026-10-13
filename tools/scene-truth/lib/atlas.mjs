@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPORT_SCHEMA, VERDICT_SCHEMA } from './constants.mjs';
+import { isSvgPayload } from './payload.mjs';
 
 export const LIMITATIONS = Object.freeze([
   'Lab rendering is detached. These images are semantic projections of sim poses and package metadata, not GPU frames.',
@@ -8,7 +9,7 @@ export const LIMITATIONS = Object.freeze([
   'Pixel, exposure, anti-alias, and compositor differences are review items. They do not fail the build.',
   'Stations, gates, beacons, and landmarks are joined from authored sector anchors because the flight-lab bundle does not call world.enterSector.',
   'Asteroid rings use the production place id and size range at the authored field center. They are not a second scatter simulation.',
-  'Shield hit points are not on the lab checkpoint surface. Shield discs use the ship or enemy def shield stat with coverage 0.22.',
+  'Live shield and shieldMax are on the lab checkpoint surface. The shield shell radius is the entity radius while the current shield is above zero. A presented shield disc is a separate measurement with coverage 0.22.',
   'No WebGL context is created. runtimeFps is null. captureCostMs is witness wall time, not a frame-time measurement.',
   'Whole-ship LOD runtime demotion is off. Census LOD outline flags are review items, not drawn swaps.',
 ]);
@@ -27,17 +28,6 @@ function csvCell(value) {
   return text;
 }
 
-function payloadText(payload) {
-  if (typeof payload === 'string') return payload;
-  if (!payload || typeof payload !== 'object') return '';
-  if (typeof payload.svg === 'string') return payload.svg;
-  if (typeof payload.markup === 'string') return payload.markup;
-  if (typeof payload.bytes === 'string') return payload.bytes;
-  if (typeof payload.pixels === 'string') return payload.pixels;
-  if (typeof payload.image === 'string') return payload.image;
-  return '';
-}
-
 function payloadBytes(payload) {
   if (!payload || typeof payload !== 'object') return null;
   const bytes = payload.bytes ?? payload.pixels ?? payload.image ?? null;
@@ -46,15 +36,10 @@ function payloadBytes(payload) {
   return null;
 }
 
-function isSvgPayload(payload) {
-  if (payload && typeof payload === 'object' && (payload.format === 'svg' || payload.source === 'semantic-svg')) return true;
-  const text = payloadText(payload).trim();
-  return text.startsWith('<svg') || text.startsWith('<?xml') || text.includes('<svg');
-}
-
 /**
  * A semantic SVG diagram is not a captured frame.
  * gpuFrame is true only for a non-SVG payload marked as a real capture.
+ * SVG bytes are recognized by an svg or xml marker, with or without a format tag.
  */
 export function claimGpuFrame(witness) {
   if (!witness || typeof witness !== 'object') return false;

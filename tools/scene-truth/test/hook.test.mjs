@@ -3,7 +3,14 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { installDiagnostics } from '../../../src/render/diagnostics.js';
 import { runRenderUpdatePhase } from '../../../src/core/renderUpdatePhase.js';
-import { frameIsGpuPayload, hookInstallsOverlay, publishSceneTruthFrame, sceneTruthFrameFromSamples } from '../lib/hook.mjs';
+import { liveShieldGeometryRadius } from '../lib/shieldShell.mjs';
+import {
+  frameIsGpuPayload,
+  hookInstallsOverlay,
+  publishSceneTruthFrame,
+  sceneTruthFrameFromSamples,
+  sceneTruthSamplesFromState,
+} from '../lib/hook.mjs';
 import { repoPath } from '../lib/root.mjs';
 
 test('the scene-truth hook does not draw and does not install an overlay', () => {
@@ -16,6 +23,14 @@ test('the scene-truth hook does not draw and does not install an overlay', () =>
   assert.equal(frameIsGpuPayload({ captureKind: 'gpu-frame', frameCapture: { format: 'svg', svg: '<svg xmlns="http://www.w3.org/2000/svg"/>' } }), false);
   const png = { format: 'png', bytes: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]) };
   assert.equal(frameIsGpuPayload({ captureKind: 'gpu-frame', frameCapture: png }), true);
+  const svgBytes = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+  const xmlBytes = new TextEncoder().encode('<?xml version="1.0" encoding="UTF-8"?>');
+  assert.equal(frameIsGpuPayload({ captureKind: 'gpu-frame', frameCapture: { bytes: svgBytes } }), false);
+  assert.equal(frameIsGpuPayload({ captureKind: 'gpu-frame', frameCapture: { bytes: xmlBytes } }), false);
+  assert.equal(frameIsGpuPayload({
+    captureKind: 'gpu-frame',
+    frameCapture: { bytes: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]) },
+  }), true);
   const built = sceneTruthFrameFromSamples([{ objectId: 'entity:1', visible: true }], {
     captureKind: 'gpu-frame',
     frameCapture: png,
@@ -54,7 +69,9 @@ test('the play update publishes after a submitted draw and skips a draw that ret
     tick: 8,
     meta: { seed: 3 },
     render: { sceneTruthFrameCapture: { format: 'png', bytes: new Uint8Array([137, 80, 78, 71]) } },
-    entityList: [{ id: 1, alive: true, pos: { x: 1, z: 2 }, radius: 14, shieldMax: 55, data: {} }],
+    entityList: [{
+      id: 1, alive: true, pos: { x: 1, z: 2 }, radius: 14, shield: 40, shieldMax: 55, data: {},
+    }],
   };
   const render = {
     state,
@@ -78,6 +95,21 @@ test('the play update publishes after a submitted draw and skips a draw that ret
   assert.equal(globalThis.__SF_SCENE_TRUTH_FRAME__.gpuFrame, false);
   globalThis.__SF_SCENE_TRUTH_WITNESS__ = false;
   delete globalThis.__SF_SCENE_TRUTH_FRAME__;
+});
+
+test('a current shield of 0 does not keep the raised shell radius', () => {
+  const entity = {
+    id: 4,
+    alive: true,
+    radius: 14,
+    shield: 0,
+    shieldMax: 55,
+    pos: { x: 0, z: 0 },
+    data: {},
+  };
+  assert.equal(liveShieldGeometryRadius(entity), null);
+  const [sample] = sceneTruthSamplesFromState({ entityList: [entity] });
+  assert.equal(sample.shieldGeometryRadius, null);
 });
 
 test('existing diagnostics expose counters and not object ids', () => {

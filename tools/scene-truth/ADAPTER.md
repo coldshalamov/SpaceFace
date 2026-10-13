@@ -3,9 +3,11 @@
 Scene Truth reads lab checkpoint surfaces, `wholeShipVisualForEntity`,
 `authoredPayloadFileForEntity`, `RENDER_PACKAGE_PILOTS`, and model-truth
 keep-outs. Those sources do not carry live mesh visibility, render order,
-or GPU residency. Shield discs use the live shell radius (`entity.radius`
-while `entity.shield` or `entity.shieldMax` is up), the same scale
-`createShieldBubble` applies. They do not use def shield HP.
+or GPU residency. The live shield shell is `entity.radius` while
+`entity.shield` is above zero, the same scale `createShieldBubble` applies.
+`shieldMax` alone does not raise the shell. A presented disc is a separate
+measurement (`presentedShieldRadius`, or the shield bubble scale). The lab
+checkpoint surface carries `shield` and `shieldMax`.
 
 `window.__THREE_GAME_DIAGNOSTICS__` (`src/render/diagnostics.js`) publishes
 draw counters. Its report has no object ids. Confirmed by
@@ -34,7 +36,8 @@ The probe stays off unless a witness sets `globalThis.__SF_SCENE_TRUTH_WITNESS__
 before the step. It assigns one plain object and never creates DOM.
 
 A non-SVG `state.render.sceneTruthFrameCapture` (`{ format, bytes }`) publishes
-`gpuFrame: true`. An SVG payload stays `gpuFrame: false`.
+`gpuFrame: true`. An SVG payload stays `gpuFrame: false`, including a document
+stored only as bytes whose prefix is an `<svg` or `<?xml` marker.
 
 `samples` would be one record per live render root, copied from data the
 renderer already has: entity id, `userData.assetId`, package content hash,
