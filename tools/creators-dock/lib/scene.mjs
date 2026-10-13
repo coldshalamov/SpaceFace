@@ -37,6 +37,16 @@ export const OBJECT_KEY_SETS = Object.freeze({
 
 const CLONE_REJECT = Symbol('clone-reject');
 
+function ownDataEntries(object) {
+  const entries = [];
+  for (const key of Object.keys(object)) {
+    const descriptor = Object.getOwnPropertyDescriptor(object, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    entries.push([key, descriptor.value]);
+  }
+  return entries;
+}
+
 function snapshot(value, seen = new Map()) {
   if (value === null || value === undefined || typeof value !== 'object') return value;
   if (seen.has(value)) return seen.get(value);
@@ -44,14 +54,15 @@ function snapshot(value, seen = new Map()) {
     const out = [];
     seen.set(value, out);
     for (let i = 0; i < value.length; i += 1) {
-      if (Object.prototype.hasOwnProperty.call(value, i)) out[i] = snapshot(value[i], seen);
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) out[i] = snapshot(descriptor.value, seen);
       else out.length = i + 1;
     }
     return out;
   }
   const out = {};
   seen.set(value, out);
-  for (const key of Object.keys(value)) out[key] = snapshot(value[key], seen);
+  for (const [key, child] of ownDataEntries(value)) out[key] = snapshot(child, seen);
   return out;
 }
 
@@ -99,11 +110,11 @@ function introducedNull(original, produced) {
     }
     return false;
   }
-  for (const key of Object.keys(produced)) {
-    const next = produced[key];
+  for (const [key, next] of ownDataEntries(produced)) {
     if (nullWasIntroduced(original, key, next)) return true;
-    if (Array.isArray(next) && !Array.isArray(original[key]) && containsForbiddenNull(next)) return true;
-    if (next && typeof next === 'object' && original[key] && typeof original[key] === 'object' && introducedNull(original[key], next)) return true;
+    const prev = original[key];
+    if (Array.isArray(next) && !Array.isArray(prev) && containsForbiddenNull(next)) return true;
+    if (next && typeof next === 'object' && prev && typeof prev === 'object' && introducedNull(prev, next)) return true;
   }
   return false;
 }
@@ -119,9 +130,9 @@ function captureFields(object) {
     }
     return { kind: 'array', object, length: object.length, items, toJSON };
   }
-  const keys = Object.keys(object);
-  const values = new Map();
-  for (const key of keys) values.set(key, object[key]);
+  const entries = ownDataEntries(object);
+  const keys = entries.map(([key]) => key);
+  const values = new Map(entries);
   return { kind: 'object', object, keys, values, toJSON };
 }
 
@@ -135,7 +146,7 @@ function captureTree(value, seen, records) {
     }
     return;
   }
-  for (const key of Object.keys(value)) captureTree(value[key], seen, records);
+  for (const [, child] of ownDataEntries(value)) captureTree(child, seen, records);
 }
 
 function restoreRecord(record) {
@@ -148,7 +159,9 @@ function restoreRecord(record) {
     object.length = record.length;
   } else {
     for (const key of Object.keys(object)) {
-      if (!record.values.has(key)) delete object[key];
+      if (record.values.has(key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(object, key);
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) delete object[key];
     }
     for (const key of record.keys) object[key] = record.values.get(key);
   }
@@ -197,8 +210,8 @@ function materialize(value, key, seen) {
     return out;
   }
   const out = {};
-  for (const childKey of Object.keys(value)) {
-    const child = materialize(value[childKey], childKey, seen);
+  for (const [childKey, childValue] of ownDataEntries(value)) {
+    const child = materialize(childValue, childKey, seen);
     if (child === CLONE_REJECT) return CLONE_REJECT;
     if (child !== undefined) out[childKey] = child;
   }
