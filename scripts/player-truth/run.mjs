@@ -30,7 +30,7 @@ import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { bootToMenu, crucibleToArmory, readArmory, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
-import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat } from './driver.mjs';
+import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, evalPage } from './driver.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
@@ -155,7 +155,13 @@ async function runOne(args, arena, extra = {}) {
   page.on('pageerror', (e) => pageErrors.push(String(e.message || e).slice(0, 200)));
   browser.on('disconnected', () => note('browser disconnected'));
   page.on('crash', () => note('page crashed'));
-  page.on('close', () => note('page closed'));
+  let readerFatal = null;
+  page.on('close', () => {
+    note('page closed');
+    readerFatal = readerFatal || 'player-truth: page closed';
+    clearInterval(shotTimer);
+    clearInterval(drainTimer);
+  });
   const child = typeof browser.process === 'function' ? browser.process() : null;
   if (child && child.stderr) child.stderr.on('data', (buf) => {
     for (const line of String(buf).split('\n')) if (/FATAL|oom|killed|crash|SwiftShader|GL out|aw, snap/i.test(line)) note(line);
@@ -164,9 +170,14 @@ async function runOne(args, arena, extra = {}) {
   let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false;
 
   const drain = async () => {
-    if (!readerOn) return;
-    const d = await page.evaluate(() => window.__playerTruth && window.__playerTruth.drain()).catch(() => null);
+    if (!readerOn || (typeof page.isClosed === 'function' && page.isClosed())) return;
+    const d = await evalPage(page, () => window.__playerTruth && window.__playerTruth.drain()).catch((err) => {
+      const msg = String(err && err.message || err || '');
+      if (/page closed|page stalled/.test(msg)) readerFatal = readerFatal || msg;
+      return null;
+    });
     if (!d) return;
+    if (d.fatal) readerFatal = readerFatal || d.fatal;
     trace.samples.push(...d.samples); trace.events.push(...d.events); trace.longTasks.push(...d.longTasks); trace.keys = d.keys;
     const last = trace.samples[trace.samples.length - 1];
     if (last && Date.now() - lastProgress > 30000) {
@@ -193,7 +204,11 @@ async function runOne(args, arena, extra = {}) {
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
   };
-  const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
+  const phaseNow = () => evalPage(page, () => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
+  const abortIfReaderDead = () => {
+    if (typeof page.isClosed === 'function' && page.isClosed()) throw new Error(readerFatal || 'player-truth: page closed');
+    if (readerFatal) throw new Error(readerFatal);
+  };
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
 
   let doorInfo = null; let renderer = 'unknown'; let browserVersion = browser.version();
@@ -234,6 +249,7 @@ async function runOne(args, arena, extra = {}) {
       let beat = 0; let first = true;
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        abortIfReaderDead();
         const ph = await phaseNow();
         stopReason = overBudget(trace.meta.playStartSim, ph.sim);
         if (ph.ph !== 'active' && round.endSim == null) {
@@ -292,6 +308,7 @@ async function runOne(args, arena, extra = {}) {
       await controlProbes(page, 'spawn', trace.probes);
       let beat = 0;
       while (!(stopReason = overBudget(st0.sim, await simNow(page)))) {
+        abortIfReaderDead();
         const ph = await phaseNow();
         if (ph.mode !== 'flight') { await page.waitForTimeout(800); if (Date.now() - T0 > wallCapMs) break; continue; }
         // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter/Space.
@@ -310,15 +327,17 @@ async function runOne(args, arena, extra = {}) {
     trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
     if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
     console.error(err);
-    await shoot('route failure', false);
+    const shotDead = (typeof page.isClosed === 'function' && page.isClosed()) || /page closed|page stalled/.test(String(err && err.message || err || ''));
+    if (!shotDead) await shoot('route failure', false);
   } finally {
     clearInterval(shotTimer); clearInterval(drainTimer);
     while (busy) await new Promise((r) => setTimeout(r, 100));
     await drain().catch(() => {});
   }
-  if (args.fight) {
-    trace.pacing = summarizePacing(await page.evaluate(() => window.__ptPacing || []).catch(() => []));
-    trace.pacing.director = await page.evaluate(() => {
+  const pageDead = (typeof page.isClosed === 'function' && page.isClosed()) || /page closed|page stalled/.test(String(stopReason || readerFatal || ''));
+  if (args.fight && !pageDead) {
+    trace.pacing = summarizePacing(await evalPage(page, () => window.__ptPacing || []).catch(() => []));
+    trace.pacing.director = await evalPage(page, () => {
       const st = window.SF.state; const d = st.encounterDirector || {}; const ob = st.onboarding || {};
       return { pending: (d.pending || []).map((i) => ({ shapeId: i.shapeId, dueAt: +(+i.dueAt).toFixed(1), defers: i.defers | 0, fireReadyHoldSince: i.fireReadyHoldSince ?? null })),
         stats: d.stats ? { fired: d.stats.fired, fizzled: d.stats.fizzled, resolved: d.stats.resolved, fireReadyExpired: d.stats.fireReadyExpired | 0 } : null,

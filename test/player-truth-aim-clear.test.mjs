@@ -3,7 +3,7 @@
 // heap-OOMed. The click must step off that control toward the canvas.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { retreatAim, swarmBreakWanted, swarmKiteKey } from '../scripts/player-truth/driver.mjs';
+import { retreatAim, swarmBreakWanted, swarmKiteKey, fightAimRefusal, evalPage } from '../scripts/player-truth/driver.mjs';
 
 test('an aim point on the top tape steps toward canvas center until it is clear', () => {
   const cx = 480;
@@ -20,6 +20,23 @@ test('eight blocked steps fall back to canvas center', () => {
 
 test('a clear point is used as-is', () => {
   assert.deepEqual(retreatAim(100, 200, 480, 270, () => false), { x: 100, y: 200 });
+});
+
+test('a HUD control under the aim point is a refusal, not a click', () => {
+  assert.equal(fightAimRefusal({ control: true, label: 'Circuits' }), 'player-truth: fightBeat hit a HUD control (Circuits)');
+  assert.equal(fightAimRefusal({ control: false, label: 'canvas' }), null);
+  assert.equal(fightAimRefusal(null), null);
+});
+
+test('a closed page and a hung evaluate fail fast', async () => {
+  const closed = { isClosed: () => true, evaluate() { throw new Error('should not evaluate'); } };
+  await assert.rejects(() => evalPage(closed, () => 1), /player-truth: page closed/);
+  const hung = { isClosed: () => false, evaluate: () => new Promise(() => {}) };
+  const t0 = Date.now();
+  await assert.rejects(() => evalPage(hung, () => 1, undefined, 40), /player-truth: page stalled/);
+  assert.ok(Date.now() - t0 < 1000, 'the stall timeout must not wait out the default 20s');
+  const gone = { isClosed: () => false, evaluate: async () => { throw new Error('Target page, context or browser has been closed'); } };
+  await assert.rejects(() => evalPage(gone, () => 1, undefined, 1000), /player-truth: page closed/);
 });
 
 test('the swarm fighter stays inside the 260 u guns unless the pack is actually on it', () => {

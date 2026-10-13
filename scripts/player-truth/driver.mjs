@@ -2,14 +2,51 @@
 // events a person produces). Observing window.SF to decide where to aim is allowed — a player
 // sees the enemies on screen — but nothing here writes game state or calls a game service.
 
-export const simNow = (page) => page.evaluate(() => (window.SF && window.SF.state ? window.SF.state.simTime : 0));
-export const wallNow = (page) => page.evaluate(() => performance.now());
+/** A wedged SwiftShader page used to sit inside `page.evaluate` until the reader heap died. */
+export const PAGE_STALL_MS = 20000;
+
+export function isPageGone(err) {
+  return /has been closed|Target closed|page closed|browser has been closed|Execution context was destroyed|frame was detached/i.test(String(err && err.message || err || ''));
+}
+
+/**
+ * `page.evaluate` has no timeout of its own. Race one, and turn a closed page into
+ * `player-truth: page closed` so the fight loop does not keep sampling a dead browser.
+ * `stallMs` is for tests; the harness uses PAGE_STALL_MS.
+ */
+export async function evalPage(page, fn, arg, stallMs = PAGE_STALL_MS) {
+  if (typeof page.isClosed === 'function' && page.isClosed()) throw new Error('player-truth: page closed');
+  let work;
+  try {
+    work = arg === undefined ? page.evaluate(fn) : page.evaluate(fn, arg);
+  } catch (err) {
+    if (isPageGone(err) || (typeof page.isClosed === 'function' && page.isClosed())) throw new Error('player-truth: page closed');
+    throw err;
+  }
+  let timer;
+  const stall = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('player-truth: page stalled')), stallMs);
+  });
+  try {
+    return await Promise.race([work, stall]);
+  } catch (err) {
+    if (isPageGone(err) || (typeof page.isClosed === 'function' && page.isClosed())) throw new Error('player-truth: page closed');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    work.catch(() => {});
+  }
+}
+
+export const simNow = (page) => evalPage(page, () => (window.SF && window.SF.state ? window.SF.state.simTime : 0));
+export const wallNow = (page) => evalPage(page, () => performance.now());
 
 /** Wait until sim time advances by `seconds`, or a predicate (in page) becomes true, or wall cap. */
 export async function waitSim(page, seconds, { maxWallMs = 120000, until = null, arg = null } = {}) {
   const start = await simNow(page); const t0 = Date.now();
   while (Date.now() - t0 < maxWallMs) {
-    const r = await page.evaluate(([want, src, a]) => {
+    if (typeof page.isClosed === 'function' && page.isClosed()) throw new Error('player-truth: page closed');
+    const r = await evalPage(page, ([want, src, a]) => {
       const st = window.SF.state; const done = st.simTime - want.start >= want.s;
       // eslint-disable-next-line no-new-func
       const stop = src ? Function('st', 'a', `return (${src})(st, a);`)(st, a) : false;
@@ -79,9 +116,10 @@ export function nudgeAimTowardCenter(x, y, cx, cy) {
 
 /**
  * Walk an aim point off a HUD control. `isControl(x, y)` is the hit test.
- * Eight blocked steps fall back to the canvas center. The flight tape's Circuits
- * button sits on the top edge; a projected hostile there used to open the race
- * board and freeze sim time (active gate, sim 9.3s, then a heap OOM).
+ * Eight blocked steps fall back to the canvas center. The caller still has to
+ * refuse that point when it is a control: the flight tape's Circuits button
+ * used to take the click, open the race board, and the reader then ran until
+ * the heap died.
  */
 export function retreatAim(x, y, cx, cy, isControl) {
   let ax = x;
@@ -93,18 +131,51 @@ export function retreatAim(x, y, cx, cy, isControl) {
   return { x: cx, y: cy };
 }
 
+/** Stable refusal when a fight click or Space would land on a HUD control. Null when the hit is clear. */
+export function fightAimRefusal(hit) {
+  if (!hit || !hit.control) return null;
+  const label = String(hit.label || 'control').replace(/\s+/g, ' ').trim().slice(0, 40) || 'control';
+  return `player-truth: fightBeat hit a HUD control (${label})`;
+}
+
+const HUD_CONTROL_PROBE = 'button, a, input, select, textarea, [role="button"]';
+
 async function aimClearOfHud(page, x, y, cx, cy) {
   let ax = x;
   let ay = y;
   for (let i = 0; i < AIM_RETREAT_STEPS; i++) {
-    const blocked = await page.evaluate(([px, py]) => {
+    const blocked = await evalPage(page, ([px, py, sel]) => {
       const hit = document.elementFromPoint(Math.round(px), Math.round(py));
-      return !!(hit && hit.closest('button, a, input, select, textarea, [role="button"]'));
-    }, [ax, ay]);
+      return !!(hit && hit.closest(sel));
+    }, [ax, ay, HUD_CONTROL_PROBE]);
     if (!blocked) return { x: ax, y: ay };
     ({ x: ax, y: ay } = nudgeAimTowardCenter(ax, ay, cx, cy));
   }
   return { x: cx, y: cy };
+}
+
+async function hudHitAt(page, x, y) {
+  return evalPage(page, ([px, py, sel]) => {
+    const el = document.elementFromPoint(Math.round(px), Math.round(py));
+    if (!el || el.tagName === 'CANVAS' || typeof el.closest !== 'function') return { control: false, label: '' };
+    const control = el.closest(sel);
+    if (!control) return { control: false, label: '' };
+    const raw = control.innerText || control.getAttribute('aria-label') || control.tagName || 'control';
+    return { control: true, label: String(raw).replace(/\s+/g, ' ').trim().slice(0, 40) };
+  }, [x, y, HUD_CONTROL_PROBE]);
+}
+
+async function focusedHud(page) {
+  return evalPage(page, (sel) => {
+    const el = document.activeElement;
+    if (!el || el.tagName === 'CANVAS' || typeof el.closest !== 'function') return { control: false, label: '' };
+    const control = el.closest(sel);
+    // A focused #screens button is the route (Launch, a dialogue). Space may answer it.
+    // Circuits sits on #race-tape, outside #screens, and Space must not activate it.
+    if (!control || control.closest('#screens')) return { control: false, label: '' };
+    const raw = control.innerText || control.getAttribute('aria-label') || control.tagName || 'control';
+    return { control: true, label: String(raw).replace(/\s+/g, ' ').trim().slice(0, 40) };
+  }, HUD_CONTROL_PROBE);
 }
 
 const fighterMemory = { hull: null, breakBeats: 0 };
@@ -139,10 +210,12 @@ export function swarmKiteKey(dist, beat, breaking) {
  * One beat of a kiting fighter (public input only): aim the mouse at the nearest hostile and fire,
  * hold a 150–250 u standoff inside the 260 u guns, and break off — turn away from the pack and
  * burn — only when 4+ hostiles sit inside 160 u, when hit, or when low and close. Latch (Space)
- * every 7th beat.
+ * every 7th beat. An aim point or a focused flight-tape control that is still a HUD button
+ * throws instead of clicking; a closed or stalled page throws rather than sampling on.
  */
 export async function fightBeat(page, beat) {
-  const tg = await page.evaluate(readTarget).catch(() => null);
+  if (typeof page.isClosed === 'function' && page.isClosed()) throw new Error('player-truth: page closed');
+  const tg = await evalPage(page, readTarget);
   if (!tg) { await page.waitForTimeout(300); return; }
   const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
   fighterMemory.hull = tg.hull;
@@ -153,6 +226,8 @@ export async function fightBeat(page, beat) {
     return;
   }
   const aim = await aimClearOfHud(page, tg.x, tg.y, tg.cx, tg.cy);
+  const refusal = fightAimRefusal(await hudHitAt(page, aim.x, aim.y));
+  if (refusal) throw new Error(refusal);
   await page.mouse.move(Math.round(aim.x), Math.round(aim.y), { steps: 2 });
   await page.mouse.down();
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
@@ -174,7 +249,12 @@ export async function fightBeat(page, beat) {
   await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000 });
   for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k);
   await page.mouse.up();
-  if (beat % 7 === 3) { await page.keyboard.press('Space'); }
+  if (beat % 7 === 3) {
+    // Space activates a focused button. Circuits on the flight tape is one.
+    const latchRefusal = fightAimRefusal(await focusedHud(page));
+    if (latchRefusal) throw new Error(latchRefusal);
+    await page.keyboard.press('Space');
+  }
 }
 
 /** A non-combat flyer for Adventure / racing: thrust bursts and gentle turns, never idle long. */
