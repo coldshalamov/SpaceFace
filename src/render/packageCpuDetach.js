@@ -19,7 +19,7 @@
 // userData, so a structured manifest reference on userData would throw on its own cycle, and a
 // clone carrying a copied mark is rejected by the entry.texture identity check.
 
-import { BufferAttribute } from 'three';
+import { BufferAttribute, Box3, Sphere, Vector3 } from 'three';
 import {
   bumpPackageDetachSerial,
   noteSharedImageSourceRefilled,
@@ -269,8 +269,10 @@ export function createPackageDetachManifest(loaded, options = {}) {
     // bounds query (asteroidInstancePool culls, raycast early-outs) hits the cached fields once
     // the sibling buffers' arrays are released.
     deinterleavePositionAttribute(geometry);
-    try { geometry.computeBoundingSphere(); } catch (_) {}
-    try { geometry.computeBoundingBox(); } catch (_) {}
+    if (!computePlainFloat32Bounds(geometry)) {
+      try { geometry.computeBoundingSphere(); } catch (_) {}
+      try { geometry.computeBoundingBox(); } catch (_) {}
+    }
     entry.fingerprint = geometryFingerprint(geometry);
     geometry.userData = {
       ...(geometry.userData || {}),
@@ -288,6 +290,54 @@ export function createPackageDetachManifest(loaded, options = {}) {
  * (with digest verification inside) and `options.collectResources` re-collects the texture
  * list in that same order so ordinal pairing stays honest.
  */
+/**
+ * Bounds straight off a de-interleaved Float32 position array. Identical results to three's
+ * computeBoundingBox/computeBoundingSphere (same min/max, sphere centered on the box, radius =
+ * max vertex distance) without a getX/getY/getZ call per vertex. Those generic accessors were
+ * ~350 ms of main-thread JS across the swarm arena's package admissions (two full passes for
+ * the sphere plus one for the box). Returns false — caller falls back to three — for anything
+ * outside the plain case (morph targets, interleaved/normalized/non-Float32, itemSize ≠ 3).
+ */
+export function computePlainFloat32Bounds(geometry) {
+  const position = geometry && geometry.attributes && geometry.attributes.position;
+  if (!position || position.isInterleavedBufferAttribute || position.normalized
+    || position.itemSize !== 3 || !(position.array instanceof Float32Array)) return false;
+  if (geometry.morphAttributes && geometry.morphAttributes.position
+    && geometry.morphAttributes.position.length) return false;
+  const a = position.array;
+  const n = position.count * 3;
+  if (n > a.length) return false;
+  if (!geometry.boundingBox) geometry.boundingBox = new Box3();
+  if (!geometry.boundingSphere) geometry.boundingSphere = new Sphere();
+  const box = geometry.boundingBox;
+  if (n === 0) {
+    box.makeEmpty();
+    geometry.boundingSphere.set(new Vector3(), 0);
+    return true;
+  }
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (let i = 0; i < n; i += 3) {
+    const x = a[i], y = a[i + 1], z = a[i + 2];
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+  }
+  box.min.set(minX, minY, minZ);
+  box.max.set(maxX, maxY, maxZ);
+  const center = geometry.boundingSphere.center;
+  box.getCenter(center);
+  const cx = center.x, cy = center.y, cz = center.z;
+  let maxRadiusSq = 0;
+  for (let i = 0; i < n; i += 3) {
+    const dx = a[i] - cx, dy = a[i + 1] - cy, dz = a[i + 2] - cz;
+    const d = dx * dx + dy * dy + dz * dz;
+    if (d > maxRadiusSq) maxRadiusSq = d;
+  }
+  geometry.boundingSphere.radius = Math.sqrt(maxRadiusSq);
+  return true;
+}
+
 export function createSourceDetachManifest(url, textures, options = {}) {
   if (typeof options.redecode !== 'function' || typeof options.collectResources !== 'function') {
     return null;
