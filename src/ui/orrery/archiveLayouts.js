@@ -423,6 +423,69 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 }
 `;
 
+/** Phone Codex — the kit's hang column is 480×k-s, so at 390 the stage track collapses to 0 and the
+ *  absolute plate + title dials paint over the ladder and CLOSE. One column: title, plate, hang,
+ *  reading, foot. Scoped to data-sf-mobile only (desktop 801–1100 stays on #356). */
+const CX_PHONE = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.of-codex.orr-archive.orr-archive';
+const CODEX_PHONE_CSS = `
+${CX_PHONE} { display:flex !important; flex-direction:column !important; row-gap:10px !important; column-gap:0 !important;
+  padding:12px 14px 0 !important; overflow:hidden !important; --cx-plate:min(180px, 46vw); --cx-sections:118px; --cx-gap:10px; --cx-foot-gap:0px; }
+${CX_PHONE} > .k-title { flex:none; order:1; display:flex !important; flex-direction:column !important; align-items:stretch !important;
+  gap:6px; grid-template-columns:none !important; grid-template-rows:none !important; column-gap:0 !important; }
+${CX_PHONE} > .k-title > :not(.cx-index) { grid-column:auto; grid-row:auto; }
+${CX_PHONE} > .k-title > :is(h1, .k-t-title, .k-display) { order:1; margin:0 !important; font-size:clamp(28px, 9vw, 40px) !important; }
+${CX_PHONE} > .k-title > .cx-index { order:2; grid-column:auto !important; grid-row:auto !important; justify-self:stretch !important; align-self:stretch !important;
+  width:100% !important; justify-items:start !important; row-gap:4px; margin:0 !important; }
+${CX_PHONE} > .k-title > p { order:3; margin:2px 0 0 !important; font-size:13px !important; line-height:1.35 !important; max-width:none !important; }
+${CX_PHONE} .cx-index__cap { font-size:10px !important; letter-spacing:.18em !important; }
+${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; gap:2px 6px !important; width:100%; justify-content:flex-start !important; }
+${CX_PHONE} .cx-index__item { grid-template-rows:36px auto; width:52px; }
+${CX_PHONE} .cx-index__dial { width:36px; height:36px; }
+${CX_PHONE} .cx-index__n { font-size:11px !important; padding-top:0; }
+${CX_PHONE} .cx-index__of { font-size:9px; }
+${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:9px !important; letter-spacing:.04em !important; }
+${CX_PHONE} > .cx-plate-host { flex:none; order:2; position:relative !important; inset:auto !important; right:auto !important; top:auto !important;
+  width:var(--cx-plate) !important; height:var(--cx-plate) !important; margin:2px auto 0 !important; }
+${CX_PHONE} > .cx-plate-host[hidden] { display:none !important; }
+${CX_PHONE} > .cx-plate-host::before { inset:-4% !important; }
+${CX_PHONE}[data-plate="on"] > .k-stage { padding-right:0 !important; padding-bottom:0 !important; }
+${CX_PHONE} > .k-hang { flex:1 1 auto; order:3; min-height:0 !important; overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important;
+  grid-template-columns:var(--cx-sections) minmax(0, 1fr) !important; column-gap:var(--cx-gap) !important; row-gap:8px !important; padding:0 !important; }
+${CX_PHONE} > .k-hang > .cx-wedge { display:none !important; }
+${CX_PHONE} > .k-hang > .sf-tabbar { margin-bottom:0 !important; }
+${CX_PHONE}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:0 !important; }
+${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:11px !important; letter-spacing:.1em !important; padding-right:14px !important; }
+${CX_PHONE} .cx-ladder .k-row { padding:4px 4px 4px 28px !important; }
+${CX_PHONE} .cx-ladder .k-row::before { top:12px !important; left:2px !important; width:8px !important; }
+${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
+${CX_PHONE} > .k-stage { flex:0 1 auto; order:4; min-height:0 !important; max-height:34% !important; overflow:hidden auto !important;
+  padding:0 !important; margin:0 !important; }
+${CX_PHONE} .cx-reader__num { gap:8px; margin-bottom:2px !important; }
+${CX_PHONE} .cx-reader__num-n { font-size:28px; line-height:1 !important; }
+${CX_PHONE} .cx-reader__num-of { font-size:12px; }
+${CX_PHONE} .cx-reader__filed { margin-top:0 !important; }
+${CX_PHONE} .sf-codex-entry > h2, ${CX_PHONE} .sf-codex-entry > h2 .k-signal, ${CX_PHONE} .sf-codex-entry > h2 .k-38 { font-size:18px !important; }
+${CX_PHONE} .sf-codex-entry > h2 { margin-top:6px !important; }
+${CX_PHONE} .sf-codex-entry .k-measure .k-sentence { font-size:14px !important; line-height:1.45 !important; }
+${CX_PHONE} .cx-reader__turn { margin-top:8px !important; gap:14px; flex-wrap:wrap; }
+${CX_PHONE} .cx-reader__turn-key { margin-left:0 !important; }
+${CX_PHONE} > .k-foot { flex:none; order:5; z-index:4; margin:0 -14px !important; padding:10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10) 16px) !important; align-items:center !important; min-height:0 !important; }
+${CX_PHONE} > .k-foot .sf-back.k-word { padding:8px 0 10px !important; min-height:40px !important; }
+@media (max-height:560px) {
+  ${CX_PHONE} { row-gap:6px !important; padding-top:8px !important; }
+  ${CX_PHONE} > .cx-plate-host { display:none !important; }
+  ${CX_PHONE} > .k-title > p { display:none !important; }
+  ${CX_PHONE} .cx-index__item { grid-template-rows:28px auto; width:44px; }
+  ${CX_PHONE} .cx-index__dial { width:28px; height:28px; }
+  ${CX_PHONE} .cx-index__w { display:none !important; }
+  ${CX_PHONE} .cx-index__n { font-size:10px !important; }
+  ${CX_PHONE} > .k-stage { max-height:38% !important; }
+  ${CX_PHONE} .sf-tabbar .sf-tab { height:20px !important; font-size:10px !important; letter-spacing:.1em !important; }
+  ${CX_PHONE} > .k-foot { padding-top:6px !important; padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+`;
+
 const MLOG_CSS = `
 /* ================================ MISSION LOG =============================================== */
 ${ML} { --ml-dial:clamp(190px, min(16vw, 30vh), 300px); row-gap:clamp(24px, 4.4vh, 52px) !important; grid-template-areas:"title title" "hang stage" "foot stage" !important; }
@@ -804,7 +867,7 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
 }
 `;
 
-export const ARCHIVE_CSS = HAND + CODEX_CSS + MLOG_CSS + SCROLL_EXTENT_CSS;
+export const ARCHIVE_CSS = HAND + CODEX_CSS + CODEX_PHONE_CSS + MLOG_CSS + SCROLL_EXTENT_CSS;
 
 /** Inject the archive composition once (after the Deckplate and ORRERY sheets). */
 export function injectArchiveLayouts(doc = globalThis.document) {

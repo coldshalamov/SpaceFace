@@ -45,7 +45,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
-| **`codex`** / **`codex-record`** | **DONE** | See § Codex below — this session |
+| **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait/landscape stacked in § Phone Codex below |
 | **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
 | **`credits`** | **DONE** | See § Credits below — this session |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
@@ -575,4 +575,10 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 4. **This file:** stale "no commit" note and duplicate Next lines removed; code touched is `cruciblePreparationLayouts.js` + the one-line inject in `crucibleDraft.js`.
 5. **Scope:** #322 is frozen at Armory + Refit; later screens go to a new PR.
 6. **PNGs:** the eight `docs/ui-polish/crucible-*.png` files are removed from the PR; evidence lives in the PR conversation.
+
+## Phone Codex — session notes (2026-10-13, ui-polish-22)
+
+**Before (390×844):** the kit hang column is ~480×k-s, so the stage track collapses to 0px. The subtitle prints through the unlock dial labels, the absolute plate sits on the entry ladder, and the wedge fans across the hang. **Before (844×390):** ARCHIVE / LEDGER on the section scale paint past CLOSE.
+
+**After (`archiveLayouts.js` only, `data-sf-mobile="1"`):** one column — title (CODEX → dials → subtitle), plate in flow, hang (sections + ladder, clipped), reading, foot docked on a fade. Landscape ≤560px tall hides the plate and dial words so the scale scrolls inside the hang and CLOSE stays clear. Desktop 801–1100 is unchanged here (#356). Selectors/IDs unchanged. Shots: `ui-shots/codex-phone/` (not committed).
 
