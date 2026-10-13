@@ -127,3 +127,15 @@ test('the class is wanted for a live survival run and for nothing else', () => {
   assert.equal(wants(null), false);
   assert.equal(CRUCIBLE_FOCUS_CLASS, 'sf-crucible-focus');
 });
+
+// Worker lane: crucibleFocus is sim-manifest but DOM-only, so the worker (no document) never applied
+// it. The presenting thread mirrors it each rendered frame from the replicated run state.
+test('worker lane: registry.renderUpdate mirrors crucibleFocus on the presenting thread', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
+  const fn = src.slice(src.indexOf('function presentCrucibleFocusOnMain'), src.indexOf('function laneSystemFacade'));
+  assert.match(fn, /laneSimOwned\.has\('crucibleFocus'\)/);
+  assert.match(fn, /crucibleFocus\.update\(/);
+  const render = src.slice(src.indexOf('renderUpdate(alpha, frameDt'), src.indexOf('runRenderUpdatePhase({'));
+  assert.match(render, /presentCrucibleFocusOnMain\(frameDt\)/);
+});

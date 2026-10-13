@@ -920,6 +920,19 @@ export function createRegistry(ctx) {
     }
   }
 
+  // crucibleFocus is DOM-only (a body class, its stylesheet and the swarm camera zoom) but sits in
+  // the sim manifest, so under the worker lane it ran only in the worker, where `document` is
+  // undefined: Swarm and Gauntlet kept the campaign tracker, story line and RADIO/COMMS tape.
+  // Mirror it on the presenting thread from the replicated run state. It writes no sim state.
+  let crucibleFocusOnMain = false;
+  function presentCrucibleFocusOnMain(frameDt) {
+    if (!laneSimOwned || !laneSimOwned.has('crucibleFocus') || typeof document === 'undefined') return;
+    try {
+      if (!crucibleFocusOnMain) { crucibleFocus.init(ctx); crucibleFocusOnMain = true; }
+      crucibleFocus.update(frameDt, ctx.state);
+    } catch (_) { /* presentation only */ }
+  }
+
   function laneSystemFacade(name) {
     const st = ctx && ctx.state;
     switch (name) {
@@ -1262,6 +1275,7 @@ export function createRegistry(ctx) {
     renderUpdate(alpha, frameDt, presentationFrame = null) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
+      presentCrucibleFocusOnMain(frameDt);
       try {
         return runRenderUpdatePhase({
           state,
