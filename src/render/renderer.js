@@ -457,6 +457,7 @@ import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  noteOrientationDetachedHold,
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
@@ -32448,6 +32449,15 @@ export const render = {
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
     const drawSize = applyRendererSize(this.renderer, this.state);
+    // Phone rotation flips the drawing-buffer aspect and is the window that re-entered
+    // upload on CPU-detached ship resources without a context-loss event. Hold those
+    // draws until one refill restores the mirror. A first size, and a same-aspect
+    // resize, do not.
+    const nextAspect = drawSize.x >= drawSize.y ? 'land' : 'port';
+    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
+      noteOrientationDetachedHold(this.renderer);
+    }
+    this._drawBufferAspectClass = nextAspect;
     // Drawing buffer / RT pool sized at max (no dynResScale). Dyn scale is a content sub-rect.
     const dyn = finiteInRange(this.state?.render?.dynResScale, 0.2, 1, 1);
     if (this.bloom) {

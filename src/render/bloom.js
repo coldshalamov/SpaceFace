@@ -40,6 +40,7 @@ import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from 
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
+import { detachedPresentedDrawBlocked, queuePresentedDetachRehydrate } from './packageCpuDetach.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 // The `bloomLevels` setting is a quality tier (1 = tight glow only, 2 = the full halo), not a
@@ -1072,6 +1073,14 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
+    // Before three binds the material or draws the geometry. A CPU-detached compressed
+    // texture throws inside texStorage (mipmaps[0] is gone) and a CPU-detached attribute
+    // uploads a zero-length buffer that fails the indexed draw. Skip this draw and refill
+    // the package; the next frame uploads the restored bytes. Steady residency is not blocked.
+    if (detachedPresentedDrawBlocked(renderer, geometry, material)) {
+      queuePresentedDetachRehydrate(renderer);
+      return undefined;
+    }
     if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
       const data = material.userData;
       const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);

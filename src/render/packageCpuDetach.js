@@ -35,6 +35,18 @@ export { packageDetachSerialNow } from './imageSourceDedupe.js';
 
 const manifests = new Map();
 const GEOMETRY_CPU_KEEP_ATTRIBUTES = new Set(['position', 'sfHullPosition']);
+// Material slots a presented draw binds. An emptied compressed map in one of these is the
+// texStorage `mipmaps[0].width` throw; scanning uniforms would walk every sky shader per draw.
+const PRESENTED_DETACH_TEXTURE_KEYS = Object.freeze([
+  'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap',
+  'lightMap', 'bumpMap', 'displacementMap', 'alphaMap',
+]);
+// Phone rotation (and any other drawing-buffer aspect flip) is the window where WebKit
+// re-enters three's uploader for package resources whose CPU mirror was already released.
+// While the hold is set, a presented draw of those resources is skipped and one rehydrate
+// refills them before the next upload. Steady-state draws do not take the hold.
+let orientationHolds = new WeakSet();
+let presentedDetachRehydrate = null;
 
 // Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
 // release lands in imageSourceDedupe without a back-edge into this module, so membership must
@@ -633,6 +645,80 @@ export function detachedTextureUploadPending(texture, properties) {
   return !props || props.__version !== texture.version;
 }
 
+function presentedMaterialList(material) {
+  if (!material) return null;
+  if (Array.isArray(material)) return material;
+  return material.isMaterial === true || material.isTexture === true ? [material] : [material];
+}
+
+/**
+ * Whether this presented draw would upload a released package payload.
+ * Geometry: three's attribute update creates a zero-length buffer when its GPU record is gone
+ * or the released attribute's version moved, and the following drawElements then fails with
+ * "Vertex buffer is not big enough". Texture: three's compressed texStorage reads mipmaps[0]
+ * on the emptied chain (`Ye[0].width` once minified). Both are silent while the live GPU copy
+ * still matches; the orientation hold covers the resize window where that copy is no longer
+ * safe to trust and the version stamp has not moved yet.
+ */
+export function detachedPresentedDrawBlocked(renderer, geometry, material) {
+  const hold = !!(renderer && orientationHolds.has(renderer));
+  const geometryMark = geometry && geometry.userData && geometry.userData.spacefaceCpuDetach;
+  if (geometryMark && (
+    detachedGeometryUploadPending(geometry, renderer)
+    || (hold && isPackageGeometryDetached(geometry))
+  )) return true;
+  const materials = presentedMaterialList(material);
+  if (!materials) return false;
+  const properties = renderer && renderer.properties;
+  for (let i = 0; i < materials.length; i++) {
+    const mat = materials[i];
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (!texture || texture.isTexture !== true) continue;
+      if (detachedTextureUploadPending(texture, properties)) return true;
+      if (hold && isPackageTextureDetached(texture)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * One in-flight refill for every detached package. The draw guard and the orientation hold
+ * share it so a rotation cannot decode the fleet twice. The hold drops only after the refill
+ * finishes: clearing it earlier lets the next frame upload the still-empty mirror.
+ */
+export function queuePresentedDetachRehydrate(renderer) {
+  if (presentedDetachRehydrate) return presentedDetachRehydrate;
+  const held = renderer || null;
+  let flight = null;
+  flight = Promise.resolve()
+    .then(() => rehydrateDetachedPackages())
+    .finally(() => {
+      if (presentedDetachRehydrate === flight) presentedDetachRehydrate = null;
+      if (held) orientationHolds.delete(held);
+    });
+  presentedDetachRehydrate = flight;
+  return flight;
+}
+
+/** Test seam: the refill promised by the latest presented-draw block, or null. */
+export function presentedDetachRehydrateInFlight() {
+  return presentedDetachRehydrate;
+}
+
+/**
+ * Mark this renderer so the next presented draws of CPU-detached package resources wait
+ * for a refill. Used when the drawing buffer flips aspect (phone rotation): that is the
+ * window that re-entered upload without a context-loss event.
+ */
+export function noteOrientationDetachedHold(renderer) {
+  if (!renderer) return false;
+  orientationHolds.add(renderer);
+  queuePresentedDetachRehydrate(renderer);
+  return true;
+}
+
 async function rehydrateManifest(manifest) {
   const decoded = await manifest.redecode();
   const template = decodedTemplate(decoded);
@@ -885,4 +971,6 @@ export function packageDetachDiagnostics() {
 /** Test/reset seam: drops every manifest (used by node --test isolation). */
 export function resetPackageDetachManifestsForTests() {
   manifests.clear();
+  orientationHolds = new WeakSet();
+  presentedDetachRehydrate = null;
 }
