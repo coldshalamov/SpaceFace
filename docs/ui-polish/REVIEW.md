@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-11` (PR pending) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-16` (PR pending) · stacked on `master`.
 
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
@@ -116,7 +116,15 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 - **Standing scale (all sizes):** on a staggered scale a tier name may use two bands before it splits, so SWORN ENEMY is one line at 1280. The end names sit flush with the rule's ends. The name width estimate is 9.4px a glyph (8.4 let neighbours touch).
 - **Bar:** the name is one 24px line, the words stop 330px short of the bay's right edge, and the portrait is capped at 300px at the right edge, so the arc and reply dial never cross her line. At ≤640 tall the three replies stay on glass (the 1–3 hint sleeps; the dial carries the numbers).
 
-At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are pixel-identical to master; Factions changes only in its scale names. The rules are desktop-only (`:not([data-sf-mobile="1"])`). **Still open:** at 1024×768 SWORN ENEMY still splits and its top line touches HATED (as on master). Shots: `ui-shots/tabs960/`.
+At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are pixel-identical to master; Factions changes only in its scale names. The rules are desktop-only (`:not([data-sf-mobile="1"])`). Shots: `ui-shots/tabs960/`.
+
+### Factions standing labels @1024×768 (ui-polish-16)
+
+**#340 merged** into master (Industry/Factions/Bar @960). Open: #341, #342.
+
+**Before:** at 1024×768 the standing scale is ~460px wide; SWORN ENEMY still split under stagger and its top line sat ~2px from HATED's raised baseline.
+
+**After (`crestOrbit.js` only):** when a flush end name would need two lines, force stagger; when an even tier still splits under stagger, lift the odd row (rise 24 + 12px headroom) so SWORN ENEMY clears HATED. 960×540 (≤640 ladder) and 1280×720 pixel-identical to master; 1920 gets the same end-name stagger so the flush label no longer shares a baseline with HATED. Shots: `/workspace/spaceface-scratch/ui-shots/factions-standing/`.
 
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 

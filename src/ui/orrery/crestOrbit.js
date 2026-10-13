@@ -516,7 +516,6 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   const rungTop = compact ? 50 : 56;
   let h = 74 + top;
   const x0 = 0; const x1 = w - 12;
-  const y = 40 + top;
   const n = Math.max(2, tiers.length);
   const cur = clampRep(rep);
   // tier-indexed: each tier is one equal step; the rep sits a fraction of the way through its tier
@@ -531,6 +530,35 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   const xAt = (p) => x0 + (p / n) * (x1 - x0);
   const current = tierIndexOf(cur);
   const aggroPos = posOf(aggro);
+  // a narrow scale staggers the tier names on two rows above the rule, so neighbours never
+  // overprint: a name that fits its band stays put, otherwise alternate tiers rise one line
+  const bandW = (x1 - x0) / n;
+  // a tier name is 12px caps at .1-.12em tracking: ~9.4px a glyph (8.4 under-read it, so neighbours touched)
+  const nameGlyph = 9.4;
+  const nameNeed = (raw) => {
+    const nm = String(raw).toUpperCase();
+    const sp0 = nm.indexOf(' ');
+    return nm.length * nameGlyph > bandW - 4 && sp0 > 0
+      ? Math.max(sp0, nm.length - sp0 - 1) * nameGlyph : nm.length * nameGlyph;
+  };
+  let stagger = tiers.some((t) => nameNeed(t.name) > bandW - 4);
+  // a flush end name that still needs two lines would share a baseline with its neighbour — stagger it
+  if (!stagger && tiers.length) {
+    const first = String(tiers[0].name).toUpperCase();
+    const last = String(tiers[tiers.length - 1].name).toUpperCase();
+    if (first.length * nameGlyph > bandW - 4 || last.length * nameGlyph > bandW - 4) stagger = true;
+  }
+  // when an even tier still splits under stagger, its top line sits ~2px from the odd row at rise 13
+  // (SWORN ENEMY / HATED at 1024×768); lift the odd row so the split clears
+  const staggerBand = stagger ? bandW * 2 : bandW;
+  const evenSplits = stagger && tiers.some((t, i) => {
+    if (i % 2 === 1) return false;
+    const nm = String(t.name).toUpperCase();
+    return nm.length * nameGlyph > staggerBand - 4 && nm.includes(' ');
+  });
+  const rise = evenSplits ? 24 : 13;
+  const head = evenSplits ? 12 : 0;
+  const y = 40 + top + head;
   // the rungs' rows, assigned right to left: a rung stands one row deeper than the deepest rung that
   // stands inside its own word's run, so no leader ever drops through a neighbour's word
   const glyph = compact ? 8.2 : 8.9;
@@ -546,8 +574,9 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     placed[k].row = row;
   }
   const rowsUsed = placed.length ? Math.max(...placed.map((q) => q.row)) + 1 : 0;
-  if (rungs.length && rungWords) h = 40 + top + rungTop + (rowsUsed - 1) * pitch + 11 + 10 + (rungs.some((r) => Array.isArray(r.detail) && r.detail.length) ? 26 : 0);
-  else if (rungs.length) h = 74 + 10 + top;
+  if (rungs.length && rungWords) h = 40 + top + head + rungTop + (rowsUsed - 1) * pitch + 11 + 10 + (rungs.some((r) => Array.isArray(r.detail) && r.detail.length) ? 26 : 0);
+  else if (rungs.length) h = 74 + 10 + top + head;
+  else h = 74 + top + head;
   let out = `<svg class="orr-svg${compact ? ' is-compact' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
   out += `<path class="orr-band orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}"/>`;
   out += `<path class="orr-edge orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}"/>`;
@@ -558,18 +587,6 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   for (let v = Math.ceil(repMin / 25) * 25; v <= REP_CAP; v += 25) { if (tiers.some((t) => t.min === v)) continue; const x = xAt(posOf(v)); fine += `M ${f(x)} ${y + 1} L ${f(x)} ${y + 5.5} `; }
   out += `<path class="orr-tick" d="${fine}" style="stroke:rgb(236 230 216 / .3)"/>`;
   out += '<!--pin-->';
-  // a narrow scale staggers the tier names on two rows above the rule, so neighbours never
-  // overprint: a name that fits its band stays put, otherwise alternate tiers rise one line
-  const bandW = (x1 - x0) / n;
-  // a tier name is 12px caps at .1-.12em tracking: ~9.4px a glyph (8.4 under-read it, so neighbours touched)
-  const nameGlyph = 9.4;
-  const stagger = tiers.some((t) => {
-    const nm = String(t.name).toUpperCase();
-    const sp0 = nm.indexOf(' ');
-    const need = nm.length * nameGlyph > bandW - 4 && sp0 > 0
-      ? Math.max(sp0, nm.length - sp0 - 1) * nameGlyph : nm.length * nameGlyph;
-    return need > bandW - 4;
-  });
   tiers.forEach((t, i) => {
     const x = xAt(i);
     const hostile = t.min <= aggro;
@@ -579,10 +596,10 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     const anchor = 'middle';
     const nx = xAt(i + 0.5);
     // on a staggered scale a name's neighbours stand on the other row, so it may use two bands before it splits
-    const band = stagger ? bandW * 2 : bandW;
+    const band = staggerBand;
     const sp = name.indexOf(' ');
     const parts = name.length * nameGlyph > band - 4 && sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name];
-    const dy = stagger && i % 2 === 1 ? -13 : 0;
+    const dy = stagger && i % 2 === 1 ? -rise : 0;
     parts.forEach((part, pi) => {
       const py = y - 13 + dy - (parts.length - 1 - pi) * 11;
       // the end names stand flush with the rule's own ends, so a long one never runs off the scale
