@@ -1,9 +1,11 @@
 // Twelve Spectrum cases. Truth poses live here so the sim can run the forward
 // sensor model. The player-facing row is built without copying these poses.
 // Families: 3 navigation, 3 moving hunts, 3 deceptions, 3 salvage disasters.
-// Each case uses a different spatial trick. Payoffs are physical (brake to a
-// stop, match an intercept velocity, tow a relay, block a line and place a
-// decoy), not a ping to collect.
+// Each case uses a different spatial trick. The payoff is that trick: parallax
+// baselines, a drift tone, an occlusion window, a spoofed chirp, a tow, a
+// velocity match, a blocked line, a jam that was left, a lantern occult, a
+// dwell on the recorders, or a sweep-arm shadow. Stopping within 150 of a fix
+// is not a payoff.
 
 function emitter(spec) {
   return Object.freeze(spec);
@@ -20,7 +22,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 640, z: 280, radius: 1200 }),
     solve: 'fix',
     wantClass: 'STATIONARY',
-    payoff: 'brake',
+    payoff: 'parallax',
     bodyId: 'buoy',
     emitters: Object.freeze([
       emitter({ id: 'buoy', tone: 11, power: 1, motion: 'fixed', pos: Object.freeze({ x: 1503, z: -137 }) }),
@@ -73,7 +75,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 400, z: 300, radius: 1600 }),
     solve: 'classify',
     wantClass: 'DRIFTING',
-    payoff: 'brake',
+    payoff: 'tone',
     bodyId: 'apex',
     emitters: Object.freeze([
       emitter({
@@ -127,7 +129,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 200, z: 200, radius: 1600 }),
     solve: 'fix',
     wantClass: null,
-    payoff: 'brake',
+    payoff: 'window',
     bodyId: 'wreck',
     emitters: Object.freeze([
       emitter({
@@ -152,7 +154,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 600, z: 200, radius: 1400 }),
     solve: 'classify',
     wantClass: 'DRIFTING',
-    payoff: 'brake',
+    payoff: 'spoof',
     bodyId: 'hull',
     emitters: Object.freeze([
       emitter({
@@ -221,7 +223,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 200, z: 700, radius: 1400 }),
     solve: 'fix',
     wantClass: 'STATIONARY',
-    payoff: 'brake',
+    payoff: 'jam',
     bodyId: 'cache',
     emitters: Object.freeze([
       emitter({
@@ -248,7 +250,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 500, z: 200, radius: 1400 }),
     solve: 'survivor',
     wantClass: 'STATIONARY',
-    payoff: 'brake',
+    payoff: 'occult',
     bodyId: 'wreck',
     emitters: Object.freeze([
       emitter({
@@ -277,7 +279,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 250, z: 250, radius: 1600 }),
     solve: 'backtrack',
     silenceS: 10,
-    payoff: 'brake',
+    payoff: 'dwell',
     bodyId: 'sled',
     // Cargo sits at the impact. It does not transmit. Recorders: impact + velocity * silence.
     sled: Object.freeze({ x: 200, z: 200 }),
@@ -310,7 +312,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 0, z: 800, radius: 1200 }),
     solve: 'fix',
     wantClass: 'STATIONARY',
-    payoff: 'brake',
+    payoff: 'shadow',
     bodyId: 'leak',
     emitters: Object.freeze([
       emitter({ id: 'leak', tone: 71, power: 1, motion: 'fixed', pos: Object.freeze({ x: 0, z: 520 }) }),
@@ -335,7 +337,7 @@ export const SPECTRUM_CASES = Object.freeze([
     search: Object.freeze({ x: 600, z: 200, radius: 1400 }),
     solve: 'classify',
     wantClass: 'DRIFTING',
-    payoff: 'brake',
+    payoff: 'live',
     bodyId: 'live',
     emitters: Object.freeze([
       emitter({

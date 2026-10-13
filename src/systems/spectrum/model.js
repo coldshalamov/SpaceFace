@@ -585,6 +585,7 @@ export function applyMeasure(model, origin, velocity, simTime) {
       identity: model.identity,
       revealed: model.revealed === true,
     });
+    maybeFinishMechanism(model);
     return publicSpectrum(model);
   }
   model.jamWu = 0;
@@ -642,6 +643,7 @@ export function applyMeasure(model, origin, velocity, simTime) {
       identity: model.identity,
       revealed: model.revealed === true,
     });
+    maybeFinishMechanism(model);
     return publicSpectrum(model);
   }
 
@@ -764,6 +766,7 @@ export function applyMeasure(model, origin, velocity, simTime) {
     motionClass: focus ? focus.motionClass : 'UNKNOWN',
     focus: model.focusKey,
   });
+  maybeFinishMechanism(model);
   return publicSpectrum(model);
 }
 
@@ -791,6 +794,7 @@ export function applyFocus(model, keyOrClass) {
   model.manualFocus = true;
   const def = definitionOf(model);
   if (def) considerReveal(def, model);
+  maybeFinishMechanism(model);
   return true;
 }
 
@@ -816,6 +820,165 @@ export function applyTow(model, propId, to, player, simTime) {
     }
   }
   return { ok: true, reversed: model.reversed === true };
+}
+
+function logHas(model, reason) {
+  const log = model.log || [];
+  for (let i = 0; i < log.length; i++) if (log[i] && log[i].reason === reason) return true;
+  return false;
+}
+
+function sampleOrigins(model) {
+  const origins = [];
+  const tracks = Object.values(model.tracks || {});
+  for (let i = 0; i < tracks.length; i++) {
+    const samples = tracks[i].samples || [];
+    for (let s = 0; s < samples.length; s++) {
+      if (samples[s] && samples[s].origin) origins.push(samples[s].origin);
+    }
+  }
+  return origins;
+}
+
+function baselinesDiverge(origins) {
+  const baselines = [];
+  for (let i = 0; i < origins.length; i++) {
+    for (let j = i + 1; j < origins.length; j++) {
+      const dx = origins[j].x - origins[i].x;
+      const dz = origins[j].z - origins[i].z;
+      if (Math.hypot(dx, dz) < MIN_BASELINE_WU) continue;
+      baselines.push({ x: dx, z: dz });
+    }
+  }
+  for (let i = 0; i < baselines.length; i++) {
+    for (let j = i + 1; j < baselines.length; j++) {
+      const a = baselines[i];
+      const b = baselines[j];
+      const al = Math.hypot(a.x, a.z) || 1;
+      const bl = Math.hypot(b.x, b.z) || 1;
+      const cos = (a.x * b.x + a.z * b.z) / (al * bl);
+      if (cos < 0.94) return true;
+    }
+  }
+  return false;
+}
+
+function focusedTrack(model) {
+  return model.tracks && model.focusKey ? model.tracks[model.focusKey] : null;
+}
+
+function lastChirp(track) {
+  if (!track || !track.samples || !track.samples.length) return 0;
+  const sample = track.samples[track.samples.length - 1];
+  return Number(sample.chirp) || 0;
+}
+
+function maybeFinishMechanism(model) {
+  if (!model || model.resolved || !model.revealed) return false;
+  const def = definitionOf(model);
+  if (!def) return false;
+  const focus = focusedTrack(model);
+  if (def.payoff === 'parallax' && baselinesDiverge(sampleOrigins(model))) {
+    finish(model, def);
+    return true;
+  }
+  if (def.payoff === 'window' && logHas(model, 'occluded') && focus && focus.motionClass === 'DRIFTING') {
+    finish(model, def);
+    return true;
+  }
+  if (def.payoff === 'shadow' && logHas(model, 'occluded') && focus && focus.motionClass === 'STATIONARY') {
+    finish(model, def);
+    return true;
+  }
+  if (def.payoff === 'jam' && logHas(model, 'jammed')) {
+    finish(model, def);
+    return true;
+  }
+  if (def.payoff === 'dwell') {
+    const tracks = Object.values(model.tracks);
+    let recordings = 0;
+    let read = 0;
+    for (let i = 0; i < tracks.length; i++) {
+      if (tracks[i].motionClass !== 'RECORDING') continue;
+      recordings += 1;
+      if ((tracks[i].dwells || 0) >= 2) read += 1;
+    }
+    if (recordings >= 3 && read === recordings) {
+      finish(model, def);
+      return true;
+    }
+  }
+  if (def.payoff === 'live' && focus && focus.motionClass === 'DRIFTING' && logHas(model, 'jammed')) {
+    const tracks = Object.values(model.tracks);
+    const recording = tracks.find((track) => track.motionClass === 'RECORDING');
+    if (recording && Math.abs(lastChirp(focus) - lastChirp(recording)) > RECORDING_GAP_WU_S) {
+      finish(model, def);
+      return true;
+    }
+  }
+  return false;
+}
+
+function spoofSeparated(model) {
+  const focus = focusedTrack(model);
+  if (!focus || focus.motionClass !== 'DRIFTING') return false;
+  if (Math.abs(lastChirp(focus)) < DRIFT_SPEED_WU_S) return false;
+  const tracks = Object.values(model.tracks);
+  return tracks.some((track) => track !== focus && track.contradiction === true
+    && Math.abs(lastChirp(track)) + 8 < Math.abs(lastChirp(focus)));
+}
+
+function applySpoof(model, def, velocity) {
+  if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
+  if (!spoofSeparated(model)) return { ok: false, reason: 'spoof-not-split' };
+  const earned = model.velocity || { x: 0, z: 0 };
+  const vx = velocity && velocity.x || 0;
+  const vz = velocity && velocity.z || 0;
+  if (Math.hypot(vx, vz) <= BRAKE_HOLD_WU_S) return { ok: false, reason: 'dead-stop' };
+  if (Math.hypot(vx - earned.x, vz - earned.z) > BRAKE_HOLD_WU_S) return { ok: false, reason: 'velocity-mismatch' };
+  finish(model, def);
+  return { ok: true, resolved: true };
+}
+
+function applyTone(model, def, velocity) {
+  if (!model.revealed || !model.fix) return { ok: false, reason: 'no-fix' };
+  const track = focusedTrack(model);
+  if (!track || track.motionClass !== 'DRIFTING') return { ok: false, reason: 'wrong-tone' };
+  if (Math.abs(lastChirp(track)) < DRIFT_SPEED_WU_S) return { ok: false, reason: 'tone-quiet' };
+  const tracks = Object.values(model.tracks);
+  const quiet = tracks.some((other) => other !== track && other.samples && other.samples.length && Math.abs(lastChirp(other)) < DRIFT_SPEED_WU_S);
+  if (!quiet) return { ok: false, reason: 'no-chord' };
+  const earned = model.velocity || { x: 0, z: 0 };
+  const vx = velocity && velocity.x || 0;
+  const vz = velocity && velocity.z || 0;
+  if (Math.hypot(vx, vz) <= BRAKE_HOLD_WU_S) return { ok: false, reason: 'dead-stop' };
+  if (Math.hypot(vx - earned.x, vz - earned.z) > BRAKE_HOLD_WU_S) return { ok: false, reason: 'velocity-mismatch' };
+  finish(model, def);
+  return { ok: true, resolved: true };
+}
+
+function applyOccult(model, def, player, simTime) {
+  if (!model.revealed || !player) return { ok: false, reason: 'no-fix' };
+  const elapsed = Number(simTime) - model.armedAt;
+  const occluders = occluderPoses(def, elapsed, model);
+  let lantern = null;
+  let wreck = null;
+  for (let i = 0; i < def.emitters.length; i++) {
+    const emitter = def.emitters[i];
+    if (emitter.role === 'decoy') lantern = emitter;
+    if (emitter.id === def.bodyId) wreck = emitter;
+  }
+  if (!lantern || !wreck) return { ok: false, reason: 'no-body' };
+  const lanternPose = poseOf(lantern, elapsed, model);
+  const wreckPose = poseOf(wreck, elapsed, model);
+  if (!lanternPose || !wreckPose) return { ok: false, reason: 'no-body' };
+  if (!segmentBlocked(player, lanternPose, occluders)) return { ok: false, reason: 'lantern-visible' };
+  if (segmentBlocked(player, wreckPose, occluders)) return { ok: false, reason: 'wreck-shadowed' };
+  const tracks = Object.values(model.tracks);
+  const heard = tracks.some((track) => track.sourceId === def.bodyId && track.heardWhileClaimSilent);
+  if (!heard) return { ok: false, reason: 'lantern-still-loud' };
+  finish(model, def);
+  return { ok: true, resolved: true };
 }
 
 function arriveOnBody(model, def, player, simTime) {
@@ -885,6 +1048,9 @@ export function applyBrake(model, player, velocity, simTime) {
   if (!def) return { ok: false, reason: 'idle' };
   if (def.payoff === 'match') return applyMatch(model, def, player, velocity, simTime);
   if (def.payoff === 'block' || def.payoff === 'decoy') return applyBlock(model, def, player, velocity, simTime);
+  if (def.payoff === 'tone') return applyTone(model, def, velocity);
+  if (def.payoff === 'spoof') return applySpoof(model, def, velocity);
+  if (def.payoff === 'occult') return applyOccult(model, def, player, simTime);
   if (def.payoff !== 'brake') return { ok: false, reason: 'no-brake-payoff' };
   const speed = Math.hypot(velocity && velocity.x || 0, velocity && velocity.z || 0);
   if (speed > BRAKE_HOLD_WU_S) return { ok: false, reason: 'still-moving' };

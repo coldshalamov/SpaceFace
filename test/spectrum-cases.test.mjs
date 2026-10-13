@@ -55,6 +55,15 @@ function tow(run, propId, x, z) {
   return { ...run.state.spectrum.propPos[propId] };
 }
 
+function rideEarnedVelocity(run) {
+  const earned = run.state.spectrum.velocity;
+  if (!earned) throw new Error(`no earned drift ${summary(run)}`);
+  run.player.vel.x = earned.x;
+  run.player.vel.z = earned.z;
+  run.state.input.actions.brake = true;
+  run.sim.runTicks(1);
+}
+
 function matchAtFix(run) {
   const model = run.state.spectrum;
   if (!model.fix || !model.velocity) throw new Error(`no intercept ${summary(run)}`);
@@ -109,7 +118,6 @@ const ROUTES = {
     pulseAt(run, 1, { x: 0, z: 0 });
     pulseAt(run, 12, { x: 0, z: 620 });
     pulseAt(run, 24, { x: -480, z: 180 });
-    brakeAtFix(run);
   },
   spectrum_echo_gallery(run) {
     pulseAt(run, 1, { x: 0, z: 0 });
@@ -124,7 +132,7 @@ const ROUTES = {
     pulseAt(run, 24, { x: -280, z: 360 });
     pulseAt(run, 36, { x: 240, z: 80 });
     run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
-    brakeAtFix(run);
+    rideEarnedVelocity(run);
   },
   spectrum_courier_shear(run) {
     pulseAt(run, 1, { x: 0, z: 0 });
@@ -138,7 +146,7 @@ const ROUTES = {
     pulseAt(run, 18, { x: -420, z: 220 });
     pulseAt(run, 30, { x: -600, z: -100 });
     pulseAt(run, 48, { x: -800, z: 1200 });
-    brakeAtFix(run);
+    pulseAt(run, 60, { x: 400, z: 0 });
   },
   spectrum_split_wake(run) {
     pulseAt(run, 1, { x: 200, z: 900 });
@@ -146,7 +154,7 @@ const ROUTES = {
     pulseAt(run, 24, { x: 400, z: 1100 });
     pulseAt(run, 36, { x: -80, z: 480 });
     run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
-    brakeAtFix(run);
+    rideEarnedVelocity(run);
   },
   spectrum_mirror_mine(run) {
     pulseAt(run, 1, { x: 200, z: 180 });
@@ -166,26 +174,29 @@ const ROUTES = {
     pulseAt(run, 12, { x: 1100, z: 420 });
     pulseAt(run, 24, { x: 1100, z: -180 });
     pulseAt(run, 36, { x: 1460, z: 220 });
-    brakeAtFix(run);
   },
   spectrum_false_lantern(run) {
     pulseAt(run, 1, { x: 0, z: -400 });
     pulseAt(run, 12, { x: 600, z: 0 });
     pulseAt(run, 24, { x: 1050, z: 0 });
     pulseAt(run, 36, { x: 800, z: -360 });
-    brakeAtFix(run);
+    run.player.pos.x = 360;
+    run.player.pos.z = 160;
+    run.player.vel.x = 0;
+    run.player.vel.z = 0;
+    run.state.input.actions.brake = true;
+    run.sim.runTicks(1);
   },
   spectrum_black_box(run) {
     pulseAt(run, 1, { x: 700, z: 200 });
     pulseAt(run, 12, { x: 200, z: 760 });
     pulseAt(run, 24, { x: -180, z: 80 });
-    brakeAtFix(run);
   },
   spectrum_vent_shadow(run) {
     pulseAt(run, 1, { x: 0, z: 1200 });
     pulseAt(run, 12, { x: 420, z: 1200 });
     pulseAt(run, 24, { x: -340, z: 1100 });
-    brakeAtFix(run);
+    pulseAt(run, 33, { x: -1000, z: 600 });
   },
   spectrum_lifeboat_lie(run) {
     pulseAt(run, 1, { x: 0, z: 0 });
@@ -194,7 +205,6 @@ const ROUTES = {
     pulseAt(run, 36, { x: 1400, z: -200 });
     pulseAt(run, 48, { x: 200, z: 1400 });
     run.bus.emit('spectrum:focus', { motionClass: 'DRIFTING' });
-    brakeAtFix(run);
   },
 };
 
@@ -215,7 +225,10 @@ test('twelve cases, three in each family, no shared layout', () => {
   assert.equal(payoffs.tow, 1);
   assert.equal(payoffs.match, 1);
   assert.equal(payoffs.block, 1);
-  assert.ok(payoffs.brake < 11, JSON.stringify(payoffs));
+  assert.equal(payoffs.brake, undefined, JSON.stringify(payoffs));
+  for (const name of ['parallax', 'tone', 'window', 'spoof', 'jam', 'occult', 'dwell', 'shadow', 'live']) {
+    assert.equal(payoffs[name], 1, `${name} ${JSON.stringify(payoffs)}`);
+  }
   const mechanisms = new Set(SPECTRUM_CASES.flatMap((row) => row.mechanisms));
   for (const name of ['bearing', 'chirp', 'occlusion', 'multipath', 'spoof', 'jam']) {
     assert.ok(mechanisms.has(name), name);
@@ -237,7 +250,7 @@ for (const spec of SPECTRUM_CASES) {
     assert.equal(run.events.courses.length, 0);
     assert.ok(run.events.resolved.length === 1);
     const truth = bodyTruth(spec, run.state.simTime - run.state.spectrum.armedAt);
-    if (view.fix && spec.payoff === 'brake') {
+    if (view.fix) {
       assert.ok(dist2(view.fix, truth) < 160 || dist2(run.player.pos, truth) < 160, summary(run));
     }
     const row = run.events.results.find((payload) => payload.primary && String(payload.primary.id).startsWith('spectrum:'));
@@ -343,7 +356,7 @@ test('braking on the wrong drift buoy does not complete the chord', () => {
   run.state.input.actions.brake = true;
   run.sim.runTicks(1);
   assert.equal(run.state.spectrum.resolved, false);
-  brakeAtFix(run);
+  rideEarnedVelocity(run);
   assert.equal(run.state.spectrum.resolved, true, summary(run));
 });
 
@@ -447,4 +460,25 @@ test('blocking the raider line is required; a brake with the slab parked does no
   run.state.spectrum.propPos.slab = parked;
   brakeAtFix(run);
   assert.equal(run.state.spectrum.resolved, true, summary(run));
+});
+
+test('stopping within 150 of a known fix does not collect a mechanism survey', () => {
+  const ids = [
+    'spectrum_cold_parallax', 'spectrum_drift_chord', 'spectrum_skimming_wreck',
+    'spectrum_split_wake', 'spectrum_jam_curtain', 'spectrum_false_lantern',
+    'spectrum_black_box', 'spectrum_vent_shadow', 'spectrum_lifeboat_lie',
+  ];
+  for (const id of ids) {
+    const run = boot(3);
+    run.bus.emit('spectrum:arm', { caseId: id });
+    const spec = spectrumCaseById(id);
+    run.state.spectrum.revealed = true;
+    run.state.spectrum.fix = { x: 10, z: 10 };
+    run.state.spectrum.velocity = { x: 0, z: 0 };
+    run.state.spectrum.fixTime = run.state.simTime;
+    run.state.spectrum.identity = spec.publicName;
+    brakeAtFix(run);
+    assert.equal(run.state.spectrum.resolved, false, id);
+    assert.equal(spec.payoff === 'brake', false, id);
+  }
 });

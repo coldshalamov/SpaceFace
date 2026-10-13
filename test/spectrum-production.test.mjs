@@ -55,7 +55,7 @@ test('measurement and braking use the current physical source, and a retired sou
   assert.ok(Math.abs(publicSpectrum(model).bearingDeg - bearingDeg(f.player.pos, source.pos)) < 0.01);
   model.revealed = true; model.fix = { x: 400, z: 300 }; model.velocity = { x: 0, z: 0 }; model.fixTime = 8;
   source.alive = false; refreshSpectrumBodies(model, f.state);
-  assert.equal(applyBrake(model, { x: 400, z: 300 }, { x: 0, z: 0 }, 8).reason, 'no-body');
+  assert.equal(applyBrake(model, { x: 400, z: 300 }, { x: 0, z: 0 }, 8).reason, 'no-brake-payoff');
   assert.equal(model.resolved, false);
   f.system.destroy(); f.sim.dispose();
 });
