@@ -329,6 +329,17 @@ export function checkSpawnMotion(trace) {
     const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
     checked++;
+    // Swarm retains displaced cover and debris as the next round's terrain. These exact
+    // lives already belonged to active play; their earned motion is not a new spawn. New
+    // occupants use distinct reader life ids, and preparation-only bodies still grade below.
+    const carriedLives = new Map();
+    if (st.wave != null && hasRunMetadata) {
+      for (let i = 0; i < index; i++) {
+        const prior = trace.samples[i];
+        if (prior.mode !== 'flight' || prior.run?.ph !== 'active' || !(prior.run.w < st.wave)) continue;
+        for (const e of prior.e || []) carriedLives.set(e[E.id], e[E.cls]);
+      }
+    }
     // The actor can announce opening several ticks late. Record each initial passive life's
     // first observed state through that announcement, rather than regrade post-solve drift.
     // Include the announcement's first sample: reader sim stamps are rounded to milliseconds.
@@ -344,6 +355,7 @@ export function checkSpawnMotion(trace) {
       if (firstIn && firstIn.sim < frame.sim) break;
       for (const e of frame.e) {
         if (!(e[E.cls] === CLS.asteroid || e[E.cls] === CLS.pickup || e[E.cls] === CLS.other)) continue;
+        if (carriedLives.get(e[E.id]) === e[E.cls]) continue;
         if (seen.has(e[E.id])) continue;
         seen.add(e[E.id]);
         const d = Math.hypot(e[E.x] - frame.p.x, e[E.z] - frame.p.z); if (d > T.spawnRadius) continue;
