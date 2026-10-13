@@ -9,7 +9,7 @@ export const LIMITATIONS = Object.freeze([
   'Pixel, exposure, anti-alias, and compositor differences are review items. They do not fail the build.',
   'Stations, gates, beacons, and landmarks are joined from authored sector anchors because the flight-lab bundle does not call world.enterSector.',
   'Asteroid rings use the production place id and size range at the authored field center. They are not a second scatter simulation.',
-  'Live shield and shieldMax are on the lab checkpoint surface. The shield shell radius is the entity radius while the current shield is above zero. A presented shield disc is a separate measurement with coverage 0.22.',
+  'Live shield and shieldMax are on the lab checkpoint surface. While the current shield is above zero, the presented disc is the live shell radius (entity.radius) with coverage 0.22. A shield of 0 draws no disc.',
   'No WebGL context is created. runtimeFps is null. captureCostMs is witness wall time, not a frame-time measurement.',
   'Whole-ship LOD runtime demotion is off. Census LOD outline flags are review items, not drawn swaps.',
 ]);
@@ -84,7 +84,16 @@ export function sceneSvg(witness) {
     const drawn = Number.isFinite(object.presentedRadius) && object.presentedRadius > 0
       ? object.presentedRadius
       : (Number.isFinite(object.colliderRadius) && object.colliderRadius > 0 ? object.colliderRadius : 0.4);
-    return `<g><circle cx="${object.screen.x}" cy="${object.screen.z}" r="${Math.max(drawn, 0.4)}" fill="${color}" fill-opacity="0.35" stroke="${color}"${dash}/><text x="${object.screen.x}" y="${object.screen.z - Math.max(drawn, 1) - 1}" font-size="3" fill="#d5dbe6">${esc(object.alias || object.objectId)}</text></g>`;
+    const shieldEffect = (object.effects || []).find((effect) => effect && effect.kind === 'shield');
+    const shieldDrawn = shieldEffect ? Number(shieldEffect.radius) : NaN;
+    const shieldGeometry = Number(object.shieldGeometryRadius);
+    const shieldRadius = Number.isFinite(shieldDrawn) && shieldDrawn > 0
+      ? shieldDrawn
+      : (Number.isFinite(shieldGeometry) && shieldGeometry > 0 ? shieldGeometry : 0);
+    const shieldCircle = shieldRadius > 0
+      ? `<circle class="shield" cx="${object.screen.x}" cy="${object.screen.z}" r="${shieldRadius}" fill="none" stroke="#7ee0ff" stroke-opacity="0.9"/>`
+      : '';
+    return `<g>${shieldCircle}<circle cx="${object.screen.x}" cy="${object.screen.z}" r="${Math.max(drawn, 0.4)}" fill="${color}" fill-opacity="0.35" stroke="${color}"${dash}/><text x="${object.screen.x}" y="${object.screen.z - Math.max(drawn, 1) - 1}" font-size="3" fill="#d5dbe6">${esc(object.alias || object.objectId)}</text></g>`;
   }).join('');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}">

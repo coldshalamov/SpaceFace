@@ -95,20 +95,23 @@ function censusRowFor(entity) {
 }
 
 /**
- * Presented shield disc. This is a draw measurement: an explicit
- * `presentedShieldRadius`, or the shield bubble's own scale. It does not
- * call `liveShieldGeometryRadius`, so a disc of 55 can disagree with a live
- * shell of 14. A ship def shield stat is not a disc.
+ * Presented shield disc. While `entity.shield` is above zero the disc is the
+ * live shell (`entity.radius`) unless a recorded disc or bubble scale
+ * disagrees. A shield of 0 emits nothing, even if those leftovers are set.
+ * A ship def shield stat is not a disc.
  */
 export function presentedShieldDiscRadius(entity) {
   if (!entity) return null;
+  const now = Number(entity.shield);
+  if (!(Number.isFinite(now) && now > 0)) return null;
   if (Object.prototype.hasOwnProperty.call(entity, 'presentedShieldRadius')) {
     const recorded = Number(entity.presentedShieldRadius);
-    return Number.isFinite(recorded) && recorded > 0 ? recorded : null;
+    if (Number.isFinite(recorded) && recorded > 0) return recorded;
   }
   const scale = entity.shieldBubble && entity.shieldBubble.scale;
   const measured = scale && typeof scale === 'object' ? Number(scale.x) : Number(scale);
-  return Number.isFinite(measured) && measured > 0 ? measured : null;
+  if (Number.isFinite(measured) && measured > 0) return measured;
+  return liveShieldGeometryRadius(entity);
 }
 
 /**
@@ -166,6 +169,7 @@ export function bindEntity(entity) {
   const presentedRadius = Number.isFinite(rawPresented) ? rawPresented : null;
   const hull = Number(entity.hull);
   const hullMax = Number(entity.hullMax);
+  const shield = Number(entity.shield);
   const shieldGeometryRadius = liveShieldGeometryRadius(entity);
   const shieldDiscRadius = presentedShieldDiscRadius(entity);
   const effects = [];
@@ -213,6 +217,7 @@ export function bindEntity(entity) {
     y: Number.isFinite(entity.y) ? entity.y : 0,
     rot: Number(entity.rot) || 0,
     colliderRadius: Number.isFinite(colliderRadius) ? colliderRadius : 0,
+    shield: Number.isFinite(shield) ? shield : null,
     shieldGeometryRadius,
     expectedRadius: Number.isFinite(expectedRadius) ? expectedRadius : 0,
     presentedRadius,

@@ -151,21 +151,42 @@ export function analyzeWitness(witness, prior = null) {
       ));
     }
 
-    const shield = (object.effects || []).find((effect) => effect && effect.kind === 'shield');
+    const shieldEffect = (object.effects || []).find((effect) => effect && effect.kind === 'shield');
     const geometry = Number(object.shieldGeometryRadius);
-    if (shield && geometry > 0) {
-      const drawn = Number(shield.radius);
-      if (!Number.isFinite(drawn) || Math.abs(drawn - geometry) > 1e-6) {
-        found.push(issue(
-          witness,
-          'shield-geometry-mismatch',
-          'high',
-          [object.objectId],
-          'shield disc radius equals the live shield shell (entity.radius)',
-          `disc=${drawn} liveGeometry=${geometry}`,
-          `${object.objectId} shield disc does not match the live shield geometry.`,
-        ));
-      }
+    const drawn = shieldEffect ? Number(shieldEffect.radius) : NaN;
+    const hasDisc = !!(shieldEffect && Number.isFinite(drawn) && drawn > 0);
+    const shieldNow = Number(object.shield);
+    const shieldDown = object.shield != null && Number.isFinite(shieldNow) && !(shieldNow > 0);
+    if (hasDisc && (shieldDown || !(geometry > 0))) {
+      found.push(issue(
+        witness,
+        'shield-geometry-mismatch',
+        'high',
+        [object.objectId],
+        'no shield disc while the shield is down',
+        `disc=${drawn} shield=${object.shield} liveGeometry=${object.shieldGeometryRadius}`,
+        `${object.objectId} draws a shield disc while the shield is down.`,
+      ));
+    } else if (!hasDisc && geometry > 0) {
+      found.push(issue(
+        witness,
+        'shield-geometry-mismatch',
+        'high',
+        [object.objectId],
+        'shield disc radius equals the live shield shell (entity.radius)',
+        `disc=missing liveGeometry=${geometry}`,
+        `${object.objectId} has a live shield shell and no disc.`,
+      ));
+    } else if (hasDisc && geometry > 0 && Math.abs(drawn - geometry) > 1e-6) {
+      found.push(issue(
+        witness,
+        'shield-geometry-mismatch',
+        'high',
+        [object.objectId],
+        'shield disc radius equals the live shield shell (entity.radius)',
+        `disc=${drawn} liveGeometry=${geometry}`,
+        `${object.objectId} shield disc does not match the live shield geometry.`,
+      ));
     }
 
     if (object.alive === false && object.visible === true) {

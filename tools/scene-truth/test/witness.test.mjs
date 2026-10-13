@@ -22,7 +22,10 @@ test('starter scene runs on the lab runtime and stays semantically clean', async
   assert.equal(player.presentedRadius, null);
   assert.equal(player.shieldGeometryRadius, player.colliderRadius);
   assert.ok(player.shieldGeometryRadius > 0);
-  assert.equal((player.effects || []).some((effect) => effect.kind === 'shield'), false);
+  const starterDisc = (player.effects || []).find((effect) => effect.kind === 'shield');
+  assert.ok(starterDisc);
+  assert.equal(starterDisc.radius, player.shieldGeometryRadius);
+  assert.match(sceneSvg(pack.views[0]), new RegExp(`class="shield"[^>]*r="${starterDisc.radius}"`));
   assert.equal(pack.views.every((view) => view.gpuFrame === false && view.captureKind === 'semantic-projection'), true);
   assert.equal(player.package.sourceExists, true);
   assert.equal(player.package.metadataExists, true);
@@ -133,7 +136,16 @@ test('the lab surface carries shield hit points and a def id alone wears no disc
     data: { defId: 'ship_kestrel' },
   });
   assert.equal(fromSurface.shieldGeometryRadius, 14);
-  assert.equal((fromSurface.effects || []).some((effect) => effect.kind === 'shield'), false);
+  assert.equal(fromSurface.effects.find((effect) => effect.kind === 'shield').radius, 14);
+  const surfaceSvg = sceneSvg({
+    seed: 1,
+    tick: 1,
+    zoom: 144,
+    qualityTier: 'medium',
+    frame: { halfH: 40, halfV: 24 },
+    objects: [{ ...fromSurface, screen: { x: 0, z: 0, onScreen: true } }],
+  });
+  assert.match(surfaceSvg, /class="shield"[^>]*r="14"/);
   const defOnly = bindEntity({
     id: 'pilot',
     type: 'ship',
@@ -145,7 +157,54 @@ test('the lab surface carries shield hit points and a def id alone wears no disc
   assert.equal(defOnly.shieldGeometryRadius, null);
   assert.equal((defOnly.effects || []).some((effect) => effect.kind === 'shield'), false);
   assert.equal(LIMITATIONS.some((line) => /def shield stat/.test(line)), false);
-  assert.equal(LIMITATIONS.some((line) => line.includes('shieldMax') && line.includes('separate measurement')), true);
+  assert.equal(LIMITATIONS.some((line) => line.includes('shieldMax') && line.includes('live shell')), true);
+});
+
+test('a shield of 0 does not keep a leftover disc', () => {
+  const down = bindEntity({
+    id: 'pilot',
+    type: 'ship',
+    alive: true,
+    isPlayer: true,
+    radius: 14,
+    shield: 0,
+    shieldMax: 55,
+    presentedShieldRadius: 55,
+    shieldBubble: { scale: { x: 55 } },
+    pos: { x: 0, z: 0 },
+    data: { defId: 'ship_kestrel' },
+  });
+  assert.equal(down.shieldGeometryRadius, null);
+  assert.equal((down.effects || []).some((effect) => effect.kind === 'shield'), false);
+  const witness = healthyWitness();
+  witness.objects[0] = {
+    ...witness.objects[0],
+    shield: 0,
+    shieldGeometryRadius: 14,
+    effects: [{ kind: 'shield', radius: 14, baseCoverage: 0.22, occludesContacts: false }],
+  };
+  const fails = highFails(analyzeWitness(witness));
+  assert.equal(fails.some((row) => row.kind === 'shield-geometry-mismatch'), true);
+  const bare = healthyWitness();
+  bare.objects[0] = {
+    ...bare.objects[0],
+    shield: null,
+    shieldGeometryRadius: null,
+    effects: [{ kind: 'shield', radius: 55, baseCoverage: 0.22, occludesContacts: false }],
+  };
+  assert.equal(highFails(analyzeWitness(bare)).some((row) => row.kind === 'shield-geometry-mismatch'), true);
+});
+
+test('a live shield shell without a disc fails', () => {
+  const witness = healthyWitness();
+  witness.objects[0] = {
+    ...witness.objects[0],
+    shield: 40,
+    shieldGeometryRadius: 14,
+    effects: [],
+  };
+  const fails = highFails(analyzeWitness(witness));
+  assert.equal(fails.some((row) => row.kind === 'shield-geometry-mismatch'), true);
 });
 
 test('a presented shield disc is measured independently of the live shell', () => {

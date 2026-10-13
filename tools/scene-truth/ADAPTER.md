@@ -5,9 +5,10 @@ Scene Truth reads lab checkpoint surfaces, `wholeShipVisualForEntity`,
 keep-outs. Those sources do not carry live mesh visibility, render order,
 or GPU residency. The live shield shell is `entity.radius` while
 `entity.shield` is above zero, the same scale `createShieldBubble` applies.
-`shieldMax` alone does not raise the shell. A presented disc is a separate
-measurement (`presentedShieldRadius`, or the shield bubble scale). The lab
-checkpoint surface carries `shield` and `shieldMax`.
+`shieldMax` alone does not raise the shell. While the shield is up, the
+presented disc is that live shell. A recorded `presentedShieldRadius` or
+bubble scale can disagree with it and fail. A shield of 0 draws no disc.
+The lab checkpoint surface carries `shield` and `shieldMax`.
 
 `window.__THREE_GAME_DIAGNOSTICS__` (`src/render/diagnostics.js`) publishes
 draw counters. Its report has no object ids. Confirmed by

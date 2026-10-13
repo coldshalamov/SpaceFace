@@ -181,9 +181,12 @@ export function faultCases() {
       witness: mutate(base, neighborId, (object) => {
         object.pos = { x: KESTREL.collisionRadius + WASP.collisionRadius, z: 0 };
         const player = base.objects.find((row) => row.objectId === playerId);
+        const disc = object.colliderRadius + player.colliderRadius;
+        object.shield = 40;
+        object.shieldGeometryRadius = disc;
         object.effects = [{
           kind: 'shield',
-          radius: object.colliderRadius + player.colliderRadius,
+          radius: disc,
           coverage: 0.95,
           occludesContacts: true,
         }];
@@ -268,9 +271,12 @@ export function benignCases() {
 
   const translucent = clone(tangent);
   const host = translucent.objects.find((object) => object.objectId === 'entity:player');
+  const disc = host.colliderRadius * 1.12;
+  host.shield = 40;
+  host.shieldGeometryRadius = disc;
   host.effects = [{
     kind: 'shield',
-    radius: host.colliderRadius * 1.12,
+    radius: disc,
     coverage: 0.22,
     occludesContacts: false,
   }];
