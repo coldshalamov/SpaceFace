@@ -404,6 +404,15 @@ function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, 
     if (rs.bodyWatch) rs.bodyWatch = null;
     return null;
   }
+  // The four observation slots belong to the imminent threats, not whichever bodies
+  // the sensor list happens to return first. Otherwise a fifth, closer projectile-body
+  // never accumulates its reaction delay and the pilot cannot answer it at all.
+  qualifying.sort((a, b) => {
+    if (a.eta !== b.eta) return a.eta - b.eta;
+    const left = String(a.c.id), right = String(b.c.id);
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
+  best = qualifying[0];
   const previous = rs.bodyWatch instanceof Map ? rs.bodyWatch : null;
   const watch = new Map();
   for (const entry of qualifying) {
