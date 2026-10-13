@@ -171,16 +171,23 @@ function restoreDataGrid(scene, descriptor, shape) {
     if (!gridShapeDirty(current.value, shape)) return false;
     return writeGridFields(current.value, shape) ? true : 'stuck';
   }
-  try {
-    Object.defineProperty(scene, 'grid', {
-      configurable: true,
-      enumerable: descriptor.enumerable !== false,
-      writable: true,
-      value: descriptor.value,
-    });
-  } catch (error) {
+  if (!writeField(scene, 'grid', descriptor.value, descriptor.enumerable !== false)) {
     const now = Object.getOwnPropertyDescriptor(scene, 'grid');
-    if (now && Object.prototype.hasOwnProperty.call(now, 'value') && gridValuePoisoned(now.value)) return 'stuck';
+    if (now && Object.prototype.hasOwnProperty.call(now, 'value') && now.writable !== false) {
+      try {
+        scene.grid = descriptor.value;
+      } catch (error) {
+        // Strict assignment can still refuse. Fall through to stuck when the null remains.
+      }
+    }
+    const after = Object.getOwnPropertyDescriptor(scene, 'grid');
+    if (after && Object.prototype.hasOwnProperty.call(after, 'value') && after.value === descriptor.value) {
+      if (descriptor.value && gridShapeDirty(descriptor.value, shape) && !writeGridFields(descriptor.value, shape)) {
+        return 'stuck';
+      }
+      return true;
+    }
+    if (after && Object.prototype.hasOwnProperty.call(after, 'value') && gridValuePoisoned(after.value)) return 'stuck';
     return true;
   }
   if (descriptor.value && gridShapeDirty(descriptor.value, shape) && !writeGridFields(descriptor.value, shape)) {
@@ -279,16 +286,89 @@ function runShielded(scenes, fn) {
   }
 }
 
+function projectHasToJSON(value) {
+  let current = value;
+  const seen = new Set();
+  while (canHostGrid(current) && !seen.has(current)) {
+    seen.add(current);
+    if (Object.getOwnPropertyDescriptor(current, 'toJSON')) return true;
+    current = Object.getPrototypeOf(current);
+  }
+  return false;
+}
+
+function readAccessorGrid(scene) {
+  try {
+    return scene.grid;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+function snapshotAccessors(scenes) {
+  const entries = [];
+  const seen = new Set();
+  for (const scene of scenes) {
+    if (!canHostGrid(scene) || seen.has(scene)) continue;
+    seen.add(scene);
+    const descriptor = Object.getOwnPropertyDescriptor(scene, 'grid');
+    if (!descriptor || typeof descriptor.get !== 'function') continue;
+    let value;
+    try {
+      value = descriptor.get.call(scene);
+    } catch (error) {
+      continue;
+    }
+    entries.push({
+      scene,
+      descriptor,
+      value,
+      shape: value && typeof value === 'object' ? shapeOf(value) : null,
+    });
+  }
+  return entries;
+}
+
+function restoreAccessors(entries) {
+  let stuck = false;
+  for (const entry of entries) {
+    if (entry.shape && entry.value && typeof entry.value === 'object' && gridShapeDirty(entry.value, entry.shape)) {
+      if (!writeGridFields(entry.value, entry.shape)) stuck = true;
+    }
+    if (readAccessorGrid(entry.scene) === entry.value) continue;
+    try {
+      entry.scene.grid = entry.value;
+    } catch (error) {
+      // The setter refused the pre-call value.
+    }
+    if (readAccessorGrid(entry.scene) === entry.value) continue;
+    try {
+      Object.defineProperty(entry.scene, 'grid', {
+        configurable: true,
+        enumerable: entry.descriptor.enumerable !== false,
+        writable: true,
+        value: entry.value,
+      });
+    } catch (error) {
+      // A non-configurable accessor stays until the strip is refused.
+    }
+    if (readAccessorGrid(entry.scene) !== entry.value) stuck = true;
+  }
+  return { stuck };
+}
+
 function guardedClone(project, protect) {
   const shields = activeShields || shieldScenes(protect);
+  const accessors = projectHasToJSON(project) ? snapshotAccessors(protect) : [];
   let stored = null;
   try {
     stored = clone(project);
   } catch (error) {
     stored = null;
   }
+  const accessorResult = restoreAccessors(accessors);
   const { mutated } = restoreShieldList(shields);
-  return { stored, mutated };
+  return { stored, mutated: mutated || accessorResult.stuck };
 }
 
 function withoutGridAccessor(project, protect = []) {

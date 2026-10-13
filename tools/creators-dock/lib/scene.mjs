@@ -205,8 +205,16 @@ function captureTree(value, seen, records) {
 function redefine(object, key, descriptor) {
   try {
     Object.defineProperty(object, key, descriptor);
+    return;
   } catch (error) {
-    // A non-configurable property cannot be put back. Leave it and keep the previous history.
+    // A non-configurable property cannot be redefined. A writable one can still be assigned.
+  }
+  const current = Object.getOwnPropertyDescriptor(object, key);
+  if (!current || !Object.prototype.hasOwnProperty.call(current, 'value') || current.writable === false) return;
+  try {
+    object[key] = descriptor.value;
+  } catch (error) {
+    // Non-writable in practice. The history layer must not return this null.
   }
 }
 
@@ -279,6 +287,79 @@ function gridAccessorState(value) {
   return { descriptor, value: current };
 }
 
+function snapshotGridFields(grid) {
+  if (!grid || typeof grid !== 'object') return null;
+  const fields = new Map();
+  for (const key of Object.getOwnPropertyNames(grid)) {
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    const field = descriptor.value;
+    fields.set(key, {
+      enumerable: descriptor.enumerable !== false,
+      value: field,
+      items: Array.isArray(field) ? field.slice() : null,
+    });
+  }
+  return fields;
+}
+
+function writeGridField(object, key, value, enumerable) {
+  try {
+    Object.defineProperty(object, key, {
+      configurable: true,
+      enumerable: enumerable !== false,
+      writable: true,
+      value,
+    });
+  } catch (error) {
+    try {
+      object[key] = value;
+    } catch (assignError) {
+      return false;
+    }
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(object, key);
+  return !!descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value === value;
+}
+
+function restoreGridFields(grid, fields) {
+  if (!fields || !grid || typeof grid !== 'object') return;
+  for (const [key, saved] of fields) {
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    const same = descriptor
+      && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      && descriptor.value === saved.value;
+    if (!same) writeGridField(grid, key, saved.value, saved.enumerable);
+    if (saved.items && Array.isArray(saved.value)) {
+      for (let i = 0; i < saved.items.length; i += 1) {
+        if (saved.value[i] !== saved.items[i]) writeGridField(saved.value, String(i), saved.items[i], true);
+      }
+    }
+  }
+  for (const key of [...Object.getOwnPropertyNames(grid)]) {
+    if (fields.has(key)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+    if (typeof descriptor.value === 'function') continue;
+    try {
+      delete grid[key];
+    } catch (error) {
+      // A non-configurable extra field stays until the clone is rejected.
+    }
+  }
+}
+
+function gridFieldsStillNull(grid, fields) {
+  if (!grid || typeof grid !== 'object' || !fields) return false;
+  const size = fields.get('size');
+  if ((!size || size.value != null) && grid.size === null) return true;
+  const pad = fields.get('pad');
+  const padWasClean = !pad || !pad.items || !pad.items.includes(null);
+  if (padWasClean && Array.isArray(grid.pad) && grid.pad.includes(null)) return true;
+  return false;
+}
+
 function readGridValue(value) {
   try {
     return value.grid;
@@ -323,8 +404,11 @@ function materialize(value, key, seen) {
   if (typeof toJSON === 'function') {
     seen.add(value);
     const gridAccessor = gridAccessorState(value);
+    const gridFields = gridAccessor ? snapshotGridFields(gridAccessor.value) : null;
     const produced = toJSON.call(value, key);
     restoreGridAccessor(value, gridAccessor);
+    if (gridFields) restoreGridFields(gridAccessor.value, gridFields);
+    if (gridFields && gridFieldsStillNull(gridAccessor.value, gridFields)) return CLONE_REJECT;
     if (produced === null) return CLONE_REJECT;
     if (produced === undefined) return undefined;
     if (produced && typeof produced === 'object') {
