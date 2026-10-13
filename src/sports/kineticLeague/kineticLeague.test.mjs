@@ -167,11 +167,37 @@ test('alternate deliveries also win, and the false shots do not', () => {
     },
   });
   assert.equal(rightLane.reason, 'stolen');
+  const idleMagnet = runMatch('kl-11', {
+    practice: true, enforceTier: false,
+    solution: { shipAt: { x: 0, z: 36 }, phases: [{ for: 9, thrustX: 0, thrustZ: 0 }] },
+  });
+  assert.equal(idleMagnet.won, false);
+  assert.equal(idleMagnet.reason, 'timeout');
   const idlePen = runMatch('kl-12', {
     seed: 8, practice: true, enforceTier: false,
     solution: { phases: [{ for: 14, thrustX: 0, thrustZ: 0 }] },
   });
   assert.equal(idlePen.won, false);
+});
+
+test('a Massline latch press stays armed until the hull is in reach', () => {
+  const session = createSession('kl-09', { practice: true, enforceTier: false });
+  const ship = session.bodies.find((body) => body.role === 'ship');
+  const payload = session.bodies.find((body) => body.role === 'payload');
+  ship.x = payload.x + 40;
+  ship.z = payload.z;
+  stepSession(session, { latch: true }, DT);
+  assert.equal(session.tether, null);
+  assert.equal(session.tetherArmed, true);
+  ship.x = payload.x + 8;
+  ship.z = payload.z;
+  stepSession(session, { thrustX: 0, thrustZ: 0 }, DT);
+  assert.equal(session.tether?.targetId, payload.id);
+  const memory = careerMemory();
+  const won = runMatch('kl-05', { memory, enforceTier: false });
+  assert.equal(won.won, true);
+  assert.equal(claimPurse(memory, won.event), 8);
+  assert.equal(claimPurse(memory, won.event), 0);
 });
 
 test('large timestep can score; a teleport and an own-goal cannot; a post is not a goal', () => {
