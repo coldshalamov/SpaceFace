@@ -136,6 +136,9 @@ const CARGO_POLICY_COVER_FRAC = 0.6;
 // FB-101 — the hardship floor: the smallest fill that can still make a jump, once a day, filed
 // as debt. BASE_FUEL·LY·tier lands a real shortest leg at ~4–8u; eight covers it.
 const EMERGENCY_FUEL_U = 8;
+// A penniless hull can buy enough welding on its note to leave the berth and work again.
+// This is a daily survival floor; ordinary repairs still charge the full missing protection.
+const EMERGENCY_REPAIR_HULL_FRAC = 0.25;
 export const TRADE_LEDGER_MAX = 10;
 const SALVAGE_INTAKE_RECEIPT_CAP = 256;
 const NPC_SALVAGE_INTAKE_COMMODITY_ID = 'cmdty_scrap_metal';
@@ -1672,6 +1675,14 @@ export const economy = {
 
     // ---- services (refuel / repair / ammo) ------------------------------------------------
     bus.on('ui:service', (p) => { if (p) this.handleService(p); });
+    // Cancelled hardship work releases its unused daily allowance as well as its debt.
+    // Delivered welds remain counted, so repeated undocks cannot multiply the aid floor.
+    bus.on('service:aborted', (p) => {
+      const budget = state.player.emergencyRepairBudget;
+      if (p?.source !== 'stationServices' || !budget || p.emergencyRepairDay !== budget.day) return;
+      const released = Number(p.undeliveredEmergencyHull);
+      if (Number.isFinite(released) && released > 0) budget.usedHull = Math.max(0, budget.usedHull - released);
+    });
     // FB-101 — a dry tank with no pump in the sector still has a door: one smallest-jump
     // reserve per day, filed as debt, announced with the figure it costs.
     bus.on('fuel:empty', (p) => this._onFuelEmpty(p));
@@ -4075,6 +4086,11 @@ export const economy = {
       this.bus.emit('toast', { text: 'Dock first', kind: 'error', ttl: 2 });
       return;
     }
+    if (['loan', 'settle', 'refuel', 'ammo'].includes(type) && p.amount != null
+      && !Number.isFinite(Number(p.amount))) {
+      this.bus.emit('toast', { text: 'Service amount must be a finite number', kind: 'error', ttl: 2 });
+      return;
+    }
     // The berth's own services list is the contract: a trade post with no pump does not fill
     // your tank, and a mining outpost with no yard does not weld your hull. Without this gate
     // the yard refuses the job and the instant-fallback below silently becomes the pump.
@@ -4092,11 +4108,14 @@ export const economy = {
     }
     if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
+      const fuelYard = this._serviceYard();
+      const bookedFuel = fuelYard?.pendingPlayerService?.('refuel')?.units || 0;
+      const missingFuel = Math.max(0, fuel.max - fuel.current - bookedFuel);
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
       // A blockaded berth rations the pumps: the tank fills only so far (derived from the live front).
       const berthId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
       const ration = stationRefuelRation(state, berthId, fuel);
-      const units = Math.max(0, Math.min(want, fuel.max - fuel.current, ration));
+      const units = Math.max(0, Math.min(want, missingFuel, ration));
       const fuelUnit = serviceUnitCr(state, FUEL_UNIT_CR, 'refuel');
       if (units <= 0 && ration <= 0 && want > 0 && fuel.max - fuel.current > 0) {
         const { voice, name } = stationVoiceFor(state, berthId);
@@ -4106,7 +4125,7 @@ export const economy = {
       const cost = round(units * fuelUnit);
       if (units <= 0) {
         // The tank is already full — the same word the repair bench gives an intact hull.
-        this.bus.emit('toast', { text: 'Tank already full', kind: 'info', ttl: 2 });
+        this.bus.emit('toast', { text: bookedFuel > 0 ? 'The remaining fuel is already booked' : 'Tank already full', kind: 'info', ttl: 2 });
         return;
       }
       const credits = normalizeCredits(state.player.credits);
@@ -4116,7 +4135,6 @@ export const economy = {
         // the berth files the unpaid units on the note instead of stranding the hull.
         const reserve = Math.min(EMERGENCY_FUEL_U, units);
         const debtCr = this._fileDebt(Math.round(reserve * fuelUnit));
-        const fuelYard = this._serviceYard();
         const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
         if (fuelYard && fuelYard.enqueuePlayerJob({
           type: 'refuel', units: reserve, stationId,
@@ -4134,7 +4152,6 @@ export const economy = {
       this.chargeCredits(realCost, 'service:refuel');
       // The yard owns timed delivery when the player is on a live dock (fuel is a pump, not an
       // instant fill). Harness docks without the production latch keep the instant path below.
-      const fuelYard = this._serviceYard();
       if (fuelYard && fuelYard.enqueuePlayerJob({
         type: 'refuel', units: realUnits,
         stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
@@ -4167,14 +4184,50 @@ export const economy = {
       const armorMax = Number(e.armorMax) || 0;
       const totalMax = hullMax + armorMax;
       const beforeProtection = totalMax > 0 ? (beforeHull + beforeArmor) / totalMax : 1;
-      const missHull = Math.max(0, (e.hullMax || 0) - (e.hull || 0));
-      const missArmor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0));
+      const repairYard = this._serviceYard();
+      const bookedRepair = repairYard?.pendingPlayerService?.('repair') || { hull: 0, armor: 0 };
+      const missHull = Math.max(0, (e.hullMax || 0) - (e.hull || 0) - bookedRepair.hull);
+      const missArmor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0) - bookedRepair.armor);
       const totalMiss = missHull + missArmor;
-      if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
+      if (totalMiss <= 0.5) {
+        this.bus.emit('toast', { text: bookedRepair.hull + bookedRepair.armor > 0
+          ? 'The remaining repair is already booked' : 'Hull already intact', kind: 'info', ttl: 2 });
+        return;
+      }
       const repairUnit = serviceUnitCr(state, REPAIR_HP_CR, 'repair');
       const cost = round(totalMiss * repairUnit);
       const credits = normalizeCredits(state.player.credits);
-      const repairYard = this._serviceYard();
+      if (credits <= 0) {
+        const day = Number.isInteger(state.days) ? state.days : Math.floor((Number(state.simTime) || 0) / 600);
+        const budget = state.player.emergencyRepairBudget?.day === day ? state.player.emergencyRepairBudget : { day, usedHull: 0 };
+        const floor = hullMax * EMERGENCY_REPAIR_HULL_FRAC;
+        const allowance = Math.max(0, floor - (Number(budget.usedHull) || 0));
+        const reserve = Math.min(missHull, allowance, Math.max(0, floor - beforeHull - bookedRepair.hull));
+        if (reserve > 0) {
+          const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+          const debtCr = this._fileDebt(round(reserve * repairUnit));
+          budget.usedHull = (Number(budget.usedHull) || 0) + reserve;
+          state.player.emergencyRepairBudget = budget;
+          if (repairYard && repairYard.enqueuePlayerJob({
+            type: 'repair', units: reserve, stationId,
+            meta: { cost: 0, debtCr, emergencyRepairDay: day, shares: { hull: 1, armor: 0 },
+              restoredHull: reserve, restoredArmor: 0, hullMax, armorMax, beforeProtection },
+          })) {
+            this.bus.emit('toast', { text: `Emergency weld on the note (${debtCr} cr filed)`, kind: 'warn', ttl: 3 });
+          } else {
+            e.hull = Math.min(hullMax, beforeHull + reserve);
+            this.bus.emit('service:completed', { type: 'repair', cost: 0, debtCr,
+              restoredHull: e.hull - beforeHull, restoredArmor: 0, hullMax, armorMax,
+              beforeProtection, stationId, atT: Number(state.simTime) || 0 });
+            this.bus.emit('toast', { text: `Emergency weld (${debtCr} cr filed as debt)`, kind: 'warn', ttl: 3 });
+          }
+          return;
+        }
+        this.bus.emit('toast', { text: allowance <= 0
+          ? 'Emergency weld allowance used today — earn credits for the remaining repair'
+          : 'No credits for repairs — the hull is above the emergency weld floor', kind: 'warn', ttl: 3 });
+        return;
+      }
       const yardUnits = credits < cost ? totalMiss * (cost > 0 ? credits / cost : 0) : totalMiss;
       if (repairYard && repairYard.enqueuePlayerJob({
         type: 'repair',

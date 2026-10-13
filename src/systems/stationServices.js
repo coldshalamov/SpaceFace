@@ -295,6 +295,11 @@ export const stationServices = {
         this.bus.emit('service:aborted', {
           jobId: job.id, type: job.type, stationId: job.stationId,
           applied: job.applied, total: job.total, reason,
+          source: 'stationServices',
+          ...(job.meta?.emergencyRepairDay != null ? {
+            emergencyRepairDay: job.meta.emergencyRepairDay,
+            undeliveredEmergencyHull: Math.max(0, job.total - job.applied),
+          } : {}),
         });
         // The completion toast's mirror: the service was paid up front, so an abort destroyed
         // paid work — the refund above hands the undelivered share back and the toast names it.
@@ -329,7 +334,7 @@ export const stationServices = {
     if (!stationId || state.ui.dockedStationId !== stationId) return false;
     const type = spec.type === 'refuel' || spec.type === 'repair' ? spec.type : null;
     const units = Number(spec && spec.units);
-    if (!type || !(units > 0)) return false;
+    if (!type || !Number.isFinite(units) || !(units > 0)) return false;
 
     const s = ensureStationServicesState(state);
     if (s.player && s.player.stationId && s.player.stationId !== stationId) {
@@ -356,6 +361,7 @@ export const stationServices = {
       startedAt: null,
       ratePerS: 0,
       meta: spec.meta && typeof spec.meta === 'object' ? spec.meta : {},
+      ...(type === 'repair' ? { deliveredHull: 0, deliveredArmor: 0 } : {}),
     };
     s.player.jobs.push(job);
     if (this.bus) {
@@ -365,6 +371,24 @@ export const stationServices = {
       });
     }
     return true;
+  },
+
+  /** Work already sold at this berth, before economy prices another request. Read only. */
+  pendingPlayerService(type) {
+    const player = this.state.stationServices?.player;
+    const out = { units: 0, hull: 0, armor: 0 };
+    if (!isProductionDocked(this.state) || player?.stationId !== this.state.ui.dockedStationId) return out;
+    for (const job of player.jobs || []) {
+      if (job.type !== type) continue;
+      const remaining = Math.max(0, (Number(job.total) || 0) - (Number(job.applied) || 0));
+      out.units += remaining;
+      if (type === 'repair') {
+        const shares = job.meta?.shares;
+        out.hull += remaining * (Number.isFinite(shares?.hull) ? shares.hull : 1);
+        out.armor += remaining * (Number.isFinite(shares?.armor) ? shares.armor : 0);
+      }
+    }
+    return out;
   },
 
   // ── tick ────────────────────────────────────────────────────────────────────────────────
@@ -499,10 +523,14 @@ export const stationServices = {
     const hullShare = shares && Number.isFinite(shares.hull) ? shares.hull : 1;
     const armorShare = shares && Number.isFinite(shares.armor) ? shares.armor : 0;
     if (hullShare > 0 && Number.isFinite(e.hullMax)) {
-      e.hull = Math.min(e.hullMax, (Number(e.hull) || 0) + delta * hullShare);
+      const before = Number(e.hull) || 0;
+      e.hull = Math.min(e.hullMax, before + delta * hullShare);
+      job.deliveredHull = (Number(job.deliveredHull) || 0) + Math.max(0, e.hull - before);
     }
     if (armorShare > 0 && Number.isFinite(e.armorMax)) {
-      e.armorHp = Math.min(e.armorMax, (Number(e.armorHp) || 0) + delta * armorShare);
+      const before = Number(e.armorHp) || 0;
+      e.armorHp = Math.min(e.armorMax, before + delta * armorShare);
+      job.deliveredArmor = (Number(job.deliveredArmor) || 0) + Math.max(0, e.armorHp - before);
     }
   },
 
@@ -515,8 +543,9 @@ export const stationServices = {
         jobId: job.id,
         type: 'repair',
         cost: meta.cost,
-        restoredHull: Number.isFinite(meta.restoredHull) ? meta.restoredHull : job.applied,
-        restoredArmor: Number.isFinite(meta.restoredArmor) ? meta.restoredArmor : 0,
+        restoredHull: job.deliveredHull || 0,
+        restoredArmor: job.deliveredArmor || 0,
+        ...(meta.debtCr > 0 ? { debtCr: meta.debtCr } : {}),
         hullMax: e ? e.hullMax : meta.hullMax,
         armorMax: e ? e.armorMax : meta.armorMax,
         beforeProtection: meta.beforeProtection,
@@ -611,6 +640,7 @@ export const stationServices = {
           total: j.total, applied: j.applied, lastApplied: j.lastApplied,
           status: j.status, queuedAt: j.queuedAt, startedAt: j.startedAt,
           ratePerS: j.ratePerS, meta: j.meta && typeof j.meta === 'object' ? j.meta : {},
+          ...(j.type === 'repair' ? { deliveredHull: j.deliveredHull || 0, deliveredArmor: j.deliveredArmor || 0 } : {}),
         })),
       },
     };
@@ -644,6 +674,10 @@ export const stationServices = {
         startedAt: Number.isFinite(j.startedAt) ? j.startedAt : null,
         ratePerS: Math.max(0, Number(j.ratePerS) || 0),
         meta: j.meta && typeof j.meta === 'object' ? j.meta : {},
+        ...(j.type === 'repair' ? {
+          deliveredHull: Math.max(0, Number(j.deliveredHull ?? ((Number(j.applied) || 0) * (j.meta?.shares?.hull ?? 1))) || 0),
+          deliveredArmor: Math.max(0, Number(j.deliveredArmor ?? ((Number(j.applied) || 0) * (j.meta?.shares?.armor ?? 0))) || 0),
+        } : {}),
       })) : [],
       _lastHoldingEmit: -Infinity,
     };

@@ -884,7 +884,7 @@ export const cargo = {
       store.items[id] = (store.items[id] || 0) + parkedQty;
       if (keep > 0) live.items[id] = keep;
       else delete live.items[id];
-      for (const lot of richLotSourcesForQty(live, id, parkedQty)) store.richLots.push({ ...lot });
+      for (const lot of richLotSourcesForQty(live, id, parkedQty)) appendRichLot(store, lot, id, lot.richQty);
       decrementRichLots(live, id, parkedQty);
     }
 

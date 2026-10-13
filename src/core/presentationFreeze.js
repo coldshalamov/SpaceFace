@@ -36,7 +36,7 @@ function hasFlightFreeze(state) {
  * true — the same flag that freezes the world — and undock destroys the job, so without a
  * keepalive slot a paid repair could never deliver before the player leaves.
  */
-export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(['input', 'save', 'stationServices']);
+export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(['input', 'save', 'stationServices', 'lawSecurity']);
 
 export function isHiddenKeepaliveSystem(name) {
   return HIDDEN_KEEPALIVE_SYSTEM_NAMES.includes(name);
