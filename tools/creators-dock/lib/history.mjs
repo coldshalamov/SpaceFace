@@ -18,7 +18,11 @@ export function createHistory(present) {
 export function commit(history, next) {
   const stored = storedPresent(next);
   if (!stored.ok) return history;
-  if (sameProject(history.present, stored.present)) return history;
+  try {
+    if (sameProject(history.present, stored.present)) return history;
+  } catch (error) {
+    return history;
+  }
   const past = history.past.concat([history.present]).slice(-CAP);
   return { past, present: stored.present, future: [] };
 }

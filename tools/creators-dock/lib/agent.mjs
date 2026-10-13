@@ -122,6 +122,15 @@ function dispatchOp(project, op) {
   }
 }
 
+function jsonSafe(value) {
+  try {
+    JSON.stringify(value);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 function merge(project, patch) {
   const next = clone(project);
   if (!next || typeof next !== 'object' || Array.isArray(next)) return project;
@@ -133,19 +142,16 @@ function merge(project, patch) {
       next[key] = copied;
       continue;
     }
+    if (!jsonSafe(value)) return project;
     next[key] = value;
   }
+  if (!jsonSafe(next)) return project;
   return next;
 }
 
 function merged(project, patch) {
   const next = merge(project, patch);
-  if (next === project) {
-    const probe = clone(project);
-    if (probe == null || typeof probe !== 'object' || Array.isArray(probe)) {
-      return { ok: false, project, issues: ['scene could not be cloned'] };
-    }
-  }
+  if (next === project) return { ok: false, project, issues: ['scene could not be cloned'] };
   return { ok: true, project: next, issues: [] };
 }
 

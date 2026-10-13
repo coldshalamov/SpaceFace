@@ -1226,3 +1226,119 @@ test('addObject returns the previous project when objects is a plain object', ()
   assert.equal(nulled.ok, false);
   assert.equal(nulled.project, cleared);
 });
+
+test('commit and open refuse a nested toJSON that nulls grid', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const scene = getComposition('dock.intercept-cargo');
+  const grid = { size: scene.grid.size, snap: scene.grid.snap, toJSON() { return null; } };
+  scene.grid = grid;
+  const committed = commit(history, scene);
+  assert.equal(committed, history);
+  assert.notEqual(committed.present.grid, null);
+  assert.equal(committed.present.grid.size, history.present.grid.size);
+  assert.equal(objectById(committed.present, 'player').isPlayer, true);
+  const opened = openDockHistory(scene);
+  assert.equal(opened.ok, false);
+  assert.equal(opened.history, null);
+});
+
+test('setFrames refuses an element whose toJSON returns null', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const tick = scene.frames[0].tick;
+  const credits = scene.world.credits;
+  const frame = {
+    tick: 9,
+    input: { moveX: 1, moveZ: 0, turnIntent: 0, boost: false, fire: false },
+    toJSON() { return null; },
+  };
+  const frames = applyDockOp(scene, { op: 'setFrames', frames: [frame] });
+  assert.equal(frames.ok, false);
+  assert.equal(frames.project, scene);
+  assert.equal(frames.issues.length > 0, true);
+  assert.equal(frames.project.frames[0].tick, tick);
+  assert.notEqual(frames.project.frames[0], null);
+
+  const ops = [
+    { op: 'setMeta', meta: { title: 'Nope', box: { toJSON() { return null; } } } },
+    { op: 'setWorld', world: { credits: 3, box: { toJSON() { return null; } } } },
+    { op: 'setNotes', notes: { note: { toJSON() { return null; } } } },
+    { op: 'setEncounter', encounter: { id: 'dock_x', toJSON() { return null; } } },
+    { op: 'setWeapon', weapon: { id: 'wpn_x', toJSON() { return null; } } },
+    { op: 'setPlace', place: { id: 'place_x', toJSON() { return null; } } },
+    { op: 'setModule', module: { id: 'mod_x', toJSON() { return null; } } },
+  ];
+  for (const op of ops) {
+    const result = applyDockOp(scene, op);
+    assert.equal(result.ok, false, op.op);
+    assert.equal(result.project, scene, op.op);
+    assert.equal(result.issues.length > 0, true, op.op);
+  }
+  assert.equal(scene.title.includes('Nope'), false);
+  assert.equal(scene.world.credits, credits);
+
+  const requested = applyRequest({
+    schema: REQUEST_SCHEMA,
+    ops: [
+      { op: 'loadExample', id: 'dock.intercept-cargo' },
+      { op: 'setFrames', frames: [frame] },
+    ],
+  });
+  assert.equal(requested.ok, false);
+  assert.equal(requested.applied.includes('setFrames'), false);
+  assert.notEqual(requested.project.frames[0], null);
+  assert.equal(requested.project.frames[0].tick, tick);
+  assert.equal(requested.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+});
+
+test('setMeta does not return ok when JSON.stringify of the result would throw', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const seed = scene.seed;
+  const meta = applyDockOp(scene, { op: 'setMeta', meta: { seed: 1n } });
+  assert.equal(meta.ok, false);
+  assert.equal(meta.project, scene);
+  assert.equal(meta.project.seed, seed);
+  assert.equal(meta.issues.length > 0, true);
+  assert.doesNotThrow(() => JSON.stringify(meta.project));
+
+  const described = Object.getOwnPropertyDescriptor(BigInt.prototype, 'toJSON');
+  Object.defineProperty(BigInt.prototype, 'toJSON', {
+    configurable: true,
+    writable: true,
+    value(key) {
+      if (key === 'seed') throw new Error('boom');
+      return Number(this);
+    },
+  });
+  try {
+    const keyed = applyDockOp(scene, { op: 'setMeta', meta: { seed: 2n } });
+    assert.equal(keyed.ok, false);
+    assert.equal(keyed.project, scene);
+    assert.equal(keyed.project.seed, seed);
+    assert.doesNotThrow(() => JSON.stringify(keyed.project));
+  } finally {
+    if (described) Object.defineProperty(BigInt.prototype, 'toJSON', described);
+    else delete BigInt.prototype.toJSON;
+  }
+});
+
+test('stableStringify does not throw out of commit', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  history.present.grid.toJSON = function () { throw new Error('boom'); };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  let committed;
+  assert.doesNotThrow(() => {
+    committed = commit(history, next);
+  });
+  assert.equal(committed, history);
+  assert.equal(committed.present.title.includes('Renamed'), false);
+  assert.equal(objectById(committed.present, 'player').isPlayer, true);
+
+  const titled = createHistory(getComposition('dock.intercept-cargo'));
+  titled.present.toJSON = function () { throw new Error('boom'); };
+  assert.doesNotThrow(() => {
+    committed = commit(titled, next);
+  });
+  assert.equal(committed, titled);
+  assert.equal(committed.present.title.includes('Renamed'), false);
+});
