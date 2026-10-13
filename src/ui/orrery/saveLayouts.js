@@ -213,6 +213,13 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { margin:0 !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:none; }
 }
+/* ≤860px-wide desktop: the strip under the hull is ~300–390px for five stations, so a slot's name,
+   badge and line set smaller and tighter and neighbouring words keep a gap (at 761 they touched) */
+@media (max-width:860px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { font-size:10px !important; letter-spacing:.08em !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { font-size:9px; letter-spacing:.1em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__sub.sf-slot-sub { font-size:10.5px !important; line-height:1.25; }
+}
 /* 960×540-class frames: the credits numeral steps down and the hull
    record reads in two columns, so LOAD stands clear above EXPORT / IMPORT / BACK */
 @media (max-width:1100px) and (max-height:640px) {
