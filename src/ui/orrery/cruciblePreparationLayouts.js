@@ -343,6 +343,21 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__budget { margin:8px 0 !important; }
  ${A} .orr-armory-reading__buy { margin:8px 0 12px !important; }
 }
+/* Refit without the hull plan (narrow or short plates): a plain hardpoint list. Each row is a
+   ruled block (numeral, name, slot tag and Empty spaced apart), its sentence wraps inside the row,
+   and the stage opens at its first row instead of cutting it under the title. */
+${R} > .sf-cru-stage:not(.orr-hull--on) { padding-top:6px !important; scroll-padding:28px 0; -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); }
+${R} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows { display:flex !important; flex-direction:column; gap:0; margin:0 !important; }
+${R} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows, ${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { width:100% !important; max-width:100% !important; min-width:0 !important; box-sizing:border-box; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; align-items:start; column-gap:20px; padding:10px 0 12px !important; min-height:0 !important; border-bottom:1px solid rgb(${BONE} / .1); }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__body { display:flex; flex-direction:column; gap:4px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__head { display:flex; align-items:baseline; gap:12px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__n { font-variant-numeric:tabular-nums; color:rgb(${BONE} / .6); min-width:2ch; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .k-row__name { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; min-width:0; overflow:visible; white-space:normal; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__empty { color:rgb(${BONE} / .6); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__line { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 16px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__contrast { margin:2px 0 0 !important; white-space:normal !important; overflow-wrap:anywhere; line-height:1.4; color:rgb(${BONE} / .72); max-width:min(72ch, 100%) !important; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-act { align-self:center; }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }
  ${D} > .k-title h1, ${A} > .k-title h1 { font-size:36px !important; }
