@@ -134,7 +134,7 @@ export function installFlightFootage(bus, { stateOf } = {}) {
         // The grab stays here (drawImage of the video frame is sub-millisecond); the JPEG encode
         // moves to a worker. createImageBitmap snapshots this canvas's exact pixels and the worker
         // draws them 1:1 and encodes at the same 0.88 quality, so the stored JPEG is
-        // byte-identical to canvas.toBlob's. toBlob itself was the main-thread cost: ~4.6 ms median,
+        // byte-identical to canvas.toBlob's in Chromium (in-browser probe, 4/4 frames: PR #358). toBlob itself was the main-thread cost: ~4.6 ms median,
         // 40+ ms worst per call, 10x a second for the whole flight.
         createImageBitmap(canvas).then((bitmap) => encoder.encode(bitmap, width, height))
           .then(accept, () => { encoding = false; });
