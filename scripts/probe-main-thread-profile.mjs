@@ -37,6 +37,7 @@
 // --drop-profile.
 
 import fs from 'node:fs';
+import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,6 +67,43 @@ const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
 const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile', ...(LABEL ? [LABEL] : []));
 const FIXED_SEED = 47;
+// --chromium-arg=--flag lets an A/B run change one browser behaviour (for example
+// --chromium-arg=--force-prefers-reduced-motion to see what the loading backdrop costs).
+const EXTRA_CHROMIUM_ARGS = process.argv
+  .filter((arg) => arg.startsWith('--chromium-arg='))
+  .map((arg) => arg.slice('--chromium-arg='.length))
+  .filter(Boolean);
+// --trace records a Chrome timeline alongside the CPU profile and writes trace-summary.md: the
+// main-thread self time per event inside each loading stage, which names the non-JS "(program)" work.
+const TRACE = process.argv.includes('--trace');
+const TRACE_CATEGORIES = [
+  '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
+];
+
+async function startTrace(cdp) {
+  await cdp.send('Tracing.start', {
+    traceConfig: { recordMode: 'recordAsMuchAsPossible', includedCategories: TRACE_CATEGORIES },
+    transferMode: 'ReturnAsStream',
+    streamFormat: 'json',
+  });
+}
+
+async function stopTraceToFile(cdp, file) {
+  const complete = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+  await cdp.send('Tracing.end');
+  const { stream } = await complete;
+  const fd = fs.openSync(file, 'w');
+  try {
+    for (;;) {
+      const chunk = await cdp.send('IO.read', { handle: stream, size: 4 * 1024 * 1024 });
+      fs.writeSync(fd, chunk.base64Encoded ? Buffer.from(chunk.data, 'base64') : chunk.data);
+      if (chunk.eof) break;
+    }
+  } finally {
+    fs.closeSync(fd);
+    await cdp.send('IO.close', { handle: stream }).catch(() => {});
+  }
+}
 
 const log = (message) => console.log(`[main-thread-profile ${new Date().toISOString().slice(11, 19)}] ${message}`);
 
@@ -631,6 +669,34 @@ async function runSteadyFlightProfile(page, cdp) {
   log(`long tasks in window: ${longTasks.length}`);
 }
 
+/** Main-thread self time per trace event, cut into the same windows as the stage table. */
+function writeTraceSummary(traceFile, clockSyncWallMs, timeline, stages) {
+  let events;
+  try {
+    events = traceEventsOf(JSON.parse(fs.readFileSync(traceFile, 'utf8')));
+  } catch (error) {
+    log(`trace unreadable (${error?.message}); no trace summary`);
+    return;
+  }
+  const sync = events.find((event) => event.name === 'sf-clock-sync');
+  if (!sync) { log('trace has no clock-sync mark; no trace summary'); return; }
+  const toTrace = (wallMs) => sync.ts + (wallMs - clockSyncWallMs) * 1000;
+  const windows = [{ id: 'New Game screen', fromUs: toTrace(timeline.newGameWallMs), toUs: toTrace(timeline.launchWallMs) }];
+  const staged = [...stages].sort((a, b) => a.wallMs - b.wallMs);
+  staged.forEach((stage, index) => {
+    const next = staged[index + 1];
+    windows.push({
+      id: `loading: ${stage.id}`,
+      fromUs: toTrace(stage.wallMs),
+      toUs: toTrace(next ? next.wallMs : timeline.flightWallMs),
+    });
+  });
+  windows.push({ id: 'first seconds of flight', fromUs: toTrace(timeline.flightWallMs), toUs: toTrace(timeline.endWallMs) });
+  const summary = summarizeMainThread(events, { windows: windows.filter((w) => w.toUs > w.fromUs) });
+  fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.md'), renderTraceSummaryMarkdown(summary), 'utf8');
+  log(`trace summary ${path.join(OUT_DIR, 'trace-summary.md')} (${events.length} events)`);
+}
+
 async function runLaunchProfile(page, cdp, profileNote) {
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
@@ -639,6 +705,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
     .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
   await installLaunchObservers(page);
   await cdp.send('Profiler.start');
+  if (TRACE) await startTrace(cdp);
+  // One user-timing mark on both clocks: the trace's monotonic microseconds <-> Date.now().
+  const clockSync = TRACE ? await page.evaluate(() => { performance.mark('sf-clock-sync'); return Date.now(); }) : null;
   const profileStartWallMs = Date.now();
 
   const newGameWallMs = Date.now();
@@ -665,6 +734,8 @@ async function runLaunchProfile(page, cdp, profileNote) {
   await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
+  const traceFile = TRACE ? path.join(OUT_DIR, 'trace.json') : null;
+  if (TRACE) await stopTraceToFile(cdp, traceFile);
 
   const atEnd = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
@@ -675,6 +746,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
   fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'launch-trace.json'), JSON.stringify({ timeline, stages: trace.stages, longTasks: trace.longTasks, atFlight, atEnd }, null, 1), 'utf8');
+  if (TRACE) writeTraceSummary(traceFile, clockSync, timeline, trace.stages);
   log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
   log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);
 }
@@ -686,6 +758,7 @@ const baseEnv = { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION:
 const launch = KEEP_PROFILE
   ? createKeptElectronLaunch(KEEP_PROFILE, baseEnv)
   : createIsolatedElectronLaunch({ root: ROOT, taskId: 'main-thread-profile', timeout: 180_000, baseEnv });
+if (EXTRA_CHROMIUM_ARGS.length) launch.options.args = [...(launch.options.args || []), ...EXTRA_CHROMIUM_ARGS];
 const profileNote = KEEP_PROFILE
   ? `kept evidence profile \`${path.basename(launch.userDataDir)}\` (${launch.existed ? 'reused: warm GPU program and HTTP caches' : 'new: cold start'})`
   : 'fresh temporary evidence profile (cold GPU program cache and HTTP cache)';
