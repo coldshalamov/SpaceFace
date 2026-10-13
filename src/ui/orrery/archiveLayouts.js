@@ -430,7 +430,7 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 const CX_PHONE = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.of-codex.orr-archive.orr-archive';
 const CODEX_PHONE_CSS = `
 ${CX_PHONE} { display:flex !important; flex-direction:column !important; row-gap:10px !important; column-gap:0 !important;
-  padding:12px 14px 0 !important; overflow:hidden !important; --cx-plate:min(180px, 46vw); --cx-sections:118px; --cx-gap:10px; --cx-foot-gap:0px; }
+  padding:12px 14px 0 !important; overflow:hidden !important; --cx-plate:min(140px, 36vw); --cx-sections:118px; --cx-gap:10px; --cx-foot-gap:0px; }
 ${CX_PHONE} > .k-title { flex:none; order:1; display:flex !important; flex-direction:column !important; align-items:stretch !important;
   gap:6px; grid-template-columns:none !important; grid-template-rows:none !important; column-gap:0 !important; }
 ${CX_PHONE} > .k-title > :not(.cx-index) { grid-column:auto; grid-row:auto; }
@@ -439,33 +439,40 @@ ${CX_PHONE} > .k-title > .cx-index { order:2; grid-column:auto !important; grid-
   width:100% !important; justify-items:start !important; row-gap:4px; margin:0 !important; }
 ${CX_PHONE} > .k-title > p { order:3; margin:2px 0 0 !important; font-size:13px !important; line-height:1.35 !important; max-width:none !important; }
 ${CX_PHONE} .cx-index__cap { font-size:10px !important; letter-spacing:.18em !important; }
-${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; gap:2px 6px !important; width:100%; justify-content:flex-start !important; }
-${CX_PHONE} .cx-index__item { grid-template-rows:36px auto; width:52px; }
+${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; gap:2px 2px !important; width:100%; justify-content:space-between !important; }
+/* 7 × 48px + gaps fits one row at 390, so SURVEY no longer wraps alone and the reader gets that height back. */
+${CX_PHONE} .cx-index__item { grid-template-rows:36px auto; width:min(48px, calc((100vw - 42px) / 7)); }
 ${CX_PHONE} .cx-index__dial { width:36px; height:36px; }
 ${CX_PHONE} .cx-index__n { font-size:11px !important; padding-top:0; }
 ${CX_PHONE} .cx-index__of { font-size:9px; }
-${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:9px !important; letter-spacing:.04em !important; }
+${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:9px !important; letter-spacing:.02em !important; white-space:nowrap; }
+@media (max-width:379px) { ${CX_PHONE} .cx-index__w { font-size:8px !important; letter-spacing:0 !important; } }
 ${CX_PHONE} > .cx-plate-host { flex:none; order:2; position:relative !important; inset:auto !important; right:auto !important; top:auto !important;
   width:var(--cx-plate) !important; height:var(--cx-plate) !important; margin:2px auto 0 !important; }
 ${CX_PHONE} > .cx-plate-host[hidden] { display:none !important; }
 ${CX_PHONE} > .cx-plate-host::before { inset:-4% !important; }
 ${CX_PHONE}[data-plate="on"] > .k-stage { padding-right:0 !important; padding-bottom:0 !important; }
-${CX_PHONE} > .k-hang { flex:1 1 auto; order:3; min-height:0 !important; overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important;
+${CX_PHONE} > .k-hang { flex:1 1 0; order:3; min-height:150px !important; overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important;
   grid-template-columns:var(--cx-sections) minmax(0, 1fr) !important; column-gap:var(--cx-gap) !important; row-gap:8px !important; padding:0 !important; }
 ${CX_PHONE} > .k-hang > .cx-wedge { display:none !important; }
 ${CX_PHONE} > .k-hang > .sf-tabbar { margin-bottom:0 !important; }
 ${CX_PHONE}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:0 !important; }
-${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:11px !important; letter-spacing:.1em !important; padding-right:14px !important; }
+${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:11px !important; letter-spacing:.1em !important; padding-right:16px !important; }
+/* Shorter leaders on phone (rest 8 / hover 10 / current 12px) so the current tick no longer strikes the label's last letter. */
+${CX_PHONE} .sf-tabbar .sf-tab::after { width:8px !important; }
+${CX_PHONE} .sf-tabbar .sf-tab:is(:hover, :focus-visible)::after { width:10px !important; }
+${CX_PHONE} .sf-tabbar .sf-tab[aria-current="true"]::after { width:12px !important; }
 /* Hand sits on the rail; pull it left of the name so the bone dot clears the leading B. */
 ${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:6px; }
 ${CX_PHONE} .cx-ladder .k-row { padding:4px 4px 4px 32px !important; }
 ${CX_PHONE} .cx-ladder .k-row::before { top:12px !important; left:2px !important; width:8px !important; }
 ${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
-${CX_PHONE} > .k-stage { flex:0 1 auto; order:4; min-height:0 !important; max-height:34% !important; overflow:hidden auto !important;
+${CX_PHONE} > .k-stage { flex:0 1 auto; order:4; min-height:0 !important; max-height:30% !important; overflow:hidden auto !important;
   padding:0 !important; margin:0 !important; }
-/* Scroll-extent thumb (.orr-extent::before at left:7px) was painting through the reader "0". Park it in the entry's left gutter. */
+/* Scroll-extent thumb (.orr-extent::before at left:7px) was painting through the reader "0". Moving it to left:-12px puts
+ *  it outside the stage's overflow:hidden box, so on phone it is clipped out of view (not parked in a visible gutter);
+ *  the reading fade still says "more below". The padding/margin pair keeps the entry text where it was. */
 ${CX_PHONE} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-12px !important; width:2px !important; }
-/* If the entry's left gutter is gone, drop the thumb rather than strike the numeral. */
 ${CX_PHONE} > .k-stage > .sf-codex-entry { padding-left:16px !important; margin-left:-16px !important; }
 ${CX_PHONE} .cx-reader__num { gap:8px; margin-bottom:2px !important; }
 ${CX_PHONE} .cx-reader__num-n { font-size:28px; line-height:1 !important; }
@@ -486,17 +493,19 @@ ${CX_PHONE} > .k-foot .sf-back.k-word { padding:8px 0 10px !important; min-heigh
   ${CX_PHONE} > .k-title { grid-column:1 / -1; grid-row:1; order:unset; flex:unset; }
   ${CX_PHONE} > .k-title > p { display:none !important; }
   ${CX_PHONE} > .cx-plate-host { display:none !important; }
-  ${CX_PHONE} .cx-index__item { grid-template-rows:26px auto; width:40px; }
+  /* Dial | word side by side: the row stays 26px tall but each fraction keeps its category. */
+  ${CX_PHONE} .cx-index__item { grid-template-columns:26px auto; grid-template-rows:26px; column-gap:5px; align-items:center; width:auto; }
   ${CX_PHONE} .cx-index__dial { width:26px; height:26px; }
-  ${CX_PHONE} .cx-index__w { display:none !important; }
+  ${CX_PHONE} .cx-index__w { grid-row:1 !important; grid-column:2 !important; margin:0 !important; font-size:9px !important; letter-spacing:.06em !important;
+    text-align:left !important; white-space:nowrap; }
   ${CX_PHONE} .cx-index__n { font-size:9px !important; }
-  ${CX_PHONE} .cx-index__list { gap:2px 4px !important; }
+  ${CX_PHONE} .cx-index__list { gap:2px 14px !important; justify-content:flex-start !important; }
   ${CX_PHONE} > .k-hang { grid-column:1; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important;
-    --cx-sections:86px; --cx-gap:8px; }
+    --cx-sections:104px; --cx-gap:8px; }
   ${CX_PHONE} > .k-stage { grid-column:2; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important; }
   ${CX_PHONE} > .k-foot { grid-column:1 / -1; grid-row:3; order:unset; flex:unset;
     padding-top:6px !important; padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
-  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:10px !important; letter-spacing:.08em !important; padding-right:10px !important; }
+  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:10px !important; letter-spacing:.08em !important; padding-right:15px !important; }
   ${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:4px; }
   ${CX_PHONE} .cx-ladder .k-row { padding:3px 2px 3px 30px !important; }
   ${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:12px !important; }

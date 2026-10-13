@@ -45,7 +45,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
-| **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait stack + landscape hang\|reader; review1 fixes in § Phone Codex |
+| **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait stack + landscape hang\|reader; review1+review2 fixes in § Phone Codex |
 | **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
 | **`credits`** | **DONE** | See § Credits below — this session |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
@@ -583,4 +583,6 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 **After (`archiveLayouts.js` only, `data-sf-mobile="1"`):** one column — title (CODEX → dials → subtitle), plate in flow, hang (sections + ladder, clipped), reading, foot docked on a fade. Landscape ≤560px tall hides the plate and dial words so the scale scrolls inside the hang and CLOSE stays clear. Desktop 801–1100 is unchanged here (#356). Selectors/IDs unchanged. Shots: `ui-shots/codex-phone/` (not committed).
 
 **Code Work review fix (HOLD notes):** Landscape ≤560px is now hang | reader side-by-side (CSS grid) so "THE EIGHT BEATS", the entry title, and the first sentence show on first view with CLOSE clear. The thin rule through the reader "0" was `.orr-extent::before` (scroll thumb at `left:7px`) on the reading article — parked in the entry's left gutter on phone. The ladder Hand's bone dot is pulled left (`--orr-hand-x:6px` / `4px` landscape) with extra row padding so it clears the leading B. Portrait stack kept. Desktop 1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review1/`.
+
+**Code Work re-review fix (04:58 HOLD):** Landscape section rail is 104px (was 86px), so DISCOVERIES shows in full again. Landscape dials put each word beside its dial (row stays 26px), so the fractions keep their category. Phone section leaders are shorter (8/10/12px) so the current tick no longer strikes the label's last letter. Portrait: 7 dials fit one row (SURVEY no longer wraps alone), the plate is 140px, and the reader takes priority over the hang (hang min 150px), so the first entry's full first paragraph shows above PREVIOUS/NEXT at 390×844 (first line at 360×740). The `.orr-extent` comment now says the thumb is clipped out of view, not parked. Desktop 960/1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review2/`.
 
