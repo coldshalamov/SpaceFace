@@ -1358,6 +1358,8 @@ export const EXPOSURE_MODEL = Object.freeze({
   severeAt: 0.85,
   // Consequence surface at high exposure — scanner reliability, not hull damage.
   scannerNoiseAtSevere: true,
+  // Hull-scanner reach at severe exposure. The flag owns the magnitude.
+  scannerRadiusMultAtSevere: 0.62,
 });
 
 // AE-079 — revelation sources: what raises R beyond the scripted nursery beats.

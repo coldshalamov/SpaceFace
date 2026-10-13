@@ -15,6 +15,7 @@ import { authoritativeAssignmentTargetId } from '../ai/doctrine.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
 import { claimSensorPostActive } from '../data/claimableBodies.js';
+import { EXPOSURE_MODEL } from '../data/alienEcology.js';
 import {
   isResonanceObeliskSignal,
   resonanceObeliskResponse,
@@ -138,6 +139,18 @@ const PLAYER_DANGER_CONTEXTS = new Set([
   'zone_hostile', // WORLD_OVERHAUL_2_1: pirates/raiders camping a named ambush/outlaw zone
 ]);
 
+/** Hull-scanner reach while biological fouling is severe. 1 leaves the fitting math alone. */
+function severeHullScanMult(state) {
+  if (!EXPOSURE_MODEL || EXPOSURE_MODEL.scannerNoiseAtSevere !== true) return 1;
+  const mult = Number(EXPOSURE_MODEL.scannerRadiusMultAtSevere);
+  if (!(mult > 0 && mult < 1)) return 1;
+  const eco = state && state.world && state.world.alienEcology;
+  const exposure = eco ? Number(eco.exposure) : NaN;
+  const severeAt = Number(EXPOSURE_MODEL.severeAt);
+  if (!Number.isFinite(exposure) || !Number.isFinite(severeAt) || exposure < severeAt) return 1;
+  return mult;
+}
+
 export function scannerProfileForState(state) {
   const radiusMult = Math.max(
     1,
@@ -145,12 +158,15 @@ export function scannerProfileForState(state) {
     maxFittedModuleMod(state, 'scanRangeMult', 1),
   );
   const pingPersistMult = Math.max(0.05, maxFittedModuleMod(state, 'pingPersistMult', 1));
-  const hiddenPoiRadius = HIDDEN_POI_RADIUS * radiusMult;
+  // Severe fouling shortens the hull scanner. radiusMult itself stays the fitting, and a
+  // placed sensor post still publishes its own range over the fouled hidden base.
+  const foul = severeHullScanMult(state);
+  const hiddenPoiRadius = HIDDEN_POI_RADIUS * radiusMult * foul;
   const sensorPostActive = claimSensorPostActive(state, state && state.world && state.world.currentSectorId);
   return {
     radiusMult,
     pingPersistMult,
-    nearRadius: NEAR_SCAN_RADIUS * radiusMult,
+    nearRadius: NEAR_SCAN_RADIUS * radiusMult * foul,
     hiddenPoiRadius,
     poiRadius: sensorPostActive ? Math.max(hiddenPoiRadius, SENSOR_POST_POI_RANGE) : hiddenPoiRadius,
     sensorPostActive,
