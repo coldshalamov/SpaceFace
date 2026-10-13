@@ -1730,14 +1730,26 @@ export function openingCompileIssueKey(subject) {
 // exactly the subjects whose full signatures were equal; the table holds one string per distinct
 // signature instead of one composite per subject.
 const _compileIssueKeyIds = new Map();
+// Ids are monotonic and never reused, so clearing the table can never alias two different signatures; the table is capped
+// because a long session that mints fresh canvas textures or custom program keys would otherwise retain every full
+// signature string forever (a few hundred distinct signatures is a normal cook, 20 000 is already pathological). The
+// only cost of a clear is that an equal signature interned on the other side of it gets a new id: one extra dedupe miss.
+const COMPILE_ISSUE_KEY_TABLE_CAP = 20000;
+let _compileIssueKeyNextId = 1;
 
-function internCompileIssueKey(longKey) {
+export function internCompileIssueKey(longKey) {
   let id = _compileIssueKeyIds.get(longKey);
   if (id === undefined) {
-    id = _compileIssueKeyIds.size + 1;
+    if (_compileIssueKeyIds.size >= COMPILE_ISSUE_KEY_TABLE_CAP) _compileIssueKeyIds.clear();
+    id = _compileIssueKeyNextId++;
     _compileIssueKeyIds.set(longKey, id);
   }
   return id;
+}
+
+/** Table size, for the retention test. */
+export function compileIssueKeyTableSize() {
+  return _compileIssueKeyIds.size;
 }
 
 // A geometry's attribute/morph signature, memoized per geometry. An opening cook keys thousands of
