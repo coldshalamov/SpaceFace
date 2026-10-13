@@ -1,0 +1,281 @@
+{
+ "liveSampledMB": 103.8,
+ "heapMarks": [
+  {
+   "label": "before New Game",
+   "usedMB": 301
+  },
+  {
+   "label": "first flight frame",
+   "usedMB": 798
+  },
+  {
+   "label": "end of flight tail",
+   "usedMB": 1021
+  }
+ ],
+ "byFile": [
+  {
+   "name": "vendor/three.core.js",
+   "mb": 39.2
+  },
+  {
+   "name": "(native)",
+   "mb": 19.1
+  },
+  {
+   "name": "vendor/addons/loaders/GLTFLoader.js",
+   "mb": 8.7
+  },
+  {
+   "name": "src/render/renderPackageLoader.js",
+   "mb": 6.5
+  },
+  {
+   "name": "vendor/three.module.js",
+   "mb": 6
+  },
+  {
+   "name": "src/contracts/renderPackage.js",
+   "mb": 4.9
+  },
+  {
+   "name": "src/core/simLaneMain.js",
+   "mb": 3.4
+  },
+  {
+   "name": "src/render/renderer.js",
+   "mb": 1.4
+  },
+  {
+   "name": "src/render/packageCpuDetach.js",
+   "mb": 1.3
+  },
+  {
+   "name": "src/render/partsLibrary.js",
+   "mb": 1.3
+  },
+  {
+   "name": "src/render/assetResidency.js",
+   "mb": 1.2
+  },
+  {
+   "name": "src/render/assetLoader.js",
+   "mb": 1.1
+  },
+  {
+   "name": "src/render/glbPrepass.js",
+   "mb": 0.9
+  },
+  {
+   "name": "src/render/thruster/systems/continuousPlume.js",
+   "mb": 0.7
+  },
+  {
+   "name": "src/render/openingSubmissionPlan.js",
+   "mb": 0.6
+  },
+  {
+   "name": "src/localization/pipeline.js",
+   "mb": 0.5
+  },
+  {
+   "name": "src/render/illustratedSurface.js",
+   "mb": 0.5
+  },
+  {
+   "name": "src/render/authoredMotion.js",
+   "mb": 0.4
+  },
+  {
+   "name": "src/render/vfx.js",
+   "mb": 0.4
+  },
+  {
+   "name": "src/render/openingGpuAdmission.js",
+   "mb": 0.3
+  },
+  {
+   "name": "src/render/visualFactory.js",
+   "mb": 0.3
+  },
+  {
+   "name": "src/ui/hud.js",
+   "mb": 0.2
+  },
+  {
+   "name": "src/contracts/motionBank.js",
+   "mb": 0.2
+  },
+  {
+   "name": "src/world/activityRuntime.js",
+   "mb": 0.2
+  },
+  {
+   "name": "src/render/asyncAdmission.js",
+   "mb": 0.2
+  }
+ ],
+ "byFunction": [
+  {
+   "name": "Object3D @ vendor/three.core.js:11757",
+   "mb": 15.7
+  },
+  {
+   "name": "cloneUniforms @ vendor/three.core.js:37307",
+   "mb": 7.8
+  },
+  {
+   "name": "parse @ vendor/addons/loaders/GLTFLoader.js:429",
+   "mb": 5.8
+  },
+  {
+   "name": "loadResolved @ src/render/renderPackageLoader.js:107",
+   "mb": 4.9
+  },
+  {
+   "name": "stableJsonStringify @ src/contracts/renderPackage.js:265",
+   "mb": 3.8
+  },
+  {
+   "name": "worker.onmessage @ src/core/simLaneMain.js:1163",
+   "mb": 3.3
+  },
+  {
+   "name": "set @ (native):0",
+   "mb": 1.9
+  },
+  {
+   "name": "BufferAttribute @ vendor/three.core.js:16696",
+   "mb": 1.8
+  },
+  {
+   "name": "getDependency @ vendor/addons/loaders/GLTFLoader.js:2928",
+   "mb": 1.6
+  },
+  {
+   "name": "multiplyMatrices @ vendor/three.core.js:10385",
+   "mb": 1.5
+  },
+  {
+   "name": "copy @ vendor/three.core.js:13272",
+   "mb": 1.5
+  },
+  {
+   "name": "getBindingState @ vendor/three.module.js:1873",
+   "mb": 1.5
+  },
+  {
+   "name": "Set @ (native):0",
+   "mb": 1.4
+  },
+  {
+   "name": "join @ (native):0",
+   "mb": 1.4
+  },
+  {
+   "name": "Float32Array @ (native):0",
+   "mb": 1.4
+  },
+  {
+   "name": "map @ (native):0",
+   "mb": 1.3
+  },
+  {
+   "name": "(V8 API) @ (native):0",
+   "mb": 1.3
+  },
+  {
+   "name": "Material @ vendor/three.core.js:20414",
+   "mb": 1.2
+  },
+  {
+   "name": "stableJsonValue @ src/contracts/renderPackage.js:257",
+   "mb": 1.1
+  },
+  {
+   "name": "deepFreeze @ src/render/renderPackageLoader.js:1109",
+   "mb": 1
+  },
+  {
+   "name": "delete @ (native):0",
+   "mb": 1
+  },
+  {
+   "name": "MeshPhysicalMaterial @ vendor/three.core.js:38336",
+   "mb": 1
+  },
+  {
+   "name": "(BYTECODE_COMPILER) @ (native):0",
+   "mb": 1
+  },
+  {
+   "name": "generateUUID @ vendor/three.core.js:2295",
+   "mb": 1
+  },
+  {
+   "name": "get @ (native):0",
+   "mb": 0.9
+  },
+  {
+   "name": "addEventListener @ vendor/three.core.js:2182",
+   "mb": 0.9
+  },
+  {
+   "name": "createBindingState @ vendor/three.module.js:1920",
+   "mb": 0.9
+  },
+  {
+   "name": "BufferGeometry @ vendor/three.core.js:18165",
+   "mb": 0.9
+  },
+  {
+   "name": "(anonymous) @ src/render/glbPrepass.js:72",
+   "mb": 0.9
+  },
+  {
+   "name": "add @ (native):0",
+   "mb": 0.9
+  },
+  {
+   "name": "registerAsset @ src/render/assetResidency.js:265",
+   "mb": 0.8
+  },
+  {
+   "name": "updateMatrix @ vendor/three.core.js:12821",
+   "mb": 0.8
+  },
+  {
+   "name": "Map @ (native):0",
+   "mb": 0.8
+  },
+  {
+   "name": "replace @ (native):0",
+   "mb": 0.7
+  },
+  {
+   "name": "(IDLE_EXTERNAL) @ (native):0",
+   "mb": 0.7
+  },
+  {
+   "name": "copy @ vendor/three.core.js:9998",
+   "mb": 0.6
+  },
+  {
+   "name": "sfTransformSignatureStore @ vendor/three.module.js:128",
+   "mb": 0.6
+  },
+  {
+   "name": "then @ (native):0",
+   "mb": 0.6
+  },
+  {
+   "name": "recordTable @ src/render/renderer.js:1769",
+   "mb": 0.6
+  },
+  {
+   "name": "MeshStandardMaterial @ vendor/three.core.js:37926",
+   "mb": 0.6
+  }
+ ]
+}
