@@ -3304,9 +3304,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // Wave 2 S1: at narrow widths the left callout column has nowhere to stand but on the
     // prose. Clamp the solver's label region so left cards stay right of screen x=560 (the
     // prose ends ~460 there); the hull fit keeps the full region. Skipped when the stage is
-    // too narrow for the clamp to leave the solver a working column.
+    // too narrow for the clamp to leave the solver a working column, and on a short dock
+    // stage (~162px at 960×540) where the same clamp parks left cards on the hull poster.
     let labelRegion = region;
-    if (typeof window !== 'undefined' && window.innerWidth <= 1366 && stageRect.width > 0) {
+    if (typeof window !== 'undefined' && window.innerWidth <= 1366 && stageRect.width > 0
+        && stageRect.height >= 300) {
       const clampLeft = 560 - stageRect.left;
       if (clampLeft > region.left + 40 && clampLeft < region.right - 220) {
         labelRegion = { ...region, left: Math.round(clampLeft) };
@@ -3335,8 +3337,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // and never over the nameplate (then it drops into the band under it).
     let keepOut = null;
     let heart = null;
+    const shortStage = stageRect.height < 300;
     if (posterOn) {
-      const reserveX = nodes.length ? Math.max(...cards.map((c) => c.w)) + 32 : 0;
+      // Short dock stages (~162px at 960×540): leave a wider label band so Utility/Drive/Cargo
+      // sit in clear columns beside the hull, not on its silhouette.
+      const reserveX = nodes.length ? Math.max(...cards.map((c) => c.w)) + (shortStage ? 52 : 32) : 0;
       const fitArgs = { ink: poster.ink(), imageAspect: poster.aspect(), reserveX, reserveY: 8 };
       let fit = fitHullInk({ region, ...fitArgs });
       if (nameplateZone && fit.inkRect.left < nameplateZone.right && fit.inkRect.right > nameplateZone.left
@@ -3371,7 +3376,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       poster.place(fit.imgRect);
       drawSaleRing(ringG);
-      keepOut = { left: fit.inkRect.left - 6, top: fit.inkRect.top, right: fit.inkRect.right + 6, bottom: fit.inkRect.bottom };
+      const keepPad = shortStage ? 18 : 6;
+      keepOut = { left: fit.inkRect.left - keepPad, top: fit.inkRect.top, right: fit.inkRect.right + keepPad, bottom: fit.inkRect.bottom };
       heart = { x: (fit.inkRect.left + fit.inkRect.right) / 2, y: (fit.inkRect.top + fit.inkRect.bottom) / 2 };
     }
 
@@ -3431,6 +3437,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         bounds: labelRegion,
         keepOut,
         obstacles,
+        gap: shortStage ? 36 : 28,
       });
 
       let selectedBead = null;

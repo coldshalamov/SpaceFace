@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-11` (PR pending) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-15` (PR pending) · stacked on `master`.
 
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | **`range`** | **DONE @960×540** (ui-polish-17) | See § Proving Range @960 below; 1024 / 1280 / 1920 / phone unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -104,7 +104,17 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code:** `marketLayouts.js`, `stationTabsLayouts.js`, `shipworksLayouts.js`, plus a one-line bail in `shipworks.js` `seatVerbs`. Selectors/IDs unchanged.
 
-**Follow-up (not in #333):** Shipworks slot callouts (Utility/Drive/Cargo) sit on the hull at 960 — they are placed by the jig in JS.
+**Follow-up (not in #333):** Shipworks slot callouts (Utility/Drive/Cargo) sit on the hull at 960 — they are placed by the jig in JS. **Fixed in ui-polish-15** (see § below).
+
+## Shipworks callouts @960 — session notes (2026-10-12, ui-polish-15)
+
+**Before (960×540):** Wave 2 S1 clamped the solver's label region to screen x=560 so left cards clear the prose at ≤1366. On the short dock stage (~162px tall) that same clamp parked Cargo/Weapon/Mining on the hull poster (leaders gone). Utility/Drive/Cargo sat on the silhouette.
+
+**After:** skip the x=560 clamp when stage height &lt; 300; on short stages grow `reserveX` / keep-out pad and pass a wider solver `gap` so both columns sit in clear air (~55px off the ink) with leaders restored. `calloutLayout.place` never lets a bounds clamp shove a card into the hull keep-out. 1280×720 pixel-identical; 1920×1080 unchanged for callouts. Shots in `/workspace/spaceface-scratch/ui-shots/shipworks-callouts/` (not committed).
+
+**Code:** `shipworks.js` (clamp gate + short-stage keepOut/gap) + `calloutLayout.js` (hull-safe place). Selectors/IDs unchanged.
+
+**Still open:** SWORN ENEMY touching HATED at 1024×768; Shipworks left-rail "Starter / systems fitted" clip at 960; phone Shipworks callouts.
 
 ### Industry / Factions / Bar @960×540 (ui-polish-13)
 
@@ -141,7 +151,7 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 8. Tab badges are amber pills after their own word. The tabs sit on a 4-column grid.
 Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with the foot pinned. Desktop 960×540 is pixel-identical; at 1280×720 only the animated rule differs.
 
-**Still open on phone:** Shipworks callouts.
+**Still open on phone:** Shipworks callouts. Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
 
 **Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960.
 
