@@ -212,7 +212,7 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 **Still open on phone:** Shipworks callouts. Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
 
-**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960.
+**Leftover:** Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. ~~filter search bury "Raw & rare" at 960~~ — fixed in ui-polish-28.
 
 ## Decision terms @960 + phone-on-its-side foot — session notes (2026-10-12, ui-polish-14)
 
@@ -663,3 +663,14 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 
 **Code Work re-review fix (04:58 HOLD):** Landscape section rail is 104px (was 86px), so DISCOVERIES shows in full again. Landscape dials put each word beside its dial (row stays 26px), so the fractions keep their category. Phone section leaders are shorter (8/10/12px) so the current tick no longer strikes the label's last letter. Portrait: 7 dials fit one row (SURVEY no longer wraps alone), the plate is 140px, and the reader takes priority over the hang (hang min 150px), so the first entry's full first paragraph shows above PREVIOUS/NEXT at 390×844 (first line at 360×740). The `.orr-extent` comment now says the thumb is clipped out of view, not parked. Desktop 960/1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review2/`.
 
+## Market family ladder @960 — session notes (2026-10-13, ui-polish-28)
+
+**Before (960×540):** the short-berth browser stands families as a vertical ladder beside the register (`max-width:1100` × `max-height:800`). The ladder column and the rail shared only ~4px of air, so the register spine / Hand ticks sat on the ends of **RAW & RARE** and **RESTRICTED**. The find field ("Find a commodity") stays on the mode line and was never the burier — the leftover wording was off.
+
+**After (`src/ui/orrery/marketLayouts.js` only):** same short-berth block — `grid-template-columns: max-content minmax(0,1fr)`, `column-gap:24px`, filters `width/min-width:max-content` + `z-index:1`, filter letter-spacing `.08em` / `white-space:nowrap`. Measured gap filter→rail ~16px (was ~4px); RAW & RARE and RESTRICTED read clear of the spine. Selectors/IDs and `marketPresentation.js` labels untouched.
+
+**Checked:** 960×540 (fix), 1280×720 / 1920×1080 (horizontal filters unchanged within shot noise), 390×844 (phone Market layout is `mobileScreenLayouts.js` — frozen on #374; phone Dismiss/hold toast overlap left alone). Main-menu SANDBOX-over-nose at 1080p surveyed, not changed this session (arcRail seating).
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28/{before,after,compare}/`.
+
+**Branch:** `ui-polish-28` pushed; no PR (freeze on #371/#374).
