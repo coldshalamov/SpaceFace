@@ -2259,6 +2259,60 @@ test('a second undo strips a grid getter that was parked on future', () => {
   assert.notEqual(parked, undone.history.future[0]);
 });
 
+test('a stack toJSON cannot null the live present grid', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const first = getComposition('dock.intercept-cargo');
+  first.title = 'First rename';
+  const second = getComposition('dock.intercept-cargo');
+  second.title = 'Second rename';
+  const once = commit(history, first);
+  const twice = commit(once, second);
+  const live = twice.present;
+  const grid = live.grid;
+  const parked = twice.past[0];
+  const parkedGrid = parked.grid;
+  parked.toJSON = function () {
+    live.grid = null;
+    return this;
+  };
+  Object.defineProperty(parked, 'grid', {
+    configurable: true,
+    enumerable: true,
+    get() { return parkedGrid; },
+  });
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Third rename';
+  const committed = commit(twice, next);
+  assert.equal(live.grid, grid);
+  assert.notEqual(live.grid, null);
+  for (const scene of committed.past) assert.notEqual(scene.grid, null);
+  for (const scene of twice.past) assert.notEqual(scene.grid, null);
+
+  const futureHistory = createHistory(getComposition('dock.intercept-cargo'));
+  const futureOnce = commit(futureHistory, first);
+  const futureTwice = commit(futureOnce, second);
+  const undone = restoreHistory(futureTwice, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const futureLive = undone.history.present;
+  const futureGrid = futureLive.grid;
+  const futureScene = undone.history.future[0];
+  const futureSceneGrid = futureScene.grid;
+  futureScene.toJSON = function () {
+    futureLive.grid = null;
+    return this;
+  };
+  Object.defineProperty(futureScene, 'grid', {
+    configurable: true,
+    enumerable: true,
+    get() { return futureSceneGrid; },
+  });
+  const again = restoreHistory(undone.history, 'undo');
+  assert.equal(futureLive.grid, futureGrid);
+  assert.notEqual(futureLive.grid, null);
+  const future = again.history.future;
+  for (const scene of future) assert.notEqual(scene.grid, null);
+});
+
 function withObjectPrototypeGrid(body) {
   const prior = Object.getOwnPropertyDescriptor(Object.prototype, 'grid');
   const counter = { reads: 0 };

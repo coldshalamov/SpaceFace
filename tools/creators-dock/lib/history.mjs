@@ -28,17 +28,70 @@ function inheritedGridGetter(project) {
   return gridReadsThroughAccessor(project);
 }
 
-function withoutGridAccessor(project) {
+function dataGrid(scene) {
+  if (!canHostGrid(scene)) return null;
+  const descriptor = Object.getOwnPropertyDescriptor(scene, 'grid');
+  if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+  return descriptor;
+}
+
+function restoreDataGrid(scene, descriptor) {
+  const current = Object.getOwnPropertyDescriptor(scene, 'grid');
+  if (current && Object.prototype.hasOwnProperty.call(current, 'value') && current.value === descriptor.value) {
+    return false;
+  }
+  try {
+    Object.defineProperty(scene, 'grid', {
+      configurable: true,
+      enumerable: descriptor.enumerable !== false,
+      writable: true,
+      value: descriptor.value,
+    });
+  } catch (error) {
+    return true;
+  }
+  return true;
+}
+
+function guardedClone(project, protect) {
+  const saved = [];
+  const seen = new Set();
+  for (const scene of protect) {
+    if (!canHostGrid(scene) || seen.has(scene)) continue;
+    seen.add(scene);
+    const descriptor = dataGrid(scene);
+    if (descriptor) saved.push([scene, descriptor]);
+  }
+  let stored = null;
+  try {
+    stored = clone(project);
+  } catch (error) {
+    stored = null;
+  }
+  let mutated = false;
+  for (const [scene, descriptor] of saved) {
+    if (restoreDataGrid(scene, descriptor)) mutated = true;
+  }
+  return { stored, mutated };
+}
+
+function withoutGridAccessor(project, protect = []) {
   if (!gridReadsThroughAccessor(project)) return project;
-  const stored = clone(project);
+  const { stored, mutated } = guardedClone(project, protect);
+  // A toJSON that nulls another scene's grid is not a successful strip.
+  if (mutated) return null;
   if (!stored || typeof stored !== 'object' || Array.isArray(stored) || gridReadsThroughAccessor(stored)) return null;
   return stored;
 }
 
-function stripScenes(scenes) {
+function historyScenes(history) {
+  return [history.present, ...history.past, ...history.future];
+}
+
+function stripScenes(scenes, protect = []) {
   const out = [];
   for (const scene of scenes) {
-    const stripped = withoutGridAccessor(scene);
+    const stripped = withoutGridAccessor(scene, protect);
     if (!stripped) return null;
     out.push(stripped);
   }
@@ -73,7 +126,7 @@ export function createHistory(present) {
 
 function historyOrShielded(history) {
   if (!inheritedGridGetter(history.present)) return history;
-  const present = withoutGridAccessor(history.present);
+  const present = withoutGridAccessor(history.present, historyScenes(history));
   if (!present || gridReadsThroughAccessor(present)) return history;
   return { past: history.past, present, future: history.future };
 }
@@ -89,15 +142,16 @@ export function commit(history, next) {
   }
   // A grid getter is skipped by clone and sameProject, so the scene looks unchanged
   // while present.grid still reads null. Keep the cloned data instead of that accessor.
+  const protect = historyScenes(history);
   if (unchanged && !gridReadsThroughAccessor(history.present) && !stackHidesGrid(history)) return history;
   if (unchanged) {
-    const past = stripScenes(history.past);
-    const future = stripScenes(history.future);
+    const past = stripScenes(history.past, protect);
+    const future = stripScenes(history.future, protect);
     if (!past || !future) return historyOrShielded(history);
     return { past, present: stored.present, future };
   }
-  const prior = withoutGridAccessor(history.present);
-  const older = stripScenes(history.past);
+  const prior = withoutGridAccessor(history.present, protect);
+  const older = stripScenes(history.past, protect);
   if (!prior || !older) return historyOrShielded(history);
   return { past: older.concat([prior]).slice(-CAP), present: stored.present, future: [] };
 }
@@ -122,20 +176,22 @@ export function loadExampleHistory(project) {
 
 function undo(history) {
   if (!history.past.length) return history;
-  const past = stripScenes(history.past.slice(0, -1));
+  const protect = historyScenes(history);
+  const past = stripScenes(history.past.slice(0, -1), protect);
   const present = history.past[history.past.length - 1];
-  const leaving = withoutGridAccessor(history.present);
-  const future = stripScenes(history.future);
+  const leaving = withoutGridAccessor(history.present, protect);
+  const future = stripScenes(history.future, protect);
   if (!past || !leaving || !future) return null;
   return { past, present, future: [leaving, ...future] };
 }
 
 function redo(history) {
   if (!history.future.length) return history;
+  const protect = historyScenes(history);
   const [present, ...futureTail] = history.future;
-  const leaving = withoutGridAccessor(history.present);
-  const past = stripScenes(history.past);
-  const future = stripScenes(futureTail);
+  const leaving = withoutGridAccessor(history.present, protect);
+  const past = stripScenes(history.past, protect);
+  const future = stripScenes(futureTail, protect);
   if (!leaving || !past || !future) return null;
   return { past: past.concat([leaving]), present, future };
 }
@@ -153,7 +209,14 @@ export function newDockHistory(meta = {}) {
 export function restoreHistory(history, direction) {
   const stepped = direction === 'redo' ? redo(history) : undo(history);
   if (!stepped) return { ok: false, history, issues: ['scene could not be cloned'] };
-  const present = withoutGridAccessor(stepped.present);
+  const present = withoutGridAccessor(stepped.present, [
+    history.present,
+    ...history.past,
+    ...history.future,
+    stepped.present,
+    ...stepped.past,
+    ...stepped.future,
+  ]);
   if (!present) return { ok: false, history, issues: ['scene could not be cloned'] };
   const next = present === stepped.present ? stepped : { ...stepped, present };
   const gate = requireOnePlayer(history.present, { ok: true, project: next.present, issues: [] });
