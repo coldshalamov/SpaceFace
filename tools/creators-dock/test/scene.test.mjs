@@ -362,20 +362,21 @@ test('edits that do not change the player count still refuse a zero or two playe
 
 test('agent requests do not succeed unless the committed project has exactly one player', () => {
   const draft = { op: 'create', project: { id: 'dock.draft', title: 'Draft', seed: 1 } };
-  const player = { op: 'addObject', object: secondPlayer('player') };
   const created = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft] });
-  assert.equal(created.ok, false);
-  assert.equal(created.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  assert.equal(created.ok, true, (created.issues || []).join('\n'));
+  assert.equal(playerIds(created.project).length, 1);
+  assert.equal(created.project.objects.find((object) => object.id === 'player').isPlayer, true);
 
-  const undone = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, player, { op: 'undo' }] });
-  assert.equal(undone.ok, false);
-  assert.equal(undone.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  const undone = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, { op: 'undo' }] });
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
   assert.equal(playerIds(undone.project).length, 1);
+  assert.equal(undone.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
 
-  const removed = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, player, { op: 'delete', ids: ['player'] }] });
+  const removed = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, { op: 'delete', ids: ['player'] }] });
   assert.equal(removed.ok, false);
   assert.equal(removed.issues.some((issue) => issue.includes('exactly one player')), true);
   assert.equal(playerIds(removed.project).length, 1);
+  assert.equal(removed.project.objects.find((object) => object.id === 'player').isPlayer, true);
 
   const emptied = applyRequest({
     schema: REQUEST_SCHEMA,
@@ -411,9 +412,9 @@ test('agent requests do not succeed unless the committed project has exactly one
   ];
   for (const op of sideOps) {
     const result = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, op] });
-    assert.equal(result.ok, false, op.op);
-    assert.equal(result.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true, op.op);
-    assert.equal(result.applied.includes(op.op), false, op.op);
+    assert.equal(result.ok, true, `${op.op}\n${(result.issues || []).join('\n')}`);
+    assert.equal(playerIds(result.project).length, 1);
+    assert.equal(result.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
   }
 
   const noted = applyRequest({
@@ -425,6 +426,42 @@ test('agent requests do not succeed unless the committed project has exactly one
   });
   assert.equal(noted.ok, true, noted.issues.join('\n'));
   assert.deepEqual(playerIds(noted.project), ['player']);
+});
+
+test('a no-op undo does not report ok for an empty history', () => {
+  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  for (const direction of ['undo', 'redo']) {
+    const result = restoreHistory(empty, direction);
+    assert.equal(result.ok, false, direction);
+    assert.equal(result.history, empty);
+    assert.equal(playerIds(result.history.present).length, 0);
+    assert.equal(result.issues.some((issue) => issue.includes('exactly one player') && issue.includes('found 0')), true);
+  }
+});
+
+test('editor and agent undo do not present zero players', () => {
+  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  const placed = placePlayer(empty.present);
+  assert.equal(placed.ok, true, (placed.issues || []).join('\n'));
+  const committed = commit(empty, placed.project);
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(undone.ok, false);
+  assert.equal(undone.history, committed);
+  assert.equal(playerIds(undone.history.present).length, 1);
+  assert.equal(objectById(undone.history.present, placed.id).isPlayer, true);
+
+  const draft = { op: 'create', project: { id: 'dock.draft', title: 'Draft', seed: 1 } };
+  const created = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, { op: 'undo' }] });
+  assert.equal(created.ok, true, (created.issues || []).join('\n'));
+  assert.equal(playerIds(created.project).length, 1);
+  const starter = created.project.objects.find((object) => object.isPlayer === true);
+  assert.equal(starter.id, 'player');
+  assert.equal(starter.profile, 'ship.starter');
+  assert.equal(typeof starter.isPlayer, 'boolean');
+  const redone = applyRequest({ schema: REQUEST_SCHEMA, ops: [draft, { op: 'redo' }] });
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(playerIds(redone.project).length, 1);
+  assert.equal(redone.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
 });
 
 test('New does not leave a zero-player scene and undo will not restore one', () => {

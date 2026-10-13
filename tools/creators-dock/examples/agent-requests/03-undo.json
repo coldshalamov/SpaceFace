@@ -21,26 +21,6 @@
     {
       "op": "addObject",
       "object": {
-        "id": "player",
-        "kind": "actor",
-        "role": "player",
-        "profile": "ship.starter",
-        "x": 0,
-        "z": 0,
-        "heading": 1.570796,
-        "velX": 0,
-        "velZ": 0,
-        "angularVelocity": 0,
-        "team": 0,
-        "factionId": "faction_free",
-        "isPlayer": true,
-        "persistent": true,
-        "label": "agent hitch"
-      }
-    },
-    {
-      "op": "addObject",
-      "object": {
         "id": "rock",
         "kind": "actor",
         "role": "debris",

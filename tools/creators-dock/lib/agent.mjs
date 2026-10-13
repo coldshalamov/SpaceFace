@@ -2,13 +2,12 @@
 // exportProject is the validator; this module does not write catalogs.
 
 import { getComposition } from './compositions.mjs';
-import { commit, createHistory, redo, undo } from './history.mjs';
+import { commit, createHistory, newDockHistory, restoreHistory } from './history.mjs';
 import {
   addObject,
   clone,
   cloneObject,
   deleteObjects,
-  emptyProject,
   groupObjects,
   nudgeObjects,
   REQUEST_SCHEMA,
@@ -31,7 +30,11 @@ export function applyRequest(request) {
       return response(false, history && history.present, [`${label}: op is required`], applied);
     }
     if (op.op === 'create') {
-      history = createHistory(emptyProject(op.project || {}));
+      history = newDockHistory(op.project || {});
+      const created = requireOnePlayer(history.present, { ok: true, project: history.present, issues: [] });
+      if (!created.ok) {
+        return response(false, history.present, created.issues.map((issue) => `${label}: ${issue}`), applied);
+      }
       applied.push(op.op);
       continue;
     }
@@ -44,12 +47,11 @@ export function applyRequest(request) {
     }
     if (!history) return response(false, null, [`${label}: no project yet`], applied);
     if (op.op === 'undo' || op.op === 'redo') {
-      const stepped = op.op === 'undo' ? undo(history) : redo(history);
-      const gate = requireOnePlayer(history.present, { ok: true, project: stepped.present, issues: [] });
-      if (!gate.ok) {
-        return response(false, history.present, gate.issues.map((issue) => `${label}: ${issue}`), applied);
+      const restored = restoreHistory(history, op.op);
+      if (!restored.ok) {
+        return response(false, history.present, restored.issues.map((issue) => `${label}: ${issue}`), applied);
       }
-      history = stepped;
+      history = restored.history;
       applied.push(op.op);
       continue;
     }
