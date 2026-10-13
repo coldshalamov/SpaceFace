@@ -1848,6 +1848,88 @@ test('a toJSON getter, an index getter, and a new nested null are not stored', (
   assert.equal(history.present.grid.wrap, undefined);
 });
 
+test('new pad arrays, an index getter, and a restore setter are not stored', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const grid = history.present.grid;
+
+  const widget = getComposition('dock.intercept-cargo');
+  widget.toJSON = function () {
+    return { ...this, widget: { pad: [null] } };
+  };
+  assert.equal(commit(history, widget), history);
+  assert.equal(history.present.widget, undefined);
+  assert.equal(history.present.grid, grid);
+
+  const nested = getComposition('dock.intercept-cargo');
+  nested.toJSON = function () {
+    return { ...this, grid: { nest: { pad: [null] } } };
+  };
+  assert.equal(commit(history, nested), history);
+  assert.equal(history.present.grid, grid);
+  assert.equal(history.present.grid.nest, undefined);
+
+  const framed = getComposition('dock.intercept-cargo');
+  framed.frames.toJSON = function () {
+    return [{ nest: { pad: [null] } }];
+  };
+  const framedCommit = commit(history, framed);
+  assert.equal(framedCommit, history);
+  assert.notEqual(framedCommit.present.frames[0], null);
+  assert.equal(framedCommit.present.frames[0].nest, undefined);
+
+  const present = history.present;
+  const frame0 = present.frames[0];
+  present.frames.push({ tick: 9, input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, fire: false } });
+  const frame1 = present.frames[1];
+  let indexReads = 0;
+  Object.defineProperty(present.frames, '0', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      indexReads += 1;
+      this[1] = null;
+      return frame0;
+    },
+  });
+  present.toJSON = function () { return this; };
+  const indexed = commit(history, present);
+  assert.equal(indexed, history);
+  assert.equal(indexReads, 0);
+  assert.equal(present.frames[1], frame1);
+  assert.notEqual(present.frames[1], null);
+  assert.notEqual(indexed.present.frames[1], null);
+
+  const rebuilt = {};
+  rebuilt.grid = grid;
+  rebuilt.title = 'Moving cargo interception';
+  for (const key of Object.keys(present)) {
+    if (key === 'grid' || key === 'title' || key === 'toJSON') continue;
+    rebuilt[key] = present[key];
+  }
+  const rebuiltGrid = rebuilt.grid;
+  rebuilt.toJSON = function () {
+    this.grid = null;
+    Object.defineProperty(this, 'title', {
+      configurable: true,
+      enumerable: true,
+      set() {
+        this.grid = null;
+        throw new Error('setter-boom');
+      },
+      get() { return 'x'; },
+    });
+    return this;
+  };
+  let restored;
+  assert.doesNotThrow(() => {
+    restored = commit(history, rebuilt);
+  });
+  assert.equal(restored, history);
+  assert.equal(rebuilt.grid, rebuiltGrid);
+  assert.notEqual(rebuilt.grid, null);
+  assert.equal(history.present.grid, grid);
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {

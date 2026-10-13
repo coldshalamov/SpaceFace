@@ -197,7 +197,14 @@ function restoreRecord(record) {
       const descriptor = Object.getOwnPropertyDescriptor(object, key);
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) delete object[key];
     }
-    for (const key of record.keys) object[key] = record.values.get(key);
+    for (const key of record.keys) {
+      Object.defineProperty(object, key, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: record.values.get(key),
+      });
+    }
   }
   if (record.toJSON) Object.defineProperty(object, 'toJSON', record.toJSON);
   else if (Object.prototype.hasOwnProperty.call(object, 'toJSON')) delete object.toJSON;
