@@ -68,7 +68,12 @@ export function createNemesisSystem() {
       this._techWindows = { encounterId: null, keys: new Set() };
     },
     serialize() { return clone(this.state.nemesis); },
-    deserialize(data) { this.state.nemesis = normalizeNemesis(data, nowOf(this.state)); },
+    deserialize(data) {
+      this.state.nemesis = normalizeNemesis(data, nowOf(this.state));
+      // Private tool windows belong to the loaded episode, not the future session being
+      // replaced. Durable seen keys still prevent replay of observations the save contains.
+      this._techWindows = { encounterId: null, keys: new Set() };
+    },
     inspect() { return this.serialize(); },
     _emit(event, payload) { this.bus.emit(event, clone(payload)); },
     _log(kind, detail, encounterId = '') {
@@ -99,6 +104,8 @@ export function createNemesisSystem() {
     _witnessed(payload, targetId) {
       const a = this.state.nemesis.active;
       if (!a || !this._flight()) return false;
+      const boss = entity(this.state, a.bossId);
+      if (!alive(boss) || !localTag(boss, a.id)) return false;
       // Explicit, trusted emitter provenance. A generic witnessed:true is NOT Orra's omniscience.
       if (Array.isArray(payload && payload.witnessIds)
           && (payload.witnessIds.includes(a.bossId) || payload.witnessIds.includes(RIVAL.id))) return true;
@@ -130,6 +137,8 @@ export function createNemesisSystem() {
       if (!p || m.ending) return;
       if (!a) { this._killedLeaving(p); return; }
       const id = p.id ?? p.victimId;
+      const currentBoss = entity(this.state, a.bossId);
+      if (id === a.bossId && currentBoss && !localTag(currentBoss, a.id)) return;
       const kill = classifyPlayerKill(p, this.state.playerId, m.tumbles, nowOf(this.state));
       // Orra directly experiences their own hull's final hit, even after the sensor drops it.
       if (kill && (id === a.bossId || this._witnessed(p, id))) {
@@ -201,25 +210,32 @@ export function createNemesisSystem() {
       const window = Math.floor(nowOf(this.state) / LIMITS.evidenceWindowS);
       const key = `${style}:${window}`;
       if (this._techWindows.keys.has(key)) return;
-      this._techWindows.keys.add(key);
       // Direct first: Orra's own sighting weighs two units and wins the window outright. If the
-      // boss cannot see the act the handler drops it and the crew report can still land.
-      this._emit('nemesis:observation', { encounterId: a.id, actorId, style });
+      // boss cannot see the act, a valid crew report can still land.
+      if (this._witnessed({}, actorId)) {
+        this._techWindows.keys.add(key);
+        this._emit('nemesis:observation', { encounterId: a.id, actorId, style });
+        return;
+      }
       const sensors = this.helpers.aiSensors;
       if (sensors && typeof sensors.frameFor === 'function') {
         for (const id of a.crewIds) {
           if (id === a.bossId) continue;
+          const witness = entity(this.state, id);
+          if (!alive(witness) || !localTag(witness, a.id)) continue;
           const frame = sensors.frameFor(id, this.state.tick);
           const contact = frame && Array.isArray(frame.contacts)
             && frame.contacts.find((c) => c.id === actorId);
           if (contact && contact.visible === true && contact.valid !== false
               && finite(contact.confidence, 1) >= 0.55) {
+            this._techWindows.keys.add(key);
             this._emit('nemesis:observation', { encounterId: a.id, actorId, style,
               source: 'crew_report', witnessId: id });
             break;
           }
         }
       }
+      // Hidden tool use leaves the window available for a later actual sighting.
     },
     update(dt, state) {
       this.state = state;
@@ -372,7 +388,7 @@ export function createNemesisSystem() {
       if (!a || !p || p.encounterId !== a.id || p.bossId !== a.bossId || a.retreatAt == null) return;
       // Trusted lifecycle receipt is also checked against geometry; an early callback cannot teleport the rival away.
       const boss = entity(this.state, a.bossId), player = entity(this.state, this.state.playerId);
-      if (!alive(boss) || !player || !boss.pos || !player.pos || nowOf(this.state) - a.retreatAt < 6) return;
+      if (!alive(boss) || !localTag(boss, a.id) || !player || !boss.pos || !player.pos || nowOf(this.state) - a.retreatAt < 6) return;
       if (Math.hypot(boss.pos.x - player.pos.x, boss.pos.z - player.pos.z) < 1800) return;
       this._finish('rival_escaped');
     },
@@ -380,7 +396,7 @@ export function createNemesisSystem() {
       const a = this.state.nemesis.active;
       if (!a || !p || p.encounterId !== a.id || a.surrenderedAt == null || !this._flight()) return;
       const boss = entity(this.state, a.bossId);
-      if (!alive(boss)) return; // No resurrection through a late UI choice.
+      if (!alive(boss) || !localTag(boss, a.id)) return; // No resurrection or replacement hull through a late UI choice.
       this._finish('spared');
     },
     _sectorChanged() {
