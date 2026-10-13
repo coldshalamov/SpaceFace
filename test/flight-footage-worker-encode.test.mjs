@@ -354,3 +354,28 @@ test('a good frame between failures resets the count: two failures, a success, t
     browser.restore();
   }
 });
+
+test('a worker that never replies times the request out instead of holding the recorder forever', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope } = fakeScope();
+  const encoder = createFootageEncoder(scope, { timeoutMs: 25 });
+  FakeWorker.instances[0].mode = 'hold';
+  const started = Date.now();
+  await assert.rejects(encoder.encode({ close() {} }, 640, 340), /timed out/);
+  assert.ok(Date.now() - started < 1000, 'it gave up on the timeout, not on some later event');
+  assert.equal(encoder.usable, true, 'one silent frame is dropped; retirement takes three in a row at the recorder');
+  // A reply that arrives after the timeout is ignored, not applied to a later request.
+  FakeWorker.instances[0].mode = 'echo';
+  const blob = await encoder.encode({ close() {} }, 640, 340);
+  assert.equal(blob.size, 8);
+  encoder.dispose();
+});
+
+test('a reply inside the timeout clears its timer (no timer is left holding a Node process open)', async () => {
+  FakeWorker.instances.length = 0;
+  const { scope } = fakeScope();
+  const encoder = createFootageEncoder(scope, { timeoutMs: 60_000 });
+  await encoder.encode({ close() {} }, 640, 340);
+  assert.deepEqual(process.getActiveResourcesInfo().filter((name) => name === 'Timeout').length <= 1, true);
+  encoder.dispose();
+});

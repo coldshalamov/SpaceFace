@@ -51,7 +51,7 @@ export function footageEncoderRuntime() {
 }
 
 /** The off-main-thread JPEG encoder, or null where Worker/OffscreenCanvas/createImageBitmap are missing. */
-export function createFootageEncoder(scope = globalThis) {
+export function createFootageEncoder(scope = globalThis, { timeoutMs = 5000 } = {}) {
   if (typeof scope.Worker !== 'function' || typeof scope.OffscreenCanvas !== 'function'
     || typeof scope.createImageBitmap !== 'function' || typeof scope.Blob !== 'function'
     || typeof scope.URL?.createObjectURL !== 'function') return null;
@@ -85,9 +85,17 @@ export function createFootageEncoder(scope = globalThis) {
       if (broken) { bitmap.close?.(); return Promise.reject(new Error('footage worker retired')); }
       const id = ++nextId;
       return new Promise((resolve, reject) => {
-        waiting.set(id, { resolve, reject });
+        // A worker that neither replies nor errors must not hold the recorder's one in-flight slot forever:
+        // the request fails after the timeout and counts toward the caller's three-strikes retirement.
+        const timer = setTimeout(() => {
+          if (waiting.delete(id)) reject(new Error('footage worker timed out'));
+        }, timeoutMs);
+        waiting.set(id, {
+          resolve: (blob) => { clearTimeout(timer); resolve(blob); },
+          reject: (error) => { clearTimeout(timer); reject(error); },
+        });
         try { worker.postMessage({ id, bitmap, width, height }, [bitmap]); }
-        catch (error) { waiting.delete(id); failAll(String(error)); reject(error); }
+        catch (error) { waiting.delete(id); clearTimeout(timer); failAll(String(error)); reject(error); }
       });
     },
     dispose() {
