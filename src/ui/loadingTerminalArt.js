@@ -2073,7 +2073,7 @@ export function startBootIntroVideo({ document = globalThis.document, onFallback
     resume() {
       if (!ctl.isLive() || bootVideoReducedMotion(document)) return;
       try {
-        video.currentTime = 0;
+        // Resume the pre-rolled decoder instead of seeking back through its cold first second.
         const p = video.play();
         if (p && typeof p.catch === 'function') p.catch(() => {});
       } catch (_) {}
