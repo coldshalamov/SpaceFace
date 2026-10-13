@@ -18,6 +18,12 @@ function gridReadsThroughAccessor(project) {
   return false;
 }
 
+function inheritedGridGetter(project) {
+  if (!project || typeof project !== 'object') return false;
+  if (Object.prototype.hasOwnProperty.call(project, 'grid')) return false;
+  return gridReadsThroughAccessor(project);
+}
+
 function withoutGridAccessor(project) {
   if (!gridReadsThroughAccessor(project)) return project;
   const stored = clone(project);
@@ -46,14 +52,21 @@ export function createHistory(present) {
   return { past: [], present: stored.present, future: [] };
 }
 
+function historyOrShielded(history) {
+  if (!inheritedGridGetter(history.present)) return history;
+  const present = withoutGridAccessor(history.present);
+  if (!present || gridReadsThroughAccessor(present)) return history;
+  return { past: history.past, present, future: history.future };
+}
+
 export function commit(history, next) {
   const stored = storedPresent(next);
-  if (!stored.ok) return history;
+  if (!stored.ok) return historyOrShielded(history);
   let unchanged = false;
   try {
     unchanged = sameProject(history.present, stored.present);
   } catch (error) {
-    return history;
+    return historyOrShielded(history);
   }
   // A grid getter is skipped by clone and sameProject, so the scene looks unchanged
   // while present.grid still reads null. Keep the cloned data instead of that accessor.

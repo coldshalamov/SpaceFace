@@ -17,6 +17,15 @@ function boxedPrimitive(value) {
   return value instanceof String || value instanceof Number || value instanceof Boolean;
 }
 
+function writeData(object, key, value) {
+  Object.defineProperty(object, key, {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value,
+  });
+}
+
 function dataValue(object, key) {
   const descriptor = Object.getOwnPropertyDescriptor(object, key);
   if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return undefined;
@@ -38,7 +47,7 @@ export function sortValue(value) {
   for (const key of Object.keys(value).sort()) {
     const slot = dataValue(value, key);
     if (!slot) continue;
-    out[key] = sortValue(slot.value);
+    writeData(out, key, sortValue(slot.value));
   }
   return out;
 }

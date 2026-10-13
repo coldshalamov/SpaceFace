@@ -73,6 +73,15 @@ function readToJSON(value) {
   return undefined;
 }
 
+function writeData(object, key, value) {
+  Object.defineProperty(object, key, {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value,
+  });
+}
+
 function snapshot(value, seen = new Map()) {
   if (value === null || value === undefined || typeof value !== 'object') return value;
   if (seen.has(value)) return seen.get(value);
@@ -88,7 +97,7 @@ function snapshot(value, seen = new Map()) {
   }
   const out = {};
   seen.set(value, out);
-  for (const [key, child] of ownDataEntries(value)) out[key] = snapshot(child, seen);
+  for (const [key, child] of ownDataEntries(value)) writeData(out, key, snapshot(child, seen));
   return out;
 }
 
@@ -299,7 +308,7 @@ function materialize(value, key, seen) {
   for (const [childKey, childValue] of ownDataEntries(value)) {
     const child = materialize(childValue, childKey, seen);
     if (child === CLONE_REJECT) return CLONE_REJECT;
-    if (child !== undefined) out[childKey] = child;
+    if (child !== undefined) writeData(out, childKey, child);
   }
   return out;
 }
@@ -323,11 +332,33 @@ export function clone(value) {
       restoreTree(records);
       return null;
     }
-    return JSON.parse(text);
+    return ownDataGrid(JSON.parse(text));
   } catch (error) {
     restoreTree(records);
     return null;
   }
+}
+
+function prototypeGridGetter(object) {
+  let current = Object.getPrototypeOf(object);
+  const seen = new Set();
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current);
+    const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
+    if (!descriptor) {
+      current = Object.getPrototypeOf(current);
+      continue;
+    }
+    return !Object.prototype.hasOwnProperty.call(descriptor, 'value') && typeof descriptor.get === 'function';
+  }
+  return false;
+}
+
+function ownDataGrid(object) {
+  if (!object || typeof object !== 'object' || Array.isArray(object)) return object;
+  if (Object.prototype.hasOwnProperty.call(object, 'grid') || !prototypeGridGetter(object)) return object;
+  writeData(object, 'grid', undefined);
+  return object;
 }
 
 function cloneScene(project) {

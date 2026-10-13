@@ -2164,6 +2164,73 @@ test('commit does not keep an inherited grid getter', () => {
   assert.notEqual(committed.present.grid, null);
 });
 
+function withObjectPrototypeGrid(body) {
+  const prior = Object.getOwnPropertyDescriptor(Object.prototype, 'grid');
+  const counter = { reads: 0 };
+  Object.defineProperty(Object.prototype, 'grid', {
+    configurable: true,
+    get() {
+      counter.reads += 1;
+      return null;
+    },
+  });
+  try {
+    body(counter);
+  } finally {
+    if (prior) Object.defineProperty(Object.prototype, 'grid', prior);
+    else delete Object.prototype.grid;
+  }
+}
+
+test('commit does not inherit a getter-only Object.prototype.grid', () => {
+  withObjectPrototypeGrid((counter) => {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    delete history.present.grid;
+    const before = counter.reads;
+    const committed = commit(history, history.present);
+    const unchangedGrid = committed.present.grid;
+    assert.equal(counter.reads, before);
+    assert.notEqual(unchangedGrid, null);
+    const unchangedOwn = Object.getOwnPropertyDescriptor(committed.present, 'grid');
+    assert.equal(Object.prototype.hasOwnProperty.call(unchangedOwn, 'value'), true);
+    assert.equal(typeof unchangedOwn.get, 'undefined');
+
+    const next = getComposition('dock.intercept-cargo');
+    delete next.grid;
+    next.title = 'Renamed dock';
+    const renamed = commit(history, next);
+    const renamedGrid = renamed.present.grid;
+    assert.equal(counter.reads, before);
+    assert.equal(renamed.present.title, 'Renamed dock');
+    assert.notEqual(renamedGrid, null);
+    const renamedOwn = Object.getOwnPropertyDescriptor(renamed.present, 'grid');
+    assert.equal(Object.prototype.hasOwnProperty.call(renamedOwn, 'value'), true);
+    assert.equal(typeof renamedOwn.get, 'undefined');
+  });
+});
+
+test('commit assigns an own grid when Object.prototype.grid has no setter', () => {
+  withObjectPrototypeGrid((counter) => {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    delete history.present.grid;
+    const next = getComposition('dock.intercept-cargo');
+    assert.equal(Object.prototype.hasOwnProperty.call(next, 'grid'), true);
+    const before = counter.reads;
+    let committed;
+    assert.doesNotThrow(() => {
+      committed = commit(history, next);
+    });
+    const grid = committed.present.grid;
+    assert.equal(counter.reads, before);
+    assert.notEqual(committed, history);
+    assert.notEqual(grid, null);
+    assert.equal(grid.size, next.grid.size);
+    const own = Object.getOwnPropertyDescriptor(committed.present, 'grid');
+    assert.equal(Object.prototype.hasOwnProperty.call(own, 'value'), true);
+    assert.equal(typeof own.get, 'undefined');
+  });
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {
