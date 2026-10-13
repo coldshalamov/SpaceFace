@@ -270,11 +270,13 @@ export function placePlayer(project) {
 export function setPlayer(project, id) {
   const target = objectById(project, id);
   if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
-  const next = clone(project);
-  for (const object of next.objects || []) {
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
+  for (const object of next.objects) {
     if (object.kind === 'actor') object.isPlayer = object.id === id;
   }
-  const stored = clone(next);
+  const stored = cloneScene(next);
+  if (!stored) return refuseUnstored(project);
   const gated = requireOnePlayer(project, { ok: true, project: stored, id, issues: [] });
   return gated.ok ? gated : { ok: false, project, issues: gated.issues };
 }
@@ -282,8 +284,10 @@ export function setPlayer(project, id) {
 export function clearPlayerFlag(project, id) {
   const target = objectById(project, id);
   if (!target || target.kind !== 'actor') return { ok: false, project, issues: ['the player has to be an actor'] };
-  const next = clone(project);
-  const object = next.objects.find((row) => row.id === id);
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
+  const object = next.objects.find((row) => row && row.id === id);
+  if (!object || object.kind !== 'actor') return refuseUnstored(project);
   object.isPlayer = false;
   return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
@@ -296,9 +300,11 @@ export function addObject(project, object) {
   const found = countPlayers(project.objects) + (isPlayerActor(object) ? 1 : 0);
   if (found !== 1) issues.push(exactlyOnePlayerIssue(found));
   if (issues.length) return { ok: false, project, issues };
-  const next = clone(project);
-  const placed = applySnap(clone(object), next.grid);
-  next.objects = [...(next.objects || []), placed];
+  const next = cloneScene(project);
+  if (!next) return refuseUnstored(project);
+  const placed = applySnap(object, next.grid);
+  if (!placed) return refuseUnstored(project);
+  next.objects = [...next.objects, placed];
   return requireOnePlayer(project, { ok: true, project: next, issues: [] });
 }
 
