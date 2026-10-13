@@ -1,0 +1,125 @@
+  fat event payloads:
+    bufferFullUpload@3171.sourceData 59 KB
+    bufferFullUpload@3171.sourceData 88 KB
+    bufferFullUpload@3171.sourceData 88 KB
+    bufferFullUpload@3171.sourceData 118 KB
+    bufferFullUpload@3171.sourceData 2 KB
+    bufferFullUpload@3171.sourceData 3 KB
+    bufferFullUpload@3171.sourceData 3 KB
+    bufferFullUpload@3171.sourceData 4 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 1 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 1 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 0 KB
+    bufferFullUpload@3171.sourceData 52 KB
+    bufferFullUpload@3171.sourceData 2 KB
+
+SMOOTH-FLIGHT WITNESS
+  GPU                         ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)
+  whole-machine CPU busy      35 % of 14 logical cores during the sample (the game alone is ~10-15 %)
+  route                       open flight, new game; at end: 21 other ships, 0 projectiles (peak 0), 183 entities, 0 draw calls, 0k triangles
+  launch to flight            41.3 s
+  sample                      after 25 s of flight: 20 s, 994 frames, 49.9 fps mean
+  frame time p50/p95/p99      16.7 / 33.4 / 50.0 ms; worst 67 ms
+  frames over 33 / 50 / 100   58 (5.8 %) / 16 (1.6 %) / 0
+  typical frame costs (ms)    callback 7.9  sim 0.0  present 7.8  render 5.9  vfx 1.0  ui 0.7  feel 0.1  admission 0.1
+  before a LONG frame (ms)    callback 9.1  sim 0.0  present 8.9  render 6.9  vfx 1.0  ui 0.8  feel 0.2  admission 0.0
+  long frames paid in JS      2 of 58 (the rest: GPU, compositor or GC outside the game's callback)
+  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...
+    # 904    67 <- callback    8  sim    0  present    7  (render 6, vfx 1, ui 1)  admission 0  — no wave event within 2s
+    # 703    67 <- callback    9  sim    0  present    9  (render 6, vfx 1, ui 1)  admission 0  — no wave event within 2s
+    # 712    67 <- callback   38  sim    0  present   35  (render 33, vfx 2, ui 1)  admission 0  — no wave event within 2s
+  wave events (s into sample)   none captured
+  every frame >50 ms: +s into sample, interval ms, owner, callback breakdown, nearest wave
+      +0.9s #  43     50  externalScheduling       cb   10 (sim 0 ren 8 vfx 1 ui 0 adm 0 untr 0) gap 46 disp 39  — no wave event within 2s
+      +4.4s # 211     50  externalScheduling       cb    8 (sim 0 ren 6 vfx 1 ui 0 adm 0 untr 0) gap 46 disp 38  — no wave event within 2s
+      +6.2s # 301     50  externalScheduling       cb    8 (sim 0 ren 6 vfx 1 ui 1 adm 0 untr 0) gap 47 disp 39  — no wave event within 2s
+      +8.5s # 416     50  externalScheduling       cb   10 (sim 0 ren 8 vfx 1 ui 1 adm 0 untr 0) gap 47 disp 39  — no wave event within 2s
+      +9.5s # 465     50  externalScheduling       cb    9 (sim 0 ren 5 vfx 1 ui 2 adm 0 untr 0) gap 48 disp 38  — no wave event within 2s
+      +9.8s # 483     50  externalScheduling       cb   10 (sim 0 ren 7 vfx 1 ui 1 adm 0 untr 0) gap 49 disp 41  — no wave event within 2s
+     +10.8s # 527     50  externalScheduling       cb    9 (sim 0 ren 7 vfx 1 ui 1 adm 0 untr 0) gap 46 disp 39  — no wave event within 2s
+     +13.4s # 666     50  externalScheduling       cb    7 (sim 0 ren 5 vfx 1 ui 1 adm 0 untr 0) gap 45 disp 39  — no wave event within 2s
+     +14.2s # 703     67  intraFrameTasks          cb    9 (sim 0 ren 6 vfx 1 ui 1 adm 0 untr 0) gap 47 disp 55  — no wave event within 2s
+     +14.4s # 712     67  render                   cb   38 (sim 0 ren 33 vfx 2 ui 1 adm 0 untr 2) gap 30 disp 27  — no wave event within 2s
+     +15.6s # 772     50  intraFrameTasks          cb   11 (sim 0 ren 8 vfx 2 ui 1 adm 0 untr 0) gap 27 disp 38  — no wave event within 2s
+     +16.1s # 803     50  externalScheduling       cb   12 (sim 0 ren 8 vfx 2 ui 2 adm 0 untr 0) gap 40 disp 39  — no wave event within 2s
+     +16.5s # 821     50  externalScheduling       cb    8 (sim 0 ren 5 vfx 1 ui 1 adm 0 untr 0) gap 47 disp 39  — no wave event within 2s
+     +17.3s # 862     50  externalScheduling       cb   15 (sim 0 ren 11 vfx 2 ui 1 adm 0 untr 0) gap 35 disp 33  — no wave event within 2s
+     +18.1s # 904     67  externalScheduling       cb    8 (sim 0 ren 6 vfx 1 ui 1 adm 0 untr 0) gap 56 disp 55  — no wave event within 2s
+     +19.4s # 972     50  render                   cb   37 (sim 0 ren 34 vfx 2 ui 1 adm 0 untr 0) gap 7 disp 9  — no wave event within 2s
+  hitch classifier (in-game)    hitches 175 of 1025 frames, named 143 (coverage 82 %) — externalScheduling 138 | unknown 32 | bloom 3 | present 2  (scheduling split: gap-dominant 49, dispatch-dominant 89, extGap 1066 ms, dispLag 1664 ms)
+  last hitch verdicts: +s into sample, frame ms, owner, nearest wave
+     +19.4s     33  unknown  — no wave event within 2s
+     +19.6s     50  externalScheduling  — no wave event within 2s
+     +19.7s     33  externalScheduling  — no wave event within 2s
+     +19.8s     33  externalScheduling  — no wave event within 2s
+     +19.8s     33  unknown  — no wave event within 2s
+     +20.0s     33  externalScheduling  — no wave event within 2s
+     +20.0s     33  externalScheduling  — no wave event within 2s
+     +20.1s     50  present  — no wave event within 2s
+     +20.1s     33  externalScheduling  — no wave event within 2s
+     +20.2s     33  externalScheduling  — no wave event within 2s
+     +20.2s     33  externalScheduling  — no wave event within 2s
+     +20.3s     33  externalScheduling  — no wave event within 2s
+     +20.3s     33  externalScheduling  — no wave event within 2s
+     +20.4s     33  externalScheduling  — no wave event within 2s
+     +20.5s     33  externalScheduling  — no wave event within 2s
+     +20.5s     33  externalScheduling  — no wave event within 2s
+  long tasks ≥100 ms between callbacks (largest first)
+    none
+  wave arrival in window      NOT COVERED — no wave materialized in this window. The link/upload counts below say nothing about wave-arrival cost, and must not be compared against a run that was covered.
+  kills in sample             n/a (run with --with-kill to force live kills)
+  program links / buffer uploads shaderLinks +1, bufferFullUploads +326, bufferPartialUploads +36114
+  link placement                1 frame(s) paid a draw-time link; 0 link(s) landed off-frame (async compile); novelty: 0 NOVEL, 0 RELINK, 0 unkeyed
+  admissions queued at flight   pipelines 1, residency 0
+  roster prewarm at flight      1 roots, 1561 unready materials — opening-species-warm(5567m,1561/5575,null)
+  crucible warm at flight     {"profile":"opening","records":36,"instantiated":36,"packageInstances":36,"paletteSubjects":274,"chunkPromotions":0,"shipKicks":0,"shipStates":""}
+  ship pools at flight        0 chunks, 0 slot owners, 0 pending candidates
+  cook ledger                 live.rocksAndLeftoverMeshes 3ms resolved (firstFlightEntities=46) | live.meshBuilds2 45ms resolved (queued=8,passes=1,built=0,buildMs=0,yields=1,left=0) | cook.programs 0ms resolved (method=first-flight-hulls) | cook.touchCompile 822ms resolved (issued=575,unlinked=0,yields=14) | cook.touch 688ms resolved (subjects=575,firstPicture=94,touched=575,notReady=0,noProgram=0,switched=2,touchMs=336,maxTouchMs=3,yields=41) | cook.buffers 790ms resolved (roots=93,textures=224,yields=15) | cook.layers 126ms resolved (roots=174,yields=21) | cook.crucibleWarm 555ms resolved (progress={"profile":"opening","records":36,"instantiated":36,"packageInstances":36,"paletteSubjects":274,"chunkPromotions":0,"shi) | cook.rockPools 6705ms resolved (roots=52,units=1684,issued=1684,issueDedupeSkips=1598,touched=1684,hiddenTouchSkips=1614,yields=13,issueMs=1702,drainMs=2163,touchMs=2625) | live.cook 20687ms resolved | live.leftoverUpgradeIdle 0ms resolved (pending=0,inFlight=0,compiling=false) | live.materialSettle 342ms resolved (unbound=571,names=Physical racing wakes/Next checkpoint/Draft pace beacon/Massline anchors and crossing refuges/L6_comet/L0-L2_deep-field-composite/L3_stars/L4_) | live.postOpeningPipelines 1588ms resolved | live.parkWarmRoots 50ms resolved (roots=1,nodes=129,stampedGeometries=515) | live.firstFramePoolCensus 1714ms resolved | live.finalPipelineSeal 0ms resolved (queuedPipelines=0) | wait.prepareLiveSectorBeforeFlight 25047ms resolved | opening.compositionTail 1ms resolved
+  opening tail settle         {"skipped":false,"waitedMs":1,"polls":1,"kicked":0,"kickedIds":[],"settled":true,"pending":0,"inFlight":0,"compiling":false,"residency":0,"budget":20000}
+  boundary census at flight   authored×6
+  mesh builds in sample:
+    +15.2s  build ship:ship_wasp
+    +15.3s  build ship:ship_wasp
+  buffer uploads in sample:
+    +15s  ×1    bufferData 60288B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 90432B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_Armor.position LOD0_Armor.sfHullPosition
+    +15s  ×1    bufferData 90432B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 120576B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 2168B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 3252B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_CANOPY.position LOD0_CANOPY.sfHullPosition
+    +15s  ×1    bufferData 3252B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 4336B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×3    bufferData 384B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 576B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_HOOK_DRIVE_CORE.position
+    +15s  ×1    bufferData 1152B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_HOOK_DRIVE_CORE.sfHullPosition
+    +15s  ×2    bufferData 96B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 192B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK
+    +15s  ×1    bufferData 144B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_HOOK_NAV_PORT.position
+    +15s  ×1    bufferData 288B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_HOOK_NAV_PORT.sfHullPosition
+    +15s  ×1    bufferData 53172B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_Armor.index
+    +15s  ×1    bufferData 2064B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_CANOPY.index
+    +15s  ×1    bufferData 540B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_HOOK_DRIVE_CORE.index
+    +15s  ×1    bufferData 72B  via res:StandIn_LOD0_Armor,StandIn_LOD0_CANOPY,StandIn_LOD0_HOOK  <- LOD0_HOOK_NAV_PORT.index
+    +15s  ×1    bufferData 192B  via res:StandIn_LOD0_HOOK_NAV_STARBOARD,StandIn_LOD0_Hull,StandI
+    +15s  ×2    bufferData 96B  via res:StandIn_LOD0_HOOK_NAV_STARBOARD,StandIn_LOD0_Hull,StandI
+    +15s  ×1    bufferData 144B  via res:StandIn_LOD0_HOOK_NAV_STARBOARD,StandIn_LOD0_Hull,StandI  <- LOD0_HOOK_NAV_STARBOARD.position
+    +15s  ×1    bufferData 288B  via res:StandIn_LOD0_HOOK_NAV_STARBOARD,StandIn_LOD0_Hull,StandI  <- LOD0_HOOK_NAV_STARBOARD.sfHullPosition
+    +15s  ×1    bufferData 35952B  via res:StandIn_LOD0_HOOK_NAV_STARBOARD,StandIn_LOD0_Hull,StandI
+  SHIP LOST ITS PLACE         0 presents redrew an already-drawn moment (must be 0)
+  hitch callbacks             0 of 1024 (world resumed two ticks on)
+  frames that shed sim time   38
+  game speed vs real time     96.3 % (hit-stop and hitches are the only things allowed to lower it)
+  OS says reduce motion       false
+  game motion setting         full -> effects FULL
+  rock batches                0/0  0/0  0/0  0/0  0/0
+  player speed at end         195 WU/s
+  console errors              0
+
+exit 0
