@@ -1990,6 +1990,72 @@ test('a getter installed in place of grid is not stored', () => {
   assert.equal('value' in Object.getOwnPropertyDescriptor(nulledHistory.present, 'grid'), true);
 });
 
+test('undo does not null grid through an objects getter', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const grid = history.present.grid;
+  const objects = history.present.objects;
+  let reads = 0;
+  Object.defineProperty(history.present, 'objects', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      reads += 1;
+      this.grid = null;
+      return objects;
+    },
+  });
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  assert.equal(reads, 0);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.equal(committed.past[0], history.present);
+  assert.equal(committed.past[0].grid, grid);
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(reads, 0);
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  assert.equal(undone.history.present, history.present);
+  assert.equal(undone.history.present.grid, grid);
+  assert.notEqual(undone.history.present.grid, null);
+});
+
+test('a non-configurable grid getter does not escape commit', () => {
+  for (const produce of [
+    function () {
+      Object.defineProperty(this, 'grid', {
+        enumerable: true,
+        configurable: false,
+        get() { return null; },
+      });
+      return this;
+    },
+    function () {
+      Object.defineProperty(this, 'grid', {
+        enumerable: true,
+        configurable: false,
+        get() { return null; },
+      });
+      return null;
+    },
+  ]) {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    const grid = history.present.grid;
+    history.present.toJSON = produce;
+    let committed;
+    assert.doesNotThrow(() => {
+      committed = commit(history, history.present);
+    });
+    assert.equal(committed, history);
+    assert.equal(committed.past.length, 0);
+    assert.equal(committed.present, history.present);
+    const descriptor = Object.getOwnPropertyDescriptor(history.present, 'grid');
+    if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      assert.equal(descriptor.value, grid);
+      assert.notEqual(descriptor.value, null);
+    }
+  }
+});
+
 test('stableStringify does not throw when a boxed id toJSON throws', () => {
   const boxed = new String('dock.intercept-cargo');
   Object.defineProperty(boxed, 'toJSON', {

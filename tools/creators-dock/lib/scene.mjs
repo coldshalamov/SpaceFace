@@ -193,23 +193,45 @@ function captureTree(value, seen, records) {
   for (const [, child] of ownDataEntries(value)) captureTree(child, seen, records);
 }
 
+function redefine(object, key, descriptor) {
+  try {
+    Object.defineProperty(object, key, descriptor);
+  } catch (error) {
+    // A non-configurable property cannot be put back. Leave it and keep the previous history.
+  }
+}
+
 function restoreRecord(record) {
   const object = record.object;
   if (record.kind === 'array') {
-    object.length = 0;
+    try {
+      object.length = 0;
+    } catch (error) {
+      // length can be non-writable after a hostile toJSON
+    }
     for (let i = 0; i < record.length; i += 1) {
       const descriptor = record.descriptors[i];
-      if (descriptor) Object.defineProperty(object, String(i), descriptor);
+      if (descriptor) redefine(object, String(i), descriptor);
     }
-    object.length = record.length;
+    try {
+      object.length = record.length;
+    } catch (error) {
+      // length can be non-writable after a hostile toJSON
+    }
   } else {
     for (const key of Object.keys(object)) {
       if (record.values.has(key)) continue;
       const descriptor = Object.getOwnPropertyDescriptor(object, key);
-      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) delete object[key];
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        try {
+          delete object[key];
+        } catch (error) {
+          // non-configurable extra key
+        }
+      }
     }
     for (const key of record.keys) {
-      Object.defineProperty(object, key, {
+      redefine(object, key, {
         configurable: true,
         enumerable: true,
         writable: true,
@@ -217,12 +239,22 @@ function restoreRecord(record) {
       });
     }
   }
-  if (record.toJSON) Object.defineProperty(object, 'toJSON', record.toJSON);
-  else if (Object.prototype.hasOwnProperty.call(object, 'toJSON')) delete object.toJSON;
+  try {
+    if (record.toJSON) Object.defineProperty(object, 'toJSON', record.toJSON);
+    else if (Object.prototype.hasOwnProperty.call(object, 'toJSON')) delete object.toJSON;
+  } catch (error) {
+    // non-configurable toJSON stays; the clone is still rejected
+  }
 }
 
 function restoreTree(records) {
-  for (let i = records.length - 1; i >= 0; i -= 1) restoreRecord(records[i]);
+  for (let i = records.length - 1; i >= 0; i -= 1) {
+    try {
+      restoreRecord(records[i]);
+    } catch (error) {
+      // One record must not prevent the rest from being put back, and must not escape clone.
+    }
+  }
 }
 
 function materialize(value, key, seen) {
@@ -464,22 +496,32 @@ function collectNestedPlayerFlags(value, path, issues, seen) {
   }
 }
 
+function propertySlot(object, key) {
+  if (!object || typeof object !== 'object') return { kind: 'missing' };
+  const descriptor = Object.getOwnPropertyDescriptor(object, key);
+  if (!descriptor) return { kind: 'missing' };
+  if (!isDataDescriptor(descriptor)) return { kind: 'accessor' };
+  return { kind: 'data', value: descriptor.value };
+}
+
 function sceneObjects(project) {
-  const objects = project && project.objects;
-  return Array.isArray(objects) ? objects : null;
+  const slot = propertySlot(project, 'objects');
+  return slot.kind === 'data' && Array.isArray(slot.value) ? slot.value : null;
 }
 
 export function playerCanonIssues(project) {
   const issues = [];
+  const slot = propertySlot(project, 'objects');
   const objects = sceneObjects(project);
-  if (project && project.objects != null && !objects) issues.push('objects must be an array');
+  if (slot.kind === 'data' && slot.value != null && !objects) issues.push('objects must be an array');
   let players = 0;
   for (const object of objects || []) {
     const label = object && object.id ? `${object.id}: ` : '';
     for (const issue of issuesForObject(object)) issues.push(`${label}${issue}`);
     if (isPlayerActor(object)) players += 1;
   }
-  if (players !== 1) issues.push(exactlyOnePlayerIssue(players));
+  // A getter named objects must not run, and it is not evidence of zero players.
+  if (slot.kind !== 'accessor' && players !== 1) issues.push(exactlyOnePlayerIssue(players));
   collectNestedPlayerFlags(project, 'project', issues, new Set());
   return issues;
 }

@@ -3,7 +3,12 @@ import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, 
 const CAP = 100;
 
 function storedPresent(present) {
-  const stored = clone(present);
+  let stored = null;
+  try {
+    stored = clone(present);
+  } catch (error) {
+    stored = null;
+  }
   if (stored == null || typeof stored !== 'object' || Array.isArray(stored)) {
     return { ok: false, present: null, issues: ['scene could not be cloned'] };
   }
