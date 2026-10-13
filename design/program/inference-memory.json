@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "VERB-14",
-      "date": "2026-09-30",
-      "wf": "WF-15",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "reel in/out default to BracketLeft/Right in every scheme; held winch drives reelDelta, modal-safe, rebindable",
-      "fingerprint": "verb=reel,subject=tether,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "b876631d7a11b05447f29d512dc8015d9aa7fc4a",
-      "verification": "focused_green"
-    },
-    {
       "id": "VERB-16",
       "date": "2026-09-30",
       "wf": "WF-14",
@@ -1654,6 +1641,19 @@
       "references": [],
       "integration": "live",
       "commit": "e6bbb1720894c7d3d6c8d14af66db6a4c08a372c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "ceres-chain-dock-log",
+      "date": "2026-10-13",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The refinery's own dock-face drama (the Ceres causal chain) now reaches the dock card's DOCK LOG — completed chain events write the sector deed slot with their own line, so docking after watching the pod escape or the seam calve finally hears the station remember it",
+      "fingerprint": "verb=remember,subject=dock-face chain event,sector=ceres,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "e8f779885d7a8d7a5b65b00be4b1d1a22f968989",
       "verification": "focused_green"
     }
   ],
