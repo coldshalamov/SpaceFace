@@ -24,8 +24,10 @@ import {
   bumpPackageDetachSerial,
   noteSharedImageSourceRefilled,
   restoreSharedCompressedMips,
+  retainTextureUploadLease,
   sharedImageSourceEntry,
   sharedImageSourceUserCount,
+  textureUploadLeased,
 } from './imageSourceDedupe.js';
 
 // The detach serial lives in the leaf module so imageSourceDedupe's own shared-source releases
@@ -439,6 +441,9 @@ export function detachPackageTexture(texture) {
   if (!manifest || manifest.evicted) return false;
   const entry = manifest.entries[mark.ordinal];
   if (!entry || entry.texture !== texture || entry.detached) return false;
+  // The admission touch is mid-bind. Emptying the chain now is the
+  // release-after-refill upload (three reads mipmaps[0].width).
+  if (textureUploadLeased(texture)) return false;
 
   // A dedupe-shared texture's payload records are physically held by every live user of its
   // registry entry: Texture.clone() slices the mipmap ARRAY but shares the mip records, and a
@@ -803,6 +808,24 @@ function compressedMipsMissing(texture) {
  * Put a sibling's compressed chain back on every presented slot that lost its own.
  * Returns true when at least one slot was refilled.
  */
+/**
+ * A Texture.clone() copies the detach mark and an already-emptied mip chain.
+ * The clone fails the manifest identity check, so the pending-upload gate never
+ * rehydrates it. When the live entry still holds levels, hand that chain over.
+ */
+function adoptManifestCompressedMips(texture) {
+  if (!compressedMipsMissing(texture)) return false;
+  const mark = texture.userData && texture.userData.spacefaceCpuDetach;
+  if (!mark) return false;
+  const manifest = manifests.get(mark.contentHash);
+  if (!manifest || manifest.evicted) return false;
+  const entry = manifest.entries[mark.ordinal];
+  const donor = entry && entry.texture;
+  if (!donor || donor === texture || compressedMipsMissing(donor)) return false;
+  texture.mipmaps = donor.mipmaps.slice();
+  return true;
+}
+
 export function restorePresentedCompressedMips(material) {
   const materials = presentedMaterialList(material);
   if (!materials) return false;
@@ -812,10 +835,51 @@ export function restorePresentedCompressedMips(material) {
     if (!mat) continue;
     for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
       const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
-      if (texture && texture.isTexture === true && restoreSharedCompressedMips(texture)) restored = true;
+      if (!texture || texture.isTexture !== true) continue;
+      if (restoreSharedCompressedMips(texture) || adoptManifestCompressedMips(texture)) restored = true;
     }
   }
   return restored;
+}
+
+/**
+ * Refill compressed textures an exact-target draw would upload with an empty
+ * chain. Covers the manifest texture (rehydrate) and a clone whose copied mark
+ * is not that entry (rehydrate, then copy the restored chain).
+ */
+export async function refillPresentedCompressedUploads(textures) {
+  const needsManifest = [];
+  for (const texture of textures || []) {
+    if (!texture || texture.isCompressedTexture !== true) continue;
+    if (!(texture.version > 0) || !compressedMipsMissing(texture)) continue;
+    if (restoreSharedCompressedMips(texture) || adoptManifestCompressedMips(texture)) continue;
+    if (texture.userData && texture.userData.spacefaceCpuDetach) needsManifest.push(texture);
+  }
+  const wanted = new Set();
+  for (const texture of needsManifest) {
+    const mark = texture.userData.spacefaceCpuDetach;
+    const manifest = mark && manifests.get(mark.contentHash);
+    if (manifest && !manifest.evicted) wanted.add(manifest);
+  }
+  for (const manifest of wanted) await rehydrateManifestOnce(manifest);
+  for (const texture of needsManifest) adoptManifestCompressedMips(texture);
+}
+
+/** Hold CPU chains for every texture this draw is about to bind. */
+export function retainPresentedTextureLeases(textures) {
+  const release = [];
+  const seen = new Set();
+  for (const texture of textures || []) {
+    if (!texture || texture.isTexture !== true || seen.has(texture)) continue;
+    seen.add(texture);
+    release.push(retainTextureUploadLease(texture));
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    for (const fn of release) fn();
+  };
 }
 
 /**

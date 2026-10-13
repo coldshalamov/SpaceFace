@@ -461,6 +461,7 @@ import {
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
+  refillPresentedCompressedUploads,
 } from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
@@ -2331,6 +2332,28 @@ function stormWarn(site, ...args) {
     row.suppressed = 0;
   }
 }
+function emptyCompressedTextureIdentity(subject) {
+  const names = [];
+  if (!subject || typeof subject.traverse !== 'function') return '';
+  subject.traverse((object) => {
+    if (names.length >= 4) return;
+    const mats = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
+    for (const material of mats) {
+      if (!material) continue;
+      for (const key of Object.keys(material)) {
+        const texture = material[key];
+        if (!texture || texture.isCompressedTexture !== true) continue;
+        const mips = texture.mipmaps;
+        if (Array.isArray(mips) && mips.length > 0 && mips[0] && Number(mips[0].width) > 0) continue;
+        const mark = texture.userData && texture.userData.spacefaceCpuDetach;
+        names.push(`${key}:${texture.name || 'unnamed'}:${mark ? 'detach-mark' : 'unmarked'}`);
+        if (names.length >= 4) return;
+      }
+    }
+  });
+  return names.join(', ');
+}
+
 function laneWarn(owner, lane, ...args) {
   // Accepts an owner with .state (renderer/boundary) or a bare state object
   // (has .render) — the cook drives only hold the latter.
@@ -12644,6 +12667,11 @@ export const render = {
           } catch (error) {
             laneWarn(this, 'admissionTouch', '[render] admission touch detach reattach failed', error);
           }
+          try {
+            await refillPresentedCompressedUploads(collectStartupTextures(subject));
+          } catch (error) {
+            laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
+          }
           // compile() resolves under the armed admission state; the presented pass can still
           // ask the driver for a different program key (shadow-gate drift, env binding, target
           // color space). Draw the admitted subject once on the exact post target under live
@@ -12653,7 +12681,7 @@ export const render = {
           try {
             touchExactTargetSubject(subject);
           } catch (error) {
-            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             // Identify which texture threw on upload and why: package-detach empties a
             // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
             // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
@@ -12826,14 +12854,19 @@ export const render = {
               .catch((error) => {
                 laneWarn(this, 'admissionTouch', '[render] exact-target touch texture reattach failed', error);
               })
-              .then(() => {
+              .then(async () => {
+                try {
+                  await refillPresentedCompressedUploads(collectStartupTextures(subject));
+                } catch (error) {
+                  laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
+                }
                 const restoreDetached = revealSubjectWithAncestors(subject);
                 try {
                   return touchExactTargetSubject(subject);
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
                   // on a best-effort caller.
-                  laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+                  laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
                   return { skipped: true, reason: 'touch-failed' };
                 } finally {
                   restoreDetached();
@@ -12843,13 +12876,18 @@ export const render = {
           // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
           // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
           // the draw a silent no-op and leaves the exact variant cold for the presented pass.
+          try {
+            await refillPresentedCompressedUploads(collectStartupTextures(subject));
+          } catch (error) {
+            laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
+          }
           const restore = revealSubjectWithAncestors(subject);
           try {
             return touchExactTargetSubject(subject);
           } catch (error) {
             // The whole seam is async now, so mirror the detached branch's
             // anti-unhandled-rejection contract instead of propagating.
-            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             return { skipped: true, reason: 'touch-failed' };
           } finally {
             restore();

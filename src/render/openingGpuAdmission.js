@@ -23,6 +23,7 @@ import {
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
   restorePresentedCompressedMips,
+  retainPresentedTextureLeases,
 } from './packageCpuDetach.js';
 import {
   collectStartupGeometries,
@@ -678,6 +679,7 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   const childSplices = [];
   const hiddenForTouch = new Map();
   const drawn = [];
+  let releaseUploadLeases = () => {};
   try {
     // Shallowest-first so a nested null-geometry node is re-seated before its own
     // children are moved; the finally below restores deepest-first.
@@ -761,6 +763,9 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
             });
           }
         }
+        // Keep refilled chains alive for this bind. A residency release in the
+        // same turn would empty them again before texStorage reads mipmaps[0].
+        releaseUploadLeases = retainPresentedTextureLeases(collectStartupTextures(drawableSubjects));
         renderer.render(lightingScene, camera);
       }, options.drawableSession);
       drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
@@ -775,6 +780,7 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
       reason: drawableSubjects.length === 0 ? 'null-geometry' : undefined,
     };
   } finally {
+    releaseUploadLeases();
     for (const node of cullable) node.frustumCulled = true;
     // Last-in-first-out: a list holding both an ancestor and its descendant parks them in
     // order, so unwinding in reverse keeps each reparent consistent with the one before it.
