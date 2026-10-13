@@ -2765,11 +2765,12 @@ test('a getter pad push(null) does not keep the extra length', () => {
   assert.equal(backing.pad.length, length);
   assert.equal(backing.pad[0], 'keep');
   assert.equal(backing.pad.includes(null), false);
+  assert.deepEqual([...backing.pad], ['keep']);
   for (const scene of [committed.present, ...committed.past, ...committed.future]) {
-    if (Array.isArray(scene.grid && scene.grid.pad)) {
-      assert.equal(scene.grid.pad.includes(null), false);
-      assert.equal(scene.grid.pad.length, length);
-    }
+    const pad = scene.grid && scene.grid.pad;
+    if (!Array.isArray(pad)) continue;
+    assert.equal(pad.includes(null), false);
+    assert.deepEqual([...pad], ['keep']);
   }
 
   const dataHistory = createHistory(getComposition('dock.intercept-cargo'));
@@ -2794,4 +2795,175 @@ test('a getter pad push(null) does not keep the extra length', () => {
   assert.equal(live.grid.pad.length, liveLength);
   assert.equal(live.grid.pad[0], 'keep');
   assert.equal(live.grid.pad.includes(null), false);
+});
+
+test('an inherited writable non-configurable null grid is not left on the caller', () => {
+  function install(scene, grid) {
+    const proto = {};
+    Object.defineProperty(proto, 'grid', {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: grid,
+    });
+    const previous = Object.getPrototypeOf(scene);
+    delete scene.grid;
+    Object.setPrototypeOf(scene, proto);
+    scene.toJSON = function () {
+      Object.defineProperty(this, 'grid', {
+        configurable: false,
+        writable: true,
+        value: null,
+      });
+      Object.defineProperty(this, 'leak', {
+        configurable: false,
+        writable: true,
+        enumerable: true,
+        value: null,
+      });
+      return this;
+    };
+    return previous;
+  }
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const grid = history.present.grid;
+  const caller = history.present;
+  const previous = install(caller, grid);
+  try {
+    let committed;
+    assert.doesNotThrow(() => {
+      committed = commit(history, history.present);
+    });
+    assert.equal(committed.past.length, 0);
+    assert.equal(caller.grid, grid);
+    assert.equal(caller.grid == null, false);
+    assert.equal(committed.present.grid, grid);
+    assert.equal(committed.present.grid == null, false);
+    assert.equal(Object.hasOwn(committed.present, 'leak'), false);
+    assert.equal(Object.hasOwn(history.present, 'leak'), false);
+  } finally {
+    Object.setPrototypeOf(caller, previous);
+  }
+
+  const historyNext = createHistory(getComposition('dock.intercept-cargo'));
+  const nextGrid = historyNext.present.grid;
+  const nextCaller = historyNext.present;
+  const nextPrevious = install(nextCaller, nextGrid);
+  try {
+    const next = getComposition('dock.intercept-cargo');
+    next.title = 'Renamed dock';
+    let committed;
+    assert.doesNotThrow(() => {
+      committed = commit(historyNext, next);
+    });
+    assert.equal(nextCaller.grid, nextGrid);
+    assert.equal(nextCaller.grid == null, false);
+    assert.equal(committed.present.grid == null, false);
+    for (const scene of [committed.present, ...committed.past, ...committed.future]) {
+      assert.equal(scene.grid == null, false);
+      assert.equal(Object.hasOwn(scene, 'leak'), false);
+    }
+  } finally {
+    Object.setPrototypeOf(nextCaller, nextPrevious);
+  }
+});
+
+test('a nested parked toJSON cannot null a live setter', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const first = getComposition('dock.intercept-cargo');
+  first.title = 'First rename';
+  const second = getComposition('dock.intercept-cargo');
+  second.title = 'Second rename';
+  const twice = commit(commit(history, first), second);
+  const undone = restoreHistory(twice, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const live = undone.history.present;
+  const grid = live.grid;
+  let slot = grid;
+  Object.defineProperty(live, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return slot; },
+    set(value) { slot = value; },
+  });
+  const parked = undone.history.future[0];
+  const parkedGrid = parked.grid;
+  Object.defineProperty(parked, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return parkedGrid; },
+  });
+  parked.world = {
+    toJSON() {
+      live.grid = null;
+      return {};
+    },
+  };
+  const again = restoreHistory(undone.history, 'undo');
+  assert.equal(slot, grid);
+  assert.equal(live.grid, grid);
+  assert.equal(live.grid == null, false);
+  assert.equal(again.ok && slot == null, false);
+  assert.equal(again.ok && live.grid == null, false);
+});
+
+test('sameProject cannot null a getter-backed pad and size', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const backing = history.present.grid;
+  const size = backing.size;
+  backing.pad = ['keep'];
+  Object.defineProperty(history.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return backing; },
+  });
+  history.present.toJSON = function () {
+    this.grid.size = null;
+    this.grid.pad = [null];
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  assert.equal(backing.size, size);
+  assert.equal(backing.pad[0], 'keep');
+  assert.equal(backing.size == null, false);
+  assert.equal(backing.pad[0] == null, false);
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  assert.equal(undone.history.present.grid.size, size);
+  assert.equal(undone.history.present.grid.pad[0], 'keep');
+  assert.equal(backing.size, size);
+  assert.equal(backing.pad[0], 'keep');
+});
+
+test('a getter-backed toJSON cannot commit a non-writable snap null', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const backing = history.present.grid;
+  const snap = backing.snap;
+  Object.defineProperty(history.present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return backing; },
+  });
+  history.present.toJSON = function () {
+    Object.defineProperty(this.grid, 'snap', {
+      configurable: false,
+      writable: false,
+      enumerable: true,
+      value: null,
+    });
+    return this;
+  };
+  let committed;
+  assert.doesNotThrow(() => {
+    committed = commit(history, history.present);
+  });
+  assert.equal(committed.present.grid.snap == null, false);
+  assert.equal(committed.present.grid.snap, snap);
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const renamed = commit(history, next);
+  assert.equal(renamed.present.grid.snap == null, false);
+  assert.equal(renamed.present.grid.snap, snap);
 });

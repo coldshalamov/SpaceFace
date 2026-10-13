@@ -171,6 +171,23 @@ function introducedNull(original, produced) {
   return false;
 }
 
+function inheritedDataValue(object, key) {
+  if (!object || (typeof object !== 'object' && typeof object !== 'function')) return undefined;
+  if (Object.prototype.hasOwnProperty.call(object, key)) return undefined;
+  let current = Object.getPrototypeOf(object);
+  const seen = new Set();
+  while (current && (typeof current === 'object' || typeof current === 'function') && !seen.has(current)) {
+    seen.add(current);
+    const descriptor = Object.getOwnPropertyDescriptor(current, key);
+    if (descriptor) {
+      if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) return descriptor.value;
+      return undefined;
+    }
+    current = Object.getPrototypeOf(current);
+  }
+  return undefined;
+}
+
 function captureFields(object) {
   const toJSON = Object.prototype.hasOwnProperty.call(object, 'toJSON')
     ? Object.getOwnPropertyDescriptor(object, 'toJSON')
@@ -185,7 +202,16 @@ function captureFields(object) {
   const entries = ownDataEntries(object);
   const keys = entries.map(([key]) => key);
   const values = new Map(entries);
-  return { kind: 'object', object, keys, values, toJSON };
+  const inheritedGrid = inheritedDataValue(object, 'grid');
+  return {
+    kind: 'object',
+    object,
+    keys,
+    values,
+    toJSON,
+    inheritedGrid,
+    hasInheritedGrid: inheritedGrid !== undefined,
+  };
 }
 
 function captureTree(value, seen, records) {
@@ -240,10 +266,19 @@ function restoreRecord(record) {
       if (key === 'toJSON' || record.values.has(key)) continue;
       const descriptor = Object.getOwnPropertyDescriptor(object, key);
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        let removed = false;
         try {
           delete object[key];
+          removed = !Object.prototype.hasOwnProperty.call(object, key);
         } catch (error) {
-          // non-configurable extra key
+          removed = false;
+        }
+        if (!removed && key === 'grid' && record.hasInheritedGrid && descriptor.writable !== false) {
+          try {
+            object[key] = record.inheritedGrid;
+          } catch (error) {
+            // The own null stays until the history layer swaps the live scene.
+          }
         }
       }
     }
@@ -359,6 +394,15 @@ function restoreGridFields(grid, fields) {
 
 function gridFieldsStillNull(grid, fields) {
   if (!grid || typeof grid !== 'object' || !fields) return false;
+  for (const [key, saved] of fields) {
+    if (saved.value == null) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(grid, key);
+    const current = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ? descriptor.value
+      : undefined;
+    if (current === null) return true;
+    if (saved.items && Array.isArray(current) && !saved.items.includes(null) && current.includes(null)) return true;
+  }
   const size = fields.get('size');
   if ((!size || size.value != null) && grid.size === null) return true;
   const pad = fields.get('pad');
