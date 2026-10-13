@@ -16,6 +16,7 @@ import {
   placePlayer,
   playerCanonIssues,
   projectIssues,
+  postRequestBody,
   saveRequestBody,
   screenToWorld,
   setCamera,
@@ -60,7 +61,10 @@ function resize() {
 function commitProject(next) {
   const nextHistory = commit(history, next);
   if (nextHistory === history) {
-    const issues = playerCanonIssues(clone(next));
+    const stored = clone(next);
+    const issues = stored == null || typeof stored !== 'object' || Array.isArray(stored)
+      ? ['scene could not be cloned']
+      : playerCanonIssues(stored);
     if (issues.length) return showReport({ ok: false, issues });
   }
   history = nextHistory;
@@ -713,13 +717,19 @@ async function saveProject() {
 }
 
 async function post(url, body) {
-  showReport({ ok: true, note: `Calling ${url}. The lab run uses the real simulator and can take a moment.` });
-  const result = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then((res) => res.json());
-  showReport(result);
+  try {
+    const guarded = postRequestBody(body);
+    if (!guarded.ok) return showReport(guarded);
+    showReport({ ok: true, note: `Calling ${url}. The lab run uses the real simulator and can take a moment.` });
+    const result = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: guarded.body,
+    }).then((res) => res.json());
+    showReport(result);
+  } catch (error) {
+    showReport({ ok: false, issues: ['scene could not be cloned'] });
+  }
 }
 
 function showReport(value) {

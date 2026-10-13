@@ -294,6 +294,18 @@ function writePack(root, exported) {
   }
 }
 
+test('exportProject records a throwing toJSON instead of throwing', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  Object.defineProperty(project, 'toJSON', {
+    enumerable: false,
+    value() { throw new Error('boom'); },
+  });
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, false);
+  assert.equal(exported.issues.some((issue) => issue.includes('scene could not be cloned')), true);
+  assert.equal(project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+});
+
 test('a null assertion clone is recorded and does not throw', async () => {
   const project = getComposition('dock.intercept-cargo');
   const trigger = project.objects.find((object) => object.kind === 'trigger');

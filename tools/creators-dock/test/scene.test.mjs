@@ -23,6 +23,7 @@ import {
   replaceObject,
   REQUEST_SCHEMA,
   formatReport,
+  postRequestBody,
   saveRequestBody,
   savedProjectText,
   setCamera,
@@ -1035,6 +1036,49 @@ test('create keeps the previous history when a nested toJSON throws', () => {
   assert.notEqual(result.project, null);
   assert.equal(result.project.id, 'dock.intercept-cargo');
   assert.equal(result.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+  assert.equal(result.issues.some((issue) => issue.includes('found 0')), false);
+  assert.equal(result.issues.some((issue) => issue.includes('scene could not be cloned')), true);
+
+  const quiet = { fixtureProfile: 'empty-flight', toJSON() { return null; } };
+  const nulled = applyRequest({
+    schema: REQUEST_SCHEMA,
+    ops: [
+      { op: 'loadExample', id: 'dock.intercept-cargo' },
+      { op: 'create', project: { id: 'dock.bad', title: 'Bad', seed: 1, world: quiet } },
+    ],
+  });
+  assert.equal(nulled.ok, false);
+  assert.equal(nulled.project.id, 'dock.intercept-cargo');
+  assert.equal(nulled.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+  assert.equal(nulled.issues.some((issue) => issue.includes('found 0')), false);
+  assert.equal(nulled.issues.some((issue) => issue.includes('scene could not be cloned')), true);
+});
+
+test('the validate post path does not throw when toJSON throws for the project key', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  Object.defineProperty(scene, 'toJSON', {
+    enumerable: false,
+    value(key) {
+      if (key === 'project') throw new Error('boom');
+      const body = { ...this };
+      delete body.toJSON;
+      return body;
+    },
+  });
+  assert.throws(() => JSON.stringify({ project: scene }));
+  let guarded;
+  assert.doesNotThrow(() => {
+    guarded = postRequestBody({ project: scene });
+  });
+  assert.equal(guarded.ok, true, (guarded.issues || []).join('\n'));
+  assert.equal(typeof guarded.body, 'string');
+  const posted = JSON.parse(guarded.body);
+  assert.equal(posted.project.objects.find((object) => object.isPlayer === true).isPlayer, true);
+
+  const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
+  assert.equal(editor.includes("post('/api/validate'"), true);
+  assert.equal(editor.includes('postRequestBody'), true);
+  assert.equal(/body:\s*JSON\.stringify\(body\)/.test(editor), false);
 });
 
 test('formatReport does not throw when the project toJSON throws', () => {

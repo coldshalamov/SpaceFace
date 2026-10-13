@@ -593,6 +593,25 @@ export function saveRequestBody(project) {
   }
 }
 
+export function postRequestBody(body) {
+  const download = saveRequestBody(body && body.project);
+  if (!download.ok) return { ok: false, issues: download.issues, body: null };
+  try {
+    const parsed = JSON.parse(download.body);
+    const envelope = {};
+    if (body && typeof body === 'object') {
+      for (const key of Object.keys(body)) {
+        if (key === 'project') continue;
+        envelope[key] = body[key];
+      }
+    }
+    envelope.project = parsed.project;
+    return { ok: true, issues: [], body: JSON.stringify(envelope) };
+  } catch (error) {
+    return { ok: false, issues: ['scene could not be cloned'], body: null };
+  }
+}
+
 export function formatReport(value) {
   const issues = [];
   if (value && Array.isArray(value.issues)) {

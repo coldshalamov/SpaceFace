@@ -4,6 +4,9 @@ const CAP = 100;
 
 function storedPresent(present) {
   const stored = clone(present);
+  if (stored == null || typeof stored !== 'object' || Array.isArray(stored)) {
+    return { ok: false, present: null, issues: ['scene could not be cloned'] };
+  }
   const issues = playerCanonIssues(stored);
   if (issues.length) return { ok: false, present: null, issues };
   return { ok: true, present: stored, issues: [] };
@@ -11,7 +14,7 @@ function storedPresent(present) {
 
 export function createHistory(present) {
   const stored = storedPresent(present);
-  if (!stored.ok) return { past: [], present: null, future: [] };
+  if (!stored.ok) return { past: [], present: null, future: [], issues: stored.issues };
   return { past: [], present: stored.present, future: [] };
 }
 

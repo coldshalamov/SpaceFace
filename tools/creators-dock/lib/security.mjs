@@ -16,8 +16,14 @@ function utf8Length(text) {
 }
 
 export function byteLength(value) {
-  const text = typeof value === 'string' ? value : JSON.stringify(value);
-  return utf8Length(text);
+  if (typeof value === 'string') return utf8Length(value);
+  try {
+    const text = JSON.stringify(value);
+    if (typeof text !== 'string') return null;
+    return utf8Length(text);
+  } catch (error) {
+    return null;
+  }
 }
 
 /**
@@ -70,7 +76,9 @@ function walk(value, path, issues, depth) {
     if (key === 'asset' || key === 'dataUrl' || key === 'bytes' || key === 'payloadBase64') {
       const raw = value[key];
       const size = typeof raw === 'string' ? utf8Length(raw) : byteLength(raw);
-      if (size > MAX_ASSET_BYTES) {
+      if (size == null) {
+        issues.push(`${path}.${key}: scene could not be cloned`);
+      } else if (size > MAX_ASSET_BYTES) {
         issues.push(`${path}.${key}: asset payload exceeds ${MAX_ASSET_BYTES} bytes`);
       }
     }
@@ -79,11 +87,10 @@ function walk(value, path, issues, depth) {
 }
 
 export function assertProjectSize(value) {
-  const issues = [];
-  if (byteLength(value) > MAX_PROJECT_BYTES) {
-    issues.push(`$: project exceeds ${MAX_PROJECT_BYTES} bytes`);
-  }
-  return issues;
+  const size = byteLength(value);
+  if (size == null) return ['scene could not be cloned'];
+  if (size > MAX_PROJECT_BYTES) return [`$: project exceeds ${MAX_PROJECT_BYTES} bytes`];
+  return [];
 }
 
 /** Reject traversal, NUL, and absolute paths in a user-supplied path fragment. */

@@ -37,7 +37,10 @@ export function applyRequest(request) {
         issues: [],
       });
       if (!created.ok || !createdHistory || createdHistory.present == null) {
-        const issues = created.issues && created.issues.length ? created.issues : ['scene could not be cloned'];
+        const storedIssues = createdHistory && Array.isArray(createdHistory.issues) ? createdHistory.issues : [];
+        const issues = storedIssues.length
+          ? storedIssues
+          : (created.issues && created.issues.length ? created.issues : ['scene could not be cloned']);
         return response(false, history && history.present, issues.map((issue) => `${label}: ${issue}`), applied);
       }
       history = createdHistory;
