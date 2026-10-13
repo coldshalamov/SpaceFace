@@ -52,7 +52,9 @@ test('first-flight streaming hold keeps the cooked GPU set until the latch', () 
 
 test('sector-shell admission only keeps the first-flight cook set relevant', () => {
   const player = { id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 } };
-  const extra = { id: 9, type: 'wreck', alive: true, pos: { x: 40, z: 0 } };
+  // Far off the opening runway: a packaged wreck ON the runway is part of the initial authored composition
+  // (startupAuthoredContactOnRunway) and is relevant on purpose, so the stand-in 'extra' has to be genuinely extra.
+  const extra = { id: 9, type: 'wreck', alive: true, pos: { x: 6000, z: 0 } };
   const state = {
     mode: 'flight',
     playerId: 1,

@@ -104,6 +104,42 @@ test('tracked active mission suppresses the corridor idle objective', () => {
   assert.equal(buildCorridorOpeningWaypoint(state), null);
 });
 
+test('every live Crucible ruleset suppresses the campaign corridor fallback', () => {
+  for (const ruleset of ['swarm', 'scored', 'endless', 'block', 'boss_circuit']) {
+    const state = baseState({ run: { kind: 'survival', ruleset, phase: 'active' } });
+    assert.equal(resolveCorridorOpeningObjective(state), null, ruleset);
+    assert.equal(buildCorridorOpeningWaypoint(state), null, ruleset);
+    for (const phase of ['inactive', 'ended', 'victory']) {
+      state.run.phase = phase;
+      assert.ok(resolveCorridorOpeningObjective(state), `${ruleset}/${phase} hands the campaign back`);
+    }
+  }
+});
+
+test('Scored Crucible parks the campaign objective, waypoint and clocks until handback', () => {
+  const contract = { id: '47a', status: 'active', deadline_s: 40 };
+  const state = baseState({
+    run: { kind: 'survival', ruleset: 'scored', phase: 'active' },
+    ui: { trackedMissionId: contract.id }, missions: { active: [contract] },
+    nav: { waypoint: { kind: 'mission', label: '47-A Recovery Site', missionId: contract.id } },
+  });
+  const system = Object.assign({}, missionsProto);
+  system.init({ state, bus: { on() {}, off() {}, emit() {} }, helpers: {}, registry: { get: () => null } });
+  assert.equal(system._releaseCampaignNavForSwarm(state), true);
+  assert.equal(state.ui.trackedMissionId, null);
+  assert.equal(state.nav.waypoint, null);
+  assert.deepEqual(state.missions.active, []);
+  assert.equal(state.missions._swarmParkedActive[0], contract, 'campaign contract retains its exact identity');
+  state.simTime = 22;
+  assert.equal(system._releaseCampaignNavForSwarm(state), true);
+  state.run.phase = 'ended';
+  assert.equal(system._releaseCampaignNavForSwarm(state), false);
+  assert.equal(state.missions.active[0], contract);
+  assert.equal(contract.deadline_s, 50, 'the ten-second run window does not spend campaign contract time');
+  assert.equal(contract._swarmClockParkedAt, undefined);
+  assert.equal(contract._swarmClockDeadline, undefined);
+});
+
 test('after first dock, corridor idle yields and priority falls through', () => {
   const state = baseState();
   assert.equal(markCorridorFirstDock(state, CORRIDOR_OPENING_STATION_ID, 40), true);

@@ -167,3 +167,21 @@ test('commanded yaw never masks pitch, bank or height failures and old traces ke
   held.events = [{ ev: 'input', kind: 'keydown', code: 'KeyA', sim: 9 }];
   assert.equal(checkTumble(held).status, 'PASS', 'existing manual-yaw input classification is unchanged');
 });
+
+test('reader millisecond timestamps retain a same-tick angular command without admitting a stale receipt', () => {
+  const h = harness(); h.step(); const sample = readSample(h.state, h.player);
+  assert.notEqual(sample.sim, sample.p.angularIntent.sim, 'the live reader rounds its sample clock while retaining the raw command clock');
+  assert.equal(sample.sim, +sample.p.angularIntent.sim.toFixed(3));
+  const roundedTrace = () => spinTrace(sample, s => {
+    const rawSim = s.sim + DT;
+    s.sim = +rawSim.toFixed(3);
+    s.p.angularIntent.sim = rawSim;
+  });
+  assert.equal(checkTumble(roundedTrace()).status, 'PASS', 'a valid swing-carry command survives the reader clock representation');
+  const adjacentMillisecond = roundedTrace();
+  for (const s of adjacentMillisecond.samples) s.p.angularIntent.sim -= 0.001;
+  assert.equal(checkTumble(adjacentMillisecond).status, 'FAIL', 'a different recorded millisecond remains stale');
+  const priorTick = roundedTrace();
+  for (const s of priorTick.samples) s.p.angularIntent.tick--;
+  assert.equal(checkTumble(priorTick).status, 'FAIL', 'millisecond matching never replaces the exact tick guard');
+});

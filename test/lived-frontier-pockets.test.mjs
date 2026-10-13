@@ -393,3 +393,46 @@ test('the same seed casts the same durable identities twice (deterministic shift
     .map((id) => `${id}#${bySlot.get(id).entity.data.worldRecordId}`);
   assert.deepEqual(read(first), read(second));
 });
+
+// R05 — a hull described as another faction's must fly that faction's colours, not its
+// sector's. Only three lived-frontier hulls are described that way: the Concord picket at
+// Io's Cruiser Graveyard, and the Free Frontier lab crew (tender and sampler) working the
+// Triton Wake Lab inside Vael space. Every other hull keeps the sector fallback.
+const FACTION_OVERRIDES = new Map([
+  ['io_cruiser_picket', 'faction_scn'],
+  ['triton_lab_tender', 'faction_free'],
+  ['triton_wake_sampler', 'faction_free'],
+]);
+
+test('authored faction overrides name the Concord picket and the Frontier lab crew only', () => {
+  const sectorFaction = new Map(SECTORS.map((s) => [s.id, s.factionId]));
+  for (const [sectorId, set] of Object.entries(LIVED_FRONTIER_SETS)) {
+    for (const slot of set.pockets.flatMap((p) => p.actorSlots)) {
+      const expected = FACTION_OVERRIDES.get(slot.id) || null;
+      assert.equal(slot.factionId || null, expected,
+        `${slot.id}: authored faction (sector fallback is ${sectorFaction.get(sectorId)})`);
+      if (expected) {
+        assert.notEqual(expected, sectorFaction.get(sectorId),
+          `${slot.id}: the override must differ from the sector faction to mean anything`);
+      }
+    }
+  }
+});
+
+test('seed 4242: overridden hulls materialize under their authored faction', () => {
+  for (const [sectorId, slotId] of [
+    ['sector_io_reach', 'io_cruiser_picket'],
+    ['sector_triton_wake', 'triton_lab_tender'],
+    ['sector_triton_wake', 'triton_wake_sampler'],
+  ]) {
+    const { bySlot } = enterSector(sectorId);
+    const found = bySlot.get(slotId);
+    assert.ok(found, `${slotId} is live`);
+    assert.equal(found.entity.factionId, FACTION_OVERRIDES.get(slotId), `${slotId} flies its authored colours`);
+    assert.equal(found.entity.data.factionId, FACTION_OVERRIDES.get(slotId), `${slotId} record agrees`);
+  }
+  // A hull with no override still wears its sector's colours.
+  const { bySlot } = enterSector('sector_io_reach');
+  assert.equal(bySlot.get('io_cruiser_salvor').entity.factionId, 'faction_free',
+    'the graveyard salvor keeps the sector fallback');
+});

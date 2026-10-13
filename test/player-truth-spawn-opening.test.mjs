@@ -39,3 +39,41 @@ test('a missing matching-wave opening cannot silently pass using a different wav
   const result = checkSpawnMotion(trace([sample(47.75, 0, { w: 1, ph: 'active' })]));
   assert.equal(result.status, 'UNKNOWN'); assert.match(result.detail, /opening frame\(s\) missing/);
 });
+
+test('displaced terrain carried from a played wave is not a fresh spawn', () => {
+  const result = checkSpawnMotion(trace([
+    sample(46, 13.4, { w: 1, ph: 'active' }),
+    sample(47.417, 13.4, { w: 2, ph: 'wave_intro' }),
+    sample(47.483, 13.4), sample(47.75, 13.4),
+  ]));
+  assert.equal(result.status, 'PASS');
+  assert.equal(result.value, '0 bodies');
+});
+
+test('a wreck born in the previous wave cleanup is retained aftermath, not a new spawn', () => {
+  const result = checkSpawnMotion(trace([
+    sample(46.95, 105, { w: 1, ph: 'cleanup' }),
+    sample(47.417, 105, { w: 2, ph: 'wave_intro' }), sample(47.483, 105),
+  ]));
+  assert.equal(result.status, 'PASS');
+  assert.equal(result.value, '0 bodies');
+});
+
+test('a recycled occupant of an old terrain id is still a new moving spawn', () => {
+  const opening = sample(47.483, 13.4);
+  opening.e[0][0] = 37000427; // Same raw id427, new life/generation from the continuous reader.
+  const result = checkSpawnMotion(trace([
+    sample(46, 13.4, { w: 1, ph: 'active' }), opening,
+  ]));
+  assert.equal(result.status, 'FAIL');
+  assert.equal(result.value, '1 bodies');
+  assert.match(result.offenders[0].line, /37000427/);
+});
+
+test('new terrain seen only during preparation still grades its initial active motion', () => {
+  const result = checkSpawnMotion(trace([
+    sample(47.417, 13.4, { w: 2, ph: 'wave_intro' }), sample(47.483, 13.4),
+  ]));
+  assert.equal(result.status, 'FAIL');
+  assert.equal(result.value, '1 bodies');
+});

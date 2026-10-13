@@ -602,17 +602,33 @@ export const survivalWave = {
   },
 
   _shapeSwarmFire() {
-    if (!this._swarm || !this._cohort?.size) return;
+    if (!this._cohort?.size) return;
     const state = this.state;
     const player = state?.entities?.get?.(state.playerId);
     if (!player || player.alive === false || !player.pos) return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    // Idle seed 4242: the lesson wasp was cleared after 2.5s and walked the hull
-    // from 140 to 31 before the probe touched the stick. Hold every gun, including
-    // bosses, until this wave sees a real pilot act. autoFire's combat-stick
-    // writes (moveX/moveZ/turnIntent) do not qualify; fire, boost, and brake do.
+    // Both authored Crucible routes await this wave's first deliberate pilot act.
+    // The Gauntlet releases its ordinary full roster then; only Swarm owns the
+    // arrival grace, ranked shooter cap, and marks below.
     if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
     const quiet = !swarmPilotHasActed(state);
+    if (!this._swarm) {
+      for (const [id, member] of this._cohort) {
+        const entity = this._resolveCohortEntity(id, member);
+        const ai = entity && entity.alive !== false && entity.data?.ai;
+        if (!ai) continue;
+        if (quiet) {
+          ai.swarmFireHeld = true;
+          ai.swarmFireHoldUntil = now + 2 / 60;
+          member.firstActHeld = true;
+        } else if (member.firstActHeld) {
+          ai.swarmFireHeld = false;
+          ai.swarmFireHoldUntil = now;
+          member.firstActHeld = false;
+        }
+      }
+      return;
+    }
     const rank = [];
     for (const [id, member] of this._cohort) {
       const entity = this._resolveCohortEntity(id, member);

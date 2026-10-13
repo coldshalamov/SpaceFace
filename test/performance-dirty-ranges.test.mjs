@@ -794,7 +794,8 @@ test('every committed src named import resolves to a committed export', async ()
     execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
       .split('\n').filter(Boolean),
   );
-  const exportRe = /export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
+  // `function\s*\*?` so a generator export (`export function* name`, the stepped census twins) counts as an export too.
+  const exportRe = /export\s+(?:async\s+)?(?:function\s*\*?|class|const|let|var)\s*([A-Za-z_$][\w$]*)|export\s*\{([^}]*)\}/g;
   const starRe = /export\s*\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?from\s*['"](\.[^'"]+)['"]/g;
   const ownExports = new Map();
   const starTargets = new Map();
@@ -838,7 +839,9 @@ test('every committed src named import resolves to a committed export', async ()
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), m[2]));
       if (!tracked.has(resolved)) continue;
       const names = resolveExports(resolved);
-      for (const part of m[1].split(',')) {
+      // Comments inside the braces (an import list with a // note on its first line) are not names.
+      const specifiers = m[1].replace(/\/\/[^\r\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const part of specifiers.split(',')) {
         const name = part.trim().split(/\s+as\s+/)[0].trim();
         if (name && !names.has(name)) missing.push(`${file} imports ${name} from ${resolved}`);
       }

@@ -20,16 +20,25 @@ const LEAD_PIP_ON_SOLUTION_RAD = 0.05;
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const DEFAULT_PROJ_SPEED = 360; // fallback matching weapons._playerProjSpeed
 
-// Representative projectile speed of a ship's primary (first speed-bearing) gun — what the pip should
-// solve for. Mirrors weapons._playerProjSpeed so the pip matches the weapon that will actually fire.
+// A pip describes straight-flight gunfire. Seekers steer toward a lock and deployed ordnance
+// has its own placement, so neither can lend its speed to a gun later in the fitting order.
+function ballisticMountSpeed(mount) {
+  if (!mount) return null;
+  const def = WPN.get(mount.defId || mount.id);
+  const tracking = mount.tracking ?? def?.tracking;
+  if (tracking === 'homing' || tracking === 'deploy' || tracking === 'hitscan'
+    || (mount.continuous ?? def?.continuous) === true) return null;
+  const speed = mount.projSpeed ?? def?.projSpeed;
+  return Number.isFinite(speed) && speed > 0 ? speed : null;
+}
+
+// Representative projectile speed of a ship's primary straight-flight gun.
 export function primaryProjSpeed(entity) {
   const ws = entity && entity.data && entity.data.weapons;
   if (Array.isArray(ws)) {
     for (const w of ws) {
-      const def = WPN.get(w.defId);
-      const sp = w.projSpeed != null ? w.projSpeed : (def && def.projSpeed);
-      // Continuous beams are hitscan (Infinity speed) — a lead pip is meaningless; skip to a real gun.
-      if (Number.isFinite(sp) && sp > 0) return sp;
+      const sp = ballisticMountSpeed(w);
+      if (sp != null) return sp;
     }
   }
   return DEFAULT_PROJ_SPEED;
@@ -40,9 +49,7 @@ export function hasBallisticWeapon(entity) {
   const ws = entity && entity.data && entity.data.weapons;
   if (!Array.isArray(ws)) return false;
   for (const w of ws) {
-    const def = WPN.get(w.defId);
-    const sp = w.projSpeed != null ? w.projSpeed : (def && def.projSpeed);
-    if (Number.isFinite(sp) && sp > 0) return true;
+    if (ballisticMountSpeed(w) != null) return true;
   }
   return false;
 }

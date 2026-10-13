@@ -36,9 +36,13 @@ export default defineEncounter(trigger, {
   "factionId": "faction_reach",
   "context": "encounter",
   "squad": {
+    // Peel-the-screen toll: the third slot can deal a point-defense screen, so the
+    // earliest toll can present a priority target (kill the curtain first) instead
+    // of three interchangeable brawlers. The toll script is archetype-agnostic.
     "archetypes": [
       "reaver_pirate",
-      "corsair_raider"
+      "corsair_raider",
+      "pd_screen_escort"
     ],
     "size": [
       2,

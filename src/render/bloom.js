@@ -707,6 +707,8 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, o
     const readinessDeadline = (typeof performance !== 'undefined' && performance
         && typeof performance.now === 'function' ? performance.now() : Date.now())
       + (Number.isFinite(options.readinessTimeoutMs) ? options.readinessTimeoutMs : 20000);
+    let programCursor = null;
+    const pollNow = () => globalThis.performance?.now?.() ?? Date.now();
     const checkProgramsReady = () => {
       if (settled) return;
       try {
@@ -714,7 +716,13 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, o
           onContextLost();
           return;
         }
-        for (const program of programs) {
+        const pollStarted = pollNow();
+        let queried = 0;
+        programCursor ??= programs.values();
+        for (;;) {
+          const step = programCursor.next();
+          if (step.done) { programCursor = null; break; }
+          const program = step.value;
           // The handle guard Three's unowned timer lacks: after a restore, an old-context
           // WebGLProgram is not a valid query target even though its JS wrapper still exists.
           if (programHandleInvalid(gl, program, generation)) {
@@ -733,6 +741,7 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, o
             return;
           }
           if (readiness === 'ready') programs.delete(program);
+          if (++queried >= 8 || pollNow() - pollStarted >= 2) break;
         }
         if (programs.size === 0) {
           finish({ contextLost: false });

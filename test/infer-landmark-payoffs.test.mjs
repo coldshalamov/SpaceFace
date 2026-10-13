@@ -18,6 +18,7 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import { SECTORS } from '../src/data/sectors.js';
 import {
   LANDMARK_QUEST_SOURCE,
+  CANDLE_FLEET_PIT_BEARING,
   METRONOME_OFFBEAT_WINDOW,
   RINGWORLD_GRID_READING,
   SKERRIS_THRONE_PROVENANCE,
@@ -33,6 +34,7 @@ const QUESTS = [
   SKERRIS_THRONE_PROVENANCE,
   METRONOME_OFFBEAT_WINDOW,
   RINGWORLD_GRID_READING,
+  CANDLE_FLEET_PIT_BEARING,
 ];
 
 function chartPoi(quest) {

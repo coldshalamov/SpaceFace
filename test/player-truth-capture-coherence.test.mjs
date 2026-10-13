@@ -215,12 +215,13 @@ async function captureFixture({ enemyColour = [240, 40, 30], pose = () => ({ x: 
   } finally { await rm(dir, { recursive: true, force: true }); }
 }
 
-test('coherent captured body colours retain the existing readable result', async () => {
+test('coherent radius-square colours retain samples but cannot certify an enemy silhouette', async () => {
   const { readability, result } = await captureFixture();
   assert.equal(readability.classes.enemy.n, 6);
   assert.equal(readability.classes.asteroid.n, 6);
   assert.equal(readability.captureCoherence.rejected.enemy['capture-motion'], undefined);
-  assert.equal(result.status, 'PASS');
+  assert.equal(result.status, 'UNKNOWN');
+  assert.match(result.detail, /missing enemy silhouette pixel ownership/);
 });
 
 test('out-and-back capture motion is unmeasured rather than sampled as empty enemy pixels', async () => {
@@ -244,9 +245,10 @@ test('historical screenshots without capture intervals are explicitly unmeasured
   assert.match(result.detail, /6 screenshots lack a recorded capture interval/);
 });
 
-test('a coherent but dim enemy still fails unchanged contrast thresholds', async () => {
+test('a coherent dim enemy square retains its diagnostic without inventing hull ownership', async () => {
   const { readability, result } = await captureFixture({ enemyColour: [5, 6, 9] });
   assert.equal(readability.classes.enemy.n, 6);
   assert.equal(readability.classes.enemy.lowContrastFrac, 1);
-  assert.equal(result.status, 'FAIL');
+  assert.equal(result.status, 'UNKNOWN');
+  assert.match(result.detail, /missing enemy silhouette pixel ownership/);
 });

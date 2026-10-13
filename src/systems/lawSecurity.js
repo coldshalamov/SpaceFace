@@ -8,6 +8,7 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
+import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
@@ -453,6 +454,7 @@ export const lawSecurity = {
 
   update(_dt, state) {
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (shouldSkipFullTickSystems(state)) { this.keepalive(_dt); return; }
     this._reconcileJobResponses();
     this._updateFineWork(_dt, state);
     this._updatePlayerSurrender(_dt, state);
@@ -2930,8 +2932,10 @@ export const lawSecurity = {
       own.fineOffer = {
         stationId, amount: fine, causeId, status: 'offered', choice: null,
         heatLevel: level, wantedTier: tier,
+        ...(state.ui?.docked === true ? { productionDock: true } : {}),
       };
     }
+    if (state.ui?.docked === true) own.fineOffer.productionDock = true;
 
     if (!choice) {
       this._lawResponse('fine_assessed', {
@@ -4672,6 +4676,10 @@ export const lawSecurity = {
     return audit;
   },
 
+  keepalive(dt) {
+    this._updateFineWork(dt, this.state);
+  },
+
   _chooseFine(payload = {}) {
     const state = this.state;
     if (!state) return null;
@@ -4680,6 +4688,11 @@ export const lawSecurity = {
     const own = ensureState(state);
     const offer = own.fineOffer;
     const stationId = payload.stationId || (offer && offer.stationId);
+    if (offer?.productionDock && (state.ui?.docked !== true
+      || String(state.ui.dockedStationId) !== String(stationId))) {
+      this._emit('law:fineRefused', { reason: 'not_at_berth', stationId: stationId || null });
+      return { accepted: false, reason: 'not_at_berth' };
+    }
     // FB-039 — a reply only resolves the fine actually on the counter. A stale panel (already
     // paid, a different berth, no open offer at all) is refused, never charged: the handler
     // re-derives tier and price from current heat before it acts.
@@ -4694,12 +4707,14 @@ export const lawSecurity = {
     const own = state && state.lawSecurity;
     const offer = own && own.fineOffer;
     if (!offer || offer.status !== 'working') return;
+    if (offer.productionDock && (state.ui?.docked !== true
+      || String(state.ui.dockedStationId) !== String(offer.stationId))) return;
     if (own.fineSettled && own.fineSettled[offer.causeId]) {
       offer.status = 'paid';
       return;
     }
     const step = Number(dt);
-    if (!(step > 0)) return;
+    if (!Number.isFinite(step) || !(step > 0)) return;
     offer.workS = (Number(offer.workS) || 0) + step;
     if (offer.workS + 1e-9 < (Number(offer.workNeedS) || LAW_FINE_WORK_S)) return;
     if (!own.fineSettled || typeof own.fineSettled !== 'object') own.fineSettled = {};

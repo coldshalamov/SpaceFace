@@ -22,6 +22,7 @@ import { classifyRuntimeWitness, formatHitchAttributionDetailLines, formatRuntim
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { consumePageConditionValue, installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
+import { armoryLaunchWord, clickText, crucibleToArmory, waitForPreparationLaunch } from './player-truth/routes.mjs';
 import {
   formatRuntimeWitnessProductionMatrix,
   productionRouteById,
@@ -2616,17 +2617,18 @@ async function launchProductionCrucible(targetPage, route) {
     const button = [...document.querySelectorAll('#screens button')].find((node) => node.textContent.replace(/\s+/g, ' ').trim() === 'Crucible');
     return !!button && !button.disabled;
   }, null, { timeout: 30_000 });
-  await targetPage.getByRole('button', { name: 'Crucible', exact: true }).click();
-  const swarm = targetPage.locator('#screens .sf-crd-mode[data-ruleset="swarm"]');
-  await swarm.waitFor({ state: 'visible', timeout: 30_000 });
-  await swarm.click();
-  await targetPage.locator('#screens .sf-crd-seed input').fill(String(FIXED_SEED));
   // SPACEFACE_CRUCIBLE_DWELL_MS models a human reading the door before launch: the menu-dwell
   // roster warm is supposed to spend that time decoding/linking, so a fast click vs a 10 s
   // dwell bracket how much launch time the dwell actually buys.
   const dwellMs = Number(process.env.SPACEFACE_CRUCIBLE_DWELL_MS || 0);
-  if (dwellMs > 0) await targetPage.waitForTimeout(dwellMs);
-  await targetPage.locator('#screens .sf-crd-foot button.k-word--primary:visible').click();
+  const preparation = await crucibleToArmory(targetPage, { ruleset: 'swarm', seed: FIXED_SEED }, () => {}, {
+    onShip: async () => { if (dwellMs > 0) await targetPage.waitForTimeout(dwellMs); },
+  });
+  if (!preparation.seedSet) throw new Error(`Crucible witness could not set public seed ${FIXED_SEED}`);
+  await waitForPreparationLaunch(targetPage, { timeoutMs: 300_000 });
+  const launch = await armoryLaunchWord(targetPage);
+  if (!launch) throw new Error('Crucible witness has no public armory launch control');
+  await clickText(targetPage, launch);
   // The launch gate must outlive the roster cook: since the PQ-033.00-family prewarm moved the
   // roster's GLB/GPU cost into the launch shell, launch-to-flight reads ~156–176 s on the owner's
   // host — a 120 s cap timed out every warm-dense-combat attempt before the scene existed.

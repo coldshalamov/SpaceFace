@@ -187,6 +187,41 @@ export const WRECK_MISSIONS = [
     },
     tag: 'wreck_salvage',
   },
+  {
+    // Dead tow: the physical verbs finally have world presence. The drive core is cold
+    // but intact, and the wreck pool physically carries it (params.cmdtyId pool-fold) —
+    // latch it or sling it home through the live tow_recovery script, no board visit first.
+    id: 'wm_dead_tow',
+    title: 'Dead Tow, Live Core',
+    type: 'tow_recovery',
+    giver: 'Hauler tow beacon',
+    params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+    log: 'Drive is dead. Core is not. Tow beacon still has charge and the cradle lines are out — somebody who can pull, come and pull. The core pays the tow.',
+    summary: 'A dead hauler drifts with a live sealed core in its cradle. Latch the wreck or sling the core free and drag it to a buyer.',
+    reward_cr: 1020,
+    tag: 'wreck_salvage',
+  },
+  {
+    // Live pods: the corridor-pull verb as a found scene, not a board row. Two pods,
+    // one failing faster than the other, raiders already inbound on the beacon —
+    // stage-tow them out, corridor-pull them under fire, or strip the wreck and run.
+    id: 'wm_live_pods',
+    title: 'Two Pods, One Beacon',
+    type: 'rescue_under_fire',
+    giver: 'Escape-pod distress pair',
+    params: { podCount: 2, escortCount: 2 },
+    log: 'Two pods away. Mine first — hers second, hers is losing air faster. Beacon is hot and something already turned toward it. Pull us out or pick over us, pilot.',
+    summary: 'Two live pods drift off a fresh wreck with raiders inbound. Pull both pods out from under the raid — or strip the field and leave them.',
+    reward_cr: 1180,
+    choice: {
+      prompt: 'Two pods, one raid inbound. What do you do?',
+      options: [
+        { id: 'rescue', label: 'Pull both pods out', blurb: 'Slow passage under fire — the pods ride home, the raid gets nothing.' },
+        { id: 'strip', label: 'Strip the wreck and run', blurb: 'Fast salvage now. The pods go quiet behind you.' },
+      ],
+    },
+    tag: 'wreck_salvage',
+  },
 ];
 
 const BY_ID = new Map(WRECK_MISSIONS.map((m) => [m.id, m]));

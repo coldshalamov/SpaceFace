@@ -38,6 +38,10 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       return_fire_warning:{verb:'ignition',primitive:'compression',color:0xffc08a,life:1.4},
       attackRun:{verb:'ignition',primitive:'compression',color:0xeac891,life:1.6},
       alphaStrike:{verb:'command',primitive:'induction',color:0xe8ae76,life:1.6},
+      // Kilnback: the furnace in its nose building heat — a hot ignition on the hull, held longer than a fuse.
+      furnace_preheat:{verb:'ignition',primitive:'compression',color:0xff7a3a,life:2.4,surfaceWork:true},
+      // Mothlight: the six-petal iris is the real gun; the lights only drift. A cold induction on the iris.
+      mothlight_iris:{verb:'command',primitive:'induction',color:0xcdb8ff,life:1.8,surfaceWork:true},
     }},
   'ai:flee': {verb:'vent',primitive:'compression',color:0xdcb99d,life:.85,continuous:false},
   'ai:formationBroken': {verb:'disrupt',primitive:'induction',color:0xe2a983,life:.8,surfaceWork:true,continuous:false},
@@ -164,7 +168,7 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
   if(name==='ai:telegraph'||name==='ai:flee'){
     const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false)return null;
-    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance','wake_mines','field_spool','pd_curtain','sensor_ghost','broadside_charge','swarmer_vent','broadside_desperation','pirate_stalk','scan_sweep','return_fire_warning','attackRun','alphaStrike'].includes(p.kind))return null;
+    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance','wake_mines','field_spool','pd_curtain','sensor_ghost','broadside_charge','swarmer_vent','broadside_desperation','pirate_stalk','scan_sweep','return_fire_warning','attackRun','alphaStrike','furnace_preheat','mothlight_iris'].includes(p.kind))return null;
     const aft=name==='ai:flee'||p.kind==='engine_flare';
     const a=(source.rot||0)+(aft?Math.PI:0),r=source.radius||6;
     return {...p,targetId:source.id,sourceId:source.id,

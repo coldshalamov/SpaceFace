@@ -61,8 +61,18 @@ export const ACTION_VFX_RECIPES=Object.freeze({
 });
 export const ACTION_VFX_EVENTS=Object.freeze(Object.keys(ACTION_VFX_RECIPES));
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
+// attackRun / alphaStrike are the legacy attack tactic's aim line. The tactic deletes
+// _attackTelegraph when it aborts (target gone, retreat, state change). Recipe life would
+// keep that line after the intent is gone. Other tells are not this tactic's.
+const TACTIC_AIM_TELL=new Set(['attackRun','alphaStrike']);
 function salt(id) {let h=2166136261;const s=String(id);for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return (h>>>0)/4294967296;}
 function entity(state,id){return id==null?null:state.entities?.get?.(id);}
+function attackTellReleased(state,slot){
+  if(slot.event!=='ai:telegraph'||!TACTIC_AIM_TELL.has(slot.kind))return false;
+  const owner=entity(state,slot.sourceId??slot.id);
+  const pending=owner&&owner.alive!==false&&owner.data&&owner.data.ai&&owner.data.ai._attackTelegraph;
+  return !pending||pending.kind!==slot.kind;
+}
 function valid(p){return p&&Number.isFinite(p.x)&&Number.isFinite(p.z);}
 function field(state,id){const list=state.fields?.active;if(list)for(const f of list)if(f.id===id)return f;return null;}
 // These two receipts are published exclusively by the player-owned mining/repair tool.
@@ -289,7 +299,7 @@ export class ActionVfx {
         if(since<s.recipe.life&&s.cmClosingAt<0)this.composer.render(s,now,reduced,flash);
         this._countermeasureState(s,now,reduced,flash);
       }else{
-        if(since>=s.recipe.life){s.alive=false;continue;}
+        if(attackTellReleased(state,s)||since>=s.recipe.life){s.alive=false;continue;}
         this.live++;this._follow(s,state);this.composer.render(s,now,reduced,flash);
       }
     }

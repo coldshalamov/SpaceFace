@@ -47,9 +47,14 @@ export function solidDressingPlanFor(placeId, { radius = 0, placeTargetRadius = 
   if (target > 0) {
     // POI draw path (resolvePlaceDrawScale poi branch): the model is fitted to
     // placeTargetRadius against its authored extent, not to radius/entityRadius.
-    const extentX = Array.isArray(row.bounds && row.bounds.size) ? Number(row.bounds.size[0]) || 0 : 0;
-    if (!(extentX > 0)) return null;
-    drawScale = (target * 2) / extentX;
+    // Same envelope resolvePlaceDrawScale uses (the longest bounds axis). Using
+    // size[0] alone made a tall landmark's body the empty halo around the mesh.
+    const size = row.bounds && row.bounds.size;
+    const extent = Array.isArray(size)
+      ? Math.max(Number(size[0]) || 0, Number(size[1]) || 0, Number(size[2]) || 0)
+      : 0;
+    if (!(extent > 0)) return null;
+    drawScale = (target * 2) / extent;
   } else {
     const live = Number(radius) || 0;
     if (!(live > 0)) return null;

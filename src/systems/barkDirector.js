@@ -506,7 +506,9 @@ export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
 // Feature 18: neutral haulers/mining barges hail the player on a close pass. The bark budget
 // (once per entity per situation + ambient sector decay + post-combat silence) is the spam gate;
 // the foghorn only sounds when the chirp actually lands on the comms ribbon.
-const PASS_HAIL_ROLES = new Set(['heavy', 'miner']);
+// The seven working silhouettes hail in their own work registers, not freighter boilerplate.
+const PASS_HAIL_ROLES = new Set(['heavy', 'miner', 'courier', 'customs', 'salvor', 'surveyor', 'tender', 'tug', 'rescue']);
+const REGISTER_HAIL_ROLES = new Set(['courier', 'customs', 'salvor', 'surveyor', 'tender', 'tug', 'rescue']);
 const PASS_HAIL_RANGE_WU = 300;
 const PASS_HAIL_RANGE_SQ = PASS_HAIL_RANGE_WU * PASS_HAIL_RANGE_WU;
 
@@ -1602,6 +1604,10 @@ export const barkDirector = {
     if (dx * dx + dz * dz > PASS_HAIL_RANGE_SQ) return false;
     if (grandee) return this._speakGrandeeHail(entity);
     if (tourist) return this._speakTouristHail(entity);
+    const workRole = occupationalRoleOf(entity);
+    if (workRole && REGISTER_HAIL_ROLES.has(workRole)) {
+      return this._speakWorkHail(entity, workRole);
+    }
     const accepted = this._speak(entity, 'patrol-greeting', 'pass-by');
     if (accepted && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('audio:cue', {
@@ -1622,6 +1628,21 @@ export const barkDirector = {
   // 363 — the Grandee hails a passing pilot in her own register, once per contact.
   _speakGrandeeHail(entity) {
     return this._speakRegisterHail(entity, 'grandee', 'grandee-hail', 'grandeeHail');
+  },
+
+  // A working hull hails in its own work register, once per contact. Same foghorn
+  // and wing-rock answer as the freighter chirp — the voice is the new part.
+  _speakWorkHail(entity, role) {
+    const accepted = this._speakRegisterHail(entity, role, `${role}-hail`, `${role}Hail`);
+    if (accepted && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('audio:cue', {
+        id: 'world.foghorn',
+        position: { x: entity.pos.x, z: entity.pos.z },
+        gain: 0.8,
+      });
+      this.bus.emit('npc:hailed', { entityId: entity.id, simTime: this.state.simTime });
+    }
+    return !!accepted;
   },
 
   _speakRegisterHail(entity, register, situation, salt) {

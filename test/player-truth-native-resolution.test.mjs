@@ -6,7 +6,7 @@ import { rebuildDeepFieldStars } from '../src/render/deepFieldStars.js';
 import { checkBackdrop } from '../scripts/player-truth/checks.mjs';
 
 function fixture({ width = 200, height = 120, cssWidth = 200, cssHeight = 120,
-  perspective = false, enemies = 1, paint = () => {} } = {}) {
+  perspective = false, enemies = 1, projectiles = [], paint = () => {} } = {}) {
   const scene = new THREE.Scene();
   const camera = perspective ? new THREE.PerspectiveCamera(50, cssWidth / cssHeight, 0.1, 20000)
     : new THREE.OrthographicCamera(-100, 100, 60, -60, 0.1, 500);
@@ -19,6 +19,13 @@ function fixture({ width = 200, height = 120, cssWidth = 200, cssHeight = 120,
     const actor = { id: i + 2, type: 'ship', alive: true, radius: 4.5, team: 3,
       pos: { x: enemies === 1 ? 0 : -80 + (i % 5) * 40, y: 0, z: i < 5 ? 0 : 30 },
       vel: { x: 0, z: 0 }, data: { runRole: 'enemy' } };
+    const mesh = new THREE.Mesh(geometry, material); mesh.position.copy(actor.pos);
+    scene.add(mesh); actors.push(actor); meshes.set(actor.id, mesh);
+  }
+  for (let i = 0; i < projectiles.length; i++) {
+    const actor = { id: enemies + i + 2, type: 'projectile', alive: true, radius: 4.5,
+      pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { kind: 'bolt' },
+      ...projectiles[i] };
     const mesh = new THREE.Mesh(geometry, material); mesh.position.copy(actor.pos);
     scene.add(mesh); actors.push(actor); meshes.set(actor.id, mesh);
   }
@@ -149,6 +156,30 @@ test('CSS threat rectangles map to the native raster, including DPR and bottom-u
     assert.equal(sample.e[0][8], 4.5); assert.equal(sample.px.bt, 1);
     assert.equal(sample.px.b, +(361 / (400 * 240)).toFixed(3));
   } finally { f.dispose(); }
+});
+
+test('friendly shot luminosity stays in coverage without becoming a threat to its own player', () => {
+  for (const projectile of [{ team: 1, ownerId: 1 }, { team: 1, ownerId: 8 }, { ownerId: 1 }]) {
+    const f = fixture({ enemies: 0, projectiles: [projectile],
+      paint({ pixels, combat }) { if (combat.visible) pixels.fill(40); } });
+    try {
+      const sample = f.frame();
+      assert.equal(sample.px.c, 1, 'the full combat coverage still includes luminous shots');
+      assert.equal(sample.px.ct, null, 'friendly shots cannot hide themselves as hostile threats');
+      assert.equal(sample.e[0][1], 3, 'projectile readability census remains intact');
+      assert.equal(sample.px.attribution, undefined);
+    } finally { f.dispose(); }
+  }
+});
+
+test('hostile and unknown projectile bodies retain external combat-occlusion grading', () => {
+  for (const projectile of [{ team: 3, ownerId: 8 }, { ownerId: 8 }, {}]) {
+    const f = fixture({ enemies: 0, projectiles: [projectile],
+      paint({ pixels, combat }) { if (combat.visible) pixels.fill(40); } });
+    try {
+      assert.equal(f.frame().px.ct, 1, 'an actual or unclassified threat cannot borrow friendly exclusion');
+    } finally { f.dispose(); }
+  }
 });
 
 test('draw failure restores target, visibility, instrumentation and renderer bookkeeping', () => {

@@ -322,7 +322,7 @@ export function applySharedStoreKeys(keys, storage = globalThis.localStorage) {
 // the boot store reconcile.
 const APPLY_SHARED_STORE_BATCH = 8;
 
-export async function applySharedStoreKeysChunked(keys, storage = globalThis.localStorage, { yieldQueue } = {}) {
+export async function applySharedStoreKeysChunked(keys, storage = globalThis.localStorage, { yieldQueue, baseKeys } = {}) {
   if (!storage || typeof storage.setItem !== 'function') return 0;
   const yieldNow = typeof yieldQueue === 'function' ? yieldQueue : null;
   let written = 0;
@@ -336,7 +336,16 @@ export async function applySharedStoreKeysChunked(keys, storage = globalThis.loc
   for (const [key, value] of Object.entries(keys || {})) {
     if (isSharedPlayerStoreKey(key) && typeof value === 'string') {
       try {
-        if (!(typeof storage.getItem === 'function' && storage.getItem(key) === value)) {
+        const current = typeof storage.getItem === 'function' ? storage.getItem(key) : null;
+        // The boot merge was captured before these yields. A save, delete, or settings write
+        // since that capture owns its key; never roll it back with an older boot snapshot.
+        const changed = baseKeys && typeof storage.getItem === 'function'
+          && current !== (baseKeys[key] ?? null);
+        const deletable = baseKeys && deletableKey(key);
+        const deletedAt = deletable && typeof storage.getItem === 'function'
+          ? envelopeTime(storage.getItem(deletable.tombstone + deletable.slot)) : 0;
+        const deleted = deletedAt > 0 && deletedAt >= envelopeTime(value);
+        if (!changed && !deleted && current !== value) {
           storage.setItem(key, value);
           written += 1;
         }
@@ -358,7 +367,8 @@ export async function applySharedStoreKeysChunked(keys, storage = globalThis.loc
           let stale = null;
           let ok = true;
           try { stale = storage.getItem(key); } catch { ok = false; }
-          if (ok && deletedAt >= envelopeTime(stale)) {
+          const changed = baseKeys && stale !== (baseKeys[key] ?? null);
+          if (ok && !changed && deletedAt >= envelopeTime(stale)) {
             try { storage.removeItem(key); } catch { /* best effort */ }
           }
         }

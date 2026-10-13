@@ -2320,7 +2320,33 @@ export function resultRows(result) {
     ['Salvage', `${result.credits || 0} cr`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
     ['Seed', String(result.seed || 0)],
+    // The stamp stays on the record (pq-ids and all). The row is the same grammar as Seed:
+    // a short label and plain words. An unstamped finish says so instead of omitting the row.
+    ['Rules version', rulesVersionWords(result.recordRules)],
   ];
+}
+
+// Current stamps from stuntRunRules.js, written as words. Anything else is "recorded"
+// so a future id cannot land in the sentence by accident.
+function rulesVersionWords(rules) {
+  if (!rules || typeof rules !== 'object') return 'Not recorded';
+  const scoring = plainRevision(rules.scoringRevision, { 2: '2' });
+  const balance = plainRevision(rules.balanceRevision, { 'pq146-threat-2': '2' });
+  const physics = plainRevision(rules.physicsRevision, { 'rapier-dynamic-pq146-2': '2' });
+  if (scoring == null && balance == null && physics == null) return 'Not recorded';
+  const parts = [];
+  if (scoring != null) parts.push(`Scoring ${scoring}`);
+  if (balance != null) parts.push(`threat balance ${balance}`);
+  if (physics != null) parts.push(`dynamic physics ${physics}`);
+  return parts.join(', ');
+}
+
+function plainRevision(value, known) {
+  if (value == null || value === '') return null;
+  const key = String(value);
+  if (Object.prototype.hasOwnProperty.call(known, key)) return known[key];
+  if (/^[0-9]+$/.test(key)) return key;
+  return 'recorded';
 }
 
 /* ------------------------------------------------------------------------------------------------

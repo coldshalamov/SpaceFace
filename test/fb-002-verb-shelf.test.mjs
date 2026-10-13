@@ -201,12 +201,19 @@ test('glyph sets: face buttons spell xb / ds / fh, shoulders are stable', () => 
   state.settings.controls.gamepad.glyphSet = 'nonsense';
   assert.equal(gamepadGlyphSetFor(state), 'xb', 'unknown set falls back to xb');
   // A remapped pad binding is honored: every solo button is already claimed in the stock map,
-  // so the remap uses the genuinely free chord l1+view and the line names the new chord.
+  // so the remap uses a genuinely free chord (l1+r3; l1+view now belongs to steeringView, and a remap
+  // onto a chord another action holds is rightly refused) and the line names the new chord.
+  state.settings.controls.gamepad = {
+    glyphSet: 'xb',
+    bindings: { toggleSkimCollector: ['l1+r3'] },
+  };
+  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + R3');
+  // And the refusal is real: a chord another action holds leaves the stock binding in place.
   state.settings.controls.gamepad = {
     glyphSet: 'xb',
     bindings: { toggleSkimCollector: ['l1+view'] },
   };
-  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + View');
+  assert.equal(verbBindingLabel(state, 'toggleSkimCollector', 'gamepad'), 'LB + Y', 'a taken chord is not stolen');
 });
 
 test('touch: no key or pad label is claimed for a button the overlay does not have', () => {

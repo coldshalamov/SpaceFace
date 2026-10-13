@@ -59,6 +59,10 @@ export const LOOK_BASE = deepFreeze({
     rim: [0.20, 0.62, 1.0],
     rimStrength: 0.48,
     rimPower: 3.6,
+    // Rough terrain receives a soft reflected fill and limb light even without lacquer.
+    // Only rock-role materials consume these values; black space and hull paint stay put.
+    rockFill: 0.85,
+    rockRim: 0.28,
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.
     paintCeiling: 0.74,
@@ -101,6 +105,7 @@ export const LOOK_MOODS = deepFreeze({
   // Frontier / lawless space: dark, magenta against cyan. The cyberpunk end of the dial.
   neon_noir: {
     surface: {
+      rockFill: 0.65,
       albedoSaturation: 1.28,
       bandMix: 0.26,
       shadowTint: [0.68, 0.50, 1.16],

@@ -20,13 +20,16 @@ import {
   dropPackageDetachManifest,
   isPackageTextureDetached,
   packageDetachDiagnostics,
+  refillPresentedCompressedUploads,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
   resetPackageDetachManifestsForTests,
+  retainPresentedTextureLeases,
 } from '../src/render/packageCpuDetach.js';
 import {
   claimSharedImageTexture,
   imageSourceKeyAsync,
+  releaseSharedImageSource,
   resetImageSourceDedupeForTests,
   sharedImageTextureFor,
 } from '../src/render/imageSourceDedupe.js';
@@ -483,4 +486,67 @@ test('rehydrateDetachedTextures refills only the manifests the named textures be
   assert.equal(noop.skipped, true);
   assert.equal(noop.packages, 0);
   loader.dispose();
+});
+
+test('a copied detach mark refills from the manifest before texStorage reads mipmaps[0]', async () => {
+  const decodes = { n: 0 };
+  let live = null;
+  const loader = freshLoader(async () => {
+    decodes.n += 1;
+    const decoded = decodedFixture();
+    if (!live) live = decoded;
+    return decoded;
+  });
+  const loaded = await loader.load(packageMetadata('fixture.detach-copy'), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+  const renderer = stubRenderer();
+  await prepareStartupGpuResidency(renderer, subject, { includeGeometry: false, yieldToMain: async () => {} });
+  assert.equal(live.compressed.mipmaps.length, 0);
+  const clone = live.compressed.clone();
+  assert.equal(isPackageTextureDetached(clone), false, 'a copied mark is not the manifest texture');
+  assert.equal(detachedTextureUploadPending(clone, { get() { return null; } }), false,
+    'the old gate skips the clone, which is why the touch uploaded an empty chain');
+  assert.equal(clone.mipmaps.length, 0);
+  if (!(clone.version > 0)) clone.needsUpdate = true;
+  await refillPresentedCompressedUploads([clone]);
+  assert.ok(clone.mipmaps[0] && clone.mipmaps[0].width > 0, 'texStorage can read mipmaps[0].width');
+  assert.equal(clone.mipmaps[0].width, 4);
+  assert.ok(decodes.n >= 2, 'the manifest re-decoded so the clone had a donor chain');
+  loader.dispose();
+});
+
+test('an upload lease keeps a refilled chain through a later release', async () => {
+  const loader = freshLoader(async () => decodedFixture());
+  const loaded = await loader.load(packageMetadata('fixture.detach-lease'), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+  let texture = null;
+  subject.traverse((object) => {
+    if (object.material && object.material.map && object.material.map.isCompressedTexture) texture = object.material.map;
+  });
+  const renderer = stubRenderer();
+  await prepareStartupGpuResidency(renderer, subject, { includeGeometry: false, yieldToMain: async () => {} });
+  assert.equal(texture.mipmaps.length, 0);
+  if (!(texture.version > 0)) texture.needsUpdate = true;
+  await refillPresentedCompressedUploads([texture]);
+  assert.ok(texture.mipmaps.length > 0, 'refill restored the manifest texture');
+  const release = retainPresentedTextureLeases([texture]);
+  assert.equal(detachPackageTexture(texture), false, 'the draw lease blocks the release');
+  assert.ok(texture.mipmaps.length > 0);
+  release();
+  assert.equal(detachPackageTexture(texture), true);
+  assert.equal(texture.mipmaps.length, 0);
+  loader.dispose();
+});
+
+test('a leased shared user keeps its mip chain', () => {
+  resetImageSourceDedupeForTests();
+  const owner = new THREE.CompressedTexture([{ data: new Uint8Array(16), width: 4, height: 4 }], 4, 4);
+  claimSharedImageTexture('lease-key', owner);
+  const release = retainPresentedTextureLeases([owner]);
+  assert.equal(releaseSharedImageSource(owner, () => true, () => true), false);
+  assert.equal(owner.mipmaps.length, 1);
+  release();
+  releaseSharedImageSource(owner, () => true, () => true);
+  assert.equal(owner.mipmaps.length, 0, 'the lease release lets the shared chain go');
+  owner.dispose();
 });
