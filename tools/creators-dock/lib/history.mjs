@@ -23,14 +23,14 @@ export function openDockHistory(project) {
   return { ok: true, history: createHistory(project), issues: [] };
 }
 
-export function undo(history) {
+function undo(history) {
   if (!history.past.length) return history;
   const past = history.past.slice(0, -1);
   const present = history.past[history.past.length - 1];
   return { past, present, future: [history.present, ...history.future] };
 }
 
-export function redo(history) {
+function redo(history) {
   if (!history.future.length) return history;
   const [present, ...future] = history.future;
   return { past: history.past.concat([history.present]), present, future };

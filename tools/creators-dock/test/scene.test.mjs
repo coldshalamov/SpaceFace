@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
-import { commit, createHistory, newDockHistory, openDockHistory, restoreHistory, undo } from '../lib/history.mjs';
+import { commit, createHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { inspectValue } from '../lib/security.mjs';
 import {
@@ -34,8 +36,11 @@ test('undo restores a nudged actor and clone is not the player', () => {
   assert.equal(moved.ok, true);
   history = commit(history, moved.project);
   assert.notEqual(objectById(history.present, 'cargo').x, startX);
-  history = undo(history);
+  const restored = restoreHistory(history, 'undo');
+  assert.equal(restored.ok, true, (restored.issues || []).join('\n'));
+  history = restored.history;
   assert.equal(objectById(history.present, 'cargo').x, startX);
+  assert.equal(playerIds(history.present).length, 1);
 
   const copied = cloneObject(project, 'cargo', 'cargo_copy');
   assert.equal(copied.ok, true);
@@ -426,6 +431,30 @@ test('agent requests do not succeed unless the committed project has exactly one
   });
   assert.equal(noted.ok, true, noted.issues.join('\n'));
   assert.deepEqual(playerIds(noted.project), ['player']);
+});
+
+test('editor and agent cannot install a present by calling undo or redo directly', async () => {
+  const historyApi = await import('../lib/history.mjs');
+  assert.equal(Object.hasOwn(historyApi, 'undo'), false);
+  assert.equal(Object.hasOwn(historyApi, 'redo'), false);
+  assert.equal(typeof historyApi.restoreHistory, 'function');
+
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const call = (name) => new RegExp(`\\b${name}\\s*\\(`);
+  for (const rel of ['public/editor.js', 'lib/agent.mjs', 'lib/scene.mjs', 'lib/export.mjs', 'test/scene.test.mjs', 'test/export.test.mjs']) {
+    const text = fs.readFileSync(path.join(root, rel), 'utf8');
+    assert.equal(call('undo').test(text), false, rel);
+    assert.equal(call('redo').test(text), false, rel);
+  }
+
+  const empty = createHistory(emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 }));
+  const placed = placePlayer(empty.present);
+  const committed = commit(empty, placed.project);
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(undone.ok, false);
+  assert.equal(undone.history, committed);
+  assert.equal(playerIds(undone.history.present).length, 1);
+  assert.equal(objectById(undone.history.present, 'player').isPlayer, true);
 });
 
 test('a no-op undo does not report ok for an empty history', () => {
