@@ -8,6 +8,15 @@ import { bodyClassOf, criticSample, evaluateCandidate, signatureOf } from '../..
 import { contrastFails, deriveHappened } from '../../tools/causal-foundry/observe.js';
 import { gameableHoles } from '../../tools/causal-foundry/critic.js';
 import { buildCandidates } from '../../tools/causal-foundry/generate.js';
+import { ACCEPTED_SCENES } from '../../src/data/causalFoundry/accepted.js';
+import {
+  PRESENTATION_SCENES,
+  certifyPresentationCard,
+  controlsCoverTape,
+  requiredControlNames,
+} from '../../src/data/causalFoundry/presentation.js';
+import { runLabScenario } from '../../src/testing/lab/runScenario.js';
+import { compileScene } from '../../tools/causal-foundry/compileScene.js';
 
 const ACCEPT = {
   id: 'syn.reel',
@@ -123,6 +132,60 @@ test('generator candidates are deterministic and stay on runnable atoms', () => 
   assert.deepEqual(first, second);
   assert.ok(first.length >= 100);
   assert.equal(new Set(first).size, first.length);
+});
+
+test('presentation cards are verified only after the public lab accepts the compiled scenario', { timeout: 180000 }, async () => {
+  assert.equal(PRESENTATION_SCENES.length, 10);
+  for (const card of PRESENTATION_SCENES) {
+    const scene = ACCEPTED_SCENES.find((entry) => entry.id === card.id);
+    assert.ok(scene, card.id);
+    assert.equal(card.verified, false, `${card.id} verified before a lab run`);
+    assert.equal(card.trace, undefined, card.id);
+    assert.equal(card.document && card.document.schema, 'spaceface.simScenario.v1', card.id);
+    assert.deepEqual(card.document, compileScene(scene), card.id);
+    assert.equal(controlsCoverTape(card.controls, scene.primary), true, `${card.id} ${card.controls.join(', ')}`);
+    const verdict = await certifyPresentationCard(card);
+    assert.equal(verdict.ok, true, `${card.id} ${verdict.status} ${verdict.error || ''}`);
+    assert.notEqual(verdict.status, 'invalid-config', card.id);
+    assert.equal(verdict.status, 'pass', card.id);
+    assert.equal(verdict.certifying, true, card.id);
+    assert.equal(typeof verdict.traceHash, 'string', card.id);
+    assert.equal(verdict.verified, true, card.id);
+    assert.equal(card.verified, false, `${card.id} import row flipped during the run`);
+  }
+
+  const reel = ACCEPTED_SCENES.find((entry) => entry.id === 'cf.reel-berth');
+  const raw = await runLabScenario(reel.primary);
+  assert.equal(raw.ok, false);
+  assert.equal(raw.status, 'invalid-config');
+  const rawCard = await certifyPresentationCard({
+    id: 'cf.reel-berth',
+    controls: ['KeyF hold', 'KeyQ reel'],
+    document: reel.primary,
+  });
+  assert.equal(rawCard.verified, false);
+  assert.equal(rawCard.ok, false);
+  assert.equal(rawCard.status, 'invalid-config');
+
+  const holdOnly = await runLabScenario({ hold: true });
+  assert.equal(holdOnly.ok, false);
+  assert.equal(holdOnly.status, 'invalid-config');
+  assert.equal(holdOnly.exitClass, 4);
+
+  const cutScene = ACCEPTED_SCENES.find((entry) => entry.id === 'cf.boost-cut');
+  const cut = PRESENTATION_SCENES.find((card) => card.id === 'cf.boost-cut');
+  const cutNames = requiredControlNames(cutScene.primary);
+  assert.ok(cutNames.includes('thrust'));
+  assert.ok(cutNames.includes('release'));
+  assert.equal(controlsCoverTape(['KeyF hold', 'boost', 'KeyF tap'], cutScene.primary), false);
+  const omitted = await certifyPresentationCard({
+    id: cut.id,
+    controls: ['KeyF hold', 'boost', 'KeyF tap'],
+    document: cut.document,
+  });
+  assert.equal(omitted.ok, true, omitted.error || omitted.status);
+  assert.notEqual(omitted.status, 'invalid-config');
+  assert.equal(omitted.verified, false);
 });
 
 test('speed changes and harmless projectile drift are not hull contacts without an owner receipt', () => {

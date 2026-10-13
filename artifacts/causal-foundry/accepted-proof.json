@@ -1,5 +1,6 @@
 {
   "schema": "spaceface.causalFoundry.acceptedProof.v1",
+  "note": "presentation[].verified is true only when runLabScenario accepts that card's stored document. The module constant stays false at import.",
   "sceneCount": 30,
   "presentationIds": [
     "cf.reel-berth",
@@ -12,6 +13,108 @@
     "cf.orbit-hold",
     "cf.boost-cut",
     "cf.moving-fire"
+  ],
+  "presentation": [
+    {
+      "id": "cf.reel-berth",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "6b7b11d49c6813d2f8745fdd36771b37d6179d47bc0eefe38b5a78fba5cb8a22",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.tow-light",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "e49c7fcafc6c864f825bd998a7f613c33c53c3f146b7168b0d45ea4a69aae99b",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.swing-cut",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "3f02bedb236c9579f259e8c828754a17222e8cf97f8782a030e3ebb06e6c83c0",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.payout-strand",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.cut-into-pod",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "27a2310ae857e4bbe47aea64230af95de898725137fa801604a63e63de5d1046",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.boost-arrest",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.taut-catch",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "d7faf0ef677fdabd5f0567d754241c155415809f12ad8763c3950c8c1d61ae33",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.orbit-hold",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "8fc361e5c32281a5db81a3195762126387a41a915d7d726a37fb27eea4d2e49b",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.boost-cut",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "a5cccbf997960bb60208416e549e148c93488e800fbe8a0962a3445f0edcbfdb",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    },
+    {
+      "id": "cf.moving-fire",
+      "verified": true,
+      "ok": true,
+      "status": "pass",
+      "certifying": true,
+      "traceHash": "83b291c2a7fe684d1a9161a2237d3310d3f037c094093e7bcc765d3f5483fce3",
+      "schema": "spaceface.simScenario.v1",
+      "error": null
+    }
   ],
   "failureIds": [
     "cf.swing-cut",
@@ -41,11 +144,14 @@
       "varietyFailures": [],
       "fired": [
         "massline.reel",
-        "massline.tension"
+        "massline.tension",
+        "physics.collision"
       ],
       "playerDisp": 59.533012,
       "endSpeed": 0.243285,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.tow-light",
@@ -67,11 +173,14 @@
       "varietyFailures": [],
       "fired": [
         "massline.reel",
-        "massline.tension"
+        "massline.tension",
+        "physics.collision"
       ],
       "playerDisp": 27.084772,
       "endSpeed": 1.050944,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.swing-cut",
@@ -102,7 +211,9 @@
       ],
       "playerDisp": 90.1375400042055,
       "endSpeed": 45.540525077277465,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.payout-strand",
@@ -130,12 +241,13 @@
       "fired": [
         "ship.thrust",
         "massline.payout",
-        "massline.tension",
-        "physics.collision"
+        "massline.tension"
       ],
       "playerDisp": 102.634771,
       "endSpeed": 71.286995,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.cut-into-pod",
@@ -168,7 +280,9 @@
       ],
       "playerDisp": 94.87211225152228,
       "endSpeed": 41.24308563852512,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.reel-then-cut",
@@ -196,7 +310,8 @@
       ],
       "playerDisp": 53.914745,
       "endSpeed": 36.101097,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.boost-arrest",
@@ -224,7 +339,9 @@
       ],
       "playerDisp": 89.05877100000001,
       "endSpeed": 0.809194,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.taut-catch",
@@ -246,12 +363,13 @@
       "varietyFailures": [],
       "fired": [
         "ship.thrust",
-        "massline.tension",
-        "physics.collision"
+        "massline.tension"
       ],
       "playerDisp": 48.97107,
       "endSpeed": 21.148806,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.light-payout-drag",
@@ -275,12 +393,12 @@
       "fired": [
         "ship.thrust",
         "massline.payout",
-        "massline.tension",
-        "physics.collision"
+        "massline.tension"
       ],
       "playerDisp": 188.494573,
       "endSpeed": 173.574905,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.orbit-hold",
@@ -304,12 +422,13 @@
       "fired": [
         "ship.thrust",
         "massline.tension",
-        "massline.orbit",
-        "physics.collision"
+        "massline.orbit"
       ],
       "playerDisp": 176.62384158068116,
       "endSpeed": 116.73093379523547,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.heavy-shove",
@@ -335,7 +454,8 @@
       ],
       "playerDisp": 141.297742,
       "endSpeed": 70.377411,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.moving-fire",
@@ -361,7 +481,9 @@
       ],
       "playerDisp": 346.055272,
       "endSpeed": 194.994247,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.line-bleed",
@@ -387,7 +509,8 @@
       ],
       "playerDisp": 2.139094,
       "endSpeed": 4.932724,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.boost-cut",
@@ -421,7 +544,9 @@
       ],
       "playerDisp": 315.327386,
       "endSpeed": 299.770477,
-      "error": null
+      "error": null,
+      "verified": true,
+      "publicStatus": "pass"
     },
     {
       "id": "cf.boost-payout",
@@ -455,7 +580,8 @@
       ],
       "playerDisp": 141.879144,
       "endSpeed": 58.190525,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.payout-orbit",
@@ -483,7 +609,8 @@
       ],
       "playerDisp": 131.976375135513,
       "endSpeed": 47.07833223701546,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.reel-orbit",
@@ -507,12 +634,12 @@
       "fired": [
         "massline.reel",
         "massline.tension",
-        "massline.orbit",
-        "physics.collision"
+        "massline.orbit"
       ],
       "playerDisp": 91.6421044886706,
       "endSpeed": 288.5874309529345,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.boost-orbit",
@@ -536,12 +663,12 @@
       "fired": [
         "ship.boost",
         "massline.tension",
-        "massline.orbit",
-        "physics.collision"
+        "massline.orbit"
       ],
       "playerDisp": 76.69850944863826,
       "endSpeed": 176.05401406084113,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.yaw-tow",
@@ -554,8 +681,8 @@
       ],
       "failure": null,
       "presentation": false,
-      "traceHash": "78f23c8086272cbb28d089b9a2340db19cfc6ad2f43d7453e42a52edd53faf6d",
-      "repeatHash": "78f23c8086272cbb28d089b9a2340db19cfc6ad2f43d7453e42a52edd53faf6d",
+      "traceHash": "f6d0dc2dc7a045feb67ceb75bb69431e7d3b44a0826e47547090c5c6de1ed423",
+      "repeatHash": "f6d0dc2dc7a045feb67ceb75bb69431e7d3b44a0826e47547090c5c6de1ed423",
       "repeatOk": true,
       "altHash": "f0deada90b431d51e4e45f517932fcd0045fbfa4996ff586656e5e96163db47c",
       "reasons": [],
@@ -567,9 +694,10 @@
         "massline.reel",
         "massline.tension"
       ],
-      "playerDisp": 4.807535432820543,
-      "endSpeed": 2.986693785113566,
-      "error": null
+      "playerDisp": 4.8075374332448,
+      "endSpeed": 2.9866897804025445,
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.turn-on-line",
@@ -594,12 +722,12 @@
         "ship.thrust",
         "ship.turn",
         "massline.tension",
-        "massline.orbit",
-        "physics.collision"
+        "massline.orbit"
       ],
       "playerDisp": 131.8257674184499,
       "endSpeed": 190.42575183950208,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.boost-reel",
@@ -629,7 +757,8 @@
       ],
       "playerDisp": 128.60294499999998,
       "endSpeed": 36.463589,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.coast-light-pin",
@@ -651,12 +780,12 @@
       "varietyFailures": [],
       "fired": [
         "ship.coast",
-        "massline.tension",
-        "physics.collision"
+        "massline.tension"
       ],
       "playerDisp": 44.379806,
       "endSpeed": 13.840412,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.payout-yaw",
@@ -687,7 +816,8 @@
       ],
       "playerDisp": 159.5794500338066,
       "endSpeed": 157.93049520067277,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.payout-hits-pod",
@@ -717,7 +847,8 @@
       ],
       "playerDisp": 115.720258,
       "endSpeed": 99.403183,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.boost-yaw",
@@ -747,7 +878,8 @@
       ],
       "playerDisp": 209.32964297513948,
       "endSpeed": 306.7082273684555,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.reel-and-fire",
@@ -775,7 +907,8 @@
       ],
       "playerDisp": 58.784081,
       "endSpeed": 36.31258,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.arc-clips",
@@ -804,7 +937,8 @@
       ],
       "playerDisp": 73.19770107538419,
       "endSpeed": 27.030090164360253,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.boost-drag-light",
@@ -828,12 +962,12 @@
       "fired": [
         "ship.thrust",
         "ship.boost",
-        "massline.tension",
-        "physics.collision"
+        "massline.tension"
       ],
       "playerDisp": 393.225016,
       "endSpeed": 283.404175,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.cut-light-pin",
@@ -856,12 +990,12 @@
       "fired": [
         "ship.coast",
         "massline.cut",
-        "massline.orbit",
-        "physics.collision"
+        "massline.orbit"
       ],
       "playerDisp": 90.34044490727165,
       "endSpeed": 45.41729871757994,
-      "error": null
+      "error": null,
+      "verified": false
     },
     {
       "id": "cf.loose-tow",
@@ -890,7 +1024,8 @@
       ],
       "playerDisp": 33.950108,
       "endSpeed": 18.123575,
-      "error": null
+      "error": null,
+      "verified": false
     }
   ]
 }

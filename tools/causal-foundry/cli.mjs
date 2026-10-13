@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { ACCEPTED_SCENES } from '../../src/data/causalFoundry/accepted.js';
-import { PRESENTATION_IDS } from '../../src/data/causalFoundry/presentation.js';
+import { PRESENTATION_IDS, PRESENTATION_SCENES, certifyPresentationDocument } from '../../src/data/causalFoundry/presentation.js';
 import { HARD_GATES } from './evaluate.js';
 import { executeCritic } from './critic.js';
 import { testCandidates } from './generate.js';
@@ -25,6 +25,15 @@ for (const scene of ACCEPTED_SCENES) {
   proofs.push(slimProof(scene, proof));
 }
 const critic = await executeCritic({ catalog: ACCEPTED_SCENES, rows: generated.rows });
+
+// Public certification of the stored card document. proveScene compiles a fresh
+// document and uses the internal runner; that result is not this verified flag.
+const presentation = [];
+for (const card of PRESENTATION_SCENES) {
+  const verdict = await certifyPresentationDocument(card, card.document);
+  presentation.push(presentationRecord(card, verdict));
+}
+const presentationById = new Map(presentation.map((row) => [row.id, row]));
 
 const ranked = {
   schema: 'spaceface.causalFoundry.ranked.v1',
@@ -45,14 +54,21 @@ const ranked = {
     acceptedIds: critic.acceptedIds,
     rejectedIds: critic.rejectedIds,
     presentationIds: PRESENTATION_IDS,
+    presentation,
   },
+  presentation,
 };
 const accepted = {
   schema: 'spaceface.causalFoundry.acceptedProof.v1',
+  note: 'presentation[].verified is true only when runLabScenario accepts that card\'s stored document. The module constant stays false at import.',
   sceneCount: proofs.length,
   presentationIds: PRESENTATION_IDS,
+  presentation,
   failureIds: ACCEPTED_SCENES.filter((scene) => scene.failure).map((scene) => scene.id),
-  scenes: proofs,
+  scenes: proofs.map((row) => {
+    const pub = presentationById.get(row.id);
+    return pub ? { ...row, verified: pub.verified === true, publicStatus: pub.status } : { ...row, verified: false };
+  }),
 };
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -73,10 +89,33 @@ console.log(JSON.stringify({
   catalogFailed: failedAccepted.map((row) => row.id),
   criticOk: critic.ok,
   criticProblems: critic.problems,
+  presentationOk: presentation.every((row) => row.verified === true),
+  presentationVerified: presentation.filter((row) => row.verified === true).map((row) => row.id),
+  presentationFailed: presentation.filter((row) => row.verified !== true).map((row) => row.id),
   ms: Date.now() - started,
   out: OUT_DIR,
 }, null, 2));
-process.exit(failedAccepted.length === 0 && critic.ok ? 0 : 1);
+process.exit(failedAccepted.length === 0 && critic.ok && presentation.every((row) => row.verified === true) ? 0 : 1);
+
+function presentationRecord(card, verdict) {
+  const passed = !!(
+    verdict
+    && verdict.verified === true
+    && verdict.ok === true
+    && verdict.status === 'pass'
+    && verdict.certifying === true
+  );
+  return {
+    id: card.id,
+    verified: passed,
+    ok: !!(verdict && verdict.ok === true),
+    status: verdict && verdict.status ? verdict.status : 'invalid-config',
+    certifying: !!(verdict && verdict.certifying === true),
+    traceHash: verdict && verdict.traceHash ? verdict.traceHash : null,
+    schema: card.document && card.document.schema ? card.document.schema : null,
+    error: verdict && verdict.error ? verdict.error : null,
+  };
+}
 
 function slimCandidate(row) {
   return {

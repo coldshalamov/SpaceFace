@@ -66,5 +66,13 @@ test('thirty accepted scenes are distinct couplings', { timeout: 180000 }, async
     assert.equal(pub.certifying, true, card.id);
     assert.equal(pub.ok, true, `${card.id} ${pub.error || JSON.stringify(pub.oracle && pub.oracle.failed)}`);
     assert.equal(pub.traceHash, found.proof.primary.traceHash, card.id);
+    assert.equal(card.verified, false, `${card.id} import flag`);
+    assert.equal(card.document && card.document.schema, 'spaceface.simScenario.v1', card.id);
+    const cardRun = await runLabScenario(card.document);
+    assert.notEqual(cardRun.status, 'invalid-config', card.id);
+    assert.equal(cardRun.certifying, true, card.id);
+    assert.equal(cardRun.ok, true, `${card.id} ${cardRun.status} ${cardRun.error || ''}`);
+    assert.equal(cardRun.status, 'pass', card.id);
+    assert.equal(cardRun.traceHash, pub.traceHash, card.id);
   }
 });
