@@ -1,4 +1,4 @@
-import { commit, createHistory, newDockHistory, restoreHistory } from '/lib/history.mjs';
+import { commit, createHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
   addObject,
@@ -11,6 +11,7 @@ import {
   nudgeObjects,
   objectById,
   placePlayer,
+  playerCanonIssues,
   projectIssues,
   screenToWorld,
   setCamera,
@@ -53,6 +54,8 @@ function resize() {
 }
 
 function commitProject(next) {
+  const issues = playerCanonIssues(next);
+  if (issues.length) return showReport({ ok: false, issues });
   history = commit(history, next);
   render();
 }
@@ -602,7 +605,9 @@ document.querySelector('#file-open').addEventListener('change', async (event) =>
     showReport({ ok: false, issues });
     return;
   }
-  history = createHistory(parsed);
+  const opened = openDockHistory(parsed);
+  if (!opened.ok) return showReport(opened);
+  history = opened.history;
   selected = [];
   render();
 });

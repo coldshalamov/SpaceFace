@@ -1,16 +1,26 @@
-import { clone, emptyProject, placePlayer, requireOnePlayer, sameProject } from './scene.mjs';
+import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
 
 const CAP = 100;
 
 export function createHistory(present) {
+  if (playerCanonIssues(present).some((issue) => issue.includes('isPlayer must be a boolean'))) {
+    return { past: [], present: null, future: [] };
+  }
   return { past: [], present: clone(present), future: [] };
 }
 
 export function commit(history, next) {
+  if (playerCanonIssues(next).length) return history;
   const present = clone(next);
   if (sameProject(history.present, present)) return history;
   const past = history.past.concat([history.present]).slice(-CAP);
   return { past, present, future: [] };
+}
+
+export function openDockHistory(project) {
+  const issues = playerCanonIssues(project);
+  if (issues.length) return { ok: false, history: null, issues };
+  return { ok: true, history: createHistory(project), issues: [] };
 }
 
 export function undo(history) {
@@ -38,7 +48,6 @@ export function newDockHistory(meta = {}) {
 
 export function restoreHistory(history, direction) {
   const stepped = direction === 'redo' ? redo(history) : undo(history);
-  if (stepped === history) return { ok: true, history, issues: [] };
   const gate = requireOnePlayer(history.present, { ok: true, project: stepped.present, issues: [] });
   if (!gate.ok) return { ok: false, history, issues: gate.issues };
   return { ok: true, history: stepped, issues: [] };

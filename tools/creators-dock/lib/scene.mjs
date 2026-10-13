@@ -35,13 +35,8 @@ export const OBJECT_KEY_SETS = Object.freeze({
   attachment: ATTACHMENT_KEYS,
 });
 
-function cloneReplacer(key, value) {
-  if (key === 'isPlayer' && typeof value !== 'boolean' && value != null) return !!value;
-  return value;
-}
-
 export function clone(value) {
-  return value == null ? value : JSON.parse(JSON.stringify(value, cloneReplacer));
+  return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
 export function sameProject(a, b) {
@@ -104,12 +99,12 @@ export function issuesForObject(object) {
   if (!object || typeof object !== 'object' || Array.isArray(object)) {
     return ['object must be a plain object'];
   }
-  if (!OBJECT_KEY_SETS[object.kind]) {
+  if (typeof object.kind !== 'string' || !OBJECT_KEY_SETS[object.kind]) {
     issues.push(`unknown object kind "${object.kind}"`);
     return issues;
   }
   const allowed = new Set(OBJECT_KEY_SETS[object.kind]);
-  for (const key of Object.keys(object)) {
+  for (const key of Object.getOwnPropertyNames(object)) {
     if (!allowed.has(key)) issues.push(`unknown field "${key}" on ${object.kind}`);
   }
   if (typeof object.id !== 'string' || !ID_RE.test(object.id)) {
@@ -118,12 +113,26 @@ export function issuesForObject(object) {
   return issues;
 }
 
+function kindName(object) {
+  if (!object || object.kind == null) return '';
+  if (typeof object.kind === 'string') return object.kind;
+  if (typeof object.kind === 'object') {
+    const value = object.kind.valueOf();
+    if (typeof value === 'string') return value;
+  }
+  return '';
+}
+
+function isActorKind(object) {
+  return kindName(object) === 'actor';
+}
+
 function isPlayerActor(object) {
-  return !!(object && object.kind === 'actor' && object.isPlayer);
+  return isActorKind(object) && object.isPlayer === true;
 }
 
 function nonBooleanPlayerIssue(object) {
-  if (!object || typeof object !== 'object' || object.kind !== 'actor') return null;
+  if (!isActorKind(object)) return null;
   if (!Object.prototype.hasOwnProperty.call(object, 'isPlayer')) return null;
   if (typeof object.isPlayer === 'boolean') return null;
   return `${object.id ? `${object.id}: ` : ''}isPlayer must be a boolean`;
@@ -148,10 +157,23 @@ function exactlyOnePlayerIssue(found) {
   return `scene needs exactly one player actor (found ${found})`;
 }
 
+export function playerCanonIssues(project) {
+  const issues = [];
+  let players = 0;
+  for (const object of (project && project.objects) || []) {
+    if (!isActorKind(object)) continue;
+    if (object.isPlayer === true) players += 1;
+    const issue = nonBooleanPlayerIssue(object);
+    if (issue) issues.push(issue);
+  }
+  if (players !== 1) issues.push(exactlyOnePlayerIssue(players));
+  return issues;
+}
+
 export function requireOnePlayer(previous, result) {
   if (!result || result.ok === false) return result;
-  const found = countPlayers(result.project && result.project.objects);
-  if (found !== 1) return { ok: false, project: previous, issues: [exactlyOnePlayerIssue(found)] };
+  const issues = playerCanonIssues(result.project);
+  if (issues.length) return { ok: false, project: previous, issues };
   return result;
 }
 
@@ -165,6 +187,9 @@ function playersAfterReplace(project, id, object) {
 }
 
 export function placePlayer(project) {
+  const flags = [];
+  pushPlayerFlagIssues(flags, project && project.objects);
+  if (flags.length) return { ok: false, project, issues: flags };
   const found = countPlayers(project.objects);
   if (found > 1) return { ok: false, project, issues: [exactlyOnePlayerIssue(found)] };
   const existing = (project.objects || []).find((object) => isPlayerActor(object));
@@ -261,6 +286,10 @@ export function cloneObject(project, id, newId) {
   if (typeof newId !== 'string' || !ID_RE.test(newId)) {
     return { ok: false, project, issues: ['newId is not a safe id'] };
   }
+  const flags = [];
+  pushPlayerFlagIssues(flags, [source]);
+  pushPlayerFlagIssues(flags, project.objects);
+  if (flags.length) return { ok: false, project, issues: flags };
   const copy = clone(source);
   copy.id = newId;
   copy.groupId = undefined;
@@ -411,14 +440,12 @@ export function projectIssues(project) {
   if (!Number.isFinite(project.seed)) issues.push('seed must be a finite number');
   if (!Number.isInteger(project.ticks) || project.ticks < 1) issues.push('ticks must be a positive integer');
   const ids = new Set();
-  let players = 0;
   for (const object of project.objects || []) {
     for (const issue of issuesForObject(object)) issues.push(`${object && object.id}: ${issue}`);
     if (object && ids.has(object.id)) issues.push(`duplicate id "${object.id}"`);
     if (object && object.id) ids.add(object.id);
-    if (isPlayerActor(object)) players += 1;
   }
-  if (players !== 1) issues.push(exactlyOnePlayerIssue(players));
+  issues.push(...playerCanonIssues(project));
   return issues;
 }
 

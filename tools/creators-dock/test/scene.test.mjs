@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
-import { commit, createHistory, newDockHistory, restoreHistory, undo } from '../lib/history.mjs';
+import { commit, createHistory, newDockHistory, openDockHistory, restoreHistory, undo } from '../lib/history.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { inspectValue } from '../lib/security.mjs';
 import {
@@ -504,4 +504,104 @@ test('Infinity player flags are rejected before clone on add, replace, and clone
   assert.equal(objectById(copied.project, 'player').isPlayer, true);
   assert.equal(typeof objectById(copied.project, 'player').isPlayer, 'boolean');
   assert.equal(playerIds(copied.project).length, 1);
+});
+
+test('non-boolean player flags cannot ride along with one real player', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  objectById(scene, 'cargo').isPlayer = null;
+  const added = addObject(scene, plainActor('rock'));
+  assert.equal(added.ok, false);
+  assert.equal(added.project, scene);
+  assert.equal(objectById(added.project, 'rock'), null);
+  assert.equal(objectById(added.project, 'cargo').isPlayer, null);
+  assert.equal(added.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+
+  const replaced = replaceObject(scene, 'cargo', { ...objectById(scene, 'cargo'), label: 'still cargo' });
+  assert.equal(replaced.ok, false);
+  assert.equal(replaced.project, scene);
+  assert.equal(objectById(replaced.project, 'cargo').isPlayer, null);
+
+  for (const flag of [Infinity, -Infinity, 1, 'yes', 'false']) {
+    const flagged = getComposition('dock.intercept-cargo');
+    objectById(flagged, 'player').isPlayer = flag;
+    const placed = placePlayer(flagged);
+    assert.equal(placed.ok, false, String(flag));
+    assert.equal(placed.project, flagged);
+    assert.equal(objectById(placed.project, 'player').isPlayer, flag);
+    assert.equal(placed.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+  }
+
+  const nulled = getComposition('dock.intercept-cargo');
+  objectById(nulled, 'cargo').isPlayer = null;
+  const beside = placePlayer(nulled);
+  assert.equal(beside.ok, false);
+  assert.equal(beside.project, nulled);
+  assert.equal(objectById(beside.project, 'cargo').isPlayer, null);
+  assert.equal(objectById(beside.project, 'player').isPlayer, true);
+
+  const host = getComposition('dock.intercept-cargo');
+  const boxed = plainActor('ghost');
+  boxed.kind = new String('actor');
+  boxed.isPlayer = null;
+  const boxedAdd = addObject(host, boxed);
+  assert.equal(boxedAdd.ok, false);
+  assert.equal(boxedAdd.project, host);
+  assert.equal(objectById(host, 'ghost'), null);
+  const boxedReplace = replaceObject(host, 'cargo', { ...objectById(host, 'cargo'), kind: new String('actor'), isPlayer: null });
+  assert.equal(boxedReplace.ok, false);
+  assert.equal(boxedReplace.project, host);
+  assert.equal(objectById(host, 'cargo').isPlayer, undefined);
+  const boxedSource = getComposition('dock.intercept-cargo');
+  objectById(boxedSource, 'cargo').kind = new String('actor');
+  objectById(boxedSource, 'cargo').isPlayer = null;
+  const boxedClone = cloneObject(boxedSource, 'cargo', 'cargo_copy');
+  assert.equal(boxedClone.ok, false);
+  assert.equal(boxedClone.project, boxedSource);
+  assert.equal(objectById(boxedSource, 'cargo_copy'), null);
+
+  const sneaky = plainActor('sneaky', { isPlayer: false });
+  Object.defineProperty(sneaky, 'toJSON', {
+    enumerable: false,
+    value() {
+      const body = { ...this };
+      body.isPlayer = null;
+      return body;
+    },
+  });
+  const sneaked = addObject(getComposition('dock.intercept-cargo'), sneaky);
+  assert.equal(sneaked.ok, false);
+  assert.equal(objectById(sneaked.project, 'sneaky'), null);
+  assert.equal(playerIds(sneaked.project).length, 1);
+
+  const good = getComposition('dock.intercept-cargo');
+  const bad = structuredClone(good);
+  objectById(bad, 'cargo').isPlayer = null;
+  const history = createHistory(good);
+  assert.equal(commit(history, bad), history);
+  assert.equal(objectById(history.present, 'cargo').isPlayer, undefined);
+  const opened = openDockHistory(bad);
+  assert.equal(opened.ok, false);
+  assert.equal(opened.history, null);
+  assert.equal(opened.issues.some((issue) => issue.includes('isPlayer must be a boolean')), true);
+  const stored = {
+    past: [bad],
+    present: good,
+    future: [bad],
+  };
+  const undone = restoreHistory(stored, 'undo');
+  assert.equal(undone.ok, false);
+  assert.equal(undone.history, stored);
+  assert.equal(objectById(undone.history.present, 'cargo').isPlayer, undefined);
+  const redone = restoreHistory(stored, 'redo');
+  assert.equal(redone.ok, false);
+  assert.equal(redone.history, stored);
+  assert.equal(objectById(redone.history.present, 'player').isPlayer, true);
+  const stuck = restoreHistory({ past: [], present: bad, future: [] }, 'undo');
+  assert.equal(stuck.ok, false);
+  assert.equal(stuck.history.present, bad);
+
+  const fresh = newDockHistory({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 });
+  assert.equal(objectById(fresh.present, 'player').isPlayer, true);
+  assert.equal(typeof objectById(fresh.present, 'player').isPlayer, 'boolean');
+  assert.equal(playerIds(fresh.present).length, 1);
 });
