@@ -3,7 +3,7 @@
 // whether the classes separate in colour (CIELAB) and apparent size. Uses sharp (already a dep).
 
 import sharp from 'sharp';
-import { E, CLS, VIS } from './checks.mjs';
+import { E, CLS, VIS, THRESHOLDS } from './checks.mjs';
 
 const CLASSES = ['enemy', 'asteroid', 'projectile', 'pickup'];
 // Play-space bodies that are none of the combat classes (stations, neutral hulls, props): census only.
@@ -20,28 +20,91 @@ function srgbToLab(r, g, b) {
   return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
 }
 
-/** Mean Lab of the pixels inside a box, and of a ring around it (background). Exported for tests. */
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+function labOfRgb(rgb) {
+  const lab = srgbToLab((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
+  const chroma = Math.hypot(lab[1], lab[2]);
+  const hueDeg = (Math.atan2(lab[2], lab[1]) * 180 / Math.PI + 360) % 360;
+  return {
+    rgb,
+    lab: Object.freeze([+lab[0].toFixed(2), +lab[1].toFixed(2), +lab[2].toFixed(2)]),
+    hueDeg: +hueDeg.toFixed(2),
+    chroma: +chroma.toFixed(2),
+  };
+}
+
+/** Crimson of `getMaterial('swarm:threat-ring')` in src/render/visualFactory.js. Lab comes from that rgb.
+ *  L is about 54, so a brightness test (L≥75) never sees this ring. A drift test reads the source literal. */
+export const THREAT_MARKER = Object.freeze(labOfRgb(0xff1a3a));
+export const THREAT_HUE_TOLERANCE_DEG = 18;
+export const THREAT_CHROMA_MIN = 40;
+/** Mid-band pixels closer than this to the backdrop are the backdrop, not a mark. */
+export const RIM_BG_DE_MIN = 12;
+/** Share of the mid band that must clear the chroma floor and the backdrop ΔE before the sample has a threat rim. */
+export const RIM_THREAT_SHARE = 0.08;
+
+export function rimHue(lab) {
+  if (!lab) return null;
+  return { chroma: Math.hypot(lab[1], lab[2]), hue: (Math.atan2(lab[2], lab[1]) * 180 / Math.PI + 360) % 360 };
+}
+
+/** True when this Lab is the declared threat hue and chromatic enough to be a mark. */
+export function rimMatchesThreat(lab) {
+  const h = rimHue(lab);
+  if (!h || h.chroma < THREAT_CHROMA_MIN) return false;
+  let d = Math.abs(h.hue - THREAT_MARKER.hueDeg);
+  if (d > 180) d = 360 - d;
+  return d <= THREAT_HUE_TOLERANCE_DEG;
+}
+
+/** +1.5 only when one class wears the threat hue and the other does not. Pass threat-match rates, not L≥75 rates. */
+export function threatMarkerCredit(rateA, rateB) {
+  const a = Number(rateA) || 0; const b = Number(rateB) || 0;
+  if (Math.max(a, b) >= THRESHOLDS.readabilityMarkerOn && Math.abs(a - b) >= THRESHOLDS.readabilityMarkerSplit) return THRESHOLDS.readabilityMarkerCredit;
+  return 0;
+}
+
+/** Mean Lab of the pixels inside a box, and of a ring around it (background). Exported for tests.
+ *  `marker` is the share of the mid rim whose L is ≥ 75. It does not buy credit.
+ *  `rim` is the mean Lab of mid-band pixels that pass the chroma floor and differ from the backdrop
+ *  by at least `RIM_BG_DE_MIN`. A warm backdrop therefore cannot paint the mean into the threat hue.
+ *  `rim` is null when those pixels are under `RIM_THREAT_SHARE` of the band. */
 export function sampleBox(raw, W, H, ch, cx, cy, r) {
   const inner = Math.max(1, Math.round(r * INNER_SCALE)); const ring = Math.round(Math.max(r * 1.6, r + 4));
   const acc = [0, 0, 0]; let n = 0; const bg = [0, 0, 0]; let nb = 0; const inn = [];
+  let markerN = 0; let midN = 0; const mid = [];
   for (let y = Math.max(0, cy - ring); y <= Math.min(H - 1, cy + ring); y++) {
     for (let x = Math.max(0, cx - ring); x <= Math.min(W - 1, cx + ring); x++) {
       const dx = x - cx; const dy = y - cy; const d = Math.max(Math.abs(dx), Math.abs(dy));
       const i = (y * W + x) * ch;
-      if (d <= inner) { const L = srgbToLab(raw[i], raw[i + 1], raw[i + 2]); acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2]; n++; inn.push(L); } else if (d > r * 1.2) { const L = srgbToLab(raw[i], raw[i + 1], raw[i + 2]); bg[0] += L[0]; bg[1] += L[1]; bg[2] += L[2]; nb++; }
+      const L = srgbToLab(raw[i], raw[i + 1], raw[i + 2]);
+      if (d <= inner) { acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2]; n++; inn.push(L); }
+      else if (d <= r * 1.15) { midN++; mid.push(L); if (L[0] >= 75) markerN++; }
+      else if (d > r * 1.2) { bg[0] += L[0]; bg[1] += L[1]; bg[2] += L[2]; nb++; }
     }
   }
   if (!n) return null;
   // The lit quarter of the body: what the eye calls its colour ("white sphere", "orange blob").
   inn.sort((p, q) => q[0] - p[0]); const top = inn.slice(0, Math.max(1, Math.ceil(inn.length / 4)));
   const lit = [0, 1, 2].map((k) => top.reduce((sum, L) => sum + L[k], 0) / top.length);
-  return { lab: acc.map((v) => v / n), lit, bg: nb ? bg.map((v) => v / nb) : null };
+  const bgLab = nb ? bg.map((v) => v / nb) : null;
+  const qualified = [];
+  for (const L of mid) {
+    if (Math.hypot(L[1], L[2]) < THREAT_CHROMA_MIN) continue;
+    if (bgLab && dist(L, bgLab) < RIM_BG_DE_MIN) continue;
+    qualified.push(L);
+  }
+  const share = midN ? qualified.length / midN : 0;
+  const rim = share >= RIM_THREAT_SHARE
+    ? [0, 1, 2].map((k) => qualified.reduce((sum, L) => sum + L[k], 0) / qualified.length)
+    : null;
+  return { lab: acc.map((v) => v / n), lit, bg: bgLab, marker: midN ? markerN / midN : 0, rim };
 }
 
-const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-
-/** Separation index between two sample sets: centroid distance / pooled spread, plus size. */
-export function separation(A, B) {
+/** Separation index between two sample sets: centroid distance / pooled spread, plus size.
+ *  `markerCredit` is added by the caller when one class wears the declared threat hue and the other does not. */
+export function separation(A, B, { markerCredit = 0 } = {}) {
   const mean = (S) => [0, 1, 2].map((k) => S.reduce((s, x) => s + x.lab[k], 0) / S.length);
   const mA = mean(A); const mB = mean(B);
   const spread = (S, m) => Math.sqrt(S.reduce((s, x) => s + dist(x.lab, m) ** 2, 0) / S.length);
@@ -49,9 +112,9 @@ export function separation(A, B) {
   const dColor = dist(mA, mB);
   const med = (S) => { const v = S.map((x) => x.r).sort((a, b) => a - b); return v[Math.floor(v.length / 2)] || 1; };
   const sizeRatio = Math.max(med(A), med(B)) / Math.max(1, Math.min(med(A), med(B)));
-  // Size separates classes as much as colour does on a top-down screen: credit log size ratio.
-  const sep = dColor / pooled + Math.max(0, Math.log2(sizeRatio) - 0.5);
-  return { sep, dColor, sizeRatio };
+  // Size separates classes as much as colour does on a top-down screen: credit log size ratio (the silhouette term).
+  const sep = dColor / pooled + Math.max(0, Math.log2(sizeRatio) - 0.5) + markerCredit;
+  return { sep, dColor, sizeRatio, markerCredit };
 }
 
 function captureWindow(shot, nearestSample, samples) {
@@ -149,16 +212,24 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
     }
   }
   const classes = {};
+  const deltaL = (x) => (x.bg ? Math.abs(x.lab[0] - x.bg[0]) : null);
   for (const c of CLASSES) {
     const S = per[c];
-    const low = S.filter((x) => x.bg && Math.abs(x.lab[0] - x.bg[0]) < 8);
+    const low = S.filter((x) => deltaL(x) != null && deltaL(x) < THRESHOLDS.readabilityLowDeltaL);
+    const worst = S.slice().sort((a, b) => (deltaL(a) ?? 99) - (deltaL(b) ?? 99)).slice(0, 2)
+      .map((x) => ({ t: x.t, box: x.box, deltaL: deltaL(x) == null ? null : +deltaL(x).toFixed(1) }));
+    const marked = S.filter((x) => (x.marker || 0) >= 0.08).length;
+    const threat = S.filter((x) => rimMatchesThreat(x.rim)).length;
     classes[c] = { n: S.length, lowContrastFrac: S.length ? low.length / S.length : 0, exampleT: (low[0] || S[0] || {}).t, exampleBox: (low[0] || S[0] || {}).box,
+      markerRate: S.length ? marked / S.length : 0, threatRate: S.length ? threat / S.length : 0, worst,
       meanLab: S.length ? [0, 1, 2].map((k) => +(S.reduce((s, x) => s + x.lab[k], 0) / S.length).toFixed(1)) : null };
   }
+  const markerCreditFor = (a, b) => threatMarkerCredit(classes[a] ? classes[a].threatRate : 0, classes[b] ? classes[b].threatRate : 0);
   const pairs = [];
   for (const [a, b] of [['enemy', 'asteroid'], ['enemy', 'projectile'], ['asteroid', 'projectile'], ['enemy', 'pickup']]) {
     if (!per[a].length || !per[b].length) { pairs.push({ a, b, nA: per[a].length, nB: per[b].length, sep: null }); continue; }
-    const s = separation(per[a], per[b]);
+    const credit = markerCreditFor(a, b);
+    const s = separation(per[a], per[b], { markerCredit: credit });
     pairs.push({ a, b, nA: per[a].length, nB: per[b].length, ...s, exampleT: per[a][0].t, exampleBox: per[a][0].box });
   }
   // What each kind of body looks like on screen: the census that names "the white sphere" and "the orange blobs".

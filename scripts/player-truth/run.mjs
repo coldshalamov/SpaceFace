@@ -14,9 +14,13 @@
 // Drives the real public route in a real rendered browser with trusted keyboard/mouse input,
 // samples live telemetry with src/testing/playerTruth/reader.js (observer only), takes periodic
 // screenshots, runs scripts/player-truth/checks.mjs and writes verdict.md + contact-sheet.jpg.
-// Exit code: 0 PASS, 1 FAIL, 2 INCOMPLETE (a check could not measure), 3 harness error.
+// Exit code: 0 PASS, 1 FAIL (any arena, even when another arena is ENVIRONMENT),
+//            2 INCOMPLETE (a check could not measure), 3 harness error,
+//            4 HARNESS ENVIRONMENT only when no arena FAILed (stale served assets/ vs HEAD,
+//            or a quoted route load error). ENVIRONMENT is printed on its own line.
 
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { loadavg } from 'node:os';
 import { gzipSync } from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -29,8 +33,10 @@ import { runChecks, overall } from './checks.mjs';
 import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
-import { bootToMenu, crucibleToArmory, readArmory, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
-import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat } from './driver.mjs';
+import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
+import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
+import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, readEdgeMarkers, noteKey } from './driver.mjs';
+import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
@@ -195,11 +201,25 @@ export function formatRouteFailure(message, { notes = [], exitCode = null, signa
   return `harness/route error: ${head}${extra}`.slice(0, 400);
 }
 
-/** Process status for a finished matrix: 1 if any verdict is FAIL, 2 if any is not PASS, else 0. */
+/** Process status for a finished matrix. A gameplay FAIL exits 1 even when another arena is ENVIRONMENT.
+ *  ENVIRONMENT exits 4 only when no arena FAILed. It is still printed on its own line. */
 export function gateExitCode(verdicts) {
   if (verdicts.some((v) => v === 'FAIL')) return 1;
+  if (verdicts.some((v) => v === 'ENVIRONMENT')) return ENVIRONMENT_EXIT;
   if (verdicts.some((v) => v !== 'PASS')) return 2;
   return 0;
+}
+
+/** One stdout line per ENVIRONMENT arena, so exit 1 does not hide that arena behind the FAIL. */
+export function environmentReportLines(outcomes) {
+  return (outcomes || []).filter((o) => o && o.verdict === 'ENVIRONMENT').map((o) => `player-truth ENVIRONMENT: ${o.label} — harness environment, not a gameplay FAIL`);
+}
+
+/** A baseline extract that refused to start (low disk) is an environment result, not a harness crash. */
+export function absorbBaselineEnvironment(outcomes, err) {
+  if (!(err && err.environment)) return false;
+  outcomes.push({ verdict: 'ENVIRONMENT', label: 'baseline-assets' });
+  return true;
 }
 
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
@@ -276,7 +296,7 @@ async function runOne(args, arena, extra = {}) {
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), loadavg: { start: [...loadavg()], end: null } }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
@@ -312,6 +332,11 @@ async function runOne(args, arena, extra = {}) {
     if (!d) return;
     appendReaderDrain(trace, d);
     const last = trace.samples[trace.samples.length - 1];
+    // One DOM read per drain. Stamp the newest sample only: older samples in the batch are not this frame.
+    if (last) {
+      const marks = await readEdgeMarkers(page).catch(() => null);
+      if (marks) last.edgeMarkers = marks;
+    }
     if (last && Date.now() - lastProgress > 30000) {
       const prev = progressMark; progressMark = { wall: Date.now(), sim: last.sim, f: trace.samples.length };
       if (prev) log(`progress: sim ${last.sim.toFixed(1)} s · ${((progressMark.f - prev.f) / ((progressMark.wall - prev.wall) / 1000)).toFixed(1)} fps · ${((progressMark.sim - prev.sim) / ((progressMark.wall - prev.wall) / 1000)).toFixed(2)} sim s per wall s · phase ${last.run ? last.run.ph : last.mode}`);
@@ -352,6 +377,26 @@ async function runOne(args, arena, extra = {}) {
   };
   const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
+  const playWatch = createPlayWatch();
+  const observePlay = async () => {
+    try {
+      const sample = await readPlaySample(page);
+      if (!sample) return null;
+      sample.wall = Date.now();
+      playWatch.setInputs(page.__ptLastInput, page.__ptLastClick);
+      return playWatch.observe(sample);
+    } catch { return null; }
+  };
+  page.__ptObserve = observePlay;
+  const haltIfInterrupted = async () => {
+    await observePlay();
+    const why = playWatch.interrupts.length ? formatPlayStop(playWatch) : null;
+    if (!why) return false;
+    stopReason = why;
+    log(why);
+    await shoot('play interrupted', false);
+    return true;
+  };
 
   let doorInfo = null; let renderer = 'unknown'; let browserVersion = browser.version();
   try {
@@ -364,24 +409,53 @@ async function runOne(args, arena, extra = {}) {
     await shoot('main menu', false);
 
     if (args.mode === 'swarm' || args.mode === 'gauntlet') {
-      doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step);
+      doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step, {
+        onShip: async () => { await shoot('ship step', false); },
+      });
       if (args.mode === 'swarm') {
-        const preparation = await awaitPreparationChoice(page, { ruleset: RULESET[args.mode] });
+        await page.waitForFunction(() => { const n = (s) => String(s || '').replace(/\s+/g, ' '); return [...document.querySelectorAll('#screens button')].some((x) => x.offsetParent && !x.disabled && /Launch round 1/.test(n(x.textContent))); }, null, { timeout: 600000 });
         await waitBootOverlayGone(page);
-        if (preparation.kind === 'launch') {
-          await shoot('armory', false);
-          const items = await readArmory(page);
-          const audit = auditItems(args.mode, items);
-          const probe = await swapProbe(page, 3);
-          trace.loadout = { items, ...audit, ...probe, shotT: shots[shots.length - 1].t };
-          await shoot('armory after installs', false);
-          step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${items.length} armory offers read · ${probe.swapProbe}`);
-          const word = await armoryLaunchWord(page);
-          await launchPreparationChoice(page, { ruleset: RULESET[args.mode], word: word || preparation.word });
-        } else step('preparation', true, `public door entered ${preparation.ruleset} round ${preparation.wave} active`);
+        await shoot('armory', false);
+        const shelf = await readArmoryShelf(page);
+        const classified = classifyOfferRead(shelf);
+        const doorClaim = doorInfo && doorInfo.doorPrep ? doorInfo.doorPrep.fittedClaimed : 0;
+        let fitted = []; let fittedRead = true; let fittedError = null;
+        try {
+          const fit = await readFittedRows(page);
+          fitted = fit.rows || [];
+        } catch (err) {
+          fittedRead = false;
+          fittedError = String(err && err.message || err).split('\n')[0].slice(0, 160);
+        }
+        const audit = auditItems(args.mode, [...shelf.cards, ...fitted]);
+        const probe = shelf.cards.length && fittedRead
+          ? await swapProbe(page, 3)
+          : { silentSwaps: [], announcedSwaps: 0, buys: 0, swapProbe: shelf.cards.length ? 'not-run' : 'no install possible' };
+        trace.loadout = {
+          items: shelf.cards, fitted, ...audit, ...probe, ...classified,
+          fittedClaimed: Math.max(doorClaim || 0, shelf.fittedClaimed || 0),
+          fittedRead, fittedError, doorQuote: doorInfo && doorInfo.doorPrep ? doorInfo.doorPrep.quote : null,
+          shotT: shots[shots.length - 1] ? shots[shots.length - 1].t : null,
+        };
+        await shoot('armory after installs', false);
+        const source = classified.offerSource === 'game-empty' ? `game offered nothing ("${(classified.offerQuote || '').slice(0, 80)}")`
+          : classified.offerSource === 'harness-miss' ? `harness failed to read the screen ("${(classified.offerQuote || '').slice(0, 80)}")`
+            : `${shelf.cards.length} armory offers read`;
+        step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${source} · ${fitted.length} fitted${fittedRead ? '' : ' (fit list not read)'} · ${probe.swapProbe}`);
+        const word = await armoryLaunchWord(page);
+        await clickText(page, word || 'Launch round 1');
+      } else if (doorInfo && doorInfo.doorPrep) {
+        const door = doorInfo.doorPrep;
+        const claimed = door.fittedClaimed || 0;
+        trace.loadout = {
+          items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [],
+          swapProbe: 'gauntlet preparation has no armory shelf',
+          offerSource: 'door-only', offerQuote: door.quote || door.sub || door.face || '',
+          fittedClaimed: claimed, fittedRead: null, shotT: shots[shots.length - 1] ? shots[shots.length - 1].t : null,
+        };
+        step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${door.quote || 'no hull sentence'} · no armory shelf`);
       }
-      const nativeActive = await awaitPreparationChoice(page, { ruleset: RULESET[args.mode], includeButton: false });
-      trace.meta.nativeRuleset = nativeActive.ruleset;
+      await waitUntilFlight(page, { timeout: 600000, active: true });
       await waitBootOverlayGone(page);
       const st0 = await phaseNow();
       step('spawn', true, `flight · round ${st0.w} active at sim ${st0.sim.toFixed(1)} s`);
@@ -394,6 +468,7 @@ async function runOne(args, arena, extra = {}) {
       let beat = 0; let first = true;
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        if (await haltIfInterrupted()) break;
         const ph = await phaseNow();
         stopReason = overBudget(trace.meta.playStartSim, ph.sim);
         if (ph.ph !== 'active' && round.endSim == null) {
@@ -412,14 +487,17 @@ async function runOne(args, arena, extra = {}) {
             if (round === trace.rounds[0] && args.idle > 0) {
               log(`idle ${args.idle} sim s (no input)`);
               await waitSim(page, args.idle, { maxWallMs: 600000, until: (st) => !st.run || st.run.phase !== 'active' });
+              if (await haltIfInterrupted()) break;
               if ((await phaseNow()).ph !== 'active') continue;
             }
             if (round !== trace.rounds[0]) await shoot(`round ${round.wave} start`, true);
             await controlProbes(page, `round ${round.wave}`, trace.probes);
+            if (await haltIfInterrupted()) break;
             if (round !== trace.rounds[0]) await shoot(`round ${round.wave} after probes`, true);
             continue;
           }
           await fightBeat(page, beat++, args.fighter);
+          if (await haltIfInterrupted()) break;
           continue;
         }
         if (ph.ph === 'draft' || ph.ph === 'cleanup' || ph.ph === 'refit') {
@@ -456,29 +534,48 @@ async function runOne(args, arena, extra = {}) {
       if (args.fight) await installPacingWatch(page);
       log(`idle ${args.idle} sim s (no input)`);
       await waitSim(page, args.idle, { maxWallMs: 600000 });
-      await controlProbes(page, 'spawn', trace.probes);
-      let beat = 0;
-      while (!(stopReason = overBudget(st0.sim, await simNow(page)))) {
-        const ph = await phaseNow();
-        if (ph.mode !== 'flight') { await page.waitForTimeout(800); if (Date.now() - T0 > wallCapMs) break; continue; }
-        // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter/Space.
-        if (ph.top && !['hud', null].includes(ph.top) && beat % 5 === 4) await page.keyboard.press('Enter');
-        if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
+      if (!(await haltIfInterrupted())) {
+        await controlProbes(page, 'spawn', trace.probes);
+        if (!(await haltIfInterrupted())) {
+          let beat = 0;
+          while (!(stopReason = overBudget(st0.sim, await simNow(page)))) {
+            if (await haltIfInterrupted()) break;
+            const ph = await phaseNow();
+            if (ph.mode !== 'flight') { await page.waitForTimeout(800); if (Date.now() - T0 > wallCapMs) break; continue; }
+            // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter.
+            // Adventure has no run phase, so the play watcher never treats these as an interrupt.
+            if (ph.top && !['hud', null].includes(ph.top) && beat % 5 === 4) { noteKey(page, 'Enter'); await page.keyboard.press('Enter'); }
+            if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
+            if (await haltIfInterrupted()) break;
+          }
+        }
       }
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
   } catch (err) {
-    if (child) {
-      await new Promise((r) => setTimeout(r, 400));
-      if (child.exitCode != null || child.signalCode) note(`chrome exit ${child.exitCode} signal ${child.signalCode || 'none'}`);
-      else if (typeof browser.isConnected === 'function' && !browser.isConnected()) note('browser not connected');
+    let quote = err && err.environmentQuote;
+    if (!quote) quote = quoteLoadError(String(err && err.message || err));
+    if (!quote) quote = await readLoadError(page);
+    if (quote) {
+      trace.meta.environmentQuote = quote;
+      stopReason = `HARNESS ENVIRONMENT: route load failed: "${quote}"`;
+      trace.route.steps.push({ name: 'route', ok: false, detail: quote, environment: true });
+      console.error(stopReason);
+      await shoot('route load error', false);
+    } else {
+      if (child) {
+        await new Promise((r) => setTimeout(r, 400));
+        if (child.exitCode != null || child.signalCode) note(`chrome exit ${child.exitCode} signal ${child.signalCode || 'none'}`);
+        else if (typeof browser.isConnected === 'function' && !browser.isConnected()) note('browser not connected');
+      }
+      stopReason = formatRouteFailure(err && err.message || err, { notes: browserNotes });
+      trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
+      if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
+      console.error(err);
+      await shoot('route failure', false);
     }
-    stopReason = formatRouteFailure(err && err.message || err, { notes: browserNotes });
-    trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
-    if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
-    console.error(err);
-    await shoot('route failure', false);
   } finally {
+    page.__ptObserve = null;
     clearInterval(shotTimer); clearInterval(drainTimer);
     while (busy || draining) await new Promise((r) => setTimeout(r, 100));
     await drain().catch(() => {});
@@ -496,6 +593,7 @@ async function runOne(args, arena, extra = {}) {
   Object.assign(trace.meta, sourceRunMetadata(sourceAtStart, readSourceState()));
   const softwareGl = /swiftshader|llvmpipe|software|softpipe/i.test(renderer);
   const playStart = trace.meta.playStartSim;
+  if (trace.meta.loadavg) trace.meta.loadavg.end = [...loadavg()];
   Object.assign(trace.meta, {
     label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
@@ -503,6 +601,7 @@ async function runOne(args, arena, extra = {}) {
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: aim+fire at nearest hostile, hold 230–400 u range, burn away from packs of 3+ inside 450 u, strafe, break off under fire, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · no invulnerability (the only toggle is the physics-lab practice rack, not offered in Swarm/Gauntlet)`,
     stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
   });
+  trace.playWatch = playWatch.snapshot();
   await browser.close().catch(() => {}); await server.close().catch(() => {});
 
   const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, pruneFrames: args.pruneFrames, vw, vh });
@@ -541,11 +640,15 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pru
   trace.readability = await analyzeReadability(shots, nearestSample, trace.samples).catch((e) => ({ error: String(e) }));
   for (const c of (trace.readability && trace.readability.census) || []) c.name = trace.keys[c.ty] || null;
   const results = runChecks(trace);
+  // overall() ranks ENVIRONMENT above FAIL inside one run (that run never loaded the code
+  // under test), while the process exit ranks FAIL above ENVIRONMENT across arenas. Consumers
+  // must read verdict.json's overall as the per-run load verdict, not the gate decision.
   const verdict = overall(results);
   const paths = { verdict: path.relative(ROOT, path.join(outDir, 'verdict.md')), contactSheet: path.relative(ROOT, path.join(outDir, 'contact-sheet.jpg')), json: path.relative(ROOT, path.join(outDir, 'verdict.json')), trace: path.relative(ROOT, path.join(outDir, 'trace.json.gz')), frames: path.relative(ROOT, path.join(outDir, 'frames')) };
   const meta = { ...trace.meta, overall: verdict };
   await buildContactSheet({ shots, results, meta, outFile: path.join(outDir, 'contact-sheet.jpg'), vw, vh });
-  const compact = { meta, overall: verdict, results: results.map((r) => ({ ...r, offenders: (r.offenders || []).slice(0, 4) })), rounds: trace.rounds, probes: trace.probes, route: trace.route, pacing: trace.pacing || null, readability: trace.readability, loadout: trace.loadout && { ...trace.loadout, items: trace.loadout.items.map((x) => ({ name: x.name, category: x.category, desc: x.desc })) } };
+  const briefItem = (x) => ({ name: x.name, category: x.category, desc: x.desc });
+  const compact = { meta, overall: verdict, results: results.map((r) => ({ ...r, offenders: (r.offenders || []).slice(0, 4) })), rounds: trace.rounds, probes: trace.probes, route: trace.route, pacing: trace.pacing || null, readability: trace.readability, loadout: trace.loadout && { ...trace.loadout, items: (trace.loadout.items || []).map(briefItem), fitted: (trace.loadout.fitted || []).map(briefItem) } };
   writeFileSync(path.join(outDir, 'verdict.json'), JSON.stringify(compact, null, 1));
   writeFileSync(path.join(outDir, 'trace.json.gz'), gzipSync(JSON.stringify({ ...trace, shots: shots.map((s) => ({ ...s, file: path.basename(s.file) })) })));
   if (evidence) {
@@ -565,9 +668,35 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pru
 // CLI mode → the Crucible door's data-ruleset (Gauntlet is the 'scored' ruleset).
 const RULESET = Object.freeze({ swarm: 'swarm', gauntlet: 'scored' });
 
+async function assertHarnessEnvironment() {
+  const server = await startBenchServer();
+  let code = null;
+  try {
+    const env = await verifyHarnessEnvironment({ root: ROOT, baseUrl: server.baseUrl });
+    if (!env.ok) {
+      const commit = (() => { try { return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch { return 'HEAD'; } })();
+      const dir = path.join(ROOT, 'scratch/player-truth/environment');
+      mkdirSync(dir, { recursive: true });
+      const md = renderEnvironmentAbort({ problems: env.problems, commit, checked: env.checked, hashed: env.hashed });
+      writeFileSync(path.join(dir, 'verdict.md'), md);
+      console.error(md);
+      code = ENVIRONMENT_EXIT;
+    } else {
+      console.log(`harness environment: ${env.checked} assets blobs match HEAD (${env.hashed} hashed)`);
+    }
+  } catch (err) {
+    if (err && err.harnessError) { console.error(err.message || err); code = 3; }
+    else throw err;
+  } finally {
+    await server.close().catch(() => {});
+  }
+  if (code != null) await exitAfterFlush(code);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
+  await assertHarnessEnvironment();
   let arenas = [args.arena];
   if (args.arena === 'all' && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
     const server = await startBenchServer(); const { chromium } = await loadPlaywright();
@@ -611,8 +740,14 @@ async function main() {
   }
   if (args.baseline) {
     const { runBaseline } = await import('./compare.mjs');
-    await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
+    try {
+      await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
+    } catch (err) {
+      if (!absorbBaselineEnvironment(outcomes, err)) throw err;
+      console.error(err.message);
+    }
   }
+  for (const line of environmentReportLines(outcomes)) console.log(line);
   const worst = gateExitCode(outcomes.map((o) => o.verdict));
   console.log(`player-truth exit ${worst}`);
   // Browser and bench server are already closed inside each run. Flush the verdict lines, then exit

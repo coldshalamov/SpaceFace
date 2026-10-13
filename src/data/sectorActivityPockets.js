@@ -1943,6 +1943,1146 @@ if (new Set(SKER_POCKET_ACTOR_SLOT_ORDER).size !== SKER_POCKET_ACTOR_SLOT_ORDER.
 assertDistinctRouteTopology(SKER_ACTIVITY_POCKETS, SKER_ROUTE_TOPOLOGY, 'Sker');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// CR-HOLLOW-4 — the lived-in frontier. Eighteen of the twenty-five sectors had no authored shift:
+// arriving in one meant anonymous ambient scatter (or, in the hollow rims, nothing at all). All
+// eighteen now open with work already under way, the same way Ceres, Sker and Sedna do — two
+// pockets, four hulls, every hull flying a job kind the runtime owns, nobody arriving shooting.
+// The fiction per sector is lifted from the zone ledger and the station services, never invented
+// against them:
+//
+//   Veil Nebula     a research post that works hushed: the instrument tender between the berth and
+//                   the Anomaly, a dish listening along the revoked-gate chord, a prospector coring
+//                   Quiet Ice under a hauler that carries the cores to the berth.
+//   Ashfall Reach   the Ruined Cache's black-market apron (a salvor cutting the cache's own ruin, a
+//                   runner fetching from the strongbox) and the Edge Seams' thin margins (a miner,
+//                   a surveyor charting between the Maintenance machine and the Ossuary).
+//   Io Reach        a contested waystation (a claim-run hauler, a tender tending the dead relay in
+//                   the Shepherd's Ring) and the Cruiser Graveyard (salvors still combing the hull
+//                   under a Concord picket).
+//   Charon Expanse  the Cinder Refinery's yard (ore lane, the air tender) and the Colony Barge
+//                   (scrap salvage, the air haul).
+//   Dione Lane      the Exchange apron (lawful toll patrol, freight in) and the Lane Relay (the
+//                   keeper, the southbound convoy hauler that prefers paperwork to pirates).
+//   Nereid Shoal    the waystation apron and the Ice Shoal Seams (independents under a Collective
+//                   cut, a collector hauling the cut).
+//   Hyperion Cut    the Cut Refinery yard and the first Drift surveyors' seams.
+//
+// Same band, shape and topology laws as Ceres; no earlier pocket id is copied. Route shapes are
+// authored as true bearings from the geography that exists (the first mark of each route aims at a
+// named place) and swept to a clean 15-degree class, so the distinctness rule is satisfied by
+// shape, not by rounding noise. This section is a factory over the Ceres helpers rather than seven
+// copies of the Sker boilerplate; each set is still validated at module load by the same
+// capacity, uniqueness and topology rules, and by test/lived-frontier-pockets.test.mjs.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+function livedAnchor(zones, anchors, spec, label) {
+  if (spec.kind === 'station') {
+    const station = findById(anchors.stations, spec.id, `${label} station anchor`);
+    const zone = spec.zoneId ? findById(zones, spec.zoneId, `${label} station zone`) : null;
+    if (zone) assertSamePoint(station.pos, zone.center, `${station.id} / ${zone.id}`);
+    return {
+      identity: Object.freeze(zone ? { zoneId: zone.id, stationId: station.id } : { stationId: station.id }),
+      anchor: canonicalAnchor({
+        kind: 'station', id: station.id, zoneId: zone ? zone.id : null,
+        placeId: station.id, localPos: station.pos,
+      }),
+    };
+  }
+  if (spec.kind === 'zone') {
+    const zone = findById(zones, spec.id, `${label} zone anchor`);
+    if (spec.fieldId) {
+      const field = findById(anchors.fields, spec.fieldId, `${label} zone field`);
+      assertSamePoint(zone.center, field.center, `${zone.id} / ${field.id}`);
+    }
+    return {
+      identity: Object.freeze(spec.fieldId ? { zoneId: zone.id, fieldId: spec.fieldId } : { zoneId: zone.id }),
+      anchor: canonicalAnchor({
+        kind: 'zone', id: zone.id, zoneId: zone.id, placeId: null, localPos: zone.center,
+      }),
+    };
+  }
+  if (spec.kind === 'poi') {
+    const poi = findById(anchors.pois, spec.id, `${label} poi anchor`);
+    return {
+      identity: Object.freeze({ placeId: poi.id }),
+      anchor: canonicalAnchor({
+        kind: 'poi', id: poi.id, zoneId: null, placeId: poi.id, localPos: poi.pos,
+      }),
+    };
+  }
+  throw new Error(`${label}: unsupported lived-frontier anchor kind ${spec.kind}`);
+}
+
+/**
+ * One sector's authored shift from a declarative spec. Each actor is
+ * `{ id, role, kind, spawn: [x, z], routeId, durationS, marks: [[id, x, z, targetRef], ...] }`
+ * plus optional `lawful` and `receipt`; each object is `{ id, kind, offset: [x, z], targetRef }`.
+ */
+function livedFrontierSet({ sectorId, namespace, label, pockets: pocketSpecs }) {
+  const zones = requireArray(SECTOR_ZONES[sectorId], `${label} sector zones`);
+  const anchors = requireRecord(SECTOR_ANCHORS[sectorId], `${label} sector anchors`);
+  const pockets = Object.freeze(pocketSpecs.map((spec) => {
+    const { identity, anchor } = livedAnchor(zones, anchors, spec.anchor, `${label}/${spec.id}`);
+    return pocket({
+      id: spec.id,
+      label: spec.label,
+      identity,
+      anchor,
+      actorSlots: spec.actors.map((a) => actor({
+        id: a.id,
+        pocketId: spec.id,
+        namespace,
+        presentationRole: a.role,
+        jobKind: a.kind,
+        lawful: a.lawful === true,
+        passive: true,
+        spawnOffset: point(a.spawn[0], a.spawn[1]),
+        route: route({
+          id: a.routeId,
+          jobKind: a.kind,
+          durationS: a.durationS,
+          receiptType: a.receipt || null,
+          marks: a.marks.map(([id, x, z, ref]) => mark(id, x, z, ref || null)),
+        }),
+      })),
+      objectSlots: (spec.objects || []).map((o) => objectSlot({
+        id: o.id,
+        pocketId: spec.id,
+        kind: o.kind,
+        offset: point(o.offset[0], o.offset[1]),
+        runtimeOwner: 'world',
+        targetRef: o.targetRef || null,
+      })),
+      sectorId,
+    });
+  }));
+  const pocketOrder = Object.freeze(pockets.map((entry) => entry.id));
+  const actorSlotOrder = Object.freeze(pockets.flatMap((entry) => entry.actorSlots.map((slot) => slot.id)));
+  const routeTopologyRows = Object.freeze(pockets.flatMap(
+    (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+  ));
+  if (new Set(actorSlotOrder).size !== actorSlotOrder.length) {
+    throw new Error(`${label} authored activity slot ids must be unique`);
+  }
+  assertDistinctRouteTopology(pockets, routeTopologyRows, label);
+  return Object.freeze({
+    sectorId,
+    namespace,
+    pockets,
+    pocketOrder,
+    actorSlotOrder,
+    capacity: actorSlotOrder.length,
+    routeTopology: routeTopologyRows,
+  });
+}
+
+const LIVED_FRONTIER_SET_LIST = [
+  // ── Veil Nebula — a research post that works hushed. Free Frontier scientists study the
+  // Anomaly; the Vael tolerate them, barely. trafficPerMin 0, so these four are the only life.
+  livedFrontierSet({
+    sectorId: 'sector_veil_nebula',
+    namespace: 'veil',
+    label: 'Veil',
+    pockets: [
+      {
+        id: 'veil_research_rounds',
+        label: 'Research Rounds',
+        anchor: { kind: 'station', id: 'station_veil', zoneId: 'zone_veil_research' },
+        actors: [
+          // The instrument tender: a straight lane between the berth and the Anomaly's edge —
+          // the Anomaly leg on its true bearing from the post (110.6 deg), the berth leg the
+          // way back. Transit lane, 180 deg / 224 WU over 36 s.
+          { id: 'veil_instrument_tender', role: 'tender', kind: 'surveyor', spawn: [34, -40],
+            routeId: 'veil_instrument_run', durationS: 36,
+            marks: [
+              ['veil_tender_anomaly_leg', -39.3, 104.9, 'activity:veil-anomaly-run'],
+              ['veil_tender_berth_leg', 39.3, -104.9, 'station:station_veil:service-berth'],
+            ] },
+          // The dish: a scan chord across the quarter the tender's lane never crosses, from the
+          // Revoked Transit's bearing (-15.9 deg) to the Exception Chamber's (61.3 deg). Held
+          // slow — 3 WU/s — because listening is not a beat.
+          { id: 'veil_dish_listener', role: 'surveyor', kind: 'surveyor', spawn: [-38, 26],
+            routeId: 'veil_dish_listen_chord', durationS: 44,
+            marks: [
+              ['veil_dish_revoked_face', 102.9, -29.4, 'activity:veil-revoked-face'],
+              ['veil_dish_chamber_face', 56.6, 94.3, 'activity:veil-chamber-face'],
+            ] },
+        ],
+      },
+      {
+        id: 'veil_quiet_ice_prospect',
+        label: 'Quiet Ice',
+        anchor: { kind: 'zone', id: 'zone_veil_quiet_ice' },
+        // The rack the cores wait in: on the hauler's station-ward bearing (-100.4 deg).
+        objects: [
+          { id: 'veil_ice_core_rack', kind: 'cargo_staging_pod', offset: [-12.2, -66.9],
+            targetRef: 'object:veil_ice_core_rack' },
+        ],
+        actors: [
+          // "Spectral return says clean ice; subsurface pockets say otherwise" — a prospector
+          // coring a tight wedge of cold rock, face turned toward the Blind Nebula (-143.9 deg).
+          { id: 'veil_ice_prospector', role: 'miner', kind: 'miner', spawn: [-40, -30],
+            routeId: 'veil_ice_core_loop', durationS: 40,
+            marks: [
+              ['veil_prospector_fog_face', -86.5, -63, 'activity:veil-ice-fog-face'],
+              ['veil_prospector_core_face', 11.4, -107.4, 'activity:veil-ice-core-face'],
+            ] },
+          // The cores go to the post: rack first, then the lane out toward the Triton gate.
+          { id: 'veil_ice_hauler', role: 'hauler', kind: 'hauler', spawn: [30, -45],
+            routeId: 'veil_ice_core_haul', durationS: 30,
+            marks: [
+              ['veil_hauler_rack_leg', -19.8, -108.2, 'object:veil_ice_core_rack'],
+              ['veil_hauler_gate_leg', 108.2, -19.8, 'activity:veil-ice-gate-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Ashfall Reach — the edge of known space. The Ruined Cache is a black market among the
+  // dead; the Edge Seams are cold rock and thin margins. The Vael own the approach, so nobody
+  // here is law and nobody is hurrying.
+  livedFrontierSet({
+    sectorId: 'sector_ashfall_reach',
+    namespace: 'ashfall',
+    label: 'Ashfall',
+    pockets: [
+      {
+        id: 'ashfall_cache_apron',
+        label: 'Cache Apron',
+        anchor: { kind: 'station', id: 'station_ashcache' },
+        // The strongbox the runner fetches from, on the true bearing to Kurtz's Cache (-166.4).
+        objects: [
+          { id: 'ashfall_cache_strongbox', kind: 'cargo_staging_pod', offset: [-66.1, -16],
+            targetRef: 'object:ashfall_cache_strongbox' },
+        ],
+        actors: [
+          // A salvor cutting the cache's own ruin: a tight wedge off the Vault Maw's bearing.
+          { id: 'ashfall_cache_salvor', role: 'salvor', kind: 'salvor', spawn: [-30, 50],
+            routeId: 'ashfall_cache_ruin_cut', durationS: 46,
+            marks: [
+              ['ashfall_salvor_maw_face', -21.8, 103.7, 'activity:ashfall-maw-face'],
+              ['ashfall_salvor_far_face', 81.1, 72.8, 'activity:ashfall-ruin-far-face'],
+            ] },
+          // The fence's fetch: strongbox-ward, then the long way back to the berth.
+          { id: 'ashfall_cache_runner', role: 'smuggler', kind: 'hauler', spawn: [45, -20],
+            routeId: 'ashfall_cache_fetch_run', durationS: 26, receipt: 'freight:arrival',
+            marks: [
+              ['ashfall_runner_strongbox_leg', -106.9, -25.9, 'object:ashfall_cache_strongbox'],
+              ['ashfall_runner_berth_leg', 110, -2.6, 'dest:station_ashcache'],
+            ] },
+        ],
+      },
+      {
+        id: 'ashfall_edge_seams',
+        label: 'Edge Seams',
+        anchor: { kind: 'zone', id: 'zone_ashfall_belt' },
+        actors: [
+          { id: 'ashfall_seam_miner', role: 'miner', kind: 'miner', spawn: [-35, 40],
+            routeId: 'ashfall_seam_thin_cut', durationS: 42,
+            marks: [
+              ['ashfall_miner_seam_face', 101.2, 34.8, 'activity:ashfall-seam-face'],
+              ['ashfall_miner_far_face', -7.6, 109.7, 'activity:ashfall-seam-far-face'],
+            ] },
+          // The surveyor charts the margin between the Maintenance machine and the Ossuary.
+          { id: 'ashfall_edge_surveyor', role: 'surveyor', kind: 'surveyor', spawn: [40, 30],
+            routeId: 'ashfall_edge_chart_run', durationS: 34,
+            marks: [
+              ['ashfall_surveyor_maintenance_bearing', 36.6, -103.7, 'activity:ashfall-maintenance-bearing'],
+              ['ashfall_surveyor_ossuary_bearing', -103.7, -36.6, 'activity:ashfall-ossuary-bearing'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Io Reach — a waystation on contested ground: everyone docks, no one is in charge.
+  livedFrontierSet({
+    sectorId: 'sector_io_reach',
+    namespace: 'io',
+    label: 'Io',
+    pockets: [
+      {
+        id: 'io_waystation_apron',
+        label: 'Waystation Apron',
+        anchor: { kind: 'station', id: 'station_reach', zoneId: 'zone_io_reach' },
+        actors: [
+          // The claim run: out toward the Pallas claim on its true bearing (18.1 deg), back
+          // across the apron to the berth. Wide, 135 deg / 203 WU.
+          { id: 'io_waystation_hauler', role: 'hauler', kind: 'hauler', spawn: [50, -30],
+            routeId: 'io_waystation_claim_run', durationS: 28, receipt: 'freight:arrival',
+            marks: [
+              ['io_hauler_claim_leg', 104.6, 34.2, 'activity:io-claim-pallas-leg'],
+              ['io_hauler_berth_leg', -49.8, -98.1, 'dest:station_reach'],
+            ] },
+          // A tender serving the dead relay in the Shepherd's Ring (true bearing -147.7 deg).
+          { id: 'io_waystation_tender', role: 'tender', kind: 'surveyor', spawn: [-45, 30],
+            routeId: 'io_waystation_ring_round', durationS: 40,
+            marks: [
+              ['io_tender_ring_leg', -93, -58.7, 'activity:io-shepherd-ring-leg'],
+              ['io_tender_lane_leg', 80.8, -74.6, 'activity:io-contested-lane-leg'],
+            ] },
+        ],
+      },
+      {
+        id: 'io_cruiser_graveyard',
+        label: 'Cruiser Graveyard',
+        anchor: { kind: 'zone', id: 'zone_io_derelict' },
+        // The plate the crews are cutting: on the salvor's cutting-face bearing.
+        objects: [
+          { id: 'io_cruiser_cut_plate', kind: 'grave_shard', offset: [-39.3, 50.5],
+            targetRef: 'object:io_cruiser_cut_plate' },
+        ],
+        actors: [
+          // "Salvage crews still comb the hull" — a tight wedge between the station-ward face
+          // (67.9 deg, the true bearing back to Reach Station) and the plate.
+          { id: 'io_cruiser_salvor', role: 'salvor', kind: 'salvor', spawn: [30, 35],
+            routeId: 'io_cruiser_cut_loop', durationS: 44,
+            marks: [
+              ['io_salvor_station_face', 40.3, 99.1, 'activity:io-cruiser-station-face'],
+              ['io_salvor_plate_face', -66.3, 85.3, 'object:io_cruiser_cut_plate'],
+            ] },
+          // A Concord picket holding the claim: a short held chord toward the contested lane.
+          { id: 'io_cruiser_picket', role: 'patrol', kind: 'patrol', lawful: true, spawn: [-40, -25],
+            routeId: 'io_cruiser_watch_chord', durationS: 46,
+            marks: [
+              ['io_picket_lane_end', 94.6, 45.6, 'activity:io-picket-lane-end'],
+              ['io_picket_hull_end', 36.3, 103.8, 'activity:io-picket-hull-end'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Charon Expanse — Collective ore far from help, and a struggling colony that trades air
+  // and salvage for anything it can get.
+  livedFrontierSet({
+    sectorId: 'sector_charon_expanse',
+    namespace: 'charon',
+    label: 'Charon',
+    pockets: [
+      {
+        id: 'charon_refinery_yard',
+        label: 'Cinder Refinery Yard',
+        anchor: { kind: 'station', id: 'station_expanse', zoneId: 'zone_charon_refinery' },
+        actors: [
+          // The ore lane: straight through the yard, belt-ward on its true bearing (137 deg).
+          { id: 'charon_ore_hauler', role: 'hauler', kind: 'hauler', spawn: [45, -35],
+            routeId: 'charon_ore_lane_run', durationS: 26, receipt: 'freight:arrival',
+            marks: [
+              ['charon_hauler_belt_leg', -81.9, 76.4, 'activity:charon-belt-leg'],
+              ['charon_hauler_berth_leg', 81.9, -76.4, 'dest:station_expanse'],
+            ] },
+          // "Pressurized air sold on the side": a tender making the colony round.
+          { id: 'charon_air_tender', role: 'tender', kind: 'surveyor', spawn: [-38, 40],
+            routeId: 'charon_air_tender_round', durationS: 38,
+            marks: [
+              ['charon_tender_colony_leg', -61.8, 84.9, 'activity:charon-colony-leg'],
+              ['charon_tender_seam_leg', 17.1, 108.7, 'activity:charon-seam-leg'],
+            ] },
+        ],
+      },
+      {
+        id: 'charon_colony_barge',
+        label: 'Colony Barge',
+        anchor: { kind: 'zone', id: 'zone_charon_colony' },
+        // The air pod the colony pays for, on the hauler's refinery-ward bearing (-53.9 deg).
+        objects: [
+          { id: 'charon_colony_air_pod', kind: 'cargo_staging_pod', offset: [38.8, -53.4],
+            targetRef: 'object:charon_colony_air_pod' },
+        ],
+        actors: [
+          { id: 'charon_colony_salvor', role: 'salvor', kind: 'salvor', spawn: [35, -30],
+            routeId: 'charon_colony_scrap_loop', durationS: 42,
+            marks: [
+              ['charon_salvor_freighter_face', -101.6, -33.5, 'activity:charon-warm-freighter-face'],
+              ['charon_salvor_scrap_face', 6.2, -109.8, 'activity:charon-scrap-face'],
+            ] },
+          { id: 'charon_colony_hauler', role: 'hauler', kind: 'hauler', spawn: [-40, 45],
+            routeId: 'charon_colony_air_run', durationS: 30,
+            marks: [
+              ['charon_colony_air_leg', 61.2, -84.1, 'object:charon_colony_air_pod'],
+              ['charon_colony_barge_leg', -11.6, 109.4, 'activity:charon-colony-barge-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Dione Lane — Meridian's lawful southern spur: tolls fund the patrols, and the convoys
+  // prefer paperwork to pirates. The Lane Customs disc belongs to the toll weir; these pockets
+  // stay on the Exchange and the Relay.
+  livedFrontierSet({
+    sectorId: 'sector_dione_lane',
+    namespace: 'dione',
+    label: 'Dione',
+    pockets: [
+      {
+        id: 'dione_exchange_apron',
+        label: 'Exchange Apron',
+        anchor: { kind: 'station', id: 'station_dione', zoneId: 'zone_dione_exchange' },
+        actors: [
+          // The relay-ward lane through the Exchange (true bearing -130.6 deg), end to end.
+          { id: 'dione_exchange_hauler', role: 'hauler', kind: 'hauler', spawn: [50, -40],
+            routeId: 'dione_exchange_lane_run', durationS: 24, receipt: 'freight:arrival',
+            marks: [
+              ['dione_hauler_relay_leg', -72.9, -85, 'activity:dione-relay-leg'],
+              ['dione_hauler_berth_leg', 72.9, 85, 'dest:station_dione'],
+            ] },
+          // "Tolls fund the patrols": a lawful toll patrol on a short chord toward the customs.
+          { id: 'dione_toll_patrol', role: 'patrol', kind: 'patrol', lawful: true, spawn: [-45, 35],
+            routeId: 'dione_toll_patrol_chord', durationS: 40,
+            marks: [
+              ['dione_patrol_customs_end', -81.9, -68.8, 'activity:dione-customs-end'],
+              ['dione_patrol_exchange_end', 18.8, -106.3, 'activity:dione-exchange-end'],
+            ] },
+        ],
+      },
+      {
+        id: 'dione_lane_relay',
+        label: 'Lane Relay',
+        anchor: { kind: 'zone', id: 'zone_dione_relay' },
+        // The manifest pod the southbound convoy stages from, customs-ward (-148.1 deg).
+        objects: [
+          { id: 'dione_relay_manifest_pod', kind: 'cargo_staging_pod', offset: [-56, -34.9],
+            targetRef: 'object:dione_relay_manifest_pod' },
+        ],
+        actors: [
+          { id: 'dione_relay_keeper', role: 'tender', kind: 'surveyor', spawn: [30, -35],
+            routeId: 'dione_relay_keeper_loop', durationS: 36,
+            marks: [
+              ['dione_keeper_exchange_face', 69.6, 81.2, 'activity:dione-keeper-exchange-face'],
+              ['dione_keeper_lane_face', 99.2, -47.5, 'activity:dione-keeper-lane-face'],
+            ] },
+          { id: 'dione_convoy_hauler', role: 'hauler', kind: 'hauler', spawn: [-40, 40],
+            routeId: 'dione_convoy_staging_run', durationS: 32,
+            marks: [
+              ['dione_convoy_manifest_leg', -93.4, -58.1, 'object:dione_relay_manifest_pod'],
+              ['dione_convoy_south_leg', 107.1, -24.9, 'activity:dione-south-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Nereid Shoal — a thin-law waystation and icy rock worked by independents under a
+  // Collective cut.
+  livedFrontierSet({
+    sectorId: 'sector_nereid_shoal',
+    namespace: 'nereid',
+    label: 'Nereid',
+    pockets: [
+      {
+        id: 'nereid_waystation_apron',
+        label: 'Waystation Apron',
+        anchor: { kind: 'station', id: 'station_nereid', zoneId: 'zone_nereid_core' },
+        actors: [
+          // The claim run: toward the Shoal Claim's bearing (143.2 deg) and back to the berth.
+          { id: 'nereid_waystation_hauler', role: 'hauler', kind: 'hauler', spawn: [48, -30],
+            routeId: 'nereid_waystation_claim_run', durationS: 26, receipt: 'freight:arrival',
+            marks: [
+              ['nereid_hauler_claim_leg', -88.1, 65.8, 'activity:nereid-claim-leg'],
+              ['nereid_hauler_berth_leg', 68.1, -86.4, 'dest:station_nereid'],
+            ] },
+          { id: 'nereid_waystation_tender', role: 'tender', kind: 'surveyor', spawn: [-40, 30],
+            routeId: 'nereid_waystation_wreck_round', durationS: 38,
+            marks: [
+              ['nereid_tender_wreck_leg', 30.7, 105.6, 'activity:nereid-wreck-leg'],
+              ['nereid_tender_lane_leg', 105.6, -30.7, 'activity:nereid-lane-leg'],
+            ] },
+        ],
+      },
+      {
+        id: 'nereid_ice_shoal',
+        label: 'Ice Shoal Seams',
+        anchor: { kind: 'zone', id: 'zone_nereid_shoal', fieldId: 'f_nereid_1' },
+        // Where the Collective's cut is counted out, claim-ward (127.6 deg).
+        objects: [
+          { id: 'nereid_shoal_cut_pod', kind: 'cargo_staging_pod', offset: [-41.5, 53.9],
+            targetRef: 'object:nereid_shoal_cut_pod' },
+        ],
+        actors: [
+          { id: 'nereid_shoal_miner', role: 'miner', kind: 'miner', spawn: [-35, -40],
+            routeId: 'nereid_shoal_ice_loop', durationS: 38, receipt: 'mining:npcExtraction',
+            marks: [
+              ['nereid_miner_face', 95.5, 46, 'field:f_nereid_1'],
+              ['nereid_miner_waystation_leg', 90.1, -61.4, 'activity:nereid-miner-waystation-leg'],
+            ] },
+          { id: 'nereid_shoal_collector', role: 'hauler', kind: 'hauler', spawn: [40, 40],
+            routeId: 'nereid_shoal_cut_run', durationS: 34,
+            marks: [
+              ['nereid_collector_pod_leg', -67.1, 87.2, 'object:nereid_shoal_cut_pod'],
+              ['nereid_collector_claim_leg', -43.1, -104.5, 'activity:nereid-collector-claim-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Hyperion Cut — ore in, alloys out; the first Drift surveyors' seams are still the best
+  // rock west of Ceres.
+  livedFrontierSet({
+    sectorId: 'sector_hyperion_cut',
+    namespace: 'hyperion',
+    label: 'Hyperion',
+    pockets: [
+      {
+        id: 'hyperion_refinery_yard',
+        label: 'Cut Refinery Yard',
+        anchor: { kind: 'station', id: 'station_hyperion_cut', zoneId: 'zone_hyperion_refinery' },
+        actors: [
+          { id: 'hyperion_yard_hauler', role: 'hauler', kind: 'hauler', spawn: [45, -35],
+            routeId: 'hyperion_yard_ore_run', durationS: 28, receipt: 'freight:arrival',
+            marks: [
+              ['hyperion_hauler_seam_leg', 70, -76.9, 'activity:hyperion-seam-leg'],
+              ['hyperion_hauler_berth_leg', -23.5, 107.5, 'dest:station_hyperion_cut'],
+            ] },
+          { id: 'hyperion_yard_tender', role: 'tender', kind: 'surveyor', spawn: [-40, 35],
+            routeId: 'hyperion_yard_claim_round', durationS: 40,
+            marks: [
+              ['hyperion_tender_claim_leg', 83.2, -67.2, 'activity:hyperion-claim-leg'],
+              ['hyperion_tender_yard_leg', -44.6, -100.5, 'activity:hyperion-yard-leg'],
+            ] },
+        ],
+      },
+      {
+        id: 'hyperion_first_seams',
+        label: 'First Seams',
+        anchor: { kind: 'zone', id: 'zone_hyperion_belt', fieldId: 'f_hyperion_1' },
+        // The tally pod the cut is counted at, refinery-ward (132.3 deg).
+        objects: [
+          { id: 'hyperion_seam_tally_pod', kind: 'cargo_staging_pod', offset: [-45.8, 50.3],
+            targetRef: 'object:hyperion_seam_tally_pod' },
+        ],
+        actors: [
+          { id: 'hyperion_seam_miner', role: 'miner', kind: 'miner', spawn: [-38, -30],
+            routeId: 'hyperion_seam_cut_loop', durationS: 36, receipt: 'mining:npcExtraction',
+            marks: [
+              ['hyperion_miner_pod_leg', -72.7, 79.8, 'object:hyperion_seam_tally_pod'],
+              ['hyperion_miner_face', -104.5, -22.8, 'field:f_hyperion_1'],
+            ] },
+          { id: 'hyperion_seam_surveyor', role: 'surveyor', kind: 'surveyor', spawn: [40, 38],
+            routeId: 'hyperion_seam_survey_sweep', durationS: 44,
+            marks: [
+              ['hyperion_surveyor_driller_leg', -27.6, -106.5, 'activity:hyperion-driller-leg'],
+              ['hyperion_surveyor_beacon_leg', 110, 0.9, 'activity:hyperion-beacon-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Nyx March — contraband changes hands under Quiet charter, and Concord patrols do not come
+  // this far west. The Reach skiffs skim the cut-lane for loaded smugglers.
+  livedFrontierSet({
+    sectorId: 'sector_nyx_march',
+    namespace: 'nyx',
+    label: 'Nyx',
+    pockets: [
+      {
+        id: 'nyx_fence_apron',
+        label: 'Fence Apron',
+        anchor: { kind: 'station', id: 'station_nyx_march', zoneId: 'zone_nyx_fence' },
+        actors: [
+          // The fence's fetch: out toward the cache on its true bearing, back across the apron
+          // to the berth.
+          { id: 'nyx_fence_runner', role: 'smuggler', kind: 'hauler', spawn: [-13.5, 35.5],
+            routeId: 'nyx_fence_fetch_run', durationS: 28, receipt: 'freight:arrival',
+            marks: [
+              ['nyx_runner_cache_leg', -61.4, -83.9, 'activity:nyx-cache-leg'],
+              ['nyx_runner_berth_leg', 100.6, 44.4, 'dest:station_nyx_march'],
+            ] },
+          // The appraiser: a slow scan chord, cut-lane-ward — somebody has to price what comes
+          // in.
+          { id: 'nyx_fence_appraiser', role: 'surveyor', kind: 'surveyor', spawn: [-43.8, 10.3],
+            routeId: 'nyx_fence_appraisal_chord', durationS: 44,
+            marks: [
+              ['nyx_appraiser_cutlane_face', 106.4, 11.7, 'activity:nyx-cutlane-face'],
+              ['nyx_appraiser_apron_face', 39.9, -102.5, 'activity:nyx-apron-face'],
+            ] },
+        ],
+      },
+      {
+        id: 'nyx_cutlane_watch',
+        label: 'Cut-Lane Watch',
+        anchor: { kind: 'zone', id: 'zone_nyx_cutlane' },
+        // The plate the pickers are working, on the salvor's station-ward bearing.
+        objects: [
+          { id: 'nyx_cutlane_wreck_plate', kind: 'grave_shard', offset: [-63.6, -7],
+            targetRef: 'object:nyx_cutlane_wreck_plate' },
+        ],
+        actors: [
+          // A Reach skiff skimming the cut-lane — a held chord, not a hunt; nobody arrives
+          // shooting.
+          { id: 'nyx_cutlane_skiff', role: 'pirate', kind: 'patrol', spawn: [37.3, 7.1],
+            routeId: 'nyx_cutlane_skim_chord', durationS: 46,
+            marks: [
+              ['nyx_skiff_fence_end', -104.4, -11.5, 'activity:nyx-skiff-fence-end'],
+              ['nyx_skiff_lane_end', -68.8, -85.8, 'activity:nyx-skiff-lane-end'],
+            ] },
+          // A picker working the lane's old wreck, slow and without hurry.
+          { id: 'nyx_cutlane_picker', role: 'salvor', kind: 'salvor', spawn: [44.8, -4.5],
+            routeId: 'nyx_cutlane_pick_loop', durationS: 45,
+            marks: [
+              ['nyx_picker_plate_face', -108.3, -11.9, 'object:nyx_cutlane_wreck_plate'],
+              ['nyx_picker_far_face', -62.7, 85.5, 'activity:nyx-picker-far-face'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Kepler Scar — the Reach fence stolen cargo through a radiation scar: jump out fast or pay
+  // their price. The hulk off the Bazaar is picked over by whoever can stand the glow.
+  livedFrontierSet({
+    sectorId: 'sector_kepler_scar',
+    namespace: 'kepler',
+    label: 'Kepler',
+    pockets: [
+      {
+        id: 'kepler_bazaar_apron',
+        label: 'Scar Bazaar Apron',
+        anchor: { kind: 'station', id: 'station_kepler_scar', zoneId: 'zone_kepler_scar' },
+        actors: [
+          // The stash run: the long leg on the stash's true bearing, then the last straight into
+          // the berth.
+          { id: 'kepler_bazaar_runner', role: 'smuggler', kind: 'hauler', spawn: [-17.8, 33.6],
+            routeId: 'kepler_bazaar_fetch_run', durationS: 29, receipt: 'freight:arrival',
+            marks: [
+              ['kepler_runner_stash_leg', -65.5, -88.4, 'activity:kepler-stash-leg'],
+              ['kepler_runner_berth_leg', 86.1, 68.4, 'dest:station_kepler_scar'],
+            ] },
+          // A Reach picket holding the glow-ward face — the price is posted, not shouted.
+          { id: 'kepler_scar_picket', role: 'pirate', kind: 'patrol', spawn: [-23, 38.7],
+            routeId: 'kepler_scar_watch_chord', durationS: 46,
+            marks: [
+              ['kepler_picket_glow_end', 60.6, -85.8, 'activity:kepler-picket-glow-end'],
+              ['kepler_picket_apron_end', -18.7, -108.4, 'activity:kepler-picket-apron-end'],
+            ] },
+        ],
+      },
+      {
+        id: 'kepler_hulk_picking',
+        label: 'Hulk Picking',
+        anchor: { kind: 'poi', id: 'poi_kepler_hulk' },
+        // The cut plate off the hulk, on the salvor's Bazaar-ward bearing.
+        objects: [
+          { id: 'kepler_hulk_cut_plate', kind: 'grave_shard', offset: [-66, 0],
+            targetRef: 'object:kepler_hulk_cut_plate' },
+        ],
+        actors: [
+          // Salvage by someone who can stand the glow: a tight wedge around one plate.
+          { id: 'kepler_hulk_salvor', role: 'salvor', kind: 'salvor', spawn: [37.2, 7.9],
+            routeId: 'kepler_hulk_cut_loop', durationS: 45,
+            marks: [
+              ['kepler_salvor_plate_face', -106, 0, 'object:kepler_hulk_cut_plate'],
+              ['kepler_salvor_far_face', -54.5, -94.4, 'activity:kepler-salvor-far-face'],
+            ] },
+          // The glow reader: somebody has to know which side of the hulk is survivable.
+          { id: 'kepler_glow_reader', role: 'surveyor', kind: 'surveyor', spawn: [14, 42.8],
+            routeId: 'kepler_glow_read_sweep', durationS: 52,
+            marks: [
+              ['kepler_reader_glow_face', 17, -108.7, 'activity:kepler-reader-glow-face'],
+              ['kepler_reader_hulk_face', -108.7, -17, 'activity:kepler-reader-hulk-face'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Orcus Shadow — a thin Vael research outpost, the only dock for light-years if they let
+  // you land. A hollow rim (trafficPerMin 0): these four are the only life.
+  livedFrontierSet({
+    sectorId: 'sector_orcus_shadow',
+    namespace: 'orcus',
+    label: 'Orcus',
+    pockets: [
+      {
+        id: 'orcus_research_rounds',
+        label: 'Research Rounds',
+        anchor: { kind: 'station', id: 'station_orcus_shadow', zoneId: 'zone_orcus_research' },
+        actors: [
+          // The rare delivery: a supply hull out to the Plinth and back to the one dock there
+          // is.
+          { id: 'orcus_supply_hauler', role: 'hauler', kind: 'hauler', spawn: [-7.3, -37.3],
+            routeId: 'orcus_supply_run', durationS: 24, receipt: 'freight:arrival',
+            marks: [
+              ['orcus_hauler_plinth_leg', 88, 66, 'activity:orcus-plinth-leg'],
+              ['orcus_hauler_berth_leg', -103.9, 44.4, 'dest:station_orcus_shadow'],
+            ] },
+          // The listener: a held scan chord toward the anomaly the outpost exists to watch.
+          { id: 'orcus_anomaly_listener', role: 'surveyor', kind: 'surveyor', spawn: [3.2, -44.9],
+            routeId: 'orcus_anomaly_listen_chord', durationS: 44,
+            marks: [
+              ['orcus_listener_anomaly_face', -42.9, 98, 'activity:orcus-anomaly-face'],
+              ['orcus_listener_post_face', 85.9, 68.7, 'activity:orcus-post-face'],
+            ] },
+        ],
+      },
+      {
+        id: 'orcus_vault_approach',
+        label: 'Vault Approach',
+        anchor: { kind: 'poi', id: 'poi_orcus_vault' },
+        actors: [
+          // Somebody scanning a vault nobody opens: a tight, patient wedge.
+          { id: 'orcus_vault_scanner', role: 'surveyor', kind: 'surveyor', spawn: [-35.2, 14.2],
+            routeId: 'orcus_vault_scan_sweep', durationS: 36,
+            marks: [
+              ['orcus_scanner_post_face', 87.9, -59.2, 'activity:orcus-scanner-post-face'],
+              ['orcus_scanner_vault_face', 97.9, 47.8, 'activity:orcus-scanner-vault-face'],
+            ] },
+          // A salvor working the vault's outer skin on the long quarter around, never through.
+          { id: 'orcus_vault_salvor', role: 'salvor', kind: 'salvor', spawn: [-23.6, -38.3],
+            routeId: 'orcus_vault_cut_loop', durationS: 73,
+            marks: [
+              ['orcus_salvor_dark_face', 107.5, -23.2, 'activity:orcus-salvor-dark-face'],
+              ['orcus_salvor_vault_face', -5.4, 109.9, 'activity:orcus-salvor-vault-face'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Rhea Cinder — Collective miners work scorched rock under thin escort this far north of
+  // Sker; the slag from failed refining still glows.
+  livedFrontierSet({
+    sectorId: 'sector_rhea_cinder',
+    namespace: 'rhea',
+    label: 'Rhea',
+    pockets: [
+      {
+        id: 'rhea_claim_yard',
+        label: 'Cinder Claim Yard',
+        anchor: { kind: 'station', id: 'station_rhea_cinder' },
+        actors: [
+          // The ore run: out toward the seam on its true bearing, back to the claim's one berth.
+          { id: 'rhea_ore_hauler', role: 'hauler', kind: 'hauler', spawn: [20.3, 32.1],
+            routeId: 'rhea_claim_ore_run', durationS: 25, receipt: 'freight:arrival',
+            marks: [
+              ['rhea_hauler_seam_leg', 88, -66, 'activity:rhea-seam-leg'],
+              ['rhea_hauler_berth_leg', -108.9, -15.6, 'dest:station_rhea_cinder'],
+            ] },
+          // The yard tender: the round that keeps scorched equipment alive another shift.
+          { id: 'rhea_yard_tender', role: 'tender', kind: 'surveyor', spawn: [-15.6, 42.2],
+            routeId: 'rhea_yard_claim_round', durationS: 52,
+            marks: [
+              ['rhea_tender_claim_leg', -74.7, -80.8, 'activity:rhea-claim-leg'],
+              ['rhea_tender_yard_leg', 80.8, -74.7, 'activity:rhea-yard-leg'],
+            ] },
+        ],
+      },
+      {
+        id: 'rhea_slag_seam',
+        label: 'Slag Seam',
+        anchor: { kind: 'zone', id: 'zone_rhea_slag' },
+        actors: [
+          // A miner coring scorched rock beside the glow — shields thin out, the work does not.
+          { id: 'rhea_seam_miner', role: 'miner', kind: 'miner', spawn: [-4.3, -37.8],
+            routeId: 'rhea_seam_cut_loop', durationS: 38,
+            marks: [
+              ['rhea_miner_yard_face', -70.8, 80.2, 'activity:rhea-miner-yard-face'],
+              ['rhea_miner_slag_face', 34.3, 102.4, 'activity:rhea-miner-slag-face'],
+            ] },
+          // The thin escort: one Collective hull holding a short chord toward the Sker approach.
+          { id: 'rhea_thin_escort', role: 'patrol', kind: 'patrol', lawful: true, spawn: [3.5, 44.9],
+            routeId: 'rhea_escort_watch_chord', durationS: 41,
+            marks: [
+              ['rhea_escort_ambush_end', -74.2, -74.2, 'activity:rhea-escort-ambush-end'],
+              ['rhea_escort_seam_end', 0, -110, 'activity:rhea-escort-seam-end'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Haumea Rift — Free Frontier scientists chart the ice fissures, traffic thin and cautious;
+  // icy crystalline seams open where the rift shear cut the rock.
+  livedFrontierSet({
+    sectorId: 'sector_haumea_rift',
+    namespace: 'haumea',
+    label: 'Haumea',
+    pockets: [
+      {
+        id: 'haumea_observatory_rounds',
+        label: 'Observatory Rounds',
+        anchor: { kind: 'station', id: 'station_haumea_rift', zoneId: 'zone_haumea_obs' },
+        actors: [
+          // The instrument run: straight out to the fissure line and back — a lane, not a beat.
+          { id: 'haumea_instrument_tender', role: 'tender', kind: 'surveyor', spawn: [37.8, 3.7],
+            routeId: 'haumea_instrument_run', durationS: 73,
+            marks: [
+              ['haumea_tender_fissure_leg', -44.1, 100.8, 'activity:haumea-fissure-leg'],
+              ['haumea_tender_berth_leg', 44.1, -100.8, 'station:station_haumea_rift:service-berth'],
+            ] },
+          // Tracking the probe: a patient scan chord on the probe's true bearing.
+          { id: 'haumea_probe_tracker', role: 'surveyor', kind: 'surveyor', spawn: [-44.8, 3.9],
+            routeId: 'haumea_probe_track_chord', durationS: 44,
+            marks: [
+              ['haumea_tracker_probe_face', 103.6, 26.9, 'activity:haumea-probe-face'],
+              ['haumea_tracker_post_face', 54.2, -95.7, 'activity:haumea-post-face'],
+            ] },
+        ],
+      },
+      {
+        id: 'haumea_ice_seams',
+        label: 'Ice Seams',
+        anchor: { kind: 'zone', id: 'zone_haumea_ice' },
+        // The core rack, on the hauler's observatory-ward bearing.
+        objects: [
+          { id: 'haumea_ice_core_rack', kind: 'cargo_staging_pod', offset: [12.7, -66.8],
+            targetRef: 'object:haumea_ice_core_rack' },
+        ],
+        actors: [
+          // Coring crystalline ice where the shear opened it: a tight wedge off the rift's face.
+          { id: 'haumea_seam_miner', role: 'miner', kind: 'miner', spawn: [38, -1],
+            routeId: 'haumea_seam_core_loop', durationS: 38,
+            marks: [
+              ['haumea_miner_rift_face', -104, 25.1, 'activity:haumea-rift-face'],
+              ['haumea_miner_core_face', -74.4, -78.2, 'activity:haumea-core-face'],
+            ] },
+          // The cores go up to the observatory: rack first, then the lane back out.
+          { id: 'haumea_core_hauler', role: 'hauler', kind: 'hauler', spawn: [-45, 1],
+            routeId: 'haumea_core_haul', durationS: 24,
+            marks: [
+              ['haumea_hauler_rack_leg', 20.5, -108.1, 'object:haumea_ice_core_rack'],
+              ['haumea_hauler_rift_leg', 85.6, 73.7, 'activity:haumea-hauler-rift-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Eris Margin — the Quiet fence contraband off the Ashfall approach and papers stop at the
+  // gate; sensor-soft fog covers drop points and wrecks alike.
+  livedFrontierSet({
+    sectorId: 'sector_eris_margin',
+    namespace: 'eris',
+    label: 'Eris',
+    pockets: [
+      {
+        id: 'eris_fence_apron',
+        label: 'Margin Fence Apron',
+        anchor: { kind: 'station', id: 'station_eris_margin', zoneId: 'zone_eris_fence' },
+        actors: [
+          // The drop run: the long leg on the drop's true bearing, then the last straight into
+          // the berth.
+          { id: 'eris_fence_runner', role: 'smuggler', kind: 'hauler', spawn: [-15.9, 34.5],
+            routeId: 'eris_fence_drop_run', durationS: 29, receipt: 'freight:arrival',
+            marks: [
+              ['eris_runner_drop_leg', -70.4, -84.5, 'activity:eris-drop-leg'],
+              ['eris_runner_berth_leg', 89.9, 63.4, 'dest:station_eris_margin'],
+            ] },
+          // The gate picket: papers stop here, so a hull holds the chord toward the Ashfall
+          // approach.
+          { id: 'eris_gate_picket', role: 'pirate', kind: 'patrol', spawn: [-32.6, 31],
+            routeId: 'eris_gate_watch_chord', durationS: 46,
+            marks: [
+              ['eris_picket_gate_end', 81.6, -66.1, 'activity:eris-picket-gate-end'],
+              ['eris_picket_apron_end', 11.5, -109.4, 'activity:eris-picket-apron-end'],
+            ] },
+        ],
+      },
+      {
+        id: 'eris_fog_drops',
+        label: 'Fog Drops',
+        anchor: { kind: 'zone', id: 'zone_eris_fog' },
+        actors: [
+          // A picker working the fog's drop points — sensor-soft, so a slow tight wedge.
+          { id: 'eris_drop_picker', role: 'salvor', kind: 'salvor', spawn: [-30.8, 22.2],
+            routeId: 'eris_fog_pick_loop', durationS: 45,
+            marks: [
+              ['eris_picker_wreck_face', 104.6, 22.7, 'activity:eris-wreck-face'],
+              ['eris_picker_fog_face', 72.6, -79.9, 'activity:eris-fog-face'],
+            ] },
+          // The metronome keeper: somebody still winds the beat the fog hides.
+          { id: 'eris_metronome_keeper', role: 'surveyor', kind: 'surveyor', spawn: [45, 0.1],
+            routeId: 'eris_metronome_keep_sweep', durationS: 58,
+            marks: [
+              ['eris_keeper_metronome_face', -36.9, 103.6, 'activity:eris-metronome-face'],
+              ['eris_keeper_fog_face', -90.6, -62.5, 'activity:eris-keeper-fog-face'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Phoebe Echo — the Vael watch a resonance; whatever answers the echo is not for sale. A
+  // hollow rim: four quiet hulls and a yield with no rescue at the north rim.
+  livedFrontierSet({
+    sectorId: 'sector_phoebe_echo',
+    namespace: 'phoebe',
+    label: 'Phoebe',
+    pockets: [
+      {
+        id: 'phoebe_shrine_rounds',
+        label: 'Shrine Rounds',
+        anchor: { kind: 'station', id: 'station_phoebe_echo' },
+        actors: [
+          // The shrine round: out toward the resonance on its true bearing and back, end to end.
+          { id: 'phoebe_shrine_tender', role: 'tender', kind: 'surveyor', spawn: [38, -1.2],
+            routeId: 'phoebe_shrine_run', durationS: 73,
+            marks: [
+              ['phoebe_tender_resonance_leg', -30.8, 105.6, 'activity:phoebe-resonance-leg'],
+              ['phoebe_tender_berth_leg', 30.8, -105.6, 'station:station_phoebe_echo:service-berth'],
+            ] },
+          // The listener: a held chord toward the vault, patient, answering nothing.
+          { id: 'phoebe_resonance_listener', role: 'surveyor', kind: 'surveyor', spawn: [22.8, -38.8],
+            routeId: 'phoebe_listen_chord', durationS: 44,
+            marks: [
+              ['phoebe_listener_vault_face', -81.9, 68.9, 'activity:phoebe-vault-face'],
+              ['phoebe_listener_shrine_face', 46.6, 99.6, 'activity:phoebe-shrine-face'],
+            ] },
+        ],
+      },
+      {
+        id: 'phoebe_rim_edge',
+        label: 'North Rim',
+        anchor: { kind: 'zone', id: 'zone_phoebe_edge' },
+        actors: [
+          // Exotic rock at the north rim: high yield, no rescue — so one crew, working
+          // carefully.
+          { id: 'phoebe_rim_prospector', role: 'miner', kind: 'miner', spawn: [29.7, 23.7],
+            routeId: 'phoebe_rim_core_loop', durationS: 38,
+            marks: [
+              ['phoebe_prospector_rock_face', -93.9, -47, 'activity:phoebe-rock-face'],
+              ['phoebe_prospector_cloud_face', -6.6, -109.8, 'activity:phoebe-cloud-face'],
+            ] },
+          // The exotic cores go down to the shrine on a wide, slow lane — high yield, no rescue,
+          // so nobody hurries.
+          { id: 'phoebe_core_hauler', role: 'hauler', kind: 'hauler', spawn: [2.1, 45],
+            routeId: 'phoebe_core_haul', durationS: 20,
+            marks: [
+              ['phoebe_hauler_shrine_leg', 45.4, -100.2, 'activity:phoebe-hauler-shrine-leg'],
+              ['phoebe_hauler_rim_leg', -100.2, -45.4, 'activity:phoebe-hauler-rim-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Proteus Well — Quiet brokers fence east-run contraband off the books, and the seams are
+  // worked by crews who do not ask questions.
+  livedFrontierSet({
+    sectorId: 'sector_proteus_well',
+    namespace: 'proteus',
+    label: 'Proteus',
+    pockets: [
+      {
+        id: 'proteus_den_apron',
+        label: 'Den Apron',
+        anchor: { kind: 'station', id: 'station_proteus', zoneId: 'zone_proteus_den' },
+        actors: [
+          // The stash run, on the stash's true bearing, and back to the broker's berth.
+          { id: 'proteus_den_runner', role: 'smuggler', kind: 'hauler', spawn: [-17.4, -33.8],
+            routeId: 'proteus_den_stash_run', durationS: 27, receipt: 'freight:arrival',
+            marks: [
+              ['proteus_runner_stash_leg', 107.1, 25.2, 'activity:proteus-stash-leg'],
+              ['proteus_runner_berth_leg', -93.6, 57.9, 'dest:station_proteus'],
+            ] },
+          // A picket on the choke-ward chord: whatever drops from Nereid is scanned, then sold
+          // or stripped.
+          { id: 'proteus_den_picket', role: 'pirate', kind: 'patrol', spawn: [-45, 0.8],
+            routeId: 'proteus_den_watch_chord', durationS: 60,
+            marks: [
+              ['proteus_picket_choke_end', 104.1, 20.1, 'activity:proteus-picket-choke-end'],
+              ['proteus_picket_den_end', 71.4, -82.3, 'activity:proteus-picket-den-end'],
+            ] },
+        ],
+      },
+      {
+        id: 'proteus_quiet_seams',
+        label: 'Quiet Seams',
+        anchor: { kind: 'zone', id: 'zone_proteus_seams', fieldId: 'f_proteus_1' },
+        // The off-the-books tally pod, on the hauler's buoy-ward bearing.
+        objects: [
+          { id: 'proteus_seam_tally_pod', kind: 'cargo_staging_pod', offset: [-36.7, -57.2],
+            targetRef: 'object:proteus_seam_tally_pod' },
+        ],
+        actors: [
+          // A crew that does not ask questions, coring the metallic crystal seam on the field's
+          // face.
+          { id: 'proteus_seam_crew', role: 'miner', kind: 'miner', spawn: [-0.6, -38],
+            routeId: 'proteus_seam_cut_loop', durationS: 47, receipt: 'mining:npcExtraction',
+            marks: [
+              ['proteus_crew_face', -87.2, 62.1, 'field:f_proteus_1'],
+              ['proteus_crew_den_leg', 38.4, 103.1, 'activity:proteus-crew-den-leg'],
+            ] },
+          // The crystal goes to the tally pod first and the books never see it.
+          { id: 'proteus_seam_hauler', role: 'hauler', kind: 'hauler', spawn: [-39.1, 22.3],
+            routeId: 'proteus_seam_tally_haul', durationS: 26,
+            marks: [
+              ['proteus_hauler_pod_leg', -56.2, -87.5, 'object:proteus_seam_tally_pod'],
+              ['proteus_hauler_den_leg', 97.8, 50.4, 'activity:proteus-hauler-den-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Triton Wake — Free Frontier scientists study the wake under Vael sufferance. A hollow
+  // rim: the lab's round, and one hull picking at a wreck nobody is hurrying.
+  livedFrontierSet({
+    sectorId: 'sector_triton_wake',
+    namespace: 'triton',
+    label: 'Triton',
+    pockets: [
+      {
+        id: 'triton_lab_rounds',
+        label: 'Lab Rounds',
+        anchor: { kind: 'station', id: 'station_triton', zoneId: 'zone_triton_lab' },
+        actors: [
+          // The wake run: a straight lane to the anomaly's edge on its true bearing, and home.
+          { id: 'triton_lab_tender', role: 'tender', kind: 'surveyor', spawn: [37.9, 2.5],
+            routeId: 'triton_lab_run', durationS: 73,
+            marks: [
+              ['triton_tender_wake_leg', -40.9, 102.1, 'activity:triton-wake-leg'],
+              ['triton_tender_berth_leg', 40.9, -102.1, 'station:station_triton:service-berth'],
+            ] },
+          // Sampling the radiation bloom along the wake spine, a short slow chord.
+          { id: 'triton_wake_sampler', role: 'surveyor', kind: 'surveyor', spawn: [13.2, -43],
+            routeId: 'triton_wake_sample_chord', durationS: 28,
+            marks: [
+              ['triton_sampler_glow_face', -38.6, 97.7, 'activity:triton-glow-face'],
+              ['triton_sampler_lab_face', 43.8, 100.9, 'activity:triton-lab-face'],
+            ] },
+        ],
+      },
+      {
+        id: 'triton_wreck_wake',
+        label: 'Wreck Wake',
+        anchor: { kind: 'poi', id: 'poi_triton_wreck' },
+        // The cut plate off the wreck, on the salvor's lab-ward bearing.
+        objects: [
+          { id: 'triton_wreck_cut_plate', kind: 'grave_shard', offset: [-21.9, -62.2],
+            targetRef: 'object:triton_wreck_cut_plate' },
+        ],
+        actors: [
+          // A wreck nobody is hurrying: one salvor, a tight wedge, the plate first.
+          { id: 'triton_wreck_salvor', role: 'salvor', kind: 'salvor', spawn: [4.9, 37.7],
+            routeId: 'triton_wreck_cut_loop', durationS: 45,
+            marks: [
+              ['triton_salvor_plate_face', -34.9, -99, 'object:triton_wreck_cut_plate'],
+              ['triton_salvor_far_face', 71.5, -83.6, 'activity:triton-salvor-far-face'],
+            ] },
+          // Samples between the lab's far watcher and the wreck on a wide slow lane.
+          { id: 'triton_sample_courier', role: 'hauler', kind: 'hauler', spawn: [33.1, -30.5],
+            routeId: 'triton_sample_haul', durationS: 20,
+            marks: [
+              ['triton_courier_watcher_leg', -105.9, 29.7, 'activity:triton-watcher-leg'],
+              ['triton_courier_wreck_leg', 29.7, 105.9, 'activity:triton-wreck-leg'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── Eunomia Gulf — a Vael-licensed black fence linking Sedna dark to the east wake run; a
+  // stripped freighter marks the choke and scavengers still pick the ribs.
+  livedFrontierSet({
+    sectorId: 'sector_eunomia_gulf',
+    namespace: 'eunomia',
+    label: 'Eunomia',
+    pockets: [
+      {
+        id: 'eunomia_fence_apron',
+        label: 'Fence Apron',
+        anchor: { kind: 'station', id: 'station_eunomia', zoneId: 'zone_eunomia_fence' },
+        actors: [
+          // The licensed run: out toward the Hush on its true bearing and back to the fence.
+          { id: 'eunomia_fence_runner', role: 'smuggler', kind: 'hauler', spawn: [-24.2, 29.3],
+            routeId: 'eunomia_fence_run', durationS: 29, receipt: 'freight:arrival',
+            marks: [
+              ['eunomia_runner_hush_leg', -46.3, -99.8, 'activity:eunomia-hush-leg'],
+              ['eunomia_runner_berth_leg', 70.5, 84.4, 'dest:station_eunomia'],
+            ] },
+          // A picket on the choke-ward chord: the gulf is licensed, not safe.
+          { id: 'eunomia_choke_picket', role: 'pirate', kind: 'patrol', spawn: [-22.4, -39],
+            routeId: 'eunomia_choke_watch_chord', durationS: 46,
+            marks: [
+              ['eunomia_picket_hulk_end', 44.9, 94.9, 'activity:eunomia-picket-hulk-end'],
+              ['eunomia_picket_fence_end', 103.6, 37, 'activity:eunomia-picket-fence-end'],
+            ] },
+        ],
+      },
+      {
+        id: 'eunomia_rib_picking',
+        label: 'Rib Picking',
+        anchor: { kind: 'zone', id: 'zone_eunomia_hulk' },
+        // The rib the scavengers are picking, on the salvor's fence-ward bearing.
+        objects: [
+          { id: 'eunomia_hulk_rib_plate', kind: 'grave_shard', offset: [-28.2, -59.7],
+            targetRef: 'object:eunomia_hulk_rib_plate' },
+        ],
+        actors: [
+          // Scavengers still pick the ribs: a tight wedge around one plate.
+          { id: 'eunomia_rib_salvor', role: 'salvor', kind: 'salvor', spawn: [8.8, 37],
+            routeId: 'eunomia_rib_cut_loop', durationS: 45,
+            marks: [
+              ['eunomia_salvor_rib_face', -44.9, -94.9, 'object:eunomia_hulk_rib_plate'],
+              ['eunomia_salvor_far_face', 62.5, -90.5, 'activity:eunomia-salvor-far-face'],
+            ] },
+          // The clerk tallying the pick against a ledger that is still out there.
+          { id: 'eunomia_ledger_clerk', role: 'surveyor', kind: 'surveyor', spawn: [4.3, 44.8],
+            routeId: 'eunomia_ledger_read_sweep', durationS: 64,
+            marks: [
+              ['eunomia_clerk_ledger_face', -109.3, -12.5, 'activity:eunomia-ledger-face'],
+              ['eunomia_clerk_hulk_face', 67.2, -90.8, 'activity:eunomia-clerk-hulk-face'],
+            ] },
+        ],
+      },
+    ],
+  }),
+  // ── The Bolus — a digestive trench with a lane through its wall; cilia do the coasting if you
+  // let them. A hollow rim with no hostiles: a rib that is tended, and a pile of what the gut
+  // would not keep.
+  livedFrontierSet({
+    sectorId: 'sector_the_bolus',
+    namespace: 'bolus',
+    label: 'Bolus',
+    pockets: [
+      {
+        id: 'bolus_rib_tending',
+        label: 'Rib Tending',
+        anchor: { kind: 'station', id: 'station_bolus_rib' },
+        actors: [
+          // Tending the Rib: the round out to the wall's lane and back, on the lane's true
+          // bearing.
+          { id: 'bolus_rib_tender', role: 'tender', kind: 'surveyor', spawn: [1.3, -38],
+            routeId: 'bolus_rib_tender_round', durationS: 52,
+            marks: [
+              ['bolus_tender_wall_leg', 46.5, 99.7, 'activity:bolus-wall-leg'],
+              ['bolus_tender_rib_leg', -99.7, 46.5, 'station:station_bolus_rib:service-berth'],
+            ] },
+          // Grit from the trench floor to the Rib's berth: the only freight the gut gives up.
+          { id: 'bolus_grit_hauler', role: 'hauler', kind: 'hauler', spawn: [25.5, -37.1],
+            routeId: 'bolus_grit_haul', durationS: 26, receipt: 'freight:arrival',
+            marks: [
+              ['bolus_hauler_grit_leg', 88.6, 54.4, 'activity:bolus-grit-leg'],
+              ['bolus_hauler_berth_leg', -110, -3, 'dest:station_bolus_rib'],
+            ] },
+        ],
+      },
+      {
+        id: 'bolus_cough_pile',
+        label: 'The Cough',
+        anchor: { kind: 'zone', id: 'zone_bolus_cough' },
+        // The plate in the pile, on the salvor's Rib-ward bearing.
+        objects: [
+          { id: 'bolus_cough_pile_plate', kind: 'grave_shard', offset: [-55.4, -35.9],
+            targetRef: 'object:bolus_cough_pile_plate' },
+        ],
+        actors: [
+          // What the gut would not keep is piled here; one salvor takes it plate by plate.
+          { id: 'bolus_pile_salvor', role: 'salvor', kind: 'salvor', spawn: [26.9, 26.8],
+            routeId: 'bolus_pile_cut_loop', durationS: 45,
+            marks: [
+              ['bolus_salvor_plate_face', -89.8, -58.2, 'object:bolus_cough_pile_plate'],
+              ['bolus_salvor_far_face', 5.5, -107.9, 'activity:bolus-salvor-far-face'],
+            ] },
+          // Reading the trench the chart calls radiation: a wide slow sweep.
+          { id: 'bolus_lumen_reader', role: 'surveyor', kind: 'surveyor', spawn: [45, -0.6],
+            routeId: 'bolus_lumen_read_sweep', durationS: 58,
+            marks: [
+              ['bolus_reader_lumen_face', -91.5, -61, 'activity:bolus-lumen-face'],
+              ['bolus_reader_pile_face', -35.2, 104.2, 'activity:bolus-reader-pile-face'],
+            ] },
+        ],
+      },
+    ],
+  }),
+];
+
+/** Sector id -> { pockets, pocketOrder, actorSlotOrder, capacity, routeTopology } for the lived frontier. */
+export const LIVED_FRONTIER_SETS = Object.freeze(Object.fromEntries(
+  LIVED_FRONTIER_SET_LIST.map((set) => [set.sectorId, set]),
+));
+export const LIVED_FRONTIER_SECTOR_IDS = Object.freeze(LIVED_FRONTIER_SET_LIST.map((set) => set.sectorId));
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1957,6 +3097,7 @@ export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [TETHYS_ACTIVITY_SECTOR_ID]: TETHYS_ACTIVITY_POCKETS,
   [SEDNA_ACTIVITY_SECTOR_ID]: SEDNA_ACTIVITY_POCKETS,
   [SKER_ACTIVITY_SECTOR_ID]: SKER_ACTIVITY_POCKETS,
+  ...Object.fromEntries(LIVED_FRONTIER_SECTOR_IDS.map((id) => [id, LIVED_FRONTIER_SETS[id].pockets])),
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));

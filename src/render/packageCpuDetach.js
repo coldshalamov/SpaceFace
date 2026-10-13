@@ -23,6 +23,7 @@ import { BufferAttribute, Box3, Sphere, Vector3 } from 'three';
 import {
   bumpPackageDetachSerial,
   noteSharedImageSourceRefilled,
+  restoreSharedCompressedMips,
   sharedImageSourceEntry,
   sharedImageSourceUserCount,
 } from './imageSourceDedupe.js';
@@ -53,7 +54,14 @@ let presentedDetachRehydrate = null;
 // be read off the entries' own released state each time (a Set of "detached manifests" would
 // silently miss every shared-source release).
 function sharedTextureReleased(entry) {
-  const shared = entry.sharedEntry;
+  // Adoption can land after the manifest cached its link. A release that only
+  // flipped the live dedupe entry would otherwise stay invisible to the gate,
+  // and the next upload would read the emptied chain.
+  let shared = entry.sharedEntry;
+  if (!shared && entry.texture) {
+    shared = sharedImageSourceEntry(entry.texture);
+    if (shared) entry.sharedEntry = shared;
+  }
   if (!shared) return false;
   if (shared.sourceReleased === true) return true;
   return !!(shared.releasedUsers && shared.releasedUsers.has(entry.texture));
@@ -783,6 +791,60 @@ export function orientationDetachedHoldActive(renderer) {
  * are pending outside the hold stay visible — hiding those until the upload
  * lands never reaches the draw that clears the pending bit.
  */
+function compressedMipsMissing(texture) {
+  if (!texture || texture.isCompressedTexture !== true || texture.isCompressedArrayTexture === true) {
+    return false;
+  }
+  const mips = texture.mipmaps;
+  return !(Array.isArray(mips) && mips.length > 0 && mips[0] && Number(mips[0].width) > 0);
+}
+
+/**
+ * Put a sibling's compressed chain back on every presented slot that lost its own.
+ * Returns true when at least one slot was refilled.
+ */
+export function restorePresentedCompressedMips(material) {
+  const materials = presentedMaterialList(material);
+  if (!materials) return false;
+  let restored = false;
+  for (let i = 0; i < materials.length; i++) {
+    const mat = materials[i];
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (texture && texture.isTexture === true && restoreSharedCompressedMips(texture)) restored = true;
+    }
+  }
+  return restored;
+}
+
+/**
+ * True when the next bind of a presented compressed map would enter three's
+ * uploader and read mipmaps[0] on an empty chain. A stamp-matched GPU copy is
+ * left alone: the CPU mirror is supposed to be empty after a proven upload.
+ */
+export function presentedCompressedUploadUnsafe(renderer, material) {
+  const materials = presentedMaterialList(material);
+  if (!materials) return false;
+  const properties = renderer && renderer.properties;
+  for (let i = 0; i < materials.length; i++) {
+    const mat = materials[i];
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (!compressedMipsMissing(texture)) continue;
+      if (!(texture.version > 0)) continue;
+      const props = properties && typeof properties.get === 'function'
+        ? properties.get(texture)
+        : null;
+      // Same gate as three's setTexture2D: a matching stamp does not upload.
+      if (props && props.__version === texture.version) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
 export function orientationHoldHidesDrawable(renderer, object) {
   if (!orientationDetachedHoldActive(renderer) || !object) return false;
   if (isPackageGeometryDetached(object.geometry)) return true;
