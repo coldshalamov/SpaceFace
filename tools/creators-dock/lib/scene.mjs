@@ -589,9 +589,11 @@ function materialize(value, key, seen, readGrid = true) {
     if (child === CLONE_REJECT) return CLONE_REJECT;
     if (child !== undefined) writeData(out, 'grid', child);
   }
-  if (readGrid) copyGetterGrid(value, out);
-  copyAccessors(value, out);
-  copyInheritedFields(value, out);
+  if (readGrid) {
+    copyGetterGrid(value, out);
+    copyAccessors(value, out);
+    copyInheritedFields(value, out);
+  }
   return out;
 }
 

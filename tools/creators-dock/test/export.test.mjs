@@ -8,7 +8,7 @@ import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject, importScenario, packFileText } from '../lib/export.mjs';
 import { validateProject, runProject } from '../lib/labRun.mjs';
 import { objectById } from '../lib/scene.mjs';
-import { inspectValue } from '../lib/security.mjs';
+import { byteLength, inspectValue } from '../lib/security.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
 import { send } from '../serve.mjs';
 import { probePackFiles, probeUserContentDir } from '../lib/userProbe.mjs';
@@ -604,4 +604,132 @@ test('validate runs the certifying lab and a run report keeps the failure window
   assert.equal(Array.isArray(ran.run.failure.inputWindow), true);
   assert.notEqual(ran.run.failure.checkpoints, null);
   assert.notEqual(ran.run.checkpoints, null);
+});
+
+test('export does not run a frames element marker getter', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const grid = project.grid;
+  const size = grid.size;
+  project.frames = [{ tick: 0, input: { moveX: 1 } }];
+  let reads = 0;
+  Object.defineProperty(project.frames[0], 'marker', {
+    enumerable: false,
+    configurable: true,
+    get() {
+      reads += 1;
+      grid.size = null;
+      return 1;
+    },
+  });
+  const exported = await exportProject(project);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  assert.equal(reads, 0);
+  assert.equal(grid.size, size);
+  assert.equal(size, 10);
+  assert.equal(Object.getOwnPropertyDescriptor(grid, 'size').writable, true);
+});
+
+test('export does not run getters on nested array elements', async () => {
+  for (const install of [
+    (project, grid, reads) => {
+      project.notes = { ...(project.notes || {}), rows: [{}] };
+      Object.defineProperty(project.notes.rows[0], 'cell', {
+        enumerable: false,
+        configurable: true,
+        get() {
+          reads.count += 1;
+          grid.size = null;
+          return 1;
+        },
+      });
+    },
+    (project, grid, reads) => {
+      project.inputEvents = [{ tick: 0 }];
+      Object.defineProperty(project.inputEvents[0], 'echo', {
+        enumerable: false,
+        configurable: true,
+        get() {
+          reads.count += 1;
+          grid.size = null;
+          return 1;
+        },
+      });
+    },
+    (project, grid, reads) => {
+      Object.defineProperty(project.objects[0], 'marker', {
+        enumerable: false,
+        configurable: true,
+        get() {
+          reads.count += 1;
+          grid.size = null;
+          return 1;
+        },
+      });
+    },
+  ]) {
+    const project = getComposition('dock.intercept-cargo');
+    const grid = project.grid;
+    const size = grid.size;
+    const reads = { count: 0 };
+    install(project, grid, reads);
+    const exported = await exportProject(project);
+    assert.equal(reads.count, 0);
+    assert.equal(grid.size, size);
+    assert.equal(size, 10);
+    const unexpected = (exported.issues || []).filter((issue) => !issue.includes('unknown field "marker"'));
+    assert.equal(unexpected.length, 0, (exported.issues || []).join('\n'));
+  }
+});
+
+test('a get-only hold cannot seal pocket credits during export', async () => {
+  const project = getComposition('dock.intercept-cargo');
+  const pocket = { credits: 40 };
+  Object.defineProperty(project.world, 'hold', {
+    enumerable: true,
+    configurable: true,
+    get() { return pocket; },
+  });
+  project.world.toJSON = function () {
+    Object.defineProperty(pocket, 'credits', { value: 7, writable: false, configurable: false });
+    return this;
+  };
+  const sized = byteLength(project);
+  assert.equal(typeof sized, 'number');
+  assert.equal(pocket.credits, 40);
+  assert.equal(Object.getOwnPropertyDescriptor(pocket, 'credits').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(pocket, 'credits').configurable, true);
+  const exported = await exportProject(project);
+  assert.equal(pocket.credits, 40);
+  assert.equal(Object.getOwnPropertyDescriptor(pocket, 'credits').value, 40);
+  assert.equal(Object.getOwnPropertyDescriptor(pocket, 'credits').writable, true);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+});
+
+test('byteLength does not run an inherited frames marker getter', () => {
+  const project = getComposition('dock.intercept-cargo');
+  const grid = project.grid;
+  const size = grid.size;
+  const frame = { tick: 0, input: { moveX: 1 } };
+  const proto = {};
+  let reads = 0;
+  Object.defineProperty(proto, 'marker', {
+    enumerable: false,
+    configurable: true,
+    get() {
+      reads += 1;
+      Object.defineProperty(grid, 'size', { value: null, writable: false, configurable: false });
+      return [{ n: 1 }];
+    },
+  });
+  Object.setPrototypeOf(frame, proto);
+  project.frames = [frame];
+  const sized = byteLength(project);
+  assert.equal(typeof sized, 'number');
+  assert.equal(reads, 0);
+  assert.equal(grid.size, size);
+  assert.equal(size, 10);
+  const desc = Object.getOwnPropertyDescriptor(grid, 'size');
+  assert.equal(desc.value, 10);
+  assert.equal(desc.writable, true);
+  assert.equal(desc.configurable, true);
 });

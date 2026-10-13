@@ -53,7 +53,7 @@ function readToJSON(value) {
   return undefined;
 }
 
-export function detachData(value, seen = new Map(), readGrid = true) {
+export function detachData(value, seen = new Map(), readGrid = true, allowGetters = true) {
   if (value === null || value === undefined) return value;
   const type = typeof value;
   if (type === 'string' || type === 'boolean') return value;
@@ -70,7 +70,8 @@ export function detachData(value, seen = new Map(), readGrid = true) {
         out.length = i + 1;
         continue;
       }
-      out[i] = detachData(descriptor.value, seen, readGrid);
+      // Array elements keep their getters unread. A marker on frames[0] must not run.
+      out[i] = detachData(descriptor.value, seen, readGrid, false);
     }
     return out;
   }
@@ -83,19 +84,21 @@ export function detachData(value, seen = new Map(), readGrid = true) {
     if (typeof descriptor.value === 'function') continue;
     writeData(out, key, detachData(descriptor.value, seen, readGrid));
   }
-  for (const key of Object.getOwnPropertyNames(value)) {
-    if (key === 'toJSON' || Object.prototype.hasOwnProperty.call(out, key)) continue;
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (!descriptor || typeof descriptor.get !== 'function') continue;
-    const hasSetter = typeof descriptor.set === 'function';
-    if (!hasSetter && ACCESSOR_SKIP.has(key)) continue;
-    try {
-      const read = hasSetter ? descriptor.get.call(value) : readAccessor(value, descriptor);
-      if (!hasSetter && !(read && typeof read === 'object')) continue;
-      const child = detachData(read, seen, readGrid);
-      if (child !== undefined) writeData(out, key, child);
-    } catch (error) {
-      // A getter behind the copy refused. The detach omits that key.
+  if (allowGetters) {
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (key === 'toJSON' || Object.prototype.hasOwnProperty.call(out, key)) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || typeof descriptor.get !== 'function') continue;
+      const hasSetter = typeof descriptor.set === 'function';
+      if (!hasSetter && ACCESSOR_SKIP.has(key)) continue;
+      try {
+        const read = hasSetter ? descriptor.get.call(value) : readAccessor(value, descriptor);
+        if (!hasSetter && !(read && typeof read === 'object')) continue;
+        const child = detachData(read, seen, readGrid, true);
+        if (child !== undefined) writeData(out, key, child);
+      } catch (error) {
+        // A getter behind the copy refused. The detach omits that key.
+      }
     }
   }
   let proto = Object.getPrototypeOf(value);
@@ -108,13 +111,13 @@ export function detachData(value, seen = new Map(), readGrid = true) {
       if (!descriptor) continue;
       if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
         if (typeof descriptor.value === 'function') continue;
-        writeData(out, key, detachData(descriptor.value, seen, readGrid));
-      } else if (typeof descriptor.get === 'function' && key !== 'grid') {
+        writeData(out, key, detachData(descriptor.value, seen, readGrid, allowGetters));
+      } else if (allowGetters && typeof descriptor.get === 'function' && key !== 'grid') {
         // Grid getters are copied by the walk below. Reading every inherited
         // getter would count a function-prototype grid that must stay unread.
         try {
           const read = descriptor.get.call(value);
-          if (read && typeof read === 'object') writeData(out, key, detachData(read, seen, readGrid));
+          if (read && typeof read === 'object') writeData(out, key, detachData(read, seen, readGrid, true));
         } catch (error) {
           // An inherited getter refused. Leave that key off the detach.
         }
@@ -130,12 +133,14 @@ export function detachData(value, seen = new Map(), readGrid = true) {
       const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
       if (descriptor) {
         if (typeof descriptor.get === 'function') {
-          if (!readGrid) {
+          if (!allowGetters) {
+            // An element getter, including an inherited grid, stays unread.
+          } else if (!readGrid) {
             writeData(out, 'grid', {});
           } else {
             try {
               const read = descriptor.get.call(value);
-              if (read && typeof read === 'object') writeData(out, 'grid', detachData(read, seen, readGrid));
+              if (read && typeof read === 'object') writeData(out, 'grid', detachData(read, seen, readGrid, true));
             } catch (error) {
               // The getter refused. The detach simply has no grid.
             }
@@ -251,14 +256,14 @@ function rememberArray(array, entries, seen) {
   }
 }
 
-function walkInheritedArrays(value, seen, entries) {
+function walkInheritedArrays(value, seen, entries, allowGetters = true) {
   if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return;
   seen.add(value);
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-        walkInheritedArrays(descriptor.value, seen, entries);
+        walkInheritedArrays(descriptor.value, seen, entries, false);
       }
     }
     return;
@@ -268,7 +273,7 @@ function walkInheritedArrays(value, seen, entries) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
     if (typeof descriptor.value === 'function') continue;
-    walkInheritedArrays(descriptor.value, seen, entries);
+    walkInheritedArrays(descriptor.value, seen, entries, allowGetters);
   }
   let proto = Object.getPrototypeOf(value);
   const chain = new Set();
@@ -283,7 +288,7 @@ function walkInheritedArrays(value, seen, entries) {
       if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
         if (typeof descriptor.value === 'function') continue;
         read = descriptor.value;
-      } else if (typeof descriptor.get === 'function') {
+      } else if (allowGetters && typeof descriptor.get === 'function') {
         try {
           read = descriptor.get.call(value);
         } catch (error) {
@@ -293,7 +298,7 @@ function walkInheritedArrays(value, seen, entries) {
         continue;
       }
       if (Array.isArray(read)) rememberArray(read, entries, seen);
-      else if (read && typeof read === 'object') walkInheritedArrays(read, seen, entries);
+      else if (read && typeof read === 'object') walkInheritedArrays(read, seen, entries, allowGetters);
     }
     proto = Object.getPrototypeOf(proto);
   }
@@ -360,14 +365,14 @@ export function readAccessor(object, descriptor) {
   return failed ? undefined : read;
 }
 
-export function captureAccessorTrees(value, seen = new Set(), records = []) {
+export function captureAccessorTrees(value, seen = new Set(), records = [], allowGetters = true) {
   if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return records;
   seen.add(value);
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-        captureAccessorTrees(descriptor.value, seen, records);
+        captureAccessorTrees(descriptor.value, seen, records, false);
       }
     }
     return records;
@@ -379,15 +384,15 @@ export function captureAccessorTrees(value, seen = new Set(), records = []) {
     if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
       if (typeof descriptor.value === 'function') continue;
       if (descriptor.value && typeof descriptor.value === 'object') {
-        captureAccessorTrees(descriptor.value, seen, records);
+        captureAccessorTrees(descriptor.value, seen, records, allowGetters);
       }
       continue;
     }
-    if (typeof descriptor.get !== 'function' || typeof descriptor.set === 'function') continue;
+    if (!allowGetters || typeof descriptor.get !== 'function' || typeof descriptor.set === 'function') continue;
     const read = readAccessor(value, descriptor);
     if (read && typeof read === 'object') {
       captureLive(read, new Set(), records);
-      captureAccessorTrees(read, seen, records);
+      captureAccessorTrees(read, seen, records, true);
     }
   }
   return records;
@@ -395,7 +400,26 @@ export function captureAccessorTrees(value, seen = new Set(), records = []) {
 
 const protectedStack = [];
 export let definePropertyBase = null;
+let definePropertiesBase = null;
+let reflectDefineBase = null;
 let freezeBase = null;
+
+function blocksDefine(obj, prop, desc) {
+  if (!protectedHas(obj) || !desc || typeof desc !== 'object') return false;
+  const current = Object.getOwnPropertyDescriptor(obj, prop);
+  const changesValue = !!current
+    && Object.prototype.hasOwnProperty.call(current, 'value')
+    && Object.prototype.hasOwnProperty.call(desc, 'value')
+    && !Object.is(desc.value, current.value);
+  const read = accessorValue(current, obj);
+  const sealsAccessor = !!current
+    && typeof current.get === 'function'
+    && Object.prototype.hasOwnProperty.call(desc, 'value')
+    && read.read
+    && !Object.is(desc.value, read.value);
+  const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
+  return changesValue || sealsAccessor || freezesLength;
+}
 
 function protectedHas(obj) {
   for (let i = protectedStack.length - 1; i >= 0; i -= 1) {
@@ -413,28 +437,37 @@ function accessorValue(current, obj) {
   }
 }
 
+function applyDescriptorMap(obj, descs) {
+  const names = [
+    ...Object.getOwnPropertyNames(descs),
+    ...Object.getOwnPropertySymbols(descs),
+  ];
+  for (const key of names) {
+    const mapDesc = Object.getOwnPropertyDescriptor(descs, key);
+    if (!mapDesc || !Object.prototype.hasOwnProperty.call(mapDesc, 'value')) continue;
+    Object.defineProperty(obj, key, mapDesc.value);
+  }
+  return obj;
+}
+
 export function protectLiveObjects(objects) {
   const set = objects instanceof Set ? objects : new Set(objects || []);
   if (protectedStack.length === 0) {
     definePropertyBase = Object.defineProperty;
+    definePropertiesBase = Object.defineProperties;
+    reflectDefineBase = Reflect.defineProperty;
     freezeBase = Object.freeze;
     Object.defineProperty = function shieldedDefine(obj, prop, desc) {
-      if (protectedHas(obj) && desc && typeof desc === 'object') {
-        const current = Object.getOwnPropertyDescriptor(obj, prop);
-        const changesValue = !!current
-          && Object.prototype.hasOwnProperty.call(current, 'value')
-          && Object.prototype.hasOwnProperty.call(desc, 'value')
-          && !Object.is(desc.value, current.value);
-        const read = accessorValue(current, obj);
-        const sealsAccessor = !!current
-          && typeof current.get === 'function'
-          && Object.prototype.hasOwnProperty.call(desc, 'value')
-          && read.read
-          && !Object.is(desc.value, read.value);
-        const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
-        if (changesValue || sealsAccessor || freezesLength) return obj;
-      }
+      if (blocksDefine(obj, prop, desc)) return obj;
       return definePropertyBase.call(Object, obj, prop, desc);
+    };
+    Object.defineProperties = function shieldedDefineProperties(obj, descs) {
+      if (!descs || typeof descs !== 'object') return definePropertiesBase.call(Object, obj, descs);
+      return applyDescriptorMap(obj, descs);
+    };
+    Reflect.defineProperty = function shieldedReflectDefine(obj, prop, desc) {
+      if (blocksDefine(obj, prop, desc)) return true;
+      return reflectDefineBase.call(Reflect, obj, prop, desc);
     };
     Object.freeze = function shieldedFreeze(obj) {
       if (protectedHas(obj)) return obj;
@@ -450,6 +483,14 @@ export function unprotectLiveObjects() {
   if (protectedStack.length === 0 && definePropertyBase) {
     Object.defineProperty = definePropertyBase;
     definePropertyBase = null;
+    if (definePropertiesBase) {
+      Object.defineProperties = definePropertiesBase;
+      definePropertiesBase = null;
+    }
+    if (reflectDefineBase) {
+      Reflect.defineProperty = reflectDefineBase;
+      reflectDefineBase = null;
+    }
     if (freezeBase) {
       Object.freeze = freezeBase;
       freezeBase = null;
@@ -493,14 +534,24 @@ function probeToJSON(value, seen = new Set(), readGrid = true) {
   if (typeof toJSON === 'function') {
     const records = captureLive(value);
     const arrays = snapshotInheritedArrays(value);
+    const accessorRecords = [];
+    captureAccessorTrees(value, new Set(), accessorRecords);
+    const live = liveObjectsIn([value]);
+    for (const record of accessorRecords) {
+      if (record && record.object) live.add(record.object);
+    }
+    for (const entry of arrays) {
+      if (entry && entry.array) live.add(entry.array);
+    }
     const detached = detachData(value, new Map(), readGrid);
-    protectLiveObjects(liveObjectsIn([value]));
+    protectLiveObjects(live);
     try {
       toJSON.call(detached);
     } finally {
       unprotectLiveObjects();
       // The detach must not keep the live actor. Put the caller's fields back
       // even when toJSON reached that actor through the outer objects array.
+      restoreLive(accessorRecords);
       restoreLive(records);
       restoreInheritedArrays(arrays);
     }

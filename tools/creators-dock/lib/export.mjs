@@ -396,7 +396,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
     runtimeProfile: project.runtimeProfile || 'focused-lab',
     seed: project.seed,
     ticks: project.ticks,
-    world: clone(project.world),
+    world: labWorld(project.world),
     entities,
     attachments: labAttachments,
     inputEvents: Array.isArray(project.inputEvents) ? clone(project.inputEvents) : [],
@@ -418,6 +418,25 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
   if (project.parameterOverlay) scenario.parameterOverlay = clone(project.parameterOverlay);
   if (project.saveLoadEquivalence) scenario.saveLoadEquivalence = project.saveLoadEquivalence;
   return scenario;
+}
+
+const LAB_WORLD_KEYS = new Set([
+  'fixtureProfile',
+  'sectorId',
+  'mode',
+  'physicsBackend',
+  'flightBackend',
+  'aiBackend',
+  'credits',
+]);
+
+function labWorld(world) {
+  const copied = clone(world);
+  if (!copied || typeof copied !== 'object' || Array.isArray(copied)) return copied;
+  for (const key of Object.keys(copied)) {
+    if (!LAB_WORLD_KEYS.has(key)) delete copied[key];
+  }
+  return copied;
 }
 
 function layoutGeometry(source) {

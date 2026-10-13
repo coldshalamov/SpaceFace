@@ -4318,3 +4318,49 @@ test('a successful commit does not keep a poisoned title', () => {
   assert.equal(title.configurable, true);
   assert.equal(committed.present.title, 'Renamed dock');
 });
+
+test('defineProperties and Reflect.defineProperty cannot poison a commit', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const next = getComposition('dock.intercept-cargo');
+  const schema = next.schema;
+  next.title = 'Renamed dock';
+  next.toJSON = function () {
+    Object.defineProperties(next, {
+      schema: { value: 'POISON', writable: false, configurable: false },
+    });
+    return this;
+  };
+  const committed = commit(history, next);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.equal(next.title, 'Renamed dock');
+  assert.equal(next.schema, schema);
+  assert.equal(committed.present.schema, schema);
+  const schemaDesc = Object.getOwnPropertyDescriptor(next, 'schema');
+  assert.equal(schemaDesc.value, schema);
+  assert.equal(schemaDesc.writable, true);
+  assert.equal(schemaDesc.configurable, true);
+
+  const again = createHistory(getComposition('dock.intercept-cargo'));
+  const credited = getComposition('dock.intercept-cargo');
+  const credits = credited.world.credits;
+  credited.title = 'Renamed dock';
+  credited.toJSON = function () {
+    Reflect.defineProperty(credited.world, 'credits', {
+      value: 1,
+      writable: false,
+      configurable: false,
+    });
+    return this;
+  };
+  const renamed = commit(again, credited);
+  assert.equal(renamed.past.length, 1);
+  assert.equal(renamed.present.title, 'Renamed dock');
+  assert.equal(credited.title, 'Renamed dock');
+  assert.equal(credited.world.credits, credits);
+  assert.equal(renamed.present.world.credits, credits);
+  const creditDesc = Object.getOwnPropertyDescriptor(credited.world, 'credits');
+  assert.equal(creditDesc.value, credits);
+  assert.equal(creditDesc.writable, true);
+  assert.equal(creditDesc.configurable, true);
+});
