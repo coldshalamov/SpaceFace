@@ -70,12 +70,11 @@ const SEED = 4242;
 test('the activity-pocket registry includes Sedna Dark, and the older sectors are unchanged', () => {
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(SEDNA_ACTIVITY_SECTOR_ID));
   assert.equal(ACTIVITY_POCKETS_BY_SECTOR[SEDNA_ACTIVITY_SECTOR_ID], SEDNA_ACTIVITY_POCKETS);
-  assert.equal(
-    ACTIVITY_POCKETS.length,
-    // The registry is the flat concatenation of every registered sector, so a new sector can join
-    // it without this pin being edited (CR-HOLLOW-4 added seven).
-    Object.values(ACTIVITY_POCKETS_BY_SECTOR).reduce((total, list) => total + list.length, 0),
-  );
+  // The registry is the flat concatenation of every registered sector, so a new sector can join it without this pin
+  // being edited (CR-HOLLOW-4 added seven). A length-equals-sum check is a tautology; what can really break is two
+  // sectors registering the same pocket id, which makes activityPocketById ambiguous.
+  assert.equal(new Set(ACTIVITY_POCKETS.map((pocket) => pocket.id)).size, ACTIVITY_POCKETS.length,
+    'every registered activity pocket id is unique across sectors');
   assert.equal(activityPocketsForSector('sector_sedna_dark').length, 2);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 

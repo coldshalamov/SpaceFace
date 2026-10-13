@@ -273,3 +273,16 @@ test('dispose releases every plate it was holding', () => {
   assert.equal(disposed.length, 2);
   assert.equal(residency.request('belt-ochre-shoal'), false, 'a disposed residency loads nothing');
 });
+
+test('the opening cook uploads the sky behind the shell and fails open at its budget instead of throwing', () => {
+  const renderer = readFileSync(resolve(ROOT, 'src/render/renderer.js'), 'utf8').replace(/\r\n/g, '\n');
+  const start = renderer.indexOf("if (state.mode === 'loading' && this.spaceBg) {\n        const bg = this.spaceBg;");
+  assert.ok(start > 0, 'the loading-shell sky upload block exists in the live-sector cook');
+  const block = renderer.slice(start, start + 1800);
+  assert.match(block, /lane\.pump\(\{ beforeFlight: true \}\)/, 'plates and bases pump on the cook, not in the first seconds of flight');
+  assert.match(block, /skyTimedOut = true; break;/, 'a budget overrun leaves the loop');
+  assert.match(block, /SKY_UPLOAD_STEP_BUDGET_MS = 4000/, 'the cosmetic plates have their own few-second step budget');
+  assert.match(block, /skyStarted >= SKY_UPLOAD_STEP_BUDGET_MS/, 'and the loop checks it, not only the whole-cook budget');
+  assert.doesNotMatch(block, /throw new Error/, 'the budget never rejects the cook: later census, touch and admission steps must still run');
+  assert.match(block, /recordOpeningCookStep\(state\.render, 'cook\.skyUpload', skyStarted, 'timeout'\)/, 'the overrun is on the cook ledger');
+});

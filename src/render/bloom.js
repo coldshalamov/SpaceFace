@@ -619,7 +619,7 @@ export function scenePipelineReadinessBatchOpen() {
   return !!(pipelineReadinessBatch && pipelineReadinessBatch.accepting);
 }
 
-function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, options = {}) {
+export function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, options = {}) {
   // Callers forward a nullable compileOptions slot: an explicit null slips past the `= {}`
   // default and would throw on the skipSharedBatch read below, rejecting every admission.
   if (options == null) options = {};

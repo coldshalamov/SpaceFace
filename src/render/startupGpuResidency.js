@@ -770,6 +770,36 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
       scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
       const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
       for (const entry of proxyEntries) scene.add(entry.proxy);
+      try {
+        if (typeof renderer.compileAsync === 'function') {
+          const { compilePipelinesContextSafe } = await import('./bloom.js');
+          const compileState = captureRendererState(renderer);
+          let wait;
+          try {
+            applyResidencyRendererState(renderer, target);
+            wait = compilePipelinesContextSafe(renderer, scene, camera, scene, { skipSharedBatch: true });
+          } finally {
+            // Presented draws may run while the driver links this private variant.
+            restoreRendererState(renderer, compileState);
+          }
+          const ready = await wait;
+          if (ready?.contextLost || ready?.readinessTimedOut
+              || (typeof options.isActive === 'function' && !options.isActive())) {
+            throw new Error('Residency program was not ready');
+          }
+          await yieldToMain();
+          if ((typeof options.isActive === 'function' && !options.isActive())
+              || renderer.getContext?.()?.isContextLost?.() === true) {
+            throw new Error('Residency program admission was superseded');
+          }
+        }
+      } catch (error) {
+        for (const entry of proxyEntries) {
+          scene.remove(entry.proxy);
+          if (entry.cleanup) entry.cleanup();
+        }
+        throw error;
+      }
       const state = captureRendererState(renderer);
       const started = now();
       let success = false;
@@ -915,8 +945,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // re-verify (recook/F9/context restore) would otherwise run the whole
       // O(N) scan atomically: detach + DOM progress write per row.
       if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
-        scanStrideAt = now();
         await yieldToMain();
+        // Stamp AFTER the wait: the wait is a whole frame, so a stamp before it leaves the next row 16 ms over
+        // the 2 ms stride and every resident row after the first yields its own frame.
+        scanStrideAt = now();
       }
       continue;
     }
@@ -929,8 +961,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       residentTextures += 1;
       textureProgress.update(index + 1);
       if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
-        scanStrideAt = now();
         await yieldToMain();
+        // Stamp AFTER the wait: the wait is a whole frame, so a stamp before it leaves the next row 16 ms over
+        // the 2 ms stride and every resident row after the first yields its own frame.
+        scanStrideAt = now();
       }
       continue;
     }

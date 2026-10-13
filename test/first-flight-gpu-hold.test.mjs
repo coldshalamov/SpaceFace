@@ -291,3 +291,20 @@ test('isEntityMeshExpected mirrors the hold-exempt build contract', () => {
   assert.equal(isEntityMeshExpected(runwayShip, state), true);
   assert.equal(isEntityMeshExpected(unloadedShip, state), false);
 });
+
+test('a packaged wreck ON the opening runway is part of the first picture and stays relevant', () => {
+  const player = { id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 } };
+  const onRunway = { id: 9, type: 'wreck', alive: true, pos: { x: 40, z: 0 } };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 6,
+    entities: new Map([[1, player], [9, onRunway]]),
+    camera: { zoom: 144 },
+    render: { sectorShellAdmission: true, liveSectorFirstFlightIds: new Set([1]) },
+  };
+  assert.equal(isEntityRenderRelevant(onRunway, state), true,
+    'the wreck 40 WU from the player is on the authored opening composition (startupAuthoredContactOnRunway)');
+  onRunway.pos.x = 6000;
+  assert.equal(isEntityRenderRelevant(onRunway, state), false, 'the same wreck far off the runway is not');
+});

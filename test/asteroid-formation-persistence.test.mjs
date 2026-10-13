@@ -285,10 +285,12 @@ test('A02 §11: the save owner carries the formations key end-to-end', () => {
     'capture plan entry present');
   assert.ok(src.includes("data.formations = this._callSerialize('asteroidFormations')"),
     'serializeData entry present');
-  // The restore runs on the chunked lane (one yield per system) since the save restore was sliced.
-  assert.ok(src.includes("this._callDeserializeChunked('asteroidFormations', data.formations)")
-    || src.includes("this._callDeserialize('asteroidFormations', data.formations)"),
-  'restore entry present');
+  // The restore runs on the chunked lane (one yield per system) since the save restore was sliced; the
+  // synchronous entry point is gone, so a revert to it must fail this pin.
+  assert.ok(src.includes("yield* this._callDeserializeChunked('asteroidFormations', data.formations)"),
+    'restore entry present on the chunked lane');
+  assert.ok(!src.includes("this._callDeserialize('asteroidFormations', data.formations)"),
+    'no synchronous formations restore beside it');
 });
 
 test('A02 §12: the registry runs asteroidFormations immediately after asteroidSites', () => {

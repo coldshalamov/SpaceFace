@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { openingCompileIssueKey } from '../src/render/renderer.js';
+import { compileIssueKeyTableSize, internCompileIssueKey, openingCompileIssueKey } from '../src/render/renderer.js';
 import { loadingShellVisible, mayForceWarmSlice } from '../src/localization/idleWarmPolicy.js';
 
 const THREE = await import('three');
@@ -136,4 +136,22 @@ test('a timed-out idle warm may force a slice only when the loading shell is gon
   assert.equal(mayForceWarmSlice({ didTimeout: true, doc: flying }), true, 'a busy flight still converges');
   assert.equal(mayForceWarmSlice({ didTimeout: false, doc: flying }), false, 'a real idle gap is taken by the loop, not the forced path');
   assert.equal(mayForceWarmSlice({}), false);
+});
+
+test('the compile-key table is capped and ids are never reused, so retention is bounded and nothing aliases', () => {
+  const before = compileIssueKeyTableSize();
+  const first = internCompileIssueKey('retention-probe-0');
+  assert.equal(internCompileIssueKey('retention-probe-0'), first, 'an equal signature keeps its id inside the table');
+  // Mint far more distinct signatures than the cap (20 000): the table must not grow without bound.
+  const seen = new Set([first]);
+  for (let index = 1; index <= 45000; index++) {
+    const id = internCompileIssueKey(`retention-probe-${index}`);
+    assert.ok(!seen.has(id), `id ${id} for signature ${index} was handed out before`);
+    seen.add(id);
+  }
+  assert.ok(compileIssueKeyTableSize() <= 20000, `the table stays under its cap (${compileIssueKeyTableSize()})`);
+  assert.ok(compileIssueKeyTableSize() >= 1 && before >= 0);
+  // A signature interned before a clear gets a NEW id after it, never an id some other signature already holds.
+  const again = internCompileIssueKey('retention-probe-0');
+  assert.ok(!seen.has(again) || again === first, 'a re-interned signature never takes another signature\'s id');
 });

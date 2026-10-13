@@ -1730,14 +1730,26 @@ export function openingCompileIssueKey(subject) {
 // exactly the subjects whose full signatures were equal; the table holds one string per distinct
 // signature instead of one composite per subject.
 const _compileIssueKeyIds = new Map();
+// Ids are monotonic and never reused, so clearing the table can never alias two different signatures; the table is capped
+// because a long session that mints fresh canvas textures or custom program keys would otherwise retain every full
+// signature string forever (a few hundred distinct signatures is a normal cook, 20 000 is already pathological). The
+// only cost of a clear is that an equal signature interned on the other side of it gets a new id: one extra dedupe miss.
+const COMPILE_ISSUE_KEY_TABLE_CAP = 20000;
+let _compileIssueKeyNextId = 1;
 
-function internCompileIssueKey(longKey) {
+export function internCompileIssueKey(longKey) {
   let id = _compileIssueKeyIds.get(longKey);
   if (id === undefined) {
-    id = _compileIssueKeyIds.size + 1;
+    if (_compileIssueKeyIds.size >= COMPILE_ISSUE_KEY_TABLE_CAP) _compileIssueKeyIds.clear();
+    id = _compileIssueKeyNextId++;
     _compileIssueKeyIds.set(longKey, id);
   }
   return id;
+}
+
+/** Table size, for the retention test. */
+export function compileIssueKeyTableSize() {
+  return _compileIssueKeyIds.size;
 }
 
 // A geometry's attribute/morph signature, memoized per geometry. An opening cook keys thousands of
@@ -13877,18 +13889,27 @@ export const render = {
       };
       if (state.mode === 'loading' && this.spaceBg) {
         const bg = this.spaceBg;
+        const skyStarted = prepareNow();
+        // The cosmetic plates get their own few seconds: a slow decode must not hold the loading screen for the whole cook budget.
+        const SKY_UPLOAD_STEP_BUDGET_MS = 4000;
+        let skyTimedOut = false;
         for (const [lane, adopt] of [
           [bg.deepSkyPlates, () => bg._adoptActiveSkyPlate()],
           [bg.deepSkyBases, () => bg._adoptActiveSkyBase()],
         ]) {
           while (lane?.transitioning) {
             if (cookStale()) return cookSuperseded;
-            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS) throw new Error('Opening sky upload exceeded the loading budget');
+            // Fail open like every other bounded step of this cook: a plate that has not decoded inside the
+            // budget (slow network on the hosted build) finishes uploading in flight, as it always did; throwing
+            // here would abandon the census, touch, compile and admission steps after it.
+            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS
+              || prepareNow() - skyStarted >= SKY_UPLOAD_STEP_BUDGET_MS) { skyTimedOut = true; break; }
             await yieldLiveSectorGpu();
             if (cookStale()) return cookSuperseded;
             if (lane.pump({ beforeFlight: true })) adopt();
           }
         }
+        if (skyTimedOut) recordOpeningCookStep(state.render, 'cook.skyUpload', skyStarted, 'timeout');
       }
       if (!scene.environment) this._bakeEnv({ force: true });
       // The envMap stamp walk is a full-scene traverse — drive its chunked twin
@@ -14759,6 +14780,9 @@ export const render = {
           });
           try {
             if (cookStale()) return cookSuperseded;
+            const settleDrawableSession = state.mode === 'loading'
+              ? await mintTouchDrawableSession(scene) : null;
+            if (cookStale()) return cookSuperseded;
             materialSettle = await admitOpeningUnitsAcrossSlices({
               deadlineMs: Math.min(6000, remainingMs()),
               units: uniqueAdmissionUnits(staleSubjects),
@@ -14781,6 +14805,15 @@ export const render = {
                   restore();
                 }
               },
+              touchMany: async (subjects) => {
+                const restores = subjects.map((subject) => revealSubjectWithAncestors(subject));
+                try {
+                  return await touchExactTargetSubjects(subjects, settleDrawableSession);
+                } finally {
+                  for (let index = restores.length - 1; index >= 0; index--) restores[index]();
+                }
+              },
+              touchBatchSize: state.mode === 'loading' ? 4 : 1,
               // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
               // the owner's laptop. The jump shell keeps one item per frame.

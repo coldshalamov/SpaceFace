@@ -1,0 +1,1350 @@
+{
+ "available": true,
+ "status": "ok",
+ "reason": null,
+ "webgl2": true,
+ "extension": "EXT_disjoint_timer_query_webgl2",
+ "enabled": true,
+ "lastDisjoint": false,
+ "pending": 9,
+ "submissionsPaused": false,
+ "lastInvalidation": null,
+ "queryIdentitySchema": "spaceface.gpuTimerQueryTerminal.v1",
+ "queryCounts": {
+  "attempted": 1688,
+  "issued": 1688,
+  "completed": 1679,
+  "pending": 9,
+  "dropped": 0,
+  "rejected": 0
+ },
+ "nextQueryId": 1689,
+ "labels": [
+  "drawPreparedFrame",
+  "bloomScene",
+  "bloomDownsample",
+  "bloomUpsample",
+  "bloomComposite"
+ ],
+ "captureValid": false,
+ "terminals": [
+  {
+   "queryId": 1552,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1236,
+   "renderFrameId": 877,
+   "simTick": 1323,
+   "elapsedMs": 0.406979,
+   "reason": null
+  },
+  {
+   "queryId": 1553,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1236,
+   "renderFrameId": 877,
+   "simTick": 1323,
+   "elapsedMs": 2.716145,
+   "reason": null
+  },
+  {
+   "queryId": 1554,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1237,
+   "renderFrameId": 878,
+   "simTick": 1324,
+   "elapsedMs": 9.061197,
+   "reason": null
+  },
+  {
+   "queryId": 1555,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1237,
+   "renderFrameId": 878,
+   "simTick": 1324,
+   "elapsedMs": 0.499479,
+   "reason": null
+  },
+  {
+   "queryId": 1556,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1237,
+   "renderFrameId": 878,
+   "simTick": 1324,
+   "elapsedMs": 2.712031,
+   "reason": null
+  },
+  {
+   "queryId": 1557,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1238,
+   "renderFrameId": 879,
+   "simTick": 1327,
+   "elapsedMs": 9.676978,
+   "reason": null
+  },
+  {
+   "queryId": 1558,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1238,
+   "renderFrameId": 879,
+   "simTick": 1327,
+   "elapsedMs": 0.414322,
+   "reason": null
+  },
+  {
+   "queryId": 1559,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1238,
+   "renderFrameId": 879,
+   "simTick": 1327,
+   "elapsedMs": 2.708489,
+   "reason": null
+  },
+  {
+   "queryId": 1560,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1239,
+   "renderFrameId": 880,
+   "simTick": 1329,
+   "elapsedMs": 9.139582,
+   "reason": null
+  },
+  {
+   "queryId": 1561,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1239,
+   "renderFrameId": 880,
+   "simTick": 1329,
+   "elapsedMs": 0.587135,
+   "reason": null
+  },
+  {
+   "queryId": 1562,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1239,
+   "renderFrameId": 880,
+   "simTick": 1329,
+   "elapsedMs": 2.97927,
+   "reason": null
+  },
+  {
+   "queryId": 1563,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1240,
+   "renderFrameId": 881,
+   "simTick": 1329,
+   "elapsedMs": 9.078593,
+   "reason": null
+  },
+  {
+   "queryId": 1564,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1240,
+   "renderFrameId": 881,
+   "simTick": 1329,
+   "elapsedMs": 0.572343,
+   "reason": null
+  },
+  {
+   "queryId": 1565,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1240,
+   "renderFrameId": 881,
+   "simTick": 1329,
+   "elapsedMs": 2.709479,
+   "reason": null
+  },
+  {
+   "queryId": 1566,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1241,
+   "renderFrameId": 882,
+   "simTick": 1330,
+   "elapsedMs": 9.803176,
+   "reason": null
+  },
+  {
+   "queryId": 1567,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1241,
+   "renderFrameId": 882,
+   "simTick": 1330,
+   "elapsedMs": 0.440781,
+   "reason": null
+  },
+  {
+   "queryId": 1568,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1241,
+   "renderFrameId": 882,
+   "simTick": 1330,
+   "elapsedMs": 2.975989,
+   "reason": null
+  },
+  {
+   "queryId": 1569,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1242,
+   "renderFrameId": 883,
+   "simTick": 1332,
+   "elapsedMs": 10.335364,
+   "reason": null
+  },
+  {
+   "queryId": 1570,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1242,
+   "renderFrameId": 883,
+   "simTick": 1332,
+   "elapsedMs": 0.501614,
+   "reason": null
+  },
+  {
+   "queryId": 1571,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1242,
+   "renderFrameId": 883,
+   "simTick": 1332,
+   "elapsedMs": 2.979218,
+   "reason": null
+  },
+  {
+   "queryId": 1572,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1243,
+   "renderFrameId": 884,
+   "simTick": 1333,
+   "elapsedMs": 13.421197,
+   "reason": null
+  },
+  {
+   "queryId": 1573,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1243,
+   "renderFrameId": 884,
+   "simTick": 1333,
+   "elapsedMs": 0.734687,
+   "reason": null
+  },
+  {
+   "queryId": 1574,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1243,
+   "renderFrameId": 884,
+   "simTick": 1333,
+   "elapsedMs": 4.250208,
+   "reason": null
+  },
+  {
+   "queryId": 1575,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1244,
+   "renderFrameId": 885,
+   "simTick": 1334,
+   "elapsedMs": 13.662916,
+   "reason": null
+  },
+  {
+   "queryId": 1576,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1244,
+   "renderFrameId": 885,
+   "simTick": 1334,
+   "elapsedMs": 0.617552,
+   "reason": null
+  },
+  {
+   "queryId": 1577,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1244,
+   "renderFrameId": 885,
+   "simTick": 1334,
+   "elapsedMs": 4.249791,
+   "reason": null
+  },
+  {
+   "queryId": 1578,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1245,
+   "renderFrameId": 886,
+   "simTick": 1335,
+   "elapsedMs": 13.432759,
+   "reason": null
+  },
+  {
+   "queryId": 1579,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1245,
+   "renderFrameId": 886,
+   "simTick": 1335,
+   "elapsedMs": 0.747291,
+   "reason": null
+  },
+  {
+   "queryId": 1580,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1245,
+   "renderFrameId": 886,
+   "simTick": 1335,
+   "elapsedMs": 4.249843,
+   "reason": null
+  },
+  {
+   "queryId": 1581,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1246,
+   "renderFrameId": 887,
+   "simTick": 1337,
+   "elapsedMs": 13.578228,
+   "reason": null
+  },
+  {
+   "queryId": 1582,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1246,
+   "renderFrameId": 887,
+   "simTick": 1337,
+   "elapsedMs": 0.619947,
+   "reason": null
+  },
+  {
+   "queryId": 1583,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1246,
+   "renderFrameId": 887,
+   "simTick": 1337,
+   "elapsedMs": 4.248072,
+   "reason": null
+  },
+  {
+   "queryId": 1584,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1247,
+   "renderFrameId": 888,
+   "simTick": 1338,
+   "elapsedMs": 12.964374,
+   "reason": null
+  },
+  {
+   "queryId": 1585,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1247,
+   "renderFrameId": 888,
+   "simTick": 1338,
+   "elapsedMs": 0.611197,
+   "reason": null
+  },
+  {
+   "queryId": 1586,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1247,
+   "renderFrameId": 888,
+   "simTick": 1338,
+   "elapsedMs": 4.246354,
+   "reason": null
+  },
+  {
+   "queryId": 1587,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1248,
+   "renderFrameId": 889,
+   "simTick": 1339,
+   "elapsedMs": 12.640624,
+   "reason": null
+  },
+  {
+   "queryId": 1588,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1248,
+   "renderFrameId": 889,
+   "simTick": 1339,
+   "elapsedMs": 0.663281,
+   "reason": null
+  },
+  {
+   "queryId": 1589,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1248,
+   "renderFrameId": 889,
+   "simTick": 1339,
+   "elapsedMs": 4.24776,
+   "reason": null
+  },
+  {
+   "queryId": 1590,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1249,
+   "renderFrameId": 890,
+   "simTick": 1340,
+   "elapsedMs": 13.232811,
+   "reason": null
+  },
+  {
+   "queryId": 1591,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1249,
+   "renderFrameId": 890,
+   "simTick": 1340,
+   "elapsedMs": 0.712135,
+   "reason": null
+  },
+  {
+   "queryId": 1592,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1249,
+   "renderFrameId": 890,
+   "simTick": 1340,
+   "elapsedMs": 4.245833,
+   "reason": null
+  },
+  {
+   "queryId": 1593,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1250,
+   "renderFrameId": 891,
+   "simTick": 1341,
+   "elapsedMs": 13.327031,
+   "reason": null
+  },
+  {
+   "queryId": 1594,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1250,
+   "renderFrameId": 891,
+   "simTick": 1341,
+   "elapsedMs": 0.744635,
+   "reason": null
+  },
+  {
+   "queryId": 1595,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1250,
+   "renderFrameId": 891,
+   "simTick": 1341,
+   "elapsedMs": 4.251927,
+   "reason": null
+  },
+  {
+   "queryId": 1596,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1251,
+   "renderFrameId": 892,
+   "simTick": 1343,
+   "elapsedMs": 12.891666,
+   "reason": null
+  },
+  {
+   "queryId": 1597,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1251,
+   "renderFrameId": 892,
+   "simTick": 1343,
+   "elapsedMs": 1.110467,
+   "reason": null
+  },
+  {
+   "queryId": 1598,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1251,
+   "renderFrameId": 892,
+   "simTick": 1343,
+   "elapsedMs": 4.246302,
+   "reason": null
+  },
+  {
+   "queryId": 1599,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1252,
+   "renderFrameId": 893,
+   "simTick": 1346,
+   "elapsedMs": 13.54125,
+   "reason": null
+  },
+  {
+   "queryId": 1600,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1252,
+   "renderFrameId": 893,
+   "simTick": 1346,
+   "elapsedMs": 0.620364,
+   "reason": null
+  },
+  {
+   "queryId": 1601,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1252,
+   "renderFrameId": 893,
+   "simTick": 1346,
+   "elapsedMs": 4.248333,
+   "reason": null
+  },
+  {
+   "queryId": 1602,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1253,
+   "renderFrameId": 894,
+   "simTick": 1346,
+   "elapsedMs": 12.252083,
+   "reason": null
+  },
+  {
+   "queryId": 1603,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1253,
+   "renderFrameId": 894,
+   "simTick": 1346,
+   "elapsedMs": 0.612916,
+   "reason": null
+  },
+  {
+   "queryId": 1604,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1253,
+   "renderFrameId": 894,
+   "simTick": 1346,
+   "elapsedMs": 4.243437,
+   "reason": null
+  },
+  {
+   "queryId": 1605,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1254,
+   "renderFrameId": 895,
+   "simTick": 1347,
+   "elapsedMs": 13.551405,
+   "reason": null
+  },
+  {
+   "queryId": 1606,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1254,
+   "renderFrameId": 895,
+   "simTick": 1347,
+   "elapsedMs": 0.734375,
+   "reason": null
+  },
+  {
+   "queryId": 1607,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1254,
+   "renderFrameId": 895,
+   "simTick": 1347,
+   "elapsedMs": 4.249479,
+   "reason": null
+  },
+  {
+   "queryId": 1608,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1255,
+   "renderFrameId": 896,
+   "simTick": 1349,
+   "elapsedMs": 13.05875,
+   "reason": null
+  },
+  {
+   "queryId": 1609,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1255,
+   "renderFrameId": 896,
+   "simTick": 1349,
+   "elapsedMs": 0.614114,
+   "reason": null
+  },
+  {
+   "queryId": 1610,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1255,
+   "renderFrameId": 896,
+   "simTick": 1349,
+   "elapsedMs": 4.247187,
+   "reason": null
+  },
+  {
+   "queryId": 1611,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1256,
+   "renderFrameId": 897,
+   "simTick": 1351,
+   "elapsedMs": 11.781249,
+   "reason": null
+  },
+  {
+   "queryId": 1612,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1256,
+   "renderFrameId": 897,
+   "simTick": 1351,
+   "elapsedMs": 0.680156,
+   "reason": null
+  },
+  {
+   "queryId": 1613,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1256,
+   "renderFrameId": 897,
+   "simTick": 1351,
+   "elapsedMs": 4.24651,
+   "reason": null
+  },
+  {
+   "queryId": 1614,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1257,
+   "renderFrameId": 898,
+   "simTick": 1353,
+   "elapsedMs": 12.571822,
+   "reason": null
+  },
+  {
+   "queryId": 1615,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1257,
+   "renderFrameId": 898,
+   "simTick": 1353,
+   "elapsedMs": 0.614531,
+   "reason": null
+  },
+  {
+   "queryId": 1616,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1257,
+   "renderFrameId": 898,
+   "simTick": 1353,
+   "elapsedMs": 4.243385,
+   "reason": null
+  },
+  {
+   "queryId": 1617,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1258,
+   "renderFrameId": 899,
+   "simTick": 1353,
+   "elapsedMs": 11.89375,
+   "reason": null
+  },
+  {
+   "queryId": 1618,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1258,
+   "renderFrameId": 899,
+   "simTick": 1353,
+   "elapsedMs": 0.616302,
+   "reason": null
+  },
+  {
+   "queryId": 1619,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1258,
+   "renderFrameId": 899,
+   "simTick": 1353,
+   "elapsedMs": 4.245416,
+   "reason": null
+  },
+  {
+   "queryId": 1620,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1259,
+   "renderFrameId": 900,
+   "simTick": 1354,
+   "elapsedMs": 12.183072,
+   "reason": null
+  },
+  {
+   "queryId": 1621,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1259,
+   "renderFrameId": 900,
+   "simTick": 1354,
+   "elapsedMs": 0.610104,
+   "reason": null
+  },
+  {
+   "queryId": 1622,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1259,
+   "renderFrameId": 900,
+   "simTick": 1354,
+   "elapsedMs": 4.02875,
+   "reason": null
+  },
+  {
+   "queryId": 1623,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1260,
+   "renderFrameId": 901,
+   "simTick": 1355,
+   "elapsedMs": 8.191979,
+   "reason": null
+  },
+  {
+   "queryId": 1624,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1260,
+   "renderFrameId": 901,
+   "simTick": 1355,
+   "elapsedMs": 0.401041,
+   "reason": null
+  },
+  {
+   "queryId": 1625,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1260,
+   "renderFrameId": 901,
+   "simTick": 1355,
+   "elapsedMs": 2.702395,
+   "reason": null
+  },
+  {
+   "queryId": 1626,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1261,
+   "renderFrameId": 902,
+   "simTick": 1356,
+   "elapsedMs": 9.323645,
+   "reason": null
+  },
+  {
+   "queryId": 1627,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1261,
+   "renderFrameId": 902,
+   "simTick": 1356,
+   "elapsedMs": 0.479843,
+   "reason": null
+  },
+  {
+   "queryId": 1628,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1261,
+   "renderFrameId": 902,
+   "simTick": 1356,
+   "elapsedMs": 2.97651,
+   "reason": null
+  },
+  {
+   "queryId": 1629,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1262,
+   "renderFrameId": 903,
+   "simTick": 1357,
+   "elapsedMs": 9.039374,
+   "reason": null
+  },
+  {
+   "queryId": 1630,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1262,
+   "renderFrameId": 903,
+   "simTick": 1357,
+   "elapsedMs": 0.602447,
+   "reason": null
+  },
+  {
+   "queryId": 1631,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1262,
+   "renderFrameId": 903,
+   "simTick": 1357,
+   "elapsedMs": 2.974531,
+   "reason": null
+  },
+  {
+   "queryId": 1632,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1263,
+   "renderFrameId": 904,
+   "simTick": 1358,
+   "elapsedMs": 9.15302,
+   "reason": null
+  },
+  {
+   "queryId": 1633,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1263,
+   "renderFrameId": 904,
+   "simTick": 1358,
+   "elapsedMs": 0.442708,
+   "reason": null
+  },
+  {
+   "queryId": 1634,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1263,
+   "renderFrameId": 904,
+   "simTick": 1358,
+   "elapsedMs": 2.971302,
+   "reason": null
+  },
+  {
+   "queryId": 1635,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1264,
+   "renderFrameId": 905,
+   "simTick": 1359,
+   "elapsedMs": 10.279999,
+   "reason": null
+  },
+  {
+   "queryId": 1636,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1264,
+   "renderFrameId": 905,
+   "simTick": 1359,
+   "elapsedMs": 0.445677,
+   "reason": null
+  },
+  {
+   "queryId": 1637,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1264,
+   "renderFrameId": 905,
+   "simTick": 1359,
+   "elapsedMs": 2.973645,
+   "reason": null
+  },
+  {
+   "queryId": 1638,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1265,
+   "renderFrameId": 906,
+   "simTick": 1359,
+   "elapsedMs": 11.791874,
+   "reason": null
+  },
+  {
+   "queryId": 1639,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1265,
+   "renderFrameId": 906,
+   "simTick": 1359,
+   "elapsedMs": 0.716406,
+   "reason": null
+  },
+  {
+   "queryId": 1640,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1265,
+   "renderFrameId": 906,
+   "simTick": 1359,
+   "elapsedMs": 4.26,
+   "reason": null
+  },
+  {
+   "queryId": 1641,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1266,
+   "renderFrameId": 907,
+   "simTick": 1359,
+   "elapsedMs": 11.854634,
+   "reason": null
+  },
+  {
+   "queryId": 1642,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1266,
+   "renderFrameId": 907,
+   "simTick": 1359,
+   "elapsedMs": 0.648697,
+   "reason": null
+  },
+  {
+   "queryId": 1643,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1266,
+   "renderFrameId": 907,
+   "simTick": 1359,
+   "elapsedMs": 4.242239,
+   "reason": null
+  },
+  {
+   "queryId": 1644,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1267,
+   "renderFrameId": 908,
+   "simTick": 1361,
+   "elapsedMs": 12.067916,
+   "reason": null
+  },
+  {
+   "queryId": 1645,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1267,
+   "renderFrameId": 908,
+   "simTick": 1361,
+   "elapsedMs": 0.732968,
+   "reason": null
+  },
+  {
+   "queryId": 1646,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1267,
+   "renderFrameId": 908,
+   "simTick": 1361,
+   "elapsedMs": 4.243541,
+   "reason": null
+  },
+  {
+   "queryId": 1647,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1268,
+   "renderFrameId": 909,
+   "simTick": 1365,
+   "elapsedMs": 12.268019,
+   "reason": null
+  },
+  {
+   "queryId": 1648,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1268,
+   "renderFrameId": 909,
+   "simTick": 1365,
+   "elapsedMs": 0.613854,
+   "reason": null
+  },
+  {
+   "queryId": 1649,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1268,
+   "renderFrameId": 909,
+   "simTick": 1365,
+   "elapsedMs": 4.241197,
+   "reason": null
+  },
+  {
+   "queryId": 1650,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1269,
+   "renderFrameId": 910,
+   "simTick": 1367,
+   "elapsedMs": 12.038593,
+   "reason": null
+  },
+  {
+   "queryId": 1651,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1269,
+   "renderFrameId": 910,
+   "simTick": 1367,
+   "elapsedMs": 0.61276,
+   "reason": null
+  },
+  {
+   "queryId": 1652,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1269,
+   "renderFrameId": 910,
+   "simTick": 1367,
+   "elapsedMs": 4.240312,
+   "reason": null
+  },
+  {
+   "queryId": 1653,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1270,
+   "renderFrameId": 911,
+   "simTick": 1369,
+   "elapsedMs": 11.736717,
+   "reason": null
+  },
+  {
+   "queryId": 1654,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1270,
+   "renderFrameId": 911,
+   "simTick": 1369,
+   "elapsedMs": 0.675677,
+   "reason": null
+  },
+  {
+   "queryId": 1655,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1270,
+   "renderFrameId": 911,
+   "simTick": 1369,
+   "elapsedMs": 4.242812,
+   "reason": null
+  },
+  {
+   "queryId": 1656,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1271,
+   "renderFrameId": 912,
+   "simTick": 1371,
+   "elapsedMs": 11.676145,
+   "reason": null
+  },
+  {
+   "queryId": 1657,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1271,
+   "renderFrameId": 912,
+   "simTick": 1371,
+   "elapsedMs": 0.616145,
+   "reason": null
+  },
+  {
+   "queryId": 1658,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1271,
+   "renderFrameId": 912,
+   "simTick": 1371,
+   "elapsedMs": 4.236718,
+   "reason": null
+  },
+  {
+   "queryId": 1659,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1272,
+   "renderFrameId": 913,
+   "simTick": 1371,
+   "elapsedMs": 10.523645,
+   "reason": null
+  },
+  {
+   "queryId": 1660,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1272,
+   "renderFrameId": 913,
+   "simTick": 1371,
+   "elapsedMs": 0.610052,
+   "reason": null
+  },
+  {
+   "queryId": 1661,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1272,
+   "renderFrameId": 913,
+   "simTick": 1371,
+   "elapsedMs": 4.236197,
+   "reason": null
+  },
+  {
+   "queryId": 1662,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1273,
+   "renderFrameId": 914,
+   "simTick": 1371,
+   "elapsedMs": 10.559687,
+   "reason": null
+  },
+  {
+   "queryId": 1663,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1273,
+   "renderFrameId": 914,
+   "simTick": 1371,
+   "elapsedMs": 0.61125,
+   "reason": null
+  },
+  {
+   "queryId": 1664,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1273,
+   "renderFrameId": 914,
+   "simTick": 1371,
+   "elapsedMs": 4.236406,
+   "reason": null
+  },
+  {
+   "queryId": 1665,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1274,
+   "renderFrameId": 915,
+   "simTick": 1372,
+   "elapsedMs": 12.106301,
+   "reason": null
+  },
+  {
+   "queryId": 1666,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1274,
+   "renderFrameId": 915,
+   "simTick": 1372,
+   "elapsedMs": 0.763072,
+   "reason": null
+  },
+  {
+   "queryId": 1667,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1274,
+   "renderFrameId": 915,
+   "simTick": 1372,
+   "elapsedMs": 4.239583,
+   "reason": null
+  },
+  {
+   "queryId": 1668,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1275,
+   "renderFrameId": 916,
+   "simTick": 1374,
+   "elapsedMs": 5.609218,
+   "reason": null
+  },
+  {
+   "queryId": 1669,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1275,
+   "renderFrameId": 916,
+   "simTick": 1374,
+   "elapsedMs": 0.609583,
+   "reason": null
+  },
+  {
+   "queryId": 1670,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1275,
+   "renderFrameId": 916,
+   "simTick": 1374,
+   "elapsedMs": 4.263177,
+   "reason": null
+  },
+  {
+   "queryId": 1671,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1276,
+   "renderFrameId": 917,
+   "simTick": 1375,
+   "elapsedMs": 4.959791,
+   "reason": null
+  },
+  {
+   "queryId": 1672,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1276,
+   "renderFrameId": 917,
+   "simTick": 1375,
+   "elapsedMs": 1.299999,
+   "reason": null
+  },
+  {
+   "queryId": 1673,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1276,
+   "renderFrameId": 917,
+   "simTick": 1375,
+   "elapsedMs": 4.261354,
+   "reason": null
+  },
+  {
+   "queryId": 1674,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1277,
+   "renderFrameId": 918,
+   "simTick": 1379,
+   "elapsedMs": 5.057447,
+   "reason": null
+  },
+  {
+   "queryId": 1675,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1277,
+   "renderFrameId": 918,
+   "simTick": 1379,
+   "elapsedMs": 0.733802,
+   "reason": null
+  },
+  {
+   "queryId": 1676,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1277,
+   "renderFrameId": 918,
+   "simTick": 1379,
+   "elapsedMs": 4.237604,
+   "reason": null
+  },
+  {
+   "queryId": 1677,
+   "label": "bloomScene",
+   "state": "completed",
+   "displayFrameId": 1278,
+   "renderFrameId": 919,
+   "simTick": 1381,
+   "elapsedMs": 4.873072,
+   "reason": null
+  },
+  {
+   "queryId": 1678,
+   "label": "bloomDownsample",
+   "state": "completed",
+   "displayFrameId": 1278,
+   "renderFrameId": 919,
+   "simTick": 1381,
+   "elapsedMs": 0.633385,
+   "reason": null
+  },
+  {
+   "queryId": 1679,
+   "label": "bloomComposite",
+   "state": "completed",
+   "displayFrameId": 1278,
+   "renderFrameId": 919,
+   "simTick": 1381,
+   "elapsedMs": 4.251041,
+   "reason": null
+  }
+ ],
+ "passes": {
+  "drawPreparedFrame": {
+   "last": 0,
+   "avg": 0,
+   "max": 0,
+   "samples": 0
+  },
+  "bloomScene": {
+   "last": 4.873072,
+   "avg": 11.969559656249986,
+   "max": 28.483801,
+   "samples": 64
+  },
+  "bloomDownsample": {
+   "last": 0.633385,
+   "avg": 0.6348530156249995,
+   "max": 1.299999,
+   "samples": 64
+  },
+  "bloomUpsample": {
+   "last": 0,
+   "avg": 0,
+   "max": 0,
+   "samples": 0
+  },
+  "bloomComposite": {
+   "last": 4.251041,
+   "avg": 3.9423424531249935,
+   "max": 8.645416,
+   "samples": 64
+  },
+  "weaponDistortion": {
+   "last": 0.067031,
+   "avg": 0.08377559090909091,
+   "max": 0.49651,
+   "samples": 44
+  }
+ }
+}
