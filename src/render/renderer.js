@@ -1695,23 +1695,18 @@ export function openingCompileIssueKey(subject) {
     ? subject.material.filter(Boolean)
     : (subject.material ? [subject.material] : []);
   if (materials.length === 0) return null;
-  const parts = [];
-  for (const material of materials) {
-    const key = compileIssueMaterialKey(material);
+  // Each material's full signature is multi-KB (shader source + customProgramCacheKey). Interned to
+  // a compact id once per distinct signature, so a subject's key is short: the dedupe Set hashes a
+  // few dozen characters per subject instead of rebuilding and hashing KBs for every one of the
+  // thousands of subjects an opening cook walks (0.9 s of main thread in the 2026-10-13 launch profile).
+  let parts = '';
+  for (let i = 0; i < materials.length; i++) {
+    const key = compileIssueMaterialKey(materials[i]);
     if (!key) return null;
-    parts.push(key);
+    parts += (i > 0 ? ',' : '') + internCompileIssueKey(key);
   }
   const geometry = subject.geometry;
-  const attributes = geometry && geometry.attributes
-    ? Object.keys(geometry.attributes).sort()
-      .map((name) => `${name}:${geometry.attributes[name] ? geometry.attributes[name].itemSize : ''}`)
-      .join(',')
-    : '';
-  const morphs = geometry && geometry.morphAttributes
-    ? Object.keys(geometry.morphAttributes).sort()
-      .map((name) => `${name}:${geometry.morphAttributes[name] ? geometry.morphAttributes[name].length : ''}`)
-      .join(',')
-    : '';
+  const { attributes, morphs } = compileIssueGeometrySignature(geometry);
   const drawClass = (subject.isInstancedMesh === true ? 'I' : '')
     + (subject.isSkinnedMesh === true ? 'S' : '')
     + (subject.isBatchedMesh === true ? 'B' : '')
@@ -1724,7 +1719,81 @@ export function openingCompileIssueKey(subject) {
     + `${subject.isInstancedMesh === true && subject.instanceColor != null ? '|ic' : ''}`
     + `${subject.isInstancedMesh === true && subject.morphTexture != null ? '|im' : ''}`
     + `${subject.isBatchedMesh === true && subject._colorsTexture != null ? '|bc' : ''}`
-    + `|${parts.join('|')}`;
+    + `|m${parts}`;
+}
+
+// Long material signature -> compact id. Equal signatures share an id, so the key still dedupes
+// exactly the subjects whose full signatures were equal; the table holds one string per distinct
+// signature instead of one composite per subject.
+const _compileIssueKeyIds = new Map();
+
+function internCompileIssueKey(longKey) {
+  let id = _compileIssueKeyIds.get(longKey);
+  if (id === undefined) {
+    id = _compileIssueKeyIds.size + 1;
+    _compileIssueKeyIds.set(longKey, id);
+  }
+  return id;
+}
+
+// A geometry's attribute/morph signature, memoized per geometry. An opening cook keys thousands of
+// subjects that share a few hundred geometries; sorting and joining the attribute names for each one
+// was the largest self-time in the key builder. The memo is validated against the identity and size
+// of both attribute tables plus an allocation-free shape (count and item sizes; morph array lengths),
+// so an attribute added or replaced by a wider one, or a morph array swapped, re-derives the string.
+const _compileIssueGeometrySignatures = new WeakMap();
+
+// One allocation-free pass: attribute count and the sum of their item sizes. Together they catch an
+// attribute added, removed, or replaced by one of a different width (a 3- vs 4-component color).
+function attributeShape(table) {
+  let count = 0;
+  let items = 0;
+  for (const name in table) {
+    const attribute = table[name];
+    count++;
+    items += attribute && typeof attribute.itemSize === 'number' ? attribute.itemSize : 0;
+  }
+  return count * 4096 + items;
+}
+
+function compileIssueGeometrySignature(geometry) {
+  if (!geometry) return { attributes: '', morphs: '' };
+  const attrs = geometry.attributes;
+  const morphAttrs = geometry.morphAttributes;
+  const attrShape = attrs ? attributeShape(attrs) : 0;
+  const morphShape = morphAttrs ? morphLengthSum(morphAttrs) : 0;
+  const memo = _compileIssueGeometrySignatures.get(geometry);
+  if (memo && memo.attrs === attrs && memo.morphAttrs === morphAttrs
+    && memo.attrShape === attrShape && memo.morphShape === morphShape) {
+    return memo;
+  }
+  const attributes = attrs
+    ? Object.keys(attrs).sort()
+      .map((name) => `${name}:${attrs[name] ? attrs[name].itemSize : ''}`)
+      .join(',')
+    : '';
+  const morphs = morphAttrs
+    ? Object.keys(morphAttrs).sort()
+      .map((name) => `${name}:${morphAttrs[name] ? morphAttrs[name].length : ''}`)
+      .join(',')
+    : '';
+  const fresh = {
+    attrs, morphAttrs, attrShape, morphShape, attributes, morphs,
+  };
+  _compileIssueGeometrySignatures.set(geometry, fresh);
+  return fresh;
+}
+
+// Morph arrays are replaced or grown in place in a few authored paths; their total length is the
+// cheap proof the memoized string still describes them.
+function morphLengthSum(morphAttrs) {
+  if (!morphAttrs) return 0;
+  let total = 0;
+  for (const name in morphAttrs) {
+    const list = morphAttrs[name];
+    total += list && typeof list.length === 'number' ? list.length : 0;
+  }
+  return total;
 }
 
 /**

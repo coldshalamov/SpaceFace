@@ -1,3 +1,4 @@
+import { mayForceWarmSlice } from './idleWarmPolicy.js';
 import { messages as spanishMessages } from './catalogs/es-ES.js';
 import { messages as frenchMessages } from './catalogs/fr-FR.js';
 import { messages as germanMessages } from './catalogs/de-DE.js';
@@ -236,7 +237,8 @@ if (typeof window !== 'undefined') {
     if (typeof window.requestIdleCallback !== 'function') { setTimeout(step, 0); return; }
     window.requestIdleCallback((deadline) => {
       // A main thread that never idles still converges: a timed-out callback takes one slice.
-      if (deadline.didTimeout && warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])) {
+      if (mayForceWarmSlice({ didTimeout: deadline.didTimeout, doc: window.document })
+        && warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])) {
         if (warmTranslatedCatalog(warmQueue[warmIndex], 120)) warmIndex += 1;
       }
       while (warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])
