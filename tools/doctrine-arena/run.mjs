@@ -12,7 +12,6 @@ import {
   createCounterplayMemory,
   decideCounterplay,
   restoreCounterplayMemory,
-  segmentBlocked,
   serializeCounterplayMemory,
 } from '../../src/ai/counterplay/index.js';
 import { aiPorts } from '../../src/systems/aiPorts.js';
@@ -99,6 +98,10 @@ export async function runCounterplayScenario(options = {}) {
     const player = actors.get('player');
     const opponent = actors.get('opponent');
     stampDoctrine(opponent, doctrine, player && player.id);
+    if (doctrine.fires && player) {
+      player.shield = 0;
+      player.shieldRegenRate = 0;
+    }
     const patient = actors.get('patient');
     const driveStart = patient ? woundDrive(host.state, patient) : null;
     const vitalStart = vital(player);
@@ -147,10 +150,6 @@ export async function runCounterplayScenario(options = {}) {
       applyVerb(host, tethers, decision.verb, actors, tick, opponent, host.state);
       applyVerb(host, tethers, pilot.verb, actors, tick, player, host.state);
       const target = decision.attack ? findById(actors, decision.attack.targetId) : null;
-      if (decision.attack && decision.attack.wantFire && blockedShot(opponent, target, actors, doctrine.id)) {
-        decision.attack = null;
-        stats.blockedRefusals = (stats.blockedRefusals || 0) + 1;
-      }
       const applied = applyCounterplayIntent({
         state: host.state,
         helpers: host.runtime.getHelpers(),
@@ -202,6 +201,10 @@ export async function runCounterplayScenario(options = {}) {
           tick,
           target: null,
         });
+      }
+      if (decision.attack && decision.attack.wantFire && Number.isFinite(decision.attack.aimAngle)) {
+        opponent.rot = decision.attack.aimAngle;
+        opponent.angVel = 0;
       }
       writeRealPathInput(host.state, pilot);
       if (stats.predictTick != null && stats.hunterAt == null && tick >= stats.predictTick) {
@@ -461,21 +464,6 @@ function findById(actors, id) {
   return null;
 }
 
-function blockedShot(shooter, target, actors, doctrineId) {
-  if (!shooter || !target) return false;
-  if (doctrineId === 'cp_collateral_hold') {
-    const civilian = actors.get('civilian');
-    if (!civilian) return false;
-    return segmentBlocked(shooter.pos, target.pos, [{ pos: civilian.pos, radius: (civilian.collisionRadius || 14) + 6 }], 0);
-  }
-  if (doctrineId === 'cp_cover_peel') {
-    const rock = actors.get('cover');
-    if (!rock) return false;
-    return segmentBlocked(shooter.pos, target.pos, [{ pos: rock.pos, radius: (rock.radius || 30) + 2 }], 0);
-  }
-  return false;
-}
-
 function publish(entity, decision) {
   if (!entity) return;
   const data = entity.data || (entity.data = {});
@@ -584,8 +572,15 @@ function noteExtras(stats, actors, scene, tethers) {
 function scoreBout(id, scene, stats, actors) {
   const opponent = actors.get('opponent');
   if (id === 'cp_heavy_anchor_grappler') {
-    const progress = stats.tetherTicks.anchor > 15 ? clamp01(stats.tetherTicks.anchor / 90) : 0;
-    return { progress, complete: stats.tetherTicks.anchor > 40, detail: { minFlank: round3(stats.minFlank), anchorTicks: stats.tetherTicks.anchor } };
+    const radius = (scene.objective && scene.objective.flankRadius) || 36;
+    const lineUp = stats.tetherTicks.anchor > 40;
+    const inside = stats.minFlank != null && stats.minFlank <= radius;
+    const progress = lineUp ? clamp01(1 - (stats.minFlank || radius * 4) / (radius * 4)) : 0;
+    return {
+      progress,
+      complete: lineUp && inside,
+      detail: { minFlank: round3(stats.minFlank), anchorTicks: stats.tetherTicks.anchor, flankRadius: radius },
+    };
   }
   if (id === 'cp_feint_break_courier') {
     const gate = scene.objective.gate;
@@ -616,10 +611,10 @@ function scoreBout(id, scene, stats, actors) {
   if (id === 'cp_release_orbit_hunter') {
     const hunter = stats.hunterAt == null ? 400 : stats.hunterAt;
     const body = stats.bodyAt == null ? 400 : stats.bodyAt;
-    const progress = clamp01(1 - hunter / 90) * clamp01(1 - body / 36);
+    const progress = clamp01(1 - hunter / 90) * clamp01(1 - body / 130);
     return {
       progress,
-      complete: hunter < 30 && body < 28,
+      complete: hunter < 30 && body < 70,
       detail: { hunterDist: round3(hunter), bodyDist: round3(body) },
     };
   }

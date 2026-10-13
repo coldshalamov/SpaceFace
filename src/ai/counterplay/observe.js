@@ -162,7 +162,9 @@ export function predictReleasePoint(anchor, body, ticksAhead) {
   const tx = -rz / radius;
   const tz = rx / radius;
   const tangential = num(body.vel && body.vel.x) * tx + num(body.vel && body.vel.z) * tz;
-  const omega = tangential / radius;
+  // The live massline and hull drag bleed orbital speed. A constant-omega coast
+  // over-runs the body the hunter is trying to meet.
+  const omega = (tangential / radius) * 0.62;
   const angle = Math.atan2(rz, rx) + omega * (num(ticksAhead) / 60);
   return {
     x: anchor.pos.x + Math.cos(angle) * radius,

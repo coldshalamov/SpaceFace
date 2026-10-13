@@ -41,10 +41,7 @@ function aimAt(self, target) {
 export function pilotIntent(pilotId, ctx) {
   if (pilotId === 'stationary') return toInput(ctx.player, holdManeuver(ctx.player));
   if (ctx.scene && ctx.scene.doctrineId === 'cp_feint_break_courier' && ctx.scene.tape === 'resists') {
-    const feint = ctx.scene.objective && ctx.scene.objective.feint;
-    return toInput(ctx.player, feint
-      ? steerToward(ctx.player, feint, { boost: true, boostDist: 30 })
-      : holdManeuver(ctx.player));
+    return toInput(ctx.player, holdManeuver(ctx.player));
   }
   if (pilotId === 'counter' || (ctx.scene && ctx.scene.tape === 'counter' && pilotId === ctx.scene.pilotId && pilotId !== 'close_booster' && pilotId !== 'rope_manipulator' && pilotId !== 'evasive' && pilotId !== 'civilian_protector')) {
     return counterIntent(ctx);
@@ -148,20 +145,22 @@ function counterIntent(ctx) {
     const civilian = actor(ctx, 'civilian');
     const threat = actor(ctx, 'opponent');
     if (!civilian || !threat) return holdInput(self);
-    return toInput(self, steerToward(self, hideBehind(civilian.pos, threat.pos, 78), {
-      arrive: 14,
-      brakeDist: 18,
-      brakeSpeed: 5,
+    return toInput(self, steerToward(self, hideBehind(civilian.pos, threat.pos, 64), {
+      arrive: 10,
+      brakeDist: 14,
+      brakeSpeed: 4,
     }));
   }
   if (id === 'cp_cover_peel') {
     const rock = actor(ctx, 'cover');
     const threat = actor(ctx, 'opponent');
-    if (!rock || !threat) return holdInput(self);
-    return toInput(self, steerToward(self, hideBehind(rock.pos, threat.pos, 86), {
-      arrive: 14,
-      brakeDist: 18,
-      brakeSpeed: 5,
+    const peel = cue && cue.cue && cue.cue.peel;
+    const away = peel || (threat && threat.pos);
+    if (!rock || !away) return holdInput(self);
+    return toInput(self, steerToward(self, hideBehind(rock.pos, away, 52), {
+      arrive: 8,
+      brakeDist: 12,
+      brakeSpeed: 3,
     }));
   }
   const mechanic = actor(ctx, 'opponent');
@@ -187,6 +186,9 @@ function hideBehind(blocker, threat, distance) {
 }
 
 export function idleManeuver(role, tethered) {
+  if (role === 'orbit_body') {
+    return { targetHeading: 0, forward: 0, right: 0, torqueYaw: 0, brake: false, boost: false };
+  }
   if (role === 'patient' && tethered) {
     return { targetHeading: 0, forward: 0, right: 0, torqueYaw: 0, brake: false, boost: false };
   }

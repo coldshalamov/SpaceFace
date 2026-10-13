@@ -83,15 +83,25 @@ export function buildCounterplayScene(doctrineId, options = {}) {
   const opponent = ship('opponent', hullId, layout.opponent, 1, {
     fittings: guns,
     vel: layout.opponentVel,
+    rot: layout.opponentRot,
   });
   const hulls = [
-    ship('player', 'ship_kestrel', layout.player, 0),
+    ship('player', 'ship_kestrel', layout.player, 0, { rot: layout.playerRot }),
     opponent,
   ];
   if (doctrine.id === 'cp_corridor_pack_leader' && (options.tape === 'counter' || options.pilotId === 'counter')) {
     hulls[0].pos = { x: layout.objective.lane.x, z: layout.objective.lane.z };
   }
   for (const extra of layout.ships || []) hulls.push(extra);
+  if (layout.shift) {
+    const { x: sx, z: sz } = layout.shift;
+    const move = (p) => { if (p) { p.x += sx; p.z += sz; } };
+    for (const body of hulls) move(body.pos);
+    for (const body of layout.rocks) move(body.pos);
+    for (const value of Object.values(layout.objective)) {
+      if (value && Number.isFinite(value.x) && Number.isFinite(value.z)) move(value);
+    }
+  }
   const rocks = layout.rocks.slice();
   if (options.terrain === 'cover') {
     rocks.push(rock('terrain_cover', {
@@ -132,12 +142,13 @@ function layoutFor(id, s, scale, jx, jz) {
     const anchor = { x: s * 0.42 + jx, z: jz };
     return {
       player,
-      opponent: { x: anchor.x, z: anchor.z + 100 * scale },
+      opponent: { x: anchor.x, z: anchor.z + 90 },
       rocks: [rock('anchor', anchor, { radius: 28, mass: 4000 })],
       objective: {
         anchor,
         anchorId: null,
-        flank: { x: anchor.x + 10, z: anchor.z - 130 * scale },
+        flank: { x: anchor.x + 60, z: anchor.z },
+        flankRadius: 36,
       },
     };
   }
@@ -151,16 +162,17 @@ function layoutFor(id, s, scale, jx, jz) {
         feint: { x: 280, z: 30 },
         gate,
       },
+      shift: { x: jx, z: jz },
     };
   }
   if (id === 'cp_corridor_pack_leader') {
-    const lane = { x: 170, z: -20 };
-    const exit = { x: lane.x + 150, z: -20 };
-    const park = { x: 60, z: 160 };
+    const lane = { x: 170 + jx, z: -20 + jz };
+    const exit = { x: lane.x + 150, z: lane.z };
+    const park = { x: 60 + jx, z: 160 + jz };
     return {
-      player: { x: 0, z: 0 },
-      opponent: { x: 30, z: 50 },
-      ships: [ship('packmate', 'ship_wasp', { x: 24, z: -70 }, 1)],
+      player: { x: jx * 0.2, z: jz * 0.2 },
+      opponent: { x: 30 + jx * 0.4, z: 50 + jz * 0.4 },
+      ships: [ship('packmate', 'ship_wasp', { x: 24 + jx * 0.3, z: -70 + jz * 0.3 }, 1)],
       rocks: [],
       objective: { leaderPark: park, lane, exit },
     };
@@ -197,15 +209,9 @@ function layoutFor(id, s, scale, jx, jz) {
     return {
       player: { x: -220, z: -180 },
       opponent: { x: anchor.x + 16, z: anchor.z + 150 },
+      ships: [ship('orbit_body', 'ship_wasp', body, 2, { vel: { x: 0, z: 40 } })],
       rocks: [
         rock('orbit_anchor', anchor, { radius: 16, mass: 5000 }),
-        rock('orbit_body', body, {
-          radius: 8,
-          mass: 50,
-          dynamic: true,
-          hull: 200,
-          vel: { x: 0, z: 40 },
-        }),
       ],
       initialTethers: [{ id: 'orbit-line', ownerRole: 'orbit_body', targetRole: 'orbit_anchor', restLength: 110 }],
       objective: {
@@ -223,10 +229,10 @@ function layoutFor(id, s, scale, jx, jz) {
     };
   }
   if (id === 'cp_collateral_hold') {
-    const shooter = { x: Math.max(200, s * 0.85), z: jz * 0.2 };
-    const civilian = { x: shooter.x * 0.48, z: shooter.z };
+    const shooter = { x: 168 + jx, z: jz };
+    const civilian = { x: shooter.x * 0.46, z: shooter.z * 0.46 };
     return {
-      player,
+      player: { x: jx * 0.15, z: jz * 0.15 },
       opponent: shooter,
       ships: [ship('civilian', 'ship_wasp', civilian, 2)],
       rocks: [],
@@ -234,7 +240,7 @@ function layoutFor(id, s, scale, jx, jz) {
     };
   }
   if (id === 'cp_cover_peel') {
-    const cover = { x: 130 * scale, z: jz * 0.2 };
+    const cover = { x: 130 * scale + jx, z: 0 };
     return {
       player: { x: cover.x - 90, z: cover.z },
       opponent: { x: cover.x + 90, z: cover.z },
@@ -243,7 +249,7 @@ function layoutFor(id, s, scale, jx, jz) {
         cover,
         coverRadius: 30,
         hide: { x: cover.x + 58, z: cover.z },
-        peel: { x: cover.x + 70, z: cover.z + 80 },
+        peel: { x: cover.x + 40, z: cover.z + 150 },
         player: { x: cover.x - 90, z: cover.z },
       },
     };

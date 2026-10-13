@@ -283,6 +283,21 @@ test('held-out arena separates counters and stays on the real physics', async ()
   }
   const corridor = grouped.get('cp_corridor_pack_leader');
   assert.ok(corridor.resists.every((row) => row.telegraphTicks >= 30 && row.goalProgress > 0.5));
+  assert.ok(corridor.counter.every((row, i) => row.detail.exitDist > corridor.resists[i].detail.exitDist + 40));
+  const collateralDamage = grouped.get('cp_collateral_hold');
+  for (let i = 0; i < HELD_OUT_SEEDS.length; i += 1) {
+    assert.ok(collateralDamage.resists[i].playerDamage > collateralDamage.counter[i].playerDamage);
+  }
+  const grappler = grouped.get('cp_heavy_anchor_grappler');
+  for (const row of grappler.resists) {
+    assert.ok(row.detail.anchorTicks > 40, JSON.stringify(row.detail));
+    assert.ok(row.detail.minFlank <= row.detail.flankRadius, JSON.stringify(row.detail));
+  }
+  for (const id of ['cp_feint_break_courier', 'cp_corridor_pack_leader', 'cp_collateral_hold', 'cp_cover_peel', 'cp_heavy_anchor_grappler']) {
+    const poses = HELD_OUT_SEEDS.map((seed) => grouped.get(id).resists.find((row) => row.seed === seed).end.opponent);
+    assert.notDeepEqual(poses[0], poses[1], id);
+    assert.notDeepEqual(poses[1], poses[2], id);
+  }
   const collateral = grouped.get('cp_collateral_hold');
   assert.ok(collateral.resists.every((row) => row.telegraphTicks >= 30));
   assert.ok(collateral.resists.concat(collateral.counter).every((row) => row.opponentWeapons >= 1));
