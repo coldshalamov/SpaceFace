@@ -1,7 +1,7 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
 import {
-  definePropertyBase, detachData, liveObjectsIn, protectLiveObjects, readAccessor,
-  snapshotInheritedArrays, unprotectLiveObjects,
+  captureAccessorTrees, definePropertyBase, detachData, liveObjectsIn, protectLiveObjects,
+  readAccessor, restoreOwnShadows, snapshotInheritedArrays, unprotectLiveObjects,
 } from './stableJson.mjs';
 
 const CAP = 100;
@@ -36,6 +36,7 @@ let activeShields = null;
 let activeAccessors = null;
 let activeSetters = null;
 let activeArrays = null;
+let activeShadows = null;
 
 function dataGrid(scene) {
   if (!canHostGrid(scene)) return null;
@@ -374,6 +375,7 @@ function publish(value) {
   if (activeAccessors) restoreAccessors(activeAccessors);
   const settersStuck = restoreSetters(activeSetters);
   const arraysStuck = restoreArrays(activeArrays);
+  restoreOwnShadows(activeShadows);
   if (activeShields) restoreShieldList(activeShields);
   const map = activeShields ? replacementMap(activeShields) : new Map();
   const failed = settersStuck || arraysStuck || !!(value && value.ok === false);
@@ -429,16 +431,36 @@ function runShielded(scenes, fn) {
   const previousAccessors = activeAccessors;
   const previousSetters = activeSetters;
   const previousArrays = activeArrays;
+  const previousShadows = activeShadows;
   activeShields = shieldScenes(scenes);
   activeAccessors = scenesNeedAccessors(scenes) ? snapshotAccessors(scenes) : [];
   activeSetters = snapshotSetters(scenes);
   activeArrays = snapshotArrays(scenes);
   const protectedLive = liveObjectsIn(scenes);
+  const shadows = [];
+  for (const scene of scenes) captureAccessorTrees(scene, new Set(), shadows, true, false, []);
   for (const entry of activeAccessors) {
     if (entry.value && typeof entry.value === 'object') {
       for (const object of liveObjectsIn([entry.value])) protectedLive.add(object);
+      captureAccessorTrees(entry.value, new Set(), shadows, true, true, []);
     }
   }
+  for (const record of shadows) {
+    if (record && record.object) protectedLive.add(record.object);
+    if (record && record.kind === 'ownNames') {
+      for (const entry of snapshotInheritedArrays(record.object)) {
+        if (!activeArrays.some((row) => row.array === entry.array)) {
+          activeArrays.push({
+            array: entry.array,
+            length: entry.length,
+            items: entry.items.map((value) => ({ kind: 'data', value })),
+          });
+        }
+        protectedLive.add(entry.array);
+      }
+    }
+  }
+  activeShadows = shadows;
   for (const entry of activeArrays) {
     if (Array.isArray(entry.array)) protectedLive.add(entry.array);
   }
@@ -451,6 +473,7 @@ function runShielded(scenes, fn) {
     activeAccessors = previousAccessors;
     activeSetters = previousSetters;
     activeArrays = previousArrays;
+    activeShadows = previousShadows;
   }
 }
 
@@ -459,12 +482,12 @@ function snapshotSetters(scenes) {
   const seen = new Set();
   for (const scene of scenes) collectSetters(scene, entries, seen);
   for (const entry of activeAccessors || []) {
-    if (entry.value && typeof entry.value === 'object') collectSetters(entry.value, entries, seen);
+    if (entry.value && typeof entry.value === 'object') collectSetters(entry.value, entries, seen, true, true);
   }
   return entries;
 }
 
-function collectSetters(value, entries, seen, allowGetters = true) {
+function collectSetters(value, entries, seen, allowGetters = true, nested = false) {
   if (!value || typeof value !== 'object' || seen.has(value)) return;
   seen.add(value);
   if (Array.isArray(value)) {
@@ -492,18 +515,19 @@ function collectSetters(value, entries, seen, allowGetters = true) {
           continue;
         }
         entries.push({ object: value, key, value: read });
-        if (read && typeof read === 'object') collectSetters(read, entries, seen);
+        if (read && typeof read === 'object') collectSetters(read, entries, seen, true, true);
         continue;
       }
       if (typeof descriptor.get === 'function') {
-        if (!allowGetters || key === 'objects' || key === 'grid') continue;
+        if (!allowGetters) continue;
+        if (!nested && (key === 'objects' || key === 'grid')) continue;
         const read = readAccessor(value, descriptor);
-        if (read && typeof read === 'object') collectSetters(read, entries, seen, true);
+        if (read && typeof read === 'object') collectSetters(read, entries, seen, true, true);
         continue;
       }
       if (current !== value) continue;
       if (!Object.prototype.hasOwnProperty.call(descriptor, 'value') || typeof descriptor.value === 'function') continue;
-      if (descriptor.value && typeof descriptor.value === 'object') collectSetters(descriptor.value, entries, seen, allowGetters);
+      if (descriptor.value && typeof descriptor.value === 'object') collectSetters(descriptor.value, entries, seen, allowGetters, nested);
     }
     current = Object.getPrototypeOf(current);
   }

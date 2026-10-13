@@ -53,7 +53,7 @@ function readToJSON(value) {
   return undefined;
 }
 
-export function detachData(value, seen = new Map(), readGrid = true, allowGetters = true) {
+export function detachData(value, seen = new Map(), readGrid = true, allowGetters = true, nested = false) {
   if (value === null || value === undefined) return value;
   const type = typeof value;
   if (type === 'string' || type === 'boolean') return value;
@@ -71,7 +71,7 @@ export function detachData(value, seen = new Map(), readGrid = true, allowGetter
         continue;
       }
       // Array elements keep their getters unread. A marker on frames[0] must not run.
-      out[i] = detachData(descriptor.value, seen, readGrid, false);
+      out[i] = detachData(descriptor.value, seen, readGrid, false, false);
     }
     return out;
   }
@@ -90,11 +90,12 @@ export function detachData(value, seen = new Map(), readGrid = true, allowGetter
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || typeof descriptor.get !== 'function') continue;
       const hasSetter = typeof descriptor.set === 'function';
-      if (!hasSetter && ACCESSOR_SKIP.has(key)) continue;
+      if (!hasSetter && (key === 'constructor' || key === 'toJSON')) continue;
+      if (!hasSetter && !nested && (key === 'objects' || key === 'grid')) continue;
       try {
         const read = hasSetter ? descriptor.get.call(value) : readAccessor(value, descriptor);
         if (!hasSetter && !(read && typeof read === 'object')) continue;
-        const child = detachData(read, seen, readGrid, true);
+        const child = detachData(read, seen, readGrid, true, true);
         if (child !== undefined) writeData(out, key, child);
       } catch (error) {
         // A getter behind the copy refused. The detach omits that key.
@@ -212,6 +213,7 @@ function writeLive(object, key, value, enumerable) {
 export function restoreLive(records) {
   for (let i = records.length - 1; i >= 0; i -= 1) {
     const record = records[i];
+    if (!record || record.kind === 'ownNames') continue;
     if (record.kind === 'array') {
       const array = record.object;
       for (let index = 0; index < record.items.length; index += 1) {
@@ -231,6 +233,7 @@ export function restoreLive(records) {
       }
       continue;
     }
+    if (!record.entries) continue;
     for (const entry of record.entries) {
       const descriptor = Object.getOwnPropertyDescriptor(record.object, entry.key);
       const current = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
@@ -280,7 +283,7 @@ function walkInheritedArrays(value, seen, entries, allowGetters = true) {
   while (proto && proto !== Object.prototype && typeof proto === 'object' && !chain.has(proto)) {
     chain.add(proto);
     for (const key of Object.getOwnPropertyNames(proto)) {
-      if (key === 'constructor' || key === 'toJSON' || key === 'grid') continue;
+      if (key === 'constructor' || key === 'toJSON') continue;
       if (Object.prototype.hasOwnProperty.call(value, key)) continue;
       const descriptor = Object.getOwnPropertyDescriptor(proto, key);
       if (!descriptor) continue;
@@ -288,7 +291,7 @@ function walkInheritedArrays(value, seen, entries, allowGetters = true) {
       if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
         if (typeof descriptor.value === 'function') continue;
         read = descriptor.value;
-      } else if (allowGetters && typeof descriptor.get === 'function') {
+      } else if (allowGetters && typeof descriptor.get === 'function' && key !== 'grid') {
         try {
           read = descriptor.get.call(value);
         } catch (error) {
@@ -365,26 +368,27 @@ export function readAccessor(object, descriptor) {
   return failed ? undefined : read;
 }
 
-export function captureAccessorTrees(value, seen = new Set(), records = [], allowGetters = true) {
+export function captureAccessorTrees(value, seen = new Set(), records = [], allowGetters = true, nested = false, arrays = null) {
   if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return records;
   seen.add(value);
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-        captureAccessorTrees(descriptor.value, seen, records, false);
+        captureAccessorTrees(descriptor.value, seen, records, false, false, arrays);
       }
     }
     return records;
   }
   for (const key of Object.getOwnPropertyNames(value)) {
-    if (ACCESSOR_SKIP.has(key)) continue;
+    if (key === 'constructor' || key === 'toJSON') continue;
+    if (!nested && (key === 'objects' || key === 'grid')) continue;
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor) continue;
     if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
       if (typeof descriptor.value === 'function') continue;
       if (descriptor.value && typeof descriptor.value === 'object') {
-        captureAccessorTrees(descriptor.value, seen, records, allowGetters);
+        captureAccessorTrees(descriptor.value, seen, records, allowGetters, nested, arrays);
       }
       continue;
     }
@@ -392,10 +396,34 @@ export function captureAccessorTrees(value, seen = new Set(), records = [], allo
     const read = readAccessor(value, descriptor);
     if (read && typeof read === 'object') {
       captureLive(read, new Set(), records);
-      captureAccessorTrees(read, seen, records, true);
+      records.push({
+        kind: 'ownNames',
+        object: read,
+        names: Object.getOwnPropertyNames(read),
+      });
+      if (arrays) {
+        for (const entry of snapshotInheritedArrays(read)) arrays.push(entry);
+      }
+      captureAccessorTrees(read, seen, records, true, true, arrays);
     }
   }
   return records;
+}
+
+export function restoreOwnShadows(records) {
+  if (!records) return;
+  for (const record of records) {
+    if (!record || record.kind !== 'ownNames' || !record.object) continue;
+    const names = new Set(record.names || []);
+    for (const key of Object.getOwnPropertyNames(record.object)) {
+      if (names.has(key)) continue;
+      try {
+        delete record.object[key];
+      } catch (error) {
+        // A non-configurable own key stays until the caller refuses the travel.
+      }
+    }
+  }
 }
 
 const protectedStack = [];
@@ -411,6 +439,14 @@ function blocksDefine(obj, prop, desc) {
     && Object.prototype.hasOwnProperty.call(current, 'value')
     && Object.prototype.hasOwnProperty.call(desc, 'value')
     && !Object.is(desc.value, current.value);
+  const sealsWritable = !!current
+    && Object.prototype.hasOwnProperty.call(current, 'value')
+    && current.writable !== false
+    && desc.writable === false;
+  const sealsConfigurable = !!current
+    && current.configurable !== false
+    && desc.configurable === false
+    && Object.prototype.hasOwnProperty.call(desc, 'value');
   const read = accessorValue(current, obj);
   const sealsAccessor = !!current
     && typeof current.get === 'function'
@@ -418,7 +454,7 @@ function blocksDefine(obj, prop, desc) {
     && read.read
     && !Object.is(desc.value, read.value);
   const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
-  return changesValue || sealsAccessor || freezesLength;
+  return changesValue || sealsWritable || sealsConfigurable || sealsAccessor || freezesLength;
 }
 
 function protectedHas(obj) {
@@ -535,7 +571,7 @@ function probeToJSON(value, seen = new Set(), readGrid = true) {
     const records = captureLive(value);
     const arrays = snapshotInheritedArrays(value);
     const accessorRecords = [];
-    captureAccessorTrees(value, new Set(), accessorRecords);
+    captureAccessorTrees(value, new Set(), accessorRecords, true, false, arrays);
     const live = liveObjectsIn([value]);
     for (const record of accessorRecords) {
       if (record && record.object) live.add(record.object);

@@ -2,8 +2,8 @@
 // No Node builtins, no physics step. The lab is the only simulator.
 
 import {
-  captureAccessorTrees, captureLive, detachData, liveObjectsIn, protectLiveObjects,
-  readAccessor, restoreInheritedArrays, restoreLive, sameJson, snapshotInheritedArrays,
+  captureAccessorTrees,   captureLive, detachData, liveObjectsIn, protectLiveObjects,
+  readAccessor, restoreInheritedArrays, restoreLive, restoreOwnShadows, sameJson, snapshotInheritedArrays,
   sortValue, unprotectLiveObjects,
 } from './stableJson.mjs';
 
@@ -510,11 +510,12 @@ function materialize(value, key, seen, readGrid = true) {
     const gridFields = gridAccessor ? snapshotGridFields(gridAccessor.value) : null;
     const callerRecords = captureLive(value);
     const inheritedArrays = snapshotInheritedArrays(value);
-    const accessorRecords = captureAccessorTrees(value);
+    const accessorRecords = [];
+    captureAccessorTrees(value, new Set(), accessorRecords, true, false, inheritedArrays);
     if (gridAccessor && gridAccessor.value && typeof gridAccessor.value === 'object') {
       captureLive(gridAccessor.value, new Set(), callerRecords);
       inheritedArrays.push(...snapshotInheritedArrays(gridAccessor.value));
-      captureAccessorTrees(gridAccessor.value, new Set(), accessorRecords);
+      captureAccessorTrees(gridAccessor.value, new Set(), accessorRecords, true, true, inheritedArrays);
     }
     // toJSON runs on a detached tree so a non-configurable write cannot stick to the live scene.
     const detached = detachData(value);
@@ -534,6 +535,7 @@ function materialize(value, key, seen, readGrid = true) {
       restoreLive(accessorRecords);
       restoreLive(callerRecords);
       restoreInheritedArrays(inheritedArrays);
+      restoreOwnShadows(accessorRecords);
     }
     restoreGridAccessor(value, gridAccessor);
     if (gridFields) restoreGridFields(gridAccessor.value, gridFields);
@@ -597,18 +599,19 @@ function materialize(value, key, seen, readGrid = true) {
   return out;
 }
 
-function copyAccessors(source, out) {
+function copyAccessors(source, out, nested = false) {
   if (!source || typeof source !== 'object' || !out || typeof out !== 'object' || Array.isArray(out)) return;
   for (const key of Object.getOwnPropertyNames(source)) {
-    if (key === 'toJSON' || key === 'objects' || key === 'grid' || Object.prototype.hasOwnProperty.call(out, key)) continue;
+    if (key === 'toJSON' || Object.prototype.hasOwnProperty.call(out, key)) continue;
+    if (!nested && (key === 'objects' || key === 'grid')) continue;
     const descriptor = Object.getOwnPropertyDescriptor(source, key);
     if (!descriptor || typeof descriptor.get !== 'function') continue;
     const hasSetter = typeof descriptor.set === 'function';
-    if (!hasSetter && (key === 'objects' || key === 'grid')) continue;
+    if (!hasSetter && !nested && (key === 'objects' || key === 'grid')) continue;
     try {
       const read = hasSetter ? descriptor.get.call(source) : readAccessor(source, descriptor);
       if (!hasSetter && !(read && typeof read === 'object')) continue;
-      const child = detachData(read);
+      const child = detachData(read, new Map(), true, true, true);
       if (child !== undefined) writeData(out, key, child);
     } catch (error) {
       // A getter refused. The stored scene omits that key.

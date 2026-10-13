@@ -1,4 +1,5 @@
 import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
+import { FRAME_INPUT_FIELDS, TRIGGER_ASSERTION_FIELDS, readPath, writeFrameInput, writePath } from '/lib/inspector.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
   addObject,
@@ -146,6 +147,7 @@ function paintInspector() {
   inspector.replaceChildren();
   if (!object) {
     chips.append(chip('no selection', 'edit'));
+    paintFrames(inspector);
     return;
   }
   if (object.kind === 'trigger' || object.kind === 'objective' || object.kind === 'attachment') chips.append(chip('lab-only', 'lab'));
@@ -171,8 +173,9 @@ function paintInspector() {
     } else {
       input.type = field.kind;
       if (field.kind === 'number') input.step = '0.1';
-      if (field.kind === 'checkbox') input.checked = !!object[field.key];
-      else input.value = object[field.key] ?? '';
+      const current = readPath(object, field.key);
+      if (field.kind === 'checkbox') input.checked = !!current;
+      else input.value = current ?? '';
     }
     input.addEventListener('change', () => {
       if (field.key === 'isPlayer') {
@@ -188,9 +191,9 @@ function paintInspector() {
       if (!next) return showReport({ ok: false, issues: ['scene could not be cloned'] });
       const target = next.objects.find((row) => row.id === object.id);
       if (!target) return;
-      if (field.kind === 'checkbox') target[field.key] = input.checked;
-      else if (field.kind === 'number') target[field.key] = Number(input.value);
-      else target[field.key] = input.value;
+      if (field.kind === 'checkbox') writePath(target, field.key, input.checked);
+      else if (field.kind === 'number') writePath(target, field.key, Number(input.value));
+      else writePath(target, field.key, input.value);
       commitProject(next);
     });
     label.append(input);
@@ -199,6 +202,58 @@ function paintInspector() {
   const hint = document.createElement('p');
   hint.textContent = colliderText(object);
   inspector.append(hint);
+  paintFrames(inspector);
+}
+
+function paintFrames(form) {
+  const heading = document.createElement('h3');
+  heading.textContent = 'Input tape';
+  form.append(heading);
+  const frames = project().frames || [];
+  frames.forEach((frame, index) => {
+    const block = document.createElement('fieldset');
+    const legend = document.createElement('legend');
+    legend.textContent = `Frame ${index}`;
+    block.append(legend);
+    const tick = document.createElement('input');
+    tick.type = 'number';
+    tick.step = '1';
+    tick.value = frame && frame.tick != null ? frame.tick : index;
+    tick.addEventListener('change', () => {
+      const next = copyScene(project());
+      if (!next || !next.frames || !next.frames[index]) return showReport({ ok: false, issues: ['scene could not be cloned'] });
+      next.frames[index].tick = Number(tick.value);
+      commitProject(next);
+    });
+    const tickLabel = document.createElement('label');
+    tickLabel.textContent = 'Tick';
+    tickLabel.append(tick);
+    block.append(tickLabel);
+    for (const field of FRAME_INPUT_FIELDS) {
+      const label = document.createElement('label');
+      label.textContent = field.label;
+      const input = document.createElement('input');
+      const current = frame && frame.input ? frame.input[field.key] : undefined;
+      if (field.kind === 'checkbox') {
+        input.type = 'checkbox';
+        input.checked = !!current;
+      } else {
+        input.type = 'number';
+        input.step = '0.1';
+        input.value = current ?? 0;
+      }
+      input.addEventListener('change', () => {
+        const next = copyScene(project());
+        if (!next) return showReport({ ok: false, issues: ['scene could not be cloned'] });
+        const value = field.kind === 'checkbox' ? input.checked : Number(input.value);
+        writeFrameInput(next, index, field.key, value);
+        commitProject(next);
+      });
+      label.append(input);
+      block.append(label);
+    }
+    form.append(block);
+  });
 }
 
 function fieldsFor(object) {
@@ -231,7 +286,14 @@ function fieldsFor(object) {
       { key: 'value', label: 'Value', kind: 'number' },
     ];
   }
-  if (object.kind === 'trigger' || object.kind === 'field') {
+  if (object.kind === 'trigger') {
+    return [
+      ...common,
+      { key: 'radius', label: 'Radius', kind: 'number' },
+      ...TRIGGER_ASSERTION_FIELDS,
+    ];
+  }
+  if (object.kind === 'field') {
     return [...common, { key: 'radius', label: 'Radius', kind: 'number' }];
   }
   if (object.kind === 'route') {

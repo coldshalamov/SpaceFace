@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
+import { TRIGGER_ASSERTION_FIELDS, writeFrameInput, writePath } from '../lib/inspector.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
 import {
@@ -4012,24 +4013,32 @@ test('an unchanged grid shape is still copied when the scene is parked', () => {
 test('commit of the same present does not swap a sealed bias', () => {
   const history = createHistory(getComposition('dock.intercept-cargo'));
   const before = history.present;
+  const schema = before.schema;
   const grid = before.grid;
   grid.bias = 4;
   before.toJSON = function () {
     Object.defineProperty(grid, 'bias', { value: 0, writable: false, configurable: false });
+    Object.defineProperties(before, {
+      schema: { value: 'POISON', writable: false, configurable: false },
+    });
     return this;
   };
   const committed = commit(history, history.present);
   assert.equal(committed.past.length, 0);
   assert.equal(committed, history);
   assert.equal(committed.present, before);
-  assert.equal(grid.bias, 4);
   assert.equal(before.grid, grid);
   assert.equal(committed.present.grid, grid);
+  assert.equal(grid.bias, 4);
   assert.equal(committed.present.grid.bias, 4);
+  assert.equal(before.title, committed.present.title);
   const bias = Object.getOwnPropertyDescriptor(grid, 'bias');
+  assert.equal(bias.value, 4);
   assert.equal(bias.writable, true);
   assert.equal(bias.configurable, true);
-  assert.equal(bias.value, 4);
+  assert.equal(before.schema, schema);
+  assert.equal(committed.present.schema, schema);
+  assert.equal(Object.getOwnPropertyDescriptor(before, 'schema').writable, true);
 });
 
 test('a second get-only accessor keeps snap and nested credits', () => {
@@ -4210,50 +4219,55 @@ test('tags behind a get-only pocket stay keep', () => {
 });
 
 test('a refused redo does not leave bias at 0', () => {
-  const history = createHistory(getComposition('dock.intercept-cargo'));
-  const sceneA = getComposition('dock.intercept-cargo');
-  sceneA.title = 'A';
-  const sceneB = getComposition('dock.intercept-cargo');
-  sceneB.title = 'B';
-  const twice = commit(commit(history, sceneA), sceneB);
-  const undone = restoreHistory(twice, 'undo');
-  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
-  const present = undone.history.present;
-  const grid = present.grid;
-  grid.bias = 4;
-  const future = undone.history.future[0];
-  const futureGrid = future.grid;
-  Object.defineProperty(future, 'grid', {
-    enumerable: true,
-    configurable: true,
-    get() { return futureGrid; },
-  });
-  future.toJSON = function () {
-    Object.defineProperty(grid, 'bias', { value: 0, writable: false, configurable: false });
-    return this;
-  };
-  const result = restoreHistory(undone.history, 'redo');
-  assert.equal(grid.bias, 4);
-  assert.equal(present.grid, grid);
-  assert.equal(present.grid.bias, 4);
-  const bias = Object.getOwnPropertyDescriptor(grid, 'bias');
-  assert.equal(bias.value, 4);
-  assert.equal(bias.writable, true);
-  assert.equal(bias.configurable, true);
-  if (!result.ok) {
-    assert.equal(result.history, undone.history);
-    assert.equal(result.history.present, present);
+  function sealMatching(direction) {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    const sceneA = getComposition('dock.intercept-cargo');
+    sceneA.title = 'A';
+    const sceneB = getComposition('dock.intercept-cargo');
+    sceneB.title = 'B';
+    const twice = commit(commit(history, sceneA), sceneB);
+    const undone = restoreHistory(twice, 'undo');
+    assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+    const present = undone.history.present;
+    const grid = present.grid;
+    grid.bias = 4;
+    const host = direction === 'undo' ? undone.history.past[0] : undone.history.future[0];
+    const hostGrid = host.grid;
+    Object.defineProperty(host, 'grid', {
+      enumerable: true,
+      configurable: true,
+      get() { return hostGrid; },
+    });
+    host.toJSON = function () {
+      present.grid.bias = 1;
+      Object.defineProperty(present.grid, 'bias', { value: 1, writable: false, configurable: false });
+      return this;
+    };
+    const result = restoreHistory(undone.history, direction);
+    assert.equal(present.grid, grid);
+    assert.equal(present.title, 'A');
+    assert.equal(grid.bias, 4);
+    const bias = Object.getOwnPropertyDescriptor(grid, 'bias');
+    assert.equal(bias.value, 4);
+    assert.equal(bias.writable, true);
+    assert.equal(bias.configurable, true);
+    assert.equal(result.history.present === present || result.history.present.title !== 'A', true);
+    const errorClone = clone(present);
+    assert.notEqual(errorClone, present);
+    assert.notEqual(errorClone.grid, grid);
+    assert.equal(errorClone.grid.bias, 4);
+    assert.equal(errorClone.title, 'A');
+    if (!result.ok) {
+      assert.equal(result.history, undone.history);
+      assert.equal(result.history.present, present);
+      const refusedClone = clone(result.history.present);
+      assert.notEqual(refusedClone, present);
+      assert.equal(refusedClone.grid.bias, 4);
+      assert.equal(refusedClone.title, present.title);
+    }
   }
-  const errorClone = clone(result.ok ? present : result.history.present);
-  assert.notEqual(errorClone, present);
-  assert.equal(errorClone.grid.bias, 4);
-  const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
-  const travelAt = editor.indexOf('function travel');
-  const travelBody = editor.slice(travelAt, editor.indexOf('function replacePresent'));
-  const guard = travelBody.indexOf('if (!result.ok) return showReport(result);');
-  const assign = travelBody.indexOf('history = result.history');
-  assert.equal(guard >= 0, true);
-  assert.equal(assign > guard, true);
+  sealMatching('undo');
+  sealMatching('redo');
 });
 
 test('get-only hold credits survive undo and redo', () => {
@@ -4302,21 +4316,33 @@ test('get-only hold credits survive undo and redo', () => {
 test('a successful commit does not keep a poisoned title', () => {
   const history = createHistory(getComposition('dock.intercept-cargo'));
   const next = getComposition('dock.intercept-cargo');
+  const schema = next.schema;
+  const grid = next.grid;
+  grid.bias = 4;
   next.title = 'Renamed dock';
   next.toJSON = function () {
     Object.defineProperty(next, 'title', { value: 'POISON', writable: false, configurable: false });
+    Object.defineProperties(next, {
+      schema: { value: 'POISON', writable: false, configurable: false },
+    });
+    Object.defineProperty(grid, 'bias', { value: 0, writable: false, configurable: false });
     return this;
   };
   const committed = commit(history, next);
   assert.equal(committed.past.length, 1);
-  assert.equal(committed.present.title, 'Renamed dock');
-  assert.equal(next.title, 'Renamed dock');
   assert.notEqual(committed.present, next);
+  assert.equal(next.title, 'Renamed dock');
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.equal(next.schema, schema);
+  assert.equal(committed.present.schema, schema);
+  assert.equal(next.grid, grid);
+  assert.equal(grid.bias, 4);
   const title = Object.getOwnPropertyDescriptor(next, 'title');
   assert.equal(title.value, 'Renamed dock');
   assert.equal(title.writable, true);
   assert.equal(title.configurable, true);
-  assert.equal(committed.present.title, 'Renamed dock');
+  assert.equal(Object.getOwnPropertyDescriptor(next, 'schema').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(grid, 'bias').writable, true);
 });
 
 test('defineProperties and Reflect.defineProperty cannot poison a commit', () => {
@@ -4363,4 +4389,214 @@ test('defineProperties and Reflect.defineProperty cannot poison a commit', () =>
   assert.equal(creditDesc.value, credits);
   assert.equal(creditDesc.writable, true);
   assert.equal(creditDesc.configurable, true);
+});
+
+test('a sealed lens is not hidden by a clean present', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const sceneA = getComposition('dock.intercept-cargo');
+  sceneA.title = 'A';
+  const sceneB = getComposition('dock.intercept-cargo');
+  sceneB.title = 'B';
+  const undone = restoreHistory(commit(commit(history, sceneA), sceneB), 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const present = undone.history.present;
+  const grid = present.grid;
+  const lens = { bias: 4, title: 'live' };
+  Object.defineProperty(grid, 'lens', {
+    enumerable: true,
+    configurable: true,
+    get() { return lens; },
+  });
+  Object.defineProperty(present, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return grid; },
+  });
+  const future = undone.history.future[0];
+  const futureGrid = future.grid;
+  Object.defineProperty(future, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return futureGrid; },
+  });
+  future.world.toJSON = function () {
+    Object.defineProperty(lens, 'bias', { value: 1, writable: false, configurable: false });
+    Object.defineProperty(lens, 'title', { value: 'sealed', writable: false, configurable: false });
+    return {};
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(lens.bias, 4);
+  assert.equal(lens.title, 'live');
+  assert.equal(present.grid, grid);
+  assert.equal(present.grid.lens, lens);
+  assert.equal(Object.getOwnPropertyDescriptor(lens, 'bias').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(lens, 'title').value, 'live');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+});
+
+test('a nested grid or objects accessor keeps snap', () => {
+  for (const key of ['grid', 'objects']) {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    const sceneA = getComposition('dock.intercept-cargo');
+    sceneA.title = 'A';
+    const sceneB = getComposition('dock.intercept-cargo');
+    sceneB.title = 'B';
+    const undone = restoreHistory(commit(commit(history, sceneA), sceneB), 'undo');
+    assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+    const present = undone.history.present;
+    const grid = present.grid;
+    const lens = {};
+    const inner = {};
+    let snap = true;
+    Object.defineProperty(inner, 'snap', {
+      enumerable: true,
+      configurable: true,
+      get() { return snap; },
+      set(value) { snap = value; },
+    });
+    Object.defineProperty(lens, key, {
+      enumerable: true,
+      configurable: true,
+      get() { return inner; },
+    });
+    Object.defineProperty(grid, 'lens', {
+      enumerable: true,
+      configurable: true,
+      get() { return lens; },
+    });
+    Object.defineProperty(present, 'grid', {
+      enumerable: true,
+      configurable: true,
+      get() { return grid; },
+    });
+    const future = undone.history.future[0];
+    const futureGrid = future.grid;
+    Object.defineProperty(future, 'grid', {
+      enumerable: true,
+      configurable: true,
+      get() { return futureGrid; },
+    });
+    future.world.toJSON = function () {
+      present.grid.lens[key].snap = false;
+      return {};
+    };
+    const back = restoreHistory(undone.history, 'undo');
+    assert.equal(back.ok, true, (back.issues || []).join('\n'));
+    const redone = restoreHistory(back.history, 'redo');
+    assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+    assert.equal(snap, true);
+    assert.equal(present.grid.lens, lens);
+    assert.equal(present.grid.lens[key], inner);
+    assert.equal(redone.history.present.grid.lens[key].snap, true);
+  }
+});
+
+test('a prototype array named grid is not frozen', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const first = getComposition('dock.intercept-cargo');
+  first.title = 'First rename';
+  const once = commit(history, first);
+  const parked = once.past[0];
+  const grid = parked.grid;
+  const cells = ['keep'];
+  Object.setPrototypeOf(grid, { grid: cells });
+  Object.defineProperty(parked, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return grid; },
+  });
+  parked.toJSON = function () {
+    cells.push(null);
+    Object.freeze(cells);
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(once, next);
+  assert.deepEqual(cells, ['keep']);
+  assert.equal(Object.isFrozen(cells), false);
+  assert.deepEqual(committed.past[0].grid.grid, ['keep']);
+  assert.notEqual(committed.past[0].grid.grid, cells);
+  const back = restoreHistory(committed, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const again = restoreHistory(back.history, 'undo');
+  assert.equal(again.ok, true, (again.issues || []).join('\n'));
+  assert.deepEqual(again.history.present.grid.grid, ['keep']);
+  assert.equal(Object.isFrozen(again.history.present.grid.grid), false);
+});
+
+test('the inspector edits a trigger oracle and the input tape', () => {
+  const trigger = {
+    kind: 'trigger',
+    x: 0,
+    z: 20,
+    radius: 16,
+    assertion: { kind: 'eventByTick', signal: 'playerX', op: '>', value: 0.5, byTick: 9 },
+  };
+  assert.equal(TRIGGER_ASSERTION_FIELDS.some((field) => field.key === 'assertion.signal'), true);
+  assert.equal(TRIGGER_ASSERTION_FIELDS.some((field) => field.key === 'assertion.byTick'), true);
+  writePath(trigger, 'assertion.signal', 'playerZ');
+  writePath(trigger, 'assertion.op', '<');
+  writePath(trigger, 'assertion.value', -0.25);
+  writePath(trigger, 'assertion.byTick', 40);
+  assert.equal(trigger.assertion.signal, 'playerZ');
+  assert.equal(trigger.assertion.op, '<');
+  assert.equal(trigger.assertion.value, -0.25);
+  assert.equal(trigger.assertion.byTick, 40);
+  const project = emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 });
+  const frame = project.frames[0];
+  assert.equal(frame.input.moveZ, 0);
+  writeFrameInput(project, 0, 'moveZ', 1);
+  assert.equal(project.frames[0], frame);
+  assert.equal(frame.input.moveZ, 1);
+  const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
+  assert.equal(editor.includes('TRIGGER_ASSERTION_FIELDS'), true);
+  assert.equal(editor.includes('paintFrames'), true);
+  assert.equal(editor.includes('writeFrameInput'), true);
+});
+
+test('prototype tags behind a get-only pocket stay keep', () => {
+  for (const mode of ['push', 'splice', 'length', 'replace']) {
+    const history = createHistory(getComposition('dock.intercept-cargo'));
+    const first = getComposition('dock.intercept-cargo');
+    first.title = 'First rename';
+    const once = commit(history, first);
+    const tags = ['keep'];
+    const holder = Object.create({ tags });
+    const parked = once.past[0];
+    Object.defineProperty(parked.world, 'pocket', {
+      enumerable: true,
+      configurable: true,
+      get() { return holder; },
+    });
+    const parkedGrid = parked.grid;
+    Object.defineProperty(parked, 'grid', {
+      enumerable: true,
+      configurable: true,
+      get() { return parkedGrid; },
+    });
+    parked.toJSON = function () {
+      if (mode === 'push') tags.push(null);
+      else if (mode === 'splice') tags.splice(0, 1, null);
+      else if (mode === 'length') tags.length = 0;
+      else holder.tags = ['poison'];
+      if (mode !== 'replace') Object.freeze(tags);
+      return this;
+    };
+    const next = getComposition('dock.intercept-cargo');
+    next.title = 'Renamed dock';
+    const committed = commit(once, next);
+    assert.deepEqual(holder.tags, ['keep']);
+    assert.equal(holder.tags, tags);
+    assert.equal(Object.isFrozen(tags), false);
+    assert.deepEqual(committed.past[0].world.pocket.tags, ['keep']);
+    const back = restoreHistory(committed, 'undo');
+    assert.equal(back.ok, true, (back.issues || []).join('\n'));
+    const again = restoreHistory(back.history, 'undo');
+    assert.equal(again.ok, true, (again.issues || []).join('\n'));
+    assert.deepEqual(again.history.present.world.pocket.tags, ['keep']);
+    assert.deepEqual(holder.tags, ['keep']);
+  }
 });

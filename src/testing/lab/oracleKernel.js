@@ -2,6 +2,44 @@
 // This module intentionally contains no authority executor or node:crypto import.
 
 import { evaluateMetrics, compareThreshold } from './metricRegistry.js';
+
+// A dock disc is met when the player comes within five authored radii. That keeps a
+// marker the tape actually crosses, and rejects a distant point such as (999, 999) r=1.
+const DISC_REACH = 5;
+
+function discOf(assertion) {
+  const expected = assertion && assertion.expected;
+  if (!expected || typeof expected !== 'object' || Array.isArray(expected)) return null;
+  if (!Number.isFinite(expected.x) || !Number.isFinite(expected.z)) return null;
+  return {
+    x: expected.x,
+    z: expected.z,
+    radius: Number.isFinite(expected.radius) ? expected.radius : null,
+  };
+}
+
+function closestApproach(samples, disc) {
+  let closest = Infinity;
+  for (const sample of samples || []) {
+    const x = sample && Number.isFinite(sample.playerX) ? sample.playerX : 0;
+    const z = sample && Number.isFinite(sample.playerZ) ? sample.playerZ : 0;
+    const distance = Math.hypot(x - disc.x, z - disc.z);
+    if (distance < closest) closest = distance;
+  }
+  return closest;
+}
+
+function discReached(samples, disc) {
+  if (!disc || !Number.isFinite(disc.radius)) return { ok: true, closest: null };
+  const closest = closestApproach(samples, disc);
+  return { ok: Number.isFinite(closest) && closest <= disc.radius * DISC_REACH, closest };
+}
+
+function withDisc(base, disc) {
+  if (!disc) return base;
+  const fields = base && typeof base === 'object' && !Array.isArray(base) ? base : {};
+  return { ...fields, x: disc.x, z: disc.z, radius: disc.radius };
+}
 // Side-effect: register massline + flight metrics for both Node and Chromium hosts.
 import '../metrics/masslineMetrics.js';
 
@@ -17,6 +55,11 @@ export function evaluateOracleKernel({
   ctx = {},
 } = {}) {
   const metricResults = evaluateMetrics(metrics, trace, ctx);
+  const discByMetric = new Map();
+  for (const assertion of assertions) {
+    const disc = discOf(assertion);
+    if (assertion && assertion.metric && disc) discByMetric.set(assertion.metric, disc);
+  }
   const invariantResults = evaluateInvariants(trace, ctx);
   const temporalResults = evaluateTemporal(assertions.filter((a) => isTemporal(a && a.kind)), trace, ctx);
   const quantitativeFromAssertions = evaluateQuantitativeAssertions(
@@ -27,16 +70,21 @@ export function evaluateOracleKernel({
   );
   const all = [
     ...invariantResults,
-    ...metricResults.map((m) => ({
-      family: 'quantitative',
-      source: 'metric',
-      id: `${m.name}@${m.version}`,
-      ok: m.ok,
-      expected: m.threshold,
-      actual: m.value,
-      signedDelta: m.signedDelta,
-      firstBadTick: m.ok ? null : findMetricFirstBadTick(trace, m, ctx),
-    })),
+    ...metricResults.map((m) => {
+      const disc = discByMetric.get(m.name) || null;
+      const approach = discReached(trace, disc);
+      const ok = m.ok === true && approach.ok === true;
+      return {
+        family: 'quantitative',
+        source: 'metric',
+        id: `${m.name}@${m.version}`,
+        ok,
+        expected: withDisc(m.threshold, disc),
+        actual: m.value,
+        signedDelta: m.signedDelta,
+        firstBadTick: ok ? null : findMetricFirstBadTick(trace, m, ctx),
+      };
+    }),
     ...temporalResults,
     ...quantitativeFromAssertions,
   ];
@@ -488,6 +536,8 @@ function evaluateTemporal(assertions, trace, ctx) {
         continue;
       }
       const byTick = a.byTick | 0;
+      const disc = discOf(a);
+      const approach = discReached(scoped, disc);
       let foundTick = null;
       // K2: only search for the event inside the declared interval.
       for (const s of scoped) {
@@ -496,13 +546,13 @@ function evaluateTemporal(assertions, trace, ctx) {
           break;
         }
       }
-      const ok = foundTick != null && foundTick <= byTick;
+      const ok = foundTick != null && foundTick <= byTick && approach.ok === true;
       results.push({
         family: 'temporal',
         id: `eventByTick:${signal}`,
         ok,
-        expected: { byTick },
-        actual: { foundTick },
+        expected: withDisc({ byTick }, disc),
+        actual: disc ? { foundTick, closest: approach.closest } : { foundTick },
         signedDelta: foundTick != null ? foundTick - byTick : null,
         firstBadTick: ok ? null : byTick,
       });
@@ -561,18 +611,21 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
       continue;
     }
     const threshold = a.threshold || (a.op ? { op: a.op, value: a.value, epsilon: a.delta } : a.expected);
+    const disc = discOf(a);
+    const approach = discReached(trace, disc);
     const value = extractNumeric(m.value, a);
     const cmp = compareThreshold(value, threshold);
+    const ok = cmp.ok === true && approach.ok === true;
     results.push({
       family: 'quantitative',
       // H11: distinct source from declared metric results so consumption matches exactly once.
       source: 'assertion',
       id: key,
-      ok: cmp.ok,
-      expected: threshold,
+      ok,
+      expected: withDisc(threshold, disc),
       actual: value,
       signedDelta: cmp.delta,
-      firstBadTick: cmp.ok ? null : findMetricFirstBadTick(trace, { ...m, threshold }, ctx),
+      firstBadTick: ok ? null : findMetricFirstBadTick(trace, { ...m, threshold }, ctx),
     });
   }
   return results;
