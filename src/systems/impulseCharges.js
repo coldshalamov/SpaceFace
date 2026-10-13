@@ -1065,22 +1065,26 @@ export const impulseCharges = {
       if (d.hostId != null) {
         const host = state.entities.get(d.hostId);
         if (!host || !host.alive) {
-          e.alive = false;
+          // Losing the carrier releases the paid plate; it does not erase the player's
+          // follow-up. Its last inherited motion and armed state survive, so the same
+          // free-flight/stick path below can catch another body or answer manual detonation.
+          d.hostId = null;
+          d.localOffset = null;
+          d.localRot = null;
+        } else {
+          const w = worldOffset(host, d.localOffset || { x: 0, z: 0 });
+          e.pos.x = w.x;
+          e.pos.z = w.z;
+          e.vel.x = host.vel.x;
+          e.vel.z = host.vel.z;
+          if (!Number.isFinite(d.localRot)) {
+            // Old sticky saves preserve their visible pose on the first tick, then follow the host.
+            d.localRot = normalizeAngle((e.rot || 0) - (host.rot || 0));
+          }
+          e.rot = normalizeAngle((host.rot || 0) + d.localRot);
+          d.armed = true;
           continue;
         }
-        const w = worldOffset(host, d.localOffset || { x: 0, z: 0 });
-        e.pos.x = w.x;
-        e.pos.z = w.z;
-        e.vel.x = host.vel.x;
-        e.vel.z = host.vel.z;
-        if (!Number.isFinite(d.localRot)) {
-          // Backward-compatible recovery for charges restored from saves written before sticky pose
-          // tracked orientation. Preserve the visible pose on the first tick, then follow the host.
-          d.localRot = normalizeAngle((e.rot || 0) - (host.rot || 0));
-        }
-        e.rot = normalizeAngle((host.rot || 0) + d.localRot);
-        d.armed = true;
-        continue;
       }
 
       e.pos.x += e.vel.x * dt;
