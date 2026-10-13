@@ -47,6 +47,15 @@ test('production runtime reports the repaired loops through real player transact
     const allied = wash.traces.find((trace) => trace.name === 'allied_minimized');
     assert.ok(allied.missionCompletions > 0);
     assert.equal(allied.commands.some((command) => String(command).includes('faction:repDelta')), false);
+    assert.equal(allied.repFromWriter, allied.repAfter);
+    // Sum of mission-receipt repDelta from the missions writer on seed 1846.
+    // The old allied wash band was 200. This completion set does not reach it.
+    assert.equal(allied.repFromWriter, 33);
+    assert.equal(allied.alliedBand, 200);
+    assert.ok(allied.repFromWriter < allied.alliedBand);
+    assert.equal(allied.creditPath, 'economy.quote -> economy.execute trade:buy/trade:sell');
+    assert.equal(allied.reachesCreditPrint, false);
+    assert.ok(allied.buyTotal > allied.sellTotal);
     assert.ok(allied.creditsDelta <= 0, `allied wash delta ${allied.creditsDelta}`);
     assert.ok(Math.abs(allied.stockDelta || 0) < 1e-6);
     assert.ok(allied.before && allied.after, 'before/after ledger');
@@ -68,6 +77,10 @@ test('production runtime reports the repaired loops through real player transact
     assert.deepEqual(stolen.illicit, []);
     assert.ok(stolen.commands.length >= 4);
     assert.equal(stolen.secondDockDelta <= 0, true);
+    assert.equal(stolen.creditPath, 'cashInSalvage -> economy:grantCredits salvage:bay_sale');
+    assert.equal(stolen.reachesIllicitPay, false);
+    assert.equal(stolen.cashInCredits, stolen.creditsDelta);
+    assert.ok(stolen.cashInCredits > 0);
     const artifact = JSON.parse(readFileSync(CONTRABAND_ARTIFACT, 'utf8'));
     assert.deepEqual(artifact.commands, stolen.commands);
     assert.equal(artifact.qty, stolen.qty);
@@ -110,7 +123,9 @@ test('a real mission completion and a real kill recipe are not confirmed exploit
     const washSim = bootRedTeam(502);
     const earned = completeFactionMissions(washSim, HOME_FACTION);
     assert.ok(earned.completed > 0);
-    assert.ok(earned.repAfter > earned.repBefore);
+    assert.equal(earned.repFromWriter, earned.repAfter);
+    assert.equal(earned.alliedBand, 200);
+    assert.ok(earned.repFromWriter < earned.alliedBand);
     service(washSim, 'loan');
     const before = washSim.state.player.credits;
     const bought = buy(washSim, 'cmdty_ore_iron', 5);

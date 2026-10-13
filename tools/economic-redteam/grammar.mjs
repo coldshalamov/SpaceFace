@@ -399,8 +399,11 @@ export function completeFactionMissions(sim, factionId = HOME_FACTION, limit = 2
   const stationId = (sim.state.ui && sim.state.ui.dockedStationId) || HOME_STATION;
   const before = repOf(sim.state, factionId);
   const offerIds = [];
+  const missionIds = [];
   if (!missions || typeof missions._completeMission !== 'function') {
-    return { completed: 0, repBefore: before, repAfter: before, offerIds, reason: 'missions_unwired' };
+    return {
+      completed: 0, repBefore: before, repAfter: before, repFromWriter: 0, offerIds, reason: 'missions_unwired',
+    };
   }
   let completed = 0;
   while (completed < limit) {
@@ -414,12 +417,22 @@ export function completeFactionMissions(sim, factionId = HOME_FACTION, limit = 2
     if (!mission || mission.factionId !== factionId) break;
     missions._completeMission(mission, sim.state.missions.active.indexOf(mission));
     offerIds.push(offer.id);
+    missionIds.push(mission.id);
     completed += 1;
+  }
+  const receipts = sim.state.missions && Array.isArray(sim.state.missions.receipts)
+    ? sim.state.missions.receipts : [];
+  let repFromWriter = 0;
+  for (let i = 0; i < missionIds.length; i += 1) {
+    const receipt = receipts.find((row) => row && row.missionId === missionIds[i] && row.outcome === 'completed');
+    repFromWriter += receipt ? Number(receipt.repDelta) || 0 : 0;
   }
   return {
     completed,
     repBefore: before,
     repAfter: repOf(sim.state, factionId),
+    repFromWriter,
+    alliedBand: 200,
     offerIds,
     reason: completed ? null : 'no_faction_offer',
   };

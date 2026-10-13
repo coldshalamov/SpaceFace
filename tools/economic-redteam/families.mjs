@@ -4,7 +4,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sellableCargoQuantity } from '../../src/systems/cargo.js';
+import { cashInSalvage, sellableCargoQuantity } from '../../src/systems/cargo.js';
+import { quote } from '../../src/systems/economy.js';
 import {
   HOME_FACTION,
   HOME_STATION,
@@ -86,11 +87,16 @@ function fund(sim) {
   return service(sim, 'loan');
 }
 
+const CREDIT_PATH = 'economy.quote -> economy.execute trade:buy/trade:sell';
+
 function roundTrip(sim, qty) {
   const before = captureLedger(sim);
+  const stationId = before.stationId || HOME_STATION;
+  const buyQuote = quote(stationId, IRON, 'buy', qty);
   const ear = listenCredits(sim.bus);
   const bought = buy(sim, IRON, qty);
   const gained = holdQty(sim.state, IRON) - (Number(before.cargo[IRON]) || 0);
+  const sellQuote = gained > 0 ? quote(stationId, IRON, 'sell', gained) : null;
   const sold = gained > 0 ? sell(sim, IRON, gained) : null;
   ear.stop();
   const after = captureLedger(sim);
@@ -110,6 +116,13 @@ function roundTrip(sim, qty) {
     stockDelta,
     cargoDelta,
     verdict,
+    buyQuote,
+    sellQuote,
+    quoteNet: (sellQuote && sellQuote.ok ? Number(sellQuote.total) || 0 : 0)
+      - (buyQuote && buyQuote.ok ? Number(buyQuote.total) || 0 : 0),
+    reachesCreditPrint: ((sellQuote && sellQuote.ok ? Number(sellQuote.total) || 0 : 0)
+      - (buyQuote && buyQuote.ok ? Number(buyQuote.total) || 0 : 0)) > 0,
+    creditPath: CREDIT_PATH,
   };
 }
 
@@ -202,6 +215,13 @@ function probeWash(seed) {
           missionCompletions: earned.completed,
           repBefore: earned.repBefore,
           repAfter: earned.repAfter,
+          repFromWriter: earned.repFromWriter,
+          alliedBand: earned.alliedBand,
+          buyTotal: minimal.buyQuote && minimal.buyQuote.total,
+          sellTotal: minimal.sellQuote && minimal.sellQuote.total,
+          quoteNet: minimal.quoteNet,
+          reachesCreditPrint: minimal.reachesCreditPrint === true,
+          creditPath: minimal.creditPath,
         } : {
           name: 'allied_minimized',
           seed: seed + 1,
@@ -639,6 +659,14 @@ function probeContraband(seed) {
   const killed = runKillRecipe(seed + 3);
   const recipeCommodities = killed.commodities || [];
   const illicitInBay = killed.illicit || [];
+  const bayShadow = killed.ok && killed.sim && killed.sim.state.player && killed.sim.state.player.salvageBay
+    ? structuredClone(killed.sim.state.player.salvageBay) : null;
+  const cashPreview = bayShadow
+    ? cashInSalvage({
+      ...killed.sim.state,
+      player: { ...killed.sim.state.player, salvageBay: bayShadow },
+    }, { includeIllicit: false })
+    : null;
   const cashed = killed.ok ? dock(killed.sim, HOME_STATION) : null;
   const reasons = (cashed && cashed.detail && cashed.detail.reasons) || [];
   const paidBay = reasons.includes('salvage:bay_sale') && (cashed ? cashed.creditsDelta : 0) > 0;
@@ -685,6 +713,10 @@ function probeContraband(seed) {
         creditsDelta: cashed ? cashed.creditsDelta : 0,
         reasons,
         secondDockDelta,
+        cashInCredits: cashPreview ? cashPreview.credits : 0,
+        cashInUnits: cashPreview ? cashPreview.units : 0,
+        creditPath: 'cashInSalvage -> economy:grantCredits salvage:bay_sale',
+        reachesIllicitPay: illicitPaid === true,
         artifact: '.devshots/economic-redteam/contraband-minimized.json',
       }],
       controls: [
