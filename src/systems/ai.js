@@ -13,6 +13,7 @@ import {
   getActivityOwnerEntities,
 } from '../world/activityRuntime.js';
 import { cloakHidesEntityFrom } from './cloak.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 
 // FSM states.
 const S = { IDLE: 'idle', PATROL: 'patrol', PURSUE: 'pursue', ATTACK: 'attack', STRAFE: 'strafe', FLEE: 'flee' };
@@ -221,6 +222,15 @@ export const ai = {
     let target = data.combat && data.combat.targetId != null
       ? state.entities.get(data.combat.targetId) : null;
     if (!target || !target.alive) target = null;
+    // A held lock survives until the retarget clock. A lawful patrol must not keep the
+    // player flight after the engagement authority says the warrant has lapsed.
+    if (target && ai.lawful && target.team === 0 && !isHostileForAI(state, e, target)) {
+      target = null;
+      if (data.combat) {
+        data.combat.targetId = null;
+        data.combat.lockTarget = null;
+      }
+    }
     if (ai._retarget <= 0 || !target) {
       ai._retarget = RETARGET_INTERVAL;
       target = this._selectTarget(e, data, state, player, arch);
@@ -580,18 +590,14 @@ export const ai = {
   },
 
   // team 0 = player side, team 1 = hostile NPCs (default hostility). Also honour explicit
-  // ai.hostileTeams / lawful patrol flag if the spawner set them.
+  // ai.hostileTeams if the spawner set them. A lawful patrol asking about the player flight
+  // goes through the engagement authority first: a stale hostileTeams list must not outrank
+  // a lapsed warrant, a live dispatch mark, or a retaliation flag.
   _isHostile(e, other) {
     if (other.team === e.team) return false;
     const ai = e.data && e.data.ai;
+    if (ai && ai.lawful && other.team === 0) return isHostileForAI(this.state, e, other);
     if (ai && Array.isArray(ai.hostileTeams)) return ai.hostileTeams.includes(other.team);
-    // Lawful patrols are only hostile to wanted players. Derive "wanted" LIVE from the heat system
-    // (V2 §20b) so a player who cools off stops being hunted — the old ai.playerWanted field was
-    // never written anywhere (dead infrastructure), so reading it live is both the fix and the feature.
-    if (ai && ai.lawful && other.team === 0) {
-      const h = this.state.player && this.state.player.heat;
-      return typeof h === 'number' ? h >= 0.15 : false;
-    }
     return true;
   },
 

@@ -1,5 +1,5 @@
 import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
-import { nameThreatFromVisibleRead, specialistPlanById } from '../ai/specialistPlans.js';
+import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -165,6 +165,10 @@ export function leftoverTelegraphKind(payload) {
   if (doctrineId === 'ranged_stalker') return 'sensor_ghost';
   if (doctrineId === 'mine_layer_wake') return 'wake_mines';
   if (doctrineId === 'detonator_run') return 'detonator_fuse';
+  // A specialist omitted from the hand list still publishes a telegraph on its plan.
+  // Read that kind. Do not invent a glyph, and do not key the mark off the hull name.
+  const plan = specialistPlanByDoctrine(doctrineId);
+  if (plan && TELEGRAPH_KIND_SET.has(plan.telegraphKind)) return plan.telegraphKind;
   return null;
 }
 
