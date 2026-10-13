@@ -187,12 +187,25 @@ test('Ceres salvage and its scavenger spawn at the authored field in global spac
         'scavenger and wreck occupy the same working volume');
       console.log('PQ-029.03 spawn', JSON.stringify({ seed: SEED, center, wreck: wreck.pos, scavenger: scavenger.pos }));
     }
+    const pools = new Map(points.map((point) => [point.id,
+      structuredClone(state.entities.get(point.entityId).data.salvagePool)]));
     runtime.step(SIM_DT);
-    for (const point of points) {
-      assert.ok(state.entities.has(point.entityId), 'real salvage survives the first world tick');
-    }
     assert.ok(sampleHeads(state).some((row) => row.headId === 'tractor'),
       'the existing scavenger has its job before the first world tick can shelve it');
+    for (const point of points) {
+      if (!state.entities.has(point.entityId)) {
+        const far = state.world.farActors.byId.get(point.entityId);
+        assert.ok(far, 'out-of-range salvage survives in the far table');
+        assert.equal(far.data.salvagePointId, point.id);
+        assert.deepEqual(far.data.salvagePool, pools.get(point.id), 'shelving preserves all salvage');
+        runtime.getSystem('world').relocatePlayerInSector(point.pos, { reason: 'pq-029-03:salvage-approach' });
+        runtime.step(SIM_DT);
+      }
+      const wreck = state.entities.get(point.entityId);
+      assert.ok(wreck, 'approaching real salvage restores its physical body');
+      assert.equal(wreck.data.salvagePointId, point.id);
+      assert.deepEqual(wreck.data.salvagePool, pools.get(point.id), 'the same salvage remains playable');
+    }
   } finally {
     runtime.dispose();
   }

@@ -643,8 +643,10 @@ test('ordinary-holder cleanup: holder with no target clears witness state and re
   assert.equal(holder.data.ai.securityTargetId, null);
   assert.equal(holder.data.ai.roe, RulesOfEngagement.LAWFUL_WANTED_ONLY);
   assert.equal(holder.data.ai.activity.kind, ActivityKind.RETURN_TO_ANCHOR);
-  assert.deepEqual(holder.data.ai.activity.anchor, { x: h.station.pos.x, z: h.station.pos.z },
-    'ordinary holder must return toward station');
+  assert.deepEqual(holder.data.ai.activity.anchor, {
+    x: h.station.pos.x + h.station.data.dockRadius + holder.radius + 120,
+    z: h.station.pos.z,
+  }, 'ordinary holder returns to the near-side berth with hull and approach clearance');
 });
 
 test('exact Ceres job-lease restoration: Ceres job hull as holder restores exact pre-claim shape on resolve', () => {
