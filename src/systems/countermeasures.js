@@ -350,7 +350,11 @@ export const countermeasures = {
           // A decoy buoy is placed bait — it re-baits ANY seeker that crosses its water, lock or no.
           const rng = state.rng;
           const bites = cfg.kind === 'decoy' ? true : missileMatchesLineage(d, cm.effect.lineage, p);
+          // The roll stays live for the whole cloud: a later tick can still pull a seeker that
+          // missed the first chance. The player line is only the rising edge, and only for a
+          // round the player fired — an enemy seeker breaking off is the deployer's own problem.
           if (bites && rng && rng() < cfg.divertPct) {
+            const alreadyBroken = d.guidanceBroken === true;
             d.targetId = cm.effect.decoyId;
             d.diverted = true;
             d.guidanceBroken = true;
@@ -358,6 +362,13 @@ export const countermeasures = {
               x: cm.effect.originX,
               z: cm.effect.originZ,
             };
+            if (!alreadyBroken && this.bus && state.playerId != null) {
+              const ownerId = p.ownerId != null ? p.ownerId : d.ownerId;
+              if (ownerId === state.playerId) {
+                const broke = cfg.kind === 'decoy' ? 'decoy' : 'chaff';
+                this.bus.emit('toast', { text: `Seeker broke — ${broke}.`, kind: 'warn', ttl: 2.2 });
+              }
+            }
           }
         } else if (cfg.kind === 'ecm') {
           // Jam only the defeated lineage. Other seekers in the radius keep turning.
