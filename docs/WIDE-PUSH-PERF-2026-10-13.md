@@ -26,6 +26,7 @@ fps from separate launches swings 10-45 on this host; the numbers that hold are 
 | Shader-readiness poll queries at most 8 programs or 2 ms per task | the 221 ms single-task poll is gone |
 | Deep-sky plates behind the loading screen (D1), L0 background bake program kept (D5), HUD obstacle reads before writes (D2), loading emblem on its own layer (D6) | Mechanism proven by a test per change that goes red on revert; the fps effect of these four is NOT isolated. The one isolating A/B, D6 on vs off, shows first-seconds-of-flight 25.4 vs 26.2 fps, no change (`launch-d6-on.md`, `launch-d6-off.md`); D6's measured effect is 10-15% less document/compositor work per second of loading |
 | Flight-footage JPEGs encode in a worker instead of `canvas.toBlob` | Crucible main thread: capture 2478.8 ms -> 64.9 ms of a 21.9 s window (11.3% -> 0.3%), idle 15.8% -> 27.7-29.9%, long tasks 20-24 -> 7-11; clip ring 15 -> 103 frames; within-session A/B (7 s blocks, quiet host): recording off 45.3 fps, old main-thread path 36.3, worker path 39.9 |
+| Opening touch walk skips hidden branches (`withOnlySubjectsDrawable`), the private residency program is compiled before it is drawn, final settle touches go out four to a render, the boot video resumes instead of seeking to 0 | Four corrected-probe runs before (`launch-corrected-probe-run1..4.md`) and four after (`launch-after-flight-start-patches-run1..4.md`), quiet host: inclusive `withOnlySubjectsDrawable` 1595/1933/1883/1780 -> 1234/839/990/1189 ms; longest driver-link wait in the load 197/225/195/155 -> 51/45/33/52 ms and total main-thread time in link waits 0.6-0.9 -> 0.4-0.6 s; Launch click to flight 11.4/12.1/12.5/12.2 -> 14.0/11.0/10.3/11.1 s (three more runs 10.1-11.2 s); video drop rate in the first second 65% -> 47% (within noise). P01/P05 are measured together; the video change is not proven by itself |
 | Translation idle-warm fallback no longer spins a zero-delay timer without `requestIdleCallback` | 60 zero-delay timers per 900 ms -> 5; settings-parity test no longer hangs |
 
 ## Targets, plainly
@@ -55,6 +56,8 @@ Every number in this record comes from a file in `docs/perf-evidence/2026-10-13-
 * `--sampling-us=4000` keeps the CPU profiler's own cost out of a smoothness read.
 
 ## Tried and reverted
+
+* New Game screen read-before-write batching (`yardCarousel.build` / `hullRing.draw` / `newGame.js`, codex patch P02): the still is byte-identical and the 26 carousel tests pass, but three corrected-probe runs showed no gain in the New Game window (2 long animation frames of 122-129 ms blocking vs 85-115 ms before; worst rAF gap 150-167 ms either way), so it was not kept (ledger row D198 stays open).
 
 * Arming (not forcing) the late foundry-environment bake so it retires at the first veiled cook seam instead of inside the Launch reply: the intent is right, but the 445-508 ms case could not be reproduced on demand (one run in six; a held-back HDRI response in both old and new code never produced it), so there was no before/after to keep it on. The stack and the one-line change are recorded in the commit history of this record; try again with a boot that lands the HDRI between the menu bake deadline and the Launch click.
 
