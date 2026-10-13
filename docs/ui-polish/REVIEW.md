@@ -126,7 +126,7 @@ Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 192
 
 **Code:** `shipworks.js` (clamp gate + short-stage keepOut/gap) + `calloutLayout.js` (hull-safe place). Selectors/IDs unchanged.
 
-**Still open:** SWORN ENEMY touching HATED at 1024×768; phone Shipworks callouts. Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27 (see § below).
+**Still open:** SWORN ENEMY touching HATED at 1024×768. Phone Shipworks callouts fixed on ui-polish-27 (see § below). Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27 (see § below).
 
 ### Industry / Factions / Bar @960×540 (ui-polish-13)
 
@@ -219,7 +219,7 @@ Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer 
 8. Tab badges are amber pills after their own word. The tabs sit on a 4-column grid.
 Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with the foot pinned. Desktop 960×540 is pixel-identical; at 1280×720 only the animated rule differs.
 
-**Still open on phone:** Shipworks callouts. Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
+**Still open on phone:** (Shipworks callouts fixed on ui-polish-27 — see § below.) Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
 
 **Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame. Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27.
 
@@ -639,7 +639,7 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 
 Bench, with the game's inline grid forced to match the real cascade, at 960 / 1280 / 1920 / 390×844 / 844×390, on first paint and at the end of the stage scroll: nothing sits under Launch, LIVE TOOLS never overlaps the ladder, and there's no tile-on-tile overlap. COMBAT LAB is on first paint everywhere except 844×390, where the stage is 189px tall. Module/Enemy are reachable above Launch at 844×390. `ui-bench` reports `measured: no tangled…` at all five sizes (phone was previously OFF FRAME). Selectors and IDs are unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/sandbox-launch/review-fix/` (not committed).
 
-**Still open (elsewhere):** phone Shipworks callouts. Starter / systems fitted @960 and focused rename spacing addressed on ui-polish-27 (see § below).
+**Still open (elsewhere):** Starter / systems fitted @960 and focused rename spacing addressed on ui-polish-27 (see § below). Phone Shipworks callouts fixed on ui-polish-27 (see § below).
 
 ## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
 
@@ -680,7 +680,19 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 - Clear the phantom third grid track; keep the fleet rail stretched.
 - Pin a one-line compact identity beside DOCKED (clear of hull callouts); sleep the dial/rack on that size only.
 - Focus grows the nameplate keep-out by 14px and re-places callouts (Utility gap 12→26px).
-- 1280 / 1920 keep the full side plate. Phone callouts still open.
+- 1280 / 1920 keep the full side plate. Phone callouts fixed later on this branch (see § below).
 
 Shots: `ui-shots/shipworks28/{before,after,compare}/` (not committed).
+
+## Phone Shipworks callouts — session notes (2026-10-13, ui-polish-27)
+
+**Before:** on phone portrait (390×844) the dock stage is ~362×420 with `overflow:hidden`. The live-path callout solver had no keep-out (poster had already handed over), so the bead spread ran edge-to-edge and Utility / Drive / Cargo / Shield / … parked past the clip — beads and leaders visible, labels gone. On phone landscape (844×390) the jig was on, but the stage was forced to 420px in a 390px-tall viewport, so the dial and lower labels met the sticky destination foot.
+
+**After:**
+1. `shipworks.js` — on a narrow stage (`width < 520` or phone layout) invent side gutters for the live-path keep-out (same air the poster fit would leave), pull beads into that keep-out, and use a 16px gap so hardpoint cards stay on-glass. Poster path on narrow stages also gets the wider reserve / keep pad.
+2. `mobileScreenLayouts.js` — at ≤560px tall the Shipworks stage shrinks to `min(268px, 68vh)` so landscape jig callouts clear the foot; phone jig labels drop the leading numeral and use tighter type so EMPTY / STOCK lines ellipsize instead of clipping mid-glyph.
+3. `hullSchematic.js` — short stages (H ≥ 200) still draw the jig; compact columns clamp inside the host so a min dial radius cannot park labels at x≈−8.
+4. `shipworksLayouts.js` — jig `__state` gets the same overflow ellipsis as `__name`.
+
+Portrait keeps the live/poster hull (jig still requires W ≥ 480). Landscape keeps the jig. 960×540 / 1280×720 / 1920×1080 spot-checks stay clean (960 Drive/Cargo still kiss as before). Selectors/IDs unchanged. Shots: `ui-shots/shipworks-phone/{before,after,compare}/` (not committed).
 

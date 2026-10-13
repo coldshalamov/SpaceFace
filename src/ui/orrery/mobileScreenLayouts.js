@@ -373,6 +373,18 @@ export const MOBILE_SCREEN_CSS = `
   ${W} > .sx-sw__rail { padding:4px 0 0 !important; }
   ${W} > .sx-sw__rail .sx-seg { margin:0 0 8px !important; }
   ${W} .sx-sw__stage { position:relative !important; height:420px !important; min-height:420px !important; width:100% !important; overflow:hidden !important; flex:none !important; }
+  /* Phone on its side (~844×390): a 420px stage taller than the viewport buries jig labels under
+     the sticky destination foot. Shrink the stage so the dial + callout columns stay on first paint. */
+  @media (max-height:560px) {
+    ${W} .sx-sw__stage { height:min(268px, 68vh) !important; min-height:200px !important; }
+  }
+  /* Phone jig callouts: columns are ~88–128px. Drop the leading numeral (SVG dial already marks
+     the socket) so the name + EMPTY line keep their glyphs instead of clipping mid-letter. */
+  ${W} .orr-sw-node__num { display:none !important; }
+  ${W} .orr-sw-node { gap:0 !important; padding:2px 0 3px !important; }
+  ${W} .orr-sw-node__name { font-size:12.5px !important; }
+  ${W} .orr-sw-node__state { font-size:10.5px !important; letter-spacing:.1em !important;
+    overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important; }
   ${W} .sx-sw__stats, ${W} .sx-sw-verbs { position:relative !important; inset:auto !important; transform:none !important;
     width:100% !important; max-width:100% !important; flex-wrap:wrap !important; flex:none !important; margin:0 !important;
     padding-right:0 !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; }

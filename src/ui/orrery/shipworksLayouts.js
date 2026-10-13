@@ -117,7 +117,7 @@ ${W} .orr-sw-node__body { display:flex; flex-direction:column; gap:3px; min-widt
 ${W} .orr-sw-node.is-left .orr-sw-node__body { align-items:flex-end; }
 ${W} .orr-sw-node__name { font-size:14px; font-weight:600; color:rgb(248 244 234); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 ${W} .orr-sw-node.is-empty .orr-sw-node__name { color:rgb(${BONE} / .82); font-weight:560; }
-${W} .orr-sw-node__state { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66); white-space:nowrap; }
+${W} .orr-sw-node__state { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .66); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 ${W} .orr-sw-node.is-empty .orr-sw-node__state { color:rgb(${BONE} / .55); }
 ${W} .orr-sw-node.is-lit .orr-sw-node__name { color:var(--dp-hand-hot, #ffd98c); }
 ${W} .orr-sw-node.is-stock .orr-sw-node__name { color:rgb(${BONE} / .9); font-weight:560; }
