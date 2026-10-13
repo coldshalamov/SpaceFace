@@ -1738,62 +1738,69 @@ function internCompileIssueKey(longKey) {
 
 // A geometry's attribute/morph signature, memoized per geometry. An opening cook keys thousands of
 // subjects that share a few hundred geometries; sorting and joining the attribute names for each one
-// was the largest self-time in the key builder. The memo is validated against the identity and size
-// of both attribute tables plus an allocation-free shape (count and item sizes; morph array lengths),
-// so an attribute added or replaced by a wider one, or a morph array swapped, re-derives the string.
+// was the largest self-time in the key builder. A hit is proven exactly, not by an aggregate: the
+// recorded names and widths (attributes) or lengths (morphs) are compared with the live tables in
+// order, with no allocation. An aggregate (count plus width sum) cannot tell `normal` swapped for
+// `color` apart, and three selects different programs for those (review R03).
 const _compileIssueGeometrySignatures = new WeakMap();
 
-// One allocation-free pass: attribute count and the sum of their item sizes. Together they catch an
-// attribute added, removed, or replaced by one of a different width (a 3- vs 4-component color).
-function attributeShape(table) {
-  let count = 0;
-  let items = 0;
+function attributeWidth(attribute) {
+  return attribute && typeof attribute.itemSize === 'number' ? attribute.itemSize : -1;
+}
+
+function morphListLength(list) {
+  return list && typeof list.length === 'number' ? list.length : -1;
+}
+
+// True when `table` still has exactly the recorded names, in order, each with the recorded size.
+function tableMatchesRecord(table, names, sizes, measure) {
+  let index = 0;
   for (const name in table) {
-    const attribute = table[name];
-    count++;
-    items += attribute && typeof attribute.itemSize === 'number' ? attribute.itemSize : 0;
+    if (index >= names.length || names[index] !== name || sizes[index] !== measure(table[name])) return false;
+    index++;
   }
-  return count * 4096 + items;
+  return index === names.length;
+}
+
+function recordTable(table, measure) {
+  const names = [];
+  const sizes = [];
+  if (table) {
+    for (const name in table) {
+      names.push(name);
+      sizes.push(measure(table[name]));
+    }
+  }
+  return { names, sizes };
+}
+
+function describeTable(record) {
+  const order = record.names.map((_, i) => i).sort((a, b) => (record.names[a] < record.names[b] ? -1 : 1));
+  return order.map((i) => `${record.names[i]}:${record.sizes[i] < 0 ? '' : record.sizes[i]}`).join(',');
 }
 
 function compileIssueGeometrySignature(geometry) {
   if (!geometry) return { attributes: '', morphs: '' };
   const attrs = geometry.attributes;
   const morphAttrs = geometry.morphAttributes;
-  const attrShape = attrs ? attributeShape(attrs) : 0;
-  const morphShape = morphAttrs ? morphLengthSum(morphAttrs) : 0;
   const memo = _compileIssueGeometrySignatures.get(geometry);
   if (memo && memo.attrs === attrs && memo.morphAttrs === morphAttrs
-    && memo.attrShape === attrShape && memo.morphShape === morphShape) {
+    && tableMatchesRecord(attrs, memo.attrRecord.names, memo.attrRecord.sizes, attributeWidth)
+    && tableMatchesRecord(morphAttrs, memo.morphRecord.names, memo.morphRecord.sizes, morphListLength)) {
     return memo;
   }
-  const attributes = attrs
-    ? Object.keys(attrs).sort()
-      .map((name) => `${name}:${attrs[name] ? attrs[name].itemSize : ''}`)
-      .join(',')
-    : '';
-  const morphs = morphAttrs
-    ? Object.keys(morphAttrs).sort()
-      .map((name) => `${name}:${morphAttrs[name] ? morphAttrs[name].length : ''}`)
-      .join(',')
-    : '';
+  const attrRecord = recordTable(attrs, attributeWidth);
+  const morphRecord = recordTable(morphAttrs, morphListLength);
   const fresh = {
-    attrs, morphAttrs, attrShape, morphShape, attributes, morphs,
+    attrs,
+    morphAttrs,
+    attrRecord,
+    morphRecord,
+    attributes: describeTable(attrRecord),
+    morphs: describeTable(morphRecord),
   };
   _compileIssueGeometrySignatures.set(geometry, fresh);
   return fresh;
-}
-
-// Morph arrays are replaced or grown in place in a few authored paths; their total length is the
-// cheap proof the memoized string still describes them.
-function morphLengthSum(morphAttrs) {
-  if (!morphAttrs) return 0;
-  let total = 0;
-  for (const name in morphAttrs) {
-    const list = morphAttrs[name];
-    total += list && typeof list.length === 'number' ? list.length : 0;
-  }
-  return total;
 }
 
 /**

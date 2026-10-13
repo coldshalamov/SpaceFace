@@ -65,6 +65,54 @@ test('the per-geometry memo re-derives when the attribute set changes under it',
   assert.notEqual(openingCompileIssueKey(mesh), morphed, 'a grown morph array splits the key');
 });
 
+test('the memo is exact: swapping one attribute name for another of the same width splits the key', () => {
+  // Review R03: a count-plus-width-sum guard cannot see `normal` replaced by `color` (both 3-wide),
+  // so a sibling that really keeps normals shared the stale key and one distinct program was never compiled.
+  const material = new THREE.MeshStandardMaterial();
+  const position = () => new THREE.BufferAttribute(new Float32Array(72), 3);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', position());
+  geometry.setAttribute('normal', position());
+  const mesh = new THREE.Mesh(geometry, material);
+  const withNormal = openingCompileIssueKey(mesh);
+  assert.equal(openingCompileIssueKey(mesh), withNormal, 'a repeat read of an unchanged geometry is stable');
+
+  geometry.deleteAttribute('normal');
+  geometry.setAttribute('color', position());
+  const withColor = openingCompileIssueKey(mesh);
+  assert.notEqual(withColor, withNormal, 'normal swapped for color is a different program');
+
+  const sibling = new THREE.BufferGeometry();
+  sibling.setAttribute('position', position());
+  sibling.setAttribute('normal', position());
+  assert.equal(openingCompileIssueKey(new THREE.Mesh(sibling, material)), withNormal,
+    'a sibling that still has normals keys exactly like the first read');
+  assert.notEqual(openingCompileIssueKey(new THREE.Mesh(sibling, material)), withColor);
+
+  // Same attribute names in a different insertion order are the same program (names are sorted).
+  const reordered = new THREE.BufferGeometry();
+  reordered.setAttribute('normal', position());
+  reordered.setAttribute('position', position());
+  assert.equal(openingCompileIssueKey(new THREE.Mesh(reordered, material)), withNormal);
+});
+
+test('the memo is exact for morph targets: renaming a morph target with the same length splits the key', () => {
+  const material = new THREE.MeshStandardMaterial();
+  const morphTarget = () => new THREE.BufferAttribute(new Float32Array(72), 3);
+  const geometry = new THREE.BoxGeometry();
+  const mesh = new THREE.Mesh(geometry, material);
+  geometry.morphAttributes.position = [morphTarget()];
+  const onPosition = openingCompileIssueKey(mesh);
+  assert.equal(openingCompileIssueKey(mesh), onPosition);
+
+  geometry.morphAttributes = { normal: [morphTarget()] };
+  assert.notEqual(openingCompileIssueKey(mesh), onPosition, 'position morphs and normal morphs select different flags');
+
+  const same = new THREE.BoxGeometry();
+  same.morphAttributes.position = [morphTarget()];
+  assert.equal(openingCompileIssueKey(new THREE.Mesh(same, material)), onPosition);
+});
+
 function fakeDoc(shell) {
   return { getElementById: (id) => (id === 'boot-overlay' ? shell : null) };
 }
