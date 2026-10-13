@@ -3,6 +3,7 @@
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
 import { getCombatKernel } from '../../combat/kernel.js';
 import { FIELD_DEFS } from '../../data/fields.js';
+import { assetForKind } from './assets.js';
 
 export function createPhysicalVenue(ctx, { id, bodies, solids = [], fields = [], markers = [], shipAt, center }) {
   const { state, helpers = {}, registry } = ctx;
@@ -85,6 +86,10 @@ export function createPhysicalVenue(ctx, { id, bodies, solids = [], fields = [],
           const accel = Math.max(-(motor.accel || 60), Math.min(motor.accel || 60,
             ((motor.cruise || 0) - along) / dt));
           ax += hx * accel; az += hz * accel;
+          if (accel) {
+            entity.data = entity.data || {};
+            entity.data.galleryMotorWorked = true;
+          }
         }
         if (ax || az) queuePhysicsImpulse(entity, { x: ax * entity.mass * dt, y: 0, z: az * entity.mass * dt });
       }
@@ -220,6 +225,8 @@ export function venueEntitySpec(venueId, key, view, anchor) {
       venueAsset: view.hardware ? 'hardware' : 'mass',
       physicsVenueMarker: !!view.marker,
       galleryRole: view.role, gallerySpawnX: anchor.x + view.x, gallerySpawnZ: anchor.z + view.z,
+      galleryAsset: assetForKind(view.kind || 'mass'),
+      galleryMotor: view.motor || null,
       ai: { passive: true }, scannerSignalKind: 'anomaly',
       scanLabel: view.role === 'rail' ? 'BANK RAIL · rebound a payload' : `${view.role || key} · push or Massline` },
   };

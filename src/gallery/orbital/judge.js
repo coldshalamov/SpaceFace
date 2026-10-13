@@ -1,5 +1,10 @@
 // Win and fail from physical state after the authoritative step.
 // A body that never left its spawn cannot satisfy a pocket.
+// Authored fields, tethers, motors, and named props are part of the win:
+// a pocket reached without the catalog mechanism does not count.
+
+import { assetForKind } from './assets.js';
+import { getScenario } from './catalog.js';
 
 function entityOf(state, gallery, role) {
   const id = gallery.roles && gallery.roles[role];
@@ -52,6 +57,7 @@ export function judgeGallery(state) {
     if (!body || body.alive === false) continue;
     if (travelOf(body) < pocket.minTravel) continue;
     if (!centerInside(body, pocket)) continue;
+    if (!mechanismsReady(state, gallery)) continue;
     return finish(gallery, {
       won: true,
       reason: 'pocket',
@@ -64,6 +70,53 @@ export function judgeGallery(state) {
     return finish(gallery, { won: false, reason: 'clock', tick: state.tick });
   }
   return null;
+}
+
+function markFieldUse(state, gallery) {
+  if (!gallery || gallery.fieldUsed) return;
+  const fields = gallery.plantedFields || [];
+  if (!fields.length || !state.entities) return;
+  const roles = gallery.roles || {};
+  for (const role of Object.keys(roles)) {
+    const entity = state.entities.get(roles[role]);
+    if (!entity || !entity.pos) continue;
+    for (const field of fields) {
+      const dx = entity.pos.x - field.x;
+      const dz = entity.pos.z - field.z;
+      if (dx * dx + dz * dz <= field.radius * field.radius) {
+        gallery.fieldUsed = true;
+        return;
+      }
+    }
+  }
+}
+
+function mechanismsReady(state, gallery) {
+  markFieldUse(state, gallery);
+  const authored = getScenario(gallery.scenarioId);
+  if (!authored) return false;
+  if ((authored.fields || []).length && !gallery.fieldPlanted) return false;
+  if ((authored.lines || []).length && !gallery.tetherLatched) return false;
+  if (authored.bodies.some((body) => body.motor) && !motorsWorked(state, gallery, authored)) return false;
+  for (const body of authored.bodies) {
+    const asset = assetForKind(body.kind || 'mass');
+    if (!asset.named) continue;
+    const entity = entityOf(state, gallery, body.role);
+    if (!entity || entity.alive === false) return false;
+    const worn = entity.data && entity.data.galleryAsset;
+    if (!worn || worn.id !== asset.id) return false;
+  }
+  return true;
+}
+
+function motorsWorked(state, gallery, authored) {
+  if (gallery.motorUsed) return true;
+  for (const body of authored.bodies) {
+    if (!body.motor) continue;
+    const entity = entityOf(state, gallery, body.role);
+    if (!entity || !entity.data || !entity.data.galleryMotorWorked) return false;
+  }
+  return authored.bodies.some((body) => body.motor);
 }
 
 export function noteImpact(state, payload) {
@@ -88,6 +141,17 @@ export function noteImpact(state, payload) {
     }
   }
   const closing = Number(payload.preSolveClosingSpeed);
+  for (const id of [payload.aId, payload.bId]) {
+    const body = id != null && state.entities ? state.entities.get(id) : null;
+    const bodyRole = body && body.data && body.data.galleryRole;
+    const asset = body && body.data && body.data.galleryAsset;
+    if (!body || !bodyRole || !asset) continue;
+    if (asset.fracture && closing >= asset.fracture.closingSpeed && !body.data.galleryFractured) {
+      body.data.galleryFractured = true;
+      body.data.fractureInto = asset.fracture.into;
+      body.hull = 0;
+    }
+  }
   if (!(closing > 0) || !gallery.spoils) return;
   for (const spoil of gallery.spoils) {
     const body = entityOf(state, gallery, spoil.role);

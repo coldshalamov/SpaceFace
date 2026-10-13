@@ -32,8 +32,12 @@ export function createLiveGallery(ctx) {
         source: 'live', phase: 'live', scenarioId: next.id, family: next.family,
         inference: next.inference, limitTicks: next.limitTicks, roles,
         pockets: next.pockets.map(offset), hazards: (next.hazards || []).map(offset),
-        spoils: next.spoils || [], spoiled: {},
-        playStartTick: state.tick, boostTicks: 0, brakeTicks: 0, cuts: 0, contacts: 0,
+    spoils: next.spoils || [], spoiled: {},
+    plantedFields: (next.fields || []).map(offset),
+    fieldPlanted: (next.fields || []).length > 0,
+    tetherLatched: false,
+    fieldUsed: false,
+    playStartTick: state.tick, boostTicks: 0, brakeTicks: 0, cuts: 0, contacts: 0,
         playerContactRoles: {}, approachSide: null, styleChip: state.rng(), result: null,
       };
       spawnTick = state.tick; linesPending = true;
@@ -77,6 +81,8 @@ export function createLiveGallery(ctx) {
           if (!made.ok) {
             gallery.result = { won: false, reason: `line:${made.reason}`, tick: state.tick };
             gallery.phase = 'settled';
+          } else {
+            gallery.tetherLatched = true;
           }
         }
       }

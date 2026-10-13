@@ -15,6 +15,14 @@ import { validateScenario } from './validate.js';
 
 const PLAYER_HULL = 'ship_kestrel';
 
+export function sessionInput(options = {}, strategy = {}) {
+  if (options.exhibit !== true && options.tape === undefined) {
+    return { source: 'live', tape: null };
+  }
+  const tape = options.tape !== undefined ? options.tape : (strategy && strategy.tape) || null;
+  return { source: tape ? 'exhibit' : 'live', tape };
+}
+
 export async function openSession(scenarioId, options = {}) {
   const scenario = options.scenario || getScenario(scenarioId);
   if (!scenario) throw new Error(`orbital gallery: unknown scenario ${scenarioId}`);
@@ -23,6 +31,7 @@ export async function openSession(scenarioId, options = {}) {
   const strategyId = options.strategyId || (scenario.strategies[0] && scenario.strategies[0].id);
   const strategy = scenario.strategies.find((row) => row.id === strategyId) || scenario.strategies[0];
   const ledger = options.ledger || createLedger();
+  const input = sessionInput(options, strategy);
 
   const host = await bootRealPath({
     seed: scenario.seed,
@@ -74,7 +83,7 @@ export async function openSession(scenarioId, options = {}) {
   }
 
   const gallery = {
-    source: 'exhibit',
+    source: input.source,
     phase: 'setup',
     scenarioId: scenario.id,
     family: scenario.family,
@@ -85,7 +94,10 @@ export async function openSession(scenarioId, options = {}) {
     hazards: scenario.hazards || [],
     spoils: scenario.spoils || [],
     spoiled: Object.create(null),
-    tape: options.tape !== undefined ? options.tape : strategy.tape,
+    plantedFields: (scenario.fields || []).map((field) => ({ ...field })),
+    fieldPlanted: (scenario.fields || []).length > 0,
+    tetherLatched: false,
+    tape: input.tape,
     strategyId: strategy.id,
     liveInput: null,
     kernel: null,
@@ -129,6 +141,7 @@ export async function openSession(scenarioId, options = {}) {
     if (!made.ok) {
       throw new Error(`orbital gallery: line ${line.owner}->${line.target} ${made.reason}`);
     }
+    gallery.tetherLatched = true;
   }
 
   gallery.phase = 'live';
@@ -200,7 +213,7 @@ export async function resetSession(session) {
   const { scenario, ledger } = session;
   const strategyId = session.strategyId;
   session.dispose();
-  return openSession(scenario.id, { ledger, strategyId, scenario });
+  return openSession(scenario.id, { ledger, strategyId, scenario, exhibit: true });
 }
 
 export function gallerySaveStrip(state) {
