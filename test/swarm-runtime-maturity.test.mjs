@@ -175,7 +175,7 @@ test('a dead player at the same boundary as the last enemy never receives a wave
   assert.equal(h.events.filter(e => e.event === WAVE_CLEARED_SEAM).length, 0); sys.destroy();
 });
 test('the two-shooter cap holds on EVERY tick across fractional arrival grace expiry', () => {
-  const h = room(); h.state.simTime = 10.123; const sys = owner(h, plan(6));
+  const h = room(); h.state.simTime = 10.123; h.state.input.fire = true; const sys = owner(h, plan(6));
   for (let i = 0; i < 300; i++) {
     tick(h, sys);
     const firing = [...sys._cohort.keys()].filter(id => !held(h.state.entities.get(id), h.state.simTime));

@@ -17,7 +17,13 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
-import { SWARM_ARRIVAL_GRACE_S, SWARM_SPAWN_RETRY_TICKS } from './swarmSafety.js';
+import {
+  SWARM_ARRIVAL_GRACE_S,
+  SWARM_SPAWN_RETRY_TICKS,
+  noteSwarmPilotAction,
+  swarmPilotHasActed,
+  swarmPilotIsActing,
+} from './swarmSafety.js';
 import { catalogQuestionIssues } from '../data/survivalWaves.js';
 import {
   SWARM_BOSS_ENEMY_ID,
@@ -37,6 +43,7 @@ import {
   levelForWave,
   materializeWaveBatch,
 } from './waveMaterialization.js';
+import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 
@@ -47,6 +54,10 @@ export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
  * from its own arrival. A player who shoots the wasp waits one beat, not forty-five seconds.
  */
 export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
+
+// Re-exported so callers that already import the scale from the wave owner
+// stay on the leaf in src/data/swarmThreatMark.js. Do not redeclare 1.12 here.
+export { SWARM_THREAT_MARK_SCALE };
 // After the lesson the pack arrives in readable groups, a breath apart, instead of the whole
 // room landing on a new pilot inside one second.
 const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
@@ -596,10 +607,22 @@ export const survivalWave = {
     const player = state?.entities?.get?.(state.playerId);
     if (!player || player.alive === false || !player.pos) return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    // Idle seed 4242: the lesson wasp was cleared after 2.5s and walked the hull
+    // from 140 to 31 before the probe touched the stick. Hold every gun, including
+    // bosses, until this wave sees a real pilot act. autoFire's combat-stick
+    // writes (moveX/moveZ/turnIntent) do not qualify; fire, boost, and brake do.
+    if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
+    const quiet = !swarmPilotHasActed(state);
     const rank = [];
     for (const [id, member] of this._cohort) {
       const entity = this._resolveCohortEntity(id, member);
       if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
+      // Opt-in bracket. The default plate stays on entity.radius so a hull without
+      // this field cannot grow a halo. The stroke stays just outside the hull
+      // (see SWARM_THREAT_MARK_SCALE). The in-hull glyph is what lifts the dark
+      // body off the sky; widening this rim paints the background ring.
+      const bodyR = Math.max(2, Number(entity.radius) || 2);
+      entity.data.swarmMarkRadius = bodyR * SWARM_THREAT_MARK_SCALE;
       const ai = entity.data.ai;
       if (!Number.isFinite(member.armedAt)) {
         member.armedAt = Number.isFinite(ai.swarmArmedAt) ? ai.swarmArmedAt : now + SWARM_ARRIVAL_HOLD_S;
@@ -608,12 +631,13 @@ export const survivalWave = {
       // Refresh every tick so the warmup cannot expire between half-second roster updates.
       ai.swarmFireHoldUntil = Math.max(member.armedAt, now + 2 / 60);
       ai.swarmFireHeld = true;
-      if (member.armedAt > now) continue;
+      if (quiet || member.armedAt > now) continue;
       const boss = this._bossIds?.has(id);
       const answering = Number.isFinite(entity.lastDamageT) && now - entity.lastDamageT < SWARM_RETURN_FIRE_S;
       const distance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       rank.push({ id, ai, key: boss ? 0 : answering ? 1 : 2, distance });
     }
+    if (quiet) return;
     const index = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
     const cap = SWARM_SHOOTERS_BY_WAVE[index];
     rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
