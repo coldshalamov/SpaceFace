@@ -19,6 +19,10 @@ export const FRONTIER_RUMOR_RECEIPT_LIMIT = 48;
 // The existing bar contact reply presents this copy; the regular purchasable frontier card
 // remains available on the same screen.
 export const AUTHORED_DOCK_RUMORS = Object.freeze({
+  // The starter bar's own lead (every lesser station had one; Helios did not). Names the two
+  // real things a new pilot can fly to from here: the Candle Fleet's relighting shift and the
+  // drift line off its dark side — poi_memorial and poi_helios_pit_line.
+  station_helios: 'The Fleet tenders walk the relight run past the weigh-point most shifts — twenty-four candles for the convoy, the twenty-fifth plinth kept dark on purpose. Out past the Fleet, on its dark side, something still holds formation. The seal tags read older than the toll ledger.',
   station_ceres: 'The Long Berth is an abandoned yard tug still turning beside Ceres Refinery. She is loose: Massline her and pull her clear of the hauler approach.',
   // Charon Expanse hunter exchange: the bar lead names the sector's real distress site —
   // poi_charon_tether_wreck (Snapped-Tether Hab-Pod, survivorPod + recoveryEncounter) — so
@@ -56,6 +60,17 @@ export const AUTHORED_DOCK_RUMORS = Object.freeze({
   // The claim crews burn fuel cells by mid-shift; Ceres Refinery's crackers over-run the belt.
   // Names two real stations — buy at the glut, dock back here and sell into the shortage.
   station_hyperion_claim: 'The crews here burn their cell ration by mid-shift, and the desk still prices the tanks like the pumps run uphill. Back up-lane the Ceres Refinery cracks more cells than its own belt can carry away, and lets them go near scrap. Run an empty rack out through the Ceres gate, fill it at the refinery, and dock it back here — the scale pays without asking what took you so long.',
+  // The ration run, taught at its cheap end: the only four-factor arbitrage with no lead.
+  // The hydroponics racks sell what their vault cannot hold; the Belt Outpost's rock crews
+  // pay dear for exactly that crate (station_beltout cmdty_food 0.1, sectors.js).
+  station_drift: 'Hydroponics over-run the Drift three crates to one — the racks sell ration stock near cost because the vault cannot hold another tray. The Belt Outpost\'s rock crews eat same-shift and pay dear for exactly that crate. Fill a hold here, dock it there; the scale does not ask why the labels are still wet.',
+  // The last four bar-station leads (coalition, beltout, tethys, customs) — each names real,
+  // reachable content: the Coalition capital price and Checkpoint Niner, the ration run's
+  // dear end and the Kettle ledger, the breakaway yard, the weigh clamp and its witness desk.
+  station_coalition: 'The Coalition desk does not buy stories; it buys outcomes — a capital-scale problem crossed this chord last month and nobody has claimed the standing price yet. You will pass Checkpoint Niner on the way out; the lamp there has been green eleven months, and the scale weighs everything twice. Do not carry what you cannot declare.',
+  station_beltout: 'Ration crates come up-lane dear and leave faster than the skiff can stack them — the Drift sells what its own vault cannot hold, if you are heading that way. And if the night shift asks: the convoy that never logged is still a one-line hole in our ledger, and the clerk keeps the page open.',
+  station_tethys: 'Two yards share this junction and only one admits what it launches — the breakaway rig out on the near lane still fires payloads nobody files flight plans for. Mind the weigh clamp on the through-line: it holds any hull that drifts off that route, and it has been holding more of them lately.',
+  station_customs: 'Weigh-and-release runs the whole junction through our clamp — every hull pays its second on the line, no exceptions we admit to. The witness desk buys clean testimony about what the breakaway yard drops when it thinks the clamp is looking away. Clean means clean; the clamp remembers every hull it ever held.',
 });
 
 // PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.

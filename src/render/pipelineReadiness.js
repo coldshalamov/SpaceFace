@@ -1444,9 +1444,13 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   // open route the same margin: its prepare budget is 40 s and the tail steps sit on top
   // of it, so a 20 s gate still releases mid-cook. 120 s is the bounded ceiling — a fast
   // host finishes early, a wedged cook still fails open.
-  const presentBudgetMs = state && state.run && state.run.kind === 'survival'
-    ? Math.max(timeoutMs, 360000)
-    : Math.max(timeoutMs, 120000);
+  // options.presentBudgetMs overrides the ceiling for a caller (a test) that wants the timeout path in
+  // milliseconds instead of two minutes.
+  const presentBudgetMs = Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
+    ? options.presentBudgetMs
+    : state && state.run && state.run.kind === 'survival'
+      ? Math.max(timeoutMs, 360000)
+      : Math.max(timeoutMs, 120000);
   const presentResult = await settleWithin(presentCook, presentBudgetMs);
   const presentOutcome = settleOutcome(presentResult);
   recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);

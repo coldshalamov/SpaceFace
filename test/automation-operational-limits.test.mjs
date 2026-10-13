@@ -229,6 +229,7 @@ test('PQ-177.07 one programmed miner sells through throughput, not the token buc
   const group = programmedGroup();
   addToShipment(group, 'cmdty_ore_iron', 5, 40);
   const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 5);
+  inst.state.automation.drones.push(group);
   const result = inst._programSellCargo(group, 'station_helios');
   assert.equal(result.ok, true);
   assert.equal(result.receipt.credited, expected.total);
@@ -250,6 +251,7 @@ test('PQ-177.07 competing machines on a saturated depot do not double the take',
   const second = programmedGroup({ id: 'drone-b' });
   addToShipment(first, 'cmdty_ore_iron', 8, 40);
   addToShipment(second, 'cmdty_ore_iron', 8, 40);
+  inst.state.automation.drones.push(first, second);
   const saleA = inst._programSellCargo(first, 'station_helios');
   const saleB = inst._programSellCargo(second, 'station_helios');
   assert.equal(saleA.ok, true);
@@ -330,6 +332,7 @@ test('SF-115 a closed cycle reconciles mined inputs, service costs and the sale 
   group.operation.operatingCostPerMin = 6; // as stamped by _syncProgrammedOperation each tick
   inst._burnOperatingFuel(group, def, 60);
   const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 5);
+  inst.state.automation.drones.push(group);
   const result = inst._programSellCargo(group, 'station_helios');
   assert.equal(result.ok, true);
   const cycle = group.operation.lastCycle;
@@ -364,6 +367,7 @@ test('SF-115 a demand-bound sale keeps the refused stock as held inventory, not 
   addToShipment(group, 'cmdty_ore_iron', 8, 40);
   group.operation.operatingCostPerMin = 6;
   inst._burnOperatingFuel(group, def, 30);
+  inst.state.automation.drones.push(group);
   const result = inst._programSellCargo(group, 'station_helios');
   assert.equal(result.ok, true);
   assert.equal(result.receipt.quantity, 3);
@@ -386,6 +390,7 @@ test('SF-115 a stalled depot books nothing: stock and inputs stay unresolved', (
   addToShipment(group, 'cmdty_ore_iron', 8, 40);
   group.operation.operatingCostPerMin = 6;
   inst._burnOperatingFuel(group, def, 30);
+  inst.state.automation.drones.push(group);
   const result = inst._programSellCargo(group, 'station_helios');
   assert.equal(result.ok, false);
   assert.ok(group.operation.lastCycle == null, 'no sale, no closed cycle, no booked income');

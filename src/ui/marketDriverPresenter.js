@@ -82,6 +82,32 @@ const onePlace = (pct) => Math.round(Math.abs(pct) * 10) / 10;
  * quote uses, in percent against a stranger's quote at this berth. A pilot the station treats like a
  * stranger gets no row: nothing was applied.
  */
+/**
+ * The reputation pair the selected counter should name. A failed side (sold out, tier
+ * locked) omits the fields; the side that actually quoted still carries them. The
+ * surcharge flag is true if either quote says the berth waived it.
+ */
+export function reputationFromQuotes(buyQ, sellQ) {
+  const pair = (quote) => {
+    if (!quote) return null;
+    const buy = Number(quote.reputationBuyMult);
+    const sell = Number(quote.reputationSellMult);
+    if (!Number.isFinite(buy) || !Number.isFinite(sell)) return null;
+    return { buy, sell, surchargeWaived: quote.stationSurchargeWaived === true };
+  };
+  const fromBuy = pair(buyQ);
+  const fromSell = pair(sellQ);
+  if (!fromBuy && !fromSell) return null;
+  if (fromBuy && fromSell) {
+    return {
+      buy: fromBuy.buy,
+      sell: fromSell.sell,
+      surchargeWaived: fromBuy.surchargeWaived || fromSell.surchargeWaived,
+    };
+  }
+  return fromBuy || fromSell;
+}
+
 export function standingDriver(state, station, entry, reputation = null) {
   const factionId = station && station.factionId;
   const record = factionId && state && state.factions && state.factions[factionId];

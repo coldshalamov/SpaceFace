@@ -121,6 +121,29 @@ test('reapplying authored profiles does not recursively wrap the shader', () => 
   assert.equal((shader.fragmentShader.match(/float sfBreakNoise/g) || []).length, 1);
 });
 
+test('rough rock reflection is role scoped and preserves its scanned material inputs', () => {
+  const map = new THREE.Texture();
+  const rock = new THREE.MeshStandardMaterial({ color: 0x635d52, roughness: 1, map });
+  rock.userData.spacefaceSharedMaterialRole = 'rock';
+  const hull = rock.clone();
+  hull.userData.spacefaceSharedMaterialRole = 'hull';
+  for (const [material, roleWeight] of [[rock, 1], [hull, 0]]) {
+    const inputs = { map: material.map, color: material.color.getHex(),
+      roughness: material.roughness, emissive: material.emissive.getHex() };
+    installIllustratedSurface(material);
+    const shader = { fragmentShader: THREE.ShaderLib.standard.fragmentShader, uniforms: {} };
+    material.onBeforeCompile(shader, {});
+    assert.equal(shader.uniforms.sfRockSurface.value, roleWeight,
+      'only the terrain role receives the shadow reflection, regardless of roughness');
+    assert.equal(material.map, inputs.map);
+    assert.equal(material.color.getHex(), inputs.color);
+    assert.equal(material.roughness, inputs.roughness);
+    assert.equal(material.emissive.getHex(), inputs.emissive, 'rock paint gains no emissive input');
+  }
+  assert.equal(rock.customProgramCacheKey(), hull.customProgramCacheKey(),
+    'role weight shares the existing shader family without per-role compilation');
+});
+
 test('glass and shader effects retain their optical response', () => {
   for (const material of [new THREE.MeshPhysicalMaterial({ transmission: 0.8 }),
     new THREE.MeshStandardMaterial({ transparent: true }), new THREE.ShaderMaterial()]) {

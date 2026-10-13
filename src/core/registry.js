@@ -1175,6 +1175,8 @@ export function createRegistry(ctx) {
       // state.simTime stays frozen, so the seeded client schedule holds still with it.
       const yard = byName.get('stationServices');
       if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
+      const law = byName.get('lawSecurity');
+      if (law && typeof law.keepalive === 'function' && wallDt > 0) law.keepalive(wallDt);
       const latch = byName.get('latchNine');
       if (latch && typeof latch.keepalive === 'function') latch.keepalive(wallDt);
     },

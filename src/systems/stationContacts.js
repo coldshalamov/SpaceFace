@@ -268,6 +268,7 @@ export const stationContacts = {
     if (!this.state) return;
     this.state.player.stationContacts = {};
     this.state.player.stationContactCounters = createInitialStationContactCounters();
+    delete this.state.player.stationLife;
     this.state.stationLife = { traffic: [], rescueNotices: {}, deeds: {} };
     this._clearVonnFreightReceipts();
     this._syncWitnessSeamVoice();

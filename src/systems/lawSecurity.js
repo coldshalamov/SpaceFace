@@ -8,6 +8,7 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
+import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
@@ -60,6 +61,7 @@ import {
   authorityResponsePolicy,
   rankLawfulResponders,
   reserveArrivalPoint,
+  RESERVE_STATION_LAUNCH_CLEARANCE_WU,
   WITNESS_FRAME_HALF_WU,
 } from '../law/authorityResponse.js';
 import { scaleBySector } from '../data/sectorPhysical.js';
@@ -142,6 +144,8 @@ export const WANTED_IMPOUND_YARD_RADIUS = 36;
 export const WANTED_IMPOUND_PAD_RADIUS = 14;
 
 const RESPONSE_GRACE_S = 6;
+// How many 0.25 s dispatch retries a crowded arrival frame may defer a reserve before it launches anyway.
+const RESERVE_ARRIVAL_CROWDED_RETRIES = 8;
 const RESPONSE_CLEARANCE = 320;
 const RECEIPT_CAP = 24;
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
@@ -453,6 +457,7 @@ export const lawSecurity = {
 
   update(_dt, state) {
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (shouldSkipFullTickSystems(state)) { this.keepalive(_dt); return; }
     this._reconcileJobResponses();
     this._updateFineWork(_dt, state);
     this._updatePlayerSurrender(_dt, state);
@@ -1468,6 +1473,19 @@ export const lawSecurity = {
         noFireResponseWindowS: incident.challengeWindowS,
         startedTick: state.tick,
       });
+      // Pulling every reserve onto the close ring can stack hulls and put allied ships in
+      // each other's firing lanes. Keep the visible arrival, but find a clear launch slot.
+      const clearPos = clearReserveArrivalPoint(pos,
+        incidentOccupant(state, incident.attackerId, incident.attackerGeneration)?.pos,
+        station, spec.radius, actors.concat(out));
+      if (!clearPos && (incident.arrivalCrowdedTries | 0) < RESERVE_ARRIVAL_CROWDED_RETRIES) {
+        incident.arrivalCrowdedTries = (incident.arrivalCrowdedTries | 0) + 1;
+        incident.spawnBudgetDeferred = 'arrival_crowded';
+        break;
+      }
+      // A frame that stays crowded through every retry (a parked fleet that never moves) launches at the
+      // authored slot: a late, stacked response beats none, and crime must never go unanswered.
+      spec.pos = clearPos || pos;
       let spawned;
       try {
         spawned = this.helpers.spawnEntity(spec);
@@ -2930,8 +2948,10 @@ export const lawSecurity = {
       own.fineOffer = {
         stationId, amount: fine, causeId, status: 'offered', choice: null,
         heatLevel: level, wantedTier: tier,
+        ...(state.ui?.docked === true ? { productionDock: true } : {}),
       };
     }
+    if (state.ui?.docked === true) own.fineOffer.productionDock = true;
 
     if (!choice) {
       this._lawResponse('fine_assessed', {
@@ -4672,6 +4692,10 @@ export const lawSecurity = {
     return audit;
   },
 
+  keepalive(dt) {
+    this._updateFineWork(dt, this.state);
+  },
+
   _chooseFine(payload = {}) {
     const state = this.state;
     if (!state) return null;
@@ -4680,6 +4704,11 @@ export const lawSecurity = {
     const own = ensureState(state);
     const offer = own.fineOffer;
     const stationId = payload.stationId || (offer && offer.stationId);
+    if (offer?.productionDock && (state.ui?.docked !== true
+      || String(state.ui.dockedStationId) !== String(stationId))) {
+      this._emit('law:fineRefused', { reason: 'not_at_berth', stationId: stationId || null });
+      return { accepted: false, reason: 'not_at_berth' };
+    }
     // FB-039 — a reply only resolves the fine actually on the counter. A stale panel (already
     // paid, a different berth, no open offer at all) is refused, never charged: the handler
     // re-derives tier and price from current heat before it acts.
@@ -4694,12 +4723,14 @@ export const lawSecurity = {
     const own = state && state.lawSecurity;
     const offer = own && own.fineOffer;
     if (!offer || offer.status !== 'working') return;
+    if (offer.productionDock && (state.ui?.docked !== true
+      || String(state.ui.dockedStationId) !== String(offer.stationId))) return;
     if (own.fineSettled && own.fineSettled[offer.causeId]) {
       offer.status = 'paid';
       return;
     }
     const step = Number(dt);
-    if (!(step > 0)) return;
+    if (!Number.isFinite(step) || !(step > 0)) return;
     offer.workS = (Number(offer.workS) || 0) + step;
     if (offer.workS + 1e-9 < (Number(offer.workNeedS) || LAW_FINE_WORK_S)) return;
     if (!own.fineSettled || typeof own.fineSettled !== 'object') own.fineSettled = {};
@@ -5542,6 +5573,39 @@ function cargoPodOwnerId(entity) {
 
 function sameLawEntityId(a, b) {
   return a != null && b != null && String(a) === String(b);
+}
+
+function clearReserveArrivalPoint(point, aggressor, station, bodyRadius, occupied) {
+  if (!aggressor) return point;
+  const radius = Math.max(0, Number(bodyRadius) || 0);
+  const stationClearance = station && station.pos
+    ? Math.max(60, Number(station.radius) || 0, Number(station.data?.dockRadius) || 0)
+      + RESERVE_STATION_LAUNCH_CLEARANCE_WU
+    : 0;
+  const clear = (candidate) => {
+    if (stationClearance > 0
+      && Math.hypot(candidate.x - station.pos.x, candidate.z - station.pos.z) < stationClearance) return false;
+    return occupied.every((entity) => !entity || entity.alive === false || !entity.pos
+      || Math.hypot(candidate.x - entity.pos.x, candidate.z - entity.pos.z)
+        >= radius + Math.max(0, Number(entity.radius) || 0) + 8);
+  };
+  if (clear(point)) return point;
+  const heading = Math.atan2(point.z - aggressor.z, point.x - aggressor.x);
+  const inner = Math.max(40, Math.hypot(point.x - aggressor.x, point.z - aggressor.z));
+  const outer = Math.max(inner, WITNESS_FRAME_HALF_WU - 1);
+  for (let ring = 0; ring <= 8; ring++) {
+    const distance = inner + (outer - inner) * ring / 8;
+    for (let step = 0; step < 32; step++) {
+      const turn = Math.ceil(step / 2) * Math.PI / 16;
+      const angle = heading + (step % 2 === 0 ? turn : -turn);
+      const candidate = {
+        x: aggressor.x + Math.cos(angle) * distance,
+        z: aggressor.z + Math.sin(angle) * distance,
+      };
+      if (clear(candidate)) return candidate;
+    }
+  }
+  return null;
 }
 
 function incidentRingOrigin(incident, victim, station) {

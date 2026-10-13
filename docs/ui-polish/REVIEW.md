@@ -45,7 +45,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
-| **`codex`** / **`codex-record`** | **DONE** | See § Codex below — this session |
+| **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait stack + landscape hang\|reader; review1+review2 fixes in § Phone Codex |
 | **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
 | **`credits`** | **DONE** | See § Credits below — this session |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
@@ -61,7 +61,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `wingman-radial` | SURVEYED | |
 | `ship` | SURVEYED | Ledger DONE earlier |
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
-| **`range`** | **DONE @960×540** (ui-polish-17) | See § Proving Range @960 below; 1024 / 1280 / 1920 / phone unchanged |
+| **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
@@ -76,11 +76,23 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `automation` | SURVEYED | |
 | `replay` | SURVEYED | |
 | `clips` | SURVEYED | |
-| `sandbox` | SURVEYED | Ledger DONE for overflow |
+| **`sandbox`** | **DONE** (ui-polish-24) | Launch no longer buries Combat Lab / Hull / Hornet; phone tiles no longer stack — see § Sandbox Launch below |
 | `localmap` / `localmap-legacy` | SURVEYED | |
 | `starmap` / `starmap-legacy` | SURVEYED | |
 
 ---
+
+## Save / Load reading clears the filmstrip — session notes (2026-10-13, ui-polish-26)
+
+**Before (master 9ee2924f04):** the filmstrip spanned both columns under the reading, so the reading ran into it. At 960×540 the hull record, NAME, LOAD / SAVE HERE / DELETE and the QUICK / SLOT 1 labels printed on top of each other, and LOAD sat on EXPORT. At 1280×720 and 1920×1080, LOAD and the name field sat on the Quick slot's berth and the beam.
+
+**After (`src/ui/orrery/saveLayouts.js` only, desktop only via `html:root:not([data-sf-mobile="1"])`):**
+- The grid areas become `"title stage" "page stage" "page hang" "foot foot"`. The reading has the whole left column, and the filmstrip stands under the hull, where the beam already ran. `saveFilmstrip.js` re-lays the stations from the host width (ResizeObserver), so no JS changed.
+- At ≤1100px wide the reading column is `minmax(356px, 38%)`, the context line fits on one line (10px, .12em), and a slot's badge (CURRENT) takes its own line under its name.
+- At ≤1100×≤640 the credits numeral is 48px×scale and the hull record reads in two columns, with keys sized to their words, so LOAD ends 30px above the foot.
+- 1280 and 1920 change only in the grid areas. Phone (portrait and landscape) is untouched. The empty slot (`save-load-empty`) is clean at every size. Selectors and IDs are unchanged.
+
+Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 1920×1080, phone), iterations in `iter1`–`iter6`. Bench note: the readings' decode animation is sometimes caught mid-scramble (for example "03:4█ &3"); that's the capture timing, not the layout.
 
 ## Station berth — session notes (2026-10-12, ui-polish-10)
 
@@ -142,11 +154,33 @@ At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are
 
 **After (`src/ui/orrery/archiveLayouts.js`, Codex CSS only):** at 801–1100px wide the dials are 44px on 64px columns, the plate is `min(300px, 48vh, 29vw)` and sits a little lower, and the hang column is 316px. The reading has about 250–300px, with a 44px numeral, a 22px title and 14px lore, and record rows stack label over line. At ≤640px tall, section rungs are 22px and the search and foot close up, so LEDGER clears CLOSE. Selectors and IDs are unchanged. 1280, 1920 and phone portrait don't match the query. A phone on its side (844×390) is better but still has the scale over CLOSE, which is a follow-up. Shots: `ui-shots/codex960/`.
 
+## Shipworks nameplate vs callouts @960 — session notes (2026-10-13, ui-polish-20)
+
+**Before:** at 960×540 the dock stage is 162px tall, and the left callout column shared it with the nameplate (title, then DOCKED, then the rename field) and the camera words. `nameplateInkRect` read text nodes only, so the field's "Name this hull" placeholder was no obstacle: Utility / Shield Capacitor M printed on it, and the column's overflow ran Drive and Cargo onto LEFT · CENTER · RIGHT.
+
+**Fix:** `nameplateInkRect` now adds the rename field's value or placeholder, measured in its own font from its content edge (`shipworks.js`). `shipworksLayouts.js`, `@media (max-width:1100px) and (max-height:640px) and (hover:hover)` only: DOCKED rides the title's line, the field is one compact 12px line, and the live stage's camera words sit at the right end of the verb row under the stage. The left column gets ~85px instead of ~15px, so three cards fit between the field and the verbs.
+
+**Checked:** 960×540, 1024×576, 1100×640, stock and longest-name injected, live hull and render; no card touches the field or the camera words. 1024×768, 1280×720, 1920×1080, 390×844 and 844×390 don't match the query: field box unchanged and screenshots match master. Shots: `ui-shots/shipworks-nameplate/{before,after2}/`.
+
 ## Proving Range @960×540 — session notes (2026-10-13, ui-polish-17)
 
 **Before:** the title block (180px) and the foot (338px: a five-row rule ladder, the dossier and a 64px run gauge) plus the 48px kit row gap outgrew 540px. The stage, which holds the course itself, was squeezed to 0px, and RULES / BESTIARY / CLOSE and the run instrument fell below the frame.
 
 **After (`src/ui/screens/range.js`, local style block only, `@media (max-width:1100px) and (max-height:640px)`, desktop only):** frame padding 20/40/12 and an 8px row gap, the corner count moves up with the title (40px), and the lamp key is 34px tall. The ladder words are tracked tighter, with 5px ticks and a 12px gap, so the 16 rules take four rows. The dossier and the run row close up, and the gauge is 40px. The course keeps ~146px (~110px when a long rule name wraps to two lines). The whole foot is on glass, and RULES and BESTIARY open their drawer over the stage. Type stays on the grammar scale. Selectors and IDs are unchanged. 1024×768, 1280, 1920 and phone don't match the query. Shots: `ui-shots/range960/`.
+
+## Proving Range @1280 + phone course — session notes (2026-10-13, ui-polish-23)
+
+**Before (master c8f43e53ee):** at 1280×720 the course (`.k-stage`) was ~85px; the 64px top pad, two 48px kit row gaps, a four-row ladder at ~42px a row and the 64px gauge took the rest. On phone 390×844 the course was **0px**: the 40px title ran four lines, the kit's title padding (it reserves the corner's width) squeezed every title line to 182px, and the 16 rules wrapped into a ten-row ladder (44px touch rows), so the foot alone was 641px. On phone 844×390 the course was also 0px.
+
+**After (`src/ui/screens/range.js` only, local style block plus one small helper):**
+- **Mid-height desktop** — `@media (min-width:1101px) and (max-height:900px), (min-height:641px) and (max-height:900px)`, desktop only. The top pad is 40px and the row gaps 22px; the ladder rows are ~34px with 6px ticks; the dossier and run row are 14px; the gauge is 48px. Course: 1280×720 **85→224px**, 1024×768 115→250, 1440×900 251→398. 960×540 still matches the short-frame block (146px, unchanged) and 1920×1080 is past 900px (385px, unchanged).
+- **Phone portrait** (`data-sf-mobile`): the ladder is one row that scrolls sideways. The spine is a `background-attachment: local` rule so it travels with the words, the right edge fades, and `_keepRungInView` scrolls the live rung into view when NEXT RULE (or anything other than a tap on the ladder) changes it. The title drops the kit's corner padding: only the rule keeps 88px for the corner, at `var(--k-fs-menu)` (30px on phone). The score is 22px, the run gauge 36px, the gaps 12px, and the course row has a 200px floor. Course at 390×844: **0→384px**, and the foot (ladder, dossier, RULES / BESTIARY / CLOSE, run gauge) ends at 824. The longest rule ("A sheet collects loose mass onto the line") still fits without scrolling, with 330px of course.
+- **Phone landscape (≤500px tall)**: the course takes the right 44% at full height (350×306, below the score), and the title sits over the foot on the left. Course at 844×390: **0→306px**.
+- Drawer width is capped at the stage on phone. Type stays on the grammar scale (12/13/14/15/22 plus the kit token), and selectors and IDs are unchanged.
+
+Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer open, NEXT RULE ×6 rail scroll, longest rule).
+
+**Live-build check (Code Work's ask, 06:10 ET):** the real game (`?dev=screen:range`, then Esc and the real F4 key) matches ui-bench at 960 (146px), 1280 (224px) and 1920 (385px). On a real touch phone the coarse pointer gives AGAIN / TRY IT EMPTY 44px rows, so NEXT RULE wrapped to its own row and the 390×844 course was 314px, not 384. Under `(pointer: coarse)` the verbs now share one row (10px gap, phone-sized lamp key, as on the phone Market): course 390×844 **314→364**, 375×812 285→335, 360×740 217→267; 844×390 is 318. The drone's name (BRUISER) is now painted last on a small void plate, so the gate rung and turn ring that pack under it on the narrow course no longer cut through the letters. Shots: `ui-shots/range-course/live/` (before) and `live/after3/`.
 
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 
@@ -487,6 +521,14 @@ New overlay `src/ui/orrery/pauseLayouts.js`, injected from `pause.js` (one impor
 **Next:** HUD chrome / dialogs / stations; re-verify earlier screens on fresh assets; SANDBOX-over-nose remaining on main menu @1080p.
 
 
+## Shipworks stage takes the pointer again — session notes (2026-10-13, ui-polish-21)
+
+**Before:** two pointer bugs on the Shipworks dock, found while checking the rename field. (1) The rename field ("Name this hull") couldn't be clicked at any size, including phone; only Tab reached it. `.sx-sw__nameplate` is `pointer-events:none` and the input inherits it, and the kit's `input.k-input:hover { pointer-events:unset }` hands the `none` back on hover. (2) At ≤1100 wide, where the hull drawing doesn't lay out and the live hull shows, the empty jig box (z3) still took the pointer. Slot callouts, LEFT / CENTER / RIGHT and the hull drag all hit the jig instead, so nothing on the stage responded to the mouse.
+
+**Fix:** `station.css`: the rename field takes the pointer back, with `:hover`/`:focus` arms that outrank the kit rule. `shipworksLayouts.js`: `.orr-sw-jig:not(.orr-hull--on) { pointer-events:none }`. When the jig is laid out it keeps the pointer, and the nameplate's existing z4 keeps the field above it.
+
+**Checked:** click then type works at 960×540, 1280×720, 1920×1080, 390×844 and 844×390. At 960, 1024 and 1100 the hit-tests reach the callout, the camera word and the canvas, and a click on the Weapon callout opens its chooser. Idle screenshots are pixel-identical to master at every size. Shots: `ui-shots/rename-click/`.
+
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
 
 Captured by booting the actual game (`node server.js`, Playwright + SwiftShader) and clicking through the main menu the way a player does. Images: `docs/ui-polish/before/*.jpg`, `docs/ui-polish/after/*.jpg`.
@@ -561,6 +603,24 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 - **Fixed (P1, 390×844):** PELICAN and WASP ran together in the *Start as* row. Names now size to their content, slightly smaller, with a fixed gap.
 - Checked at 1280×720, 1366×768, 1920×1080, 2560×1440 and 390×844; `--walk` exercised 12 controls with all three hulls brought to the front. `test/yard-carousel` and the new-game tests pass (50/50). Shots are in `/workspace/spaceface-scratch/ui-shots/ng5/` (not committed).
 
+## Sandbox Launch / phone tiles — session notes (2026-10-13, ui-polish-24)
+
+**Before:** On first paint the Combat Lab and fine-tune (Hull / Hornet) sat in the fixed Launch key's band at 960×540, 1280×720 and 1920×1080. On phone (`data-sf-mobile`), the ladder's flex shrink crushed each scenario tile to the global 44px touch min-height, so titles and descriptions stacked on each other.
+
+**Root cause found in review (Code Work real-game check, 07:37):** `screenManager` writes an inline `display:grid` on every `.dp-frame` root, so in the game this frame was the deckplate head/body/foot grid: the stage got an 8px row at 960×540 and the apron (LIVE TOOLS, pickers, Back) painted over the ladder; at 844×390 the Module/Enemy pickers sat under Launch at first paint and at the end of the scroll. The bench never sets that inline style, so it kept `display:block` and never showed it.
+
+**After (`src/ui/screens/sandbox.js` only):**
+1. One layout model in the game and on the bench: the frame pins `display:grid !important` (crest, then the stage as the only scroller) and never scrolls itself. Its `padding-bottom` reserves the Launch band, so the stage box ends above the key and nothing in it can sit under Launch at first paint or at any scroll offset. The hide path's inline `display:none !important` still wins.
+2. All the Launch geometry is in one custom property, `--sf-sandbox-dock` (key height + floor gap + air). The frame's reserve, the foot scrim and the key itself read it, and the phone deck restates it over its `!important` 20px `.screen` foot pad. The old 320 / 300 / 120 / 260px numbers are gone.
+3. Content keeps its natural height. The ladder is bounded by the stage, not by the viewport (`max(160px, 100% − --sf-sandbox-peek)`), so the rail foot, the COMBAT LAB tick and the panel's first row are always on first paint as the cue that the lab sits below. There's no forced `100vh − 320px` and no dead gap.
+4. LIVE TOOLS and Back (the apron) moved into the stage's normal flow after fine-tune, so they can no longer paint over the ladder.
+5. At ≤500px tall (844×390) the ladder drops its own bound and the stage alone scrolls. That retires the `min-height:200px > max-height:min(48vh,380px)` fight. Short frames (≤640px) also give back crest top air.
+6. Kept from the first pass: tiles are `flex: 0 0 auto`, and the phone deck's `min-height:0 !important` overrides the global 44px touch floor.
+
+Bench, with the game's inline grid forced to match the real cascade, at 960 / 1280 / 1920 / 390×844 / 844×390, on first paint and at the end of the stage scroll: nothing sits under Launch, LIVE TOOLS never overlaps the ladder, and there's no tile-on-tile overlap. COMBAT LAB is on first paint everywhere except 844×390, where the stage is 189px tall. Module/Enemy are reachable above Launch at 844×390. `ui-bench` reports `measured: no tangled…` at all five sizes (phone was previously OFF FRAME). Selectors and IDs are unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/sandbox-launch/review-fix/` (not committed).
+
+**Still open (elsewhere):** the Shipworks left-rail "Starter / systems fitted" clip at 960 (waiting on #359/#365), phone Shipworks callouts, and focused rename-field spacing once those land.
+
 ## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
 
 `src/ui/screens/mainMenu.js` + `src/ui/orrery/arcRail.js` (the `clearOf` mask is used only by the title; the new `seat` option defaults to the old 6px, so pause is unchanged). No selector, ID or DOM changes.
@@ -581,4 +641,14 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 4. **This file:** stale "no commit" note and duplicate Next lines removed; code touched is `cruciblePreparationLayouts.js` + the one-line inject in `crucibleDraft.js`.
 5. **Scope:** #322 is frozen at Armory + Refit; later screens go to a new PR.
 6. **PNGs:** the eight `docs/ui-polish/crucible-*.png` files are removed from the PR; evidence lives in the PR conversation.
+
+## Phone Codex — session notes (2026-10-13, ui-polish-22)
+
+**Before (390×844):** the kit hang column is ~480×k-s, so the stage track collapses to 0px. The subtitle prints through the unlock dial labels, the absolute plate sits on the entry ladder, and the wedge fans across the hang. **Before (844×390):** ARCHIVE / LEDGER on the section scale paint past CLOSE.
+
+**After (`archiveLayouts.js` only, `data-sf-mobile="1"`):** one column — title (CODEX → dials → subtitle), plate in flow, hang (sections + ladder, clipped), reading, foot docked on a fade. Landscape ≤560px tall hides the plate and dial words so the scale scrolls inside the hang and CLOSE stays clear. Desktop 801–1100 is unchanged here (#356). Selectors/IDs unchanged. Shots: `ui-shots/codex-phone/` (not committed).
+
+**Code Work review fix (HOLD notes):** Landscape ≤560px is now hang | reader side-by-side (CSS grid) so "THE EIGHT BEATS", the entry title, and the first sentence show on first view with CLOSE clear. The thin rule through the reader "0" was `.orr-extent::before` (scroll thumb at `left:7px`) on the reading article — parked in the entry's left gutter on phone. The ladder Hand's bone dot is pulled left (`--orr-hand-x:6px` / `4px` landscape) with extra row padding so it clears the leading B. Portrait stack kept. Desktop 1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review1/`.
+
+**Code Work re-review fix (04:58 HOLD):** Landscape section rail is 104px (was 86px), so DISCOVERIES shows in full again. Landscape dials put each word beside its dial (row stays 26px), so the fractions keep their category. Phone section leaders are shorter (8/10/12px) so the current tick no longer strikes the label's last letter. Portrait: 7 dials fit one row (SURVEY no longer wraps alone), the plate is 140px, and the reader takes priority over the hang (hang min 150px), so the first entry's full first paragraph shows above PREVIOUS/NEXT at 390×844 (first line at 360×740). The `.orr-extent` comment now says the thumb is clipped out of view, not parked. Desktop 960/1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review2/`.
 

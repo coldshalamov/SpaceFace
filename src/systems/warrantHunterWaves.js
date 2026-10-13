@@ -783,8 +783,35 @@ export function createWarrantHunterWaves(host) {
   /** UI/intent door: take the hailer's offer. The economy owns the charge; we only ask. */
   function onAcceptPayment(payload) {
     const s = state();
-    if (!ctl.offer) return;
-    const request = { source: `warrantHunter:${ctl.offer.hunterId}` };
+    const offer = ctl.offer;
+    const entry = offer && ctl.live.get(offer.entityId);
+    const entity = entry && entry.entity;
+    const tag = entity && entity.data && entity.data.warrantHunter;
+    let reason = null;
+    if (!offer || sealed(s)) reason = 'no_offer';
+    else if (nowOf(s) >= offer.untilT) reason = 'expired';
+    else if (!entry || !entity || entry.role !== 'boss' || entity.alive === false
+      || (Number.isFinite(entity.hull) && entity.hull <= 0)
+      || s.entities.get(offer.entityId) !== entity
+      || !tag || tag.id !== offer.hunterId || tag.waveId !== offer.waveId
+      || tag.role !== 'boss') reason = 'gone';
+    else if (payload && payload.hunterId != null && payload.hunterId !== offer.hunterId) {
+      reason = 'different_hunter';
+    }
+    if (reason) {
+      const result = { ok: false, reason };
+      if (payload && typeof payload === 'object') payload.result = result;
+      if (offer && reason !== 'different_hunter') closeOffer(s, reason);
+      emit('warrant:hunterOfferRefused', {
+        schemaVersion: WARRANT_HUNTER_SCHEMA,
+        hunterId: offer && offer.hunterId || null,
+        reason,
+        shortfallCr: 0,
+        tick: s && s.tick | 0,
+      });
+      return;
+    }
+    const request = { source: `warrantHunter:${offer.hunterId}` };
     emit('economy:payBounty', request);
     const result = request.result;
     if (payload && typeof payload === 'object') payload.result = result || { ok: false, reason: 'no_economy' };

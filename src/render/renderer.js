@@ -461,6 +461,7 @@ import {
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
+  refillPresentedCompressedUploads,
 } from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
@@ -1058,11 +1059,14 @@ export function* collectOpeningEntityRootCandidatesSteps(meshes, entities, optio
   // wall clock too. Visit order and output stay identical.
   const censusNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
+  // Every census/sweep generator in this file stamps its stride clock AFTER the yield: a driver that awaits a
+  // present per yield resumes a frame later, and a clock stamped before that wait reads over the 2 ms limit on
+  // the next row, so each following row would yield too.
   let censusStrideAt = censusNow();
   for (const [id, mesh] of meshes) {
     if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
-      censusStrideAt = censusNow();
       yield;
+      censusStrideAt = censusNow();
     }
     if (!mesh || (playerId != null && id === playerId) || mesh.visible === false) continue;
     // _meshes is the entity ownership map, but a prepared/deferred boundary may still be mounted in
@@ -1120,8 +1124,8 @@ export function* collectOpeningShadowCasterRootCandidatesSteps(meshes, entities,
   let censusStrideAt = censusNow();
   for (const [id, root] of meshes) {
     if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
-      censusStrideAt = censusNow();
       yield;
+      censusStrideAt = censusNow();
     }
     if (!root || alreadyIncluded.has(root) || root.visible === false
         || (playerId != null && id === playerId)) continue;
@@ -2128,8 +2132,8 @@ export function* reattachResidentGpuMeshesSteps(owner) {
   const reattachMint = (owner._residentReattachMint = (owner._residentReattachMint | 0) + 1);
   for (const [id, mesh] of owner._meshes) {
     if ((++scanned % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
-      reattachStrideAt = reattachNow();
       yield;
+      reattachStrideAt = reattachNow();
     }
     if (!mesh
         || (mesh.userData && mesh.userData.sfResidentReattachMint === reattachMint)) continue;
@@ -2187,8 +2191,8 @@ export function* reattachResidentGpuMeshesSteps(owner) {
     let rekeyed = 0;
     for (const [oldId, mesh, entity] of rekeys) {
       if ((++rekeyed % 64) === 0 || reattachNow() - reattachStrideAt >= 2) {
-        reattachStrideAt = reattachNow();
         yield;
+        reattachStrideAt = reattachNow();
       }
       if (owner._meshes.get(oldId) !== mesh || owner._meshes.has(entity.id)) continue;
       // The target was resolved before the stride yields — it could have died
@@ -2331,6 +2335,28 @@ function stormWarn(site, ...args) {
     row.suppressed = 0;
   }
 }
+function emptyCompressedTextureIdentity(subject) {
+  const names = [];
+  if (!subject || typeof subject.traverse !== 'function') return '';
+  subject.traverse((object) => {
+    if (names.length >= 4) return;
+    const mats = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
+    for (const material of mats) {
+      if (!material) continue;
+      for (const key of Object.keys(material)) {
+        const texture = material[key];
+        if (!texture || texture.isCompressedTexture !== true) continue;
+        const mips = texture.mipmaps;
+        if (Array.isArray(mips) && mips.length > 0 && mips[0] && Number(mips[0].width) > 0) continue;
+        const mark = texture.userData && texture.userData.spacefaceCpuDetach;
+        names.push(`${key}:${texture.name || 'unnamed'}:${mark ? 'detach-mark' : 'unmarked'}`);
+        if (names.length >= 4) return;
+      }
+    }
+  });
+  return names.join(', ');
+}
+
 function laneWarn(owner, lane, ...args) {
   // Accepts an owner with .state (renderer/boundary) or a bare state object
   // (has .render) — the cook drives only hold the latter.
@@ -12644,6 +12670,11 @@ export const render = {
           } catch (error) {
             laneWarn(this, 'admissionTouch', '[render] admission touch detach reattach failed', error);
           }
+          try {
+            await refillPresentedCompressedUploads(collectStartupTextures(subject));
+          } catch (error) {
+            laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
+          }
           // compile() resolves under the armed admission state; the presented pass can still
           // ask the driver for a different program key (shadow-gate drift, env binding, target
           // color space). Draw the admitted subject once on the exact post target under live
@@ -12653,7 +12684,7 @@ export const render = {
           try {
             touchExactTargetSubject(subject);
           } catch (error) {
-            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             // Identify which texture threw on upload and why: package-detach empties a
             // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
             // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
@@ -12826,14 +12857,19 @@ export const render = {
               .catch((error) => {
                 laneWarn(this, 'admissionTouch', '[render] exact-target touch texture reattach failed', error);
               })
-              .then(() => {
+              .then(async () => {
+                try {
+                  await refillPresentedCompressedUploads(collectStartupTextures(subject));
+                } catch (error) {
+                  laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
+                }
                 const restoreDetached = revealSubjectWithAncestors(subject);
                 try {
                   return touchExactTargetSubject(subject);
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
                   // on a best-effort caller.
-                  laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+                  laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
                   return { skipped: true, reason: 'touch-failed' };
                 } finally {
                   restoreDetached();
@@ -12843,13 +12879,18 @@ export const render = {
           // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
           // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
           // the draw a silent no-op and leaves the exact variant cold for the presented pass.
+          try {
+            await refillPresentedCompressedUploads(collectStartupTextures(subject));
+          } catch (error) {
+            laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
+          }
           const restore = revealSubjectWithAncestors(subject);
           try {
             return touchExactTargetSubject(subject);
           } catch (error) {
             // The whole seam is async now, so mirror the detached branch's
             // anti-unhandled-rejection contract instead of propagating.
-            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error);
+            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             return { skipped: true, reason: 'touch-failed' };
           } finally {
             restore();
@@ -13834,6 +13875,21 @@ export const render = {
           left: this._meshBuildQueue.length - this._meshBuildQueueHead,
         });
       };
+      if (state.mode === 'loading' && this.spaceBg) {
+        const bg = this.spaceBg;
+        for (const [lane, adopt] of [
+          [bg.deepSkyPlates, () => bg._adoptActiveSkyPlate()],
+          [bg.deepSkyBases, () => bg._adoptActiveSkyBase()],
+        ]) {
+          while (lane?.transitioning) {
+            if (cookStale()) return cookSuperseded;
+            if (prepareNow() - prepareStarted >= PREPARE_BUDGET_MS) throw new Error('Opening sky upload exceeded the loading budget');
+            await yieldLiveSectorGpu();
+            if (cookStale()) return cookSuperseded;
+            if (lane.pump({ beforeFlight: true })) adopt();
+          }
+        }
+      }
       if (!scene.environment) this._bakeEnv({ force: true });
       // The envMap stamp walk is a full-scene traverse — drive its chunked twin
       // on the cook's slice clock instead of one atomic block behind the shell.
@@ -24655,8 +24711,8 @@ export const render = {
           visitedMeshes.add(mesh);
         } else if (visitedMeshes.has(mesh)) continue;
         if ((++visited % 256) === 0 || rebindNow() - rebindStrideAt >= 2) {
-          rebindStrideAt = rebindNow();
           yield;
+          rebindStrideAt = rebindNow();
         }
         const entity = resolveWorldPresentationEntity(this.state, id);
         // Same eligibility predicates the push loop applies — a parked walk
@@ -24708,8 +24764,8 @@ export const render = {
     let spawnedStrideAt = spawnedNow();
     for (let index = 0; index < spawnedSlots.length; index++) {
       if ((++visited % 256) === 0 || spawnedNow() - spawnedStrideAt >= 2) {
-        spawnedStrideAt = spawnedNow();
         yield;
+        spawnedStrideAt = spawnedNow();
       }
       const slot = spawnedSlots[index];
       // Same eligibility conjunction the rebind leg applies — a resumed leg must
@@ -26830,8 +26886,8 @@ export const render = {
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
       if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
-        viewSweepStrideAt = viewSweepNow();
         yield;
+        viewSweepStrideAt = viewSweepNow();
       }
       const slot = query.hiddenSlots[index];
       const generation = query.hiddenGenerations[index];
@@ -26941,8 +26997,8 @@ export const render = {
 
     for (let index = 0; index < query.visibleCount; index++) {
       if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
-        viewSweepStrideAt = viewSweepNow();
         yield;
+        viewSweepStrideAt = viewSweepNow();
       }
       const slot = query.visibleSlots[index];
       const generation = query.visibleGenerations[index];
@@ -27944,8 +28000,8 @@ export const render = {
     let upgradeStrideAt = upgradeNow();
     for (const [id, root] of this._meshes) {
       if (++upgradeVisited % 64 === 0 || upgradeNow() - upgradeStrideAt >= 2) {
-        upgradeStrideAt = upgradeNow();
         yield;
+        upgradeStrideAt = upgradeNow();
       }
       const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
       if (!entity || entity.alive === false || entity._noMesh) continue;

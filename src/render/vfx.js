@@ -2615,7 +2615,7 @@ export const vfx = {
     add('heat:changed', (p) => this._onLawHeatChanged(p));
     add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
-    add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
+    add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); this._releaseDoctrineTells(); });
     add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
     add('save:restoring', () => this._resetRibbonTrails());
     add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._explosionRupture?.clear(); this._arcadeStructural?.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._statusAttachedCd?.clear(); this._statusAttachedQuietEmpty = false; this._statusAttachedQuietSeq = -1; this._tumbleBodyQuietEmpty = false; this._tumbleBodyQuietEpoch = -1; this._trailEmitQuietIdle = false; this._trailEmitQuietIndexVersion = -1; this._projectileTrailsQuietEmpty = false; this._projectileTrailsQuietIndexVersion = -1; this._overlayQuartetQuietEmpty = false; this._lootMagnetQuietEmpty = false; this._lootMagnetQuietIndexVersion = -1; this._gasQuietEmpty = false; this._wreckWispsQuietIdle = false; this._wreckWispsQuietIndexVersion = -1; this._npcJobSignaturesQuietAsleep = false; this._npcJobSignaturesQuietRev = -1; this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetMasslineSwingTrace(); this._resetMonofilamentBlade(); this._resetApexFlare(); this._resetPendingDetonations(); this._resetDockingCradle(); this._resetEnergyForBoundary(); });
@@ -10313,7 +10313,8 @@ export const vfx = {
   _onTetherSnap(p) {
     // Attachment cuts report through tether:broken before tetherGameplay publishes the semantic
     // ordinary-release pair. A player `tether_cut` must therefore skip the violent snap grammar.
-    if (p && p.reason === 'tether_cut') return false;
+    // The default cut reason and a plain release are the same let-go; only a real break snaps.
+    if (p && (p.reason === 'tether_cut' || p.reason === 'cut' || p.reason === 'release')) return false;
     const cable = this._tetherCable;
     if (!cable || !this._scene || !this._tetherBreakMatchesCable(p, cable)) return false;
     // Hold the ribbon even when the anchor was already swept (mined-out rock, killed payload).
@@ -11533,6 +11534,24 @@ export const vfx = {
     if (style.useLight && isStart) {
       this._eventLight({ x: cx, z: cz }, 'tell', { severity: 'link', color: style.light });
     }
+  },
+
+  // A tell's deadline is a sim tick, and retry starts that clock over. The slot would
+  // keep pulsing for an entity id the new run has already torn down. This pool is the
+  // one that survives game:new; releasing it is not a wipe of every other effect.
+  _releaseDoctrineTells() {
+    const pool = this._doctrineTells;
+    if (!pool) return;
+    for (let i = 0; i < pool.length; i++) {
+      const slot = pool[i];
+      if (!slot.alive) continue;
+      slot.alive = false;
+      slot.entityId = null;
+      slot.startTick = null;
+      slot.deadlineTick = null;
+      slot.age = slot.life || 0;
+    }
+    this._doctrineTellActive = 0;
   },
 
   _updateDoctrineTells(dt) {

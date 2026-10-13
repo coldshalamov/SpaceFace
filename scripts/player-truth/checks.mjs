@@ -12,8 +12,8 @@ export const VIS = Object.freeze({ unknown: 0, hidden: 1, offscreen: 2, onscreen
 
 /** Mode design numbers the checks grade against. Sources are named so a reviewer can argue them. */
 export const MODE_DESIGN = Object.freeze({
-  swarm: { minRoundSeconds: 20, source: 'SWARM_WAVE_DURATION_TICKS = 3600 (60 s wave), src/data/swarmMode.js; N = one third of the designed wave' },
-  gauntlet: { minRoundSeconds: 20, source: 'Crucible gauntlet waves (build_map §12); N = 20 s, same floor as Swarm' },
+  swarm: { completion: 'cohort', source: 'src/data/swarmMode.js rules 2–3: the finite cohort must arrive and resolve; no fixed time-to-death target' },
+  gauntlet: { completion: 'cohort', ruleset: 'scored', source: 'src/systems/survivalWave.js _checkCleared and survivalWavePlanner.js: scheduled Gauntlet cohort resolves before native cleanup; no duration floor' },
   adventure: { minRoundSeconds: null, source: 'no rounds' },
   racing: { minRoundSeconds: null, source: 'no rounds' },
 });
@@ -329,6 +329,18 @@ export function checkSpawnMotion(trace) {
     const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
     checked++;
+    // Crucible retains displaced cover and cleanup aftermath as the next round's terrain.
+    // These exact lives already belonged to the prior round; their motion is not a new spawn. New
+    // occupants use distinct reader life ids, and preparation-only bodies still grade below.
+    const carriedLives = new Map();
+    if (st.wave != null && hasRunMetadata) {
+      for (let i = 0; i < index; i++) {
+        const prior = trace.samples[i];
+        if (prior.mode !== 'flight' || !['active', 'cleanup', 'draft', 'refit'].includes(prior.run?.ph)
+          || !(prior.run.w < st.wave)) continue;
+        for (const e of prior.e || []) carriedLives.set(e[E.id], e[E.cls]);
+      }
+    }
     // The actor can announce opening several ticks late. Record each initial passive life's
     // first observed state through that announcement, rather than regrade post-solve drift.
     // Include the announcement's first sample: reader sim stamps are rounded to milliseconds.
@@ -344,6 +356,7 @@ export function checkSpawnMotion(trace) {
       if (firstIn && firstIn.sim < frame.sim) break;
       for (const e of frame.e) {
         if (!(e[E.cls] === CLS.asteroid || e[E.cls] === CLS.pickup || e[E.cls] === CLS.other)) continue;
+        if (carriedLives.get(e[E.id]) === e[E.cls]) continue;
         if (seen.has(e[E.id])) continue;
         seen.add(e[E.id]);
         const d = Math.hypot(e[E.x] - frame.p.x, e[E.z] - frame.p.z); if (d > T.spawnRadius) continue;
@@ -408,24 +421,55 @@ export function checkRewardBeforeInput(trace) {
 
 export function checkRoundResolution(trace) {
   const rounds = roundsOf(trace); const design = MODE_DESIGN[trace.meta.mode] || {};
-  if (!design.minRoundSeconds) return result('round_resolution', 'Round resolves by play', 'N/A', null, null, 'mode has no rounds');
-  const done = rounds.filter((r) => r.endSim != null && (r.endPhase === 'cleanup' || r.endPhase === 'draft' || r.endPhase === 'victory'));
+  const cohort = design.completion === 'cohort';
+  if (!design.minRoundSeconds && !cohort) return result('round_resolution', 'Round resolves by play', 'N/A', null, null, 'mode has no rounds');
+  const threshold = cohort ? `finite quota materialized and resolved, and ≥1 input (${design.source})`
+    : `≥${design.minRoundSeconds} s and ≥1 input (${design.source})`;
+  const done = rounds.filter((r) => r.endSim != null && ['cleanup', 'draft', 'refit', 'victory'].includes(r.endPhase));
   if (!done.length) {
     const lost = rounds.filter((r) => r.endSim != null && r.endPhase === 'ended');
     const why = lost.length ? `no round was won; ${lost.map((r) => `round ${r.wave} ended (run over) after ${fmt(r.endSim - r.startSim, 1)} s`).join('; ')}` : rounds.length ? 'no round was won inside the run' : 'no round started';
-    return result('round_resolution', 'Round resolves by play', 'UNKNOWN', null, `≥${design.minRoundSeconds} s and player input`, why);
+    return result('round_resolution', 'Round resolves by play', 'UNKNOWN', null, threshold, why);
   }
-  const offenders = []; let minDur = Infinity; let fail = false;
+  const offenders = []; let minDur = Infinity; let fail = false; let unknown = 0;
   for (const r of done) {
     const dur = r.endSim - r.startSim; minDur = Math.min(minDur, dur);
     const inputs = inputsBetween(trace, r.startSim, r.endSim).length;
     const why = [];
-    if (dur < design.minRoundSeconds) why.push(`won in ${fmt(dur, 1)} s < ${design.minRoundSeconds} s`);
+    if (cohort) {
+      const next = rounds.find((other) => other.startSim > r.startSim);
+      const sameRound = trace.samples.filter((s) => s.run?.w === r.wave && s.sim >= r.startSim
+        && (!next || s.sim < next.startSim));
+      // Cleanup may be sampled before the death receipt updates its census. Grade the
+      // settled armory/cleanup record for this cohort, never the next round's counters.
+      const terminal = sameRound.filter((s) => ['cleanup', 'draft', 'refit', 'victory'].includes(s.run.ph)).at(-1);
+      const census = terminal?.run;
+      let missing = false;
+      if (!census || ![census.bud, census.sp, census.res].every(Number.isInteger)) missing = true;
+      else {
+        const quota = Math.max(census.bud, ...sameRound.map((s) => Number.isInteger(s.run.bud) ? s.run.bud : 0));
+        if (quota <= 0 || census.bud !== quota || census.sp !== quota || census.res !== quota) {
+          why.push(`finite cohort incomplete: quota ${quota}, materialized ${census.sp}, resolved ${census.res}`);
+        }
+      }
+      if (design.ruleset) {
+        // Native Gauntlet is the scored survival arc. Its preparation or another mode's
+        // counters cannot supply the played wave's active-to-clear receipt.
+        const active = sameRound.find(s => s.run.ph === 'active' && s.run.bud > 0)?.run;
+        for (const record of [active, census]) {
+          if (!record || typeof record.kind !== 'string' || typeof record.rs !== 'string') missing = true;
+          else if (record.kind !== 'survival' || record.rs !== design.ruleset) {
+            why.push(`native clear has ${record.kind}/${record.rs}, expected survival/${design.ruleset}`);
+          }
+        }
+      }
+      if (missing) unknown++;
+    } else if (dur < design.minRoundSeconds) why.push(`won in ${fmt(dur, 1)} s < ${design.minRoundSeconds} s`);
     if (!inputs) why.push('won with zero player input');
     if (why.length) { fail = true; offenders.push({ line: `round ${r.wave}: ${why.join('; ')}`, t: r.endT, sim: r.endSim, box: null }); }
   }
-  return result('round_resolution', 'Round resolves by play', fail ? 'FAIL' : 'PASS', `shortest ${fmt(minDur, 1)} s`, `≥${design.minRoundSeconds} s and ≥1 input (${design.source})`,
-    `${done.length} round(s) resolved`, offenders, offenders.slice(0, 2));
+  return result('round_resolution', 'Round resolves by play', fail ? 'FAIL' : unknown ? 'UNKNOWN' : 'PASS', `shortest ${fmt(minDur, 1)} s`, threshold,
+    `${done.length} round(s) resolved${unknown ? `; ${unknown} without required native cohort evidence` : ''}`, offenders, offenders.slice(0, 2));
 }
 
 export function checkPlayerControl(trace) {
@@ -519,7 +563,10 @@ function commandedOrbitYaw(sample) {
     || intent.playerId !== p.id || !Number.isSafeInteger(p.occupantGeneration)
     || intent.occupantGeneration !== p.occupantGeneration
     || !Number.isSafeInteger(sample.tick) || intent.tick !== sample.tick
-    || !Number.isFinite(intent.sim) || Math.abs(intent.sim - sample.sim) > 1e-6
+    // The reader rounds sample.sim to milliseconds but preserves the raw intent clock.
+    // Compare their recorded precision; exact tick/life guards above still own freshness.
+    || !Number.isFinite(intent.sim) || !Number.isFinite(sample.sim)
+    || +intent.sim.toFixed(3) !== +sample.sim.toFixed(3)
     || !(Number.isFinite(intent.dt) && intent.dt > 0) || !Number.isFinite(intent.angularAcceleration)) return false;
   const ownsYaw = intent.kind === 'swing-carry' && intent.reason === 'swing-carry'
     || intent.kind === 'orbit-assist' && (intent.reason === 'engaged' || intent.reason === 'line-slack');
@@ -576,6 +623,9 @@ export function checkReadability(trace) {
   const pairs = (r.pairs || []).filter((p) => p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
   const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ');
   const measurementNote = r.measurementNote ? `; ${r.measurementNote}` : '';
+  const unsupported = Object.entries(r.classes).filter(([, v]) => v.n > 0 && v.contrast?.status === 'unmeasured');
+  const unsupportedClasses = new Set(unsupported.map(([k]) => k));
+  const contrastNote = unsupported.length ? `; hull contrast UNKNOWN: ${unsupported.map(([k, v]) => `${k}: ${v.contrast.reason || 'silhouette pixel ownership unavailable'}`).join('; ')}; radius-square contrast and affected class separation remain diagnostic` : '';
   // A class the capture threw out is unmeasured. The classes that remain cannot PASS in its place.
   const rejected = (r.captureCoherence && r.captureCoherence.rejected) || {};
   const captureUnmeasured = (r.captureCoherence && r.captureCoherence.unboundedShots > 0)
@@ -591,18 +641,19 @@ export function checkReadability(trace) {
   if (!pairs.length) {
     const measured = ['enemy', 'asteroid', 'projectile']
       .filter((k) => r.classes[k] && r.classes[k].n >= T.readabilityMinSamples);
-    if (!measured.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}`);
+    if (!measured.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}${contrastNote}`);
     const flat = measured
-      .filter((k) => (r.classes[k].lowContrastFrac || 0) > T.readabilityLowContrastFrac)
+      .filter((k) => !unsupportedClasses.has(k) && (r.classes[k].lowContrastFrac || 0) > T.readabilityLowContrastFrac)
       .map((k) => ({ line: `${k}: ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% of samples barely differ from the background (ΔL < ${T.readabilityLowDeltaL})`, t: r.classes[k].exampleT, sim: null, box: r.classes[k].exampleBox }));
-    const single = measured.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast`).join(' · ');
+    const single = measured.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast${unsupportedClasses.has(k) ? ' (radius-square diagnostic)' : ''}`).join(' · ');
     const thin = ['enemy', 'asteroid', 'projectile'].filter((k) => !measured.includes(k));
     const thinNote = thin.length ? `; not graded (under ${T.readabilityMinSamples}): ${thin.join(', ')}` : '';
-    return result('readability', 'Enemy / asteroid / projectile readable', flat.length ? 'FAIL' : captureUnmeasured ? 'UNKNOWN' : 'PASS', single, `separation ≥${T.readabilityMinSeparation}; ≤${T.readabilityLowContrastFrac * 100}% low-contrast per measured class`,
-      `samples: ${counts}${measurementNote}${thinNote}`, flat.slice(0, 4), flat.filter((o) => o.box).slice(0, 2));
+    return result('readability', 'Enemy / asteroid / projectile readable', flat.length ? 'FAIL' : (captureUnmeasured || unsupported.length) ? 'UNKNOWN' : 'PASS', single, `separation ≥${T.readabilityMinSeparation}; ≤${T.readabilityLowContrastFrac * 100}% low-contrast per measured class`,
+      `samples: ${counts}${measurementNote}${thinNote}${contrastNote}`, flat.slice(0, 4), flat.filter((o) => o.box).slice(0, 2));
   }
-  const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
-  const lowContrast = Object.entries(r.classes).filter(([k, v]) => (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
+  const supportedPairs = pairs.filter((p) => !unsupportedClasses.has(p.a) && !unsupportedClasses.has(p.b));
+  const bad = supportedPairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
+  const lowContrast = Object.entries(r.classes).filter(([k, v]) => !unsupportedClasses.has(k) && (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
   const bodies = (r.census || []).filter(c => ['station', 'neutral', 'other'].includes(c.cls));
   const bodyUnknown = bodies.filter(c => c.occlusion
     ? c.occlusion.unknown > 0 || c.occlusion.n < T.readabilityMinSamples
@@ -616,10 +667,10 @@ export function checkReadability(trace) {
       .map(c => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.occlusion.covered / (c.occlusion.n + c.occlusion.unknown) * 100, 0)}% of ${c.occlusion.n + c.occlusion.unknown} native opaque-mask samples — actual body pixels cover the ship`,
         t: c.occlusion.exampleT, sim: null, box: c.occlusion.exampleBox })),
   ];
-  const minSep = Math.min(...pairs.map((p) => p.sep));
+  const minSep = supportedPairs.length ? Math.min(...supportedPairs.map((p) => p.sep)) : null;
   const unknownNote = bodyUnknown.length ? `; opaque body/player coverage UNKNOWN for ${bodyUnknown.map(c => `${c.name || c.cls}: ${c.occlusion ? `${c.occlusion.n} measured/${c.occlusion.unknown} unknown (${Object.keys(c.occlusion.reasons || {}).join(', ') || 'insufficient samples'})` : 'radius overlap has no native mask'}`).join('; ')}` : '';
-  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : (bodyUnknown.length || captureUnmeasured) ? 'UNKNOWN' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
-    `samples: ${counts}${measurementNote}${unknownNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : (bodyUnknown.length || captureUnmeasured || unsupported.length) ? 'UNKNOWN' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
+    `samples: ${counts}${measurementNote}${unknownNote}${contrastNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
 /** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
@@ -984,7 +1035,7 @@ function oneAxisOutside(sx, sy, vw, vh) {
 /**
  * Build-map G4, as the player sees it. The driver stamps `edgeMarkers` from the visible
  * `.sf-threat-halo__slot--arc` chips. This does not edit the HUD.
- * A marker in the middle of the frame fails. A marker while every hostile is in frame fails.
+ * A marker in the middle of the frame fails. A marker for an in-frame shooter fails.
  * One off-screen hostile and one marker must agree on the side when the hostile is outside on one axis.
  * Off-screen hostiles with no marker stay UNKNOWN: the halo only marks shooters inside its range,
  * and the trace does not carry that. No off-screen hostile is N/A.
@@ -1002,20 +1053,35 @@ export function checkOffscreenMarker(trace) {
   for (const s of samples) {
     const vw = s.vw || 960; const vh = s.vh || 540;
     const enemies = (s.e || []).filter((e) => e[E.cls] === CLS.enemy);
-    const off = enemies.filter((e) => e[E.vis] === VIS.offscreen);
-    const on = enemies.filter((e) => e[E.vis] === VIS.onscreen);
+    // The halo projects shooter centers. VIS.onscreen instead means a rendered hull's
+    // bounds overlap the frame, including a center beyond the rim with a visible sliver.
+    const off = enemies.filter((e) => e[E.vis] === VIS.offscreen
+      || Number.isFinite(e[E.sx]) && Number.isFinite(e[E.sy])
+        && (e[E.sx] < 0 || e[E.sx] > vw || e[E.sy] < 0 || e[E.sy] > vh));
+    const on = enemies.filter((e) => e[E.vis] === VIS.onscreen && !off.includes(e));
     const markers = s.edgeMarkers.filter((m) => m && Number.isFinite(m.x) && Number.isFinite(m.y));
-    if (off.length) offscreenSamples++;
-    if (off.length && markers.length) markedOffscreen++;
+    const bound = markers.filter((m) => Object.hasOwn(m, 'shooter'));
+    const boundOff = bound.filter((m) => m.shooter?.alive && m.shooter.onScreen === false);
+    if (off.length || boundOff.length) offscreenSamples++;
+    if (boundOff.length || off.length && markers.length) markedOffscreen++;
     for (const m of markers) {
       if (markerInset(m, vw, vh) > EDGE_MARKER_INSET) {
         offenders.push({ line: `edge marker at (${Math.round(m.x)}, ${Math.round(m.y)}) is not on the screen edge`, t: s.t ?? null, sim: s.sim ?? null, box: null });
       }
+      if (Object.hasOwn(m, 'shooter')) {
+        if (!m.shooter?.alive || m.shooter.onScreen) {
+          offenders.push({ line: !m.shooter?.alive ? 'edge marker has no living shooter'
+            : `edge marker for in-frame shooter ${m.shooter.id}`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+        } else if (!m.shooter.behind && oneAxisOutside(m.shooter.x, m.shooter.y, vw, vh)) {
+          const want = edgeMarkerSide(m.shooter.x, m.shooter.y, vw, vh);
+          if (m.edge !== want) offenders.push({ line: `off-screen hostile on the ${want} has an edge marker on the ${m.edge || 'unmarked side'}`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+        }
+      }
     }
-    if (markers.length && enemies.length && off.length === 0 && on.length === enemies.length) {
+    if (!bound.length && markers.length && enemies.length && off.length === 0 && on.length === enemies.length) {
       offenders.push({ line: `edge marker while every hostile is in frame (${on.length} on screen)`, t: s.t ?? null, sim: s.sim ?? null, box: null });
     }
-    if (off.length === 1 && markers.length === 1 && oneAxisOutside(off[0][E.sx], off[0][E.sy], vw, vh)) {
+    if (!bound.length && off.length === 1 && markers.length === 1 && oneAxisOutside(off[0][E.sx], off[0][E.sy], vw, vh)) {
       const want = edgeMarkerSide(off[0][E.sx], off[0][E.sy], vw, vh);
       const got = markers[0].edge;
       if (got !== want) {

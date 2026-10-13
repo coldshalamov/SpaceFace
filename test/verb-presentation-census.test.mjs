@@ -6,6 +6,7 @@
 // two clean tables (combatVerbCues, actionVfx) plus the recipe catalog, and proves each
 // actionVfx row is already a live subscriber via vfx.js's generic ACTION_VFX_EVENTS loop.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { describe, it } from 'node:test';
 import { COMBAT_VERB_CUES, PLAYER_ACTION_CUES, combatVerbRecipe } from '../src/audio/combatVerbCues.js';
 import { ACTION_VFX_EVENTS, ACTION_VFX_RECIPES } from '../src/render/actionVfx.js';
@@ -70,6 +71,22 @@ describe('packet C verb-presentation census', () => {
       }
     });
   }
+
+  it('bombs:detonated is owned by the transported-material handoff, wired in vfx.js and not doubled in actionVfx', () => {
+    // The census row only NAMES its visual owner. A reason string cannot fail, so check the wire itself
+    // (review R07): the subscription, its handler, and the owner module must exist in vfx.js, and no
+    // actionVfx recipe may share the event name (a second row would double-subscribe it).
+    const vfxSource = fs.readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+    assert.match(vfxSource, /add\('bombs:detonated',\s*\(p\)\s*=>\s*this\._onBombDetonated\(p\)\)/,
+      'vfx.js must subscribe bombs:detonated to _onBombDetonated');
+    assert.match(vfxSource, /\n\s*_onBombDetonated\(p\)\s*\{[\s\S]{0,160}_emitBombMaterial\('bombs:detonated'/,
+      '_onBombDetonated must hand the event to the bomb material emitter');
+    assert.match(vfxSource, /import \{ BombDetonationVfx \} from '\.\/vfx\/bombDetonationVfx\.js'/,
+      'the owner module must be imported');
+    assert.equal(ACTION_VFX_RECIPES['bombs:detonated'], undefined,
+      'bombs:detonated must not also have an actionVfx recipe (double subscription)');
+    assert.ok(!ACTION_VFX_EVENTS.includes('bombs:detonated'));
+  });
 
   it('actionVfx rows are live subscribers, not deferred vfx.js edits', () => {
     // The wire exists: every recipe key is in ACTION_VFX_EVENTS, which vfx.js loops over.

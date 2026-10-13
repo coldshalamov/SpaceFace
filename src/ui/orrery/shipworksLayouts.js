@@ -98,6 +98,9 @@ ${W} .orr-sw-jig { position:absolute; inset:0 0 34px 0; z-index:3; }
 }
 /* a drawing that cannot lay out stands down whole: its labels never fall into the flow */
 ${W} .orr-sw-jig:not(.orr-hull--on) .orr-sw-node { display:none !important; }
+/* ...and takes no pointer: an unlaid jig is an empty box over the live hull, and at z3 it swallowed
+   every click meant for the slot callouts, the camera words and the hull drag beneath it */
+${W} .orr-sw-jig:not(.orr-hull--on) { pointer-events:none; }
 ${W} .orr-sw-jig .orr-hull__pool { -webkit-mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
   mask-composite:intersect; }
@@ -1048,6 +1051,15 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
     flex-direction:row !important; flex-wrap:wrap !important; gap:2px 12px !important;
     background:linear-gradient(0deg, rgb(7 8 10 / .92) 40%, rgb(7 8 10 / 0)) !important; }
   ${W} .sx-sw-verb { font-size:11px !important; letter-spacing:.1em !important; }
+}
+/* ≤1100×≤640 desktop (960×540): the dock stage is ~162px tall and the left callout column shares
+   it with the nameplate and the camera words, so long system names landed on "Name this hull" and
+   on LEFT · CENTER · RIGHT. The condition word rides the title's line, the rename field is one
+   compact line, and the camera words sit at the right end of the verb row under the stage. */
+@media (max-width:1100px) and (max-height:640px) and (hover:hover) {
+  ${W} .sx-sw__nameplate .sx-sw__crestLine { flex-wrap:nowrap !important; gap:0 10px !important; }
+  ${W} .sx-sw__nameplate .sx-sw__nameEdit { font-size:12px !important; line-height:16px !important; padding:1px 0 2px !important; }
+  ${W} .sx-sw__stage.is-live > .sx-sw__camera { left:auto !important; right:0 !important; bottom:auto !important; top:calc(100% - 2px) !important; z-index:7 !important; }
 }
 
 `;

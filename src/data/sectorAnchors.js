@@ -60,6 +60,31 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'poi_helios_bay7', pos: { x: 1410, z: -310 }, landmarkGlb: 'place_cold_locker', visualRadius: 14 },
       { id: 'poi_helios_ash_pin', pos: { x: 1642, z: -792 }, landmarkGlb: 'place_ash_pin', visualRadius: 6 },
       { id: 'poi_helios_whistle', pos: { x: -1704, z: -1212 }, landmarkGlb: 'place_whistle', visualRadius: 6 },
+      {
+        // The Pit Line — the Candle Fleet's dark plinth resolves its black-box smear to this
+        // bearing (landmark_c3_pit_bearing), off the memorial's dark side toward the rim.
+        id: 'poi_helios_pit_line',
+        pos: { x: 2450, z: -1600 },
+        landmarkGlb: 'place_debris_chunk',
+        visualRadius: 14,
+      },
+      {
+        // Checkpoint Niner — a Concord customs waypoint midway on the long Coalition chord;
+        // without it the 2,663 wu run to HQ is the sector's barest lane.
+        id: 'poi_helios_picket',
+        pos: { x: -149, z: 555 },
+        landmarkGlb: 'place_interdiction_buoy',
+        visualRadius: 10,
+      },
+      {
+        // Smear Marker 7 — survey chalk at the midpoint of the Fleet→Pit Line bearing: the
+        // relighting procession walks this bearing, and the quest's answer lives down its
+        // other end.
+        id: 'poi_helios_smear_pin',
+        pos: { x: 2027, z: -1171 },
+        landmarkGlb: 'place_lane_pin',
+        visualRadius: 6,
+      },
     ],
   },
   sector_ceres_belt: {
@@ -80,6 +105,22 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_driller', pos: { x: 240, z: -1180 }, landmarkGlb: 'place_dead_hulk', landmark: true },
       { id: 'poi_survey', pos: { x: -1240, z: -320 }, landmarkGlb: 'place_debris_chunk' },
+      {
+        // Refinery Flare Rack — first light on the ~4,700 wu inbound leg from the Helios
+        // gate: the corridor every new player crosses after their first jump had nothing
+        // authored on it.
+        id: 'poi_ceres_flare_rack',
+        pos: { x: 1544, z: -1067 },
+        landmarkGlb: 'place_worklight_tower',
+        visualRadius: 12,
+      },
+      {
+        // Inbound Weigh Pin — the refinery queue's tally, two-thirds down the arrival leg.
+        id: 'poi_ceres_weigh_pin',
+        pos: { x: 222, z: -223 },
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 8,
+      },
       {
         id: 'poi_ceres_throughline',
         pos: CERES_THROUGHLINE_BEACON_LOCAL_POS,

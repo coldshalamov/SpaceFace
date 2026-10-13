@@ -38,6 +38,10 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       return_fire_warning:{verb:'ignition',primitive:'compression',color:0xffc08a,life:1.4},
       attackRun:{verb:'ignition',primitive:'compression',color:0xeac891,life:1.6},
       alphaStrike:{verb:'command',primitive:'induction',color:0xe8ae76,life:1.6},
+      // Kilnback: the furnace in its nose building heat — a hot ignition on the hull, held longer than a fuse.
+      furnace_preheat:{verb:'ignition',primitive:'compression',color:0xff7a3a,life:2.4,surfaceWork:true},
+      // Mothlight: the six-petal iris is the real gun; the lights only drift. A cold induction on the iris.
+      mothlight_iris:{verb:'command',primitive:'induction',color:0xcdb8ff,life:1.8,surfaceWork:true},
     }},
   'ai:flee': {verb:'vent',primitive:'compression',color:0xdcb99d,life:.85,continuous:false},
   'ai:formationBroken': {verb:'disrupt',primitive:'induction',color:0xe2a983,life:.8,surfaceWork:true,continuous:false},
@@ -94,6 +98,16 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       abandoned:SURVIVOR_POD_RETIRE.abandoned,
       captured:SURVIVOR_POD_RETIRE.captured,
     }},
+  // A kilnback field has no hull to blame: the burn itself primes on the hull it is cooking.
+  'fields:thermalHit': {verb:'prime',primitive:'capture',color:0xff8a4a,life:.5,continuous:false},
+  // The hunter visibly stands down when the pod errand ends; the reason rides as the kind.
+  'survivorPod:huntEnded': {verb:'cool',primitive:'deposition',color:0x9fc4d4,life:.6,continuous:false},
+  // Anvil custody moves hull to hull: a transfer bead along the pair, not a market toast.
+  'traffic:anvilTransfer': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.6,continuous:false},
+  // A discovery has no honest world anchor yet: it ticks at the player's own instrument.
+  'formation:discovered': {verb:'survey',primitive:'induction',color:0x9fd4e8,life:.55,continuous:false},
+  // Swapping holds with a parked hull answers on the player's hull, units named in the receipt.
+  'cargo:parkedTransfer': {verb:'transfer',primitive:'connection',color:0xd8c49a,life:.55,continuous:false},
   // Departure is the cradle run backwards: a vent along the nose, not a second inbound chevron.
   'dock:undocked': {verb:'vent',primitive:'compression',color:0xc8dff5,life:.7,continuous:false},
   // Cargo leaves along the ship's impulse. The receipt supplies the point; the sim event does not.
@@ -164,7 +178,7 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
   if(name==='ai:telegraph'||name==='ai:flee'){
     const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false)return null;
-    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance','wake_mines','field_spool','pd_curtain','sensor_ghost','broadside_charge','swarmer_vent','broadside_desperation','pirate_stalk','scan_sweep','return_fire_warning','attackRun','alphaStrike'].includes(p.kind))return null;
+    if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance','wake_mines','field_spool','pd_curtain','sensor_ghost','broadside_charge','swarmer_vent','broadside_desperation','pirate_stalk','scan_sweep','return_fire_warning','attackRun','alphaStrike','furnace_preheat','mothlight_iris'].includes(p.kind))return null;
     const aft=name==='ai:flee'||p.kind==='engine_flare';
     const a=(source.rot||0)+(aft?Math.PI:0),r=source.radius||6;
     return {...p,targetId:source.id,sourceId:source.id,
@@ -276,6 +290,27 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
       return out;
     }
     return {...p, kind: p.outcome, pos: copyPoint(p.pos), targetId: null, sourceId: p.entityId, attachToTarget: false};
+  }
+  if (name === 'fields:thermalHit') {
+    const target = body(state, p && p.targetId);
+    if (!target || target.alive === false || !point(target.pos)) return null;
+    return {...p, targetId: target.id, sourceId: target.id, attachToTarget: true};
+  }
+  if (name === 'survivorPod:huntEnded') {
+    const hunter = body(state, p && p.hunterId);
+    if (!hunter || hunter.alive === false || !point(hunter.pos)) return null;
+    return {...p, kind: p.reason || undefined, targetId: hunter.id, sourceId: hunter.id, attachToTarget: true};
+  }
+  if (name === 'traffic:anvilTransfer') {
+    const source = body(state, p && p.sourceId), receiver = body(state, p && p.receiverId);
+    if (!point(source?.pos) || !point(receiver?.pos)) return null;
+    return {...p, targetId: receiver.id, sourceId: source.id, attachToTarget: true,
+      direction: {x: receiver.pos.x - source.pos.x, z: receiver.pos.z - source.pos.z}};
+  }
+  if (name === 'formation:discovered' || name === 'cargo:parkedTransfer') {
+    const ship = body(state, state && state.playerId);
+    if (!point(ship?.pos) || ship.alive === false) return null;
+    return {...p, targetId: ship.id, sourceId: ship.id, attachToTarget: true};
   }
   if (name === 'mines:triggered' || name === 'mines:detonated') {
     if (!point(p && p.pos)) return null;

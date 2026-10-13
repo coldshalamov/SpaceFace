@@ -160,6 +160,17 @@ export function stepTumbleRake(state, entity, ships) {
   if (!rec) rec = promoteSeed(state, entity);
   if (!rec) return [];
 
+  // The bearing is frozen; the hardware is live. Shooting off a turret or disabling its
+  // reactor must still silence it after the heavy has started spinning.
+  const battery = rakeBatteryFor(state, entity);
+  if (!battery) {
+    clearTumbleRake(entity);
+    return [];
+  }
+  rec.range = battery.range;
+  rec.salvoDamage = battery.salvoDamage;
+  rec.mounts = battery.mounts;
+
   const tick = state.tick | 0;
   const now = rakeWorldBearing(entity, rec);
   const prev = rec.prevWorld;

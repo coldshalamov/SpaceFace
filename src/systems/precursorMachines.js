@@ -25,10 +25,11 @@ import { insertDressingRow } from '../world/dressingTable.js';
 import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
-import { commodityIsBiohazard } from '../data/commodities.js';
+import { COMMODITIES, commodityIsBiohazard } from '../data/commodities.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSiteRuntime.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { tickCustodianWork, tickMasonWork, tickSorterWork } from './machineWork.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -57,6 +58,7 @@ function grantProtocolSatisfiedUnique(world) {
 }
 
 const TWO_PI = Math.PI * 2;
+const commodityNames = new Map(COMMODITIES.map(c => [c.id, c.name]));
 
 /** Membership lanes for the sector machine cast — members are e.data.machine only. */
 // 'sectorMemberships' joins the latch: a post-append re-home used to leave the
@@ -87,6 +89,93 @@ function machineSiteRec(state, siteId) {
     ae.machineSites[siteId] = { seen: false, beats: {}, directiveIssued: false };
   }
   return ae.machineSites[siteId];
+}
+
+function biologicalManifest(state) {
+  const items = state.player?.cargo?.items || {};
+  const manifest = {};
+  for (const id of Object.keys(items).sort()) {
+    if (commodityIsBiohazard(id) && Number.isFinite(items[id]) && items[id] > 0) manifest[id] = items[id];
+  }
+  return manifest;
+}
+
+function currentManifestHull(state, player) {
+  const shipIndex = Number.isInteger(state.player?.activeShipIndex) ? state.player.activeShipIndex : 0;
+  return { shipIndex, defId: state.player?.ownedShips?.[shipIndex]?.defId || player?.data?.typeId || null };
+}
+
+function manifestHullMatches(state, player, incident) {
+  if (!incident.hull) return false;
+  const current = currentManifestHull(state, player);
+  return current.shipIndex === incident.hull.shipIndex && current.defId === incident.hull.defId;
+}
+
+function grantChamberCredentials(world, rec, site, sectorId) {
+  const state = world.state, ae = ensureAlienEcologyState(state);
+  if (rec.exceptionMinted || ['revoked', 'violation'].includes(ae.machineProtocol)) return;
+  ae.machineAccess.gates_exception = true;
+  advanceMachineProtocol(state, 'excepted');
+  if (addCargo(state, 'cmdty_unbroken_lens', 1, 'exception_chamber') < 1) return;
+  rec.exceptionMinted = true;
+  world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+    text: 'EXCEPTION RECORDED. TRANSIT AUTHORITY RESTORED. THE LENS IS YOURS — DO NOT BREAK IT.' });
+  world.bus.emit('ecology:evidence', { id: 'L10', sectorId });
+  world.bus.emit('ecology:evidence', { id: 'P10', sectorId });
+}
+
+function tickManifestAppeal(world, entity, player, machines, dt, now) {
+  const state = world.state, m = entity.data.machine;
+  const ae = ensureAlienEcologyState(state), rec = machineSiteRec(state, m.siteId);
+  const incident = rec.enforcement;
+  const jury = machines.find(e => e.alive !== false && e.data.machine.kind === 'sleeping_jury'
+    && e.data.machine.siteId === m.siteId);
+  if (!player?.pos || !incident || !jury || !['revoked', 'violation'].includes(ae.machineProtocol)) return;
+  const inCounter = dist2(player.pos.x, player.pos.z, entity.pos.x, entity.pos.z)
+    < machineKindById('appeals_clerk').counterR ** 2;
+  if (!inCounter) { if (rec.appeal) rec.appeal.hold = 0; return; }
+  const appeal = rec.appeal ||= { incidentId: incident.id, hold: 0, status: 'waiting' };
+  if (appeal.incidentId !== incident.id) {
+    rec.appeal = { incidentId: incident.id, hold: 0, status: 'waiting' };
+    return;
+  }
+  if (appeal.status === 'accepted') return;
+  const manifest = biologicalManifest(state);
+  const site = MACHINE_SITES[m.siteId];
+  const center = world._toGlobal(site.center, site.sectorId);
+  let reason = null;
+  if (!manifestHullMatches(state, player, incident)) reason = 'RETURN THE CLASSIFIED HULL TO THE COMPARISON';
+  else if (Object.keys(manifest).length) reason = `ISOLATE THE FLAGGED LOTS: ${Object.keys(manifest).map(id => commodityNames.get(id) || id).join(', ')}. JETTISON OR PARK THEM BEFORE REPEATING THE CLEAN CONTROL`;
+  else if (!jury.data.machine.awake || !hasWitnessMark(state)) reason = 'JURY NOT WITNESSING. HOLD IN THE CHAMBER TO FILE YOUR WITNESS MARK';
+  else if (dist2(player.pos.x, player.pos.z, center.x, center.z) >= site.suppression.radius ** 2) reason = `MOVE INSIDE THE WITNESS VOLUME: CENTER ${Math.round(center.x)}, ${Math.round(center.z)}, RADIUS ${site.suppression.radius}`;
+  else if (Math.hypot(player.vel?.x || 0, player.vel?.z || 0) >= 8) reason = 'COMPARISON MOVING. HOLD SPEED BELOW 8';
+  if (reason) {
+    appeal.hold = 0;
+    if (appeal.reason !== reason) world.bus.emit('comms:log', { from: 'Appeals clerk', kind: 'machine',
+      text: `INCIDENT ${incident.id}. ${reason}. UNRELATED LORE IS NOT COUNTER-EVIDENCE.` });
+    appeal.reason = reason;
+    return;
+  }
+  if (appeal.reason !== 'comparing') {
+    appeal.reason = 'comparing';
+    world.bus.emit('comms:log', { from: 'Appeals clerk', kind: 'machine',
+      text: `INCIDENT ${incident.id}. CLEAN CONTROL: ZERO BIOLOGICAL LOTS. THE SAME HULL IS CLEAN; THE JURY WILL COMPARE IT FOR ${holdWindowS(state)} SECONDS. REMAIN INSIDE RADIUS ${site.suppression.radius}, SPEED BELOW 8.` });
+  }
+  appeal.hold += dt;
+  if (appeal.hold < holdWindowS(state)) return;
+  appeal.status = 'accepted';
+  appeal.acceptedAt = now;
+  appeal.comparison = { classifiedManifest: { ...incident.manifest }, controlLots: 0, observedLots: 0,
+    hull: { ...incident.hull }, siteId: m.siteId };
+  incident.status = 'appealed';
+  incident.resolvedAt = now;
+  incident.elapsed = 0;
+  advanceMachineProtocol(state, 'excepted');
+  world.bus.emit('comms:log', { from: 'Appeals clerk', kind: 'machine',
+    text: `INCIDENT ${incident.id}. WITNESSED CLEAN COMPARISON ACCEPTED. MANIFEST CLASSIFICATION OVERTURNED; TRANSIT EXCEPTION RESTORED.` });
+  world.bus.emit('machine:appealAccepted', { siteId: m.siteId, incidentId: incident.id, comparison: appeal.comparison });
+  world.bus.emit('audio:cue', { id: 'scan_resolve', position: entity.pos });
+  refreshMachineLabels(world);
 }
 
 // ── Materialization (world._spawnDressing) ────────────────────────────────────────────────
@@ -219,7 +308,9 @@ export function tickMachineLayer(world, dt) {
           rec.directiveIssued = true;
           world.bus.emit('comms:log', {
             from: site.name,
-            text: directiveText(state, site.directive),
+            text: (site.directive === 'HOLD' || site.directive === 'WITNESS')
+              ? `${directiveText(state, site.directive)} CENTER ${Math.round(g.x)}, ${Math.round(g.z)}. RADIUS ${site.radius + 120}. SPEED BELOW 8. HOLD ${holdWindowS(state)} SECONDS CONTINUOUSLY.`
+              : `${directiveText(state, site.directive)} CLEAR RADIUS ${site.radius + 120} WITHIN 60 SECONDS.`,
             kind: 'machine',
           });
         }
@@ -280,6 +371,7 @@ export function tickMachineLayer(world, dt) {
       } else if (site.directive === 'HOLD' || site.directive === 'WITNESS') {
         const pv = player.vel ? Math.sqrt(player.vel.x * player.vel.x + player.vel.z * player.vel.z) : 0;
         if (d < site.radius + 120 && pv < 8) {
+          rec.holdFailure = null;
           rec.holdT = (rec.holdT || 0) + dt;
           if (rec.holdT > holdWindowS(state)) {
             rec.directiveResolved = true;
@@ -298,18 +390,9 @@ export function tickMachineLayer(world, dt) {
             }
             // K09/K10 (Phase 26): satisfying the exception chamber's witness hold mints
             // the endgame credentials — route authority and the unbroken lens.
-            if (site.siteId === 'veil_exception_chamber' && !rec.exceptionMinted) {
-              rec.exceptionMinted = true;
-              if (!ae.machineAccess) ae.machineAccess = {};
-              ae.machineAccess.gates_exception = true;
-              advanceMachineProtocol(state, 'excepted');
-              addCargo(state, 'cmdty_unbroken_lens', 1, 'exception_chamber');
-              world.bus.emit('comms:log', {
-                from: site.name, kind: 'machine',
-                text: 'EXCEPTION RECORDED. TRANSIT AUTHORITY RESTORED. THE LENS IS YOURS — DO NOT BREAK IT.',
-              });
-              world.bus.emit('ecology:evidence', { id: 'L10', sectorId });
-              world.bus.emit('ecology:evidence', { id: 'P10', sectorId });
+            if (site.siteId === 'veil_exception_chamber' && !rec.exceptionMinted
+              && !['revoked', 'violation'].includes(ae.machineProtocol)) {
+              grantChamberCredentials(world, rec, site, sectorId);
             }
             if (hasWitnessMark(state) && !rec.witnessToast) {
               rec.witnessToast = true;
@@ -322,15 +405,25 @@ export function tickMachineLayer(world, dt) {
             refreshMachineLabels(world);
           }
         } else {
+          const cause = d >= site.radius + 120 ? 'OUTSIDE HOLD VOLUME' : 'SPEED ABOVE HOLD LIMIT';
+          if (rec.holdT > 0 && rec.holdFailure !== cause) {
+            rec.holdFailure = cause;
+            world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+              text: `${cause}. HOLD TIMER RESET; RETURN INSIDE RADIUS ${site.radius + 120} AT SPEED BELOW 8.` });
+          }
           rec.holdT = 0;
           if (rec.directiveT > windowS) {
             rec.directiveResolved = true;
             advanceMachineProtocol(state, 'violated');
+            world.bus.emit('comms:log', { from: site.name, kind: 'machine',
+              text: 'HOLD WINDOW EXPIRED. PROTOCOL VIOLATION LOGGED. THE EXCEPTION CHAMBER ACCEPTS COUNTER-EVIDENCE.' });
             refreshMachineLabels(world);
           }
         }
       }
     }
+    if (site.siteId === 'veil_exception_chamber' && rec.directiveResolved
+      && ae.machineProtocol === 'exception') grantChamberCredentials(world, rec, site, sectorId);
   }
 
   // ── Machine kinematics ──
@@ -357,6 +450,7 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'custodian': {
+        if (tickCustodianWork(world, e, dt)) break;
         // Patrol the structure, pause for a repair beat.
         const w = now * 0.07 + m.phase;
         const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
@@ -418,6 +512,7 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'mason': {
+        if (tickMasonWork(world, e, dt)) break;
         // AE-234 (I07): orbits its workpiece; the weld cadence emits a ping beat.
         const w = now * 0.10 + m.phase;
         const tx = m.anchor.x + Math.cos(w) * kind.orbitR;
@@ -434,51 +529,70 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'executor': {
-        // AE-235 (I08): dormant until the protocol reads a fault — then it shadows the
-        // revoking hull at standoff and runs the quarantine pulse (M09).
         const fault = ae.machineProtocol === 'revoked' || ae.machineProtocol === 'violation';
+        const rec = machineSiteRec(state, m.siteId);
         if (!fault) {
-          m.awakened = false;
+          if (rec.enforcement?.status === 'active') {
+            rec.enforcement.status = 'protocol_restored';
+            rec.enforcement.resolvedAt = now;
+          }
+          m.awakened = false; m.sweepT = 0; m.enforcementInRange = false;
           break;
         }
-        if (!m.awakened) {
-          m.awakened = true;
-          world.bus.emit('comms:log', {
-            from: 'Verge lattice', kind: 'machine',
-            text: 'ENFORCEMENT FRAME ACTIVE. REMAIN WITHIN COMPLIANCE RADIUS.',
-          });
+        if (!player?.pos || player.alive === false) break;
+        const manifest = biologicalManifest(state);
+        let incident = rec.enforcement;
+        const freshFault = !incident || incident.status === 'appealed' || incident.status === 'protocol_restored';
+        const newContamination = incident && ['purged', 'clean'].includes(incident.status)
+          && Object.keys(manifest).length > 0;
+        if (freshFault || newContamination) {
+          incident = rec.enforcement = { id: 'manifest:' + m.siteId + ':' + now,
+            status: 'active', classification: 'biological_manifest', hull: currentManifestHull(state, player),
+            manifest, elapsed: 0, inRange: false, warned: false, issuedAt: now };
         }
-        if (player && player.pos) {
-          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
-          const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
-          e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
-          if (d > kind.shadowR) {
-            e.pos.x += Math.cos(e.rot) * kind.speed * dt;
-            e.pos.z += Math.sin(e.rot) * kind.speed * dt;
-          }
-          m.sweepT += dt;
-          if (m.sweepT >= kind.pulsePeriodS && d < kind.quarantinePulseR) {
-            m.sweepT = 0;
-            // M09 quarantine pulse: biohazard cargo in radius is scrubbed without sale.
-            const cargo = state.player && state.player.cargo;
-            let scrubbed = 0;
-            if (cargo && cargo.items) {
-              for (const cid of Object.keys(cargo.items)) {
-                if (commodityIsBiohazard(cid) && cargo.items[cid] > 0) {
-                  scrubbed += cargo.items[cid];
-                  removeCargo(state, cid, cargo.items[cid], 'quarantine_pulse');
-                }
-              }
-            }
-            world.bus.emit('comms:log', {
-              from: 'Executor', kind: 'machine',
-              text: scrubbed > 0
-                ? `QUARANTINE PULSE. ${scrubbed} BIOLOGICAL LOT(S) DESTROYED IN TRANSIT.`
-                : 'QUARANTINE PULSE. MANIFEST CLEAN.',
-            });
-            world.bus.emit('ecology:quarantinePulse', { sectorId, scrubbed, t: now });
-          }
+        m.awakened = true;
+        if (!incident.warned) {
+          incident.warned = true;
+          world.bus.emit('comms:log', { from: 'Verge lattice', kind: 'machine',
+            text: 'INCIDENT ' + incident.id + '. BIOLOGICAL MANIFEST SUBJECT TO PURGE AFTER '
+              + kind.pulsePeriodS + ' SECONDS INSIDE ' + kind.quarantinePulseR
+              + '. JETTISON BIOLOGICAL CARGO TO ISOLATE IT, CLEAR THE RADIUS, OR BRING THIS HULL TO THE EXCEPTION CHAMBER FOR A WITNESSED CLEAN COMPARISON. NONBIOLOGICAL CARGO IS OUTSIDE SCOPE.' });
         }
+        const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
+        const desired = Math.atan2(player.pos.z - e.pos.z, player.pos.x - e.pos.x);
+        e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
+        if (d > kind.shadowR) {
+          e.pos.x += Math.cos(e.rot) * kind.speed * dt;
+          e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        }
+        const inRange = d < kind.quarantinePulseR;
+        if (!inRange) {
+          if (incident.inRange) world.bus.emit('comms:log', { from: 'Executor', kind: 'machine',
+            text: 'PURGE WINDOW CANCELLED. HULL OUTSIDE QUARANTINE RADIUS; REENTRY STARTS A FRESH WINDOW.' });
+          incident.elapsed = 0;
+          incident.inRange = false;
+          if (incident.status === 'active') incident.status = 'escaped';
+          m.sweepT = 0; m.enforcementInRange = false;
+          break;
+        }
+        if (incident.status === 'escaped') incident.status = 'active';
+        incident.inRange = true;
+        m.enforcementInRange = true;
+        if (incident.status !== 'active') { m.sweepT = 0; break; }
+        incident.elapsed = Math.max(0, Math.min(kind.pulsePeriodS, Number(incident.elapsed) || 0)) + dt;
+        m.sweepT = incident.elapsed;
+        if (incident.elapsed < kind.pulsePeriodS) break;
+        let scrubbed = 0;
+        for (const cid of Object.keys(manifest)) scrubbed += removeCargo(state, cid, manifest[cid], 'quarantine_pulse');
+        incident.status = scrubbed > 0 ? 'purged' : 'clean';
+        incident.resolvedAt = now;
+        incident.scrubbed = scrubbed;
+        incident.elapsed = 0; m.sweepT = 0;
+        rec.lastEnforcement = { incidentId: incident.id, t: now, scrubbed, resolved: incident.status };
+        world.bus.emit('comms:log', { from: 'Executor', kind: 'machine', text: scrubbed > 0
+          ? 'QUARANTINE PULSE. ' + scrubbed + ' BIOLOGICAL LOT(S) DESTROYED IN TRANSIT. OTHER CARGO RETAINED.'
+          : 'QUARANTINE PULSE. MANIFEST CLEAN; INCIDENT RESOLVED.' });
+        world.bus.emit('ecology:quarantinePulse', { sectorId, scrubbed, t: now, incidentId: incident.id });
         break;
       }
       case 'courier': {
@@ -492,8 +606,14 @@ export function tickMachineLayer(world, dt) {
         const lg = targets[legIdx].pos;
         const desired = Math.atan2(lg.z - e.pos.z, lg.x - e.pos.x);
         e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
-        e.pos.x += Math.cos(e.rot) * kind.speed * dt;
-        e.pos.z += Math.sin(e.rot) * kind.speed * dt;
+        const token = machineSiteRec(state, m.siteId).courierToken;
+        const receiverStop = token?.status === 'in_transit' && now >= token.readyAt
+          && dist2(e.pos.x, e.pos.z, token.destPos.x, token.destPos.z) < (kind.deliverR - 32) ** 2;
+        e.vel ||= { x: 0, z: 0 };
+        e.vel.x = receiverStop ? 0 : Math.cos(e.rot) * kind.speed;
+        e.vel.z = receiverStop ? 0 : Math.sin(e.rot) * kind.speed;
+        e.pos.x += e.vel.x * dt;
+        e.pos.z += e.vel.z * dt;
         tickCourierToken(world, e, m, kind, targets[0], now);
         break;
       }
@@ -562,70 +682,11 @@ export function tickMachineLayer(world, dt) {
         break;
       }
       case 'appeals_clerk': {
-        // AE-239 (I13): bring tier-3 evidence within range and a revoked verdict flips.
-        if (player && player.pos && ae.machineProtocol === 'revoked') {
-          const d = Math.sqrt(dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z));
-          if (d < kind.counterR && !m.appealHeard) {
-            const evidence = ae.evidence || {};
-            const hasDeep = Object.keys(evidence).some((k) => /^L0(9|10)|^P/.test(k));
-            if (hasDeep) {
-              m.appealHeard = true;
-              advanceMachineProtocol(state, 'excepted');
-              world.bus.emit('comms:log', {
-                from: 'Appeals clerk', kind: 'machine',
-                text: 'COUNTER-EVIDENCE ACCEPTED. VERDICT REVISED: EXCEPTION. CARRY THE LENS.',
-              });
-              refreshMachineLabels(world);
-            } else if (!m.appealHinted) {
-              m.appealHinted = true;
-              world.bus.emit('comms:log', {
-                from: 'Appeals clerk', kind: 'machine',
-                text: 'APPEAL FILED. COUNTER-EVIDENCE INSUFFICIENT — BRING A DEEP FINDING.',
-              });
-            }
-          }
-        }
+        tickManifestAppeal(world, e, player, machines, dt, now);
         break;
       }
       case 'debris_sorter': {
-        // AE-240 (I14): drifts to the nearest wreck/pickup and collects it on a delay —
-        // salvage you want is on a timer while the sorter works the field.
-        if (m.collectAt && now >= m.collectAt) {
-          const target = m.collectId != null && state.entities ? state.entities.get(m.collectId) : null;
-          if (target && target.alive !== false) {
-            target.alive = false;
-            world.bus.emit('comms:log', {
-              from: 'Debris sorter', kind: 'machine',
-              text: 'MAINTENANCE WASTE RECOVERED.',
-            });
-          }
-          m.collectId = null;
-          m.collectAt = 0;
-        }
-        if (!m.collectId) {
-          let best = null;
-          let bestD = Infinity;
-          for (const t2 of sorterTargetsForSector(state, sectorId)) {
-            if (!t2 || t2.alive === false || !t2.pos) continue;
-            if (t2.homeSectorId !== sectorId) continue;
-            if (t2.data && t2.data.machineClaimed) continue;
-            const dd = dist2(e.pos.x, e.pos.z, t2.pos.x, t2.pos.z);
-            if (dd < kind.sweepR * kind.sweepR && dd < bestD) { bestD = dd; best = t2; }
-          }
-          if (best) {
-            const desired = Math.atan2(best.pos.z - e.pos.z, best.pos.x - e.pos.x);
-            e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
-            if (Math.sqrt(bestD) > 60) {
-              e.pos.x += Math.cos(e.rot) * kind.speed * dt;
-              e.pos.z += Math.sin(e.rot) * kind.speed * dt;
-            } else {
-              best.data = best.data || {};
-              best.data.machineClaimed = true;
-              m.collectId = best.id;
-              m.collectAt = now + kind.collectDelayS;
-            }
-          }
-        }
+        tickSorterWork(world, e, dt, sorterTargetsForSector(state, sectorId));
         break;
       }
       case 'sleeping_jury': {
@@ -798,12 +859,22 @@ function settleCourierTokenDelivery(world, token, pod, now) {
     capacity: dRec.courierReceiver.capacity,
     stored: dRec.courierReceiver.stored,
     entered: true,
-    relativeSpeed: 0,
+    relativeSpeed: Math.hypot(pod?.vel?.x || 0, pod?.vel?.z || 0),
     open: true,
   });
   const commit = commitReceiverAcceptance(dRec.courierReceiver, contact, token.receiptId);
   dRec.courierReceiver = commit.ledger;
-  if (!commit.committed && !commit.duplicate) return false; // refused — try again next tick
+  if (!commit.committed && !commit.duplicate) {
+    if (token.deliveryRefusal !== commit.reason) world.bus.emit('comms:log', {
+      from: 'Courier intake', kind: 'machine',
+      text: commit.reason === 'speed-window'
+        ? 'RETURN THE TOKEN BELOW SPEED 22. TOO FAST FOR THE INTAKE; THE ROUTE MAIL REMAINS FREE.'
+        : 'ROUTE MAIL REFUSED. THE RECIPIENT HAS NO CAPACITY; CUSTODY REMAINS WITH THE TOKEN.',
+    });
+    token.deliveryRefusal = commit.reason;
+    return false;
+  }
+  delete token.deliveryRefusal;
   token.status = 'delivered';
   token.deliveredAt = now;
   if (pod) pod.alive = false;
@@ -848,15 +919,24 @@ function tickCourierTokenReturn(world, token, now) {
     capacity: dRec.courierReceiver.capacity,
     stored: dRec.courierReceiver.stored,
     entered: true,
-    relativeSpeed: 0,
+    relativeSpeed: Math.hypot(player.vel?.x || 0, player.vel?.z || 0),
     open: true,
   });
   const commit = commitReceiverAcceptance(dRec.courierReceiver, contact, token.receiptId);
   dRec.courierReceiver = commit.ledger;
-  if (!commit.committed && !commit.duplicate) return;
+  if (!commit.committed && !commit.duplicate) {
+    if (token.deliveryRefusal !== commit.reason) world.bus.emit('comms:log', {
+      from: 'Courier intake', kind: 'machine', text: commit.reason === 'speed-window'
+        ? 'RETURN THE HELD TOKEN BELOW SPEED 22. INTAKE REFUSED; YOUR HOLD RETAINS THE MAIL.'
+        : 'RECIPIENT CAPACITY REFUSED. YOUR HOLD RETAINS THE MAIL.',
+    });
+    token.deliveryRefusal = commit.reason;
+    return;
+  }
   // The cargo owner writes the unit out only after the receiver commits — no commit, no loss.
   if (removeCargo(state, COURIER_TOKEN_COMMODITY, 1) < 1) return;
   token.status = 'delivered';
+  delete token.deliveryRefusal;
   token.deliveredAt = now;
   const dest = MACHINE_SITES[token.destSiteId];
   world.bus.emit('comms:log', {
@@ -935,7 +1015,7 @@ function tickCourierToken(world, e, m, kind, dest, now) {
     const carryR = (e.radius || 10) + (pod.radius || 5) + 2;
     pod.pos.x = e.pos.x + Math.cos(back) * carryR;
     pod.pos.z = e.pos.z + Math.sin(back) * carryR;
-    if (pod.vel) { pod.vel.x = 0; pod.vel.z = 0; }
+    if (pod.vel) { pod.vel.x = e.vel?.x || 0; pod.vel.z = e.vel?.z || 0; }
     pod.data.machineCarriedBy = e.id;
   } else {
     token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };

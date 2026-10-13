@@ -104,6 +104,7 @@ function actor({
   passive = true,
   binding = null,
   namespace = 'ceres',
+  factionId = null,
 }) {
   assertDistanceInBand(spawnOffset, CERES_ACTIVITY_BANDS.immediate, `actor ${id} spawn`);
   return Object.freeze({
@@ -114,6 +115,9 @@ function actor({
     jobKind,
     lawful,
     passive,
+    // Authored allegiance when the fiction gives this hull to another faction than its
+    // sector's (a Concord picket in Free Frontier space). Null keeps the sector fallback.
+    factionId: factionId || null,
     coordinateSpace: 'pocket_anchor_offset_v1',
     spawnOffset,
     route: jobRoute,
@@ -1942,6 +1946,14 @@ if (new Set(SKER_POCKET_ACTOR_SLOT_ORDER).size !== SKER_POCKET_ACTOR_SLOT_ORDER.
 }
 assertDistinctRouteTopology(SKER_ACTIVITY_POCKETS, SKER_ROUTE_TOPOLOGY, 'Sker');
 
+// The generic freight consumer in traffic.js accepts an arrival only when the destination waypoint the
+// kernel emits is the literal `dest:<stationId>`. A freight-arrival route therefore names its final
+// waypoint by that reference (the id stays unique per sector because a station is one destination).
+function livedMarkId(spec, id, ref, isLast) {
+  if (isLast && spec.receipt === 'freight:arrival' && typeof ref === 'string' && ref.startsWith('dest:')) return ref;
+  return id;
+}
+
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 // CR-HOLLOW-4 — the lived-in frontier. Eighteen of the twenty-five sectors had no authored shift:
 // arriving in one meant anonymous ambient scatter (or, in the hollow rims, nothing at all). All
@@ -2016,7 +2028,11 @@ function livedAnchor(zones, anchors, spec, label) {
 /**
  * One sector's authored shift from a declarative spec. Each actor is
  * `{ id, role, kind, spawn: [x, z], routeId, durationS, marks: [[id, x, z, targetRef], ...] }`
- * plus optional `lawful` and `receipt`; each object is `{ id, kind, offset: [x, z], targetRef }`.
+ * plus optional `lawful`, `receipt` and `factionId`; each object is `{ id, kind, offset: [x, z], targetRef }`.
+ * A `receipt` is a promise that the real consumer will fire it (test/infer-pocket-receipts.test.mjs
+ * proves every one). Lawful haulers ending at `dest:<station>` can: freight:arrival. Miners cannot —
+ * the generic extraction consumer needs a live asteroid id the authored data cannot know — and
+ * smuggler runs are not lawful freight, so neither advertises a receipt.
  */
 function livedFrontierSet({ sectorId, namespace, label, pockets: pocketSpecs }) {
   const zones = requireArray(SECTOR_ZONES[sectorId], `${label} sector zones`);
@@ -2036,13 +2052,16 @@ function livedFrontierSet({ sectorId, namespace, label, pockets: pocketSpecs }) 
         jobKind: a.kind,
         lawful: a.lawful === true,
         passive: true,
+        factionId: a.factionId || null,
         spawnOffset: point(a.spawn[0], a.spawn[1]),
         route: route({
           id: a.routeId,
           jobKind: a.kind,
           durationS: a.durationS,
           receiptType: a.receipt || null,
-          marks: a.marks.map(([id, x, z, ref]) => mark(id, x, z, ref || null)),
+          marks: a.marks.map(([id, x, z, ref], index, all) => mark(
+            livedMarkId(a, id, ref, index === all.length - 1), x, z, ref || null,
+          )),
         }),
       })),
       objectSlots: (spec.objects || []).map((o) => objectSlot({
@@ -2165,7 +2184,7 @@ const LIVED_FRONTIER_SET_LIST = [
             ] },
           // The fence's fetch: strongbox-ward, then the long way back to the berth.
           { id: 'ashfall_cache_runner', role: 'smuggler', kind: 'hauler', spawn: [45, -20],
-            routeId: 'ashfall_cache_fetch_run', durationS: 26, receipt: 'freight:arrival',
+            routeId: 'ashfall_cache_fetch_run', durationS: 26,
             marks: [
               ['ashfall_runner_strongbox_leg', -106.9, -25.9, 'object:ashfall_cache_strongbox'],
               ['ashfall_runner_berth_leg', 110, -2.6, 'dest:station_ashcache'],
@@ -2241,7 +2260,7 @@ const LIVED_FRONTIER_SET_LIST = [
               ['io_salvor_plate_face', -66.3, 85.3, 'object:io_cruiser_cut_plate'],
             ] },
           // A Concord picket holding the claim: a short held chord toward the contested lane.
-          { id: 'io_cruiser_picket', role: 'patrol', kind: 'patrol', lawful: true, spawn: [-40, -25],
+          { id: 'io_cruiser_picket', role: 'patrol', kind: 'patrol', lawful: true, factionId: 'faction_scn', spawn: [-40, -25],
             routeId: 'io_cruiser_watch_chord', durationS: 46,
             marks: [
               ['io_picket_lane_end', 94.6, 45.6, 'activity:io-picket-lane-end'],
@@ -2398,7 +2417,7 @@ const LIVED_FRONTIER_SET_LIST = [
         ],
         actors: [
           { id: 'nereid_shoal_miner', role: 'miner', kind: 'miner', spawn: [-35, -40],
-            routeId: 'nereid_shoal_ice_loop', durationS: 38, receipt: 'mining:npcExtraction',
+            routeId: 'nereid_shoal_ice_loop', durationS: 38,
             marks: [
               ['nereid_miner_face', 95.5, 46, 'field:f_nereid_1'],
               ['nereid_miner_waystation_leg', 90.1, -61.4, 'activity:nereid-miner-waystation-leg'],
@@ -2450,7 +2469,7 @@ const LIVED_FRONTIER_SET_LIST = [
         ],
         actors: [
           { id: 'hyperion_seam_miner', role: 'miner', kind: 'miner', spawn: [-38, -30],
-            routeId: 'hyperion_seam_cut_loop', durationS: 36, receipt: 'mining:npcExtraction',
+            routeId: 'hyperion_seam_cut_loop', durationS: 36,
             marks: [
               ['hyperion_miner_pod_leg', -72.7, 79.8, 'object:hyperion_seam_tally_pod'],
               ['hyperion_miner_face', -104.5, -22.8, 'field:f_hyperion_1'],
@@ -2480,7 +2499,7 @@ const LIVED_FRONTIER_SET_LIST = [
           // The fence's fetch: out toward the cache on its true bearing, back across the apron
           // to the berth.
           { id: 'nyx_fence_runner', role: 'smuggler', kind: 'hauler', spawn: [-13.5, 35.5],
-            routeId: 'nyx_fence_fetch_run', durationS: 28, receipt: 'freight:arrival',
+            routeId: 'nyx_fence_fetch_run', durationS: 28,
             marks: [
               ['nyx_runner_cache_leg', -61.4, -83.9, 'activity:nyx-cache-leg'],
               ['nyx_runner_berth_leg', 100.6, 44.4, 'dest:station_nyx_march'],
@@ -2539,7 +2558,7 @@ const LIVED_FRONTIER_SET_LIST = [
           // The stash run: the long leg on the stash's true bearing, then the last straight into
           // the berth.
           { id: 'kepler_bazaar_runner', role: 'smuggler', kind: 'hauler', spawn: [-17.8, 33.6],
-            routeId: 'kepler_bazaar_fetch_run', durationS: 29, receipt: 'freight:arrival',
+            routeId: 'kepler_bazaar_fetch_run', durationS: 29,
             marks: [
               ['kepler_runner_stash_leg', -65.5, -88.4, 'activity:kepler-stash-leg'],
               ['kepler_runner_berth_leg', 86.1, 68.4, 'dest:station_kepler_scar'],
@@ -2755,7 +2774,7 @@ const LIVED_FRONTIER_SET_LIST = [
           // The drop run: the long leg on the drop's true bearing, then the last straight into
           // the berth.
           { id: 'eris_fence_runner', role: 'smuggler', kind: 'hauler', spawn: [-15.9, 34.5],
-            routeId: 'eris_fence_drop_run', durationS: 29, receipt: 'freight:arrival',
+            routeId: 'eris_fence_drop_run', durationS: 29,
             marks: [
               ['eris_runner_drop_leg', -70.4, -84.5, 'activity:eris-drop-leg'],
               ['eris_runner_berth_leg', 89.9, 63.4, 'dest:station_eris_margin'],
@@ -2860,7 +2879,7 @@ const LIVED_FRONTIER_SET_LIST = [
         actors: [
           // The stash run, on the stash's true bearing, and back to the broker's berth.
           { id: 'proteus_den_runner', role: 'smuggler', kind: 'hauler', spawn: [-17.4, -33.8],
-            routeId: 'proteus_den_stash_run', durationS: 27, receipt: 'freight:arrival',
+            routeId: 'proteus_den_stash_run', durationS: 27,
             marks: [
               ['proteus_runner_stash_leg', 107.1, 25.2, 'activity:proteus-stash-leg'],
               ['proteus_runner_berth_leg', -93.6, 57.9, 'dest:station_proteus'],
@@ -2888,7 +2907,7 @@ const LIVED_FRONTIER_SET_LIST = [
           // A crew that does not ask questions, coring the metallic crystal seam on the field's
           // face.
           { id: 'proteus_seam_crew', role: 'miner', kind: 'miner', spawn: [-0.6, -38],
-            routeId: 'proteus_seam_cut_loop', durationS: 47, receipt: 'mining:npcExtraction',
+            routeId: 'proteus_seam_cut_loop', durationS: 47,
             marks: [
               ['proteus_crew_face', -87.2, 62.1, 'field:f_proteus_1'],
               ['proteus_crew_den_leg', 38.4, 103.1, 'activity:proteus-crew-den-leg'],
@@ -2917,14 +2936,14 @@ const LIVED_FRONTIER_SET_LIST = [
         anchor: { kind: 'station', id: 'station_triton', zoneId: 'zone_triton_lab' },
         actors: [
           // The wake run: a straight lane to the anomaly's edge on its true bearing, and home.
-          { id: 'triton_lab_tender', role: 'tender', kind: 'surveyor', spawn: [37.9, 2.5],
+          { id: 'triton_lab_tender', role: 'tender', kind: 'surveyor', factionId: 'faction_free', spawn: [37.9, 2.5],
             routeId: 'triton_lab_run', durationS: 73,
             marks: [
               ['triton_tender_wake_leg', -40.9, 102.1, 'activity:triton-wake-leg'],
               ['triton_tender_berth_leg', 40.9, -102.1, 'station:station_triton:service-berth'],
             ] },
           // Sampling the radiation bloom along the wake spine, a short slow chord.
-          { id: 'triton_wake_sampler', role: 'surveyor', kind: 'surveyor', spawn: [13.2, -43],
+          { id: 'triton_wake_sampler', role: 'surveyor', kind: 'surveyor', factionId: 'faction_free', spawn: [13.2, -43],
             routeId: 'triton_wake_sample_chord', durationS: 28,
             marks: [
               ['triton_sampler_glow_face', -38.6, 97.7, 'activity:triton-glow-face'],
@@ -2974,7 +2993,7 @@ const LIVED_FRONTIER_SET_LIST = [
         actors: [
           // The licensed run: out toward the Hush on its true bearing and back to the fence.
           { id: 'eunomia_fence_runner', role: 'smuggler', kind: 'hauler', spawn: [-24.2, 29.3],
-            routeId: 'eunomia_fence_run', durationS: 29, receipt: 'freight:arrival',
+            routeId: 'eunomia_fence_run', durationS: 29,
             marks: [
               ['eunomia_runner_hush_leg', -46.3, -99.8, 'activity:eunomia-hush-leg'],
               ['eunomia_runner_berth_leg', 70.5, 84.4, 'dest:station_eunomia'],

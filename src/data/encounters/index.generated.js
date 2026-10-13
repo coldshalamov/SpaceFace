@@ -299,20 +299,21 @@ import * as encounter295 from './581-scene-refuel-hookup.js';
 import * as encounter296 from './582-scene-rescue-drill.js';
 import * as encounter297 from './583-scene-archive-record-tail.js';
 import * as encounter298 from './584-scene-fissure-haul-out.js';
-import * as encounter299 from './901-last-argument.js';
-import * as encounter300 from './1100-breakaway-freight.js';
-import * as encounter301 from './1101-salvage-dispute.js';
-import * as encounter302 from './1102-missing-piece.js';
-import * as encounter303 from './1103-harvest-owned.js';
-import * as encounter304 from './1104-dead-letter.js';
-import * as encounter305 from './1105-mason-cover.js';
-import * as encounter306 from './1106-edge-of-order.js';
-import * as encounter307 from './1200-the-wedge.js';
-import * as encounter308 from './1201-the-cold-shoulder.js';
-import * as encounter309 from './1202-the-kick-start.js';
-import * as encounter310 from './1203-the-declaration.js';
-import * as encounter311 from './1204-the-mine-garden.js';
-import * as encounter312 from './1300-scene-fare-dodger-chase.js';
+import * as encounter299 from './585-candle-relighting.js';
+import * as encounter300 from './901-last-argument.js';
+import * as encounter301 from './1100-breakaway-freight.js';
+import * as encounter302 from './1101-salvage-dispute.js';
+import * as encounter303 from './1102-missing-piece.js';
+import * as encounter304 from './1103-harvest-owned.js';
+import * as encounter305 from './1104-dead-letter.js';
+import * as encounter306 from './1105-mason-cover.js';
+import * as encounter307 from './1106-edge-of-order.js';
+import * as encounter308 from './1200-the-wedge.js';
+import * as encounter309 from './1201-the-cold-shoulder.js';
+import * as encounter310 from './1202-the-kick-start.js';
+import * as encounter311 from './1203-the-declaration.js';
+import * as encounter312 from './1204-the-mine-garden.js';
+import * as encounter313 from './1300-scene-fare-dodger-chase.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -627,5 +628,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter310,
   encounter311,
   encounter312,
+  encounter313,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

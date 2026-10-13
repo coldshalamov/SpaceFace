@@ -5451,6 +5451,8 @@ export function createHud(ctx, alerts) {
   }
 
   function frame(dt) {
+    // Read dirty obstacle geometry before this frame's HUD writes.
+    if (objectiveEdgeBoxes.stale) objectiveEdgeObstacles();
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
     const numericDt = consumeHudClock(numericClock, frameDt);
     const targetDt = consumeHudClock(targetClock, frameDt);

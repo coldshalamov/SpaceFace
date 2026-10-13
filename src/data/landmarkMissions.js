@@ -213,6 +213,37 @@ export const RINGWORLD_GRID_READING = Object.freeze({
   }),
 });
 
+// C3 — the starter sector's own landmark. The Candle Fleet relights twenty-four candles for
+// the Pit convoy on every shift; the twenty-fifth plinth stays dark until somebody reads its
+// black-box smear properly. The first hour's relighting procession walks the player out here;
+// this row is the reason to come back with a scanner.
+export const CANDLE_FLEET_PIT_BEARING = Object.freeze({
+  id: 'landmark_c3_pit_bearing',
+  sectorId: 'sector_helios_prime',
+  poiId: 'poi_memorial',
+  targetRef: 'landmark_c3_candle_fleet',
+  stationId: 'station_helios',
+  factionId: 'faction_scn',
+  targetLocalPos: Object.freeze({ x: 1680, z: -820 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Candle Fleet',
+  rewardCr: 750,
+  minRep: -1000,
+  riskTier: 0,
+  title: 'The Candle Fleet: The Dark Plinth',
+  brief: 'Return to the Fleet and hold one close scanner pass on the dark twenty-fifth plinth.',
+  summary: 'The tenders relight twenty-four candles every shift and leave the twenty-fifth dark. Helios will file one close reading of the plinth\'s black-box smear — taken at the Fleet, by a pilot, not copied from the archive.',
+  causeTag: 'landmark:candle_fleet_pit_bearing',
+  causeFingerprint: 'landmark:c3:pit-bearing:v1',
+  causeLine: 'Twenty-four candles burn for the Pit convoy. The twenty-fifth plinth stays dark on purpose.',
+  successText: 'Reading filed. Helios logged the smear as a course, not a scar, and paid without asking why the tenders never lit the plinth themselves.',
+  artifact: Object.freeze({
+    id: 'artifact_c3_pit_bearing_smear',
+    title: 'C3-1 · The Twenty-Fifth Plinth Record',
+    body: 'One close pass separates the plinth\'s black-box smear from candle-glow noise: the Pit convoy ran dark on purpose, riding without lights to slip the toll cut, and the twenty-fifth hull led. Its course resolves to a slow drift line off the Fleet\'s dark side — sealed relief pods, still in formation, still waiting on an escort that was sold elsewhere.',
+  }),
+});
+
 const LANDMARK_QUESTS = Object.freeze([
   CAVED_SHAFT_PROBE,
   SHARD_SPHERE_SONG,
@@ -221,6 +252,7 @@ const LANDMARK_QUESTS = Object.freeze([
   SKERRIS_THRONE_PROVENANCE,
   METRONOME_OFFBEAT_WINDOW,
   RINGWORLD_GRID_READING,
+  CANDLE_FLEET_PIT_BEARING,
 ]);
 const LANDMARK_QUEST_BY_ID = new Map(LANDMARK_QUESTS.map((definition) => [definition.id, definition]));
 

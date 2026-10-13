@@ -11,7 +11,7 @@ test('SFQ-B204 a rack refusal names the predicate and focuses the build once', (
   assert.equal(loadoutRejectionSpeech('rack_no_stock'), 'That bomb is not in stock');
   assert.equal(loadoutRejectionSpeech('rack_empty_rack'), 'The rack on this build is empty');
   assert.equal(loadoutRejectionSpeech('rack_no_rack_owner'), 'This hull has no bomb rack');
-  assert.equal(loadoutRejectionSpeech('rack_commit_failed'), 'Rack preparation failed â€” build not applied');
+  assert.equal(loadoutRejectionSpeech('rack_commit_failed'), 'Rack preparation failed — build not applied');
   assert.equal(loadoutRejectionSpeech('outfit_space'), 'Outfit space exceeded');
   assert.equal(loadoutRejectionSpeech('no-such-reason'), 'Cannot apply this build');
 

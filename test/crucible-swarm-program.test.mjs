@@ -500,7 +500,7 @@ test('an owned hull switches back for free and stays switchable', () => {
   // The hornet row re-shelves as a free switch.
   const hornetRow = survivalDraft.currentOffers()
     .find((o) => o.kind === 'hull' && o.defId === 'ship_hornet');
-  assert.equal(hornetRow.verb, 'Switch', 'the manifest row is a switch');
+  assert.equal(hornetRow.verb, 'Switch ship', 'the manifest row is a switch');
   assert.equal(hornetRow.price, 0, 'the manifest row is free');
   assert.ok(hornetRow.available, `the switch is live (${hornetRow.unavailableReason || 'ready'})`);
   const creditsBefore = h.state.run.credits;

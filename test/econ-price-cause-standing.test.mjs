@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
-import { marketCardDrivers, presentMarketDrivers, standingDriver } from '../src/ui/marketDriverPresenter.js';
+import { marketCardDrivers, presentMarketDrivers, reputationFromQuotes, standingDriver } from '../src/ui/marketDriverPresenter.js';
 import { priceModForState } from '../src/systems/factions.js';
 import { commodityStandingMultipliers } from '../src/economy/economyMath.js';
 import { economy } from '../src/systems/economy.js';
@@ -144,6 +144,52 @@ test('seed 4242: the Helios food quote\'s reputation component is the row the co
     assert.match(row.explanation, new RegExp(`sales pay ${sellPct}% over`));
     assert.equal(buyQ.reputationBuyMult, sellQ.reputationBuyMult);
     assert.equal(buyQ.reputationSellMult, sellQ.reputationSellMult);
+  } finally {
+    sim.dispose();
+    economy._instance = null;
+  }
+});
+
+test('a sold-out buy keeps the sell quote\'s reputation, and a sell can name a waived surcharge', () => {
+  const sim = createSimulation({ seed: 4242, systems: [economy] });
+  try {
+    const state = sim.state;
+    state.factions[FACTION] = { rep: 600, tier: 'Allied', aggro: false };
+    const owner = sim.registry.get('economy');
+    owner.ensureMarket('station_helios');
+    const entry = state.economy.markets.station_helios.cmdty_food;
+    entry.stock = 1;
+    const buyQ = owner.quote('station_helios', 'cmdty_food', 'buy', 1);
+    const sellQ = owner.quote('station_helios', 'cmdty_food', 'sell', 1);
+    assert.equal(buyQ.ok, false);
+    assert.equal(buyQ.reason, 'no_stock');
+    assert.equal(buyQ.reputationBuyMult, undefined);
+    assert.equal(sellQ.ok, true);
+    const paired = reputationFromQuotes(buyQ, sellQ);
+    assert.equal(paired.buy, sellQ.reputationBuyMult);
+    assert.equal(paired.sell, sellQ.reputationSellMult);
+    const lied = { role: 'none', buy: 180, sell: 40, lastBuy: 180, lastSell: 40 };
+    const fromBook = standingDriver(state, HELIOS, lied);
+    const fromQuote = standingDriver(state, HELIOS, lied, paired);
+    assert.notEqual(fromBook.explanation, fromQuote.explanation);
+    const buyPct = Math.round(Math.abs(sellQ.reputationBuyMult - 1) * 1000) / 10;
+    const sellPct = Math.round(Math.abs(sellQ.reputationSellMult - 1) * 1000) / 10;
+    assert.match(fromQuote.explanation, new RegExp(`buys run ${buyPct}% under`));
+    assert.match(fromQuote.explanation, new RegExp(`sales pay ${sellPct}% over`));
+
+    state.factions[FACTION] = { rep: -300, tier: 'Hostile', aggro: false };
+    state.story = state.story || {};
+    state.story.flags = { ...(state.story.flags || {}), surcharges_cleared: true };
+    entry.stock = 1;
+    const lockedBuy = owner.quote('station_helios', 'cmdty_food', 'buy', 1);
+    const waivedSell = owner.quote('station_helios', 'cmdty_food', 'sell', 1);
+    assert.equal(lockedBuy.reason, 'no_stock');
+    assert.equal(waivedSell.ok, true);
+    assert.equal(waivedSell.stationSurchargeWaived, true);
+    const waivedPair = reputationFromQuotes(lockedBuy, waivedSell);
+    assert.equal(waivedPair.surchargeWaived, true);
+    const waivedRow = standingDriver(state, HELIOS, entry, waivedPair);
+    assert.equal(waivedRow.shortLabel, 'Surcharge waived');
   } finally {
     sim.dispose();
     economy._instance = null;

@@ -206,3 +206,45 @@ test('the audio system binds on init and unbinds on destroy', () => {
     else Object.defineProperty(globalThis, 'navigator', { configurable: true, value: original });
   }
 });
+
+test('the real init subscribes to device changes and the real destroy removes the subscription', async () => {
+  // Review R08: the test above calls the private binders directly, so it passed with both lifecycle
+  // hooks deleted. This one drives audio.init / audio.destroy themselves.
+  const { createBus } = await import('../src/core/eventBus.js');
+  const listeners = new Map();
+  const mediaDevices = {
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name, fn) => { if (listeners.get(name) === fn) listeners.delete(name); },
+  };
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { value: { mediaDevices }, configurable: true, writable: true });
+  const player = {
+    id: 1, isPlayer: true, alive: true, type: 'ship', team: 'player', pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, shield: 100, shieldMax: 100, flags: {},
+  };
+  const state = {
+    playerId: 1, tick: 0, simTime: 0,
+    entities: new Map([[1, player]]), entityList: [player],
+    player: { credits: 0, fuel: 100, cruise: { phase: 'idle' }, cargo: { items: {} } },
+    input: { moveX: 0, moveZ: 0, brake: false, fire: false, actions: {} },
+    world: { currentSectorId: 'sector_helios_prime', sectors: {}, activeSector: { stations: [] } },
+    settings: {
+      audio: { muted: true, master: 0.5, sfx: 0.7, music: 0.3, engine: 0.7, ambient: 0.7, combat: 0.7, ui: 0.7, comms: 0.7 },
+      video: { motionReduce: true },
+      accessibility: { audioCues: true, captions: false },
+    },
+    ui: { docked: false, screenStack: [] },
+  };
+  try {
+    try { audio.destroy(); } catch (_) { /* a prior test may have left the singleton un-initialised */ }
+    audio.init({ state, bus: createBus(), helpers: {} });
+    assert.equal(typeof listeners.get('devicechange'), 'function', 'init must subscribe to devicechange by default');
+    audio.destroy();
+    assert.equal(listeners.has('devicechange'), false, 'destroy must remove the devicechange subscription');
+    assert.equal(audio.rt?._unbindOutputDeviceFollow ?? null, null, 'no dangling unbinder is left on the runtime');
+  } finally {
+    try { audio.destroy(); } catch (_) { /* already destroyed */ }
+    if (original) Object.defineProperty(globalThis, 'navigator', original);
+    else delete globalThis.navigator;
+  }
+});

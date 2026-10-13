@@ -17,7 +17,10 @@ import {
 } from '../src/systems/npcJobs.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { economy as economyBase } from '../src/systems/economy.js';
-import { fieldDepletion as fieldDepletionBase } from '../src/systems/fieldDepletion.js';
+import {
+  fieldDepletion as fieldDepletionBase,
+  openRichSeamOpportunity,
+} from '../src/systems/fieldDepletion.js';
 import { traffic as trafficBase } from '../src/systems/traffic.js';
 import { world } from '../src/systems/world.js';
 import { save } from '../src/save/saveSystem.js';
@@ -228,6 +231,10 @@ function primaryIntent(harness, slotId, { seq = 11, payload = undefined } = {}) 
   const { slot } = ROW_BY_SLOT_ID.get(slotId);
   const actor = harness.actorBySlotId.get(slotId);
   const entry = harness.jobs[actor.data.jobId];
+  if (slotId === 'ceres_refinery_hauler') {
+    stageRefineryHandoff(harness.state, harness.system,
+      harness.actorBySlotId.get('ceres_seam_miner'), actor, entry.job.payload.manifest);
+  }
   const primary = primaryAction(slot);
   const waypoint = entry.job.route[primary.waypointIndex];
   entry.job.schema = NPC_JOB_SCHEMA;
@@ -278,6 +285,48 @@ function activityWorldRecordId(slot) {
 
 function activityJobId(slot) {
   return `job:${activityWorldRecordId(slot)}`;
+}
+
+function openRichSeam(state) {
+  return openRichSeamOpportunity(state, {
+    fieldId: 'f_ceres_1',
+    activityObjectSlotId: 'ceres_seam_ore_clast',
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    simTime: state.simTime,
+  });
+}
+
+function stageRefineryHandoff(state, system, miner, hauler, fixtureManifest) {
+  const minerRec = state.traffic.freighters.find((row) => row.id === miner.id);
+  const haulerRec = state.traffic.freighters.find((row) => row.id === hauler.id);
+  const station = [...state.entities.values()].find((entity) =>
+    entity.type === 'station' && entity.data.stationId === 'station_ceres');
+  const source = minerRec.manifest?.totalQty > 0 ? minerRec.manifest : {
+    ...fixtureManifest,
+    role: 'ore_carrier',
+    lotId: fixtureManifest.manifestId,
+    custody: { holderKind: 'traffic', holderId: miner.data.worldRecordId },
+  };
+  system._setTrafficManifest(miner, minerRec, source);
+  const handoff = system._requestCeresMinerHaulerHandoff({
+    entity: miner, rec: minerRec, worldRecordId: miner.data.worldRecordId,
+    slot: ROW_BY_SLOT_ID.get('ceres_seam_miner').slot,
+  }, source);
+  assert.ok(handoff, 'the ore owner requests the exact fixture lot');
+  system._setTrafficManifest(hauler, haulerRec,
+    system._buildMinerManifest(hauler, haulerRec.dockSeq, null, 0, 'hauler'));
+  // This owner-boundary fixture begins after the physical rendezvous, at the refinery berth.
+  Object.assign(miner.pos, station.pos);
+  Object.assign(hauler.pos, station.pos);
+  assert.equal(system._transferCeresMinerHaulerHandoff(handoff,
+    { entity: miner, rec: minerRec }, { entity: hauler, rec: haulerRec }, 0), true);
+  const entry = system.helpers.npcJobs.get(hauler.data.jobId);
+  entry.job.payload = {
+    activityRunSeq: haulerRec.dockSeq | 0,
+    manifest: JSON.parse(JSON.stringify(haulerRec.manifest)),
+    handoffId: handoff.handoffId,
+  };
+  return handoff;
 }
 
 function withoutTargetRefs(route) {
@@ -564,6 +613,7 @@ test('real pre-patch save/Continue adopts canonical refs and resumes the miner o
     assert.equal(JSON.stringify(sim.helpers.npcJobs.get(ordinaryJobId).job.route), ordinarySavedRouteJSON,
       'Continue leaves an ordinary targetRef-free non-Ceres route byte/shape compatible');
 
+    openRichSeam(sim.state);
     assert.equal(stepUntil(
       sim,
       () => receipts.some((receipt) => receipt.actorSlotId === 'ceres_seam_miner'),
@@ -642,6 +692,9 @@ test('owner identities reserve before reentry and reject post-emit authority cha
   miner.actor.id = authenticatedActorId;
   miner.entry.job.simTime = authenticatedSimTime;
   minerHarness.state.fieldDepletion.fields = {};
+  minerHarness.state.traffic.ceresMinerHaulerHandoff = null;
+  minerHarness.system._setTrafficManifest(miner.actor, miner.rec,
+    minerHarness.system._buildMinerManifest(miner.actor, 0, null, 0, 'ore_carrier'));
   minerHarness.bus.emit('npcjobs:work', miner.intent);
   assert.equal(minerHarness.events('mining:npcExtraction').length, 2,
     'after authoritative owner rewind, the same completion may retry once');
@@ -1056,9 +1109,14 @@ test('offscreen no-sink catch-up emits no history; the next live ore cycle emits
     advance(entry.job, 0.05, (intent) => harness.bus.emit(intent.event, intent));
   }
   const liveReceipts = harness.events(ACTION_RECEIPT_EVENT);
-  assert.equal(liveReceipts.length, 2, 'one work receipt plus one refinery-unload receipt');
+  assert.equal(liveReceipts.length, 2, 'one work receipt plus one handoff-hold receipt');
   assert.deepEqual(liveReceipts.map((receipt) => receipt.action).sort(), ['unload', 'work']);
   assert.equal(harness.events('mining:npcExtraction').length, 1);
+  assert.equal(liveReceipts.find((receipt) => receipt.action === 'unload').effectType,
+    'traffic:ceresMinerHaulerHold', 'the ore barge retains its lot for the hauler');
+  assert.equal(harness.events('freight:arrival').length, 0);
+  emitPrimary(harness, 'ceres_refinery_hauler');
+  assert.equal(harness.events(ACTION_RECEIPT_EVENT).length, 3);
   assert.equal(harness.events('freight:arrival').length, 1);
 });
 
@@ -1088,6 +1146,7 @@ test('real save/Continue rewinds owner state and transient Ceres dedupe before t
     sim.bus.on(ACTION_RECEIPT_EVENT, (payload) => receipts.push({ ...payload }));
 
     const saveSystem = sim.registry.get('save');
+    openRichSeam(sim.state);
     const envelope = saveSystem.serialize('r6a-ledger-rewind');
     assert.equal(Object.keys(envelope.data.npcJobs.byId).length, 7,
       'the pre-completion envelope owns the exact seven traffic jobs');
@@ -1145,6 +1204,7 @@ test('reentrant real Continue during miner ownership discards the obsolete compl
 
     const saveSystem = sim.registry.get('save');
     const trafficSystem = sim.registry.get('traffic');
+    openRichSeam(sim.state);
     const envelope = saveSystem.serialize('r6a-reentrant-miner');
     const mining = [];
     const receipts = [];
@@ -1225,10 +1285,13 @@ test('reentrant real Continue during first freight line aborts the obsolete mani
       ],
       totalQty: 8,
     };
-    entry.job.payload = { activityRunSeq: rec.dockSeq | 0, manifest: JSON.parse(JSON.stringify(manifest)) };
-    rec.manifest = JSON.parse(JSON.stringify(manifest));
-    hauler.data.cargoManifest = JSON.parse(JSON.stringify(manifest));
-    hauler.data.freightDockSeq = rec.dockSeq | 0;
+    const miner = [...sim.state.entities.values()].find((entity) => entity.alive
+      && entity.data?.activityActorSlotId === 'ceres_seam_miner');
+    stageRefineryHandoff(sim.state, sim.registry.get('traffic'), miner, hauler, manifest);
+    const deliveryEntry = sim.helpers.npcJobs.get(hauler.data.jobId);
+    Object.assign(deliveryEntry.job, {
+      phase: NPC_JOB_PHASE.UNLOAD, routeIndex: 1, progress: 0.75,
+    });
 
     const saveSystem = sim.registry.get('save');
     const trafficSystem = sim.registry.get('traffic');

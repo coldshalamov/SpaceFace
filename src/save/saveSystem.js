@@ -28,6 +28,7 @@ import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, hasP
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
+import { stationLifeSaveProjection } from '../systems/stationContactLoadBoundary.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
@@ -619,7 +620,8 @@ export const save = {
       // apply clobbers it and the delta push ships the stale value.
       const localNow = genAtCollect === _saveStoreGeneration
         ? local : await this._collectSharedStoreKeysChunked();
-      const merged = mergeSharedStoreKeys(localNow, remote || {});
+      let merged = mergeSharedStoreKeys(localNow, remote || {});
+      const genAtApply = _saveStoreGeneration;
       // The apply's own setItem/removeItem calls ride the wrapped store and would bump the
       // generation — silence them behind this facade so a bump inside the window can only
       // come from a foreign write (a storage event or a reentrant tracked setItem), which
@@ -641,19 +643,23 @@ export const save = {
       // leg in the boot reconcile — same semantics, the task queue yields between batches.
       await applySharedStoreKeysChunked(merged, silencedStore, {
         yieldQueue: () => this._restoreFrameYield(),
+        baseKeys: localNow,
       });
       // Post-apply storage == merged for every shared key (skipped writes were identical by
       // construction) — hand the materialized map to the slot signature so the first menu scan
       // doesn't getItem the same megabytes a second time. Only stamp it when no foreign write
       // landed inside the apply's yield windows: merged predates such a write, and a stale
       // stamp would serve it to one consult as if current until the next bump.
-      if (_saveStoreGeneration === genAtCollect) {
+      if (_saveStoreGeneration === genAtApply) {
         this._sharedStoreCollectCache = {
           gen: _saveStoreGeneration,
           raws: new Map(Object.entries(merged)),
         };
       }
       if (remote != null || Object.keys(local).length > 0) {
+        if (_saveStoreGeneration !== genAtApply) {
+          merged = mergeSharedStoreKeys(await this._collectSharedStoreKeysChunked(), remote || {});
+        }
         // Only ship what the merge actually changed — an already-mirrored store keeps the
         // ~220 KB envelope PUT off the boot path entirely.
         let delta = null;
@@ -662,7 +668,17 @@ export const save = {
         }
         // Yield before the push — its JSON.stringify is an unsliced O(store-bytes)
         // leg; isolating it on its own task keeps "Checking saves…" responsive.
-        if (delta != null) await this._restoreFrameYield();
+        if (delta != null) {
+          const genBeforePush = _saveStoreGeneration;
+          await this._restoreFrameYield();
+          if (_saveStoreGeneration !== genBeforePush) {
+            merged = mergeSharedStoreKeys(await this._collectSharedStoreKeysChunked(), remote || {});
+            delta = null;
+            for (const [key, value] of Object.entries(merged)) {
+              if ((remote || {})[key] !== value) (delta || (delta = {}))[key] = value;
+            }
+          }
+        }
         const pushed = delta == null ? true : await pushSharedPlayerStore(delta);
         if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }
@@ -7643,8 +7659,29 @@ export const save = {
   // sync serialize + stringify — a mature world used to brick the export click in one task.
   async _finishExportJsonAsync(json, slot) {
     if (!json) {
+      if (this._campaignSaveSuppressed()) {
+        this.bus.emit('save:error', { slot, reason: 'temporary_session' });
+        this.bus.emit('toast', { text: 'Temporary flight cannot be exported as an Adventure save. Choose an existing campaign slot.', kind: 'info', ttl: 4 });
+        return null;
+      }
       try {
+        const runEpoch = this._runEpoch;
+        const restoreSequence = this._restoreSequence;
+        const restoringAtStart = this._restoring === true;
         const data = await this._serializeDataFrozenAsync();
+        // A paced capture yields to New Game/run transitions. Recheck before giving
+        // its bytes an Adventure envelope; the previous campaign no longer owns them.
+        if (this._campaignSaveSuppressed()) {
+          this.bus.emit('save:error', { slot, reason: 'temporary_session' });
+          this.bus.emit('toast', { text: 'Temporary flight cannot be exported as an Adventure save. Choose an existing campaign slot.', kind: 'info', ttl: 4 });
+          return null;
+        }
+        if (runEpoch !== this._runEpoch || restoreSequence !== this._restoreSequence
+          || restoringAtStart || this._restoring === true) {
+          this.bus.emit('save:error', { slot, reason: 'superseded' });
+          this.bus.emit('toast', { text: 'Flight changed during export. Export again from the campaign you want to keep.', kind: 'info', ttl: 4 });
+          return null;
+        }
         const envelope = {
           fmt: FMT,
           version: CURRENT_VERSION,
@@ -7661,6 +7698,11 @@ export const save = {
   },
 
   _finishExportJson(json, slot) {
+    if (!json && this._campaignSaveSuppressed()) {
+      this.bus.emit('save:error', { slot, reason: 'temporary_session' });
+      this.bus.emit('toast', { text: 'Temporary flight cannot be exported as an Adventure save. Choose an existing campaign slot.', kind: 'info', ttl: 4 });
+      return null;
+    }
     if (!json) { try { json = JSON.stringify(this.serialize(slot)); } catch (e) { json = null; } }
     if (!json) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); return null; }
     // FB-104 — the file is the transport for a machine move, so the profile side bags ride
@@ -8354,6 +8396,13 @@ function serializePlayerRecord(state, capturedCollections = null) {
   delete out.cargo;
   // The salvage bay is saved once, as an optional key of the cargo record (_serializeCargo), never twice.
   delete out.salvageBay;
+  // stationContacts owns these durable station stories; the player envelope carries their
+  // bounded projection, consumed back into the native stationLife owner on Continue.
+  delete out.stationLife;
+  const stationNews = stationLifeSaveProjection(state && state.stationLife, state && state.simTime);
+  if (Object.keys(stationNews.rescueNotices).length || Object.keys(stationNews.deeds).length) {
+    out.stationLife = stationNews;
+  }
   return out;
 }
 

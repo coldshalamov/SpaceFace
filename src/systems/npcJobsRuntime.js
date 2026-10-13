@@ -2780,12 +2780,22 @@ export const npcJobsRuntime = {
     const entities = this.state && this.state.entities;
     if (explicitId != null) {
       const explicit = entities && typeof entities.get === 'function' ? entities.get(explicitId) : null;
+      const booked = entry._salvorBookedTarget;
+      if (booked && booked.id === explicitId && explicit && booked.entity !== explicit) return null;
+      if (explicit && (!booked || booked.id !== explicitId)) {
+        // Remember the actual booked body even while it is outside tractor reach.
+        // A recycled numeric id cannot turn the existing job into unrelated salvage.
+        entry._salvorBookedTarget = { id: explicitId, entity: explicit };
+      }
       if (explicit && isSalvorTractorTarget(explicit, ownerRecordId)
         && explicit.pos && entity.pos
         && Math.hypot(explicit.pos.x - entity.pos.x, explicit.pos.z - entity.pos.z) <= NPC_TOW_MAX_RANGE_WU) {
         const targetSector = explicit.data && explicit.data.sectorId;
         if (!(targetSector && entry.sectorId && targetSector !== entry.sectorId)) return explicit;
       }
+      // A booked workpiece is the job, even while displaced beyond tractor reach.
+      // General salvage discovery applies only to a cutter that has no booked object.
+      return null;
     }
     return this._findNearestOccupationalTarget(entry, entity, isSalvorTractorTarget);
   },

@@ -932,6 +932,22 @@ export const weapons = {
       const d = p.data;
       if (!d || d.kind !== 'missile') continue;
       if (!d.armed) { d.armed = true; }
+      // Cloak and ECM shape one authored seeker. Start from its unjammed rate each tick
+      // so neither a reveal nor a fading cloak can overwrite the other's authority.
+      let jammer = null;
+      const cloakDiverted = d.diverted && d._cloakTurnRate != null
+        && d._cloakSeekerLoss >= CLOAK_SEEKER_DROP_S;
+      // A completed cloak break keeps its stale-fix authority after ECM has released
+      // and removed its marker. The seeker owner reapplies that persistent consequence.
+      if (cloakDiverted) d.turnRate = d._cloakTurnRate * CLOAK_SEEKER_RESIDUAL;
+      if (d._jammedTurnRate != null) {
+        d.turnRate = cloakDiverted
+          ? d._cloakTurnRate * CLOAK_SEEKER_RESIDUAL : d._jammedTurnRate;
+        const source = this.helpers.getEntity(d._jammedBy);
+        const cm = source && source.alive !== false && source.data && source.data.cm;
+        if (cm && cm.effectT > 0 && cm.effect?.cfg?.kind === 'ecm') jammer = cm.effect.cfg;
+        else { delete d._jammedTurnRate; delete d._jammedBy; }
+      }
       const decoy = missileDecoyAim(d);
       let tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
       // A recycled entity id is not yesterday's target. The round stays a physical body.
@@ -958,6 +974,7 @@ export const weapons = {
         d._cloakSeekerLoss = 0;
         d._cloakTurnRate = null;
       }
+      if (jammer) d.turnRate *= Math.max(0, Math.min(1, jammer.turnRateMult ?? 0));
       const aim = decoy || (tgt && tgt.pos);
       const turnRate = d.turnRate || 0;
       const speedMax = d.projSpeed || Math.hypot(p.vel.x, p.vel.z) || 1;
@@ -990,6 +1007,27 @@ export const weapons = {
         const diff = wrapAngle(desired - cur);
         const step = Math.max(-turnRate * dt, Math.min(turnRate * dt, diff));
         cur = wrapAngle(cur + step);
+      }
+      // A dumb round names its cause: once per player-owned round, the first tick
+      // guidance is gone, say why (burnout / cone / range / cloak / decoy) so the
+      // juke-and-cloak counterplay the solver authors wrote is readable to the shooter.
+      if (!d._guidanceLostEmitted && d.ownerId != null && state && d.ownerId === state.playerId) {
+        let lostReason = null;
+        if (decoy) lostReason = (d._cloakSeekerLoss > 0) ? 'cloak' : 'decoy';
+        else if (d.diverted) lostReason = 'cloak';
+        else if (missileV2 && !motorOn) lostReason = 'burnout';
+        else if (missileV2 && !guiding && aim) lostReason = 'cone';
+        else if (missileV2 && !guiding && !aim) lostReason = 'range';
+        if (lostReason && !guiding && this.bus) {
+          d._guidanceLostEmitted = true;
+          this.bus.emit('missile:guidanceLost', {
+            missileId: p.id,
+            ownerId: d.ownerId,
+            targetId: d.targetId != null ? d.targetId : null,
+            reason: lostReason,
+            tick: Number.isInteger(state.tick) ? state.tick : 0,
+          });
+        }
       }
       // ramp speed up to the weapon's max projectile speed while the motor burns; after burnout
       // (missileV2 only) bleed speed gently so the coast reads as a spent, ballistic round.

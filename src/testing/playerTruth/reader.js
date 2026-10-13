@@ -770,7 +770,14 @@ export function installPlayerTruthReader(win, opts = {}) {
           const ud = m.userData || {};
           key = intern(`${m.uuid.slice(0, 8)}|${ud.authoredCompositionId || ud.assetId || m.name || ''}|${ud._appliedLodLevel || (ud.lod && ud.lod.level) || ''}|${ud.authoredAssetState || ''}|draw:${drawIdentity(m)}`);
         } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
-        if ((cls === 'enemy' || cls === 'projectile') && sc.inView) threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
+        // Friendly projectile luminosity stays in the screen/player coverage masks and the
+        // readability census, but it is no threat to its own player. Removing that body in
+        // the combat counterfactual must not classify its visible light as self-occlusion.
+        const friendlyShot = cls === 'projectile' && (e.ownerId != null && e.ownerId === st.playerId
+          || e.team != null && e.team === playerTeam);
+        if ((cls === 'enemy' || cls === 'projectile' && !friendlyShot) && sc.inView) {
+          threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
+        }
       }
       const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
       s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);

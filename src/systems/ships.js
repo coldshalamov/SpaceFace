@@ -2623,7 +2623,7 @@ export const ships = {
     // NXB-029 — the loadout names the bomb rack layout too (one payload family per socket,
     // ids only — rounds are consumables, never serialized into the preset).
     const rack = this.state.bombs && this.state.bombs.rack;
-    if (rack && Array.isArray(rack.cells)) {
+    if (owned === this.ownedShip() && rack && Array.isArray(rack.cells)) {
       preset.rackSockets = Number.isSafeInteger(rack.sockets) ? rack.sockets : rack.cells.length;
       preset.rackPayloadIds = rack.cells.map((cell) => (cell && cell.id) || null);
     }
@@ -2679,6 +2679,15 @@ export const ships = {
     }
     if (preset.hullDefId !== shipDef.id) {
       this.bus.emit('toast', { text: 'Build belongs to another hull', kind: 'error', ttl: 3 });
+      return false;
+    }
+    // The bomb rack is the active hull's runtime. Applying a parked hull's build must
+    // never prepare or purchase ammunition for the different ship the pilot is flying.
+    if (Array.isArray(preset.rackPayloadIds) && owned !== this.ownedShip()) {
+      this.bus.emit('ship:loadoutPresetApplyRejected', {
+        presetId, hullDefId: shipDef.id, reason: 'rack_inactive_hull',
+      });
+      this.bus.emit('toast', { text: 'Switch to this hull before preparing its bomb rack', kind: 'error', ttl: 3 });
       return false;
     }
     const slots = buildSlotList(shipDef);

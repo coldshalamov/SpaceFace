@@ -268,7 +268,7 @@ test('one Mechanic header carries hull and ledger instead of naming the speaker 
   const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
   assert.match(
     appSrc,
-    /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl \}\s*,\s*arrival\s*,/,
+    /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl(?:, state: s)? \}\s*,\s*arrival\s*,/,
     'renderStatus still hands leftover arrival to leftover writeBerthArrival',
   );
   assert.match(
