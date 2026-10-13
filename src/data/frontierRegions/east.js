@@ -501,7 +501,9 @@ export const EAST_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_triton_field_lab',
         pos: Object.freeze({ x: 1600, z: -700 }),
-        landmarkGlb: 'place_inspection_platform',
+        // The lab's instrument mast. The inspection platform this first named has a release GLB but no
+        // production source or parts-manifest row, so the atlas gate could not resolve it (D193).
+        landmarkGlb: 'place_sensor_mast',
       }),
     ]),
   }),
