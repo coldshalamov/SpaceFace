@@ -265,6 +265,11 @@ const upgradeTokensByBoundary = new WeakMap();
 const bootstrapResidencyOwnersByRenderer = new WeakMap();
 const authoredInstancedMeshDisposeRegistrationByRenderer = new WeakMap();
 const authoredInstancedMeshDisposeProbeByRenderer = new WeakMap();
+// Probe renders attempted in this context generation. Registration normally completes in one; the
+// cap keeps a registration that cannot complete (a renderer change, a lost context mid-probe) from
+// costing a probe scene render — and its program links — on every later frame.
+const authoredInstancedMeshDisposeProbeAttemptsByRenderer = new WeakMap();
+const AUTHORED_DISPOSE_PROBE_MAX_ATTEMPTS = 3;
 const contractRecordsBySlot = new Map();
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -453,6 +458,9 @@ export function beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, rendere
   const currentRegistration = authoredInstancedMeshDisposeRegistrationByRenderer.get(renderer);
   if (currentRegistration?.complete === true) return null;
   if (authoredInstancedMeshDisposeProbeByRenderer.has(renderer)) return null;
+  const attempts = authoredInstancedMeshDisposeProbeAttemptsByRenderer.get(renderer) || 0;
+  if (attempts >= AUTHORED_DISPOSE_PROBE_MAX_ATTEMPTS) return null;
+  authoredInstancedMeshDisposeProbeAttemptsByRenderer.set(renderer, attempts + 1);
   // How many times the private probe actually rendered: it should be once per context generation.
   // A count that keeps climbing in flight means registration never completes and every frame pays
   // a probe scene render (read by the launch probes).
@@ -487,7 +495,11 @@ export function beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, rendere
   material.depthWrite = false;
   const probe = new THREE.InstancedMesh(geometry, material, 1);
   probe.name = 'SF_PrivateInstancedMeshDisposeRegistrationProbe';
-  probe.count = 0;
+  // One instance, not zero: the vendored three skips count<=0 InstancedMeshes before objects.update()
+  // (W140-F-C), so a zero-count probe never attached a single dispose listener, registration never
+  // completed, and the probe re-rendered (and re-linked its depth/distance programs) every frame.
+  // Nothing is visible: colorWrite/depthWrite are off and the target is a private 1x1.
+  probe.count = 1;
   probe.visible = true;
   probe.frustumCulled = false;
   probe.castShadow = true;
@@ -672,7 +684,10 @@ export function prepareAuthoredInstancePoolsForContextLoss(scene, renderer) {
   };
   addRoot(scene);
   if (!state) {
-    if (renderer) authoredInstancedMeshDisposeRegistrationByRenderer.delete(renderer);
+    if (renderer) {
+      authoredInstancedMeshDisposeRegistrationByRenderer.delete(renderer);
+      authoredInstancedMeshDisposeProbeAttemptsByRenderer.delete(renderer);
+    }
     return {
       provenance: provenance || createWebGlDisposeListenerProvenance(),
       provenanceStatus: describeWebGlDisposeListenerProvenance(provenance),
@@ -691,7 +706,10 @@ export function prepareAuthoredInstancePoolsForContextLoss(scene, renderer) {
     if (!mesh) continue;
     addRoot(mesh);
   }
-  if (renderer) authoredInstancedMeshDisposeRegistrationByRenderer.delete(renderer);
+  if (renderer) {
+    authoredInstancedMeshDisposeRegistrationByRenderer.delete(renderer);
+    authoredInstancedMeshDisposeProbeAttemptsByRenderer.delete(renderer);
+  }
   return {
     provenance: provenance || createWebGlDisposeListenerProvenance(),
     provenanceStatus: describeWebGlDisposeListenerProvenance(provenance),
