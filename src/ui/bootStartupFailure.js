@@ -4,14 +4,16 @@
 // itself: the dynamic import caches its failure for the life of the document, so retrying the
 // import in place re-throws the same error. Most such failures are transient — a dev server
 // restarting under a hot edit, a half-written asset, a service-worker handoff — and a fresh page
-// load clears them. So the first failure in a tab session reloads once on its own; a second
-// failure inside the retry window stops and says what went wrong, instead of looping.
+// load clears them. So the first failure in a tab session reloads once on its own; the retry is
+// then remembered until the game actually starts, and any further failure stops and says what went
+// wrong, instead of looping. There is deliberately no time window: a slow machine can take longer
+// than any window to fail again, and a window that expires would hand a persistent failure a fresh
+// retry every time. Storage that cannot hold the marker means no retry at all.
 //
 // Pure of the document: the caller passes the overlay, the storage and the reload hook, so the
 // decision is testable without a browser.
 
 export const STARTUP_RETRY_KEY = 'spaceface.startup-retry-at';
-export const STARTUP_RETRY_WINDOW_MS = 60_000;
 export const STARTUP_RETRY_DELAY_MS = 1_200;
 
 const SUMMARY_LIMIT = 140;
@@ -24,25 +26,27 @@ export function summarizeStartupError(error) {
   return text.length > SUMMARY_LIMIT ? `${text.slice(0, SUMMARY_LIMIT - 1)}…` : text;
 }
 
-function readRetryStamp(storage) {
+/** True when a retry was already spent, or when we cannot tell (unreadable storage never retries). */
+function retryAlreadySpent(storage) {
   try {
-    const value = Number(storage && storage.getItem(STARTUP_RETRY_KEY));
-    return Number.isFinite(value) && value > 0 ? value : null;
+    return storage.getItem(STARTUP_RETRY_KEY) !== null;
   } catch {
-    return null;
+    return true;
   }
 }
 
-function writeRetryStamp(storage, nowMs) {
+/** Remember the retry before reloading. No usable storage means no way to stop a loop: false. */
+function spendRetry(storage, nowMs) {
+  if (!storage || typeof storage.setItem !== 'function') return false;
   try {
-    if (storage) storage.setItem(STARTUP_RETRY_KEY, String(nowMs));
+    storage.setItem(STARTUP_RETRY_KEY, String(nowMs));
     return true;
   } catch {
     return false;
   }
 }
 
-/** A successful start clears the stamp so a later, unrelated failure gets its own one retry. */
+/** A successful start clears the marker so a later, unrelated failure gets its own one retry. */
 export function clearStartupRetry(storage) {
   try { if (storage) storage.removeItem(STARTUP_RETRY_KEY); } catch { /* storage may be blocked */ }
 }
@@ -54,10 +58,10 @@ export function clearStartupRetry(storage) {
 export function presentStartupFailure({
   overlay, error, storage = null, reload = null, setTimer = setTimeout, nowMs = Date.now(),
 } = {}) {
-  const stamp = readRetryStamp(storage);
-  const recentlyRetried = stamp !== null && nowMs - stamp >= 0 && nowMs - stamp < STARTUP_RETRY_WINDOW_MS;
-  // Without a way to remember the retry we could loop forever: treat blocked storage as "already tried".
-  const canRetry = typeof reload === 'function' && !recentlyRetried && writeRetryStamp(storage, nowMs);
+  const canRetry = typeof reload === 'function'
+    && !!storage
+    && !retryAlreadySpent(storage)
+    && spendRetry(storage, nowMs);
   const summary = summarizeStartupError(error);
   if (overlay) {
     overlay.classList.remove('hidden');

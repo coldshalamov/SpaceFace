@@ -2,7 +2,8 @@
 // import, a dead end that said "reload to retry" and waited for the player to do it. A failed
 // dynamic import is cached for the document's life, so the only recovery that works is a fresh
 // load, and most of these failures are transient. The responder reloads once by itself, then
-// stops and names the failure instead of looping.
+// stops and names the failure instead of looping. Review follow-up: the retry is remembered until the
+// game starts (no time window to outlast), and storage that cannot remember it never retries.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +11,6 @@ import assert from 'node:assert/strict';
 import {
   STARTUP_RETRY_DELAY_MS,
   STARTUP_RETRY_KEY,
-  STARTUP_RETRY_WINDOW_MS,
   clearStartupRetry,
   presentStartupFailure,
   summarizeStartupError,
@@ -70,15 +70,15 @@ test('the first failure in a tab session reloads once on its own', () => {
   assert.equal(reloads, 1);
 });
 
-test('a second failure inside the retry window stops, and says what went wrong', () => {
+test('a second failure stops, and says what went wrong', () => {
   const overlay = fakeOverlay();
   const storage = fakeStorage({ [STARTUP_RETRY_KEY]: String(1_000_000) });
   let reloads = 0;
   const timers = [];
   const outcome = presentStartupFailure({
-    overlay, error: new Error('Unexpected token \'<\' in cinematic.js'),
+    overlay, error: new Error("Unexpected token '<' in cinematic.js"),
     storage, reload: () => { reloads += 1; }, setTimer: (fn) => timers.push(fn),
-    nowMs: 1_000_000 + STARTUP_RETRY_WINDOW_MS - 1,
+    nowMs: 1_000_000 + 5_000,
   });
   assert.equal(outcome, 'failed', 'no reload loop');
   assert.equal(timers.length, 0);
@@ -91,13 +91,37 @@ test('a second failure inside the retry window stops, and says what went wrong',
   assert.deepEqual(overlay.detail.classList.added, ['boot-error']);
 });
 
-test('an old retry stamp does not block a fresh, unrelated failure', () => {
-  const storage = fakeStorage({ [STARTUP_RETRY_KEY]: String(1_000_000) });
-  const outcome = presentStartupFailure({
-    overlay: fakeOverlay(), error: new Error('late'), storage, reload: () => {}, setTimer: () => {},
-    nowMs: 1_000_000 + STARTUP_RETRY_WINDOW_MS,
+test('a slow persistent failure never renews its own retry, however late or odd the clock', () => {
+  // The target laptop can take 68 s to fail: an expiring window would hand it a new retry every time.
+  const storage = fakeStorage();
+  let reloads = 0;
+  const run = (nowMs) => presentStartupFailure({
+    overlay: fakeOverlay(), error: new Error('still broken'), storage,
+    reload: () => { reloads += 1; }, setTimer: (fn) => fn(), nowMs,
   });
-  assert.equal(outcome, 'retrying', 'the window is closed at exactly its length');
+  assert.equal(run(1_000_000), 'retrying');
+  for (const nowMs of [1_061_200, 1_000_000 + 3_600_000, 5, 1_000_000]) {
+    assert.equal(run(nowMs), 'failed', `no second retry at t=${nowMs}`);
+  }
+  assert.equal(reloads, 1, 'exactly one automatic reload for the whole persistent failure');
+});
+
+test('unavailable storage never reloads, even with a working reload hook, across repeated documents', () => {
+  let reloads = 0;
+  for (let document = 0; document < 3; document += 1) {
+    const outcome = presentStartupFailure({
+      overlay: fakeOverlay(), error: new Error('x'), storage: null,
+      reload: () => { reloads += 1; }, setTimer: (fn) => fn(), nowMs: 1_000 + document,
+    });
+    assert.equal(outcome, 'failed');
+  }
+  // Storage whose reads work but whose writes are refused is just as unable to stop a loop.
+  const readOnly = { getItem: () => null, setItem() { throw new Error('QuotaExceededError'); }, removeItem() {} };
+  assert.equal(presentStartupFailure({
+    overlay: fakeOverlay(), error: new Error('x'), storage: readOnly,
+    reload: () => { reloads += 1; }, setTimer: (fn) => fn(), nowMs: 9,
+  }), 'failed');
+  assert.equal(reloads, 0);
 });
 
 test('blocked storage cannot loop: with nowhere to remember the retry, it never reloads', () => {
