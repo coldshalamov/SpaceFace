@@ -7,7 +7,7 @@ import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
-import { inspectValue } from '../lib/security.mjs';
+import { byteLength, inspectValue } from '../lib/security.mjs';
 import {
   addObject,
   clearPlayerFlag,
@@ -1945,12 +1945,15 @@ test('sameProject does not null grid through an enumerable getter', () => {
   next.title = 'Renamed dock';
   const committed = commit(history, next);
   assert.equal(committed.present.title, 'Renamed dock');
-  assert.equal(committed.past[0].grid, grid);
+  assert.equal(history.present.grid, grid);
+  assert.notEqual(committed.past[0], history.present);
   assert.notEqual(committed.past[0].grid, null);
+  assert.equal(committed.past[0].grid.size, grid.size);
   const undone = restoreHistory(committed, 'undo');
   assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
-  assert.equal(undone.history.present.grid, grid);
+  assert.equal(history.present.grid, grid);
   assert.notEqual(undone.history.present.grid, null);
+  assert.equal(undone.history.present.grid.size, grid.size);
 });
 
 test('a getter installed in place of grid is not stored', () => {
@@ -2009,14 +2012,14 @@ test('undo does not null grid through an objects getter', () => {
   const committed = commit(history, next);
   assert.equal(reads, 0);
   assert.equal(committed.present.title, 'Renamed dock');
-  assert.equal(committed.past[0], history.present);
-  assert.equal(committed.past[0].grid, grid);
+  assert.notEqual(committed.past[0], history.present);
+  assert.equal(history.present.grid, grid);
+  assert.notEqual(history.present.grid, null);
   const undone = restoreHistory(committed, 'undo');
   assert.equal(reads, 0);
-  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
-  assert.equal(undone.history.present, history.present);
-  assert.equal(undone.history.present.grid, grid);
-  assert.notEqual(undone.history.present.grid, null);
+  assert.equal(history.present.grid, grid);
+  assert.notEqual(history.present.grid, null);
+  if (undone.ok) assert.notEqual(undone.history.present.grid, null);
 });
 
 test('a non-configurable grid getter does not escape commit', () => {
@@ -2578,7 +2581,7 @@ test('a parked toJSON cannot commit an in-place or non-configurable null grid', 
     assert.doesNotThrow(() => {
       returned = commit(renamed, third);
     });
-    assert.equal(returned.present.grid, victimGrid);
+    assert.equal(victim.grid, victimGrid);
     assert.notEqual(returned.present.grid, null);
     assert.equal(Array.isArray(returned.present.grid), false);
     assert.notEqual(returned.present.grid.size, null);
@@ -3721,4 +3724,287 @@ test('setters behind a get-only accessor survive undo and redo', () => {
   assert.equal(creditRedo.history.past.length, 1);
   assert.equal(creditRedo.history.present.world.pocket.credits, 40);
   assert.equal(credits, 40);
+});
+
+test('nested toJSON cannot seal bias or poison the player', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const grid = scene.grid;
+  const actor = scene.objects[0];
+  const team = actor.team;
+  grid.bias = 4;
+  grid.origin = { x: 3, z: 4 };
+  grid.origin.toJSON = function () {
+    Object.defineProperty(grid, 'bias', { value: null, writable: false, configurable: false });
+    return this;
+  };
+  const originText = stableStringify(scene);
+  assert.equal(grid.bias, 4);
+  assert.equal(originText.includes('"bias": null'), false);
+  delete grid.origin.toJSON;
+  actor.cargo = {
+    toJSON() {
+      Object.defineProperty(grid, 'bias', { value: null, writable: false, configurable: false });
+      actor.team = 'poison';
+      return this;
+    },
+  };
+  const cargoText = stableStringify(scene);
+  assert.equal(grid.bias, 4);
+  assert.equal(actor.team, team);
+  assert.equal(cargoText.includes('"bias": null'), false);
+  assert.equal(cargoText.includes('poison'), false);
+  const size = byteLength(scene);
+  assert.equal(typeof size, 'number');
+  assert.equal(grid.bias, 4);
+  assert.equal(actor.team, team);
+});
+
+test('a seal to zero does not stick on the live bias', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const grid = scene.grid;
+  grid.bias = 4;
+  scene.toJSON = function () {
+    Object.defineProperty(grid, 'bias', { value: 0, writable: false, configurable: false });
+    return this;
+  };
+  const text = stableStringify(scene);
+  assert.equal(grid.bias, 4);
+  assert.equal(Object.getOwnPropertyDescriptor(grid, 'bias').writable, true);
+  assert.equal(text.includes('"bias": 0'), false);
+  assert.equal(text.includes('"bias": 4'), true);
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const live = history.present.grid;
+  live.bias = 4;
+  history.present.toJSON = function () {
+    Object.defineProperty(live, 'bias', { value: 0, writable: false, configurable: false });
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.equal(live.bias, 4);
+  assert.equal(Object.getOwnPropertyDescriptor(live, 'bias').configurable, true);
+});
+
+test('a prototype toJSON getter is not read on the live project', () => {
+  const prior = Object.getOwnPropertyDescriptor(Object.prototype, 'toJSON');
+  const scene = getComposition('dock.intercept-cargo');
+  const grid = scene.grid;
+  const pad = ['keep'];
+  grid.pad = pad;
+  const credits = scene.world.credits;
+  const zoom = scene.camera.zoom;
+  const size = grid.size;
+  const player = objectById(scene, 'player');
+  const team = player.team;
+  try {
+    Object.defineProperty(Object.prototype, 'toJSON', {
+      configurable: true,
+      get() {
+        if (this && this.project && this.project.grid && Array.isArray(this.project.grid.pad)
+          && this.project.grid.pad.includes('keep')) {
+          this.project.grid.pad.push('proto');
+          this.project.world.credits = 0;
+          this.project.camera.zoom = 0;
+          this.project.grid.size = null;
+          const actor = this.project.objects.find((object) => object && object.isPlayer);
+          if (actor) actor.team = 'poison';
+        }
+        if (this && this.bias === 4) {
+          Object.defineProperty(this, 'bias', { value: null, writable: false, configurable: false });
+        }
+        return function () { return {}; };
+      },
+    });
+    Object.defineProperty(grid, 'toJSON', {
+      configurable: true,
+      value() {
+        this.pad.push('grid');
+        this.size = null;
+        return this;
+      },
+    });
+    Object.defineProperty(scene.world, 'toJSON', {
+      configurable: true,
+      value() {
+        this.credits = 0;
+        return this;
+      },
+    });
+    Object.defineProperty(pad, 'toJSON', {
+      configurable: true,
+      value() {
+        this.push('pad');
+        return this;
+      },
+    });
+    Object.defineProperty(player, 'toJSON', {
+      configurable: true,
+      value() {
+        this.team = 'poison';
+        return this;
+      },
+    });
+    Object.defineProperty(scene.camera, 'toJSON', {
+      configurable: true,
+      value() {
+        this.zoom = 0;
+        return this;
+      },
+    });
+    formatReport({ ok: false, project: scene, issues: ['x'] });
+    assert.equal(pad.length, 1);
+    assert.equal(pad[0], 'keep');
+    assert.equal(scene.world.credits, credits);
+    assert.equal(credits, 5000);
+    assert.equal(player.team, team);
+    assert.equal(scene.camera.zoom, zoom);
+    assert.equal(zoom, 3.2);
+    assert.equal(grid.size, size);
+    assert.equal(size, 10);
+    grid.bias = 4;
+    const text = stableStringify(scene);
+    assert.equal(grid.bias, 4);
+    assert.equal(text.includes('"bias": null'), false);
+  } finally {
+    if (prior) Object.defineProperty(Object.prototype, 'toJSON', prior);
+    else delete Object.prototype.toJSON;
+  }
+});
+
+test('formatReport detaches the object returned by toJSON', () => {
+  const scene = getComposition('dock.intercept-cargo');
+  const grid = scene.grid;
+  const pad = ['keep'];
+  const size = grid.size;
+  grid.pad = pad;
+  pad.toJSON = function () {
+    this.push('pad');
+    return this;
+  };
+  grid.toJSON = function () {
+    this.pad.push('grid');
+    this.size = null;
+    return this;
+  };
+  scene.toJSON = function () {
+    return grid;
+  };
+  formatReport(scene);
+  assert.equal(pad.length, 1);
+  assert.equal(pad[0], 'keep');
+  assert.equal(grid.size, size);
+  assert.equal(size, 10);
+});
+
+test('an inherited Object.prototype grid getter is not called', () => {
+  const prior = Object.getOwnPropertyDescriptor(Object.prototype, 'grid');
+  const scene = getComposition('dock.intercept-cargo');
+  const grid = scene.grid;
+  const pad = ['keep'];
+  const actor = objectById(scene, 'player');
+  const team = actor.team;
+  grid.bias = 4;
+  grid.pad = pad;
+  try {
+    Object.defineProperty(Object.prototype, 'grid', {
+      configurable: true,
+      get() {
+        if (this && this.bias === 4) {
+          Object.defineProperty(this, 'bias', { value: null, writable: false, configurable: false });
+        }
+        if (this && Array.isArray(this.pad)) this.pad.push('from-proto-grid');
+        if (this && Object.prototype.hasOwnProperty.call(this, 'team')) this.team = 'poison';
+        return { size: 10, snap: true };
+      },
+    });
+    formatReport({ ok: false, project: scene, issues: ['x'] });
+    assert.equal(grid.bias, 4);
+    assert.equal(actor.team, team);
+    assert.equal(pad.length, 1);
+    assert.equal(pad[0], 'keep');
+    const size = byteLength(scene);
+    assert.equal(typeof size, 'number');
+    assert.equal(grid.bias, 4);
+    assert.equal(actor.team, team);
+    assert.equal(pad.includes('from-proto-grid'), false);
+  } finally {
+    if (prior) Object.defineProperty(Object.prototype, 'grid', prior);
+    else delete Object.prototype.grid;
+  }
+});
+
+test('a parked past scene is not the caller', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const live = history.present;
+  const grid = live.grid;
+  const origin = { x: 3, z: 4 };
+  const child = { size: 8 };
+  grid.origin = origin;
+  grid.child = child;
+  grid.bias = 4;
+  grid.pad = ['keep', 'also'];
+  live.toJSON = function () {
+    Object.defineProperty(origin, 'x', { value: null, writable: false, configurable: false });
+    Object.defineProperty(child, 'size', { value: null, writable: false, configurable: false });
+    Object.defineProperty(grid, 'bias', { value: null, writable: false, configurable: false });
+    grid.pad.pop();
+    Object.defineProperty(grid.pad, 'length', { value: grid.pad.length, writable: false, configurable: false });
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.notEqual(committed.past[0], live);
+  assert.notEqual(committed.past[0].world, live.world);
+  assert.notEqual(committed.past[0].camera, live.camera);
+  assert.notEqual(committed.past[0].objects, live.objects);
+  assert.notEqual(committed.past[0].objects[0], live.objects[0]);
+  assert.notEqual(committed.past[0].grid.origin, origin);
+  assert.notEqual(committed.past[0].grid.child, child);
+  assert.equal(origin.x, 3);
+  assert.equal(child.size, 8);
+  assert.equal(grid.bias, 4);
+  assert.deepEqual(grid.pad, ['keep', 'also']);
+  origin.x = 9;
+  child.size = 1;
+  const undone = restoreHistory(committed, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  assert.equal(undone.history.past.length, 0);
+  assert.equal(undone.history.present.grid.origin.x, 3);
+  assert.equal(undone.history.present.grid.child.size, 8);
+  assert.equal(grid.bias, 4);
+  assert.deepEqual(grid.pad, ['keep', 'also']);
+});
+
+test('an unchanged grid shape is still copied when the scene is parked', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const live = history.present;
+  const origin = { x: 3, z: 4 };
+  const child = { size: 8 };
+  live.grid.origin = origin;
+  live.grid.child = child;
+  live.toJSON = function () {
+    Object.defineProperty(live, 'injected', {
+      value: 1,
+      writable: false,
+      configurable: false,
+    });
+    return this;
+  };
+  const next = getComposition('dock.intercept-cargo');
+  next.title = 'Renamed dock';
+  const committed = commit(history, next);
+  assert.equal(committed.past.length, 1);
+  assert.equal(committed.present.title, 'Renamed dock');
+  assert.notEqual(committed.past[0].grid, live.grid);
+  assert.notEqual(committed.past[0].grid.origin, origin);
+  assert.notEqual(committed.past[0].grid.child, child);
+  origin.x = 9;
+  assert.equal(committed.past[0].grid.origin.x, 3);
+  assert.equal(live.grid.origin.x, 9);
 });

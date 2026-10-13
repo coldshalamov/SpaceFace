@@ -14,7 +14,8 @@ function boxedPrimitive(value) {
 }
 
 function writeData(object, key, value) {
-  Object.defineProperty(object, key, {
+  const define = definePropertyBase || Object.defineProperty;
+  define.call(Object, object, key, {
     configurable: true,
     enumerable: true,
     writable: true,
@@ -31,11 +32,13 @@ function dataValue(object, key) {
 function readToJSON(value) {
   let current = value;
   const seen = new Set();
-  while (current && (typeof current === 'object' || typeof current === 'function') && !seen.has(current)) {
+  while (current && current !== Object.prototype && (typeof current === 'object' || typeof current === 'function') && !seen.has(current)) {
     seen.add(current);
     const descriptor = Object.getOwnPropertyDescriptor(current, 'toJSON');
     if (descriptor) {
       if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) return descriptor.value;
+      // A prototype getter must not run on the live object.
+      if (current !== value) return undefined;
       if (typeof descriptor.get === 'function') {
         try {
           return descriptor.get.call(value);
@@ -67,7 +70,7 @@ export function detachData(value, seen = new Map(), readGrid = true) {
         out.length = i + 1;
         continue;
       }
-      out[i] = detachData(descriptor.value, seen);
+      out[i] = detachData(descriptor.value, seen, readGrid);
     }
     return out;
   }
@@ -83,13 +86,16 @@ export function detachData(value, seen = new Map(), readGrid = true) {
   for (const key of Object.getOwnPropertyNames(value)) {
     if (key === 'toJSON' || Object.prototype.hasOwnProperty.call(out, key)) continue;
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (!descriptor || typeof descriptor.get !== 'function' || typeof descriptor.set !== 'function') continue;
+    if (!descriptor || typeof descriptor.get !== 'function') continue;
+    const hasSetter = typeof descriptor.set === 'function';
+    if (!hasSetter && key !== 'pocket') continue;
     try {
       const read = descriptor.get.call(value);
+      if (!hasSetter && !(read && typeof read === 'object')) continue;
       const child = detachData(read, seen, readGrid);
       if (child !== undefined) writeData(out, key, child);
     } catch (error) {
-      // A setter-backed getter refused. The detach omits that key.
+      // A getter behind the copy refused. The detach omits that key.
     }
   }
   let proto = Object.getPrototypeOf(value);
@@ -119,7 +125,7 @@ export function detachData(value, seen = new Map(), readGrid = true) {
   if (!Object.prototype.hasOwnProperty.call(out, 'grid')) {
     let current = value;
     const chain = new Set();
-    while (current && typeof current === 'object' && !chain.has(current)) {
+    while (current && current !== Object.prototype && typeof current === 'object' && !chain.has(current)) {
       chain.add(current);
       const descriptor = Object.getOwnPropertyDescriptor(current, 'grid');
       if (descriptor) {
@@ -178,8 +184,9 @@ export function captureLive(value, seen = new Set(), records = []) {
 }
 
 function writeLive(object, key, value, enumerable) {
+  const define = definePropertyBase || Object.defineProperty;
   try {
-    Object.defineProperty(object, key, {
+    define.call(Object, object, key, {
       configurable: true,
       enumerable: enumerable !== false,
       writable: true,
@@ -322,7 +329,7 @@ export function restoreInheritedArrays(entries) {
 }
 
 const protectedStack = [];
-let definePropertyBase = null;
+export let definePropertyBase = null;
 
 function protectedHas(obj) {
   for (let i = protectedStack.length - 1; i >= 0; i -= 1) {
@@ -336,13 +343,14 @@ export function protectLiveObjects(objects) {
   if (protectedStack.length === 0) {
     definePropertyBase = Object.defineProperty;
     Object.defineProperty = function shieldedDefine(obj, prop, desc) {
-      // Sealing null onto a live field cannot be repaired. Replacing the scene
-      // grid itself still goes through so the history layer can put the original grid back.
-      const sealsNull = desc && Object.prototype.hasOwnProperty.call(desc, 'value') && desc.value === null
-        && desc.configurable === false;
-      const freezesLength = desc && prop === 'length' && desc.writable === false && desc.configurable === false;
-      if ((sealsNull || freezesLength) && prop !== 'grid' && protectedHas(obj)) {
-        return obj;
+      if (protectedHas(obj) && desc && typeof desc === 'object') {
+        const current = Object.getOwnPropertyDescriptor(obj, prop);
+        const changesValue = !!current
+          && Object.prototype.hasOwnProperty.call(current, 'value')
+          && Object.prototype.hasOwnProperty.call(desc, 'value')
+          && !Object.is(desc.value, current.value);
+        const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
+        if (changesValue || freezesLength) return obj;
       }
       return definePropertyBase.call(Object, obj, prop, desc);
     };
@@ -435,7 +443,7 @@ export function sortValue(value) {
   }
   if (boxedPrimitive(value)) return sortValue(value.valueOf());
   if (!value || typeof value !== 'object') return value;
-  const out = {};
+  const out = Object.create(null);
   for (const key of Object.keys(value).sort()) {
     if (key === 'toJSON') continue;
     const slot = dataValue(value, key);
@@ -446,7 +454,16 @@ export function sortValue(value) {
 }
 
 export function stableStringify(value, readGrid = true) {
-  probeToJSON(value, new Set(), readGrid);
+  const records = captureLive(value);
+  const arrays = snapshotInheritedArrays(value);
+  protectLiveObjects(liveObjectsIn([value]));
+  try {
+    probeToJSON(value, new Set(), readGrid);
+  } finally {
+    unprotectLiveObjects();
+    restoreLive(records);
+    restoreInheritedArrays(arrays);
+  }
   return `${JSON.stringify(sortValue(value), null, 2)}\n`;
 }
 

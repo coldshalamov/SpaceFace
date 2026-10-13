@@ -69,8 +69,11 @@ function readToJSON(value) {
     const descriptor = Object.getOwnPropertyDescriptor(current, 'toJSON');
     if (descriptor) {
       if (isDataDescriptor(descriptor)) return descriptor.value;
+      // A prototype getter must not run against the live receiver.
+      if (current !== value) return undefined;
       if (typeof descriptor.get === 'function') return descriptor.get.call(value);
     }
+    if (current === Object.prototype) break;
     current = Object.getPrototypeOf(current);
   }
   return undefined;
@@ -1273,14 +1276,16 @@ export function formatReport(value) {
     }
   }
   try {
-    const copy = value && typeof value === 'object' ? detachData(value) : value;
+    const copy = value && typeof value === 'object' ? detachData(value, new Map(), false) : value;
     const toJSON = value && typeof value === 'object' ? readToJSON(value) : undefined;
     let payload = copy;
     if (typeof toJSON === 'function') {
       const produced = toJSON.call(copy);
-      if (produced !== undefined) payload = produced;
+      if (produced !== undefined) {
+        payload = produced && typeof produced === 'object' ? detachData(produced, new Map(), false) : produced;
+      }
     }
-    return JSON.stringify(payload, null, 2);
+    return JSON.stringify(sortValue(payload), null, 2);
   } catch (error) {
     let detail = 'scene could not be cloned';
     if (!issues.length) {

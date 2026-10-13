@@ -1,5 +1,5 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
-import { detachData, liveObjectsIn, protectLiveObjects, snapshotInheritedArrays, unprotectLiveObjects } from './stableJson.mjs';
+import { definePropertyBase, detachData, liveObjectsIn, protectLiveObjects, snapshotInheritedArrays, unprotectLiveObjects } from './stableJson.mjs';
 
 const CAP = 100;
 
@@ -157,7 +157,8 @@ function gridShapeDirty(grid, shape) {
 
 function writeField(object, key, value, enumerable) {
   try {
-    Object.defineProperty(object, key, {
+    const define = definePropertyBase || Object.defineProperty;
+    define.call(Object, object, key, {
       configurable: true,
       enumerable: enumerable !== false,
       writable: true,
@@ -302,13 +303,8 @@ function restoreShieldList(shields) {
 
 function safeGrid(shield) {
   const grid = shield.descriptor.value;
-  if (!grid || typeof grid !== 'object' || !shield.shape || !gridShapeDirty(grid, shield.shape)) return grid;
-  const copy = {};
-  for (const [key, saved] of shield.shape.fields) {
-    const raw = saved.items ? saved.items.slice() : saved.value;
-    writeField(copy, key, raw && typeof raw === 'object' ? detachData(raw) : raw, saved.enumerable);
-  }
-  return copy;
+  if (!grid || typeof grid !== 'object') return grid;
+  return detachData(grid);
 }
 
 function sceneBearingGrid(scene, grid, ownNames) {
@@ -760,8 +756,14 @@ function guardedClone(project, protect) {
   return { stored, mutated: mutated || accessorResult.stuck || settersStuck || arraysStuck };
 }
 
+function parkedCopy(project) {
+  const copied = detachData(project);
+  if (copied && typeof copied === 'object' && !Array.isArray(copied)) return copied;
+  return null;
+}
+
 function withoutGridAccessor(project, protect = []) {
-  if (!gridReadsThroughAccessor(project)) return project;
+  if (!gridReadsThroughAccessor(project)) return parkedCopy(project);
   const carried = setterGridValue(project);
   const cloned = guardedClone(project, protect);
   let stored = cloned.stored;
@@ -913,6 +915,11 @@ export function newDockHistory(meta = {}) {
 function restoreHistoryBody(history, direction) {
   const stepped = direction === 'redo' ? redo(history) : undo(history);
   if (!stepped) return { ok: false, history, issues: ['scene could not be cloned'] };
+  if (stepped === history) {
+    const same = requireOnePlayer(history.present, { ok: true, project: history.present, issues: [] });
+    if (!same.ok) return { ok: false, history, issues: same.issues };
+    return { ok: true, history, issues: [] };
+  }
   const present = withoutGridAccessor(stepped.present, [
     history.present,
     ...history.past,
