@@ -44,7 +44,9 @@ import {
   detachedPresentedDrawBlocked,
   orientationDetachedHoldActive,
   orientationHoldHidesDrawable,
+  presentedCompressedUploadUnsafe,
   queuePresentedDetachRehydrate,
+  restorePresentedCompressedMips,
 } from './packageCpuDetach.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
@@ -1078,11 +1080,16 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
+    // A shared atlas user can lose its mip chain while a sibling still holds the
+    // records. Put those records back before the bind. three reads mipmaps[0]
+    // inside this draw, so a skip after the fact cannot prevent the throw.
+    restorePresentedCompressedMips(material);
     // Before three binds the material or draws the geometry. A CPU-detached compressed
     // texture throws inside texStorage (mipmaps[0] is gone) and a CPU-detached attribute
     // uploads a zero-length buffer that fails the indexed draw. Skip this draw and refill
     // the package; the next frame uploads the restored bytes. Steady residency is not blocked.
-    if (detachedPresentedDrawBlocked(renderer, geometry, material)) {
+    if (detachedPresentedDrawBlocked(renderer, geometry, material)
+        || presentedCompressedUploadUnsafe(renderer, material)) {
       queuePresentedDetachRehydrate(renderer);
       return undefined;
     }
