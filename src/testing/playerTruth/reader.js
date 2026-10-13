@@ -9,7 +9,9 @@
 // One sample per animation frame (registered after the game's own frame callback, so the camera
 // and meshes are the ones the player just saw). The harness drains samples every second or so.
 // A fight click on a HUD control (the flight tape's Circuits button), a closing page, or a
-// drain that stops keeping up stops this loop. Leaving it running is how the page heap died.
+// buffer that sits undrained for READER_UNDRAINED_MS of wall time stops this loop. Leaving it
+// running is how the page heap died. The window is longer than the harness evaluate stall, so a
+// healthy 60 fps run does not trip it while one drain is in flight.
 
 export const PLAYER_TRUTH_CLASSES = Object.freeze([
   'player', 'enemy', 'asteroid', 'projectile', 'pickup', 'fx', 'neutral', 'station', 'other',
@@ -49,22 +51,27 @@ function isAdditive(mat, THREE) {
     && (mat.isPointsMaterial || mat.isSpriteMaterial || mat.isShaderMaterial));
 }
 
-/** Undrained samples past this stop the loop. A live drain (about every 1.5s) stays well under it. */
-export const READER_SAMPLE_CAP = 480;
+/**
+ * Wall time a non-empty sample buffer may sit without a drain. 30s is past evalPage's 20s
+ * stall, so a healthy 60 fps run (1200 frames in that window) cannot trip this while one
+ * evaluate is still in flight. A live drain is about every 1.5s and resets the clock.
+ */
+export const READER_UNDRAINED_MS = 30000;
 
 const HUD_CONTROL_SELECTOR = 'button, a, input, select, textarea, [role="button"]';
 
 /**
  * Why the reader should stop, or null to keep sampling.
  * `hudLabel` is the control fightBeat hit. `pageClosing` is pagehide / a dead page.
+ * `undrainedMs` is wall time since the current buffer's first sample.
  */
-export function readerStopReason({ hudLabel = null, sampleCount = 0, cap = READER_SAMPLE_CAP, pageClosing = false } = {}) {
+export function readerStopReason({ hudLabel = null, undrainedMs = 0, undrainedLimitMs = READER_UNDRAINED_MS, sampleCount = 0, pageClosing = false } = {}) {
   if (pageClosing) return 'player-truth: page closed';
   if (hudLabel) {
     const label = String(hudLabel).replace(/\s+/g, ' ').trim().slice(0, 40) || 'control';
     return `player-truth: fightBeat hit a HUD control (${label})`;
   }
-  if (sampleCount >= cap) return 'player-truth: reader stopped, samples were not drained';
+  if (sampleCount > 0 && undrainedMs >= undrainedLimitMs) return 'player-truth: reader stopped, samples were not drained';
   return null;
 }
 
@@ -98,6 +105,7 @@ export function installPlayerTruthReader(win, opts = {}) {
   let frame = 0; let lastT = 0; let running = false; let raf = 0;
   let firstInput = null;
   let fatal = null;
+  let undrainedSince = null;
   const stopFor = (reason) => {
     if (!reason || fatal) return;
     fatal = reason;
@@ -384,8 +392,12 @@ export function installPlayerTruthReader(win, opts = {}) {
     if (cam && scene && pxEvery && frame % pxEvery === 0) {
       try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }
+    if (samples.length === 0) undrainedSince = now();
     samples.push(s);
-    stopFor(readerStopReason({ sampleCount: samples.length }));
+    stopFor(readerStopReason({
+      undrainedMs: undrainedSince == null ? 0 : now() - undrainedSince,
+      sampleCount: samples.length,
+    }));
   }
 
   function loop() {
@@ -400,6 +412,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     samples.splice(0);
     events.splice(0);
     longTasks.splice(0);
+    undrainedSince = null;
   };
   win.addEventListener('pagehide', onPageHide);
 
@@ -409,6 +422,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     stop() { running = false; if (raf) win.cancelAnimationFrame(raf); },
     drain() {
       const out = { samples: samples.splice(0), events: events.splice(0), longTasks: longTasks.splice(0), keys: keys.slice(), firstInput, fatal };
+      undrainedSince = null;
       return out;
     },
     dispose() {
