@@ -80,6 +80,18 @@ export async function runSweep(options = {}) {
   };
 }
 
+export function publicSweepRow(run) {
+  if (!run || typeof run !== 'object') return run;
+  const failing = run.status === 'fail' || (Array.isArray(run.confirmed) && run.confirmed.length > 0);
+  if (failing) return run;
+  const { tape, ...rest } = run;
+  return {
+    ...rest,
+    tapeHash: run.tapeHash,
+    tapeTicks: tape && tape.frames ? tape.frames.length : undefined,
+  };
+}
+
 function compact(result) {
   return {
     journeyId: result.journeyId,

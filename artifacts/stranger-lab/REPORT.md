@@ -2,31 +2,18 @@
 
 Entry command: `node tools/agentic/stranger-lab/cli.mjs prove`
 
-That command reproduced canary seed 7 (first-time pilot, flight, `drop-thrust`) twice with fingerprint `6dac271ca0aee863277fa3f5d8f5e2f00b1b55884bc72bd73bbdd47092352804`, replayed the same tape to the same digest, kept the green control free of fabricated failures, and shrank the canary from 120 ticks to 9.
+The 120-tick canary (seed 7, first-time pilot, flight, `drop-thrust`) fingerprint is `1fa2b9dde58ddc9c15a8f0a47f4f4067553055cd770e1d59a3a5f4ccc1653bde`. Prove replays that tape with the fault injector off, keeps the green control free of fabricated failures, and writes the shrunk sample.
 
-Sweep: `node tools/agentic/stranger-lab/cli.mjs sweep` — 12 journeys × 12 seeds = 144 headless runs, 144 pass, 0 infra, 0 confirmed product defects. None were invented to fill a quota.
+`artifacts/stranger-lab/sample-failure.json` is the 9-frame shrunk tape. Replaying it reproduces fingerprint `35c547e6b523044e876f2fa691eff4171ec35e64335c64c40fedeee7598364a9`.
 
-## What the journeys actually did (seed 7, default persona)
+Sweep: `node tools/agentic/stranger-lab/cli.mjs sweep` — 12 journeys × 12 seeds = 144 runs, rotating through all eight personas. Counts: 47 pass, 97 incomplete, 0 fail, 0 confirmed product defects. None were invented to fill a quota. A failing row keeps its tape in `sweep.json` so the finding can be replayed.
 
-| Journey | Evidence |
-|---|---|
-| Launch / flight | Ship accelerates under thrust. Dropped thrust is the canary, not a product bug. |
-| Tether attach/cut | `tether:attached` and `tether:cut` |
-| Heavy object | Line starts on the rock and stays active while reeling |
-| Mining | `mining:yield` |
-| Docking | Corridor phase `approach` (not a claimed berth) |
-| Buy/refit | `economy:tradeCompleted` through the station writer |
-| Scan | `scan:completed` |
-| Mission | `mission:accepted` then `mission:failed` on abandon. Completion is not claimed unless the live objective is already met. |
-| Combat | `projectile:hit`. This window did not emit `player:death`, so recovery was not exercised. |
-| Crucible | `run:waveStarted` and `run:waveCleared` for wave 1 |
-| Save/continue | `jump:arrive` in `sector_ceres_belt`, then save/load restored sector, credits, and position |
+## Headed limit
 
-## Ranked remaining risks
+Chrome at 390×844 steps recorded axes through the focused flight bundle (`runBrowserLabScenarioInternal` on the lab host page). That is not a combat replay and not a docking-corridor replay. Rows for `combat-death-retry` and `docking` are `unverified` with that reason. `deviceTested` is false. No frame rate is claimed.
 
-1. Combat death and the recovery berth were not reached in the bounded window. Retry is wired to `combat.recoverPendingPlayer` and only runs after a wreck. Not counted as a defect.
-2. Docking reaches the live corridor approach and does not claim a berth the pilot has not captured.
-3. Headed browser, GPU frame time, and a physical phone are unverified. `simulated-touch` is a 390×844 quantized stick. `fpsClaimed` is false.
-4. Evidence class is `focused-fixture` on the authoritative runtime. Renderer, audio, and VFX stay detached.
+## What the default competent route did
 
-A station-contact thrust that stops the ship is a negative control, not an unresponsive command.
+Launch leaves a berth through the committed undock. Docking reaches the manifest berth in the headless sim. Mission accept completes a recon contract and then fails a second offer. Combat death and `combat.recoverPendingPlayer` ran for the reckless persona. The other personas are in the sweep so a detector can fire when their route does not. Incomplete is not a pass.
+
+Evidence class is `focused-fixture`. Renderer, audio, and VFX stay detached.

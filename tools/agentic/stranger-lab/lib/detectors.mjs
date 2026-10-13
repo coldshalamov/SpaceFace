@@ -129,10 +129,10 @@ function detectUnresponsive(samples, frames) {
     const frame = frameAt(frames, start.tick);
     if (!frame || frame.moveZ < 0.5 || frame.brake) continue;
     if (!start.alive || start.mode !== 'flight' || start.docked || start.tetherActive) continue;
-    if (start.dockPhase && start.dockPhase !== 'none') continue;
     if (start.nearest && start.nearest.dist < 20) continue;
     const end = samples[i + UNRESPONSIVE_WINDOW];
-    // A station contact closes this detector only when the ship actually slowed into it.
+    // Approach does not hide a dead stick. A station contact closes this window
+    // only when that contact is what actually cut the speed.
     if (start.nearest && start.nearest.kind === 'station' && start.nearest.dist < 160
       && end.speed + 0.05 < start.speed) continue;
     const moved = Math.hypot(end.x - start.x, end.z - start.z);

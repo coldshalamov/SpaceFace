@@ -32,6 +32,15 @@ const MIME = Object.freeze({
   '.glb': 'model/gltf-binary',
 });
 
+const WORLD_LIMIT = Object.freeze({
+  'combat-death-retry': 'Chromium host runs the focused flight bundle only. This tape was not replayed in the combat world.',
+  docking: 'Chromium host runs the focused flight bundle only. This tape was not replayed in the docking corridor.',
+});
+
+export function headedWorldLimit(journeyId) {
+  return WORLD_LIMIT[journeyId] || null;
+}
+
 export function canonicalForRun(run) {
   const frames = run && run.tape && Array.isArray(run.tape.frames) ? run.tape.frames : [];
   const doc = {
@@ -154,6 +163,10 @@ async function replayOne(page, run) {
     deviceTested: false,
     fpsClaimed: false,
   };
+  const worldLimit = headedWorldLimit(run.journeyId);
+  if (worldLimit) {
+    return { ...base, headedBrowser: 'unverified', error: worldLimit };
+  }
   const compiled = canonicalForRun(run);
   if (!compiled.ok) {
     const issue = compiled.validation && compiled.validation.issues && compiled.validation.issues[0];

@@ -7,7 +7,8 @@ import { PERSONA_IDS, getPersona } from '../../tools/agentic/stranger-lab/lib/pe
 import { redact } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
 import { runSession } from '../../tools/agentic/stranger-lab/lib/session.mjs';
 import { shrinkFailure } from '../../tools/agentic/stranger-lab/lib/shrink.mjs';
-import { personaIdForSweepIndex } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
+import { personaIdForSweepIndex, publicSweepRow } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
+import { headedWorldLimit } from '../../tools/agentic/stranger-lab/lib/headed.mjs';
 
 const CANARY = {
   journeyId: 'flight',
@@ -55,6 +56,27 @@ test('personas are pure functions of the observation and seed', () => {
   }
 });
 
+test('failing sweep rows keep their tape, and combat or docking are not a flight replay', () => {
+  const kept = publicSweepRow({
+    status: 'fail',
+    tapeHash: 'abc',
+    confirmed: [{ id: 'unresponsive-commands' }],
+    tape: { frames: [{ tick: 0, moveZ: 1 }] },
+  });
+  assert.equal(kept.tape.frames.length, 1);
+  const dropped = publicSweepRow({
+    status: 'pass',
+    tapeHash: 'def',
+    confirmed: [],
+    tape: { frames: [{ tick: 0 }, { tick: 1 }] },
+  });
+  assert.equal(dropped.tape, undefined);
+  assert.equal(dropped.tapeTicks, 2);
+  assert.match(headedWorldLimit('combat-death-retry'), /combat world/);
+  assert.match(headedWorldLimit('docking'), /docking corridor/);
+  assert.equal(headedWorldLimit('flight'), null);
+});
+
 test('the sweep assigns every persona, including hostile and weak-hardware', () => {
   const seen = new Set();
   for (let index = 0; index < 12 * SWEEP_SEEDS.length; index++) seen.add(personaIdForSweepIndex(index));
@@ -66,21 +88,28 @@ test('redact strips account material and does not truncate tapes', () => {
   const out = redact({
     email: 'pilot@example.com',
     userId: 'pilot-9',
+    user_id: 'pilot-underscore',
     username: 'Ada',
     playerName: 'Ada',
+    player_name: 'Ada Underscore',
     session: 'sess-live',
-    note: `mail pilot@example.com bearer abcdef password=hunter2 api_key=sk-live-abc123 ${jwt}`,
+    note: `mail pilot@example.com bearer abcdef password=hunter2 password hunter2 password"=sekret Authorization: Basic dXNlcjpwYXNz cookie=sid api_key=sk-live-abc123 ${jwt}`,
     ok: true,
     rows: Array.from({ length: 100 }, (_, index) => index),
   });
   assert.equal(out.email, '[redacted]');
   assert.equal(out.userId, '[redacted]');
+  assert.equal(out.user_id, '[redacted]');
   assert.equal(out.username, '[redacted]');
   assert.equal(out.playerName, '[redacted]');
+  assert.equal(out.player_name, '[redacted]');
   assert.equal(out.session, '[redacted]');
   assert.equal(out.note.includes('pilot@example.com'), false);
   assert.equal(out.note.includes('abcdef'), false);
   assert.equal(out.note.includes('hunter2'), false);
+  assert.equal(out.note.includes('sekret'), false);
+  assert.equal(out.note.includes('dXNlcjpwYXNz'), false);
+  assert.equal(out.note.includes('cookie=sid'), false);
   assert.equal(out.note.includes('sk-live-abc123'), false);
   assert.equal(out.note.includes('eyJ'), false);
   assert.equal(out.ok, true);
@@ -155,6 +184,16 @@ test('each causal detector fires on a crafted failure and stays quiet on its con
     asset: { essentialModelCheck: 'passed' },
   });
   assert.ok(stuck.failures.some((row) => row.id === 'unresponsive-commands' && row.origin === 'product'));
+  const approach = flying({
+    x: 0, speed: 0, dockPhase: 'approach', nearest: { kind: 'station', dist: 80 },
+  });
+  const approachStuck = detectFailures({
+    samples: approach,
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(approachStuck.failures.some((row) => row.id === 'unresponsive-commands'));
 
   const menu = detectFailures({
     samples: flying({ mode: 'menu' }),

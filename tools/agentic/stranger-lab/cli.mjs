@@ -14,7 +14,7 @@ import { writeArtifact } from './lib/artifact.mjs';
 import { buildRouteManifest } from './lib/manifest.mjs';
 import { runSession } from './lib/session.mjs';
 import { shrinkFailure } from './lib/shrink.mjs';
-import { runSweep } from './lib/sweep.mjs';
+import { publicSweepRow, runSweep } from './lib/sweep.mjs';
 import { verifyHeadedBrowser } from './lib/headed.mjs';
 import { triageSweep } from './lib/triage.mjs';
 
@@ -58,7 +58,7 @@ try {
       journeys: args.journeys ? args.journeys.split(',') : undefined,
     });
     const triage = triageSweep(sweep);
-    writeArtifact(join(OUT, 'sweep.json'), { ...sweep, runs: sweep.runs.map(stripTape) });
+    writeArtifact(join(OUT, 'sweep.json'), { ...sweep, runs: sweep.runs.map(publicSweepRow) });
     writeArtifact(join(OUT, 'triage.json'), triage);
     process.stdout.write(
       `sweep runs=${sweep.runCount} pass=${sweep.passCount} incomplete=${sweep.incompleteCount} fail=${sweep.failCount} infra=${sweep.infraCount} confirmed=${triage.confirmedCount} headed=${sweep.headedBrowser && sweep.headedBrowser.status}\n`,
@@ -72,7 +72,7 @@ try {
       surface: args.surface || 'keyboard',
       fault: args.fault || null,
     });
-    writeArtifact(join(OUT, `run-${run.journeyId}-${run.seed}.json`), stripTape(run));
+    writeArtifact(join(OUT, `run-${run.journeyId}-${run.seed}.json`), publicSweepRow(run));
     process.stdout.write(`${run.journeyId} ${run.status} digest ${run.digest}\n`);
     if (run.status === 'infra') process.exitCode = 2;
     else if (run.status === 'fail') process.exitCode = 1;
@@ -229,12 +229,6 @@ function replayOptions(artifact) {
     playbackTape: artifact.tape,
     ticks: artifact.ticks,
   };
-}
-
-function stripTape(run) {
-  if (!run || typeof run !== 'object') return run;
-  const { tape, ...rest } = run;
-  return { ...rest, tapeHash: run.tapeHash, tapeTicks: tape && tape.frames ? tape.frames.length : undefined };
 }
 
 function parseArgs(argv) {
