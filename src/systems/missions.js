@@ -3739,6 +3739,16 @@ export const missions = {
     }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
+    // A row can remain displayed across a refresh boundary. Revalidate its own published
+    // window before collateral, freight, or branch selection can commit the stale contract.
+    if (Number.isFinite(offer.expiresAtEpoch) && offer.expiresAtEpoch <= this._epoch()) {
+      if (board && Array.isArray(board.slots)) {
+        board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+      }
+      this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+      this.bus.emit('toast', { text: 'That contract offer has expired — choose current work from the board', kind: 'warn', ttl: 4 });
+      return false;
+    }
     if (offer.params && SET_PIECE_DISPOSITION_OBJECTIVES.has(offer.params.setPieceObjective)) {
       const wreckId = offer.params.wreckId || offer.wreckId || offer.cause && offer.cause.wreckId;
       const bearing = this.state.player && this.state.player.uniqueWrecks
