@@ -60,10 +60,15 @@ Every number in this record comes from a file in `docs/perf-evidence/2026-10-13-
 
 ## What is left, with the reason
 
-* Crucible is GPU-bound on this iGPU after the footage fix (main thread ~30% idle; bloomScene ~11-12 ms, composite
-  ~4 ms of a 16.7 ms frame). Reading pixels for the clip recorder costs a flat ~8-12% fps while recording, whatever
-  the capture rate (1.7/s costs what 6/s costs); `createImageBitmap(video)` alone costs the same as the whole encode.
-  Further relief is a render-scale or recording-off choice, which is the owner's call, not a code fix.
+* Crucible after the footage fix: the main thread is ~30% idle and the GPU timers read bloomScene ~11-12 ms and composite
+  ~4 ms of a 16.7 ms frame, which is consistent with GPU pressure on this iGPU; the residual hitches in those windows are
+  NOT attributed (the two Crucible profiles still hold 7 and 11 long main-thread tasks, and the timers over-read on a
+  time-sliced GPU, see the method notes). Reading pixels for the clip recorder costs a flat ~8-12% fps while recording,
+  whatever the capture rate (1.7/s costs what 6/s costs); `createImageBitmap(video)` alone costs the same as the whole
+  encode. Render scale or recording off are two ways to buy that back; neither is a completion gate.
+* Clip trade, stated plainly: the recorder starts 5 s after the first playable frame, so the first five seconds of a
+  flight are never available as clip pixels (an early marked moment exports as unavailable, not as a pose-metadata
+  substitute).
 * Loading `gpu-resources` stage (10 s warm) is spread thin: `three.core` traverse 1.6 s, native 2.6 s, no single
   hotspot above 2%. The New Game screen's 1.2 s main-thread cost is style recalc (211 ms), GL command-buffer waits
   (245 ms) and microtask churn (104 ms).
@@ -71,9 +76,9 @@ Every number in this record comes from a file in `docs/perf-evidence/2026-10-13-
 * Heap: `usedJSHeapSize` reads 301 MB at the title screen, 798 MB at the first flight frame and 1021 MB after 8 s of
   flight, but the sampling profiler attributes only ~104 MB of live objects to everything allocated since New Game
   (scene graph nodes 15.7 MB, `cloneUniforms` 7.8 MB, GLB parse 5.8 MB, package loader 4.9 MB). The rest is garbage
-  awaiting a collection (about 27 MB/s of churn in the flight tail; total GC time was 0.6% of the Crucible window),
-  so the 800-1000 MB figure is not a leak and not a stall source. The 300 MB base before New Game is the real
-  standing cost.
+  awaiting a collection is an inference from one profile (about 27 MB/s of churn in the flight tail; total GC time was
+  0.6% of the Crucible window); it is not a multi-cycle retention test, so this record does not claim the 800-1000 MB
+  figure is leak-free. The 300 MB base before New Game is a standing cost.
 
 ## Method notes (do not repeat these experiments)
 
