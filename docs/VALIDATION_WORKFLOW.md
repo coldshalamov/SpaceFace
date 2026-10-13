@@ -53,12 +53,25 @@ npm run player-truth -- --mode=swarm --gate --baseline=origin/master   # before/
 plays from 3 s and must reach round 3; each round start is shot densely and re-probed for ship
 model/LOD, thrust/yaw response, pinning and tumble). In gate mode an UNKNOWN on `player_control`,
 `tumble`, `player_ship`, `round_resolution` or `round_transitions` is a FAIL ("not measured" cannot
-pass a gameplay PR); `frame_time` stays UNKNOWN on software GL. No invulnerability is used.
-The process exits 1 when any check FAILs, 2 when the verdict is INCOMPLETE, and 0 only when every graded check PASSes. `--gate=active` or `--gate=idle` runs that one pass; a bare `--gate` still runs both. `--evidence` copies the verdict and contact sheet into `design/program/player-truth/` and leaves `scratch/player-truth/<label>/frames/` in place for review. `--prune-frames` deletes those frames; it is off unless passed.
+pass a gameplay PR). No invulnerability is used.
+The process exits 1 when any arena FAILs, including when another arena is ENVIRONMENT. ENVIRONMENT
+is a harness failure (stale served `assets/`, or a quoted route load error such as "The authored
+starter ship could not be loaded"). It is printed on its own line and is not a gameplay FAIL.
+Exit 4 is used only when no arena FAILed. Exit 2 is INCOMPLETE. Exit 0 only when every arena's
+verdict is PASS. An INCOMPLETE verdict lists each UNKNOWN check that caused it. `--gate=active` or `--gate=idle` runs that one pass; a bare
+`--gate` still runs both. `--evidence` copies the verdict and contact sheet into
+`design/program/player-truth/` and leaves `scratch/player-truth/<label>/frames/` in place for
+review. `--prune-frames` deletes those frames; it is off unless passed.
 `--viewports=960x540,1280x720,1920x1080` and `--hull=all` (every unlocked hull on the preparation
 screen; or `--hull=<starter id>`) repeat the run per combination. `--baseline=<ref>` re-runs the same
 harness on `<ref>`'s game in a temporary `.worktrees/` checkout (removed when done) and prints a
-before/after table; `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
+before/after table. That checkout inherits the fleet sparse pattern (`!/assets/`). The harness then
+links the shared `share-assets` checkout when its asset commit matches `<ref>` and
+`git status --porcelain -- assets` is empty there. `diff-tree` ignores working-tree edits, so a dirty
+`assets/` is not linked. Otherwise it extracts `assets/` from `<ref>` (about 3.9 GB). That extract
+starts only when the baseline worktree's filesystem has at least 8 GB free; below that it prints
+`HARNESS ENVIRONMENT: not enough disk to extract baseline assets` and does not write the archive.
+Exit 4 applies when that is the only failure. `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
 from two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
 combat additive layers hidden; `backdrop_coverage` grades the deep field / nebula / planets apart.
 
@@ -68,6 +81,51 @@ samples live telemetry through the observer-only `src/testing/playerTruth/reader
 `scratch/player-truth/<mode>[-<arena>]/{verdict.md,contact-sheet.jpg,verdict.json,trace.json.gz,frames/}`.
 `--evidence` copies the compact verdict and sheet into `design/program/player-truth/<label>/`.
 
+Before the browser starts, the harness checks that served `assets/` match `git ls-tree HEAD`
+(every blob's size, plus a content hash of files ≤64KB, every `render-package.json`, and the
+starter-hull `render.glb` files, and one manifest fetched through the bench server). `design/`
+is not fetched by the route, so it is not graded. A mismatch aborts with `HARNESS ENVIRONMENT: assets stale vs HEAD` and exit 4 when that is the only result.
+The same exit quotes a player-facing load error ("The authored starter ship could not be loaded…",
+a prepare/boot failure of the same family) instead of grading it as a route FAIL.
+
+`readability` is PASS or FAIL once any of enemy, asteroid, or projectile has at least 5 on-screen
+samples. It fails when more than half of those samples have ΔL < 8 against the local backdrop, or
+when a pair that both cleared 5 samples separates by less than 1.0. Separation is colour distance
+over spread, plus a silhouette term from the size ratio, plus 1.5 when one class's rim matches the
+declared threat hue `0xff1a3a` (the `swarm:threat-ring` material, Lab L ≈ 54, hue ≈ 30°) and the
+other does not. The hue is the mean of mid-band pixels that clear a chroma floor and differ from
+the local backdrop by ΔE ≥ 12, so an orange backdrop cannot paint an unmarked rock into that hue.
+A bright rim (L ≥ 75) does not buy that credit. The crimson ring is below L 75, so a brightness
+rule does not credit it either. Projectile visibility is the same backdrop-contrast rule.
+UNKNOWN only when no combat class reaches 5 samples. The contact sheet keeps up to four of the
+worst frames for that check.
+
+`loadout` (Swarm and Gauntlet preparation) says whether every fitted or offered item has an
+explanation and is relevant to the mode. Zero armory cards are either "the game offered nothing"
+(empty-shelf sentence and a zero category count) or "the harness failed to read the screen" (a
+count or a name the card selector missed). That sentence leads the measured column, with the
+shelf's own words quoted, so a PASS is not a bare "0 irrelevant". An offer's explanation is the
+sentence the player can read: the card blurb when it is on screen, otherwise the armory reading
+panel when that panel matches the lit row's own blurb. A panel that is up but names a different
+sentence is an offender (`reading panel does not match lit row`), not an explanation. A blurb the
+rail hides on another row counts only once that match holds. A refit contrast the player can see
+counts. A hidden refit contrast counts only when a lit row is showing its own contrast, and the
+verdict prints `row-on-select (inferred)`. A contrast clipped for the screen reader
+(`.orr-hp__contrast--drawn`) is not an explanation. A preparation line that claims a fit count but names no item is a FAIL. A vacuous
+"0 offers read" is not a PASS.
+
+`sim_stalled` fails when sim time advances less than 0.5 s across 60 s of wall time while the run
+phase stays active and the boot overlay is gone (mode is not `loading`). The run stops then. It
+does not sit until `--wall`. `play_interrupted` fails when any screen other than the flight HUD
+opens during that active phase without the script opening it. The line names the screen id, the
+last input, and, when that input was a click, the viewport coordinates and the DOM element under
+them (`document.elementFromPoint`, read before mouseup). A fire click that lands on a HUD control
+is reported. The driver still aims at the hostile. A draft screen that is already up as the phase
+becomes active has 3 s to clear. Both checks are N/A when play never started and UNKNOWN when play
+started but was not watched.
+
+`offscreen_marker` grades the Wave G4 edge chip the player sees (`.sf-threat-halo__slot--arc`), not a second radar and not `weapons.js`. A marker whose center is more than 48 px from every screen edge fails. A marker while every hostile is in frame fails. One off-screen hostile and one marker must name the same side when that hostile is outside on one axis. Off-screen hostiles with no chip stay UNKNOWN: the HUD marks shooters inside the threat halo, and the trace cannot see that. No off-screen hostile is N/A. The check is not gate-strict.
+
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
   renderer string. Frame-time grades require the dedicated machine's `SPACEFACE_QUIET_HOST=1`
   marker (`QUIET_HOST_PROGRAM.md` §0); unmarked hosts retain numeric diagnostic timings as UNKNOWN.
@@ -75,8 +133,19 @@ samples live telemetry through the observer-only `src/testing/playerTruth/reader
 - **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then
   `CHROME_PATH`, `/opt/google/chrome/chrome`, or `google-chrome`/`chromium` on PATH.
 - **Software GL (fallback):** the default headless run uses SwiftShader. It plays the same route at a
-  fraction of real speed (sim time is the clock, so bounds still hold), takes a few minutes of wall
-  time per bounded run, and reports `frame_time` as UNKNOWN. The verdict says SOFTWARE GL.
+  fraction of real speed (sim time is the clock, so bounds still hold) and takes a few minutes of wall
+  time per bounded run. Absolute frame times are labeled `software-renderer evidence` and are not a
+  PASS/FAIL. With `--baseline`, frame time FAILs only on a regression: p99 above 125% of baseline and
+  above baseline + 100 ms, or long-task count above 125% and above baseline + 30. Each run records
+  `os.loadavg()` at start and end in `verdict.json` (`meta.loadavg`). When the mean of the
+  1-minute samples differs by more than 30% of the louder side, the regrade is ADVISORY instead of
+  FAIL. On this shared box the 1-minute load swings between about 5 and 12 during a gate, which is
+  more than 30% for most head/baseline pairs, so software-GL `frame_time` will usually be ADVISORY
+  and will not gate. That is accepted for SwiftShader. The compare output still prints each advisory
+  row, including the head p99, the baseline p99, and the long-task counts, so a large blowup stays
+  visible. It is not a REGRESSED row and it is not a FAIL. A missing load does not claim noise.
+  Without a baseline measurement the check stays UNKNOWN and is named in the INCOMPLETE cause list.
+  Long-task counts are always kept. The verdict says SOFTWARE GL.
 - Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
   `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
 - Check logic is fixture-tested without a browser: `npm run check:player-truth`. Thresholds live in

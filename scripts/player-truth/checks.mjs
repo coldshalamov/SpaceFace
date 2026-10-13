@@ -4,6 +4,7 @@
 // measure returns UNKNOWN with the reason — never PASS.
 
 import { PLAYER_TRUTH_CLASSES } from '../../src/testing/playerTruth/reader.js';
+import { STALL_MIN_SIM_S, STALL_WINDOW_MS, formatInterruptDetail } from './playWatch.mjs';
 
 export const E = Object.freeze({ id: 0, cls: 1, x: 2, z: 3, vx: 4, vz: 5, sx: 6, sy: 7, pr: 8, vis: 9, key: 10, type: 11 });
 export const CLS = Object.freeze(Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i])));
@@ -31,6 +32,16 @@ export const THRESHOLDS = Object.freeze({
   yawDeltaRad: 0.2, // rad turned after ~0.8 s of yaw
   tumblePitch: 0.35, tumbleBank: 0.75, tumbleY: 4, tumbleAngVel: 2.5, tumbleSeconds: 0.5,
   readabilityMinSeparation: 1.0, readabilityMinSamples: 5,
+  readabilityLowDeltaL: 8, // |ΔL| below this against the local backdrop ring is "barely differs"
+  readabilityLowContrastFrac: 0.5, // more than half the samples of a measured class at that ΔL is a FAIL
+  readabilityMarkerCredit: 1.5, // added when one class's rim matches the declared threat hue (0xff1a3a) and the other does not. L≥75 alone does not qualify.
+  readabilityMarkerOn: 0.4, readabilityMarkerSplit: 0.35, // threat-hue rate, and how far apart the two rates must be
+  frameP99RegressionRatio: 1.25, frameP99RegressionAbsMs: 100,
+  longTaskRegressionRatio: 1.25, longTaskRegressionAbs: 30,
+  // 1-minute load (mean of start and end) differing by more than this is host noise, not a frame-time FAIL.
+  frameLoadNoiseFrac: 0.30, frameLoadEpsilon: 0.05,
+  // Active flight whose sim advances less than this across the window is stalled, not slow.
+  simStallWindowMs: STALL_WINDOW_MS, simStallMinAdvanceS: STALL_MIN_SIM_S,
   vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3, backdropThreatP95: 0.3, pinnedMoveFrac: 0.25, pinnedMinExpect: 40,
   longTaskMs: 250, frameP99Ms: 50,
 });
@@ -515,13 +526,35 @@ function heldIntervals(trace, codes) {
 }
 const inIntervals = (iv, x) => iv.some(([a, b]) => x >= a && x <= b);
 
+const READABILITY_CLASSES = ['enemy', 'asteroid', 'projectile'];
+
+function readabilityThreshold() {
+  const T = THRESHOLDS;
+  return `separation ≥${T.readabilityMinSeparation} (colour, silhouette, +${T.readabilityMarkerCredit} when one rim matches threat hue 0xff1a3a and the other does not); ≤${T.readabilityLowContrastFrac * 100}% of samples with ΔL<${T.readabilityLowDeltaL} vs backdrop`;
+}
+
 export function checkReadability(trace) {
   const T = THRESHOLDS; const r = trace.readability;
   if (!r || !r.classes) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, 'no frame analysis');
   const pairs = (r.pairs || []).filter((p) => p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
   const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ');
   const measurementNote = r.measurementNote ? `; ${r.measurementNote}` : '';
-  if (!pairs.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}`);
+  // No pair qualifies (e.g. 8 low-contrast asteroids, 0 enemies): a measured combat
+  // class still passes or fails on its own backdrop contrast. UNKNOWN only when no
+  // combat class reached the sample floor.
+  if (!pairs.length) {
+    const measured = ['enemy', 'asteroid', 'projectile']
+      .filter((k) => r.classes[k] && r.classes[k].n >= T.readabilityMinSamples);
+    if (!measured.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}`);
+    const flat = measured
+      .filter((k) => (r.classes[k].lowContrastFrac || 0) > T.readabilityLowContrastFrac)
+      .map((k) => ({ line: `${k}: ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% of samples barely differ from the background (ΔL < ${T.readabilityLowDeltaL})`, t: r.classes[k].exampleT, sim: null, box: r.classes[k].exampleBox }));
+    const single = measured.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast`).join(' · ');
+    const thin = ['enemy', 'asteroid', 'projectile'].filter((k) => !measured.includes(k));
+    const thinNote = thin.length ? `; not graded (under ${T.readabilityMinSamples}): ${thin.join(', ')}` : '';
+    return result('readability', 'Enemy / asteroid / projectile readable', flat.length ? 'FAIL' : 'PASS', single, `separation ≥${T.readabilityMinSeparation}; ≤${T.readabilityLowContrastFrac * 100}% low-contrast per measured class`,
+      `samples: ${counts}${measurementNote}${thinNote}`, flat.slice(0, 4), flat.filter((o) => o.box).slice(0, 2));
+  }
   const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
   const lowContrast = Object.entries(r.classes).filter(([k, v]) => (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
   const bodies = (r.census || []).filter(c => ['station', 'neutral', 'other'].includes(c.cls));
@@ -614,22 +647,63 @@ export function checkVfx(trace) {
 export function checkLoadout(trace) {
   const L = trace.loadout;
   if (!L) return result('loadout', 'Loadout readable and relevant', trace.meta.hasLoadout ? 'UNKNOWN' : 'N/A', null, '0 irrelevant · 0 undescribed · 0 silent swaps', trace.meta.hasLoadout ? 'loadout screen not audited' : 'mode has no preparation loadout');
+  const offers = L.items || [];
+  const fitted = L.fitted || [];
   const offenders = [];
+  const clipQuote = (s) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const mismatched = new Set();
+  for (const it of [...offers, ...fitted, ...(L.undescribed || [])]) {
+    if (!it || it.explanationSurface !== 'reading-mismatch' || mismatched.has(it.name)) continue;
+    mismatched.add(it.name);
+    offenders.push({ line: `reading panel does not match lit row ${it.name}: panel "${clipQuote(it.panel)}" vs blurb "${clipQuote(it.expected)}"`, t: L.shotT, box: it.box });
+  }
   for (const it of L.irrelevant || []) offenders.push({ line: `irrelevant to ${trace.meta.mode}: ${it.name} (${it.category}) — ${it.reason}`, t: L.shotT, box: it.box });
-  for (const it of L.undescribed || []) offenders.push({ line: `no description: ${it.name}`, t: L.shotT, box: it.box });
+  for (const it of L.undescribed || []) {
+    if (it.explanationSurface === 'reading-mismatch') continue;
+    const surface = it.explanationSurface && it.explanationSurface !== 'card' ? ` (${it.explanationSurface})` : '';
+    offenders.push({ line: `no description: ${it.name}${surface}`, t: L.shotT, box: it.box });
+  }
   for (const sw of L.silentSwaps || []) offenders.push({ line: `silent replace: installing ${sw.bought} removed ${sw.removed.join(', ')}; screen said "${(sw.said || '').slice(0, 80)}"`, t: sw.t, box: null });
-  const n = (L.irrelevant || []).length + (L.undescribed || []).length + (L.silentSwaps || []).length;
-  const status = n ? 'FAIL' : (L.swapProbe === 'not-run' ? 'UNKNOWN' : 'PASS');
+  const quote = String(L.offerQuote || L.doorQuote || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (L.offerSource === 'harness-miss') offenders.push({ line: `harness failed to read the screen: "${quote}"`, t: L.shotT, box: null });
+  const fittedClaimed = Number(L.fittedClaimed) || 0;
+  if (L.fittedRead === false) {
+    offenders.push({ line: `harness failed to read fitted items${L.fittedError ? `: ${String(L.fittedError).slice(0, 140)}` : ''}`, t: L.shotT, box: null });
+  } else if (fittedClaimed > 0 && fitted.length === 0 && offers.length === 0 && L.offerSource !== 'harness-miss' && L.offerSource !== 'cards' && L.offerSource !== 'door-only') {
+    offenders.push({ line: `preparation says ${fittedClaimed} fitted but names none and explains none: "${quote}"`, t: L.shotT, box: null });
+  }
+  // Gauntlet's door-only preparation has no item shelf by design: the door sentence is the
+  // whole claim and the harness cannot verify it against cards. Grading it FAIL would fail
+  // every Gauntlet gate by construction, so the fit-count rule above exempts door-only.
+  let source = `${offers.length} offers read`;
+  if (L.offerSource === 'game-empty') source = `game offered nothing: "${quote}"`;
+  else if (L.offerSource === 'harness-miss') source = `harness failed to read the screen: "${quote}"`;
+  else if (L.offerSource === 'door-only') source = `preparation lists no item shelf: "${quote}"`;
+  const fittedNote = `${fitted.length} fitted${L.fittedRead === false ? ' (fit list not read)' : ''}`;
+  const surfaces = [...new Set([...offers, ...fitted].map((it) => it && it.explanationSurface).filter((s) => s && s !== 'card'))];
+  const surfaceLabel = (s) => (s === 'row-on-select' ? 'row-on-select (inferred)' : s);
+  const surfaceNote = surfaces.length ? `; explanation surface: ${surfaces.map(surfaceLabel).join(', ')}` : '';
+  const detail = `${source}; ${fittedNote}; swap probe: ${L.swapProbe}${surfaceNote}`;
+  const status = offenders.length ? 'FAIL' : (L.swapProbe === 'not-run' ? 'UNKNOWN' : 'PASS');
+  const counts = `${(L.irrelevant || []).length} irrelevant · ${(L.undescribed || []).length} undescribed · ${(L.silentSwaps || []).length} silent swaps`;
+  // The measured column is what the gate prints. A bare count hid "the game offered nothing".
+  let value = counts;
+  if (L.offerSource === 'game-empty') value = `game offered nothing${quote ? ` ("${quote}")` : ''} · ${counts}`;
+  else if (L.offerSource === 'harness-miss') value = `harness failed to read the screen${quote ? ` ("${quote}")` : ''} · ${counts}`;
+  else if (L.offerSource === 'door-only') value = `no item shelf${quote ? ` ("${quote}")` : ''} · ${counts}`;
+  if (surfaces.includes('row-on-select')) value = `${value} · row-on-select (inferred)`;
   return result('loadout', 'Loadout readable and relevant', status,
-    `${(L.irrelevant || []).length} irrelevant · ${(L.undescribed || []).length} undescribed · ${(L.silentSwaps || []).length} silent swaps`, '0 · 0 · 0',
-    `${L.items.length} offers read; swap probe: ${L.swapProbe}`, offenders.slice(0, 6), offenders.filter((o) => o.t != null).slice(0, 1));
+    value, '0 · 0 · 0',
+    detail, offenders.slice(0, 6), offenders.filter((o) => o.t != null).slice(0, 1));
 }
 
-export function checkFrameTime(trace) {
-  const T = THRESHOLDS; const samples = playSamples(trace).filter((s) => s.dt > 0);
-  if (samples.length < 10) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', null, null, 'too few frames');
+function frameStats(trace) {
+  const T = THRESHOLDS;
+  const samples = playSamples(trace).filter((s) => s.dt > 0);
+  if (samples.length < 10) return null;
   const dts = samples.map((s) => s.dt).sort((a, b) => a - b);
-  const p50 = dts[Math.floor(dts.length * 0.5)]; const p99 = dts[Math.floor(dts.length * 0.99)];
+  const p50 = dts[Math.floor(dts.length * 0.5)];
+  const p99 = dts[Math.floor(dts.length * 0.99)];
   const t0 = samples[0].t; const t1 = samples[samples.length - 1].t;
   const longs = (trace.longTasks || []).filter((l) => l.t >= t0 && l.t <= t1 && l.d >= T.longTaskMs).sort((a, b) => b.d - a.d);
   const worstFrames = samples.slice().sort((a, b) => b.dt - a.dt).slice(0, 3);
@@ -637,16 +711,111 @@ export function checkFrameTime(trace) {
     ...longs.slice(0, 3).map((l) => ({ line: `long task ${fmt(l.d, 0)} ms at sim ${fmt(l.sim, 1)} s (frame ${l.f})`, t: l.t, sim: l.sim, box: null })),
     ...worstFrames.map((s) => ({ line: `frame ${s.f}: ${fmt(s.dt, 0)} ms at sim ${fmt(s.sim, 1)} s (${s.e.length} entities${s.info ? `, ${s.info.calls} draws` : ''})`, t: s.t, sim: s.sim, box: null })),
   ];
-  const value = `p50 ${fmt(p50, 0)} ms · p99 ${fmt(p99, 0)} ms · ${longs.length} long tasks ≥${T.longTaskMs} ms`;
-  if (trace.meta.softwareGl) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, 'software GL (SwiftShader): frame time is not the player\'s — rerun headed on a GPU to grade', offenders.slice(0, 4), []);
+  return { p50, p99, longTasks: longs.length, samples: samples.length, offenders };
+}
+
+/** Mean of the 1-minute loads recorded at the start and end of a run. Null when either sample is missing. */
+export function meanLoad1m(loadavg) {
+  if (!loadavg || !Array.isArray(loadavg.start) || !Array.isArray(loadavg.end)) return null;
+  const a = Number(loadavg.start[0]); const b = Number(loadavg.end[0]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return (a + b) / 2;
+}
+
+/** Relative |head − base| / max(head, base, epsilon). A missing load is not noise: do not call the regrade advisory. */
+export function frameLoadNoise(headLoad, baseLoad) {
+  const T = THRESHOLDS;
+  const head = meanLoad1m(headLoad); const base = meanLoad1m(baseLoad);
+  if (head == null || base == null) return { noisy: false, head, base, rel: null };
+  const rel = Math.abs(head - base) / Math.max(head, base, T.frameLoadEpsilon);
+  return { noisy: rel > T.frameLoadNoiseFrac, head, base, rel };
+}
+
+/** Software-GL numbers are evidence. PASS/FAIL is only a regression against a baseline that itself measured frame time.
+ *  When the two runs' 1-minute loads differ by more than ~30%, the regrade is ADVISORY instead of FAIL. */
+export function gradeSoftwareFrameTime(stats, baseline, load = null) {
+  const T = THRESHOLDS;
+  const value = `software-renderer evidence · p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
+  const frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: true, samples: stats.samples };
+  const policy = `p99 ≤${Math.round(T.frameP99RegressionRatio * 100)}% and ≤+${T.frameP99RegressionAbsMs} ms · long tasks ≤${Math.round(T.longTaskRegressionRatio * 100)}% and ≤+${T.longTaskRegressionAbs}`;
+  const bare = !baseline;
+  const unmeasured = !bare && (baseline.p99 == null || baseline.longTasks == null || !Number.isFinite(Number(baseline.p99)) || !Number.isFinite(Number(baseline.longTasks)));
+  if (bare || unmeasured) {
+    const who = bare ? null : (baseline.commit || '?');
+    return {
+      status: 'UNKNOWN', value, frame,
+      threshold: bare ? `no regression vs --baseline (${policy})` : `no regression vs ${who} (${policy})`,
+      detail: bare ? 'software-renderer evidence only; no --baseline to grade regression' : `software-renderer evidence only; baseline ${who} produced no frame-time measurement`,
+    };
+  }
+  const p99 = Number(stats.p99); const lt = Number(stats.longTasks);
+  const baseP99 = Number(baseline.p99); const baseLt = Number(baseline.longTasks);
+  const p99Cap = Math.max(baseP99 * T.frameP99RegressionRatio, baseP99 + T.frameP99RegressionAbsMs);
+  const ltCap = Math.max(baseLt * T.longTaskRegressionRatio, baseLt + T.longTaskRegressionAbs);
+  const fail = p99 > p99Cap || lt > ltCap;
+  const commit = baseline.commit || 'baseline';
+  const noise = frameLoadNoise(load && load.head, load && load.base);
+  const loadNote = noise.head != null && noise.base != null
+    ? ` · load 1m mean head ${fmt(noise.head, 2)} vs baseline ${fmt(noise.base, 2)} (rel ${fmt(noise.rel * 100, 0)}%)`
+    : '';
+  if (noise.noisy) {
+    frame.load = { head1m: +noise.head.toFixed(3), base1m: +noise.base.toFixed(3), rel: +noise.rel.toFixed(3), advisory: true };
+    return {
+      status: 'ADVISORY', value, frame,
+      threshold: `no regression vs ${commit}: p99 ≤${fmt(p99Cap, 0)} ms · long tasks ≤${fmt(ltCap, 0)} · advisory when 1m load differs by >${Math.round(T.frameLoadNoiseFrac * 100)}%`,
+      detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote} — advisory, numbers would ${fail ? 'FAIL' : 'PASS'}; not a FAIL`,
+    };
+  }
+  if (noise.head != null && noise.base != null) frame.load = { head1m: +noise.head.toFixed(3), base1m: +noise.base.toFixed(3), rel: +noise.rel.toFixed(3), advisory: false };
+  return {
+    status: fail ? 'FAIL' : 'PASS', value, frame,
+    threshold: `no regression vs ${commit}: p99 ≤${fmt(p99Cap, 0)} ms · long tasks ≤${fmt(ltCap, 0)}`,
+    detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote}`,
+  };
+}
+
+/** Rewrite a recorded software-GL frame_time result once the baseline verdict exists. Returns true when it changed the result. */
+export function regradeSoftwareFrameTime(results, baselineFrame, { commit, baselineMissing = false, headLoad = null, baseLoad = null } = {}) {
+  const row = results.find((x) => x.id === 'frame_time');
+  if (!row || !row.frame || !row.frame.softwareGl) return false;
+  const baseline = baselineMissing || !baselineFrame
+    ? { commit: commit || '?', p99: null, longTasks: null }
+    : { ...baselineFrame, commit: commit || baselineFrame.commit || '?' };
+  const graded = gradeSoftwareFrameTime(row.frame, baseline, { head: headLoad, base: baseLoad });
+  row.status = graded.status;
+  row.value = graded.value;
+  row.threshold = graded.threshold;
+  row.detail = graded.detail;
+  row.frame = graded.frame;
+  return true;
+}
+
+export function checkFrameTime(trace) {
+  const T = THRESHOLDS;
+  const stats = frameStats(trace);
+  if (!stats) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', null, null, 'too few frames');
+  if (trace.meta.softwareGl) {
+    const graded = gradeSoftwareFrameTime(stats, trace.meta.frameBaseline || null);
+    const row = result('frame_time', 'Frame time / long tasks', graded.status, graded.value, graded.threshold, graded.detail, stats.offenders.slice(0, 4), graded.status === 'FAIL' ? stats.offenders.filter((o) => o.t != null).slice(0, 2) : []);
+    row.frame = graded.frame;
+    return row;
+  }
+  const value = `p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
   if (trace.meta.performanceContext?.contended === true) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', value,
     `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`,
-    `${samples.length} play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Observer readbacks and screenshots remain included in these measurements.`,
-    offenders.slice(0, 4), offenders.filter((o) => o.t != null).slice(0, 2));
-  return result('frame_time', 'Frame time / long tasks', p99 > T.frameP99Ms || longs.length ? 'FAIL' : 'PASS', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, `${samples.length} play frames`, offenders.slice(0, 4), offenders.filter((o) => o.t != null).slice(0, 2));
+    `${stats.samples} play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Observer readbacks and screenshots remain included in these measurements.`,
+    stats.offenders.slice(0, 4), stats.offenders.filter((o) => o.t != null).slice(0, 2));
+  const row = result('frame_time', 'Frame time / long tasks', stats.p99 > T.frameP99Ms || stats.longTasks ? 'FAIL' : 'PASS', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, `${stats.samples} play frames`, stats.offenders.slice(0, 4), stats.offenders.filter((o) => o.t != null).slice(0, 2));
+  row.frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: false, samples: stats.samples };
+  return row;
 }
 
 export function checkRoute(trace) {
+  const quote = trace.meta && trace.meta.environmentQuote;
+  if (quote) {
+    return result('route', 'Public route plays end to end', 'ENVIRONMENT', 'HARNESS ENVIRONMENT', 'served assets match HEAD, and the route loads',
+      `route load failed: "${quote}"`, [{ line: quote, t: null, box: null }], []);
+  }
   const r = trace.route || { steps: [] };
   const failed = r.steps.find((s) => !s.ok);
   const reached = r.steps.filter((s) => s.ok).map((s) => s.name).join(' → ');
@@ -695,6 +864,128 @@ export function checkRoundsReached(trace) {
     `stopped: ${trace.meta.stopReason || 'n/a'}`, got >= need ? [] : [{ line: `scripted fighter stopped at round ${got}: ${trace.meta.stopReason || ''}`, t: null, sim: null, box: null }]);
 }
 
+/** Sim froze while the run still said the phase was active. Loading and the boot overlay are not a stall. */
+export function checkSimStalled(trace) {
+  const threshold = `≥${STALL_MIN_SIM_S} s sim per ${Math.round(STALL_WINDOW_MS / 1000)} s wall while phase is active and not loading`;
+  const watch = trace.playWatch;
+  const missing = !watch || !watch.watched;
+  if (missing) {
+    const started = trace.meta && trace.meta.playStartSim != null;
+    return result('sim_stalled', 'Sim kept moving', started ? 'UNKNOWN' : 'N/A', null, threshold, started ? 'play was not watched' : 'play did not start');
+  }
+  const stall = (watch.interrupts || []).find((item) => item.kind === 'stall');
+  if (stall) {
+    const line = formatInterruptDetail(stall);
+    const moment = stall.t != null ? [{ line, t: stall.t, sim: stall.sim ?? null, box: null }] : [];
+    return result('sim_stalled', 'Sim kept moving', 'FAIL', `${Number(stall.simAdvanced).toFixed(2)} s / ${(stall.wallMs / 1000).toFixed(0)} s wall`, threshold, line, [{ line, t: stall.t ?? null, sim: stall.sim ?? null, box: null }], moment);
+  }
+  const adv = watch.simAdvanced;
+  const wall = watch.wallMs;
+  const value = adv == null ? 'no active span' : `+${adv} s / ${wall == null ? '?' : (wall / 1000).toFixed(0)} s wall`;
+  return result('sim_stalled', 'Sim kept moving', 'PASS', value, threshold, 'sim advanced through the watched active span');
+}
+
+/** A screen covered the flight HUD during active play. The script does not open screens while the phase is active. */
+export function checkPlayInterrupted(trace) {
+  const threshold = 'flight HUD only during active play; a screen the script did not open fails';
+  const watch = trace.playWatch;
+  const missing = !watch || !watch.watched;
+  if (missing) {
+    const started = trace.meta && trace.meta.playStartSim != null;
+    return result('play_interrupted', 'Play stays on the flight HUD', started ? 'UNKNOWN' : 'N/A', null, threshold, started ? 'play was not watched' : 'play did not start');
+  }
+  const screen = (watch.interrupts || []).find((item) => item.kind === 'screen');
+  if (screen) {
+    const line = formatInterruptDetail(screen);
+    const moment = screen.t != null ? [{ line, t: screen.t, sim: screen.sim ?? null, box: null }] : [];
+    return result('play_interrupted', 'Play stays on the flight HUD', 'FAIL', screen.top || 'screen', threshold, line, [{ line, t: screen.t ?? null, sim: screen.sim ?? null, box: null }], moment);
+  }
+  return result('play_interrupted', 'Play stays on the flight HUD', 'PASS', 'HUD held', threshold, 'no non-HUD screen during active play');
+}
+
+/** How far from the viewport edge a G4 chip center may sit and still be an edge mark, not a second radar. */
+export const EDGE_MARKER_INSET = 48;
+/** Off-screen samples with no marker before the check admits it never saw one. */
+export const OFFSCREEN_MARKER_MIN_SAMPLES = 5;
+
+/** Quadrant of an off-frame screen point. Same rule as `offscreenShooterMarker` in src/ui/threatHalo.js. */
+export function edgeMarkerSide(sx, sy, vw, vh) {
+  const w = Math.max(1, Number(vw) || 1); const h = Math.max(1, Number(vh) || 1);
+  const cx = w * 0.5; const cy = h * 0.5;
+  const dx = sx - cx; const dy = sy - cy;
+  const nx = Math.abs(dx) / cx; const ny = Math.abs(dy) / cy;
+  return nx >= ny ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'top' : 'bottom');
+}
+
+function markerInset(m, vw, vh) {
+  return Math.min(m.x, m.y, vw - m.x, vh - m.y);
+}
+
+/** Outside on exactly one axis: a bearing beside the frame, not a behind-camera point the HUD un-mirrors. */
+function oneAxisOutside(sx, sy, vw, vh) {
+  const outX = sx < 0 || sx > vw;
+  const outY = sy < 0 || sy > vh;
+  return outX !== outY;
+}
+
+/**
+ * Build-map G4, as the player sees it. The driver stamps `edgeMarkers` from the visible
+ * `.sf-threat-halo__slot--arc` chips. This does not edit the HUD.
+ * A marker in the middle of the frame fails. A marker while every hostile is in frame fails.
+ * One off-screen hostile and one marker must agree on the side when the hostile is outside on one axis.
+ * Off-screen hostiles with no marker stay UNKNOWN: the halo only marks shooters inside its range,
+ * and the trace does not carry that. No off-screen hostile is N/A.
+ */
+export function checkOffscreenMarker(trace) {
+  const title = 'Off-screen shooter has an edge marker';
+  const threshold = 'one screen-edge marker while a hostile is off-screen; none while every hostile is in frame; the side matches that hostile';
+  const started = trace.meta && trace.meta.playStartSim != null;
+  const samples = playSamples(trace).filter((s) => Array.isArray(s.edgeMarkers));
+  if (!samples.length) {
+    return result('offscreen_marker', title, started ? 'UNKNOWN' : 'N/A', null, threshold, started ? 'edge markers were not read' : 'play did not start');
+  }
+  const offenders = [];
+  let offscreenSamples = 0; let markedOffscreen = 0;
+  for (const s of samples) {
+    const vw = s.vw || 960; const vh = s.vh || 540;
+    const enemies = (s.e || []).filter((e) => e[E.cls] === CLS.enemy);
+    const off = enemies.filter((e) => e[E.vis] === VIS.offscreen);
+    const on = enemies.filter((e) => e[E.vis] === VIS.onscreen);
+    const markers = s.edgeMarkers.filter((m) => m && Number.isFinite(m.x) && Number.isFinite(m.y));
+    if (off.length) offscreenSamples++;
+    if (off.length && markers.length) markedOffscreen++;
+    for (const m of markers) {
+      if (markerInset(m, vw, vh) > EDGE_MARKER_INSET) {
+        offenders.push({ line: `edge marker at (${Math.round(m.x)}, ${Math.round(m.y)}) is not on the screen edge`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+      }
+    }
+    if (markers.length && enemies.length && off.length === 0 && on.length === enemies.length) {
+      offenders.push({ line: `edge marker while every hostile is in frame (${on.length} on screen)`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+    }
+    if (off.length === 1 && markers.length === 1 && oneAxisOutside(off[0][E.sx], off[0][E.sy], vw, vh)) {
+      const want = edgeMarkerSide(off[0][E.sx], off[0][E.sy], vw, vh);
+      const got = markers[0].edge;
+      if (got !== want) {
+        offenders.push({ line: `off-screen hostile on the ${want} has an edge marker on the ${got || 'unmarked side'}`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+      }
+    }
+  }
+  if (offenders.length) {
+    return result('offscreen_marker', title, 'FAIL', offenders[0].line, threshold, `${offenders.length} edge-marker miss${offenders.length === 1 ? '' : 'es'}`, offenders.slice(0, 8));
+  }
+  if (!offscreenSamples) {
+    return result('offscreen_marker', title, 'N/A', 'no off-screen hostile', threshold, 'no off-screen hostile in the frames where markers were read');
+  }
+  if (!markedOffscreen) {
+    const thin = offscreenSamples < OFFSCREEN_MARKER_MIN_SAMPLES;
+    return result('offscreen_marker', title, 'UNKNOWN', `0 markers / ${offscreenSamples} off-screen samples`, threshold,
+      thin
+        ? 'too few off-screen samples to grade the edge marker'
+        : `${offscreenSamples} samples had an off-screen hostile and no edge marker. The HUD marks shooters inside the threat halo, which this read cannot see, so this is not a FAIL.`);
+  }
+  return result('offscreen_marker', title, 'PASS', `${markedOffscreen} samples with an off-screen hostile and an edge marker`, threshold, 'markers sat on the screen edge beside an off-screen hostile');
+}
+
 ALL_CHECKS.splice(ALL_CHECKS.indexOf(checkVfx) + 1, 0, checkBackdrop);
 /**
  * Crucible modes (Swarm / Gauntlet) must play in the Crucible, not in the Adventure world:
@@ -716,7 +1007,7 @@ export function checkCrucibleRealm(trace) {
     `sectors seen: ${[...new Set(frames.map((f) => f.sector))].join(', ') || 'n/a'}`, offenders, offenders.filter((o) => o.t != null).slice(0, 1));
 }
 
-ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkCrucibleRealm);
+ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkCrucibleRealm, checkSimStalled, checkPlayInterrupted, checkOffscreenMarker);
 
 /** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
 export const GATE_STRICT = Object.freeze(['crucible_realm', 'player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
@@ -731,9 +1022,17 @@ export function runChecks(trace) {
   return results;
 }
 
-/** Verdict over a check list: any FAIL fails; otherwise UNKNOWN beats PASS. */
+/** Verdict over one run. ENVIRONMENT outranks a gameplay FAIL inside that run: the run was not the code under test.
+ *  ADVISORY (load-noise frame time) is neither a FAIL nor an INCOMPLETE cause. Across arenas, gateExitCode prefers FAIL. */
 export function overall(results) {
+  if (results.some((r) => r.status === 'ENVIRONMENT')) return 'ENVIRONMENT';
   if (results.some((r) => r.status === 'FAIL')) return 'FAIL';
   if (results.some((r) => r.status === 'UNKNOWN')) return 'INCOMPLETE';
   return 'PASS';
+}
+
+/** The UNKNOWN checks that make an overall INCOMPLETE. Empty when the verdict is not INCOMPLETE. */
+export function incompleteCauses(results) {
+  if (overall(results) !== 'INCOMPLETE') return [];
+  return results.filter((r) => r.status === 'UNKNOWN');
 }
