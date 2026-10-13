@@ -245,8 +245,12 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
   } catch (error) { try { onError(error); } catch {} try { release(); } catch {} return null; }
 
   function resize() {
-    const box = video.parentNode?.getBoundingClientRect?.();
-    const w = box?.width || video.clientWidth || 1280, h = box?.height || video.clientHeight || 720;
+    // Layout size, not getBoundingClientRect: the intro stage sits under a slow CSS scale, and a
+    // transform-inclusive rect crept ~1 px every second or so, so each step reallocated the backbuffer
+    // and every history target and reset the remix history (11 rebuilds per boot). The canvas
+    // is scaled by the same transform as the video, so its pixels map to the untransformed box.
+    const host = video.parentNode;
+    const w = host?.clientWidth || video.clientWidth || 1280, h = host?.clientHeight || video.clientHeight || 720;
     const scale = Math.min(1, SIGNAL_REMIX.maxWidth / w, SIGNAL_REMIX.maxHeight / h);
     const rw = Math.max(2, Math.round(w * scale)), rh = Math.max(2, Math.round(h * scale));
     if (rw === width && rh === height) return;
