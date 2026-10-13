@@ -95,22 +95,23 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
 // and a playing pilot re-acts on the next tick, so nothing observable is lost.
 const _pilotActedWave = new WeakMap();
 
-function liveSwarmFight(state) {
+function liveFirstActFight(state) {
   const run = state && state.run;
-  if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm') return null;
+  if (!run || run.kind !== 'survival'
+    || (run.ruleset !== 'swarm' && run.ruleset !== 'scored')) return null;
   if (run.phase !== 'active' || !Number.isInteger(run.wave)) return null;
   return run;
 }
 
-/** True unless a live swarm round is waiting on this wave's first pilot act. No swarm run counts as already acting, so headless fire-roster checks keep their cap. */
+/** True unless a live Swarm or Gauntlet round awaits its first pilot act. Other runs keep their existing admission. */
 export function swarmPilotHasActed(state) {
-  const run = liveSwarmFight(state);
+  const run = liveFirstActFight(state);
   if (!run) return true;
   return _pilotActedWave.get(state) === run.wave;
 }
 
 export function noteSwarmPilotAction(state) {
-  const run = liveSwarmFight(state);
+  const run = liveFirstActFight(state);
   if (!run) return;
   _pilotActedWave.set(state, run.wave);
 }

@@ -43,7 +43,7 @@ test('score pays once this wave has a pilot act', () => {
   }
 });
 
-test('a scored run is not held to the swarm act latch', () => {
+test('a scored run admits score after its first pilot act', () => {
   const state = createGameState(7);
   const bus = createBus();
   runSession.init({ state, bus });
@@ -52,6 +52,9 @@ test('a scored run is not held to the swarm act latch', () => {
     for (const nextPhase of ['arena_intro', 'wave_intro', 'active']) {
       bus.emit('run:transitionRequested', { expectedPhase: state.run.phase, nextPhase });
     }
+    assert.equal(runSession.award({ score: 100, reason: 'kill' }), false);
+    assert.equal(state.run.score, 0);
+    noteSwarmPilotAction(state);
     assert.equal(runSession.award({ score: 100, reason: 'kill' }), true);
     assert.equal(state.run.score, 100);
   } finally {

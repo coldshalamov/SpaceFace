@@ -223,11 +223,11 @@ export const runSession = {
     if (run.phase === 'inactive') return false;
     const credits = toNonNegativeInt(request && request.credits);
     const xp = toNonNegativeInt(request && request.xp);
-    // A quiet swarm wave has not been played. Seed 4242 idle paid +202 at sim
+    // A quiet Crucible wave has not been played. Seed 4242 idle paid +202 at sim
     // 41.1, in the same sample gap as the second pre-input death's resolve,
     // before any flight input. Credits and XP still settle; the score line
-    // stays 0 until this wave's pilot acts. No live swarm fight counts as
-    // already acting, so adventure and scored runs are unchanged.
+    // stays 0 until this wave's pilot acts. Outside live Swarm and Gauntlet rounds, the
+    // existing score admission is unchanged.
     let scorePoints = toNonNegativeInt(request && request.score);
     if (scorePoints > 0 && !swarmPilotHasActed(this.state)) scorePoints = 0;
     const score = Math.round(scorePoints * swarmScoreScale(run));

@@ -9,10 +9,11 @@ import { input } from '../src/systems/input.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { readFileSync } from 'node:fs';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
 
-function harness() {
+function harness(ruleset = 'swarm') {
   const state = createGameState(4242);
-  state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
+  state.run = { kind: 'survival', ruleset, phase: 'active', wave: 1 };
   state.playerId = 1;
   const cohort = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 100, z: 0 },
     vel: { x: 30, z: 4 }, radius: 8, mass: 20, hull: 10, hullMax: 10, armorHp: 0, shield: 0,
@@ -34,9 +35,10 @@ function harness() {
   return { state, cohort, rock, route, killed, impulses, bus };
 }
 
-for (const source of ['collision_terrain', 'collision_craft', 'material_blast']) {
-  test(`idle Swarm ${source} preserves live cohort motion and admits harm after the pilot acts`, () => {
-    const h = harness();
+for (const ruleset of ['swarm', 'scored']) {
+ for (const source of ['collision_terrain', 'collision_craft', 'material_blast']) {
+  test(`idle ${ruleset} ${source} preserves live cohort motion and admits harm after the pilot acts`, () => {
+    const h = harness(ruleset);
     const packet = scalarHitToDamagePacket({ damage: 100, damageType: 'kinetic',
       impulse: { x: 40, z: 0 }, source: { kind: source } });
     packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: true };
@@ -54,11 +56,12 @@ for (const source of ['collision_terrain', 'collision_craft', 'material_blast'])
     assert.equal(h.cohort.alive, false);
     assert.equal(h.killed.length, 1);
   });
+ }
 }
 
-test('Adventure and Gauntlet contacts keep their existing lethal damage', () => {
+test('Adventure and other survival contacts keep their existing lethal damage', () => {
   for (const run of [{ kind: 'adventure', phase: 'active' },
-    { kind: 'survival', ruleset: 'scored', phase: 'active', wave: 1 }]) {
+    { kind: 'survival', ruleset: 'boss_circuit', phase: 'active', wave: 1 }]) {
     const h = harness();
     h.state.run = run;
     assert.equal(h.route({ attackerId: h.rock.id, targetId: h.cohort.id,
@@ -121,13 +124,14 @@ test('rebound charge input latches admission before its one-shot action is consu
   assert.equal(swarmPilotHasActed(h.state), false, 'each new wave still has its own opener');
 });
 
-test('production worker DOM input admits damage on its own authoritative state', async () => {
+for (const ruleset of ['swarm', 'scored']) {
+test(`production ${ruleset} worker DOM input admits damage on its own authoritative state`, async () => {
   const lane = createSimHost();
   try {
     const init = await lane.init({ profile: 'production', seed: 4242,
       scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url))) });
     const { runtime, state } = lane.host;
-    state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
+    state.run = { kind: 'survival', ruleset, phase: 'active', wave: 1 };
     state.mode = 'flight';
     state.ui.screenStack.length = 0;
     const victim = runtime.spawn({ type: 'ship', team: 1, hull: 100, hullMax: 100,
@@ -146,6 +150,7 @@ test('production worker DOM input admits damage on its own authoritative state',
     assert.ok(victim.hull < 100, 'the worker-local canonical damage owner sees the act');
   } finally { lane.shutdown(); }
 });
+}
 
 test('manual keyboard thrust under autoFire admits harm without a trigger pull', () => {
   const h = harness();
@@ -160,4 +165,46 @@ test('manual keyboard thrust under autoFire admits harm without a trigger pull',
   host.update(1 / 60, h.state);
   assert.equal(h.state.input.drawFlightManual, true, 'input already distinguishes deliberate controls from assist axes');
   assert.equal(swarmPilotHasActed(h.state), true);
+});
+
+test('native Gauntlet loading births carry damage admission before progress is published', async () => {
+  const lane = createSimHost();
+  try {
+    await lane.init({ profile: 'production', seed: 4242,
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url))) });
+    const { runtime, state, bus } = lane.host;
+    const player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
+      team: 0, factionId: 'faction_free', isPlayer: true, player: state.player,
+      pos: { x: -1900, z: -2200 },
+    }));
+    state.playerId = player.id;
+    const births = [];
+    const kernel = runtime.getSystem('combat').ensureKernel();
+    bus.on('entity:spawned', receipt => {
+      const entity = state.entities.get(receipt.id);
+      if (entity?.data?.runCohort !== 'survival') return;
+      births.push({ entity, spawnedThreat: state.run.spawnedThreat,
+        admission: kernel.routeDamage({ attackerId: entity.id, targetId: entity.id,
+          packet: scalarHitToDamagePacket({ damage: 1000, damageType: 'kinetic',
+            source: { kind: 'collision_terrain' } }) }).reason });
+    });
+    state.mode = 'loading';
+    bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: 4242, arenaId: 'helios_core' });
+    bus.emit('run:loadoutReady', {});
+    bus.emit('run:openingPrepareRequested', {});
+    assert.equal(state.run.phase, 'active');
+    assert.equal(state.run.wave, 1);
+    assert.equal(births.length, 6, 'the real scored plan fields its six opening wasps');
+    assert.equal(births[0].spawnedThreat, 0, 'the first body already carries admission before progress');
+    for (const { entity, admission } of births) {
+      assert.equal(entity.data.runCohort, 'survival');
+      assert.equal(entity.data.runWave, 1);
+      assert.equal(entity.data.runRole, 'mass');
+      assert.equal(admission, 'swarm_waiting_for_input');
+      assert.equal(entity.alive, true);
+      assert.equal(entity.data.ai.swarmFireHeld, true);
+    }
+    assert.equal(runtime.getSystem('survivalWave')._swarm, null,
+      'the native Gauntlet never enters the Swarm pacing branch');
+  } finally { lane.shutdown(); }
 });

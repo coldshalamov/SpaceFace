@@ -94,3 +94,29 @@ test('later waves clear more guns at once', () => {
   sys._shapeSwarmFire();
   assert.equal([10, 11, 12, 13, 14, 15, 16, 17].filter((id) => !held(sys, id)).length, 4);
 });
+
+test('Gauntlet holds idle cohort guns then releases its full existing roster after input', () => {
+  const sys = world(6);
+  sys._swarm = null;
+  sys.state.run = { kind: 'survival', ruleset: 'scored', phase: 'active', wave: 1 };
+  sys.state.input = { fire: false, moveX: 0, moveZ: 0, turnIntent: 0, actions: {} };
+  const velocities = [];
+  for (const member of sys._cohort.values()) {
+    member.entity.vel = { x: 30, z: 4 };
+    velocities.push({ ...member.entity.vel });
+  }
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12, 13, 14, 15].map(id => held(sys, id)), Array(6).fill(true));
+  sys.state.simTime += 3;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12, 13, 14, 15].map(id => held(sys, id)), Array(6).fill(true));
+  sys.state.input.fire = true;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12, 13, 14, 15].map(id => held(sys, id)), Array(6).fill(false),
+    'Gauntlet keeps its full shooter roster, without the Swarm cap or arrival delay');
+  for (const [index, member] of [...sys._cohort.values()].entries()) {
+    assert.deepEqual(member.entity.vel, velocities[index]);
+    assert.equal(member.armedAt, undefined);
+    assert.equal(member.entity.data.swarmMarkRadius, undefined);
+  }
+});

@@ -5,13 +5,15 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 
-function setupSurvivalHarness() {
+function setupSurvivalHarness(ruleset = 'scored') {
   const state = createGameState(4242);
   state.playerId = 1;
   const run = createRunState({ kind: 'survival' });
   run.phase = 'active';
   run.wave = 1;
+  run.ruleset = ruleset;
   state.run = run;
 
   state.entities = new Map();
@@ -23,22 +25,25 @@ function setupSurvivalHarness() {
   waveSys.init({ state, bus, helpers: {} });
 
   const clearedEvents = [];
+  const retiredEvents = [];
   bus.on('run:waveCleared', (payload) => clearedEvents.push(payload));
+  bus.on('entity:killed', payload => retiredEvents.push(payload));
 
-  return { state, bus, waveSys, clearedEvents };
+  return { state, bus, waveSys, clearedEvents, retiredEvents };
 }
 
-test('NXI-074: disabling the last relevant attacker clears the wave without despawning or hanging', () => {
-  const { state, bus, waveSys, clearedEvents } = setupSurvivalHarness();
+test('NXI-074: disabling the last relevant attacker clears and retires its already defeated body', () => {
+  const { state, bus, waveSys, clearedEvents, retiredEvents } = setupSurvivalHarness();
 
   // Create an attacker entity
   const attacker = {
     id: 101,
+    type: 'ship',
     alive: true,
     team: 2,
     pos: { x: 100, z: 100 },
     disabled: false,
-    data: { runCohort: 'survival' },
+    data: { runCohort: 'survival', runRole: 'enemy', ai: { state: 'hunt' } },
   };
   state.entities.set(101, attacker);
 
@@ -61,6 +66,8 @@ test('NXI-074: disabling the last relevant attacker clears the wave without desp
   waveSys._admittedTotal = 1;
 
   bus.emit('run:waveStarted', { wave: 1 });
+  waveSys._admittedTotal = 1;
+  waveSys._plannedBodies = 1;
 
   // Update while attacker is active and dangerous — MUST NOT clear early
   waveSys.update();
@@ -72,29 +79,35 @@ test('NXI-074: disabling the last relevant attacker clears the wave without desp
   // Next update should recognize the disabled survivor and clear without an impossible wait
   waveSys.update();
   assert.equal(clearedEvents.length, 1, 'disabling the last relevant attacker clears the wave');
-  assert.equal(attacker.alive, true, 'disabled attacker was NOT despawned to force a clear');
-  assert.equal(clearedEvents[0].survivors, 1, 'survivor count reflects remaining living entities');
-  assert.equal(clearedEvents[0].disabledSurvivors, 1, 'disabled survivors explicitly counted on receipt');
+  assert.equal(attacker.alive, false, 'only the already disabled body retires at its real cohort clear');
+  assert.equal(state.entities.get(attacker.id), attacker, 'retirement leaves the dead record for ordinary aftermath ownership');
+  assert.equal(clearedEvents[0].survivors, 0);
+  assert.equal(clearedEvents[0].disabledSurvivors, 0);
+  assert.equal(waveSys._resolved, 1);
+  assert.equal(retiredEvents.length, 1); assert.equal(retiredEvents[0].id, attacker.id);
+  assert.equal(retiredEvents[0].killerId, undefined, 'retirement does not fabricate a player kill');
 });
 
 test('NXI-074: a still-dangerous opponent is not falsely removed from wave blocking', () => {
-  const { state, bus, waveSys, clearedEvents } = setupSurvivalHarness();
+  const { state, bus, waveSys, clearedEvents, retiredEvents } = setupSurvivalHarness();
 
   const disabledAttacker = {
     id: 201,
+    type: 'ship',
     alive: true,
     team: 2,
     pos: { x: 50, z: 50 },
     disabled: true,
-    data: { runCohort: 'survival' },
+    data: { runCohort: 'survival', runRole: 'enemy', ai: { state: 'hunt' } },
   };
   const dangerousAttacker = {
     id: 202,
+    type: 'ship',
     alive: true,
     team: 2,
     pos: { x: 150, z: 150 },
     disabled: false,
-    data: { runCohort: 'survival' },
+    data: { runCohort: 'survival', runRole: 'enemy', ai: { state: 'hunt' } },
   };
   state.entities.set(201, disabledAttacker);
   state.entities.set(202, dangerousAttacker);
@@ -114,29 +127,39 @@ test('NXI-074: a still-dangerous opponent is not falsely removed from wave block
   waveSys._admittedTotal = 2;
 
   bus.emit('run:waveStarted', { wave: 1 });
+  waveSys._admittedTotal = 2;
+  waveSys._plannedBodies = 2;
 
   // Tick update: since 202 is still dangerous, wave must not clear
   waveSys.update();
   assert.equal(clearedEvents.length, 0, 'wave does not clear while a dangerous opponent remains');
+  assert.equal(disabledAttacker.alive, true, 'a disabled body is not retired before the cohort clears');
+  assert.equal(retiredEvents.length, 0);
 
   // Neutralize 202 as well
   dangerousAttacker.disabled = true;
   waveSys.update();
   assert.equal(clearedEvents.length, 1, 'wave clears once all remaining attackers are disabled');
-  assert.equal(clearedEvents[0].survivors, 2);
-  assert.equal(clearedEvents[0].disabledSurvivors, 2);
+  assert.equal(clearedEvents[0].survivors, 0);
+  assert.equal(clearedEvents[0].disabledSurvivors, 0);
+  assert.equal(disabledAttacker.alive, false); assert.equal(dangerousAttacker.alive, false);
+  assert.equal(waveSys._resolved, 2);
+  assert.deepEqual(retiredEvents.map(event => event.id), [201, 202]);
+  assert.ok(retiredEvents.every(event => event.killerId === undefined));
 });
 
 test('NXI-074: swarm killTarget round clears when remaining admitted hostiles are neutralized', () => {
-  const { state, bus, waveSys, clearedEvents } = setupSurvivalHarness();
+  const { state, bus, waveSys, clearedEvents, retiredEvents } = setupSurvivalHarness('swarm');
+  noteSwarmPilotAction(state);
 
   const attacker = {
     id: 301,
+    type: 'ship',
     alive: true,
     team: 2,
     pos: { x: 100, z: 100 },
     disabled: false,
-    data: { runCohort: 'survival' },
+    data: { runCohort: 'survival', runRole: 'enemy', ai: { state: 'hunt' } },
   };
   state.entities.set(301, attacker);
 
@@ -165,6 +188,9 @@ test('NXI-074: swarm killTarget round clears when remaining admitted hostiles ar
   attacker.disabled = true;
   waveSys.update();
   assert.equal(clearedEvents.length, 1, 'swarm killTarget round clears when hostile is neutralized');
-  assert.equal(clearedEvents[0].disabledSurvivors, 1);
-  assert.equal(attacker.alive, true);
+  assert.equal(clearedEvents[0].disabledSurvivors, 0);
+  assert.equal(clearedEvents[0].survivors, 0);
+  assert.equal(attacker.alive, false);
+  assert.equal(waveSys._resolved, 1);
+  assert.equal(retiredEvents.length, 1); assert.equal(retiredEvents[0].killerId, undefined);
 });
