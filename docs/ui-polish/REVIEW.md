@@ -61,7 +61,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `wingman-radial` | SURVEYED | |
 | `ship` | SURVEYED | Ledger DONE earlier |
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
-| `range` | SURVEYED | Owns CSS holdout |
+| **`range`** | **DONE @960×540** (ui-polish-17) | See § Proving Range @960 below; 1024 / 1280 / 1920 / phone unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
@@ -117,6 +117,12 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 - **Bar:** the name is one 24px line, the words stop 330px short of the bay's right edge, and the portrait is capped at 300px at the right edge, so the arc and reply dial never cross her line. At ≤640 tall the three replies stay on glass (the 1–3 hint sleeps; the dial carries the numbers).
 
 At 1280, 1920 and phone (portrait and on its side), Industry, Bar and Ledger are pixel-identical to master; Factions changes only in its scale names. The rules are desktop-only (`:not([data-sf-mobile="1"])`). **Still open:** at 1024×768 SWORN ENEMY still splits and its top line touches HATED (as on master). Shots: `ui-shots/tabs960/`.
+
+## Proving Range @960×540 — session notes (2026-10-13, ui-polish-17)
+
+**Before:** the title block (180px) and the foot (338px: a five-row rule ladder, the dossier and a 64px run gauge) plus the 48px kit row gap outgrew 540px. The stage, which holds the course itself, was squeezed to 0px, and RULES / BESTIARY / CLOSE and the run instrument fell below the frame.
+
+**After (`src/ui/screens/range.js`, local style block only, `@media (max-width:1100px) and (max-height:640px)`, desktop only):** frame padding 20/40/12 and an 8px row gap, the corner count moves up with the title (40px), and the lamp key is 34px tall. The ladder words are tracked tighter, with 5px ticks and a 12px gap, so the 16 rules take four rows. The dossier and the run row close up, and the gauge is 40px. The course keeps ~146px (~110px when a long rule name wraps to two lines). The whole foot is on glass, and RULES and BESTIARY open their drawer over the stage. Type stays on the grammar scale. Selectors and IDs are unchanged. 1024×768, 1280, 1920 and phone don't match the query. Shots: `ui-shots/range960/`.
 
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 

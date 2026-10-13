@@ -208,6 +208,29 @@ html body #screens #sf-range { padding-bottom: 24px; }
   #sf-range .sf-range__ladder { column-gap: 20px; }
   #sf-range .sf-range__run { gap: 8px; padding-left: 12px; }
 }
+/* Short desktop frames (≤1100×≤640, e.g. 960×540): the title block (180px) and the foot
+   (338px: a five-row rule ladder, the dossier, a 64px run gauge) outgrew the frame, so the
+   stage — the course itself — was squeezed to 0px and RULES / BESTIARY / CLOSE and the run
+   instrument fell below the frame. Here the title block, the ladder and the run gauge close up
+   so the course keeps ~130px and the whole foot stays on glass. Desktop only. */
+@media (max-width: 1100px) and (max-height: 640px) {
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range { padding: 20px 40px 12px; row-gap: 8px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title { padding-right: 150px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p { font-size: 14px; line-height: 19px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-title > p + p { font-size: 13px; line-height: 17px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs { margin-top: 6px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__verbs .orr-lampkey { min-height: 34px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range > .k-corner { top: 20px; right: 40px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-hero__n { font-size: 40px; line-height: 1; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .k-foot { row-gap: 6px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder { column-gap: 12px; row-gap: 0; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li { padding-bottom: 9px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder > li::before { height: 5px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__ladder .sf-range__word { padding: 3px 1px; letter-spacing: .07em; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 5px 2px; font-size: 13px; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 13px; padding-top: 0; padding-bottom: 0; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 40px; height: 40px; }
+}
 `;
 
 function injectStyle() {
