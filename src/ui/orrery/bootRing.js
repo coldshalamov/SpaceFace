@@ -38,8 +38,10 @@ export function mountBootRing(document, overlay) {
   shell.setAttribute('aria-label', 'Startup progress, estimated within each loading stage');
   shell.setAttribute('aria-valuemin', '0'); shell.setAttribute('aria-valuemax', '100');
   const svg = element(document, 'svg', { class: 'boot-ring', viewBox: '0 0 176 208', 'aria-hidden': 'true' });
-  const emblem = element(document, 'image', { x: 38, y: 38, width: 100, height: 100, class: 'boot-ring__emblem' });
-  try { emblem.setAttribute('href', new URL('assets/ui/generated/emblem/emblem.thumb.webp', document.baseURI).href); } catch { /* probes */ }
+  const emblem = document.createElement('img');
+  emblem.className = 'boot-ring__emblem boot-ring__emblem-layer';
+  emblem.alt = ''; emblem.setAttribute('aria-hidden', 'true');
+  try { emblem.src = new URL('assets/ui/generated/emblem/emblem.thumb.webp', document.baseURI).href; } catch { /* probes */ }
   const engraving = [];
   for (let i = 0; i < 96; i++) {
     const a = i * 3.75, major = i % 8 === 0;
@@ -63,10 +65,10 @@ export function mountBootRing(document, overlay) {
   const percent = element(document, 'text', { x: 88, y: 198, class: 'boot-ring__percent', 'text-anchor': 'middle' });
   percent.textContent = '0.0%';
   live.append(bloom, fill, marks, head, percent);
-  svg.append(emblem, grad, filigree, track, live);
+  svg.append(grad, filigree, track, live);
   const canvas = document.createElement('canvas');
   canvas.className = 'boot-ring-layer'; canvas.setAttribute('aria-hidden', 'true');
-  shell.append(svg, canvas); row.insertBefore(shell, row.firstChild);
+  shell.append(emblem, svg, canvas); row.insertBefore(shell, row.firstChild);
   let worker = null, workerReady = false, running = false, disposed = false;
   let frame = null, lastNotify = -Infinity, lastAria = -Infinity, lastPaint = -1, lastSample = null;
   let epoch = 0;
