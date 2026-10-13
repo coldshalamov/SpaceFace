@@ -72,7 +72,56 @@ function runSnapshot(state, wasp) {
     resolved: run.resolvedThreat | 0,
     alive: !!(wasp && wasp.alive !== false),
     hull: wasp && Number.isFinite(wasp.hull) ? wasp.hull : null,
+    armorHp: wasp && Number.isFinite(wasp.armorHp) ? wasp.armorHp : null,
   };
+}
+
+function combatantRuntime(state, target) {
+  const table = state && state.combat && state.combat.entities;
+  return table && target ? table[target.id] : null;
+}
+
+// Leave every part short of full so a restore-to-max would be visible, and arm a destroy on
+// a part this collision is not supposed to own. The plant is undone after the strike so the
+// next tick does not actually disable the wasp.
+function chipLessonParts(state, target) {
+  const runtime = combatantRuntime(state, target);
+  if (!runtime || !runtime.subsystems) return null;
+  const tick = state.tick >>> 0;
+  let plantedId = null;
+  for (const [id, subsystem] of Object.entries(runtime.subsystems)) {
+    if (!subsystem || !(subsystem.health > 8)) continue;
+    subsystem.health -= 7;
+    if (!plantedId && id !== 'subsystem_power') plantedId = id;
+  }
+  const planted = plantedId ? runtime.subsystems[plantedId] : null;
+  if (planted) {
+    planted.lastDamageTick = tick;
+    planted.pendingTransition = { atTick: tick + 1, destroyed: true, reason: 'test-player-chip', attackerId: state.playerId };
+    planted.destroyed = false;
+    runtime.pendingSubsystemTransitionCount = (runtime.pendingSubsystemTransitionCount | 0) + 1;
+  }
+  return { plantedId, armorBefore: target.armorHp };
+}
+
+function readLessonParts(state, target, plantedId) {
+  const runtime = combatantRuntime(state, target);
+  const planted = runtime && plantedId ? runtime.subsystems[plantedId] : null;
+  return {
+    plantedId,
+    plantedHealth: planted ? planted.health : null,
+    plantedPending: planted && planted.pendingTransition ? planted.pendingTransition.reason : null,
+    pendingCount: runtime ? (runtime.pendingSubsystemTransitionCount | 0) : null,
+  };
+}
+
+function clearPlantedDestroy(state, target, plantedId) {
+  const runtime = combatantRuntime(state, target);
+  const planted = runtime && plantedId ? runtime.subsystems[plantedId] : null;
+  if (!planted || !planted.pendingTransition || planted.pendingTransition.reason !== 'test-player-chip') return;
+  planted.pendingTransition = null;
+  planted.lastDamageTick = -1;
+  if ((runtime.pendingSubsystemTransitionCount | 0) > 0) runtime.pendingSubsystemTransitionCount -= 1;
 }
 
 /**
@@ -80,13 +129,14 @@ function runSnapshot(state, wasp) {
  * (the 45s clock has already brought the pack). `originKind` is 'collision'
  * or 'weapon'. attacker is 'rock' or 'player'.
  */
-async function runLesson({ when, originKind, attacker, tickCap }) {
+async function runLesson({ when, originKind, attacker, tickCap, inspectParts = false }) {
   const note = {
     struck: null,
     strikeResult: null,
     after: null,
     releasedAt: null,
     missed: null,
+    parts: null,
   };
   let wasp = null;
   let struckSim = null;
@@ -139,7 +189,25 @@ async function runLesson({ when, originKind, attacker, tickCap }) {
         note.missed = { reason: 'no-attacker' };
         return;
       }
+      const chip = inspectParts ? chipLessonParts(state, live) : null;
       const result = strike(runtime, state, live, attackerId, originKind);
+      if (chip) {
+        const hitId = result && result.subsystemId;
+        const hit = hitId && combatantRuntime(state, live) && combatantRuntime(state, live).subsystems[hitId];
+        const beforeHealth = result && result.subsystemResult ? result.subsystemResult.before : null;
+        note.parts = {
+          ...readLessonParts(state, live, chip.plantedId),
+          armorBefore: chip.armorBefore,
+          armorHp: live.armorHp,
+          beforeArmor: result && result.before ? result.before.armor : null,
+          hitId,
+          hitHealth: hit ? hit.health : null,
+          hitBefore: beforeHealth,
+          hitMax: hit ? hit.maxHealth : null,
+          hitPending: hit && hit.pendingTransition ? true : false,
+        };
+        clearPlantedDestroy(state, live, chip.plantedId);
+      }
       note.struck = runSnapshot(state, live);
       note.strikeResult = result && result.ok === true ? 'ok' : (result && result.reason) || 'no-result';
       struckSim = sim;
@@ -162,13 +230,21 @@ test('a player shot still ends the opening lesson and brings the pack', { timeou
 
 test('seed 4242: a foundry collision does not kill the lesson wasp or release the pack', { timeout: 90_000, concurrency: false }, async () => {
   const note = await runLesson({
-    when: 'early', originKind: 'collision', attacker: 'rock', tickCap: 14 * 60,
+    when: 'early', originKind: 'collision', attacker: 'rock', tickCap: 14 * 60, inspectParts: true,
   });
   assert.ok(note.struck, `lesson wasp was not on the field: ${JSON.stringify(note)}`);
   assert.equal(note.strikeResult, 'ok', JSON.stringify(note));
   assert.equal(note.struck.spawned, 1, `pack was already out: ${JSON.stringify(note)}`);
   assert.equal(note.struck.alive, true, `collision cleared the lesson wasp: ${JSON.stringify(note)}`);
   assert.ok((note.struck.hull || 0) > 0, `collision zeroed the lesson hull: ${JSON.stringify(note)}`);
+  // snapshotVitals.before.armor is the armorHp the listener writes back.
+  assert.equal(note.parts.armorHp, note.parts.armorBefore, `armorHp was not restored: ${JSON.stringify(note.parts)}`);
+  assert.equal(note.parts.armorHp, note.parts.beforeArmor, `armorHp does not match payload.before.armor: ${JSON.stringify(note.parts)}`);
+  assert.ok(note.parts.hitBefore > 0, `collision did not record a subsystem hit: ${JSON.stringify(note.parts)}`);
+  assert.ok(note.parts.hitBefore < note.parts.hitMax, `subsystem was already at max, so the restore is ambiguous: ${JSON.stringify(note.parts)}`);
+  assert.equal(note.parts.hitHealth, note.parts.hitBefore, `subsystem health was not the pre-hit value: ${JSON.stringify(note.parts)}`);
+  assert.equal(note.parts.hitPending, false, `this hit's subsystem destroy stayed armed: ${JSON.stringify(note.parts)}`);
+  assert.equal(note.parts.plantedPending, 'test-player-chip', `a same-tick destroy on another part was cleared: ${JSON.stringify(note.parts)}`);
   assert.ok(note.after, `no follow-up sample: ${JSON.stringify(note)}`);
   assert.equal(note.after.alive, true, `wasp died after the collision: ${JSON.stringify(note)}`);
   assert.equal(note.after.spawned, 1, `collision released the pack: ${JSON.stringify(note)}`);

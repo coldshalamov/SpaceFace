@@ -598,30 +598,39 @@ export const survivalWave = {
     if (!target || target.alive === false) return;
     if (Number.isFinite(before.hull)) target.hull = before.hull;
     if (Number.isFinite(before.shield)) target.shield = before.shield;
+    // snapshotVitals names this field `armor`; the entity stores it as armorHp.
     if (Number.isFinite(before.armor)) target.armorHp = before.armor;
     // A centerline hit zeros Power, and Power's loss drops drive and weapon together.
     // That is "not actionable" on the next tick, which releases the pack without a kill.
     // The destruction is still pending (it applies at tick+1), so cancelling it here
-    // leaves the hull fightable. A chip that did not schedule a destroy stays.
-    this._cancelLessonSubsystemLoss(target);
+    // leaves the hull fightable. Only this payload's subsystem is touched, and only the
+    // health this hit removed comes back — an earlier chip on that part stays gone.
+    this._cancelLessonSubsystemLoss(target, payload);
   },
 
-  _cancelLessonSubsystemLoss(target) {
+  _cancelLessonSubsystemLoss(target, payload) {
+    const subsystemId = payload && payload.subsystemId;
+    if (!subsystemId) return;
+    // damageSubsystem has already subtracted `applied` from health. Zero means this hit
+    // did not consume the part, so a destroy armed earlier this tick is not ours to clear.
+    const applied = Number(payload.subsystemDamage);
+    if (!(applied > 0)) return;
     const table = this.state && this.state.combat && this.state.combat.entities;
     const runtime = table && table[target.id];
     if (!runtime || !runtime.subsystems) return;
+    const subsystem = runtime.subsystems[subsystemId];
     const tick = this.state.tick >>> 0;
-    for (const subsystem of Object.values(runtime.subsystems)) {
-      if (!subsystem || subsystem.lastDamageTick !== tick) continue;
-      const pending = subsystem.pendingTransition;
-      // Armed by this hit: damageSubsystem schedules the destroy for the next tick.
-      if (!pending || pending.destroyed !== true || pending.atTick !== tick + 1) continue;
-      subsystem.health = subsystem.maxHealth > 0 ? subsystem.maxHealth : Math.max(1, subsystem.health);
-      subsystem.destroyed = false;
-      subsystem.pendingTransition = null;
-      if ((runtime.pendingSubsystemTransitionCount | 0) > 0) {
-        runtime.pendingSubsystemTransitionCount -= 1;
-      }
+    if (!subsystem || subsystem.lastDamageTick !== tick) return;
+    const pending = subsystem.pendingTransition;
+    // Armed by this hit: damageSubsystem schedules the destroy for the next tick.
+    if (!pending || pending.destroyed !== true || pending.atTick !== tick + 1) return;
+    const restored = subsystem.health + applied;
+    const cap = Number(subsystem.maxHealth);
+    subsystem.health = cap > 0 ? Math.min(cap, restored) : restored;
+    subsystem.destroyed = false;
+    subsystem.pendingTransition = null;
+    if ((runtime.pendingSubsystemTransitionCount | 0) > 0) {
+      runtime.pendingSubsystemTransitionCount -= 1;
     }
   },
 
