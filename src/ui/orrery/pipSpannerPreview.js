@@ -110,15 +110,39 @@ export function createPipSpannerMotion(rig, { draw = () => {}, schedule, cancel,
   };
 }
 
+// Destroying this private context (renderer.dispose + forceContextLoss) is a long synchronous stall,
+// 0.6-2.1 s at Launch on the swarm-entry route; deferring it only moves the stall into flight. The
+// default renderer is therefore parked on retire with its context alive and reused by the next
+// preview, which moves the parked canvas into the new canvas's place. Scene, rig, lease and asset
+// runtime are still released at once; at most one context is ever parked.
+const defaultRendererFactory = options => new THREE.WebGLRenderer(options);
+let parked = null;
+const takeParked = (canvas) => {
+  const entry = parked; parked = null;
+  if (!entry) return null;
+  let lost = true;
+  try { lost = !!entry.renderer.getContext?.().isContextLost?.(); } catch (_) {}
+  if (lost) { try { entry.renderer.dispose(); } catch (_) {} return null; }
+  const reused = entry.canvas;
+  for (const { name, value } of Array.from(canvas.attributes || [])) reused.setAttribute(name, value);
+  canvas.replaceWith?.(reused);
+  return entry;
+};
+
 export function createPipSpannerPreview({ canvas, doc = canvas?.ownerDocument,
-  onReady = () => {}, onError = () => {}, onProject = () => {}, rendererFactory = options => new THREE.WebGLRenderer(options),
+  onReady = () => {}, onError = () => {}, onProject = () => {}, rendererFactory = defaultRendererFactory,
   leaseFactory = createAuthoredAssetLease, compile = compileScenePipelinesSafely,
-  retire = retireWhenProgramsReady } = {}) {
+  retire = retireWhenProgramsReady, reuseRenderer } = {}) {
   if (!canvas?.getContext) return null;
   const win = doc?.defaultView || globalThis;
+  const reusable = reuseRenderer ?? rendererFactory === defaultRendererFactory;
   let renderer;
-  try { renderer = rendererFactory({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' }); }
-  catch (error) { onError(error); return null; }
+  const reuse = reusable ? takeParked(canvas) : null;
+  if (reuse) { canvas = reuse.canvas; renderer = reuse.renderer; }
+  else {
+    try { renderer = rendererFactory({ canvas, antialias: true, alpha: true, powerPreference: 'low-power' }); }
+    catch (error) { onError(error); return null; }
+  }
   renderer.debug && (renderer.debug.checkShaderErrors = false);
   renderer.setPixelRatio(Math.min(win.devicePixelRatio || 1, 2));
   renderer.setClearColor(0x000000, 0);
@@ -170,6 +194,9 @@ export function createPipSpannerPreview({ canvas, doc = canvas?.ownerDocument,
       retire({ programs: renderer.info?.programs, parallelCompile: !!renderer.extensions?.has('KHR_parallel_shader_compile'),
         context: renderer.getContext?.(), finish() {
           rig?.dispose(); lease.release('pip-spanner-preview-retired'); disposeAuthoredAssetRuntime(renderer);
+          if (reusable && !parked && !renderer.getContext?.().isContextLost?.()) {
+            renderer.renderLists?.dispose?.(); parked = { canvas, renderer }; return;
+          }
           renderer.dispose(); renderer.forceContextLoss?.();
         } });
     },
