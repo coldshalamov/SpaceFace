@@ -954,4 +954,18 @@ Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and
 - Origin CYCLE yields when the first tip stands in its run (the now cursor still names the cycle).
 - Same-side figures take vertical lanes (15px) and stay inside the tape height so they do not run into the reading under it.
 
-**Checked:** filled ledger (5 close entries) at 390×844 / 960×540 / 1280×720 / 1920×1080 — no −750/−480 or CYCLE/figure tangle; empty ledger still clean at those sizes. Remaining at 960/phone: list row "Bought 20u…" vs reading "−750 cr" (reading band under the tape, not tape SVG geometry). Selectors/IDs unchanged. Shots: `ui-shots/polish28p/{before,after}/`, `compare-ledger-filled-960.png`, `compare-tape-crop-960.png`.
+**Checked:** filled ledger (5 close entries) at 390×844 / 960×540 / 1280×720 / 1920×1080 — no −750/−480 or CYCLE/figure tangle; empty ledger still clean at those sizes. The 960/phone list-vs-reading leftover is closed in § Station Ledger list and phone column below. Selectors/IDs unchanged. Shots: `ui-shots/polish28p/{before,after}/`, `compare-ledger-filled-960.png`, `compare-tape-crop-960.png`.
+
+## Station Ledger list and phone column (ui-polish-28)
+
+**Before:** with receipts, at 960×540 the left column put the title, the two intro lines and the count above the list, so only the first of three rows showed and the other two ran under the destination foot. On a phone the desktop right column stayed pinned beside the list (`position:absolute`, left ≈ 46%), so the tape, the vertical TRADE reading and the purse lay over the rows, and the purse ran off the right edge (to x=541 on a 390 screen).
+
+**After:**
+- **960×540-class** (`stationTabsLayouts.js`, 761–1100 wide, ≤640 tall, desktop only): the left column is a flex column that ends at the body. While the list has rows, the intro and the narrator's line yield (the empty ledger keeps them), the count line stays, rows are 6px tighter, and the list fills the rest and scrolls under its fade. All three rows now show (list 116px, was 16px of view).
+- **Phone** (`mobileScreenLayouts.js`, `data-sf-mobile` only): the right column follows the list in flow. The tape is 196px at full width, then the reading (52px figure), then the purse centred at 240×190. Each entry puts CYCLE above the line, so the item and its figure share the full row ("Sold 20u Ore Iron · Vesta-For… +1,120 cr"). The arrow-key hint is hidden on glass.
+- 1280×720 and 1920×1080 are pixel-identical before and after (filled ledger). The empty ledger is clean at 960 and on phone. Selectors and IDs are unchanged.
+
+**Still open:** at 800×600 the whole berth head (vitals wrap into two rows) leaves the tab body almost no room on every station tab. That's a berth layout issue, not the Ledger's.
+
+Shots (seeded ledger, scratch script): `ui-shots/polish28q/{before,final}/`, phone scroll strips `a4/strip.png`, empty `empty2/`.
+

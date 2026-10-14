@@ -226,6 +226,22 @@ export const MOBILE_SCREEN_CSS = `
       -webkit-mask-image:none !important; mask-image:none !important; }
   }
   ${B} .sx-dossier > .orr-ct-route { height:240px !important; }
+  /* Ledger: the desktop right column is pinned beside the list; on a phone it follows the list in flow,
+     so the tape, the reading and the purse each take the full width instead of laying over the rows.
+     Each entry puts its cycle above the line, so the item and its figure get the whole row; the arrow-key hint
+     has no keys to name on glass. */
+  ${B} .sx-ledger .st-ledger-entry-body { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"time" "line" "note" !important; row-gap:3px !important; }
+  ${B} .sx-ledger > .sx-ledger__right { position:relative !important; inset:auto !important; left:auto !important; width:100% !important;
+    display:flex !important; flex-direction:column !important; gap:6px !important; overflow:visible !important; }
+  ${B} .sx-ledger > .st-ledger { padding-bottom:0 !important; }
+  ${B} .sx-ledger .sx-ledger__keys { display:none !important; }
+  ${B} .sx-ledger__right > .orr-ledger-tape { height:196px !important; margin:0 !important; }
+  ${B} .sx-ledger__right > .sx-ledger__row { display:flex !important; flex-direction:column !important; align-items:stretch !important; gap:12px !important; }
+  ${B} .sx-ledger__row > .sx-ledger__read { width:100% !important; }
+  ${B} .sx-ledger__read::before { inset:-12px -16px !important; }
+  ${B} .sx-ledger__read-num { font-size:52px !important; }
+  ${B} .sx-ledger__read-title { font-size:18px !important; }
+  ${B} .sx-ledger__row > .orr-ledger-purse { align-self:center !important; width:240px !important; height:190px !important; margin:0 0 8px !important; }
   /* Destination foot stays on glass: the seven tabs on a 4-column grid, then Comms and Undock. */
   ${B} footer.sxb-ops { position:relative !important; bottom:auto !important; flex:0 0 auto !important;
     display:flex !important; flex-wrap:wrap !important; align-items:center !important; gap:2px 10px !important; margin:0 !important;

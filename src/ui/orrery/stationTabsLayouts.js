@@ -1812,6 +1812,16 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 @media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
   ${D} .sx-ledger > .st-ledger { max-width:40%; }
   ${D} .sx-ledger > .st-ledger .st-sub-h { font-size:24px !important; }
+  /* the list owns what the ~192px body leaves under the title: the intro and the narrator's line yield, and
+     the rows scroll under the list's fade instead of running under the destination foot (only the first of
+     three showed). The count (and archive page) line stays. */
+  ${D} .sx-ledger > .st-ledger { display:flex !important; flex-direction:column !important; gap:0 !important; height:100% !important; min-height:0 !important; padding-top:20px !important; padding-bottom:0 !important; }
+  ${D} .sx-ledger > .st-ledger > * { flex:none; }
+  ${D} .sx-ledger:has(.st-ledger-list:not([hidden])) :is(.st-ledger-intro, .st-ledger-story) { display:none !important; }
+  ${D} .sx-ledger .st-ledger-status { margin-top:8px !important; }
+  ${D} .sx-ledger .st-ledger-list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; margin:6px 0 0 !important; }
+  ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:6px !important; padding-bottom:6px !important; }
+  ${D} .sx-ledger .sx-ledger__keys { display:none !important; }
   /* the purse needs ~220px so its ring (radius = half its box less 60, as at 1280) clears NET · CR */
   ${D} .sx-ledger > .sx-ledger__right { left:calc(40% + 22px) !important; display:grid !important; grid-template-columns:minmax(0, 1fr) 220px; grid-template-rows:auto minmax(0, 1fr); column-gap:8px; row-gap:0 !important; }
   /* the tape keeps the height its axis figures need (~176px: majors ~21px apart, as before); the reading rises into
