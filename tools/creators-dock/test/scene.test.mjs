@@ -4801,6 +4801,172 @@ test('a refused undo does not replace bias with a getter', () => {
   assert.equal(back.ok === false || back.history.present !== present, true);
 });
 
+function sceneWithFuture() {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const sceneA = getComposition('dock.intercept-cargo');
+  sceneA.title = 'A';
+  const sceneB = getComposition('dock.intercept-cargo');
+  sceneB.title = 'B';
+  const undone = restoreHistory(commit(commit(history, sceneA), sceneB), 'undo');
+  const present = undone.history.present;
+  const future = undone.history.future[0];
+  for (const scene of [present, future]) {
+    const grid = scene.grid;
+    Object.defineProperty(scene, 'grid', {
+      enumerable: true,
+      configurable: true,
+      get() { return grid; },
+    });
+  }
+  return { undone, present, future };
+}
+
+test('undo restores world credits on the caller world', () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const credits = world.credits;
+  undone.history.future[0].toJSON = function () {
+    world.credits = 1;
+    Object.defineProperty(world, 'credits', { value: 1, writable: false, configurable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  const desc = Object.getOwnPropertyDescriptor(world, 'credits');
+  assert.equal(world.credits, credits);
+  assert.equal(desc.value, credits);
+  assert.equal(desc.writable, true);
+  assert.equal(clone(present).world.credits, credits);
+  assert.equal(redone.history.present.world, world);
+  assert.equal(redone.history.present.world.credits, credits);
+});
+
+test('undo restores credits and zoom sealed by defineProperties', () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const camera = present.camera;
+  const credits = world.credits;
+  const zoom = camera.zoom;
+  undone.history.future[0].toJSON = function () {
+    world.credits = 1;
+    Object.defineProperties(world, {
+      credits: { value: 1, writable: false, configurable: false },
+    });
+    camera.zoom = 0;
+    Object.defineProperties(camera, {
+      zoom: { value: 0, writable: false, configurable: false },
+    });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(world.credits, credits);
+  assert.equal(camera.zoom, zoom);
+  assert.equal(Object.getOwnPropertyDescriptor(world, 'credits').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(camera, 'zoom').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(world, 'credits').value, credits);
+  assert.equal(Object.getOwnPropertyDescriptor(camera, 'zoom').value, zoom);
+  assert.equal(clone(present).world.credits, credits);
+  assert.equal(clone(present).camera.zoom, zoom);
+  assert.equal(redone.history.present.world, world);
+  assert.equal(redone.history.present.camera, camera);
+});
+
+test('a reflected credits getter is not left on the caller', () => {
+  const deleted = sceneWithFuture();
+  const world = deleted.present.world;
+  const credits = world.credits;
+  deleted.future.toJSON = function () {
+    delete world.credits;
+    Reflect.defineProperty(world, 'credits', {
+      configurable: false,
+      enumerable: true,
+      get() { return 4; },
+    });
+    return this;
+  };
+  const back = restoreHistory(deleted.undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  const desc = Object.getOwnPropertyDescriptor(world, 'credits');
+  assert.equal(desc.value, credits);
+  assert.equal(desc.writable, true);
+  assert.equal(typeof desc.get, 'undefined');
+  assert.equal(clone(deleted.present).world.credits, credits);
+  world.credits = 9;
+  assert.equal(world.credits, 9);
+  assert.equal(redone.history.present, deleted.present);
+  assert.equal(redone.history.present.world, world);
+
+  const accessor = sceneWithFuture();
+  const host = accessor.present.world;
+  const original = host.credits;
+  accessor.future.toJSON = function () {
+    let next = original;
+    Object.defineProperty(host, 'credits', {
+      configurable: true,
+      enumerable: true,
+      get() { return next; },
+      set(value) { next = value; },
+    });
+    Reflect.defineProperty(host, 'credits', {
+      configurable: false,
+      enumerable: true,
+      get() { return 4; },
+    });
+    return this;
+  };
+  const undone = restoreHistory(accessor.undone.history, 'undo');
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const restored = restoreHistory(undone.history, 'redo');
+  assert.equal(restored.ok, true, (restored.issues || []).join('\n'));
+  const after = Object.getOwnPropertyDescriptor(host, 'credits');
+  assert.equal(after.value, original);
+  assert.equal(after.writable, true);
+  assert.equal(typeof after.get, 'undefined');
+  assert.equal(clone(accessor.present).world.credits, original);
+  host.credits = 9;
+  assert.equal(host.credits, 9);
+  assert.equal(restored.history.present, accessor.present);
+
+  const existing = sceneWithFuture();
+  const live = existing.present.world;
+  const starting = live.credits;
+  let slot = starting;
+  Object.defineProperty(live, 'credits', {
+    configurable: true,
+    enumerable: true,
+    get() { return slot; },
+    set(value) { slot = value; },
+  });
+  existing.future.toJSON = function () {
+    Reflect.defineProperty(live, 'credits', {
+      configurable: false,
+      enumerable: true,
+      get() { return 4; },
+    });
+    return this;
+  };
+  const refused = restoreHistory(existing.undone.history, 'undo');
+  assert.equal(refused.ok, true, (refused.issues || []).join('\n'));
+  const returned = restoreHistory(refused.history, 'redo');
+  assert.equal(returned.ok, true, (returned.issues || []).join('\n'));
+  const kept = Object.getOwnPropertyDescriptor(live, 'credits');
+  assert.equal(kept.value, starting);
+  assert.equal(kept.writable, true);
+  assert.equal(typeof kept.get, 'undefined');
+  assert.equal(clone(existing.present).world.credits, starting);
+  live.credits = 9;
+  assert.equal(live.credits, 9);
+  assert.equal(returned.history.present, existing.present);
+  assert.equal(returned.history.present.world, live);
+});
+
 test('prototype tags behind a get-only pocket stay keep', () => {
   for (const mode of ['push', 'splice', 'length', 'replace']) {
     const history = createHistory(getComposition('dock.intercept-cargo'));

@@ -434,6 +434,7 @@ let freezeBase = null;
 
 function blocksDefine(obj, prop, desc) {
   if (!protectedHas(obj) || !desc || typeof desc !== 'object') return false;
+  if (typeof desc.get === 'function') return true;
   const current = Object.getOwnPropertyDescriptor(obj, prop);
   const changesValue = !!current
     && Object.prototype.hasOwnProperty.call(current, 'value')

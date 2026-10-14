@@ -1,10 +1,61 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
 import {
-  captureAccessorTrees, definePropertyBase, detachData, liveObjectsIn, protectLiveObjects,
+  captureAccessorTrees, captureLive, definePropertyBase, detachData, liveObjectsIn, protectLiveObjects,
   readAccessor, restoreLive, restoreOwnShadows, snapshotInheritedArrays, unprotectLiveObjects,
 } from './stableJson.mjs';
 
 const CAP = 100;
+const parkedOrigin = new WeakMap();
+const adoptedLive = new WeakSet();
+
+function capturePrimitiveAccessors(value, seen, records) {
+  if (!value || typeof value !== 'object' || seen.has(value)) return;
+  seen.add(value);
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        capturePrimitiveAccessors(descriptor.value, seen, records);
+      }
+    }
+    return;
+  }
+  const entries = [];
+  for (const key of Object.getOwnPropertyNames(value)) {
+    if (key === 'toJSON' || key === 'grid' || key === 'objects') continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor) continue;
+    if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      if (descriptor.value && typeof descriptor.value === 'object') {
+        capturePrimitiveAccessors(descriptor.value, seen, records);
+      }
+      continue;
+    }
+    if ((key !== 'credits' && key !== 'zoom') || typeof descriptor.get !== 'function') continue;
+    let read;
+    try {
+      read = descriptor.get.call(value);
+    } catch (error) {
+      continue;
+    }
+    if (typeof read === 'number') {
+      entries.push({ key, value: read, enumerable: descriptor.enumerable !== false });
+    }
+  }
+  if (entries.length) records.push({ kind: 'object', object: value, entries });
+}
+
+function rememberOrigin(stored, project) {
+  if (!stored || stored === project) return;
+  const origin = parkedOrigin.get(project) || project;
+  if (stored !== origin) parkedOrigin.set(stored, origin);
+}
+
+function parkScene(project, protect) {
+  const stored = withoutGridAccessor(project, protect);
+  rememberOrigin(stored, project);
+  return stored;
+}
 
 function canHostGrid(value) {
   return !!value && (typeof value === 'object' || typeof value === 'function');
@@ -439,7 +490,11 @@ function runShielded(scenes, fn) {
   activeArrays = snapshotArrays(scenes);
   const protectedLive = liveObjectsIn(scenes);
   const shadows = [];
-  for (const scene of scenes) captureAccessorTrees(scene, new Set(), shadows, true, false, []);
+  for (const scene of scenes) {
+    captureLive(scene, new Set(), shadows);
+    capturePrimitiveAccessors(scene, new Set(), shadows);
+    captureAccessorTrees(scene, new Set(), shadows, true, false, []);
+  }
   for (const entry of activeAccessors) {
     if (entry.value && typeof entry.value === 'object') {
       for (const object of liveObjectsIn([entry.value])) protectedLive.add(object);
@@ -840,6 +895,7 @@ function stripScenes(scenes, protect = []) {
   for (const scene of scenes) {
     const stripped = withoutGridAccessor(scene, protect);
     if (!stripped) return null;
+    rememberOrigin(stripped, scene);
     out.push(stripped);
   }
   return out;
@@ -932,7 +988,7 @@ function undo(history) {
   const protect = historyScenes(history);
   const past = stripScenes(history.past.slice(0, -1), protect);
   const present = history.past[history.past.length - 1];
-  const leaving = withoutGridAccessor(history.present, protect);
+  const leaving = parkScene(history.present, protect);
   const future = stripScenes(history.future, protect);
   if (!past || !leaving || !future) return null;
   return { past, present, future: [leaving, ...future] };
@@ -941,11 +997,14 @@ function undo(history) {
 function redo(history) {
   if (!history.future.length) return history;
   const protect = historyScenes(history);
-  const [present, ...futureTail] = history.future;
-  const leaving = withoutGridAccessor(history.present, protect);
+  const [parked, ...futureTail] = history.future;
+  const origin = parkedOrigin.get(parked);
+  const present = origin || parked;
+  const leaving = parkScene(history.present, protect);
   const past = stripScenes(history.past, protect);
   const future = stripScenes(futureTail, protect);
   if (!leaving || !past || !future) return null;
+  if (origin) adoptedLive.add(origin);
   return { past: past.concat([leaving]), present, future };
 }
 
@@ -967,15 +1026,18 @@ function restoreHistoryBody(history, direction) {
     if (!same.ok) return { ok: false, history, issues: same.issues };
     return { ok: true, history, issues: [] };
   }
-  const present = withoutGridAccessor(stepped.present, [
-    history.present,
-    ...history.past,
-    ...history.future,
-    stepped.present,
-    ...stepped.past,
-    ...stepped.future,
-  ]);
-  if (!present) return { ok: false, history, issues: ['scene could not be cloned'] };
+  let present = stepped.present;
+  if (!(direction === 'redo' && adoptedLive.has(stepped.present))) {
+    present = withoutGridAccessor(stepped.present, [
+      history.present,
+      ...history.past,
+      ...history.future,
+      stepped.present,
+      ...stepped.past,
+      ...stepped.future,
+    ]);
+    if (!present) return { ok: false, history, issues: ['scene could not be cloned'] };
+  }
   const next = present === stepped.present ? stepped : { ...stepped, present };
   const gate = requireOnePlayer(history.present, { ok: true, project: next.present, issues: [] });
   if (!gate.ok) return { ok: false, history, issues: gate.issues };
