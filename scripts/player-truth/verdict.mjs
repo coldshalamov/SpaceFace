@@ -1,3 +1,4 @@
+import { formatHarnessOverhead } from './checks.mjs';
 // Short verdict: header, one line per check, worst offenders. Readable in under a minute.
 
 const ICON = { PASS: 'PASS', FAIL: 'FAIL', UNKNOWN: 'UNKNOWN', 'N/A': 'n/a', ENVIRONMENT: 'ENVIRONMENT', ADVISORY: 'ADVISORY' };
@@ -62,6 +63,12 @@ export function renderVerdict({ meta, results, overall, paths }) {
     L.push('');
     L.push('Advisory (not a FAIL):');
     for (const r of advisory) L.push(`- ${r.id} — ${r.detail}`);
+  }
+  const frameRow = results.find((r) => r.id === 'frame_time');
+  const harness = frameRow && (frameRow.harness_overhead || (frameRow.frame && frameRow.frame.harness_overhead));
+  if (harness) {
+    const raw = frameRow.frame && frameRow.frame.raw;
+    L.push(`- Harness overhead (reader tasks excluded from frame_time): ${formatHarnessOverhead(harness)}${raw ? ` · harness-inclusive p99 ${Math.round(raw.p99)} ms, ${raw.longTasks} long tasks` : ''}`);
   }
   L.push('');
   L.push('| Check | Result | Measured | Threshold |');

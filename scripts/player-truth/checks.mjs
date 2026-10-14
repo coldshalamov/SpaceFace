@@ -844,21 +844,110 @@ export function checkLoadout(trace) {
     detail, offenders.slice(0, 6), offenders.filter((o) => o.t != null).slice(0, 1));
 }
 
+/** Reader (harness) main-thread windows recorded by reader.js as `rw` on each sample. Old traces have none. */
+export function readerWindows(trace) {
+  const out = [];
+  for (const s of trace.samples || []) {
+    const d = Number(s.rw);
+    if (Number.isFinite(d) && d > 0 && Number.isFinite(Number(s.t))) out.push({ t: Number(s.t), d, end: Number(s.t) + d, px: !!s.px, f: s.f });
+  }
+  return out;
+}
+
+function overlapMs(a0, a1, windows) {
+  let ms = 0;
+  for (const w of windows) { const lo = Math.max(a0, w.t); const hi = Math.min(a1, w.end); if (hi > lo) ms += hi - lo; }
+  return ms;
+}
+
+/**
+ * Split frame dts and long tasks into the game's share and the harness reader's share.
+ * A frame's dt is reduced by the reader window of the sample just before it (that work sits inside
+ * the dt interval). A long task is reduced by the reader time it overlaps; one whose remainder is
+ * under the long-task bar is the reader's and is reported as harness overhead, not graded.
+ */
+export function splitHarnessOverhead(trace, samples, longs, longTaskMs) {
+  const windows = readerWindows(trace);
+  if (!windows.length) return { filtered: false, samples, longs, overhead: null };
+  const all = trace.samples || [];
+  const prevRw = new Map();
+  for (let i = 1; i < all.length; i++) {
+    const a = all[i - 1]; const b = all[i];
+    if (b.f === a.f + 1 && Number.isFinite(Number(a.rw))) prevRw.set(b, Number(a.rw));
+  }
+  let framesAdjusted = 0;
+  const gameSamples = samples.map((s) => {
+    const rw = prevRw.get(s) || 0;
+    if (!(rw > 0)) return s;
+    framesAdjusted++;
+    return { ...s, rawDt: s.dt, dt: Math.max(0, +(s.dt - rw).toFixed(1)) };
+  });
+  const graded = []; const excluded = []; let trimmed = 0;
+  for (const l of longs) {
+    const ov = overlapMs(l.t, l.t + l.d, windows);
+    if (ov <= 0) { graded.push(l); continue; }
+    const rest = l.d - ov;
+    if (rest >= longTaskMs) { trimmed++; graded.push({ ...l, rawD: l.d, d: +rest.toFixed(1), readerMs: +ov.toFixed(1) }); } else excluded.push({ ...l, readerMs: +ov.toFixed(1) });
+  }
+  const t0 = samples.length ? samples[0].t : -Infinity; const t1 = samples.length ? samples[samples.length - 1].t : Infinity;
+  const play = windows.filter((w) => w.t >= t0 && w.t <= t1);
+  const sum = (xs, k) => xs.reduce((n, x) => n + x[k], 0);
+  const max = (xs, k) => xs.reduce((n, x) => Math.max(n, x[k]), 0);
+  const overhead = {
+    count: excluded.length,
+    totalMs: +sum(excluded, 'd').toFixed(1),
+    maxMs: +max(excluded, 'd').toFixed(1),
+    trimmedLongTasks: trimmed,
+    readerWindows: play.length,
+    readerTotalMs: +sum(play, 'd').toFixed(1),
+    readerMaxMs: +max(play, 'd').toFixed(1),
+    framesAdjusted,
+    worst: excluded.slice().sort((a, b) => b.d - a.d).slice(0, 3).map((l) => ({ t: l.t, d: l.d, sim: l.sim, readerMs: l.readerMs })),
+  };
+  return { filtered: true, samples: gameSamples, longs: graded, overhead };
+}
+
+function percentiles(samples) {
+  const dts = samples.map((s) => s.dt).sort((a, b) => a - b);
+  return { p50: dts[Math.floor(dts.length * 0.5)], p99: dts[Math.floor(dts.length * 0.99)] };
+}
+
 function frameStats(trace) {
   const T = THRESHOLDS;
-  const samples = playSamples(trace).filter((s) => s.dt > 0);
-  if (samples.length < 10) return null;
-  const dts = samples.map((s) => s.dt).sort((a, b) => a - b);
-  const p50 = dts[Math.floor(dts.length * 0.5)];
-  const p99 = dts[Math.floor(dts.length * 0.99)];
-  const t0 = samples[0].t; const t1 = samples[samples.length - 1].t;
-  const longs = (trace.longTasks || []).filter((l) => l.t >= t0 && l.t <= t1 && l.d >= T.longTaskMs).sort((a, b) => b.d - a.d);
+  const rawSamples = playSamples(trace).filter((s) => s.dt > 0);
+  if (rawSamples.length < 10) return null;
+  const t0 = rawSamples[0].t; const t1 = rawSamples[rawSamples.length - 1].t;
+  const rawLongs = (trace.longTasks || []).filter((l) => l.t >= t0 && l.t <= t1 && l.d >= T.longTaskMs);
+  const split = splitHarnessOverhead(trace, rawSamples, rawLongs, T.longTaskMs);
+  const samples = split.samples;
+  const longs = split.longs.slice().sort((a, b) => b.d - a.d);
+  const { p50, p99 } = percentiles(samples);
   const worstFrames = samples.slice().sort((a, b) => b.dt - a.dt).slice(0, 3);
   const offenders = [
-    ...longs.slice(0, 3).map((l) => ({ line: `long task ${fmt(l.d, 0)} ms at sim ${fmt(l.sim, 1)} s (frame ${l.f})`, t: l.t, sim: l.sim, box: null })),
+    ...longs.slice(0, 3).map((l) => ({ line: `long task ${fmt(l.d, 0)} ms${l.rawD != null ? ` (${fmt(l.rawD, 0)} ms less ${fmt(l.readerMs, 0)} ms harness reader)` : ''} at sim ${fmt(l.sim, 1)} s (frame ${l.f})`, t: l.t, sim: l.sim, box: null })),
     ...worstFrames.map((s) => ({ line: `frame ${s.f}: ${fmt(s.dt, 0)} ms at sim ${fmt(s.sim, 1)} s (${s.e.length} entities${s.info ? `, ${s.info.calls} draws` : ''})`, t: s.t, sim: s.sim, box: null })),
   ];
-  return { p50, p99, longTasks: longs.length, samples: samples.length, offenders };
+  const stats = { p50, p99, longTasks: longs.length, samples: rawSamples.length, offenders };
+  if (split.filtered) {
+    const raw = percentiles(rawSamples);
+    stats.harnessFiltered = true;
+    stats.raw = { p50: raw.p50, p99: raw.p99, longTasks: rawLongs.length };
+    stats.harnessOverhead = split.overhead;
+  }
+  return stats;
+}
+
+/** Frame payload stored on the verdict row. `raw` keeps the harness-inclusive numbers for old baselines. */
+function framePayload(stats, softwareGl) {
+  const frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl, samples: stats.samples };
+  if (stats.harnessFiltered) { frame.harnessFiltered = true; frame.raw = stats.raw; frame.harness_overhead = stats.harnessOverhead; }
+  return frame;
+}
+
+export function formatHarnessOverhead(h) {
+  if (!h) return null;
+  return `harness reader excluded: ${h.count} long tasks (total ${fmt(h.totalMs, 0)} ms, max ${fmt(h.maxMs, 0)} ms)` +
+    `${h.trimmedLongTasks ? `, ${h.trimmedLongTasks} trimmed` : ''} · ${h.readerWindows} reader windows (total ${fmt(h.readerTotalMs, 0)} ms, max ${fmt(h.readerMaxMs, 0)} ms) · ${h.framesAdjusted} frame dts reduced`;
 }
 
 /** Mean of the 1-minute loads recorded at the start and end of a run. Null when either sample is missing. */
@@ -883,7 +972,8 @@ export function frameLoadNoise(headLoad, baseLoad) {
 export function gradeSoftwareFrameTime(stats, baseline, load = null) {
   const T = THRESHOLDS;
   const value = `software-renderer evidence · p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
-  const frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: true, samples: stats.samples };
+  // A stored verdict frame (regrade) has no offenders; carry its fields, including raw/harness_overhead.
+  const frame = stats.offenders ? framePayload(stats, true) : { ...stats, softwareGl: true };
   const policy = `p99 ≤${Math.round(T.frameP99RegressionRatio * 100)}% and ≤+${T.frameP99RegressionAbsMs} ms · long tasks ≤${Math.round(T.longTaskRegressionRatio * 100)}% and ≤+${T.longTaskRegressionAbs}`;
   const bare = !baseline;
   const unmeasured = !bare && (baseline.p99 == null || baseline.longTasks == null || !Number.isFinite(Number(baseline.p99)) || !Number.isFinite(Number(baseline.longTasks)));
@@ -895,8 +985,13 @@ export function gradeSoftwareFrameTime(stats, baseline, load = null) {
       detail: bare ? 'software-renderer evidence only; no --baseline to grade regression' : `software-renderer evidence only; baseline ${who} produced no frame-time measurement`,
     };
   }
-  const p99 = Number(stats.p99); const lt = Number(stats.longTasks);
+  // A baseline recorded before harness filtering still has the reader's tasks in its numbers. Grade the
+  // head's harness-inclusive numbers against it so neither side is flattered (backwards compatible).
+  const likeForLike = stats.harnessFiltered && stats.raw && baseline.harnessFiltered !== true;
+  const headNums = likeForLike ? stats.raw : stats;
+  const p99 = Number(headNums.p99); const lt = Number(headNums.longTasks);
   const baseP99 = Number(baseline.p99); const baseLt = Number(baseline.longTasks);
+  const basisNote = likeForLike ? ' · baseline predates harness filtering: graded on harness-inclusive numbers' + ` (head raw p99 ${fmt(p99, 0)} ms · ${lt} long tasks)` : '';
   const p99Cap = Math.max(baseP99 * T.frameP99RegressionRatio, baseP99 + T.frameP99RegressionAbsMs);
   const ltCap = Math.max(baseLt * T.longTaskRegressionRatio, baseLt + T.longTaskRegressionAbs);
   const fail = p99 > p99Cap || lt > ltCap;
@@ -910,14 +1005,14 @@ export function gradeSoftwareFrameTime(stats, baseline, load = null) {
     return {
       status: 'ADVISORY', value, frame,
       threshold: `no regression vs ${commit}: p99 ≤${fmt(p99Cap, 0)} ms · long tasks ≤${fmt(ltCap, 0)} · advisory when 1m load differs by >${Math.round(T.frameLoadNoiseFrac * 100)}%`,
-      detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote} — advisory, numbers would ${fail ? 'FAIL' : 'PASS'}; not a FAIL`,
+      detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote}${basisNote} — advisory, numbers would ${fail ? 'FAIL' : 'PASS'}; not a FAIL`,
     };
   }
   if (noise.head != null && noise.base != null) frame.load = { head1m: +noise.head.toFixed(3), base1m: +noise.base.toFixed(3), rel: +noise.rel.toFixed(3), advisory: false };
   return {
     status: fail ? 'FAIL' : 'PASS', value, frame,
     threshold: `no regression vs ${commit}: p99 ≤${fmt(p99Cap, 0)} ms · long tasks ≤${fmt(ltCap, 0)}`,
-    detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote}`,
+    detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote}${basisNote}`,
   };
 }
 
@@ -932,7 +1027,7 @@ export function regradeSoftwareFrameTime(results, baselineFrame, { commit, basel
   row.status = graded.status;
   row.value = graded.value;
   row.threshold = graded.threshold;
-  row.detail = graded.detail;
+  row.detail = row.harness_overhead ? `${graded.detail} · ${formatHarnessOverhead(row.harness_overhead)}` : graded.detail;
   row.frame = graded.frame;
   return true;
 }
@@ -945,15 +1040,17 @@ export function checkFrameTime(trace) {
     const graded = gradeSoftwareFrameTime(stats, trace.meta.frameBaseline || null);
     const row = result('frame_time', 'Frame time / long tasks', graded.status, graded.value, graded.threshold, graded.detail, stats.offenders.slice(0, 4), graded.status === 'FAIL' ? stats.offenders.filter((o) => o.t != null).slice(0, 2) : []);
     row.frame = graded.frame;
+    if (stats.harnessOverhead) { row.harness_overhead = stats.harnessOverhead; row.detail = `${row.detail} · ${formatHarnessOverhead(stats.harnessOverhead)}`; }
     return row;
   }
   const value = `p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
   if (trace.meta.performanceContext?.contended === true) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', value,
     `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`,
-    `${stats.samples} play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Observer readbacks and screenshots remain included in these measurements.`,
+    `${stats.samples} play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Reader windows (pixel readbacks) are excluded when the trace records them; screenshots remain included.`,
     stats.offenders.slice(0, 4), stats.offenders.filter((o) => o.t != null).slice(0, 2));
   const row = result('frame_time', 'Frame time / long tasks', stats.p99 > T.frameP99Ms || stats.longTasks ? 'FAIL' : 'PASS', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, `${stats.samples} play frames`, stats.offenders.slice(0, 4), stats.offenders.filter((o) => o.t != null).slice(0, 2));
-  row.frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: false, samples: stats.samples };
+  row.frame = framePayload(stats, false);
+  if (stats.harnessOverhead) { row.harness_overhead = stats.harnessOverhead; row.detail = `${row.detail} · ${formatHarnessOverhead(stats.harnessOverhead)}`; }
   return row;
 }
 
