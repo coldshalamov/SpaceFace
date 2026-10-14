@@ -327,7 +327,7 @@ test('an armed foundry promotion is retired before reveal on every route, and re
   // Any committed foundry bake disarms the promotion (the opening freeze bake included).
   assert.match(src, /this\._envMapSource = iblSource;\s*(\/\/[^\n]*\s*)*if \(iblSource === IBL_SOURCE_FOUNDRY\) this\._foundryEnvPending = false;/);
   // Flight entry drains a still-armed promotion when no veiled seam ran (real-GPU readiness, Continue).
-  assert.match(src, /onBus\('mode:changed'[^\n]*\n(\s*\/\/[^\n]*\n)*\s*if \(mode === 'flight'\) this\._drainFoundryEnvPending\?\.\(\);/);
+  assert.match(src, /onBus\('mode:changed'[^\n]*\n(\s*\/\/[^\n]*\n)*\s*if \(mode === 'flight'\) \{\s*this\._drainFoundryEnvPending\?\.\(\);/);
   // The first playable paint (every route) stamps the env it lit with.
   assert.match(src, /render\.foundryEnvAtReveal = \{\s*source: owner\._envMapSource \?\? null,\s*pending: owner\._foundryEnvPending === true,/);
 });

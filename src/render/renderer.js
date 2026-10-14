@@ -20437,7 +20437,17 @@ export const render = {
       // Backstop for the armed foundry promotion: the sector-load yields and the un-awaited
       // preparePostOpeningPipelines normally drain it under the veil, but a route that reaches
       // flight without either (real-GPU readiness, Continue) still bakes before the first frame.
-      if (mode === 'flight') this._drainFoundryEnvPending?.();
+      if (mode === 'flight') {
+        this._drainFoundryEnvPending?.();
+        // Debug hook: the env the revealed flight lights with. firstPlayable paint (below)
+        // re-stamps foundryEnvAtReveal on routes that present a playable frame.
+        state.render.foundryEnvAtFlight = {
+          source: this._envMapSource ?? null,
+          pending: this._foundryEnvPending === true,
+          foundryResident: !!this._foundryEnvTexture,
+          frozen: this._openingEnvFrozen === true,
+        };
+      }
       if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
       if (mode === 'loading') {
         const recook = this._sessionLiveSectorCookedId != null
