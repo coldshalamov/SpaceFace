@@ -28,6 +28,7 @@
 
 import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { nowNs } from './simRealm.mjs';
+import { projectNpcJobsById } from './npcJobsMirror.mjs';
 import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
 import {
@@ -524,7 +525,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
-  'sectorSim.field', 'npcJobs.byId', 'factionPresence.boarding',
+  'sectorSim.field', 'npcJobs.byId', 'npcJobs.revision', 'factionPresence.boarding',
   'automation.meta', 'automation.traders', 'automation.fleet',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
@@ -621,7 +622,7 @@ export const DOMAIN_COLD_OFFSET = DOMAIN_COLD_TICKS >> 1;
 // Roots not listed keep the size-tier schedule unchanged.
 export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
-  sectorSim: 10, npcJobs: 30, factionPresence: 10, automation: 30,
+  sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
   sites: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
@@ -675,6 +676,7 @@ function domainCadenceFor(rootKey) {
 //   staggerCold: defaults true; explicit false restores the aligned
 //     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
 const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
+const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
 
 // Named diagnostic wire profiles. The ordinary runtime installs the empty
 // profile; callers must opt into a name before the first differ is created so
@@ -721,6 +723,12 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  // DOMAIN_MIRROR_KEYS keeps dotted leaf paths as one logical root on the worker wire; the main
+  // lane splits that segment while grafting it into state.npcJobs.byId.
+  if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
+      || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'byId')) {
+    return NPC_JOBS_MIRROR_RULE;
+  }
   for (const rule of activeDomainConfig.leafViews) {
     if (segs.length !== rule.leafSegs) continue;
     const p = rule.segs;
@@ -733,10 +741,19 @@ function domainLeafViewFor(segs) {
   return null;
 }
 
+function isNpcJobsByIdPath(segs) {
+  return (segs.length === 1 && segs[0] === 'npcJobs.byId')
+    || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'byId');
+}
+
 // Shallow key-drop projection for a leaf-view rule. Returns a copy minus the
 // dropped keys — never mutates the live value; callers sign/clone the result
 // so the facade stores exactly the projected (shipped) content.
 function projectDomainLeaf(rule, v) {
+  // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
+  // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
+  // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
   let has = false;
   for (const k of rule.drop) {
@@ -1177,7 +1194,7 @@ export function createDomainDiffer(options = {}) {
     return n;
   }
 
-  function walk(path, segs, v, tick, updates, stats) {
+  function walk(path, segs, v, tick, updates, stats, npcJobsRevision) {
     const node = ensureNode(path, segs);
     // This owner publishes detached immutable snapshots only at settlement.
     // A new stock/hold receipt must not wait for the large-leaf cold cadence.
@@ -1199,7 +1216,7 @@ export function createDomainDiffer(options = {}) {
       if (enumDue) {
         const liveKids = new Set(Object.keys(v));
         for (const c of liveKids) {
-          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats);
+          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision);
         }
         if (node.kids) {
           for (const c of node.kids) {
@@ -1222,7 +1239,7 @@ export function createDomainDiffer(options = {}) {
             dropNode(`${path}.${c}`);
             node.kids.delete(c);
           } else {
-            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats);
+            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision);
           }
         }
       }
@@ -1244,8 +1261,18 @@ export function createDomainDiffer(options = {}) {
     }
     node.leaf = true;
     const leafRule = domainLeafViewFor(segs);
+    // npcJobsRuntime already increments this small revision on create/delete/reset.  Use that
+    // existing lifecycle signal to bypass the large-leaf cadence for structural changes, while
+    // leaving ordinary phase/progress changes on their bounded cold cadence.  This avoids a
+    // per-tick Object.keys membership scan and keeps the authoritative worker object untouched.
+    const npcJobsRevisionChanged = isNpcJobsByIdPath(segs)
+      && Number.isSafeInteger(npcJobsRevision)
+      && node.npcJobsRevision !== npcJobsRevision;
+    if (isNpcJobsByIdPath(segs) && Number.isSafeInteger(npcJobsRevision)) {
+      node.npcJobsRevision = npcJobsRevision;
+    }
     const cadence = domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]);
-    if (node.lastSign >= 0 && !freshDraftSnapshot) {
+    if (node.lastSign >= 0 && !freshDraftSnapshot && !npcJobsRevisionChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       const interval = Math.max(tierTicks, cadence);
@@ -1303,8 +1330,9 @@ export function createDomainDiffer(options = {}) {
       const start = nowNs();
       const updates = [];
       const stats = { shipBytes: 0, ships: 0, signedBytes: 0, oversize: [] };
+      const npcJobsRevision = resolveDomainValue(state, 'npcJobs.revision');
       for (const key of DOMAIN_MIRROR_KEYS) {
-        walk(key, [key], resolveDomainValue(state, key), tick, updates, stats);
+        walk(key, [key], resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
       let probe = null;
