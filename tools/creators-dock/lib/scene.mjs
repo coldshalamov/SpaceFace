@@ -1,6 +1,7 @@
 // Pure XZ scene model for Creator's Dock.
 // No Node builtins, no physics step. The lab is the only simulator.
 
+import { actorStroke, fieldStroke, markerStroke, OBJECTIVE_REACH } from './inspector.mjs';
 import {
   captureAccessorTrees,   captureLive, detachData, liveObjectsIn, protectLiveObjects,
   readAccessor, restoreInheritedArrays, restoreLive, restoreOwnShadows, sameJson, snapshotInheritedArrays,
@@ -1201,17 +1202,39 @@ export function screenToWorld(sx, sy, camera, view) {
   };
 }
 
-export function hitTest(project, sx, sy, camera, view) {
-  const objects = [...asObjectList(project && project.objects)].reverse();
-  for (const object of objects) {
-    if (!Number.isFinite(object.x) || !Number.isFinite(object.z)) continue;
+function paintLayer(object) {
+  if (!object) return 0;
+  if (object.kind === 'actor') return 3;
+  if (object.kind === 'route' || object.kind === 'attachment') return 2;
+  if (object.kind === 'trigger' || object.kind === 'objective') return 1;
+  if (object.kind === 'field') return 0;
+  return 1;
+}
+
+export function hitTest(project, sx, sy, camera, view, draw) {
+  const zoom = camera && Number.isFinite(camera.zoom) && camera.zoom > 0 ? camera.zoom : 1;
+  const objects = asObjectList(project && project.objects).map((object, index) => ({ object, index }));
+  objects.sort((a, b) => {
+    const layer = paintLayer(b.object) - paintLayer(a.object);
+    if (layer !== 0) return layer;
+    return b.index - a.index;
+  });
+  for (const entry of objects) {
+    const object = entry.object;
+    if (!object || !Number.isFinite(object.x) || !Number.isFinite(object.z)) continue;
     const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
-    const zoom = camera && Number.isFinite(camera.zoom) && camera.zoom > 0 ? camera.zoom : 1;
-    const authored = typeof object.radius === 'number' && Number.isFinite(object.radius) ? object.radius : 0;
-    const radius = authored * zoom;
     const dx = sx - ox;
     const dy = sy - oy;
-    if (dx * dx + dy * dy <= radius * radius) return object.id;
+    if (object.kind === 'objective') {
+      if (Math.abs(dx) + Math.abs(dy) <= OBJECTIVE_REACH) return object.id;
+      continue;
+    }
+    const radius = object.kind === 'actor'
+      ? actorStroke(object, zoom, draw)
+      : object.kind === 'field'
+        ? fieldStroke(object, zoom)
+        : markerStroke(object, zoom);
+    if (Math.hypot(dx, dy) <= radius + 1e-6) return object.id;
   }
   return null;
 }

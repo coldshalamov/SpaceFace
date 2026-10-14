@@ -1,6 +1,6 @@
 import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
 import {
-  FRAME_INPUT_FIELDS, deletePath, discRadius, fieldStroke, fieldsFor, markerStroke, numberFieldValue, readPath, writeFrameInput, writePath,
+  FRAME_INPUT_FIELDS, OBJECTIVE_REACH, actorStroke, deletePath, discRadius, fieldStroke, fieldsFor, markerStroke, numberFieldValue, readPath, writeFrameInput, writePath,
 } from '/lib/inspector.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
@@ -275,7 +275,7 @@ function colliderText(object) {
   if (object.kind !== 'actor') return 'Colliders draw for actors. Mass and radius come from overrides or the live profile.';
   const radius = object.overrides && object.overrides.radius;
   const mass = object.overrides && object.overrides.mass;
-  const hint = dialect.draw && dialect.draw[object.profile];
+  const hint = dialect.draw && object.profile ? dialect.draw[object.profile] : undefined;
   const r = radius ?? (hint && hint.radius) ?? 'profile';
   const m = mass ?? (hint && hint.mass) ?? 'profile';
   return `Collider radius ${r}. Mass ${m}.`;
@@ -343,7 +343,7 @@ function drawGrid() {
 function drawActor(object) {
   const cam = project().camera;
   const point = worldToScreen(object.x || 0, object.z || 0, cam, view());
-  const radius = colliderRadius(object) * (cam.zoom || 1);
+  const radius = actorStroke(object, cam.zoom, dialect.draw);
   const color = object.isPlayer ? '#e2b15a' : object.role === 'hazard' || object.role === 'ghost' ? '#e07a6a' : '#7ec8c3';
   ctx.save();
   ctx.strokeStyle = color;
@@ -372,13 +372,6 @@ function drawActor(object) {
   ctx.restore();
 }
 
-function colliderRadius(object) {
-  if (object.overrides && Number.isFinite(object.overrides.radius)) return object.overrides.radius;
-  const hint = dialect.draw && dialect.draw[object.profile];
-  if (hint && Number.isFinite(hint.radius)) return hint.radius;
-  return 8;
-}
-
 function drawMarker(object) {
   const cam = project().camera;
   const point = worldToScreen(object.x || 0, object.z || 0, cam, view());
@@ -387,10 +380,10 @@ function drawMarker(object) {
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
   if (object.kind === 'objective') {
-    ctx.moveTo(point.sx, point.sy - 8);
-    ctx.lineTo(point.sx + 8, point.sy);
-    ctx.lineTo(point.sx, point.sy + 8);
-    ctx.lineTo(point.sx - 8, point.sy);
+    ctx.moveTo(point.sx, point.sy - OBJECTIVE_REACH);
+    ctx.lineTo(point.sx + OBJECTIVE_REACH, point.sy);
+    ctx.lineTo(point.sx, point.sy + OBJECTIVE_REACH);
+    ctx.lineTo(point.sx - OBJECTIVE_REACH, point.sy);
     ctx.closePath();
   } else {
     ctx.arc(point.sx, point.sy, markerStroke(object, cam.zoom), 0, Math.PI * 2);
@@ -470,7 +463,7 @@ function pointerWorld(event) {
 canvas.addEventListener('pointerdown', (event) => {
   canvas.focus();
   const point = pointerWorld(event);
-  const hit = hitTest(project(), point.sx, point.sy, project().camera, view());
+  const hit = hitTest(project(), point.sx, point.sy, project().camera, view(), dialect.draw);
   const before = history.present;
   if (event.button === 1 || spaceDown || !hit) {
     drag = { mode: 'pan', x: point.sx, y: point.sy, camera: { ...project().camera }, before };

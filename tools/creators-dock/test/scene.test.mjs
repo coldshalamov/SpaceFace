@@ -7,7 +7,7 @@ import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject } from '../lib/export.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
-import { TRIGGER_ASSERTION_FIELDS, deletePath, discRadius, fieldsFor, markerStroke, numberFieldValue, writeFrameInput, writePath } from '../lib/inspector.mjs';
+import { TRIGGER_ASSERTION_FIELDS, actorStroke, deletePath, discRadius, fieldStroke, fieldsFor, markerStroke, numberFieldValue, writeFrameInput, writePath } from '../lib/inspector.mjs';
 import { evaluateOracleKernel } from '../../../src/testing/lab/oracleKernel.js';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
@@ -5017,6 +5017,37 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(hitTest({ objects: [wideTrigger] }, 150, 100, unitZoom, view), 't');
   assert.equal(hitTest({ objects: [wideTrigger] }, 200, 100, unitZoom, view), 't');
   assert.equal(hitTest({ objects: [wideTrigger] }, 201, 100, unitZoom, view), null);
+  const stage = { width: 800, height: 600 };
+  const stageCam = { x: 0, z: 0, zoom: 3.2 };
+  const profileDraw = {
+    'ship.starter': { radius: 14 },
+    'ship.kestrel': { radius: 14 },
+  };
+  const bank = getComposition('dock.bank-shot');
+  const player = objectById(bank, 'player');
+  const stone = objectById(bank, 'stone');
+  assert.equal(player.profile, 'ship.starter');
+  assert.equal(actorStroke(player, 3.2, profileDraw), 14 * 3.2);
+  assert.equal(actorStroke({ kind: 'actor', profile: 'ship.kestrel' }, 3.2, profileDraw), 14 * 3.2);
+  assert.equal(actorStroke(stone, 3.2, profileDraw), 8 * 3.2);
+  assert.equal(hitTest(bank, 415, 300, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 543, 204, stageCam, stage, profileDraw), 'stone');
+  assert.notEqual(hitTest(bank, 450, 300, stageCam, stage, profileDraw), 'player');
+  const zeroActor = { id: 'zero-actor', kind: 'actor', x: 0, z: 0, overrides: { radius: 0 } };
+  assert.equal(actorStroke(zeroActor, 1, profileDraw), 0);
+  assert.equal(hitTest({ objects: [zeroActor] }, 115, 100, unitZoom, view), null);
+  const objective = { id: 'mark', kind: 'objective', x: 0, z: 0 };
+  assert.equal(hitTest({ objects: [objective] }, 400, 294, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [objective] }, 400, 280, stageCam, stage), null);
+  const zone = objectById(bank, 'bank_zone');
+  assert.equal(zone.radius, 80);
+  assert.equal(fieldStroke(zone, 3.2), 89.6);
+  const zoneOnly = { objects: [zone] };
+  assert.equal(hitTest(zoneOnly, 617.6, 204, stageCam, stage), 'bank_zone');
+  assert.equal(hitTest(zoneOnly, 637.6, 204, stageCam, stage), null);
+  const zeroField = { id: 'flat', kind: 'field', x: 0, z: 0, radius: 0 };
+  assert.equal(fieldStroke(zeroField, 1), 0);
+  assert.equal(hitTest({ objects: [zeroField] }, 115, 100, unitZoom, view), null);
   const finalOutside = evaluateOracleKernel({
     trace: [
       { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },

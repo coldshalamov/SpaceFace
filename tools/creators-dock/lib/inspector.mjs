@@ -12,19 +12,35 @@ export const ACTOR_OVERRIDE_FIELDS = Object.freeze([
   { key: 'overrides.mass', label: 'Mass', kind: 'number' },
 ]);
 
+export const OBJECTIVE_REACH = 8;
+
 export function discRadius(object) {
   if (!object || typeof object.radius !== 'number' || !Number.isFinite(object.radius)) return null;
   return object.radius;
 }
 
+function zoomScale(zoom) {
+  return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+}
+
 export function markerStroke(object, zoom = 1) {
-  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-  return discRadius(object) * scale;
+  return discRadius(object) * zoomScale(zoom);
 }
 
 export function fieldStroke(object, zoom = 1) {
-  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-  return discRadius(object) * scale * 0.35;
+  return discRadius(object) * zoomScale(zoom) * 0.35;
+}
+
+export function colliderRadius(object, draw) {
+  const overrides = object && object.overrides;
+  if (overrides && typeof overrides.radius === 'number' && Number.isFinite(overrides.radius)) return overrides.radius;
+  const hint = draw && object && draw[object.profile];
+  if (hint && typeof hint.radius === 'number' && Number.isFinite(hint.radius)) return hint.radius;
+  return 8;
+}
+
+export function actorStroke(object, zoom = 1, draw) {
+  return colliderRadius(object, draw) * zoomScale(zoom);
 }
 
 export function fieldsFor(object, profileChoices) {
