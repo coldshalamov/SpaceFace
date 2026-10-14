@@ -93,6 +93,29 @@ export async function launchPreparationChoice(page, { ruleset, word }) {
   return awaitPreparationChoice(page, { ruleset, includeButton: false });
 }
 
+function packedEntityRows(rows) {
+  const rowCount = rows.length;
+  const packed = new Float64Array(rowCount * 12);
+  for (let i = 0; i < rowCount; i++) packed.set(rows[i], i * 12);
+  const indexOf = (key) => {
+    if (typeof key !== 'string') return -1;
+    const index = Number(key);
+    return Number.isInteger(index) && index >= 0 && index < rowCount
+      && String(index) === key ? index : -1;
+  };
+  // Keep the array surface consumed by the checks, but materialize row views only
+  // while read. Retaining one typed-array view per body still costs ~100 heap bytes
+  // per observation, even when all numeric values share a single backing store.
+  return new Proxy(new Array(rowCount), {
+    has(target, key) { return indexOf(key) >= 0 || Reflect.has(target, key); },
+    get(target, key, receiver) {
+      const index = indexOf(key);
+      return index >= 0 ? packed.subarray(index * 12, (index + 1) * 12)
+        : Reflect.get(target, key, receiver);
+    },
+  });
+}
+
 /** Keep all play/opening data; a paused preparation needs only its latest diagnostic frames. */
 export function appendReaderDrain(trace, data) {
   // CDP returns millions of separately boxed numeric rows on a long Racing route.
@@ -102,11 +125,7 @@ export function appendReaderDrain(trace, data) {
     if (!Array.isArray(rows) || !rows.length
       || !rows.every(row => Array.isArray(row) && row.length === 12
         && row.every(value => typeof value === 'number'))) continue;
-    const packed = new Float64Array(rows.length * 12);
-    for (let i = 0; i < rows.length; i++) {
-      packed.set(rows[i], i * 12);
-      rows[i] = packed.subarray(i * 12, (i + 1) * 12);
-    }
+    sample.e = packedEntityRows(rows);
   }
   trace.samples.push(...data.samples);
   if (trace.meta.playStartSim == null) {
