@@ -27,12 +27,22 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   // Reading clientWidth inside the draw loop is a forced layout every frame; the box only moves
   // with a real resize, so a ResizeObserver (window resize as fallback) re-arms one re-measure
   // instead. Where neither API exists the flag stays set and every draw measures, as before.
+  // The observer's entry already carries the host's laid-out size, so taking it from there
+  // (rounded like clientWidth) keeps the first flight frame from forcing the layout of everything
+  // that just mounted — reading root.clientWidth there cost 47-73 ms on software GL.
   let sizeDirty = true;
+  let observedSize = null;
   const markSizeDirty = () => { sizeDirty = true; };
+  const onObservedResize = (entries) => {
+    const entry = entries && entries[entries.length - 1];
+    const rect = entry && entry.contentRect;
+    if (rect) observedSize = { width: Math.round(rect.width), height: Math.round(rect.height) };
+    sizeDirty = true;
+  };
   let sizeObserver = null;
   let windowResizeBound = false;
   if (typeof ResizeObserver === 'function') {
-    sizeObserver = new ResizeObserver(markSizeDirty);
+    sizeObserver = new ResizeObserver(onObservedResize);
     sizeObserver.observe(root);
   } else if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('resize', markSizeDirty);
@@ -41,8 +51,10 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   const observingSize = !!(sizeObserver || windowResizeBound);
   function syncSize() {
     sizeDirty = !observingSize;
-    const width = root.clientWidth || window.innerWidth || 0;
-    const height = root.clientHeight || window.innerHeight || 0;
+    const measured = observedSize || { width: root.clientWidth, height: root.clientHeight };
+    observedSize = null;
+    const width = measured.width || window.innerWidth || 0;
+    const height = measured.height || window.innerHeight || 0;
     const pixelWidth = Math.max(1, Math.round(width * dpr));
     const pixelHeight = Math.max(1, Math.round(height * dpr));
     if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
