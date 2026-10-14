@@ -8,7 +8,7 @@ const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
 const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
 const NOOP = { show() {}, hide() {}, destroy() {} };
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
-export const FIRST_DRAW_REVEAL_CAP_MS = 8000;
+export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
@@ -167,12 +167,14 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     // occluded window) while the game presents frames on its own cadence — pair it with a
     // self-clearing timer channel like the continue-fade veil so the shell still lifts.
     // A renderer frame alone is not the world: the opening first draw can hold for seconds
-    // after flight starts, and lifting then revealed the HUD over a black playfield. Wait for
-    // the opening submission's first draw too (renderers without that stamp keep the frame gate),
-    // bounded by a cap so the veil can never stick. The fade itself is unchanged.
+    // after flight starts (15 s on headless SwiftShader), and lifting then revealed the HUD over a
+    // black playfield. Wait for the renderer's first playable paint too — firstPlayableFrameAt is
+    // stamped after the first draw reached the screen (renderers without that field keep the
+    // frame gate) — bounded by a cap below the 20.5 s escape so the veil can never stick.
+    // The fade itself is unchanged.
     const render = state?.render;
-    const tracksFirstDraw = !!render && Object.prototype.hasOwnProperty.call(render, 'openingSubmissionFirstDrawSubmittedAt');
-    const firstDrawSubmitted = () => !tracksFirstDraw || Number.isFinite(render.openingSubmissionFirstDrawSubmittedAt);
+    const tracksFirstDraw = !!render && Object.prototype.hasOwnProperty.call(render, 'firstPlayableFrameAt');
+    const firstDrawSubmitted = () => !tracksFirstDraw || Number.isFinite(render.firstPlayableFrameAt);
     let capped = false;
     revealCapTimer = setTimeout(() => {
       revealCapTimer = null; capped = true;

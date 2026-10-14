@@ -273,7 +273,7 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
       const overlay = fakeElement();
       const document = { getElementById: () => overlay, querySelector: () => null };
       const info = { render: { frame: 10 } };
-      const state = { render: { renderer: { info }, openingSubmissionFirstDrawSubmittedAt: null } };
+      const state = { render: { renderer: { info }, firstPlayableFrameAt: null } };
       const presenter = createLoadingPresenter({ document, bus, state });
       bus.emit('game:loadingProgress', { id: 'entering-flight', progress: 0.96 });
       bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
@@ -284,15 +284,15 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
 
     const a = run();
     assert.equal(a.overlay.classList.contains('hidden'), false,
-      'a presented frame without the opening first draw must keep the veil up');
-    a.state.render.openingSubmissionFirstDrawSubmittedAt = 1234;
+      'a presented frame before the first playable paint must keep the veil up');
+    a.state.render.firstPlayableFrameAt = 1234;
     pump(2);
-    assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first draw submitted');
+    assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first playable paint landed');
     assert.equal(a.state.render.veilLiftReason, 'first-draw');
     a.presenter.destroy();
 
     const b = run();
-    t.mock.timers.tick(7900); pump(1);
+    t.mock.timers.tick(19900); pump(1);
     assert.equal(b.overlay.classList.contains('hidden'), false, 'still waiting before the cap');
     t.mock.timers.tick(200); pump(1);
     assert.equal(b.overlay.classList.contains('hidden'), true, 'the cap lifts the veil so it cannot stick');
