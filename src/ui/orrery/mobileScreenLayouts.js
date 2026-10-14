@@ -435,7 +435,8 @@ export const MOBILE_SCREEN_CSS = `
   ${C} .gm-search-container { grid-column:1 / -1 !important; grid-row:2 !important; width:100% !important; }
   ${C} .gm-weather { grid-column:1 / -1 !important; grid-row:3 !important; justify-self:start; text-align:left; }
   ${C} .gm-rail { grid-column:1 / -1 !important; grid-row:4 !important; }
-  /* Zoom strip rode the foot's detail lines on phone; park it clearly above the apron. */
+  /* Zoom strip: on phone --gm-foot clears the stacked inspector + foot; +28px sits the strip
+     in the map stage just above OVERVIEW/ROUTE, fully clear of the foot rail and detail lines. */
   ${C} .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 28px) !important; left:calc(var(--gm-stage-x, 14px) + 8px) !important; }
   ${C} .gm-navfoot { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px !important; }
   ${C} .gm-navfoot .gm-nav-row { flex-direction:column !important; align-items:flex-start !important; gap:4px !important; min-width:0; }

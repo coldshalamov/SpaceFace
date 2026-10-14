@@ -1006,11 +1006,14 @@ Shots: `ui-shots/polish28t/{before,after}/`, `{before,after}-phone-touch/`, `com
 
 **After:**
 - **`galaxyMap.js` (2D label layout, not perf render):** `.gmh-tools` joins the measured chrome rects fed to `placeChartLabels`. The edge ruler's geometry is shared (`_edgeScaleLayout` / `_edgeScaleReservedRect`) and reserved on SYSTEM/GALAXY before labels seat, so names keep clear of the scale. At 960 the colliding zone name yields rather than print under the chrome; 1280/1920 stay clear (pixel-identical aside from tiny label/noise drift).
-- **`mobileScreenLayouts.js` (phone only):** the chart head gets a fourth row for `.gm-weather` so QUIET sits under the search band, and `.gmh-tools` parks above the apron instead of on the foot's detail lines.
+- **`mobileScreenLayouts.js` (phone only):** the chart head gets a fourth row for `.gm-weather` so QUIET sits under the search band; `.gmh-tools` uses `bottom: calc(var(--gm-foot) + 28px)` on the phone sheet.
+- **`chartHub.js` (phone-gated `--gm-foot` only):** apron.top alone under-measured the visual chrome on phone — the navfoot paints above the apron box, and the inspector (OVERVIEW/ROUTE/…) stacks under the stage. When `data-sf-mobile="1"`, `--gm-foot` takes the highest of apron / navfoot / inspector / tabs tops so the strip sits in the map stage just above OVERVIEW, fully clear of the foot rail and of "0 WU from origin" / "157 WU". Desktop still measures apron only (inspector is stage-right; navfoot matches apron), so 960/1280/1920 stay identical.
 
 Selectors and IDs are unchanged.
 
-**Checked:** 960×540 — chrome clear of map labels (Customs Corridor no longer on the scale). 1280×720 / 1920×1080 — effectively pixel-identical (label moves only / route-glow noise). 390×844 desktop window — pixel-identical. Phone 390×844 (`--phone`) — QUIET no longer buried; tools clear of DESTINATION/NEXT LEG. Focused `test/unified-map-professional.test.mjs`: 10/10 pass.
+**Checked:** 960×540 — chrome clear of map labels; pixel-identical to tip 75a6993d51 after this follow-up. 1280×720 — pixel-identical. 1920×1080 — route-glow noise only (~160px). Phone 390×844 (`--phone`) — QUIET not buried; tools clear of foot detail lines and of OVERVIEW/ROUTE (gap ~44px above tabs, ~126px above navfoot). Focused `test/unified-map-professional.test.mjs`: 10/10 pass.
+
+**Follow-up:** first phone lift (`+28px` on apron-based `--gm-foot`) only moved the strip from DESTINATION/NEXT LEG onto the POSITION/TRACKING detail lines; measuring the stacked inspector top on phone fixed it.
 
 **Closed:** polish28t leftover (map labels under zoom strip / per-bar; phone QUIET-on-search and tools-on-foot).
 
