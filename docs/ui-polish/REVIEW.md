@@ -821,11 +821,21 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 
 **After (`src/ui/orrery/settingsPreview.js` only, no markup, selector or ID changes):** `layout()` places the reading from the Cluster's own geometry. It stacks the degrees over FOV, sets it beside the fan in the gap between the dial's ring and the fan, and keeps it above the first key. When the stage is too narrow for that gap (the 133px stage at 960), it sits as one line under the Cluster. Non-compact stages keep the CSS placement.
 
-**Checked:** 390×844, 960×540, 1280×720, 1920×1080 on Settings → Video with the FOV row focused. The bench boxes show ≥25px from the dial ring at 1280 and the reading above key 1 at every size. Focused tests pass: fb-settings-a11y, pro-15-settings-row-ownership, settings-slider-persistence. **Still open (frozen file):** at 960×540 the Settings grid (`settingsLayouts.js`, #374 freeze) gives the preview a 133px column that runs past the right edge. The description reads "How wide the cam…", the HUD legend is cut off (HULL/SHIELD/ARMO) and the fan sits on the Cluster. That needs the grid to drop or narrow the preview at 901–1100 once the freeze lifts.
+**Checked:** 390×844, 960×540, 1280×720, 1920×1080 on Settings → Video with the FOV row focused. The bench boxes show ≥25px from the dial ring at 1280 and the reading above key 1 at every size. Focused tests pass: fb-settings-a11y, pro-15-settings-row-ownership, settings-slider-persistence. **Follow-up (ui-polish-28, after #371/#374 merge):** 901–1100 Settings grid now reserves `minmax(250px, 270px)` for the preview (was ~63px at 960 / ~122px at 1024). HULL/SHIELD/ARMOR and the FOV description stay on glass; FOV numeral still reads `50°`. See § Settings preview column @901–1100 below.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28i/{before,after}/settings-video-fov-*.png` and `compare-*.png`.
 
 *If #374's REVIEW.md changes conflict with this file on merge, keep both. This section only covers `src/ui/orrery/settingsPreview.js`.*
+
+## Settings preview column @901–1100 (ui-polish-28)
+
+**Before:** at 960×540 / 1024×768 the ≤1500 rule kept the stage at 516–560px, so the live preview collapsed to ~63px (960) / ~122px (1024). On Video→FOV the description read "How wide the cam…", HULL/SHIELD/ARMOR clipped off the right edge, and the ability fan sat on the Cluster. (FOV readout stacking was already fixed in `settingsPreview.js`.)
+
+**After (`src/ui/orrery/settingsLayouts.js` only, `min-width:901px and max-width:1100px`):** hang stays 176px (GAMEPLAY / CONTROLS intact), stage flexes, preview is `minmax(250px, 270px)` with tighter label/scale tracks so rows still fit. At 960 the preview is 270px; HULL/SHIELD/ARMOR and "How wide the camera sees." stay on glass; FOV numeral reads `50°`. 1280 / 1920 / phone (≤900, preview already hidden) unchanged by this block.
+
+**Checked:** 960×540, 1024×768, 1280×720, 1920×1080, 390×844. Shots: `ui-shots/polish28n/{before,after}/` (not committed).
+
+
 
 ## Demo end — register at full width, phone stack (ui-polish-28)
 

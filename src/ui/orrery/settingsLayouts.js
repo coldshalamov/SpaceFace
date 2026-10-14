@@ -297,6 +297,24 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:19px !important; }
   ${S} .sf-tabbar .sf-tab { min-height:40px !important; }
 }
+/* 901–1100 (960×540, 1024×768): the ≤1500 rule kept stage at 516–560px, so the preview
+   collapsed to ~63–122px and the HUD fan / HULL·SHIELD·ARMOR ran off the right edge.
+   Give the preview a real track and let the stage flex; tighten label/scale so rows still fit. */
+@media (min-width:901px) and (max-width:1100px) {
+  /* Hang stays wide enough for GAMEPLAY / CONTROLS; preview gets ≥250px so the HUD fan and
+     HULL·SHIELD·ARMOR stay on glass; stage flexes and keeps a readable FOV numeral (50°). */
+  ${S} { --orr-scale-w:140px; --orr-label-w:148px;
+    grid-template-columns:minmax(168px, 176px) minmax(0, 1fr) minmax(250px, 270px) !important;
+    column-gap:clamp(16px, 2vw, 24px) !important; }
+  ${S} #sf-settings-pane { padding-right:10px !important; }
+  ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:11.5px !important; letter-spacing:.07em !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 140px) 54px !important; column-gap:8px !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:11.5px !important; letter-spacing:.1em !important; }
+  ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
+}
+
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale folded into the zoom), as the station does */
 @media (min-width:2200px) and (min-height:1200px) { ${S}, ${C} { zoom:1.25; --k-s:1; } }
 @media (min-width:3400px) and (min-height:1900px) { ${S}, ${C} { zoom:1.85; --k-s:1; } }
