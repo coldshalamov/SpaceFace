@@ -5017,7 +5017,7 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(hitTest({ objects: [zeroTrigger] }, 115, 100, unitZoom, view), null);
   const wideTrigger = { id: 't', kind: 'trigger', x: 0, z: 0, radius: 100 };
   assert.equal(markerStroke(wideTrigger, 1), 100);
-  assert.equal(hitTest({ objects: [wideTrigger] }, 150, 100, unitZoom, view), 't');
+  assert.equal(hitTest({ objects: [wideTrigger] }, 150, 100, unitZoom, view), null);
   assert.equal(hitTest({ objects: [wideTrigger] }, 200, 100, unitZoom, view), 't');
   assert.equal(hitTest({ objects: [wideTrigger] }, 201, 100, unitZoom, view), null);
   const stage = { width: 800, height: 600 };
@@ -6747,4 +6747,48 @@ test('asteroid.spec profiles use the spawned radius', () => {
   assert.equal(actorStroke(other, 1), 12);
   assert.equal(hitTest({ objects: [other] }, 112, 100, camera, view), 'rock');
   assert.equal(hitTest({ objects: [other] }, 113, 100, camera, view), null);
+});
+
+test('painted dashes hit the stroke band and skip the undrawn disc', () => {
+  const stage = { width: 800, height: 600 };
+  const stageCam = { x: 0, z: 0, zoom: 3.2 };
+  const profileDraw = { 'ship.starter': { radius: 14 } };
+  const bank = getComposition('dock.bank-shot');
+  const alive = objectById(bank, 'alive_bank');
+  const alivePoint = worldToScreen(alive.x + alive.radius, alive.z, stageCam, stage);
+  const zoneOnly = { objects: [objectById(bank, 'bank_zone')] };
+  const alongOnly = { objects: [objectById(bank, 'along_x')] };
+  const aliveOnly = { objects: [objectById(bank, 'alive_bank')] };
+
+  assert.equal(hitTest(zoneOnly, 618, 204, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(alongOnly, 618, 204, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(aliveOnly, 618, 204, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 618, 204, stageCam, stage, profileDraw), 'along_x');
+  assert.notEqual(hitTest(bank, 618, 204, stageCam, stage, profileDraw), 'alive_bank');
+
+  assert.equal(hitTest(aliveOnly, 634.4416, 263.9296, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(alongOnly, 634.4416, 263.9296, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 634.4416, 263.9296, stageCam, stage, profileDraw), 'alive_bank');
+
+  assert.equal(hitTest(zoneOnly, 582.677, 139.443, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 582.677, 139.443, stageCam, stage, profileDraw), null);
+  assert.notEqual(hitTest(bank, 582.677, 139.443, stageCam, stage, profileDraw), 'bank_zone');
+
+  assert.equal(hitTest(alongOnly, 617.6, 204, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(aliveOnly, 617.6, 204, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 617.6, 204, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 637.6, 204, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, alivePoint.sx, alivePoint.sy, stageCam, stage, profileDraw), 'alive_bank');
+
+  const view = { width: 200, height: 200 };
+  const unitZoom = { x: 0, z: 0, zoom: 1 };
+  const place = { id: 'bank_zone', kind: 'field', fieldKind: 'place', x: 0, z: 0, radius: 80 };
+  assert.equal(hitTest({ objects: [place] }, 110, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [place] }, 127.6, 100, unitZoom, view), 'bank_zone');
+  assert.equal(hitTest({ objects: [place] }, 128.4, 100, unitZoom, view), 'bank_zone');
+  const trigger = { id: 't', kind: 'trigger', x: 0, z: 0, radius: 100 };
+  assert.equal(hitTest({ objects: [trigger] }, 200.4, 100, unitZoom, view), 't');
+  assert.equal(hitTest({ objects: [trigger] }, 200.5, 100, unitZoom, view), 't');
+  assert.equal(hitTest({ objects: [trigger] }, 200.6, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [trigger] }, 199.8200539935204, 105.99640064794446, unitZoom, view), null);
 });
