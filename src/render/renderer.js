@@ -12134,6 +12134,78 @@ export const render = {
       }
       return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
     };
+    // Post-reveal pre-link. Measured in player-truth (LINKLOG + CPU profile): the first playable
+    // seconds paid cold program links for subjects already resident when flight starts but
+    // hidden or not yet admitted (BX9 bracket bots' eye material ~1.1 s, the Vesper harmonic
+    // surface ~0.4 s) and for the common-rock material's NON-instanced variant (only the
+    // instanced pool variant links at loading; a promoted close rock links ~0.2-0.6 s). Touch
+    // them once on the exact post target in the loading->flight hand-off, still behind the
+    // loading shell, so the presented frames hit the program cache. The touch draws only the
+    // subject and restores visibility; nothing on screen changes. Once per flight entry.
+    let prelinkSerial;
+    let prelinkRocksDone = false;
+    const prelinkNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const touchPrelinkSubject = (subject) => {
+      const restore = revealSubjectForCompile(subject);
+      try { touchExactTargetSubject(subject); return true; } catch (error) {
+        laneWarn(this, 'postRevealPrelink', '[render] post-reveal prelink touch failed', error);
+        return false;
+      } finally { restore(); }
+    };
+    // Runs at the loading->flight hand-off and then once per prepared frame while the opening
+    // window is still unrevealed (first playable paint pending, or the flight veil holding the
+    // sim), because the authored bracket/Vesper roots attach a few frames into flight.
+    const prelinkPostRevealSubjects = () => {
+      const enterSerial = state.world && state.world.enterSerial != null ? state.world.enterSerial : null;
+      if (prelinkSerial !== enterSerial) {
+        prelinkSerial = enterSerial;
+        prelinkRocksDone = false;
+        this._postRevealPrelinkOpen = true;
+        state.render.postRevealPrelink = { roots: 0, rockMaterials: 0, ms: 0 };
+      }
+      if (this._postRevealPrelinkOpen !== true || !this.scene || !cam.obj) return;
+      const render = state.render;
+      const windowOpen = !Number.isFinite(render.firstPlayableFrameAt) || render.flightVeilHoldsSim === true;
+      const t0 = prelinkNow();
+      const sc = this.scene;
+      const roots = [];
+      const rockPools = [];
+      sc.traverse((o) => {
+        const ud = o.userData;
+        if (!ud) return;
+        if (ud.kind === 'bracket' || ud.kind === 'vesper') roots.push(o);
+        if (!prelinkRocksDone && ud.asteroidInstancePool && o.isInstancedMesh && o.material
+          && !Array.isArray(o.material) && o.geometry) rockPools.push(o);
+      });
+      const report = render.postRevealPrelink || {};
+      if (!prelinkRocksDone) {
+        prelinkRocksDone = true;
+        // One non-instanced twin per material: its program key differs from the pool's only by
+        // the instancing bit, so the twin links the variant a promoted close rock draws with.
+        const seen = new Set();
+        for (const pool of rockPools) {
+          if (seen.has(pool.material)) continue;
+          seen.add(pool.material);
+          const twin = new THREE.Mesh(pool.geometry, pool.material);
+          twin.frustumCulled = false;
+          twin.matrixAutoUpdate = false;
+          twin.matrixWorld.copy(pool.matrixWorld);
+          sc.add(twin);
+          try { touchPrelinkSubject(twin); } finally { sc.remove(twin); }
+        }
+        report.rockMaterials = seen.size;
+      }
+      if (roots.length > 0) {
+        for (const root of roots) touchPrelinkSubject(root);
+        report.roots = roots.length;
+        this._postRevealPrelinkOpen = false;
+      } else if (!windowOpen) {
+        this._postRevealPrelinkOpen = false;
+      }
+      report.ms = (report.ms || 0) + (prelinkNow() - t0);
+      render.postRevealPrelink = report;
+    };
+    this._postRevealPrelink = prelinkPostRevealSubjects;
     // Loading-shell form of the touch above: one render draws the whole group on the same target.
     const touchExactTargetSubjects = async (subjects, drawableSession = null) => {
       const list = (Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean);
@@ -20562,6 +20634,8 @@ export const render = {
       }
       if (mode !== 'flight') return;
       this._sessionRecookKeepGpu = false;
+      // After every mode:changed listener has run (authored roots attach in their own handlers).
+      queueMicrotask(() => { try { prelinkPostRevealSubjects(); } catch (error) { laneWarn(this, 'postRevealPrelink', '[render] post-reveal prelink failed', error); } });
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
       this._deferNoncriticalMeshStreaming = true;
@@ -28369,6 +28443,9 @@ export const render = {
 
   prepareFrame(alpha, frameDt, presentationFrame = null) {
     this._racingCourseView?.frame();
+    if (this._postRevealPrelinkOpen === true && this.state && this.state.mode === 'flight') {
+      try { this._postRevealPrelink?.(); } catch (_) { this._postRevealPrelinkOpen = false; }
+    }
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;
