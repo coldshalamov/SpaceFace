@@ -1,15 +1,17 @@
 // Anchor-relative yaw assist.
 //
 // A tether is only a physical rope. This helper owns one optional convenience: while the pilot
-// explicitly holds forward + turn, request the yaw rate that keeps the ship tangent to the live
-// ship-to-anchor radius. A swing-drive commitment may supply that missing turn sign for the
-// short window after a tangent dash, including while the line is still slack. It never owns
+// explicitly holds forward + turn near an existing swing's tangent, trim yaw to the live
+// ship-to-anchor angular rate. Entry and reversal remain manual. A swing-drive commitment may
+// supply the missing turn sign briefly after a tangent dash, even on a slack line. It never owns
 // thrust, boost, strafe, braking, speed, or radial force.
 
 export const ORBIT_ASSIST_TUNING_V1 = Object.freeze({
   id: 'orbitAssist.tuning.v1',
   minIntent: 0.05,
   tangentAlignTimeS: 0.55,
+  tangentCaptureAngleRad: Math.PI / 4,
+  maxHeadingCorrectionRateFraction: 0.25,
 });
 
 export const ORBIT_ASSIST_STRENGTH = Object.freeze({
@@ -30,13 +32,9 @@ export const ORBIT_ASSIST_STRENGTH = Object.freeze({
 export const ORBIT_SWING_TRACK_MARGIN = 0.9;
 
 /**
- * Line-locked yaw (tuning lab Phase 2a, design/program/lab/TUNING_LAB.md). A taut line already
- * turns the ship at the orbital rate, so while the assist owns yaw the hull may borrow that rate
- * (plus `rateMargin` headroom to keep trimming) instead of capping the swing at its own
- * maxYawRate. The only hard ceiling left is the physics owner's absolute body yaw clamp
- * (sg02DynamicBodyOwner SANE_MAX_YAW_RATE); the swing governor holds the orbit `governorMargin`
- * under it so the nose can still close any error. Measured over 18 scenarios x 5 seeds: spin
- * reaches the physical speed-cap bound (>= 100.1% of vcap / r_ship) with the nose within 3.3 deg.
+ * Physical line ceiling and governor margin. The controller retains the fitted hull's yaw
+ * authority; a rope no longer lends its larger angular rate or acceleration to the hull.
+ * The COM-aware swing governor still keeps small movable anchors trackable.
  */
 export const ORBIT_LINE_YAW_LOCK = Object.freeze({
   id: 'orbitAssist.lineYawLock.v1',
@@ -79,7 +77,7 @@ export function orbitSwingThrottleScale(telemetry, commandedSpeed) {
   const t = telemetry || {};
   const ceiling = positive(t.yawCeiling, 0);
   if (ceiling > 0) {
-    // Line-locked yaw: the nose can follow the line up to the physics ceiling. Compare the swing
+    // Compare the swing against the hull's bounded yaw ceiling, including the physical limit,
     // in the pair's centre-of-mass frame (the ship's own speed is only armShare of it on a
     // movable anchor) against that ceiling, held a margin under it.
     // A light target gives the ship a genuinely tiny COM arm. Flooring that share invents
@@ -172,28 +170,34 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   // longer line or slower swing requests less. Heading error only brings the nose onto the chosen
   // tangent, then falls to zero and leaves the exact angular-rate feed-forward term.
   const orbitalYawRate = (rx * relVz - rz * relVx) / (radius * radius);
-  // Heading capture takes the shortest path onto the selected tangent. The desired tangent already
-  // encodes the held orbit direction, so the shortest turn reaches the same nose heading as any
-  // longer route. Only the final desired rate is bounded, by the hull's own yaw authority: while
-  // the nose is off-tangent the proportional bridge may use full authority to swing onto the
-  // tangent, then it falls to zero and leaves the exact inverse-radius feed-forward term. A
-  // separate heading-correction cap starved that swing and made the orbit read under-speed.
   const desiredHeading = Math.atan2(tangentZ, tangentX);
   const headingError = wrapAngle(desiredHeading - finite(host.rot));
-  const alignmentYawRate = headingError
-    / (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
   const hullMaxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  // The pilot owns entry and reversal. Turning a backwards-facing hull onto a different
+  // tangent is a heading takeover, not orbit assistance; at +/-pi its shortest-path sign
+  // also flips abruptly. Assist only an existing swing near the chosen tangent.
+  if (selectedDirection * orbitalYawRate <= 1e-6
+      || Math.abs(headingError) > ORBIT_ASSIST_TUNING_V1.tangentCaptureAngleRad) {
+    const manual = inactive('manual-override');
+    Object.assign(manual.telemetry, {
+      selectedDirection, latchedDirection: 0, radius, tangentialSpeed,
+      desiredHeading, shortestHeadingError: headingError, headingError,
+      headingDirectionCommitted: false, orbitalYawRate, alignmentYawRate: 0,
+      maxYawRate: hullMaxYawRate, hullMaxYawRate, lentYawRate: null,
+      desiredYawRate: finite(input.turn) * hullMaxYawRate,
+    });
+    return manual;
+  }
+  const trimLimit = Math.min(
+    hullMaxYawRate * ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction,
+    Math.abs(orbitalYawRate) * 0.5,
+  );
+  const alignmentYawRate = clamp(headingError
+    / (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale), -trimLimit, trimLimit);
   const linePhase = String(options.tether.phase || 'slack');
   const lineLoaded = linePhase === 'capture' || linePhase === 'loaded' || linePhase === 'overload';
-  // Line-locked yaw: borrow the line's rate (with headroom) when it outruns the hull, up to the
-  // physics ceiling. The input owner applies the lent rate to the yaw profile for this tick.
-  let maxYawRate = hullMaxYawRate;
-  let lentYawRate = null;
-  if (lineLoaded && Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin > hullMaxYawRate) {
-    lentYawRate = Math.min(Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin,
-      ORBIT_LINE_YAW_LOCK.absoluteYawCap);
-    maxYawRate = Math.max(hullMaxYawRate, lentYawRate);
-  }
+  const maxYawRate = hullMaxYawRate;
+  const lentYawRate = null;
   const rawDesiredYawRate = orbitalYawRate + alignmentYawRate;
   const desiredYawRate = clamp(rawDesiredYawRate, -maxYawRate, maxYawRate);
   const turn = desiredYawRate / maxYawRate;
@@ -227,7 +231,7 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       saturated: desiredYawRate !== rawDesiredYawRate,
       hullMaxYawRate,
       lentYawRate,
-      yawCeiling: lineLoaded ? ORBIT_LINE_YAW_LOCK.absoluteYawCap : null,
+      yawCeiling: lineLoaded ? Math.min(hullMaxYawRate, ORBIT_LINE_YAW_LOCK.absoluteYawCap) : null,
       armShare,
       latchedDirection: fromAim ? selectedDirection : 0,
       reason: lineLoaded ? 'engaged' : 'line-slack',
@@ -261,13 +265,8 @@ function carrySwing(options, input, strength, inactive) {
   const direction = Math.sign(orbitalYawRate) || 1;
   const tangentialSpeed = (relVx * -rz + relVz * rx) / radius * direction;
   const hullMaxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
-  let maxYawRate = hullMaxYawRate;
-  let lentYawRate = null;
-  if (Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin > hullMaxYawRate) {
-    lentYawRate = Math.min(Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin,
-      ORBIT_LINE_YAW_LOCK.absoluteYawCap);
-    maxYawRate = Math.max(hullMaxYawRate, lentYawRate);
-  }
+  const maxYawRate = hullMaxYawRate;
+  const lentYawRate = null;
   const desiredYawRate = clamp(orbitalYawRate, -maxYawRate, maxYawRate);
   const anchorMass = positive(anchor.mass, positive(anchor.physicsBody && anchor.physicsBody.mass, 0));
   const hostMass = positive(host.mass, 1);
@@ -291,7 +290,7 @@ function carrySwing(options, input, strength, inactive) {
       desiredYawRate,
       turnIntent: desiredYawRate / maxYawRate,
       saturated: false,
-      yawCeiling: ORBIT_LINE_YAW_LOCK.absoluteYawCap,
+      yawCeiling: Math.min(hullMaxYawRate, ORBIT_LINE_YAW_LOCK.absoluteYawCap),
       armShare: anchorMass > 0 ? anchorMass / (anchorMass + hostMass) : 1,
       latchedDirection: 0,
       reason: 'swing-carry',

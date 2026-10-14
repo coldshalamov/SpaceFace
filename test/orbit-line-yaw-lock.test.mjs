@@ -39,17 +39,18 @@ test('the line-lock ceiling mirrors the physics owner absolute yaw clamp', () =>
   assert.equal(ORBIT_LINE_YAW_LOCK.absoluteYawCap, Number(match[1]));
 });
 
-test('a fast short-line swing borrows the line rate up to the physics ceiling', () => {
+test('a fast short-line swing retains the fitted hull yaw ceiling', () => {
   const r = orbitStep({ radius: 36, speed: 200 });     // 5.56 rad/s, far past a 2.65 rad/s hull
   assert.equal(r.active, true);
   const omega = 200 / 36;
   assert.ok(Math.abs(r.telemetry.orbitalYawRate - omega) < 1e-9);
-  assert.equal(r.telemetry.lentYawRate, Math.min(omega * ORBIT_LINE_YAW_LOCK.rateMargin, ORBIT_LINE_YAW_LOCK.absoluteYawCap));
-  assert.equal(r.telemetry.maxYawRate, r.telemetry.lentYawRate);
+  assert.equal(r.telemetry.lentYawRate, null);
+  assert.equal(r.telemetry.maxYawRate, r.telemetry.hullMaxYawRate);
   assert.equal(r.telemetry.hullMaxYawRate, 2.646);
-  assert.ok(Math.abs(r.telemetry.desiredYawRate - omega) < 1e-9, 'on the tangent the request is the exact orbital rate');
-  assert.equal(r.telemetry.saturated, false);
-  assert.equal(r.telemetry.yawCeiling, ORBIT_LINE_YAW_LOCK.absoluteYawCap);
+  assert.equal(r.telemetry.desiredYawRate, r.telemetry.hullMaxYawRate,
+    'orbital feed-forward stays bounded by the fitted ship turn rate');
+  assert.equal(r.telemetry.saturated, true);
+  assert.equal(r.telemetry.yawCeiling, r.telemetry.hullMaxYawRate);
 });
 
 test('a swing the hull can already follow borrows nothing', () => {

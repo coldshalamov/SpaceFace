@@ -696,6 +696,7 @@ export async function orbitAssistAcceptanceMatrix(options = {}) {
           entrySpeed,
           anchorMass,
           productionOrbitAssist: true,
+          initialOrbitHeadingOffsetRad: 0,
           controller: BASELINE_CONTROLLER,
           reelWindow: [],
         });

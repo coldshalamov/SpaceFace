@@ -180,6 +180,7 @@ import {
   PRESENTATION_FLAGS,
 } from './presentationWorld.js';
 import { createPresentationPublisher } from './presentationPublisher.js';
+const LIVE_POSE_PUBLICATION = Object.freeze({ atomic: true });
 import { createPresentationQueries } from './presentationQueries.js';
 import {
   clearWaveHullRunwayKeys,
@@ -28395,7 +28396,8 @@ export const render = {
     // Publication is consumed before any context-loss early return. PresentationRunner acknowledges
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
-    const publication = this._presentationPublisher.consume(presentationFrame);
+    const publication = this._presentationPublisher.consume(presentationFrame,
+      this.state && this.state.mode === 'flight' ? LIVE_POSE_PUBLICATION : undefined);
     // A rebind drive that faulted parks on the service epoch like the residency
     // lanes — the heavy O(_meshes) re-mint suppresses until the next
     // enter/context-restore instead of rethrowing out of prepareFrame every
@@ -28559,14 +28561,17 @@ export const render = {
       && (this._snapshotSourceTick !== completedTick
         || this._snapshotFence.packCount === 0
         || (publication.rebuilt === true && publication.appliedDelta !== 0)
+        || publication.refreshed === true
         || publication.applied > 0);
     {
-      // The pack pays O(activeCount) inside most presents — parked stepped
-      // iterator under the shared 4ms wall bound. A pose-epoch change
-      // mid-park supersedes the in-flight pack (its copy-path references the
-      // dead pose stream); same-epoch resumes complete it.
+      // Live poses belong to one completed tick and must publish in this present.
+      // Background admission cannot spend their budget, and parking a live pack
+      // would mix later mutable rows into its earlier timestamp. Loading may
+      // still pace its unpublished work; entering flight replaces that iterator.
+      const livePosePack = this.state && this.state.mode === 'flight';
       let pendingPack = this._fencePackPending;
-      if (pendingPack && pendingPack.poseEpoch !== packEpoch) {
+      if (pendingPack && (pendingPack.poseEpoch !== packEpoch
+          || (livePosePack && pendingPack.iter))) {
         if (pendingPack.iter && typeof pendingPack.iter.return === 'function') {
           try { pendingPack.iter.return(); } catch (_) { /* superseded */ }
         }
@@ -28574,17 +28579,17 @@ export const render = {
       }
       // A pack that faulted parks its own re-mints after 3 tries on the same
       // epoch — a persistent fault must not re-mint+throw every frame.
-      const packFaulted = this._fencePackFaultEpoch === packEpoch
+      const packFaulted = !livePosePack && this._fencePackFaultEpoch === packEpoch
         && (this._fencePackFaults | 0) >= 3;
       // A spent pass must not mint a fresh pack it cannot step: consult the
       // wallet BEFORE minting so dead passes don't churn mint/supersede.
-      const packWalletSpent = !pendingPack
+      const packWalletSpent = !livePosePack && !pendingPack
         && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
       if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld
           && !packFaulted && !packWalletSpent) {
         if (!pendingPack) {
           pendingPack = this._fencePackPending = {
-            iter: typeof packPresentationWorldToFenceSteps === 'function'
+            iter: !livePosePack && typeof packPresentationWorldToFenceSteps === 'function'
               ? packPresentationWorldToFenceSteps(
                 this._presentationWorld,
                 this._snapshotFence,

@@ -43,6 +43,9 @@ export function createPresentationPublisher(world, state, options = {}) {
     // is also `rebuilt` — its rows remain copy/blend-safe.
     remapped: false,
     fallback: false,
+    // A complete current-state fallback can repair poses without membership
+    // churn or a newer tick. Its consumer must still repack that repaired world.
+    refreshed: false,
     valid: true,
     error: null,
     spawnedSlots,
@@ -97,6 +100,7 @@ export function createPresentationPublisher(world, state, options = {}) {
     result.rebuilt = false;
     result.remapped = false;
     result.fallback = false;
+    result.refreshed = false;
     result.valid = true;
     result.error = null;
     spawnedSlots.length = 0;
@@ -108,12 +112,23 @@ export function createPresentationPublisher(world, state, options = {}) {
     try { journal?.requestRebuild?.(reason); } catch (_) { /* derived channel only */ }
   }
 
-  function fallbackFromState(journal, reason, end, presentationFrame = null) {
+  function fallbackFromState(journal, reason, end, presentationFrame = null, atomic = false) {
     // A stepped rebuild holds needsRebuild across its suspension — re-requesting it
     // here would clearRetained() under the publish the journal still has in flight
     // and doom every attempt that spans presents. Only re-request when no stepped
     // publish is in progress; foreign invalidations still arrive via record writes.
     if (journal.getRebuildInProgress?.() !== true) requestRebuild(journal, reason);
+    if (atomic) {
+      // A loading walk captured an older set or a prefix. Flight needs one current
+      // whole-state sample before its clock can be stamped on a pose pack.
+      for (const iter of [pendingCollectIter, pendingApplyIter, pendingClearIter, pendingVisit?.iter]) {
+        if (iter && typeof iter.return === 'function') {
+          try { iter.return(); } catch (_) { /* the fresh sample replaces it */ }
+        }
+      }
+      pendingCollectIter = pendingApplyIter = pendingClearIter = pendingVisit = null;
+      pendingCollectOut = pendingCollectSample = null;
+    }
     // The stepped journal rebuild holds needsRebuild across several presents, and
     // the world the fallback mirrors only moves on a completed sim tick or a
     // lifecycle transition (restore/restart). An unchanged-tick present re-packs
@@ -151,20 +166,20 @@ export function createPresentationPublisher(world, state, options = {}) {
         pendingCollectOut = null;
       }
     }
-    if (!initialized || !presentationFrame || completedTickCount > 0
+    if (atomic || !initialized || !presentationFrame || completedTickCount > 0
       || lifecycleGeneration !== lastFallbackLifecycleGeneration) {
       // A stepped journal rebuild mid-publish shares its completed collect on the
       // frame — the same live-GameState sample, collected once. While the collect
       // leg is still pacing its accumulating prefix mirrors instead: retained
       // rows refresh and not-yet-collected ids hold their last pose, strictly
       // fresher than the whole-set sync collect it replaces.
-      const sharedCollect = Array.isArray(presentationFrame?.rebuildCollectedEntities)
+      const sharedCollect = !atomic && Array.isArray(presentationFrame?.rebuildCollectedEntities)
         ? presentationFrame.rebuildCollectedEntities
         : null;
-      const collectPrefix = sharedCollect ? null
+      const collectPrefix = sharedCollect || atomic ? null
         : (Array.isArray(presentationFrame?.rebuildCollectPrefix)
           ? presentationFrame.rebuildCollectPrefix : null);
-      let sample = sharedCollect || collectPrefix || null;
+      let sample = atomic ? aliveEntities(state) : sharedCollect || collectPrefix || null;
       if (!sample) {
         if (!pendingCollectIter && typeof collectJournalPresentationEntitiesChunked === 'function') {
           pendingCollectOut = [];
@@ -214,7 +229,7 @@ export function createPresentationPublisher(world, state, options = {}) {
       // A diff-apply is NOT a remap — slot identities survive, so the pose
       // epoch holds and the pack's copy/interp paths keep working across the
       // suspension window.
-      if (typeof world.updateFromEntitiesSteps === 'function') {
+      if (!atomic && typeof world.updateFromEntitiesSteps === 'function') {
         let applyIter = pendingApplyIter;
         if (!applyIter) {
           const worldDiag = world.diagnostics;
@@ -276,6 +291,7 @@ export function createPresentationPublisher(world, state, options = {}) {
       lastFallbackLifecycleGeneration = lifecycleGeneration;
       diagnostics.fallbackRebuilds++;
       result.rebuilt = true;
+      result.refreshed = atomic;
     } else {
       diagnostics.fallbackReusedFrames++;
     }
@@ -319,7 +335,10 @@ export function createPresentationPublisher(world, state, options = {}) {
     }
   }
 
-  function consume(presentationFrame = null) {
+  function consume(presentationFrame = null, consumeOptions = null) {
+    // A live pose pack and its journal acknowledgement describe one completed
+    // publication. Admission pacing may span frames; these mutable poses cannot.
+    const atomic = consumeOptions?.atomic === true;
     diagnostics.consumeCount++;
     const journal = presentationFrame && presentationFrame.journal || defaultJournal;
     const directEnd = journal?.getWriteSequence?.() || lastAppliedSequence;
@@ -346,13 +365,13 @@ export function createPresentationPublisher(world, state, options = {}) {
     }
 
     if (journal.needsRebuild?.() === true || presentationFrame && presentationFrame.journalValid === false) {
-      return fallbackFromState(journal, 'presentation-journal-invalid', frameEnd, presentationFrame);
+      return fallbackFromState(journal, 'presentation-journal-invalid', frameEnd, presentationFrame, atomic);
     }
 
     if (!Number.isSafeInteger(frameStart) || !Number.isSafeInteger(frameEnd)
       || frameStart < 0 || frameEnd < frameStart) {
       diagnostics.rangeFailures++;
-      return fallbackFromState(journal, 'presentation-range-invalid', frameEnd, presentationFrame);
+      return fallbackFromState(journal, 'presentation-range-invalid', frameEnd, presentationFrame, atomic);
     }
 
     const fullRebuild = !!(presentationFrame && presentationFrame.journalFullRebuild);
@@ -390,11 +409,11 @@ export function createPresentationPublisher(world, state, options = {}) {
       try {
         for (;;) {
           clearStep = pendingClearIter.next();
-          if (clearStep.done || pendingNow() - clearStart >= 4) break;
+          if (clearStep.done || (!atomic && pendingNow() - clearStart >= 4)) break;
         }
       } catch (_) {
         pendingClearIter = null;
-        return fallbackFromState(journal, 'presentation-clear-failed', frameEnd, presentationFrame);
+        return fallbackFromState(journal, 'presentation-clear-failed', frameEnd, presentationFrame, atomic);
       }
       if (clearStep && clearStep.done === true) {
         pendingClearIter = null;
@@ -409,13 +428,13 @@ export function createPresentationPublisher(world, state, options = {}) {
       try {
         for (;;) {
           visitStep = pendingVisit.iter.next();
-          if (visitStep.done || pendingNow() - visitStart >= 4) break;
+          if (visitStep.done || (!atomic && pendingNow() - visitStart >= 4)) break;
         }
       } catch (error) {
         pendingVisit = null;
         diagnostics.applyFailures++;
         const message = error && error.message ? error.message : String(error);
-        return fallbackFromState(journal, `presentation-apply-failed:${message}`, frameEnd, presentationFrame);
+        return fallbackFromState(journal, `presentation-apply-failed:${message}`, frameEnd, presentationFrame, atomic);
       }
       const visitDelta = pendingVisit.applied - pendingVisit.reported;
       pendingVisit.reported = pendingVisit.applied;
@@ -442,14 +461,14 @@ export function createPresentationPublisher(world, state, options = {}) {
 
     if (frameStart > lastAppliedSequence) {
       diagnostics.rangeFailures++;
-      return fallbackFromState(journal, 'presentation-range-gap', frameEnd, presentationFrame);
+      return fallbackFromState(journal, 'presentation-range-gap', frameEnd, presentationFrame, atomic);
     }
 
     const start = Math.max(frameStart, lastAppliedSequence);
     result.start = start;
     if (typeof journal.hasRange === 'function' && !journal.hasRange(start, frameEnd)) {
       diagnostics.rangeFailures++;
-      return fallbackFromState(journal, 'presentation-range-not-retained', frameEnd, presentationFrame);
+      return fallbackFromState(journal, 'presentation-range-not-retained', frameEnd, presentationFrame, atomic);
     }
 
     try {
@@ -471,7 +490,7 @@ export function createPresentationPublisher(world, state, options = {}) {
         let visitStep = null;
         for (;;) {
           visitStep = pendingVisit.iter.next();
-          if (visitStep.done || pendingNow() - visitStart >= 4) break;
+          if (visitStep.done || (!atomic && pendingNow() - visitStart >= 4)) break;
         }
         result.applied += pendingVisit.applied;
         pendingVisit.reported = pendingVisit.applied;
@@ -501,7 +520,7 @@ export function createPresentationPublisher(world, state, options = {}) {
     } catch (error) {
       diagnostics.applyFailures++;
       const message = error && error.message ? error.message : String(error);
-      return fallbackFromState(journal, `presentation-apply-failed:${message}`, frameEnd, presentationFrame);
+      return fallbackFromState(journal, `presentation-apply-failed:${message}`, frameEnd, presentationFrame, atomic);
     }
   }
 

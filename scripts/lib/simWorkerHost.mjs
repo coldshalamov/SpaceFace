@@ -1365,6 +1365,7 @@ export function createSimHost() {
       }
     }
     host.committedJournalSequence = journal.getWriteSequence();
+    journal.markTransferredThrough(host.committedJournalSequence);
     const initAux = diffAuxTables(host.state);
     const initDomains = diffDomains(host.state, host.domainDiffSeq++);
     // Vitals shadow primes on init — spawnInfo vitals already carry the fields.
@@ -1561,6 +1562,7 @@ export function createSimHost() {
       }
     }
     host.committedJournalSequence = journal.getWriteSequence();
+    journal.markTransferredThrough(host.committedJournalSequence);
     const initAux = diffAuxTables(state);
     // Instrumentation rides its probe flag (item D-F3): flag off = the probe
     // walk never runs at init either.
@@ -1839,10 +1841,6 @@ export function createSimHost() {
     if (steps > 0) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
-    // Committed = last journal sequence shipped on the wire; next tick's range
-    // starts there. Present-side acks (discardThrough) lag behind this cursor.
-    host.committedJournalSequence = journalEnd;
-
     const workNs = nowNs() - workStart;
     host.totalWorkNs += workNs;
     host.tickCount += steps;
@@ -1860,6 +1858,10 @@ export function createSimHost() {
         `rebuilds=${diag.rebuildCount} lastRebuild=(${diag.lastRebuildStart},${diag.lastRebuildEnd}] ` +
         `discards=${diag.discardCount} committed=${host.committedJournalSequence}`);
     }
+    // The next directive can arrive before presentation ACKs this pack. Freeze
+    // its retained records now so later poses append beyond the transfer cursor.
+    journal.markTransferredThrough(journalEnd);
+    host.committedJournalSequence = journalEnd;
     const spawnInfos = [];
     for (const entityId of pack.spawnEntityIds) {
       const info = entityInfoBlock(state, entityId);

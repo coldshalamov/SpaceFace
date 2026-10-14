@@ -71,14 +71,11 @@ test('the requested turn rate scales with swing speed and inverse line radius', 
   assert.ok(Math.abs(fastShort.telemetry.orbitalYawRate - fastLong.telemetry.orbitalYawRate * 2) < 1e-12);
 });
 
-test('R2 radial-facing starts swing onto the tangent at full authority, then hold the exact orbital rate', () => {
-  // The working contract: while the nose is off-tangent the proportional bridge may spend the
-  // whole yaw envelope to swing onto the selected tangent, then the bridge falls to zero and the
-  // requested rate IS the inverse-radius orbital feed-forward. A separate heading cap starved the
-  // swing and made a tethered orbit read under-speed.
+test('radial-facing entry remains manual, then near-tangent assist holds the orbital rate', () => {
+  // The pilot turns onto the orbit. Assistance trims a nearby tangent rather than owning
+  // a full-heading capture that can override or reverse the held keyboard direction.
   assert.equal(ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS, 0.55);
-  assert.equal(Object.hasOwn(ORBIT_ASSIST_TUNING_V1, 'maxHeadingCorrectionRateFraction'), false,
-    'the bounded-correction cap that starved the swing is gone');
+  assert.equal(ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction, 0.25);
 
   const long = orbitStep({
     radius: 220,
@@ -94,11 +91,12 @@ test('R2 radial-facing starts swing onto the tangent at full authority, then hol
   });
 
   for (const result of [long, short]) {
-    assert.equal(result.active, true);
+    assert.equal(result.active, false);
     assert.equal(Math.abs(result.telemetry.desiredYawRate), result.telemetry.maxYawRate,
-      'a radial-facing launch uses the full yaw envelope to reach the tangent');
+      'a radial-facing launch preserves the pilot full-turn command');
+    assert.equal(result.input.turn, 1);
     assert.equal(result.telemetry.headingDirectionCommitted, false,
-      'capture always takes the shortest path onto the selected tangent, never a full extra revolution');
+      'the assist never takes over the large heading change');
     assert.ok(Math.abs(result.telemetry.headingError) <= Math.PI + 1e-12,
       'a radial-facing launch turns at most 180 degrees, never the long 270-degree way around');
   }
@@ -167,7 +165,8 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
     radialByDirection.set(direction, result);
     assert.equal(result.telemetry.selectedDirection, direction);
     assert.equal(Math.sign(result.telemetry.orbitalYawRate), direction);
-    assert.equal(Math.sign(result.telemetry.alignmentYawRate), -direction);
+    assert.equal(result.active, false);
+    assert.equal(result.telemetry.alignmentYawRate, 0, 'radial entry remains manual');
     assert.equal(result.telemetry.headingDirectionCommitted, false);
     assert.ok(Math.abs(result.telemetry.headingError) <= Math.PI + 1e-12,
       'radial capture turns at most 180 degrees, never the long way around');
@@ -183,7 +182,7 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
     orbitStep({
       radius: 220,
       tangentialSpeed: 60,
-      hostRot: 0,
+      hostRot: -Math.PI / 2 + 0.04,
       anchorAhead: true,
       strength,
     }),
@@ -228,6 +227,7 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
       lateral: direction,
       hostRot: desiredHeading + Math.PI - 0.05,
     });
+    assert.equal(opposite.active, false, 'opposite-facing entry remains manual');
     assert.equal(opposite.telemetry.headingDirectionCommitted, false,
       `${direction}: a near-opposite start still never commits to a full extra revolution`);
     assert.ok(Math.abs(opposite.telemetry.headingError) <= Math.PI + 1e-12);
@@ -520,11 +520,10 @@ test('an unusable orbit geometry leaves the boost press with the normal dash', (
   }
 });
 
-test('a boost press mid-orbit keeps the line attached and the chord live', async () => {
+test('a boost press mid-orbit keeps the line attached and preserves bounded assist or manual entry', async () => {
   // Full-production regression: real flightV3 + rapier, 30 WU line, boost pressed mid-orbit and
-  // released later. Before the chord-owned-boost fix the press-edge dash jumped the swing past
-  // finite yaw authority (heading error past 2.9 rad, saturated nearly every tick); after it the
-  // run is indistinguishable from an unboosted orbit. Bounds sit far from both sides.
+  // released later. The line remains physical; a disturbed heading may return to manual entry,
+  // while assistance is limited to the near-tangent correction envelope.
   const run = () => masslineLab.runScenario({
     seed: 47,
     ticks: 360,
@@ -545,8 +544,11 @@ test('a boost press mid-orbit keeps the line attached and the chord live', async
 
   assert.ok(result.trace.every((sample) => sample.attachmentActive),
     'the line must stay attached through the boost press and release');
-  assert.ok(result.trace.every((sample) => sample.orbitAssistActive),
-    'the chord must keep owning yaw through the boost press and release');
+  assert.ok(post.some((sample) => sample.orbitAssistActive), 'the chord still offers orbit assistance');
+  assert.ok(result.trace.every((sample) => sample.orbitAssistActive
+    ? Math.abs(sample.orbitHeadingError) <= ORBIT_ASSIST_TUNING_V1.tangentCaptureAngleRad + 1e-6
+    : sample.orbitAssistReason === 'manual-override'),
+  'large heading disturbances return control to the pilot rather than forcing a full capture');
 
   const repeat = await run();
   assert.equal(repeat.traceHash, result.traceHash);
@@ -597,7 +599,10 @@ test('R2 production recovery matrix covers exact R0 radii and radial/signed head
   // while the orbital feed-forward plus the proportional bridge actually call for it.
   assert.ok(matrix.rows.every((row) => row.metrics.fullRateTakeoverTicks === 0),
     'a near-full-rate yaw request must only occur while the orbit itself demands the envelope');
-  assert.ok(matrix.rows.every((row) => row.metrics.worstDesiredYawRateRatio
+  // Radial starts deliberately begin with the pilot's full manual turn. Compare the
+  // assist-only maximum against tick zero only when that first command was assisted.
+  assert.ok(matrix.rows.filter((row) => row.params.headingCase !== 'radial-facing')
+    .every((row) => row.metrics.worstDesiredYawRateRatio
     >= row.metrics.initialAbsDesiredYawRate / row.metrics.maxYawRate - 1e-6));
   assert.ok(matrix.rows.some((row) => row.metrics.worstDesiredYawRateRatioTick > 0),
     'the takeover gate records a later worst sample rather than assuming tick zero is worst');

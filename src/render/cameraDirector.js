@@ -606,6 +606,9 @@ export function createCameraDirector() {
   const twoBodyA = { x: 0, z: 0, radius: 0 };
   const twoBodyB = { x: 0, z: 0, radius: 0 };
   const twoBodyView = { fov: DEFAULT_FOV, aspect: DEFAULT_ASPECT, tiltDeg: DEFAULT_TILT_DEG, safeNdc: TWO_BODY_SAFE_NDC };
+  // Geometry only: the chase camera has already resolved the hull's drawn pose.
+  // Hostility, target authority, and threat membership still read the real sim entity.
+  const presentedPlayer = { pos: { x: 0, z: 0 }, radius: 0, vel: null };
   let initialized = false;
   let transitionStartX = 0;
   let transitionStartZ = 0;
@@ -980,7 +983,15 @@ export function createCameraDirector() {
         const tanHalfFov = Math.tan(fov * Math.PI / 360);
         const sinTilt = Math.sin(tilt);
         const cosTilt = Math.cos(tilt);
-        const pairA = (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyPair) ? twoBodyPair.a : player;
+        let pairA = (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyPair) ? twoBodyPair.a : player;
+        if (requestedMode === CameraDirectorMode.TETHER_PAIR
+            && Number.isFinite(view.playerLocalX) && Number.isFinite(view.playerLocalZ)) {
+          presentedPlayer.pos.x = view.playerLocalX + frameOrigin.x;
+          presentedPlayer.pos.z = view.playerLocalZ + frameOrigin.z;
+          presentedPlayer.radius = player.radius;
+          presentedPlayer.vel = player.vel;
+          pairA = presentedPlayer;
+        }
         const pairB = (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyPair) ? twoBodyPair.b : target;
         const pairOnlyZoom = trainingFocusPair;
         const playerRadius = entityRadius(pairA);
@@ -1072,7 +1083,7 @@ export function createCameraDirector() {
             )
             : requiredCombatZoom(
               state, pairA, pairB, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-              pairPrediction,
+              pairPrediction, player,
             );
         let pairZoomMax = CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
         if (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyThreatRequired > CAMERA_DIRECTOR_MIN_ZOOM) {
@@ -1184,6 +1195,21 @@ export function createCameraDirector() {
             ? Math.max(pairZoomMax, output.zoom)
             : pairZoomMax;
         output.zoom = clamp(appliedZoom, CAMERA_DIRECTOR_MIN_ZOOM, transitionZoomMax);
+        if (requestedMode === CameraDirectorMode.TETHER_PAIR) {
+          // An overlong rope cannot fit both ends below the zoom ceiling. Acquisition
+          // can also move focus faster than zoom opens. Constrain only that unfitted
+          // focus using the same sphere/projection geometry as requiredZoomForLocal;
+          // the ship the player controls must stay visible through either case.
+          const safeTan = pairSafeNdc * tanHalfFov;
+          const safeDepth = Math.max(0, output.zoom - playerRadius);
+          const maxDz = Math.max(0, (safeTan * safeDepth - playerRadius)
+            / (sinTilt + safeTan * cosTilt));
+          output.focusZ = clamp(output.focusZ, pLz - maxDz, pLz + maxDz);
+          const remainingDepth = Math.max(0,
+            safeDepth - cosTilt * Math.abs(output.focusZ - pLz));
+          const maxDx = Math.max(0, safeTan * aspect * remainingDepth - playerRadius);
+          output.focusX = clamp(output.focusX, pLx - maxDx, pLx + maxDx);
+        }
         output.targetId = targetId;
         output.overflow = impossible;
         output.preferredBandExceeded = output.zoom > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;
