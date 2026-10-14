@@ -175,3 +175,61 @@ def review_scene(name,top=False):
   d=bpy.data.lights.new('softbox','AREA');d.energy=power;d.size=18;o=bpy.data.objects.new('softbox',d);scene.collection.objects.link(o);o.location=pos
  d=bpy.data.cameras.new('review_camera');o=bpy.data.objects.new('review_camera',d);scene.collection.objects.link(o);target=Vector((7.95,5.6,0));o.location=target+Vector((0,0,32) if top else (0,-16,27.71));o.rotation_euler=(target-o.location).to_track_quat('-Z','Y').to_euler();d.type='ORTHO';d.ortho_scale=24;scene.camera=o
  path=ROOT/'.devshots/asset-bank'/(name+'.png');path.parent.mkdir(parents=True,exist_ok=True);scene.render.filepath=str(path);bpy.ops.render.render(write_still=True);print('LARGE_CONTACT_DONE',path,flush=True)
+
+def assemblies():
+ db={}
+ for f in (ROOT/'assets/models/asset-bank').rglob('*.json'):
+  row=json.loads(f.read_text())
+  if 'assetId' in row:db[row['assetId']]=row
+ def basis(socket):
+  x=Vector(socket['forward']);y=Vector(socket['up']);return Matrix((x,y,x.cross(y))).transposed()
+ def sock(asset,name):return next(s for s in db[asset]['sockets'] if s['name']==name)
+ recipes=[]
+ definitions=[('customs_inspection_pen','drydock_side_wall','ops_optical_rangefinder','cargo-sealed-custody-safe'),('salvage_custody_court','ore_transfer_terrace','ops_paired_capture_jaws','cargo-ore-skip'),('relief_berth','capital_berth_outrigger','ops_docking_light_bar','cargo-insulated-medical-carrier'),('open_repair_quay','drydock_side_wall','ops_gantry_swivel_pedestal','cargo-machine-tool-skid'),('screened_illicit_intake','fabrication_hall_shell','ops_exclusion_baffle','cargo-gas-bottle-cluster'),('solar_orchard_hub','ring_spoke','ops_solar_hinge_mast_adapter','ops_rectangular_solar_wing'),('bulk_coolant_exchange','agricultural_cylinder','ops_coolant_fin_cassette','cargo-cryogenic-dewar'),('freight_rail_transfer_yard','launch_trench_bank','ops_rail_carriage','cargo-habitat-panel-pack'),('survey_cut_face_worksite','ice_anchoring_terrace','ops_optical_rangefinder','cargo-bagged-regolith-pallet'),('quarantine_transfer_platform','pressure_dome_habitat','ops_fire_suppression_head','cargo-biological-containment-cage'),('derelict_rib_corridor','relay_dish_backframe','ops_camera_pod','cargo-inert-reactor-core-cask'),('ancient_service_threshold','habitation_ring_quadrant','ops_sensor_iris','ops_phased_array_tile')]
+ for rid,large,operation,payload in definitions:
+  instances=[];joins=[]
+  def root(i,asset,t=(0,0,0),q=(0,0,0,1)):
+   if asset not in db:raise ValueError('Missing dependency '+asset)
+   instances.append({'id':i,'assetId':asset,'translation':list(t),'rotation':list(q),'scale':[1,1,1]});return instances[-1]
+  def attach(i,asset,child_socket,parent,parent_socket):
+   p=next(k for k in instances if k['id']==parent);ps=sock(p['assetId'],parent_socket);cs=sock(asset,child_socket);pq=Quaternion((p['rotation'][3],*p['rotation'][:3]));pb=pq.to_matrix()@basis(ps);desired=pb@Matrix(((-1,0,0),(0,1,0),(0,0,-1)));rotation=(desired@basis(cs).transposed()).to_quaternion();position=Vector(p['translation'])+pq@Vector(ps['position'])-rotation@Vector(cs['position']);row=root(i,asset,position,(rotation.x,rotation.y,rotation.z,rotation.w));delta=position+rotation@Vector(cs['position'])-Vector(p['translation'])-pq@Vector(ps['position'])
+   joins.append({'parent':{'instance':parent,'socket':parent_socket},'child':{'instance':i,'socket':child_socket},'positionErrorMetres':delta.length,'forwardDot':(rotation@Vector(cs['forward'])).dot(pq@Vector(ps['forward'])),'upDot':(rotation@Vector(cs['up'])).dot(pq@Vector(ps['up']))});return row
+  aid='large_'+large;bb=db[aid]['bounds'];extent=max(abs(bb['min'][2]),abs(bb['max'][2]));side=extent+18
+  if rid!='ancient_service_threshold':
+   root('primary',aid,(0,0,-side));root('return_bank','large_drydock_side_wall',(0,0,30),(0,1,0,0));attach('operations',operation,'mount','primary','SOCKET_Service')
+   if payload.startswith('cargo-'):attach('payload',payload,'SOCKET_Mount','return_bank','SOCKET_Service')
+   elif rid=='solar_orchard_hub':attach('collector',payload,'hinge','operations','wing')
+   else:attach('instrument',payload,'mount','return_bank','SOCKET_Service')
+  else:
+   for gate,x in [('near',-36),('far',36)]:
+    root(gate+'_jamb_left','threshold_jamb',(x,0,2.2),(0,math.sqrt(.5),0,math.sqrt(.5)));attach(gate+'_lintel','threshold_lintel','SOCKET_JAMB_-2.2',gate+'_jamb_left','SOCKET_LINTEL');attach(gate+'_jamb_right','threshold_jamb','SOCKET_LINTEL',gate+'_lintel','SOCKET_JAMB_2.2')
+  if rid=='solar_orchard_hub':
+   root('tee','truss_tee',(0,0,-side-15));attach('span_west','truss_long','SOCKET_LEG_0_1','tee','SOCKET_LEG_0_1');attach('span_east','truss_short','SOCKET_LEG_0_0','tee','SOCKET_LEG_1_1');attach('terminal','terminal_cap','SOCKET_FRAME','tee','SOCKET_LEG_2_1')
+  if rid=='bulk_coolant_exchange':
+   root('pipe','pressure_pipe_straight',(0,0,-side-20));attach('elbow','pressure_pipe_elbow_90','SOCKET_FLOW_0','pipe','SOCKET_FLOW_1');attach('valve','pressure_pipe_valve','SOCKET_FLOW_0','elbow','SOCKET_FLOW_1')
+  if rid=='relief_berth':root('corridor','pressure_corridor_straight',(0,0,-side-20));attach('collar','docking_collar','SOCKET_PASSAGE_-1_0','corridor','SOCKET_PASSAGE_1_0')
+  if rid=='survey_cut_face_worksite':root('cut_parent','seam_bearing_quarried_parent_rock',(-20,0,-side-28));attach('removable_wedge','matched_removable_wedge','SOCKET_MATCHED_CUT','cut_parent','SOCKET_MATCHED_CUT')
+  corners=[]
+  for m in instances:
+   bounds=db[m['assetId']]['bounds'];q=Quaternion((m['rotation'][3],*m['rotation'][:3]));t=Vector(m['translation'])
+   for x in (bounds['min'][0],bounds['max'][0]):
+    for y in (bounds['min'][1],bounds['max'][1]):
+     for z in (bounds['min'][2],bounds['max'][2]):corners.append(t+q@Vector((x,y,z)))
+  lo=[min(p[i] for p in corners) for i in range(3)];hi=[max(p[i] for p in corners) for i in range(3)];radius=1.2 if rid=='ancient_service_threshold' else 2;nearest=float('inf');samples=0
+  for m in instances:
+   mq=Quaternion((m['rotation'][3],*m['rotation'][:3]));mt=Vector(m['translation'])
+   for solid in db[m['assetId']]['collision']['solids']:
+    sq=Quaternion((solid['rotation'][3],*solid['rotation'][:3]));q=mq@sq;c=mt+mq@Vector(solid['center']);half=Vector(solid['size'])*.5
+    for k in range(201):
+     p=Vector((lo[0]-10+(hi[0]-lo[0]+20)*k/200,0,0));v=q.inverted()@(p-c);distance=Vector(tuple(max(abs(v[i])-half[i],0) for i in range(3))).length;nearest=min(nearest,distance);samples+=1
+  assert nearest>radius,(rid,nearest)
+  assert 64<=max(hi[i]-lo[i] for i in range(3))<=240,(rid,lo,hi)
+  focal={'instance':'near_jamb_left','socket':'SOCKET_LINTEL'} if rid=='ancient_service_threshold' else {'instance':'primary','socket':'SOCKET_Service'}
+  ops=[{'instance':'far_lintel','socket':'SOCKET_JAMB_2.2'}] if rid=='ancient_service_threshold' else [{'instance':'operations','socket':db[operation]['sockets'][-1]['name']}]
+  recipes.append({'id':rid,'status':'reusable template, no canonical location/gameplay spawning','dependencies':sorted(set(i['assetId'] for i in instances)),'instances':instances,'joins':joins,'bounds':{'min':lo,'max':hi},'approach':{'min':[lo[0]-10,-radius,-radius],'max':[0,radius,radius]},'exit':{'min':[0,-radius,-radius],'max':[hi[0]+10,radius,radius]},'focalSocket':focal,'operationsSockets':ops,'clearanceValidation':{'method':'201 sphere samples along X against transformed compound oriented boxes','probeRadiusMetres':radius,'minimumSurfaceDistanceMetres':nearest,'sampleComparisons':samples,'scope':'authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified'},'states':[{'id':'working','visibleInstances':[i['id'] for i in instances],'description':'Fixed equipment and seated payload present'},{'id':'occupied','visibleInstances':[i['id'] for i in instances],'description':'Same geometry; occupancy remains consumer behavior'},{'id':'after_use','visibleInstances':[i['id'] for i in instances if i['id']!='payload'],'description':'Removable payload absent; no damage state implied'}],'normalization':'none; unit scale in absolute metres'})
+ dest=ROOT/'design/asset-bank/assemblies.json';dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text(json.dumps({'schemaVersion':1,'modelCount':12,'recipeCount':12,'unit':'metre','coordinateSystem':'glTF +X forward +Y up +Z starboard','socketToleranceMetres':.0002,'recipes':recipes},indent=2)+'\n');print('ASSEMBLIES_DONE',len(recipes),flush=True)
+
+if __name__=='__main__':
+ if '--assemblies' in sys.argv:assemblies()
+ elif '--contacts' in sys.argv:contacts('--source' in sys.argv,'--top' in sys.argv)
+ else:main()
