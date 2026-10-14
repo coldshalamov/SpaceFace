@@ -6647,4 +6647,22 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   assert.equal(hitTest({ objects: [hawser] }, 122, 100, camera, view, dialect.draw), 'hawser');
   assert.equal(hitTest({ objects: [ghost] }, 108, 100, camera, view, dialect.draw), 'ghost');
   assert.equal(hitTest({ objects: [ghost] }, 113, 100, camera, view, dialect.draw), 'ghost');
+  assert.equal(dialect.profiles.includes('enemy.quiet_ghost'), true);
+  const prefixed = { id: 'ghost', kind: 'actor', profile: 'enemy.quiet_ghost', x: 0, z: 0 };
+  assert.equal(dialect.draw['enemy.quiet_ghost'].radius, 13);
+  assert.equal(dialect.draw['enemy.quiet_ghost'].radius, dialect.draw.quiet_ghost.radius);
+  assert.equal(actorStroke(prefixed, 1, dialect.draw), 13);
+  assert.notEqual(actorStroke(prefixed, 1, dialect.draw), 8);
+  for (const profileId of dialect.profiles) {
+    if (!profileId.startsWith('enemy.')) continue;
+    const bare = profileId.slice('enemy.'.length);
+    const bareDraw = dialect.draw[bare];
+    if (!bareDraw || !Number.isFinite(bareDraw.radius)) continue;
+    assert.equal(dialect.draw[profileId].radius, bareDraw.radius, profileId);
+  }
+  arcs.length = 0;
+  drawActor(ctx, prefixed, camera, view, dialect.draw);
+  assert.equal(arcs[0], 13);
+  assert.equal(hitTest({ objects: [prefixed] }, 113, 100, camera, view, dialect.draw), 'ghost');
+  assert.equal(hitTest({ objects: [prefixed] }, 114, 100, camera, view, dialect.draw), null);
 });

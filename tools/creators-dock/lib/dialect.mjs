@@ -37,7 +37,9 @@ export async function loadDialect() {
   const profileIds = [
     'ship.starter', 'ship.kestrel', 'asteroid.light', 'asteroid.mid', 'asteroid.heavy', 'payload.anchor',
     ...SHIPS.map((ship) => ship.id),
-    ...enemies.ENEMY_TYPES.map((enemy) => enemy.id),
+    ...enemies.ENEMY_TYPES.flatMap((enemy) => (
+      enemy && enemy.id ? [enemy.id, `enemy.${enemy.id}`] : []
+    )),
   ];
   for (const profileId of profileIds) {
     if (draw[profileId]) continue;
