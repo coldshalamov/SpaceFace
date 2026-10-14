@@ -460,7 +460,8 @@ function deedOpenerSpeaker(contact) {
   if (!contact) return false;
   if (contact.fenceId) return true;
   return !(contact.canonicalKey || contact.depthProgram || contact.endgameChoice
-    || contact.rumorSourceRef || contact.choirReliefMemory || contact.bay7Rumor);
+    || contact.rumorSourceRef || contact.choirReliefMemory || contact.bay7Rumor
+    || contact.derelictRumorRef);
 }
 
 function pickDeedOpener(stationId, state, listed, info) {
@@ -598,6 +599,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
+  stampDerelictRumor(listed, stationId, state);
   stampChoirReliefMemory(listed, stationId, state);
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   return listed;
@@ -624,6 +626,49 @@ function stampHeliosBay7Rumor(contacts, stationId, state) {
   if (!kessler) return;
   kessler.line = 'Maintenance still files tickets about a smell in Bay 7. Nobody walks the pad.';
   kessler.bay7Rumor = true;
+}
+
+// U6 — the plated derelicts have first contact on the glass, but the bar — the place that
+// sells directions — did not know any of them. One authored line per site at its home
+// berth, spoken until the pilot's own scan unlocks the plate: the discovery record retires
+// the rumor. Same shape as the Bay 7 smell — a stamped contact line, no new state bag.
+const DERELICT_BAR_RUMORS = Object.freeze([
+  Object.freeze({
+    stationId: 'station_helios', sectorId: 'sector_helios_prime', poiId: 'poi_helios_whistle',
+    line: 'Yard hands swear the old approach horn outside still sounds one note off the helm band. Dead equipment does not sing.',
+  }),
+  Object.freeze({
+    stationId: 'station_tethys', sectorId: 'sector_tethys_junction', poiId: 'poi_tethys_tally_rack',
+    line: 'The Tally desk still codes nine racks of seized freight pending. Third supervisor to inherit the count. Nobody has finished it.',
+  }),
+  Object.freeze({
+    stationId: 'station_forge', sectorId: 'sector_vesta_forge', poiId: 'poi_freighter',
+    line: 'Slag-Run Nineteen is still parked out beltward, holds open, drive cold. She keeps that name because nobody has ever paid to tow her.',
+  }),
+  Object.freeze({
+    stationId: 'station_drift', sectorId: 'sector_pallas_drift', poiId: 'poi_pwreck',
+    line: 'Drift cutters found a hull last week peeled open from the inside. Whatever won that fight took the cargo and left the plates.',
+  }),
+]);
+
+function stampDerelictRumor(contacts, stationId, state) {
+  const discovery = state && state.world && state.world.discovery;
+  for (const rumor of DERELICT_BAR_RUMORS) {
+    if (rumor.stationId !== stationId) continue;
+    const sectorRec = discovery && discovery[rumor.sectorId];
+    if (sectorRec && sectorRec.pois && sectorRec.pois[rumor.poiId]) continue; // already met
+    // The barkeep sells directions, but a berth whose barkeep is already telling the
+    // silver-draft story hands the line to a generated regular. Authored contacts and
+    // existing rumor-stamps are never overwritten.
+    const free = contacts.filter((contact) => contact && !contact.canonicalKey
+      && !contact.rumorSourceRef && !contact.bay7Rumor && !contact.derelictRumorRef
+      && !contact.choirReliefMemory);
+    const host = free.find((contact) => contact.role === 'barkeep') || free[0];
+    if (!host) return;
+    host.line = rumor.line;
+    host.derelictRumorRef = rumor.poiId;
+    return; // one direction per berth; the rest wait for another visit's roll
+  }
 }
 
 function stampChoirReliefMemory(contacts, stationId, state) {
