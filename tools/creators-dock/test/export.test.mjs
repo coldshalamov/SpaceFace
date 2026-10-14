@@ -790,11 +790,16 @@ test('a place disc edits the exported place and objectives follow the lab metric
   assert.equal(drawFieldSource.includes('|| 20'), false);
   assert.equal(drawFieldSource.includes('Math.max'), false);
   assert.equal(drawFieldSource.includes('fieldStroke(object, cam.zoom)'), true);
+  const actorSource = markerSource.slice(markerSource.indexOf('function drawActor'), markerSource.indexOf('function colliderRadius'));
+  assert.equal(actorSource.includes('Math.max(8, radius)'), false);
+  assert.equal(actorSource.includes('ctx.arc(point.sx, point.sy, radius, 0, Math.PI * 2)'), true);
   assert.equal(fieldStroke({ kind: 'field', fieldKind: 'place' }, 3.2), 0);
   assert.notEqual(fieldStroke({ kind: 'field', fieldKind: 'place' }, 3.2), 20);
   const zeroZoneProject = getComposition('dock.bank-shot');
   const zeroZone = objectById(zeroZoneProject, 'bank_zone');
   zeroZone.radius = 0;
+  assert.equal(zeroZone.place.radius, 80);
+  assert.equal(zeroZone.radius, 0);
   const zeroZoneExport = await exportProject(zeroZoneProject);
   assert.equal(zeroZoneExport.ok, true, (zeroZoneExport.issues || []).join('\n'));
   const zeroPlace = zeroZoneExport.pack.files['places/zone_dock_bank_corridor.json'];

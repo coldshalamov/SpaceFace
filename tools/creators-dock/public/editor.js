@@ -350,7 +350,7 @@ function drawActor(object) {
   ctx.fillStyle = color;
   ctx.globalAlpha = selected.includes(object.id) ? 1 : 0.9;
   ctx.beginPath();
-  ctx.arc(point.sx, point.sy, Math.max(8, radius), 0, Math.PI * 2);
+  ctx.arc(point.sx, point.sy, radius, 0, Math.PI * 2);
   ctx.globalAlpha = 0.18;
   ctx.fill();
   ctx.globalAlpha = 1;

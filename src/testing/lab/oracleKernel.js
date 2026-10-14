@@ -476,9 +476,12 @@ function evaluateTemporal(assertions, trace, ctx) {
       const ok = settled && (byTick == null || settleTick <= byTick);
       let expected = byTick != null ? { byTick, band } : { settled: true, band };
       if (disc) expected = { ...withDisc(expected, disc), closest: closestSettle };
-      const failureTick = judged.length
+      let failureTick = judged.length
         ? judged[judged.length - 1].tick
         : (scoped.length ? scoped[scoped.length - 1].tick : 0);
+      if (!ok && settled && byTick != null && settleTick != null && settleTick > byTick) {
+        failureTick = settleTick;
+      }
       results.push({
         family: 'temporal',
         id: 'settles',

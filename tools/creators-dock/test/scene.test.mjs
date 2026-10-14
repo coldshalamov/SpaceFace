@@ -7,7 +7,7 @@ import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject } from '../lib/export.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
-import { TRIGGER_ASSERTION_FIELDS, deletePath, discRadius, fieldsFor, numberFieldValue, writeFrameInput, writePath } from '../lib/inspector.mjs';
+import { TRIGGER_ASSERTION_FIELDS, deletePath, discRadius, fieldsFor, markerStroke, numberFieldValue, writeFrameInput, writePath } from '../lib/inspector.mjs';
 import { evaluateOracleKernel } from '../../../src/testing/lab/oracleKernel.js';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
@@ -4871,6 +4871,69 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
     }],
   });
   assert.equal(unsettledInside.results.find((row) => row.id === 'settles').ok, false);
+  const lateSettleTrace = [];
+  for (let tick = 0; tick <= 30; tick += 1) {
+    lateSettleTrace.push({ tick, playerX: 0, playerZ: 0, playerVelX: tick === 0 ? 10 : 0 });
+  }
+  const lateSettle = evaluateOracleKernel({
+    trace: lateSettleTrace,
+    assertions: [{
+      kind: 'settles',
+      signal: 'playerVelX',
+      value: 1,
+      byTick: 0,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  }).results.find((row) => row.id === 'settles');
+  assert.equal(lateSettle.ok, false);
+  assert.equal(lateSettle.actual.settled, true);
+  assert.equal(lateSettle.actual.settleTick, 1);
+  assert.equal(lateSettle.firstBadTick === 0 || lateSettle.firstBadTick === lateSettle.actual.settleTick, true);
+  assert.notEqual(lateSettle.firstBadTick, 30);
+  const lateWindow = lateSettleTrace.filter((sample) => Math.abs(sample.tick - lateSettle.firstBadTick) <= 5);
+  assert.equal(lateWindow.some((sample) => sample.tick === lateSettle.firstBadTick), true);
+  assert.equal(lateWindow.some((sample) => sample.tick === 1), true);
+  assert.equal(lateWindow.some((sample) => sample.tick === 30), false);
+  const shortLate = evaluateOracleKernel({
+    trace: [
+      { tick: 0, playerX: 0, playerZ: 0, playerVelX: 50 },
+      { tick: 1, playerX: 0, playerZ: 0, playerVelX: 0 },
+      { tick: 2, playerX: 0, playerZ: 0, playerVelX: 0 },
+    ],
+    assertions: [{
+      kind: 'settles',
+      signal: 'playerVelX',
+      value: 1,
+      byTick: 0,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  }).results.find((row) => row.id === 'settles');
+  assert.equal(shortLate.ok, false);
+  assert.equal(shortLate.actual.settled, true);
+  assert.equal(shortLate.actual.settleTick, 1);
+  assert.equal(shortLate.firstBadTick === 0 || shortLate.firstBadTick === 1, true);
+  assert.notEqual(shortLate.firstBadTick, 2);
+  const shortWindow = [0, 1, 2].filter((tick) => Math.abs(tick - shortLate.firstBadTick) <= 5);
+  assert.equal(shortWindow.includes(shortLate.firstBadTick), true);
+  assert.equal(shortWindow.includes(1), true);
+  const metDeadline = evaluateOracleKernel({
+    trace: [
+      { tick: 0, playerX: 0, playerZ: 0, playerVelX: 50 },
+      { tick: 1, playerX: 0, playerZ: 0, playerVelX: 0 },
+      { tick: 2, playerX: 0, playerZ: 0, playerVelX: 0 },
+    ],
+    assertions: [{
+      kind: 'settles',
+      signal: 'playerVelX',
+      value: 1,
+      byTick: 1,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  }).results.find((row) => row.id === 'settles');
+  assert.equal(metDeadline.ok, true);
+  assert.equal(metDeadline.actual.settled, true);
+  assert.equal(metDeadline.actual.settleTick, 1);
+  assert.equal(metDeadline.firstBadTick, null);
   const insideDisc = [];
   for (let tick = 0; tick < 8; tick += 1) {
     insideDisc.push({ tick, playerX: 0, playerZ: 0, hull: 140, playerVelX: 0 });
@@ -4945,6 +5008,15 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   delete deletedHitRadius.radius;
   assert.equal(hitTest({ objects: [deletedHitRadius] }, 115, 100, dockZoom, view), null);
   assert.equal(hitTest({ objects: [{ id: 'wide', x: 0, z: 0, radius: 10 }] }, 115, 100, dockZoom, view), 'wide');
+  const unitZoom = { x: 0, z: 0, zoom: 1 };
+  const zeroTrigger = { id: 't', kind: 'trigger', x: 0, z: 0, radius: 0 };
+  assert.equal(markerStroke(zeroTrigger, 1), 0);
+  assert.equal(hitTest({ objects: [zeroTrigger] }, 115, 100, unitZoom, view), null);
+  const wideTrigger = { id: 't', kind: 'trigger', x: 0, z: 0, radius: 100 };
+  assert.equal(markerStroke(wideTrigger, 1), 100);
+  assert.equal(hitTest({ objects: [wideTrigger] }, 150, 100, unitZoom, view), 't');
+  assert.equal(hitTest({ objects: [wideTrigger] }, 200, 100, unitZoom, view), 't');
+  assert.equal(hitTest({ objects: [wideTrigger] }, 201, 100, unitZoom, view), null);
   const finalOutside = evaluateOracleKernel({
     trace: [
       { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },
