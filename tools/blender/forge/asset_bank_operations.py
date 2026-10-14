@@ -13,7 +13,7 @@ import bpy
 import forge as F
 from asset_bank_export import export_asset
 ROOT=Path(__file__).resolve().parents[3]
-OUT=ROOT/'assets/models/asset-bank/operations'
+OUT=Path(os.environ.get('SPACEFACE_OPERATIONS_OUT',str(ROOT/'assets/models/asset-bank/operations')))
 GROUPS={
 'power':['rectangular_solar_wing','radial_solar_petal','solar_hinge_mast_adapter','battery_cassette','capacitor_drum','transformer_skid','switchyard_busbar','distribution_cabinet','induction_coil','reactor_containment_shell','coolant_fin_cassette','power_junction_saddle'],
 'mechanisms':['sliding_bulkhead_leaf','bulkhead_guide_rail','hinged_vent_vane','piston_ram','paired_capture_jaws','rail_carriage','launch_sled','ejector_stop','cargo_turntable','retractable_bollard','clamp_shoe','gantry_swivel_pedestal'],
@@ -221,15 +221,302 @@ def build(name,group):
   if obj.name in s.sockets:obj.name='part_'+obj.name
  return k
 
+def upgrade(k,name):
+ """Manufactured assemblies, not random greeble: retain the original interface envelope."""
+ s=k.s;b=k.b;c=k.c
+ def remove(prefix):
+  removed=[o for o in s.objects if o.name==prefix or o.name.startswith(prefix+'.')]
+  for o in removed:
+   for g in s.motion_groups:g['objects']=[x for x in g['objects'] if x!=o]
+   s.objects.remove(o);bpy.data.objects.remove(o,do_unlink=True)
+ def moving(start,group):
+  for o in s.objects[start:]:o['forge_motion']=group
+  next(g for g in s.motion_groups if g['id']==group)['objects'].extend(s.objects[start:])
+ if name=='battery_cassette':
+  remove('cell_vault')
+  F.loft(s,'cast_cell_vault',[dict(x=x,w=w,ht=.59,hb=.59,zc=.62,n=4.5) for x,w in [(-1.2,.47),(-1.08,.59),(.94,.59),(1.2,.48)]],material='paint2',belly='dark',count=32)
+  for y in (-.59,.59):
+   for z in (.16,1.13):b('impact_rail',(0,y,z),(2.15,.07,.14),'gunmetal',False)
+   for x in (-.77,0,.77):
+    b('side_access_gasket',(x,y,.65),(.65,.04,.62),'dark',False)
+    b('cell_service_panel',(x,y*1.016,.65),(.57,.03,.53),'paint',False)
+    b('identification_band',(x,y*1.045,.78),(.48,.014,.065),'stripe',False,1)
+    for dx in (-.22,.22):k.bolt((x+dx,y*.92,1.24),.025)
+  for y in (-.3,.3):
+   k.ring('terminal_lockring',(-1.255,y,.6),.145,.032,(1,0,0),'dark')
+   b('terminal_guard',(-1.17,y,.83),(.26,.32,.065),'gunmetal',False)
+  b('charge_gauge_bezel',(.7,-.626,.9),(.65,.035,.17),'dark',False)
+  for x in range(5):b('charge_segment',(.48+x*.105,-.648,.9),(.065,.018,.045),'glow_green',False,1)
+ elif name=='distribution_cabinet':
+  for y in (-.46,.46):
+   b('corner_spine',(-.5,y,1.21),(.19,.12,1.75),'gunmetal',False)
+   b('raised_side_panel',(-.02,y*1.11,1.2),(.89,.025,1.64),'paint',False)
+   b('side_access_recess',(-.03,y*1.15,1.15),(.57,.023,.73),'dark',False)
+   for z in (.92,1.07,1.22,1.37):b('side_shutter',(-.03,y*1.17,z),(.49,.025,.065),'paint2',False,1)
+  for z in (.58,1.72):c('hinge_knuckle',(.63,.46,z-.13),(.63,.46,z+.13),.065,'bare',detail=1)
+  start=len(s.objects)
+  b('door_panel_surround',(.701,0,1.17),(.02,.76,1.35),'dark',False)
+  b('upper_service_panel',(.72,0,1.48),(.025,.68,.63),'paint',False)
+  b('lower_service_panel',(.72,0,.82),(.025,.68,.60),'paint',False)
+  b('diagnostic_screen_recess',(.738,.08,1.47),(.012,.38,.26),'dark',False)
+  for z,length in ((1.52,.22),(1.45,.14),(1.39,.25)):b('diagnostic_bar',(.747,.08,z),(.009,length,.018),'glow_cyan',False,2)
+  for y in (-.23,-.11,.01,.13,.25):b('filter_vent',(.741,y,.83),(.015,.038,.30),'dark',False,1)
+  b('warning_inlay',(.747,0,1.13),(.012,.60,.065),'stripe',False)
+  moving(start,'service_door')
+  k.conduit('power_harness',[(-.48,-.52,.35),(-.48,-.52,.55),(-.35,-.52,.7)],.035,'dark')
+ elif name=='piston_ram':
+  for x in (-1.20,.19):c('end_casting',(x-.07,0,.4),(x+.07,0,.4),.355,'paint')
+  for angle in (.785,2.356,3.927,5.498):
+   y=math.cos(angle)*.325;z=.4+math.sin(angle)*.325
+   c('tension_rod',(-1.21,y,z),(.26,y,z),.034,'bare',detail=1)
+   for x in (-1.24,.27):c('rod_locknut',(x-.025,y,z),(x+.025,y,z),.064,'gunmetal',detail=1)
+  b('hydraulic_manifold',(-.83,0,.727),(.43,.28,.13),'paint',False)
+  k.conduit('pressure_line',[(-.83,-.1,.73),(-.55,-.17,.72),(.08,-.17,.72),(.18,-.12,.64)],.027,'bare')
+  c('scraper_seal',(.43,0,.4),(.5,0,.4),.19,'dark')
+  remove('rod_eye');start=len(s.objects)
+  k.ring('rod_eye_bearing',(1.65,0,.4),.17,.067,(0,1,0),'gunmetal')
+  k.ring('eye_wear_race',(1.65,-.04,.4),.13,.018,(0,1,0),'bare')
+  moving(start,'ram_extension')
+ elif name=='paired_capture_jaws':
+  remove('jaw_arm')
+  for sign in (-1,1):
+   group='jaw_port' if sign>0 else 'jaw_starboard';start=len(s.objects)
+   poly=[(-.89,.80),(.54,.80),(.91,.59),(.91,.97),(.42,1.1),(-.89,1.1)]
+   poly=[(x,y*sign) for x,y in poly]
+   if sign<0:poly.reverse()
+   F.plate(s,'tapered_forged_arm',poly,.16,.48,'paint',chamfer=.035)
+   c('jaw_pivot',(-.80,sign*.95,.14),(-.80,sign*.95,.64),.19,'gunmetal')
+   c('pivot_race',(-.80,sign*.95,.64),(-.80,sign*.95,.67),.12,'bare')
+   b('arm_inset_rail',(-.08,sign*.96,.655),(.93,.075,.015),'dark',False)
+   for x in (-.43,.3):k.bolt((x,sign*.96,.66),.035)
+   for y in (.43,.55,.67):b('gripping_tooth',(.52,sign*y,.4),(.085,.045,.27),'dark',False,1)
+   moving(start,group)
+  k.conduit('protected_crossfeed',[(-1.0,-.7,.4),(-1.0,0,.4),(-1.0,.7,.4)],.045,'bare')
+ elif name=='camera_pod':
+  remove('camera_case');start=len(s.objects)
+  F.loft(s,'optical_monocoque',[dict(x=x,w=w,ht=h,hb=h,zc=.8,n=3.2) for x,w,h in [(-.3,.23,.18),(-.18,.32,.27),(.45,.32,.27),(.7,.235,.225)]],material='paint',belly='paint2',count=32)
+  b('service_recess',(.10,-.325,.80),(.49,.018,.27),'dark',False)
+  b('service_cover',(.10,-.338,.80),(.41,.018,.21),'paint2',False)
+  for x in (-.025,.225):b('cover_latch',(x,-.352,.8),(.055,.015,.13),'bare',False,1)
+  b('lens_sunshade',(.66,0,1.022),(.43,.56,.085),'paint2',False)
+  for x in (.735,.815):k.ring('optical_seal',(x,0,.8),.228,.019,(1,0,0),'dark')
+  b('record_lamp',(.32,-.333,.96),(.075,.018,.025),'glow_cyan',False,1)
+  moving(start,'camera_pitch')
+  for y in (-.39,.39):c('trunnion',(-.1,y-.035,.8),(-.1,y+.035,.8),.115,'bare')
+ elif name=='hose_caddy':
+  remove('reel_flange');remove('stand')
+  for y in (-.62,.62):
+   k.ring('spoked_reel_rim',(0,y,1),.64,.055,(0,1,0),'paint2')
+   c('hub',(0,y-.045,1),(0,y+.045,1),.19,'bare')
+   F.beams(s,'reel_spokes',[((.17*math.cos(t),y,1+.17*math.sin(t)),(.63*math.cos(t),y,1+.63*math.sin(t))) for t in [i*math.tau/6 for i in range(6)]],.085,material='paint',bevel=.01)
+  for y in (-.54,.54):
+   F.beams(s,'triangular_reel_stand',[((-.44,y,.2),(-.12,y,1)),((.44,y,.2),(.12,y,1)),((-.44,y,.2),(.44,y,.2))],.13,material='gunmetal',bevel=.015)
+  c('drive_hub',(0,-.74,1),(0,-.67,1),.18,'paint2')
+  b('coupler_cradle',(.44,0,.22),(.28,.49,.2),'paint',False)
+  k.conduit('hose_tail',[(.4,0,1.31),(.58,0,1.04),(.55,0,.48)],.07,'dark')
+  c('hose_quick_coupler',(.55,0,.41),(.55,0,.59),.105,'bare')
+
+ elif name in ('rectangular_solar_wing','radial_solar_petal'):
+  if name=='rectangular_solar_wing':
+   for y in (-1.23,1.23):b('edge_protector',(0,y,.25),(4.7,.065,.18),'gunmetal',False)
+   for x in (-2.1,2.1):b('underside_crossbrace',(x,0,.13),(.09,2.4,.09),'bare',False,1)
+  else:
+   for y in (-.24,.24):c('root_pin',(-.48,y,.23),(-.48,y,.36),.065,'bare',detail=1)
+ elif name=='solar_hinge_mast_adapter':
+  for y in (-.47,.47):
+   k.ring('bearing_race',(0,y,1.4),.235,.035,(0,1,0),'dark')
+   b('clevis_spine',(0,y,.92),(.50,.025,.32),'paint2',False)
+  k.ring('mast_seal',(0,0,.3),.26,.05)
+ elif name=='capacitor_drum':
+  c('pressure_lid',(0,0,1.86),(0,0,1.94),.53,'paint')
+  c('relief_valve',(0,.3,1.94),(0,.3,2.06),.075,'gunmetal',detail=1)
+  for i in range(6):
+   t=i*math.tau/6;k.bolt((.45*math.cos(t),.45*math.sin(t),1.95),.035)
+  b('monitor_module',(.53,0,1.1),(.17,.45,.43),'paint',False);b('monitor_window',(.622,0,1.13),(.012,.25,.11),'dark',False)
+ elif name=='transformer_skid':
+  for x in (-.66,.66):b('core_tie',(x,0,1.0),(.105,1.22,1.45),'gunmetal',False)
+  for y in (-.66,.66):b('fin_guard',(0,y,1.57),(1.56,.09,.14),'paint',False)
+  k.conduit('return_line',[(-.58,-.5,.37),(-.58,-.5,.58),(.5,-.5,.58)],.042,'bare')
+ elif name=='switchyard_busbar':
+  for x in (-1.5,0,1.5):
+   for y in (-.4,0,.4):
+    for z in (.35,.5,.65):c('isolation_shed',(x,y,z),(x,y,z+.055),.155,'ceramic',detail=1)
+ elif name=='induction_coil':
+  for x in (-.8,.8):
+   b('saddle_cap',(x,0,.53),(.28,1.36,.12),'paint',False)
+   for y in (-.54,.54):k.bolt((x,y,.61),.037)
+  k.conduit('coil_feed',[(.8,-.58,.6),(1.0,-.58,.6),(1.0,-.58,.28)],.06,'bare')
+ elif name=='reactor_containment_shell':
+  for i in range(8):
+   t=i*math.tau/8;k.bolt((1.1*math.cos(t),1.1*math.sin(t),1.94),.055)
+  for sign in (-1,1):
+   c('cooling_tap',(sign*1.08,0,.62),(sign*1.21,0,.62),.13,'bare');b('shield_service_tab',(sign*1.11,0,1.1),(.1,.4,.65),'paint',False)
+ elif name=='coolant_fin_cassette':
+  for y in (-.68,.68):
+   b('header_cover',(0,y,.425),(2.5,.23,.065),'paint',False)
+   for x in (-1.08,1.08):k.bolt((x,y,.465),.036)
+  for x in (-1.2,1.2):k.ring('port_seal',(x,-.86,.22),.12,.025,(0,1,0),'dark')
+ elif name=='power_junction_saddle':
+  for x,y in ((1,0),(-1,0),(0,1),(0,-1)):
+   k.ring('gland_lock',(.72*x,.72*y,.55),.205,.028,(x,y,0),'gunmetal')
+  b('circuit_label',(0,0,.99),(.43,.22,.018),'paint2',False)
+ elif name=='sliding_bulkhead_leaf':
+  start=len(s.objects)
+  for y in (-.82,.82):b('panel_stiffener',(.275,y,1.66),(.03,.075,2.35),'gunmetal',False)
+  for z in (.67,2.53):b('locking_recess',(.277,0,z),(.024,.74,.22),'dark',False);b('locking_bar',(.291,0,z),(.02,.56,.07),'bare',False)
+  moving(start,'bulkhead_slide')
+ elif name=='bulkhead_guide_rail':
+  for y in (-.16,.16):b('wear_strip',(0,y,.49),(3.9,.065,.09),'bare',False)
+  for x in (-1.7,1.7):b('travel_stop',(x,0,.3),(.12,.33,.21),'stripe',False)
+ elif name=='hinged_vent_vane':
+  start=len(s.objects)
+  for y in (-.43,.43):b('vane_stiffener',(0,y,.51),(1.35,.045,.045),'gunmetal',False)
+  moving(start,'vane_pitch')
+ elif name=='rail_carriage':
+  start=len(s.objects);k.hatch('payload_plate',(0,0,.77),(1.25,.82))
+  for x in (-.67,.67):b('end_buffer',(x,0,.53),(.12,1.0,.19),'dark',False)
+  moving(start,'carriage_translation')
+ elif name=='launch_sled':
+  start=len(s.objects)
+  for x in (-1.1,0,1.1):b('sled_crossrib',(x,0,.19),(.13,1.35,.18),'bare',False)
+  for y in (-.72,.72):b('runner_guard',(0,y,.43),(3.4,.055,.20),'paint',False)
+  moving(start,'sled_travel')
+ elif name=='ejector_stop':
+  for y in (-.35,.35):
+   for x in (-.15,.2):k.ring('damper_boot',(x,y,.7),.18,.027,(1,0,0),'dark')
+  start=len(s.objects)
+  for y in (-.39,0,.39):b('impact_rib',(.735,y,.7),(.025,.1,.63),'paint2',False)
+  moving(start,'compression')
+ elif name=='cargo_turntable':
+  start=len(s.objects);k.ring('deck_seal',(0,0,.44),1.27,.025,(0,0,1),'dark')
+  for x in (-.75,.75):
+   for y in (-.6,.6):b('cargo_lock',(x,y,.55),(.22,.22,.075),'stripe',False)
+  moving(start,'turntable_yaw')
+ elif name=='retractable_bollard':
+  k.ring('wiper_seal',(0,0,.5),.3,.04,(0,0,1),'dark');start=len(s.objects)
+  for z in (.87,1.02):k.ring('warning_band',(0,0,z),.28,.02,(0,0,1),'stripe')
+  moving(start,'bollard_extension')
+ elif name=='clamp_shoe':
+  b('pressure_insert',(.38,0,.57),(.62,.67,.05),'paint2',False)
+  for y in (-.30,.30):b('edge_rib',(.17,y,.6),(.89,.055,.06),'gunmetal',False)
+ elif name=='gantry_swivel_pedestal':
+  k.ring('slew_seal',(0,0,1.47),.61,.035,(0,0,1),'dark');start=len(s.objects)
+  k.hatch('boom_mount',(0,0,2.02),(1.20,.72));moving(start,'gantry_yaw')
+ elif name=='narrowband_antenna_blade':
+  b('feed_bay',(-.13,-.09,.82),(.5,.065,.45),'gunmetal',False);b('tuning_plate',(-.13,-.132,.82),(.39,.025,.32),'paint',False)
+  b('antenna_edge',(.665,0,1.47),(.065,.16,2.02),'stripe',False)
+ elif name=='phased_array_tile':
+  for sign in (-1,1):
+   b('radome_edge',(sign*.76,0,.34),(.055,1.5,.09),'paint',False)
+   b('radome_edge',(0,sign*.76,.34),(1.5,.055,.09),'paint',False)
+  for x in (-.66,.66):
+   for y in (-.66,.66):k.bolt((x,y,.36),.028)
+ elif name=='optical_rangefinder':
+  for y in (-.45,.45):k.ring('stereo_seal',(.59,y,.6),.181,.025,(1,0,0),'dark')
+  for x in (-.48,.24):k.ring('barrel_lock',(x,0,.6),.273,.025,(1,0,0),'bare')
+  b('optic_bridge_cover',(.18,0,.82),(.66,.60,.11),'paint',False)
+ elif name=='docking_light_bar':
+  for x in range(7):
+   px=(x-3)*.44
+   for y in (-.21,.21):b('lamp_guard',(px,y,.64),(.35,.045,.06),'paint2',False)
+ elif name=='status_signal_housing':
+  for z in (.75,1.15,1.55):k.ring('lens_gasket',(0,0,z),.27,.035,(0,0,1),'dark')
+  for x in (-.25,.25):c('protective_stay',(x,0,.65),(x,0,1.82),.035,'bare',detail=1)
+ elif name=='exclusion_baffle':
+  for y in (-.81,.81):b('slat_tie',(0,y,.62),(.94,.08,.13),'bare',False)
+  for x in (-.4,0,.4):b('shield_edge',(x,0,1.72),(.14,1.76,.065),'gunmetal',False)
+ elif name=='sensor_iris':
+  for i in range(8):
+   t=i*math.tau/8;k.bolt((.70*math.cos(t),.70*math.sin(t),.37),.031)
+  k.ring('aperture_race',(0,0,.36),.545,.023,(0,0,1),'dark')
+ elif name=='fire_suppression_head':
+  start=len(s.objects)
+  c('nozzle_bore',(.702,0,1.1005),(.712,0,1.103),.095,'dark')
+  k.ring('nozzle_lock',(.20,0,.994),.213,.02,(1,0,.21),'gunmetal');moving(start,'nozzle_yaw')
+  k.conduit('supply_hose',[(-.18,0,.30),(-.29,0,.48),(-.29,0,.67),(0,0,.78)],.045,'dark')
+ elif name=='robotic_tool_changer':
+  for i in range(6):
+   t=i*math.tau/6;k.bolt((.54*math.cos(t),.54*math.sin(t),.20),.036)
+  k.ring('coupler_seal',(0,0,.48),.47,.025,(0,0,1),'dark')
+  for y in (-.13,.13):c('service_pin',(0,y,.6),(0,y,.64),.032,'bare',detail=1)
+ elif name=='repair_tool_tray':
+  b('moulded_insert',(0,0,.255),(1.88,1.02,.055),'dark',False)
+  for y in (-.52,-.175,.175,.52):b('tool_separator',(0,y,.32),(1.82,.035,.13),'paint2',False)
+  for x in (-.94,.94):
+   for y in (-.54,.54):k.bolt((x,y,.40),.027)
+ # Group source lists own all replacement geometry and remain export-serializable.
+ return k
+
+def review():
+ from asset_bank_export import render_glb_preview
+ from PIL import Image,ImageDraw,ImageFont
+ folder=ROOT/'.devshots/asset-bank/operations';folder.mkdir(parents=True,exist_ok=True)
+ for name in HEROES:
+  render_glb_preview(str(OUT/('ops_'+name+'_lod0.glb')),str(folder/(name+'.png')),width=640,height=480,samples=32)
+ sheet=Image.new('RGB',(1980,1120),(18,25,34));draw=ImageDraw.Draw(sheet)
+ font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',23)
+ small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',16)
+ draw.text((24,15),'SPACEFACE / OPERATIONS / MANUFACTURED-ASSEMBLY REVISION',font=font,fill=(225,235,240))
+ draw.text((24,49),'Exact exported LOD0 meshes • canonical Forge materials • CPU Blender review, not live game',font=small,fill=(150,180,190))
+ rows=[]
+ for i,name in enumerate(HEROES):
+  x=15+(i%3)*655;y=86+(i//3)*515
+  sheet.paste(Image.open(folder/(name+'.png')).convert('RGB'),(x,y));draw.text((x+8,y+478),name.replace('_',' '),font=font,fill=(215,230,240))
+  glb=OUT/('ops_'+name+'_lod0.glb');rows.append({'assetId':'ops_'+name,'file':str(glb.relative_to(ROOT)),'sha256':hashlib.sha256(glb.read_bytes()).hexdigest()})
+ dest=OUT/'evidence/operations_quality_six.png';dest.parent.mkdir(parents=True,exist_ok=True);sheet.save(dest)
+ (OUT/'evidence/operations_quality_six.json').write_text(json.dumps({'method':'Six upgraded exported LOD0 meshes reimported/rendered on CPU; same canonical Forge material finishes.','referenceImages':['.devshots/asset-bank/style-reference/atlas.png','.devshots/asset-bank/style-reference/wasp.png'],'sheetSha256':hashlib.sha256(dest.read_bytes()).hexdigest(),'sources':rows,'reviewStatus':'awaiting visual inspection'},indent=2)+'\n')
+ print('OPERATIONS_REVIEW',str(dest),flush=True)
+
+def comparison(source_path):
+ from PIL import Image,ImageDraw,ImageFont
+ old=Image.open(source_path).convert('RGB');canvas=Image.new('RGB',(1040,890),(18,25,34));d=ImageDraw.Draw(canvas)
+ f=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',19)
+ d.text((22,16),'EARLIER EXPORTED SERVICE SNAPSHOT',font=f,fill=(185,195,205));d.text((535,16),'NEW MANUFACTURED-ASSEMBLY REVISION',font=f,fill=(225,235,240))
+ for row,(name,col,gridrow) in enumerate([('camera_pod',3,1),('hose_caddy',2,2)]):
+  x=30+col*505;y=95+gridrow*425
+  canvas.paste(old.crop((x,y,x+480,y+360)),(20,60+row*410))
+  new=Image.open(ROOT/'.devshots/asset-bank/operations'/(name+'.png')).convert('RGB').resize((480,360))
+  canvas.paste(new,(535,60+row*410));d.text((23,424+row*410),name.replace('_',' '),font=f,fill=(200,215,225))
+ d.text((22,864),'Same roles and attachment interfaces; old Library snapshot vs newly rendered exported GLBs.',font=f,fill=(145,170,190))
+ dest=OUT/'evidence/operations_before_after.png';canvas.save(dest)
+ meta={'beforeSourceSha256':hashlib.sha256(Path(source_path).read_bytes()).hexdigest(),'beforeDescription':'Original12service exported model contact sheet previously delivered to user; recovered from Library. Not reconstructed baseline geometry.','afterSourceSha256':{n:hashlib.sha256((OUT/('ops_'+n+'_lod0.glb')).read_bytes()).hexdigest() for n in ['camera_pod','hose_caddy']},'imageSha256':hashlib.sha256(dest.read_bytes()).hexdigest()}
+ (dest.with_suffix('.json')).write_text(json.dumps(meta,indent=2)+'\n')
+
+def contacts():
+ from asset_bank_export import render_glb_preview
+ from PIL import Image,ImageDraw,ImageFont
+ folder=ROOT/'.devshots/asset-bank/operations-all';folder.mkdir(parents=True,exist_ok=True)
+ for group,names in GROUPS.items():
+  sheet=Image.new('RGB',(2040,1390),(18,25,34));draw=ImageDraw.Draw(sheet)
+  font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',20)
+  small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',14)
+  draw.text((30,20),'SPACEFACE / OPERATIONS / '+group.upper()+' / QUALITY REVISION',font=font,fill=(225,235,240))
+  draw.text((30,53),'Actual exported LOD0 meshes, normalized individual framing • canonical Forge materials • CPU review, not live game',font=small,fill=(150,180,195))
+  sources=[]
+  for i,name in enumerate(names):
+   glb=OUT/('ops_'+name+'_lod0.glb');path=folder/(name+'.png')
+   render_glb_preview(str(glb),str(path),width=480,height=360,samples=32)
+   x=30+(i%4)*505;y=95+(i//4)*425;sheet.paste(Image.open(path).convert('RGB'),(x,y));draw.text((x+8,y+362),name.replace('_',' '),font=font,fill=(215,230,240))
+   row=json.loads((OUT/('ops_'+name+'.json')).read_text());dim=[row['bounds']['max'][j]-row['bounds']['min'][j] for j in range(3)]
+   draw.text((x+8,y+392),'X %.2f / height %.2f / width %.2f m'%tuple(dim),font=small,fill=(145,170,190))
+   sources.append({'assetId':'ops_'+name,'file':str(glb.relative_to(ROOT)),'sha256':hashlib.sha256(glb.read_bytes()).hexdigest()})
+  path=OUT/'evidence'/('operations_'+group+'_contact.png');sheet.save(path)
+  p=ROOT/'design/asset-bank/operations.json';m=json.loads(p.read_text());m['contactSheets']=[r for r in m.get('contactSheets',[]) if r['group']!=group]+[{'group':group,'file':str(path.relative_to(ROOT)),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'method':'Reimported exact GLBs, rendered Cycles CPU32samples. Not live-game acceptance.','sources':sources}];p.write_text(json.dumps(m,indent=2)+'\n')
+  print('OPERATIONS_CONTACT',group,flush=True)
+
 def main():
  args=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []
  rows=[]
  for group,names in GROUPS.items():
   for name in names:
    if args and name not in args:continue
-   F.reset_scene();k=build(name,group)
+   F.reset_scene();k=upgrade(build(name,group),name)
    row=export_asset(k.s,str(OUT),'ops_'+name,group,name.replace('_',' '),collision_boxes=k.cols,tags=['operations',group,'forge','reusable'])
    row['motionContracts']=k.moves;row['recipe']=str(Path(__file__).relative_to(ROOT));rows.append(row);print('OPERATIONS_DONE',name,flush=True)
  if not args:
   p=ROOT/'design/asset-bank/operations.json';p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps({'schemaVersion':2,'family':'operations','assetCount':len(rows),'status':'reusable_asset_bank_not_live_game','sourceFrame':'+X forward +Y port +Z up; metres','artReferences':['docs/visual-assets/LOOK.md','tools/blender/forge/ships/helios_lark.py','tools/blender/forge/ships/ashline_rig.py'],'collisionPolicy':'Compound approximate AABBs, preserve hollow centers; rest-pose only, consumer updates moving proxies.','assets':rows},indent=2)+'\n')
-if __name__=='__main__':main()
+if __name__=='__main__':
+ if '--contacts' in sys.argv:contacts()
+ elif '--compare' in sys.argv:comparison(sys.argv[sys.argv.index('--compare')+1])
+ elif '--review' in sys.argv:review()
+ else:main()

@@ -1,0 +1,336 @@
+{
+  "assetId": "ops_hose_caddy",
+  "category": "service",
+  "description": "hose caddy",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "hose",
+      "position": [
+        0.55,
+        1.1,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6,
+          0.55
+        ],
+        "size": [
+          0.9,
+          1.2,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6,
+          -0.55
+        ],
+        "size": [
+          0.9,
+          1.2,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          0.62
+        ],
+        "size": [
+          1.4,
+          1.4,
+          0.1100000000000001
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.62
+        ],
+        "size": [
+          1.4,
+          1.4,
+          0.1100000000000001
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          0.54,
+          0.54,
+          1.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          0.2,
+          1.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          0.62
+        ],
+        "size": [
+          0.38,
+          0.38,
+          0.09000000000000008
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.62
+        ],
+        "size": [
+          0.38,
+          0.38,
+          0.09000000000000008
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          0.7050000000000001
+        ],
+        "size": [
+          0.36,
+          0.36,
+          0.06999999999999995
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.49,
+          1.175,
+          -0.0
+        ],
+        "size": [
+          0.2964870412072981,
+          0.34765802747153207,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.565,
+          0.76,
+          -0.0
+        ],
+        "size": [
+          0.16979953851781235,
+          0.5674892609920256,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.55,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.21,
+          0.18,
+          0.21
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.6949999928474426,
+      0.0,
+      -0.75
+    ],
+    "max": [
+      0.6949999928474426,
+      1.696065902709961,
+      0.75
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_hose_caddy_lod0.glb",
+      "triangles": 10900,
+      "draws": 5,
+      "bytes": 767628,
+      "method": "source",
+      "sha256": "0af68bb30c0951249788e76af8e836e946c4633f8e0d0855c76066213b159162"
+    },
+    {
+      "level": 1,
+      "file": "ops_hose_caddy_lod1.glb",
+      "triangles": 4360,
+      "draws": 5,
+      "bytes": 454944,
+      "method": "Forge-decimation",
+      "sha256": "bef002096f227ee9e499f9789a808ad3a804388e1558d2a4c71002585b27bcbd"
+    },
+    {
+      "level": 2,
+      "file": "ops_hose_caddy_lod2.glb",
+      "triangles": 1802,
+      "draws": 5,
+      "bytes": 342960,
+      "method": "Forge-decimation",
+      "sha256": "d59fca0a5ec16ea086d47b1014848ac13a7bd0733aed7385e15608dcfbb6de76"
+    }
+  ]
+}
