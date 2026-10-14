@@ -1549,6 +1549,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   const _directorView = {
     followX: 0,
     followZ: 0,
+    playerLocalX: NaN,
+    playerLocalZ: NaN,
     followZoom: DEFAULT_ZOOM,
     fov: cam.fov,
     baseFov: cam.fov,
@@ -1947,6 +1949,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const baseFz = fz;
         _directorView.followX = baseFx;
         _directorView.followZ = baseFz;
+        _directorView.playerLocalX = _playerLocalScratch.x;
+        _directorView.playerLocalZ = _playerLocalScratch.z;
         _directorView.followZoom = resolveBaseZoom() * _speedZoomFactor;
         _directorView.fov = baseFov;
         _directorView.baseFov = baseFov;
