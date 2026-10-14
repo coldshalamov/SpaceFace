@@ -4630,9 +4630,32 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(playerZ(aboveHundred).actual.foundTick, null);
   assert.equal(aboveHundred.failed.some((row) => row.id === 'eventByTick:playerZ'), true);
   const outsideCross = judged(outside, '>', 0.5);
-  assert.equal(playerZ(outsideCross).actual.foundTick, 0);
+  assert.equal(playerZ(outsideCross).actual.foundTick, null);
   assert.equal(playerZ(outsideCross).ok, false);
   assert.equal(outsideCross.ok, false);
+  const split = evaluateOracleKernel({
+    trace: [
+      { tick: 0, playerX: 0, playerZ: 20 },
+      { tick: 1, playerX: 100, playerZ: -1 },
+    ],
+    assertions: [{ ...event, op: '<', value: -0.25 }],
+  });
+  const splitRow = playerZ(split);
+  assert.equal(split.ok, false);
+  assert.equal(splitRow.ok, false);
+  assert.notEqual(splitRow.actual.foundTick, 1);
+  const nullRadius = evaluateOracleKernel({
+    trace: [{ tick: 0, playerX: 0, playerZ: 4 }],
+    assertions: [{
+      ...event,
+      op: '>',
+      value: 0.5,
+      expected: { x: 0, z: 20, radius: null },
+    }],
+  });
+  const nullRow = playerZ(nullRadius);
+  assert.equal(nullRow.ok, false);
+  assert.notEqual(nullRow.expected.radius, 20);
   const crossed = judged(inside, '>', 0.5);
   assert.equal(crossed.ok, true);
   assert.equal(playerZ(crossed).ok, true);

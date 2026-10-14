@@ -131,10 +131,10 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive through the cross",
-      "radius": 20,
+      "radius": 12,
       "shape": "circle",
-      "x": -90,
-      "z": 0
+      "x": 0,
+      "z": -20
     },
     {
       "id": "south",

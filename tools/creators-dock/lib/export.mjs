@@ -319,6 +319,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
     assertions.push(assertion);
     rememberOracle(assertion, seenOracle, issues);
   }
+  let droppedGeometry = false;
   for (const trigger of triggers) {
     if (!trigger.assertion || typeof trigger.assertion !== 'object') {
       issues.push(`${trigger.id}: trigger.assertion is required`);
@@ -336,6 +337,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
     }
     if (!canCarryGeometry(assertion)) {
       const geometry = layoutGeometry(trigger);
+      droppedGeometry = true;
       issues.push(`${trigger.id}: geometry ${JSON.stringify(geometry)} was dropped`);
       continue;
     }
@@ -422,6 +424,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
   if (Array.isArray(project.checkpoints) && project.checkpoints.length) scenario.checkpoints = clone(project.checkpoints);
   if (project.parameterOverlay) scenario.parameterOverlay = clone(project.parameterOverlay);
   if (project.saveLoadEquivalence) scenario.saveLoadEquivalence = project.saveLoadEquivalence;
+  if (droppedGeometry) return null;
   return scenario;
 }
 

@@ -150,8 +150,8 @@
       "label": "player stays alive",
       "radius": 12,
       "shape": "circle",
-      "x": -70,
-      "z": -30
+      "x": 0,
+      "z": 0
     },
     {
       "from": "player",

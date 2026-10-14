@@ -506,7 +506,7 @@ test('a place disc edits the exported place and objectives follow the lab metric
   objective.value = -0.25;
   objective.x = 12;
   objective.z = -8;
-  delete objective.radius;
+  objective.radius = 12;
   const exported = await exportProject(project);
   assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
   const place = exported.pack.files['places/zone_dock_bank_corridor.json'];
@@ -519,7 +519,7 @@ test('a place disc edits the exported place and objectives follow the lab metric
   assert.equal(scenarioText.includes('12'), true);
   assert.equal(scenarioText.includes('-8'), true);
   const turned = exported.scenario.assertions.find((row) => row.metric === 'trace.final');
-  assert.deepEqual(turned.expected, { x: 12, z: -8 });
+  assert.deepEqual(turned.expected, { x: 12, z: -8, radius: 12 });
   const imported = importScenario(exported.scenario);
   assert.equal(imported.ok, true, (imported.issues || []).join('\n'));
   const importedTurned = imported.project.objects.find((object) => object.kind === 'objective' && object.metric === 'trace.final');
@@ -599,24 +599,66 @@ test('a place disc edits the exported place and objectives follow the lab metric
   farTurned.value = -0.25;
   farTurned.x = 99999;
   farTurned.z = 99999;
-  delete farTurned.radius;
+  farTurned.radius = 1;
   const farExport = await exportProject(farObjective);
   assert.equal(farExport.ok, true, (farExport.issues || []).join('\n'));
   const farAuthored = farExport.scenario.assertions.find((row) => row.metric === 'trace.final');
-  assert.deepEqual(farAuthored.expected, { x: 99999, z: 99999 });
-  assert.equal(Object.prototype.hasOwnProperty.call(farAuthored.expected, 'radius'), false);
+  assert.deepEqual(farAuthored.expected, { x: 99999, z: 99999, radius: 1 });
   const farRun = await runLabScenario(farExport.scenario);
   const metricFail = (farRun.oracle.failed || []).find((row) => row.expected && row.expected.x === 99999 && row.expected.z === 99999);
   assert.notEqual(metricFail, undefined);
-  assert.equal(Number.isFinite(metricFail.expected.radius), true);
-  assert.equal(metricFail.expected.radius > 0, true);
+  assert.equal(metricFail.expected.radius, 1);
   assert.equal(Number.isFinite(metricFail.closest), true);
   assert.equal(metricFail.closest > metricFail.expected.radius, true);
+  const bare = getComposition('dock.bank-shot');
+  const bareTurned = objectById(bare, 'turned');
+  delete bareTurned.radius;
+  const bareExport = await exportProject(bare);
+  assert.equal(bareExport.ok, true, (bareExport.issues || []).join('\n'));
+  const bareAuthored = bareExport.scenario.assertions.find((row) => row.metric === 'trace.final');
+  assert.equal(Object.prototype.hasOwnProperty.call(bareAuthored.expected, 'radius'), false);
+  const bareRun = await runLabScenario(bareExport.scenario);
+  const invented = (bareRun.oracle.failed || []).find((row) => row.expected && row.expected.x === bareTurned.x && row.expected.z === bareTurned.z);
+  assert.equal(invented, undefined);
+  const alive = objectById(getComposition('dock.bank-shot'), 'alive_bank');
+  for (const place of [{ x: -90, z: 10, radius: 12 }, { x: 999, z: 999, radius: 1 }]) {
+    const project = getComposition('dock.bank-shot');
+    const hold = objectById(project, 'alive_bank');
+    hold.x = place.x;
+    hold.z = place.z;
+    hold.radius = place.radius;
+    const holdExport = await exportProject(project);
+    assert.equal(holdExport.ok, true, (holdExport.issues || []).join('\n'));
+    const holdRun = await runLabScenario(holdExport.scenario);
+    const holdFail = (holdRun.oracle.failed || []).find((row) => String(row.id || '').includes('holds'));
+    assert.notEqual(holdFail, undefined);
+    assert.equal(holdFail.expected.x, place.x);
+    assert.equal(holdFail.expected.z, place.z);
+    assert.equal(holdFail.expected.radius, place.radius);
+    assert.equal(Number.isFinite(holdFail.expected.closest), true);
+    assert.equal(holdFail.expected.closest > place.radius, true);
+  }
+  const held = getComposition('dock.bank-shot');
+  const heldAlive = objectById(held, 'alive_bank');
+  assert.equal(heldAlive.x, 0);
+  assert.equal(heldAlive.z, 0);
+  assert.equal(heldAlive.radius, 12);
+  const heldExport = await exportProject(held);
+  assert.equal(heldExport.ok, true, (heldExport.issues || []).join('\n'));
+  const heldRun = await runLabScenario(heldExport.scenario);
+  const heldFail = (heldRun.oracle.failed || []).find((row) => String(row.id || '').includes('holds') && row.expected && row.expected.x === 0);
+  assert.equal(heldFail, undefined);
   const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
-  assert.equal(editor.includes("key: 'metric'"), true);
-  assert.equal(editor.includes("key: 'signal'"), true);
-  assert.equal(editor.includes("key: 'op'"), true);
-  assert.equal(editor.includes("key: 'value'"), true);
+  const fieldsAt = editor.indexOf('function fieldsFor');
+  const objectiveAt = editor.indexOf("object.kind === 'objective'", fieldsAt);
+  const triggerAt = editor.indexOf("object.kind === 'trigger'", objectiveAt);
+  const objectiveFields = editor.slice(objectiveAt, triggerAt);
+  assert.equal(objectiveFields.includes("key: 'metric'"), true);
+  assert.equal(objectiveFields.includes("key: 'signal'"), true);
+  assert.equal(objectiveFields.includes("key: 'op'"), true);
+  assert.equal(objectiveFields.includes("key: 'value'"), true);
+  assert.equal(objectiveFields.includes("key: 'radius'"), true);
+  assert.equal(alive.radius, 12);
 });
 
 test('a trigger disc that cannot be carried is refused', async () => {
@@ -628,7 +670,16 @@ test('a trigger disc that cannot be carried is refused', async () => {
   along.assertion.expected = { note: 1 };
   const refused = await exportProject(project);
   assert.equal(refused.ok, false);
+  assert.equal(refused.scenario, null);
   assert.equal(refused.issues.some((issue) => issue.includes('along_x') && issue.includes('geometry') && issue.includes('999') && issue.includes('was dropped')), true);
+  let refusedPassed = false;
+  try {
+    const refusedRun = await runLabScenario(refused.scenario);
+    refusedPassed = !!(refusedRun && refusedRun.ok === true);
+  } catch (error) {
+    refusedPassed = false;
+  }
+  assert.equal(refusedPassed, false);
   const carried = getComposition('dock.bank-shot');
   const carriedAlong = objectById(carried, 'along_x');
   carriedAlong.x = 999;

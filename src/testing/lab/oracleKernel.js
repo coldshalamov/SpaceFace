@@ -5,18 +5,16 @@ import { evaluateMetrics, compareThreshold } from './metricRegistry.js';
 // Side-effect: register massline + flight metrics for both Node and Chromium hosts.
 import '../metrics/masslineMetrics.js';
 
-// An objective authored at x,z without its own radius is still a disc. 20 is the
-// radius already used by a dock trigger (dock.dangerous-crossing).
-const DEFAULT_DISC_RADIUS = 20;
-
 function discOf(assertion) {
   const expected = assertion && assertion.expected;
   if (!expected || typeof expected !== 'object' || Array.isArray(expected)) return null;
   if (!Number.isFinite(expected.x) || !Number.isFinite(expected.z)) return null;
+  // An objective with only x,z is not a disc. Do not invent a radius.
+  if (!Object.prototype.hasOwnProperty.call(expected, 'radius')) return null;
   return {
     x: expected.x,
     z: expected.z,
-    radius: Number.isFinite(expected.radius) ? expected.radius : DEFAULT_DISC_RADIUS,
+    radius: Number.isFinite(expected.radius) ? expected.radius : null,
   };
 }
 
@@ -29,6 +27,17 @@ function closestApproach(samples, disc) {
     if (distance < closest) closest = distance;
   }
   return closest;
+}
+
+function sampleDistance(sample, disc) {
+  const x = sample && Number.isFinite(sample.playerX) ? sample.playerX : 0;
+  const z = sample && Number.isFinite(sample.playerZ) ? sample.playerZ : 0;
+  return Math.hypot(x - disc.x, z - disc.z);
+}
+
+function sampleInsideDisc(sample, disc) {
+  if (!disc || !Number.isFinite(disc.radius)) return false;
+  return sampleDistance(sample, disc) <= disc.radius;
 }
 
 function discReached(samples, disc) {
@@ -495,9 +504,11 @@ function evaluateTemporal(assertions, trace, ctx) {
         continue;
       }
       const need = a.holdsTicks | 0;
+      const disc = discOf(a);
+      const approach = discReached(scoped, disc);
       let run = 0;
       let maxRun = 0;
-      let ok = false;
+      let holdsOk = false;
       let firstBad = null;
       // K2: only consecutive truthy samples INSIDE the declared interval count.
       for (const s of scoped) {
@@ -505,20 +516,25 @@ function evaluateTemporal(assertions, trace, ctx) {
           run++;
           if (run > maxRun) maxRun = run;
           if (run >= need) {
-            ok = true;
+            holdsOk = true;
             break;
           }
         } else {
           run = 0;
         }
       }
+      const discOk = !disc || approach.ok === true;
+      const ok = holdsOk && discOk;
       if (!ok && scoped.length) firstBad = scoped[scoped.length - 1].tick;
+      let expected = withDisc({ holdsTicks: need }, disc);
+      if (disc) expected = { ...expected, closest: approach.closest };
       results.push({
         family: 'temporal',
         id: `holds:${signal}`,
         ok,
-        expected: { holdsTicks: need },
-        actual: { maxRun },
+        expected,
+        actual: disc ? { maxRun, closest: approach.closest } : { maxRun },
+        ...(disc ? { closest: approach.closest } : {}),
         signedDelta: ok ? 0 : need - maxRun,
         firstBadTick: firstBad,
       });
@@ -541,14 +557,14 @@ function evaluateTemporal(assertions, trace, ctx) {
       const disc = discOf(a);
       const approach = discReached(scoped, disc);
       let foundTick = null;
-      // K2: only search for the event inside the declared interval.
+      // The sample that satisfies the comparison must also lie inside the disc.
       for (const s of scoped) {
-        if (truthySignal(s, signal, a)) {
-          foundTick = s.tick;
-          break;
-        }
+        if (!truthySignal(s, signal, a)) continue;
+        if (disc && !sampleInsideDisc(s, disc)) continue;
+        foundTick = s.tick;
+        break;
       }
-      const ok = foundTick != null && foundTick <= byTick && approach.ok === true;
+      const ok = foundTick != null && foundTick <= byTick;
       results.push({
         family: 'temporal',
         id: `eventByTick:${signal}`,

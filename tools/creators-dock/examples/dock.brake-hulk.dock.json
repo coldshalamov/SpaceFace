@@ -120,8 +120,8 @@
       "label": "tether stays active",
       "radius": 12,
       "shape": "circle",
-      "x": 80,
-      "z": 36
+      "x": 0,
+      "z": 0
     },
     {
       "id": "peak_speed",
@@ -160,8 +160,8 @@
       "label": "player stays alive",
       "radius": 12,
       "shape": "circle",
-      "x": -90,
-      "z": -20
+      "x": 0,
+      "z": 0
     },
     {
       "from": "player",
