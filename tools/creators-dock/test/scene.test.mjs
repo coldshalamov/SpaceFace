@@ -7045,6 +7045,8 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 569.5, 282.5, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 569.85, 282.85, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 468.5, 106.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 320.5, 281.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 320.9472, 281.4499, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 468.5, 107.5, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 618.5, 333.5, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 548.5, 123.5, stageCam, stage, profileDraw), null);

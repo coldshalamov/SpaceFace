@@ -1713,7 +1713,7 @@ function pixelHoldsDash(dx, dy, radius, along, pattern, sx, sy) {
   // centers, and gap pixels at this radius, stay empty.
   const perp = Math.abs(Math.hypot(dx, dy) - radius);
   const support = squareSupport(dx, dy);
-  if (!(support < 0.536 && perp > bodyReach(dx, dy) && perp <= 0.94)) return false;
+  if (!(support < 0.553 && perp > bodyReach(dx, dy) && perp <= 0.94)) return false;
   const dist = Math.hypot(dx, dy) || 1;
   const inward = 0.45;
   // Outside the ring the stroke is toward the center. Inside it, the same
