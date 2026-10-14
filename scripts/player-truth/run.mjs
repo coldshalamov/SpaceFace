@@ -23,7 +23,7 @@
 //            run's stopReason. A sim stall is not retried. ENVIRONMENT is printed on its own line.
 
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
-import { constants as osConstants, freemem, loadavg, setPriority, totalmem } from 'node:os';
+import { freemem, loadavg, totalmem } from 'node:os';
 import { gzipSync } from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -367,7 +367,7 @@ async function runOne(args, arena, extra = {}) {
     ({ browser, executable, chrome } = await launchChromium(chromium, {
       headless: !args.headed,
       args: args.headed
-        ? ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows']
+        ? ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', ...(process.platform === 'win32' ? ['--disable-features=CalculateNativeWinOcclusion'] : [])]
         : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
     }));
   } catch (err) {
@@ -788,8 +788,6 @@ async function assertHarnessEnvironment() {
 }
 
 async function main() {
-  // This diagnostic run shares the player's CPU/GPU power budget.
-  try { setPriority(osConstants.priority.PRIORITY_LOW); } catch { /* host may deny niceness */ }
   sessionGuard = installSessionSignalGuard(process);
   const args = parseArgs(process.argv.slice(2));
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
