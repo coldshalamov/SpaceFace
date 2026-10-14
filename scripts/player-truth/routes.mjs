@@ -654,16 +654,34 @@ export async function armoryLaunchWord(page) {
   });
 }
 
-export async function adventureToFlight(page, step) {
+export async function readLaunchedRunSeed(page) {
+  return page.evaluate(async () => {
+    const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
+    if (laneCommandSink()) {
+      const response = await laneRpc('probeState', {});
+      if (!response?.ok || !Number.isSafeInteger(response.result?.seed)) throw new Error('Authoritative run seed unavailable');
+      return response.result.seed;
+    }
+    return window.SF.state.meta?.seed ?? null;
+  });
+}
+
+export async function adventureToFlight(page, step, { seed = null } = {}) {
   await clickText(page, 'New Game', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'newGame', null, { timeout: 60000 });
   const tutorials = await page.evaluate(() => window.SF.state.settings && window.SF.state.settings.gameplay ? window.SF.state.settings.gameplay.tutorialHints : null);
   step('mode select', true, `New Game (Adventure) · tutorial hints ${tutorials}`);
+  if (seed != null) {
+    if (!Number.isSafeInteger(seed) || seed <= 0 || seed > 0xffffffff) throw new Error('Invalid universe seed');
+    await page.locator('#sf-ng-seed').fill(String(seed));
+  }
   await clickText(page, 'Launch', { exact: true });
   await waitUntilFlight(page, { timeout: 600000 });
   await waitBootOverlayGone(page);
   step('preparation', true, 'default pilot/ship (no changes), Launch');
-  return { tutorials };
+  const runSeed = await readLaunchedRunSeed(page);
+  if (seed != null && runSeed !== seed) throw new Error(`Universe seed mismatch: requested ${seed}, launched ${runSeed}`);
+  return { tutorials, seedSet: seed != null, runSeed };
 }
 
 export async function racingToFlight(page, step) {
@@ -681,5 +699,6 @@ export async function racingToFlight(page, step) {
   await waitUntilFlight(page, { timeout: 600000 });
   await waitBootOverlayGone(page);
   step('preparation', true, `"${word}" on ${course}${confirmed ? ` → confirm "${confirmed}"` : ''}`);
-  return { course };
+  const runSeed = await readLaunchedRunSeed(page);
+  return { course, runSeed };
 }

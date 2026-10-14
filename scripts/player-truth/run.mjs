@@ -678,7 +678,8 @@ async function runOne(args, arena, extra = {}) {
       if (round.endSim == null) { const ph = await phaseNow(); round.cutSim = ph.sim; }
       step('play', true, `${trace.rounds.length} round(s): ${trace.rounds.map((r) => `${r.wave}:${r.endPhase || 'cut'}${r.endSim != null ? '@' + (r.endSim - r.startSim).toFixed(1) + 's' : ''}`).join(' ')}`);
     } else {
-      if (args.mode === 'adventure') doorInfo = await adventureToFlight(page, step); else doorInfo = await racingToFlight(page, step);
+      if (args.mode === 'adventure') doorInfo = await adventureToFlight(page, step, { seed: args.seed }); else doorInfo = await racingToFlight(page, step);
+      trace.meta.runSeed = doorInfo.runSeed;
       const st0 = await phaseNow();
       step('spawn', true, `flight at sim ${st0.sim.toFixed(1)} s`);
       trace.meta.playStartSim = st0.sim;

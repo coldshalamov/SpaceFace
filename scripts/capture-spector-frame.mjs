@@ -2,57 +2,20 @@
 // Headed or headless Playwright tool to capture a full WebGL frame using Spector.js.
 // Outputs .devshots/spector/spector-capture.json and an analyzed summary report.
 
-import { createServer, get as httpRequestGet } from 'node:http';
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { bootToMenu, adventureToFlight } from './player-truth/routes.mjs';
+import { startBenchServer } from './lib/benchServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const OUT_DIR = path.join(ROOT, '.devshots', 'spector');
-const PORT = Number(process.env.SPACEFACE_PORT || 8123);
+const outputArg = process.argv.find(a => a.startsWith('--out='))?.slice(6);
+const OUT_DIR = path.resolve(ROOT, outputArg || path.join('.devshots', 'spector', new Date().toISOString().replace(/[:.]/g, '-')));
+if (!OUT_DIR.startsWith(path.join(ROOT, '.devshots') + path.sep)) throw new Error('--out must stay under .devshots');
 const HEADFUL = process.argv.includes('--headful');
 const ROUTE = process.argv.find((a) => a.startsWith('--route='))?.split('=')[1] || 'flight';
-const TIMEOUT_MS = 30_000;
-
-async function isServerRunning(port) {
-  return new Promise((resolve) => {
-    const req = httpGet(`http://127.0.0.1:${port}/`, (res) => {
-      resolve(res.statusCode < 500);
-    });
-    req.on('error', () => resolve(false));
-    req.setTimeout(1000, () => { req.destroy(); resolve(false); });
-  });
-}
-
-function httpGet(url, cb) {
-  return httpRequestGet(url, cb);
-}
-
-async function ensureLocalServer() {
-  const running = await isServerRunning(PORT);
-  if (running) {
-    console.log(`[perf:spector] Using existing server on port ${PORT}`);
-    return null;
-  }
-  console.log(`[perf:spector] Starting local server on port ${PORT}...`);
-  const srv = spawn('node', ['server.js', String(PORT)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
-    cwd: ROOT,
-    stdio: 'ignore',
-    detached: false,
-  });
-  // Wait up to 10s for server to respond
-  for (let i = 0; i < 20; i++) {
-    await new Promise((r) => setTimeout(r, 500));
-    if (await isServerRunning(PORT)) {
-      console.log('[perf:spector] Server is up.');
-      return srv;
-    }
-  }
-  throw new Error(`Server failed to start on port ${PORT}`);
-}
+if (!['flight', 'menu'].includes(ROUTE)) throw new Error('--route must be flight or menu');
 
 function analyzeSpectorCapture(capture) {
   const commands = capture.commands || [];
@@ -93,8 +56,9 @@ function analyzeSpectorCapture(capture) {
 }
 
 async function main() {
-  await mkdir(OUT_DIR, { recursive: true });
-  const serverProcess = await ensureLocalServer();
+  await mkdir(path.dirname(OUT_DIR), { recursive: true });
+  await mkdir(OUT_DIR, { recursive: false });
+  const server = await startBenchServer();
 
   let browser = null;
   try {
@@ -124,25 +88,15 @@ async function main() {
       }
     });
 
-    const targetUrl = `http://127.0.0.1:${PORT}/?spector=1&seed=47`;
+    const targetUrl = `${server.baseUrl}?spector=1&seed=47`;
     console.log(`[perf:spector] Navigating to ${targetUrl}...`);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: TIMEOUT_MS });
-
-    // Wait for canvas
-    await page.waitForSelector('#gl-canvas', { timeout: 15_000 });
-
-    // Wait for game to finish boot
     console.log('[perf:spector] Waiting for SpaceFace boot...');
-    await page.waitForFunction(() => window.SF && window.SF.state, { timeout: 20_000 });
+    await bootToMenu(page, targetUrl, (name, _ok, detail) => console.log(`[perf:spector] ${name}: ${detail}`));
 
     // If starting a flight run
     if (ROUTE === 'flight') {
       console.log('[perf:spector] Starting flight scene...');
-      await page.evaluate(() => {
-        if (window.SF.bus && typeof window.SF.bus.emit === 'function') {
-          window.SF.bus.emit('game:new', { seed: 47 });
-        }
-      });
+      await adventureToFlight(page, (name, _ok, detail) => console.log(`[perf:spector] ${name}: ${detail}`), { seed: 47 });
       // Wait for flight mode — authored-visual readiness can take a while on software WebGL.
       await page.waitForFunction(() => window.SF.state && window.SF.state.mode === 'flight', { timeout: 180_000, polling: 500 });
       // Let flight run for 3 seconds so models and particles are populated
@@ -152,6 +106,14 @@ async function main() {
     }
 
     console.log('[perf:spector] Triggering Spector WebGL frame capture...');
+    const metadata = await page.evaluate(() => {
+      const st = window.SF.state, gl = st.render.renderer.getContext();
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      return { mode: st.mode, seed: st.meta?.seed ?? null, simTime: st.simTime, gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : null,
+        userAgent: navigator.userAgent, settings: st.settings, viewport: [innerWidth, innerHeight],
+        buffer: [gl.drawingBufferWidth, gl.drawingBufferHeight], authority: 'single-frame GL diagnostic; capture disturbs timing' };
+    });
+    await writeFile(path.join(OUT_DIR, 'metadata.json'), JSON.stringify(metadata, null, 2));
     const capture = await page.evaluate(async () => {
       if (!window.SF || !window.SF.perf || !window.SF.perf.spector) {
         throw new Error('Spector integration not found on window.SF');
@@ -166,12 +128,16 @@ async function main() {
     console.log(`[perf:spector] Saved raw capture to ${jsonPath}`);
 
     const analysis = analyzeSpectorCapture(capture);
+    const completeFrame = capture.spacefaceBoundary?.successfulWorldDraw === true
+      && capture.spacefaceBoundary.truncated === false;
+    if (!completeFrame) process.exitCode = 2;
 
     const reportMd = [
       '# Spector.js Frame Capture Analysis',
       '',
       `- **Date**: ${new Date().toISOString()}`,
       `- **Route**: ${ROUTE}`,
+      `- **Frame coverage**: ${completeFrame ? 'complete successful world draw' : 'INCOMPLETE; command limit or submission boundary unobserved'}`,
       `- **Total WebGL Commands**: ${analysis.totalCommands}`,
       `- **Total Draw Calls**: **${analysis.drawCalls}** (${analysis.instancedDrawCalls} instanced)`,
       `- **Program Switches (\`useProgram\`)**: ${analysis.useProgramCalls}`,
@@ -189,10 +155,10 @@ async function main() {
       '',
       '## Performance Diagnosis & Budget Check',
       '',
-      analysis.drawCalls > 250
+      !completeFrame ? 'INCOMPLETE: bounded commands cannot establish whole-frame draw totals.' : analysis.drawCalls > 200
         ? `⚠️ **WARNING**: Frame draw calls (${analysis.drawCalls}) exceed the 200 budget ceiling. Check for unbatched meshes or missing instancing.`
         : `✅ **PASS**: Frame draw calls (${analysis.drawCalls}) are within the 200 call budget.`,
-      analysis.useProgramCalls > 30
+      !completeFrame ? 'INCOMPLETE: shader-switch totals are partial.' : analysis.useProgramCalls > 30
         ? `⚠️ **WARNING**: High shader program switches (${analysis.useProgramCalls}). Group draws by material/program to reduce driver overhead.`
         : `✅ **PASS**: Program switches (${analysis.useProgramCalls}) are healthy.`,
       '',
@@ -209,9 +175,7 @@ async function main() {
     console.log(`Report: ${reportPath}`);
   } finally {
     if (browser) await browser.close();
-    if (serverProcess) {
-      serverProcess.kill();
-    }
+    await server.close();
   }
 }
 

@@ -1,3 +1,10 @@
+export function selectPerformanceDiagnostic(results) {
+  const severity = ({ summary: s }) => Math.max(s.callbackGaps?.p99 || 0,
+    s.healthyCallbacksFrozenWorld > 0 ? s.maxWorldStaleMs || 0 : 0,
+    s.healthyCallbacksFrozenSimulation > 0 ? s.maxSimStaleMs || 0 : 0);
+  return results.filter(r => r.summary).sort((a, b) => severity(b) - severity(a))[0] || null;
+}
+
 export function comparePerformanceRuns(before, after, target = 3) {
   const keys = ['cpu', 'platform', 'gpu', 'userAgent', 'viewport', 'buffer', 'settings', 'simLane', 'mode', 'seed', 'sampleMs', 'settleMs', 'travelMs', 'observer', 'displayHz'];
   const mismatches = keys.filter(k => before.metadata[k] == null || after.metadata[k] == null

@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { comparePerformanceRuns } from '../scripts/lib/performanceCampaignComparison.mjs';
+import { comparePerformanceRuns, selectPerformanceDiagnostic } from '../scripts/lib/performanceCampaignComparison.mjs';
+test('diagnosis selects a frozen simulation even when its callback p99 looks better', () => {
+  const callback = { cell: 'callback', summary: { callbackGaps: { p99: 120 },
+    healthyCallbacksFrozenSimulation: 0, maxSimStaleMs: 1000 } };
+  const frozen = { cell: 'frozen', summary: { callbackGaps: { p99: 83 },
+    healthyCallbacksFrozenSimulation: 120, maxSimStaleMs: 238 } };
+  assert.equal(selectPerformanceDiagnostic([callback, { status: 'probe-failed' }, frozen]), frozen);
+  assert.equal(selectPerformanceDiagnostic([]), null);
+});
 const run = (fps, p95) => ({ metadata: { cpu: 'Intel CPU', platform: 'win32', gpu: 'Intel',
   userAgent: 'Electron', viewport: [1280, 720], buffer: [1280, 720],
   simLane: 'worker', mode: 'adventure', seed: 47, sampleMs: 20000, settleMs: 0, travelMs: 0,

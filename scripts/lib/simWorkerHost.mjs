@@ -1178,6 +1178,7 @@ export function createSimHost() {
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {
           tick: state.tick,
+          seed: state.meta?.seed ?? null,
           simTime: state.simTime,
           mode: state.mode,
           timeScale: state.timeScale,
