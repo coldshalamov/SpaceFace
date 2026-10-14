@@ -425,11 +425,18 @@ export const MOBILE_SCREEN_CSS = `
 
   /* Chart keeps a real viewport, then an inspector. The map owns gestures, the page owns scroll. */
   ${C} { overflow-y:auto !important; overflow-x:hidden !important; --gm-inspector-w:100%; }
-  ${C} .gm-head { grid-template-columns:minmax(0,1fr) auto auto !important; grid-template-rows:auto auto auto !important; gap:8px !important; }
+  /* Four head rows: title+CONTROLS/CLOSE, search, QUIET reading, then LOCAL/SYSTEM/GALAXY — without
+     a weather row, QUIET sat on the search underline (bench: buried). */
+  ${C} .gm-head { grid-template-columns:minmax(0,1fr) auto auto !important; grid-template-rows:auto auto auto auto !important; gap:8px !important; }
   ${C} .gm-title-lockup { grid-column:1 !important; grid-row:1 !important; min-width:0; }
+  ${C} .gm-hint-btn { grid-column:2 !important; grid-row:1 !important; }
+  ${C} .gm-close { grid-column:3 !important; grid-row:1 !important; }
   ${C} .gm-title { white-space:normal !important; overflow:visible !important; font-size:20px !important; }
-  ${C} .gm-rail { grid-column:1 / -1 !important; grid-row:3 !important; }
   ${C} .gm-search-container { grid-column:1 / -1 !important; grid-row:2 !important; width:100% !important; }
+  ${C} .gm-weather { grid-column:1 / -1 !important; grid-row:3 !important; justify-self:start; text-align:left; }
+  ${C} .gm-rail { grid-column:1 / -1 !important; grid-row:4 !important; }
+  /* Zoom strip rode the foot's detail lines on phone; park it clearly above the apron. */
+  ${C} .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 28px) !important; left:calc(var(--gm-stage-x, 14px) + 8px) !important; }
   ${C} .gm-navfoot { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px !important; }
   ${C} .gm-navfoot .gm-nav-row { flex-direction:column !important; align-items:flex-start !important; gap:4px !important; min-width:0; }
   ${C} .gm-navfoot .gm-nav-row-v { max-width:100%; white-space:normal !important; overflow-wrap:anywhere; }

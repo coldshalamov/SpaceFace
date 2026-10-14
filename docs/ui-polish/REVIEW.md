@@ -996,6 +996,22 @@ Shots: `ui-shots/polish28s/{before,after}/`, `compare-ledger-*.png`.
 
 **Checked:** 960×540 bench went from 4 tangled findings to none. 1280×720 is pixel-identical. 1920×1080 differs only by course-glow animation noise at the map centre (163px). The 390×844 desktop window went from 4 tangled and 2 clipped findings to none. The 390×844 phone (`--phone`, touch) is pixel-identical.
 
-**Leftover (not chased):** the chart's zoom strip and "per bar" scale sit over the map's lower-left, but `_clearField` in galaxyMap.js doesn't avoid them. So a map label can print under them. Before this change "Gate → Vesta Forge" hid its "Gate" there; at 960×540 after it, "Customs Corridor · THREAT 1" now lands on "2500 WU per bar". On the real phone, "QUIET pressure 0/140" sits on the search underline (bench: buried), and the zoom strip crosses the foot's detail lines (mobileScreenLayouts).
+**Leftover (closed in § Chart map labels vs zoom strip below):** the chart's zoom strip and "per bar" scale sit over the map's lower-left — map labels printed under them at 960; phone QUIET-on-search and tools-on-foot followed.
 
 Shots: `ui-shots/polish28t/{before,after}/`, `{before,after}-phone-touch/`, `compare-chart-960.png`, `compare-chart-390.png`.
+
+## Chart map labels vs zoom strip / per-bar scale (ui-polish-28)
+
+**Before:** `_chromeLabelRects` reserved the lens rail, inspector and apron, but not the chart hub's zoom strip (`.gmh-tools`), and the canvas edge ruler (`_drawEdgeScale`, "N WU per bar") was never reserved at all. At 960×540, "Customs Corridor · THREAT 1" printed on "2500 WU per bar" and through the ± / fit / ship strip. On the real phone (`--phone`), QUIET sat on the search underline (bench: buried), and the zoom strip crossed the foot's DESTINATION / NEXT LEG lines.
+
+**After:**
+- **`galaxyMap.js` (2D label layout, not perf render):** `.gmh-tools` joins the measured chrome rects fed to `placeChartLabels`. The edge ruler's geometry is shared (`_edgeScaleLayout` / `_edgeScaleReservedRect`) and reserved on SYSTEM/GALAXY before labels seat, so names keep clear of the scale. At 960 the colliding zone name yields rather than print under the chrome; 1280/1920 stay clear (pixel-identical aside from tiny label/noise drift).
+- **`mobileScreenLayouts.js` (phone only):** the chart head gets a fourth row for `.gm-weather` so QUIET sits under the search band, and `.gmh-tools` parks above the apron instead of on the foot's detail lines.
+
+Selectors and IDs are unchanged.
+
+**Checked:** 960×540 — chrome clear of map labels (Customs Corridor no longer on the scale). 1280×720 / 1920×1080 — effectively pixel-identical (label moves only / route-glow noise). 390×844 desktop window — pixel-identical. Phone 390×844 (`--phone`) — QUIET no longer buried; tools clear of DESTINATION/NEXT LEG. Focused `test/unified-map-professional.test.mjs`: 10/10 pass.
+
+**Closed:** polish28t leftover (map labels under zoom strip / per-bar; phone QUIET-on-search and tools-on-foot).
+
+Shots: `ui-shots/polish28u/{before,after}/`, `{before,after}-phone-touch/`, `compare-chart-960.png`, `compare-chart-phone.png`.
