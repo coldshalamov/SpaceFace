@@ -12,12 +12,16 @@ test('diagnosis selects a frozen simulation even when its callback p99 looks bet
 const run = (fps, p95) => ({ metadata: { cpu: 'Intel CPU', platform: 'win32', gpu: 'Intel',
   userAgent: 'Electron', viewport: [1280, 720], buffer: [1280, 720],
   simLane: 'worker', mode: 'adventure', seed: 47, sampleMs: 20000, settleMs: 0, travelMs: 0,
-  observer: 'cadence-only', displayHz: 60, settings: { bloom: true } }, summary: {
+  observer: 'cadence-only', displayHz: 60, sourceStable: true, settings: { bloom: true } }, summary: {
   submissionObserved: true, wallMs: 20000, activeMs: 20000, healthyCallbacksFrozenWorld: 0, healthyCallbacksFrozenSimulation: 0,
   worldSubmitFps: fps, simWallRatio: 1, callbackGaps: { p99: p95, max: p95 * 2, over50: fps === 20 ? 30 : 3 }, submissionGaps: { p95 },
 } });
 test('a matched hitch reduction and lower tail meets the owner-selected target', () => {
   assert.equal(comparePerformanceRuns(run(20, 50), run(60, 16)).targetMet, true);
+});
+test('a source edit during a capture prevents target promotion', () => {
+  const after = run(60, 16); after.metadata.sourceStable = false;
+  assert.equal(comparePerformanceRuns(run(20, 50), after).targetMet, false);
 });
 test('hitch improvements below the measured display limit do not satisfy the whole target', () => {
   assert.equal(comparePerformanceRuns(run(20, 50), run(40, 16)).targetMet, false);

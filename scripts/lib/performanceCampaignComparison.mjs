@@ -11,6 +11,9 @@ export function comparePerformanceRuns(before, after, target = 3) {
     || JSON.stringify(before.metadata[k]) !== JSON.stringify(after.metadata[k]));
   const a = before.summary, b = after.summary;
   const failures = [];
+  if (before.metadata.sourceStable !== true || after.metadata.sourceStable !== true) {
+    failures.push('source stability unverified or changed during capture');
+  }
   if (mismatches.length) failures.push('identity mismatch: ' + mismatches.join(', '));
   if (!a.submissionObserved || !b.submissionObserved) failures.push('world submission unobserved');
   if (!(a.wallMs > 0 && b.wallMs > 0)) failures.push('empty sample');

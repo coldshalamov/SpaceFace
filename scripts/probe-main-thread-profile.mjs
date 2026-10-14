@@ -1171,6 +1171,15 @@ try {
 
   if (FROM_LAUNCH) await runLaunchProfile(page, cdp, profileNote);
   else await runSteadyFlightProfile(page, cdp);
+  if (fs.existsSync(path.join(OUT_DIR, 'cadence.json'))) {
+    const record = JSON.parse(fs.readFileSync(path.join(OUT_DIR, 'cadence.json'), 'utf8'));
+    record.metadata.sourceDigestAfter = await digestSourcePaths(ROOT, [
+      ...await listSrcJsSourcePaths(ROOT), 'scripts/lib/simWorkerHost.mjs', 'scripts/lib/simReadModel.mjs',
+    ]);
+    record.metadata.sourceStable = record.metadata.sourceDigest === record.metadata.sourceDigestAfter;
+    fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify(record, null, 1));
+    if (!record.metadata.sourceStable) log('source changed during capture; diagnostic only');
+  }
   log(`report ${path.join(OUT_DIR, 'report.md')}`);
 } finally {
   try {

@@ -113,7 +113,8 @@ if (process.argv.includes('--verify')) for (const mode of ['adventure', 'swarm',
 }
 await writeFile(path.join(out, 'workflow.json'), JSON.stringify(workflow, null, 2));
 const digests = new Set(results.map(r => r.metadata?.sourceDigest).filter(Boolean));
-const coherentCandidate = digests.size === 1 && results.every(r => r.metadata?.sourceDigest);
+const coherentCandidate = digests.size === 1
+  && results.every(r => r.metadata?.sourceDigest && r.metadata.sourceStable === true);
 const targetMet = !!baseline && coherentCandidate && results.length > 0 && results.every(r => r.comparison?.targetMet);
 await writeFile(path.join(out, 'report.md'), '# Performance campaign: ' + label
   + `\n\nTarget: ${baseline ? targetMet ? 'MET in every measured cell' : 'NOT MET' : 'UNMEASURED; baseline required'}.\n\n`
