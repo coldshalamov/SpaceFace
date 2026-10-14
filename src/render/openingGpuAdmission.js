@@ -829,6 +829,9 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   }
 }
 
+const PACE_BUDGET_MS = 24;
+const PACE_MAX_UNITS = 8;
+
 export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const units = options.units || uniqueAdmissionUnits(options.subjects || []);
   const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
@@ -899,6 +902,8 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   // seconds (headless SwiftShader, CI run 36486329212). Pacing after each unit keeps the
   // backlog ~one unit deep — the same work happens, spread over task-queue slots.
   const paceQueue = batch && typeof batch.paceQueue === 'function' ? batch.paceQueue : null;
+  let paceDebtMs = 0;
+  let paceDebtUnits = 0;
   const issued = [];
   let compiled = [];
   let drained = null;
@@ -936,10 +941,22 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         continue;
       }
       if (issueKey) seenIssueKeys.add(issueKey);
+      const unitStarted = now();
       issued.push(compileOne ? compileOne(subject) : null);
+      paceDebtMs += now() - unitStarted;
+      paceDebtUnits += 1;
       // Pace before the scheduled yield: the pacer drains everything queued so far behind a
-      // task-queue slot, so the drain stays bounded to this unit instead of the whole cohort.
-      if (paceQueue) await paceQueue();
+      // task-queue slot, so the drain stays bounded instead of piling up the whole cohort.
+      // Each pace waits a presented frame (~60-100 ms on SwiftShader while the shell paints), so
+      // pacing every unit made the opening drain frame-bound (≈12 s for ~10% link time). Pace
+      // once a few units or a frame's worth of issue time has queued; the backlog stays a handful
+      // of units deep, never the cohort.
+      if (paceQueue && (paceDebtMs >= PACE_BUDGET_MS || paceDebtUnits >= PACE_MAX_UNITS
+        || index === ordered.length - 1)) {
+        await paceQueue();
+        paceDebtMs = 0;
+        paceDebtUnits = 0;
+      }
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
     issueMs = now() - issueStarted;
@@ -965,6 +982,8 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
   await reattachDetachedAdmissionGeometries(ordered, options.renderer, yieldToMain);
   const results = [];
+  paceDebtMs = 0;
+  paceDebtUnits = 0;
   const touchStarted = now();
   // Optional grouped touch: `touchMany(subjects)` draws a whole group in one render. Same subjects
   // in the same order, each drawn exactly as touchOne would draw it; what is shared is the
@@ -1002,6 +1021,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       if (overBudget() && index >= issued.length) break;
       let touched = null;
       let touchError = null;
+      const touchUnitStarted = now();
       try {
         touched = touchOne ? touchOne(ordered[index]) : null;
       } catch (error) {
@@ -1012,7 +1032,15 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         touched,
         touchError,
       });
-      if (paceQueue) await paceQueue();
+      paceDebtMs += now() - touchUnitStarted;
+      paceDebtUnits += 1;
+      // Same bounded-backlog pacing as the issue loop (see PACE_BUDGET_MS).
+      if (paceQueue && (paceDebtMs >= PACE_BUDGET_MS || paceDebtUnits >= PACE_MAX_UNITS
+        || index === ordered.length - 1)) {
+        await paceQueue();
+        paceDebtMs = 0;
+        paceDebtUnits = 0;
+      }
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
   }
