@@ -1,0 +1,184 @@
+{
+  "assetId": "cargo-wound-conductor-spool",
+  "category": "cargo",
+  "description": "Wound conductor spool held on a cradle",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.8199999332427979,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.125,
+        0.942499965429306,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.8
+        ],
+        "size": [
+          2,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.8
+        ],
+        "size": [
+          2,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          1.7,
+          1.65,
+          1.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.125,
+      0.06499999761581421,
+      -0.925000011920929
+    ],
+    "max": [
+      1.125,
+      1.8199999332427979,
+      0.925000011920929
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-wound-conductor-spool_lod0.glb",
+      "triangles": 13184,
+      "draws": 4,
+      "bytes": 872860,
+      "method": "source",
+      "sha256": "922692a58de5740ab5c1747389959dd1b4ff4a0dca11d340e7832fe8ffe293d6"
+    },
+    {
+      "level": 1,
+      "file": "cargo-wound-conductor-spool_lod1.glb",
+      "triangles": 2624,
+      "draws": 4,
+      "bytes": 385936,
+      "method": "authored-topology",
+      "sha256": "c4e9560de0bcaf73054d2f7ac30e6193ee5d5755261412dbb728d8d3328b4674"
+    },
+    {
+      "level": 2,
+      "file": "cargo-wound-conductor-spool_lod2.glb",
+      "triangles": 992,
+      "draws": 4,
+      "bytes": 315460,
+      "method": "authored-topology",
+      "sha256": "c7fcaa74609ac68ecb39afb16aed388e66caf447e888b6b4dddf32cac74d72f9"
+    }
+  ]
+}

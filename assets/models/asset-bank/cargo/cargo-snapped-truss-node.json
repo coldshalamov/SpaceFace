@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-snapped-truss-node",
+  "category": "cargo",
+  "description": "Broken truss junction with torn chord stubs",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.1748623251914978,
+        0.875,
+        -0.07486271858215332
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.56178617477417,
+        0.5325056239962578,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.55,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.2120615243911743,
+      0.19001124799251556,
+      -1.0119242668151855
+    ],
+    "max": [
+      1.56178617477417,
+      0.875,
+      0.8621988296508789
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-snapped-truss-node_lod0.glb",
+      "triangles": 4208,
+      "draws": 5,
+      "bytes": 474664,
+      "method": "source",
+      "sha256": "089d2cdd9909dafed471aefbe1b993cad8d422ce4de0087d6be01e0625248161"
+    },
+    {
+      "level": 1,
+      "file": "cargo-snapped-truss-node_lod1.glb",
+      "triangles": 936,
+      "draws": 5,
+      "bytes": 318828,
+      "method": "authored-topology",
+      "sha256": "8c49ab146eab7b6755444fe3d0027fddf977a3f93dd7ffa9f14c79ef07ad9bd9"
+    },
+    {
+      "level": 2,
+      "file": "cargo-snapped-truss-node_lod2.glb",
+      "triangles": 728,
+      "draws": 5,
+      "bytes": 305304,
+      "method": "authored-topology",
+      "sha256": "fefe1e081d284dca7d423fcac8d419a9566b20c0d101b3b784ad821b3e60783f"
+    }
+  ]
+}

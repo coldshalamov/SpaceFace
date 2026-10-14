@@ -1,0 +1,223 @@
+{
+  "assetId": "cargo-fractured-drive-bell",
+  "category": "cargo",
+  "description": "Flared fractured drive bell with a missing sector",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo_remaining.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Throat",
+      "position": [
+        0.0,
+        0.075,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.03444051742553711,
+        1.6200000047683716,
+        -0.014159977436065674
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.141379952430725,
+        0.8475000038743019,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.18,
+          -0.0
+        ],
+        "size": [
+          0.72,
+          0.28,
+          0.72
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3483533546735827,
+          0.82,
+          -0.3586780454497614
+        ],
+        "size": [
+          0.2,
+          0.55,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.33313801063991205,
+          0.82,
+          -0.37285260608836013
+        ],
+        "size": [
+          0.2,
+          0.55,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.3954838559572084,
+          0.82,
+          0.30592894547135946
+        ],
+        "size": [
+          0.2,
+          0.55,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.0724989175796509,
+      0.07500000298023224,
+      -1.0819605588912964
+    ],
+    "max": [
+      1.141379952430725,
+      1.6200000047683716,
+      1.0536168813705444
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-fractured-drive-bell_lod0.glb",
+      "triangles": 11368,
+      "draws": 6,
+      "bytes": 804528,
+      "method": "source",
+      "sha256": "42f32def4a34aced97188c378e3286ff8b6e2bde7507d030408b5a0f3fb1eaea"
+    },
+    {
+      "level": 1,
+      "file": "cargo-fractured-drive-bell_lod1.glb",
+      "triangles": 1812,
+      "draws": 6,
+      "bytes": 350228,
+      "method": "authored-topology",
+      "sha256": "f8b1e814181ce3bcf2aaa97bd11728d4a3bfa0e86525bce96ae7c30683d290f9"
+    },
+    {
+      "level": 2,
+      "file": "cargo-fractured-drive-bell_lod2.glb",
+      "triangles": 1136,
+      "draws": 6,
+      "bytes": 318796,
+      "method": "authored-topology",
+      "sha256": "ab55f441417d0119adfd72e6c44f671fb90d86fe9e1db53b717d7209146799fa"
+    }
+  ]
+}

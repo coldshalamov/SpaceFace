@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-crumpled-shield-louvre",
+  "category": "cargo",
+  "description": "Kinked heat shield slats and fractured rail",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        -0.04250001907348633,
+        0.5224689245223999,
+        -0.10016971826553345
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.1649999618530273,
+        0.3037344664335251,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.0
+        ],
+        "size": [
+          2.3,
+          0.25,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.25,
+      0.08500000834465027,
+      -1.100339412689209
+    ],
+    "max": [
+      1.1649999618530273,
+      0.5224689245223999,
+      0.8999999761581421
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-crumpled-shield-louvre_lod0.glb",
+      "triangles": 4448,
+      "draws": 3,
+      "bytes": 453404,
+      "method": "source",
+      "sha256": "49a1dc5b58a9b68052de8ad23016bff375fab4486176e860c6c21ac1e828030f"
+    },
+    {
+      "level": 1,
+      "file": "cargo-crumpled-shield-louvre_lod1.glb",
+      "triangles": 456,
+      "draws": 3,
+      "bytes": 262964,
+      "method": "authored-topology",
+      "sha256": "e13c959e538195e8a5112565ca82c4d6ad8b8783823e3bbfd46aaf3f96f0f60f"
+    },
+    {
+      "level": 2,
+      "file": "cargo-crumpled-shield-louvre_lod2.glb",
+      "triangles": 300,
+      "draws": 3,
+      "bytes": 252808,
+      "method": "authored-topology",
+      "sha256": "2319bcc79d4638a984b4e089c8da12b35384c183fdc0cee1afb1d3c87e48019c"
+    }
+  ]
+}
