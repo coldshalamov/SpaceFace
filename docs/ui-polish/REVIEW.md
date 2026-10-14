@@ -57,7 +57,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `crucibleHud` | SURVEYED | |
 | **`crucible-results`** | **DONE** (ui-polish-5) | See § Crucible results below |
 | `orrery-flight` | SURVEYED | |
-| `comms-radial` | SURVEYED | |
+| **`comms-radial`** | **DONE** (phone: fan lifted clear of the HUD cluster) | See § Comms fan — phone sky band (ui-polish-28). Desktop 960: a world-projected doctrine tell (FLYBY) can sit behind ROUTE depending on camera; tell placement is hud.js threat-tell territory, left alone |
 | **`wingman-radial`** | **DONE** (hub stack) | See § Wingman radial hub stack — ui-polish-28 |
 | `ship` | SURVEYED | Ledger DONE earlier |
 | **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
@@ -800,3 +800,13 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Checked:** 390×844, 960×540, 1280×720, 1920×1080. Focused test `demo-mode` passes.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28j/{before,after}/demoEnd-*.png` and `compare-*.png`.
+
+## Comms fan — phone sky band (ui-polish-28)
+
+**Before:** on the phone (390×844) the fan kept the desktop placement, `bottom:84px` and `44vw` (172px) wide, so it sat on the bottom cluster. HEAVE TO ran into the contacts list, the hub and its trace ran over the ability list (DRIVE/CHARGE/BLAST/LINE/FIELDS, which the bench flagged as overlaps), the ship card and the radar, and HAULER 12 / CIVILIAN FREIGHT broke one word per line.
+
+**After (`src/ui/orrery/commsLayouts.js` only, `html:root[data-sf-mobile="1"]` at ≤760 wide in portrait, no markup, selector or ID changes):** the fan stands in the clear band under the status card (`top:clamp(112px, 15svh, 150px)`) at `min(340px, 100vw − 56px)`. The callsign, class, frequency and each verb keep one line, the HUD cluster underneath reads again, and the shade pool is trimmed to the narrower screen. 960/1280/1920 are unchanged, because the rule never matches on desktop.
+
+**Checked:** 390×844, 960×540, 1280×720, 1920×1080. Bench: no overlaps on the phone (there were five). Focused test `inst-02-comms-fan-power-rail` passes.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28k/{before,after}/comms-radial-*.png` and `compare-390x844.png`.
