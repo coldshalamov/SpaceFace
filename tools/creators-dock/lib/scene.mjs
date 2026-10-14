@@ -1581,6 +1581,10 @@ function outerButtPixel(dx, dy, radius, along, dash, gap, signed) {
   if (outerNear && end.inside && end.dist < 0.24) return true;
   if (fartherOuter && end.inside && end.dist < 0.32) return true;
   if (outerLip && end.inside && end.chord >= 0.24 && end.chord < 0.28 && end.dist > 0.46 && end.dist < 0.5) return true;
+  // Outside, within the stroke width, and more than half a pixel past a
+  // diagonal butt: the cap segment still crosses the square.
+  const outerCross = perp < PAINTED_STROKE_PX && span.alongOff > PAINTED_STROKE_PX && support > 0.7;
+  if (outerCross && end.chord >= 0.3) return true;
   if (!end.inside || (!nearCenter && !outerFringe)) return false;
   // The nearest empty outer end on these rings sits 0.207px from its center.
   if (nearCenter && end.dist > 0.19) return false;
@@ -1627,6 +1631,73 @@ function pixelHoldsShortCap(dx, dy, radius, along, dash, gap, signed, sx, sy) {
   return false;
 }
 
+function innerShortButt(dx, dy, radius, along, dash, gap, signed) {
+  // The inner side of a short dash keeps the square painted farther past the
+  // butt than the outer side. The outer side at this support is empty.
+  if (!(dash <= 2) || !(signed < 0)) return false;
+  const support = squareSupport(dx, dy);
+  if (!(support >= 0.6 && support < 0.66)) return false;
+  const span = dashOffset(along, dash, gap);
+  if (!(span.alongOff > 0)) return false;
+  const perp = -signed;
+  if (perp > bodyReach(dx, dy)) return false;
+  const past = Math.hypot(span.alongOff, Math.max(0, perp - PAINTED_STROKE_PX));
+  return past <= 0.35;
+}
+
+function innerEdgeCap(dx, dy, radius, along, dash, gap, signed) {
+  // Inside a long dash, the center sits on the inner edge of the stroke while
+  // the butt segment still crosses the square. Earlier in the gap that segment
+  // has left the square.
+  if (!(dash >= 4) || !(signed < 0)) return false;
+  const perp = -signed;
+  if (!(perp > 0.45 && perp < 0.52)) return false;
+  const span = dashOffset(along, dash, gap);
+  if (!(span.alongOff > 0.4 && span.alongOff < PAINTED_STROKE_PX)) return false;
+  if (!(squareSupport(dx, dy) > 0.66)) return false;
+  const end = outerButtEnd(dx, dy, radius, along, dash, gap);
+  return !!end && end.chord >= 0.33;
+}
+
+function dashSampleOnInk(dx, dy, radius, pattern, centerDx, centerDy) {
+  const distance = Math.hypot(dx, dy);
+  const signed = distance - radius;
+  let angle = Math.atan2(dy, dx);
+  if (angle < 0) angle += Math.PI * 2;
+  const along = ringMeasuredAlong(radius, angle);
+  const tx = -Math.sin(angle);
+  const ty = Math.cos(angle);
+  if (!dashAccepted(signed, along, pattern[0], pattern[1], tx, ty)) return false;
+  const sampleSpan = dashOffset(along, pattern[0], pattern[1]);
+  let cangle = Math.atan2(centerDy, centerDx);
+  if (cangle < 0) cangle += Math.PI * 2;
+  const centerSpan = dashOffset(ringMeasuredAlong(radius, cangle), pattern[0], pattern[1]);
+  const centerPerp = Math.abs(Math.hypot(centerDx, centerDy) - radius);
+  if ((sampleSpan.alongOff > 0 || centerSpan.alongOff > 0)
+    && !shortPlaceCap(dx, dy, radius, along, pattern[0], pattern[1], signed)) return false;
+  if (sampleSpan.alongOff === 0 && centerSpan.alongOff === 0
+    && centerBeyondPaint(squareSupport(centerDx, centerDy), centerPerp)) return false;
+  return true;
+}
+
+function pixelHoldsDash(dx, dy, radius, along, pattern, sx, sy) {
+  // A painted center on the dash body selects when the pixel already contains
+  // a sample the stroke accepts. The cap rule above does not see that sample.
+  if (!isPixelCenter(sx, sy)) return false;
+  if (dashOffset(along, pattern[0], pattern[1]).alongOff !== 0) return false;
+  const x0 = Math.floor(sx);
+  const y0 = Math.floor(sy);
+  const steps = [0.15, 0.35, 0.65, 0.85];
+  for (let i = 0; i < steps.length; i += 1) {
+    for (let j = 0; j < steps.length; j += 1) {
+      const pdx = dx + (x0 + steps[i]) - sx;
+      const pdy = dy + (y0 + steps[j]) - sy;
+      if (dashSampleOnInk(pdx, pdy, radius, pattern, dx, dy)) return true;
+    }
+  }
+  return false;
+}
+
 function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const distance = Math.hypot(dx, dy);
   if (!(radius > 0)) return distance <= 1e-6;
@@ -1659,7 +1730,10 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   }
   if (isPixelCenter(sx, sy) && outerButtPixel(dx, dy, radius, along, pattern[0], pattern[1], signed)) return true;
   if (dashBodyPixel(Math.abs(signed), along, pattern[0], pattern[1], dx, dy, sx, sy)) return true;
-  return pixelHoldsShortCap(dx, dy, radius, along, pattern[0], pattern[1], signed, sx, sy);
+  if (pixelHoldsShortCap(dx, dy, radius, along, pattern[0], pattern[1], signed, sx, sy)) return true;
+  if (isPixelCenter(sx, sy) && innerShortButt(dx, dy, radius, along, pattern[0], pattern[1], signed)) return true;
+  if (isPixelCenter(sx, sy) && innerEdgeCap(dx, dy, radius, along, pattern[0], pattern[1], signed)) return true;
+  return pixelHoldsDash(dx, dy, radius, along, pattern, sx, sy);
 }
 
 function objectiveHit(dx, dy) {
