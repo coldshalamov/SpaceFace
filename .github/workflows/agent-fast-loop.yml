@@ -27,10 +27,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # No full asset bank, no history, no browser install. This is not a shipped-game build.
+          # Runtime-owned JSON/code under assets is required even without rendering.
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /*
-            !/assets/
+            !/assets/**
+            /assets/**/*.json
+            /assets/**/*.js
+            /assets/**/*.mjs
+            /assets/**/*.cjs
             !/design/
             !/tools/blender/
             !/docs/
@@ -55,6 +60,50 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agent-fast-loop-${{ github.run_id }}
+          path: .devshots/agent-loop/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+  ui-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Real screen modules/fonts plus authored stills; no game models or world boot.
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/assets/**
+            /assets/**/*.json
+            /assets/**/*.js
+            /assets/**/*.mjs
+            /assets/**/*.cjs
+            /assets/**/*.css
+            /assets/**/*.woff2
+            /assets/ui/backdrops/**
+            !/design/
+            !/tools/blender/
+            !/docs/
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install bench dependencies without Electron
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts
+      - name: Install only the browser this fixture check uses
+        run: npx playwright install --with-deps chromium
+      - name: Capture real screen modules in one isolated viewport batch
+        run: node scripts/agent-loop.mjs ui pause,settings --viewports=960x540,1920x1080 --timeout-ms=120000 --cell-timeout-ms=30000
+      - name: Preserve pictures and partial failure reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-fast-loop-ui-${{ github.run_id }}
           path: .devshots/agent-loop/
           include-hidden-files: true
           if-no-files-found: ignore

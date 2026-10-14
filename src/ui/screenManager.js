@@ -229,7 +229,12 @@ export function createScreenManager(ctx) {
       rec.mounted = true;
       // Some screens stamp aria-modal='true' as static markup in mount(); the manager owns that
       // attribute (syncVisibility) — a warmed mount that is not stack top must not keep it.
-      if (stack[stack.length - 1] !== id) el.removeAttribute('aria-modal');
+      if (stack[stack.length - 1] !== id) {
+        // Mount can install !important layout rules; preserve the inactive-screen invariant
+        // before the prewarm drain yields to its next frame or computed-style observers.
+        hideImportant(el.style);
+        el.removeAttribute('aria-modal');
+      }
     }
     return rec;
   }

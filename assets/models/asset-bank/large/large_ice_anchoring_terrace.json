@@ -1,0 +1,925 @@
+{
+  "assetId": "large_ice_anchoring_terrace",
+  "category": "large",
+  "description": "ice anchoring terrace",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_large.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Join_A",
+      "position": [
+        -40.0,
+        -3.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Join_B",
+      "position": [
+        40.0,
+        -3.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Service",
+      "position": [
+        0.0,
+        -0.25,
+        -18.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -3.0,
+          22.0
+        ],
+        "size": [
+          80.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -3.0,
+          -22.0
+        ],
+        "size": [
+          80.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -40.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -30.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -20.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -10.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          10.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          20.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          30.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          40.0,
+          -3.0,
+          -0.0
+        ],
+        "size": [
+          44.0,
+          1.4,
+          1.4
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -0.5,
+          -18.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -26.0,
+          1.0,
+          -10.0
+        ],
+        "size": [
+          13,
+          4,
+          7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -32.0,
+          -1.0,
+          22.0
+        ],
+        "size": [
+          6,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -32.0,
+          -1.0,
+          -22.0
+        ],
+        "size": [
+          6,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          32.0,
+          -1.0,
+          22.0
+        ],
+        "size": [
+          6,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          32.0,
+          -1.0,
+          -22.0
+        ],
+        "size": [
+          6,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.20000004768371582,
+          22.0
+        ],
+        "size": [
+          76.0,
+          0.15,
+          0.15
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -38.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -34.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -30.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -26.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -22.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -18.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -14.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -10.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -6.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          6.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          10.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          14.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          18.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          22.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          26.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          30.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          34.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          38.0,
+          -0.3999999761581421,
+          22.0
+        ],
+        "size": [
+          1.2000000238418578,
+          0.13,
+          0.13
+        ],
+        "rotation": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.0,
+          -18.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "large",
+    "reusable",
+    "Forge",
+    "metre-scale"
+  ],
+  "bounds": {
+    "min": [
+      -40.70000076293945,
+      -16.0,
+      -24.25
+    ],
+    "max": [
+      40.70000076293945,
+      3.239999771118164,
+      24.25
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "large_ice_anchoring_terrace_lod0.glb",
+      "triangles": 30748,
+      "draws": 7,
+      "bytes": 1805596,
+      "method": "source",
+      "sha256": "03a4a724a52564d704485c20c06e4fa5d7d3db2ea105e7656403f7918b5075cb"
+    },
+    {
+      "level": 1,
+      "file": "large_ice_anchoring_terrace_lod1.glb",
+      "triangles": 20188,
+      "draws": 6,
+      "bytes": 1271076,
+      "method": "authored-topology",
+      "sha256": "e513808eb9ec2b35b45a667bdcaae3ed9b8b9695fee2e30c593c6ed40d5ef70d"
+    },
+    {
+      "level": 2,
+      "file": "large_ice_anchoring_terrace_lod2.glb",
+      "triangles": 5416,
+      "draws": 6,
+      "bytes": 582456,
+      "method": "authored-topology",
+      "sha256": "7e9a4ccafc0d433e7ad36cd001f3179ce66997429746abb9036c7e6e7b45642f"
+    }
+  ],
+  "materialSlots": [
+    {
+      "name": "Material_Armor",
+      "finish": "paint2",
+      "role": "hull"
+    },
+    {
+      "name": "Material_BrushedMetal",
+      "finish": "bare",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_Hull",
+      "finish": "paint",
+      "role": "hull"
+    },
+    {
+      "name": "Material_Emissive_Warm",
+      "finish": "glow_warm",
+      "role": "signal"
+    },
+    {
+      "name": "Material_Accent",
+      "finish": "stripe",
+      "role": "accent"
+    },
+    {
+      "name": "Material_Mechanical",
+      "finish": "gunmetal",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_MechanicalDark",
+      "finish": "dark",
+      "role": "mechanical"
+    }
+  ],
+  "pivot": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "space": "glTF asset-local metres",
+    "normalization": "none"
+  },
+  "stateCapability": {
+    "type": "static",
+    "motion": "none; assembly visibility states belong to recipe",
+    "damage": "none; no invented destruction rig"
+  },
+  "provenance": {
+    "source": "tools/blender/forge/asset_bank_large.py",
+    "method": "original Forge procedural authored construction; no external model sources",
+    "sourceSHA256": "138252af96a36049fa91ac4f4c39dfcc96f493373757d8cbd5d687c29ba62fcf"
+  }
+}

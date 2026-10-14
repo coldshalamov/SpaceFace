@@ -1,0 +1,391 @@
+{
+  "assetId": "dormant_machine_rack",
+  "category": "ancient",
+  "description": "dormant machine rack; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.27,
+          1.1,
+          -0.0
+        ],
+        "size": [
+          0.23,
+          1.9,
+          1.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.27,
+          1.1,
+          -0.0
+        ],
+        "size": [
+          0.23,
+          1.9,
+          1.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.3,
+          -0.25
+        ],
+        "size": [
+          2.35,
+          0.17,
+          0.85
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7,
+          0.5,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.01999999999999999,
+          0.5,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.74,
+          0.5,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.95,
+          -0.25
+        ],
+        "size": [
+          2.35,
+          0.17,
+          0.85
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7,
+          1.1500000000000001,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.01999999999999999,
+          1.1500000000000001,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.74,
+          1.1500000000000001,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.65,
+          -0.25
+        ],
+        "size": [
+          2.35,
+          0.17,
+          0.85
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7,
+          1.85,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.01999999999999999,
+          1.85,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.74,
+          1.85,
+          0.04999999999999999
+        ],
+        "size": [
+          0.4800000000000001,
+          0.2,
+          0.9600000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7,
+          1.1,
+          -0.64
+        ],
+        "size": [
+          0.15,
+          1.7,
+          0.15
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.7,
+          1.1,
+          -0.64
+        ],
+        "size": [
+          0.15,
+          1.7,
+          0.15
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.479786992073059,
+      0.00391294714063406,
+      -0.7149999737739563
+    ],
+    "max": [
+      1.479786992073059,
+      2.2451014518737793,
+      0.7400000095367432
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "dormant_machine_rack_lod0.glb",
+      "triangles": 5124,
+      "draws": 3,
+      "bytes": 277820,
+      "method": "source",
+      "sha256": "84cd8fc4a2b4ae2a5520594ac97020ececd1216f9364fc0e8124be9d51b391de"
+    },
+    {
+      "level": 1,
+      "file": "dormant_machine_rack_lod1.glb",
+      "triangles": 5124,
+      "draws": 3,
+      "bytes": 277872,
+      "method": "authored-topology",
+      "sha256": "52864678f4e77dd8fb9df592f620ec9afe0ed677f88f447a511fee82a0c795e5"
+    },
+    {
+      "level": 2,
+      "file": "dormant_machine_rack_lod2.glb",
+      "triangles": 3432,
+      "draws": 2,
+      "bytes": 181888,
+      "method": "authored-topology",
+      "sha256": "87a7104024db266955dc38d28bbca71c3da7795d6bbfe9c3863eebe9c9cbf9da"
+    }
+  ]
+}
