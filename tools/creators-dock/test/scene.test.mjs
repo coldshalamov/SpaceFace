@@ -6812,9 +6812,22 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
 
   assert.equal(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'to_stone');
   assert.notEqual(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'bank_zone');
-  assert.equal(hitTest(bank, 465.5, 244.5, stageCam, stage, profileDraw), 'to_stone');
-  assert.equal(hitTest(bank, 463.5, 244.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 465.5, 244.5, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 466.5, 244.5, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 463.5, 244.5, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 468.5, 245.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 465.5, 237.5, stageCam, stage, profileDraw), null);
+  const labelEnds = [
+    { id: 'player', kind: 'trigger', x: 0, z: 0, radius: 0 },
+    { id: 'stone', kind: 'trigger', x: 40, z: 30, radius: 0 },
+    { id: 'to_stone', kind: 'route', from: 'player', to: 'stone', label: 'bank line' },
+  ];
+  assert.equal(hitTest({ objects: labelEnds }, 465.5, 244.5, stageCam, stage), 'to_stone');
+  assert.equal(hitTest({ objects: labelEnds }, 466.5, 244.5, stageCam, stage), null);
+  assert.equal(hitTest(bank, 431.5, 239.5, stageCam, stage, profileDraw), 'player');
+  const cargo = getComposition('dock.intercept-cargo');
+  assert.equal(hitTest(cargo, 488.5, 215.5, stageCam, stage, profileDraw), 'to_cargo');
+  assert.equal(hitTest(cargo, 460.5, 212.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 438.4, 271.2, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 554, 204, stageCam, stage, profileDraw), 'stone');
   assert.equal(hitTest(bank, 543, 204, stageCam, stage, profileDraw), 'stone');

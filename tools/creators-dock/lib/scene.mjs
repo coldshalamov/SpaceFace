@@ -1,6 +1,7 @@
 // Pure XZ scene model for Creator's Dock.
 // No Node builtins, no physics step. The lab is the only simulator.
 
+import { GLYPHS } from './glyphs.mjs';
 import { actorStroke, fieldStroke, markerStroke, OBJECTIVE_REACH } from './inspector.mjs';
 import {
   captureAccessorTrees,   captureLive, detachData, liveObjectsIn, protectLiveObjects,
@@ -1215,33 +1216,29 @@ const PAINTED_STROKE_PX = 0.5;
 const FIELD_DASH = [2, 6];
 const MARKER_DASH = [4, 4];
 const ROUTE_DASH = [6, 4];
-const LABEL_GLYPHS = {
-  ' ': { w: 2.86, ascent: 0, descent: 0, right: 0 },
-  a: { w: 6.171, ascent: 6, descent: 0, right: 6 },
-  b: { w: 6.765, ascent: 8, descent: 0, right: 7 },
-  e: { w: 6.204, ascent: 6, descent: 0, right: 6 },
-  i: { w: 2.838, ascent: 8, descent: 0, right: 2 },
-  k: { w: 5.874, ascent: 8, descent: 0, right: 6 },
-  l: { w: 2.838, ascent: 8, descent: 0, right: 2 },
-  n: { w: 6.798, ascent: 6, descent: 0, right: 6 },
-};
-
-function labelGlyph(ch) {
-  if (Object.prototype.hasOwnProperty.call(LABEL_GLYPHS, ch)) return LABEL_GLYPHS[ch];
-  if (ch === ' ') return LABEL_GLYPHS[' '];
-  return { w: 6.2, ascent: 8, descent: 0, right: 6 };
-}
-
-function labelInk(text, anchorX, anchorY, sx, sy) {
-  let pen = 0;
-  for (const ch of text) {
-    const glyph = labelGlyph(ch);
-    const top = anchorY - glyph.ascent;
-    const bottom = anchorY + glyph.descent;
-    if (glyph.ascent + glyph.descent > 0 && sx >= anchorX + pen - 1e-6 && sx <= anchorX + pen + glyph.right + 1e-6 && sy >= top - 1e-6 && sy < bottom) {
-      return true;
+function labelInk(text, anchorX, anchorY, sx, sy, size) {
+  const atlas = GLYPHS[size === 12 ? '12' : '11'];
+  const px = Math.floor(sx);
+  const py = Math.floor(sy);
+  let pen = anchorX;
+  for (const ch of String(text)) {
+    const glyph = atlas[ch];
+    if (!glyph) {
+      pen += 6;
+      continue;
     }
-    pen += glyph.w;
+    const advance = glyph[0];
+    const rows = glyph[1];
+    for (let r = 0; r < rows.length; r += 1) {
+      const dy = rows[r][0];
+      const min = rows[r][1];
+      const bits = rows[r][2];
+      if (Math.floor(anchorY + dy) !== py) continue;
+      for (let i = 0; i < 24; i += 1) {
+        if ((bits & (1 << i)) && Math.floor(pen + min + i) === px) return true;
+      }
+    }
+    pen += advance;
   }
   return false;
 }
@@ -1417,6 +1414,8 @@ function actorInk(object, sx, sy, ox, oy, radius) {
   const heading = object.heading || 0;
   const nose = Math.max(18, radius) + 16;
   if (strokeSegment(sx, sy, ox, oy, ox + Math.cos(heading) * nose, oy - Math.sin(heading) * nose)) return true;
+  const caption = object.label || object.id;
+  if (typeof caption === 'string' && caption && labelInk(caption, ox + 8, oy - Math.max(18, radius) - 6, sx, sy, 12)) return true;
   const vx = object.velX || 0;
   const vz = object.velZ || 0;
   if (!(vx || vz)) return false;
