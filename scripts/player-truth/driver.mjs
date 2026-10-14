@@ -352,8 +352,9 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
       else { held.delete(code); await page.keyboard.up(code); }
     };
     const searchStart = await simNow(page);
+    let boostUntil = searchStart;
+    let wasAligned = false;
     try {
-      await setHeld('KeyW', true);
       await waitSim(page, 2.4, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: async () => {
         const fresh = await page.evaluate(readTarget);
         if (!fresh) return true;
@@ -362,12 +363,21 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
         // cover briefly, following its visible bearing, before attempting selection again.
         const bearing = fresh.none ? fresh.radarRel : fresh.rel;
         if (!Number.isFinite(bearing)) return true;
-        // Keep forward held while closing. Correct from the newly painted public dial,
-        // and boost only once the nose points along that course rather than burning away.
+        const now = await simNow(page);
         const turn = Math.abs(bearing) > 0.12 ? (bearing > 0 ? 'KeyD' : 'KeyA') : null;
+        const aligned = Math.abs(bearing) <= 0.35;
+        // Keep the public pilot from adding translation while a large radar error still needs
+        // a turn. Once the course is close, ordinary W resumes; this avoids the old full-speed
+        // circle around a moving off-screen contact without steering from hidden coordinates.
+        await setHeld('KeyW', Math.abs(bearing) <= 1.3);
+        if (aligned && !wasAligned) boostUntil = now + 0.35;
+        wasAligned = aligned;
         await setHeld('KeyA', turn === 'KeyA'); await setHeld('KeyD', turn === 'KeyD');
-        await setHeld(boostCode, Math.abs(bearing) < 0.35);
-        return false;
+        // Boost is a short public course pulse, not a second continuous chase throttle.
+        await setHeld(boostCode, aligned && now < boostUntil);
+        // A keydown can itself open a public draft/overlay. Stop before waitSim asks the
+        // frozen clock for another sample, while its finally block still releases every key.
+        return await page.evaluate(readCombatPhaseEnded);
       } });
     } finally {
       for (const key of new Set(['KeyW', 'KeyA', 'KeyD', boostCode].filter(Boolean))) await page.keyboard.up(key).catch(() => {});
