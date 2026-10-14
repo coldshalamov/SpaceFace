@@ -215,6 +215,17 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .orr-chain__verb > * { max-width:100%; white-space:normal !important; overflow-wrap:anywhere;
     font-size:12px !important; letter-spacing:.08em !important; }
   ${B} :is(.sx-fac__stage, .sx-bar__stage, .sx-ct__stage) { grid-template-columns:minmax(0,1fr) !important; }
+  /* Contract dossier: a phone-sized title and reward, and ACCEPT docks on a full-width opaque band so the
+     dossier scrolls under it instead of through it. Over 800px tall only:
+     shorter phones already keep ACCEPT in flow with the compact title. */
+  @media (min-height:801px) {
+    ${B} .sx-dossier__title { font-size:24px !important; line-height:1.12 !important; margin:4px 0 6px !important; }
+    ${B} .sx-dossier .k-hero--hero .k-hero__n { font-size:44px !important; }
+    ${B} .sx-dossier > .sx-dossier__foot { align-self:stretch !important; margin:12px -16px 0 !important; padding:10px 16px 10px !important; width:auto !important; max-width:none !important;
+      background:rgb(6 8 11) !important; border-top:1px solid rgb(236 230 216 / .12) !important;
+      -webkit-mask-image:none !important; mask-image:none !important; }
+  }
+  ${B} .sx-dossier > .orr-ct-route { height:240px !important; }
   /* Destination foot stays on glass: the seven tabs on a 4-column grid, then Comms and Undock. */
   ${B} footer.sxb-ops { position:relative !important; bottom:auto !important; flex:0 0 auto !important;
     display:flex !important; flex-wrap:wrap !important; align-items:center !important; gap:2px 10px !important; margin:0 !important;

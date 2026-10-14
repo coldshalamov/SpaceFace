@@ -221,7 +221,7 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 **Still open on phone:** (Shipworks callouts fixed on ui-polish-27 — see § below.) Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
 
-**Leftover:** Contracts TRACKED badge can sit off-frame. ~~filter search bury "Raw & rare" at 960~~ — fixed in ui-polish-28. ~~Shipworks left-rail "Starter / systems fitted" clip at 960~~ — fixed on ui-polish-27.
+**Leftover:** ~~Contracts TRACKED badge can sit off-frame~~ — on-frame at every size now (see § Phone Missions dossier, ui-polish-28). ~~filter search bury "Raw & rare" at 960~~ — fixed in ui-polish-28. ~~Shipworks left-rail "Starter / systems fitted" clip at 960~~ — fixed on ui-polish-27.
 
 ## Decision terms @960 + phone-on-its-side foot — session notes (2026-10-12, ui-polish-14)
 
@@ -935,4 +935,10 @@ Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and
 **After:** `crestOrbit.js` — the bracket rides 13px above the tallest tier word; tier-word widths use the tracking the screen really has; an end word splits when it would reach its neighbour; a scale too narrow to hang its rung words on two rows draws them as ticks (and the "Next: …" line under it shows); values step down under rung ticks. The ring radius is bounded by each flank name's measured width (re-measured once the label font loads) instead of a flat 118px. `stationTabsLayouts.js`, `min-height:801px` only: 1101–1700 wide gives the rail 290px, the ring half the stage, and short-screen name tracking; 1101–1400 wide folds the rail into the ring as short screens already do. Selectors and IDs unchanged; the help screen's ring is unchanged.
 
 **Checked:** 960×540, 1024×768, 1280×720, 1280×900, 1366×1024, 1440×900, 1600×900, 1920×1080, 390×844 (phone shows the list, unchanged). Shots: `ui-shots/leftovers28/{before,final}/`, `compare-*.png`.
+
+## Phone Missions dossier — session notes (2026-10-14, ui-polish-28)
+
+**Before (390×844):** the dossier's sticky ACCEPT only had a plate as wide as the key, faded out to the right, so the title, risk scale and reward scrolled visibly through and beside it ("…sport a" next to ACCEPT). The title was 36px (three lines for a short job name), and in the 304×200 route chart VESTA FORGE ran into CUSTOMS GATE.
+
+**After (`mobileScreenLayouts.js` only, phones over 800px tall):** ACCEPT docks on a full-width opaque band with a hairline above it, so the dossier scrolls under it. The title is 24px (two lines) and the reward 44px. The route chart is 240px tall on every phone, so the names place clear of each other. Phones at or under 800px tall (including 844×390 on its side) keep ACCEPT in flow with the compact title and are pixel-identical. 960×540 is identical; 1280/1920 differ only by route-drift noise. TRACKED stays on-frame at all four sizes. Shots: `ui-shots/polish28o/{before,after}/`, `{before,after}-scroll/`, `compare-contracts-phone.png`.
 
