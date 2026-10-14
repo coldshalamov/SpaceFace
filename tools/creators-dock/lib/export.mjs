@@ -540,7 +540,7 @@ function placeFromDisc(field) {
   if (Number.isFinite(field.x)) center.x = field.x;
   if (Number.isFinite(field.z)) center.z = field.z;
   place.center = center;
-  if (typeof field.radius === 'number' && field.radius > 0) place.radius = field.radius;
+  if (Number.isFinite(field.radius)) place.radius = field.radius;
   return place;
 }
 
@@ -734,7 +734,9 @@ function checkPlace(rec, dialect, issues) {
   if (!rec.center || !Number.isFinite(rec.center.x) || !Number.isFinite(rec.center.z)) {
     issues.push(`${label}: center must be {x, z} numbers`);
   }
-  if (typeof rec.radius !== 'number' || !(rec.radius > 0)) issues.push(`${label}: radius must be a positive number`);
+  if (typeof rec.radius !== 'number' || !Number.isFinite(rec.radius) || rec.radius < 0) {
+    issues.push(`${label}: radius must be a non-negative number`);
+  }
   if (rec.threat != null && (!Number.isInteger(rec.threat) || rec.threat < 0 || rec.threat > 5)) {
     issues.push(`${label}: threat must be an integer 0-5`);
   }

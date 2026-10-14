@@ -492,6 +492,13 @@ let freezeBase = null;
 let sealBase = null;
 let preventExtensionsBase = null;
 let reflectPreventBase = null;
+const nativeDefineProperty = Object.defineProperty;
+const nativeDefineProperties = Object.defineProperties;
+const nativeReflectDefine = Reflect.defineProperty;
+const nativeFreeze = Object.freeze;
+const nativeSeal = Object.seal;
+const nativePreventExtensions = Object.preventExtensions;
+const nativeReflectPrevent = Reflect.preventExtensions;
 
 function descHas(desc, key) {
   return !!desc && (typeof desc === 'object' || typeof desc === 'function') && key in desc;
@@ -563,43 +570,63 @@ function applyDescriptorMap(obj, descs) {
   return obj;
 }
 
+function shieldedDefine(obj, prop, desc) {
+  if (blocksDefine(obj, prop, desc)) return obj;
+  return nativeDefineProperty.call(Object, obj, prop, desc);
+}
+
+function shieldedDefineProperties(obj, descs) {
+  if (!descs || (typeof descs !== 'object' && typeof descs !== 'function')) {
+    return nativeDefineProperties.call(Object, obj, descs);
+  }
+  return applyDescriptorMap(obj, descs);
+}
+
+function shieldedReflectDefine(obj, prop, desc) {
+  if (blocksDefine(obj, prop, desc)) return true;
+  return nativeReflectDefine.call(Reflect, obj, prop, desc);
+}
+
+function shieldedFreeze(obj) {
+  if (protectedStack.length > 0) return obj;
+  return nativeFreeze.call(Object, obj);
+}
+
+function shieldedSeal(obj) {
+  if (protectedHas(obj)) return obj;
+  return nativeSeal.call(Object, obj);
+}
+
+function shieldedPreventExtensions(obj) {
+  if (protectedHas(obj)) return obj;
+  return nativePreventExtensions.call(Object, obj);
+}
+
+function shieldedReflectPreventExtensions(obj) {
+  if (protectedHas(obj)) return true;
+  return nativeReflectPrevent.call(Reflect, obj);
+}
+
+// Installed for the process lifetime so a function captured before restoreHistory
+// is still the shield. Unprotect must not put the natives back on the globals.
+Object.defineProperty = shieldedDefine;
+Object.defineProperties = shieldedDefineProperties;
+Reflect.defineProperty = shieldedReflectDefine;
+Object.freeze = shieldedFreeze;
+Object.seal = shieldedSeal;
+Object.preventExtensions = shieldedPreventExtensions;
+Reflect.preventExtensions = shieldedReflectPreventExtensions;
+
 export function protectLiveObjects(objects) {
   const set = objects instanceof Set ? objects : new Set(objects || []);
   if (protectedStack.length === 0) {
-    definePropertyBase = Object.defineProperty;
-    definePropertiesBase = Object.defineProperties;
-    reflectDefineBase = Reflect.defineProperty;
-    freezeBase = Object.freeze;
-    sealBase = Object.seal;
-    preventExtensionsBase = Object.preventExtensions;
-    reflectPreventBase = Reflect.preventExtensions;
-    Object.defineProperty = function shieldedDefine(obj, prop, desc) {
-      if (blocksDefine(obj, prop, desc)) return obj;
-      return definePropertyBase.call(Object, obj, prop, desc);
-    };
-    Object.defineProperties = function shieldedDefineProperties(obj, descs) {
-      if (!descs || typeof descs !== 'object') return definePropertiesBase.call(Object, obj, descs);
-      return applyDescriptorMap(obj, descs);
-    };
-    Reflect.defineProperty = function shieldedReflectDefine(obj, prop, desc) {
-      if (blocksDefine(obj, prop, desc)) return true;
-      return reflectDefineBase.call(Reflect, obj, prop, desc);
-    };
-    Object.freeze = function shieldedFreeze(obj) {
-      return obj;
-    };
-    Object.seal = function shieldedSeal(obj) {
-      if (protectedHas(obj)) return obj;
-      return sealBase.call(Object, obj);
-    };
-    Object.preventExtensions = function shieldedPreventExtensions(obj) {
-      if (protectedHas(obj)) return obj;
-      return preventExtensionsBase.call(Object, obj);
-    };
-    Reflect.preventExtensions = function shieldedReflectPreventExtensions(obj) {
-      if (protectedHas(obj)) return true;
-      return reflectPreventBase.call(Reflect, obj);
-    };
+    definePropertyBase = nativeDefineProperty;
+    definePropertiesBase = nativeDefineProperties;
+    reflectDefineBase = nativeReflectDefine;
+    freezeBase = nativeFreeze;
+    sealBase = nativeSeal;
+    preventExtensionsBase = nativePreventExtensions;
+    reflectPreventBase = nativeReflectPrevent;
   }
   protectedStack.push(set);
   return set;
@@ -607,33 +634,14 @@ export function protectLiveObjects(objects) {
 
 export function unprotectLiveObjects() {
   protectedStack.pop();
-  if (protectedStack.length === 0 && definePropertyBase) {
-    Object.defineProperty = definePropertyBase;
+  if (protectedStack.length === 0) {
     definePropertyBase = null;
-    if (definePropertiesBase) {
-      Object.defineProperties = definePropertiesBase;
-      definePropertiesBase = null;
-    }
-    if (reflectDefineBase) {
-      Reflect.defineProperty = reflectDefineBase;
-      reflectDefineBase = null;
-    }
-    if (freezeBase) {
-      Object.freeze = freezeBase;
-      freezeBase = null;
-    }
-    if (sealBase) {
-      Object.seal = sealBase;
-      sealBase = null;
-    }
-    if (preventExtensionsBase) {
-      Object.preventExtensions = preventExtensionsBase;
-      preventExtensionsBase = null;
-    }
-    if (reflectPreventBase) {
-      Reflect.preventExtensions = reflectPreventBase;
-      reflectPreventBase = null;
-    }
+    definePropertiesBase = null;
+    reflectDefineBase = null;
+    freezeBase = null;
+    sealBase = null;
+    preventExtensionsBase = null;
+    reflectPreventBase = null;
   }
 }
 

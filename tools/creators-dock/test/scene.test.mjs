@@ -7,7 +7,7 @@ import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject } from '../lib/export.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
-import { TRIGGER_ASSERTION_FIELDS, discRadius, fieldsFor, numberFieldValue, writeFrameInput, writePath } from '../lib/inspector.mjs';
+import { TRIGGER_ASSERTION_FIELDS, deletePath, discRadius, fieldsFor, numberFieldValue, writeFrameInput, writePath } from '../lib/inspector.mjs';
 import { evaluateOracleKernel } from '../../../src/testing/lab/oracleKernel.js';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
@@ -31,6 +31,7 @@ import {
   saveRequestBody,
   savedProjectText,
   setCamera,
+  hitTest,
   setPlayer,
   setVelocity,
   sortedClone,
@@ -4920,7 +4921,24 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(numberFieldValue('0'), 0);
   assert.equal(discRadius({ radius: 0 }), 0);
   assert.notEqual(discRadius({ radius: 0 }), 10);
-  assert.equal(discRadius({ kind: 'trigger' }), 0);
+  assert.equal(discRadius({ kind: 'trigger' }), null);
+  assert.notEqual(discRadius({ kind: 'trigger' }), 0);
+  const clearedRadius = { kind: 'trigger', radius: 12 };
+  deletePath(clearedRadius, 'radius');
+  assert.equal(Object.prototype.hasOwnProperty.call(clearedRadius, 'radius'), false);
+  assert.equal(discRadius(clearedRadius), null);
+  assert.notEqual(discRadius(clearedRadius), 0);
+  const tape = emptyProject({ id: 'dock.untitled', title: 'Untitled dock', seed: 1 });
+  assert.equal(tape.frames[0].input.moveX, 0);
+  writeFrameInput(tape, 0, 'moveX', 0);
+  assert.equal(tape.frames[0].input.moveX, 0);
+  writeFrameInput(tape, 0, 'moveX', numberFieldValue(''));
+  assert.equal(Object.prototype.hasOwnProperty.call(tape.frames[0].input, 'moveX'), false);
+  assert.notEqual(tape.frames[0].input.moveX, 0);
+  const camera = { x: 0, z: 0, zoom: 10 };
+  const view = { width: 200, height: 200 };
+  assert.equal(hitTest({ objects: [{ id: 'pin', x: 0, z: 0, radius: 0 }] }, 120, 100, camera, view), null);
+  assert.equal(hitTest({ objects: [{ id: 'pin', x: 0, z: 0, radius: 40 }] }, 120, 100, camera, view), 'pin');
   const finalOutside = evaluateOracleKernel({
     trace: [
       { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },
@@ -6050,11 +6068,13 @@ test('a missing key cannot be defined without a value', () => {
 test('an enumerable-only define cannot replace deleted credits', () => {
   const { undone, present } = sceneWithFuture();
   const world = present.world;
+  const defineProperty = Object.defineProperty;
+  const defineProperties = Object.defineProperties;
   assert.equal(world.credits, 5000);
   undone.history.future[0].toJSON = function () {
     delete world.credits;
-    Object.defineProperty(world, 'credits', { enumerable: true });
-    Object.defineProperties(world, { name: { configurable: false } });
+    defineProperty(world, 'credits', { enumerable: true });
+    defineProperties(world, { name: { configurable: false } });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6075,14 +6095,12 @@ test('an enumerable-only define cannot replace deleted credits', () => {
 test('defineProperties shorthand cannot seal credits with a function', () => {
   const { undone, present } = sceneWithFuture();
   const world = present.world;
-  const credits = function creditsDescriptor() {};
-  credits.value = 1;
-  credits.writable = false;
-  credits.configurable = false;
-  credits.enumerable = true;
+  const defineProperties = Object.defineProperties;
+  const credits = function () {};
+  assert.equal(Object.prototype.hasOwnProperty.call(credits, 'value'), false);
   undone.history.future[0].toJSON = function () {
     delete world.credits;
-    Object.defineProperties(world, { credits });
+    defineProperties(world, { credits });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6093,14 +6111,17 @@ test('defineProperties shorthand cannot seal credits with a function', () => {
   const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
   assert.equal(creditDesc.value, 5000);
   assert.equal(creditDesc.writable, true);
+  assert.equal(creditDesc.configurable, true);
   world.credits = 9;
   assert.equal(world.credits, 9);
+  assert.equal(delete world.credits, true);
 });
 
 test('freezing a non-enumerable override pocket does not keep the tag', () => {
   const { undone, present } = sceneWithFuture();
   const cargo = objectById(present, 'cargo');
   const pocket = { mass: 1 };
+  const freeze = Object.freeze;
   Object.defineProperty(cargo, 'overrides', {
     enumerable: false,
     configurable: true,
@@ -6108,7 +6129,7 @@ test('freezing a non-enumerable override pocket does not keep the tag', () => {
   });
   undone.history.future[0].toJSON = function () {
     cargo.overrides.tag = 'poison';
-    Object.freeze(cargo.overrides);
+    freeze(cargo.overrides);
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6116,12 +6137,14 @@ test('freezing a non-enumerable override pocket does not keep the tag', () => {
   const redone = restoreHistory(back.history, 'redo');
   assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
   assert.equal(Object.prototype.hasOwnProperty.call(pocket, 'tag'), false);
+  assert.equal(pocket.tag, undefined);
   assert.equal(Object.isFrozen(pocket), false);
 
   const nested = sceneWithFuture();
   const host = objectById(nested.present, 'cargo');
   const inner = { mass: 1 };
   const row = [];
+  const freezeInner = Object.freeze;
   Object.defineProperty(row, '0', { get() { return inner; } });
   Object.defineProperty(host, 'overrides', {
     enumerable: true,
@@ -6131,7 +6154,7 @@ test('freezing a non-enumerable override pocket does not keep the tag', () => {
   nested.undone.history.future[0].toJSON = function () {
     const element = host.overrides[0];
     element.tag = 'poison';
-    Object.freeze(element);
+    freezeInner(element);
     return this;
   };
   const undoneNested = restoreHistory(nested.undone.history, 'undo');
@@ -6146,9 +6169,10 @@ test('a new key defined with only writable false does not stay', () => {
   const world = present.world;
   const cargo = objectById(present, 'cargo');
   const yBefore = Object.prototype.hasOwnProperty.call(cargo, 'y') ? cargo.y : undefined;
+  const defineProperty = Object.defineProperty;
   undone.history.future[0].toJSON = function () {
-    Object.defineProperty(world, 'name', { writable: false });
-    Object.defineProperty(cargo, 'y', { writable: false });
+    defineProperty(world, 'name', { writable: false });
+    defineProperty(cargo, 'y', { writable: false });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6168,11 +6192,12 @@ test('a new key defined with only writable false does not stay', () => {
 test('a deleted credits field cannot be sealed by writable or configurable alone', () => {
   const { undone, present } = sceneWithFuture();
   const world = present.world;
+  const defineProperty = Object.defineProperty;
   undone.history.future[0].toJSON = function () {
     delete world.credits;
-    Object.defineProperty(world, 'credits', { writable: false });
+    defineProperty(world, 'credits', { writable: false });
     delete world.credits;
-    Object.defineProperty(world, 'credits', { configurable: false });
+    defineProperty(world, 'credits', { configurable: false });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6191,9 +6216,10 @@ test('a deleted credits field cannot be sealed by writable or configurable alone
 test('writable true and configurable false cannot stick on credits', () => {
   const { undone, present } = sceneWithFuture();
   const world = present.world;
+  const defineProperty = Object.defineProperty;
   undone.history.future[0].toJSON = function () {
     delete world.credits;
-    Object.defineProperty(world, 'credits', { writable: true, configurable: false });
+    defineProperty(world, 'credits', { writable: true, configurable: false });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6212,8 +6238,9 @@ test('writable true and configurable false cannot stick on credits', () => {
 test('a new non-writable index cannot lengthen marks', () => {
   const { undone, present } = sceneWithFuture();
   present.grid.origin = { marks: ['keep'] };
+  const defineProperty = Object.defineProperty;
   undone.history.future[0].toJSON = function () {
-    Object.defineProperty(present.grid.origin.marks, '1', { writable: false });
+    defineProperty(present.grid.origin.marks, '1', { writable: false });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6227,11 +6254,13 @@ test('a new non-writable index cannot lengthen marks', () => {
 test('preventExtensions does not let a valueless x replace the authored position', async () => {
   const { undone, present } = sceneWithFuture();
   const cargo = objectById(present, 'cargo');
+  const preventExtensions = Object.preventExtensions;
+  const defineProperty = Object.defineProperty;
   assert.equal(cargo.x, 30);
   undone.history.future[0].toJSON = function () {
     delete cargo.x;
-    Object.preventExtensions(cargo);
-    Object.defineProperty(cargo, 'x', { writable: false });
+    preventExtensions(cargo);
+    defineProperty(cargo, 'x', { writable: false });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -6265,6 +6294,26 @@ test('Reflect.preventExtensions cannot drop credits', () => {
   const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
   assert.equal(creditDesc.value, 5000);
   assert.equal(creditDesc.writable, true);
+  world.credits = 5000;
+  assert.equal(world.credits, 5000);
+});
+
+test('a closed-over preventExtensions cannot lock the world', () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const prevent = Reflect.preventExtensions;
+  undone.history.future[0].toJSON = function () {
+    delete world.credits;
+    prevent(world);
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  assert.equal(Object.isExtensible(world), true);
+  const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
+  assert.equal(creditDesc.value, 5000);
+  assert.equal(creditDesc.writable, true);
+  assert.equal(creditDesc.configurable, true);
   world.credits = 5000;
   assert.equal(world.credits, 5000);
 });

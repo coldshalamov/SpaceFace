@@ -1194,7 +1194,9 @@ export function hitTest(project, sx, sy, camera, view) {
   for (const object of objects) {
     if (!Number.isFinite(object.x) || !Number.isFinite(object.z)) continue;
     const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
-    const radius = Math.max(10, (Number(object.radius) || 8) * (camera.zoom || 1) * 0.35);
+    const zoom = camera && Number.isFinite(camera.zoom) && camera.zoom > 0 ? camera.zoom : 1;
+    const authored = typeof object.radius === 'number' && Number.isFinite(object.radius) ? object.radius : 8;
+    const radius = Math.max(10, authored * zoom * 0.35);
     const dx = sx - ox;
     const dy = sy - oy;
     if (dx * dx + dy * dy <= (radius + 8) * (radius + 8)) return object.id;

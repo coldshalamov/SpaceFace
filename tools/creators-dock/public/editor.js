@@ -227,7 +227,9 @@ function paintFrames(form) {
     tick.addEventListener('change', () => {
       const next = copyScene(project());
       if (!next || !next.frames || !next.frames[index]) return showReport({ ok: false, issues: ['scene could not be cloned'] });
-      next.frames[index].tick = Number(tick.value);
+      const parsedTick = numberFieldValue(tick.value);
+      if (parsedTick == null) return;
+      next.frames[index].tick = parsedTick;
       commitProject(next);
     });
     const tickLabel = document.createElement('label');
@@ -245,12 +247,12 @@ function paintFrames(form) {
       } else {
         input.type = 'number';
         input.step = '0.1';
-        input.value = current ?? 0;
+        input.value = current == null ? '' : current;
       }
       input.addEventListener('change', () => {
         const next = copyScene(project());
         if (!next) return showReport({ ok: false, issues: ['scene could not be cloned'] });
-        const value = field.kind === 'checkbox' ? input.checked : Number(input.value);
+        const value = field.kind === 'checkbox' ? input.checked : numberFieldValue(input.value);
         writeFrameInput(next, index, field.key, value);
         commitProject(next);
       });

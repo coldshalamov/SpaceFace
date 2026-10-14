@@ -13,7 +13,8 @@ export const ACTOR_OVERRIDE_FIELDS = Object.freeze([
 ]);
 
 export function discRadius(object) {
-  return object && Number.isFinite(object.radius) ? object.radius : 0;
+  if (!object || typeof object.radius !== 'number' || !Number.isFinite(object.radius)) return null;
+  return object.radius;
 }
 
 export function markerStroke(object, zoom = 1) {
@@ -149,7 +150,9 @@ export function writeFrameInput(project, index, key, value) {
   if (!project || !Number.isInteger(index) || index < 0) return project;
   if (!Array.isArray(project.frames)) project.frames = [];
   const frame = project.frames[index] || { tick: index, input: {} };
-  frame.input = { ...(frame.input || {}), [key]: value };
+  if (!frame.input || typeof frame.input !== 'object' || Array.isArray(frame.input)) frame.input = {};
+  if (value == null) delete frame.input[key];
+  else frame.input[key] = value;
   project.frames[index] = frame;
   return project;
 }
