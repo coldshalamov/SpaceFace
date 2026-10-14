@@ -98,6 +98,14 @@ function createCompletedTickRecord() {
     lifecycleGeneration: 0,
     journalStart: 0,
     journalEnd: 0,
+    // A physical slot normally represents one fixed step.  When presentation
+    // is temporarily stalled, the bounded tail below represents several
+    // completed steps and keeps the count/range explicit for the consumer.
+    coalescedCount: 1,
+    fullRebuild: false,
+    fullRebuildCount: 0,
+    fullRebuildStart: null,
+    rebuildGeneration: 0,
   };
 }
 
@@ -112,12 +120,48 @@ function copyCompletedTick(target, source) {
   target.lifecycleGeneration = source.lifecycleGeneration;
   target.journalStart = source.journalStart;
   target.journalEnd = source.journalEnd;
+  // Keep the long-standing output shape for the ordinary one-tick case.  The
+  // optional fields are present only when a bounded tail or rebuild metadata
+  // makes them meaningful; delete them when a caller reuses its scratch object
+  // for a plain completion.
+  if (Number.isSafeInteger(source.coalescedCount) && source.coalescedCount > 1) {
+    target.coalescedCount = source.coalescedCount;
+  } else {
+    delete target.coalescedCount;
+  }
+  if (source.fullRebuild === true || (Number.isSafeInteger(source.fullRebuildCount)
+      && source.fullRebuildCount > 0)) {
+    target.fullRebuild = source.fullRebuild === true
+      || (Number.isSafeInteger(source.fullRebuildCount) && source.fullRebuildCount > 0);
+    target.fullRebuildCount = Number.isSafeInteger(source.fullRebuildCount)
+      ? source.fullRebuildCount : 1;
+    target.fullRebuildStart = Number.isSafeInteger(source.fullRebuildStart)
+      ? source.fullRebuildStart : target.journalStart;
+    target.rebuildGeneration = Number.isSafeInteger(source.rebuildGeneration)
+      ? source.rebuildGeneration : 0;
+  } else {
+    delete target.fullRebuild;
+    delete target.fullRebuildCount;
+    delete target.fullRebuildStart;
+    delete target.rebuildGeneration;
+  }
   return target;
 }
 
+function completedRecordCount(record) {
+  return Number.isSafeInteger(record?.coalescedCount) && record.coalescedCount > 0
+    ? record.coalescedCount : 1;
+}
+
+function completedFullCount(record) {
+  return Number.isSafeInteger(record?.fullRebuildCount) && record.fullRebuildCount > 0
+    ? record.fullRebuildCount : (record?.fullRebuild === true ? 1 : 0);
+}
+
 /**
- * Own the fixed-step accumulator and publish a bounded queue of completed-tick metadata.
- * The registry remains the sole owner of system/event order; this runner only invokes registry.step.
+ * Own the fixed-step accumulator and publish a bounded physical queue plus one
+ * coalesced metadata tail of completed ticks. The registry remains the sole
+ * owner of system/event order; this runner only invokes registry.step.
  */
 export function createSimulationRunner(state, registry, deps = {}) {
   if (!state || typeof state !== 'object') throw new TypeError('SimulationRunner requires state');
@@ -163,6 +207,13 @@ export function createSimulationRunner(state, registry, deps = {}) {
   let completedRead = 0;
   let completedWrite = 0;
   let completedCount = 0;
+  // A stalled presenter must not quarantine the authoritative simulation merely
+  // because its fixed-step metadata ring is full.  Keep one bounded tail that
+  // represents all additional completions until the next presentation drain.
+  let completedOverflow = null;
+  let completedTickCoalescingEvents = 0;
+  let completedTickCoalescedCount = 0;
+  let completedFullRebuildsCoalesced = 0;
   let completedSequence = 0;
   let inputSequence = 0;
   // P7: wall-clock stamp of the newest player input command the current tick consumed, copied
@@ -248,27 +299,164 @@ export function createSimulationRunner(state, registry, deps = {}) {
   committedJournalSequence = initialJournalCursor();
 
   function reserveCompletedTick() {
-    if (completedCount >= completedTickCapacity) {
-      overflowCount++;
-      throw new Error(`SimulationRunner completed-tick queue overflow (${completedTickCapacity})`);
-    }
+    if (completedCount >= completedTickCapacity) return null;
     return completedTicks[completedWrite];
+  }
+
+  function writeCompletedTickFields(
+    target,
+    sequence,
+    tick,
+    simTime,
+    inputSequenceValue,
+    inputCommandSeq,
+    inputWallMs,
+    lifecycleGenerationValue,
+    journalStart,
+    journalEnd,
+    fullRebuild = false,
+    fullRebuildCount = 0,
+    fullRebuildStart = null,
+    rebuildGeneration = 0,
+  ) {
+    target.sequence = sequence;
+    target.tick = tick;
+    target.simTime = simTime;
+    // This is a cheap boundary marker, not an acceptance digest. PQ-034 remains the hash authority.
+    target.stateDigestMarker = tick;
+    target.inputSequence = inputSequenceValue;
+    target.inputCommandSeq = inputCommandSeq;
+    target.inputWallMs = inputWallMs;
+    target.lifecycleGeneration = lifecycleGenerationValue;
+    target.journalStart = journalStart;
+    target.journalEnd = journalEnd;
+    target.coalescedCount = 1;
+    target.fullRebuild = fullRebuild === true || fullRebuildCount > 0;
+    target.fullRebuildCount = fullRebuildCount;
+    target.fullRebuildStart = target.fullRebuild
+      ? (Number.isSafeInteger(fullRebuildStart) ? fullRebuildStart : journalStart)
+      : null;
+    target.rebuildGeneration = rebuildGeneration;
+  }
+
+  // The normal reserved-slot path writes directly into its preallocated
+  // record. This helper is reached only after that ring is full, so pressure
+  // traffic can retain a single bounded metadata tail without adding one
+  // object allocation per fixed tick.
+  function mergeCompletedTickValues(
+    target,
+    sequence,
+    tick,
+    simTime,
+    inputSequenceValue,
+    inputCommandSeq,
+    inputWallMs,
+    lifecycleGenerationValue,
+    journalStart,
+    journalEnd,
+    fullRebuild = false,
+    fullRebuildCount = 0,
+    fullRebuildStart = null,
+    rebuildGeneration = 0,
+  ) {
+    const targetCount = completedRecordCount(target);
+    const targetFull = target.fullRebuild === true || completedFullCount(target) > 0;
+    const incomingFull = fullRebuild === true || fullRebuildCount > 0;
+    const targetFullStart = Number.isSafeInteger(target.fullRebuildStart)
+      ? target.fullRebuildStart : null;
+    const incomingFullStart = Number.isSafeInteger(fullRebuildStart)
+      ? fullRebuildStart : null;
+    const targetStart = Number.isSafeInteger(target.journalStart) ? target.journalStart : 0;
+    const incomingStart = Number.isSafeInteger(journalStart) ? journalStart : targetStart;
+    const targetEnd = Number.isSafeInteger(target.journalEnd) ? target.journalEnd : targetStart;
+    const incomingEnd = Number.isSafeInteger(journalEnd) ? journalEnd : incomingStart;
+    const full = targetFull || incomingFull;
+    const fullStart = incomingFull
+      ? (incomingFullStart ?? incomingStart)
+      : targetFullStart;
+    const fullCount = completedFullCount(target) + fullRebuildCount;
+
+    // Incoming is the newest completed state for every scalar/input field.
+    target.sequence = sequence;
+    target.tick = tick;
+    target.simTime = simTime;
+    target.stateDigestMarker = tick;
+    target.inputSequence = inputSequenceValue;
+    target.inputCommandSeq = inputCommandSeq;
+    target.inputWallMs = inputWallMs;
+    target.lifecycleGeneration = lifecycleGenerationValue;
+    target.coalescedCount = targetCount + 1;
+    target.fullRebuildCount = fullCount;
+    target.fullRebuild = full;
+    target.fullRebuildStart = full
+      ? (Number.isSafeInteger(fullStart) ? fullStart : Math.min(targetStart, incomingStart))
+      : null;
+    target.rebuildGeneration = Math.max(
+      Number.isSafeInteger(target.rebuildGeneration) ? target.rebuildGeneration : 0,
+      Number.isSafeInteger(rebuildGeneration) ? rebuildGeneration : 0,
+    );
+    // A rebuild supersedes older journal rows still represented by this tail.
+    target.journalStart = full
+      ? (Number.isSafeInteger(fullStart) ? fullStart : Math.min(targetStart, incomingStart))
+      : Math.min(targetStart, incomingStart);
+    target.journalEnd = Math.max(targetEnd, incomingEnd);
   }
 
   function publishCompletedTick(slot, nextInputSequence, journalStart, journalEnd) {
     completedSequence++;
     inputSequence = nextInputSequence;
-    slot.sequence = completedSequence;
-    slot.tick = Number.isSafeInteger(state.tick) ? state.tick : 0;
-    slot.simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
-    // This is a cheap boundary marker, not an acceptance digest. PQ-034 remains the hash authority.
-    slot.stateDigestMarker = slot.tick;
-    slot.inputSequence = inputSequence;
-    slot.inputCommandSeq = pendingInputCommandSeq;
-    slot.inputWallMs = pendingInputWallMs;
-    slot.lifecycleGeneration = lifecycleGeneration;
-    slot.journalStart = journalStart;
-    slot.journalEnd = journalEnd;
+    const tick = Number.isSafeInteger(state.tick) ? state.tick : 0;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (!slot) {
+      // Registry work and its journal writes have already committed.  The
+      // overflow path stores metadata only; presentation will consume the
+      // journal rows by this retained range and render the newest scalar state.
+      if (!completedOverflow) {
+        completedOverflow = createCompletedTickRecord();
+        writeCompletedTickFields(
+          completedOverflow,
+          completedSequence,
+          tick,
+          simTime,
+          inputSequence,
+          pendingInputCommandSeq,
+          pendingInputWallMs,
+          lifecycleGeneration,
+          journalStart,
+          journalEnd,
+        );
+      } else {
+        mergeCompletedTickValues(
+          completedOverflow,
+          completedSequence,
+          tick,
+          simTime,
+          inputSequence,
+          pendingInputCommandSeq,
+          pendingInputWallMs,
+          lifecycleGeneration,
+          journalStart,
+          journalEnd,
+        );
+      }
+      completedTickCoalescingEvents++;
+      completedTickCoalescedCount++;
+      overflowCount = completedTickCoalescingEvents;
+      committedJournalSequence = journalEnd;
+      return;
+    }
+    writeCompletedTickFields(
+      slot,
+      completedSequence,
+      tick,
+      simTime,
+      inputSequence,
+      pendingInputCommandSeq,
+      pendingInputWallMs,
+      lifecycleGeneration,
+      journalStart,
+      journalEnd,
+    );
     completedWrite = (completedWrite + 1) % completedTickCapacity;
     completedCount++;
     committedJournalSequence = journalEnd;
@@ -277,8 +465,10 @@ export function createSimulationRunner(state, registry, deps = {}) {
   function stepSimulation(dt) {
     assertOpen();
     const commandSnapshots = inputCommandSnapshots;
-    // Reserve both publications before advancing authoritative state. Exhaustion therefore fails
-    // closed rather than advancing a tick whose command or completion record cannot be represented.
+    // Reserve the input publication before advancing authoritative state.  A
+    // full completion ring is handled by the bounded metadata tail in
+    // publishCompletedTick; the authoritative tick must continue advancing so
+    // a blocked presenter cannot close the game.
     const slot = reserveCompletedTick();
     const nextInputSequence = inputSequence + 1;
     const currentTick = Number.isSafeInteger(state.tick) && state.tick >= 0
@@ -358,11 +548,14 @@ export function createSimulationRunner(state, registry, deps = {}) {
     if (!closed) {
       closed = true;
       closeCount++;
-      completedTicksPendingAtClose = completedCount;
-      completedTicksDiscardedOnClose += completedCount;
+      const pendingLogical = completedCount
+        + (completedOverflow ? completedRecordCount(completedOverflow) : 0);
+      completedTicksPendingAtClose = pendingLogical;
+      completedTicksDiscardedOnClose += pendingLogical;
       completedRead = 0;
       completedWrite = 0;
       completedCount = 0;
+      completedOverflow = null;
       completedTicks.length = 0;
       const initialPending = inputCommandSnapshots?.getPendingCount?.();
       const initialDiagnostics = inputCommandSnapshots?.getDiagnostics?.() || null;
@@ -470,16 +663,63 @@ export function createSimulationRunner(state, registry, deps = {}) {
         throw new TypeError('consumeLatestCompletedTick requires a caller-owned output object');
       }
       let consumed = 0;
+      let physicalConsumed = 0;
       let earliestJournalStart = 0;
+      let fullRebuild = false;
+      let fullRebuildStart = null;
+      let fullRebuildCount = 0;
+      let rebuildGeneration = 0;
+      const absorb = (completedTick) => {
+        const represented = completedRecordCount(completedTick);
+        const isFull = completedTick.fullRebuild === true || completedFullCount(completedTick) > 0;
+        if (physicalConsumed === 0) earliestJournalStart = completedTick.journalStart;
+        copyCompletedTick(out, completedTick);
+        if (isFull) {
+          fullRebuild = true;
+          fullRebuildStart = Number.isSafeInteger(completedTick.fullRebuildStart)
+            ? completedTick.fullRebuildStart : completedTick.journalStart;
+        }
+        fullRebuildCount += completedFullCount(completedTick);
+        rebuildGeneration = Math.max(
+          rebuildGeneration,
+          Number.isSafeInteger(completedTick.rebuildGeneration)
+            ? completedTick.rebuildGeneration : 0,
+        );
+        consumed += represented;
+        physicalConsumed++;
+      };
       while (completedCount > 0) {
         const completedTick = completedTicks[completedRead];
-        if (consumed === 0) earliestJournalStart = completedTick.journalStart;
-        copyCompletedTick(out, completedTick);
+        absorb(completedTick);
         completedRead = (completedRead + 1) % completedTickCapacity;
         completedCount--;
-        consumed++;
       }
-      if (consumed > 0) out.journalStart = earliestJournalStart;
+      if (completedOverflow) {
+        absorb(completedOverflow);
+        completedOverflow = null;
+      }
+      if (consumed > 0) {
+        // A rebuild supersedes all older rows still represented by the ring.
+        // Start the presentation range at that boundary so it never asks the
+        // journal for discarded pre-rebuild records.
+        out.journalStart = fullRebuild
+          ? (Number.isSafeInteger(fullRebuildStart) ? fullRebuildStart : earliestJournalStart)
+          : earliestJournalStart;
+        if (consumed > 1) out.coalescedCount = consumed;
+        else delete out.coalescedCount;
+        if (fullRebuild) {
+          out.fullRebuild = true;
+          out.fullRebuildCount = fullRebuildCount;
+          out.fullRebuildStart = Number.isSafeInteger(fullRebuildStart)
+            ? fullRebuildStart : out.journalStart;
+          out.rebuildGeneration = rebuildGeneration;
+        } else {
+          delete out.fullRebuild;
+          delete out.fullRebuildCount;
+          delete out.fullRebuildStart;
+          delete out.rebuildGeneration;
+        }
+      }
       if (consumed > 1) skippedPresentationTicks += consumed - 1;
       consumedTickCount += consumed;
       return consumed;
@@ -489,7 +729,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
       if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > journalSequence()) {
         throw new RangeError(`SimulationRunner journal cursor is invalid (${sequence})`);
       }
-      if (completedCount > 0) {
+      if (completedCount > 0 || completedOverflow) {
         throw new Error('SimulationRunner cannot align the journal cursor with pending completed ticks');
       }
       committedJournalSequence = sequence;
@@ -503,7 +743,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
     close,
     isClosed: () => closed,
     getLifecycleGeneration: () => lifecycleGeneration,
-    getPendingCompletedTickCount: () => completedCount,
+    getPendingCompletedTickCount: () => completedCount
+      + (completedOverflow ? completedRecordCount(completedOverflow) : 0),
     getDiagnostics() {
       return {
         closed,
@@ -533,7 +774,14 @@ export function createSimulationRunner(state, registry, deps = {}) {
         lastInputObserverError,
         inputCommandSnapshots: inputCommandSnapshots?.getDiagnostics?.()
           || closedInputCommandSnapshotDiagnostics,
-        pendingCompletedTicks: completedCount,
+        pendingCompletedTicks: completedCount
+          + (completedOverflow ? completedRecordCount(completedOverflow) : 0),
+        completedTickSlotsPending: completedCount,
+        completedTickOverflowPending: completedOverflow
+          ? completedRecordCount(completedOverflow) : 0,
+        completedTickCoalescingEvents,
+        completedTickCoalescedCount,
+        completedFullRebuildsCoalesced,
         retainedCompletedTickCapacity: completedTicks.length,
         consumedTickCount,
         skippedPresentationTicks,

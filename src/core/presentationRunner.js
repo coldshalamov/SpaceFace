@@ -410,6 +410,15 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   simulationRunner.setLifecycleGeneration?.(lifecycleGeneration);
+  // A worker-owned clock can be driven either by the legacy main-thread timer
+  // (the injected/node transport) or by a timer inside the DedicatedWorker.
+  // rAF only presents the newest completed snapshot for either owner.
+  const workerPumpOwnsClock = simulationRunner.clockOwner === 'worker-pump'
+    || simulationRunner.clockOwner === 'worker-local';
+  function setWorkerClockActive(active, reason) {
+    if (!workerPumpOwnsClock || typeof simulationRunner.setClockActive !== 'function') return;
+    simulationRunner.setClockActive(active === true, reason);
+  }
 
   function schedule() {
     if (destroyed || suspended || frameHandle !== null) return;
@@ -435,8 +444,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     destroyed = true;
     diagnostics.destroyed = true;
     diagnostics.stopCount++;
-    witness.stop();
     const errors = [];
+    try { setWorkerClockActive(false, 'stop'); }
+    catch (error) { recordTeardownError('stopSimulationClock', error, errors); }
+    witness.stop();
 
     const handle = frameHandle;
     frameHandle = null;
@@ -544,6 +555,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   function enterNonPresenting(next, reason) {
     const wasSuspended = suspended;
     suspended = true;
+    setWorkerClockActive(false, reason);
     syncEmitSliceSuspension();
     diagnostics.suspended = true;
     diagnostics.restoreTarget = null;
@@ -580,6 +592,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     }
 
     const wasSuspended = suspended;
+    setWorkerClockActive(false, reason);
     suspended = false;
     syncEmitSliceSuspension();
     diagnostics.suspended = false;
@@ -614,6 +627,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     diagnostics.restoreTarget = null;
     recordState(next, reason);
+    setWorkerClockActive(true, reason);
     schedule();
   }
 
@@ -1048,24 +1062,40 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return presentationMs;
   }
 
+  let veilClockHeld = false;
   function advanceSimulation(frameDt, restoring, stepCap, perf) {
     const simFrameStart = measureNow();
-    // The flight reveal veil (loadingPresenter) holds the sim at its spawn state until the world
-    // is on screen: the player must not lose game time or meet drifted traffic behind the veil.
+    // The worker lane owns a monotonic timer so a busy renderer cannot stop authoritative
+    // simulation. rAF still calls prepareWithoutAdvance to flush presentation-side commands and
+    // read the current accumulator, but it never advances the worker a second time. Main fallback
+    // has no clockOwner marker and keeps the established rAF advance path byte-for-byte in policy.
+    // The flight reveal veil (loadingPresenter) also holds the main-lane sim at its spawn state
+    // until the world is on screen.
     const veilHeld = state.render && state.render.flightVeilHoldsSim === true;
-    const stepResult = restoring || veilHeld
+    if (workerPumpOwnsClock && veilHeld !== veilClockHeld) {
+      veilClockHeld = veilHeld;
+      if (veilHeld) setWorkerClockActive(false, 'flight-veil');
+      else if (!suspended && lifecycleState !== LOOP_LIFECYCLE_STATES.RESTORING) {
+        setWorkerClockActive(true, 'flight-veil-lift');
+      }
+    }
+    const stepResult = restoring || workerPumpOwnsClock || veilHeld
       ? simulationRunner.prepareWithoutAdvance()
       : simulationRunner.advance(frameDt, state.timeScale, stepCap);
-    if (!restoring && stepCap === HITCH_CATCHUP_STEPS) diagnostics.hitchCappedFrameCount++;
+    if (!restoring && !workerPumpOwnsClock && stepCap === HITCH_CATCHUP_STEPS) {
+      diagnostics.hitchCappedFrameCount++;
+    }
 
     if (!restoring && postRestoreFramePending) {
       diagnostics.postRestoreFrameCount++;
       diagnostics.lastPostRestoreFrameDt = frameDt;
-      diagnostics.postRestoreMaxStepsObserved = Math.max(
-        diagnostics.postRestoreMaxStepsObserved,
-        stepResult.steps,
-      );
-      if (stepResult.shedBacklog) diagnostics.postRestoreShedBacklogCount++;
+      if (!workerPumpOwnsClock) {
+        diagnostics.postRestoreMaxStepsObserved = Math.max(
+          diagnostics.postRestoreMaxStepsObserved,
+          stepResult.steps,
+        );
+        if (stepResult.shedBacklog) diagnostics.postRestoreShedBacklogCount++;
+      }
       postRestoreFramePending = false;
     }
 
@@ -1367,6 +1397,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         last = nowMs();
         diagnostics.timestampResetCount++;
         postRestoreFramePending = true;
+        setWorkerClockActive(true, 'restore-frame-complete');
       }
     } catch (tailErr) {
       frame._tailErrs = (frame._tailErrs || 0) + 1;
@@ -1398,6 +1429,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   if (typeof globalThis.window !== 'undefined') {
     witness.startClock(captureWitness, globalThis.window);
   }
+  setWorkerClockActive(!suspended && lifecycleState !== LOOP_LIFECYCLE_STATES.RESTORING, 'startup');
   schedule();
 
   return {

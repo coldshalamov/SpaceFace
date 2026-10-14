@@ -59,6 +59,17 @@ export function performanceRunContext(env = process.env, { screenshotEveryMs = 1
   };
 }
 
+// laneRpc resolves an acknowledgement in both worker and main lanes. Main-lane diagnostics do
+// not register the worker-only observer, so normalize that rejection to an explicit unsupported
+// result instead of letting a missing `status` look like an empty capture.
+function normalizeImpulseObserverResponse(response) {
+  const value = response && typeof response === 'object' && response.result !== undefined
+    ? response.result : response;
+  if (!value || typeof value !== 'object') return { ok: false, status: 'unsupported', reason: 'empty-rpc-response' };
+  if (value.ok === false) return { ...value, status: value.status || 'unsupported', reason: value.reason || value.error || 'observer-rpc-failed' };
+  return value;
+}
+
 /** Observe the preparation the public door actually produced, including its enabled Rearm choice. */
 export function preparationSnapshot({ ruleset, includeButton = true }) {
   const state = window.SF?.state; const run = state?.run;
@@ -471,6 +482,7 @@ async function runOne(args, arena, extra = {}) {
   page.on('close', () => note('page closed'));
   let lastProgress = 0; let progressMark = null;
   let readerOn = false; let stopReason = null; let environmentLoss = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
+  let impulseObserver = null;
 
   const drain = async ({ all = false } = {}) => {
     if (!readerOn || draining) return;
@@ -486,7 +498,9 @@ async function runOne(args, arena, extra = {}) {
     const last = trace.samples[trace.samples.length - 1];
     if (last && Date.now() - lastProgress > 30000) {
       const prev = progressMark; progressMark = { wall: Date.now(), sim: last.sim, f: trace.samples.length };
-      if (prev) log(`progress: sim ${last.sim.toFixed(1)} s · ${((progressMark.f - prev.f) / ((progressMark.wall - prev.wall) / 1000)).toFixed(1)} fps · ${((progressMark.sim - prev.sim) / ((progressMark.wall - prev.wall) / 1000)).toFixed(2)} sim s per wall s · phase ${last.run ? last.run.ph : last.mode}`);
+      if (prev) log(last.mode !== 'flight'
+        ? `progress: preparation (${last.mode}, ${last.top || 'no screen'}) · ${trace.meta.preparationSamplesOmitted || 0} preparation frames omitted; gameplay cadence unmeasured`
+        : `progress: sim ${last.sim.toFixed(1)} s · ${((progressMark.f - prev.f) / ((progressMark.wall - prev.wall) / 1000)).toFixed(1)} fps · ${((progressMark.sim - prev.sim) / ((progressMark.wall - prev.wall) / 1000)).toFixed(2)} sim s per wall s · phase ${last.run ? last.run.ph : last.mode}`);
       const memory = process.memoryUsage();
       log(`trace storage: ${JSON.stringify(trace.rowStorage)} · heap ${(memory.heapUsed / 1048576).toFixed(0)} MiB · numeric ${(memory.arrayBuffers / 1048576).toFixed(0)} MiB`);
       lastProgress = Date.now();
@@ -522,9 +536,63 @@ async function runOne(args, arena, extra = {}) {
     await page.addScriptTag({ type: 'module', content: `import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24, rounds: ${args.mode === 'swarm' || args.mode === 'gauntlet'} }).start(); window.__playerTruthReady = true;` });
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
+    if (args.mode === 'adventure') {
+      const observerResponse = await page.evaluate(async () => {
+        try {
+          const { laneRpc } = await import('/src/core/simLaneCommands.js');
+          const response = await laneRpc('playerTruthImpulseObserver', { action: 'install', maxTicks: 120, maxReceipts: 256 });
+          return response;
+        } catch (error) {
+          return { ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) };
+        }
+      }).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
+      impulseObserver = normalizeImpulseObserverResponse(observerResponse);
+      trace.forceProvenance = { requested: true, ...(impulseObserver || { ok: false, status: 'unsupported' }) };
+    }
     // Preparation can legitimately pause the simulation. Drain from installation, before
     // the actor enters flight, so a route timeout remains reportable without one huge RPC.
     if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
+  };
+  const beginImpulseObserver = async (tick) => {
+    if (args.mode !== 'adventure' || !impulseObserver?.ok) return null;
+    const startedResponse = await page.evaluate(async (flightTick) => {
+      try {
+        const { laneRpc } = await import('/src/core/simLaneCommands.js');
+        const response = await laneRpc('playerTruthImpulseObserver', { action: 'begin', tick: flightTick });
+        return response;
+      } catch (error) {
+        return { ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) };
+      }
+    }, tick).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
+    const started = normalizeImpulseObserverResponse(startedResponse);
+    impulseObserver = { ...impulseObserver, ...started };
+    trace.forceProvenance = { ...(trace.forceProvenance || {}), ...started, requested: true };
+    return started;
+  };
+  const finalizeImpulseObserver = async () => {
+    if (args.mode !== 'adventure' || !impulseObserver) return;
+    const captureResponse = await page.evaluate(async () => {
+      try {
+        const { laneRpc } = await import('/src/core/simLaneCommands.js');
+        const response = await laneRpc('playerTruthImpulseObserver', { action: 'finalize' });
+        return response;
+      } catch (error) {
+        return { ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) };
+      }
+    }).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
+    const capture = normalizeImpulseObserverResponse(captureResponse);
+    if (capture?.receipts) {
+      const mapped = await page.evaluate(async (value) => {
+        const reader = window.__playerTruth;
+        const identityFor = (id, generation) => reader?.identityFor?.(id, generation) ?? null;
+        // Keep mapping at the reader boundary: worker receipts remain raw until the final capture.
+        const { mapImpulseReceiptIdentities } = await import('/src/testing/playerTruth/impulseReceipts.js');
+        return mapImpulseReceiptIdentities(value, identityFor);
+      }, capture).catch(() => capture);
+      trace.forceProvenance = { ...(trace.forceProvenance || {}), ...mapped, requested: true };
+    } else {
+      trace.forceProvenance = { ...(trace.forceProvenance || {}), ...capture, requested: true };
+    }
   };
   const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
@@ -612,7 +680,7 @@ async function runOne(args, arena, extra = {}) {
       const st0 = await phaseNow();
       step('spawn', true, `flight · round ${st0.w} active at sim ${st0.sim.toFixed(1)} s`);
       trace.meta.playStartSim = st0.sim;
-      trace.meta.runSeed = await page.evaluate(() => window.SF.state.run && window.SF.state.run.seed);
+      trace.meta.runSeed = doorInfo.runSeed ?? null;
       let round = { wave: st0.w, startSim: st0.sim, startT: st0.t, endSim: null, endT: null, endPhase: null };
       trace.rounds.push(round);
       startStreams(() => `round ${round.wave}`);
@@ -683,6 +751,7 @@ async function runOne(args, arena, extra = {}) {
       const st0 = await phaseNow();
       step('spawn', true, `flight at sim ${st0.sim.toFixed(1)} s`);
       trace.meta.playStartSim = st0.sim;
+      await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick));
       startStreams(() => 'flight');
       if (args.fight) await installPacingWatch(page);
       log(`idle ${args.idle} sim s (no input)`);
@@ -698,7 +767,8 @@ async function runOne(args, arena, extra = {}) {
             // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter.
             // Adventure has no run phase, so the play watcher never treats these as an interrupt.
             if (ph.top && !['hud', null].includes(ph.top) && beat % 5 === 4) { noteKey(page, 'Enter'); await page.keyboard.press('Enter'); }
-            if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
+            if (args.fight) await fightBeat(page, beat++);
+            else await cruiseBeat(page, beat++, { racing: args.mode === 'racing' });
             if (await haltIfInterrupted()) break;
           }
         }
@@ -706,6 +776,20 @@ async function runOne(args, arena, extra = {}) {
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
   } catch (err) {
+    // Preserve the clock/pause state of a failed route before teardown. A live preparation
+    // UI alone cannot distinguish an authoritative pause from transport backpressure.
+    trace.runtimeFailure = await page.evaluate(() => {
+      const sf = window.SF, st = sf?.state;
+      return {
+        mode: st?.mode, tick: st?.tick, simTime: st?.simTime, timeScale: st?.timeScale,
+        visibility: document.visibilityState, focused: document.hasFocus(),
+        screens: st?.ui?.screenStack, docked: st?.ui?.docked,
+        timeRequests: sf?.timeEffects?.describeRequests?.() ?? null,
+        simulation: sf?.simLaneDiag?.() ?? null,
+        lifecycle: sf?.loop?.getLifecycleState?.() ?? null,
+        visualReadiness: sf?.authoredVisualReadiness?.() ?? null,
+      };
+    }).catch(error => ({ unavailable: String(error.message || error) }));
     let quote = err && err.environmentQuote;
     if (!quote) quote = quoteLoadError(String(err && err.message || err));
     if (!quote) quote = await readLoadError(page);
@@ -765,6 +849,7 @@ async function runOne(args, arena, extra = {}) {
     while (busy || draining) await new Promise((r) => setTimeout(r, 100));
     await drain({ all: true }).catch(() => {});
   }
+  await finalizeImpulseObserver();
   if (args.fight) {
     trace.pacing = summarizePacing(await page.evaluate(() => window.__ptPacing || []).catch(() => []));
     trace.pacing.director = await page.evaluate(() => {

@@ -40,6 +40,7 @@ import {
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
 import { applyBudgetedLabPackage, applyPreparedCrucibleSetup } from '../../src/ui/sandbox/sandboxSetup.js';
 import { getCombatKernel } from '../../src/combat/kernel.js';
+import { registerStuntImpulseObserver } from '../../src/combat/stuntEvidence.js';
 import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
 import {
@@ -86,6 +87,7 @@ import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/wor
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
 import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
 import { armAuxJournal, markAuxRowDirty } from '../../src/world/auxRowJournal.js';
+import { createBoundedImpulseReceiptCollector } from '../../src/testing/playerTruth/impulseReceipts.js';
 
 // ---------------------------------------------------------------------------
 // Journal transport pack — the "byte-range" that crosses worker→main.
@@ -563,6 +565,7 @@ export function createSimHost() {
     // replayed into a restore window was the stage-9 double-seed crash class.
     pendingGameStarted: null,
     gameStartedEmits: 0,
+    playerTruthImpulseObserver: null,
   };
 
   function drainEvents() {
@@ -876,6 +879,45 @@ export function createSimHost() {
     host.rpcHandlers = buildRpcHandlers(state, simLike, registry);
   }
 
+  // Player-truth D202 diagnostic: this observer only records the already-delivered physics
+  // result. It never writes an entity or field and is armed through a read-only RPC before the
+  // public flight route starts. The bounded collector is deliberately host-local so the same
+  // implementation works in a worker and in SIM_LANE=main.
+  function playerTruthImpulseObserverRpc(args = {}) {
+    const action = typeof args.action === 'string' ? args.action : 'status';
+    if (action === 'install') {
+      const state = host.state;
+      if (!state) return { ok: false, status: 'unsupported', reason: 'host-not-initialized' };
+      host.playerTruthImpulseObserver?.unsubscribe?.();
+      const collector = createBoundedImpulseReceiptCollector({
+        maxReceipts: Number.isSafeInteger(args.maxReceipts) ? args.maxReceipts : undefined,
+        maxTicks: Number.isSafeInteger(args.maxTicks) ? args.maxTicks : undefined,
+      });
+      collector.arm();
+      const unsubscribe = registerStuntImpulseObserver(state, (observation) => collector.record({
+        ...observation,
+        // Capture mode at the authoritative delivery boundary. The reader is armed before
+        // launch, so the collector can retain flight impulses that precede the later begin RPC
+        // while ignoring any unrelated menu/loading observation.
+        mode: state.mode,
+      }));
+      host.playerTruthImpulseObserver = { collector, unsubscribe, installedTick: state.tick };
+      return { ok: true, status: 'armed', readOnly: true, installedTick: state.tick,
+        maxReceipts: collector.snapshot().maxReceipts, maxTicks: collector.snapshot().maxTicks };
+    }
+    const session = host.playerTruthImpulseObserver;
+    if (!session) return { ok: false, status: 'unsupported', reason: 'observer-not-installed' };
+    if (action === 'begin') return session.collector.begin(args.tick);
+    if (action === 'finalize') {
+      const capture = session.collector.snapshot();
+      session.unsubscribe?.();
+      session.unsubscribe = null;
+      return { ok: true, ...capture };
+    }
+    if (action === 'status') return { ok: true, ...session.collector.snapshot() };
+    return { ok: false, status: 'unsupported', reason: `unknown-action:${action}` };
+  }
+
   function buildRpcHandlers(state, simLike, registry) {
     const sim = simLike;
     return new Map([
@@ -1170,6 +1212,7 @@ export function createSimHost() {
           .sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 12)
           .map(([path, stats]) => ({ path, ships: stats.ships, bytes: stats.bytes })),
       })],
+      ['playerTruthImpulseObserver', playerTruthImpulseObserverRpc],
       ['probeState', (args) => {
         const id = (args && Number.isSafeInteger(args.entityId)) ? args.entityId : state.playerId;
         const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
@@ -1179,6 +1222,7 @@ export function createSimHost() {
         return {
           tick: state.tick,
           seed: state.meta?.seed ?? null,
+          runSeed: Number.isSafeInteger(state.run?.seed) ? state.run.seed : null,
           simTime: state.simTime,
           mode: state.mode,
           timeScale: state.timeScale,
@@ -1995,6 +2039,8 @@ export function createSimHost() {
   function handleShutdown() {
     host.draftReadUnsubscribe?.();
     host.draftReadUnsubscribe = null;
+    host.playerTruthImpulseObserver?.unsubscribe?.();
+    host.playerTruthImpulseObserver = null;
     try {
       if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
       else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();

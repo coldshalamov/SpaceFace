@@ -188,6 +188,36 @@ test('SF-275 docked is folded into the SAME ui source — one aggregate hold, on
   assert.equal(state.timeScale, 1);
 });
 
+test('SF-275 a worker-mirrored undock releases the stale UI source after the station pop', () => {
+  const { state, bus, effects, manager } = makeFixture();
+
+  // This is the worker-lane ordering from the release-soak failure: the UI
+  // popped the station while the authoritative fold was still docked=true.
+  state.ui.docked = true;
+  manager.pushScreen('pause');
+  manager.popScreen();
+  assert.equal(state.ui.screenStack.length, 0);
+  assert.deepEqual(Object.keys(effects.describeRequests()), [UI_SOURCE]);
+  assert.equal(state.timeScale, 0);
+
+  // The worker reply then mirrors ui.docked=false and simLaneMain emits the
+  // main-only resume wake. A second modal must still keep the aggregate hold.
+  state.ui.docked = false;
+  bus.emit('sim:resume', { source: 'sim-lane-domain-mirror' });
+  assert.equal(state.timeScale, 1);
+  assert.deepEqual(effects.describeRequests(), {});
+
+  state.ui.docked = true;
+  manager.syncVisibility();
+  manager.pushScreen('settings');
+  state.ui.docked = false;
+  bus.emit('sim:resume', { source: 'sim-lane-domain-mirror' });
+  assert.equal(state.timeScale, 0, 'nested modal remains a real pause owner');
+  assert.deepEqual(Object.keys(effects.describeRequests()), [UI_SOURCE]);
+  manager.popScreen();
+  assert.equal(state.timeScale, 1);
+});
+
 test('SF-275 hit-stop composes under UI pause in both release orders', () => {
   const { state, effects, manager } = makeFixture();
 

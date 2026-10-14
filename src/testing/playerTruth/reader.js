@@ -69,7 +69,11 @@ function isAdditive(mat, THREE) {
 /** Target instrumentation identifies a subject; it is not a weapon/contact obscuring it. */
 export function isPlayerTruthInstrumentation(object) {
   for (let node = object; node && !node.isScene; node = node.parent) {
-    if (node.userData?.presentationRole === 'target-instrument') return true;
+    if (node.userData?.presentationRole === 'target-instrument'
+        // Retained rigid batches are a second draw of source geometry, outside the entity root.
+        // The authored source remains visible for ownership masks; counting this diagnostic copy
+        // as an unowned body would double-occlude the player and erase the candidate's attribution.
+        || node.userData?.spacefaceRigidOpaqueBatch === true) return true;
   }
   return false;
 }
@@ -189,8 +193,8 @@ export function measurePlayerTruthBodyOcclusion({ THREE, renderer, scene, camera
       }
       return material;
     });
-    leaves.push({ object, visible: object.visible, material: original,
-      replacement: Array.isArray(original) ? replacements : replacements[0],
+    leaves.push({ object, visible: object.visible, layersMask: object.layers?.mask,
+      material: original, replacement: Array.isArray(original) ? replacements : replacements[0],
       supported, player });
   });
   if (!playerOpaque || playerUnsupported) {
@@ -210,6 +214,16 @@ export function measurePlayerTruthBodyOcclusion({ THREE, renderer, scene, camera
     renderer.info.autoReset = false;
     if (renderer.shadowMap) renderer.shadowMap.autoUpdate = false;
     scene.background = null; renderer.setClearColor?.(0x000000, 0);
+    // Retained rigid batches suppress their direct draw with layer mask 0 while preserving the
+    // canonical source for semantic readers. The temporary ID/depth pass uses the real camera
+    // layers, so those sources still contribute to opaque ownership; restore the authored masks
+    // before returning to the live route.
+    const mask = camera?.layers && Number.isFinite(camera.layers.mask) ? camera.layers.mask : null;
+    if (mask != null) {
+      for (const leaf of leaves) {
+        if (leaf.object.layers && Number.isFinite(leaf.layersMask)) leaf.object.layers.mask = mask;
+      }
+    }
     for (const leaf of leaves) {
       leaf.object.material = leaf.replacement;
       leaf.object.visible = leaf.supported && leaf.player;
@@ -237,7 +251,13 @@ export function measurePlayerTruthBodyOcclusion({ THREE, renderer, scene, camera
     receipt.error = String(error?.message || error).slice(0, 200);
     for (const body of candidates) body.row.reason = 'mask-draw-error';
   } finally {
-    for (const leaf of leaves) { leaf.object.material = leaf.material; leaf.object.visible = leaf.visible; }
+    for (const leaf of leaves) {
+      leaf.object.material = leaf.material;
+      leaf.object.visible = leaf.visible;
+      if (leaf.object.layers && Number.isFinite(leaf.layersMask)) {
+        leaf.object.layers.mask = leaf.layersMask;
+      }
+    }
     scene.background = background;
     if (clearColor) renderer.setClearColor(clearColor, clearAlpha);
     renderer.setRenderTarget(prevTarget); renderer.info.autoReset = prevAuto;

@@ -4,6 +4,7 @@
 // measure returns UNKNOWN with the reason — never PASS.
 
 import { PLAYER_TRUTH_CLASSES } from '../../src/testing/playerTruth/reader.js';
+import { gradeCausalResidual } from '../../src/testing/playerTruth/impulseReceipts.js';
 import { STALL_MIN_SIM_S, STALL_WINDOW_MS, formatInterruptDetail, isHudTop } from './playWatch.mjs';
 import { formatHarnessFreeze, hostPressureCovering, overlappingHarnessFreezes, stallWallWindow } from './freezeWatch.mjs';
 
@@ -309,15 +310,21 @@ export function checkPopping(trace) {
         const renderedBefore = togglePreviousMap.get(id);
         const toggled = renderedBefore && ((renderedBefore[E.vis] === VIS.onscreen && e[E.vis] === VIS.hidden)
           || (renderedBefore[E.vis] === VIS.hidden && e[E.vis] === VIS.onscreen));
-        if (toggled && inner(e, s)) {
+        // A hidden mesh can cross into view because the camera moved, even when its projected
+        // position was well outside the viewport on the preceding render. Only grade a live
+        // visibility toggle when both rendered positions were inside the inner 80%.
+        if (toggled && renderPrevious && inner(renderedBefore, renderPrevious) && inner(e, s)) {
           const loading = entityLoading(trace, e) || entityLoading(trace, renderedBefore);
           pops.push({ id, kind: e[E.vis] === VIS.onscreen ? 'appeared' : 'vanished', s, e, loading });
           flaps.set(id, (flaps.get(id) || 0) + 1);
         }
       }
       for (const [id, p] of prev.map) {
-        const confirmedDeath = deathReceipts.get(id)?.some((ev) => ev.sim >= prev.s.sim - 1 / 60
-          && ev.sim <= s.sim + 1 / 60);
+        // `id` is the reader's exact life id (raw id + occupant generation), so a receipt from a
+        // recycled slot or a different generation cannot excuse this removal. A death is valid
+        // when it was recorded before the current sample; do not accept a future receipt.
+        const confirmedDeath = deathReceipts.get(id)?.some((ev) => Number.isSafeInteger(ev.id)
+          && ev.id === id && Number.isFinite(ev.sim) && ev.sim <= s.sim + 1 / 60);
         if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || confirmedDeath || !REMOVAL_CLASSES.has(p[E.cls])) continue;
         pops.push({ id, kind: 'removed without death', s: prev.s, e: p, loading: entityLoading(trace, p) });
       }
@@ -352,12 +359,39 @@ export function isFlightInput(ev) {
 }
 function inputsBetween(trace, a, b) { return trace.events.filter((ev) => isFlightInput(ev) && ev.sim >= a && ev.sim <= b); }
 
+// The trace stores reader life ids, while the worker receipt stores the raw id plus its
+// occupant generation. Resolve the one exact generation for this observed life; an absent or
+// ambiguous generation intentionally leaves the opening-motion failure in place.
+function gradeSpawnMotionCausality(trace, entity, frame) {
+  const capture = trace?.forceProvenance;
+  const readerLifeId = entity?.[E.id];
+  const rawEntityId = Number.isSafeInteger(readerLifeId) ? bodyId(readerLifeId) : null;
+  const generations = new Set((capture?.receipts || [])
+    .filter((receipt) => receipt?.readerLifeId === readerLifeId && receipt.rawEntityId === rawEntityId)
+    .map((receipt) => receipt.occupantGeneration)
+    .filter((generation) => Number.isSafeInteger(generation)));
+  const occupantGeneration = generations.size === 1 ? [...generations][0] : null;
+  return {
+    rawEntityId,
+    occupantGeneration,
+    ...gradeCausalResidual(capture, {
+      readerLifeId,
+      rawEntityId,
+      occupantGeneration,
+      throughTick: frame?.tick,
+      velocity: { x: entity?.[E.vx], z: entity?.[E.vz] },
+      threshold: THRESHOLDS.spawnSpeed,
+    }),
+  };
+}
+
 export function checkSpawnMotion(trace) {
   const T = THRESHOLDS; const rounds = roundsOf(trace);
   const starts = rounds.length ? rounds.map((r) => ({ label: `round ${r.wave}`, wave: r.wave, sim: r.startSim })) : (trace.meta.playStartSim != null ? [{ label: 'spawn', sim: trace.meta.playStartSim }] : []);
   if (!starts.length) return result('spawn_motion', 'Unexplained motion at spawn', 'UNKNOWN', null, `0 bodies >${T.spawnSpeed} u/s`, 'no spawn moment recorded');
   const hasRunMetadata = trace.samples.some((s) => s.run?.w != null && s.run?.ph != null);
   const offenders = []; let count = 0; let checked = 0; let missing = 0;
+  const causal = { status: trace?.forceProvenance?.status || 'unavailable', explained: 0, proofFailures: 0, residualFailures: 0 };
   for (const st of starts) {
     // Actor polls can notice the round several physics ticks after it opens. The continuous
     // reader already recorded the actual first active frame; later contacts are not spawn motion.
@@ -406,16 +440,30 @@ export function checkSpawnMotion(trace) {
         const d = Math.hypot(e[E.x] - frame.p.x, e[E.z] - frame.p.z); if (d > T.spawnRadius) continue;
         const sp = Math.hypot(e[E.vx], e[E.vz]);
         if (sp > T.spawnSpeed) {
+          const proof = gradeSpawnMotionCausality(trace, e, frame);
+          if (proof.ok) {
+            causal.explained++;
+            continue;
+          }
+          causal.proofFailures += proof.reason === 'residual-motion' ? 0 : 1;
+          causal.residualFailures += proof.reason === 'residual-motion' ? 1 : 0;
           count++;
-          offenders.push({ sp, line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input`, t: frame.t, sim: frame.sim, box: e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled ? boxOf(e) : null });
+          offenders.push({ sp, rawSp: sp, residualSp: proof.speed, causalReason: proof.reason,
+            matchedReceipts: proof.matchedReceipts, deltaV: proof.deltaV,
+            line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input (${proof.reason})`,
+            t: frame.t, sim: frame.sim, box: e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled ? boxOf(e) : null });
         }
       }
     }
     if (incomplete) missing++;
   }
   offenders.sort((a, b) => b.sp - a.sp);
-  return result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : missing ? 'UNKNOWN' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
-    `${checked} spawn moment(s) checked${missing ? `; ${missing} opening frame(s) missing` : ''}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  const forceDetail = trace?.forceProvenance
+    ? `; force proof ${causal.status} (${causal.explained} explained, ${causal.proofFailures} proof failures, ${causal.residualFailures} residual failures)` : '';
+  const verdict = result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : missing ? 'UNKNOWN' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
+    `${checked} spawn moment(s) checked${missing ? `; ${missing} opening frame(s) missing` : ''}${forceDetail}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  verdict.causal = causal;
+  return verdict;
 }
 
 export function checkKillsBeforeInput(trace) {
