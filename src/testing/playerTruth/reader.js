@@ -790,10 +790,10 @@ export function installPlayerTruthReader(win, opts = {}) {
         bodies.push({ id: lifeId(e), cls, ty, mesh: m });
       }
     }
-    if (cam && scene && frame % vfxEvery === 0) {
+    if (st.mode === 'flight' && cam && scene && frame % vfxEvery === 0) {
       try { s.vfx = vfxScan(st, cam, scene, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.vfx = { err: String(err && err.message || err) }; }
     }
-    if (cam && scene && pxEvery && frame % pxEvery === 0) {
+    if (st.mode === 'flight' && cam && scene && pxEvery && frame % pxEvery === 0) {
       try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes,
         meshes?.get(st.playerId), bodies); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }
