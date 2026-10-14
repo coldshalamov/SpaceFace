@@ -7006,6 +7006,8 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 582.85, 208.85, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 593.85, 143.5, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 593.5, 143.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 593.9, 264.45, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 593.5, 264.5, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 563.5, 285.5, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 353.5, 360.5, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 483.5, 439.5, stageCam, stage, profileDraw), 'along_x');
@@ -7017,6 +7019,8 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 548.5, 123.5, stageCam, stage, profileDraw), null);
   const emptyMargins = [
     [464.95, 140.55], [523.05, 115.05], [547.05, 115.95], [547.05, 292.05],
+    [547.08, 115.92], [459.575, 261.6], [467.025, 138.575], [470.9, 135.175],
+    [470.95, 272.875], [467.075, 269.45],
   ];
   for (const [sx, sy] of emptyMargins) {
     assert.equal(hitTest(bank, sx, sy, stageCam, stage, profileDraw), null);
@@ -7025,6 +7029,7 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
     [444.95, 109.95], [509.65, 111.05], [628.9, 226.05], [630.05, 226.5],
     [325.05, 228.05], [324.05, 233.05], [321.95, 289.05], [323.9, 299.05],
     [503.7, 417.95], [513.05, 417.05], [503.4, 419.05], [457.8, 420.05],
+    [323.9, 299.1],
   ];
   for (const [sx, sy] of aliveMargins) {
     assert.equal(hitTest(bank, sx, sy, stageCam, stage, profileDraw), null);
@@ -7033,7 +7038,7 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
     [590.8, 206.95], [657.05, 206.95], [586.05, 209.05], [781.05, 330.8],
     [465.95, 335.9], [782.05, 335.9], [465.05, 351.05], [784.05, 351.6],
     [465.05, 376.9], [465.95, 392.05], [781.05, 397.05], [469.05, 401.7],
-    [586.05, 518.9], [657.05, 521.05],
+    [586.05, 518.9], [657.05, 521.05], [590.92, 206.92],
   ];
   for (const [sx, sy] of alongMargins) {
     assert.equal(hitTest(bank, sx, sy, stageCam, stage, profileDraw), null);

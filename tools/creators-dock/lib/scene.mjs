@@ -1618,10 +1618,13 @@ function pixelHoldsShortCap(dx, dy, radius, along, dash, gap, signed, sx, sy) {
   if (!isPixelCenter(sx, sy) || !(dash <= 2) || !(signed < 0)) return false;
   const span = dashOffset(along, dash, gap);
   const perp = -signed;
-  if (!(span.alongOff > 0.2 && span.alongOff < 0.9 && perp < 0.7 && squareSupport(dx, dy) > 0.65)) return false;
+  // The center itself has to sit on the inner fringe, within three quarters of
+  // a pixel of the butt. Farther into the gap the same cap sample is empty.
+  if (!(span.alongOff > 0.5 && span.alongOff < 0.75 && perp > 0.4 && perp < 0.7 && squareSupport(dx, dy) > 0.65)) return false;
   const x0 = Math.floor(sx);
   const y0 = Math.floor(sy);
-  const steps = [0.15, 0.35, 0.5, 0.65, 0.85];
+  const steps = [];
+  for (let t = 1; t < 20; t += 1) steps.push(t / 20);
   for (let i = 0; i < steps.length; i += 1) {
     for (let j = 0; j < steps.length; j += 1) {
       const pdx = dx + (x0 + steps[i]) - sx;
@@ -1728,8 +1731,10 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
       const sampleSpan = dashOffset(along, pattern[0], pattern[1]);
       const centerHit = ringOnInk(cdx, cdy, radius, pattern, cx, cy);
       const centerSigned = Math.hypot(cdx, cdy) - radius;
+      const centerOnInnerFringe = centerSigned < 0 && centerSpan.alongOff > 0.5
+        && centerSpan.alongOff < 0.75 && -centerSigned > 0.4;
       if (!centerHit && (sampleSpan.alongOff > 0 || centerSpan.alongOff > 0)
-        && !(centerSigned < 0 && shortPlaceCap(dx, dy, radius, along, pattern[0], pattern[1], signed))) return false;
+        && !(centerOnInnerFringe && shortPlaceCap(dx, dy, radius, along, pattern[0], pattern[1], signed))) return false;
       if (!centerHit && sampleSpan.alongOff === 0 && centerSpan.alongOff === 0) {
         const centerPerp = Math.abs(centerSigned);
         if (centerBeyondPaint(squareSupport(cdx, cdy), centerPerp)) return false;
