@@ -383,7 +383,11 @@ function getConfirmDialog() {
   const okBtn = findButton(dialog, 'sf-confirm__ok');
 
   assert.equal(title.classList.contains('sf-confirm__title--danger'), true, 'danger title has danger class');
-  assert.ok(okBtn.classList.contains('k-word--danger'), 'danger confirm word uses the kit danger variant');
+  // ORRERY de-boxing (2026-10-14): the destructive verb is the deckplate hazard key
+  // (sf-confirm__key--hazard: red rule at rest, red on intent), no longer a kit word variant.
+  assert.ok(okBtn.classList.contains('sf-confirm__key--hazard'), 'danger confirm uses the hazard key variant');
+  assert.ok(okBtn.classList.contains('sf-confirm__key'), 'confirm verbs are pressable key fields');
+  assert.equal(okBtn.classList.contains('sf-confirm__key--lamp'), false, 'danger confirm is never the lamp key');
   assert.equal(document.activeElement, cancelBtn, 'danger confirm defaults focus to Cancel');
 
   // Stray Enter on default-focused danger must NOT commit.
