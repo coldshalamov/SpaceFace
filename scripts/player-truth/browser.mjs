@@ -23,7 +23,7 @@ const GUARD = Symbol('playerTruthSessionSignalGuard');
 export const BROWSER_LOSS_SETTLE_MS = 500;
 
 const CHROME_ENV_SIGNALS = new Set(['SIGKILL', 'SIGTERM', 'SIGHUP', 'SIGSEGV', 'SIGABRT', 'SIGBUS']);
-const CHROME_BASENAME = /^(chrome|chromium|google-chrome|google-chrome-stable|chrome-headless-shell|headless_shell)(\.exe)?$/i;
+const CHROME_BASENAME = /^(chrome|chromium|chromium-browser|google-chrome|google-chrome-stable|Google Chrome|msedge|chrome-headless-shell|headless_shell)(\.exe)?$/i;
 const CHROME_STDERR_RE = /FATAL|oom|killed|crash|SwiftShader|GL out|aw, snap/i;
 
 export function systemChromeCandidates(env = process.env) {
@@ -86,11 +86,14 @@ function attachChromeChild(slot, child) {
   slot.child = child;
   if (child && child.stderr && typeof child.stderr.on === 'function') {
     child.stderr.on('data', (buf) => {
+      // A failed candidate may still emit while the fallback browser is already running.
+      if (slot.child !== child) return;
       slot.stderrTail = `${slot.stderrTail || ''}${buf}`.slice(-4000);
     });
   }
   if (child && typeof child.once === 'function') {
     child.once('exit', (code, signal) => {
+      if (slot.child !== child) return;
       slot.exitCode = code;
       slot.signal = signal;
     });
@@ -119,9 +122,12 @@ export function parseProcStat(text, pid = null) {
   const rest = src.slice(close + 2).trim().split(/\s+/);
   if (rest.length < 4) return null;
   const fromName = src.match(/^\s*(\d+)\s+\(/);
-  const parsedPid = pid == null ? (fromName ? Number(fromName[1]) : null) : Number(pid);
+  if (!fromName) return null;
+  const parsedPid = Number(fromName[1]);
+  if (pid != null && Number(pid) !== parsedPid) return null;
   const ids = { pid: parsedPid, ppid: Number(rest[1]), pgid: Number(rest[2]), sid: Number(rest[3]) };
-  if (![ids.pid, ids.ppid, ids.pgid, ids.sid].every((n) => Number.isFinite(n))) return null;
+  if (![ids.pid, ids.pgid, ids.sid].every((n) => Number.isSafeInteger(n) && n > 0)
+    || !Number.isSafeInteger(ids.ppid) || ids.ppid < 0) return null;
   return ids;
 }
 
@@ -132,7 +138,7 @@ export function readProcIds(pid, readFile = readFileSync) {
 /** True when Chrome is its own process-group leader and session leader, distinct from Node. */
 export function chromeOwnsProcessGroup(chromeIds, nodeIds) {
   if (!chromeIds || !nodeIds) return false;
-  if (![chromeIds.pid, chromeIds.pgid, chromeIds.sid, nodeIds.pgid].every((n) => Number.isFinite(n))) return false;
+  if (![chromeIds.pid, chromeIds.pgid, chromeIds.sid, nodeIds.pgid].every((n) => Number.isSafeInteger(n) && n > 0)) return false;
   return chromeIds.pgid === chromeIds.pid && chromeIds.sid === chromeIds.pid && chromeIds.pgid !== nodeIds.pgid;
 }
 

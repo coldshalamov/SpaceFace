@@ -70,34 +70,40 @@ export function createFreezeWatch({
   };
 }
 
-/** Stall interrupt wall window, or null when the harness did not stamp one. */
-export function stallWallWindow(stall) {
-  if (!stall) return null;
-  const end = Number(stall.wallEnd);
-  const start = Number(stall.wallStart);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+// Evidence must contain actual numeric timestamps. Number(null/false/'') would invent epoch 0.
+function wallWindow(start, end) {
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
   return { start, end };
 }
 
-/** Freezes whose [startWall, endWall] overlaps the stall's wall window. */
+/** Stall interrupt wall window, or null when the harness did not stamp one. */
+export function stallWallWindow(stall) {
+  if (!stall) return null;
+  return wallWindow(stall.wallStart, stall.wallEnd);
+}
+
+/** Positive-duration overlap only: a freeze ending as a stall starts is not evidence for it. */
 export function overlappingHarnessFreezes(stall, freezes) {
   const window = stallWallWindow(stall);
   if (!window) return [];
   const hits = [];
   for (const freeze of freezes || []) {
-    const start = Number(freeze && freeze.startWall);
-    const end = Number(freeze && freeze.endWall);
-    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-    if (start <= window.end && window.start <= end) hits.push(freeze);
+    const span = freeze && wallWindow(freeze.startWall, freeze.endWall);
+    if (span && span.start < window.end && window.start < span.end) hits.push(freeze);
   }
   return hits;
 }
 
+function formatWallStamp(value) {
+  if (!Number.isFinite(value)) return '?';
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : '?';
+}
+
 export function formatHarnessFreeze(freeze) {
-  const lagS = Math.round(Number(freeze && freeze.lagMs) / 1000);
-  const start = Number.isFinite(Number(freeze && freeze.startWall)) ? new Date(Number(freeze.startWall)).toISOString() : '?';
-  const end = Number.isFinite(Number(freeze && freeze.endWall)) ? new Date(Number(freeze.endWall)).toISOString() : '?';
-  return `harness clock frozen ${lagS} s (${start} → ${end})`;
+  const lag = freeze && freeze.lagMs;
+  const lagS = Number.isFinite(lag) && lag >= 0 ? Math.round(lag / 1000) : '?';
+  return `harness clock frozen ${lagS} s (${formatWallStamp(freeze && freeze.startWall)} → ${formatWallStamp(freeze && freeze.endWall)})`;
 }
 
 /** Balloon reclaim or a kernel hung-task. Not an oom-kill, and not "invoked oom-killer". */
@@ -140,11 +146,11 @@ export function readHostPressure(sinceMs, exec = execFileSync) {
  */
 export function hostPressureCovering(lines, stallWindow, freezes) {
   const spans = [];
-  if (stallWindow) spans.push(stallWindow);
+  const window = stallWindow && wallWindow(stallWindow.start, stallWindow.end);
+  if (window) spans.push(window);
   for (const freeze of freezes || []) {
-    const start = Number(freeze && freeze.startWall);
-    const end = Number(freeze && freeze.endWall);
-    if (Number.isFinite(start) && Number.isFinite(end)) spans.push({ start, end });
+    const span = freeze && wallWindow(freeze.startWall, freeze.endWall);
+    if (span) spans.push(span);
   }
   const out = [];
   const seen = new Set();
