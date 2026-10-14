@@ -1,0 +1,280 @@
+{
+  "assetId": "pressure_pipe_valve",
+  "category": "fluid",
+  "description": "pressure pipe valve",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          1.0,
+          1.22,
+          1.22
+        ],
+        "rotation": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.550000011920929,
+          -0.0
+        ],
+        "size": [
+          0.14000001413481505,
+          0.84,
+          0.84
+        ],
+        "rotation": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4300000071525574,
+          0.055000003427267075,
+          0.4300000071525574
+        ],
+        "size": [
+          0.34999999276229304,
+          0.15,
+          0.15
+        ],
+        "rotation": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4300000071525574,
+          0.055000003427267075,
+          -0.4300000071525574
+        ],
+        "size": [
+          0.34999999276229304,
+          0.15,
+          0.15
+        ],
+        "rotation": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4300000071525574,
+          0.055000003427267075,
+          0.4300000071525574
+        ],
+        "size": [
+          0.34999999276229304,
+          0.15,
+          0.15
+        ],
+        "rotation": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4300000071525574,
+          0.055000003427267075,
+          -0.4300000071525574
+        ],
+        "size": [
+          0.34999999276229304,
+          0.15,
+          0.15
+        ],
+        "rotation": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.75,
+          -0.0
+        ],
+        "size": [
+          0.7000000493867039,
+          0.2,
+          0.2
+        ],
+        "rotation": [
+          -0.5,
+          -0.5,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.11999999731779099,
+          0.5850000381469727
+        ],
+        "size": [
+          0.2700000362705277,
+          0.17,
+          0.17
+        ],
+        "rotation": [
+          -0.0,
+          -0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.082272529602051,
+      -0.5550000071525574,
+      -0.6949999928474426
+    ],
+    "max": [
+      2.082272529602051,
+      1.1649519205093384,
+      0.8974999785423279
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_pipe_valve_lod0.glb",
+      "triangles": 4748,
+      "draws": 7,
+      "bytes": 499040,
+      "method": "source",
+      "sha256": "29008a9ba3450b1f65104ed7f5514750fc322e4b9c0f9790b305d6273866f24c"
+    },
+    {
+      "level": 1,
+      "file": "pressure_pipe_valve_lod1.glb",
+      "triangles": 1898,
+      "draws": 7,
+      "bytes": 352192,
+      "method": "Forge-decimation",
+      "sha256": "a485fdb14951b407b9f93feb5fd533f45786026eb019234bc51475c5ce39f7df"
+    },
+    {
+      "level": 2,
+      "file": "pressure_pipe_valve_lod2.glb",
+      "triangles": 795,
+      "draws": 7,
+      "bytes": 291796,
+      "method": "Forge-decimation",
+      "sha256": "9581f6d70588ff1ef4b4a1a198d1d70cb1637ccba67613adb0629e25077cf09a"
+    }
+  ]
+}
