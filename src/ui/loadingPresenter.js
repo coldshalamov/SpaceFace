@@ -138,6 +138,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   /** completed=false on error/timeout/menu cancellation: never celebrate a failed load as 100%. */
   function hide({ completed = true } = {}) {
+    if (state?.render) state.render.flightVeilHoldsSim = false;
     if (disposed) return;
     cancelRevealWait(); clearWork(); accumulator = null; session++;
     if (completed) ring?.finish();
@@ -176,6 +177,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const tracksFirstDraw = !!render && Object.prototype.hasOwnProperty.call(render, 'firstPlayableFrameAt');
     const firstDrawSubmitted = () => !tracksFirstDraw || Number.isFinite(render.firstPlayableFrameAt);
     let capped = false;
+    // Hold the sim at spawn while the veil waits (presentationRunner reads this); every hide clears it.
+    if (render && tracksFirstDraw) render.flightVeilHoldsSim = true;
     revealCapTimer = setTimeout(() => {
       revealCapTimer = null; capped = true;
       if (!firstDrawSubmitted()) console.info('[loading] veil lifted by the first-draw cap', { capMs: FIRST_DRAW_REVEAL_CAP_MS });
@@ -187,6 +190,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       if (frameNow() > baseline && (capped || firstDrawSubmitted())) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
         if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
+        // Release the sim with the lift itself, not after the fade: the first visible frame plays.
+        if (render) render.flightVeilHoldsSim = false;
         cancelRevealWait(); ring?.finish();
         // A small, bounded finish interval lets the needle settle before removing the shell.
         if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide(), 450);
@@ -220,6 +225,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     art.updateProgress({ id: 'boot-state', progress: ring?.snapshot().shown || .14 });
   }
   return { show, hide, destroy() {
+    if (state?.render) state.render.flightVeilHoldsSim = false;
     if (disposed) return;
     for (const unsub of unsubs) if (typeof unsub === 'function') unsub();
     unsubscribePaint(); unsubscribeWork(); cancelRevealWait(); clearWork();

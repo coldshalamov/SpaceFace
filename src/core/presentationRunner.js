@@ -1050,7 +1050,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
   function advanceSimulation(frameDt, restoring, stepCap, perf) {
     const simFrameStart = measureNow();
-    const stepResult = restoring
+    // The flight reveal veil (loadingPresenter) holds the sim at its spawn state until the world
+    // is on screen: the player must not lose game time or meet drifted traffic behind the veil.
+    const veilHeld = state.render && state.render.flightVeilHoldsSim === true;
+    const stepResult = restoring || veilHeld
       ? simulationRunner.prepareWithoutAdvance()
       : simulationRunner.advance(frameDt, state.timeScale, stepCap);
     if (!restoring && stepCap === HITCH_CATCHUP_STEPS) diagnostics.hitchCappedFrameCount++;

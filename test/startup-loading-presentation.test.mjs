@@ -285,10 +285,12 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     const a = run();
     assert.equal(a.overlay.classList.contains('hidden'), false,
       'a presented frame before the first playable paint must keep the veil up');
+    assert.equal(a.state.render.flightVeilHoldsSim, true, 'the veil holds the sim while it waits');
     a.state.render.firstPlayableFrameAt = 1234;
     pump(2);
     assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first playable paint landed');
     assert.equal(a.state.render.veilLiftReason, 'first-draw');
+    assert.equal(a.state.render.flightVeilHoldsSim, false, 'the lift releases the sim');
     a.presenter.destroy();
 
     const b = run();
@@ -297,6 +299,7 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     t.mock.timers.tick(200); pump(1);
     assert.equal(b.overlay.classList.contains('hidden'), true, 'the cap lifts the veil so it cannot stick');
     assert.equal(b.state.render.veilLiftReason, 'cap');
+    assert.equal(b.state.render.flightVeilHoldsSim, false, 'a capped lift releases the sim too');
     assert.ok(infos.some((x) => /first-draw cap/.test(String(x[0]))), 'a capped lift is logged');
     b.presenter.destroy();
   } finally {
@@ -304,6 +307,12 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     globalThis.cancelAnimationFrame = prevCancel;
     console.info = prevInfo;
   }
+});
+
+test('the flight veil holds the sim: presentationRunner advances nothing while flightVeilHoldsSim', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/core/presentationRunner.js', import.meta.url), 'utf8');
+  assert.match(src, /const veilHeld = state\.render && state\.render\.flightVeilHoldsSim === true;\s*const stepResult = restoring \|\| veilHeld\s*\? simulationRunner\.prepareWithoutAdvance\(\)/);
 });
 
 test('Continue yields its destructive restore until the loading shell can paint', () => {
