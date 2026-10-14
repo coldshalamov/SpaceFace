@@ -656,7 +656,11 @@ async function installLoadingReadinessWitness(targetPage) {
   if (ALLOC_PROBE_BOOT && !allocCdp) {
     try {
       allocCdp = await targetPage.context().newCDPSession(targetPage);
-      await allocCdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 });
+      await allocCdp.send('HeapProfiler.startSampling', {
+        samplingInterval: 65536,
+        includeObjectsCollectedByMajorGC: true,
+        includeObjectsCollectedByMinorGC: true,
+      });
       log('alloc-probe: sampling started BEFORE the loading route');
     } catch (error) {
       allocCdp = null;
@@ -3518,7 +3522,13 @@ try {
   if (ALLOC_PROBE && !allocCdp) {
     try {
       allocCdp = await page.context().newCDPSession(page);
-      await allocCdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 });
+      // Allocation churn, rather than surviving objects only: omitting collected
+      // objects erased the very short-lived allocations behind the hitch/GC cost.
+      await allocCdp.send('HeapProfiler.startSampling', {
+        samplingInterval: 65536,
+        includeObjectsCollectedByMajorGC: true,
+        includeObjectsCollectedByMinorGC: true,
+      });
       log('alloc-probe: sampling started');
     } catch (error) {
       allocCdp = null;

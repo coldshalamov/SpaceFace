@@ -41,12 +41,10 @@ import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
 import {
-  detachedPresentedDrawBlocked,
   orientationDetachedHoldActive,
   orientationHoldHidesDrawable,
-  presentedCompressedUploadUnsafe,
+  preparePresentedDraw,
   queuePresentedDetachRehydrate,
-  restorePresentedCompressedMips,
 } from './packageCpuDetach.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
@@ -1088,17 +1086,12 @@ function installUnreadyDrawGuard(renderer) {
   if (typeof renderer.renderBufferDirect !== 'function') return;
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
+  const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
   renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
-    // A shared atlas user can lose its mip chain while a sibling still holds the
-    // records. Put those records back before the bind. three reads mipmaps[0]
-    // inside this draw, so a skip after the fact cannot prevent the throw.
-    restorePresentedCompressedMips(material);
-    // Before three binds the material or draws the geometry. A CPU-detached compressed
-    // texture throws inside texStorage (mipmaps[0] is gone) and a CPU-detached attribute
-    // uploads a zero-length buffer that fails the indexed draw. Skip this draw and refill
-    // the package; the next frame uploads the restored bytes. Steady residency is not blocked.
-    if (detachedPresentedDrawBlocked(renderer, geometry, material)
-        || presentedCompressedUploadUnsafe(renderer, material)) {
+    // Recover available mip donors and check live upload safety in one allocation-free
+    // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
+    // fresh upload or orientation hold waits for real bytes before three binds them.
+    if (preparePresentedDraw(renderer, geometry, material)) {
       queuePresentedDetachRehydrate(renderer);
       return undefined;
     }
@@ -1115,7 +1108,9 @@ function installUnreadyDrawGuard(renderer) {
           if (current) {
             const variant = linkedInstancingVariant(rec, material, object);
             if (variant !== current) {
-              compiled = !!variant;
+              // A cached sibling can outlive its GL handle. Three's isReady closes
+              // over that deleted handle even after destroy clears .program.
+              compiled = !!variant && !programWrapperDead(drawGuardGl, variant);
               if (compiled && typeof variant.isReady === 'function') {
                 try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
               }

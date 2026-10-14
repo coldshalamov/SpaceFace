@@ -234,8 +234,8 @@ export function createRenderPackageLoader(options = {}) {
       // Joiner liveness rides the shared entry: the compile tail skips genuinely-dead work
       // only when no consumer remains — a departed creator must not null-settle the entry
       // under a live joiner (the null would also poison every later caller of this hash).
-      if (typeof decodeConsumerActive === 'function') {
-        (existing.liveConsumers || (existing.liveConsumers = [])).push(decodeConsumerActive);
+      if (typeof decodeConsumerActive === 'function' && existing.liveConsumers) {
+        existing.liveConsumers.push(decodeConsumerActive);
       }
       const loaded = await existing.promise;
       requestAdmission.assertActive();
@@ -414,6 +414,13 @@ export function createRenderPackageLoader(options = {}) {
     entry.promise = entry.admission.wait(decodeWork);
     cache.set(contentHash, entry);
     const admissionSettled = () => {
+      // Consumer predicates keep boundary/entity request state alive. Their only job
+      // is protecting a pending decode/compile from a departed creator; a fulfilled
+      // package uses its residency owners and must not retain every past request.
+      entry.liveConsumers = null;
+      // Persistent package callbacks share this load's closure scope. Drop its
+      // settled request bag too, so they cannot pin the creator's callbacks.
+      loadOptions = null;
       entry.admission.finish();
       activeAdmissions.delete(entry.admission);
     };

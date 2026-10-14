@@ -23,7 +23,7 @@ function stubSimulationRunner() {
   };
 }
 
-function startCappedLoop({ frameCap = 30, vsync = true } = {}) {
+function startCappedLoop({ frameCap = 30, vsync = true, displayHz = 60, visibilityTarget = null } = {}) {
   const queued = [];
   let now = 0;
   let presents = 0;
@@ -34,7 +34,7 @@ function startCappedLoop({ frameCap = 30, vsync = true } = {}) {
     tick: 0,
     simTime: 0,
     input: { actions: {} },
-    render: { displayHz: 60 },
+    render: { displayHz },
     settings: { video: { vsync, frameCap } },
   };
   const runner = createPresentationRunner(
@@ -51,7 +51,7 @@ function startCappedLoop({ frameCap = 30, vsync = true } = {}) {
       },
       cancelFrame() { queued.length = 0; },
       nowMs: () => now,
-      visibilityTarget: null,
+      visibilityTarget,
       lifecyclePort: null,
       inputResumeTarget: null,
     },
@@ -96,6 +96,75 @@ test('uncapped vsync-off presents every rAF', () => {
   } finally {
     loop.close();
   }
+});
+
+test('a 30 fps cap preserves callbacks already arriving at 30 fps', () => {
+  const loop = startCappedLoop({ frameCap: 30 });
+  try {
+    for (let i = 0; i < 12; i++) loop.pump(1000 / 30);
+    assert.equal(loop.presents(), 12, 'a slow renderer must not halve the requested cap again');
+    assert.equal(loop.advances(), 12);
+    assert.equal(loop.diagnostics().frameCapSkips, 0);
+  } finally { loop.close(); }
+});
+
+test('callbacks below the requested cap all present while faster displays remain capped', () => {
+  const slow = startCappedLoop({ frameCap: 45, displayHz: 60 });
+  const fast = startCappedLoop({ frameCap: 30, displayHz: 144 });
+  try {
+    for (let i = 0; i < 12; i++) slow.pump(1000 / 40);
+    assert.equal(slow.presents(), 12, '40 Hz throughput is already below a 45 fps cap');
+    for (let i = 0; i < 144; i++) fast.pump(1000 / 144);
+    assert.ok(fast.presents() >= 30 && fast.presents() <= 31, `144 Hz presents=${fast.presents()}`);
+    assert.equal(fast.advances(), 144, 'the cap still gates presentation alone');
+  } finally { slow.close(); fast.close(); }
+});
+
+test('uncapped vsync presents every overloaded callback', () => {
+  const loop = startCappedLoop({ frameCap: 0, vsync: true });
+  try {
+    for (let i = 0; i < 12; i++) loop.pump(i % 2 ? 45 : 20);
+    assert.equal(loop.presents(), 12);
+    assert.equal(loop.diagnostics().frameCapSkips, 0);
+  } finally { loop.close(); }
+});
+
+test('a long callback interval does not create a burst of overdue capped presents', () => {
+  const loop = startCappedLoop({ frameCap: 30 });
+  try {
+    loop.pump(1000 / 60);
+    loop.pump(250);
+    assert.equal(loop.presents(), 2, 'the late callback presents once');
+    const before = loop.presents();
+    for (let i = 0; i < 12; i++) loop.pump(1000 / 60);
+    assert.equal(loop.presents() - before, 6, 'only fractional cap phase carries past a hitch');
+  } finally { loop.close(); }
+});
+
+test('suspend time is discarded and restore presents immediately before the cap resumes', () => {
+  let visibilityChanged = null;
+  const visibilityTarget = {
+    visibilityState: 'visible',
+    addEventListener(type, fn) { if (type === 'visibilitychange') visibilityChanged = fn; },
+    removeEventListener() { visibilityChanged = null; },
+  };
+  const loop = startCappedLoop({ frameCap: 30, visibilityTarget });
+  try {
+    loop.pump(1000 / 60);
+    loop.pump(1000 / 60);
+    visibilityTarget.visibilityState = 'hidden';
+    visibilityChanged();
+    const before = loop.presents();
+    loop.pump(2000);
+    assert.equal(loop.presents(), before, 'hidden time produces no presentations');
+    visibilityTarget.visibilityState = 'visible';
+    visibilityChanged();
+    loop.pump(1000 / 60);
+    assert.equal(loop.presents(), before + 1, 'the restore picture is immediate');
+    const restored = loop.presents();
+    for (let i = 0; i < 12; i++) loop.pump(1000 / 60);
+    assert.equal(loop.presents() - restored, 6, 'hidden time never becomes cap debt');
+  } finally { loop.close(); }
 });
 
 function startCapableLoop(state) {

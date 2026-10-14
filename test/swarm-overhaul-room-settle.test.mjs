@@ -107,6 +107,31 @@ test('native settling guards ships, fixed bodies, slow passive bodies and recycl
     assert.ok(Math.abs(recycled.vel.x - 40) < 1e-4);
   } finally { owner.dispose(); }
 });
+test('a later round lets go of a rock welded to the pilot and leaves a graze', () => {
+  const removed = [];
+  const impulses = [];
+  const sys = Object.create(swarmArena);
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 10, z: -20 }, vel: { x: 0, z: 0 } };
+  const welded = { id: 9, type: 'asteroid', alive: true, pos: { x: 11.5, z: -20.2 }, vel: { x: 40, z: 0 }, mass: 220 };
+  const graze = { id: 10, type: 'asteroid', alive: true, pos: { x: 22, z: -20 }, vel: { x: 12, z: 0 }, mass: 40 };
+  const wreck = { id: 11, type: 'wreck', alive: true, pos: { x: 10.2, z: -19.5 }, vel: { x: 0, z: 8 }, mass: 30 };
+  const entities = new Map([[1, player], [9, welded], [10, graze], [11, wreck]]);
+  sys.helpers = {
+    combatPhysics: { applyImpulse: (input) => { impulses.push(input); return true; } },
+    removeEntity: (id) => {
+      removed.push(id);
+      const e = entities.get(id);
+      if (e) e.alive = false;
+      return true;
+    },
+  };
+  sys.state = { tick: 4, playerId: 1, entities };
+  sys._settleRoom();
+  assert.deepEqual(removed.sort((a, b) => a - b), [9, 11], 'centers inside 4 u are the weld');
+  assert.equal(graze.alive, true);
+  assert.deepEqual(impulses.map((c) => c.entityId), [10], 'the graze is parked; the weld is not impulsed');
+});
+
 
 test('a quiet live round does not keep settling rocks', () => {
   const calls = [];

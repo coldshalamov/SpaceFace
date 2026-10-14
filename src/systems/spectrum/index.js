@@ -33,7 +33,8 @@ function rowFromPublic(model, view) {
   if (focus && focus.contradiction) bits.push('claim disagrees');
   if (focus && focus.echo) bits.push('echo off a charted wall');
   if (view.reversed) bits.push('lock reversed');
-  if (view.revealed) bits.push('fix held — brake alongside or tow the relay');
+  if (view.reason === 'jammed') bits.push(`${Math.max(0, Math.round(Number(view.jamWu) || 0))} WU to leave the curtain`);
+  if (view.revealed) bits.push('fix held — the case payoff is its own mechanism, not a stop on the mark');
   else bits.push('move and pulse again');
   const detail = bits.join('. ').replace(/^\w/, (c) => c.toUpperCase());
   const row = {
@@ -44,7 +45,7 @@ function rowFromPublic(model, view) {
     manualInvestigation: true,
     detail,
     strength: view.accepted ? 0.6 : 0.2,
-    distance: 0,
+    distance: view.reason === 'jammed' ? Math.max(0, Math.round(Number(view.jamWu) || 0)) : 0,
     scanCount: Math.max(1, sampleCount),
     pos: view.observer ? { x: view.observer.x, z: view.observer.z } : { x: 0, z: 0 },
     spectrum: {
@@ -215,6 +216,13 @@ export const spectrum = {
     );
     if (!view) return;
     this._flushReceipts(before);
+    if (model.resolved) this._emitResolved();
+    this._publishScanResult(model, view);
+  },
+
+  _publishScanResult(model, view) {
+    const state = this.state;
+    state.spectrumPublic = view;
     const row = rowFromPublic(model, view);
     this._pendingResult = {
       sectorId: state.world && state.world.currentSectorId || null,
@@ -265,7 +273,12 @@ export const spectrum = {
   _fromFocus(payload) {
     const model = this.state && this.state.spectrum;
     if (!model) return false;
-    return applyFocus(model, payload.key || payload.motionClass || payload.chartLabel || payload.focus);
+    const before = model.receipts.length;
+    const focused = applyFocus(model, payload.key || payload.motionClass || payload.chartLabel || payload.focus);
+    this._flushReceipts(before);
+    if (model.resolved) this._emitResolved();
+    if (focused) this._publishScanResult(model, publicSpectrum(model));
+    return focused;
   },
 
   _flushReceipts(before) {

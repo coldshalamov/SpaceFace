@@ -528,6 +528,7 @@ function drainGltfCompileQueue() {
       if (lane.length) { task = lane.shift(); break; }
     }
     if (!task) break;
+    if (task.token) gltfCompileEntries.delete(task.token);
     ran += 1;
     // Same settle-time accounting as the parse drain: a compile fn that
     // returns a promise (preparePackageTail's awaited internals) still runs
@@ -577,7 +578,7 @@ export function scheduleGltfCompile(fn, decodeClass, token) {
   if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
   return new Promise((resolve, reject) => {
     const lane = gltfCompileLaneFor(decodeClass);
-    const entry = { fn, resolve, reject };
+    const entry = { fn, resolve, reject, token };
     lane.push(entry);
     if (token) gltfCompileEntries.set(token, { entry, lane });
     if (gltfCompileDrainScheduled) return;
