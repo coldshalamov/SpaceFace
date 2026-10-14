@@ -47,7 +47,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`help`** | **DONE** | See § Help below — this session |
 | **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait stack + landscape hang\|reader; review1+review2 fixes in § Phone Codex |
 | **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
-| **`credits`** | **DONE** | See § Credits below — this session |
+| **`credits`** | **DONE** | See § Credits below; phone / ≤900 ladder fixed in ui-polish-30 |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
 | **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
@@ -1060,3 +1060,18 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish28w/{before,after}/`, `after
 Focused tests: `claim-specializations`, `wave-c4-base-kit` pass.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish29a/{before,after}/`, `after/compare-{960x540,800x600}.png`.
+
+## Credits — phone and narrow windows: the ladder clears the reel (ui-polish-30, polish30a)
+
+**Before (master 058a460a29):** at ≤900 wide the Credits grid stacks four areas (`title / hang / stage / foot`) but kept the desktop's three row tracks (`auto minmax(0,1fr) auto`). The section ladder landed in a 0px track, and its five 48px rungs and the reel dial (342px) printed over the reel. On a 390×844 phone, `02 TYPE` / `03 LIBRARIES` / `04 FONTS…` / `05 THIRD-PARTY…` ran through MADE BY, the SPACEFACE name and the blurb, and the dial sat on the TYPE head. At 800×600 FONTS AND LICENCES ran through the blurb (6 findings). The phone name was also cut at the right edge, and a long maker (EBEN SORKIN, MIRKO VELIMIROVIĆ) printed over its font's name.
+
+**After (`src/ui/orrery/settingsLayouts.js` Credits CSS only, `@media (max-width:900px)` and `(max-width:560px)`):**
+- ≤900 wide: four row tracks (`auto auto minmax(0,1fr) auto`). The ladder becomes a sideways-scrolling rail of 44px rungs, matching the phone Settings rail, with an underline Hand on the current section. The decorative reel dial is hidden, the maker's name is sized to the glass (`clamp(36px, 12.5vw, 64px)`), and the reel is the one scroll beneath the rail.
+- ≤560 wide: each credit row is one column (name, then role/sub, then maker), so a long maker never shares a line with its name.
+- ≥901 wide is untouched. 960×540, 1280×720 and 1920×1080 differ only by drift-field/decrypt animation noise (no rule applies there). Selectors and IDs are unchanged, and `credits.js` is untouched.
+
+**Bench (`credits`):** 390×844 phone: 6 ON TOP OF → 0. 800×600: 6 ON TOP OF → 0. 960/1280/1920: 0 → 0. The `--walk` on phone exercised 14 controls; picking a rung scrolls the rail (THIRD-PARTY NOTICES comes fully into view).
+
+Focused test: `pq-033-00-credits` 2/3, with the NOTICE `@elemaudio/web-renderer` check failing identically on master.
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,desk}/`, `compare-{phone-390x844,800x600,960x540,1280x720,1920x1080}.png`.
