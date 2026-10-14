@@ -1,6 +1,12 @@
 /** Native media owns its frame clock. Loading events must never seek or redraw it.
  * This controller observes a bounded first-frame proof; it does NOT drive playback
  * from rAF/requestVideoFrameCallback, and a late JS callback is not a video stall.
+ *
+ * Two gates leave this module. `ready` is the instrument's bounded first-frame
+ * proof and may be the short poster deadline. `playbackReady` is the boot hold:
+ * the game graph waits for a real playback proof (or the generous `holdMs` cap,
+ * or an invisible window) — the intro visualizer outranks every other startup
+ * asset, and a few extra seconds are the cheap price of an intro never freezing.
  */
 export const BOOT_MEDIA = Object.freeze({
   normal: 'assets/cinematics/boot-visualizer.mp4',
@@ -13,7 +19,7 @@ export const BOOT_MEDIA = Object.freeze({
  * The fallback ORIGINAL movie keeps its own authored pace. */
 export const BOOT_PLAYBACK_RATE = 1.15;
 
-export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 2500,
+export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 2500, holdMs = 9000,
   motionReduced = () => false, flashReduced = () => false, hidden = () => false,
   onState = () => {}, onFallback = () => {}, sources = BOOT_MEDIA } = {}) {
   if (!video?.addEventListener || typeof video.play !== 'function') return null;
@@ -21,8 +27,10 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
   let epoch = 0, frameHandle = null, deadline = null, resolveReady;
   let readySettled = false, status = 'idle', selected = '', quiet = null;
   let lastFrame = null, proofFrames = 0, resumeTime = 0, fallbackUsed = false;
+  let playbackSettled = false, playbackDeadline = null, resolvePlayback;
   const listeners = [];
   const ready = new Promise(resolve => { resolveReady = resolve; });
+  const playbackReady = new Promise(resolve => { resolvePlayback = resolve; });
   const canRun = () => wanted && !disposed && !hidden() && !motionReduced();
   const notify = (next, reason = '') => {
     status = next;
@@ -34,6 +42,15 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     if (deadline !== null) host.clearTimeout(deadline);
     deadline = null;
     resolveReady({ status, reason, source: selected, proofFrames });
+  };
+  // Independent of settle(): once the poster deadline has consumed the instrument
+  // gate, a late playback proof must still reach the boot hold.
+  const settlePlayback = reason => {
+    if (playbackSettled) return;
+    playbackSettled = true;
+    if (playbackDeadline !== null) host.clearTimeout(playbackDeadline);
+    playbackDeadline = null;
+    resolvePlayback({ status, reason, source: selected, proofFrames });
   };
   const cancelProof = () => {
     if (frameHandle !== null) video.cancelVideoFrameCallback?.(frameHandle);
@@ -47,7 +64,7 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     if (!canRun() || failed || video.readyState < 2 || !Number.isFinite(mediaTime)) return;
     if (lastFrame === null || mediaTime !== lastFrame) { lastFrame = mediaTime; proofFrames++; }
     if (proofFrames >= 2) {
-      notify('video'); settle('two-presented-media-frames'); cancelProof();
+      notify('video'); settle('two-presented-media-frames'); settlePlayback('video'); cancelProof();
     }
   }
   function armProof() {
@@ -69,7 +86,7 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     if (!quiet && !fallbackUsed && sources.original && selected !== sources.original) {
       fallbackUsed = true; selectSource(sources.original); return;
     }
-    failed = true; pause(); notify('fallback', reason); settle(reason);
+    failed = true; pause(); notify('fallback', reason); settle(reason); settlePlayback(reason);
     try { onFallback(reason); } catch {}
   }
   function play() {
@@ -106,9 +123,13 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
   }
   function refresh() {
     if (disposed) return;
-    if (!wanted || hidden()) { pause(); return; }
+    if (!wanted) { pause(); return; }
+    // An invisible window releases the boot hold at once — nothing visible is
+    // waiting on the movie, and the play request revives on return.
+    if (hidden()) { pause(); settlePlayback('hidden'); return; }
     if (motionReduced()) {
-      pause(); notify('poster', 'reduced-motion'); settle('reduced-motion'); return;
+      pause(); notify('poster', 'reduced-motion'); settle('reduced-motion');
+      settlePlayback('reduced-motion'); return;
     }
     const nextQuiet = !!flashReduced();
     if (quiet !== nextQuiet || !selected) {
@@ -137,6 +158,7 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
   video.poster = sources.poster;
   const ctl = {
     ready,
+    playbackReady,
     start() {
       if (disposed) return ready;
       if (wanted) return ready; // idempotence is the central playback invariant
@@ -148,11 +170,18 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
         // Keep the native play request alive. Slow networking must not permanently
         // strand a good movie, and decoration must not block the game indefinitely.
       }, Math.max(0, timeoutMs));
+      // The boot hold: a real playback proof releases it, the poster deadline above
+      // does not. Generously bounded so a slow host still boots.
+      if (!playbackSettled && playbackDeadline === null) playbackDeadline = host.setTimeout(() => {
+        playbackDeadline = null;
+        if (disposed) return;
+        settlePlayback('playback-hold-deadline');
+      }, Math.max(0, holdMs));
       refresh(); return ready;
     },
     stop() { wanted = false; pause(); },
     refresh,
-    inspect() { return { status, source: selected, wanted, disposed, failed, pending,
+    inspect() { return { status, source: selected, wanted, disposed, failed, pending, playbackSettled,
       proofFrames, currentTime: Number(video.currentTime) || 0, paused: video.paused,
       decodedFrames: video.getVideoPlaybackQuality?.().totalVideoFrames ?? null }; },
     destroy() {
@@ -160,6 +189,7 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
       wanted = false; pause(); disposed = true;
       if (deadline !== null) host.clearTimeout(deadline);
       deadline = null;
+      settlePlayback('destroyed');
       for (const [event, fn] of listeners) video.removeEventListener(event, fn);
       status = 'destroyed'; settle('destroyed');
     },

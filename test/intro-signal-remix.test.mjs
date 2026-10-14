@@ -46,7 +46,7 @@ test('cover UVs preserve video proportions on ultrawide and portrait screens',()
 });
 test('native media is ready before the game graph; live title optics remain optional afterwards',()=>{
   const src=readFileSync(new URL('../src/ui/bootEntry.js',import.meta.url),'utf8');
-  const media=src.indexOf('await Promise.all([ring?.ready, artwork?.ready])');
+  const media=src.indexOf('await Promise.all([ring?.ready, artwork?.playbackReady ?? artwork?.ready])');
   const main=src.indexOf("await import('../main.js')");
   const title=src.indexOf("import('./introSignalRemixBoot.js')");
   assert(media>=0 && main>media && title>main);

@@ -27,7 +27,9 @@ function fixture(options = {}) {
   const ctl = createBootMediaPlayback({ video, host, onState: s => states.push(s),
     onFallback: () => fallbacks++, ...options });
   return { video, ctl, states, timers, fallbacks: () => fallbacks,
-    deadline() { const pending = [...timers.values()]; timers.clear(); for (const fn of pending) fn(); } };
+    deadline(count = Infinity) { const pending = [...timers.entries()].slice(0, count);
+      for (const [id, fn] of pending) timers.delete(id);
+      for (const [, fn] of pending) fn(); } };
 }
 const microtasks = async () => { await Promise.resolve(); await Promise.resolve(); };
 
@@ -61,6 +63,47 @@ test('startup deadline releases boot but late decoded frames recover the movie',
   assert.equal(f.fallbacks(), 0, 'slow networking must not start a competing renderer');
   f.video.present(1); f.video.present(1.1); assert.equal(f.ctl.inspect().status, 'video'); f.ctl.destroy();
 });
+test('the boot hold outlives the poster deadline and releases on real playback', async () => {
+  const f = fixture(); let held = true;
+  f.ctl.playbackReady.then(() => { held = false; });
+  f.ctl.start(); f.deadline(1); await microtasks();
+  assert.equal((await f.ctl.ready).reason, 'startup-media-deadline');
+  assert.equal(held, true, 'the idle poster deadline must not release the game import');
+  f.video.present(1); f.video.present(1.05); await microtasks();
+  assert.equal(held, false); assert.equal((await f.ctl.playbackReady).status, 'video');
+  f.ctl.destroy();
+});
+test('a movie that never presents still releases boot on a bounded hold', async () => {
+  const f = fixture({ holdMs: 4000 }); let reason = '';
+  f.ctl.playbackReady.then(r => { reason = r.reason; });
+  f.ctl.start(); f.deadline(1); await microtasks();
+  assert.equal(reason, '');
+  f.deadline(1); await microtasks();
+  assert.equal(reason, 'playback-hold-deadline');
+  assert.equal(f.fallbacks(), 0, 'a slow movie must not start a competing renderer');
+  assert.equal(f.video.paused, false, 'the native play request stays alive past the hold');
+  f.video.present(9); f.video.present(9.1);
+  assert.equal(f.ctl.inspect().status, 'video'); f.ctl.destroy();
+});
+test('an invisible window releases the boot hold, and playback recovers on return', async () => {
+  let hidden = false; const f = fixture({ hidden: () => hidden }); let reason = '';
+  f.ctl.playbackReady.then(r => { reason = r.reason; });
+  f.ctl.start(); await microtasks(); assert.equal(reason, '');
+  hidden = true; f.ctl.refresh(); await microtasks();
+  assert.equal(reason, 'hidden'); assert.equal(f.video.paused, true);
+  hidden = false; f.ctl.refresh(); f.video.present(2); f.video.present(2.1);
+  assert.equal(f.ctl.inspect().status, 'video'); f.ctl.destroy();
+});
+test('a real media failure releases the boot hold without waiting out the timer', async () => {
+  const f = fixture(); let settled = false;
+  f.ctl.playbackReady.then(() => { settled = true; });
+  f.ctl.start(); f.video.event('error'); await microtasks();
+  assert.equal(settled, false, 'the first error is a source retry, not a release');
+  assert.equal(f.video.src, BOOT_MEDIA.original);
+  f.video.event('error'); await microtasks();
+  assert.equal(settled, true);
+  f.ctl.destroy(); assert.equal(f.timers.size, 0);
+});
 test('error tries original movie once, then falls back exactly once', async () => {
   const f = fixture(); f.ctl.start(); f.video.event('error');
   assert.equal(f.video.src, BOOT_MEDIA.original); f.video.event('error'); f.video.event('error');
@@ -75,6 +118,7 @@ test('reduced-flash variant never falls through to a flashier movie', async () =
 test('reduced motion starts on a still without downloading or playing a movie', async () => {
   let reduced = true; const f = fixture({ motionReduced: () => reduced }); f.ctl.start();
   assert.equal((await f.ctl.ready).reason, 'reduced-motion');
+  assert.equal((await f.ctl.playbackReady).reason, 'reduced-motion');
   assert.equal(f.video.plays, 0); assert.equal(f.video.loads, 0);
   reduced = false; f.ctl.refresh(); f.video.present(1); f.video.present(1.1);
   assert.equal(f.ctl.inspect().status, 'video'); f.ctl.destroy();

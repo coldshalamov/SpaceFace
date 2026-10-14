@@ -21,12 +21,13 @@ async function start() {
     artwork.start();
   } catch (error) { console.warn('[boot] artwork unavailable', error); }
   // PR #188's index modulepreloads warm transfers in parallel. Do not start
-  // main's EVALUATION here until the movie is visible: that eager import is
-  // precisely the startup race this media-first handoff eliminates.
-  // Both promises are bounded. A real pair of media frames, not play() resolving
-  // or a worker heartbeat, normally releases the game import. Network/codec
-  // failure still releases it, with an explicit fallback instead of a deadlock.
-  await Promise.all([ring?.ready, artwork?.ready]);
+  // main's EVALUATION here until the movie is actually playing: that eager
+  // import is precisely the startup race this media-first handoff eliminates,
+  // and its fetch/eval churn is what a slow host makes the intro pay for.
+  // `ready` alone can be the poster deadline; `playbackReady` demands a real
+  // playback proof, releases for an invisible window, and is bounded by the
+  // controller's generous hold — the intro outranks every asset behind it.
+  await Promise.all([ring?.ready, artwork?.playbackReady ?? artwork?.ready]);
   await yieldForBootPaint();
   try {
     await import('../main.js');

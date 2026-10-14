@@ -2269,10 +2269,12 @@
     <div id="alerts"></div>
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
       <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
-      <!-- Select the motion/flash variant before downloading. Native media is the
-           artwork; never put the live JS remix canvas over this loading surface. -->
+      <!-- The intro visualizer outranks every other boot asset: preload=auto makes its
+           bytes the first download of the page (parse time, before any script), and
+           bootEntry holds the game graph until the movie really plays. Native media is
+           the artwork; never put the live JS remix canvas over this loading surface. -->
       <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline
-             preload="none" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
+             preload="auto" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
         <source src="assets/cinematics/boot-visualizer.mp4" type="video/mp4" />
       </video>
       <div class="boot-scrim" aria-hidden="true"></div>
