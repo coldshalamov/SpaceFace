@@ -1153,14 +1153,25 @@ export async function readGlProgramQueryTrap(page) {
 // 'deleteVertexArray' warnings inside one ~10 ms recovery burst) would read as zero bad deletes
 // even with the trap armed. `alive` keeps the two classes separable in evidence: an
 // alive:false entry is a handle that failed its own isX() check; an alive:true entry beside
-// Chromium 'does not belong' warnings at the same timestamp is still the storm's caller.
+// Chromium 'does not belong' warnings at the same timestamp is still the storm's caller. A
+// separate candidate ring preserves these pre-delete predicate failures with a deeper owner
+// stack; it is explicitly labelled candidate evidence because an unbound or already-deleted
+// handle can produce the same predicate result.
 export function armGlDeleteTrapInPage() {
   if (globalThis.__SF_GL_DELETE_TRAP__) return;
   const deletes = [];
   const seen = new Map();
   const order = [];
+  // Keep a second, independent ring for the small but high-value class where the handle's
+  // pre-delete isX predicate returns false. This is a candidate only: an unbound or already
+  // deleted handle can produce the same answer, so the ring never claims driver causality.
+  const candidates = [];
+  const candidateSeen = new Map();
+  const candidateOrder = [];
   const meta = { evicted: 0, dropped: 0 };
+  const candidateMeta = { evicted: 0, dropped: 0 };
   const CAP = 128;
+  const CANDIDATE_CAP = 64;
   const pairs = [
     ['deleteTexture', 'isTexture'], ['deleteBuffer', 'isBuffer'],
     ['deleteProgram', 'isProgram'], ['deleteShader', 'isShader'],
@@ -1180,6 +1191,8 @@ export function armGlDeleteTrapInPage() {
             try { alive = this[is](handle) === true; } catch (_) { alive = false; }
           }
           const stack = (new Error('sf-gl-delete-trap')).stack || '';
+          const lost = typeof this.isContextLost === 'function' ? this.isContextLost() === true : null;
+          const phase = lost === true ? 'context-lost' : 'context-live';
           const key = `${del}|${alive}|${stack.split('\n').slice(2, 8).join('|')}`;
           const existing = seen.get(key);
           if (existing != null) {
@@ -1189,7 +1202,8 @@ export function armGlDeleteTrapInPage() {
               count: 1,
               api: del,
               alive,
-              lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
+              lost,
+              phase,
               at: Math.round(performance.now()),
               stack: stack.slice(0, 3000),
             };
@@ -1225,6 +1239,47 @@ export function armGlDeleteTrapInPage() {
               }
             }
           }
+
+          if (alive === false) {
+            // The candidate ring uses a deeper owner key/stack than the normal evidence ring.
+            // It is deliberately separate: ordinary disposal callers cannot evict this class,
+            // and a saturated candidate ring remains visibly bounded through its own counters.
+            const candidateKey = `${del}|${phase}|${stack.split('\n').slice(2, 16).join('|')}`;
+            const candidateIndex = candidateSeen.get(candidateKey);
+            if (candidateIndex != null) {
+              candidates[candidateIndex].count += 1;
+            } else {
+              const candidate = {
+                candidate: true,
+                candidateReason: 'predelete-isX-false',
+                candidateInterpretation: 'candidate only; isX false can mean an unbound or already-deleted handle',
+                count: 1,
+                api: del,
+                alive: false,
+                lost,
+                phase,
+                at: Math.round(performance.now()),
+                ownerStack: stack.slice(0, 6000),
+              };
+              if (candidates.length < CANDIDATE_CAP) {
+                candidateSeen.set(candidateKey, candidates.length);
+                candidateOrder.push(candidateKey);
+                candidates.push(candidate);
+              } else {
+                const victimKey = candidateOrder.shift();
+                const victimIndex = victimKey == null ? -1 : candidateSeen.get(victimKey);
+                if (victimIndex != null && victimIndex >= 0) {
+                  candidateSeen.delete(victimKey);
+                  candidates[victimIndex] = candidate;
+                  candidateSeen.set(candidateKey, victimIndex);
+                  candidateOrder.push(candidateKey);
+                  candidateMeta.evicted += 1;
+                } else {
+                  candidateMeta.dropped += 1;
+                }
+              }
+            }
+          }
         } catch (_) { /* trap bookkeeping must never break the delete path */ }
         return original.call(this, handle);
       };
@@ -1244,6 +1299,18 @@ export function armGlDeleteTrapInPage() {
   });
   Object.defineProperty(deletes, '__sfSaturation', {
     value: meta,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+  Object.defineProperty(deletes, '__sfCandidates', {
+    value: candidates,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
+  Object.defineProperty(deletes, '__sfCandidateSaturation', {
+    value: candidateMeta,
     configurable: false,
     enumerable: false,
     writable: false,
@@ -1281,6 +1348,9 @@ export async function readGlDeleteTrap(page) {
         entries: armed.slice(),
         evicted: Number(meta.evicted) || 0,
         dropped: Number(meta.dropped) || 0,
+        candidates: Array.isArray(armed.__sfCandidates) ? armed.__sfCandidates.slice() : [],
+        candidateEvicted: Number(armed.__sfCandidateSaturation?.evicted) || 0,
+        candidateDropped: Number(armed.__sfCandidateSaturation?.dropped) || 0,
       };
     });
   } catch (_) {
@@ -1311,14 +1381,21 @@ export async function installPostTeardownGlDeleteTrapCapture(page) {
       captured = true;
       const armed = globalThis.__SF_GL_DELETE_TRAP__;
       const meta = armed?.__sfSaturation || {};
+      const candidateMeta = armed?.__sfCandidateSaturation || {};
       const entries = Array.isArray(armed)
         ? armed.map((entry) => Object.freeze({ ...entry }))
+        : [];
+      const candidates = Array.isArray(armed?.__sfCandidates)
+        ? armed.__sfCandidates.map((entry) => Object.freeze({ ...entry }))
         : [];
       const snapshot = Object.freeze({
         armed: Array.isArray(armed),
         entries: Object.freeze(entries),
         evicted: Number(meta.evicted) || 0,
         dropped: Number(meta.dropped) || 0,
+        candidates: Object.freeze(candidates),
+        candidateEvicted: Number(candidateMeta.evicted) || 0,
+        candidateDropped: Number(candidateMeta.dropped) || 0,
       });
       try {
         Object.defineProperty(globalThis, marker, {
