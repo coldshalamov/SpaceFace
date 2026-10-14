@@ -1,6 +1,6 @@
 import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
 import {
-  FRAME_INPUT_FIELDS, discRadius, fieldsFor, readPath, writeFrameInput, writePath,
+  FRAME_INPUT_FIELDS, deletePath, discRadius, fieldsFor, numberFieldValue, readPath, writeFrameInput, writePath,
 } from '/lib/inspector.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
@@ -194,8 +194,11 @@ function paintInspector() {
       const target = next.objects.find((row) => row.id === object.id);
       if (!target) return;
       if (field.kind === 'checkbox') writePath(target, field.key, input.checked);
-      else if (field.kind === 'number') writePath(target, field.key, Number(input.value));
-      else writePath(target, field.key, input.value);
+      else if (field.kind === 'number') {
+        const parsed = numberFieldValue(input.value);
+        if (parsed == null) deletePath(target, field.key);
+        else writePath(target, field.key, parsed);
+      } else writePath(target, field.key, input.value);
       commitProject(next);
     });
     label.append(input);

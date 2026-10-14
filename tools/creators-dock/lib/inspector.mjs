@@ -112,6 +112,29 @@ export function writePath(object, key, value) {
   return object;
 }
 
+export function numberFieldValue(text) {
+  const trimmed = text == null ? '' : String(text).trim();
+  if (trimmed === '') return null;
+  const number = Number(trimmed);
+  return Number.isFinite(number) ? number : null;
+}
+
+export function deletePath(object, key) {
+  if (!object || typeof key !== 'string') return object;
+  if (key.startsWith('assertion.')) {
+    const leaf = key.slice('assertion.'.length);
+    if (object.assertion && typeof object.assertion === 'object') delete object.assertion[leaf];
+    return object;
+  }
+  if (key.startsWith('overrides.')) {
+    const leaf = key.slice('overrides.'.length);
+    if (object.overrides && typeof object.overrides === 'object') delete object.overrides[leaf];
+    return object;
+  }
+  delete object[key];
+  return object;
+}
+
 export function writeFrameInput(project, index, key, value) {
   if (!project || !Number.isInteger(index) || index < 0) return project;
   if (!Array.isArray(project.frames)) project.frames = [];

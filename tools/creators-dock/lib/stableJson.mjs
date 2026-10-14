@@ -491,6 +491,7 @@ let reflectDefineBase = null;
 let freezeBase = null;
 let sealBase = null;
 let preventExtensionsBase = null;
+let reflectPreventBase = null;
 
 function descHas(desc, key) {
   return !!desc && (typeof desc === 'object' || typeof desc === 'function') && key in desc;
@@ -571,6 +572,7 @@ export function protectLiveObjects(objects) {
     freezeBase = Object.freeze;
     sealBase = Object.seal;
     preventExtensionsBase = Object.preventExtensions;
+    reflectPreventBase = Reflect.preventExtensions;
     Object.defineProperty = function shieldedDefine(obj, prop, desc) {
       if (blocksDefine(obj, prop, desc)) return obj;
       return definePropertyBase.call(Object, obj, prop, desc);
@@ -593,6 +595,10 @@ export function protectLiveObjects(objects) {
     Object.preventExtensions = function shieldedPreventExtensions(obj) {
       if (protectedHas(obj)) return obj;
       return preventExtensionsBase.call(Object, obj);
+    };
+    Reflect.preventExtensions = function shieldedReflectPreventExtensions(obj) {
+      if (protectedHas(obj)) return true;
+      return reflectPreventBase.call(Reflect, obj);
     };
   }
   protectedStack.push(set);
@@ -623,6 +629,10 @@ export function unprotectLiveObjects() {
     if (preventExtensionsBase) {
       Object.preventExtensions = preventExtensionsBase;
       preventExtensionsBase = null;
+    }
+    if (reflectPreventBase) {
+      Reflect.preventExtensions = reflectPreventBase;
+      reflectPreventBase = null;
     }
   }
 }
