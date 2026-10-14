@@ -192,7 +192,7 @@ test('actual Continue before and after player recovery preserves refusal, custod
       if(pass===0) {
         assert.equal(service.get(h.job().towId).state,'active');
         const line=playerLine(h);playerLineId=line.id;
-        stepCeresWorkfleet(owner,DT);
+        stepCeresWorkfleet(h.owner,DT);
         assert.equal(service.get(h.job().towId).state,'broken');
       }else assert.equal(service.get(h.job().towId),null);
       for(let i=0;i<3;i++)stepCeresWorkfleet(owner,DT);
@@ -204,4 +204,87 @@ test('actual Continue before and after player recovery preserves refusal, custod
       envelope=destinationSave.serialize('ceres-terminal-player-recovery');physics.dispose();physics=null;
     }
   }finally{physics?.dispose();destination.registry.get('save').destroy();destination.dispose();source.close();}
+});
+
+// Additional custody boundaries use the same measured refusal and real native
+// attachment service, not a second toy simulation or a relaxed force envelope.
+for(const kind of ['dead-player','dead-load','pending-line','missing-player-generation','missing-load-generation'])test(`terminal handoff rejects ${kind} without renewing its stopped job`,async()=>{
+  const h=await refused();
+  try {
+    const line=playerLine(h),player=h.state.entities.get(h.state.playerId);
+    if(kind==='dead-player'){player.alive=false;player.hull=0;}
+    if(kind==='dead-load'){h.b.section.alive=false;h.b.section.hull=0;}
+    if(kind==='pending-line')line.state='pending';
+    if(kind==='missing-player-generation')delete player.occupantGeneration;
+    if(kind==='missing-load-generation')delete h.b.section.occupantGeneration;
+    const updatedTick=h.job().updatedTick;
+    stepCeresWorkfleet(h.owner,DT);
+    assert.equal(h.job().phase,'recovery-interrupted');assert.equal(h.job().reason,REASON);
+    assert.equal(h.job().updatedTick,updatedTick);
+    assert.equal(h.service.get(h.job().towId).state,'active');assert.equal(h.service.get(h.job().mountId).state,'active');
+  }finally{h.close();}
+});
+
+for(const kind of ['disabled','controlLease'])test(`${kind} alone is not player ownership after refusal`,async()=>{
+  const h=await refused();
+  try {
+    h.b.section.data[kind]=kind==='disabled'?true:{ownerId:h.b.breaker.id};
+    stepCeresWorkfleet(h.owner,DT);
+    assert.equal(h.job().phase,'recovery-interrupted');assert.equal(h.job().reason,REASON);
+    assert.equal(h.service.get(h.job().towId).state,'active');assert.equal(h.service.get(h.job().mountId).state,'active');
+    assert.equal(consumeCeresBreakerControl(h.b.breaker,h.state),null);
+    assert.equal(consumeCeresHeadControl(h.b.cutterHead,h.state,h.owner),null);
+  }finally{h.close();}
+});
+
+for(const location of ['data','entity'])test(`explicit ${location} ownership recovers the original load without a new rope`,async()=>{
+  const h=await refused();
+  try {
+    const section=h.b.section,life=section.occupantGeneration,before=clone(pose(section));
+    (location==='data'?section.data:section).playerOwned=true;
+    stepCeresWorkfleet(h.owner,DT);
+    assert.equal(h.job().phase,'player-retained');assert.equal(h.job().reason,REASON);
+    assert.equal(h.service.get(h.job().towId).state,'broken');assert.equal(h.service.get(h.job().mountId).state,'active');
+    assert.equal(h.state.entities.get(section.id),section);
+    unchanged(h,section,life,before);
+  }finally{h.close();}
+});
+
+test('simultaneous owned head and load yield their couplings once without changing any body',async()=>{
+  const h=await refused();
+  try {
+    const bodies=Object.values(h.b).map(entity=>({entity,life:entity.occupantGeneration,mass:entity.mass,before:clone(pose(entity))})),events=[];
+    h.sim.bus.on('ceresWorkfleet:interrupted',event=>events.push(event));
+    h.b.section.data.playerOwned=true;h.b.cutterHead.data.playerOwned=true;
+    stepCeresWorkfleet(h.owner,DT);
+    const updatedTick=h.job().updatedTick;
+    assert.equal(h.service.get(h.job().towId).breakReason,'ceres_yield_player');
+    assert.equal(h.service.get(h.job().mountId).breakReason,'ceres_yield_head');
+    for(let i=0;i<8;i++){h.state.tick++;stepCeresWorkfleet(h.owner,DT);}
+    assert.equal(events.length,1);assert.equal(h.job().updatedTick,updatedTick);
+    assert.equal(h.job().phase,'player-retained');assert.equal(h.job().reason,REASON);
+    for(const snapshot of bodies){
+      assert.equal(h.state.entities.get(snapshot.entity.id),snapshot.entity);
+      assert.equal(snapshot.entity.occupantGeneration,snapshot.life);assert.equal(snapshot.entity.mass,snapshot.mass);
+      assert.deepEqual(pose(snapshot.entity),snapshot.before);
+    }
+    assert.equal(consumeCeresBreakerControl(h.b.breaker,h.state),null);
+    assert.equal(consumeCeresHeadControl(h.b.cutterHead,h.state,h.owner),null);
+  }finally{h.close();}
+});
+
+test('releasing the player rope never resurrects the stopped tow or its deadline',async()=>{
+  const h=await refused();
+  try {
+    const line=playerLine(h);line.controllerId=h.state.playerId;
+    stepCeresWorkfleet(h.owner,DT);assert.equal(h.job().phase,'player-retained');
+    const updatedTick=h.job().updatedTick,towId=h.job().towId;
+    assert.equal(h.service.cut(line.id,h.state.playerId,'player-release').ok,true);
+    for(let i=0;i<8;i++){h.state.tick++;stepCeresWorkfleet(h.owner,DT);}
+    assert.equal(h.job().phase,'player-retained');assert.equal(h.job().reason,REASON);
+    assert.equal(h.job().updatedTick,updatedTick);assert.equal(h.job().towId,towId);
+    assert.equal(h.service.get(towId).state,'broken');assert.equal(h.job().recovery,null);
+    assert.equal(consumeCeresBreakerControl(h.b.breaker,h.state),null);
+    assert.equal(consumeCeresHeadControl(h.b.cutterHead,h.state,h.owner),null);
+  }finally{h.close();}
 });
