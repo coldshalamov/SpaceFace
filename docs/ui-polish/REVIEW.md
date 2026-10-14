@@ -987,3 +987,15 @@ Shots (seeded ledger, scratch script): `ui-shots/polish28q/{before,final}/`, pho
 **Closed:** the polish28r leftover (Ledger right-column "20u …" clip at 800×600, tab layout).
 
 Shots: `ui-shots/polish28s/{before,after}/`, `compare-ledger-*.png`.
+
+## Chart foot at 960×540 and the narrow desktop chart head (ui-polish-28)
+
+**Before:** the short-screen rule (≤819 tall) folded every foot station onto one line, with the word beside its value. At 960×540 a quarter of the band is ~222px, so DESTINATION's value only had room for "No desti…", and the bench measured "No destination set" running under NEXT LEG. TRACKING also cut to "Beacon 419 …". In a 390×844 desktop window (not the phone sheet), the ≥820-tall header grid put title, search and the two words on one row. The title got a 0px track (bench: "HELIOS PRIME" clipped), and CONTROLS printed over CLOSE.
+
+**After (`chartLayouts.js` only):** the one-line foot now applies only at ≥1180 wide. Below that, the word stays over its value, and the value has the whole track: "No destination set" and "Beacon 419 WU" now read in full at 960×540. In a ≤760 desktop window with `data-layout="narrow"` (`html:not([data-sf-mobile="1"])`, so the phone sheet is untouched), CONTROLS and CLOSE (with ESC) take the top row on the right. Title, search, the QUIET reading and the scale then get a row each. Selectors and IDs are unchanged.
+
+**Checked:** 960×540 bench went from 4 tangled findings to none. 1280×720 is pixel-identical. 1920×1080 differs only by course-glow animation noise at the map centre (163px). The 390×844 desktop window went from 4 tangled and 2 clipped findings to none. The 390×844 phone (`--phone`, touch) is pixel-identical.
+
+**Leftover (not chased):** the chart's zoom strip and "per bar" scale sit over the map's lower-left, but `_clearField` in galaxyMap.js doesn't avoid them. So a map label can print under them. Before this change "Gate → Vesta Forge" hid its "Gate" there; at 960×540 after it, "Customs Corridor · THREAT 1" now lands on "2500 WU per bar". On the real phone, "QUIET pressure 0/140" sits on the search underline (bench: buried), and the zoom strip crosses the foot's detail lines (mobileScreenLayouts).
+
+Shots: `ui-shots/polish28t/{before,after}/`, `{before,after}-phone-touch/`, `compare-chart-960.png`, `compare-chart-390.png`.

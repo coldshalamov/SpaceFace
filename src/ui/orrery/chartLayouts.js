@@ -32,6 +32,8 @@ const SPINE = `linear-gradient(90deg, transparent ${SPINE_X - 1}px, rgb(${BONE} 
 /** focus and hover on a word: a vertical segment of light at its leading edge (never an underline) */
 const SEG = (a = 1, x = '0') => `background:linear-gradient(90deg, rgb(248 244 234 / ${a}) 0 2px, transparent 2px) ${x} 50% / 2px 72% no-repeat !important;`;
 /** visually hidden, still read aloud */
+// the chart in a desktop window: never the phone sheet (mobileScreenLayouts owns that)
+const CD = 'html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart[data-layout="narrow"]';
 const SR = 'position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; padding:0 !important;';
 /** a word hanging off the spine: its tick */
 const TICK = (w = 12, a = 0.5, h = 2) => `content:"" !important; display:block !important; position:absolute !important; left:${SPINE_X}px !important; top:50% !important;
@@ -363,7 +365,6 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} .gm-weather-head { white-space:nowrap !important; }
   ${C} .gm-rail-commodity label { white-space:normal !important; }
   ${C} .gm-navfoot { padding-top:17px !important; }
-  ${C} .gm-navfoot .gm-nav-row { flex-direction:row !important; align-items:baseline !important; gap:0 10px !important; }
   ${C} .gm-navfoot .gm-nav-row::before { top:-13px; }
   ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { top:-14px; }
   ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { top:-10px; }
@@ -384,6 +385,27 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} :is(#gm-set-course-btn, .gm-plot-btn) { font-size:14px !important; padding:2px 0 4px 12px !important; }
   ${C} #gm-engage-route-btn.orr-lampkey { margin-top:2px !important; }
   ${C} .gm-place-actions { gap:0 14px !important; }
+}
+
+/* the foot folds each answer to one line (word beside value) only where a quarter of the band holds
+   both: below 1180 px a long value ("No destination set") ran on under the next station's word, so
+   there the word stays over its value and the value keeps the whole track */
+@media (max-height: 819px) and (min-width: 1180px) {
+  ${C} .gm-navfoot .gm-nav-row { flex-direction:row !important; align-items:baseline !important; gap:0 10px !important; }
+}
+
+/* a narrow desktop window (no phone sheet): the wide header's one row of title, search and two
+   words gave the title a 0 px track and printed CONTROLS over CLOSE. Here the two words (CLOSE keeps
+   its ESC) take the top row on the right, and the title, search, reading and scale each get a row. */
+@media (max-width: 760px) {
+  ${CD} .gm-head { grid-template-columns:minmax(0, 1fr) auto auto !important; grid-template-rows:auto !important; column-gap:18px !important; row-gap:8px !important; }
+  ${CD} .gm-hint-btn { grid-column:2 !important; grid-row:1 !important; }
+  ${CD} .gm-close { grid-column:3 !important; grid-row:1 !important; }
+  ${CD} .gm-title-lockup { grid-column:1 / -1 !important; grid-row:2 !important; min-width:0; }
+  ${CD} .gm-title { white-space:normal !important; overflow:visible !important; }
+  ${CD} .gm-search-container { grid-column:1 / -1 !important; grid-row:3 !important; width:100% !important; }
+  ${CD} .gm-weather { grid-column:1 / -1 !important; grid-row:4 !important; justify-self:start; text-align:left; }
+  ${CD} .gm-rail { grid-column:1 / -1 !important; grid-row:5 !important; }
 }
 
 /* the two ways back keep their whole words above phone width: a second row, never a clipped ZOOM
