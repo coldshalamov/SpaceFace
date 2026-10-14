@@ -5,6 +5,7 @@ import hashlib,json,os
 import bpy
 from mathutils import Vector,Matrix
 import forge_export as fe
+from asset_bank_cost import scene_cost
 
 def gltf(v):return [float(v[0]),float(v[2]),-float(v[1])]
 
@@ -55,8 +56,11 @@ def export_asset(ship,out_dir,asset_id,category,description,collision_boxes=None
             doc['asset'].setdefault('extras',{})['spacefaceAsset']=meta
             doc['scenes'][doc.get('scene',0)].setdefault('extras',{})['spacefaceAsset']=meta
         doc=fe.patch_glb_json(path,stamp)
-        tris=sum(doc['accessors'][p['indices']]['count']//3 for m in doc['meshes'] for p in m['primitives'])
-        base['lods'].append({'level':level,'file':os.path.basename(path),'triangles':tris,'draws':sum(len(m['primitives']) for m in doc['meshes']),'bytes':os.path.getsize(path),'method':'authored-topology' if authored else ('source' if level==0 else 'Forge-decimation'),'sha256':hashlib.sha256(open(path,'rb').read()).hexdigest()})
+        # Shared meshes cost once per active node, not once per mesh definition.
+        # This also supports valid non-indexed triangle primitives.
+        costs=scene_cost(doc)
+        with open(path,'rb') as exported: digest=hashlib.sha256(exported.read()).hexdigest()
+        base['lods'].append({'level':level,'file':os.path.basename(path),**costs,'bytes':os.path.getsize(path),'method':'authored-topology' if authored else ('source' if level==0 else 'Forge-decimation'),'sha256':digest})
         for pivot in pivots:
             if pivot.parent==root:
                 world=pivot.matrix_world.copy();pivot.parent=None;pivot.matrix_world=world
