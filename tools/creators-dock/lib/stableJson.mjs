@@ -155,6 +155,30 @@ export function detachData(value, seen = new Map(), readGrid = true, allowGetter
   return out;
 }
 
+function isArrayIndexKey(key) {
+  if (typeof key !== 'string') return false;
+  const index = Number(key);
+  return Number.isInteger(index) && index >= 0 && String(index) === key;
+}
+
+function ownKeys(value) {
+  return [
+    ...Object.getOwnPropertyNames(value),
+    ...Object.getOwnPropertySymbols(value),
+  ];
+}
+
+function arrayNamedKeys(value) {
+  return ownKeys(value).filter((key) => key !== 'length' && !isArrayIndexKey(key));
+}
+
+function captureDataValue(descriptor, seen, records) {
+  if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return false;
+  if (typeof descriptor.value === 'function') return false;
+  captureLive(descriptor.value, seen, records);
+  return true;
+}
+
 export function captureLive(value, seen = new Set(), records = []) {
   if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return records;
   seen.add(value);
@@ -169,33 +193,34 @@ export function captureLive(value, seen = new Set(), records = []) {
         items.push(undefined);
       }
     }
+    for (const key of arrayNamedKeys(value)) {
+      captureDataValue(Object.getOwnPropertyDescriptor(value, key), seen, records);
+    }
     records.push({
       kind: 'array',
       object: value,
       length: value.length,
       items,
-      names: Object.getOwnPropertyNames(value),
+      names: ownKeys(value),
     });
     return records;
   }
   const entries = [];
-  for (const key of Object.getOwnPropertyNames(value)) {
+  for (const key of ownKeys(value)) {
     if (key === 'toJSON') continue;
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
-    if (typeof descriptor.value === 'function') continue;
+    if (!captureDataValue(descriptor, seen, records)) continue;
     entries.push({
       key,
       value: descriptor.value,
       enumerable: descriptor.enumerable !== false,
     });
-    captureLive(descriptor.value, seen, records);
   }
   records.push({
     kind: 'object',
     object: value,
     entries,
-    names: Object.getOwnPropertyNames(value),
+    names: ownKeys(value),
   });
   return records;
 }
@@ -233,6 +258,10 @@ export function restoreLive(records) {
       const array = record.object;
       for (let index = 0; index < record.items.length; index += 1) {
         const descriptor = Object.getOwnPropertyDescriptor(array, String(index));
+        const isAccessor = descriptor
+          && typeof descriptor.get === 'function'
+          && !Object.prototype.hasOwnProperty.call(descriptor, 'value');
+        if (isAccessor && record.items[index] === undefined) continue;
         const current = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
           ? descriptor.value
           : undefined;
@@ -284,6 +313,12 @@ function walkInheritedArrays(value, seen, entries, allowGetters = true) {
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
         walkInheritedArrays(descriptor.value, seen, entries, false);
       }
+    }
+    for (const key of arrayNamedKeys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+      if (typeof descriptor.value === 'function') continue;
+      walkInheritedArrays(descriptor.value, seen, entries, allowGetters);
     }
     return;
   }
@@ -385,6 +420,15 @@ export function readAccessor(object, descriptor) {
 }
 
 const SKIP_ELEMENT_GETTER = new Set(['marker', 'cell', 'echo']);
+let canaryCaptureDepth = 0;
+
+export function beginCanaryCapture() {
+  canaryCaptureDepth += 1;
+}
+
+export function endCanaryCapture() {
+  if (canaryCaptureDepth > 0) canaryCaptureDepth -= 1;
+}
 
 function rememberPocket(read, records, seen, arrays) {
   let current = read;
@@ -408,7 +452,7 @@ function rememberPocket(read, records, seen, arrays) {
 
 function readPocketGetter(host, descriptor, key, records, seen, arrays) {
   if (!descriptor || typeof descriptor.get !== 'function' || typeof descriptor.set === 'function') return;
-  if (SKIP_ELEMENT_GETTER.has(key)) return;
+  if (SKIP_ELEMENT_GETTER.has(key) && !(key === 'marker' && canaryCaptureDepth > 0)) return;
   const read = readAccessor(host, descriptor);
   if (read && typeof read === 'object') rememberPocket(read, records, seen, arrays);
 }
@@ -438,6 +482,9 @@ export function captureAccessorTrees(value, seen = new Set(), records = [], allo
         continue;
       }
       readPocketGetter(value, descriptor, key, records, seen, arrays);
+      if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value && typeof descriptor.value === 'object') {
+        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, false, false);
+      }
     }
     return records;
   }
@@ -447,7 +494,7 @@ export function captureAccessorTrees(value, seen = new Set(), records = [], allo
     if (!descriptor) continue;
     if (!nested && (key === 'objects' || key === 'grid')) {
       if (key === 'objects' && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value && typeof descriptor.value === 'object') {
-        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true, false);
+        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true, true);
       }
       continue;
     }
@@ -471,7 +518,7 @@ export function restoreOwnShadows(records) {
     if (!record || !record.object || !record.names) continue;
     if (record.kind !== 'ownNames' && record.kind !== 'object' && record.kind !== 'array') continue;
     const names = new Set(record.names);
-    for (const key of Object.getOwnPropertyNames(record.object)) {
+    for (const key of ownKeys(record.object)) {
       if (names.has(key)) continue;
       try {
         delete record.object[key];
@@ -656,9 +703,15 @@ function addLiveObject(set, value, seen = new Set()) {
         addLiveObject(set, descriptor.value, seen);
       }
     }
+    for (const key of arrayNamedKeys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+      if (typeof descriptor.value === 'function') continue;
+      addLiveObject(set, descriptor.value, seen);
+    }
     return;
   }
-  for (const key of Object.getOwnPropertyNames(value)) {
+  for (const key of ownKeys(value)) {
     if (key === 'toJSON') continue;
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;

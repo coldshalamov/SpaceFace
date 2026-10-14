@@ -492,7 +492,7 @@ function wipedObject(original, produced) {
   return dataFields(produced).length === 0;
 }
 
-function materialize(value, key, seen, readGrid = true) {
+function materialize(value, key, seen, readGrid = true, readIndexGetters = false) {
   if (value === null) return null;
   if (value === undefined) return undefined;
   const type = typeof value;
@@ -573,8 +573,20 @@ function materialize(value, key, seen, readGrid = true) {
     const out = [];
     for (let i = 0; i < value.length; i += 1) {
       const slot = arrayDataAt(value, i);
-      if (slot.kind !== 'data') return CLONE_REJECT;
-      const item = materialize(slot.value, String(i), seen, false);
+      let source;
+      if (slot.kind === 'data') source = slot.value;
+      else if (readIndexGetters && slot.kind === 'getter') {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
+        if (!descriptor || typeof descriptor.get !== 'function') return CLONE_REJECT;
+        try {
+          source = descriptor.get.call(value);
+        } catch (error) {
+          return CLONE_REJECT;
+        }
+      } else {
+        return CLONE_REJECT;
+      }
+      const item = materialize(source, String(i), seen, false);
       if (item === CLONE_REJECT || item === undefined) return CLONE_REJECT;
       out.push(item);
     }
@@ -582,7 +594,7 @@ function materialize(value, key, seen, readGrid = true) {
   }
   const out = {};
   for (const [childKey, childValue] of ownDataEntries(value)) {
-    const child = materialize(childValue, childKey, seen, readGrid);
+    const child = materialize(childValue, childKey, seen, readGrid, childKey === 'objects');
     if (child === CLONE_REJECT) return CLONE_REJECT;
     if (child !== undefined) writeData(out, childKey, child);
   }
@@ -1195,8 +1207,8 @@ export function hitTest(project, sx, sy, camera, view) {
     if (!Number.isFinite(object.x) || !Number.isFinite(object.z)) continue;
     const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
     const zoom = camera && Number.isFinite(camera.zoom) && camera.zoom > 0 ? camera.zoom : 1;
-    const authored = typeof object.radius === 'number' && Number.isFinite(object.radius) ? object.radius : 8;
-    const radius = Math.max(10, authored * zoom * 0.35);
+    const authored = typeof object.radius === 'number' && Number.isFinite(object.radius) ? object.radius : 0;
+    const radius = authored * zoom * 0.35;
     const dx = sx - ox;
     const dy = sy - oy;
     if (dx * dx + dy * dy <= (radius + 8) * (radius + 8)) return object.id;

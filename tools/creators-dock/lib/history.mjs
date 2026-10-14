@@ -1,6 +1,7 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
 import {
-  captureAccessorTrees, captureLive, definePropertyBase, detachData, liveObjectsIn, protectLiveObjects,
+  beginCanaryCapture, captureAccessorTrees, captureLive, definePropertyBase, detachData, endCanaryCapture,
+  liveObjectsIn, protectLiveObjects,
   readAccessor, restoreLive, restoreOwnShadows, snapshotInheritedArrays, unprotectLiveObjects,
 } from './stableJson.mjs';
 
@@ -479,6 +480,8 @@ function scenesNeedAccessors(scenes) {
 }
 
 function runShielded(scenes, fn) {
+  beginCanaryCapture();
+  try {
   const previousShields = activeShields;
   const previousAccessors = activeAccessors;
   const previousSetters = activeSetters;
@@ -531,6 +534,9 @@ function runShielded(scenes, fn) {
     activeSetters = previousSetters;
     activeArrays = previousArrays;
     activeShadows = previousShadows;
+  }
+  } finally {
+    endCanaryCapture();
   }
 }
 
@@ -668,6 +674,21 @@ function collectArrays(value, entries, seen, allowGetters = true, enumerableOnly
     entries.push({ array: value, items, length: value.length });
     for (const item of items) {
       if (item.kind === 'data') collectArrays(item.value, entries, seen, true, true);
+    }
+    for (const key of Object.getOwnPropertyNames(value).concat(Object.getOwnPropertySymbols(value))) {
+      if (key === 'length') continue;
+      if (typeof key === 'string' && String(Number(key)) === key && Number.isInteger(Number(key)) && Number(key) >= 0) continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor) continue;
+      if (typeof descriptor.get === 'function' && typeof descriptor.set !== 'function') {
+        if (!allowGetters) continue;
+        const read = readAccessor(value, descriptor);
+        if (read && typeof read === 'object') collectArrays(read, entries, seen, true, false);
+        continue;
+      }
+      if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+      if (typeof descriptor.value === 'function') continue;
+      collectArrays(descriptor.value, entries, seen, true, false);
     }
     return;
   }

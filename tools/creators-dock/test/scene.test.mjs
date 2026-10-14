@@ -4939,6 +4939,12 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   const view = { width: 200, height: 200 };
   assert.equal(hitTest({ objects: [{ id: 'pin', x: 0, z: 0, radius: 0 }] }, 120, 100, camera, view), null);
   assert.equal(hitTest({ objects: [{ id: 'pin', x: 0, z: 0, radius: 40 }] }, 120, 100, camera, view), 'pin');
+  const dockZoom = { x: 0, z: 0, zoom: 3.2 };
+  assert.equal(hitTest({ objects: [{ id: 'pin', x: 0, z: 0, radius: 0 }] }, 115, 100, dockZoom, view), null);
+  const deletedHitRadius = { id: 'pin', x: 0, z: 0, radius: 12 };
+  delete deletedHitRadius.radius;
+  assert.equal(hitTest({ objects: [deletedHitRadius] }, 115, 100, dockZoom, view), null);
+  assert.equal(hitTest({ objects: [{ id: 'wide', x: 0, z: 0, radius: 10 }] }, 115, 100, dockZoom, view), 'wide');
   const finalOutside = evaluateOracleKernel({
     trace: [
       { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },
@@ -6360,4 +6366,117 @@ test('prototype tags behind a get-only pocket stay keep', () => {
     assert.deepEqual(again.history.present.world.pocket.tags, ['keep']);
     assert.deepEqual(holder.tags, ['keep']);
   }
+});
+
+test('named properties of an array are shielded', () => {
+  const { undone, present } = sceneWithFuture();
+  const marks = ['keep'];
+  const inner = ['keep'];
+  const box = { 0: 'keep', length: 1 };
+  marks.inner = inner;
+  marks.box = box;
+  present.grid.origin = { marks };
+  const defineProperty = Reflect.defineProperty;
+  undone.history.future[0].toJSON = function () {
+    defineProperty(inner, '1', { writable: false });
+    defineProperty(box, '1', { writable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(marks.length, 1);
+  assert.equal(marks[0], 'keep');
+  assert.deepEqual([...inner], ['keep']);
+  assert.equal(inner.length, 1);
+  assert.equal(delete inner[1], true);
+  inner.length = 1;
+  assert.equal(inner.length, 1);
+  assert.equal(Object.prototype.hasOwnProperty.call(box, '1'), false);
+  assert.equal(delete box[1], true);
+});
+
+test('pockets stored on array properties stay extensible', () => {
+  const { undone, present } = sceneWithFuture();
+  const ledger = { credits: 5000 };
+  present.objects.ledger = ledger;
+  const marks = ['keep'];
+  const pocket = { x: 30 };
+  marks.pocket = pocket;
+  present.grid.origin = { marks };
+  const marker = { x: 30 };
+  Object.defineProperty(present.frames[0], 'marker', {
+    configurable: true,
+    enumerable: true,
+    get() { return marker; },
+  });
+  const prevent = Reflect.preventExtensions;
+  const defineProperty = Reflect.defineProperty;
+  undone.history.future[0].toJSON = function () {
+    delete ledger.credits;
+    prevent(ledger);
+    delete pocket.x;
+    prevent(pocket);
+    defineProperty(pocket, 'x', { writable: false });
+    delete marker.x;
+    prevent(marker);
+    defineProperty(marker, 'x', { writable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(ledger.credits, 5000);
+  assert.equal(Object.isExtensible(ledger), true);
+  assert.equal(pocket.x, 30);
+  assert.equal(Object.isExtensible(pocket), true);
+  assert.equal(marker.x, 30);
+  assert.equal(Object.isExtensible(marker), true);
+});
+
+test('an objects index getter does not leave cargo sealed', async () => {
+  const { undone, present } = sceneWithFuture();
+  const cargo = present.objects[1];
+  assert.equal(cargo.id, 'cargo');
+  const xBefore = cargo.x;
+  Object.defineProperty(present.objects, '1', {
+    configurable: true,
+    enumerable: true,
+    get() { return cargo; },
+  });
+  const prevent = Reflect.preventExtensions;
+  const defineProperty = Reflect.defineProperty;
+  undone.history.future[0].toJSON = function () {
+    delete cargo.x;
+    prevent(cargo);
+    defineProperty(cargo, 'x', { writable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  assert.equal(cargo.x, xBefore);
+  assert.equal(Object.isExtensible(cargo), true);
+  const exported = await exportProject(present);
+  assert.equal((exported.issues || []).some((issue) => String(issue).includes('plain object')), false);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+});
+
+test('a symbol field on cargo survives undo', () => {
+  const { undone, present } = sceneWithFuture();
+  const cargo = objectById(present, 'cargo');
+  const sym = Symbol('x');
+  cargo[sym] = 30;
+  assert.equal(cargo.x, 30);
+  undone.history.future[0].toJSON = function () {
+    delete cargo[sym];
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(cargo[sym], 30);
+  assert.equal(cargo.x, 30);
 });

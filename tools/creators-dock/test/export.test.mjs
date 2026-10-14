@@ -777,10 +777,18 @@ test('a place disc edits the exported place and objectives follow the lab metric
   assert.notEqual(markerStroke({ kind: 'trigger' }, 1), 8);
   assert.equal(fieldStroke({ kind: 'field', fieldKind: 'place', radius: 0 }, 3.2), 0);
   assert.notEqual(fieldStroke({ kind: 'field', fieldKind: 'place', radius: 0 }, 3.2), 22.4);
+  const clearedField = { kind: 'field', fieldKind: 'place', radius: 12 };
+  delete clearedField.radius;
+  assert.equal(fieldStroke(clearedField, 3.2), 0);
+  assert.notEqual(fieldStroke(clearedField, 3.2), 22.4);
+  assert.equal(fieldStroke({ kind: 'field', fieldKind: 'place', radius: 10 }, 3.2), 11.2);
+  assert.notEqual(fieldStroke({ kind: 'field', fieldKind: 'place', radius: 10 }, 3.2), 12);
+  assert.equal(fieldStroke({ kind: 'field', fieldKind: 'place', radius: 20 }, 3.2), 22.4);
   assert.equal(fieldStroke({ kind: 'field', fieldKind: 'place', radius: 0 }, 10), 0);
   assert.notEqual(fieldStroke({ kind: 'field', fieldKind: 'place', radius: 0 }, 10), 70);
   const drawFieldSource = markerSource.slice(markerSource.indexOf('function drawField'), markerSource.indexOf('function drawLink'));
   assert.equal(drawFieldSource.includes('|| 20'), false);
+  assert.equal(drawFieldSource.includes('Math.max'), false);
   assert.equal(drawFieldSource.includes('fieldStroke(object, cam.zoom)'), true);
   assert.equal(fieldStroke({ kind: 'field', fieldKind: 'place' }, 3.2), 0);
   assert.notEqual(fieldStroke({ kind: 'field', fieldKind: 'place' }, 3.2), 20);
