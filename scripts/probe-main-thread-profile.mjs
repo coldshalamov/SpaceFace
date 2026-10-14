@@ -27,6 +27,9 @@
 //                         the stage hull may still be building its shaders. A diagnosis switch (it told
 //                         the preview's own shader links apart from the loading cook), never the
 //                         baseline for a before/after comparison.
+//   --footage-source=video|video-frame
+//                         choose the real flight-footage capture source for a steady-flight diagnostic;
+//                         both arms use the same five-second post-first-frame opening delay.
 //   --drop-profile=NAME   delete that kept profile and exit
 //
 // Writes .devshots/main-thread-profile/[NAME/]{profile.cpuprofile,report.md,canvas-census.json}.
@@ -40,7 +43,7 @@ import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { installGameCadenceProbe, summarizeGameCadence } from './lib/gameCadenceProbe.mjs';
 import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
-import { racingToFlight } from './player-truth/routes.mjs';
+import { racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
 import { startSimulationWorkerProfile } from './lib/workerCpuProfile.mjs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
 import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
@@ -84,6 +87,11 @@ const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
 const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile', ...(LABEL ? [LABEL] : []));
 const FIXED_SEED = 47;
+const requestedFootageSource = argValue('--footage-source') || 'video';
+if (!['video', 'video-frame'].includes(requestedFootageSource)) {
+  throw new Error(`--footage-source must be video or video-frame (received ${requestedFootageSource})`);
+}
+const FOOTAGE_OPENING_DELAY_MS = 5_000;
 // --chromium-arg=--flag lets an A/B run change one browser behaviour (for example
 // --chromium-arg=--force-prefers-reduced-motion to see what the loading backdrop costs).
 const EXTRA_CHROMIUM_ARGS = process.argv
@@ -747,6 +755,7 @@ async function clickButton(page, pattern, timeoutMs = 60_000) {
 
 async function clickNewGameAndLaunch(page) {
   await clickButton(page, /^New Game$/);
+  await page.locator('#sf-ng-seed').fill(String(FIXED_SEED));
   log(`New Game seed ${FIXED_SEED}`);
   try {
     await clickButton(page, /^Launch$/i);
@@ -787,11 +796,31 @@ async function launchCrucible(page) {
   log('Crucible run requested (seed 4242, default kit)');
 }
 
+/** Rebind only the diagnostic recorder after flight is real; both source arms share this delay. */
+async function installProfileFootageSource(page) {
+  const status = await page.evaluate(async ({ captureSource, startDelayMs }) => {
+    const module = await import('/src/ui/screens/flightFootage.js');
+    const active = module.installFlightFootage(window.SF.bus, {
+      stateOf: () => window.SF.state,
+      startDelayMs,
+      captureSource,
+    });
+    return active?.status?.() || { installed: false, requestedCaptureSource: captureSource, captureSource: null };
+  }, { captureSource: requestedFootageSource, startDelayMs: FOOTAGE_OPENING_DELAY_MS });
+  log(`flight footage source requested=${requestedFootageSource} actual=${status.captureSource || 'pending'} openingDelayMs=${FOOTAGE_OPENING_DELAY_MS}`);
+  return status;
+}
+
 async function runSteadyFlightProfile(page, cdp) {
   if (RACING) await racingToFlight(page, (name, ok, detail) => log(`${name}: ${ok} ${detail}`));
   else if (CRUCIBLE || GAUNTLET) await launchCrucible(page);
   else await clickNewGameAndLaunch(page);
   await waitForFlight(page, 180_000, 1000);
+  const launchedSeed = await readLaunchedRunSeed(page);
+  const expectedSeed = CRUCIBLE || GAUNTLET ? 4242 : RACING ? null : FIXED_SEED;
+  if (expectedSeed != null && launchedSeed !== expectedSeed) throw new Error(`Universe seed mismatch: requested ${expectedSeed}, launched ${launchedSeed}`);
+  log(`authoritative launched seed ${launchedSeed}`);
+  await installProfileFootageSource(page);
   if (SETTLE_MS > 0) { log(`flying ${SETTLE_MS} ms before the profile window`); await page.waitForTimeout(SETTLE_MS); }
   if (TRAVEL_MS > 0) {
     log(`held-thrust travel ${TRAVEL_MS} ms before the profile window`);
@@ -872,7 +901,9 @@ async function runSteadyFlightProfile(page, cdp) {
     hostBusyPct: 100 * (1 - (endCpu.idle - beginCpu.idle) / (endCpu.total - beginCpu.total)),
     commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(), sourceDigest, probeDigest,
     mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
-    seed: CRUCIBLE || GAUNTLET ? 4242 : FIXED_SEED, sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
+    seed: launchedSeed, requestedSeed: expectedSeed,
+    requestedFootageSource, footageOpeningDelayMs: FOOTAGE_OPENING_DELAY_MS,
+    sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
     observer: (CADENCE_ONLY ? 'cadence-only' : `cpu-profile-${EFFECTIVE_SAMPLING_US}us`)
       + (TRACE ? '+trace' : '') + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
   };
@@ -928,6 +959,15 @@ async function runSteadyFlightProfile(page, cdp) {
     return { installed: true, ...active.status(), lastBytes: last ? last.blob.size : 0, decoded };
   }).catch((error) => ({ error: String(error) }));
   log(`flight footage: ${JSON.stringify(footage)}`);
+  metadata.footage = {
+    requestedSource: requestedFootageSource,
+    actualSource: footage?.captureSource ?? null,
+    openingDelayMs: FOOTAGE_OPENING_DELAY_MS,
+    decoded: footage?.decoded ?? null,
+  };
+  // Keep the original cadence payload, but publish the source and decode result beside it so an
+  // A/B report cannot mistake a requested arm for the source the browser actually used.
+  fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify({ metadata, summary: summaryCadence, raw: cadence }, null, 1));
   if (GPU_TIMERS) {
     const report = await page.evaluate(async () => {
       const timers = window.SF?.state?.render?.gpuTimers;
@@ -1050,6 +1090,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
 
   const newGameWallMs = Date.now();
   await clickButton(page, /^New Game$/);
+  await page.locator('#sf-ng-seed').fill(String(FIXED_SEED));
   log(`New Game seed ${FIXED_SEED}`);
   if (LAUNCH_DWELL_MS > 0) {
     await waitForButton(page, /^Launch$/i, 60_000);
@@ -1119,7 +1160,9 @@ try {
       ? display.displayFrequency : null;
   });
   const page = await app.firstWindow({ timeout: 180_000 });
-  await page.waitForLoadState('domcontentloaded');
+  // A cold native source boot can outlast Playwright's default 30-second apparatus timeout.
+  // This does not change the measured flight window or the game's loading-time result.
+  await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
 
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Profiler.enable');
