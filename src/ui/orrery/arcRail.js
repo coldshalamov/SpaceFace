@@ -137,6 +137,17 @@ html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-da
   color:rgb(232 226 212 / var(--orr-word, .62)) !important; }
 .orr-arcrail-host--grouped li[data-head-hover] { --orr-word:.95; }
 .orr-arcrail-host--grouped .dp-lit__item[data-awake] { color:rgb(247 243 234) !important; }
+/* the tight form (a narrow host whose longest row would still run past the right edge after the
+   width split has spent the dial's spare stops): the same words in a narrower cut and closer
+   tracking, the head's tracking eased too, so every verb stays on the glass instead of clipping.
+   build() decides it by arithmetic and seats the gaps to match; wide hosts never take it. */
+.orr-arcrail-host--grouped.orr-arcrail-host--tight .dp-lit__item:not(.dp-lit__item--primary) {
+  letter-spacing:.07em !important; font-variation-settings:"wght" 640, "wdth" 76 !important; }
+.orr-arcrail-host--grouped.orr-arcrail-host--tight li[data-tier="low"] .dp-lit__item:not(.dp-lit__item--primary) {
+  letter-spacing:.12em !important; font-variation-settings:"wght" 600, "wdth" 74 !important; }
+.orr-arcrail-host--grouped.orr-arcrail-host--tight .dp-lit__item[data-awake]:not(.dp-lit__item--primary) {
+  font-variation-settings:"wght" 740, "wdth" 80 !important; }
+.orr-arcrail-host--tight .orr-svg text.orr-arcrail__legend { letter-spacing:.16em; }
 .orr-arcrail-host .dp-kbd { display:none !important; }
 .orr-svg text.orr-arcrail__cluster { font-size: 12px; letter-spacing:.3em; fill:rgb(232 226 212 / .5); text-anchor:start; }
 .orr-svg .orr-arcrail__sector text { letter-spacing:.3em; fill:rgb(232 226 212 / .72); font-weight:700; }
@@ -252,11 +263,65 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
 // the largest a head legend can draw — stacked and one-line both cap here; the width split plans
 // against it so a carried measured width can never be scaled by a stale (smaller) last-pass size
 const HEAD_MAX = 26;
+// the row's seat on one line: head legend + bridge + verbs with a gap between each. The tight form
+// (a narrow host that would still clip) closes the gap and the bridge with its narrower type.
+export const ROW_SEAT = { gap: 22, bridge: 30 };
+export const ROW_SEAT_TIGHT = { gap: 13, bridge: 24 };
+// the head legend's tracking in each form (CSS .orr-arcrail__legend / --tight), in ems per cap
+const HEAD_TRACK = 0.28;
+const HEAD_TRACK_TIGHT = 0.16;
 
-export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 18, headWidth = null) {
+const runwayOf = (W, geo) => {
   const maxAnchorX = geo && geo.anchors && geo.anchors.length
     ? Math.max(...geo.anchors.map((a) => a.x)) : 0;
-  const runway = W - maxAnchorX - 24;
+  return W - maxAnchorX - 24;
+};
+
+const headWidthFor = (headText, headSizeGuess, headWidth) => (g) => {
+  // a carried measurement arrives per-em (the legend's own caps, whatever locale wrote them);
+  // scale it by the size this pass is planning, else a stacked flip plans with a stale px
+  const measuredEm = typeof headWidth === 'function' ? headWidth(g) : null;
+  if (measuredEm > 0) return measuredEm * Math.max(18, headSizeGuess);
+  return String((typeof headText === 'function' && headText(g)) || g).length * Math.max(18, headSizeGuess);
+};
+
+const seatLineW = (headW, { gap, bridge }) => (g, items) =>
+  bridge + headW(g) + items.reduce((s, li) => s + (li && li.offsetWidth || 120) + gap, -gap);
+
+/**
+ * Does every grouped row of the seated list fit the runway on one line? Pure, like the split: the
+ * tight form is chosen when the normal seat, split as far as the stops allow, still runs a row past
+ * the right edge.
+ */
+export function groupedRowsFit(all, W, geo, headText, headSizeGuess = 18, headWidth = null, seatOpts = ROW_SEAT) {
+  const runway = runwayOf(W, geo);
+  if (!(runway > 0)) return true;
+  const lineW = seatLineW(headWidthFor(headText, headSizeGuess, headWidth), seatOpts);
+  return all.every((row) => !row.group || lineW(row.group, row.items) <= runway);
+}
+
+// contiguous partition of `items` into chunks.length lines minimising the longest line (small n:
+// a pause row holds a handful of verbs, so every cut is tried). Returns `chunks` when nothing beats it.
+function balanceChunks(items, chunks, widthOf) {
+  const k = chunks.length;
+  if (k < 2 || items.length > 10) return chunks;
+  let best = chunks;
+  let bestW = Math.max(...chunks.map(widthOf));
+  const walk = (start, left, acc) => {
+    if (left === 1) {
+      const cand = acc.concat([items.slice(start)]);
+      const w = Math.max(...cand.map(widthOf));
+      if (w < bestW - 0.5) { best = cand; bestW = w; }
+      return;
+    }
+    for (let end = start + 1; end <= items.length - (left - 1); end += 1) walk(end, left - 1, acc.concat([items.slice(start, end)]));
+  };
+  walk(0, k, []);
+  return best;
+}
+
+export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 18, headWidth = null, seatOpts = ROW_SEAT) {
+  const runway = runwayOf(W, geo);
   if (!(runway > 0)) return all;
   // head legend estimate before it is mounted: the seat pass measures getComputedTextLength at
   // the resolved head size (~1.0 em per cap once the .28 em tracking is counted), and a prior
@@ -264,14 +329,7 @@ export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 
   // head of wide caps can never be under-planned into a clip it was judged to clear (REV-D136b.2).
   // headText answers the word the legend will draw (a carried localization); the English key
   // is the fallback, so a first pass still plans against something real.
-  const headW = (g) => {
-    // a carried measurement arrives per-em (the legend's own caps, whatever locale wrote them);
-    // scale it by the size this pass is planning, else a stacked flip plans with a stale px
-    const measuredEm = typeof headWidth === 'function' ? headWidth(g) : null;
-    if (measuredEm > 0) return measuredEm * Math.max(18, headSizeGuess);
-    return String((typeof headText === 'function' && headText(g)) || g).length * Math.max(18, headSizeGuess);
-  };
-  const lineW = (g, items) => 30 + headW(g) + items.reduce((s, li) => s + (li && li.offsetWidth || 120) + 22, -22);
+  const lineW = seatLineW(headWidthFor(headText, headSizeGuess, headWidth), seatOpts);
   const spareStops = Math.max(0, 9 - all.length);
   let spent = 0;
   const out = [];
@@ -288,7 +346,10 @@ export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 
     if (cur.length) chunks.push(cur);
     if (chunks.length - 1 > spareStops - spent) { out.push(row); continue; }
     spent += chunks.length - 1;
-    for (const items of chunks) out.push({ group: row.group, items });
+    // …then deal the same number of lines evenly: the greedy pack can leave one verb alone on a
+    // continuation row (STATISTICS under three siblings); the balanced cut keeps the stop count and
+    // gives each line its fair share, the shortest longest-line wins and a tie keeps the greedy deal
+    for (const items of balanceChunks(row.items, chunks, (items) => lineW(row.group, items))) out.push({ group: row.group, items });
   }
   return out.length === all.length ? all : out;
 }
@@ -496,7 +557,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       // per-em, not px: a carried width measured at last pass's head size would under- or
       // over-plan the split whenever stacked flips the size (REV: store the em ratio, the
       // split re-scales it by the size it is planning)
-      if (h.group != null && h.w > 0) headWidthByGroup.set(h.group, h.w / (h.size > 0 ? h.size : 1));
+      // stored at the normal form's tracking: a head measured in the tight form gets back the
+      // tracking it gave up, so either form can plan from it (the split re-tracks per form)
+      if (h.group != null && h.w > 0) {
+        const caps = String((t && t.textContent) || h.group).length;
+        headWidthByGroup.set(h.group, h.w / (h.size > 0 ? h.size : 1) + (h.tight ? caps * (HEAD_TRACK - HEAD_TRACK_TIGHT) : 0));
+      }
     }
     // clustered: every verb its own tick, a wider gap where its group changes, the group's name
     // engraved on the rim beside its cluster
@@ -511,15 +577,55 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // line past the host's right edge, where the tail verbs clip (D136). Measure each row's seated
     // width and split the overruns into consecutive rows that share the head name — the dial
     // simply carries one more stop per split, the way a chapter continues over the page.
+    let seatOpts = ROW_SEAT;
     if (grouped) {
       // plan at HEAD_MAX, not `headSize`: the size resolves later in this same pass, so the value
       // in scope here is the LAST pass's — a grow-transition build would under-plan the head term
       // and keep a row whole whose real head runs it past the runway (REV-D169.2)
-      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g), HEAD_MAX, (g) => headWidthByGroup.get(g));
-      if (seated !== all) {
-        all = seated;
-        geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
+      const headText = (g) => headTextByGroup.get(g);
+      const capsOf = (g) => String(headTextByGroup.get(g) ?? g).length;
+      // the head's width per em, measured NOW in the form being planned: a legend engraved off the
+      // dial at a fixed size reads the fonts as they are this pass. A width carried from the last
+      // build can predate the face loading (the fallback's caps run ~15 % narrower), which planned
+      // a row whole that the loaded head then ran past the runway — or split one that fits.
+      const probeEm = (g) => {
+        const t = svg('text', { class: 'orr-arcrail__legend', x: '-9999', y: '-9999', style: 'font-size:20px' });
+        t.textContent = headTextByGroup.get(g) ?? String(g).toUpperCase();
+        layer.appendChild(t);
+        let w = 0;
+        try { w = t.getComputedTextLength() || 0; } catch (_) { w = 0; }
+        t.remove();
+        return w > 0 ? w / 20 : null;
+      };
+      const plan = (tight) => {
+        const opts = tight ? ROW_SEAT_TIGHT : ROW_SEAT;
+        const fresh = new Map();
+        for (const row of all) if (row.group != null && !fresh.has(row.group)) fresh.set(row.group, probeEm(row.group));
+        const carried = (g) => {
+          const m = headWidthByGroup.get(g);
+          return m > 0 && tight ? m - capsOf(g) * (HEAD_TRACK - HEAD_TRACK_TIGHT) : m;
+        };
+        const est = (g) => (fresh.get(g) > 0 ? fresh.get(g)
+          : headWidthByGroup.get(g) > 0 ? carried(g) : (tight ? capsOf(g) * 0.88 : null));
+        const rowsOut = splitGroupedRowsForWidth(all, W, geo, headText, HEAD_MAX, est, opts);
+        const g2 = rowsOut !== all ? arcRailGeometry(W, H, rowsOut.length, { span, pivotY, gaps, place }) : geo;
+        return { rowsOut, g2, opts, fits: groupedRowsFit(rowsOut, W, g2, headText, HEAD_MAX, est, opts) };
+      };
+      // the normal seat first, measured without the tight cut; only a host where it still runs a
+      // row past the edge takes the tight form (the verbs re-measure under it before it plans)
+      host.classList.remove('orr-arcrail-host--tight');
+      let chosen = plan(false);
+      if (!chosen.fits) {
+        host.classList.add('orr-arcrail-host--tight');
+        chosen = plan(true);
       }
+      seatOpts = chosen.opts;
+      if (chosen.rowsOut !== all) {
+        all = chosen.rowsOut;
+        geo = chosen.g2;
+      }
+    } else {
+      host.classList.remove('orr-arcrail-host--tight');
     }
     seatedRows = all;
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -793,10 +899,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         layer.appendChild(head);
         try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
         if (!(headW > 0)) headW = String(legend.textContent).length * headSize * 0.86;
-        record = { node: head, row: i, group: row.group, w: headW, size: headSize, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
+        record = { node: head, row: i, group: row.group, w: headW, size: headSize, tight: seatOpts === ROW_SEAT_TIGHT, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
         // stacked: the verbs are listed one step IN, on their own line under the head. one line: they
         // follow the head along the row, the rule's short bridge between.
-        cursor = stacked ? x + 20 : x + 30 + headW;
+        cursor = stacked ? x + 20 : x + seatOpts.bridge + headW;
       }
       let rowH = 0;
       row.items.forEach((li, k) => {
@@ -812,7 +918,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         if (k === 0) li.style.setProperty('--orr-i', String(i));   // the arrival, in build order
         rowH = Math.max(rowH, bh);
         rowTop = Math.min(rowTop, ly - bh / 2);
-        cursor += (li.offsetWidth || 120) + (grouped ? 22 : ROW_GAP);
+        cursor += (li.offsetWidth || 120) + (grouped ? seatOpts.gap : ROW_GAP);
       });
       if (head) {
         // the rule: out from the head's end, over the width of the verbs it owns, fading as it runs
@@ -821,7 +927,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         // bridges head to verbs, so it is drawn at the head's own optical centre — through the
         // middle of the caps — and stops short of the first verb rather than striking through it.
         const rx0 = x + 16 + headW;
-        const rx1 = stacked ? Math.max(rx0 + 40, cursor - 22) : Math.max(rx0 + 22, cursor - 20);
+        const rx1 = stacked ? Math.max(rx0 + 40, cursor - seatOpts.gap) : Math.max(rx0 + 22, cursor - seatOpts.gap + 2);
         const ry = stacked ? y + 1 : y - headSize * 0.3;
         ruleDefs.append(
           mkRule(record.rest, rx0, rx1, 'rgb(232 226 212)'),
@@ -1167,7 +1273,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       heads = [];
       seatedRows = [];
       host.classList.remove('orr-arcrail-host', 'orr-arcrail-host--dense', 'orr-arcrail-host--grouped',
-        'orr-arcrail-host--stacked', 'orr-arcrail-host--arriving');
+        'orr-arcrail-host--stacked', 'orr-arcrail-host--tight', 'orr-arcrail-host--arriving');
       if (frame && home && host.parentNode === frame) home.insertBefore(host, homeNext);
       list.classList.remove('orr-arcrail__list');
       for (const li of items()) {

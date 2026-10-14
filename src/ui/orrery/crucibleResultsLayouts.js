@@ -10,7 +10,40 @@ const STYLE_ID = 'orr-crucible-results-style';
 const BONE = '236 230 216';
 const VOID = '5 7 10';
 const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial.has-deathdial';
+const RP = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial.has-deathdial';
 const FADE = 'linear-gradient(180deg, #000 calc(100% - 28px), transparent)';
+
+/* phone (data-sf-mobile): one scrolling plate — title, instrument, column; ways-out stay docked.
+   The sticky foot must leave the dial caption (LAST 5 HITS + legend) clear at scroll 0. */
+/* Same plate for a narrow desktop window (≤700 wide, no data-sf-mobile): master laid Results out this
+   way under @media (max-width:700px); the data-sf-mobile move must not drop that. */
+const RESULTS_PLATE = (X) => `${X} { display:flex !important; flex-direction:column !important; gap:18px !important; overflow:hidden auto !important; padding:18px 20px 0 !important; }
+${X}::before { position:fixed !important; inset:0 !important; }
+${X} > :is(.k-title, .sf-crres-celebrate, .sf-crres__stage) { position:relative !important; z-index:2; }
+${X} > .k-title { order:1; padding-right:0 !important; max-width:none !important; }
+${X} > .k-title .k-t-title { font-size:46px !important; white-space:nowrap; }
+${X} > .sf-crres__dial { order:2; position:relative !important; inset:auto !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important;
+  flex:none; width:100%;
+  /* no z-index here: the dial's glow pool runs ~1300px tall, and lifting it over the title (z 2) dimmed RUN OVER and the death line */
+  /* Tall enough for the ring + caption, short enough that LAST 5 HITS + legend end above the docked foot
+     (Code Work 2026-10-13 23:50: sticky foot was covering them at 390×844 scroll 0).
+     margin-bottom keeps THE TAKE (celebrate) from climbing through the overflowing caption. */
+  height:clamp(400px, calc(100svh - 300px), 520px); margin-bottom:76px; }
+${X} > .sf-crres__dial :is(.orr-deathdial__groups, .orr-deathdial__engrave) { display:none; }
+${X} > .sf-crres__dial .orr-crres-hitlegend { display:block; }
+${X} > .sf-crres__dial .orr-deathdial__warn:not(.orr-deathdial__vitals) { display:none; }
+${X} > .sf-crres-celebrate { order:3; max-width:none !important; }
+${X} .sf-crres__stage { order:4; flex:none !important; max-width:none !important; overflow:visible !important; -webkit-mask-image:none; mask-image:none; padding:0 0 8px !important; }
+${X} .orr-crres-figures { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; row-gap:16px !important; }
+${X} .sf-crres__build { flex-wrap:wrap; }
+${X} .sf-crres__share-row { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; }
+${X} .sf-crres__share-cap { grid-column:1 / -1; }
+/* Ways-out stay docked at the glass floor while the plate scrolls under them. */
+${X} > .k-foot { order:5; position:sticky; bottom:0; z-index:4; flex:none; margin:auto -20px 0 !important; padding:12px 20px 8px !important;
+  /* solid full-width glass floor so THE TAKE can't show through its top edge at scroll 0; the shadow keeps the soft fade */
+  background:rgb(${VOID}) !important; box-shadow:0 -16px 16px -2px rgb(${VOID}) !important; }
+${X} > .k-foot > .k-words { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; column-gap:26px !important; row-gap:2px !important; }
+`;
 
 export const CRUCIBLE_RESULTS_LAYOUT_CSS = `
 /* one column, one scroller: the ledger and story boxes dissolve so their bands share one order */
@@ -67,35 +100,9 @@ ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot,
   ${R} :is(.sf-crres__share-item, .sf-crres__ledger > .sf-crres__band:not([data-band]) .sf-crd-grid) { max-width:660px; }
 }
 
-/* phone: one scrolling plate — the title, the instrument, then the column; the ways out stay docked */
+${RESULTS_PLATE(RP)}
 @media (max-width:700px) {
-  ${R} { display:flex !important; flex-direction:column !important; gap:18px !important; overflow:hidden auto !important; padding:18px 20px 0 !important; }
-  ${R}::before { position:fixed !important; inset:0 !important; }
-  ${R} > :is(.k-title, .sf-crres-celebrate, .sf-crres__stage) { position:relative !important; z-index:2; }
-  ${R} > .k-title { order:1; }
-  ${R} > .k-title { padding-right:0 !important; max-width:none !important; }
-  ${R} > .k-title .k-t-title { font-size:46px !important; white-space:nowrap; }
-  ${R} > .sf-crres__dial { order:2; position:relative !important; inset:auto !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important;
-    flex:none; width:100%; height:590px; }
-  ${R} > .sf-crres__dial :is(.orr-deathdial__groups, .orr-deathdial__engrave) { display:none; }
-  ${R} > .sf-crres__dial .orr-crres-hitlegend { display:block; }
-  ${R} > .sf-crres-celebrate { order:3; max-width:none !important; }
-  ${R} .sf-crres__stage { order:4; flex:none !important; max-width:none !important; overflow:visible !important; -webkit-mask-image:none; mask-image:none; padding:0 0 8px !important; }
-  ${R} .orr-crres-figures { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; row-gap:16px !important; }
-  ${R} .sf-crres__build { flex-wrap:wrap; }
-  ${R} .sf-crres__share-row { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; }
-  ${R} .sf-crres__share-cap { grid-column:1 / -1; }
-  /* The ways-out stay docked at the glass floor while the plate scrolls under them, so a
-     player who lands on the title and dial can always leave without hunting for the foot. */
-  ${R} > .k-foot { order:5; position:sticky; bottom:0; z-index:4; flex:none; margin:auto -20px 0 !important; padding:22px 20px 14px !important;
-    background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 18px) !important; }
-  ${R} > .k-foot > .k-words { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; column-gap:26px !important; row-gap:2px !important; }
-  /* The dial gets the first glass between the title and the docked foot, tall enough that its
-     caption (killer, vitals, LAST 5 HITS and the legend) ends above the foot instead of spilling
-     into THE TAKE; the tell line repeats THE RUN below, so the small plate drops it. */
-  ${R} > .sf-crres__dial { height:clamp(470px, calc(100svh - 240px), 620px); }
-  ${R} > .sf-crres__dial .orr-deathdial__warn:not(.orr-deathdial__vitals) { display:none; }
-  ${R} > .k-foot { padding:18px 20px 10px !important; }
+${RESULTS_PLATE(R)}
 }
 
 /* ≤600 tall desktop (960×540): the dial plus its full caption (killer, detail, vitals, the
@@ -127,6 +134,7 @@ ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot,
   ${R} > .sf-crres__dial { overflow:hidden !important; }
   ${R} > .k-foot { position:relative; z-index:5; }
 }
+
 
 `;
 

@@ -196,17 +196,29 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
     const tMin = sorted.length ? sorted[0].at : 0;
     const tMax = sorted.length ? sorted[sorted.length - 1].at : 1;
     const span = Math.max(1e-6, tMax - tMin);
-    const inner0 = x0 + 44;
+    // first tip clears the axis numeral column ("−1,500" / "1,500 cr" from x0+9)
+    const AXIS_COL = 64;
+    const inner0 = x0 + AXIS_COL + 22;
     const inner1 = nowX - 76;
     const spread = sorted.length === 1 || span < 1e-3;
     // moments that coincide keep the list's newest-first order; the tape runs oldest to now, so reverse them
     if (spread && sorted.length > 1) sorted.reverse();
     const xs = sorted.map((e, k) => (spread ? inner0 + ((k + 0.5) / sorted.length) * (inner1 - inner0) : inner0 + ((e.at - tMin) / span) * (inner1 - inner0)));
-    const minGap = 26;
+    const minGap = 30;
     for (let k = 1; k < xs.length; k += 1) if (xs[k] - xs[k - 1] < minGap) xs[k] = xs[k - 1] + minGap;
     const over = xs.length ? xs[xs.length - 1] - inner1 : 0;
     if (over > 0) for (let k = 0; k < xs.length; k += 1) xs[k] = Math.max(inner0, xs[k] - over);
     for (let k = xs.length - 2; k >= 0; k -= 1) if (xs[k + 1] - xs[k] < minGap) xs[k] = xs[k + 1] - minGap;
+    // the back-pass can walk left of the axis column; slide (and if needed compress) so the first tip stays clear
+    if (xs.length && xs[0] < inner0) {
+      const shift = inner0 - xs[0];
+      for (let k = 0; k < xs.length; k += 1) xs[k] += shift;
+      if (xs[xs.length - 1] > inner1) {
+        const span0 = xs[xs.length - 1] - xs[0];
+        const span1 = Math.max(minGap, inner1 - inner0);
+        if (span0 > 1e-6) for (let k = 0; k < xs.length; k += 1) xs[k] = inner0 + ((xs[k] - xs[0]) / span0) * span1;
+      }
+    }
 
     // cycle boundaries as major ticks, the first cycle named at the origin
     let lastCycle = null;
@@ -215,13 +227,14 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       if (c && c !== lastCycle) {
         const mx = k === 0 ? x0 : xs[k] - 13;
         if (k > 0) layer.appendChild(rise(svg('path', { d: `M ${f(mx)} ${y - 6} L ${f(mx)} ${y + 12}`, class: 'orr-core orr-ltape__major', 'stroke-width': 2 }), 60));
-        // the origin's name yields a line when the first tick stands within its run
-        const crowded = k === 0 && xs.length && xs[0] - x0 < 64;
-        // the origin's name hangs off the origin, past the axis figures' column
-        const labelY = k === 0 ? Math.min(y + (crowded ? 38 : 24), y + maxUp / 2 - 10) : y + 24;
-        const t = svg('text', { x: f(mx + (k === 0 ? 62 : 4)), y: f(labelY), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
-        t.textContent = c;
-        layer.appendChild(rise(t, 80));
+        // the origin's name yields when the first tick stands inside its run — the now cursor still names the cycle
+        const crowded = k === 0 && xs.length && xs[0] - x0 < (AXIS_COL + 40);
+        if (!(k === 0 && crowded)) {
+          const labelY = y + 24;
+          const t = svg('text', { x: f(mx + (k === 0 ? AXIS_COL + 8 : 4)), y: f(labelY), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
+          t.textContent = c;
+          layer.appendChild(rise(t, 80));
+        }
         lastCycle = c;
       }
     });
@@ -283,6 +296,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       layer.appendChild(rise(rg, 70));
     }
     let chosen = null;
+    const figurePlan = [];
     sorted.forEach((e, k) => {
       const x = xs[k];
       const amt = Number.isFinite(e.amount) ? e.amount : null;
@@ -303,16 +317,61 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: 7, class: `orr-ltape__tip-bloom${threat ? ' orr-ltape__tip-bloom--threat' : ''}${arriveNow ? ' orr-ltape__settle' : ''}`, ...settle }));
       g.appendChild(svg('circle', { cx: f(x), cy: f(tipY), r: amt == null ? 2.6 : 3.2, class: `orr-ltape__tip${threat ? ' orr-ltape__tip--threat' : ''}${arriveNow ? ' orr-ltape__settle' : ''}`, ...settle }));
       if (amt != null && !isChosen) {
-        // neighbours closer than a figure's width take alternate heights
-        const crowd = (k > 0 && xs[k] - xs[k - 1] < 58) || (k + 1 < xs.length && xs[k + 1] - xs[k] < 58);
-        const lift = crowd && k % 2 === 1 ? 12 : 0;
-        const t = svg('text', { x: f(x), y: f(up ? tipY - 10 - lift : tipY + 17 + lift), 'text-anchor': 'middle', class: `orr-ltape__figure${amt < 0 ? ' orr-ltape__figure--out' : ''}` });
-        t.textContent = signed(amt);
-        g.appendChild(t);
+        // provisional placement; a pass below separates figures that would print on each other or on an axis major
+        figurePlan.push({ g, k, x, tipY, up, amt, text: signed(amt) });
       }
       layer.appendChild(rise(g, 120 + k * 50));
       if (isChosen) chosen = { x, tipY, up };
     });
+
+    // lane same-side figures so close stems do not print their amounts on each other or the axis
+    {
+      const FIG_GAP = 15;
+      let upLane = 0;
+      let downLane = 0;
+      const placed = figurePlan.map((p) => {
+        const lane = p.up ? upLane++ : downLane++;
+        const lift = lane * FIG_GAP;
+        let labelY = p.up ? p.tipY - 10 - lift : p.tipY + 17 + lift;
+        // keep debit figures inside the tape so they do not run into the reading under it
+        if (!p.up) labelY = Math.min(labelY, H - 6);
+        if (p.up) labelY = Math.max(labelY, 12);
+        let labelX = p.x;
+        let anchor = 'middle';
+        if (labelX < x0 + AXIS_COL + 12) {
+          labelX = x0 + AXIS_COL + 12;
+          anchor = 'start';
+        }
+        return { ...p, labelX, labelY, anchor };
+      });
+      // final pairwise separation for any that still sit within a glyph
+      for (let pass = 0; pass < 3; pass += 1) {
+        for (let i = 0; i < placed.length; i += 1) {
+          for (let j = i + 1; j < placed.length; j += 1) {
+            const a = placed[i], b = placed[j];
+            if (a.up !== b.up) continue;
+            if (Math.abs(a.labelX - b.labelX) > 56) continue;
+            const dy = b.labelY - a.labelY;
+            if (Math.abs(dy) >= FIG_GAP) continue;
+            const push = (FIG_GAP - Math.abs(dy)) / 2 + 0.5;
+            if (a.labelY <= b.labelY) { a.labelY -= push; b.labelY += push; }
+            else { b.labelY -= push; a.labelY += push; }
+            if (!a.up) { a.labelY = Math.min(a.labelY, H - 6); b.labelY = Math.min(b.labelY, H - 6); }
+            if (a.up) { a.labelY = Math.max(a.labelY, 12); b.labelY = Math.max(b.labelY, 12); }
+          }
+        }
+      }
+      for (const p of placed) {
+        const t = svg('text', {
+          x: f(p.labelX),
+          y: f(p.labelY),
+          'text-anchor': p.anchor,
+          class: `orr-ltape__figure${p.amt < 0 ? ' orr-ltape__figure--out' : ''}`,
+        });
+        t.textContent = p.text;
+        p.g.appendChild(t);
+      }
+    }
 
     // the Hand: the chosen tick in hot amber with a bead and a ring at its tip, and a leader from the
     // ring's foot down, an elbow to the tape's origin edge, and out of the tape into the reading beneath
