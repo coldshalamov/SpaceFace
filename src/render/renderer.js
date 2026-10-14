@@ -12452,7 +12452,11 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
-      deferAutoFlush: () => shouldDeferPipelineAutoFlush({
+      // While the flight veil holds the sim after the first playable paint, nothing playable is
+      // on screen and simTime is frozen (the first-flight hold below is sim-clocked): let queued
+      // admissions flush now, so their per-object admission draws land under the veil.
+      deferAutoFlush: () => !(state.render && state.render.flightVeilHoldsSim === true
+        && Number.isFinite(state.render.firstPlayableFrameAt)) && shouldDeferPipelineAutoFlush({
         postOpeningReleased: this._postOpeningPipelineAdmissionReleased === true,
         firstPlayableFrameAt: state.render && state.render.firstPlayableFrameAt,
         mode: state.mode,

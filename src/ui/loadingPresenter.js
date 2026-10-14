@@ -10,6 +10,7 @@ const NOOP = { show() {}, hide() {}, destroy() {} };
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
+export const ADMISSION_QUIET_MS = 750;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
@@ -180,6 +181,22 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const tracksFirstDraw = !!render && Object.prototype.hasOwnProperty.call(render, 'firstPlayableFrameAt');
     const firstDrawSubmitted = () => !tracksFirstDraw || Number.isFinite(render.firstPlayableFrameAt);
     let capped = false;
+    // After the first playable paint, keep the veil (sim still held) while the renderer's
+    // per-object pipeline admissions drain: streamed meshes for what the camera sees compile and
+    // take their exact-target admission draw here instead of in the first playable seconds.
+    // Ready after a short quiet window with nothing pending; the cap still bounds the wait.
+    let admissionsQuietSince = null;
+    const clockNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
+    const admissionsSettled = () => {
+      const pendingFn = render && render.pendingPipelineAdmissions;
+      if (typeof pendingFn !== 'function') return true;
+      let pending = 0;
+      try { pending = Number(pendingFn()) || 0; } catch (_) { return true; }
+      if (pending > 0) { admissionsQuietSince = null; return false; }
+      if (admissionsQuietSince === null) admissionsQuietSince = clockNow();
+      return clockNow() - admissionsQuietSince >= ADMISSION_QUIET_MS;
+    };
     // A long first-draw wait (≈15–17 s on software GPUs) with the needle parked near 96% reads as
     // a hang: past a short grace, name the stage the shell is actually waiting on.
     revealStageTimer = setTimeout(() => {
@@ -199,7 +216,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const poll = (source) => {
       if (source === 'timer') revealPollTimer = null; else if (source === 'raf') revealRaf = null;
       if (disposed) return;
-      if (frameNow() > baseline && (capped || firstDrawSubmitted())) {
+      if (frameNow() > baseline && (capped || (firstDrawSubmitted() && admissionsSettled()))) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
         if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
         // Release the sim with the lift itself, not after the fade: the first visible frame plays.
