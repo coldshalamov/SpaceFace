@@ -149,3 +149,19 @@ export function attachLodState(mesh) {
   if (!mesh.userData.lod) mesh.userData.lod = createLodState();
   return mesh;
 }
+
+// The chase camera looks at a table: a ship on the glass keeps its authored
+// body. Projected-size demotion changes that body during camera breathing and
+// steering, paying visibility/surface/shadow work for a worse picture. Keep the
+// generic selector for props whose detail actually supports a smaller footprint.
+const PRESENTED_BODY_TYPES = new Set(['ship', 'drone', 'freighter', 'reaver', 'fauna']);
+export function resolvePresentedLodLevel(lod, px, nowS, isPlayer = false, type = '') {
+  return isPlayer || PRESENTED_BODY_TYPES.has(type) ? 'lod0' : lod.resolve(px, nowS);
+}
+
+/** Size is useful only to a mounted, size-selectable LOD owner. Pinned bodies
+ *  retain full detail without doing a camera projection for every visible row. */
+export function presentedLodWidthPx(userData, pos, radius, camera, viewport, isPlayer = false, type = '') {
+  if (!userData?.lod || !userData.updateLod || isPlayer || PRESENTED_BODY_TYPES.has(type)) return 0;
+  return projectedWidthPx(pos, radius, camera, viewport);
+}

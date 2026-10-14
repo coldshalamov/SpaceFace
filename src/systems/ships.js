@@ -2357,7 +2357,11 @@ export const ships = {
     const index = shipIndex == null ? this.state.player.activeShipIndex : shipIndex;
     if (index === this.state.player.activeShipIndex) {
       const entity = this.activeShipEntity();
-      if (entity && entity.data) entity.data.appearance = normalized;
+      if (entity && entity.data) {
+        entity.data.appearance = normalized;
+        entity.data._appearance = owned.defId + '|' + (entity.data.fittings || []).join(',') + '|'
+          + shipAppearanceSignature(normalized, owned.defId);
+      }
       if (entity) this.bus.emit('ship:appearanceChanged', { id: entity.id, appearance: normalized });
     }
     this.bus.emit('ship:appearanceSaved', { shipIndex: index, appearance: normalized });

@@ -5,6 +5,13 @@ Executable checks, probes, index builders, launch helpers, and control-plane rea
 public command in `package.json`, then inspect only its direct script/imports.
 `program-dispatch.mjs` is a direct read-only command; it needs no coordination window.
 
+**Development iteration starts without a full boot:** `node scripts/agent-loop.mjs plan` names
+small proof surfaces; `sim <scenarios...>` batches the existing authoritative lab, and
+`ui <screens...> --viewports=960x540,1920x1080 --walk` batches the real UI bench. Read
+[`../docs/AGENT_FAST_LOOP.md`](../docs/AGENT_FAST_LOOP.md). Do not boot through the main menu for
+a screen the bench mounts, or repeat an unchanged expensive failure. Fast diagnostics are not
+public-route acceptance; run the affected real route at the coherent integration boundary below.
+
 Proof selection lives in [`../docs/VALIDATION_WORKFLOW.md`](../docs/VALIDATION_WORKFLOW.md). Finite
 state machine: [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md).
 Checkpoint / NOW protocol: root `AGENTS.md` §3.
@@ -30,12 +37,16 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
   stays observer-only.
 - Performance probes bind candidate, route, runtime, hardware/profile, settings, viewport, seed/save,
   and raw trace identity. Never reuse a capture across acceptance cells.
+- `agent-loop` plans/summaries, UI fixtures and handling reports never promote evidence. `sf lab
+  trace` now returns actual poses/input as an internal diagnostic: successful capture exits 4,
+  not acceptance-green 0. Read `captureOk` and the original oracle result. Compare metrics only
+  for matching scenario/input/sample identity; a number is not a fun score.
 
 ## Routing
 
 - Program: `board-chunks.mjs` for the live §1C seams. `program-dispatch.mjs --next` / `--ready` / `--id PQ-XXX` only for the old packet queue. A drained dispatch is the board, not an empty plan.
-- Simulation: `sf-sim.mjs` and focused `check-*-sim`/compare scripts.
+- Simulation: `node scripts/agent-loop.mjs sim <scenario...>` for a no-boot batch; `sf-sim.mjs` and focused `check-*-sim`/compare scripts remain the owner doors. `--trace` adds diagnostic handling artifacts, never a second simulator.
 - Runtime liveness: `probe-runtime-witness.mjs` → `.devshots/runtime-witness/`.
 - Browser/Electron: launcher/probe scripts plus the shared game server and validation broker.
-- Frontend look/iteration: `node scripts/ui-bench.mjs` ([`../docs/UI_VISUAL_ITERATION.md`](../docs/UI_VISUAL_ITERATION.md)). A screen the bench mounts does not need a game boot.
+- Frontend look/iteration: `node scripts/ui-bench.mjs` ([`../docs/UI_VISUAL_ITERATION.md`](../docs/UI_VISUAL_ITERATION.md)). A screen the bench mounts does not need a game boot. Batch viewports with `--viewports`; inspect PNGs and finish untried controls before claiming the screen is done.
 - Assets / UI: the focused reachability, a11y, contrast, labels, and compositor checks.

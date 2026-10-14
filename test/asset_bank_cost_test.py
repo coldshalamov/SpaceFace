@@ -7,6 +7,9 @@ import unittest
 spec = importlib.util.spec_from_file_location('asset_bank_cost', Path(__file__).resolve().parents[1] / 'tools/blender/forge/asset_bank_cost.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+contract_spec = importlib.util.spec_from_file_location('asset_bank_contract', Path(__file__).resolve().parents[1] / 'tools/blender/forge/asset_bank_contract.py')
+contract = importlib.util.module_from_spec(contract_spec)
+contract_spec.loader.exec_module(contract)
 
 def fixture():
     return {'scene': 0, 'scenes': [{'nodes': [0]}], 'nodes': [{'mesh': 0}],
@@ -58,5 +61,21 @@ class SceneCostTests(unittest.TestCase):
     def test_position_type(self):
         doc = fixture(); doc['accessors'][0]['type'] = 'VEC2'
         with self.assertRaisesRegex(ValueError, 'VEC3'): module.scene_cost(doc)
+
+class SelectionTests(unittest.TestCase):
+    def test_all_or_exact_selection(self):
+        available = ['body', 'arm', 'jaw']
+        self.assertEqual(contract.select_asset_ids(available), available)
+        self.assertEqual(contract.select_asset_ids(available, 'jaw, body'), ['jaw', 'body'])
+        self.assertEqual(contract.select_asset_ids(available, ['arm']), ['arm'])
+    def test_invalid_selection_never_becomes_a_partial_export(self):
+        for requested in ['body,typo', 'typo', '', 'body,', 'body,body', ['body', 'typo'], []]:
+            with self.subTest(requested=requested):
+                with self.assertRaises(ValueError): contract.select_asset_ids(['body'], requested)
+    def test_portable_export_identity(self):
+        self.assertEqual(contract.validate_asset_id('ops_paired_capture_jaws'), 'ops_paired_capture_jaws')
+        for invalid in ['../escape', '..\\escape', 'C:escape', '', None, 'body/arm', 'a\0b']:
+            with self.subTest(asset_id=invalid):
+                with self.assertRaises(ValueError): contract.validate_asset_id(invalid)
 
 if __name__ == '__main__': unittest.main()

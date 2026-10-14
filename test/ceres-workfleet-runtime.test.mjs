@@ -309,7 +309,11 @@ test('complete production factory commissions the public site worker and yields 
     let sawThrust=false,maxTravel=0;
     // 7600 -> 12000: since the pressed-contact fix stopped tunneling through the breaker's
     // hull, the head's real collided transit through the well takes ~10000 ticks to reach
-    // extract under the full production registry (deterministic seed 47).
+    // extract under the full production registry (deterministic seed 47). Isolated 2026-10-14:
+    // the PR #360 pre-merge branch head (ecbea9f2) was still in head_retract at 12000, but the
+    // shipped merge (68ace4033d) deterministically reaches extract at tick 7078 — bit-identical
+    // on local Windows/Node 24 and CI Linux/Node 22 (Actions run 38501227696) — so the budget
+    // carries ~70% headroom and no fixture change is warranted.
     for(let i=0;i<12000;i++) {
       runtime.step(DT);
       const worker=state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.worker);

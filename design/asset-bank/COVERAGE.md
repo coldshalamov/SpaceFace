@@ -17,7 +17,7 @@ loads, matched aftermath, physical terrain, and large-place anatomy**. SpaceFace
 substantial fleet and station roster. Another set of recoloured hulls, random rocks, generic crates,
 or free-floating greebles would miss the largest reusable-content gaps.
 
-The first 36 entries are assembly-ready structural, fluid and docking interfaces. They turn existing
+The first 36 entries commission structural, fluid and docking interfaces intended for assembly. They turn existing
 whole industrial props into a vocabulary other agents can compose. Parallel production can build
 operations and cargo without changing the shared Forge kit. The terrain and large-place batches
 follow the same interfaces. Large compositions are intentionally included in the first bank; this

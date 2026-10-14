@@ -2,8 +2,17 @@
 // station UI already emits. Missing verbs are labeled unavailable. Nothing here
 // assigns state.player.credits.
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { COMMODITIES } from '../../src/data/commodities.js';
+import { killRewardRecipeFor } from '../../src/data/killRewards.js';
+import { combat } from '../../src/systems/combat.js';
+import { lootShards } from '../../src/systems/lootShards.js';
+import { makeShipEntitySpec } from '../../src/systems/ships.js';
 import {
+  HOME_FACTION,
   HOME_STATION,
+  IRON,
   bayQty,
   bootRedTeam,
   captureLedger,
@@ -18,6 +27,18 @@ import {
   stockQty,
   undock,
 } from './runtime.mjs';
+
+const LEGALITY = new Map(COMMODITIES.map((row) => [row.id, row.legality || 'legal']));
+
+const FACTIONS_SOURCE = fileURLToPath(new URL('../../src/systems/factions.js', import.meta.url));
+
+/** Shipped Allied tier minimum. `TIERS` in factions.js is the owner; quote() has no rep gate of its own. */
+export function shippingAlliedTier() {
+  const source = readFileSync(FACTIONS_SOURCE, 'utf8');
+  const match = source.match(/\{\s*name:\s*'Allied',\s*min:\s*(-?\d+)\s*\}/);
+  if (!match) throw new Error('shipping Allied tier missing from src/systems/factions.js');
+  return Number(match[1]);
+}
 
 export const ACTION_IDS = Object.freeze([
   'buy',
@@ -379,6 +400,173 @@ export function badQty(sim, commodityId, qty) {
     reason: response && response.reason || null,
     detail: { qty, response, stock: stockQty(sim.state, stationId, commodityId) },
   });
+}
+
+/**
+ * Accept live board offers for one faction and settle them through the missions
+ * writer. Standing moves because mission:completed asks factions to apply rep.
+ * This does not emit faction:repDelta.
+ */
+export function completeFactionMissions(sim, factionId = HOME_FACTION, limit = 24) {
+  const missions = sim.registry.get('missions');
+  const stationId = (sim.state.ui && sim.state.ui.dockedStationId) || HOME_STATION;
+  const before = repOf(sim.state, factionId);
+  const offerIds = [];
+  const missionIds = [];
+  if (!missions || typeof missions._completeMission !== 'function') {
+    return {
+      completed: 0,
+      repBefore: before,
+      repAfter: before,
+      repFromWriter: 0,
+      receipts: [],
+      missionIds,
+      alliedBand: shippingAlliedTier(),
+      offerIds,
+      reason: 'missions_unwired',
+    };
+  }
+  let completed = 0;
+  while (completed < limit) {
+    const board = sim.state.missions.boards && sim.state.missions.boards[stationId];
+    const slots = board && Array.isArray(board.slots) ? board.slots : [];
+    const offer = slots.find((row) => row && row.id && row.factionId === factionId && !offerIds.includes(row.id));
+    if (!offer) break;
+    const accepted = acceptMission(sim, offer.id);
+    if (!accepted.ok) break;
+    const mission = (sim.state.missions.active || []).find((row) => row && row.id === accepted.detail.activeId);
+    if (!mission || mission.factionId !== factionId) break;
+    missions._completeMission(mission, sim.state.missions.active.indexOf(mission));
+    offerIds.push(offer.id);
+    missionIds.push(mission.id);
+    completed += 1;
+  }
+  const store = sim.state.missions && Array.isArray(sim.state.missions.receipts)
+    ? sim.state.missions.receipts : [];
+  const receipts = [];
+  let repFromWriter = 0;
+  for (let i = 0; i < missionIds.length; i += 1) {
+    const receipt = store.find((row) => row && row.missionId === missionIds[i] && row.outcome === 'completed');
+    if (!receipt) continue;
+    receipts.push({
+      missionId: receipt.missionId,
+      outcome: receipt.outcome,
+      repDelta: receipt.repDelta,
+    });
+    repFromWriter += Number(receipt.repDelta) || 0;
+  }
+  return {
+    completed,
+    repBefore: before,
+    repAfter: repOf(sim.state, factionId),
+    repFromWriter,
+    receipts,
+    missionIds,
+    alliedBand: shippingAlliedTier(),
+    offerIds,
+    reason: completed ? null : 'no_faction_offer',
+  };
+}
+
+/**
+ * Same-station iron book at an exact standing. quote() reads faction rep; this
+ * sets that field for the read and restores it. It does not emit faction:repDelta
+ * and it does not execute a trade.
+ */
+export function heliosIronQuote(sim, rep, qty = 10) {
+  const rec = sim.state.factions && sim.state.factions[HOME_FACTION];
+  if (!rec || !Number.isFinite(Number(rec.rep))) {
+    return { ok: false, reason: 'no_faction_record', rep, qty, buyTotal: null, sellTotal: null };
+  }
+  const previous = rec.rep;
+  rec.rep = rep;
+  try {
+    const econ = econOf(sim);
+    const buyQuote = econ.quote(HOME_STATION, IRON, 'buy', qty);
+    const sellQuote = econ.quote(HOME_STATION, IRON, 'sell', qty);
+    const buyTotal = buyQuote && buyQuote.ok ? Number(buyQuote.total) : null;
+    const sellTotal = sellQuote && sellQuote.ok ? Number(sellQuote.total) : null;
+    return {
+      ok: buyTotal != null && sellTotal != null,
+      rep,
+      qty,
+      buyTotal,
+      sellTotal,
+    };
+  } finally {
+    rec.rep = previous;
+  }
+}
+
+/**
+ * Kill one hostile through combat. Loot is whatever the kill-reward recipe rolls.
+ * The caller does not choose the commodity.
+ */
+export function runKillRecipe(seed) {
+  const sim = bootRedTeam(seed, [combat, lootShards]);
+  const creditsBefore = sim.state.player.credits;
+  leaveDock(sim);
+  const player = sim.state.entities.get(sim.state.playerId);
+  const foe = sim.spawn(makeShipEntitySpec('ship_drifter', {
+    team: 1,
+    factionId: 'faction_reach',
+    pos: { x: (player.pos?.x || 0) + 40, z: player.pos?.z || 0 },
+    ai: { hostileTeams: [0], huntPlayer: true },
+  }));
+  foe.data.shipClass = foe.data.shipClass || 'gunship';
+  foe.data.ai = { ...(foe.data.ai || {}), hostileTeams: [0], huntPlayer: true };
+  const recipe = killRewardRecipeFor(foe);
+  const combatSys = sim.registry.get('combat');
+  if (!combatSys || typeof combatSys.onHit !== 'function') {
+    return {
+      ok: false,
+      reason: 'combat_unwired',
+      recipeId: recipe.id,
+      commodities: [],
+      bay: {},
+      unpaid: {},
+      illicit: [],
+      restricted: [],
+      creditsBefore,
+      sim,
+    };
+  }
+  const hit = combatSys.onHit({
+    targetId: foe.id,
+    ownerId: player.id,
+    damage: 100000,
+    damageType: 'kinetic',
+    pos: { x: foe.pos.x, z: foe.pos.z },
+  });
+  stepTicks(sim, 48);
+  const bay = {};
+  const items = sim.state.player.salvageBay && sim.state.player.salvageBay.items;
+  if (items) {
+    for (const id of Object.keys(items)) bay[id] = Math.floor(Number(items[id]) || 0);
+  }
+  const legalityOf = (id) => LEGALITY.get(id) || 'legal';
+  const unpaid = {};
+  const illicit = [];
+  const restricted = [];
+  for (const id of Object.keys(bay)) {
+    if (!(bay[id] > 0) || legalityOf(id) === 'legal') continue;
+    unpaid[id] = bay[id];
+    illicit.push(id);
+    if (legalityOf(id) === 'restricted') restricted.push(id);
+  }
+  return {
+    ok: hit && hit.ok === true && foe.alive === false,
+    reason: foe.alive === false ? null : 'target_survived',
+    recipeId: recipe.id,
+    commodities: (recipe.materials || []).map((row) => row.commodityId),
+    bay,
+    unpaid,
+    illicit,
+    restricted,
+    killed: foe.alive === false,
+    creditsBefore,
+    sim,
+  };
 }
 
 /** Standing moves only through the faction writer's public event. */

@@ -4,10 +4,12 @@ import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { busFaultSummary } from '../core/eventBus.js';
 import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
+import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
+import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
@@ -221,7 +223,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { projectedWidthPx } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -326,7 +328,7 @@ import {
   applyEntityMeshVisibility,
   isAuthoredPendingStatus,
   isProtectedEntityMesh,
-  retainShownSurvivalGlass,
+  retainShownCameraGlass,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
 import {
@@ -8180,6 +8182,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   let navMatrixDirty = false;
   let navColorDirty = false;
   let entitiesVisited = classifiedFrame ? classifiedFrame.entitiesVisited : 0;
+  const sceneTruthArmed = globalThis.__SF_SCENE_TRUTH_WITNESS__ === true;
   for (const item of entities) {
     if (!classifiedFrame) entitiesVisited++;
     const entity = item && item.entity || item;
@@ -8189,6 +8192,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
     const bubble = root.userData.shieldBubble;
     if (bubble) {
       bubble.visible = false;
+      if (sceneTruthArmed) bubble.userData.sceneTruthShieldInstance = -1;
       const uniforms = bubble.material && bubble.material.uniforms;
       const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
       if (shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id))) {
@@ -8198,6 +8202,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
         const shieldIndex = shieldCount++;
         if (shieldIndex < pool.shield.capacity) {
           const shieldMesh = pool.shield.mesh;
+          if (sceneTruthArmed) bubble.userData.sceneTruthShieldInstance = shieldIndex;
           const shieldAttrs = shieldAuxAttrs(shieldMesh);
           const flashAttr = shieldAttrs.flash;
           const baseAttr = shieldAttrs.base;
@@ -19120,6 +19125,12 @@ export const render = {
           camObj.updateProjectionMatrix();
         }
       }
+      // particleQuality also selects the backdrop tier (star/flare counts, bake sizes), so a
+      // quality-mode switch must re-resolve the sky and not just the VFX pools. applyGpuTier
+      // rebuilds only when the tier actually changed, so a no-op settings re-emit pays nothing.
+      if (p.key === 'particleQuality' || p.key == null) {
+        if (this.spaceBg && typeof this.spaceBg.applyGpuTier === 'function') this.spaceBg.applyGpuTier();
+      }
     });
     // On sector change, reconcile rather than blindly clearing: the new sector's entities are
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
@@ -26729,13 +26740,16 @@ export const render = {
       previous,
       currentOnly
         ? 1
-        : poseSpanAlpha(
-          snapshot,
-          previous,
-          this.state ? this.state.accumulator : NaN,
-          LOOP_FIXED_DT,
-          alpha,
-        ),
+        : (Number.isFinite(this._snapshotPresentationAlpha)
+          && this._snapshotPresentationSequence === snapshot.sequence
+          ? this._snapshotPresentationAlpha
+          : poseSpanAlpha(
+            snapshot,
+            previous,
+            this.state ? this.state.accumulator : NaN,
+            LOOP_FIXED_DT,
+            alpha,
+          )),
       slot,
     );
     if (!applied) return false;
@@ -26993,8 +27007,7 @@ export const render = {
         // the query takes the row back, is the in-view pop. The hold does not
         // reveal a root that has not been shown, and it does not keep a root
         // whose pose is missing. Off the frustum the ordinary rule releases it.
-        const retainShown = retainShownSurvivalGlass({
-          survival: survivalRun,
+        const retainShown = this.state.mode === 'flight' && retainShownCameraGlass({
           alreadyVisible: mesh.visible !== false,
           onFrustum: isOnLiveCameraView(liveViewFrustum, mesh.position, cullRadius),
           snapshotMissing: !posed,
@@ -27099,8 +27112,8 @@ export const render = {
         }
         if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
 
-        // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
-        // width with hysteresis. Newly visible roots are fully posed above before this decision.
+        // Visible ships retain their authored body. Props still resolve their
+        // detail from projected size after the latest completed pose is applied.
         _viewBandOptions.isPlayer = isPlayer;
         _viewBandOptions.dx = mesh.position.x - bounds.x;
         _viewBandOptions.dz = mesh.position.z - bounds.z;
@@ -27112,6 +27125,7 @@ export const render = {
         // _viewBandOptions already carries forceInner; a middle band can only exist with it
         // false, so the pooled struct answers exactly like the callee's `{}` default.
         const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot, _viewBandOptions);
+        const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
         let lodLevel = userData.lod ? userData.lod.level : null;
         const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
         // Projected size must measure the drawn envelope, not the presence proxy: a station's
@@ -27124,15 +27138,18 @@ export const render = {
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? Math.max(hlodVisualRadius, cullRadius)
           : cullRadius;
-        const projectedPx = projectedWidthPx(
+        const projectedPx = presentedLodWidthPx(
+          userData,
           mesh.position,
           lodRadius,
           this.cam && this.cam.obj,
           this.viewport,
+          isPlayer,
+          typeName,
         );
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx, this.state.simTime);
+          lodLevel = resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
           if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
@@ -27142,7 +27159,6 @@ export const render = {
         }
         // Keeper masks remain correctness at every LOD and decorative sleep cadence.
         if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
-        const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
         // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
         // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
         // 'place' covers the landmark casters (hub, refinery, wreck cathedral) — the same
@@ -27252,8 +27268,7 @@ export const render = {
         // the camera is already drawing, that blank and the later reveal are the
         // in-view pop. The hold is not a first-show skip: a root that is not
         // already visible still waits on shouldSubmitEntityMesh.
-        const retainShown = retainShownSurvivalGlass({
-          survival: survivalRun,
+        const retainShown = this.state.mode === 'flight' && retainShownCameraGlass({
           alreadyVisible: mesh.visible !== false,
           onFrustum: onLiveGlass === true,
           snapshotMissing: !posed,
@@ -28687,6 +28702,15 @@ export const render = {
       tryPresentedCall(this, 'ship-pitch', () => {
         updateShipPitchPresentation(this.state, this._presentationFrameDt);
       });
+      if (this._snapshotFence) {
+        this._snapshotPresentationAlpha = this._snapshotFence.samplePresentationAlpha(
+          this._presentationFrameDt,
+          this.state ? this.state.accumulator : 0,
+          LOOP_FIXED_DT,
+          alpha,
+        );
+        this._snapshotPresentationSequence = this._snapshotFence.sequence;
+      }
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
       if (this.cam && typeof this.cam.follow === 'function') {
@@ -29654,7 +29678,7 @@ export const render = {
 
   renderFrame(alpha, frameDt, presentationFrame = null) {
     if (!this.prepareFrame(alpha, frameDt, presentationFrame)) return;
-    this.drawPreparedFrame();
+    if (this.drawPreparedFrame() === true) publishSceneTruthPlayStep(this);
   },
 
   // Center the key light + its shadow camera on the player each frame. The light direction stays
@@ -32423,7 +32447,7 @@ export const render = {
     // (scene.matrixWorldAutoUpdate is false; bloom, graph scene+normal passes, and the internal
     // shadow-map pass all reuse this result). No force flag: clean subtrees keep their
     // matrixWorldNeedsUpdate skip, matching the old per-pass call's multiply work.
-    if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
+    updatePresentedSceneMatrices(scene);
     // Still-linking drawables wait out the driver inside whichever scene pass draws them first.
     // The bloom route brackets its own passes; the graph and native routes get the same
     // hide→render→restore guard here so a mid-link program cannot stall either presented path.

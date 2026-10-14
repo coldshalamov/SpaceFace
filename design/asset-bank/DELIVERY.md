@@ -4,13 +4,13 @@ The first complete authoring bank contains **156 distinct models and 12 composit
 
 ## Verified exports and tests
 
-The exact combined file projection passes the independent contract validator: **156 models / 468 actual GLBs / 196,921,332 GLB bytes**. Each model has a sidecar, all-LOD transformed bounds, occurrence costs, collision/socket declarations and content hashes. All 12 recipes pass transformed bounds, joins, approach/exit proxy and actual dependency-file checks. Their 47 unique dependencies are pinned to141LOD hashes.
+The exact combined file projection passes the independent contract validator: **156 models / 468 actual GLBs / 196,921,332 GLB bytes**. Each model has a sidecar, all-LOD transformed bounds, occurrence costs, collision/socket declarations and content hashes. All 12 recipes pass transformed bounds, joins, approach/exit proxy and actual dependency-file checks. Their 47 unique dependencies are pinned to 141 LOD hashes.
 
-Focused JavaScript suites pass108tests (66contract,15catalogue/planner,27assembly), alongside18Python bounds/cost tests. Reviewer's strict scene semantics and newer changes are preserved. Repository-wide CI is not all green: observed failures also occur on the actual tested master68ace403 baseline, run38501227696; latest-head CI is monitored separately.
+Focused JavaScript suites pass 117 tests (75 contract, 15 catalogue/planner, 27 assembly), alongside 21 Python bounds/cost/selection tests. Reviewer's strict scene semantics and newer changes are preserved. Repository-wide CI is not all green: observed failures also occur on the actual tested master68ace403 baseline, run38501227696; latest-head CI is monitored separately.
 
 ## Visual review
 
-Actual exported CPU views were inspected across all families, including coarse LODs. Revisions include continuous pipe elbows, planar coarse windows, preserved transformer fins and array patches, a detailed lathe, sagging sacks, fractured engine/hull pieces, natural strata cores, hollow growths and a genuinely curved nerve corner. Large pieces include dock supports, habitat shells, terraces, a fabrication hall, ring segments and a dish backframe. Composition renders show candidate arrangements using exact reviewed peers.
+The producer reports inspecting actual exported CPU views across all families, including coarse LODs. This upstream reconciliation repeats structural checks, not the visual review. Revisions include continuous pipe elbows, planar coarse windows, preserved transformer fins and array patches, a detailed lathe, sagging sacks, fractured engine/hull pieces, natural strata cores, hollow growths and a genuinely curved nerve corner. Large pieces include dock supports, habitat shells, terraces, a fabrication hall, ring segments and a dish backframe. Composition renders show candidate arrangements using exact reviewed peers.
 
 See family review manifests and assets/models/asset-bank/large/evidence/recipes-v3. These are export views, not live gameplay captures or final visual acceptance.
 

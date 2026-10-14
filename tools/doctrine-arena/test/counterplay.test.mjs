@@ -2,9 +2,13 @@
 // The arena boots the authoritative runtime. It does not start tacticalAI.
 
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import { Worker } from 'node:worker_threads';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CombatDoctrineId } from '../../../src/ai/combatDoctrine.js';
 import {
   COUNTERPLAY_DOCTRINES,
@@ -25,7 +29,6 @@ import { runDemonstrations, runTournament, summarizeReceipts } from '../tourname
 const SHIP_DOCTRINE_IDS = new Set(Object.values(CombatDoctrineId));
 const STRONG = [
   'cp_heavy_anchor_grappler',
-  'cp_feint_break_courier',
   'cp_rescue_tow',
   'cp_prize_runner',
   'cp_release_orbit_hunter',
@@ -282,7 +285,41 @@ test('held-out arena separates counters and stays on the real physics', async ()
     assert.equal(cover.counter[i].fireAuthorized, 0);
   }
   const corridor = grouped.get('cp_corridor_pack_leader');
-  assert.ok(corridor.resists.every((row) => row.telegraphTicks >= 30 && row.goalProgress > 0.5));
+  for (const row of corridor.resists) {
+    assert.equal(row.goalComplete, false, `seed ${row.seed} exitDist ${row.detail.exitDist}`);
+    assert.ok(row.detail.exitDist > 100, `seed ${row.seed} final exitDist ${row.detail.exitDist}`);
+    assert.ok(row.telegraphTicks >= 30);
+  }
+  const collateralDamage = grouped.get('cp_collateral_hold');
+  for (let i = 0; i < HELD_OUT_SEEDS.length; i += 1) {
+    assert.ok(collateralDamage.resists[i].playerDamage > collateralDamage.counter[i].playerDamage);
+  }
+  const grappler = grouped.get('cp_heavy_anchor_grappler');
+  for (const row of grappler.resists) {
+    assert.ok(row.detail.anchorTicks > 40, JSON.stringify(row.detail));
+    assert.ok(row.detail.flankDist <= row.detail.flankRadius, JSON.stringify(row.detail));
+    assert.equal(row.goalComplete, true, JSON.stringify(row.detail));
+    assert.equal(row.goalProgress, progressFromEnd(row.detail.flankDist, row.detail.flankRadius * 4));
+    assert.ok(row.goalProgress < progressFromEnd(row.detail.minFlank, row.detail.flankRadius * 4));
+  }
+  const grappler101 = grappler.resists.find((row) => row.seed === 101);
+  assert.equal(grappler101.detail.flankDist, 7.378);
+  assert.equal(grappler101.detail.minFlank, 0.964);
+  assert.equal(grappler101.goalProgress, progressFromEnd(7.378, 144));
+  assert.notEqual(grappler101.goalProgress, progressFromEnd(0.964, 144));
+  const decoy101 = grouped.get('cp_tether_bait_decoy').counter.find((row) => row.seed === 101);
+  assert.equal(decoy101.detail.longTether, false);
+  assert.equal(decoy101.detail.endDist, 356.335);
+  assert.equal(decoy101.detail.closest, 20.378);
+  assert.equal(decoy101.goalProgress, decoyProgress(356.335));
+  assert.equal(decoyProgress(356.335), 0);
+  assert.equal(decoyProgress(20.378), 0.166);
+  assert.notEqual(decoy101.goalProgress, decoyProgress(20.378));
+  for (const id of ['cp_feint_break_courier', 'cp_corridor_pack_leader', 'cp_collateral_hold', 'cp_cover_peel', 'cp_heavy_anchor_grappler']) {
+    const poses = HELD_OUT_SEEDS.map((seed) => grouped.get(id).resists.find((row) => row.seed === seed).end.opponent);
+    assert.notDeepEqual(poses[0], poses[1], id);
+    assert.notDeepEqual(poses[1], poses[2], id);
+  }
   const collateral = grouped.get('cp_collateral_hold');
   assert.ok(collateral.resists.every((row) => row.telegraphTicks >= 30));
   assert.ok(collateral.resists.concat(collateral.counter).every((row) => row.opponentWeapons >= 1));
@@ -294,6 +331,157 @@ test('held-out arena separates counters and stays on the real physics', async ()
       .map((row) => row.phaseTrace);
     assert.equal(new Set(traces).size, 10, `phase traces collided on seed ${seed}: ${traces.join(' | ')}`);
   }
+});
+
+function progressFromEnd(distance, span) {
+  const raw = 1 - distance / span;
+  return Math.round(Math.max(0, Math.min(1, raw)) * 1000) / 1000;
+}
+
+function decoyProgress(separation) {
+  const raw = Math.max(0, Math.min(1, 1 - separation / 120)) * 0.2;
+  return Math.round(raw * 1000) / 1000;
+}
+
+test('a best-ever flank approach does not keep the win after the hull has left', async () => {
+  const receipt = await runCounterplayScenario({
+    doctrineId: 'cp_heavy_anchor_grappler',
+    seed: 101,
+    pilotId: 'rope_manipulator',
+    terrain: 'corridor',
+    tape: 'archetype',
+    ticks: 340,
+  });
+  const radius = receipt.detail.flankRadius;
+  assert.ok(receipt.detail.anchorTicks > 40, JSON.stringify(receipt.detail));
+  assert.ok(receipt.detail.minFlank <= radius, JSON.stringify(receipt.detail));
+  assert.ok(receipt.detail.flankDist > radius, JSON.stringify(receipt.detail));
+  assert.equal(receipt.goalComplete, false);
+  assert.equal(receipt.goalProgress, progressFromEnd(receipt.detail.flankDist, radius * 4));
+  assert.ok(receipt.goalProgress < progressFromEnd(receipt.detail.minFlank, radius * 4));
+});
+
+test('decoy seed 101 progress matches the final separation', async () => {
+  const receipt = await runCounterplayScenario({
+    doctrineId: 'cp_tether_bait_decoy', seed: 101, tape: 'counter',
+  });
+  assert.equal(receipt.detail.longTether, false);
+  assert.equal(receipt.detail.endDist, 356.335);
+  assert.equal(receipt.detail.closest, 20.378);
+  assert.equal(decoyProgress(356.335), 0);
+  assert.equal(decoyProgress(20.378), 0.166);
+  assert.equal(receipt.goalProgress, decoyProgress(receipt.detail.endDist));
+  assert.notEqual(receipt.goalProgress, decoyProgress(receipt.detail.closest));
+});
+
+test('the feint phase closes on the feint point before the break', async () => {
+  const receipt = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 101, tape: 'resists',
+  });
+  assert.equal(receipt.pilotId, 'close_booster');
+  assert.ok(receipt.detail.feintStart > 0);
+  assert.ok(
+    receipt.detail.feintMin < receipt.detail.feintStart,
+    `feint min ${receipt.detail.feintMin} start ${receipt.detail.feintStart}`,
+  );
+});
+
+test('the resists feint pilot flies close_booster and a frozen player changes the separation', async () => {
+  const chasing = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 101, tape: 'resists',
+  });
+  const frozen = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 101, tape: 'resists', pilotId: 'stationary',
+  });
+  assert.equal(chasing.pilotId, 'close_booster');
+  assert.equal(frozen.pilotId, 'stationary');
+  assert.ok(chasing.playerShift > 1, `chasing shift ${chasing.playerShift}`);
+  assert.equal(frozen.playerShift, 0);
+  assert.notEqual(chasing.detail.gateDist, frozen.detail.gateDist);
+  assert.notEqual(chasing.goalProgress, frozen.goalProgress);
+});
+
+test('a doctrine change moves the tape and an edit to tacticalAI.js does not', async (t) => {
+  const feint = await runCounterplayScenario({
+    doctrineId: 'cp_feint_break_courier', seed: 17, tape: 'resists', ticks: 80,
+  });
+  const corridor = await runCounterplayScenario({
+    doctrineId: 'cp_corridor_pack_leader', seed: 17, tape: 'resists', ticks: 80,
+  });
+  assert.equal(feint.tacticalAI, false);
+  assert.equal(feint.systems.includes('tacticalAI'), false);
+  assert.notDeepEqual(feint.end, corridor.end);
+  assert.notEqual(feint.goalProgress, corridor.goalProgress);
+
+  const dir = mkdtempSync(path.join(tmpdir(), 'sf-arena-tape-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const stubPath = path.join(dir, 'tacticalAI-stub.mjs');
+  const markerPath = path.join(dir, 'constructed.txt');
+  const registerPath = path.join(dir, 'register.mjs');
+  const hookPath = path.join(dir, 'hook.mjs');
+  const runnerPath = path.join(dir, 'runner.mjs');
+  writeFileSync(stubPath, `
+import { appendFileSync } from 'node:fs';
+const marker = process.env.SF_TACTICAL_MARKER;
+globalThis.__SF_TACTICAL_AI_EVALUATED__ = true;
+appendFileSync(marker, 'evaluated\\n');
+export const PRODUCTION_ENEMY_MIND_CONFIG = { stub: true };
+export function createTacticalAISystem() {
+  appendFileSync(marker, 'constructed\\n');
+  return {
+    name: 'tacticalAI',
+    init() { appendFileSync(marker, 'init\\n'); },
+    update() { appendFileSync(marker, 'update\\n'); },
+  };
+}
+`);
+  writeFileSync(hookPath, `
+import { pathToFileURL } from 'node:url';
+export async function resolve(specifier, context, nextResolve) {
+  if (typeof specifier === 'string' && specifier.includes('/systems/tacticalAI.js')) {
+    return { url: pathToFileURL(process.env.SF_TACTICAL_STUB).href, shortCircuit: true };
+  }
+  return nextResolve(specifier, context);
+}
+`);
+  writeFileSync(registerPath, `
+import { register } from 'node:module';
+import { pathToFileURL } from 'node:url';
+register(pathToFileURL(process.env.SF_TACTICAL_HOOK).href, import.meta.url);
+`);
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const runnerUrl = pathToFileURL(path.join(repoRoot, 'tools/doctrine-arena/run.mjs')).href;
+  writeFileSync(runnerPath, `
+import { runCounterplayScenario } from ${JSON.stringify(runnerUrl)};
+const receipt = await runCounterplayScenario({
+  doctrineId: 'cp_feint_break_courier', seed: 17, tape: 'resists', ticks: 80,
+});
+process.stdout.write(JSON.stringify({
+  end: receipt.end,
+  goalProgress: receipt.goalProgress,
+  tacticalAI: receipt.tacticalAI,
+}));
+`);
+  const child = spawnSync(process.execPath, ['--import', pathToFileURL(registerPath).href, runnerPath], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      SF_TACTICAL_STUB: stubPath,
+      SF_TACTICAL_MARKER: markerPath,
+      SF_TACTICAL_HOOK: hookPath,
+    },
+  });
+  assert.equal(child.status, 0, child.stderr || child.error?.message);
+  const edited = JSON.parse(child.stdout);
+  assert.equal(edited.tacticalAI, false);
+  assert.deepEqual(edited.end, feint.end);
+  assert.equal(edited.goalProgress, feint.goalProgress);
+  let marker = '';
+  try { marker = readFileSync(markerPath, 'utf8'); } catch { marker = ''; }
+  assert.equal(marker.includes('evaluated'), false);
+  assert.equal(marker.includes('constructed'), false);
+  assert.equal(marker.includes('update'), false);
 });
 
 test('the same seed repeats and a memory reload does not move the receipt', async () => {

@@ -6,12 +6,13 @@ No live-game integration or performance acceptance is implied.
 Run Blender with --python this_file; optional -- asset_name...; -- --review
 renders six representative exported GLBs (not the source scene).
 """
-import math, os, sys, json, hashlib
+import argparse, math, os, sys, json, hashlib
 from pathlib import Path
 sys.path.insert(0,os.path.dirname(__file__))
 import bpy
 import forge as F
-from asset_bank_export import export_asset
+from asset_bank_export import export_asset, render_glb_preview
+from asset_bank_contract import select_asset_ids
 ROOT=Path(__file__).resolve().parents[3]
 OUT=Path(os.environ.get('SPACEFACE_OPERATIONS_OUT',str(ROOT/'assets/models/asset-bank/operations')))
 GROUPS={
@@ -558,19 +559,26 @@ def inspect_remaining():
    sheet.save(folder/('operations_'+group+'_inspection_'+str(page+1)+'.png'))
 
 def main():
- args=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []
+ parser=argparse.ArgumentParser();parser.add_argument('assets',nargs='*');parser.add_argument('--review',action='store_true')
+ args=parser.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
+ available=[name for names in GROUPS.values() for name in names]
+ selected=set(select_asset_ids(available,args.assets or (HEROES if args.review else None)))
+ if args.review:
+  preview=ROOT/'.devshots/asset-bank/operations';preview.mkdir(parents=True,exist_ok=True)
+  for name in available:
+   if name in selected:render_glb_preview(str(OUT/('ops_'+name+'_lod0.glb')),str(preview/(name+'_export.png')),width=700,height=550,samples=32)
+  return
  rows=[]
  for group,names in GROUPS.items():
   for name in names:
-   if args and name not in args:continue
+   if name not in selected:continue
    F.reset_scene();k=upgrade(build(name,group),name)
-   row=export_asset(k.s,str(OUT),'ops_'+name,group,name.replace('_',' '),collision_boxes=k.cols,tags=['operations',group,'forge','reusable'])
-   row['motionContracts']=k.moves;row['recipe']=str(Path(__file__).relative_to(ROOT));rows.append(row);print('OPERATIONS_DONE',name,flush=True)
- if not args:
+   row=export_asset(k.s,str(OUT),'ops_'+name,group,name.replace('_',' '),collision_boxes=k.cols,tags=['operations',group,'forge','reusable'],motion_contracts=k.moves)
+   row['recipe']=str(Path(__file__).relative_to(ROOT));rows.append(row);print('OPERATIONS_DONE',name,flush=True)
+ if not args.assets:
   p=ROOT/'design/asset-bank/operations.json';p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps({'schemaVersion':2,'family':'operations','assetCount':len(rows),'status':'reusable_asset_bank_not_live_game','sourceFrame':'+X forward +Y port +Z up; metres','artReferences':['docs/visual-assets/LOOK.md','tools/blender/forge/ships/helios_lark.py','tools/blender/forge/ships/ashline_rig.py'],'collisionPolicy':'Compound approximate AABBs, preserve hollow centers; rest-pose only, consumer updates moving proxies.','assets':rows},indent=2)+'\n')
 if __name__=='__main__':
  if '--inspect-remaining' in sys.argv:inspect_remaining()
  elif '--contacts' in sys.argv:contacts()
  elif '--compare' in sys.argv:comparison(sys.argv[sys.argv.index('--compare')+1])
- elif '--review' in sys.argv:review()
  else:main()

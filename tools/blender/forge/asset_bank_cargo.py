@@ -429,10 +429,12 @@ def details(s,name):
 
 def main():
  p=argparse.ArgumentParser();p.add_argument('--only');p.add_argument('--render-all',action='store_true');p.add_argument('--render',action='store_true');p.add_argument('--render-lod2',action='store_true');args=p.parse_args(sys.argv[sys.argv.index('--')+1:]if'--'in sys.argv else[])
+ from asset_bank_contract import select_asset_ids
+ selected=set(select_asset_ids([name for name,_,_ in RECORDS],args.only))
  preview_first=['cryogenic-dewar','insulated-medical-carrier','machine-tool-skid','tether-fairlead','fractured-drive-bell','exposed-avionics-tray']
  ordered=sorted(RECORDS,key=lambda r:preview_first.index(r[0])if r[0]in preview_first else len(preview_first)+RECORDS.index(r))if args.render_all else RECORDS
  for index,(name,description,kind)in enumerate(ordered):
-  if args.only and args.only!=name:continue
+  if name not in selected:continue
   F.reset_scene();s=build(name);aid='cargo-'+name
   export_asset(s,OUT,aid,'cargo',description,collision_boxes=s.solids,tags=[kind,'reusable','industrial','forge'])
   if args.render_all or args.render and(index in(0,12,24)or args.only):

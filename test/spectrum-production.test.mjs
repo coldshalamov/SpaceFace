@@ -55,7 +55,7 @@ test('measurement and braking use the current physical source, and a retired sou
   assert.ok(Math.abs(publicSpectrum(model).bearingDeg - bearingDeg(f.player.pos, source.pos)) < 0.01);
   model.revealed = true; model.fix = { x: 400, z: 300 }; model.velocity = { x: 0, z: 0 }; model.fixTime = 8;
   source.alive = false; refreshSpectrumBodies(model, f.state);
-  assert.equal(applyBrake(model, { x: 400, z: 300 }, { x: 0, z: 0 }, 8).reason, 'no-body');
+  assert.equal(applyBrake(model, { x: 400, z: 300 }, { x: 0, z: 0 }, 8).reason, 'no-brake-payoff');
   assert.equal(model.resolved, false);
   f.system.destroy(); f.sim.dispose();
 });
@@ -119,6 +119,9 @@ test('live pose save/restore preserves displacement and missing bodies across al
     bindSpectrumWorld(model, { x: 100, z: -200 }); model.sectorId = 'sector_helios_prime';
     materializeSpectrum(model, f.state, f.sim.helpers);
     assert.ok(model.bindings.length > 0);
+    for (const prop of def.props) {
+      assert.ok(model.bindings.some((binding) => binding.key === `prop:${prop.id}`), `${def.id} ${prop.id}`);
+    }
     const first = f.state.entities.get(model.bindings[0].entityId);
     first.pos.x += 100; first.vel.z += 3;
     const saved = captureSpectrumBodies(model, f.state);

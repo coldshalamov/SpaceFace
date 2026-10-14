@@ -58,6 +58,9 @@ import { setThrusterHealth } from '../core/physicsAuthority.js';
 import { driveCounterplay, isCounterplayOwned, rebindCounterplayCast } from '../ai/counterplay/live.js';
 import { placeCounterplayAdventure, clearCounterplayAdventure } from '../ai/counterplay/adventure.js';
 
+// Set when this module body runs. The doctrine arena must stay false.
+globalThis.__SF_TACTICAL_AI_EVALUATED__ = true;
+
 const OWNERSHIP_REFRESH_TICKS = 3;
 function counterplayFreeRoster(base, stateProvider) {
   if (!base) return base;

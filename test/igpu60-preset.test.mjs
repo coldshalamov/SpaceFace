@@ -18,6 +18,7 @@ test('iGPU 60 keeps the authored picture and names what it substitutes', () => {
   assert.equal(preset.label, 'iGPU 60');
   assert.deepEqual(preset.stays, ['bloom', 'engine trails', 'energy materials']);
   assert.ok(preset.substitutes.includes('render scale 0.75'));
+  assert.ok(preset.substitutes.includes('pixel ratio 1x'));
   assert.ok(preset.substitutes.includes('frame cap 60'));
   assert.equal(preset.substitutes.includes('bloom off'), false);
 
@@ -26,6 +27,7 @@ test('iGPU 60 keeps the authored picture and names what it substitutes', () => {
   assert.equal(tier.engineTrails, true);
   assert.equal(tier.energyMaterials, true);
   assert.equal(tier.renderScale, 0.75);
+  assert.equal(tier.pixelRatioCap, 1);
   assert.equal(tier.particleQuality, 'medium');
   assert.equal(tier.shadows, false);
   assert.equal(tier.renderGraph, false);
@@ -36,6 +38,7 @@ test('iGPU 60 keeps the authored picture and names what it substitutes', () => {
   assert.equal(state.settings.video.engineTrails, true);
   assert.equal(state.settings.video.energyMaterials, true);
   assert.equal(state.settings.video.renderScale, 0.75);
+  assert.equal(state.settings.video.pixelRatioCap, 1);
   assert.equal(state.settings.video.frameCap, 60);
   assert.equal(state.settings.video.qualityPreset, 'igpu60');
   assert.equal(state.player.credits, createGameState(16500).player.credits);

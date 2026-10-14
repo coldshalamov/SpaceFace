@@ -23,41 +23,56 @@ temporary copy of that file. It is not applied to the working tree.
 `origin/master` copies of both files succeeds. The economy hunk waits on PR 260.
 The cargo hunk can land on its own.
 
-## Exploit 1 — allied standing washes the same berth
+## Standing and kill loot — tested, not confirmed by injection
+
+`zero_spread_trade_cycles` raises standing by completing live Helios faction
+missions through the missions writer. It does not emit `faction:repDelta` and
+does not call that injection a confirmed exploit. `contraband_relabel` kills a
+hostile through combat and reads the kill-reward recipe. It does not choose a
+`kill_burst` commodity. Either family is `exploit` only when that real path
+prints the loop, and `tested-not-broken` when it does not. `quote()` and
+`cashInSalvage` are not rewritten here.
+
+## Historical note — the old 200 wash figure
 
 **Family:** `zero_spread_trade_cycles`
 
-Standing multipliers in `priceModForState` (`src/systems/factions.js`) discount
-buys and raise sells. The book spread is not wide enough to absorb that once
-`faction_scn` rep is about 200 or higher. At unchanged stock the sell integral
-and the buy integral cover the same interval, so the multipliers are the whole
-margin. Buy uses `ceil` and sell uses `floor`, which is not enough to close it.
+The `200` recorded here is an old note about standing multipliers. Shipping
+`quote()` does not use it. There is no reputation gate at 200. After `spreadOf`,
+`quote()` clamps `sellMultiplier` so a benefit keeps the same-port book from
+inverting over an unchanged stock interval (`src/systems/economy.js`, the
+`bidFactor` clamp). The shipped Allied tier is the `Allied` entry in
+`src/systems/factions.js` (`min: 400`). On the allied wash seed (1846) a
+10-unit Helios iron quote (`station_helios`, `cmdty_ore_iron`) stays negative
+at rep 0 (buy 360 / sell 298), at that Allied tier (buy 356 / sell 302), and
+at rep 1000 (buy 349 / sell 308).
 
-Reproduced by `ui:buy` / `ui:sell` at Helios (`station_helios`, iron):
+Standing multipliers in `priceModForState` (`src/systems/factions.js`) still
+discount buys and raise sells. The rounds below are the pre-clamp reproduction.
+Shipping `quote()` settles the clamped book instead.
 
-- Rep 0, funded only by `ui:service loan`: a 5-unit round trip loses 13 cr.
-  Stock returns to 32.76.
-- The player path into the prices is `faction:repDelta` of +15, the same delta
-  `mission:completed` applies. Twelve of those grants reach rep 180. The
-  smallest closed iron round trip there is 5 units for +1 cr. Before: 8154 cr,
-  stock 32.76. The credit rows are `trade:buy:cmdty_ore_iron` −165 and
+Reproduced, before the clamp, by `ui:buy` / `ui:sell` at Helios (`station_helios`, iron):
+
+- Rep 0, funded only by `ui:service loan`: a 5-unit round trip lost 13 cr.
+  Stock returned to 32.76.
+- The player path into the prices was `faction:repDelta` of +15, the same delta
+  `mission:completed` applies. Twelve of those grants reached rep 180. The
+  smallest closed iron round trip there was 5 units for +1 cr. Before: 8154 cr,
+  stock 32.76. The credit rows were `trade:buy:cmdty_ore_iron` −165 and
   `trade:sell:cmdty_ore_iron` +166. After: 8155 cr, stock 32.76, cargo unchanged.
-- Continuing the same grants to rep 410, 25 units print +113 cr with stock
+- Continuing the same grants to rep 410, 25 units printed +113 cr with stock
   still unchanged.
 
-This is a closed feedback loop, not a two-stop haul. No travel, no fine, no
-mission reward on the wash itself. The standing that opens it is earned.
+That round was a closed same-berth book, not a two-stop haul. No travel, no
+fine, no mission reward on the wash itself. The clamp above is what shipping
+`quote()` settles now.
 
-**Fix (not applied):** `FIX.patch` hunk for `src/systems/economy.js` `quote()`.
-After `spreadOf`, clamp the sell multiplier so
-
-```
-sellMult * (1 - spread/2) <= buyMult * (1 + spread/2)
-```
-
-`execute()` prices through `quote()`, so both the panel and the settlement see
-the guard. The purchase discount is left in place. Neutral standing is unchanged
-because sell and buy multipliers are both 1.
+**Shipping clamp:** `quote()` applies the guard first written into `FIX.patch`.
+After `spreadOf`, `sellMultiplier` is `min(standing.sell, standing.buy * (1 + spread/2) / (1 - spread/2))`
+when `1 - spread/2 > 0`. `execute()` prices through `quote()`, so the panel and
+the settlement see the guard. The purchase discount stays. Neutral standing is
+unchanged because both multipliers are 1. The historical 200 figure is only
+this note.
 
 ## Exploit 2 — kill-loot contraband cashes in as clean scrap
 

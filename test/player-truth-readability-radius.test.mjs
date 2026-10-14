@@ -37,14 +37,14 @@ test('small-body sampling and genuinely dim large bodies retain their contrast v
   assert.ok(Math.abs(dim.lab[0] - dim.bg[0]) < THRESHOLDS.readabilityLowDeltaL);
 });
 
-async function analyzeLargeBody(value) {
+async function analyzeLargeBody(value, overlays = []) {
   const file = await sharp(bodyImage(value), {
     raw: { width: SIZE, height: SIZE, channels: 3 },
   }).png().toBuffer();
   const samples = []; const shots = [];
   for (let i = 0; i < 5; i++) {
     const t = i * 100;
-    shots.push({ t, endT: t + 5, file, play: true });
+    shots.push({ t, endT: t + 5, file, play: true, overlays });
     for (const offset of [0, 5]) samples.push({ t: t + offset, mode: 'flight', vw: SIZE, vh: SIZE,
       e: [[1, CLS.asteroid, 0, 0, 0, 0, CENTER, CENTER, RADIUS, VIS.onscreen, 7, 1]] });
   }
@@ -65,4 +65,16 @@ test('frame analysis still fails genuinely faint large opaque bodies', async () 
   assert.equal(readability.classes.asteroid.n, 5);
   assert.equal(readability.classes.asteroid.lowContrastFrac, 1);
   assert.equal(verdict.status, 'FAIL');
+});
+
+test('a target panel over the body or its sky ring cannot grade HUD text as asteroid pigment', async () => {
+  for (const overlays of [[[190, 190, 240, 240]], [[350, 190, 390, 240]]]) {
+    const { readability, verdict } = await analyzeLargeBody(12, overlays);
+    assert.equal(readability.classes.asteroid.n, 0);
+    assert.equal(readability.captureCoherence.rejected.asteroid['hud-occlusion'], 5);
+    assert.equal(verdict.status, 'UNKNOWN', 'covered samples do not manufacture a pass');
+  }
+  const { readability, verdict } = await analyzeLargeBody(12, [[0, 0, 20, 20]]);
+  assert.equal(readability.classes.asteroid.n, 5);
+  assert.equal(verdict.status, 'FAIL', 'uncovered faint bodies still fail the unchanged threshold');
 });

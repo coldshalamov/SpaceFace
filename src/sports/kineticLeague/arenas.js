@@ -66,7 +66,7 @@ export const ARENAS = Object.freeze({
     goal: Object.freeze({ axis: 'z', plane: -58, aperture: 15, center: 0, dir: -1 }),
     charge: Object.freeze({ x: 22, z: -46, radius: 6.5, mass: 90 }),
     magnetBall: Object.freeze({ x: 26, z: 22, radius: 3.4, mass: 8, restitution: 0.45, drag: 0.15, maxSpeed: 120 }),
-    pocket: Object.freeze({ x: -18, z: -16, radius: 9.5 }),
+    pocket: Object.freeze({ x: 30, z: -30, radius: 10 }),
     pillar: Object.freeze({ x: 8, z: 2, radius: 6.5 }),
     well: Object.freeze({ x: -6, z: -2, radius: 72, strength: 340, falloff: 1.15, damping: 0.55 }),
     repulsor: Object.freeze({ x: 18, z: 8, radius: 36, strength: 220, falloff: 1.2, damping: 0.2 }),

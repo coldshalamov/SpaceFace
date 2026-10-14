@@ -128,8 +128,12 @@ function scoreSteps(steps) {
     const list = step.detail && step.detail.reasons;
     if (Array.isArray(list)) reasons.push(...list);
   }
-  const bayLaunder = sawStolenLoot && reasons.includes('salvage:bay_sale') && creditsDelta > 0;
-  const closedWash = sawBuy && sawSell && tradeNet > 0;
+  const injectedRep = steps.some((step) => step.action === 'raise_standing');
+  const chosenKillBurst = steps.some((step) => step.action === 'loot_drop'
+    && step.detail && step.detail.source === 'kill_burst' && step.detail.commodityId);
+  // Injected standing and a caller-chosen kill_burst commodity are not confirmed exploits.
+  const bayLaunder = !chosenKillBurst && sawStolenLoot && reasons.includes('salvage:bay_sale') && creditsDelta > 0;
+  const closedWash = !injectedRep && sawBuy && sawSell && tradeNet > 0;
   return {
     bayLaunder,
     closedWash,

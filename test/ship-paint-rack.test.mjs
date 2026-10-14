@@ -69,6 +69,14 @@ function buildHarness({ docked = true, stationId = 'station_helios', shipIndex =
   return { state, bus, ships, saved, changed, entity };
 }
 
+test('painting then recomputing unchanged fittings publishes one appearance rebuild', () => {
+  const h = buildHarness();
+  assert.equal(h.ships.setShipAppearance({ appearance: { hullColor: '#334455' } }), true);
+  assert.equal(h.changed.length, 1);
+  h.ships.recomputeEntity(h.entity.id, h.state.player.ownedShips[0].fittings);
+  assert.equal(h.changed.length, 1, 'a pure-stat recompute must not rebuild the painted ship again');
+});
+
 function paint(state, bus, appearance, shipIndex = 0) {
   return bus.emit('ui:setShipAppearance', { shipIndex, appearance });
 }

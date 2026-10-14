@@ -7,6 +7,7 @@ from mathutils import Vector
 HERE=os.path.dirname(os.path.abspath(__file__));sys.path.insert(0,HERE)
 import forge as F
 from asset_bank_export import export_asset,render_preview,render_glb_preview
+from asset_bank_contract import select_asset_ids
 ROOT=os.path.abspath(os.path.join(HERE,'../../..'));OUT=os.path.join(ROOT,'assets/models/asset-bank/natural')
 GEO=['seam_bearing_quarried_parent_rock','matched_removable_wedge','stepped_fracture_shelf','bore_plug','bored_rock_collar','rock_bridge_span','cleaved_slab','rubble_berm','ice_pressure_ridge','split_ice_plate','crystal_fan','metallic_vein_rib']
 GROW=['nerve_lace_corner','branching_nerve_mat','calcified_pipe_collar','ribbed_vent_lung','spore_chimney_stalk','short_tendril_bridge','arched_tendril_bridge','supported_cyst_nest','hull_leech_attachment_bed','root_anchor_pad','severed_tendril_stump','dead_crown']
@@ -644,7 +645,7 @@ def ancient_lod_factory(asset_id,level):
 def geology_lod_factory(asset_id,level):
  result=F.Ship(asset_id+'_authored_lod'+str(level),COLORS);result.bank_boxes=[];result.bank_lod_level=level;geo(result,asset_id);return result
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--only');parser.add_argument('--render',action='store_true');parser.add_argument('--out-dir',default=OUT);parser.add_argument('--preview-dir',default=os.path.join(ROOT,'.devshots/asset-bank-natural'));args=parser.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []);requested=set(args.only.split(',')) if args.only else None;rows=[]
+ parser=argparse.ArgumentParser();parser.add_argument('--only');parser.add_argument('--render',action='store_true');parser.add_argument('--out-dir',default=OUT);parser.add_argument('--preview-dir',default=os.path.join(ROOT,'.devshots/asset-bank-natural'));args=parser.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []);requested=set(select_asset_ids(GEO+GROW+ANCIENT,args.only));rows=[]
  for cat,names,build in [('geology',GEO,geo),('growth',GROW,growth),('ancient',ANCIENT,ancient)]:
   for k in names:
    if requested and k not in requested:continue
@@ -656,7 +657,7 @@ def main():
    if args.render:
     preview=args.preview_dir;os.makedirs(preview,exist_ok=True);render_preview(s,os.path.join(preview,k+'_source.png'),width=600,height=450,samples=32);render_glb_preview(os.path.join(out,k+'_lod0.glb'),os.path.join(preview,k+'_export.png'),width=600,height=450,samples=32)
    print('BANK_DONE '+k,flush=True)
- if not requested and os.path.abspath(args.out_dir)==OUT:
+ if args.only is None and os.path.abspath(args.out_dir)==OUT:
   p=os.path.join(ROOT,'design/asset-bank/natural.json');doc=json.load(open(p));doc['assets']=[{'assetId':r['assetId'],'category':r['category'],'manifest':'assets/models/asset-bank/natural/'+r['assetId']+'/'+r['assetId']+'.json'} for r in rows]
   with open(p,'w') as f:json.dump(doc,f,indent=2);f.write('\n')
 if __name__=='__main__':main()

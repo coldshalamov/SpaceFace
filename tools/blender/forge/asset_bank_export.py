@@ -7,6 +7,7 @@ from mathutils import Vector,Matrix
 import forge_export as fe
 from asset_bank_bounds import finalize_asset_bounds
 from asset_bank_cost import scene_cost
+from asset_bank_contract import validate_asset_id
 
 def gltf(v):return [float(v[0]),float(v[2]),-float(v[1])]
 
@@ -39,7 +40,8 @@ def canonicalize_triangle_order(path):
     with open(path,'wb') as f:f.write(data)
 
 
-def export_asset(ship,out_dir,asset_id,category,description,collision_boxes=None,tags=None):
+def export_asset(ship,out_dir,asset_id,category,description,collision_boxes=None,tags=None,motion_contracts=None):
+    validate_asset_id(asset_id)
     os.makedirs(out_dir,exist_ok=True);ship.finish();fe._rename_materials(ship)
     lo,hi=fe.ship_bounds(ship)
     sockets=[]
@@ -54,6 +56,9 @@ def export_asset(ship,out_dir,asset_id,category,description,collision_boxes=None
     solids=[{'type':'box','center':gltf(b['center']),'size':[b['size'][0],b['size'][2],b['size'][1]],'rotation':b.get('rotation_gltf',[0,0,0,1])} for b in collision_boxes or []]
     collision={'type':'compound-boxes' if solids else 'none','solids':solids,'status':'authored approximate solids' if solids else 'not authored; do not infer a global hull','clearanceValidation':'not certified; inspect listed solids for intended assembly'}
     base={'assetId':asset_id,'category':category,'description':description,'unit':'metre','coordinateSystem':'glTF +X forward +Y up +Z starboard','source':getattr(ship,'bank_source','tools/blender/forge'),'runtimeStatus':'authoring-library candidate; not registered or accepted for live runtime','surfaceGeometryRemaster':'forge-v1','sockets':sockets,'collision':collision,'motionGroups':[{'id':g['id'],'pivot':gltf(g['pivot']),'parent':g['parent'],'objects':[o.name for o in g['objects']],'animationStatus':'rigid pivot only; no animation clip'} for g in getattr(ship,'motion_groups',[])],'tags':tags or [],'bounds':{'min':[lo.x,lo.z,-hi.y],'max':[hi.x,hi.z,-lo.y]},'costPolicy':'measured per LOD; assembly-specific performance validation pending','lods':[]}
+    if motion_contracts is not None:
+        base['motionContracts']=[{**contract,'pivot':gltf(contract['pivotBlender']),'axis':gltf(contract['axisBlender']),
+            'coordinateSystem':'glTF +X forward +Y up +Z starboard'} for contract in motion_contracts]
     # Preserve exact socket node names even when a source mesh was named identically.
     for obj in ship.objects:
         if obj.name in ship.sockets:obj.name='part_'+obj.name

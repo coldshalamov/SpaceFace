@@ -7,7 +7,8 @@ import { flightV3 } from '../src/systems/flightV3.js';
 import { weapons } from '../src/systems/weapons.js';
 import { combat } from '../src/systems/combat.js';
 import { counterplayDoctrineById } from '../src/ai/counterplay/catalog.js';
-import { createCounterplayMemory } from '../src/ai/counterplay/memory.js';
+import { createCounterplayMemory, restoreCounterplayMemory } from '../src/ai/counterplay/memory.js';
+import { decideCounterplay } from '../src/ai/counterplay/decide.js';
 import { counterplaySensorInput, driveCounterplay, rebindCounterplayCast } from '../src/ai/counterplay/live.js';
 import { applyCounterplayPhysical } from '../src/ai/counterplay/adapterPatch.js';
 import { COUNTERPLAY_ADVENTURE, placeCounterplayAdventure } from '../src/ai/counterplay/adventure.js';
@@ -32,6 +33,53 @@ async function host() { return bootRealPath({ seed: 277, systems,
   prepareState({state}) { state.mode = 'flight'; state.run = { kind: 'adventure' }; },
   hulls: [{ hullId: 'ship_kestrel', pos: { x: -200, z: -200 }, isPlayer: true, team: 0 },
     { hullId: 'ship_hawser', pos: { x: 0, z: 90 }, team: 1 }] }); }
+
+test('live Counterplay restores only new mind snapshots and preserves the serialized decision trace', async () => {
+  const h = await host();
+  try {
+    const actor = h.hulls[1], id = 'cp_feint_break_courier';
+    stamp(actor, id, h.player, { feint: { x: 200, z: 90 }, gate: { x: -200, z: 0 } });
+    actor.data.ai.counterplayMemory = createCounterplayMemory(id);
+    const sensorPort = { frameFor: () => ({ contacts: [{ id: h.player.id, kind: 'ship',
+      pos: { x: h.player.pos.x, z: h.player.pos.z }, vel: { x: 0, z: 0 } }] }) };
+    let cloneCalls = 0;
+    for (let tick = 0; tick < 80; tick++) {
+      h.state.tick = tick;
+      const prior = actor.data.ai.counterplayMemory;
+      const reference = restoreCounterplayMemory(prior, id);
+      reference.notes.boundGeneration = actor.occupantGeneration;
+      const input = counterplaySensorInput(h.state, actor, sensorPort.frameFor());
+      const expected = decideCounterplay({ ...input, doctrineId: id, tick,
+        objective: actor.data.ai.counterplayObjective, memory: reference });
+      Object.defineProperty(prior.delay, 'toJSON', { configurable: true, value() {
+        cloneCalls++; return this;
+      } });
+      driveCounterplay({ ctx: ctx(h), entities: [actor], sensorPort, maneuverPort: { request: () => true } });
+      delete prior.delay.toJSON;
+      assert.deepEqual(actor.data.ai.counterplayMemory, reference);
+      assert.equal(actor.data.counterplay.phase, expected.phase);
+      if (tick > 0) assert.equal(actor.data.ai.counterplayMemory, prior, 'the live mind remains owned in place');
+    }
+    assert.equal(cloneCalls, 1, 'one initial restore, no repeated JSON copies of delayed sensor frames');
+    const ai = actor.data.ai, previous = ai.counterplayMemory;
+    ai.counterplayMemory = JSON.parse(JSON.stringify(previous));
+    const saved = ai.counterplayMemory;
+    h.state.tick++;
+    driveCounterplay({ ctx: ctx(h), entities: [actor], sensorPort, maneuverPort: { request: () => true } });
+    assert.notEqual(ai.counterplayMemory, saved, 'an external saved snapshot normalizes into owner data again');
+    const beforeGeneration = ai.counterplayMemory;
+    actor.occupantGeneration++;
+    h.state.tick++;
+    driveCounterplay({ ctx: ctx(h), entities: [actor], sensorPort, maneuverPort: { request: () => true } });
+    assert.notEqual(ai.counterplayMemory, beforeGeneration, 'a recycled hull does not reuse the prior owner generation');
+    assert.equal(ai.counterplayMemory.notes.boundGeneration, actor.occupantGeneration);
+    ai.counterplayDoctrineId = 'cp_cover_peel';
+    ai.counterplayMemory = saved;
+    h.state.tick++;
+    driveCounterplay({ ctx: ctx(h), entities: [actor], sensorPort, maneuverPort: { request: () => true } });
+    assert.equal(ai.counterplayMemory.doctrineId, 'cp_cover_peel');
+  } finally { h.dispose(); }
+});
 
 test('live tactical owner telegraphs then builds a native anchor rope; cut uses the same custody writer', async () => {
   const h = await host();

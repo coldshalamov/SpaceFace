@@ -10,16 +10,17 @@
 // Pure geometry: no DOM, no Three.js. Stage coordinates in, stage coordinates out.
 
 const finite = (n, fallback = 0) => (Number.isFinite(n) ? n : fallback);
+const isPoint = (p) => p != null && Number.isFinite(p.x) && Number.isFinite(p.y);
 
 function rectsOverlap(a, b) {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 }
 
-/** Bounding box of points, grown by `pad`. */
+/** Bounding box of finite projected points, grown by `pad`; null if none projected. */
 export function pointsBox(points, pad = 0) {
   let left = Infinity; let top = Infinity; let right = -Infinity; let bottom = -Infinity;
   for (const p of points) {
-    if (!p) continue;
+    if (!isPoint(p)) continue;
     left = Math.min(left, p.x); right = Math.max(right, p.x);
     top = Math.min(top, p.y); bottom = Math.max(bottom, p.y);
   }
@@ -33,14 +34,24 @@ export function pointsBox(points, pad = 0) {
  */
 export function separateBeads(points, minGap = 12) {
   const out = points.map((p) => (p ? { ...p } : p));
-  for (let i = 1; i < out.length; i++) {
-    const p = out[i];
-    if (!p) continue;
-    for (let guard = 0; guard < 8; guard++) {
-      const clash = out.slice(0, i).find((q) => q && Math.hypot(q.x - p.x, q.y - p.y) < minGap);
-      if (!clash) break;
-      p.y = clash.y + minGap;
+  if (!Number.isFinite(minGap) || minGap <= 0) return out;
+  // Previously eight retries left the tenth coincident socket on top of the ninth.
+  // Keep earlier beads sorted by y: every downward nudge clears all earlier entries,
+  // so one scan suffices. O(n²) total, without allocating a prefix on every collision.
+  const placed = [];
+  for (const p of out) {
+    if (!isPoint(p)) continue;
+    for (const q of placed) {
+      if (q.y - p.y >= minGap) break;
+      if (p.y - q.y >= minGap || Math.abs(q.x - p.x) >= minGap) continue;
+      if (Math.hypot(q.x - p.x, q.y - p.y) < minGap) p.y = q.y + minGap;
     }
+    let lo = 0; let hi = placed.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (placed[mid].y <= p.y) lo = mid + 1; else hi = mid;
+    }
+    placed.splice(lo, 0, p);
   }
   return out;
 }
@@ -121,12 +132,17 @@ export function layoutHullCallouts({
     side: d.side === 'left' || d.side === 'right' ? d.side
       : (finite(d.x) < hullCx ? 'left' : finite(d.x) > hullCx ? 'right' : null),
   }));
-  // Beads dead on the centre line go to whichever column is lighter.
+  // Beads dead on the centre line go to whichever column is lighter. Count once;
+  // centred hardpoints should not allocate two filtered arrays for every socket.
+  let leftCount = 0; let rightCount = 0;
+  for (const it of items) {
+    if (it.side === 'left') leftCount++;
+    else if (it.side === 'right') rightCount++;
+  }
   for (const it of items) {
     if (it.side) continue;
-    const l = items.filter((o) => o.side === 'left').length;
-    const r = items.filter((o) => o.side === 'right').length;
-    it.side = l <= r ? 'left' : 'right';
+    if (leftCount <= rightCount) { it.side = 'left'; leftCount++; }
+    else { it.side = 'right'; rightCount++; }
   }
 
   // Each column's x-range sits flush against the hull box, across the gap, inside the bounds.

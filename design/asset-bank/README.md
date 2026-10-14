@@ -12,6 +12,12 @@ catalog entries, recipe counts or this guide as evidence that exported models ha
 A delivered piece needs its committed GLBs and adjacent manifest; an accepted runtime piece also
 needs the owning feature's visual, physical and performance evidence.
 
+The current increment delivers 156 exported candidates: 36 structure, 36 operations,
+36 cargo, 36 natural and 12 large pieces, each with three LODs and a sidecar. The 468 GLBs
+total 196,921,332 bytes. Their transformed cross-LOD bounds, byte/hash receipts and
+socket contracts pass the structural validator. See [the delivery checkpoint](DELIVERY.md);
+twelve dependency-locked recipes are available; all runtime acceptance remains separate work.
+
 See [coverage and comparison](COVERAGE.md) for the commission and reuse decisions. Count distinct
 asset IDs with verified exports, not LOD files, palette variants or proposed composition recipes.
 Batch reports must distinguish recipe available, exported, structurally validated, visually reviewed
@@ -43,6 +49,14 @@ canonical Forge source and texture set are required. Recipes use the shared
 `tools/blender/forge/asset_bank_export.py` adapter, preserving Forge materials and LOD construction
 while making library socket and collision contracts explicit.
 
+Structure, natural and cargo recipes accept `--only ID,ID`; operations accepts
+asset names after Blender's `--` separator. Every requested name is resolved
+before an export begins; unknown, empty or repeated selections fail rather than
+silently producing a partial family or a generic substitute. The operations
+`--review` option renders existing exported GLBs, using six representative pieces
+by default; it does not export or accept missing models. Use Blender's
+`--python-exit-code 1` when a shell or CI job needs script exceptions to fail the command.
+
 From the repository root:
 
 ```sh
@@ -63,9 +77,13 @@ Both the exporter and validator count each active-scene mesh occurrence, not mer
 definitions. This is a structural primitive count, not a measured GPU draw-call or frame-time budget.
 Socket checks cover position, forward AND up in the active scene; detached sockets cannot satisfy
 the interface. LOD filenames are portable basenames and GLB symlinks are rejected.
+Optional motion contracts carry glTF-frame axes and pivots, typed travel limits,
+and matching active-scene rigid nodes in each LOD. They describe consumer-authored
+motion; they do not provide animation clips or certify the swept collider envelope.
 
-Bounds are a containing bind-pose envelope, with a small export/float tolerance. Coarser LODs may
-shrink inside it. This gate does not certify moving-part sweep bounds, mating clearance, animation
+Bounds are the union of actual transformed bind-pose vertices across all exported LODs,
+with a small export/float tolerance. Every LOD must fit inside that common envelope.
+This gate does not certify moving-part sweep bounds, mating clearance, animation
 coverage, topology quality or artistic acceptance.
 
 ## Integrate deliberately
@@ -83,7 +101,7 @@ names describe arrangements, not new canonical factions or destinations.
 
 ## Highest-value continuation work
 
-First deliver one small, coherent family end to end: committed LODs and manifests, freshly reimported
+Take one small, coherent exported family through integration: freshly reimported
 GLB contact sheets, a socket-mated example, collision clearance and a real game-camera capture.
 Expand the catalog only after that path works; more recipe names cannot repair a broken export path.
 

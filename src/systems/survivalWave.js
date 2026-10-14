@@ -170,6 +170,8 @@ export const survivalWave = {
     this._unsubs.push(this.bus.on('run:ended', () => this._teardown()));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+    // combat:damage is synchronous and runs before the lethal check.
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._holdLessonHull(p)));
     // FB-024 — a capital score's wing members spawn through the score's own port, mid-wave and
     // outside the schedule. Joining them here keeps the cohort honest: they still have to be
     // defeated before the round clears, and their deaths resolve like any other member's.
@@ -567,6 +569,69 @@ export const survivalWave = {
       });
     }
     this._pending.length = write;
+  },
+
+  /**
+   * The opening lesson is one hull the pilot is meant to shoot. A foundry collision is not
+   * that shot: idle seed 4242 loses the wasp to a wreck at sim 29.9, and the active run loses
+   * it to an asteroid at sim 8.3, three seconds after the thrust probe. Either death empties
+   * the cohort and releases the pack. This listener runs inside combat:damage, before the
+   * lethal check, so restoring hull and armor cancels that death. Shields remain a normal
+   * collision consequence because shieldDown is emitted before this listener runs.
+   * flags.invuln would also refuse the pilot's gun. The hold clock does not set _lessonReleased,
+   * so the guard has to read the clock itself; a player-attributed hit (gun or thrown rock) is the kill
+   * the lesson is for and is left alone.
+   */
+  _holdLessonHull(payload) {
+    if (!payload || !payload.origin || payload.origin.kind !== 'collision') return;
+    const lesson = this._plan && this._plan.openingLesson;
+    if (!lesson || this._lessonReleased) return;
+    if (!Number.isFinite(lesson.holdTicks) || this._cursor >= lesson.holdTicks) return;
+    const targetId = payload.targetId;
+    if (targetId == null || !this._cohort || !this._cohort.has(targetId)) return;
+    const playerId = this.state && this.state.playerId;
+    if (playerId != null && payload.attackerId === playerId) return;
+    const before = payload.before;
+    if (!before) return;
+    const target = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(targetId)
+      : null;
+    if (!target || target.alive === false) return;
+    if (Number.isFinite(before.hull)) target.hull = before.hull;
+    // snapshotVitals names this field `armor`; the entity stores it as armorHp.
+    if (Number.isFinite(before.armor)) target.armorHp = before.armor;
+    // A centerline hit zeros Power, and Power's loss drops drive and weapon together.
+    // That is "not actionable" on the next tick, which releases the pack without a kill.
+    // The destruction is still pending (it applies at tick+1), so cancelling it here
+    // leaves the hull fightable. Only this payload's subsystem is touched, and only the
+    // health this hit removed comes back — an earlier chip on that part stays gone.
+    this._cancelLessonSubsystemLoss(target, payload);
+  },
+
+  _cancelLessonSubsystemLoss(target, payload) {
+    const subsystemId = payload && payload.subsystemId;
+    if (!subsystemId) return;
+    // damageSubsystem has already subtracted `applied` from health. Zero means this hit
+    // did not consume the part, so a destroy armed earlier this tick is not ours to clear.
+    const applied = Number(payload.subsystemDamage);
+    if (!(applied > 0)) return;
+    const table = this.state && this.state.combat && this.state.combat.entities;
+    const runtime = table && table[target.id];
+    if (!runtime || !runtime.subsystems) return;
+    const subsystem = runtime.subsystems[subsystemId];
+    const tick = this.state.tick >>> 0;
+    if (!subsystem || subsystem.lastDamageTick !== tick) return;
+    const pending = subsystem.pendingTransition;
+    // Armed by this hit: damageSubsystem schedules the destroy for the next tick.
+    if (!pending || pending.destroyed !== true || pending.atTick !== tick + 1) return;
+    const restored = subsystem.health + applied;
+    const cap = Number(subsystem.maxHealth);
+    subsystem.health = cap > 0 ? Math.min(cap, restored) : restored;
+    subsystem.destroyed = false;
+    subsystem.pendingTransition = null;
+    if ((runtime.pendingSubsystemTransitionCount | 0) > 0) {
+      runtime.pendingSubsystemTransitionCount -= 1;
+    }
   },
 
   /**

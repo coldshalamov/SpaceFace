@@ -60,22 +60,22 @@ export const WRECK_COURT_CASES = [
         bodies: [
           makeBody({
             id: 'hull_a', variant: 'wc_hauler', mass: 820, radius: 22,
-            x: -24 + j(), z: 90 + j(), vx: 9, vz: 0.12, heading: 0.05,
-            integrity: 0.4, transponderGroup: 'pair',
-            scar: { nx: 0, nz: -1, material: 'polymer_coat', faces: [{ kind: 'coat', nx: 0, nz: -1 }] },
+            x: -24 + j(), z: 90 + j(), vx: 4, vz: 0.12, heading: 0.05,
+            integrity: 1, transponderGroup: 'pair',
             flavor: 'Looping mayday from the larger hull: "we are in contact, we are in contact."',
           }),
           makeBody({
             id: 'hull_b', variant: 'wc_freighter', mass: 510, radius: 18,
-            x: -10 + j(), z: -30 + j(), vx: 9, vz: 0.12, heading: 0.08,
-            integrity: 0.58, transponderGroup: 'pair',
-            scar: { nx: 0, nz: 1, material: 'polymer_coat', faces: [{ kind: 'coat', nx: 0, nz: 1 }] },
+            x: -10 + j(), z: -30 + j(), vx: 14, vz: 0.12, heading: 0.08,
+            integrity: 1, transponderGroup: 'pair',
             flavor: 'The smaller hull\'s filing says the impact was mutual and already settled.',
           }),
         ],
         events: [
-          { t: 3, kind: 'patch', id: 'hull_a', note: 'polymer coat finished curing on the scar', fields: { integrity: 0.4 } },
-          { t: 3.2, kind: 'patch', id: 'hull_b', note: 'matching coat on the facing scar', fields: { integrity: 0.58 } },
+          { t: 0.5, kind: 'thrust', id: 'hull_a', ax: 1, az: 0, duration: 5, note: 'larger hull matched the smaller drift' },
+          { t: 0.5, kind: 'thrust', id: 'hull_b', ax: -1, az: 0, duration: 5, note: 'smaller hull matched the larger drift' },
+          { t: 8, kind: 'coat', id: 'hull_a', other: 'hull_b', integrity: 0.4, note: 'polymer sprayed on the face toward the other hull' },
+          { t: 8.2, kind: 'coat', id: 'hull_b', other: 'hull_a', integrity: 0.58, note: 'matching coat on the facing side' },
         ],
       };
     },
@@ -340,7 +340,12 @@ export const WRECK_COURT_CASES = [
     uncertainty: 'Momentum closure is only as good as the mass samples. A body that left the scene cannot be weighed. Radiant soot is not a contact fold.',
     build(ctx) {
       const j = ctx.j;
-      const pieces = balancedRadial(6, 34, 64, 0.2);
+      const turn = 0.2;
+      const pieces = balancedRadial(6, 34, 64, turn);
+      // The tender holds station in the gap between two plate rays, matching the barge's
+      // drift, so the field expands past it instead of driving a plate into the hull.
+      const gap = turn + Math.PI / 6;
+      const hold = 140;
       return {
         until: 68,
         assayPoints: [],
@@ -353,22 +358,24 @@ export const WRECK_COURT_CASES = [
           }),
           makeBody({
             id: 'tender', variant: 'wc_tender', mass: 170, radius: 12,
-            x: 280 + j(), z: 50 + j(), vx: -2.4, vz: 0.8, heading: Math.PI,
-            integrity: 0.64,
-            scar: { nx: -1, nz: 0.1, material: 'soot', faces: [{ kind: 'soot', nx: -1, nz: 0.1 }] },
+            x: Math.cos(gap) * hold + j(), z: Math.sin(gap) * hold + j(), vx: 1.2, vz: 0.3, heading: Math.PI,
+            integrity: 1,
             flavor: 'Tender pilot: "we were alongside when it went."',
           }),
         ],
         events: [
           {
             t: 16, kind: 'split', id: 'barge', note: 'internal release, dvs balanced',
+            radiant: 420,
             children: pieces.map((p, i) => ({
               id: `barge_${i}`, variant: 'wc_fragment', mass: p.mass, radius: 6,
               dvx: p.dvx, dvz: p.dvz, integrity: 0.18, transponderGroup: 'barge',
+              // Radiant soot is the tender's damage. A contact solve against the tender
+              // is a strike, and on some seeds it pushes the shared-origin residual over 48.
+              noCollide: true,
               flavor: 'Plate from the core bay.',
             })),
           },
-          { t: 16.4, kind: 'patch', id: 'tender', note: 'radiant scorch reached the tender; no strike impulse', fields: { integrity: 0.64 } },
         ],
       };
     },
@@ -425,49 +432,44 @@ export const WRECK_COURT_CASES = [
     uncertainty: 'Anything still in the rock\'s shadow is not evidence yet. Shoving the rock into that shadow can crush what the shadow was hiding. A groove is a shape, not a name.',
     build(ctx) {
       const j = ctx.j;
-      // Muzzle at (-70, 2), 20s before the present. Round and shooter back-project there.
-      // Present velocities are constant coasts; the rock does not occult the round.
+      // Muzzle at (-70, 2). The round and the skiff leave that point and the step
+      // carries them to the present. The far-face groove is cut when the round passes the rock.
+      const lead = 20;
       return {
-        until: 6,
+        until: 6 + lead,
         assayPoints: [],
         bodies: [
           makeBody({
             id: 'rock', variant: 'wc_rock', mass: 2800, radius: 38,
-            x: 0, z: 0, vx: 0.15, vz: 0, heading: 0, occults: true,
+            x: 0 - 0.15 * lead, z: 0, vx: 0.15, vz: 0, heading: 0, occults: true,
             thermalLock: 40, integrity: 1,
             scar: {
               nx: 1, nz: 0, material: 'stone',
-              faces: [
-                { kind: 'clean', nx: 1, nz: 0 },
-                { kind: 'groove', nx: -1, nz: 0.05 },
-              ],
+              faces: [{ kind: 'clean', nx: 1, nz: 0 }],
             },
             flavor: 'The sunward face is what the hauler is looking at.',
           }),
           makeBody({
             id: 'hauler', variant: 'wc_hauler', mass: 740, radius: 18,
-            x: 430 + j(), z: 140 + j(), vx: 0.6, vz: 0.05, heading: Math.PI,
+            x: 430 + j() - 0.6 * lead, z: 140 + j() - 0.05 * lead, vx: 0.6, vz: 0.05, heading: Math.PI,
             integrity: 0.12,
             scar: { nx: -1, nz: 0, material: 'torn_alloy', faces: [{ kind: 'fold', nx: -1, nz: 0 }] },
             flavor: 'Hauler log: "we struck the rock."',
           }),
           makeBody({
             id: 'shooter', variant: 'wc_skiff', mass: 86, radius: 10,
-            x: -230, z: 6, vx: -8, vz: 0.2, heading: Math.PI,
+            x: -70, z: 2, vx: -8, vz: 0.2, heading: Math.PI,
             integrity: 0.86, crushable: true, occultedBy: 'rock',
             magazine: { capacity: 6, remaining: 5 },
             flavor: 'No beacon.',
           }),
           makeBody({
             id: 'round', variant: 'wc_round', mass: 3, radius: 1.4,
-            x: 160, z: 8, vx: 11.5, vz: 0.3, heading: 0,
+            x: -70, z: 2, vx: 11.5, vz: 0.3, heading: 0, noCollide: true,
             flavor: 'A dense splinter standing in the hauler\'s flank.',
           }),
         ],
-        events: [
-          { t: 4, kind: 'patch', id: 'rock', note: 'far-face groove already cut by the round', fields: {} },
-          { t: 4.2, kind: 'patch', id: 'hauler', note: 'hauler already dead when the scene was reached', fields: { integrity: 0.12 } },
-        ],
+        events: [],
       };
     },
     hypotheses: [
@@ -533,23 +535,13 @@ export const WRECK_COURT_CASES = [
           makeBody({
             id: 'tug', variant: 'wc_tug', mass: 230, radius: 12,
             x: -260 + j(), z: -36, vx: 7, vz: 0, heading: 0,
-            integrity: 0.8, fuel: 12, fuelCapacity: 40,
+            integrity: 0.8, fuel: 10, fuelCapacity: 40,
             flavor: 'From a distance the tug looks like it is leaving.',
           }),
         ],
         events: [
-          { t: 8, kind: 'untether', a: 'tug', b: 'hull', note: 'cable load exceeded the neck' },
-          {
-            t: 8.05, kind: 'shed', from: 'tug', note: 'parted cable left behind at the break',
-            child: {
-              id: 'cable_end', variant: 'wc_cable', mass: 6, radius: 5, dvx: 0, dvz: 0,
-              integrity: 0.45,
-              scar: { nx: 1, nz: 0, material: 'tensile_neck', faces: [{ kind: 'neck', nx: 1, nz: 0 }] },
-              flavor: 'The end that stayed at the break.',
-            },
-          },
-          { t: 9, kind: 'thrust_heading', id: 'tug', accel: 4.5, spin: 0, duration: 10, note: 'tug burned ahead after the part' },
-          { t: 20, kind: 'fuel', id: 'tug', remaining: 0, note: 'tanks dry; the tug cannot come back' },
+          { t: 0.4, kind: 'tether', a: 'tug', b: 'hull', rest: 'current', stiffness: 4000, breakForce: 500, partOnBreak: true, note: 'tow cable made up, taut' },
+          { t: 1, kind: 'thrust_heading', id: 'tug', accel: 4.5, spin: 0, duration: 12, note: 'tug pulled until the neck parted, then kept burning' },
         ],
       };
     },
@@ -810,6 +802,14 @@ export const WRECK_COURT_CASES = [
       const tangent = radial + Math.PI / 2;
       const speed = 10;
       const whipMass = 70;
+      // Neck stays beyond the rock from the court start (260, 200). The offset is from
+      // the skiff's layout point; the shed cancels the whip so the end does not ride along.
+      const far = 90;
+      const aim = Math.hypot(260, 200);
+      const cableOx = (-260 / aim) * far - 150;
+      const cableOz = (-200 / aim) * far - 24;
+      const whipVx = Math.cos(tangent) * speed;
+      const whipVz = Math.sin(tangent) * speed;
       return {
         until: 2.2,
         assayPoints: [],
@@ -837,12 +837,6 @@ export const WRECK_COURT_CASES = [
             scar: { nx: 0, nz: -1, material: 'soot', faces: [{ kind: 'soot', nx: 0, nz: -1 }] },
             flavor: 'Freighter scar. From here it reads as a shot.',
           }),
-          makeBody({
-            id: 'cable', variant: 'wc_cable', mass: 4, radius: 4,
-            x: -52, z: -22, vx: 0, vz: 0, occultedBy: 'rock', integrity: 0.6,
-            scar: { nx: 0, nz: 1, material: 'tensile_neck', faces: [{ kind: 'neck', nx: 0, nz: 1 }] },
-            flavor: 'Cable remnant against the rock\'s far limb.',
-          }),
         ],
         events: [
           {
@@ -851,9 +845,23 @@ export const WRECK_COURT_CASES = [
             id: 'skiff',
             jx: Math.cos(tangent) * speed * whipMass,
             jz: Math.sin(tangent) * speed * whipMass,
+            breach: true,
             note: 'parted massline whipped the skiff tangent to the rock',
           },
-          { t: 0.5, kind: 'patch', id: 'skiff', note: 'whip strike opened the cockpit', fields: { integrity: 0 } },
+          {
+            t: 0.35,
+            kind: 'shed',
+            from: 'skiff',
+            part: true,
+            note: 'the necked end left with the whip',
+            child: {
+              id: 'cable', variant: 'wc_cable', mass: 4, radius: 4,
+              ox: cableOx, oz: cableOz,
+              dvx: -(0.4 + whipVx), dvz: -(whipVz),
+              integrity: 0.6, noCollide: true, occultedBy: 'rock',
+              flavor: 'Cable remnant. The end is necked, not cut.',
+            },
+          },
         ],
       };
     },
@@ -918,21 +926,18 @@ export const WRECK_COURT_CASES = [
           makeBody({
             id: 'pylon', variant: 'wc_station', mass: 5e6, radius: 70,
             x: 0, z: 0, fixed: true, integrity: 0.74, heading: 0,
-            scar: { nx: 1, nz: 0, material: 'torn_alloy', faces: [{ kind: 'shear', nx: 1, nz: 0 }] },
             flavor: 'Station loop: "the pilot drove into the clamp."',
           }),
           makeBody({
             id: 'ship', variant: 'wc_tug', mass: 380, radius: 14,
             x: 168 + j(), z: j() * 0.2, vx: 0, vz: 0, heading: 0,
             integrity: 0.48, fuel: 8, fuelCapacity: 20,
-            scar: { nx: -1, nz: 0, material: 'torn_alloy', faces: [{ kind: 'shear', nx: -1, nz: 0 }] },
             flavor: 'The ship is off the pylon, nose outward.',
           }),
         ],
         events: [
-          { t: 1, kind: 'tether', a: 'ship', b: 'pylon', rest: 168, stiffness: 4000, breakForce: 1e9, note: 'clamp held' },
-          { t: 2, kind: 'thrust_heading', id: 'ship', accel: 7, spin: 0, duration: 18, note: 'ship thrust against the clamp, then kept thrusting after it sheared' },
-          { t: 8, kind: 'untether', a: 'ship', b: 'pylon', note: 'clamp sheared' },
+          { t: 1, kind: 'tether', a: 'ship', b: 'pylon', rest: 'current', stiffness: 4000, breakForce: 4000, shearOnBreak: true, note: 'clamp held taut' },
+          { t: 2, kind: 'thrust_heading', id: 'ship', accel: 7, spin: 0, duration: 18, note: 'ship thrust against the clamp until the line sheared' },
         ],
       };
     },
@@ -989,33 +994,37 @@ export const WRECK_COURT_CASES = [
     uncertainty: 'Cook times are thermal ages, not a weapon log. A gap of seconds along a line is deflagration; a rake would be one instant. A spectro burn on a volatile pod cooks it and removes it from the line.',
     build(ctx) {
       const j = ctx.j;
-      const bodies = [];
-      for (let i = 0; i < 4; i += 1) {
-        bodies.push(makeBody({
-          id: `pod_${i}`, variant: 'wc_pod', mass: 36, radius: 6,
-          x: i * 48 + j() * 0.15, z: (i % 2 === 0 ? -4 : 4),
-          vx: 1.2, vz: 0, heading: 0, integrity: 0.55,
-          volatile: true, fragile: true, transponderGroup: 'train',
-          flavor: 'Pod in the train. The seals are heat-stained.',
-        }));
-      }
-      bodies.push(makeBody({
-        id: 'escort', variant: 'wc_escort', mass: 210, radius: 11,
-        x: 70 + j(), z: 86, vx: 1.2, vz: 0.4, heading: -0.3,
-        integrity: 0.6, magazine: { capacity: 10, remaining: 10 },
-        scar: { nx: 0, nz: -1, material: 'soot', faces: [{ kind: 'soot', nx: 0, nz: -1 }] },
-        flavor: 'Escort: "incoming rake." The voice is steady for a ship under fire.',
-      }));
+      const bodies = [
+        makeBody({
+          id: 'magazine', variant: 'wc_train', mass: 420, radius: 14,
+          x: -40, z: 0, vx: 1.2, vz: 0, heading: 0, integrity: 1,
+          flavor: 'The train that was still whole when the first pod cooked.',
+        }),
+        makeBody({
+          id: 'escort', variant: 'wc_escort', mass: 210, radius: 11,
+          x: 70 + j(), z: 86, vx: 1.2, vz: 0.4, heading: -0.3,
+          integrity: 0.6, magazine: { capacity: 10, remaining: 10 },
+          scar: { nx: 0, nz: -1, material: 'soot', faces: [{ kind: 'soot', nx: 0, nz: -1 }] },
+          flavor: 'Escort: "incoming rake." The voice is steady for a ship under fire.',
+        }),
+      ];
       const events = [];
       for (let i = 0; i < 4; i += 1) {
         events.push({
           t: 12 + i * 1.7,
-          kind: 'patch',
-          id: `pod_${i}`,
-          note: 'pod cooked in sequence down the train',
-          fields: { bornAt: 12 + i * 1.7, integrity: 0.4 },
+          kind: 'shed',
+          from: 'magazine',
+          note: 'pod cooked off the train',
+          child: {
+            id: `pod_${i}`, variant: 'wc_pod', mass: 36, radius: 6,
+            ox: 30 + i * 48, oz: (i % 2 === 0 ? -4 : 4) + j() * 0.15,
+            dvx: 0, dvz: 0, integrity: 0.4, noCollide: true,
+            volatile: true, fragile: true, transponderGroup: 'train',
+            flavor: 'Pod in the train. The seals are heat-stained.',
+          },
         });
       }
+      events.push({ t: 18, kind: 'depart', id: 'magazine', note: 'the empty spine left the lane' });
       return { until: 48, assayPoints: [], bodies, events };
     },
     hypotheses: [
@@ -1100,42 +1109,43 @@ export const WRECK_COURT_CASES = [
       const svx = 1.1;
       const svz = -0.4;
       return {
-        until: 30,
+        until: 30 + flight,
         assayPoints: [],
         bodies: [
           makeBody({
             id: 'plate', variant: 'wc_plate', mass: 9000, radius: 22,
-            x: 0, z: 0, fixed: true, integrity: 0.9, thermalLock: 42,
-            scar: { nx: nnx, nz: nnz, material: 'folded_ore', faces: [{ kind: 'plate', nx: nnx, nz: nnz }] },
-            flavor: 'Dense ore plate. A bright kiss on the face.',
+            x: 0, z: 0, fixed: true, integrity: 1, thermalLock: 42,
+            flavor: 'Dense ore plate.',
           }),
           makeBody({
             id: 'round', variant: 'wc_round', mass: 2.4, radius: 1.2,
-            x: ox, z: oz, vx: ovx, vz: ovz, heading: Math.atan2(ovz, ovx),
+            x: -ivx * flight, z: -ivz * flight, vx: ivx, vz: ivz, heading: Math.atan2(ivz, ivx),
+            noCollide: true,
             flavor: 'The fragment that finished the hauler.',
           }),
           makeBody({
             id: 'hauler', variant: 'wc_hauler', mass: 760, radius: 18,
-            x: ox + (-220 / olen) * 90, z: oz + (180 / olen) * 90, vx: 0.3, vz: 0.05, heading: 2,
+            x: ox + (-220 / olen) * 90 - 0.3 * flight, z: oz + (180 / olen) * 90 - 0.05 * flight,
+            vx: 0.3, vz: 0.05, heading: 2,
             integrity: 0.1,
             flavor: 'Hauler, open along one flank.',
           }),
           makeBody({
             id: 'gun_a', variant: 'wc_gunship', mass: 140, radius: 11,
-            x: sx0 + svx * flight, z: sz0 + svz * flight, vx: svx, vz: svz,
+            x: sx0, z: sz0, vx: svx, vz: svz,
             heading: Math.atan2(ivz, ivx), integrity: 0.9, turrets: true,
             magazine: { capacity: 8, remaining: 6 },
             flavor: 'Gunship. The turrets are the first thing a glance finds.',
           }),
           makeBody({
             id: 'gun_b', variant: 'wc_gunship', mass: 150, radius: 11,
-            x: -280 + j(), z: 260 + j(), vx: -2, vz: 3, heading: 2.2, integrity: 0.88, turrets: true,
+            x: -280 + j() + 2 * flight, z: 260 + j() - 3 * flight, vx: -2, vz: 3, heading: 2.2, integrity: 0.88, turrets: true,
             magazine: { capacity: 8, remaining: 7 },
             flavor: 'The other gunship, pointed nowhere near the hauler.',
           }),
         ],
         events: [
-          { t: 1, kind: 'patch', id: 'plate', note: 'plate already kissed; the round is on the outgoing leg', fields: {} },
+          { t: flight, kind: 'reflect', id: 'round', plate: 'plate', nx: nnx, nz: nnz, note: 'the round struck the plate and left on the reflected line' },
         ],
       };
     },

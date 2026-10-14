@@ -6,6 +6,7 @@
 // alpha for one-tick spans and spread catch-up motion across the real span otherwise.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 
 import {
   applySnapshotPoseToMesh,
@@ -120,4 +121,59 @@ test('a spawned entity absent from the previous pack draws at its latest pose', 
   );
   assert.equal(mesh.position.x, 0, 'unknown ids pose nothing rather than guessing');
   assert.equal(snapshotIndexOf(fence.latestSnapshot(), PLAYER_ID + 7), -1);
+});
+
+test('delayed worker replies never replay a forward-moving hull backwards', async () => {
+  const posts = [];
+  let receive;
+  const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
+    tick: 0, simTime: 0, accumulator: 0, timeScale: 1, ui: { screenStack: [] } };
+  const lane = createSimLaneRuntime({
+    state, registry: {}, flags: { lane: 'worker', warnings: [], sab: false },
+    channelFactory: () => ({
+      post: (message) => posts.push(message),
+      onMessage: (handler) => { receive = handler; },
+      terminate() {},
+    }),
+  });
+  try {
+    receive({ kind: 'ready', seq: posts[0].seq });
+    await lane.readyPromise;
+    lane.runner.stepOnce();
+    receive({ kind: 'tickDone', seq: posts.at(-1).seq, stateTick: 1, simTime: DT });
+    lane.runner.consumeLatestCompletedTick({});
+    const fence = twoPackFence(1, 0, 210 * DT);
+    const mesh = meshStub();
+    const drawn = [];
+    // Three 25 fps frames pass before another worker reply arrives. The old blend
+    // drew x=1.4, 2.8, 0.7 as the accumulator wrapped under the unchanged pack.
+    for (let i = 0; i < 3; i++) {
+      lane.runner.advance(0.04, 1);
+      assert.equal(lane.runner.consumeLatestCompletedTick({}), 0);
+      const alpha = fence.samplePresentationAlpha(0.04, state.accumulator, DT, lane.runner.interpolationAlpha());
+      applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 }, fence.previousSnapshot(), alpha);
+      drawn.push(mesh.position.x);
+    }
+    assert.ok(drawn[1] > drawn[0], 'the pending hull continues toward its completed pose');
+    assert.ok(drawn[2] >= drawn[1], `the pending hull must not rewind: ${drawn}`);
+    assert.ok(drawn.every((x) => x <= 210 * DT + 1e-6), 'waiting never predicts physics past the completed pose');
+    packOne(fence, { x: 210 * 5 * DT, simTime: 5 * DT });
+    const alpha = fence.samplePresentationAlpha(0.04, state.accumulator, DT);
+    applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 }, fence.previousSnapshot(), alpha);
+    assert.ok(mesh.position.x > drawn.at(-1), 'a completed catch-up pack resumes forward motion');
+  } finally {
+    lane.close();
+  }
+});
+
+test('the presentation clock respects pause, pose epochs, and a restarted simulation', () => {
+  const fence = twoPackFence(1, 0, 10);
+  const alpha = fence.samplePresentationAlpha(0.01, 0.5 * DT, DT);
+  assert.equal(fence.samplePresentationAlpha(0, 0.5 * DT, DT), alpha, 'pause holds the drawn moment');
+  packOne(fence, { x: -1000, simTime: 20, poseEpoch: 1 });
+  assert.equal(fence.samplePresentationAlpha(0.02, 0, DT), 1, 'a teleport starts a new pose stream without blending sectors');
+  packOne(fence, { x: 0, simTime: 0, poseEpoch: 1 });
+  packOne(fence, { x: 10, simTime: DT, poseEpoch: 1 });
+  assert.ok(Math.abs(fence.samplePresentationAlpha(0.01, 0.5 * DT, DT) - 0.5) < 1e-12,
+    'clock rewind resets presentation even when the same fence is reused');
 });

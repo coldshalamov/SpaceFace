@@ -23,6 +23,19 @@ export function validateAssetContract(row, context = 'asset manifest') {
     check(Math.abs(socket.forward.reduce((sum, v, i) => sum + v * socket.up[i], 0)) < 1e-5, 'socket basis is degenerate');
   }
   check(new Set(row.sockets.map(socket => socket.name)).size === row.sockets.length, 'duplicate socket names');
+  if (row.motionContracts != null) {
+    check(Array.isArray(row.motionContracts) && Array.isArray(row.motionGroups), 'invalid motion contract list');
+    const ids = new Set();
+    for (const motion of row.motionContracts) {
+      check(motion && typeof motion.id === 'string' && motion.id.length > 0 && !ids.has(motion.id), 'invalid or duplicate motion identity');
+      ids.add(motion.id);
+      check(vector(motion.pivot, 3) && vector(motion.axis, 3) && Math.abs(norm(motion.axis) - 1) < 1e-5, 'invalid motion frame');
+      check(['rotate', 'translate'].includes(motion.kind) && motion.unit === (motion.kind === 'rotate' ? 'degrees' : 'metres'), 'invalid motion kind or unit');
+      check(vector(motion.range, 2) && motion.range[0] <= motion.range[1], 'invalid motion range');
+      const groups = row.motionGroups.filter(group => group?.id === motion.id);
+      check(groups.length === 1 && vector(groups[0].pivot, 3) && near(groups[0].pivot, motion.pivot), 'motion contract disagrees with rigid pivot');
+    }
+  }
   check(['none', 'compound-boxes'].includes(row.collision?.type), 'unknown collision proxy contract');
   check(Array.isArray(row.collision.solids), 'missing collision solids');
   check(row.collision.type === 'none' ? row.collision.solids.length === 0 : row.collision.solids.length > 0,
@@ -109,6 +122,13 @@ export function inspectAssetDocument(doc, row, level) {
     check(near(matrix.slice(12, 15), socket.position), `socket ${socket.name} position disagrees with export`);
     check(near(unit(matrix.slice(0, 3)), socket.forward), `socket ${socket.name} orientation disagrees with export`);
     check(near(unit(matrix.slice(4, 7)), socket.up), `socket ${socket.name} up orientation disagrees with export`);
+  }
+  for (const motion of row.motionContracts || []) {
+    const matches = nodes.filter(node => node.getName() === `MOTION_${motion.id.toUpperCase()}`);
+    check(matches.length === 1, `motion ${motion.id} absent or duplicated in active scene`);
+    const matrix = matches[0].getWorldMatrix();
+    check(matrix.length === 16 && matrix.every(Number.isFinite) && near(matrix.slice(12, 15), motion.pivot),
+      `motion ${motion.id} pivot disagrees with export`);
   }
   return { triangles, draws, bounds: { min, max } };
 }

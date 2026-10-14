@@ -310,6 +310,44 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     hand = null;
   }
 
+  let nameW = null;
+  let fontsPending = false;
+  // each power's rim name, measured in the host's own type (media rules re-track it), or null off the DOM
+  function measureNames(items) {
+    if (typeof doc.createElement !== 'function') return null;
+    // a real crest button with its words span, so every kit and media rule that styles the rim names applies
+    const probe = doc.createElement('button');
+    probe.type = 'button';
+    probe.tabIndex = -1;
+    probe.className = 'orr-crest';
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:absolute; left:0; top:0; visibility:hidden; pointer-events:none;';
+    const words = doc.createElement('span');
+    words.className = 'orr-crest__words';
+    words.style.cssText = 'position:absolute; display:flex; flex-direction:column; white-space:nowrap; left:0; top:0; margin:0; padding:0;';
+    const name = doc.createElement('span');
+    name.className = 'orr-crest__name';
+    words.appendChild(name);
+    probe.appendChild(words);
+    host.appendChild(probe);
+    const out = new Map();
+    let any = false;
+    for (const item of items) {
+      name.textContent = String(item.short || item.name || '').toUpperCase();
+      const w = name.getBoundingClientRect().width;
+      if (w > 0) any = true;
+      out.set(item.id, w);
+    }
+    probe.remove();
+    // measured in the fallback face while the label font still loads: measure again once it lands
+    const fonts = doc.fonts;
+    if (fonts && fonts.status !== 'loaded' && !fontsPending && fonts.ready && typeof fonts.ready.then === 'function') {
+      fontsPending = true;
+      fonts.ready.then(() => { fontsPending = false; if (!host.isConnected) return; nameW = null; drawnKey = ''; schedule(); });
+    }
+    return any ? out : null;
+  }
+
   function layout() {
     const W = host.clientWidth || 0;
     const H = host.clientHeight || 0;
@@ -327,7 +365,20 @@ export function createCrestOrbit(host, { crestSize = 50, centreSize = 150 } = {}
     const centreNow = small ? Math.round(centreSize * 0.7) : centreSize;
     // the words sit outside the crests: at east and west they need their own room, so a wide-enough
     // host is bounded by its height and a narrow one by its width less a name's length
-    const R = Math.max(90, Math.min(H / 2 - cs / 2 - 48, W / 2 - cs / 2 - (small ? 80 : 118)));
+    let R = Math.max(90, Math.min(H / 2 - cs / 2 - 48, W / 2 - cs / 2 - (small ? 80 : 118)));
+    // ...and where the names can be measured, every flank name keeps its own run inside the host:
+    // FULFILLMENT and UNDERSTORY outran the flat 118px allowance and the stage cut them at the west
+    if (rebuilt || !nameW) nameW = measureNames(data.items);
+    if (nameW) {
+      let fit = H / 2 - cs / 2 - 48;
+      data.items.forEach((item, i) => {
+        const deg = (360 * i) / n;
+        if (deg < 14 || deg > 346 || (deg > 166 && deg < 194)) return;
+        const reach = Math.abs(Math.sin(deg * Math.PI / 180));
+        if (reach > 0.05) fit = Math.min(fit, (W / 2 - cs / 2 - 16 - (nameW.get(item.id) || 0)) / reach);
+      });
+      R = Math.max(90, fit);
+    }
     geo = { cx, cy, R, cs, centreNow };
     host.classList.toggle('is-small', small);
     const arriveNow = !arrived && !reducedMotion();
@@ -533,8 +584,9 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   // a narrow scale staggers the tier names on two rows above the rule, so neighbours never
   // overprint: a name that fits its band stays put, otherwise alternate tiers rise one line
   const bandW = (x1 - x0) / n;
-  // a tier name is 12px caps at .1-.12em tracking: ~9.4px a glyph (8.4 under-read it, so neighbours touched)
-  const nameGlyph = 9.4;
+  // a tier name is 12px caps: ~9.4 a glyph at a short screen's .04em tracking (8.4 under-read it, so
+  // neighbours touched), ~10.8 at the tall screen's .12em (9.4 there let SWORN ENEMY run into HOSTILE)
+  const nameGlyph = compact ? 9.4 : 10.8;
   const nameNeed = (raw) => {
     const nm = String(raw).toUpperCase();
     const sp0 = nm.indexOf(' ');
@@ -551,17 +603,36 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   // when an even tier still splits under stagger, its top line sits ~2px from the odd row at rise 13
   // (SWORN ENEMY / HATED at 1024×768); lift the odd row so the split clears
   const staggerBand = stagger ? bandW * 2 : bandW;
-  const evenSplits = stagger && tiers.some((t, i) => {
-    if (i % 2 === 1) return false;
-    const nm = String(t.name).toUpperCase();
-    return nm.length * nameGlyph > staggerBand - 4 && nm.includes(' ');
-  });
+  const tierName = (i) => String(tiers[i].name).toUpperCase();
+  // the room a name has before it meets the next name on its own row: a middle name has its band (two on
+  // a staggered scale); an end name stands flush with the rule's end, so its room runs from that end to
+  // its neighbour's first letter (SWORN ENEMY met HOSTILE at 1600×900 while it fit two bands)
+  const roomOf = (i) => {
+    const last = tiers.length - 1;
+    if (i !== 0 && i !== last) return staggerBand - 4;
+    const j = i === 0 ? i + (stagger ? 2 : 1) : i - (stagger ? 2 : 1);
+    if (j < 0 || j > last) return x1 - x0;
+    const half = (tierName(j).length * nameGlyph) / 2;
+    return (i === 0 ? xAt(j + 0.5) - half - x0 : x1 - xAt(j + 0.5) - half) - 8;
+  };
+  const splits = (i) => { const nm = tierName(i); return nm.includes(' ') && nm.length * nameGlyph > roomOf(i); };
+  const evenSplits = stagger && tiers.some((t, i) => i % 2 === 0 && splits(i));
   const rise = evenSplits ? 24 : 13;
   const head = evenSplits ? 12 : 0;
-  const y = 40 + top + head;
+  // how far the tallest name's caps stand above the rule (12px caps are ~9px tall)
+  const nameReach = tiers.reduce((m, t, i) => {
+    const lines = splits(i) ? 2 : 1;
+    return Math.max(m, 13 + (stagger && i % 2 === 1 ? rise : 0) + (lines - 1) * 11 + 9);
+  }, 0);
+  // the bracket line rides 13px clear of the tallest name, so its drops never strike a raised tier word
+  const bracketOff = Math.max(42, nameReach + 13);
+  // ...and its label (caps ~9px over a 5px gap) stays inside the svg
+  const y = brackets.length ? Math.max(40 + top + head, bracketOff + 16) : 40 + head;
   // the rungs' rows, assigned right to left: a rung stands one row deeper than the deepest rung that
   // stands inside its own word's run, so no leader ever drops through a neighbour's word
-  const glyph = compact ? 8.2 : 8.9;
+  // 12px caps at font-stretch 112% and .12em tracking run ~10 user units a glyph (8.9 under-read it,
+  // so RECOVERY WORK ran into NEUTRAL BOARD's leader at 1920)
+  const glyph = compact ? 8.2 : 10;
   const placed = rungs.slice().sort((a, b) => a.minRep - b.minRep).map((rung) => {
     const name = String(rung.name).toUpperCase();
     const words = name.split(' ');
@@ -574,9 +645,12 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     placed[k].row = row;
   }
   const rowsUsed = placed.length ? Math.max(...placed.map((q) => q.row)) + 1 : 0;
-  if (rungs.length && rungWords) h = 40 + top + head + rungTop + (rowsUsed - 1) * pitch + 11 + 10 + (rungs.some((r) => Array.isArray(r.detail) && r.detail.length) ? 26 : 0);
-  else if (rungs.length) h = 74 + 10 + top + head;
-  else h = 74 + top + head;
+  // a scale too narrow to hang the rung words on two rows would staircase them down the column; it
+  // draws the rungs as ticks instead (as a short screen does) and the caller's sentence names the next
+  if (rungWords && rowsUsed > 2) rungWords = false;
+  if (rungs.length && rungWords) h = y + rungTop + (rowsUsed - 1) * pitch + 11 + 10 + (rungs.some((r) => Array.isArray(r.detail) && r.detail.length) ? 26 : 0);
+  else if (rungs.length) h = y + 34 + 10;
+  else h = y + 34;
   let out = `<svg class="orr-svg${compact ? ' is-compact' : ''}" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
   out += `<path class="orr-band orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}"/>`;
   out += `<path class="orr-edge orr-standing__rule" d="M ${x0} ${y} L ${x1} ${y}"/>`;
@@ -587,6 +661,8 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   for (let v = Math.ceil(repMin / 25) * 25; v <= REP_CAP; v += 25) { if (tiers.some((t) => t.min === v)) continue; const x = xAt(posOf(v)); fine += `M ${f(x)} ${y + 1} L ${f(x)} ${y + 5.5} `; }
   out += `<path class="orr-tick" d="${fine}" style="stroke:rgb(236 230 216 / .3)"/>`;
   out += '<!--pin-->';
+  // rung ticks stand where the tier values do (every rung opens on a tier line), so the values step down under them
+  const valY = rungs.length && !rungWords ? y + 28 : y + 22;
   tiers.forEach((t, i) => {
     const x = xAt(i);
     const hostile = t.min <= aggro;
@@ -596,9 +672,8 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     const anchor = 'middle';
     const nx = xAt(i + 0.5);
     // on a staggered scale a name's neighbours stand on the other row, so it may use two bands before it splits
-    const band = staggerBand;
     const sp = name.indexOf(' ');
-    const parts = name.length * nameGlyph > band - 4 && sp > 0 ? [name.slice(0, sp), name.slice(sp + 1)] : [name];
+    const parts = splits(i) ? [name.slice(0, sp), name.slice(sp + 1)] : [name];
     const dy = stagger && i % 2 === 1 ? -rise : 0;
     parts.forEach((part, pi) => {
       const py = y - 13 + dy - (parts.length - 1 - pi) * 11;
@@ -608,12 +683,12 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
       out += `<text class="orr-standing__name${i === current ? ' is-current' : ''}${hostile ? ' is-hostile' : ''}" x="${f(px)}" y="${py}" text-anchor="${end}">${part}</text>`;
     });
     // the boundary's value under its tick: a ruler is labelled like equipment
-    if (i > 0) out += `<text class="orr-standing__val${hostile ? ' is-hostile' : ''}" x="${f(x)}" y="${y + 22}" text-anchor="middle">${t.min > 0 ? '+' : t.min < 0 ? '\u2212' : ''}${Math.abs(t.min)}</text>`;
+    if (i > 0) out += `<text class="orr-standing__val${hostile ? ' is-hostile' : ''}" x="${f(x)}" y="${valY}" text-anchor="middle">${t.min > 0 ? '+' : t.min < 0 ? '\u2212' : ''}${Math.abs(t.min)}</text>`;
   });
   out += `<path class="orr-core orr-standing__tick" d="M ${f(xAt(n))} ${y - 7} L ${f(xAt(n))} ${y + 8}" stroke-width="2"/>`;
   const xc = xAt(posOf(cur));
   // the pin: from the bracket line (when there is one) down through the rule; it runs behind the names
-  const pinTop = brackets.length ? y - 42 : y - 8;
+  const pinTop = brackets.length ? y - bracketOff : y - 8;
   const pinD = `M ${f(xc)} ${pinTop} L ${f(xc)} ${y - 24} M ${f(xc)} ${y - 9} L ${f(xc)} ${y + 14}`;
   let pin = `<path class="orr-bloom orr-standing__cursor-bloom" d="${pinD}" stroke-width="10"/>`;
   pin += `<path class="orr-core orr-standing__cursor" d="${pinD}" stroke-width="2.4"/>`;
@@ -622,7 +697,7 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
   brackets.forEach((b) => {
     const xa = xAt(posOf(b.from)); const xb = xAt(posOf(b.to));
     const lo = Math.min(xa, xb); const hi = Math.max(xa, xb);
-    const yb = y - 42;
+    const yb = y - bracketOff;
     if (hi - lo < 1) return;
     pin += `<path class="orr-core orr-standing__bracket" d="M ${f(lo)} ${yb} L ${f(hi)} ${yb} M ${f(lo)} ${yb} L ${f(lo)} ${yb + 5} M ${f(hi)} ${yb} L ${f(hi)} ${yb + 5}" stroke-width="1.5"/>`;
     // a label sits outward from the cursor when asked (two brackets meeting at the cursor never overprint)
@@ -640,7 +715,7 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
       const state = rung.state === 'reached' ? 'is-reached' : rung.state === 'sealed' ? 'is-sealed' : 'is-locked';
       if (!rungWords) {
         // a short screen: the rungs are ticks under the rule (reached ones in the light); the reading names the next
-        out += `<path class="orr-core orr-standing__rung-tick ${state}" d="M ${f(x)} ${y + 10} L ${f(x)} ${y + 18}" stroke-width="2"/>`;
+        out += `<path class="orr-core orr-standing__rung-tick ${state}" d="M ${f(x)} ${y + 9} L ${f(x)} ${y + 15}" stroke-width="2"/>`;
         return;
       }
       const rowY = y + rungTop + row * pitch;
@@ -655,5 +730,5 @@ export function standingScaleSvg({ rep = 0, tiers = [], aggro = -150, width = 52
     out += `<text class="orr-standing__rep" x="${f(xc)}" y="${y + 32}" text-anchor="middle">${cur > 0 ? '+' : ''}${cur}</text>`;
   }
   out += `</svg>`;
-  return `<div class="orr-standing" style="height:${h}px">${out}</div>`;
+  return `<div class="orr-standing${rungs.length && !rungWords ? ' is-rung-ticks' : ''}" style="height:${h}px">${out}</div>`;
 }

@@ -221,29 +221,40 @@ export async function encodeMoment(plan, samples, options = {}) {
       wroteFile: false,
       videoVerified: false,
       reason: 'playback-frames-required',
+      error: 'playback-frames-required',
       unverified: true,
     };
   }
   const span = plan && plan.exportSpan;
   if (!span || span.exportable !== true) {
+    const reason = span && span.reason ? span.reason : 'unrecorded';
     return {
       ok: false,
       wroteFile: false,
       videoVerified: false,
-      reason: span && span.reason ? span.reason : 'unrecorded',
+      reason,
+      error: reason,
       missingPreTicks: span ? span.missingPreTicks : null,
       missingPostTicks: span ? span.missingPostTicks : null,
     };
   }
   if (span.seconds < EXPORT_LIMITS.minDurationS || span.seconds > EXPORT_LIMITS.maxDurationS) {
-    return { ok: false, wroteFile: false, reason: 'duration-out-of-bounds' };
+    return {
+      ok: false,
+      wroteFile: false,
+      videoVerified: false,
+      reason: 'duration-out-of-bounds',
+      error: 'duration-out-of-bounds',
+    };
   }
   const tooling = options.tooling || await videoTooling();
   if (!tooling.ffmpeg || !tooling.ffprobe || !tooling.vpx) {
     return {
       ok: false,
       wroteFile: false,
+      videoVerified: false,
       reason: 'video-tooling-absent',
+      error: 'video-tooling-absent',
       unverified: true,
     };
   }
@@ -262,7 +273,13 @@ export async function encodeMoment(plan, samples, options = {}) {
     seconds: span.seconds,
   };
   if (!rendered.ok) {
-    return { ok: false, wroteFile: false, videoVerified: false, reason: 'no-playback-frames' };
+    return {
+      ok: false,
+      wroteFile: false,
+      videoVerified: false,
+      reason: 'no-playback-frames',
+      error: 'no-playback-frames',
+    };
   }
   const outPath = options.outPath;
   const codecArgs = format === 'mp4'
@@ -276,7 +293,15 @@ export async function encodeMoment(plan, samples, options = {}) {
     codecArgs,
   });
   if (encoded.code !== 0) {
-    return { ok: false, wroteFile: false, reason: 'encode-failed', detail: encoded.stderr.slice(-500) };
+    const detail = String(encoded.stderr || '').slice(-500) || 'encode-failed';
+    return {
+      ok: false,
+      wroteFile: false,
+      videoVerified: false,
+      reason: 'encode-failed',
+      error: detail,
+      detail,
+    };
   }
   const verified = await verifyMedia(outPath, { seconds: rendered.seconds, width, height, fps, format });
   return {
@@ -296,5 +321,6 @@ export async function encodeMoment(plan, samples, options = {}) {
     missingPostTicks: span.missingPostTicks,
     verified,
     videoVerified: options.framesArePlayback === true && verified.ok === true,
+    error: verified.ok === true ? null : ((verified.problems && verified.problems.join(',')) || verified.reason || 'verify-failed'),
   };
 }

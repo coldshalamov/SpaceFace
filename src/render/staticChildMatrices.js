@@ -1,5 +1,64 @@
 import * as THREE from 'three';
 
+const nativeMatrixWorldUpdate = THREE.Object3D.prototype.updateMatrixWorld;
+let presentedMatrixPass = false;
+
+function staticLodLeaf(object) {
+  if (!object || !object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+      || object.children.length !== 0) return false;
+  const data = object.userData || {};
+  const tags = data.spacefaceTags || {};
+  return !!tags.lod && !tags.drive && !tags.motionGroup && !tags.socket
+    && shouldFreezeStaticChild(object, null);
+}
+
+function updateStaticLodLeafMatrixWorld(force) {
+  // Invisible LOD geometry has no draw or shadow consumer. Defer only this leaf's
+  // presentation transform; explicit bounds/socket/world queries still run the
+  // normal Three methods outside the presentation pass. A live child graft or
+  // newly added runtime tag immediately defeats the skip in retail as well as dev.
+  if (presentedMatrixPass && this.visible === false && staticLodLeaf(this)) {
+    this.matrixWorldNeedsUpdate = true;
+    // A clean sfMatrixFrozen ancestor otherwise hides this pending flag from
+    // the vendor traversal when the parent stops moving before LOD re-entry.
+    // Keep the dirty leaf reachable without forcing any ancestor world product.
+    for (let node = this.parent; node; node = node.parent) {
+      const data = node.userData;
+      if (!data || data.sfMatrixFrozen !== true) break;
+      data.sfMatrixFrozen = false;
+    }
+    return;
+  }
+  nativeMatrixWorldUpdate.call(this, force);
+}
+
+// Install at the authored LOD binding boundary, where the exact primitive tags
+// and runtime dependencies are known. Shared function, no per-frame allocations,
+// and no prototype patch: cameras, bones, animation, sockets and custom matrix
+// implementations remain wholly owned by Three or their existing updater.
+export function installStaticLodLeafMatrixUpdate(object) {
+  if (!staticLodLeaf(object)) return false;
+  if (object.updateMatrixWorld === updateStaticLodLeafMatrixWorld) return true;
+  if (object.updateMatrixWorld !== nativeMatrixWorldUpdate) return false;
+  object.updateMatrixWorld = updateStaticLodLeafMatrixWorld;
+  return true;
+}
+
+// The native traversal owns every required world transform. Only registered,
+// invisible static LOD leaves defer their products during this presentation pass.
+// Keeping the pending dirty flag guarantees a full refresh on the first visible
+// frame, including when a frozen leaf's parent moved while it was inactive.
+export function updatePresentedObjectMatrices(root, force) {
+  if (!root || typeof root.updateMatrixWorld !== 'function') return;
+  const previous = presentedMatrixPass;
+  presentedMatrixPass = true;
+  try {
+    root.updateMatrixWorld(force);
+  } finally {
+    presentedMatrixPass = previous;
+  }
+}
+
 // Freeze local matrices on static children.
 //
 // The root still poses every frame (position/rotation writes + matrixAutoUpdate). Interior plates,

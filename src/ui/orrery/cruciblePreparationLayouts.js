@@ -125,6 +125,7 @@ ${A} .sf-cru-card .sf-cru-key, ${A} .orr-rail-scale, ${A} .orr-rail-wallet { dis
 ${A} .sf-cru-card.is-lit { background:linear-gradient(90deg,rgb(242 185 80 / .09),transparent) !important; }
 ${A} .sf-cru-card.is-lit::before { content:'' !important; display:block !important; position:absolute !important; left:0 !important; top:14px !important; bottom:14px !important; width:2px !important; background:var(--dp-hand) !important; }
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
+/* Doubled .orr-armory-reading.orr-armory-reading is a deliberate specificity bump so these !important reading rules win over earlier stage layout. */
 ${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:grid !important; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr) !important; grid-template-rows:minmax(0,1fr) !important; gap:24px !important; overflow:auto !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 ${A} .orr-armory-visual { display:flex; flex-direction:column; width:100%; min-width:0; gap:16px; }
@@ -329,6 +330,34 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-object-label { display:none; }
  ${A} .orr-slotjig__word, ${A} .orr-slotjig__sub { display:none; }
 }
+/* One reading column (761–1150 wide): its rows size to their content and the words lead, so
+   the name, the sentence and the purchase key are never printed under the schematic and jig. */
+@media (min-width:761px) and (max-width:1150px) {
+ ${A} .orr-armory-reading.orr-armory-reading { grid-template-rows:none !important; grid-auto-rows:max-content !important; align-content:start !important; }
+ ${A} .orr-armory-reading__words { order:-1; }
+}
+/* …and on a short plate (960×540) the words close up so the purchase key sits above the fold. */
+@media (min-width:761px) and (max-width:1150px) and (max-height:640px) {
+ ${A} .orr-armory-reading.orr-armory-reading { padding-top:8px !important; }
+ ${A} .orr-armory-reading__name { margin:4px 0 8px !important; }
+ ${A} .orr-armory-reading__budget { margin:8px 0 !important; }
+ ${A} .orr-armory-reading__buy { margin:8px 0 12px !important; }
+}
+/* Refit without the hull plan (narrow or short plates): a plain hardpoint list. Each row is a
+   ruled block (numeral, name, slot tag and Empty spaced apart), its sentence wraps inside the row,
+   and the stage opens at its first row instead of cutting it under the title. */
+${R} > .sf-cru-stage:not(.orr-hull--on) { padding-top:6px !important; scroll-padding:28px 0; -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); }
+${R} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows { display:flex !important; flex-direction:column; gap:0; margin:0 !important; }
+${R} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows, ${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { width:100% !important; max-width:100% !important; min-width:0 !important; box-sizing:border-box; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; align-items:start; column-gap:20px; padding:10px 0 12px !important; min-height:0 !important; border-bottom:1px solid rgb(${BONE} / .1); }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__body { display:flex; flex-direction:column; gap:4px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__head { display:flex; align-items:baseline; gap:12px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__n { font-variant-numeric:tabular-nums; color:rgb(${BONE} / .6); min-width:2ch; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .k-row__name { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; min-width:0; overflow:visible; white-space:normal; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__empty { color:rgb(${BONE} / .6); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__line { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 16px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__contrast { margin:2px 0 0 !important; white-space:normal !important; overflow-wrap:anywhere; line-height:1.4; color:rgb(${BONE} / .72); max-width:min(72ch, 100%) !important; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-act { align-self:center; }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }
  ${D} > .k-title h1, ${A} > .k-title h1 { font-size:36px !important; }

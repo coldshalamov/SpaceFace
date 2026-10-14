@@ -96,3 +96,33 @@ for (const [name,mutate,error] of [
 ]) test(`rejects ${name}`,()=>{const f=fixture();mutate(f);assert.throws(()=>inspectAssetDocument(f.doc,f.row,0),error);});
 test('single scene without explicit default is accepted',()=>{const f=fixture();f.root.getDefaultScene=()=>null;assert.doesNotThrow(()=>inspectAssetDocument(f.doc,f.row,0));});
 test('indexed geometry is measured correctly',()=>{const f=fixture();f.primitive.getIndices=()=>f.accessor(new Uint16Array([0,1,2]),'SCALAR');assert.equal(inspectAssetDocument(f.doc,f.row,0).triangles,1);});
+
+function articulatedFixture() {
+  const f=fixture();
+  f.row.motionGroups=[{id:'hinge',pivot:[0,0,0]}];
+  f.row.motionContracts=[{id:'hinge',pivot:[0,0,0],axis:[0,1,0],kind:'rotate',unit:'degrees',range:[-35,35]}];
+  f.children.push(f.node('MOTION_HINGE'));
+  return f;
+}
+test('articulated metadata names a real reachable pivot without claiming an animation clip',()=>{
+  const f=articulatedFixture();
+  assert.doesNotThrow(()=>validateAssetContract(f.row));
+  assert.doesNotThrow(()=>inspectAssetDocument(f.doc,f.row,0));
+});
+for(const [name,mutate,error] of [
+  ['motion axis',f=>f.row.motionContracts[0].axis=[0,0,0],/motion frame/],
+  ['motion unit',f=>f.row.motionContracts[0].unit='metres',/motion kind or unit/],
+  ['motion range',f=>f.row.motionContracts[0].range=[35,-35],/motion range/],
+  ['unknown rigid pivot',f=>f.row.motionContracts[0].id='missing',/rigid pivot/],
+  ['mismatched rigid pivot',f=>f.row.motionGroups[0].pivot=[1,0,0],/rigid pivot/],
+  ['duplicate motion',f=>f.row.motionContracts.push({...f.row.motionContracts[0]}),/motion identity/],
+])test(`rejects ${name}`,()=>{const f=articulatedFixture();mutate(f);assert.throws(()=>validateAssetContract(f.row),error);});
+test('an unreachable motion node cannot satisfy the adjacent manifest',()=>{
+  const f=articulatedFixture();f.children.pop();
+  assert.throws(()=>inspectAssetDocument(f.doc,f.row,0),/motion hinge absent/);
+});
+test('an exported pivot at another bind position is rejected',()=>{
+  const f=articulatedFixture(),matrix=identity();matrix[12]=1;
+  f.children.at(-1).getWorldMatrix=()=>matrix;
+  assert.throws(()=>inspectAssetDocument(f.doc,f.row,0),/pivot disagrees/);
+});

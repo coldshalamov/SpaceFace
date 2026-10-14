@@ -8,6 +8,7 @@ from mathutils import Vector
 HERE=os.path.dirname(os.path.abspath(__file__));sys.path.insert(0,HERE)
 from forge import Ship,reset_scene,box,cylinder,ring as _ring,truss as _truss,beams,plate,plate_v,band,_new_object
 from asset_bank_export import export_asset,render_preview,socket_rotation
+from asset_bank_contract import select_asset_ids
 ROOT=os.path.abspath(os.path.join(HERE,'../../..'));OUT=os.path.join(ROOT,'assets/models/asset-bank/structure')
 COLORS={'paint':'#737d83','paint2':'#394b57','stripe':'#ad652c','hazard':'#c69328'}
 STRUCT=['truss_short','truss_long','truss_corner_90','truss_tee','truss_cross','truss_elbow_45','truss_rise_adapter','truss_octagonal_hub','flange_coupler','bulkhead_mount','terminal_cap','telescoping_sleeve']
@@ -315,6 +316,7 @@ def quality_pass(s,kind):
 
 
 def build(asset_id,lod=0,reset=True):
+    select_asset_ids(STRUCT+FLUID+HAB,[asset_id])
     if reset:reset_scene()
     colors=dict(COLORS)
     if asset_id in HAB and asset_id not in ('berth_jaw','loading_bridge','escape_capsule_cradle','service_umbilical'):
@@ -331,7 +333,7 @@ def build(asset_id,lod=0,reset=True):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--only');p.add_argument('--out',help='Candidate output directory; no live files changed');p.add_argument('--render',action='store_true');a=p.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
-    ids=a.only.split(',') if a.only else STRUCT+FLUID+HAB;rows=[];out_dir=os.path.abspath(a.out) if a.out else OUT
+    ids=select_asset_ids(STRUCT+FLUID+HAB,a.only);rows=[];out_dir=os.path.abspath(a.out) if a.out else OUT
     for asset_id in ids:
         s,category=build(asset_id);row=export_asset(s,out_dir,asset_id,category,asset_id.replace('_',' '),s.bank_boxes,['modular','reusable','Forge','attachment-metadata','library-only']);rows.append(row)
         if a.render:

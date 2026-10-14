@@ -8,7 +8,10 @@ import { physics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
-import { createMercyServiceSystem } from '../src/response/mercyService/index.js';
+import { disposeDetachedObject, resolvePlaceFileForEntity } from '../src/render/partsLibrary.js';
+import { createVisualFactory } from '../src/render/visualFactory.js';
+import { installVisualOverrides } from '../src/render/visualOverrides.js';
+import { boardIncidents, createMercyServiceSystem, MERCY_DT, MERCY_MODELS } from '../src/response/mercyService/index.js';
 import { missions } from '../src/systems/missions.js';
 
 async function boot({ missionOwner = false, pos = { x: -50, z: 0 } } = {}) {
@@ -98,6 +101,67 @@ test('tools refuse distant targets and sector exit removes only owned bodies', a
     rt.bus.emit('sector:exit', {});
     assert.equal(rt.state.entities.has(subject.entityId), false);
     assert.equal(rt.state.entities.get(foreign.id), foreign);
+  } finally { rt.dispose(); }
+});
+
+test('spawned rescue bodies resolve to the published place GLB the renderer mounts', async () => {
+  const rt = await boot();
+  try {
+    const host = rt.getSystem('mercyService');
+    const factory = installVisualOverrides(createVisualFactory());
+    const seen = new Set();
+    for (const def of boardIncidents()) {
+      const opened = host.startIncident({ incidentId: def.id, origin: { x: 0, z: 0 } });
+      assert.equal(opened.ok, true, `${def.id} ${opened.reason || ''}`);
+      for (const body of host.rt.focus.bodyList) {
+        const entity = rt.state.entities.get(body.entityId);
+        const model = MERCY_MODELS[body.model];
+        const file = `places/${entity.data.placeId}.glb`;
+        seen.add(file);
+        assert.equal(model.publishedGlb, `assets/ships/release/parts/${file}`, body.model);
+        assert.equal(resolvePlaceFileForEntity(entity), file, body.model);
+        const mesh = factory.build(entity);
+        assert.ok(mesh, `${body.model} must mount a place mesh`);
+        try {
+          assert.equal(mesh.userData.kind, 'place', body.model);
+          assert.equal(mesh.userData.placeId, entity.data.placeId, body.model);
+          assert.equal(typeof mesh.userData.requestAuthoredUpgrade, 'function', body.model);
+        } finally { disposeDetachedObject(mesh, rt.state); }
+      }
+      host.leave();
+    }
+    assert.ok(seen.has('places/place_47a_rescue_capsule.glb'));
+  } finally { rt.dispose(); }
+});
+
+test('a lost ship fails the live rescue and leaves the incident unsettled', async () => {
+  const rt = await boot();
+  try {
+    const host = rt.getSystem('mercyService');
+    const failures = [];
+    rt.bus.on('mission:venueFailure', (payload) => failures.push(payload));
+    const opened = host.startIncident({
+      incidentId: 'ms_pod_traffic', origin: { x: 0, z: 0 }, offerId: 'mercy_live_offer',
+    });
+    assert.equal(opened.ok, true);
+    const player = rt.state.entities.get(rt.state.playerId);
+    player.alive = false;
+    host.update(MERCY_DT, rt.state);
+    const inc = host.rt.focus;
+    assert.equal(inc.latches.settled, false);
+    assert.equal(inc.outcome, null);
+    assert.equal(host.rt.player.alive, false);
+    assert.equal(rt.state.mercyServicePublic.player.alive, false);
+    assert.equal(failures.length, 1);
+    assert.deepEqual(failures[0], {
+      missionId: 'mercy_live_offer',
+      source: 'mercyService',
+      receiptId: inc.uid,
+      kind: 'rescue-lost',
+    });
+    assert.equal(host.rt.intentLog.some((row) => row.type === 'economy:grantCredits'), false);
+    host.update(MERCY_DT, rt.state);
+    assert.equal(failures.length, 1, 'ship-loss notifications are idempotent');
   } finally { rt.dispose(); }
 });
 

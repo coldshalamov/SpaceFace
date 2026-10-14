@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { awaitRoundHandoff } from '../scripts/player-truth/run.mjs';
+import { awaitRoundHandoff, screenshotHudOccluders } from '../scripts/player-truth/run.mjs';
 
 async function withPage({ phases, button = null, onClick = null }, run) {
   const previousWindow = globalThis.window; const previousDocument = globalThis.document;
@@ -36,6 +36,21 @@ async function withPage({ phases, button = null, onClick = null }, run) {
   }
 }
 
+test('screenshot occlusion includes the complete target and contact-list dock', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { querySelectorAll(selector) {
+    assert.equal(selector, '#hud .sf-rightdock');
+    return [
+      { offsetParent: {}, getBoundingClientRect: () => ({ left: 1040, top: 90, right: 1280, bottom: 650 }) },
+      { offsetParent: null, getBoundingClientRect() { throw new Error('hidden HUD is not a pixel cover'); } },
+    ];
+  } };
+  try { assert.deepEqual(screenshotHudOccluders(), [[1040, 90, 1280, 650]]); }
+  finally {
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+  }
+});
+
 test('native cleanup launches the actual next wave without waiting for or clicking a button', async () => {
   await withPage({ phases: [
     { phase: 'cleanup', wave: 1, sim: 60 }, { phase: 'active', wave: 1, sim: 60.1 },
@@ -65,6 +80,31 @@ test('automatic activation while the screen capture settles does not click a sta
       beforeLaunch: async () => { setPhase({ phase: 'active', wave: 2, sim: 62 }); button.offsetParent = null; },
     });
     assert.equal(result.kind, 'active'); assert.equal(result.wave, 2); assert.deepEqual(clicks, []);
+  });
+});
+
+test('a control disappearing during click waits for native activation', async () => {
+  const button = { textContent: 'Launch round 2', offsetParent: {}, disabled: false };
+  await withPage({ phases: [{ phase: 'draft', wave: 1 }, { phase: 'active', wave: 2, sim: 62 }], button,
+    onClick: (setPhase) => {
+      button.offsetParent = null;
+      setPhase({ phase: 'wave_intro', wave: 2 });
+      throw new Error('locator.click: Timeout 1000ms exceeded');
+    },
+  }, async ({ page, clicks }) => {
+    const result = await awaitRoundHandoff(page, { previousWave: 1 });
+    assert.equal(result.kind, 'active'); assert.equal(result.wave, 2);
+    assert.deepEqual(clicks, ['Launch round 2']);
+  });
+});
+
+test('an available control with a persistent click failure still reports the error', async () => {
+  await withPage({ phases: [{ phase: 'draft', wave: 1 }],
+    button: { textContent: 'Launch round 2', offsetParent: {}, disabled: false },
+    onClick: () => { throw new Error('persistent click failure'); },
+  }, async ({ page }) => {
+    const result = await awaitRoundHandoff(page, { previousWave: 1 });
+    assert.equal(result.kind, 'launch-error'); assert.match(result.message, /persistent click failure/);
   });
 });
 
