@@ -182,10 +182,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     revealCapTimer = setTimeout(() => {
       revealCapTimer = null; capped = true;
       if (!firstDrawSubmitted()) console.info('[loading] veil lifted by the first-draw cap', { capMs: FIRST_DRAW_REVEAL_CAP_MS });
-      poll(true);
+      poll('cap');
     }, FIRST_DRAW_REVEAL_CAP_MS);
-    const poll = (viaTimer) => {
-      if (viaTimer) revealPollTimer = null; else revealRaf = null;
+    // Each channel clears only its own handle: the cap must not orphan a live poll timer.
+    const poll = (source) => {
+      if (source === 'timer') revealPollTimer = null; else if (source === 'raf') revealRaf = null;
       if (disposed) return;
       if (frameNow() > baseline && (capped || firstDrawSubmitted())) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
@@ -198,11 +199,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         else hide(); // no decorative instrument to finish on minimal shells
         return;
       }
-      if (raf && revealRaf === null) revealRaf = raf(() => poll(false));
-      if (revealPollTimer === null) revealPollTimer = setTimeout(() => poll(true), 200);
+      if (raf && revealRaf === null) revealRaf = raf(() => poll('raf'));
+      if (revealPollTimer === null) revealPollTimer = setTimeout(() => poll('timer'), 200);
     };
-    revealRaf = raf(() => poll(false));
-    revealPollTimer = setTimeout(() => poll(true), 200);
+    revealRaf = raf(() => poll('raf'));
+    revealPollTimer = setTimeout(() => poll('timer'), 200);
     // Preserve the pre-existing escape hatch; timeout is NOT evidence of readiness or 100%.
     revealDeadlineTimer = setTimeout(() => hide({ completed: false }), 20500);
   }
