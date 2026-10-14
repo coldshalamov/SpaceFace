@@ -20482,10 +20482,14 @@ export const render = {
           }
         } else {
           this._openingEnvFrozen = false;
-          // A foundry HDRI that landed during the frozen first picture is promoted now — the
-          // curated shot kept its env; the live one gets the industrial light.
+          // A foundry HDRI that landed during the frozen first picture is promoted under the
+          // veil — the curated shot kept its env; the live one gets the industrial light. Armed,
+          // not baked here: this listener runs inside the Launch reply (enterLoadingMode's
+          // mode:changed), where the 2K float upload + PMREM convolve held the click for
+          // ~400-900 ms on software GL. The cook seams and the post-opening pass drain it before
+          // the first flight frame; the source differs, so the same-source guard cannot skip it.
           if (this._foundryEnvTexture && this._envMapSource !== IBL_SOURCE_FOUNDRY) {
-            this._bakeEnv({ force: true });
+            this._foundryEnvPending = true;
           }
           releaseOpeningGraphPublication(this);
           this._openingFirstPicturePrepared = false;
@@ -24906,6 +24910,8 @@ export const render = {
   // context that already tolerates paced spend, instead of a presented frame.
   _drainFoundryEnvPending() {
     if (this._foundryEnvPending !== true) return;
+    // A frozen opening picture would turn the bake into a no-op; stay armed for the next seam.
+    if (this._openingEnvFrozen === true) return;
     this._foundryEnvPending = false;
     this._bakeEnv();
   },

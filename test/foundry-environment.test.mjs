@@ -292,7 +292,9 @@ test('renderer wires the foundry as env input only — the visible sky is never 
   assert.match(src, /resolveIblSource\(\{\s*foundryTexture:\s*this\._foundryEnvTexture,\s*background:\s*scene\.background,\s*\}\)/);
   // Load once at init, promote on unfreeze, and release on dispose — the full lifecycle.
   assert.match(src, /this\._loadFoundryIbl\(\);/);
-  assert.match(src, /this\._envMapSource !== IBL_SOURCE_FOUNDRY\)\s*\{\s*this\._bakeEnv\(\{ force: true \}\)/);
+  // Unfreeze promotion is armed for a veiled seam, not baked inside the Launch reply.
+  assert.match(src, /this\._envMapSource !== IBL_SOURCE_FOUNDRY\)\s*\{\s*this\._foundryEnvPending = true;/);
+  assert.match(src, /if \(this\._openingEnvFrozen === true\) return;\s*this\._foundryEnvPending = false;\s*this\._bakeEnv\(\);/);
   assert.match(src, /invokeRendererDisposer\(owner\._foundryEnvTexture/);
   // The contract's failure mode: nothing may draw the foundry as the visible sky.
   assert.doesNotMatch(src, /scene\.background\s*=\s*[^;]*foundry/i);
