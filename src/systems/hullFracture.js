@@ -32,9 +32,25 @@ const LETHAL_BLOW_KEY_CAP = 512;
 // its note, so victim keys would otherwise accumulate without bound across a long session.
 export const PENDING_SLAM_KEY_CAP = 512;
 const FRACTURE_SPLIT_SPEED = 12;
+const BREAKUP_CLEARANCE = 0.25;
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function breakupConsumed(entity) {
+  const data = entity && entity.data;
+  if (!data) return false;
+  // Existing stamps also cover fragments loaded from before the lifetime flag existed.
+  // A per-body chip cap alone is insufficient: each descendant would get a fresh cap.
+  return data.physicalBreakup === true || !!data.fracturePiece || data.collisionTearOff === true
+    || Number(data.impactChipCount) > 0 || data.isChunk === true
+    || (entity.type === 'wreck' && data.parentType === 'ship')
+    || data.reactiveMatter?.parentId != null;
+}
+
+function consumeBreakup(entity) {
+  if (entity) (entity.data || (entity.data = {})).physicalBreakup = true;
 }
 
 export function closingSpeedFromImpact(payload) {
@@ -44,6 +60,7 @@ export function closingSpeedFromImpact(payload) {
 
 export function isSlamFractureCandidate(target, closingSpeed) {
   if (!target || target.type !== 'ship' || target.alive === false) return false;
+  if (breakupConsumed(target)) return false;
   return Number.isFinite(closingSpeed) && closingSpeed >= fractureThresholdWU;
 }
 
@@ -178,8 +195,10 @@ export function isOverkillFractureCandidate(blow) {
 export function overkillNoteForKill({ victim, blow } = {}) {
   // Victim is already dead when entity:killed fires (alive === false) — the
   // snapshot still carries pos/vel/mass/radius, which is all the seam split
-  // needs. Only the hull class matters here, never liveness.
+  // needs. Death still permits the first split, but a hull that already shed physical
+  // pieces has consumed its breakup and leaves the ordinary single wreck instead.
   if (!victim || victim.type !== 'ship') return null;
+  if (breakupConsumed(victim)) return null;
   if (!isOverkillFractureCandidate(blow)) return null;
   return {
     victimId: victim.id,
@@ -228,7 +247,7 @@ function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label,
     type: 'wreck',
     pos: { x: note.pos.x + offset.x, z: note.pos.z + offset.z },
     vel: { x: note.vel.x, z: note.vel.z },
-    angVel: note.angVel,
+    angVel: finite(note.angVel),
     radius,
     mass,
     hull: 1,
@@ -243,6 +262,7 @@ function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label,
       name: label,
       fractureSeamId: seam.id,
       fracturePiece: role,
+      physicalBreakup: true,
       // The shard correlator consumers read alongside markerId/provenance:
       // the seam offcut keeps pointing at the remainder's durable marker.
       // bindAftermath's identity merge (aftermathWrecks, read-only) assigns
@@ -272,6 +292,8 @@ export function spawnFracturePieces(ctx, note, options = {}) {
   const helpers = ctx && ctx.helpers;
   if (!state || !helpers || typeof helpers.spawnEntity !== 'function' || !note) return null;
   if (typeof state.rng !== 'function') return null;
+  const victim = state.entities?.get(note.victimId);
+  if (breakupConsumed(victim)) return null;
 
   const classId = hullClassForMass(note.mass);
   const seam = seamFor(classId, state.rng);
@@ -285,7 +307,11 @@ export function spawnFracturePieces(ctx, note, options = {}) {
   const hullMass = Math.max(note.mass, seamMass + remMass);
   const seamRadius = Math.max(2, note.radius * Math.cbrt(seamMass / hullMass));
   const remRadius = Math.max(2, note.radius * Math.cbrt(remMass / hullMass));
-  const split = Math.max(2, note.radius * 0.35);
+  // Bound the actual capsule, including its spine, so siblings begin separated instead
+  // of asking the contact solver to eject two deeply interpenetrating new bodies.
+  const capsuleReach = Math.max(WRECK_COLLIDER_PROPORTIONS.length * 0.5,
+    WRECK_COLLIDER_PROPORTIONS.halfWidth);
+  const split = (capsuleReach * (seamRadius + remRadius) + BREAKUP_CLEARANCE) * 0.5;
   const salvagePool = options.salvagePool && typeof options.salvagePool === 'object'
     ? options.salvagePool
     : { cmdty_scrap_metal: 2 };
@@ -320,6 +346,7 @@ export function spawnFracturePieces(ctx, note, options = {}) {
   }));
 
   const pieces = [seamEntity, remEntity].filter(Boolean);
+  if (pieces.length) consumeBreakup(victim);
   for (const piece of pieces) {
     const sign = piece.data && piece.data.fracturePiece === 'remainder' ? -1 : 1;
     const mag = Math.max(0.1, finite(piece.mass, 1)) * FRACTURE_SPLIT_SPEED;
@@ -361,8 +388,8 @@ export function spawnFracturePieces(ctx, note, options = {}) {
 // Sub-lethal hard contacts shed real plating shards as bounded debris bodies — not a second
 // wreck, not a durable marker. Pieces inherit the struck hull's velocity plus a contact-axis
 // fling, collide like ordinary debris, and die with the sector (homeSectorId ownership).
-// collisionConsequences owns admission (damage applied, non-lethal, cooldowns, live cap);
-// this file owns the body spec the same way it owns seam pieces.
+// collisionConsequences owns impact admission (damage applied, non-lethal, cooldowns, live cap);
+// this file owns the body spec and the shared one-breakup-per-lifetime guard.
 
 const TEAROFF_PIECE_CAP = 2;
 const TEAROFF_FLING_MIN = 8;
@@ -386,11 +413,12 @@ export const IMPACT_TEAROFF_LAW = Object.freeze({
 });
 
 function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
+  const offset = Math.max(1, finite(note.radius, 7)) + radius + BREAKUP_CLEARANCE;
   return {
     type: 'wreck',
-    pos: { x: note.pos.x + dir.x * radius * 0.5, z: note.pos.z + dir.z * radius * 0.5 },
+    pos: { x: note.pos.x + dir.x * offset, z: note.pos.z + dir.z * offset },
     vel: { x: note.vel.x + dir.x * speed, z: note.vel.z + dir.z * speed },
-    angVel: note.angVel + (dir.x * 0.7 - dir.z * 0.7) * (2 + speed * 0.1),
+    angVel: finite(note.angVel) + (dir.x * 0.7 - dir.z * 0.7) * (2 + speed * 0.1),
     radius,
     mass,
     hull: 1,
@@ -404,6 +432,7 @@ function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
       scanLabel: 'Hull Debris',
       name: 'Hull Debris',
       collisionTearOff: true,
+      physicalBreakup: true,
       // Correlator-only stamp: no production reader keys off it today (tests and the
       // stunt journal may) — a wreck-sourced chip's victimId is a wreck, not a ship,
       // and nothing downstream assumes otherwise.
@@ -425,6 +454,13 @@ export function spawnCollisionTearOff(ctx, note) {
   if (!state || !helpers || typeof helpers.spawnEntity !== 'function' || !note) return null;
   if (typeof state.rng !== 'function') return null;
   if (!note.pos || !Number.isFinite(note.pos.x) || !Number.isFinite(note.pos.z)) return null;
+  const victim = state.entities?.get(note.victimId);
+  if (breakupConsumed(victim)) return null;
+  // Ship receipts name a surface contact point; wreck receipts name the centre. Use
+  // the source body's centre consistently when placing the separated physical chip.
+  const spawnNote = victim?.pos
+    ? { ...note, pos: victim.pos, angVel: finite(note.angVel, finite(victim.angVel)) }
+    : note;
   const rng = state.rng;
 
   const victimMass = Math.max(0.1, finite(note.mass, 1));
@@ -442,19 +478,24 @@ export function spawnCollisionTearOff(ctx, note) {
     : (state.world && state.world.currentSectorId) || null;
 
   const spawned = [];
+  let firstSide = 1;
   for (let i = 0; i < count; i++) {
-    const side = rng() < 0.5 ? -1 : 1;
+    const randomSide = rng() < 0.5 ? -1 : 1;
+    if (i === 0) firstSide = randomSide;
+    // Opposite flanks keep siblings clear even when both random rolls pick one side.
+    const side = i === 0 ? firstSide : -firstSide;
     const tangentJitter = (rng() - 0.5) * 1.4;
     const dir = unitDir({ x: n.x * side + tx * tangentJitter, z: n.z * side + tz * tangentJitter });
     const mass = Math.max(0.4, victimMass * TEAROFF_MASS_FRAC * (0.6 + rng() * 0.9));
     const radius = Math.min(TEAROFF_RADIUS_MAX,
       Math.max(TEAROFF_RADIUS_MIN, victimRadius * Math.cbrt(mass / victimMass)));
     const entity = helpers.spawnEntity(tearOffSpec({
-      note, dir, speed: fling * (0.75 + rng() * 0.5), mass, radius, sectorId,
+      note: spawnNote, dir, speed: fling * (0.75 + rng() * 0.5), mass, radius, sectorId,
     }));
     if (entity) spawned.push(entity);
   }
   if (!spawned.length) return null;
+  consumeBreakup(victim);
 
   if (ctx.bus && typeof ctx.bus.emit === 'function') {
     ctx.bus.emit('collision:tearOff', {

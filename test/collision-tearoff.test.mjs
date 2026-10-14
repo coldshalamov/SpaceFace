@@ -148,7 +148,7 @@ describe('collision tear-off', { concurrency: false }, () => {
     }
   });
 
-  it('per-victim cooldown and the live cap bound shard growth', () => {
+  it('one lifetime breakup and the live cap bound shard growth', () => {
     resetPendingSlams();
     const h = bootHarness();
     const { consequences } = bootSystem(h);
@@ -162,7 +162,7 @@ describe('collision tear-off', { concurrency: false }, () => {
       hardHit(consequences, victim, rammer, { tick: 501 });
       assert.equal(victimShards().length, 2, 'cooldown suppresses the immediate repeat');
       hardHit(consequences, victim, rammer, { tick: 500 + 121 });
-      assert.equal(victimShards().length, 4, 'a fresh slam after the cooldown sheds again');
+      assert.equal(victimShards().length, 2, 'a later slam cannot break the same hull again');
       // Cap: fill the live set to TEAROFF_LIVE_CAP and confirm admission refuses.
       for (const shard of tearOffs(h.state)) shard.alive = true;
       for (let i = 0; i < 20; i++) {
