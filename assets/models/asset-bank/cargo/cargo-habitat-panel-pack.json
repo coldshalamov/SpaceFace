@@ -1,0 +1,184 @@
+{
+  "assetId": "cargo-habitat-panel-pack",
+  "category": "cargo",
+  "description": "Fragile layered habitat panels in an A-frame",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.8275185823440552,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.625,
+        0.9462592899799347,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.85
+        ],
+        "size": [
+          3.0,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.85
+        ],
+        "size": [
+          3.0,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          2.8,
+          1.5,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.625,
+      0.06499999761581421,
+      -0.9750000238418579
+    ],
+    "max": [
+      1.625,
+      1.8275185823440552,
+      0.9750000238418579
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-habitat-panel-pack_lod0.glb",
+      "triangles": 5964,
+      "draws": 5,
+      "bytes": 538072,
+      "method": "source",
+      "sha256": "c45c17a6b1d111901a01c97859d4757d55b1ff9cea6f1ca4c868b91847ea2ac3"
+    },
+    {
+      "level": 1,
+      "file": "cargo-habitat-panel-pack_lod1.glb",
+      "triangles": 508,
+      "draws": 5,
+      "bytes": 275296,
+      "method": "authored-topology",
+      "sha256": "fb81766640de24822775600fa5f2c23cb0ba91f57600a261b36d320962bdae44"
+    },
+    {
+      "level": 2,
+      "file": "cargo-habitat-panel-pack_lod2.glb",
+      "triangles": 300,
+      "draws": 4,
+      "bytes": 260208,
+      "method": "authored-topology",
+      "sha256": "2eb4b56d4f558538e2e29762675aaf562347f0e8f6daf7c51b1c56fba26bd1f8"
+    }
+  ]
+}

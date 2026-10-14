@@ -4,7 +4,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sellableCargoQuantity } from '../../src/systems/cargo.js';
+import { cashInSalvage, sellableCargoQuantity } from '../../src/systems/cargo.js';
+import { quote } from '../../src/systems/economy.js';
 import {
   HOME_FACTION,
   HOME_STATION,
@@ -26,6 +27,7 @@ import {
   buy,
   buyModule,
   buyShip,
+  completeFactionMissions,
   craft,
   dock,
   firstBoardOffer,
@@ -34,7 +36,7 @@ import {
   leaveDock,
   lootDrop,
   offlineCatchup,
-  raiseStanding,
+  runKillRecipe,
   saveContinue,
   sell,
   sellShipEvent,
@@ -85,11 +87,16 @@ function fund(sim) {
   return service(sim, 'loan');
 }
 
+const CREDIT_PATH = 'economy.quote -> economy.execute trade:buy/trade:sell';
+
 function roundTrip(sim, qty) {
   const before = captureLedger(sim);
+  const stationId = before.stationId || HOME_STATION;
+  const buyQuote = quote(stationId, IRON, 'buy', qty);
   const ear = listenCredits(sim.bus);
   const bought = buy(sim, IRON, qty);
   const gained = holdQty(sim.state, IRON) - (Number(before.cargo[IRON]) || 0);
+  const sellQuote = gained > 0 ? quote(stationId, IRON, 'sell', gained) : null;
   const sold = gained > 0 ? sell(sim, IRON, gained) : null;
   ear.stop();
   const after = captureLedger(sim);
@@ -109,6 +116,13 @@ function roundTrip(sim, qty) {
     stockDelta,
     cargoDelta,
     verdict,
+    buyQuote,
+    sellQuote,
+    quoteNet: (sellQuote && sellQuote.ok ? Number(sellQuote.total) || 0 : 0)
+      - (buyQuote && buyQuote.ok ? Number(buyQuote.total) || 0 : 0),
+    reachesCreditPrint: ((sellQuote && sellQuote.ok ? Number(sellQuote.total) || 0 : 0)
+      - (buyQuote && buyQuote.ok ? Number(buyQuote.total) || 0 : 0)) > 0,
+    creditPath: CREDIT_PATH,
   };
 }
 
@@ -165,32 +179,17 @@ function probeWash(seed) {
   }
 
   const allied = bootRedTeam(seed + 1);
-  let grants = 0;
-  let opened = null;
-  while (grants < 40 && !opened) {
-    grants += 1;
-    raiseStanding(allied, HOME_FACTION, 15);
-    if (allied.state.player.credits < 2500) fund(allied);
-    const cycle = roundTrip(allied, 10);
-    if (cycle.bought.ok && cycle.verdict.exploit) opened = { grants, cycle };
-  }
-  // A repaired exploit still needs an observed transaction, rather than an empty green trace.
-  const minimal = opened ? minimizeQty(allied, 10) : roundTrip(allied, 10);
-  let scale = null;
-  if (minimal && minimal.verdict.exploit) {
-    while (repOf(allied.state) < 400) {
-      raiseStanding(allied, HOME_FACTION, 15);
-      if (allied.state.player.credits < 4000) fund(allied);
-    }
-    scale = roundTrip(allied, 25);
-  }
-  const exploit = !!(minimal && minimal.verdict.exploit);
+  const earned = completeFactionMissions(allied, HOME_FACTION);
+  if (allied.state.player.credits < 2500) fund(allied);
+  const opened = roundTrip(allied, 10);
+  const minimal = opened.bought.ok && opened.verdict.exploit ? minimizeQty(allied, 10) : opened;
+  const exploit = !!(minimal && minimal.bought && minimal.bought.ok && minimal.verdict.exploit);
   return family(
     'zero_spread_trade_cycles',
-    exploit ? 'exploit' : 'clean',
+    exploit ? 'exploit' : 'tested-not-broken',
     exploit
-      ? 'Mission-sized faction:repDelta grants invert the Helios bid-ask. A closed iron round trip prints credits. The ledger is the buy and the sell.'
-      : 'Same-station iron round trips did not print credits from the live wallet.',
+      ? 'Completed faction missions left standing high enough that a closed iron round trip printed credits.'
+      : 'Completed Helios faction missions, then closed an iron round trip. Injected faction:repDelta is not treated as a confirmed exploit. The trip did not print credits.',
     {
       traces: [
         {
@@ -206,32 +205,46 @@ function probeWash(seed) {
           steps: first ? first.step : null,
           stop,
         },
-        minimal ? {
+        minimal && minimal.bought ? {
           ...ledgerTrace('allied_minimized', seed + 1, [
-            `faction:repDelta ${HOME_FACTION} +15 x ${grants}`,
+            `mission:completed ${HOME_FACTION} x ${earned.completed}`,
             'ui:service loan',
             `ui:buy ${IRON} ${minimal.qty}`,
             `ui:sell ${IRON} ${minimal.qty}`,
           ], minimal),
-          missionGrants: grants,
+          missionCompletions: earned.completed,
+          repBefore: earned.repBefore,
+          repAfter: earned.repAfter,
+          repFromWriter: earned.repFromWriter,
+          receipts: earned.receipts,
+          alliedBand: earned.alliedBand,
+          buyTotal: minimal.buyQuote && minimal.buyQuote.total,
+          sellTotal: minimal.sellQuote && minimal.sellQuote.total,
+          quoteNet: minimal.quoteNet,
+          reachesCreditPrint: minimal.reachesCreditPrint === true,
+          creditPath: minimal.creditPath,
         } : {
           name: 'allied_minimized',
           seed: seed + 1,
-          commands: [`faction:repDelta ${HOME_FACTION} +15 x ${grants}`],
+          commands: [`mission:completed ${HOME_FACTION} x ${earned.completed}`],
           creditsDelta: 0,
-          missionGrants: grants,
+          missionCompletions: earned.completed,
+          repBefore: earned.repBefore,
+          repAfter: earned.repAfter,
+          repFromWriter: earned.repFromWriter,
+          receipts: earned.receipts,
+          alliedBand: earned.alliedBand,
         },
-        scale && scale.bought.ok ? ledgerTrace('allied_scale', seed + 1, [
-          'continue faction:repDelta +15 until rep >= 400',
-          'ui:service loan',
-          'ui:buy cmdty_ore_iron 25',
-          'ui:sell cmdty_ore_iron 25',
-        ], scale) : null,
       ].filter(Boolean),
       controls: [{
         name: 'neutral_standing_is_not_a_wash',
         pass: neutral.verdict.exploit !== true && neutral.creditsDelta <= 0,
         creditsDelta: neutral.creditsDelta,
+      }, {
+        name: 'standing_came_from_mission_completion',
+        pass: earned.completed > 0 && earned.repAfter > earned.repBefore,
+        completed: earned.completed,
+        repAfter: earned.repAfter,
       }],
     },
   );
@@ -624,12 +637,12 @@ export function minimizeContraband(seed) {
 }
 
 export function writeContrabandArtifact(minimized, fileUrl = CONTRABAND_ARTIFACT) {
-  const commands = minimized ? [
+  const commands = minimized && Array.isArray(minimized.commands) ? minimized.commands : (minimized ? [
     'undock',
-    `loot:drop kill_burst cmdty_stolen_goods ${minimized.qty}`,
+    `combat:kill recipe ${minimized.recipeId || 'kill-reward'}`,
     `step ${minimized.ticks}`,
     'dock:docked station_helios',
-  ] : [];
+  ] : []);
   const body = {
     family: 'contraband_relabel',
     name: 'bay_stolen_goods',
@@ -646,88 +659,116 @@ export function writeContrabandArtifact(minimized, fileUrl = CONTRABAND_ARTIFACT
   return body;
 }
 
-function probeContraband(seed) {
-  const minimized = minimizeContraband(seed + 3);
-  const attempt = minimized || { qty: 1, ticks: 48 };
-  const shown = bayPays(seed + 3, attempt.qty, attempt.ticks);
-  const artifact = writeContrabandArtifact({ ...attempt, ...shown });
-  artifact.minimized = !!minimized;
-  const illicitVerdict = shown
-    ? bayCashVerdict({ creditsDelta: shown.creditsDelta, legality: 'contraband', fineDelta: 0 })
-    : { exploit: false, kind: 'not_collected' };
+function baySnapshot(sim) {
+  const items = sim && sim.state && sim.state.player && sim.state.player.salvageBay
+    && sim.state.player.salvageBay.items;
+  const bay = {};
+  if (!items) return bay;
+  for (const id of Object.keys(items)) {
+    const qty = Math.floor(Number(items[id]) || 0);
+    if (qty > 0) bay[id] = qty;
+  }
+  return bay;
+}
 
-  const legalSim = bootRedTeam(seed);
-  leaveDock(legalSim);
-  const legalDrop = lootDrop(legalSim, { commodityId: IRON, qty: 1, source: 'kill_burst' });
-  stepTicks(legalSim, minimized ? minimized.ticks : 48);
-  const legalBay = bayQty(legalSim.state, IRON);
-  const legalDock = dock(legalSim, HOME_STATION);
+function probeContraband(seed) {
+  const killed = runKillRecipe(seed + 3);
+  const recipeCommodities = killed.commodities || [];
+  const unpaid = killed.unpaid || {};
+  const illicitInBay = killed.illicit || [];
+  const bayShadow = killed.ok && killed.sim && killed.sim.state.player && killed.sim.state.player.salvageBay
+    ? structuredClone(killed.sim.state.player.salvageBay) : null;
+  const cashPreview = bayShadow
+    ? cashInSalvage({
+      ...killed.sim.state,
+      player: { ...killed.sim.state.player, salvageBay: bayShadow },
+    }, { includeIllicit: false })
+    : null;
+  const cashed = killed.ok ? dock(killed.sim, HOME_STATION) : null;
+  const reasons = (cashed && cashed.detail && cashed.detail.reasons) || [];
+  const bayAfterDock = killed.ok ? baySnapshot(killed.sim) : {};
+  const paidRestricted = illicitInBay.filter((id) => (bayAfterDock[id] || 0) < (unpaid[id] || 0));
+  const paidBay = reasons.includes('salvage:bay_sale') && (cashed ? cashed.creditsDelta : 0) > 0;
+  const illicitPaid = paidRestricted.length > 0;
+  const again = killed.ok ? dock(killed.sim, HOME_STATION) : null;
+  const secondDockDelta = again ? again.creditsDelta : null;
+  const bayAfterSecondDock = killed.ok ? baySnapshot(killed.sim) : {};
+  const legalBay = recipeCommodities.reduce((sum, id) => sum + ((unpaid[id] ? 0 : (killed.bay[id] || 0))), 0);
   const legalVerdict = bayCashVerdict({
-    creditsDelta: legalDock.creditsDelta,
+    creditsDelta: cashed ? cashed.creditsDelta : 0,
     legality: 'legal',
     fineDelta: 0,
   });
-
-  const holdSim = bootRedTeam(seed + 4);
-  leaveDock(holdSim);
-  lootDrop(holdSim, { commodityId: 'cmdty_stolen_goods', qty: 2, source: 'mining' });
-  stepTicks(holdSim, 24);
-  const held = holdQty(holdSim.state, 'cmdty_stolen_goods');
-  const customs = held > 0 ? dock(holdSim, 'station_customs') : null;
-  const holdLeft = holdQty(holdSim.state, 'cmdty_stolen_goods');
-  const debt = Number(holdSim.state.player.debt) || 0;
-  // A broke wallet cannot pay the fine in credits. The scanner still confiscates
-  // and files the unpaid amount on the note.
-  const holdFined = !!(customs && held > 0 && holdLeft === 0 && (customs.creditsDelta < 0 || debt > 0));
-
-  const againSim = shown ? bootRedTeam(seed + 5) : null;
-  let secondDockDelta = null;
-  if (againSim) {
-    leaveDock(againSim);
-    lootDrop(againSim, { commodityId: 'cmdty_stolen_goods', qty: attempt.qty, source: 'kill_burst' });
-    stepTicks(againSim, attempt.ticks);
-    dock(againSim, HOME_STATION);
-    const again = dock(againSim, HOME_STATION);
-    secondDockDelta = again.creditsDelta;
-  }
-
-  const exploit = illicitVerdict.exploit === true;
+  const commands = [
+    'undock',
+    `combat:kill ship_drifter recipe ${killed.recipeId || 'none'}`,
+    'step 48',
+    'dock:docked station_helios',
+  ];
+  writeContrabandArtifact({
+    qty: legalBay,
+    ticks: 48,
+    creditsDelta: cashed ? cashed.creditsDelta : 0,
+    reasons,
+    commands,
+  });
+  const exploit = illicitPaid === true;
+  const munitionsStay = (bayAfterSecondDock.cmdty_munitions || 0) > 0
+    && bayAfterSecondDock.cmdty_munitions === (unpaid.cmdty_munitions || 0)
+    && secondDockDelta === 0;
   return family(
     'contraband_relabel',
-    !shown ? 'unavailable' : (exploit ? 'exploit' : 'clean'),
+    !killed.ok ? 'unavailable' : (exploit ? 'exploit' : 'tested-not-broken'),
     exploit
-      ? 'The shortest kill-burst of stolen goods that still reaches the bay cashes at Helios as salvage:bay_sale.'
-      : 'Illicit kill loot was not converted into unpaid credits.',
+      ? 'A restricted or contraband hull-recipe line was paid at Helios without a fine.'
+      : 'Helios cashed only the legal hull-recipe lines. Restricted munitions stayed in the bay unpaid, and the next dock did not pay them.',
     {
       traces: [{
         name: 'bay_stolen_goods',
         seed: seed + 3,
-        commands: artifact.commands,
-        qty: attempt.qty,
-        ticks: attempt.ticks,
-        creditsDelta: shown && shown.creditsDelta,
-        reasons: shown && shown.reasons,
+        commands,
+        recipeId: killed.recipeId,
+        commodities: recipeCommodities,
+        bay: killed.bay,
+        unpaid,
+        restricted: killed.restricted || [],
+        illicit: illicitInBay,
+        bayAfterDock,
+        bayAfterSecondDock,
+        qty: legalBay,
+        ticks: 48,
+        creditsDelta: cashed ? cashed.creditsDelta : 0,
+        reasons,
         secondDockDelta,
+        legalCashIn: cashPreview ? { credits: cashPreview.credits, units: cashPreview.units, lots: cashPreview.lots } : null,
+        creditPath: 'cashInSalvage legal lines -> economy:grantCredits salvage:bay_sale; restricted lines stay in the bay',
+        reachesIllicitPay: illicitPaid === true,
         artifact: '.devshots/economic-redteam/contraband-minimized.json',
       }],
       controls: [
         {
           name: 'legal_scrap_is_allowed',
-          pass: legalDrop.ok === true && legalBay > 0 && legalDock.creditsDelta > 0 && legalVerdict.exploit !== true,
-          creditsDelta: legalDock.creditsDelta,
+          pass: killed.ok === true && legalBay > 0 && paidBay && legalVerdict.exploit !== true && illicitPaid !== true,
+          creditsDelta: cashed && cashed.creditsDelta,
           legalBay,
         },
         {
-          name: 'hold_contraband_is_fined',
-          pass: holdFined,
-          creditsDelta: customs && customs.creditsDelta,
-          debt,
-          holdLeft,
-          held,
+          name: 'restricted_munitions_stay_unpaid',
+          pass: killed.ok === true && munitionsStay === true && (unpaid.cmdty_munitions || 0) > 0,
+          unpaid,
+          bayAfterDock,
+          bayAfterSecondDock,
+          secondDockDelta,
+        },
+        {
+          name: 'recipe_not_a_chosen_kill_burst',
+          pass: killed.ok === true && !!killed.recipeId && illicitPaid !== true,
+          recipeId: killed.recipeId,
+          commodities: recipeCommodities,
         },
         {
           name: 'second_dock_does_not_pay',
-          pass: secondDockDelta != null && secondDockDelta <= 0,
+          pass: secondDockDelta != null && secondDockDelta <= 0 && munitionsStay === true,
           creditsDelta: secondDockDelta,
         },
       ],

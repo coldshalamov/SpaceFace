@@ -1,0 +1,184 @@
+{
+  "assetId": "cargo-rail-cargo-dolly",
+  "category": "cargo",
+  "description": "Flanged-wheel cargo dolly with corner pads",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.0159099102020264,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.7000000476837158,
+        0.4829549640417099,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.55,
+          0.75
+        ],
+        "size": [
+          2.6,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.55,
+          -0.75
+        ],
+        "size": [
+          2.6,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6,
+          -0.0
+        ],
+        "size": [
+          2.6,
+          0.3,
+          1.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.7000000476837158,
+      -0.04999998211860657,
+      -1.0
+    ],
+    "max": [
+      1.7000000476837158,
+      1.0159099102020264,
+      1.0
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-rail-cargo-dolly_lod0.glb",
+      "triangles": 8764,
+      "draws": 5,
+      "bytes": 672560,
+      "method": "source",
+      "sha256": "fa1a1c10562f442ef9c75250427c5348e7370cc55a4cfd7b2ac07595ac12bcb6"
+    },
+    {
+      "level": 1,
+      "file": "cargo-rail-cargo-dolly_lod1.glb",
+      "triangles": 1340,
+      "draws": 5,
+      "bytes": 321768,
+      "method": "authored-topology",
+      "sha256": "cdd2377614cafe6a5c1a50a3a211c2fb9b674438389041c0d2b4598228546aa0"
+    },
+    {
+      "level": 2,
+      "file": "cargo-rail-cargo-dolly_lod2.glb",
+      "triangles": 748,
+      "draws": 5,
+      "bytes": 294404,
+      "method": "authored-topology",
+      "sha256": "4718b4528e9e1ae1bc057d2961b3ab81e0072c384cb9a80a0fd5ca7b528496b1"
+    }
+  ]
+}

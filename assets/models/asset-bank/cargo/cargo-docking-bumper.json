@@ -1,0 +1,337 @@
+{
+  "assetId": "cargo-docking-bumper",
+  "category": "cargo",
+  "description": "Resilient docking pads on a rigid mount",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo_remaining.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Impact",
+      "position": [
+        0.0,
+        0.76,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        0.7609999775886536,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.1750000715255737,
+        0.3929999880492687,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          2.25,
+          0.19,
+          1.08
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.01,
+          0.32,
+          -0.0
+        ],
+        "size": [
+          0.15,
+          0.23,
+          0.78
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.47,
+          0.32,
+          -0.0
+        ],
+        "size": [
+          0.15,
+          0.23,
+          0.78
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.74,
+          0.66,
+          -0.0
+        ],
+        "size": [
+          0.66,
+          0.2,
+          0.88
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.27,
+          0.32,
+          -0.0
+        ],
+        "size": [
+          0.15,
+          0.23,
+          0.78
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.27,
+          0.32,
+          -0.0
+        ],
+        "size": [
+          0.15,
+          0.23,
+          0.78
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.66,
+          -0.0
+        ],
+        "size": [
+          0.66,
+          0.2,
+          0.88
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.47,
+          0.32,
+          -0.0
+        ],
+        "size": [
+          0.15,
+          0.23,
+          0.78
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.01,
+          0.32,
+          -0.0
+        ],
+        "size": [
+          0.15,
+          0.23,
+          0.78
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.74,
+          0.66,
+          -0.0
+        ],
+        "size": [
+          0.66,
+          0.2,
+          0.88
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.1750000715255737,
+      0.02499999850988388,
+      -0.5400000214576721
+    ],
+    "max": [
+      1.1750000715255737,
+      0.7609999775886536,
+      0.5400000214576721
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-docking-bumper_lod0.glb",
+      "triangles": 12488,
+      "draws": 7,
+      "bytes": 886328,
+      "method": "source",
+      "sha256": "62d8b92eae376e44c971ab7db65ffdf60cd0cb10f2600e6fb7299fad70d9dddf"
+    },
+    {
+      "level": 1,
+      "file": "cargo-docking-bumper_lod1.glb",
+      "triangles": 1320,
+      "draws": 7,
+      "bytes": 335240,
+      "method": "authored-topology",
+      "sha256": "8539744ad3f1b5a3d73301fc3ad2de8248434265dfcce809551fca2730bfd20d"
+    },
+    {
+      "level": 2,
+      "file": "cargo-docking-bumper_lod2.glb",
+      "triangles": 528,
+      "draws": 6,
+      "bytes": 283988,
+      "method": "authored-topology",
+      "sha256": "78d63dd67303fe6d39bd93c8308ceae4538ee5254ebee1f195114745eb63f656"
+    }
+  ]
+}

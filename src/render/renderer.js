@@ -223,7 +223,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { projectedWidthPx, resolvePresentedLodLevel } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -19125,6 +19125,12 @@ export const render = {
           camObj.updateProjectionMatrix();
         }
       }
+      // particleQuality also selects the backdrop tier (star/flare counts, bake sizes), so a
+      // quality-mode switch must re-resolve the sky and not just the VFX pools. applyGpuTier
+      // rebuilds only when the tier actually changed, so a no-op settings re-emit pays nothing.
+      if (p.key === 'particleQuality' || p.key == null) {
+        if (this.spaceBg && typeof this.spaceBg.applyGpuTier === 'function') this.spaceBg.applyGpuTier();
+      }
     });
     // On sector change, reconcile rather than blindly clearing: the new sector's entities are
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
@@ -20428,6 +20434,10 @@ export const render = {
       preparation.catch(() => {});
     });
     onBus('mode:changed', ({ mode } = {}) => {
+      // Backstop for the armed foundry promotion: the sector-load yields and the un-awaited
+      // preparePostOpeningPipelines normally drain it under the veil, but a route that reaches
+      // flight without either (real-GPU readiness, Continue) still bakes before the first frame.
+      if (mode === 'flight') this._drainFoundryEnvPending?.();
       if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
       if (mode === 'loading') {
         const recook = this._sessionLiveSectorCookedId != null
@@ -25010,6 +25020,9 @@ export const render = {
       // source the live env never reached (every later non-force bake would
       // early-out on the phantom source).
       this._envMapSource = iblSource;
+      // Any committed foundry bake (the opening-picture freeze, a seam drain, a context-restore
+      // force) satisfies an armed promotion — leaving it armed would re-convolve the same source.
+      if (iblSource === IBL_SOURCE_FOUNDRY) this._foundryEnvPending = false;
     } catch (error) {
       // env-map is optional — chrome falls back to high-metalness matte — but
       // a failed bake is a quality deficit worth a line of telemetry.
@@ -26740,13 +26753,16 @@ export const render = {
       previous,
       currentOnly
         ? 1
-        : poseSpanAlpha(
-          snapshot,
-          previous,
-          this.state ? this.state.accumulator : NaN,
-          LOOP_FIXED_DT,
-          alpha,
-        ),
+        : (Number.isFinite(this._snapshotPresentationAlpha)
+          && this._snapshotPresentationSequence === snapshot.sequence
+          ? this._snapshotPresentationAlpha
+          : poseSpanAlpha(
+            snapshot,
+            previous,
+            this.state ? this.state.accumulator : NaN,
+            LOOP_FIXED_DT,
+            alpha,
+          )),
       slot,
     );
     if (!applied) return false;
@@ -27135,11 +27151,14 @@ export const render = {
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? Math.max(hlodVisualRadius, cullRadius)
           : cullRadius;
-        const projectedPx = projectedWidthPx(
+        const projectedPx = presentedLodWidthPx(
+          userData,
           mesh.position,
           lodRadius,
           this.cam && this.cam.obj,
           this.viewport,
+          isPlayer,
+          typeName,
         );
         if (userData.lod && userData.updateLod) {
           lodChecked++;
@@ -28696,6 +28715,15 @@ export const render = {
       tryPresentedCall(this, 'ship-pitch', () => {
         updateShipPitchPresentation(this.state, this._presentationFrameDt);
       });
+      if (this._snapshotFence) {
+        this._snapshotPresentationAlpha = this._snapshotFence.samplePresentationAlpha(
+          this._presentationFrameDt,
+          this.state ? this.state.accumulator : 0,
+          LOOP_FIXED_DT,
+          alpha,
+        );
+        this._snapshotPresentationSequence = this._snapshotFence.sequence;
+      }
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
       if (this.cam && typeof this.cam.follow === 'function') {
@@ -32855,6 +32883,14 @@ export function applyFirstPlayablePaintRelease(owner) {
       render.firstPlayableFrameAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();
+      // Debug hook: which env the first revealed frame lit with, and whether a foundry
+      // promotion was still armed (it must not be). Read by perf/evidence probes.
+      render.foundryEnvAtReveal = {
+        source: owner._envMapSource ?? null,
+        pending: owner._foundryEnvPending === true,
+        foundryResident: !!owner._foundryEnvTexture,
+        frozen: owner._openingEnvFrozen === true,
+      };
       if (!Number.isFinite(render.firstFlightResidencyHoldUntil)) {
         render.firstFlightResidencyHoldUntil = (Number(owner.state.simTime) || 0) + 20;
       }

@@ -1,0 +1,128 @@
+{
+  "assetId": "pressure_pipe_reducer",
+  "category": "fluid",
+  "description": "pressure pipe reducer",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.099721670150757,
+      -0.5572904944419861,
+      -0.5549999475479126
+    ],
+    "max": [
+      2.0949063301086426,
+      0.5549999475479126,
+      0.5549999475479126
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_pipe_reducer_lod0.glb",
+      "triangles": 1532,
+      "draws": 3,
+      "bytes": 256312,
+      "method": "source",
+      "sha256": "14026d469db9fe8d095d33f572b28f10a8c07bf70fb338ef823403fec9e50ad8"
+    },
+    {
+      "level": 1,
+      "file": "pressure_pipe_reducer_lod1.glb",
+      "triangles": 612,
+      "draws": 3,
+      "bytes": 207616,
+      "method": "Forge-decimation",
+      "sha256": "b0224373a763ea00da7fdb462f008ad244d45705decf12d981ec9ef6ad10f9f8"
+    },
+    {
+      "level": 2,
+      "file": "pressure_pipe_reducer_lod2.glb",
+      "triangles": 218,
+      "draws": 3,
+      "bytes": 181100,
+      "method": "Forge-decimation",
+      "sha256": "c657bf86f88850c72b9a7022822ae273f12cc4e80215c37d576425045ae45d72"
+    }
+  ]
+}

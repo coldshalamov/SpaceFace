@@ -1,0 +1,239 @@
+{
+  "assetId": "ops_clamp_shoe",
+  "category": "mechanisms",
+  "description": "clamp shoe",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "clamped_surface",
+      "position": [
+        0.4,
+        0.16,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.45,
+          0.25,
+          -0.0
+        ],
+        "size": [
+          0.7,
+          0.5,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          0.45,
+          -0.0
+        ],
+        "size": [
+          1.1,
+          0.3,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4,
+          0.23,
+          -0.0
+        ],
+        "size": [
+          0.7,
+          0.14,
+          0.72
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4,
+          0.775,
+          -0.0
+        ],
+        "size": [
+          0.26,
+          0.55,
+          0.26
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4,
+          1.115,
+          -0.0
+        ],
+        "size": [
+          0.68,
+          0.1299999999999999,
+          0.68
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4,
+          1.115,
+          -0.0
+        ],
+        "size": [
+          0.2,
+          0.1299999999999999,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "clamp_screw",
+      "pivot": [
+        -0.4000000059604645,
+        0.5,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "screw",
+        "open_handwheel",
+        "screw_hub",
+        "wheel_spokes"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.7999999523162842,
+      0.0,
+      -0.44999998807907104
+    ],
+    "max": [
+      0.75,
+      1.1799999475479126,
+      0.44999998807907104
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_clamp_shoe_lod0.glb",
+      "triangles": 3128,
+      "draws": 6,
+      "bytes": 389116,
+      "method": "source",
+      "sha256": "598b68786b2b66a81f9b32a37c50fa9634e7a02178e1f3c322fb9a44d4bd8adf"
+    },
+    {
+      "level": 1,
+      "file": "ops_clamp_shoe_lod1.glb",
+      "triangles": 1250,
+      "draws": 6,
+      "bytes": 298080,
+      "method": "Forge-decimation",
+      "sha256": "910c468e6819fee959c73f7cfb1b0b58bd204978afac2b51500f4a0fe4a39751"
+    },
+    {
+      "level": 2,
+      "file": "ops_clamp_shoe_lod2.glb",
+      "triangles": 562,
+      "draws": 6,
+      "bytes": 268032,
+      "method": "Forge-decimation",
+      "sha256": "be9ba96e80e1c3a591b9519223b9119b9870bd0923c9a7665bde40c4647c995e"
+    }
+  ]
+}

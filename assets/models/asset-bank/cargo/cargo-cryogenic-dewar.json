@@ -1,0 +1,184 @@
+{
+  "assetId": "cargo-cryogenic-dewar",
+  "category": "cargo",
+  "description": "Vacuum-jacketed dewar with protected neck valve and vent line",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        2.4250001907348633,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        0.824999988079071,
+        1.2450000941753387,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.65
+        ],
+        "size": [
+          1.4,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.65
+        ],
+        "size": [
+          1.4,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.15,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          1.8,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -0.824999988079071,
+      0.06499999761581421,
+      -0.7749999761581421
+    ],
+    "max": [
+      0.824999988079071,
+      2.4250001907348633,
+      0.7749999761581421
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-cryogenic-dewar_lod0.glb",
+      "triangles": 8208,
+      "draws": 6,
+      "bytes": 650400,
+      "method": "source",
+      "sha256": "62febed5e9df2aabfdfcdcc16ec03ee584d0a767cc3b07e8c995c4f7e68257fd"
+    },
+    {
+      "level": 1,
+      "file": "cargo-cryogenic-dewar_lod1.glb",
+      "triangles": 1352,
+      "draws": 6,
+      "bytes": 321708,
+      "method": "authored-topology",
+      "sha256": "579b877b347b879a794ef705e4f36fc4d05c76a11724f650cac28a1924c2d06e"
+    },
+    {
+      "level": 2,
+      "file": "cargo-cryogenic-dewar_lod2.glb",
+      "triangles": 712,
+      "draws": 6,
+      "bytes": 293100,
+      "method": "authored-topology",
+      "sha256": "88bdf30010574bb035d58dfe1d6af9331a43a3c4f5eb33fcde041d12018f1a04"
+    }
+  ]
+}

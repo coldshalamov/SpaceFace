@@ -316,16 +316,16 @@ function readAttachedMassline() {
   return false;
 }
 
-async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
+async function releaseFightMassline(page) {
   // A prior combat latch keeps orbit assist in charge of this W/turn chord. A public tap
   // cuts the visible line before chasing; otherwise the fighter circles its distant load.
   if (await page.evaluate(readAttachedMassline)) {
-    if (await page.evaluate(readCombatPhaseEnded)) return;
+    if (await page.evaluate(readCombatPhaseEnded)) return false;
     const cutCode = await page.evaluate(async () => {
       const { resolveActionCodes } = await import('../../src/systems/input.js');
       return resolveActionCodes(window.SF.state, 'tether')[0] || null;
     });
-    if (!cutCode) return;
+    if (!cutCode) return false;
     noteKey(page, cutCode);
     try { await page.keyboard.press(cutCode); }
     finally { await page.keyboard.up(cutCode).catch(() => {}); }
@@ -334,10 +334,12 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
     const cut = await waitSim(page, 0.6, { maxWallMs: 30000, until: combatPhaseEnded,
       onPoll: async () => !await page.evaluate(readAttachedMassline) });
     if (cut.watch || cut.timeout || await page.evaluate(readCombatPhaseEnded)
-      || await page.evaluate(readAttachedMassline)) return;
-    tg = await page.evaluate(readTarget).catch(() => null);
-    if (!tg || (!tg.none && minimumSearchS === 0)) return;
+      || await page.evaluate(readAttachedMassline)) return false;
   }
+  return true;
+}
+
+async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
   if (Number.isFinite(tg?.radarRel)) {
     const boostCode = await page.evaluate(async () => {
       const { resolveActionCodes } = await import('../../src/systems/input.js');
@@ -388,6 +390,9 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
  * elementFromPoint before mouseup, and the play watcher reports any later DOM interruption.
  */
 export async function fightBeat(page, beat) {
+  // A reachable target is not evidence that the previous line has released.
+  // Cut the painted payload before either visible-target steering or radar pursuit.
+  if (!await releaseFightMassline(page)) return null;
   let tg = await page.evaluate(readTarget).catch(() => null);
   if (!tg) { await page.waitForTimeout(300); return null; }
   const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
@@ -424,8 +429,9 @@ export async function fightBeat(page, beat) {
   await noteClick(page, x, y);
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
   // ~5 rad/s; holding it for a whole beat overshoots and the ship spins in place under fire).
-  const keys = []; let turn = null; let err = 0;
-  if (fighterMemory.breakBeats > 0 && tg.away != null) {
+  const keys = []; let err = 0;
+  const retreat = fighterMemory.breakBeats > 0 && tg.away != null;
+  if (retreat) {
     fighterMemory.breakBeats--;
     err = tg.away; keys.push('KeyW');
   } else {
@@ -433,7 +439,14 @@ export async function fightBeat(page, beat) {
     if (tg.dist < 230) keys.push('KeyS');
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
-  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
+  const tapTurn = async (bearing) => {
+    if (!Number.isFinite(bearing) || Math.abs(bearing) <= 0.12) return;
+    const turn = bearing > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
+    noteKey(page, turn);
+    // Release within the public input call, before any observer/aim RPC can delay a
+    // simulation-time deadline. Reobserve between short taps instead of overshooting.
+    await page.keyboard.press(turn, { delay: Math.min(80, Math.abs(bearing) / 4.5 * 1000) });
+  };
   const refreshAim = async () => {
     const fresh = await page.evaluate(readTarget, { selectedOnly: true });
     if (!fresh || fresh.none || !fresh.selected) return true;
@@ -442,22 +455,14 @@ export async function fightBeat(page, beat) {
       x = nextX; y = nextY;
       await page.mouse.move(x, y, { steps: 1 });
     }
+    await tapTurn(retreat && fresh.away != null ? fresh.away : fresh.rel);
     return false;
   };
   try {
     await page.mouse.down();
     for (const k of keys) { noteKey(page, k); await page.keyboard.down(k); }
-    const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
-    let waited = null;
-    if (turn) {
-      noteKey(page, turn);
-      await page.keyboard.down(turn);
-      waited = await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
-      await page.keyboard.up(turn);
-    }
-    if (!waited?.stop && !waited?.watch && !waited?.timeout) {
-      await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
-    }
+    await tapTurn(err);
+    await waitSim(page, 0.6, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
   } finally {
     for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k).catch(() => {});
     await noteClick(page, x, y);

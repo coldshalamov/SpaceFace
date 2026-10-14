@@ -171,6 +171,10 @@ export function createSnapshotFence(options = {}) {
   let packBytesCount = 0;
   let lastBytesPacked = 0;
   let lastPackMembership = null;
+  let presentedTime = NaN;
+  let presentedSequence = -1;
+  let presentedEpoch = -1;
+  let presentedSnapshotTime = NaN;
 
   return {
     beginPack(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
@@ -242,6 +246,28 @@ export function createSnapshotFence(options = {}) {
       if (packCount < 2 || previous < 0 || latest < 0) return null;
       if (buffers[previous].poseEpoch !== buffers[latest].poseEpoch) return null;
       return buffers[previous].published;
+    },
+    // Sample once per drawn frame. The worker (or a stepped pack) can leave the same two
+    // snapshots on glass across several accumulator wraps. Continue toward the latest pose,
+    // then hold it; never replay their blend backwards. No prediction changes sim authority.
+    samplePresentationAlpha(elapsedS, accumulatorS, fixedDt, fallbackAlpha = 1) {
+      if (latest < 0) return fallbackAlpha;
+      const current = buffers[latest].published;
+      const prior = this.previousSnapshot();
+      const span = prior ? current.simTime - prior.simTime : 0;
+      const raw = poseSpanAlpha(current, prior, accumulatorS, fixedDt, fallbackAlpha);
+      const target = span > 0 ? prior.simTime + span * raw : current.simTime;
+      const reset = presentedEpoch !== current.poseEpoch
+        || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
+      if (reset) presentedTime = target;
+      else if (presentedSequence === current.sequence) {
+        const elapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
+        presentedTime = Math.min(current.simTime, Math.max(target, presentedTime + elapsed));
+      } else presentedTime = Math.max(presentedTime, target);
+      presentedSequence = current.sequence;
+      presentedEpoch = current.poseEpoch;
+      presentedSnapshotTime = current.simTime;
+      return span > 0 ? Math.max(0, Math.min(1, (presentedTime - prior.simTime) / span)) : 1;
     },
     get sequence() { return sequence; },
     get packCount() { return packCount; },

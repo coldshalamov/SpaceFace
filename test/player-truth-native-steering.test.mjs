@@ -5,6 +5,7 @@ import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
 import { fightBeat, readTarget } from '../scripts/player-truth/driver.mjs';
 import { publishRadarHostileCourse } from '../src/ui/radar.js';
+import { applyWorldObjectSelection } from '../src/ui/worldObjectInteraction.js';
 
 const wrappedAngle = angle => Math.atan2(Math.sin(angle), Math.cos(angle));
 
@@ -14,6 +15,7 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
   const lane = createSimHost();
   try {
     const init = await lane.init({ profile: 'production', seed: 4242,
+      viewport: { w: 1000, h: 600 },
       scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url))) });
     let tick = 0;
     const send = async (steps, ...commands) => {
@@ -35,20 +37,25 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
       project() { this.x = (this.x - player.pos.x) / 1000; this.y = (this.z - player.pos.z) / 1000; this.z = 0; return this; }
     }
     const visibleEntities = [player];
+    const worldToScreen = pos => ({ x: 500 + (pos.x - player.pos.x) * 0.5,
+      y: 300 - (pos.z - player.pos.z) * 0.3, onScreen: true, behind: false });
     // The observer's canvas contains only this public contact set; native controls and physics
     // still run on the complete production host. No unseen entity can steer the actor.
     const facade = { get mode() { return state.mode; }, get simTime() { return state.simTime; },
       get run() { return state.run; }, playerId: player.id, entityList: visibleEntities,
+      get player() { return state.player; },
       render: { camera: {}, renderer: { domElement: canvas } } };
-    const observe = (fn, arg) => {
-      globalThis.window = { SF: { state: facade, THREE: { Vector3 } } };
-      globalThis.document = { querySelector: () => radar, elementFromPoint: () => canvas };
-      try { return fn(arg); } finally {
+    const observe = async (fn, arg) => {
+      globalThis.window = { SF: { state: facade, THREE: { Vector3 }, ctx: { helpers: { worldToScreen } } } };
+      globalThis.document = { querySelector: selector => selector === '.sf-radar-semantic-canvas' ? radar : null,
+        elementFromPoint: () => canvas };
+      try { return await fn(arg); } finally {
         if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
         if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
       }
     };
     const held = new Set();
+    let cursorX = 500, cursorY = 300;
     let nativeShots = 0;
     lane.host.bus.on('combat:fire', receipt => { if (receipt.ownerId === player.id) nativeShots++; });
     const page = {
@@ -57,11 +64,31 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
       keyboard: {
         down: async code => { held.add(code); await send(0, { kind: 'domEvent', d: { type: 'keydown', code, pressed: true, blocked: false } }); },
         up: async code => { held.delete(code); await send(0, { kind: 'domEvent', d: { type: 'keyup', code, pressed: false } }); },
-        press: async () => {},
+        press: async (code, { delay = 0 } = {}) => {
+          held.add(code);
+          await send(0, { kind: 'domEvent', d: { type: 'keydown', code, pressed: true, blocked: false } });
+          try { if (delay) await send(Math.max(1, Math.ceil(delay / 1000 * 60))); }
+          finally {
+            held.delete(code);
+            await send(0, { kind: 'domEvent', d: { type: 'keyup', code, pressed: false } });
+          }
+        },
       },
       mouse: {
-        move: async (clientX, clientY) => send(0, { kind: 'domEvent', d: { type: 'mousemove', clientX, clientY, offCanvas: false } }),
-        down: async () => send(0, { kind: 'domEvent', d: { type: 'mousedown', button: 0, offCanvas: false } }),
+        move: async (clientX, clientY) => {
+          cursorX = clientX; cursorY = clientY;
+          return send(0, { kind: 'domEvent', d: { type: 'mousemove', clientX, clientY, offCanvas: false } });
+        },
+        click: async (clientX, clientY, { button } = {}) => {
+          assert.equal(button, 'right');
+          const hit = visibleEntities.find(entity => entity !== player && entity.alive
+            && Math.hypot(worldToScreen(entity.pos).x - clientX, worldToScreen(entity.pos).y - clientY) <= 1);
+          assert.ok(hit, 'RMB selection must hit a publicly projected native body');
+          applyWorldObjectSelection(state, hit, 'context-click');
+          await send(0);
+        },
+        down: async () => send(0, { kind: 'domEvent', d: { type: 'mousedown', button: 0,
+          clientX: cursorX, clientY: cursorY, offCanvas: false } }),
         up: async () => send(0, { kind: 'domEvent', d: { type: 'mouseup', button: 0 } }),
       },
     };
@@ -69,7 +96,7 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
     const degrees = Math.round((wantedHeading - Math.PI / 2) * 180 / Math.PI + 360) % 360;
     publishRadarHostileCourse(radar, { baseLabel: 'Local tactical radar.', mode: 'flight', simTime: state.simTime,
       courseText: `Nearest hostile at 12 o'clock, dial bearing ${degrees} degrees.` });
-    const before = Math.abs(observe(readTarget).radarRel);
+    const before = Math.abs((await observe(readTarget)).radarRel);
     await fightBeat(page, 0);
     assert.ok(Math.abs(wrappedAngle(wantedHeading - player.rot)) < before / 2,
       'the actual native yaw must turn toward the painted course, not away from it');
@@ -85,12 +112,14 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
       && entity.data?.runRole === 'enemy' && entity.pos.x === player.pos.x + 80);
     assert.ok(enemy, JSON.stringify(reply.spawnAcks));
     visibleEntities.push(enemy);
-    const reachable = observe(readTarget);
+    const reachable = await observe(readTarget);
     assert.equal(reachable.none, undefined);
     const attackError = Math.abs(reachable.rel);
     await fightBeat(page, 1);
     assert.ok(Math.abs(wrappedAngle(Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x) - player.rot)) < attackError,
-      'canvas pursuit uses the same native yaw sign');
+      `canvas pursuit uses the same native yaw sign: ${JSON.stringify({ before: reachable.rel,
+        after: wrappedAngle(Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x) - player.rot),
+        rot: player.rot, angVel: player.angVel, nativeShots })}`);
     assert.ok(nativeShots > 0, 'trusted canvas firing reaches the real native weapon owner');
     assert.equal(held.size, 0);
   } finally {

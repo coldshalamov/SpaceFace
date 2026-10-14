@@ -12,6 +12,9 @@ import {
   clamp,
 } from './contract.js';
 
+import { createPoseReader, poseAt as lastPose } from './posePlayback.js';
+export { createPoseReader, poseAt, playRecordedPoses, verifyRecordedPoses } from './posePlayback.js';
+
 const ZOOM_MIN = 58;
 const ZOOM_MAX = 280;
 
@@ -113,18 +116,6 @@ export function recordedSpan(moment) {
   };
 }
 
-function lastPose(samples, actor, tick) {
-  if (!actor) return null;
-  let best = null;
-  for (let i = 0; i < samples.length; i += 1) {
-    const sample = samples[i];
-    if (sample.id !== actor.id || sample.generation !== actor.generation) continue;
-    if (sample.tick > tick) continue;
-    if (!best || sample.tick > best.tick) best = sample;
-  }
-  return best;
-}
-
 function zoomFor(poses) {
   if (!poses.length) return 120;
   let minX = Infinity;
@@ -154,8 +145,9 @@ function focusFor(poses) {
 
 function beatAt(name, tick, cut, samples, moment) {
   const poses = [];
-  const subjectPose = lastPose(samples, moment.subject, tick);
-  const secondaryPose = lastPose(samples, moment.secondary, tick);
+  const inRecording = samples.firstTick != null && tick >= samples.firstTick && tick <= samples.lastTick;
+  const subjectPose = inRecording ? lastPose(samples, moment.subject, tick) : null;
+  const secondaryPose = inRecording ? lastPose(samples, moment.secondary, tick) : null;
   if (subjectPose) poses.push(subjectPose);
   if (secondaryPose) poses.push(secondaryPose);
   if (!poses.length) {
@@ -190,6 +182,7 @@ function beatAt(name, tick, cut, samples, moment) {
  */
 export function planShot(stream, moment) {
   const samples = stream && Array.isArray(stream.samples) ? stream.samples : [];
+  const reader = createPoseReader(samples);
   const inTick = moment.inTick;
   const outTick = moment.outTick;
   const payoff = moment.payoffTick;
@@ -205,14 +198,10 @@ export function planShot(stream, moment) {
   for (let i = 0; i < specs.length; i += 1) {
     const [name, tick, cut] = specs[i];
     if (beats.length && beats[beats.length - 1].tick === tick) continue;
-    beats.push(beatAt(name, tick, cut, samples, moment));
+    beats.push(beatAt(name, tick, cut, reader, moment));
   }
-  let firstSampleTick = null;
-  for (let i = 0; i < samples.length; i += 1) {
-    const tick = samples[i] && samples[i].tick;
-    if (!Number.isInteger(tick)) continue;
-    if (firstSampleTick == null || tick < firstSampleTick) firstSampleTick = tick;
-  }
+  const firstSampleTick = reader.firstTick;
+  const lastSampleTick = reader.lastTick;
   const span = recordedSpan(moment);
   return {
     schema: MOMENT_PLAN_SCHEMA,
@@ -224,6 +213,7 @@ export function planShot(stream, moment) {
     beats,
     footage: moment.footage,
     firstSampleTick,
+    lastSampleTick,
     exportSpan: span,
     subject: moment.subject,
     secondary: moment.secondary,
@@ -252,7 +242,9 @@ export function createOfflineCameraLease(plan) {
   function frameAt(tick) {
     if (released || !plan || !Array.isArray(plan.beats) || !plan.beats.length) return null;
     const first = plan.firstSampleTick;
-    if (!Number.isInteger(first) || tick < first) {
+    const last = plan.lastSampleTick ?? plan.footage?.recordedEndTick;
+    if (!Number.isFinite(tick) || !Number.isInteger(first) || tick < first
+      || (Number.isInteger(last) && tick > last)) {
       return {
         tick,
         recorded: false,
@@ -322,8 +314,4 @@ export function visualContinuity(samples, subject, inTick, outTick) {
     if (ok) hit += 1;
   }
   return total ? hit / total : 0;
-}
-
-export function poseAt(samples, actor, tick) {
-  return lastPose(samples, actor, tick);
 }

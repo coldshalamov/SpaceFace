@@ -284,11 +284,11 @@ test('readability: overlapping classes fail, a measured class can fail alone, th
   assert.equal(clear.status, 'PASS');
 });
 
-test('overall: any FAIL fails, UNKNOWN is never PASS, ENVIRONMENT outranks both, ADVISORY is neither', () => {
+test('overall: FAIL outranks ENVIRONMENT, UNKNOWN is never PASS, ADVISORY is neither', () => {
   assert.equal(overall([{ status: 'PASS' }, { status: 'FAIL' }]), 'FAIL');
   assert.equal(overall([{ status: 'PASS' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');
   assert.equal(overall([{ status: 'PASS' }, { status: 'N/A' }]), 'PASS');
-  assert.equal(overall([{ status: 'FAIL' }, { status: 'ENVIRONMENT' }]), 'ENVIRONMENT');
+  assert.equal(overall([{ status: 'FAIL' }, { status: 'ENVIRONMENT' }]), 'FAIL');
   assert.equal(overall([{ status: 'ADVISORY' }, { status: 'PASS' }]), 'PASS');
   assert.equal(overall([{ status: 'ADVISORY' }, { status: 'FAIL' }]), 'FAIL');
   assert.equal(overall([{ status: 'ADVISORY' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');

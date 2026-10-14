@@ -1,0 +1,461 @@
+{
+  "assetId": "ops_distribution_cabinet",
+  "category": "power",
+  "description": "distribution cabinet",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "cable",
+      "position": [
+        0.0,
+        0.05,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          1.4,
+          0.24,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5319999999999999,
+          0.2525,
+          0.42
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5319999999999999,
+          0.28500000000000003,
+          0.42
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5319999999999999,
+          0.2525,
+          -0.42
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5319999999999999,
+          0.28500000000000003,
+          -0.42
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5319999999999999,
+          0.2525,
+          0.42
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5319999999999999,
+          0.28500000000000003,
+          0.42
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5319999999999999,
+          0.2525,
+          -0.42
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5319999999999999,
+          0.28500000000000003,
+          -0.42
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.2,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          1.9,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.612,
+          1.2,
+          -0.0
+        ],
+        "size": [
+          0.03,
+          1.81,
+          0.95
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.64,
+          1.2,
+          -0.0
+        ],
+        "size": [
+          0.1,
+          1.75,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.73,
+          1.1,
+          0.27
+        ],
+        "size": [
+          0.12,
+          0.42,
+          0.08
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.63,
+          0.58,
+          -0.46
+        ],
+        "size": [
+          0.13,
+          0.26,
+          0.13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.63,
+          1.72,
+          -0.46
+        ],
+        "size": [
+          0.13,
+          0.26000000000000023,
+          0.13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.48,
+          0.45,
+          0.52
+        ],
+        "size": [
+          0.07,
+          0.20000000000000007,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.415,
+          0.625,
+          0.52
+        ],
+        "size": [
+          0.18289823579528722,
+          0.19584513768924885,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "service_door",
+      "pivot": [
+        0.6399999856948853,
+        1.2000000476837158,
+        -0.44999998807907104
+      ],
+      "parent": null,
+      "objects": [
+        "door_gasket",
+        "door_shell",
+        "latch",
+        "signal",
+        "door_panel_surround",
+        "upper_service_panel",
+        "lower_service_panel",
+        "diagnostic_screen_recess",
+        "diagnostic_bar",
+        "diagnostic_bar.001",
+        "diagnostic_bar.002",
+        "filter_vent",
+        "filter_vent.001",
+        "filter_vent.002",
+        "filter_vent.003",
+        "filter_vent.004",
+        "warning_inlay"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "power",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.699999988079071,
+      0.0,
+      -0.6000000238418579
+    ],
+    "max": [
+      0.7900000214576721,
+      2.1500000953674316,
+      0.6000000238418579
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_distribution_cabinet_lod0.glb",
+      "triangles": 11532,
+      "draws": 11,
+      "bytes": 839372,
+      "method": "source",
+      "sha256": "a29ca4762fd2d84e6ac19e6debc25368e1a6edb8e515e4f9853894afc931984b"
+    },
+    {
+      "level": 1,
+      "file": "ops_distribution_cabinet_lod1.glb",
+      "triangles": 2964,
+      "draws": 10,
+      "bytes": 412548,
+      "method": "Forge-decimation",
+      "sha256": "96fee98bb559a66e871e884d40346abc378c6fd0116372c33b8623da185ecfe5"
+    },
+    {
+      "level": 2,
+      "file": "ops_distribution_cabinet_lod2.glb",
+      "triangles": 540,
+      "draws": 8,
+      "bytes": 276700,
+      "method": "Forge-decimation",
+      "sha256": "de6fc704662fe61bffdacafb73ed7004fc297b2d52ce520a75336eecdcc34332"
+    }
+  ]
+}

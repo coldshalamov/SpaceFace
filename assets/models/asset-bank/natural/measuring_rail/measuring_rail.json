@@ -1,0 +1,317 @@
+{
+  "assetId": "measuring_rail",
+  "category": "ancient",
+  "description": "measuring rail; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_A",
+      "position": [
+        -2.5,
+        0.2,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_B",
+      "position": [
+        2.5,
+        0.2,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.26,
+          0.27
+        ],
+        "size": [
+          4.0,
+          0.18,
+          0.11200000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.26,
+          -0.27
+        ],
+        "size": [
+          4.0,
+          0.18,
+          0.11200000000000002
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.13,
+          -0.0
+        ],
+        "size": [
+          5,
+          0.15,
+          0.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.25,
+          0.075,
+          -0.0
+        ],
+        "size": [
+          0.25,
+          0.15,
+          0.82
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6,
+          0.075,
+          -0.0
+        ],
+        "size": [
+          0.25,
+          0.15,
+          0.82
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.25,
+          0.075,
+          -0.0
+        ],
+        "size": [
+          0.25,
+          0.15,
+          0.82
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6,
+          0.33,
+          0.36
+        ],
+        "size": [
+          0.5,
+          0.25,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6,
+          0.33,
+          -0.36
+        ],
+        "size": [
+          0.5,
+          0.25,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.39,
+          0.49,
+          -0.0
+        ],
+        "size": [
+          0.08,
+          0.1,
+          0.84
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.81,
+          0.49,
+          -0.0
+        ],
+        "size": [
+          0.08,
+          0.1,
+          0.84
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.5,
+      0.0,
+      -0.46000000834465027
+    ],
+    "max": [
+      2.5,
+      0.5400000214576721,
+      0.46000000834465027
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "measuring_rail_lod0.glb",
+      "triangles": 5100,
+      "draws": 3,
+      "bytes": 281316,
+      "method": "source",
+      "sha256": "9ca695f177b2579104ae2147064b7f323492feefdbdf2cc0bfccb374dd27ab8e"
+    },
+    {
+      "level": 1,
+      "file": "measuring_rail_lod1.glb",
+      "triangles": 1904,
+      "draws": 2,
+      "bytes": 105324,
+      "method": "authored-topology",
+      "sha256": "11a8861f0cdfc0b72d6f34f4bca415ff48a997d2e63beadac650265e2c8cde14"
+    },
+    {
+      "level": 2,
+      "file": "measuring_rail_lod2.glb",
+      "triangles": 1904,
+      "draws": 2,
+      "bytes": 105324,
+      "method": "authored-topology",
+      "sha256": "7f5bda4faa51ac53a39d98c87cfa6a6ccf221f73828b9131674da24aeb32ce01"
+    }
+  ]
+}

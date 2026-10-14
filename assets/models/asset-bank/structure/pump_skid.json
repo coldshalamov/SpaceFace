@@ -1,0 +1,318 @@
+{
+  "assetId": "pump_skid",
+  "category": "fluid",
+  "description": "pump skid",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        0.7,
+        0.0,
+        -1.5
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -0.65,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.3,
+          2.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5499999523162842,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          1.7000000308541687,
+          1.3,
+          1.3
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.7000000476837158,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          0.8000000283122057,
+          1.7,
+          1.7
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          1.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.699999988079071,
+          0.0,
+          -0.75
+        ],
+        "size": [
+          1.5,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.15,
+          -0.38,
+          0.72
+        ],
+        "size": [
+          0.48,
+          0.3,
+          0.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.15,
+          -0.38,
+          -0.72
+        ],
+        "size": [
+          0.48,
+          0.3,
+          0.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.55,
+          -0.38,
+          0.72
+        ],
+        "size": [
+          0.48,
+          0.3,
+          0.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.55,
+          -0.38,
+          -0.72
+        ],
+        "size": [
+          0.48,
+          0.3,
+          0.45
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          -0.08,
+          0.98
+        ],
+        "size": [
+          1.15,
+          0.9,
+          0.48
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          -0.08,
+          1.24
+        ],
+        "size": [
+          0.99,
+          0.74,
+          0.075
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.0,
+      -0.8500000238418579,
+      -1.5976189374923706
+    ],
+    "max": [
+      2.09761905670166,
+      0.8500000238418579,
+      1.3068195581436157
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pump_skid_lod0.glb",
+      "triangles": 6104,
+      "draws": 7,
+      "bytes": 570932,
+      "method": "source",
+      "sha256": "46e94de8901a314e3757892544761a5a7cf6af6d90087b3d5191f2ad20d83056"
+    },
+    {
+      "level": 1,
+      "file": "pump_skid_lod1.glb",
+      "triangles": 2440,
+      "draws": 7,
+      "bytes": 395812,
+      "method": "Forge-decimation",
+      "sha256": "b35e66376b688a8a62c186d4d672b0b9e85549642f8a99540e2bbb9ad42fbf6d"
+    },
+    {
+      "level": 2,
+      "file": "pump_skid_lod2.glb",
+      "triangles": 1040,
+      "draws": 7,
+      "bytes": 317124,
+      "method": "Forge-decimation",
+      "sha256": "2b3727d81192d7f96d1e9704ad1d5dba08d6924df7142cdee125b98f2065ce05"
+    }
+  ]
+}

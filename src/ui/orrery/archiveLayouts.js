@@ -938,6 +938,26 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} .ml-route { padding-top:6px; }
   ${ML} .sf-mlog-card > .ml-route-host { margin-top:22px; }
 }
+/* a 960×540-class desktop (761–1100 wide, ≤640 tall): the stage was a 235px column under a 4-line title,
+   so the route band fell below the fold. A narrower hang, a smaller dial and a 2-line title give the
+   reading ~330px and the band a full lane in frame; 1024×768, 1280 and the phone are outside the query. */
+@media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
+  ${ML} { --ml-dial:140px; grid-template-columns:minmax(0, 312px) minmax(0, 1fr) !important; column-gap:24px !important; }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 190px; column-gap:16px; }
+  ${ML} .orr-mdial__w { letter-spacing:.14em !important; }
+  ${ML} .sf-mlog-card > h2.k-t-title { margin-top:8px !important; font-size:21px !important; line-height:1.08 !important; }
+  ${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { margin-top:8px !important; font-size:14.5px !important; line-height:1.4 !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms { margin-top:10px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { grid-template-columns:104px minmax(0, 1fr) !important; column-gap:12px; padding-top:3px !important; padding-bottom:3px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { font-size:14px !important; line-height:1.3 !important; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:18px; }
+  ${ML} .ml-route { --ml-disc:44px; padding-top:4px; }
+  ${ML} .ml-route__ends { gap:10px; margin-bottom:6px !important; }
+  ${ML} .ml-route__from, ${ML} .ml-route__to { font-size:13px !important; }
+  ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:44px !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { gap:4px; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.12em !important; }
+}
 @media (forced-colors:active) {
   ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }
 }

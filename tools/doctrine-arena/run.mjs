@@ -12,7 +12,6 @@ import {
   createCounterplayMemory,
   decideCounterplay,
   restoreCounterplayMemory,
-  segmentBlocked,
   serializeCounterplayMemory,
 } from '../../src/ai/counterplay/index.js';
 import { aiPorts } from '../../src/systems/aiPorts.js';
@@ -22,10 +21,11 @@ import { flightV3 } from '../../src/systems/flightV3.js';
 import { weapons } from '../../src/systems/weapons.js';
 import {
   OPEN_SPACE_BOUNDS,
-  bootRealPath,
+  bootArena,
   realPathProof,
+  tacticalAiModuleEvaluated,
   writeRealPathInput,
-} from '../../scripts/lib/bench/realPath.mjs';
+} from './boot.mjs';
 import { steerToward } from '../../src/ai/counterplay/steer.js';
 import { idleManeuver, pilotIntent } from './pilots.mjs';
 import { buildCounterplayScene } from './scenes.mjs';
@@ -52,7 +52,7 @@ const REPAIR_CATALOG = createCombatCatalog();
 export async function runCounterplayScenario(options = {}) {
   const scene = options.scene || buildCounterplayScene(options.doctrineId, options);
   const doctrine = counterplayDoctrineById(scene.doctrineId);
-  const host = await bootRealPath({
+  const host = await bootArena({
     seed: scene.seed,
     systems: ARENA_SYSTEMS,
     bounds: OPEN_SPACE_BOUNDS,
@@ -99,6 +99,10 @@ export async function runCounterplayScenario(options = {}) {
     const player = actors.get('player');
     const opponent = actors.get('opponent');
     stampDoctrine(opponent, doctrine, player && player.id);
+    if (doctrine.fires && player) {
+      player.shield = 0;
+      player.shieldRegenRate = 0;
+    }
     const patient = actors.get('patient');
     const driveStart = patient ? woundDrive(host.state, patient) : null;
     const vitalStart = vital(player);
@@ -132,6 +136,11 @@ export async function runCounterplayScenario(options = {}) {
         stats.phases.push(decision.phase);
         lastPhase = decision.phase;
       }
+      if (decision.phase === 'feint' && scene.objective && scene.objective.feint && opponent) {
+        const feintDist = dist(opponent.pos, scene.objective.feint);
+        if (stats.feintStart == null) stats.feintStart = feintDist;
+        stats.feintMin = stats.feintMin == null ? feintDist : Math.min(stats.feintMin, feintDist);
+      }
       if (decision.telegraph && decision.telegraph.readable) stats.telegraphTicks += 1;
       if (decision.cue && decision.cue.predicted && !stats.predicted) {
         stats.predicted = { x: decision.cue.predicted.x, z: decision.cue.predicted.z };
@@ -147,10 +156,6 @@ export async function runCounterplayScenario(options = {}) {
       applyVerb(host, tethers, decision.verb, actors, tick, opponent, host.state);
       applyVerb(host, tethers, pilot.verb, actors, tick, player, host.state);
       const target = decision.attack ? findById(actors, decision.attack.targetId) : null;
-      if (decision.attack && decision.attack.wantFire && blockedShot(opponent, target, actors, doctrine.id)) {
-        decision.attack = null;
-        stats.blockedRefusals = (stats.blockedRefusals || 0) + 1;
-      }
       const applied = applyCounterplayIntent({
         state: host.state,
         helpers: host.runtime.getHelpers(),
@@ -254,7 +259,7 @@ export async function runCounterplayScenario(options = {}) {
       driveDelta: stats.driveStart == null || stats.driveEnd == null ? null : round3(stats.driveEnd - stats.driveStart),
       detail: score.detail,
       systems: ARENA_SYSTEM_NAMES,
-      tacticalAI: false,
+      tacticalAI: tacticalAiModuleEvaluated(),
       physicsBackend: proof.backend,
       sg02Ready: proof.sg02Ready === true,
       end: endPose(actors),
@@ -461,21 +466,6 @@ function findById(actors, id) {
   return null;
 }
 
-function blockedShot(shooter, target, actors, doctrineId) {
-  if (!shooter || !target) return false;
-  if (doctrineId === 'cp_collateral_hold') {
-    const civilian = actors.get('civilian');
-    if (!civilian) return false;
-    return segmentBlocked(shooter.pos, target.pos, [{ pos: civilian.pos, radius: (civilian.collisionRadius || 14) + 6 }], 0);
-  }
-  if (doctrineId === 'cp_cover_peel') {
-    const rock = actors.get('cover');
-    if (!rock) return false;
-    return segmentBlocked(shooter.pos, target.pos, [{ pos: rock.pos, radius: (rock.radius || 30) + 2 }], 0);
-  }
-  return false;
-}
-
 function publish(entity, decision) {
   if (!entity) return;
   const data = entity.data || (entity.data = {});
@@ -530,6 +520,8 @@ function freshStats(scene, opponent, patient, actors) {
     packStartDist: packmate && exit ? dist(packmate.pos, exit) : null,
     minPackDist: packmate && exit ? dist(packmate.pos, exit) : null,
     courierStart: opponent && gate ? dist(opponent.pos, gate) : null,
+    feintStart: null,
+    feintMin: null,
     decoyMin: null,
     driveStart: null,
     driveEnd: null,
@@ -584,19 +576,46 @@ function noteExtras(stats, actors, scene, tethers) {
 function scoreBout(id, scene, stats, actors) {
   const opponent = actors.get('opponent');
   if (id === 'cp_heavy_anchor_grappler') {
-    const progress = stats.tetherTicks.anchor > 15 ? clamp01(stats.tetherTicks.anchor / 90) : 0;
-    return { progress, complete: stats.tetherTicks.anchor > 40, detail: { minFlank: round3(stats.minFlank), anchorTicks: stats.tetherTicks.anchor } };
+    const radius = (scene.objective && scene.objective.flankRadius) || 36;
+    const flank = scene.objective && scene.objective.flank;
+    const end = opponent && flank ? dist(opponent.pos, flank) : 999;
+    const lineUp = stats.tetherTicks.anchor > 40;
+    const inside = end <= radius;
+    const progress = lineUp ? clamp01(1 - end / (radius * 4)) : 0;
+    return {
+      progress,
+      complete: lineUp && inside,
+      detail: {
+        flankDist: round3(end),
+        minFlank: round3(stats.minFlank),
+        anchorTicks: stats.tetherTicks.anchor,
+        flankRadius: radius,
+      },
+    };
   }
   if (id === 'cp_feint_break_courier') {
     const gate = scene.objective.gate;
+    const player = actors.get('player');
     const end = opponent && gate ? dist(opponent.pos, gate) : 999;
+    const separation = opponent && player ? dist(opponent.pos, player.pos) : 999;
     const arrived = end < 70;
-    const caught = arrived && (stats.gateSeparation == null ? 999 : stats.gateSeparation) < 46;
+    const caught = arrived && separation < 46;
     const progress = clamp01(1 - end / (stats.courierStart || 1)) * (caught ? 0.15 : 1);
-    return { progress, complete: arrived && !caught, detail: { gateDist: round3(end), gateSeparation: round3(stats.gateSeparation) } };
+    return {
+      progress,
+      complete: arrived && !caught,
+      detail: {
+        gateDist: round3(end),
+        gateSeparation: arrived ? round3(separation) : null,
+        feintStart: round3(stats.feintStart),
+        feintMin: round3(stats.feintMin),
+      },
+    };
   }
   if (id === 'cp_corridor_pack_leader') {
-    const end = stats.minPackDist == null ? 999 : stats.minPackDist;
+    const packmate = actors.get('packmate');
+    const exit = scene.objective && scene.objective.exit;
+    const end = packmate && exit ? dist(packmate.pos, exit) : 999;
     const progress = clamp01(1 - end / (stats.packStartDist || 1));
     return { progress, complete: end < 48, detail: { exitDist: round3(end) } };
   }
@@ -616,16 +635,16 @@ function scoreBout(id, scene, stats, actors) {
   if (id === 'cp_release_orbit_hunter') {
     const hunter = stats.hunterAt == null ? 400 : stats.hunterAt;
     const body = stats.bodyAt == null ? 400 : stats.bodyAt;
-    const progress = clamp01(1 - hunter / 90) * clamp01(1 - body / 36);
+    const progress = clamp01(1 - hunter / 90) * clamp01(1 - body / 130);
     return {
       progress,
-      complete: hunter < 30 && body < 28,
+      complete: hunter < 30 && body < 70,
       detail: { hunterDist: round3(hunter), bodyDist: round3(body) },
     };
   }
   if (id === 'cp_tether_bait_decoy') {
     const end = opponent && actors.get('player') ? dist(opponent.pos, actors.get('player').pos) : 0;
-    const progress = stats.longTether ? clamp01(0.45 + end / 400) : clamp01(1 - (stats.decoyMin || end) / 120) * 0.2;
+    const progress = stats.longTether ? clamp01(0.45 + end / 400) : clamp01(1 - end / 120) * 0.2;
     return { progress, complete: stats.longTether && end > 150, detail: { endDist: round3(end), longTether: stats.longTether, closest: round3(stats.decoyMin) } };
   }
   if (id === 'cp_collateral_hold' || id === 'cp_cover_peel') {

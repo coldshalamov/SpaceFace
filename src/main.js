@@ -34,6 +34,7 @@ import {
   resetRunUiState,
 } from './core/newGameBoot.js';
 import {
+  GameStartReadinessError,
   describeGameStartFailure,
   runNewGameStartTransition,
 } from './core/newGameStartTransition.js';
@@ -333,8 +334,7 @@ async function boot() {
     ctx.telemetry = telemetry;
     // PQ-033.03 achievements: a META ledger on the same live bus — never a registry system and never
     // a GameState write, so the deterministic sim cannot see it. It unlocks from real gameplay events
-    // and the settled Crucible records, speaks through the one-voice arbiter, and mirrors unlocks to
-    // Steam when the desktop shell exposes it.
+    // on the bus; this is deliberately independent of the environment drain.
     ctx.achievements = installAchievements({ bus, state, telemetry });
     const eventTrace = createDeterministicEventTrace(bus, state);
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
@@ -1077,10 +1077,6 @@ function enterLoadingMode(state, bus) {
       renderer.setClearColor(_loadingClearColor, prevAlpha);
     }
   } catch (_) { /* best effort — the shell still covers the handoff */ }
-  // A foundry HDRI that armed while a presented surface was up bakes its PMREM
-  // convolve here — the held frame is already black and the veil is coming up,
-  // so the one bounded convolve lands where presented frames never run.
-  try { state.render && state.render._drainFoundryEnvPending?.(); } catch (_) { /* env optional */ }
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 

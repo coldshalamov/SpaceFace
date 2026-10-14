@@ -321,3 +321,13 @@ test('every PMREM bake pins one cube size so env swaps never rekey lit programs'
   ) || [];
   assert.equal(bakes.length, 2, 'both the equirect wrap scene and the card rig must bake pinned');
 });
+
+test('an armed foundry promotion is retired before reveal on every route, and reveal reports it', () => {
+  const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  // Any committed foundry bake disarms the promotion (the opening freeze bake included).
+  assert.match(src, /this\._envMapSource = iblSource;\s*(\/\/[^\n]*\s*)*if \(iblSource === IBL_SOURCE_FOUNDRY\) this\._foundryEnvPending = false;/);
+  // Flight entry drains a still-armed promotion when no veiled seam ran (real-GPU readiness, Continue).
+  assert.match(src, /onBus\('mode:changed'[^\n]*\n(\s*\/\/[^\n]*\n)*\s*if \(mode === 'flight'\) this\._drainFoundryEnvPending\?\.\(\);/);
+  // The first playable paint (every route) stamps the env it lit with.
+  assert.match(src, /render\.foundryEnvAtReveal = \{\s*source: owner\._envMapSource \?\? null,\s*pending: owner\._foundryEnvPending === true,/);
+});

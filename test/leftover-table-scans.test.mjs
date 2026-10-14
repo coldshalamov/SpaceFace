@@ -84,13 +84,15 @@ test('fodder mass list prefers collidables over the fat list', () => {
 test('default quality preset is balanced and keeps the default picture', () => {
   assert.equal(DEFAULT_QUALITY_PRESET, 'medium');
   const labels = QUALITY_PRESETS.map((p) => p.label);
-  assert.ok(labels.includes('Balanced (recommended)'));
-  assert.ok(labels.includes('Performance'));
-  assert.ok(labels.includes('Quality'));
+  assert.ok(labels.includes('Balanced'));
+  assert.ok(labels.includes('High performance'));
+  assert.ok(labels.includes('High quality'));
   const tier = qualityTierForPreset('medium');
   assert.equal(tier.renderScale, 1);
   assert.equal(tier.bloom, true);
-  assert.equal(tier.shadows, true);
+  // Sun shadow-maps ship OFF (2026-09-21 owner report: at the neighbourhood ortho's texel density
+  // they read as crawling miscolored clumps) — the High quality tier opts back in.
+  assert.equal(tier.shadows, false);
   assert.equal(tier.engineTrails, true);
   assert.equal(tier.particleQuality, 'medium');
   assert.equal(tier.renderGraph, false);

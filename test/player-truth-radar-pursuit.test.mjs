@@ -9,6 +9,87 @@ function radarCanvas() {
     setAttribute: (key, value) => attributes.set(key, value), removeAttribute: (key) => attributes.delete(key) };
 }
 
+test('visible-pack retreat releases yaw before a slow observer can stretch the turn past its bearing', async () => {
+  const oldWindow = globalThis.window, oldDocument = globalThis.document;
+  const canvas = { tagName: 'CANVAS', classList: [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
+  const player = { id: 1, alive: true, team: 1, pos: { x: 0, z: 0 }, rot: Math.PI - 1.5, hull: 260, hullMax: 260 };
+  const enemies = [20, 30, 40].map((x, i) => ({ id: i + 2, alive: true, team: 3, type: 'ship',
+    pos: { x, z: 0 }, data: { runRole: 'enemy' } }));
+  const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: 2 },
+    run: { kind: 'survival', phase: 'active' }, entityList: [player, ...enemies],
+    render: { camera: {}, renderer: { domElement: canvas } } };
+  const held = new Set(); const taps = [];
+  const step = seconds => {
+    state.simTime += seconds;
+    player.rot += (held.has('KeyD') ? 1 : held.has('KeyA') ? -1 : 0) * 4.5 * seconds;
+  };
+  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => step(0.15),
+    __ptObserve: async () => {
+      assert.ok(!held.has('KeyA') && !held.has('KeyD'), 'observer latency must not prolong yaw');
+      step(1.2); return null;
+    },
+    keyboard: { down: async key => held.add(key), up: async key => held.delete(key),
+      press: async (key, { delay = 0 } = {}) => {
+        taps.push({ key, delay }); held.add(key); step(delay / 1000); held.delete(key);
+      } },
+    mouse: { move: async () => {}, down: async () => {}, up: async () => {} } };
+  try {
+    globalThis.window = { SF: { state, THREE: { Vector3: class {} }, ctx: { helpers: {
+      worldToScreen: pos => ({ x: 500 + pos.x, y: 300, onScreen: true, behind: false }),
+    } } } };
+    globalThis.document = { querySelector: () => null, elementFromPoint: () => canvas };
+    const before = Math.abs((await readTarget()).away);
+    await fightBeat(page, 1);
+    assert.ok(taps.some(tap => tap.key === 'KeyD'));
+    assert.ok(taps.every(tap => tap.delay <= 80));
+    assert.ok(Math.abs((await readTarget()).away) < before, 'public escape bearing improves despite slow observation');
+    assert.equal(held.size, 0);
+  } finally {
+    if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+    if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
+  }
+});
+
+for (const releases of [true, false]) test(`visible-target fighter ${releases ? 'cuts before steering and fire' : 'waits when the public tether stays attached'}`, async () => {
+  const oldWindow = globalThis.window, oldDocument = globalThis.document, oldStyle = globalThis.getComputedStyle;
+  const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 600, width: 1000, height: 600 }) };
+  const payload = { offsetParent: {}, hidden: false, getBoundingClientRect: () => ({ width: 50, height: 20 }) };
+  class Vector3 {
+    set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; }
+    setFromMatrixPosition(m) { return this.set(m.x, m.y || 0, m.z); }
+    project() { this.x /= 100; this.y = -this.z / 100; this.z = 0; return this; }
+  }
+  const player = { id: 1, alive: true, team: 1, pos: { x: 0, z: 0 }, rot: 0, hull: 260, hullMax: 260 };
+  const enemy = { id: 2, alive: true, team: 3, type: 'ship', pos: { x: 20, z: 0 }, data: { runRole: 'enemy' } };
+  const state = { mode: 'flight', simTime: 10, playerId: 1, player: { targetId: 2 },
+    run: { kind: 'survival', phase: 'active' }, entityList: [player, enemy],
+    render: { camera: {}, meshes: new Map([[2, { visible: true, matrixWorld: enemy.pos }]]), renderer: { domElement: canvas } } };
+  let attached = true, fired = 0;
+  const order = [], held = new Set();
+  const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => { state.simTime += 0.2; },
+    keyboard: { press: async key => { order.push(key); if (releases) attached = false; },
+      down: async key => { assert.equal(attached, false, 'a known line must release before steering'); held.add(key); },
+      up: async key => held.delete(key) },
+    mouse: { move: async () => {}, down: async () => {
+      assert.equal(attached, false, 'a known line must release before firing'); fired++; order.push('fire');
+    }, up: async () => {} } };
+  try {
+    globalThis.window = { SF: { THREE: { Vector3 }, state } };
+    globalThis.document = { elementFromPoint: () => canvas,
+      querySelector: selector => attached && selector === '.orr-cluster__payload' ? payload : null };
+    globalThis.getComputedStyle = () => ({ display: 'block', visibility: 'visible', opacity: '1' });
+    await fightBeat(page, 1);
+    assert.equal(order[0], 'Space', 'cut through the default public tether binding');
+    assert.equal(fired, releases ? 1 : 0);
+    assert.equal(held.size, 0);
+  } finally {
+    if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+    if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
+    if (oldStyle === undefined) delete globalThis.getComputedStyle; else globalThis.getComputedStyle = oldStyle;
+  }
+});
+
 test('the public radar describes only a currently painted hostile course and clears empty/menu readings', () => {
   const canvas = radarCanvas(); const baseLabel = 'Local tactical radar.';
   const marks = [{ x: 50, y: 10 }, { x: 51, y: 50 }];

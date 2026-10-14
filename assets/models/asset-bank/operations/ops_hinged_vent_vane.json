@@ -1,0 +1,201 @@
+{
+  "assetId": "ops_hinged_vent_vane",
+  "category": "mechanisms",
+  "description": "hinged vent vane",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.24,
+          0.74
+        ],
+        "size": [
+          0.5,
+          0.48,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.24,
+          -0.74
+        ],
+        "size": [
+          0.5,
+          0.48,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.42,
+          -0.0
+        ],
+        "size": [
+          1.55,
+          0.12,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.42,
+          -0.0
+        ],
+        "size": [
+          0.2,
+          0.2,
+          1.68
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.72,
+          0.45,
+          -0.0
+        ],
+        "size": [
+          0.12,
+          0.14,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "vane_pitch",
+      "pivot": [
+        0.0,
+        0.41999998688697815,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "vane",
+        "axle",
+        "leading_edge",
+        "vane_stiffener",
+        "vane_stiffener.001"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.7749999761581421,
+      0.0,
+      -0.8399999737739563
+    ],
+    "max": [
+      0.7800000309944153,
+      0.5324999690055847,
+      0.8400077223777771
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_hinged_vent_vane_lod0.glb",
+      "triangles": 1572,
+      "draws": 5,
+      "bytes": 310492,
+      "method": "source",
+      "sha256": "932ff15a9c9cd0181b2895de9c9bb3b46b5a9c1375d9bb6ebf09743f736c3f0b"
+    },
+    {
+      "level": 1,
+      "file": "ops_hinged_vent_vane_lod1.glb",
+      "triangles": 628,
+      "draws": 5,
+      "bytes": 267472,
+      "method": "Forge-decimation",
+      "sha256": "dcb1981db3528a9c10a8b607135ad673d677bbf22f63c6f605fca6f7edd749c6"
+    },
+    {
+      "level": 2,
+      "file": "ops_hinged_vent_vane_lod2.glb",
+      "triangles": 280,
+      "draws": 5,
+      "bytes": 248780,
+      "method": "Forge-decimation",
+      "sha256": "5e80ce9bba6e4132ba78e9a18396038b4ed908d8ee3dcb20004d219d85c283ed"
+    }
+  ]
+}

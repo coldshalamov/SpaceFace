@@ -1,0 +1,144 @@
+{
+  "assetId": "ice_pressure_ridge",
+  "category": "geology",
+  "description": "ice pressure ridge; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.8,
+          0.15,
+          0.15
+        ],
+        "size": [
+          1.44,
+          0.25,
+          0.96
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.25,
+          0.15,
+          -0.2
+        ],
+        "size": [
+          1.5,
+          0.25,
+          1.104
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.15,
+          -0.1
+        ],
+        "size": [
+          1.68,
+          0.25,
+          1.02
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.7687923908233643,
+      -0.036012038588523865,
+      -0.9845938086509705
+    ],
+    "max": [
+      2.655061721801758,
+      1.2350783348083496,
+      0.8765112161636353
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ice_pressure_ridge_lod0.glb",
+      "triangles": 4760,
+      "draws": 3,
+      "bytes": 333132,
+      "method": "source",
+      "sha256": "ded7a3690117a6e10d0496e5f46833e2f74e2d7d14280c5766b5d61835c3553d"
+    },
+    {
+      "level": 1,
+      "file": "ice_pressure_ridge_lod1.glb",
+      "triangles": 1904,
+      "draws": 3,
+      "bytes": 161420,
+      "method": "Forge-decimation",
+      "sha256": "8a2e273e953cd7f88ce6d84bcb5fc37b3293fac291e8338d29710526fbbc8c4d"
+    },
+    {
+      "level": 2,
+      "file": "ice_pressure_ridge_lod2.glb",
+      "triangles": 856,
+      "draws": 3,
+      "bytes": 77012,
+      "method": "Forge-decimation",
+      "sha256": "262fc9abe154c387806b2c4660adf92e6f74b23cf482152d44a438c9e1accfb4"
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "assetId": "cargo-bagged-regolith-pallet",
+  "category": "cargo",
+  "description": "Bulged regolith sacks strapped to a forkable pallet",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo_quality.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.1554399728775024,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.3250000476837158,
+        0.6102199852466583,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.75
+        ],
+        "size": [
+          2.4,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.75
+        ],
+        "size": [
+          2.4,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.65,
+          -0.0
+        ],
+        "size": [
+          2.2,
+          0.72,
+          1.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "cargo-quality-review",
+    "candidate",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.3250000476837158,
+      0.06499999761581421,
+      -0.875
+    ],
+    "max": [
+      1.3250000476837158,
+      1.1554399728775024,
+      0.875
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-bagged-regolith-pallet_lod0.glb",
+      "triangles": 9708,
+      "draws": 5,
+      "bytes": 724748,
+      "method": "source",
+      "sha256": "2402517133c4e546c9b1b82d64545d67ec7434c0c2ad3c305ea3f0f4aabfda8b"
+    },
+    {
+      "level": 1,
+      "file": "cargo-bagged-regolith-pallet_lod1.glb",
+      "triangles": 4476,
+      "draws": 5,
+      "bytes": 489344,
+      "method": "authored-topology",
+      "sha256": "8d2a559abf86715c19ea9056bc63566b26c8cc223dc0ee493089b773d54984d7"
+    },
+    {
+      "level": 2,
+      "file": "cargo-bagged-regolith-pallet_lod2.glb",
+      "triangles": 2876,
+      "draws": 5,
+      "bytes": 403124,
+      "method": "authored-topology",
+      "sha256": "2d7bc07c9ea45acf6a731705f091ccf182ea9a47c315996052e4df7ffa9fd570"
+    }
+  ]
+}

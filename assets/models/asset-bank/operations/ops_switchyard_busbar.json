@@ -1,0 +1,926 @@
+{
+  "assetId": "ops_switchyard_busbar",
+  "category": "power",
+  "description": "switchyard busbar",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "input",
+      "position": [
+        -1.9,
+        0.86,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "output",
+      "position": [
+        1.9,
+        0.86,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.1,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.2,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.5,
+          0.4
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.5,
+          -0.4
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.1,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.2,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5,
+          0.4
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5,
+          -0.4
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.1,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.2,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.5,
+          0.4
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.5,
+          -0.4
+        ],
+        "size": [
+          0.24,
+          0.6000000000000001,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.86,
+          0.4
+        ],
+        "size": [
+          3.8,
+          0.12,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.86,
+          -0.0
+        ],
+        "size": [
+          3.8,
+          0.12,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.86,
+          -0.4
+        ],
+        "size": [
+          3.8,
+          0.12,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.37749999999999995,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.5275000000000001,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.6775,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.37749999999999995,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.5275000000000001,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.6775,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.37749999999999995,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.5275000000000001,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.6775,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37749999999999995,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5275000000000001,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6775,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37749999999999995,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5275000000000001,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6775,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37749999999999995,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5275000000000001,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6775,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.37749999999999995,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.5275000000000001,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.6775,
+          0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.37749999999999995,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.5275000000000001,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.6775,
+          -0.0
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.37749999999999995,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05499999999999999,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.5275000000000001,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          0.6775,
+          -0.4
+        ],
+        "size": [
+          0.31,
+          0.05500000000000005,
+          0.31
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "power",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.899999976158142,
+      0.0,
+      -0.6000000238418579
+    ],
+    "max": [
+      1.899999976158142,
+      0.9200000166893005,
+      0.6000000238418579
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_switchyard_busbar_lod0.glb",
+      "triangles": 17112,
+      "draws": 3,
+      "bytes": 1113508,
+      "method": "source",
+      "sha256": "84cc6d1b794450a2118869a0d31a4e7f4848a9a9efb866ae38447be02c69820e"
+    },
+    {
+      "level": 1,
+      "file": "ops_switchyard_busbar_lod1.glb",
+      "triangles": 6844,
+      "draws": 3,
+      "bytes": 571688,
+      "method": "Forge-decimation",
+      "sha256": "69854cbbf80ed75a9659dd1ca629dfa5c4873754398ee29991f15941661a50ad"
+    },
+    {
+      "level": 2,
+      "file": "ops_switchyard_busbar_lod2.glb",
+      "triangles": 922,
+      "draws": 3,
+      "bytes": 291628,
+      "method": "Forge-decimation",
+      "sha256": "e9250705e43dffb5c5770584ea6678987a23ecb3233eae2f8ea4ec48cd381c93"
+    }
+  ]
+}

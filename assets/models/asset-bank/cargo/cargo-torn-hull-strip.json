@@ -1,0 +1,165 @@
+{
+  "assetId": "cargo-torn-hull-strip",
+  "category": "cargo",
+  "description": "Jagged torn hull skin exposing stiffening ribs",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo_quality.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        -0.11000001430511475,
+        1.9950000047683716,
+        0.05988776683807373
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.600000023841858,
+        0.9975000023841858,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.2,
+          -0.0
+        ],
+        "size": [
+          2.1,
+          0.19,
+          1.15
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.75,
+          0.95,
+          -0.0
+        ],
+        "size": [
+          0.7,
+          0.8,
+          1.05
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "cargo-quality-review",
+    "candidate",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.8200000524520874,
+      0.0,
+      -0.6200000047683716
+    ],
+    "max": [
+      1.600000023841858,
+      1.9950000047683716,
+      0.739775538444519
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-torn-hull-strip_lod0.glb",
+      "triangles": 5664,
+      "draws": 5,
+      "bytes": 521096,
+      "method": "source",
+      "sha256": "b95efc94f9f8fe8ccd9a9f57c6f35cdbfc4221c5208e04b6cd0ccaa658597fbf"
+    },
+    {
+      "level": 1,
+      "file": "cargo-torn-hull-strip_lod1.glb",
+      "triangles": 616,
+      "draws": 5,
+      "bytes": 277592,
+      "method": "authored-topology",
+      "sha256": "445e40270fff718d77e116ce11d30eec5bba31725a84ec9c2a42db94e5d86ff7"
+    },
+    {
+      "level": 2,
+      "file": "cargo-torn-hull-strip_lod2.glb",
+      "triangles": 304,
+      "draws": 5,
+      "bytes": 257288,
+      "method": "authored-topology",
+      "sha256": "3e414ee1c8d7c44ce40c0ada99acab4a1030f007ade9454ae7fac0b5b76e9051"
+    }
+  ]
+}

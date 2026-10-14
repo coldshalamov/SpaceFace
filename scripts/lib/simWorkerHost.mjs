@@ -50,6 +50,7 @@ import {
   presentationGlassCorner,
   resolveWorldPresentationEntity,
 } from '../../src/world/presentationSources.js';
+import { projectileSkipsVisualFactoryMesh } from '../../src/render/weapons/recipes.js';
 import { farLedgerScanRadius, tableLookAtOrigin } from '../../src/render/tabletopPolicy.js';
 import { liveSectorFullExtrasStubs } from '../../src/render/saveEnvelopeSectorWarm.js';
 import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.js';
@@ -316,6 +317,39 @@ function entityInfoBlock(state, entityId) {
     vitals: entityVitalsOf(e),
     data: canonicalClone(data),
   };
+}
+
+// Energy-card shots are intentionally absent from the mesh journal, but the
+// main-thread weapon VFX presenter still needs their moving poses. Ship this
+// small side channel separately so they never enter the world-mesh collect.
+function collectWeaponVfxProjectiles(state) {
+  const out = [];
+  for (const e of state.entityList || []) {
+    if (!e || !Number.isSafeInteger(e.id) || e.alive === false || e.type !== 'projectile'
+      || !projectileSkipsVisualFactoryMesh(e)) continue;
+    const pos = e.pos || {};
+    const prev = e.prevPos || pos;
+    out.push({
+      entityId: e.id,
+      type: 'projectile',
+      alive: true,
+      team: Number.isFinite(e.team) ? e.team : 0,
+      ownerId: Number.isSafeInteger(e.ownerId) ? e.ownerId : null,
+      x: finite(pos.x),
+      y: finite(pos.y),
+      z: finite(pos.z),
+      prevX: finite(prev.x, finite(pos.x)),
+      prevY: finite(prev.y, finite(pos.y)),
+      prevZ: finite(prev.z, finite(pos.z)),
+      vx: finite(e.vel && e.vel.x),
+      vy: finite(e.vel && e.vel.y),
+      vz: finite(e.vel && e.vel.z),
+      rot: finite(e.rot),
+      radius: finite(e.radius),
+      weaponId: typeof (e.data && e.data.weaponId) === 'string' ? e.data.weaponId : null,
+    });
+  }
+  return out;
 }
 
 // Per-tick vitals diff (production lane): scalar entity fields the renderer/UI
@@ -1339,6 +1373,7 @@ export function createSimHost() {
     return {
       journalSequence: host.committedJournalSequence,
       initRebuild,
+      weaponVfxProjectiles: collectWeaponVfxProjectiles(host.state),
       auxUpserts: initAux.upserts,
       auxRemovals: initAux.removals,
       storageOps: drainStorageOps(),
@@ -1535,6 +1570,7 @@ export function createSimHost() {
     return {
       journalSequence: host.committedJournalSequence,
       initRebuild,
+      weaponVfxProjectiles: collectWeaponVfxProjectiles(state),
       auxUpserts: initAux.upserts,
       auxRemovals: initAux.removals,
       collectProbe: initCollectProbe,
@@ -1862,6 +1898,7 @@ export function createSimHost() {
       journalValid: !journal.needsRebuild(),
       pack,
       spawnInfos,
+      weaponVfxProjectiles: collectWeaponVfxProjectiles(state),
       events,
       warmStubs,
       commandsProbe: msg.commandsProbe ? { farId: host.cmdProbeFarId != null ? host.cmdProbeFarId : null } : undefined,

@@ -1,0 +1,125 @@
+{
+  "assetId": "cleaved_slab",
+  "category": "geology",
+  "description": "cleaved slab; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.3,
+          0.67
+        ],
+        "size": [
+          2.6,
+          0.35,
+          0.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.3,
+          -0.67
+        ],
+        "size": [
+          2.6,
+          0.35,
+          0.65
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.788643479347229,
+      0.02785447984933853,
+      -1.3257337808609009
+    ],
+    "max": [
+      1.8847981691360474,
+      0.6088770031929016,
+      1.3177332878112793
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cleaved_slab_lod0.glb",
+      "triangles": 2000,
+      "draws": 3,
+      "bytes": 173516,
+      "method": "source",
+      "sha256": "5bc947e0c7ff2e4b0b2080c321b141456d359d7f4ab27e30127dcaa674c84923"
+    },
+    {
+      "level": 1,
+      "file": "cleaved_slab_lod1.glb",
+      "triangles": 800,
+      "draws": 3,
+      "bytes": 79080,
+      "method": "Forge-decimation",
+      "sha256": "ede0e659b45bcd7380293f419d7e56c2656ba161586de3bb015f41cf031682b7"
+    },
+    {
+      "level": 2,
+      "file": "cleaved_slab_lod2.glb",
+      "triangles": 360,
+      "draws": 3,
+      "bytes": 38696,
+      "method": "Forge-decimation",
+      "sha256": "c83a38d20f385448dda9933fe1a5bf36a3788e48d5f153e42ac96ff597e771e6"
+    }
+  ]
+}

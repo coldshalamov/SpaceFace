@@ -1,0 +1,563 @@
+{
+  "assetId": "ops_piston_ram",
+  "category": "mechanisms",
+  "description": "piston ram",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "fixed",
+      "position": [
+        -1.3,
+        0.4,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "rod",
+      "position": [
+        1.65,
+        0.4,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "ram_extension"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.47500000000000003,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          1.65,
+          0.64,
+          0.64
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.375,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          0.25,
+          0.76,
+          0.76
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.05,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.65,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          0.48,
+          0.48,
+          0.46
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.2,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          0.14000000000000012,
+          0.71,
+          0.71
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.19,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          0.14,
+          0.71,
+          0.71
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.475,
+          0.6297181838592439,
+          -0.22990118747933994
+        ],
+        "size": [
+          1.47,
+          0.068,
+          0.068
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.24,
+          0.6297181838592439,
+          -0.22990118747933994
+        ],
+        "size": [
+          0.04999999999999982,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.27,
+          0.6297181838592439,
+          -0.22990118747933994
+        ],
+        "size": [
+          0.05000000000000002,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.475,
+          0.6298543952724167,
+          0.22976500380595738
+        ],
+        "size": [
+          1.47,
+          0.068,
+          0.068
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.24,
+          0.6298543952724167,
+          0.22976500380595738
+        ],
+        "size": [
+          0.04999999999999982,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.27,
+          0.6298543952724167,
+          0.22976500380595738
+        ],
+        "size": [
+          0.05000000000000002,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.475,
+          0.17018818577861897,
+          0.2298075935304955
+        ],
+        "size": [
+          1.47,
+          0.068,
+          0.068
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.24,
+          0.17018818577861897,
+          0.2298075935304955
+        ],
+        "size": [
+          0.04999999999999982,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.27,
+          0.17018818577861897,
+          0.2298075935304955
+        ],
+        "size": [
+          0.05000000000000002,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.475,
+          0.1702392177444823,
+          -0.22985861510357314
+        ],
+        "size": [
+          1.47,
+          0.068,
+          0.068
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.24,
+          0.1702392177444823,
+          -0.22985861510357314
+        ],
+        "size": [
+          0.04999999999999982,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.27,
+          0.1702392177444823,
+          -0.22985861510357314
+        ],
+        "size": [
+          0.05000000000000002,
+          0.128,
+          0.128
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.69,
+          0.725,
+          0.135
+        ],
+        "size": [
+          0.2932219568856085,
+          0.06396761618899155,
+          0.12238965793926132
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.23500000000000001,
+          0.72,
+          0.17
+        ],
+        "size": [
+          0.63,
+          0.054,
+          0.054
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.13,
+          0.6799999999999999,
+          0.14500000000000002
+        ],
+        "size": [
+          0.13705594226494391,
+          0.12391550328268396,
+          0.10030194543241558
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.46499999999999997,
+          0.4,
+          -0.0
+        ],
+        "size": [
+          0.07,
+          0.38,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "ram_extension",
+      "pivot": [
+        0.44999998807907104,
+        0.4000000059604645,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "ram_rod",
+        "rod_eye_bearing",
+        "eye_wear_race"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.2999999523162842,
+      0.02000001072883606,
+      -0.3799999952316284
+    ],
+    "max": [
+      1.8873929977416992,
+      0.7919999957084656,
+      0.3799999952316284
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_piston_ram_lod0.glb",
+      "triangles": 10408,
+      "draws": 7,
+      "bytes": 763492,
+      "method": "source",
+      "sha256": "fc15b7e16e6a593a18e5a499031761a3a197c163bd34f98b20498485d1c6bebc"
+    },
+    {
+      "level": 1,
+      "file": "ops_piston_ram_lod1.glb",
+      "triangles": 4162,
+      "draws": 7,
+      "bytes": 439504,
+      "method": "Forge-decimation",
+      "sha256": "8386043241996c3973215854450270bb6a4faa7f645e352cdf7ddd27c41ff07a"
+    },
+    {
+      "level": 2,
+      "file": "ops_piston_ram_lod2.glb",
+      "triangles": 672,
+      "draws": 6,
+      "bytes": 279416,
+      "method": "Forge-decimation",
+      "sha256": "f977c8520ffec241c836d9ab9b7802871441aec6941f60fd2621fb414f24e40b"
+    }
+  ]
+}

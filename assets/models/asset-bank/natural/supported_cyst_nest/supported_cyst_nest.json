@@ -1,0 +1,144 @@
+{
+  "assetId": "supported_cyst_nest",
+  "category": "growth",
+  "description": "Asymmetric host-attached growth nest with split mature skin, recessed living membrane and branching root contacts; metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.65,
+          0.06,
+          0.05
+        ],
+        "size": [
+          0.48,
+          0.12,
+          0.48
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.75,
+          0.09,
+          -0.35
+        ],
+        "size": [
+          0.384,
+          0.12,
+          0.384
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          0.075,
+          0.6
+        ],
+        "size": [
+          0.336,
+          0.12,
+          0.336
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.145578622817993,
+      -0.00012993479322176427,
+      -2.0239462852478027
+    ],
+    "max": [
+      1.5455784797668457,
+      1.2541284561157227,
+      1.680525302886963
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "supported_cyst_nest_lod0.glb",
+      "triangles": 68192,
+      "draws": 5,
+      "bytes": 2859112,
+      "method": "source",
+      "sha256": "4969417c47ea0b47ee37b730465e9cca851d694dc678e6924b099edabb6888b6"
+    },
+    {
+      "level": 1,
+      "file": "supported_cyst_nest_lod1.glb",
+      "triangles": 27276,
+      "draws": 5,
+      "bytes": 1327728,
+      "method": "Forge-decimation",
+      "sha256": "6ac45004db9c65cecdbf638f3573ce6ba837104a736d9c1b62785f101fcbc3e7"
+    },
+    {
+      "level": 2,
+      "file": "supported_cyst_nest_lod2.glb",
+      "triangles": 6664,
+      "draws": 5,
+      "bytes": 431700,
+      "method": "Forge-decimation",
+      "sha256": "c3ed8bfc23e3661fe8c6cb64d3fdb4b144ac39e741b720fe18c1c8d113e23e73"
+    }
+  ]
+}

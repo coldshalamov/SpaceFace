@@ -47,6 +47,7 @@ test('integrated preset bundles the plumbed #86–#94 knobs', () => {
   assert.ok(tier.bloomStrength < 0.52, '#87 reduced bloom strength');
   assert.equal(tier.bloomLevels, 1, '#87 fewer bloom levels');
   assert.equal(tier.renderScale, 0.85, '#88 render scale 0.85');
+  assert.equal(tier.pixelRatioCap, 1, '#88 pixel ratio capped at 1x — the HiDPI shading hazard');
   assert.equal(tier.sharpen, true, '#88 sharpening on');
   assert.equal(tier.dynamicResolution, true, '#89 dynres opt-in flag');
   assert.equal(tier.frameCap, 30, '#90 30 fps cap');
@@ -57,6 +58,7 @@ test('integrated preset bundles the plumbed #86–#94 knobs', () => {
   assert.equal(applied.preset, 'integrated');
   assert.equal(state.settings.video.qualityPreset, 'integrated');
   assert.equal(state.settings.video.renderScale, 0.85);
+  assert.equal(state.settings.video.pixelRatioCap, 1);
   assert.equal(state.settings.video.shadows, false);
   assert.equal(state.settings.video.bloomStrength, 0.28);
   assert.equal(state.settings.video.bloomLevels, 1);
@@ -76,6 +78,7 @@ test('leaving integrated restores a stock preset picture', () => {
   const v = state.settings.video;
   assert.equal(v.qualityPreset, 'medium');
   assert.equal(v.renderScale, 1);
+  assert.equal(v.pixelRatioCap, 2);
   assert.equal(v.bloomStrength, 0.52);
   assert.equal(v.bloomLevels, 2);
   assert.equal(v.sharpen, false);

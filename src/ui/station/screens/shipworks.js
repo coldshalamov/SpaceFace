@@ -3024,9 +3024,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // the name's words and the verbs under them (the nameplate's own box runs the stage's height)
       // (the verbs' band is reserved from the stage's size, so the ring never chases the verbs)
       avoid: () => [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), ringBandObstacle, el.querySelector('.sx-sw__gauges')],
-      labelWidth: 220,
-      gap: 30,
-      edge: 40,
+      // Phone landscape (~844×390) still uses the jig; compact columns so labels clear the dial.
+      labelWidth: isPhoneLayout() ? 128 : 220,
+      gap: isPhoneLayout() ? 16 : 30,
+      edge: isPhoneLayout() ? 18 : 40,
       allowNone: true,
       // a narrow stage keeps its nodes clean: the labels carry the numerals
       numeralsMinWidth: 1100,
@@ -3284,7 +3285,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : rr;
     }
     if (!ink) return null;
-    return { left: ink.left, top: ink.top, right: ink.right, bottom: ink.bottom, width: ink.right - ink.left, height: ink.bottom - ink.top };
+    // When the rename field is focused, grow the keep-out under its ring so a left-column
+    // callout (Utility / Drive) cannot sit on the focus box at short mid-width stages.
+    let bottom = ink.bottom;
+    for (const input of nameplateEl.querySelectorAll('input.sx-sw__nameEdit')) {
+      if (input !== document.activeElement) continue;
+      const box = input.getBoundingClientRect();
+      if (box.height > 0) bottom = Math.max(bottom, box.bottom + 14);
+    }
+    return { left: ink.left, top: ink.top, right: ink.right, bottom, width: ink.right - ink.left, height: bottom - ink.top };
   }
 
   function updateSpatialProjection() {
@@ -3369,10 +3378,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     let keepOut = null;
     let heart = null;
     const shortStage = stageRect.height < 300;
+    // Phone / narrow dock stages (~362px on 390×844): label columns need a real gutter. Without
+    // a keep-out the live-path solver treats the bead spread as the hull (often edge-to-edge)
+    // and parks Utility/Drive/Cargo past the stage's overflow:hidden clip.
+    const narrowStage = stageRect.width < 520 || isPhoneLayout();
     if (posterOn) {
       // Short dock stages (~162px at 960×540): leave a wider label band so Utility/Drive/Cargo
-      // sit in clear columns beside the hull, not on its silhouette.
-      const reserveX = nodes.length ? Math.max(...cards.map((c) => c.w)) + (shortStage ? 52 : 32) : 0;
+      // sit in clear columns beside the hull, not on its silhouette. Narrow phone stages need
+      // the same extra reserve even when the stage is tall.
+      const reserveX = nodes.length
+        ? Math.max(...cards.map((c) => c.w)) + (shortStage || narrowStage ? 52 : 32)
+        : 0;
       const fitArgs = { ink: poster.ink(), imageAspect: poster.aspect(), reserveX, reserveY: 8 };
       let fit = fitHullInk({ region, ...fitArgs });
       if (nameplateZone && fit.inkRect.left < nameplateZone.right && fit.inkRect.right > nameplateZone.left
@@ -3407,9 +3423,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       poster.place(fit.imgRect);
       drawSaleRing(ringG);
-      const keepPad = shortStage ? 18 : 6;
+      const keepPad = shortStage || narrowStage ? 18 : 6;
       keepOut = { left: fit.inkRect.left - keepPad, top: fit.inkRect.top, right: fit.inkRect.right + keepPad, bottom: fit.inkRect.bottom };
       heart = { x: (fit.inkRect.left + fit.inkRect.right) / 2, y: (fit.inkRect.top + fit.inkRect.bottom) / 2 };
+    } else if (narrowStage && nodes.length) {
+      // Live path on a phone-width stage: invent the same side gutters the poster fit would leave,
+      // so callout cards stay on-glass instead of overhanging the keep-out past the clip.
+      const colW = Math.max(64, ...cards.map((c) => c.w));
+      const gutter = colW + (isPhoneLayout() ? 14 : 20);
+      keepOut = {
+        left: region.left + gutter,
+        right: region.right - gutter,
+        top: region.top + 10,
+        bottom: region.bottom - 20,
+      };
+      heart = { x: (keepOut.left + keepOut.right) / 2, y: (keepOut.top + keepOut.bottom) / 2 };
     }
 
     if (!el.classList.contains('sx-sw--buying')) drawSaleRing(null);
@@ -3460,6 +3488,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
     if (projectedSlots.length) {
       separateBeads(projectedSlots, 14).forEach((p, i) => { projectedSlots[i].x = p.x; projectedSlots[i].y = p.y; });
+      // On a narrow stage, beads that projected into the label gutters would fight the cards for
+      // the same air — pull them into the keep-out so leaders run from hull to column.
+      if (narrowStage && keepOut) {
+        const pad = 10;
+        for (const s of projectedSlots) {
+          s.x = Math.max(keepOut.left + pad, Math.min(keepOut.right - pad, s.x));
+          s.y = Math.max(keepOut.top + pad, Math.min(keepOut.bottom - pad, s.y));
+        }
+      }
       const layout = calculateSpatialSlotLayout({
         projectedSlots,
         stageWidth: stageRect.width,
@@ -3468,7 +3505,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         bounds: labelRegion,
         keepOut,
         obstacles,
-        gap: shortStage ? 36 : 28,
+        gap: narrowStage ? 16 : (shortStage ? 36 : 28),
       });
 
       let selectedBead = null;
@@ -4930,6 +4967,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // A card may sit to the right of a short name (the ink zone follows the text, not the field's
   // empty right side), so re-place the cards as the name grows under typing, not only on change.
   nameplateEl.addEventListener('input', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
+  });
+  // Focus grows the nameplate keep-out under the field (see nameplateInkRect); re-place so the
+  // left callout column clears the ring at short mid-width stages.
+  nameplateEl.addEventListener('focusin', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
+  });
+  nameplateEl.addEventListener('focusout', (ev) => {
     if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
   });
   nameplateEl.addEventListener('change', (ev) => {

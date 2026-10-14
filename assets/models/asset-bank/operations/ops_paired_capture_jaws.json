@@ -1,0 +1,578 @@
+{
+  "assetId": "ops_paired_capture_jaws",
+  "category": "mechanisms",
+  "description": "paired capture jaws",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "capture",
+      "position": [
+        0.7,
+        0.4,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "actuator",
+      "position": [
+        -1.05,
+        0.3,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.3,
+          -0.0
+        ],
+        "size": [
+          0.5,
+          0.6,
+          2.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.4,
+          0.95
+        ],
+        "size": [
+          1.8,
+          0.5,
+          0.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.78,
+          0.4,
+          0.7
+        ],
+        "size": [
+          0.3,
+          0.5,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.62,
+          0.4,
+          0.5
+        ],
+        "size": [
+          0.18,
+          0.34,
+          0.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.4,
+          -0.95
+        ],
+        "size": [
+          1.8,
+          0.5,
+          0.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.78,
+          0.4,
+          -0.7
+        ],
+        "size": [
+          0.3,
+          0.5,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.62,
+          0.4,
+          -0.5
+        ],
+        "size": [
+          0.18,
+          0.34,
+          0.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.39,
+          0.95
+        ],
+        "size": [
+          0.38,
+          0.5,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.655,
+          0.95
+        ],
+        "size": [
+          0.24,
+          0.030000000000000027,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.43,
+          0.6725000000000001,
+          0.96
+        ],
+        "size": [
+          0.098,
+          0.025000000000000022,
+          0.098
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.43,
+          0.7050000000000001,
+          0.96
+        ],
+        "size": [
+          0.07,
+          0.040000000000000036,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3,
+          0.6725000000000001,
+          0.96
+        ],
+        "size": [
+          0.098,
+          0.025000000000000022,
+          0.098
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3,
+          0.7050000000000001,
+          0.96
+        ],
+        "size": [
+          0.07,
+          0.040000000000000036,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.39,
+          -0.95
+        ],
+        "size": [
+          0.38,
+          0.5,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.8,
+          0.655,
+          -0.95
+        ],
+        "size": [
+          0.24,
+          0.030000000000000027,
+          0.24
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.43,
+          0.6725000000000001,
+          -0.96
+        ],
+        "size": [
+          0.098,
+          0.025000000000000022,
+          0.098
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.43,
+          0.7050000000000001,
+          -0.96
+        ],
+        "size": [
+          0.07,
+          0.040000000000000036,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3,
+          0.6725000000000001,
+          -0.96
+        ],
+        "size": [
+          0.098,
+          0.025000000000000022,
+          0.098
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.3,
+          0.7050000000000001,
+          -0.96
+        ],
+        "size": [
+          0.07,
+          0.040000000000000036,
+          0.07
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.4,
+          0.35
+        ],
+        "size": [
+          0.09,
+          0.09,
+          0.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.4,
+          -0.35
+        ],
+        "size": [
+          0.09,
+          0.09,
+          0.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "jaw_starboard",
+      "pivot": [
+        -0.800000011920929,
+        0.4000000059604645,
+        0.949999988079071
+      ],
+      "parent": null,
+      "objects": [
+        "jaw_hook",
+        "contact_pad",
+        "tapered_forged_arm",
+        "jaw_pivot",
+        "pivot_race",
+        "arm_inset_rail",
+        "bolt_washer",
+        "captive_fastener",
+        "bolt_washer.001",
+        "captive_fastener.001",
+        "gripping_tooth",
+        "gripping_tooth.001",
+        "gripping_tooth.002"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "jaw_port",
+      "pivot": [
+        -0.800000011920929,
+        0.4000000059604645,
+        -0.949999988079071
+      ],
+      "parent": null,
+      "objects": [
+        "jaw_hook.001",
+        "contact_pad.001",
+        "tapered_forged_arm.001",
+        "jaw_pivot.001",
+        "pivot_race.001",
+        "arm_inset_rail.001",
+        "bolt_washer.002",
+        "captive_fastener.002",
+        "bolt_washer.003",
+        "captive_fastener.003",
+        "gripping_tooth.003",
+        "gripping_tooth.004",
+        "gripping_tooth.005"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.0499999523162842,
+      0.0,
+      -1.2000000476837158
+    ],
+    "max": [
+      0.9299999475479126,
+      0.7250000238418579,
+      1.2000000476837158
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_paired_capture_jaws_lod0.glb",
+      "triangles": 9172,
+      "draws": 12,
+      "bytes": 711180,
+      "method": "source",
+      "sha256": "fa2c29ab0b4f1b94e169c30579a7dece5b98ae5ee16382b869244fcf15160064"
+    },
+    {
+      "level": 1,
+      "file": "ops_paired_capture_jaws_lod1.glb",
+      "triangles": 2246,
+      "draws": 12,
+      "bytes": 362540,
+      "method": "Forge-decimation",
+      "sha256": "3cccb421f0e086aba74f2d435ad723ac3389faad8ac8adcb2feffea663b6b493"
+    },
+    {
+      "level": 2,
+      "file": "ops_paired_capture_jaws_lod2.glb",
+      "triangles": 644,
+      "draws": 11,
+      "bytes": 284364,
+      "method": "Forge-decimation",
+      "sha256": "4cc5b15756ed58bfbce0c3cdb41309cc5c31a53e99f53823735115120fff7750"
+    }
+  ]
+}

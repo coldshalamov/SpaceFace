@@ -1,0 +1,184 @@
+{
+  "assetId": "cargo-ore-skip",
+  "category": "cargo",
+  "description": "Open tapered ore skip with lifting trunnions and wear floor",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.4778332710266113,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.4500000476837158,
+        0.8239166364073753,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.85,
+          0.85
+        ],
+        "size": [
+          2.6,
+          1.25,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.85,
+          -0.85
+        ],
+        "size": [
+          2.6,
+          1.25,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.25,
+          -0.0
+        ],
+        "size": [
+          2.3,
+          0.16,
+          1.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.4500000476837158,
+      0.17000000178813934,
+      -1.0247299671173096
+    ],
+    "max": [
+      1.4500000476837158,
+      1.4778332710266113,
+      1.0247299671173096
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-ore-skip_lod0.glb",
+      "triangles": 4900,
+      "draws": 5,
+      "bytes": 487696,
+      "method": "source",
+      "sha256": "faaa656006c76ecf1487aad48016a9edafdb1edb3798a4f8fb64e51996e9847d"
+    },
+    {
+      "level": 1,
+      "file": "cargo-ore-skip_lod1.glb",
+      "triangles": 500,
+      "draws": 5,
+      "bytes": 271088,
+      "method": "authored-topology",
+      "sha256": "64d54ec2e341fd48bc2ba4e505f093c64e4c875d17e5a69ad7abbbbd3bbf422a"
+    },
+    {
+      "level": 2,
+      "file": "cargo-ore-skip_lod2.glb",
+      "triangles": 260,
+      "draws": 5,
+      "bytes": 255824,
+      "method": "authored-topology",
+      "sha256": "887871a71be0a87e78d0e07e21bbf4c2480dd781a7f5dea75d7d79111948af84"
+    }
+  ]
+}

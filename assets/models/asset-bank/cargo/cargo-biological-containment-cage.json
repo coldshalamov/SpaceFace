@@ -1,0 +1,184 @@
+{
+  "assetId": "cargo-biological-containment-cage",
+  "category": "cargo",
+  "description": "Sealed specimen chamber inside a containment cage",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo_remaining.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        2.049999952316284,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        0.925000011920929,
+        1.0574999749660492,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.8
+        ],
+        "size": [
+          1.6,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.8
+        ],
+        "size": [
+          1.6,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          1.5,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -0.925000011920929,
+      0.06499999761581421,
+      -0.925000011920929
+    ],
+    "max": [
+      0.925000011920929,
+      2.049999952316284,
+      0.925000011920929
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-biological-containment-cage_lod0.glb",
+      "triangles": 10388,
+      "draws": 8,
+      "bytes": 768080,
+      "method": "source",
+      "sha256": "7e713ea8d51c644002ca2e94d8986a71fd9bd40751014d3ebcfaa7d3bafc0063"
+    },
+    {
+      "level": 1,
+      "file": "cargo-biological-containment-cage_lod1.glb",
+      "triangles": 1380,
+      "draws": 8,
+      "bytes": 334256,
+      "method": "authored-topology",
+      "sha256": "f53e75318ab00ed16894dae42d4d29c0af7838b86bb4c9dd1bc5eb2d2bfb2b3d"
+    },
+    {
+      "level": 2,
+      "file": "cargo-biological-containment-cage_lod2.glb",
+      "triangles": 676,
+      "draws": 8,
+      "bytes": 297368,
+      "method": "authored-topology",
+      "sha256": "01bb255152020327140fa1f339f8ed9c61a8fbb0a6163046725346a780a762b1"
+    }
+  ]
+}

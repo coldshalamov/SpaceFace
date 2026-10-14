@@ -85,13 +85,47 @@ ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot,
   ${R} .sf-crres__build { flex-wrap:wrap; }
   ${R} .sf-crres__share-row { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; }
   ${R} .sf-crres__share-cap { grid-column:1 / -1; }
-  /* Dock the ways-out in normal flow (not sticky). Sticky + a 590px dial left "The take"
-     under RUN IT AGAIN at 390×844 (ui-bench ON TOP OF / BURIED). */
-  ${R} > .k-foot { order:5; position:relative; bottom:auto; z-index:4; flex:none; margin:0 -20px !important; padding:18px 20px 14px !important;
-    background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 22px) !important; }
+  /* The ways-out stay docked at the glass floor while the plate scrolls under them, so a
+     player who lands on the title and dial can always leave without hunting for the foot. */
+  ${R} > .k-foot { order:5; position:sticky; bottom:0; z-index:4; flex:none; margin:auto -20px 0 !important; padding:22px 20px 14px !important;
+    background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 18px) !important; }
   ${R} > .k-foot > .k-words { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; column-gap:26px !important; row-gap:2px !important; }
-  /* Shorter dial so title + dial + take + foot can share one 844-tall plate without pile-up. */
-  ${R} > .sf-crres__dial { height:min(420px, 52vh); }
+  /* The dial gets the first glass between the title and the docked foot, tall enough that its
+     caption (killer, vitals, LAST 5 HITS and the legend) ends above the foot instead of spilling
+     into THE TAKE; the tell line repeats THE RUN below, so the small plate drops it. */
+  ${R} > .sf-crres__dial { height:clamp(470px, calc(100svh - 240px), 620px); }
+  ${R} > .sf-crres__dial .orr-deathdial__warn:not(.orr-deathdial__vitals) { display:none; }
+  ${R} > .k-foot { padding:18px 20px 10px !important; }
+}
+
+/* ≤600 tall desktop (960×540): the dial plus its full caption (killer, detail, vitals, the
+   LAST 5 HITS strip and its legend) needs ~520px, which the full-width foot row would cut in
+   half. So the ways-out stack under the left column, and the instrument takes the whole
+   right-hand height down to the plate's floor; nothing in the caption is hidden. */
+@media (min-width:701px) and (max-height:600px) {
+  ${R} > .sf-crres__dial { top:2px !important; bottom:4px !important; overflow:visible !important; }
+  ${R} .orr-deathdial__caption { padding-bottom:0 !important; }
+  ${R} .orr-deathdial__strip { margin-top:8px !important; }
+  ${R} .orr-crres-hitlegend { display:block !important; margin:2px 0 0 !important; }
+  ${R} > .k-foot { position:relative; z-index:5; max-width:calc(42vw - 60px) !important; box-sizing:border-box; }
+  ${R} > .k-foot > .k-words { flex-wrap:wrap !important; column-gap:26px !important; row-gap:6px !important; max-width:100% !important; }
+  ${R} > .k-foot .k-word.k-word--primary { flex:0 0 100%; font-size:15px !important; padding-bottom:8px !important; }
+  ${R} > .k-foot .k-word.k-word--primary::after { content:none !important; display:none !important; }
+  ${R} .sf-crres__stage { position:relative; z-index:2; gap:12px !important; padding:0 12px 16px 0 !important; }
+  ${R} .orr-crres-figure__n { font-size:30px !important; }
+  ${R} .orr-crres-figure__w { font-size:11px !important; letter-spacing:.18em !important; margin-top:4px !important; }
+  ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { margin:0 0 6px !important; }
+  ${R} > .k-title .k-t-title { font-size:clamp(34px, 7.2vh, 48px) !important; }
+  ${R} > .sf-crres-celebrate { margin:0 !important; }
+}
+@media (min-width:701px) and (max-width:880px) and (max-height:600px) {
+  ${R} > .k-foot .k-word.k-word--primary { font-size:13px !important; }
+}
+
+/* 601–720 tall: keep a thin safety clip so a long killer name cannot bleed into the foot */
+@media (min-width:701px) and (min-height:601px) and (max-height:720px) {
+  ${R} > .sf-crres__dial { overflow:hidden !important; }
+  ${R} > .k-foot { position:relative; z-index:5; }
 }
 
 `;
