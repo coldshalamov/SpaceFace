@@ -6987,6 +6987,9 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 438.5, 205.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 480.5, 293.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 553.5, 118.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 553.75, 118.25, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 554.5, 118.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 565.5, 133.5, stageCam, stage, profileDraw), 'alive_bank');
   const emptyRing = { objects: [{ id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 20 }] };
   assert.equal(hitTest(emptyRing, 352.5, 257.5, stageCam, stage), null);
   assert.equal(hitTest(emptyRing, 343.5, 270.5, stageCam, stage), null);

@@ -1547,16 +1547,20 @@ function outerButtPixel(dx, dy, radius, along, dash, gap, signed) {
     && perp > 0.55 && perp <= 0.62 && support > 0.7 && support <= 0.708;
   const outerFringe = span.alongOff > 0.34 && span.alongOff <= 0.37
     && perp > 0.5 && perp <= 0.53 && support > 0.69 && support <= 0.706;
+  // Just outside the half-width, the outer end is still in the pixel.
+  const outerNear = span.alongOff > 0.1 && span.alongOff <= 0.16
+    && perp > 0.65 && perp <= 0.72 && support > 0.68 && support <= 0.70;
   // Outer part of the stroke, more than half a pixel past a diagonal butt.
   const outerHalf = perp > 0.35 && perp < PAINTED_STROKE_PX
     && span.alongOff > PAINTED_STROKE_PX && support > 0.7;
   // The pixel holds the outer endpoint and at least half of the cap.
   const halfCap = perp < PAINTED_STROKE_PX;
-  if (!nearCenter && !outerFringe && !outerHalf && !halfCap) return false;
+  if (!nearCenter && !outerFringe && !outerNear && !outerHalf && !halfCap) return false;
   const end = outerButtEnd(dx, dy, radius, along, dash, gap);
   if (!end) return false;
   if (outerHalf && end.chord >= 0.15) return true;
   if (halfCap && end.inside && end.chord >= PAINTED_STROKE_PX) return true;
+  if (outerNear && end.inside && end.dist < 0.24) return true;
   if (!end.inside || (!nearCenter && !outerFringe)) return false;
   // The nearest empty outer end on these rings sits 0.207px from its center.
   if (nearCenter && end.dist > 0.19) return false;
@@ -1572,7 +1576,17 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const along = ringMeasuredAlong(radius, angle);
   const tx = -Math.sin(angle);
   const ty = Math.cos(angle);
-  if (dashAccepted(signed, along, pattern[0], pattern[1], tx, ty)) return true;
+  if (dashAccepted(signed, along, pattern[0], pattern[1], tx, ty)) {
+    const span = dashOffset(along, pattern[0], pattern[1]);
+    // A gap sample must not select a pixel whose center is empty. The stem
+    // beside that pixel is on the dash (alongOff 0) and does not need the gap.
+    if (span.alongOff > 0 && !isPixelCenter(sx, sy)) {
+      const cx = Math.floor(sx) + 0.5;
+      const cy = Math.floor(sy) + 0.5;
+      if (!ringOnInk(dx + cx - sx, dy + cy - sy, radius, pattern, cx, cy)) return false;
+    }
+    return true;
+  }
   if (isPixelCenter(sx, sy) && outerButtPixel(dx, dy, radius, along, pattern[0], pattern[1], signed)) return true;
   return dashBodyPixel(Math.abs(signed), along, pattern[0], pattern[1], dx, dy, sx, sy);
 }
