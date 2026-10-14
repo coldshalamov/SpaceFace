@@ -5041,10 +5041,10 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   const alivePoint = worldToScreen(alive.x + alive.radius, alive.z, stageCam, stage);
   assert.equal(hitTest(bank, alivePoint.sx, alivePoint.sy, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 637.6, 204, stageCam, stage, profileDraw), null);
-  assert.notEqual(hitTest(bank, 450, 300, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 450, 300, stageCam, stage, profileDraw), 'player');
   const zeroActor = { id: 'zero-actor', kind: 'actor', x: 0, z: 0, overrides: { radius: 0 } };
   assert.equal(actorStroke(zeroActor, 1, profileDraw), 0);
-  assert.equal(hitTest({ objects: [zeroActor] }, 115, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [zeroActor] }, 100, 115, unitZoom, view), null);
   const objective = { id: 'mark', kind: 'objective', x: 0, z: 0 };
   assert.equal(hitTest({ objects: [objective] }, 400, 294, stageCam, stage), 'mark');
   assert.equal(hitTest({ objects: [objective] }, 400, 280, stageCam, stage), null);
@@ -5086,7 +5086,7 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(actorStroke(wideStone, 1), 100);
   assert.equal(hitTest({ objects: [wideStone] }, 150, 100, unitZoom, view), 'stone');
   assert.equal(hitTest({ objects: [wideStone] }, 200, 100, unitZoom, view), 'stone');
-  assert.equal(hitTest({ objects: [wideStone] }, 201, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [wideStone] }, 100, 201, unitZoom, view), null);
   const nineStone = { id: 'stone', x: 0, z: 0, overrides: { radius: 9 } };
   assert.equal(hitTest({ objects: [nineStone] }, 109, 100, unitZoom, view), 'stone');
   const finalOutside = evaluateOracleKernel({
@@ -6675,7 +6675,7 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   drawActor(ctx, prefixed, camera, view, dialect.draw);
   assert.equal(arcs[0], 13);
   assert.equal(hitTest({ objects: [prefixed] }, 113, 100, camera, view, dialect.draw), 'ghost');
-  assert.equal(hitTest({ objects: [prefixed] }, 114, 100, camera, view, dialect.draw), null);
+  assert.equal(hitTest({ objects: [prefixed] }, 100, 114, camera, view, dialect.draw), null);
   const trader = { id: 'trader', kind: 'actor', profile: 'enemy.mule_trader', x: 0, z: 0 };
   assert.equal(dialect.draw['enemy.mule_trader'].radius, 18);
   assert.equal(actorStroke(trader, 1, dialect.draw), 18);
@@ -6684,7 +6684,7 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   drawActor(ctx, trader, camera, view, dialect.draw);
   assert.equal(arcs[0], 18);
   assert.equal(hitTest({ objects: [trader] }, 118, 100, camera, view, dialect.draw), 'trader');
-  assert.equal(hitTest({ objects: [trader] }, 119, 100, camera, view, dialect.draw), null);
+  assert.equal(hitTest({ objects: [trader] }, 100, 119, camera, view, dialect.draw), null);
   const moth = { id: 'moth', kind: 'actor', profile: 'mothlight', x: 0, z: 0 };
   assert.equal(dialect.draw.mothlight.radius, 21);
   assert.notEqual(dialect.draw.mothlight.radius, 16);
@@ -6694,7 +6694,7 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   drawActor(ctx, moth, camera, view, dialect.draw);
   assert.equal(arcs[0], 21);
   assert.equal(hitTest({ objects: [moth] }, 121, 100, camera, view, dialect.draw), 'moth');
-  assert.equal(hitTest({ objects: [moth] }, 122, 100, camera, view, dialect.draw), null);
+  assert.equal(hitTest({ objects: [moth] }, 100, 122, camera, view, dialect.draw), null);
   const prefixedMoth = { id: 'moth', kind: 'actor', profile: 'enemy.mothlight', x: 0, z: 0 };
   assert.equal(actorStroke(prefixedMoth, 1, dialect.draw), 21);
   assert.notEqual(actorStroke(prefixedMoth, 1, dialect.draw), 16);
@@ -6702,7 +6702,7 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   drawActor(ctx, prefixedMoth, camera, view, dialect.draw);
   assert.equal(arcs[0], 21);
   assert.equal(hitTest({ objects: [prefixedMoth] }, 121, 100, camera, view, dialect.draw), 'moth');
-  assert.equal(hitTest({ objects: [prefixedMoth] }, 122, 100, camera, view, dialect.draw), null);
+  assert.equal(hitTest({ objects: [prefixedMoth] }, 100, 122, camera, view, dialect.draw), null);
 });
 
 test('asteroid.spec profiles use the spawned radius', () => {
@@ -6727,7 +6727,7 @@ test('asteroid.spec profiles use the spawned radius', () => {
   drawActor(ctx, nine, camera, view, {});
   assert.equal(arcs[0], 9);
   assert.equal(hitTest({ objects: [nine] }, 109, 100, camera, view), 'rock');
-  assert.equal(hitTest({ objects: [nine] }, 110, 100, camera, view), null);
+  assert.equal(hitTest({ objects: [nine] }, 100, 110, camera, view), null);
   const wide = { id: 'rock', kind: 'actor', profile: 'asteroid.spec:100:1', x: 0, z: 0 };
   assert.equal(actorStroke(wide, 1), 100);
   assert.notEqual(actorStroke(wide, 1), 8);
@@ -6735,18 +6735,18 @@ test('asteroid.spec profiles use the spawned radius', () => {
   drawActor(ctx, wide, camera, view, {});
   assert.equal(arcs[0], 100);
   assert.equal(hitTest({ objects: [wide] }, 200, 100, camera, view), 'rock');
-  assert.equal(hitTest({ objects: [wide] }, 201, 100, camera, view), null);
+  assert.equal(hitTest({ objects: [wide] }, 100, 201, camera, view), null);
   const none = { id: 'rock', kind: 'actor', profile: 'asteroid.spec:0:10', x: 0, z: 0 };
   assert.equal(actorStroke(none, 1), 0);
   assert.notEqual(actorStroke(none, 1), 8);
   arcs.length = 0;
   drawActor(ctx, none, camera, view, {});
   assert.equal(arcs[0], 0);
-  assert.equal(hitTest({ objects: [none] }, 108, 100, camera, view), null);
+  assert.equal(hitTest({ objects: [none] }, 100, 108, camera, view), null);
   const other = { id: 'rock', kind: 'actor', profile: 'asteroid.spec:12:40', x: 0, z: 0 };
   assert.equal(actorStroke(other, 1), 12);
   assert.equal(hitTest({ objects: [other] }, 112, 100, camera, view), 'rock');
-  assert.equal(hitTest({ objects: [other] }, 113, 100, camera, view), null);
+  assert.equal(hitTest({ objects: [other] }, 100, 113, camera, view), null);
 });
 
 test('painted dashes hit the stroke band and skip the undrawn disc', () => {
@@ -6812,11 +6812,32 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.equal(hitTest(bank, 438.4, 271.2, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 554, 204, stageCam, stage, profileDraw), 'stone');
   assert.equal(hitTest(bank, 543, 204, stageCam, stage, profileDraw), 'stone');
-  assert.equal(hitTest(bank, 555, 204, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 555, 204, stageCam, stage, profileDraw), 'stone');
+  assert.equal(hitTest(bank, 450, 300, stageCam, stage, profileDraw), 'player');
   const strokedActor = { id: 'stone', kind: 'actor', x: 0, z: 0, overrides: { radius: 8 } };
   assert.equal(hitTest({ objects: [strokedActor] }, 104, 100, unitZoom, view), 'stone');
   assert.equal(hitTest({ objects: [strokedActor] }, 108.4, 100, unitZoom, view), 'stone');
-  assert.equal(hitTest({ objects: [strokedActor] }, 108.6, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [strokedActor] }, 100, 108.6, unitZoom, view), null);
+  const noseStone = { id: 'stone', kind: 'actor', x: 0, z: 0, overrides: { radius: 8 }, heading: 0 };
+  const noseFar = { id: 'far', kind: 'actor', x: 40, z: 0, overrides: { radius: 8 }, heading: 0 };
+  const noseRoute = { id: 'to_stone', kind: 'route', from: 'stone', to: 'far' };
+  assert.equal(hitTest({ objects: [noseStone, noseFar, noseRoute] }, 112, 100, unitZoom, view), 'stone');
+  assert.notEqual(hitTest({ objects: [noseStone, noseFar, noseRoute] }, 112, 100, unitZoom, view), 'to_stone');
+  const steered = { id: 'ship', kind: 'actor', x: 0, z: 0, overrides: { radius: 8 }, heading: Math.PI / 2, velX: 10 };
+  assert.equal(hitTest({ objects: [steered] }, 115, 100, unitZoom, view), 'ship');
+  assert.equal(hitTest({ objects: [steered] }, 150, 150, unitZoom, view), null);
+  const bareA = { id: 'a', kind: 'trigger', x: 0, z: 0, radius: 0 };
+  const bareB = { id: 'b', kind: 'trigger', x: 10, z: 0, radius: 0 };
+  const bareRoute = { id: 'r', kind: 'route', from: 'a', to: 'b' };
+  assert.equal(hitTest({ objects: [bareA, bareB, bareRoute] }, 110, 100.4, unitZoom, view), null);
+  const stackedA = { id: 'a', kind: 'trigger', x: 0, z: 0, radius: 0 };
+  const stackedB = { id: 'b', kind: 'trigger', x: 0, z: 0, radius: 0 };
+  assert.equal(hitTest({ objects: [stackedA, stackedB, { id: 'r', kind: 'route', from: 'a', to: 'b' }] }, 100.4, 100, unitZoom, view), null);
+  const specA = { id: 'a', kind: 'actor', profile: 'asteroid.spec:0:10', x: 0, z: 0 };
+  const specB = { id: 'b', kind: 'actor', profile: 'asteroid.spec:0:10', x: 10, z: 0 };
+  assert.notEqual(hitTest({ objects: [specA, specB, { id: 'r', kind: 'route', from: 'a', to: 'b' }] }, 110, 100.4, unitZoom, view), 'r');
+  assert.equal(hitTest({ objects: [specA, specB, { id: 'r', kind: 'route', from: 'a', to: 'b' }] }, 110, 100.4, unitZoom, view), 'b');
+  assert.equal(hitTest({ objects: [specA, { ...specB, x: 0 }, { id: 'r', kind: 'route', from: 'a', to: 'b' }] }, 100.4, 100, unitZoom, view), 'b');
 
   const placeInk = { id: 'place', kind: 'field', fieldKind: 'place', x: 0, z: 0, radius: 80 };
   const blankRing = { id: 'ring', kind: 'trigger', x: 26.49591388448094, z: -39.97171155901512, radius: 40 };

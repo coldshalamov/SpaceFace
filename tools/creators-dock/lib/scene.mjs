@@ -1257,6 +1257,56 @@ function objectiveHit(dx, dy) {
   return null;
 }
 
+function strokeSegment(sx, sy, x0, y0, x1, y1) {
+  const ex = x1 - x0;
+  const ey = y1 - y0;
+  const len2 = ex * ex + ey * ey;
+  if (!(len2 > 0)) return false;
+  const t = ((sx - x0) * ex + (sy - y0) * ey) / len2;
+  if (t < -1e-6 || t > 1 + 1e-6) return false;
+  const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
+  return Math.hypot(sx - (x0 + ex * clamped), sy - (y0 + ey * clamped)) <= PAINTED_STROKE_PX + 1e-6;
+}
+
+function arrowHeadContains(sx, sy, x0, y0, x1, y1) {
+  const angle = Math.atan2(y1 - y0, x1 - x0);
+  const ax = x1;
+  const ay = y1;
+  const bx = x1 - 8 * Math.cos(angle - 0.4);
+  const by = y1 - 8 * Math.sin(angle - 0.4);
+  const cx = x1 - 8 * Math.cos(angle + 0.4);
+  const cy = y1 - 8 * Math.sin(angle + 0.4);
+  const c1 = (bx - ax) * (sy - ay) - (by - ay) * (sx - ax);
+  const c2 = (cx - bx) * (sy - by) - (cy - by) * (sx - bx);
+  const c3 = (ax - cx) * (sy - cy) - (ay - cy) * (sx - cx);
+  return (c1 <= 1e-6 && c2 <= 1e-6 && c3 <= 1e-6) || (c1 >= -1e-6 && c2 >= -1e-6 && c3 >= -1e-6);
+}
+
+function actorInk(object, sx, sy, ox, oy, radius) {
+  const distance = Math.hypot(sx - ox, sy - oy);
+  if (radius > 0 && distance <= radius + PAINTED_STROKE_PX + 1e-6) return true;
+  const heading = object.heading || 0;
+  const nose = Math.max(18, radius) + 16;
+  if (strokeSegment(sx, sy, ox, oy, ox + Math.cos(heading) * nose, oy - Math.sin(heading) * nose)) return true;
+  const vx = object.velX || 0;
+  const vz = object.velZ || 0;
+  if (!(vx || vz)) return false;
+  const x1 = ox + vx * 2;
+  const y1 = oy - vz * 2;
+  if (strokeSegment(sx, sy, ox, oy, x1, y1)) return true;
+  return arrowHeadContains(sx, sy, ox, oy, x1, y1);
+}
+
+function routeHasInk(along, length) {
+  if (!(length > 0) || along < -1e-6 || along > length + 1e-6) return false;
+  const dash = ROUTE_DASH[0];
+  const gap = ROUTE_DASH[1];
+  const period = dash + gap;
+  const cycles = Math.round(length / period);
+  if (cycles > 0 && Math.abs(length - cycles * period) <= 1e-4 && along >= length - 1e-4) return false;
+  return dashCovers(Math.min(Math.max(along, 0), length), dash, gap);
+}
+
 function linkOnInk(object, sx, sy, camera, view, project) {
   const from = objectById(project, object.from || object.ownerAlias);
   const to = objectById(project, object.to || object.targetAlias);
@@ -1267,7 +1317,7 @@ function linkOnInk(object, sx, sy, camera, view, project) {
   const ex = b.sx - a.sx;
   const ey = b.sy - a.sy;
   const len = Math.hypot(ex, ey);
-  if (!(len > 0)) return Math.hypot(sx - a.sx, sy - a.sy) <= PAINTED_STROKE_PX + 1e-6;
+  if (!(len > 0)) return false;
   const t = ((sx - a.sx) * ex + (sy - a.sy) * ey) / (len * len);
   if (t < -1e-6 || t > 1 + 1e-6) return false;
   const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -1275,7 +1325,7 @@ function linkOnInk(object, sx, sy, camera, view, project) {
   const py = a.sy + ey * clamped;
   if (Math.hypot(sx - px, sy - py) > PAINTED_STROKE_PX + 1e-6) return false;
   if (object.kind !== 'route') return true;
-  return dashCovers(clamped * len, ROUTE_DASH[0], ROUTE_DASH[1]);
+  return routeHasInk(clamped * len, len);
 }
 
 function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
@@ -1299,7 +1349,7 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
   const distance = Math.hypot(dx, dy);
   if (usesCollider) {
     if (distance <= radius + 1e-6) return { inside: true, onStroke: false };
-    if (object.kind === 'actor' && radius > 0 && distance <= radius + PAINTED_STROKE_PX + 1e-6) {
+    if (object.kind === 'actor' && actorInk(object, sx, sy, ox, oy, radius)) {
       return { inside: true, onStroke: true };
     }
     return null;
