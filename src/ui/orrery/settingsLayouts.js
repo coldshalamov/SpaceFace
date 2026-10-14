@@ -532,8 +532,32 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
 /* a window under 600 tall: the reel-progress dial (decoration) dropped onto ‹ BACK */
 @media (min-width:901px) and (max-height:600px) { ${C} .orr-cr-progress { display:none; } }
 @media (max-width:900px) {
-  ${C} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "hang" "stage" "foot" !important; }
+  /* four stacked areas need four row tracks, or the ladder lands in a 0px row and prints over the reel */
+  ${C} { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important; grid-template-areas:"title" "hang" "stage" "foot" !important; }
   ${C} > .orr-cr-orrery { display:none; }
+  /* stacked, the five-rung ladder and its dial took the whole height (the reel got 0px at 800×600; on a
+     phone the ladder sat in a 0px row over the reel). The rungs scroll sideways like the phone Settings rail. */
+  ${C} > .k-hang { min-width:0 !important; width:100% !important; }
+  ${C} .k-hang > .k-words { flex-direction:row !important; width:100% !important; gap:4px !important; padding:0 !important; overflow-x:auto !important;
+    overflow-y:hidden !important; scrollbar-width:none; overscroll-behavior-x:contain;
+    background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; }
+  ${C} .k-hang > .k-words::-webkit-scrollbar { display:none; }
+  ${C} .k-hang > .k-words > li { width:auto !important; flex:0 0 auto; }
+  ${C} .k-hang > .k-words > li::before { display:none !important; }
+  ${C} .k-hang > .k-words .k-word { width:auto !important; min-height:44px !important; padding:8px 10px !important; white-space:nowrap !important;
+    font-size:12px !important; letter-spacing:.12em !important; }
+  ${C} .k-hang > .k-words .k-word::before { display:none !important; }
+  ${C} .k-hang > .k-words .k-word[aria-current="true"]::after { left:10px !important; right:10px !important; top:auto !important; bottom:0 !important;
+    width:auto !important; height:2px !important; margin:0 !important; }
+  ${C} .orr-cr-progress { display:none !important; }
+  ${C} .orr-cr-reel { max-width:min(660px, 100%) !important; padding-top:2vh !important; }
+  ${C} .of-credits-name { font-size:clamp(36px, 12.5vw, 64px) !important; }
+}
+/* phone-narrow: a credit's maker drops under its name instead of printing over a long one */
+@media (max-width:560px) {
+  ${C} .of-credits-rows .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:3px !important; }
+  ${C} .of-credits-rows .k-row > * { grid-column:1 !important; grid-row:auto !important; min-width:0; }
+  ${C} .of-credits-rows .k-row__num { text-align:left !important; white-space:normal !important; line-height:1.4 !important; }
 }
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${C} { zoom:1.12; }
