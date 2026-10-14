@@ -6996,6 +6996,19 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 553.999, 118.999, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 554.5, 118.5, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 565.5, 133.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 569.15, 123.85, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 569.5, 123.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 380.75, 139.75, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 380.5, 140.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 436.15, 113.15, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 516.25, 246.25, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 516.5, 245.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 582.85, 208.85, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 593.85, 143.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 544.25, 121.75, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 544.5, 121.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 751.25, 266.25, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 751.5, 266.5, stageCam, stage, profileDraw), 'along_x');
   const emptyRing = { objects: [{ id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 20 }] };
   assert.equal(hitTest(emptyRing, 352.5, 257.5, stageCam, stage), null);
   assert.equal(hitTest(emptyRing, 343.5, 270.5, stageCam, stage), null);
@@ -7007,6 +7020,8 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(emptyRing, 446.5, 343.5, stageCam, stage), 'ring');
   assert.equal(hitTest(emptyRing, 446.5, 344.5, stageCam, stage), 'ring');
   assert.equal(hitTest(emptyRing, 448.5, 343.5, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 359.25, 251.25, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 359.5, 250.5, stageCam, stage), 'ring');
   assert.equal(hitTest(bank, 684.5, 215.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 685.5, 215.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 684.5, 216.5, stageCam, stage, profileDraw), 'along_x');

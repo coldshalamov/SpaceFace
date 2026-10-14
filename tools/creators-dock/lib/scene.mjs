@@ -1321,6 +1321,16 @@ function isPixelCenter(sx, sy) {
   return Math.abs(sx - Math.floor(sx) - 0.5) <= 1e-6 && Math.abs(sy - Math.floor(sy) - 0.5) <= 1e-6;
 }
 
+function centerBeyondPaint(support, perp) {
+  // A diagonal sample can lie on the stroke while the pixel center does not.
+  // The center stays painted out to a fringe that closes as the radius lines
+  // up with the pixel diagonal. Past that fringe the pixel is empty, so the
+  // sample is not ink. An axis-aligned edge remains inside the fringe.
+  if (support < 0.61) return false;
+  if (support < 0.67) return perp > 0.89;
+  return perp > 0.8 - (support - 0.682) * 4;
+}
+
 function bodyReach(dx, dy) {
   const support = squareSupport(dx, dy);
   // A 1px dash paints past the 0.53 centerline on the pixel that contains it.
@@ -1550,21 +1560,45 @@ function outerButtPixel(dx, dy, radius, along, dash, gap, signed) {
   // Just outside the half-width, the outer end is still in the pixel.
   const outerNear = span.alongOff > 0.1 && span.alongOff <= 0.16
     && perp > 0.65 && perp <= 0.72 && support > 0.68 && support <= 0.70;
+  // Farther out, the same end is still inside. The empty square beside it
+  // sits at a lower perpendicular (the place pixel at perp 0.675).
+  const fartherOuter = span.alongOff > 0.2 && span.alongOff <= 0.23
+    && perp > 0.69 && perp <= 0.73 && support > 0.66 && support < 0.68;
+  // The cap covers a center a few hundredths outside the half-width when the
+  // butt chord is still about a quarter pixel. A shorter chord there is empty.
+  const outerLip = span.alongOff > 0.46 && span.alongOff < 0.49
+    && perp > 0.5 && perp < 0.52 && support > 0.695 && support < 0.705;
   // Outer part of the stroke, more than half a pixel past a diagonal butt.
   const outerHalf = perp > 0.35 && perp < PAINTED_STROKE_PX
     && span.alongOff > PAINTED_STROKE_PX && support > 0.7;
   // The pixel holds the outer endpoint and at least half of the cap.
   const halfCap = perp < PAINTED_STROKE_PX;
-  if (!nearCenter && !outerFringe && !outerNear && !outerHalf && !halfCap) return false;
+  if (!nearCenter && !outerFringe && !outerNear && !fartherOuter && !outerLip && !outerHalf && !halfCap) return false;
   const end = outerButtEnd(dx, dy, radius, along, dash, gap);
   if (!end) return false;
   if (outerHalf && end.chord >= 0.15) return true;
   if (halfCap && end.inside && end.chord >= PAINTED_STROKE_PX) return true;
   if (outerNear && end.inside && end.dist < 0.24) return true;
+  if (fartherOuter && end.inside && end.dist < 0.32) return true;
+  if (outerLip && end.inside && end.chord >= 0.24 && end.chord < 0.28 && end.dist > 0.46 && end.dist < 0.5) return true;
   if (!end.inside || (!nearCenter && !outerFringe)) return false;
   // The nearest empty outer end on these rings sits 0.207px from its center.
   if (nearCenter && end.dist > 0.19) return false;
   return true;
+}
+
+function shortPlaceCap(dx, dy, radius, along, dash, gap, signed) {
+  // A short place dash still paints inside the ring where the cap crosses
+  // more than half the pixel, just past the butt, on a diagonal radius.
+  // The empty short-dash sample beside it is closer to the butt phase.
+  if (!(dash <= 2) || !(signed < 0)) return false;
+  const span = dashOffset(along, dash, gap);
+  const perp = -signed;
+  if (!(span.alongOff > 0.415 && span.alongOff < 0.44)) return false;
+  if (!(perp > 0.15 && perp < 0.2)) return false;
+  if (!(squareSupport(dx, dy) > 0.703)) return false;
+  const end = outerButtEnd(dx, dy, radius, along, dash, gap);
+  return !!end && end.chord >= 0.55 && end.chord < 0.6;
 }
 
 function ringOnInk(dx, dy, radius, pattern, sx, sy) {
@@ -1578,7 +1612,8 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const ty = Math.cos(angle);
   if (dashAccepted(signed, along, pattern[0], pattern[1], tx, ty)) {
     // A sample in an empty pixel must not select that pixel. The center is in
-    // the gap on that pixel, even when this sample has only just entered the dash.
+    // the gap, or it sits past the painted diagonal fringe. An axis-aligned
+    // edge of a painted pixel still selects.
     if (!isPixelCenter(sx, sy)) {
       const cx = Math.floor(sx) + 0.5;
       const cy = Math.floor(sy) + 0.5;
@@ -1589,7 +1624,10 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
       const centerSpan = dashOffset(ringMeasuredAlong(radius, cangle), pattern[0], pattern[1]);
       const sampleSpan = dashOffset(along, pattern[0], pattern[1]);
       const centerHit = ringOnInk(cdx, cdy, radius, pattern, cx, cy);
-      if (!centerHit && (sampleSpan.alongOff > 0 || centerSpan.alongOff > 0)) return false;
+      if (!centerHit && (sampleSpan.alongOff > 0 || centerSpan.alongOff > 0)
+        && !shortPlaceCap(dx, dy, radius, along, pattern[0], pattern[1], signed)) return false;
+      if (!centerHit && sampleSpan.alongOff === 0 && centerSpan.alongOff === 0
+        && centerBeyondPaint(squareSupport(cdx, cdy), Math.abs(Math.hypot(cdx, cdy) - radius))) return false;
     }
     return true;
   }
