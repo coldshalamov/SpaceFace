@@ -1,0 +1,373 @@
+{
+  "assetId": "ops_ejector_stop",
+  "category": "mechanisms",
+  "description": "ejector stop",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "impact",
+      "position": [
+        0.73,
+        0.7,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "compression"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          1.8,
+          0.24,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.2525,
+          0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.28500000000000003,
+          0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.2525,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.28500000000000003,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.2525,
+          0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.28500000000000003,
+          0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.2525,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.28500000000000003,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.35,
+          0.65,
+          -0.0
+        ],
+        "size": [
+          0.3,
+          1,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.12500000000000003,
+          0.7,
+          0.35
+        ],
+        "size": [
+          0.8500000000000001,
+          0.34,
+          0.34
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.12500000000000003,
+          0.7,
+          -0.35
+        ],
+        "size": [
+          0.8500000000000001,
+          0.34,
+          0.34
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6,
+          0.7,
+          -0.0
+        ],
+        "size": [
+          0.25,
+          0.75,
+          1.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "compression",
+      "pivot": [
+        0.6000000238418579,
+        0.699999988079071,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "impact_pad",
+        "impact_rib",
+        "impact_rib.001",
+        "impact_rib.002"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.8999999761581421,
+      0.0,
+      -0.6499999761581421
+    ],
+    "max": [
+      0.8999999761581421,
+      1.149999976158142,
+      0.6499999761581421
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_ejector_stop_lod0.glb",
+      "triangles": 7360,
+      "draws": 6,
+      "bytes": 599244,
+      "method": "source",
+      "sha256": "d55dc1da2391ec0043d133221019d33171be87904c9410d82515fdb9fba68910"
+    },
+    {
+      "level": 1,
+      "file": "ops_ejector_stop_lod1.glb",
+      "triangles": 1522,
+      "draws": 6,
+      "bytes": 314516,
+      "method": "Forge-decimation",
+      "sha256": "992717fb7312293e7d0c8ac4c4c8ceb7bf161b32d37c669e1a142c2f10cc1679"
+    },
+    {
+      "level": 2,
+      "file": "ops_ejector_stop_lod2.glb",
+      "triangles": 684,
+      "draws": 6,
+      "bytes": 279084,
+      "method": "Forge-decimation",
+      "sha256": "3311c2fa4c4b5049d7268b00957ba12089b0cedfe5ebc8c96d5f43d220d955da"
+    }
+  ]
+}

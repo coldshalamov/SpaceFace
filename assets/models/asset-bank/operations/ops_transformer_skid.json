@@ -1,0 +1,451 @@
+{
+  "assetId": "ops_transformer_skid",
+  "category": "power",
+  "description": "transformer skid",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "input",
+      "position": [
+        -0.5,
+        2.25,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "output",
+      "position": [
+        0.5,
+        2.25,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.15,
+          0.65
+        ],
+        "size": [
+          2.8,
+          0.3,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.15,
+          -0.65
+        ],
+        "size": [
+          2.8,
+          0.3,
+          0.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          1.5,
+          1.4,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.55,
+          1.7874999999999999,
+          0.4
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.55,
+          1.8199999999999998,
+          0.4
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.55,
+          1.7874999999999999,
+          -0.4
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.55,
+          1.8199999999999998,
+          -0.4
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.55,
+          1.7874999999999999,
+          0.4
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.55,
+          1.8199999999999998,
+          0.4
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.55,
+          1.7874999999999999,
+          -0.4
+        ],
+        "size": [
+          0.0896,
+          0.02499999999999991,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.55,
+          1.8199999999999998,
+          -0.4
+        ],
+        "size": [
+          0.064,
+          0.040000000000000036,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          1.9,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.40000000000000013,
+          0.36
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          2.175,
+          -0.0
+        ],
+        "size": [
+          0.16,
+          0.1499999999999999,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          1.9,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.40000000000000013,
+          0.36
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5,
+          2.175,
+          -0.0
+        ],
+        "size": [
+          0.16,
+          0.1499999999999999,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.58,
+          0.475,
+          0.5
+        ],
+        "size": [
+          0.084,
+          0.20999999999999996,
+          0.084
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.03999999999999998,
+          0.58,
+          0.5
+        ],
+        "size": [
+          1.08,
+          0.084,
+          0.084
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "power",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.399999976158142,
+      0.0,
+      -0.9199999570846558
+    ],
+    "max": [
+      1.399999976158142,
+      2.250028371810913,
+      0.9199999570846558
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_transformer_skid_lod0.glb",
+      "triangles": 10540,
+      "draws": 6,
+      "bytes": 771072,
+      "method": "source",
+      "sha256": "c1deaca821d235e2a64759860f522ab7eddb70864448493dbd39c2a292178c70"
+    },
+    {
+      "level": 1,
+      "file": "ops_transformer_skid_lod1.glb",
+      "triangles": 2794,
+      "draws": 6,
+      "bytes": 387132,
+      "method": "Forge-decimation",
+      "sha256": "1ae96fecfc55d12538011290c299bf49db6b500be5e7f26ada5b9b2db8a9f074"
+    },
+    {
+      "level": 2,
+      "file": "ops_transformer_skid_lod2.glb",
+      "triangles": 894,
+      "draws": 6,
+      "bytes": 293112,
+      "method": "Forge-decimation",
+      "sha256": "d328af4801d68da72f3fe8385845551c9f9fe518043a5516f3997ec5ef1829d7"
+    }
+  ]
+}

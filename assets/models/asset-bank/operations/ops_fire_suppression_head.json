@@ -1,0 +1,449 @@
+{
+  "assetId": "ops_fire_suppression_head",
+  "category": "service",
+  "description": "fire suppression head",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "spray",
+      "position": [
+        0.7,
+        1.1,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "nozzle_yaw"
+    },
+    {
+      "name": "fluid",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          0.8,
+          0.24,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.2525,
+          0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.28500000000000003,
+          0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.2525,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.30400000000000005,
+          0.28500000000000003,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.2525,
+          0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.28500000000000003,
+          0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.2525,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.30400000000000005,
+          0.28500000000000003,
+          -0.27999999999999997
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.495,
+          -0.0
+        ],
+        "size": [
+          0.4,
+          0.51,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.825,
+          -0.0
+        ],
+        "size": [
+          0.64,
+          0.15000000000000002,
+          0.64
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.35,
+          1.025,
+          -0.0
+        ],
+        "size": [
+          0.8005739625908194,
+          0.6193451587571566,
+          0.48
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.707,
+          1.10175,
+          -0.0
+        ],
+        "size": [
+          0.056081768756902364,
+          0.18682707502761323,
+          0.19
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.235,
+          0.39,
+          -0.0
+        ],
+        "size": [
+          0.18679536502867627,
+          0.22693050085085775,
+          0.09
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.29,
+          0.575,
+          -0.0
+        ],
+        "size": [
+          0.09,
+          0.19000000000000006,
+          0.09
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.145,
+          0.7250000000000001,
+          -0.0
+        ],
+        "size": [
+          0.32191888107084843,
+          0.1941497773686005,
+          0.09
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "nozzle_yaw",
+      "pivot": [
+        0.0,
+        0.8999999761581421,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "nozzle",
+        "nozzle_bore",
+        "nozzle_lock"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.4000000059604645,
+      0.0,
+      -0.4000000059604645
+    ],
+    "max": [
+      0.7338654398918152,
+      1.2271716594696045,
+      0.4000000059604645
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_fire_suppression_head_lod0.glb",
+      "triangles": 7296,
+      "draws": 8,
+      "bytes": 608724,
+      "method": "source",
+      "sha256": "fc696d7ff2ff1f42ce40ef55b23e229094fcb814fadaf1fca75975473669fba0"
+    },
+    {
+      "level": 1,
+      "file": "ops_fire_suppression_head_lod1.glb",
+      "triangles": 1496,
+      "draws": 7,
+      "bytes": 312492,
+      "method": "Forge-decimation",
+      "sha256": "9b1873caa0289403de3b084a55ce9f53390a0b755d6522b9b21bf50cd64466e9"
+    },
+    {
+      "level": 2,
+      "file": "ops_fire_suppression_head_lod2.glb",
+      "triangles": 432,
+      "draws": 6,
+      "bytes": 264992,
+      "method": "Forge-decimation",
+      "sha256": "39f662bca7ba68861c3993841502055be386d4aec9c3436dfa8d43911ad0c3d1"
+    }
+  ]
+}

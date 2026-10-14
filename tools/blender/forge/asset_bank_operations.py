@@ -172,7 +172,7 @@ def build(name,group):
  elif name=='phased_array_tile':
   b('backplane',(0,0,.16),(1.6,1.6,.32),'paint2')
   for x in range(5):
-   for y in range(5):b('radiator_patch',((x-2)*.29,(y-2)*.29,.35),(.23,.23,.06),'ceramic',False,1 if (x+y)%2 else 0)
+   for y in range(5):b('radiator_patch',((x-2)*.29,(y-2)*.29,.35),(.23,.23,.06),'ceramic',False,0)
   k.sock('rf',(0,0,.02),(0,0,-1));k.sock('boresight',(0,0,.4),(0,0,1))
  elif name=='optical_rangefinder':
   k.foot();c('optics_tube',(-.6,0,.6),(.8,0,.6),.27,'paint2')
@@ -397,8 +397,13 @@ def upgrade(k,name):
   for z in (.87,1.02):k.ring('warning_band',(0,0,z),.28,.02,(0,0,1),'stripe')
   moving(start,'bollard_extension')
  elif name=='clamp_shoe':
-  b('pressure_insert',(.38,0,.57),(.62,.67,.05),'paint2',False)
-  for y in (-.30,.30):b('edge_rib',(.17,y,.6),(.89,.055,.06),'gunmetal',False)
+  remove('toe');remove('handwheel')
+  F.plate(s,'tapered_pressure_toe',[(-.35,-.45),(.55,-.34),(.75,-.2),(.75,.2),(.55,.34),(-.35,.45)],.3,.3,'paint',chamfer=.035)
+  F.plate(s,'toe_service_insert',[(-.2,-.30),(.5,-.23),(.63,-.14),(.63,.14),(.5,.23),(-.2,.30)],.598,.025,'paint2',bevel=.008)
+  for y in (-.25,.25):b('load_spine',(.055,y,.625),(.65,.045,.035),'gunmetal',False)
+  start=len(s.objects);k.ring('open_handwheel',(-.4,0,1.115),.25,.05,(0,0,1),'gunmetal');c('screw_hub',(-.4,0,1.05),(-.4,0,1.18),.10,'bare')
+  F.beams(s,'wheel_spokes',[((-.4+.08*math.cos(t),.08*math.sin(t),1.115),(-.4+.25*math.cos(t),.25*math.sin(t),1.115)) for t in (0,math.tau/3,2*math.tau/3)],.055,material='bare',bevel=.007)
+  moving(start,'clamp_screw')
  elif name=='gantry_swivel_pedestal':
   k.ring('slew_seal',(0,0,1.47),.61,.035,(0,0,1),'dark');start=len(s.objects)
   k.hatch('boom_mount',(0,0,2.02),(1.20,.72));moving(start,'gantry_yaw')
@@ -444,8 +449,23 @@ def upgrade(k,name):
   for y in (-.52,-.175,.175,.52):b('tool_separator',(0,y,.32),(1.82,.035,.13),'paint2',False)
   for x in (-.94,.94):
    for y in (-.54,.54):k.bolt((x,y,.40),.027)
+ if name=='transformer_skid':
+  # Cooling leaves define the role; retain alternating full-height fins at LOD2.
+  for obj in s.objects:
+   if obj.name.startswith('cooling_leaf') and int(obj.name.split('.')[0][-1])%2==0:obj['forge_detail']=0
  # Group source lists own all replacement geometry and remain export-serializable.
+ if name=='sensor_iris':s.bank_lod_factory=lambda level: iris_lod(s,level)
  return k
+
+def iris_lod(original,level):
+ # Preserve the circular frame and aperture, never decimate the eight moving blades.
+ s=F.Ship(original.id,original.colors);s.motion_pivots=original.motion_pivots
+ F.annulus(s,'iris_frame',(0,0,0),.53,.8,.15,.22,'paint2',segments=24 if level==1 else 16)
+ for i in range(8):
+  t=i*math.tau/8;poly=[(r*math.cos(t+a),r*math.sin(t+a)) for r,a in ((.27,-.08),(.72,0),(.72,.86),(.27,1.02))]
+  o=F.plate(s,'iris_blade',poly,.235+i*.004,.035,'bare',bevel=.003 if level==1 else 0);o['forge_motion']='iris_leaf_%02d'%i
+ F.ring(s,'iris_race',(0,0,.36),.545,.023,axis=(0,0,1),material='dark',segments=24 if level==1 else 16,sides=6 if level==1 else 4)
+ return s
 
 def review():
  from asset_bank_export import render_glb_preview
@@ -504,6 +524,39 @@ def contacts():
   p=ROOT/'design/asset-bank/operations.json';m=json.loads(p.read_text());m['contactSheets']=[r for r in m.get('contactSheets',[]) if r['group']!=group]+[{'group':group,'file':str(path.relative_to(ROOT)),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'method':'Reimported exact GLBs, rendered Cycles CPU32samples. Not live-game acceptance.','sources':sources}];p.write_text(json.dumps(m,indent=2)+'\n')
   print('OPERATIONS_CONTACT',group,flush=True)
 
+def inspect_remaining():
+ """Render exact remaining candidate GLBs near, plan and coarsest LOD."""
+ from asset_bank_export import render_glb_preview
+ from mathutils import Vector
+ from PIL import Image,ImageDraw,ImageFont
+ folder=OUT.parent/'review';folder.mkdir(parents=True,exist_ok=True)
+ font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',18)
+ small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',13)
+ for group,all_names in GROUPS.items():
+  names=[n for n in all_names if n not in HEROES]
+  for name in names:
+   selected=os.environ.get('SPACEFACE_OPERATIONS_REVIEW_ONLY','')
+   if selected and name not in selected.split(','):continue
+   for level in (0,2):
+    path=folder/(name+('_near.png' if level==0 else '_lod2.png'))
+    render_glb_preview(str(OUT/('ops_'+name+'_lod%d.glb'%level)),str(path),width=400,height=300,samples=24)
+    if level==0:
+     corners=[o.matrix_world@Vector(c) for o in bpy.context.scene.objects if o.type=='MESH' for c in o.bound_box]
+     lo=Vector(tuple(min(p[i] for p in corners) for i in range(3)));hi=Vector(tuple(max(p[i] for p in corners) for i in range(3)));center=(lo+hi)/2
+     cam=bpy.context.scene.camera;cam.location=center+Vector((0,0,max(hi-lo)*3));cam.rotation_euler=(center-cam.location).to_track_quat('-Z','Y').to_euler();cam.data.ortho_scale=max(hi.x-lo.x,(hi.y-lo.y)*4/3)*1.15
+     bpy.context.scene.render.filepath=str(folder/(name+'_top.png'));bpy.ops.render.render(write_still=True)
+   print('OPERATIONS_REVIEWED_VIEWS',name,flush=True)
+  if not all((folder/(n+'_lod2.png')).exists() for n in names):continue
+  for page in range(2):
+   subset=names[page*5:page*5+5];sheet=Image.new('RGB',(1240,1760),(18,25,34));draw=ImageDraw.Draw(sheet)
+   draw.text((20,15),'OPERATIONS / '+group.upper()+' / '+str(page+1)+' / NEAR • TOP • LOD2',font=font,fill=(225,235,240))
+   draw.text((20,45),'Fresh exported meshes; CPU inspection only. Each row is one model, independently framed.',font=small,fill=(150,175,190))
+   for row,name in enumerate(subset):
+    y=85+row*330
+    for col,suffix in enumerate(('_near.png','_top.png','_lod2.png')):sheet.paste(Image.open(folder/(name+suffix)).convert('RGB'),(10+col*410,y))
+    draw.text((18,y+302),name.replace('_',' '),font=font,fill=(215,230,240))
+   sheet.save(folder/('operations_'+group+'_inspection_'+str(page+1)+'.png'))
+
 def main():
  args=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []
  rows=[]
@@ -516,7 +569,8 @@ def main():
  if not args:
   p=ROOT/'design/asset-bank/operations.json';p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps({'schemaVersion':2,'family':'operations','assetCount':len(rows),'status':'reusable_asset_bank_not_live_game','sourceFrame':'+X forward +Y port +Z up; metres','artReferences':['docs/visual-assets/LOOK.md','tools/blender/forge/ships/helios_lark.py','tools/blender/forge/ships/ashline_rig.py'],'collisionPolicy':'Compound approximate AABBs, preserve hollow centers; rest-pose only, consumer updates moving proxies.','assets':rows},indent=2)+'\n')
 if __name__=='__main__':
- if '--contacts' in sys.argv:contacts()
+ if '--inspect-remaining' in sys.argv:inspect_remaining()
+ elif '--contacts' in sys.argv:contacts()
  elif '--compare' in sys.argv:comparison(sys.argv[sys.argv.index('--compare')+1])
  elif '--review' in sys.argv:review()
  else:main()
