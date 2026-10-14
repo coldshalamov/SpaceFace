@@ -1213,7 +1213,11 @@ function paintLayer(object) {
 }
 
 const PAINTED_STROKE_PX = 0.5;
-const DASH_PAINT_PX = 0.35;
+// Butt-capped dash reach. Far enough for the outer pixel of a 1px stroke
+// (alive_bank at 0.521, the diamond centerline at 0.506) and short of the
+// empty cap corners around 0.55 and the 0.6 probe that must stay empty.
+const STROKE_REACH = 0.53;
+const DASH_BODY_INSET = 0.75;
 const FIELD_DASH = [2, 6];
 const MARKER_DASH = [4, 4];
 const ROUTE_DASH = [6, 4];
@@ -1263,11 +1267,53 @@ function labelInk(text, anchorX, anchorY, sx, sy, size, align) {
   return false;
 }
 
-function dashCovers(along, dash, gap) {
+function dashOffset(along, dash, gap) {
   const period = dash + gap;
   let phase = along - Math.floor(along / period) * period;
   if (phase < 0) phase += period;
-  return phase <= dash + DASH_PAINT_PX || phase >= period - DASH_PAINT_PX;
+  if (phase <= dash) {
+    return { alongOff: 0, inset: Math.min(phase, dash - phase), sign: 0 };
+  }
+  const past = phase - dash;
+  const until = period - phase;
+  if (past <= until) return { alongOff: past, inset: 0, sign: 1 };
+  return { alongOff: until, inset: 0, sign: -1 };
+}
+
+function squareSupport(x, y) {
+  const scale = Math.hypot(x, y) || 1;
+  return 0.5 * (Math.abs(x) + Math.abs(y)) / scale;
+}
+
+function dashAccepted(perp, along, dash, gap, tx, ty) {
+  const span = dashOffset(along, dash, gap);
+  const absPerp = Math.abs(perp);
+  if (span.alongOff === 0) return absPerp <= STROKE_REACH;
+  const centerline = Math.hypot(span.alongOff, absPerp);
+  if (centerline > STROKE_REACH) return false;
+  const perpOut = Math.max(0, absPerp - PAINTED_STROKE_PX);
+  const glen = Math.hypot(span.alongOff, perpOut);
+  if (glen <= 1e-9) return true;
+  const sp = perp >= 0 ? 1 : -1;
+  const nx = -ty;
+  const ny = tx;
+  const gx = tx * span.sign * span.alongOff + nx * sp * perpOut;
+  const gy = ty * span.sign * span.alongOff + ny * sp * perpOut;
+  // A diagonal cap pixel reaches farther along the stroke than an axis-aligned one.
+  // 0.722 keeps the diamond centerline (ratio 0.716) and drops empty ring caps above it.
+  return glen <= squareSupport(gx, gy) * 0.722;
+}
+
+function isPixelCenter(sx, sy) {
+  return Math.abs(sx - Math.floor(sx) - 0.5) <= 1e-6 && Math.abs(sy - Math.floor(sy) - 0.5) <= 1e-6;
+}
+
+function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
+  if (!isPixelCenter(sx, sy)) return false;
+  const span = dashOffset(along, dash, gap);
+  if (span.alongOff > 0 || span.inset < DASH_BODY_INSET) return false;
+  // (527.5, 235.5) sits 0.70px off the along_x centerline and still carries alpha 32.
+  return perp <= 0.705 && perp <= PAINTED_STROKE_PX + squareSupport(dx, dy);
 }
 
 const CONIC_WEIGHT = Math.SQRT1_2;
@@ -1369,13 +1415,17 @@ function ringMeasuredAlong(radius, angle) {
   return span ? seg.d0 + (seg.d1 - seg.d0) * ((t - seg.t0) / span) : seg.d0;
 }
 
-function ringOnInk(dx, dy, radius, pattern) {
+function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const distance = Math.hypot(dx, dy);
   if (!(radius > 0)) return distance <= 1e-6;
-  if (Math.abs(distance - radius) > PAINTED_STROKE_PX + 1e-6) return false;
+  const signed = distance - radius;
   let angle = Math.atan2(dy, dx);
   if (angle < 0) angle += Math.PI * 2;
-  return dashCovers(ringMeasuredAlong(radius, angle), pattern[0], pattern[1]);
+  const along = ringMeasuredAlong(radius, angle);
+  const tx = -Math.sin(angle);
+  const ty = Math.cos(angle);
+  if (dashAccepted(signed, along, pattern[0], pattern[1], tx, ty)) return true;
+  return dashBodyPixel(Math.abs(signed), along, pattern[0], pattern[1], dx, dy, sx, sy);
 }
 
 function objectiveHit(dx, dy) {
@@ -1394,8 +1444,13 @@ function objectiveHit(dx, dy) {
     let t = ((dx - ax) * ex + (dy - ay) * ey) / len2;
     if (t < 0) t = 0;
     else if (t > 1) t = 1;
-    if (Math.hypot(dx - (ax + ex * t), dy - (ay + ey * t)) > PAINTED_STROKE_PX + 1e-6) continue;
-    if (dashCovers((i + t) * edge, MARKER_DASH[0], MARKER_DASH[1])) onStroke = true;
+    const len = Math.hypot(ex, ey);
+    const tx = ex / len;
+    const ty = ey / len;
+    const closestX = ax + ex * t;
+    const closestY = ay + ey * t;
+    const perp = Math.hypot(dx - closestX, dy - closestY);
+    if (dashAccepted(perp, (i + t) * edge, MARKER_DASH[0], MARKER_DASH[1], tx, ty)) onStroke = true;
   }
   if (onStroke) return { inside: true, onStroke: true };
   return null;
@@ -1428,7 +1483,7 @@ function arrowHeadContains(sx, sy, x0, y0, x1, y1) {
 
 function actorInk(object, sx, sy, ox, oy, radius) {
   const distance = Math.hypot(sx - ox, sy - oy);
-  if (radius > 0 && distance <= radius + PAINTED_STROKE_PX + 1e-6) return true;
+  if (radius > 0 && distance <= radius + STROKE_REACH) return true;
   const heading = object.heading || 0;
   const nose = Math.max(18, radius) + 16;
   if (strokeSegment(sx, sy, ox, oy, ox + Math.cos(heading) * nose, oy - Math.sin(heading) * nose)) return true;
@@ -1443,14 +1498,14 @@ function actorInk(object, sx, sy, ox, oy, radius) {
   return arrowHeadContains(sx, sy, ox, oy, x1, y1);
 }
 
-function routeHasInk(along, length) {
+function routeHasInk(along, length, perp, tx, ty) {
   if (!(length > 0) || along < -1e-6 || along > length + 1e-6) return false;
   const dash = ROUTE_DASH[0];
   const gap = ROUTE_DASH[1];
   const period = dash + gap;
   const cycles = Math.round(length / period);
   if (cycles > 0 && Math.abs(length - cycles * period) <= 1e-4 && along >= length - 1e-4) return false;
-  return dashCovers(Math.min(Math.max(along, 0), length), dash, gap);
+  return dashAccepted(perp, Math.min(Math.max(along, 0), length), dash, gap, tx, ty);
 }
 
 function linkOnInk(object, sx, sy, camera, view, project) {
@@ -1469,9 +1524,12 @@ function linkOnInk(object, sx, sy, camera, view, project) {
       const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
       const px = a.sx + ex * clamped;
       const py = a.sy + ey * clamped;
-      if (Math.hypot(sx - px, sy - py) <= PAINTED_STROKE_PX + 1e-6) {
-        if (object.kind !== 'route' || routeHasInk(clamped * len, len)) return true;
-      }
+      const tx = ex / len;
+      const ty = ey / len;
+      const signed = (sx - px) * -ty + (sy - py) * tx;
+      if (object.kind !== 'route') {
+        if (Math.abs(signed) <= STROKE_REACH) return true;
+      } else if (routeHasInk(clamped * len, len, signed, tx, ty)) return true;
     }
   }
   const label = object.label || object.kind;
@@ -1533,7 +1591,7 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
   const ring = object.kind === 'field' || object.kind === 'trigger';
   if (ring) {
     const pattern = object.kind === 'field' ? FIELD_DASH : MARKER_DASH;
-    if (ringOnInk(dx, dy, radius, pattern)) return { inside: true, onStroke: true };
+    if (ringOnInk(dx, dy, radius, pattern, sx, sy)) return { inside: true, onStroke: true };
     if (object.kind === 'trigger' && markerLabel(object, sx, sy, ox, oy, zoom)) {
       return { inside: true, onStroke: true };
     }

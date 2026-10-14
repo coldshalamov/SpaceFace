@@ -6899,3 +6899,31 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.equal(hitTest({ objects: [blankRing] }, 128, 100, unitZoom, view), null);
   assert.equal(hitTest({ objects: [placeInk, blankRing] }, 128, 100, unitZoom, view), 'place');
 });
+
+test('empty dash pixels stay empty and painted dash pixels select', async () => {
+  const stage = { width: 800, height: 600 };
+  const stageCam = { x: 0, z: 0, zoom: 3.2 };
+  const profileDraw = { 'ship.starter': { radius: 14 } };
+  const bank = getComposition('dock.bank-shot');
+  const misses = [[529.5, 235.5], [500.5, 466.5], [699.5, 504.5]];
+  for (const [sx, sy] of misses) {
+    assert.equal(hitTest(bank, sx, sy, stageCam, stage, profileDraw), null);
+  }
+  assert.equal(hitTest(bank, 528.5, 235.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 624.5, 203.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 527.5, 235.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 633.5, 266.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 588.5, 137.5, stageCam, stage, profileDraw), 'bank_zone');
+
+  const view = { width: 200, height: 200 };
+  const camera = { x: 0, z: 0, zoom: 1 };
+  const dialect = await loadDialect();
+  const moth = { id: 'moth', kind: 'actor', profile: 'enemy.mothlight', x: 0, z: 0 };
+  assert.equal(hitTest({ objects: [moth] }, 99.5, 78.5, camera, view, dialect.draw), 'moth');
+  assert.equal(hitTest({ objects: [moth] }, 100.5, 121.5, camera, view, dialect.draw), 'moth');
+  assert.equal(hitTest({ objects: [moth] }, 121, 100, camera, view, dialect.draw), 'moth');
+  assert.equal(hitTest({ objects: [moth] }, 100, 122, camera, view, dialect.draw), null);
+
+  const mark = { id: 'mark', kind: 'objective', x: 0, z: 0 };
+  assert.equal(hitTest({ objects: [mark] }, 401.5, 306.5, stageCam, stage), 'mark');
+});
