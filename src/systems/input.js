@@ -1042,6 +1042,7 @@ export const input = {
     this._domBindings = [];
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
+    this._laneCursorProjection = null;
     const initViewport = _laneViewport || null;
     const viewportW = initViewport ? initViewport.width
       : (typeof innerWidth === 'number' ? innerWidth : 0);
@@ -1110,6 +1111,12 @@ export const input = {
       case 'keydown':
       case 'keyup':
         domKeyEvent(this, d);
+        break;
+      case 'cursorProjection':
+        if (Number.isFinite(d.x) && Number.isFinite(d.z)) {
+          const hit = this._laneCursorProjection || (this._laneCursorProjection = { x: 0, z: 0 });
+          hit.x = d.x; hit.z = d.z;
+        }
         break;
       case 'pointermove':
       case 'mousemove':
@@ -1898,7 +1905,7 @@ export const input = {
       aimNdc.y = this._ndc.y * mouseSens * (mouseCfg.invertY ? -1 : 1);
       const hit = this.helpers && this.helpers.raycastToPlane
         ? this.helpers.raycastToPlane(aimNdc, this._rayHit || (this._rayHit = { x: 0, z: 0 }))
-        : null;
+        : this._laneCursorProjection;
       const w = hit && Number.isFinite(hit.x) && Number.isFinite(hit.z) ? hit : { x: 0, z: 0 };
       aimWorld.x = w.x; aimWorld.z = w.z;
       if (p && p.pos) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);

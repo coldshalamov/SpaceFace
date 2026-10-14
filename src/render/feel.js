@@ -1205,8 +1205,11 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     bus.on('combat:damage', (p) => {
       if (!p) return;
       if (p.origin && p.origin.kind === 'collision') return;
-      const isPlayer = p.isPlayer || (p.targetId === state.playerId);
-      const playerInvolved = isPlayer || p.attackerId === state.playerId;
+      const playerId = state.playerId;
+      const isPlayer = p.isPlayer || (playerId != null && p.targetId === playerId);
+      const playerInvolved = isPlayer || (playerId != null && p.attackerId === playerId);
+      // Remote NPC combat must not renew a global time dip or punch the player's camera.
+      if (!playerInvolved) return;
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       const mr = !!(this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce);
       const crunch = resolveKineticCrunch(p, {
