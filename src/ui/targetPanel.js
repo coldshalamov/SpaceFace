@@ -503,6 +503,13 @@ export function objectInfoLine(t, state, p, dist) {
       if (killer) facts.push(`Killer: ${killer}`);
       if (Number.isFinite(record.daysAgo) && record.daysAgo > 0) facts.push(`${record.daysAgo}d ago`);
     }
+    // An ordinary battlefield wreck files the same fact at record time — aftermathWrecks
+    // stamps provenance (killerLabel + the provenanceLine sentence) on the body it spawns.
+    // Scan-resolve is the disclosure gate here too: the black-box killer rides the facts
+    // line once scanned, and an unscanned hulk stays anonymous.
+    if (!record && t.type === 'wreck' && d.scanned && d.provenance && d.provenance.killerLabel) {
+      facts.push(`Killer: ${d.provenance.killerLabel}`);
+    }
   } else if (Number.isFinite(t.mass) && t.mass > 0) {
     facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);
   }
