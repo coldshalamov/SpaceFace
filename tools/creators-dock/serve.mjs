@@ -23,6 +23,7 @@ const FILES = new Map([
   ['/editor.js', path.join(PUBLIC, 'editor.js')],
   ['/editor.css', path.join(PUBLIC, 'editor.css')],
   ['/lib/scene.mjs', path.join(ROOT, 'lib', 'scene.mjs')],
+  ['/lib/glyphs.mjs', path.join(ROOT, 'lib', 'glyphs.mjs')],
   ['/lib/stableJson.mjs', path.join(ROOT, 'lib', 'stableJson.mjs')],
   ['/lib/history.mjs', path.join(ROOT, 'lib', 'history.mjs')],
   ['/lib/security.mjs', path.join(ROOT, 'lib', 'security.mjs')],

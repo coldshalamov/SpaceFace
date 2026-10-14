@@ -8,6 +8,14 @@ test('the local editor serves the surface and validates an example', async () =>
   const port = server.address().port;
   const base = `http://127.0.0.1:${port}`;
   try {
+    const modules = ['/lib/glyphs.mjs', '/lib/scene.mjs', '/lib/history.mjs', '/lib/inspector.mjs', '/lib/paint.mjs', '/lib/security.mjs', '/lib/stableJson.mjs'];
+    for (const modulePath of modules) {
+      const served = await fetch(`${base}${modulePath}`);
+      const source = await served.text();
+      assert.equal(served.status, 200, modulePath);
+      assert.equal(served.headers.get('content-type'), 'text/javascript; charset=utf-8', modulePath);
+      assert.equal(source.includes('export '), true, modulePath);
+    }
     const html = await fetch(`${base}/`).then((res) => res.text());
     for (const label of ['Validate', 'Run lab', 'Export', 'Undo', 'Redo', 'Clone', 'Group', 'Snap', 'Keyboard']) {
       assert.equal(html.includes(label), true, label);

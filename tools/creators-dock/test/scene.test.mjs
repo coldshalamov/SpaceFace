@@ -7011,6 +7011,39 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 483.5, 439.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 569.5, 282.5, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 569.85, 282.85, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 468.5, 106.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 468.5, 107.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 618.5, 333.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 548.5, 123.5, stageCam, stage, profileDraw), null);
+  const emptyMargins = [
+    [464.95, 140.55], [523.05, 115.05], [547.05, 115.95], [547.05, 292.05],
+  ];
+  for (const [sx, sy] of emptyMargins) {
+    assert.equal(hitTest(bank, sx, sy, stageCam, stage, profileDraw), null);
+  }
+  const aliveMargins = [
+    [444.95, 109.95], [509.65, 111.05], [628.9, 226.05], [630.05, 226.5],
+    [325.05, 228.05], [324.05, 233.05], [321.95, 289.05], [323.9, 299.05],
+    [503.7, 417.95], [513.05, 417.05], [503.4, 419.05], [457.8, 420.05],
+  ];
+  for (const [sx, sy] of aliveMargins) {
+    assert.equal(hitTest(bank, sx, sy, stageCam, stage, profileDraw), null);
+  }
+  const alongMargins = [
+    [590.8, 206.95], [657.05, 206.95], [586.05, 209.05], [781.05, 330.8],
+    [465.95, 335.9], [782.05, 335.9], [465.05, 351.05], [784.05, 351.6],
+    [465.05, 376.9], [465.95, 392.05], [781.05, 397.05], [469.05, 401.7],
+    [586.05, 518.9], [657.05, 521.05],
+  ];
+  for (const [sx, sy] of alongMargins) {
+    assert.equal(hitTest(bank, sx, sy, stageCam, stage, profileDraw), null);
+  }
+  assert.equal(hitTest(bank, 465.5, 139.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 547.5, 116.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 445.5, 110.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 629.5, 226.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 591.5, 207.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 464.5, 351.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 544.25, 121.75, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 544.5, 121.5, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 751.25, 266.25, stageCam, stage, profileDraw), 'along_x');
@@ -7028,6 +7061,15 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(emptyRing, 448.5, 343.5, stageCam, stage), null);
   assert.equal(hitTest(emptyRing, 359.25, 251.25, stageCam, stage), null);
   assert.equal(hitTest(emptyRing, 359.5, 250.5, stageCam, stage), 'ring');
+  assert.equal(hitTest(emptyRing, 413.85, 238.05, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 461.95, 286.05, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 338.05, 313.85, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 386.05, 361.95, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 413.5, 237.5, stageCam, stage), 'ring');
+  assert.equal(hitTest({ objects: [placeFringe] }, 105.05, 71.95, camera, view), null);
+  assert.equal(hitTest({ objects: [placeFringe] }, 94.8, 128.05, camera, view), null);
+  assert.equal(hitTest({ objects: [placeFringe] }, 105.5, 72.5, camera, view), 'bank_zone');
+  assert.equal(hitTest({ objects: [placeFringe] }, 94.5, 127.5, camera, view), 'bank_zone');
   assert.equal(hitTest(bank, 684.5, 215.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 685.5, 215.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 684.5, 216.5, stageCam, stage, profileDraw), 'along_x');
