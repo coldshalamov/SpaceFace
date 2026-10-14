@@ -1346,7 +1346,9 @@ function bodyReach(dx, dy) {
 function buttPastLimit(support) {
   // Distance past the geometric butt (half-width 0.5, flat cap). A diagonal
   // radius leaves less of the pixel on the cap, so the allowance shrinks.
-  if (support < 0.6) return 0.4;
+  // 0.4 still reaches the empty pixel beside an axis butt. Painted caps
+  // on this side of the radius stay inside 0.38.
+  if (support < 0.6) return 0.38;
   if (support < 0.66) return 0.25;
   if (support < 0.7) return 0.2;
   return 0.15;
@@ -1714,8 +1716,11 @@ function pixelHoldsDash(dx, dy, radius, along, pattern, sx, sy) {
   if (!(support < 0.536 && perp > bodyReach(dx, dy) && perp <= 0.94)) return false;
   const dist = Math.hypot(dx, dy) || 1;
   const inward = 0.45;
-  const pdx = dx - (dx / dist) * inward;
-  const pdy = dy - (dy / dist) * inward;
+  // Outside the ring the stroke is toward the center. Inside it, the same
+  // 0.45 step toward the stroke points the other way and stays in the pixel.
+  const towardStroke = dist >= radius ? -1 : 1;
+  const pdx = dx + (dx / dist) * inward * towardStroke;
+  const pdy = dy + (dy / dist) * inward * towardStroke;
   const pd = Math.hypot(pdx, pdy);
   let pangle = Math.atan2(pdy, pdx);
   if (pangle < 0) pangle += Math.PI * 2;

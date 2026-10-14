@@ -7120,3 +7120,22 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest({ objects: [mark] }, 399.9, 291.5, stageCam, stage), null);
   assert.equal(hitTest({ objects: [mark] }, 399.5, 291.5, stageCam, stage), null);
 });
+
+test('inner axis dash centers select and the empty cross pixel does not', () => {
+  const stage = { width: 800, height: 600 };
+  const stageCam = { x: 0, z: 0, zoom: 3.2 };
+  const profileDraw = { 'ship.starter': { radius: 14 } };
+  const legal = getComposition('dock.legal-release');
+  const convoy = getComposition('dock.convoy-rescue');
+  const cargo = getComposition('dock.intercept-cargo');
+  for (const [x, y] of [[581.5, 207.5], [581.5, 206.5], [581.5, 205.5], [581.5, 204.5], [218.5, 207.5]]) {
+    assert.equal(hitTest(legal, x, y, stageCam, stage, profileDraw), 'alive_release');
+  }
+  assert.equal(hitTest(legal, 581.9, 207.05, stageCam, stage, profileDraw), 'alive_release');
+  assert.equal(hitTest(legal, 218.05, 207.05, stageCam, stage, profileDraw), 'alive_release');
+  assert.equal(hitTest(convoy, 577.5, 200.5, stageCam, stage, profileDraw), 'alive_convoy');
+  assert.equal(hitTest(convoy, 577.95, 200.489, stageCam, stage, profileDraw), 'alive_convoy');
+  assert.equal(hitTest(cargo, 411.5, 121.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(cargo, 410.5, 121.5, stageCam, stage, profileDraw), 'cross');
+  assert.equal(hitTest(cargo, 411.5, 122.5, stageCam, stage, profileDraw), null);
+});
