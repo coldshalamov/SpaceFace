@@ -835,6 +835,25 @@ async function runSteadyFlightProfile(page, cdp) {
     const result = await page.evaluate(source);
     await page.keyboard.up('KeyW').catch(() => {});
     fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
+    const sourceDigestAfter = await digestSourcePaths(ROOT, [
+      ...await listSrcJsSourcePaths(ROOT), 'scripts/lib/simWorkerHost.mjs', 'scripts/lib/simReadModel.mjs',
+    ]);
+    const evalIdentity = await page.evaluate(() => {
+      const state = window.SF.state;
+      const gl = state.render?.renderer?.getContext();
+      const ext = gl?.getExtension('WEBGL_debug_renderer_info');
+      return {
+        userAgent: navigator.userAgent, gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : null,
+        viewport: [innerWidth, innerHeight], buffer: [gl?.drawingBufferWidth, gl?.drawingBufferHeight],
+        settings: JSON.parse(JSON.stringify(state.settings || {})),
+      };
+    });
+    fs.writeFileSync(path.join(OUT_DIR, 'eval-metadata.json'), JSON.stringify({
+      ...evalIdentity, sourceDigest, sourceDigestAfter, sourceStable: sourceDigest === sourceDigestAfter,
+      probeDigest, displayHz, seed: launchedSeed, requestedSeed: expectedSeed,
+      mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
+      observer: 'same-flight-eval', evalFile: EVAL_FILE,
+    }, null, 1));
     log(`eval result: ${JSON.stringify(result).slice(0, 3000)}`);
     fs.writeFileSync(path.join(OUT_DIR, 'report.md'), ['# Eval run', '', 'See eval-result.json.', ''].join('\n'), 'utf8');
     return;
@@ -879,6 +898,7 @@ async function runSteadyFlightProfile(page, cdp) {
   const workerProfiler = WORKER_PROFILE ? await startSimulationWorkerProfile(cdp) : null;
   // Attaching a Worker profiler can pause its startup. Arm the measurement only
   // after diagnostic setup, so that setup is not reported as a gameplay freeze.
+  const clockStart = await page.evaluate(() => ({ mainTimeScale: window.SF?.state?.timeScale, diagnostics: window.SF?.simLaneDiag?.() || null }));
   await page.evaluate(installGameCadenceProbe);
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(WINDOW_MS);
@@ -889,6 +909,7 @@ async function runSteadyFlightProfile(page, cdp) {
     return record;
   }, GPU_TIMERS);
   const summaryCadence = summarizeGameCadence(cadence);
+  const clockEnd = await page.evaluate(() => ({ mainTimeScale: window.SF?.state?.timeScale, diagnostics: window.SF?.simLaneDiag?.() || null }));
   const machineEnd = os.cpus();
   const totals = cpus => cpus.reduce((out, cpu) => {
     out.idle += cpu.times.idle;
@@ -904,6 +925,7 @@ async function runSteadyFlightProfile(page, cdp) {
     seed: launchedSeed, requestedSeed: expectedSeed,
     requestedFootageSource, footageOpeningDelayMs: FOOTAGE_OPENING_DELAY_MS,
     sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
+    clockStart, clockEnd,
     observer: (CADENCE_ONLY ? 'cadence-only' : `cpu-profile-${EFFECTIVE_SAMPLING_US}us`)
       + (TRACE ? '+trace' : '') + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
   };
