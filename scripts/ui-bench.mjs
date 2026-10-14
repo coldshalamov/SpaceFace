@@ -1,263 +1,169 @@
 #!/usr/bin/env node
-// ui-bench.mjs — photograph a real screen over a frozen still. No game boot.
-//
-//   node scripts/ui-bench.mjs --list
-//   node scripts/ui-bench.mjs --shot=pause
-//   node scripts/ui-bench.mjs --shot=pause,settings
-//   node scripts/ui-bench.mjs --shot=station-market --walk
-//   node scripts/ui-bench.mjs --shot=ship --probe=".sx-sw__stage"   # where is it, and what decided that
-//   node scripts/ui-bench.mjs                          # serve; prints URLs
-//
-// Output: .devshots/ui-bench/<id>.png
-// --walk tries every visible control from the arrival state, prints what each one did, and
-// writes another PNG only when the picture changed. Open those PNGs. The procedure is
-// docs/UI_VISUAL_ITERATION.md.
-
-import { existsSync, mkdirSync } from 'node:fs';
+// Photograph the game's REAL screen modules over stills. Never boot the game to photograph a menu.
+import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { startBenchServer } from './lib/benchServer.mjs';
-import { loadPlaywright } from './lib/load-playwright.mjs';
 import { listShotIds, resolveShot } from './lib/uiBenchCatalog.mjs';
+import { parseBenchArgs, runUiBenchBatch } from './lib/uiBenchBatch.mjs';
 
 try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* yield to the game */ }
-
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const args = parseArgs(process.argv.slice(2));
-
+const args = parseBenchArgs(process.argv.slice(2));
 process.env.SPACEFACE_PLAYER_STORE_DIR = '';
 
 if (args.list) {
   console.log('ui-bench screens (real DOM over a still — no game boot):\n');
   const groups = new Map();
   for (const id of listShotIds()) {
-    const shot = resolveShot(id);
-    const key = [shot.screen, shot.tab || '', shot.overlay || '', shot.focus || ''].join('|');
+    const shot = resolveShot(id), key = [shot.screen, shot.tab || '', shot.overlay || '', shot.focus || ''].join('|');
     if (!groups.has(key)) groups.set(key, { shot, ids: [] });
     groups.get(key).ids.push(id);
   }
   for (const { shot, ids } of groups.values()) {
-    const extra = [shot.tab && `tab ${shot.tab}`, shot.overlay && shot.overlay, shot.focus && `focus ${shot.focus}`].filter(Boolean).join(', ');
+    const extra = [shot.tab && `tab ${shot.tab}`, shot.overlay, shot.focus && `focus ${shot.focus}`].filter(Boolean).join(', ');
     console.log(`  ${ids.join(', ')}${extra ? `  (${extra})` : ''}`);
   }
-  console.log('\n  node scripts/ui-bench.mjs --shot=<id>');
-  console.log('  node scripts/ui-bench.mjs --shot=<id> --walk');
-  process.exit(0);
-}
-
-const server = await startBenchServer();
-const base = `${server.baseUrl}tools/ui-bench.html`;
-let exitCode = 0;
-
-if (!args.shots.length) {
-  console.log('ui-bench is serving. Open a screen directly:');
-  for (const id of ['pause', 'settings', 'flight', 'station-market', 'title', 'chart']) {
-    console.log(`  ${base}?screen=${id}&chrome=0`);
-  }
-  console.log('\nIds: node scripts/ui-bench.mjs --list');
-  console.log('Ctrl+C stops the server.');
-  process.on('SIGINT', async () => { await server.close(); process.exit(0); });
+  console.log('\n  node scripts/ui-bench.mjs --shot=pause,settings --viewports=960x540,1920x1080 --walk');
 } else {
-  const unknown = args.shots.filter((id) => !resolveShot(id));
-  if (unknown.length) {
-    console.error(`ui-bench: unknown screen ${unknown.join(', ')}`);
-    console.error('Ids: node scripts/ui-bench.mjs --list');
-    await server.close();
-    process.exit(1);
+  const unknown = args.shots.filter(id => !resolveShot(id));
+  if (unknown.length) throw new Error(`Unknown screen ${unknown.join(', ')}; use --list`);
+  const { startBenchServer } = await import('./lib/benchServer.mjs');
+  if (!args.shots.length) {
+    const server = await startBenchServer();
+    const base = `${server.baseUrl}tools/ui-bench.html`;
+    console.log('ui-bench is serving. Open a screen directly:');
+    for (const id of ['pause', 'settings', 'flight', 'station-market', 'title', 'chart']) console.log(`  ${base}?screen=${id}&chrome=0`);
+    console.log('\nIds: node scripts/ui-bench.mjs --list\nCtrl+C stops the server.');
+    const stop = async () => { await server.close(); process.exitCode = 0; };
+    process.once('SIGINT', stop); process.once('SIGTERM', stop);
+  } else {
+    const { loadPlaywright } = await import('./lib/load-playwright.mjs');
+    args.executablePath = process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+    const summary = await runUiBenchBatch({ args, root: ROOT, loadPlaywright, startServer: startBenchServer, shoot });
+    for (const cell of summary.cells) for (const error of cell.errors) console.error(`  ${cell.id}: ${error.kind}: ${error.message || error.url}`);
+    for (const error of summary.errors) console.error(`ui-bench: ${error}`);
+    console.log(`\nBatch report: ${path.join(args.out || '.devshots/ui-bench', 'report.json')}`);
+    process.exitCode = summary.ok ? 0 : 1;
   }
-  const { chromium } = await loadPlaywright();
-  const browser = await chromium.launch({ headless: !args.headed, executablePath: process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) });
-  const outDir = path.resolve(ROOT, args.out || '.devshots/ui-bench');
-  mkdirSync(outDir, { recursive: true });
-  // --phone: a touch device (Chromium's mobile emulation) with the phone deck's CSS on the page.
-  const page = await browser.newPage({
-    viewport: args.viewport,
-    ...(args.phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}),
-  });
-  page.on('pageerror', (error) => {
-    console.error(`  pageerror: ${error && error.message ? error.message : error}`);
-    const where = error && error.stack ? String(error.stack).split(`
-`).slice(1, 4).map((l) => l.trim()).join(` <- `) : '';
-    if (where) console.error(`    at ${where}`);
-  });
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') console.error(`  console: ${msg.text()}`);
-  });
-  page.on('response', (response) => {
-    if (response.status() < 400) return;
-    const url = response.url();
-    if (url.includes('spaceface-release-build.json') || url.endsWith('favicon.ico')) return;
-    console.log(`    ${response.status()} ${url.replace(server.baseUrl, '/')}`);
-  });
-  for (const id of args.shots) {
-    const ok = await shoot(page, id, outDir);
-    if (!ok) exitCode = 1;
-  }
-  await Promise.race([
-    browser.close(),
-    new Promise((resolve) => setTimeout(resolve, 1500)),
-  ]);
-  try { browser.process()?.kill(); } catch { /* already gone */ }
-  await server.close();
-  process.exit(exitCode);
 }
 
-async function shoot(page, id, outDir) {
+async function shoot(page, id, outDir, base) {
   const started = Date.now();
   const bg = args.bg ? `&bg=${encodeURIComponent(bgUrl(args.bg))}` : '';
-  const demo = args.demo ? '&demo=1' : '';
-  const phone = args.phone ? '&phone=1' : '';
+  const demo = args.demo ? '&demo=1' : '', phone = args.phone ? '&phone=1' : '';
   const extra = args.query ? `&${args.query}` : '';
   const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${demo}${phone}${extra}${bg}`;
-  // This process yields CPU (PRIORITY_LOW above); a loaded host stretches module fetches for minutes.
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 300_000 });
-  const opened = await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: 300_000 })
-    .then(() => true)
-    .catch(() => false);
-  if (!opened) {
-    console.error(`  ${id}  NOT MOUNTED in 300s — the bench page did not finish`);
-    return false;
-  }
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: args.timeoutMs });
+  await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: args.timeoutMs });
   await settleAnimations(page);
   const file = path.join(outDir, `${safeName(id)}.png`);
-  await page.screenshot({ path: file, timeout: 120_000 });
+  await page.screenshot({ path: file, timeout: args.timeoutMs });
   const report = await page.evaluate(() => window.BENCH.report());
-  const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  console.log(`\n${id}  ${path.relative(ROOT, file)}  ${seconds}s`);
+  console.log(`\n${id}  ${path.relative(ROOT, file)}  ${((Date.now() - started) / 1000).toFixed(1)}s`);
   if (report.broken) {
-    console.log(`  NOT MOUNTABLE  ${report.broken}`);
-    console.log('  This screen did not mount on the bench. Live route: node scripts/ui-look.mjs --only=' + id);
-    return false;
+    console.log(`  NOT MOUNTABLE  ${report.broken}\n  Live route: node scripts/ui-look.mjs --only=${id}`);
+    return { ok: false, report, file: path.relative(ROOT, file) };
   }
   if (report.overlay) console.log(`  overlay: ${report.overlay}`);
-  printFindings(report);
+  const findingCount = printFindings(report);
   console.log('  Open this PNG and look at it.');
   if (args.probe) await probe(page, args.probe);
-  if (args.walk) await walk(page, id, outDir);
-  return true;
+  const walked = args.walk ? await walk(page, id, outDir) : null;
+  return { ok: !walked || walked.complete, report, findingCount, file: path.relative(ROOT, file), walk: walked,
+    visualReview: 'required; empty geometry findings do not prove a good picture' };
 }
 
-// Screens arrive with a staggered entrance (kit `settle`). Photographing before it lands gave two
-// different pictures of the same title screen minutes apart — eight menu items in a slow run, two
-// in a fast one — which makes every reading a lottery and every comparison worthless. Finish every
-// running animation, then let one frame paint at the settled state.
 async function settleAnimations(page) {
   await page.evaluate(async () => {
-    for (let pass = 0; pass < 3; pass += 1) {
-      const running = document.getAnimations().filter((a) => a.playState === 'running');
-      // An infinite idle loop (a breathing lamp) never finishes; seek it to a stable phase instead.
+    for (let pass = 0; pass < 3; pass++) {
+      const running = document.getAnimations().filter(a => a.playState === 'running');
       for (const animation of running) {
-        const iterations = animation.effect?.getTiming?.().iterations;
-        if (iterations === Infinity) animation.pause();
-        else { try { animation.finish(); } catch { /* an unresolved effect cannot be finished */ } }
+        if (animation.effect?.getTiming?.().iterations === Infinity) animation.pause();
+        else { try { animation.finish(); } catch { /* unresolved effect */ } }
       }
       if (!running.length) break;
-      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise(resolve => requestAnimationFrame(() => resolve()));
     }
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  }).catch(() => {});
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
 }
 
-// `--probe=<css selector>` prints where the matching elements actually are and what decided it.
-// A layout question ("why is this panel 245px tall when I set a 340px floor?") is answered by
-// measuring, and measuring belongs in the instrument rather than in a throwaway script beside it.
 async function probe(page, selector) {
-  const rows = await page.evaluate((sel) => {
-    const out = [];
-    let nodes;
-    // `js:<expression>` evaluates in the page and prints the result. For the questions a selector
-    // cannot answer: is this platform feature present, did that module register, what does the
-    // engine think it supports.
+  const rows = await page.evaluate(sel => {
+    const out = []; let nodes;
     if (sel.startsWith('js:')) {
       try {
+        // Existing developer-only diagnostic escape hatch; never player-truth evidence.
         // eslint-disable-next-line no-eval
         const value = eval(sel.slice(3));
         return [{ note: typeof value === 'string' ? value : JSON.stringify(value) }];
       } catch (error) { return [{ error: error.message }]; }
     }
-    // `text:<substring>` finds the element that directly prints that text. A finding names the
-    // words, not the class, so this is how you get from a finding to the element that made it.
     if (sel.startsWith('text:')) {
       const needle = sel.slice(5).toLowerCase();
-      nodes = [...document.querySelectorAll('body *')].filter((el) => [...el.childNodes]
-        .some((n) => n.nodeType === 3 && n.nodeValue && n.nodeValue.toLowerCase().includes(needle)));
-    } else {
-      try { nodes = document.querySelectorAll(sel); } catch { return [{ error: 'bad selector' }]; }
-    }
+      nodes = [...document.querySelectorAll('body *')].filter(el => [...el.childNodes]
+        .some(n => n.nodeType === 3 && n.nodeValue && n.nodeValue.toLowerCase().includes(needle)));
+    } else { try { nodes = document.querySelectorAll(sel); } catch { return [{ error: 'bad selector' }]; } }
     for (const el of [...nodes].slice(0, 12)) {
-      const r = el.getBoundingClientRect();
-      const s = getComputedStyle(el);
-      out.push({
-        tag: el.tagName.toLowerCase(),
-        cls: (typeof el.className === 'string' ? el.className : '').slice(0, 70),
+      const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+      out.push({ tag: el.tagName.toLowerCase(), cls: (typeof el.className === 'string' ? el.className : '').slice(0, 70),
         box: `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`,
-        display: s.display, position: s.position, overflow: s.overflow,
-        bg: (s.backgroundImage || '').slice(0, 64),
-        flex: s.flex, minHeight: s.minHeight, height: s.height,
-        gridArea: s.gridArea === 'auto / auto / auto / auto' ? '' : s.gridArea,
-        parent: el.parentElement
-          ? `${el.parentElement.tagName.toLowerCase()}.${String(el.parentElement.className || '').split(/[ 	]+/)[0]} ${getComputedStyle(el.parentElement).display} ${Math.round(el.parentElement.getBoundingClientRect().height)}h`
-          : '',
-      });
+        display: s.display, position: s.position, overflow: s.overflow, bg: (s.backgroundImage || '').slice(0, 64),
+        flex: s.flex, minHeight: s.minHeight, height: s.height, gridArea: s.gridArea === 'auto / auto / auto / auto' ? '' : s.gridArea,
+        parent: el.parentElement ? `${el.parentElement.tagName.toLowerCase()}.${String(el.parentElement.className || '').split(/[ \t]+/)[0]} ${getComputedStyle(el.parentElement).display} ${Math.round(el.parentElement.getBoundingClientRect().height)}h` : '' });
     }
     return out;
-  }, selector).catch((error) => [{ error: error.message }]);
+  }, selector).catch(error => [{ error: error.message }]);
   console.log(`  probe ${selector}: ${rows.length} match${rows.length === 1 ? '' : 'es'}`);
   for (const row of rows) {
     if (row.error) { console.log(`    ${row.error}`); continue; }
     if (row.note !== undefined) { console.log(`    ${row.note}`); continue; }
-    console.log(`    ${row.tag}.${row.cls}`);
-    console.log(`      box ${row.box}  display:${row.display} position:${row.position} overflow:${row.overflow}`);
+    console.log(`    ${row.tag}.${row.cls}\n      box ${row.box}  display:${row.display} position:${row.position} overflow:${row.overflow}`);
     if (row.bg && row.bg !== 'none') console.log(`      background-image ${row.bg}`);
-    console.log(`      flex:${row.flex} min-height:${row.minHeight} height:${row.height}${row.gridArea ? ` grid-area:${row.gridArea}` : ''}`);
-    console.log(`      in ${row.parent}`);
+    console.log(`      flex:${row.flex} min-height:${row.minHeight} height:${row.height}${row.gridArea ? ` grid-area:${row.gridArea}` : ''}\n      in ${row.parent}`);
   }
 }
 
 async function walk(page, id, outDir) {
   const controls = await page.evaluate(() => window.BENCH.controls());
-  const limit = Math.min(controls.length, args.max);
+  const limit = Math.min(controls.length, args.max), actions = [], errors = [];
   console.log(`  controls: ${controls.length}${controls.length > limit ? ` (trying ${limit}; --max= raises it)` : ''}`);
-  for (let index = 0; index < limit; index += 1) {
+  for (let index = 0; index < limit; index++) {
     try {
-      if (index > 0) await page.evaluate((shotId) => window.BENCH.goto(shotId), id);
+      // Always reset arrival, including the first control, then settle entrance animations.
+      await page.evaluate(shotId => window.BENCH.goto(shotId), id);
+      await settleAnimations(page);
       const arrival = await page.evaluate(() => window.BENCH.signature());
-      const label = await page.evaluate((i) => window.BENCH.hover(i), index);
+      const label = await page.evaluate(i => window.BENCH.hover(i), index);
       await page.waitForTimeout(80);
       const hovered = await page.evaluate(() => window.BENCH.signature());
-      const hoverEffect = describe(arrival, hovered);
-      const name = (label || '(unlabeled)').slice(0, 36).padEnd(36);
+      const hoverEffect = describe(arrival, hovered), name = (label || '(unlabeled)').slice(0, 36).padEnd(36);
+      const row = { index, label, hover: hoverEffect }; actions.push(row);
       if (hoverEffect !== 'no visible change' && hoverEffect !== 'disabled') {
-        const hoverFile = path.join(outDir, `${safeName(id)}--hover-${slug(label || String(index))}.png`);
-        await page.screenshot({ path: hoverFile, timeout: 120_000 });
-        console.log(`  ${name} hover  ${hoverEffect}  ${path.relative(ROOT, hoverFile)}`);
-        await page.evaluate((shotId) => window.BENCH.goto(shotId), id);
+        const hoverFile = path.join(outDir, `${safeName(id)}--hover-${String(index + 1).padStart(2, '0')}-${slug(label || String(index))}.png`);
+        await page.screenshot({ path: hoverFile, timeout: args.timeoutMs });
+        row.hoverFile = path.relative(ROOT, hoverFile);
+        console.log(`  ${name} hover  ${hoverEffect}  ${row.hoverFile}`);
+        await page.evaluate(shotId => window.BENCH.goto(shotId), id);
+        await settleAnimations(page);
       }
       const beforeClick = await page.evaluate(() => window.BENCH.signature());
-      await page.evaluate((i) => window.BENCH.click(i), index);
+      await page.evaluate(i => window.BENCH.click(i), index);
       await page.waitForTimeout(160);
-      const clicked = await page.evaluate(() => window.BENCH.signature());
-      const clickEffect = describe(beforeClick, clicked);
-      if (hoverEffect === 'no visible change' && (clickEffect === 'no visible change' || clickEffect === 'disabled')) {
-        console.log(`  ${name} ${clickEffect}`);
-        continue;
-      }
-      if (clickEffect === 'no visible change' || clickEffect === 'disabled') {
-        if (hoverEffect === 'disabled') console.log(`  ${name} disabled`);
-        continue;
-      }
+      await settleAnimations(page);
+      const clicked = await page.evaluate(() => window.BENCH.signature()), clickEffect = describe(beforeClick, clicked);
+      row.click = clickEffect;
+      if (clickEffect === 'no visible change' || clickEffect === 'disabled') { console.log(`  ${name} ${clickEffect}`); continue; }
       const clickFile = path.join(outDir, `${safeName(id)}--${String(index + 1).padStart(2, '0')}-${slug(label || 'control')}.png`);
-      await page.screenshot({ path: clickFile, timeout: 120_000 });
-      console.log(`  ${name} click  ${clickEffect}  ${path.relative(ROOT, clickFile)}`);
-    } catch (error) {
-      console.log(`  control ${index + 1}  probe failed: ${error.message.split('\n')[0]}`);
-    }
+      await page.screenshot({ path: clickFile, timeout: args.timeoutMs }); row.clickFile = path.relative(ROOT, clickFile);
+      console.log(`  ${name} click  ${clickEffect}  ${row.clickFile}`);
+    } catch (error) { errors.push({ index, message: error.message }); console.log(`  control ${index + 1} probe failed: ${error.message.split('\n')[0]}`); }
   }
   console.log('  Open every PNG this walk printed. Each line is one control, tried from the arrival screen.');
+  return { complete: limit === controls.length && errors.length === 0, total: controls.length, attempted: limit,
+    untried: controls.length - limit, actions, errors };
 }
-
 function describe(before, after) {
   if (after.disabled) return 'disabled';
   const notes = [];
@@ -267,82 +173,17 @@ function describe(before, after) {
   if (before.log !== after.log && !notes.length) notes.push('asked for something; the picture stayed');
   return notes.length ? notes.join('; ') : 'no visible change';
 }
-
-// The control audit and the picture audit, in the order a reviewer cares about them: type that
-// cannot be read comes before a control in the wrong place.
 function printFindings(report) {
-  // Declared here, not at module scope: printFindings is hoisted and runs before a module-level
-  // const is initialised.
-  const rows = [
-    ['tangled', 'ON TOP OF'],
-    ['buried', 'BURIED'],
-    ['severed', 'CUT OFF'],
-    ['overlaps', 'OVERLAP'],
-    ['clipped', 'CLIPPED'],
-    ['offscreen', 'OFF FRAME'],
-    ['dead', 'EMPTY BOX'],
-  ];
+  const rows = [['tangled', 'ON TOP OF'], ['buried', 'BURIED'], ['severed', 'CUT OFF'], ['overlaps', 'OVERLAP'],
+    ['clipped', 'CLIPPED'], ['offscreen', 'OFF FRAME'], ['dead', 'EMPTY BOX']];
   let total = 0;
-  for (const [key, tag] of rows) {
-    for (const row of report[key] || []) {
-      console.log(`  ${tag}  ${row}`);
-      total += 1;
-    }
-  }
+  for (const [key, tag] of rows) for (const row of report[key] || []) { console.log(`  ${tag}  ${row}`); total++; }
   if (!total) console.log('  measured: no tangled, buried, cut-off or offscreen type, and no empty boxes');
   return total;
 }
-
 function bgUrl(value) {
   if (/^https?:\/\//.test(value) || value.startsWith('/') || value.startsWith('../')) return value;
   return `../${value.replace(/^\.\//, '')}`;
 }
-
-function safeName(id) {
-  return String(id).replace(/[^a-z0-9_-]+/gi, '-');
-}
-
-function slug(value) {
-  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'control';
-}
-
-function parseArgs(argv) {
-  const parsed = {
-    shots: [],
-    bg: null,
-    out: null,
-    headed: false,
-    list: false,
-    walk: false,
-    demo: false,
-    phone: false,
-    query: null,
-    probe: null,
-    max: 24,
-    viewport: { width: 1920, height: 1080 },
-  };
-  for (const arg of argv) {
-    if (arg === '--list') parsed.list = true;
-    if (arg === '--walk') parsed.walk = true;
-    if (arg === '--demo') parsed.demo = true;
-    if (arg === '--phone') { parsed.phone = true; if (!parsed.viewportSet) parsed.viewport = { width: 390, height: 844 }; }
-    if (arg.startsWith('--query=')) parsed.query = arg.slice('--query='.length);
-    if (arg === '--headed') parsed.headed = true;
-    if (arg.startsWith('--shot=')) parsed.shots.push(...splitIds(arg.slice('--shot='.length)));
-    if (arg.startsWith('--bg=')) parsed.bg = arg.slice('--bg='.length);
-    if (arg.startsWith('--probe=')) parsed.probe = arg.slice('--probe='.length);
-    if (arg.startsWith('--out=')) parsed.out = arg.slice('--out='.length);
-    if (arg.startsWith('--max=')) parsed.max = Number(arg.slice('--max='.length)) || parsed.max;
-    if (arg.startsWith('--viewport=')) {
-      const match = /^(\d+)x(\d+)$/.exec(arg.slice('--viewport='.length));
-      if (match) { parsed.viewport = { width: Number(match[1]), height: Number(match[2]) }; parsed.viewportSet = true; }
-    }
-    if (!arg.startsWith('--')) parsed.shots.push(...splitIds(arg));
-  }
-  parsed.shots = [...new Set(parsed.shots)];
-  return parsed;
-}
-
-function splitIds(value) {
-  return String(value).split(',').map((part) => part.trim()).filter(Boolean);
-}
+function safeName(id) { return String(id).replace(/[^a-z0-9_-]+/gi, '-'); }
+function slug(value) { return String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'control'; }
