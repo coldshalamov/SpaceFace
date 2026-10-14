@@ -209,7 +209,6 @@ function writeLive(object, key, value, enumerable) {
       writable: true,
       value,
     });
-    return true;
   } catch (error) {
     try {
       object[key] = value;
@@ -218,7 +217,11 @@ function writeLive(object, key, value, enumerable) {
     }
   }
   const descriptor = Object.getOwnPropertyDescriptor(object, key);
-  return !!descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value === value;
+  return !!descriptor
+    && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+    && descriptor.value === value
+    && descriptor.writable !== false
+    && descriptor.configurable !== false;
 }
 
 export function restoreLive(records) {
@@ -457,6 +460,7 @@ let definePropertiesBase = null;
 let reflectDefineBase = null;
 let freezeBase = null;
 let sealBase = null;
+let preventExtensionsBase = null;
 
 function descHas(desc, key) {
   return !!desc && (typeof desc === 'object' || typeof desc === 'function') && key in desc;
@@ -534,6 +538,7 @@ export function protectLiveObjects(objects) {
     reflectDefineBase = Reflect.defineProperty;
     freezeBase = Object.freeze;
     sealBase = Object.seal;
+    preventExtensionsBase = Object.preventExtensions;
     Object.defineProperty = function shieldedDefine(obj, prop, desc) {
       if (blocksDefine(obj, prop, desc)) return obj;
       return definePropertyBase.call(Object, obj, prop, desc);
@@ -553,6 +558,10 @@ export function protectLiveObjects(objects) {
     Object.seal = function shieldedSeal(obj) {
       if (protectedHas(obj)) return obj;
       return sealBase.call(Object, obj);
+    };
+    Object.preventExtensions = function shieldedPreventExtensions(obj) {
+      if (protectedHas(obj)) return obj;
+      return preventExtensionsBase.call(Object, obj);
     };
   }
   protectedStack.push(set);
@@ -579,6 +588,10 @@ export function unprotectLiveObjects() {
     if (sealBase) {
       Object.seal = sealBase;
       sealBase = null;
+    }
+    if (preventExtensionsBase) {
+      Object.preventExtensions = preventExtensionsBase;
+      preventExtensionsBase = null;
     }
   }
 }

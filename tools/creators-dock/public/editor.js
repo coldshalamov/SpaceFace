@@ -1,6 +1,6 @@
 import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
 import {
-  FRAME_INPUT_FIELDS, fieldsFor, readPath, writeFrameInput, writePath,
+  FRAME_INPUT_FIELDS, discRadius, fieldsFor, readPath, writeFrameInput, writePath,
 } from '/lib/inspector.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
@@ -388,13 +388,14 @@ function drawMarker(object) {
     ctx.lineTo(point.sx - 8, point.sy);
     ctx.closePath();
   } else {
-    ctx.arc(point.sx, point.sy, Math.max(8, (object.radius || 10) * (cam.zoom || 1)), 0, Math.PI * 2);
+    const radius = discRadius(object);
+    ctx.arc(point.sx, point.sy, Math.max(8, radius * (cam.zoom || 1)), 0, Math.PI * 2);
   }
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle = object.kind === 'trigger' ? '#c9a6ff' : '#e2b15a';
   ctx.font = '11px Segoe UI, sans-serif';
-  const mark = Math.max(12, (object.radius || 10) * (cam.zoom || 1));
+  const mark = Math.max(12, discRadius(object) * (cam.zoom || 1));
   if (object.kind === 'trigger') {
     ctx.textAlign = 'right';
     ctx.fillText(object.label || object.id, point.sx - mark - 8, point.sy);

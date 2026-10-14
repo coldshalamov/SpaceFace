@@ -455,23 +455,36 @@ function evaluateTemporal(assertions, trace, ctx) {
         continue;
       }
       let lastUnsettled = -1;
+      const disc = discOf(a);
+      let sawInside = !disc;
+      let closestSettle = null;
       for (let i = 0; i < scoped.length; i++) {
         const sample = scoped[i];
+        const distance = disc ? sampleDistance(sample, disc) : null;
+        if (distance != null && (closestSettle == null || distance < closestSettle)) closestSettle = distance;
+        if (disc && !sampleInsideDisc(sample, disc)) {
+          lastUnsettled = i;
+          continue;
+        }
+        sawInside = true;
         // J4: value is an own-property finite number (coverage already enforced).
         const raw = sample[signal];
         const mag = typeof raw === 'number' && Number.isFinite(raw) ? Math.abs(raw) : Infinity;
         if (mag > band) lastUnsettled = i;
       }
-      const settled = scoped.length > 0 && lastUnsettled < scoped.length - 1;
+      const settled = sawInside && scoped.length > 0 && lastUnsettled < scoped.length - 1;
       const settleTick = settled ? scoped[lastUnsettled + 1].tick : null;
       const byTick = a.byTick;
       const ok = settled && (byTick == null || settleTick <= byTick);
+      let expected = byTick != null ? { byTick, band } : { settled: true, band };
+      if (disc) expected = { ...withDisc(expected, disc), closest: closestSettle };
       results.push({
         family: 'temporal',
         id: 'settles',
         ok,
-        expected: byTick != null ? { byTick, band } : { settled: true, band },
-        actual: { settleTick, settled },
+        expected,
+        actual: disc ? { settleTick, settled, closest: closestSettle } : { settleTick, settled },
+        ...(disc ? { closest: closestSettle } : {}),
         signedDelta: settleTick != null && byTick != null ? settleTick - byTick : (settled ? 0 : 1),
         firstBadTick: ok ? null : (settleTick ?? (scoped.length ? scoped[scoped.length - 1].tick : 0)),
       });
@@ -505,19 +518,28 @@ function evaluateTemporal(assertions, trace, ctx) {
         results.push(unsampledSignalResult('never', signal, neverCoverage));
         continue;
       }
+      const disc = discOf(a);
       let bad = null;
+      let sawInside = !disc;
+      let closestNever = null;
       for (const s of scoped) {
+        const distance = disc ? sampleDistance(s, disc) : null;
+        if (distance != null && (closestNever == null || distance < closestNever)) closestNever = distance;
+        if (disc && !sampleInsideDisc(s, disc)) continue;
+        sawInside = true;
         if (truthySignal(s, signal, a)) {
           bad = s.tick;
           break;
         }
       }
+      const ok = sawInside && bad == null;
       results.push({
         family: 'temporal',
         id: `never:${signal}`,
-        ok: bad == null,
-        expected: false,
-        actual: bad != null,
+        ok,
+        expected: disc ? { ...withDisc({ tripped: false }, disc), closest: closestNever } : false,
+        actual: disc ? { tripped: bad != null, closest: closestNever } : bad != null,
+        ...(disc ? { closest: closestNever } : {}),
         signedDelta: bad == null ? 0 : 1,
         firstBadTick: bad,
       });

@@ -12,6 +12,10 @@ export const ACTOR_OVERRIDE_FIELDS = Object.freeze([
   { key: 'overrides.mass', label: 'Mass', kind: 'number' },
 ]);
 
+export function discRadius(object) {
+  return object && Number.isFinite(object.radius) ? object.radius : 0;
+}
+
 export function fieldsFor(object, profileChoices) {
   const common = [
     { key: 'label', label: 'Label', kind: 'text' },

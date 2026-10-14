@@ -8,7 +8,8 @@ import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject, importScenario, packFileText } from '../lib/export.mjs';
 import { validateProject, runProject } from '../lib/labRun.mjs';
 import { runLabScenario } from '../../../src/testing/lab/runScenario.js';
-import { ACTOR_OVERRIDE_FIELDS, fieldsFor, writePath } from '../lib/inspector.mjs';
+import { evaluateOracleKernel } from '../../../src/testing/lab/oracleKernel.js';
+import { ACTOR_OVERRIDE_FIELDS, discRadius, fieldsFor, writePath } from '../lib/inspector.mjs';
 import { objectById } from '../lib/scene.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
@@ -667,6 +668,68 @@ test('a place disc edits the exported place and objectives follow the lab metric
   const nullExport = await exportProject(nullDisc);
   assert.equal(nullExport.ok, false);
   assert.equal(nullExport.scenario, null);
+  const nullKernel = evaluateOracleKernel({
+    trace: [{ tick: 0, playerX: 0.02682, playerZ: 0, hull: 140, playerAlive: true, playerVelX: 0 }],
+    assertions: [
+      {
+        kind: 'holds',
+        signal: 'playerAlive',
+        holdsTicks: 1,
+        expected: { x: -90, z: 10, radius: null },
+      },
+      {
+        kind: 'never',
+        signal: 'hull',
+        op: '<',
+        value: 0,
+        expected: { x: -90, z: 10, radius: null },
+      },
+      {
+        kind: 'settles',
+        signal: 'playerVelX',
+        value: 1e9,
+        expected: { x: 0, z: 0, radius: null },
+      },
+    ],
+  });
+  assert.equal(nullKernel.ok, false);
+  assert.equal(nullKernel.results.find((row) => row.id === 'holds:playerAlive').ok, false);
+  assert.equal(nullKernel.results.find((row) => row.id === 'never:hull').ok, false);
+  assert.equal(nullKernel.results.find((row) => row.id === 'settles').ok, false);
+  assert.equal(Number.isFinite(nullKernel.results.find((row) => row.id === 'settles').expected.radius), false);
+  assert.notEqual(nullKernel.results.find((row) => row.id === 'settles').expected.radius, 10);
+  for (const kind of ['never', 'settles']) {
+    const project = getComposition('dock.bank-shot');
+    const hold = objectById(project, 'alive_bank');
+    if (kind === 'never') {
+      hold.x = -90;
+      hold.z = 10;
+    } else {
+      hold.x = 0;
+      hold.z = 0;
+    }
+    delete hold.radius;
+    hold.assertion = kind === 'never'
+      ? { kind: 'never', signal: 'hull', op: '<', value: 0 }
+      : { kind: 'settles', signal: 'playerVelX', value: 1e9 };
+    const exported = await exportProject(project);
+    assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+    const assertion = exported.scenario.assertions.find((row) => row.kind === kind);
+    assert.equal(Object.prototype.hasOwnProperty.call(assertion.expected, 'radius'), false);
+    assert.notEqual(assertion.expected.radius, 10);
+    const ran = await runLabScenario(exported.scenario);
+    assert.equal(ran.ok, false, kind);
+    const failed = (ran.oracle.failed || []).find((row) => String(row.id || '').includes(kind === 'never' ? 'never:hull' : 'settles'));
+    assert.notEqual(failed, undefined, kind);
+    assert.equal(Number.isFinite(failed.expected && failed.expected.radius), false, kind);
+    assert.notEqual(failed.expected.radius, 10, kind);
+  }
+  assert.equal(discRadius({ kind: 'trigger', x: 0, z: 0 }), 0);
+  assert.notEqual(discRadius({ kind: 'trigger', x: 0, z: 0 }), 10);
+  assert.equal(discRadius({ kind: 'trigger', radius: 12 }), 12);
+  const markerSource = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
+  assert.equal(markerSource.includes('discRadius(object)'), true);
+  assert.equal(markerSource.includes('radius || 10'), false);
   const importedBare = importScenario(missingExport.scenario);
   assert.equal(importedBare.ok, true, (importedBare.issues || []).join('\n'));
   const importedHold = importedBare.project.objects.find((object) => object.kind === 'trigger' && object.assertion && object.assertion.kind === 'holds');
