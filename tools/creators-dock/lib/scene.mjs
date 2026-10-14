@@ -1577,13 +1577,19 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const tx = -Math.sin(angle);
   const ty = Math.cos(angle);
   if (dashAccepted(signed, along, pattern[0], pattern[1], tx, ty)) {
-    const span = dashOffset(along, pattern[0], pattern[1]);
-    // A gap sample must not select a pixel whose center is empty. The stem
-    // beside that pixel is on the dash (alongOff 0) and does not need the gap.
-    if (span.alongOff > 0 && !isPixelCenter(sx, sy)) {
+    // A sample in an empty pixel must not select that pixel. The center is in
+    // the gap on that pixel, even when this sample has only just entered the dash.
+    if (!isPixelCenter(sx, sy)) {
       const cx = Math.floor(sx) + 0.5;
       const cy = Math.floor(sy) + 0.5;
-      if (!ringOnInk(dx + cx - sx, dy + cy - sy, radius, pattern, cx, cy)) return false;
+      const cdx = dx + cx - sx;
+      const cdy = dy + cy - sy;
+      let cangle = Math.atan2(cdy, cdx);
+      if (cangle < 0) cangle += Math.PI * 2;
+      const centerSpan = dashOffset(ringMeasuredAlong(radius, cangle), pattern[0], pattern[1]);
+      const sampleSpan = dashOffset(along, pattern[0], pattern[1]);
+      const centerHit = ringOnInk(cdx, cdy, radius, pattern, cx, cy);
+      if (!centerHit && (sampleSpan.alongOff > 0 || centerSpan.alongOff > 0)) return false;
     }
     return true;
   }
