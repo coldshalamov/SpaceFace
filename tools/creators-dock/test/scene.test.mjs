@@ -6914,6 +6914,12 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 527.5, 235.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 633.5, 266.5, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 588.5, 137.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 499.5, 118.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 615.5, 187.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 615.5, 220.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 499.5, 289.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 344.5, 180.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 266.5, 257.5, stageCam, stage, profileDraw), 'alive_bank');
 
   const view = { width: 200, height: 200 };
   const camera = { x: 0, z: 0, zoom: 1 };
@@ -6926,4 +6932,5 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
 
   const mark = { id: 'mark', kind: 'objective', x: 0, z: 0 };
   assert.equal(hitTest({ objects: [mark] }, 401.5, 306.5, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [mark] }, 399.5, 292.5, stageCam, stage), 'mark');
 });

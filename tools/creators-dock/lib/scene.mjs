@@ -1290,7 +1290,12 @@ function dashAccepted(perp, along, dash, gap, tx, ty) {
   const absPerp = Math.abs(perp);
   if (span.alongOff === 0) return absPerp <= STROKE_REACH;
   const centerline = Math.hypot(span.alongOff, absPerp);
-  if (centerline > STROKE_REACH) return false;
+  if (centerline > STROKE_REACH) {
+    // A 45-degree butt still paints the centerline 0.55px past the dash.
+    // An axis-aligned ring cap at that distance does not: its square is shorter.
+    const capReach = squareSupport(tx, ty) * 0.8;
+    return absPerp <= 0.02 && span.alongOff <= capReach && span.alongOff <= 0.56;
+  }
   const perpOut = Math.max(0, absPerp - PAINTED_STROKE_PX);
   const glen = Math.hypot(span.alongOff, perpOut);
   if (glen <= 1e-9) return true;
@@ -1311,7 +1316,8 @@ function isPixelCenter(sx, sy) {
 function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (!isPixelCenter(sx, sy)) return false;
   const span = dashOffset(along, dash, gap);
-  if (span.alongOff > 0 || span.inset < DASH_BODY_INSET) return false;
+  const insetNeed = dash <= 2 ? 0.6 : DASH_BODY_INSET;
+  if (span.alongOff > 0 || span.inset < insetNeed) return false;
   // (527.5, 235.5) sits 0.70px off the along_x centerline and still carries alpha 32.
   return perp <= 0.705 && perp <= PAINTED_STROKE_PX + squareSupport(dx, dy);
 }
