@@ -965,7 +965,7 @@ Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and
 - **Phone** (`mobileScreenLayouts.js`, `data-sf-mobile` only): the right column follows the list in flow. The tape is 196px at full width, then the reading (52px figure), then the purse centred at 240×190. Each entry puts CYCLE above the line, so the item and its figure share the full row ("Sold 20u Ore Iron · Vesta-For… +1,120 cr"). The arrow-key hint is hidden on glass.
 - 1280×720 and 1920×1080 are pixel-identical before and after (filled ledger). The empty ledger is clean at 960 and on phone. Selectors and IDs are unchanged.
 
-**Closed:** the 800×600 berth head leftover — see § Station berth head at 800×600 below.
+**Closed:** the 800×600 berth head leftover — see § Station berth head at 800×600 below. Ledger right-column "20u …" clip at 800×600 closed in § Station Ledger reading at 800×600 below.
 
 Shots (seeded ledger, scratch script): `ui-shots/polish28q/{before,final}/`, phone scroll strips `a4/strip.png`, empty `empty2/`.
 
@@ -977,3 +977,13 @@ Shots (seeded ledger, scratch script): `ui-shots/polish28q/{before,final}/`, pho
 
 **Checked:** 960×540, 1024×600, 1280×720, 1920×1080 and 390×844 (phone) are pixel-identical before and after (Ledger and Market). Shots: `ui-shots/polish28r/{before,after}/`, `compare-*.png`.
 
+
+## Station Ledger reading at 800×600 (ui-polish-28)
+
+**Before:** under the 761–1100 × ≤640 compact rule the right column was `minmax(0,1fr) 220px` with the figure beside the title/line. At 800×600 that left the cargo text only ~47px, so the reading showed "20u …" / "56 cr …". List rows kept CYCLE beside the line (~91px), so items collapsed to "S…" / "Bo…".
+
+**After (`stationTabsLayouts.js` only, desktop, 761–900 wide, ≤640 tall):** the purse yields to 140px so the reading column can hold the cargo line beside a 24px figure; title and line stay on the side-by-side band (no taller clip under the tape). Each list entry puts CYCLE above the line so the item shares the row with its figure ("Sold 20u Ore Iron · V…" — station still ellipsizes, cargo reads). Three rows still fit. BOUGHT / SOLD / NET stay on the purse. 960×540, 1280×720, 1920×1080 and 390×844 are pixel-identical. Selectors and IDs are unchanged.
+
+**Closed:** the polish28r leftover (Ledger right-column "20u …" clip at 800×600, tab layout).
+
+Shots: `ui-shots/polish28s/{before,after}/`, `compare-ledger-*.png`.

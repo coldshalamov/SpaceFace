@@ -1842,6 +1842,37 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read-hand { display:none !important; }
 }
 
+/* Ledger at 800×600-class (761–900 wide, ≤640 tall): the compact 761–1100 rule seats a 220px
+   purse beside a ~200px reading, so the figure leaves the title/line only ~47px ("20u …" /
+   "56 cr …"), and the list's CYCLE|line row leaves the item ~90px ("S…", "Bo…"). Here the purse
+   yields width, the figure trims so title+cargo sit beside it in full, and each list entry puts
+   CYCLE above the line so the item shares the row with its figure. 960+ unchanged. */
+@media (min-width:761px) and (max-width:900px) and (max-height:640px) {
+  /* purse shrinks so the reading column can hold the cargo line beside the figure */
+  ${D} .sx-ledger > .sx-ledger__right { grid-template-columns:minmax(0, 1fr) 140px !important; column-gap:6px !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:0 !important; }
+  /* reading stays one band under the tape: figure | title+line */
+  ${D} .sx-ledger__row > .sx-ledger__read:not([hidden]) { grid-template-columns:auto minmax(0, 1fr) !important;
+    column-gap:6px !important; margin-top:-44px !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-kicker { grid-column:1 / -1 !important; grid-row:1 !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-hero { grid-column:1 !important; grid-row:2 / 4 !important; align-self:center !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-title { grid-column:2 !important; grid-row:2 !important; align-self:end !important;
+    margin:0 !important; font-size:13.5px !important; line-height:1.2 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2 !important; grid-row:3 !important; align-self:start !important;
+    margin:0 !important; font-size:12px !important; line-height:1.3 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  /* smaller figure so "~56 cr per unit · Vesta-Forge" fits beside it (~150px+) */
+  ${D} .sx-ledger__read-num { font-size:24px !important; line-height:1 !important; }
+  ${D} .sx-ledger__read-unit { font-size:10px !important; letter-spacing:.1em !important; }
+  /* list: CYCLE above the item so the line owns the full row width (three entries still fit) */
+  ${D} .sx-ledger .st-ledger-entry-body { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-areas:"time" "line" "note" !important; row-gap:1px !important; column-gap:0 !important; }
+  ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
+  ${D} .sx-ledger .st-ledger-cycle { font-size:10.5px !important; letter-spacing:.1em !important; }
+  ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
+}
+
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {
