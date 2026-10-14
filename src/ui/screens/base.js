@@ -110,8 +110,14 @@ html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { an
    fade in the glass tone: the way out is never scrolled away, and the fade says there is more above it.
    The offsets mirror #sf-base's own padding (52px 56px 48px; 28px 40px 24px on short screens). */
 #screens .orr-base #sf-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end;
-  margin:24px -56px -48px; padding:28px 56px 48px; position:sticky; bottom:-48px; z-index:3;
-  background:linear-gradient(to top, rgb(26 35 48 / .995) 0, rgb(26 35 48 / .995) 90%, rgb(26 35 48 / 0) 100%); }
+  margin:38px -56px -48px; padding:14px 56px 48px; position:sticky; bottom:-48px; z-index:3;
+  background:rgb(26 35 48 / .995); }
+/* The foot is one solid band of glass, so the identity copy scrolling under it is hidden, not smeared
+   under Esc / Close / Dispatch. The fade that says "more above" stands just above the band, where the
+   top 14px of the old gradient used to be (padding and margin give those 14px back, so the foot sits
+   exactly where it did). */
+#screens .orr-base #sf-base .base-foot::before { content:""; position:absolute; left:0; right:0; bottom:100%; height:14px;
+  pointer-events:none; background:linear-gradient(to top, rgb(26 35 48 / .995), rgb(26 35 48 / 0)); }
 #screens .orr-base #sf-base .base-foot .orr-base__chartkey { margin-right:auto; }
 #screens .orr-base #sf-base .orr-base__esc, #screens .orr-base #sf-base .orr-base__key {
   display:inline-flex; align-items:center; justify-content:center;
@@ -477,8 +483,87 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
   #screens .orr-base #sf-base .base-ledger-heronum { font-size:64px; }
   #screens .orr-base #sf-base .base-ledger-grid { gap:8px 16px; }
   #screens .orr-base #sf-base .base-ledger-v { font-size:14px; margin:2px 0 0; }
-  #screens .orr-base #sf-base .base-foot { margin:12px -40px -24px; padding:22px 40px 24px; bottom:-24px; }
+  #screens .orr-base #sf-base .base-foot { margin:22px -40px -24px; padding:12px 40px 24px; bottom:-24px; }
+  #screens .orr-base #sf-base .base-foot::before { height:10px; }
   #screens .orr-base #sf-base .orr-base__moon { width:min(240px, 34%); top:10px; right:12px; }
+}
+/* Short desktop glass (≤640 tall: 960×540, 800×600): the plate scrolls and the foot band covers the
+   bottom of the first screen. Tighten the stack above Operating Identity and slim the foot so each
+   card's verb and consequence clear the band at scroll 0; TRADEOFF stays in the card, one scroll down. */
+@media (max-height:640px) and (min-width:761px) {
+  #screens .orr-base #sf-base { gap:5px; }
+  #screens .orr-base #sf-base .base-plan { padding:4px 0 4px 22px; }
+  #screens .orr-base #sf-base .base-slot { padding:4px 0 0 2px; }
+  #screens .orr-base #sf-base .base-sec-h { margin:4px 0 0; }
+  #screens .orr-base #sf-base .base-spec { padding-top:2px; gap:3px; }
+  #screens .orr-base #sf-base .base-spec .verb { line-height:1.3; }
+  #screens .orr-base #sf-base .base-spec .effect, #screens .orr-base #sf-base .base-spec .risk { line-height:1.3; }
+  #screens .orr-base #sf-base .base-foot { padding:8px 40px 12px; }
+}
+/* Desktop: every module slot stands on the one rail. auto-fit wrapped a five-slot body to 4 + 1 at
+   960 wide, and the orphan's tick climbed out of the second row into nothing. */
+@media (min-width:761px) {
+  #screens .orr-base #sf-base .base-slots { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr); gap:4px 16px; }
+}
+/* Narrow (≤760): the slots and identities stack in one column, where the horizontal rail's ticks
+   climbed through the card above. The rail turns into the same left spine the module list uses. */
+@media (max-width:760px) {
+  #screens .orr-base #sf-base .base-slots,
+  #screens .orr-base #sf-base .base-specializations {
+    grid-template-columns:minmax(0, 1fr); gap:0; padding:0 0 0 30px; margin:4px 0 0;
+  }
+  #screens .orr-base #sf-base .base-slots { gap:6px; }
+  #screens .orr-base #sf-base .base-slots::before,
+  #screens .orr-base #sf-base .base-specializations::before {
+    right:auto; top:14px; bottom:14px; width:7px; height:auto;
+  }
+  #screens .orr-base #sf-base .base-slots::after,
+  #screens .orr-base #sf-base .base-specializations::after {
+    left:3px; right:auto; top:14px; bottom:14px; width:1.5px; height:auto;
+  }
+  #screens .orr-base #sf-base .base-slot { padding:8px 0; min-height:44px; display:flex; flex-direction:column; justify-content:center; }
+  #screens .orr-base #sf-base .base-slot::before,
+  #screens .orr-base #sf-base .base-spec::before,
+  #screens .orr-base #sf-base .base-spec:is(:hover, :focus-within, .active)::before {
+    left:-23px; top:22px; bottom:auto; width:16px; height:1.5px;
+  }
+  #screens .orr-base #sf-base .base-slot::before { top:50%; margin-top:-1px; }
+  #screens .orr-base #sf-base .base-slot::after { left:-29px; top:50%; margin-top:-2.5px; }
+  #screens .orr-base #sf-base .base-slot.empty::after { left:-30px; width:7px; height:7px; margin-top:-3.5px; }
+  #screens .orr-base #sf-base .base-slot.empty { padding:8px 12px; }
+  #screens .orr-base #sf-base .base-slot .nm { margin:0 0 2px; }
+  #screens .orr-base #sf-base .base-spec { padding:12px 0 14px 0; gap:6px; }
+  #screens .orr-base #sf-base .base-spec + .base-spec { border-top:1px solid rgb(var(--orr-bone) / .1); }
+  #screens .orr-base #sf-base .base-spec.active { padding-left:12px; padding-right:12px; }
+  #screens .orr-base #sf-base .base-spec.active::before { width:23px; }
+  #screens .orr-base #sf-base .base-spec::after { left:-27px; top:19px; }
+  #screens .orr-base #sf-base .base-spec .base-spec-tick { display:none; }
+}
+/* Phone (≤560): the module rows kept a nowrap RESEARCH button column, which squeezed every
+   description to one word per line; they stack. The foot drops the Esc keycap (touch) so Close and
+   Dispatch sit on one line, and the plate gives back its 44px gutters. */
+@media (max-width:560px) {
+  #screens .screen.sf-menu.orr-base.orr-base::before { inset:12px; }
+  #screens .orr-base #sf-base { padding:34px 24px 28px; gap:10px; }
+  #screens .orr-base.is-claimed #sf-base .base-title { font-size:28px; }
+  #screens .orr-base #sf-base .orr-base__moon { display:none; }
+  #screens .orr-base #sf-base .base-ledger-heronum { font-size:56px; }
+  #screens .orr-base #sf-base .base-ledger-hero { flex-wrap:wrap; gap:4px 12px; }
+  #screens .orr-base #sf-base .base-ledger-grid { gap:10px 16px; }
+  #screens .orr-base #sf-base .base-shop { padding-left:26px; }
+  #screens .orr-base #sf-base .base-mod { grid-template-columns:minmax(0, 1fr); gap:4px; padding:14px 0; }
+  #screens .orr-base #sf-base .base-mod::before { left:-19px; top:24px; margin-top:0; width:12px; }
+  #screens .orr-base #sf-base .base-mod::after { left:-23px; top:24px; margin-top:-3px; }
+  #screens .orr-base #sf-base .base-mod :is(.nm, .desc, .meta) { grid-column:1; grid-row:auto; }
+  #screens .orr-base #sf-base .base-mod .meta { align-self:start; }
+  #screens .orr-base #sf-base .base-mod .k-word {
+    grid-column:1; grid-row:auto; justify-self:start; margin-top:6px;
+    white-space:normal; text-align:left; font-size:12px; letter-spacing:.1em; max-width:100%;
+  }
+  #screens .orr-base #sf-base .base-foot { gap:14px; margin:26px -24px -28px; padding:12px 24px 28px; bottom:-28px; }
+  #screens .orr-base #sf-base .base-foot::before { height:10px; }
+  #screens .orr-base #sf-base .base-foot .orr-base__esc { display:none; }
+  #screens .orr-base #sf-base .base-foot .orr-lampkey.orr-base__lamp { flex:1 1 auto; min-width:0; white-space:nowrap; justify-content:center; font-size:13px !important; letter-spacing:.08em !important; padding:0 18px 0 14px !important; }
 }
   `;
   document.head.appendChild(s);

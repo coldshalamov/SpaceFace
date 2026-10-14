@@ -215,6 +215,33 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .orr-chain__verb > * { max-width:100%; white-space:normal !important; overflow-wrap:anywhere;
     font-size:12px !important; letter-spacing:.08em !important; }
   ${B} :is(.sx-fac__stage, .sx-bar__stage, .sx-ct__stage) { grid-template-columns:minmax(0,1fr) !important; }
+  /* Contract dossier: a phone-sized title and reward, and ACCEPT docks on a full-width opaque band so the
+     dossier scrolls under it instead of through it. Over 800px tall only:
+     shorter phones already keep ACCEPT in flow with the compact title. */
+  @media (min-height:801px) {
+    ${B} .sx-dossier__title { font-size:24px !important; line-height:1.12 !important; margin:4px 0 6px !important; }
+    ${B} .sx-dossier .k-hero--hero .k-hero__n { font-size:44px !important; }
+    ${B} .sx-dossier > .sx-dossier__foot { align-self:stretch !important; margin:12px -16px 0 !important; padding:10px 16px 10px !important; width:auto !important; max-width:none !important;
+      background:rgb(6 8 11) !important; border-top:1px solid rgb(236 230 216 / .12) !important;
+      -webkit-mask-image:none !important; mask-image:none !important; }
+  }
+  ${B} .sx-dossier > .orr-ct-route { height:240px !important; }
+  /* Ledger: the desktop right column is pinned beside the list; on a phone it follows the list in flow,
+     so the tape, the reading and the purse each take the full width instead of laying over the rows.
+     Each entry puts its cycle above the line, so the item and its figure get the whole row; the arrow-key hint
+     has no keys to name on glass. */
+  ${B} .sx-ledger .st-ledger-entry-body { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"time" "line" "note" !important; row-gap:3px !important; }
+  ${B} .sx-ledger > .sx-ledger__right { position:relative !important; inset:auto !important; left:auto !important; width:100% !important;
+    display:flex !important; flex-direction:column !important; gap:6px !important; overflow:visible !important; }
+  ${B} .sx-ledger > .st-ledger { padding-bottom:0 !important; }
+  ${B} .sx-ledger .sx-ledger__keys { display:none !important; }
+  ${B} .sx-ledger__right > .orr-ledger-tape { height:196px !important; margin:0 !important; }
+  ${B} .sx-ledger__right > .sx-ledger__row { display:flex !important; flex-direction:column !important; align-items:stretch !important; gap:12px !important; }
+  ${B} .sx-ledger__row > .sx-ledger__read { width:100% !important; }
+  ${B} .sx-ledger__read::before { inset:-12px -16px !important; }
+  ${B} .sx-ledger__read-num { font-size:52px !important; }
+  ${B} .sx-ledger__read-title { font-size:18px !important; }
+  ${B} .sx-ledger__row > .orr-ledger-purse { align-self:center !important; width:240px !important; height:190px !important; margin:0 0 8px !important; }
   /* Destination foot stays on glass: the seven tabs on a 4-column grid, then Comms and Undock. */
   ${B} footer.sxb-ops { position:relative !important; bottom:auto !important; flex:0 0 auto !important;
     display:flex !important; flex-wrap:wrap !important; align-items:center !important; gap:2px 10px !important; margin:0 !important;
@@ -398,11 +425,19 @@ export const MOBILE_SCREEN_CSS = `
 
   /* Chart keeps a real viewport, then an inspector. The map owns gestures, the page owns scroll. */
   ${C} { overflow-y:auto !important; overflow-x:hidden !important; --gm-inspector-w:100%; }
-  ${C} .gm-head { grid-template-columns:minmax(0,1fr) auto auto !important; grid-template-rows:auto auto auto !important; gap:8px !important; }
+  /* Four head rows: title+CONTROLS/CLOSE, search, QUIET reading, then LOCAL/SYSTEM/GALAXY — without
+     a weather row, QUIET sat on the search underline (bench: buried). */
+  ${C} .gm-head { grid-template-columns:minmax(0,1fr) auto auto !important; grid-template-rows:auto auto auto auto !important; gap:8px !important; }
   ${C} .gm-title-lockup { grid-column:1 !important; grid-row:1 !important; min-width:0; }
+  ${C} .gm-hint-btn { grid-column:2 !important; grid-row:1 !important; }
+  ${C} .gm-close { grid-column:3 !important; grid-row:1 !important; }
   ${C} .gm-title { white-space:normal !important; overflow:visible !important; font-size:20px !important; }
-  ${C} .gm-rail { grid-column:1 / -1 !important; grid-row:3 !important; }
   ${C} .gm-search-container { grid-column:1 / -1 !important; grid-row:2 !important; width:100% !important; }
+  ${C} .gm-weather { grid-column:1 / -1 !important; grid-row:3 !important; justify-self:start; text-align:left; }
+  ${C} .gm-rail { grid-column:1 / -1 !important; grid-row:4 !important; }
+  /* Zoom strip: on phone --gm-foot clears the stacked inspector + foot; +28px sits the strip
+     in the map stage just above OVERVIEW/ROUTE, fully clear of the foot rail and detail lines. */
+  ${C} .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 28px) !important; left:calc(var(--gm-stage-x, 14px) + 8px) !important; }
   ${C} .gm-navfoot { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px !important; }
   ${C} .gm-navfoot .gm-nav-row { flex-direction:column !important; align-items:flex-start !important; gap:4px !important; min-width:0; }
   ${C} .gm-navfoot .gm-nav-row-v { max-width:100%; white-space:normal !important; overflow-wrap:anywhere; }

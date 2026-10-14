@@ -410,20 +410,6 @@ export const flightV3 = {
       entity._orbitDirectionLatch = orbitAssist.active ? (orbitAssist.telemetry.latchedDirection || 0) : 0;
       if (orbitAssist.active) {
         input = orbitAssist.input;
-        // Line-locked yaw: the taut line already carries the hull round at the orbital rate, so
-        // the helper may ask for more than the hull's own maxYawRate (up to the physics ceiling).
-        // Lend that rate, and scale yaw accel/brake by the same ratio, for this tick only.
-        const lent = orbitAssist.telemetry.lentYawRate;
-        if (lent && lent > positive(profile.maxYawRate, 1)) {
-          const ratio = lent / positive(profile.maxYawRate, 1);
-          const yawAccel = positive(profile.yawAccel, 8);
-          profile = {
-            ...profile,
-            maxYawRate: lent,
-            yawAccel: yawAccel * ratio,
-            yawBrake: positive(profile.yawBrake, yawAccel * 1.4) * ratio,
-          };
-        }
         // A nose still swinging onto the tangent must not thrust across (or against) the orbit
         // it is chasing: forward throttle follows cos(heading error) while the assist steers.
         const headingGate = orbitHeadingThrustGate(orbitAssist.telemetry);

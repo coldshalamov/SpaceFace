@@ -187,6 +187,51 @@ ${S} :focus-visible { outline:none !important; }
   ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:28px !important; }
   ${S} .fp-answer .k-word-sub { font-size:calc(12.5px * var(--fp-s, 1)) !important; }
 }
+/* compact desktop (960×540): the reading column tightens so its verbs and their costs read on one or two lines instead
+   of a thin stack and the column's fold falls lower; the at-rest drag hint steps aside where the tokens sit on it */
+@media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
+  ${S} > .k-stage.fp-stage { column-gap:16px !important; }
+  ${S} .fp-read { gap:8px; padding-right:4px; }
+  ${S} .fp-trace__crest { width:36px; height:36px; }
+  ${S} .fp-trace__top { gap:12px; }
+  ${S} .fp-trace__names { gap:3px; }
+  ${S} .fp-board { padding-left:44px !important; }
+  ${S} .fp-board::before { left:22px; }
+  ${S} .fp-board::after { left:26px; }
+  ${S} .fp-node { font-size:13.5px !important; }
+  ${S} .fp-node__meta { font-size:11.5px !important; }
+  ${S} .fp-node__stage { font-size:11px !important; letter-spacing:.16em !important; }
+  ${S} .fp-answer { gap:4px !important; }
+  ${S} .fp-answer .k-words { column-gap:14px; row-gap:2px !important; }
+  ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:24px !important; font-size:12px !important; letter-spacing:.1em !important; padding-left:14px !important; }
+  ${S} .fp-answer .k-word.orr-lampkey { min-height:32px !important; font-size:12.5px !important; margin:2px 0 4px !important; }
+  ${S} .fp-answer .k-word-sub { font-size:12px !important; line-height:1.3 !important; }
+  ${S} .fp-hint { display:none; }
+  /* the rule along the bottom gap tracks tighter so it ends before the WANTED word */
+  ${S} .fp-engrave--rule text { letter-spacing:.16em; }
+}
+/* phone: the dial stands over its reading, full width, and the screen scrolls as one page */
+@media (max-width:760px) {
+  ${S} { grid-template-rows:auto auto !important; overflow:hidden auto !important; }
+  ${S} > .k-stage.fp-stage { display:flex !important; flex-direction:column; gap:18px; min-height:auto !important; }
+  ${S} > .k-stage.fp-stage::after { display:none; }
+  ${S} .fp-dialhost { flex:none; align-self:center; width:min(calc(100% + var(--k-margin, 14px) * 2), 520px); height:auto !important; aspect-ratio:1 / 1; margin:0; max-height:none; }
+  ${S} .fp-read { flex:none; max-width:none; overflow:visible; padding:0 0 12px; gap:16px; -webkit-mask-image:none !important; mask-image:none !important; }
+  ${S} .fp-board { max-width:none; padding-left:40px !important; }
+  ${S} .fp-board::before { left:18px; }
+  ${S} .fp-board::after { left:22px; }
+  ${S} .fp-node { font-size:15px !important; }
+  ${S} .fp-answer .k-words { grid-template-columns:minmax(0, 1fr); row-gap:0 !important; }
+  ${S} .fp-answer .k-word-sub { margin:0 0 10px 18px !important; }
+  ${S} .fp-answer .k-word.orr-lampkey + .k-word-sub, ${S} .fp-answer li:has(> .orr-lampkey) > .k-word-sub { margin-left:0 !important; }
+  ${S} .fp-dossier { grid-template-columns:minmax(0, 1fr) !important; }
+  ${S} .fp-dossier__cell:first-child { grid-column:auto; }
+  /* the dial on a phone: no keyboard hint over the tokens, no link out to a column it no longer stands beside, and the
+     rule and WANTED track tighter so they part at the bottom gap */
+  ${S} .fp-hint, ${S} .fp-link { display:none; }
+  ${S} .fp-engrave--rule text { letter-spacing:.12em; }
+  ${S} .fp-wanted text { letter-spacing:.14em; }
+}
 `;
 
 export function injectFootprintLayouts(doc = globalThis.document) {

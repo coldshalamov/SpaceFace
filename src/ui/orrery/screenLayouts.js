@@ -459,7 +459,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results .sf-crres__step-
 /* demo end: the last card is an instrument, not a paragraph — the record as a register of etched
    labels over lit readings on a pool of shadow; the Hand's dial stands with the ways out and
    bears on the primary key */
-html body #screens > .k-screen.orr-demo-end .sf-demo-end__stage.k-panel { grid-template-columns:minmax(0, min(620px, 52vw)); position:relative; }
+html body #screens > .k-screen.orr-demo-end .sf-demo-end__stage.k-panel { grid-template-columns:minmax(0, min(760px, 72vw)); position:relative; }
 html body #screens > .k-screen.orr-demo-end .orr-end-facts { position:relative; display:flex; flex-direction:column; gap:22px; margin:0; padding:0; }
 html body #screens > .k-screen.orr-demo-end .orr-end-facts::before { ${POOL} }
 html body #screens > .k-screen.orr-demo-end .orr-end-fact { display:grid; grid-template-columns:minmax(140px, 180px) minmax(0, 1fr); column-gap:20px; align-items:baseline; margin:0; }
@@ -467,6 +467,20 @@ html body #screens > .k-screen.orr-demo-end .orr-end-fact > dt { font-family:var
 html body #screens > .k-screen.orr-demo-end .orr-end-fact__n { margin:0; font-family:var(--dp-face-numeral, "Archivo"); font-weight:480; font-size:22px; line-height:1.15; letter-spacing:.01em; color:rgb(246 241 230); }
 html body #screens > .k-screen.orr-demo-end .sf-demo-end__foot { align-items:center; }
 html body #screens > .k-screen.orr-demo-end .sf-demo-end__dial { flex:0 0 auto; width:104px; height:104px; margin-right:10px; }
+/* phone: the register reads label over reading at full width (a 140px label column left the
+   readings one word per line), and the ways out wrap under a smaller dial instead of running off
+   the glass */
+@media (max-width:760px) {
+  html body #screens > .k-screen.orr-demo-end .sf-demo-end__stage.k-panel { grid-template-columns:minmax(0, 1fr); }
+  html body #screens > .k-screen.orr-demo-end .orr-end-facts { gap:18px; }
+  html body #screens > .k-screen.orr-demo-end .orr-end-fact { grid-template-columns:minmax(0, 1fr); row-gap:6px; }
+  html body #screens > .k-screen.orr-demo-end .orr-end-fact__n { font-size:20px; }
+  html body #screens > .k-screen.orr-demo-end .sf-demo-end__foot { flex-wrap:wrap; gap:14px; }
+  html body #screens > .k-screen.orr-demo-end .sf-demo-end__dial { width:64px; height:64px; margin-right:0; }
+  html body #screens > .k-screen.orr-demo-end .sf-demo-end__foot > .k-words { flex:1 1 220px; min-width:0; flex-wrap:wrap; gap:10px 18px; align-items:center; }
+  /* a phone has no Enter key to name */
+  html body #screens > .k-screen.orr-demo-end .k-foot .k-word.k-word--emph.k-word--primary::after { display:none !important; }
+}
 /* the forward key names its key */
 html body #screens > .k-screen.orr-demo-end .k-foot .k-word.k-word--primary::after { content:"Enter" !important; position:static !important; display:inline-grid !important; place-items:center;
   transform:none !important; width:auto !important; height:17px !important; margin-left:12px; padding:0 5px; vertical-align:4px;

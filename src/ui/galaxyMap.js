@@ -3884,7 +3884,9 @@ export const galaxyMapScreen = {
     if (cache && cache.w === w && cache.h === h && now - cache.at < 250) return cache.rects;
     const frame = this._canvas.getBoundingClientRect();
     const rects = [];
-    for (const selector of ['.gm-left-rail', '.gm-right-inspector', '.gm-apron']) {
+    // .gmh-tools is the zoom strip (± / fit / ship) that rides the map's lower-left above the foot.
+    // Without it, zone names (e.g. Customs Corridor) print under the strip and the edge scale.
+    for (const selector of ['.gm-left-rail', '.gm-right-inspector', '.gm-apron', '.gmh-tools']) {
       const el = typeof this._root.querySelector === 'function' ? this._root.querySelector(selector) : null;
       if (!el || typeof el.getBoundingClientRect !== 'function') continue;
       const r = el.getBoundingClientRect();
@@ -8282,13 +8284,11 @@ _draw() {
   },
 
   /**
-   * The edge ruler: one honest bar of light on the field's lower-left, reading the scale of THIS
-   * view — the round distance whose bar lands in a legible 72–200 px window. The dial's ring-crown
-   * reading was retired with the dial; this is where distance lives now, and it is true at every
-   * zoom because it derives from the live pixels-per-WU. Pure canvas; headless-safe.
+   * Geometry of the edge ruler (bar + "N WU per bar" caption) in the clear field's lower-left.
+   * Shared by the paint path and the label reserve so names never sit under the scale.
    */
-  _drawEdgeScale(g, field, pxPerWU) {
-    if (!g || typeof g.moveTo !== 'function' || !(pxPerWU > 0) || !field) return;
+  _edgeScaleLayout(field, pxPerWU) {
+    if (!(pxPerWU > 0) || !field || !(field.width > 0) || !(field.height > 0)) return null;
     // The round distance whose bar lands nearest a 140 px target (1/2/2.5/5 decades), so the
     // figure stays honest at every zoom instead of inheriting a clamp.
     const targetPx = 140;
@@ -8301,10 +8301,42 @@ _draw() {
       const err = Math.abs(candidate * pxPerWU - targetPx);
       if (err < bestErr) { bestErr = err; wu = candidate; }
     }
-    if (!(wu > 0)) return;
+    if (!(wu > 0)) return null;
     const px = Math.max(24, Math.min(field.width * 0.3, wu * pxPerWU));
     const x = field.x + 10;
     const y = field.y + field.height - 16;
+    const text = `${formatDistanceWU(wu)} per bar`;
+    return { x, y, px, wu, text };
+  },
+
+  /**
+   * Reserved rect covering the edge ruler (caption above the bar, ticks included) so the label
+   * solver keeps zone names clear of "N WU per bar".
+   */
+  _edgeScaleReservedRect(field, pxPerWU) {
+    const layout = this._edgeScaleLayout(field, pxPerWU);
+    if (!layout) return null;
+    // ~7.2 CSS px per glyph at the 12px chart face; pad so a long "2500 WU per bar" stays covered.
+    const textW = Math.max(layout.px, Math.ceil(layout.text.length * 7.2));
+    return {
+      x: layout.x - 8,
+      y: layout.y - 28,
+      width: textW + 16,
+      height: 40,
+    };
+  },
+
+  /**
+   * The edge ruler: one honest bar of light on the field's lower-left, reading the scale of THIS
+   * view — the round distance whose bar lands in a legible 72–200 px window. The dial's ring-crown
+   * reading was retired with the dial; this is where distance lives now, and it is true at every
+   * zoom because it derives from the live pixels-per-WU. Pure canvas; headless-safe.
+   */
+  _drawEdgeScale(g, field, pxPerWU) {
+    if (!g || typeof g.moveTo !== 'function') return;
+    const layout = this._edgeScaleLayout(field, pxPerWU);
+    if (!layout) return;
+    const { x, y, px, text } = layout;
     drawBand(g, (c) => { c.moveTo(x, y); c.lineTo(x + px, y); }, { band: 6, bandA: 0.18, edge: 1.6, edgeA: 0.72 });
     drawBand(g, (c) => { c.moveTo(x, y - 5); c.lineTo(x, y + 5); }, { band: 0, edge: 1.6, edgeA: 0.72 });
     drawBand(g, (c) => { c.moveTo(x + px, y - 5); c.lineTo(x + px, y + 5); }, { band: 0, edge: 1.6, edgeA: 0.72 });
@@ -8312,7 +8344,7 @@ _draw() {
     g.textAlign = 'left';
     g.textBaseline = 'bottom';
     g.fillStyle = CHART_INK.bone(0.75);
-    g.fillText(`${formatDistanceWU(wu)} per bar`, x, y - 8);
+    g.fillText(text, x, y - 8);
   },
 
   /**
@@ -8451,6 +8483,12 @@ _draw() {
       ? [{ x: readingRect.x - 24, y: readingRect.y - 24, width: readingRect.width + 48, height: readingRect.height + 48 }]
       : [];
     const field = this._clearField(w, h);
+    // Canvas edge scale ("N WU per bar") is not DOM chrome; reserve it from the same layout the
+    // painter uses. Prefer the level's pending px/WU (galaxy graph vs system camera), else the view.
+    const edgePx = Number(this._edgeScalePxPerWU) > 0
+      ? Number(this._edgeScalePxPerWU)
+      : (this._view && Number(this._view.pxPerWU) > 0 ? Number(this._view.pxPerWU) : 0);
+    const edgeRect = this._edgeScaleReservedRect(field, edgePx);
     const marks = [];
     for (const t of this._clickTargets) {
       if (!t || t.kind === 'zone' || t.edgeTick || !Number.isFinite(t.sx) || !Number.isFinite(t.sy)) continue;
@@ -8467,9 +8505,11 @@ _draw() {
     const beam = [];
     const bp = this._line && Array.isArray(this._previewPts) ? this._previewPts : [];
     for (let i = 1; i < bp.length; i += 1) beam.push({ x1: bp[i - 1].x, y1: bp[i - 1].y, x2: bp[i].x, y2: bp[i].y });
+    const reservedAll = reserved.concat(keepOff);
+    if (edgeRect) reservedAll.push(edgeRect);
     const placed = placeChartLabels(candidates, {
       bounds: field,
-      reserved: this._reservedLabelRects(w, h, reserved.concat(keepOff)),
+      reserved: this._reservedLabelRects(w, h, reservedAll),
       discs: marks.concat(discs),
       rings,
       segments: beam.length ? segments.concat(beam, beam, beam, beam, beam, beam) : segments,
@@ -9129,6 +9169,7 @@ _drawGalaxy(g, state, w, h) {
       if (at) wellDiscs.push({ x: at.x, y: at.y, r: n.charted ? tokenR + 4 : 9 });
     }
     if (goalNode) wellDiscs.push({ x: sx(goalNode.x), y: sy(goalNode.y), r: goalRingR + 4 });
+    this._edgeScalePxPerWU = graphScale / SECTOR_ORIGIN_LATTICE_WU;
     const galaxyLabelLayout = this._placeLabels(labelCandidates, w, h, {
       reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
     });
@@ -9815,6 +9856,7 @@ _drawSystem(g, state, w, h) {
       except: pools.filter((o) => o !== pool).map((o) => ({ x: o.x, y: o.y, r: o.r })),
     }));
     const dialRings = dial ? [{ x: dial.x, y: dial.y, r: dial.r, clear: 10, hard: true }] : [];
+    this._edgeScalePxPerWU = pxPerWU;
     const labelLayout = this._placeLabels(labelCandidates, w, h, {
       reserved: systemReserved, rings: dialRings.concat(poolRings),
     });
@@ -10371,6 +10413,7 @@ _drawLocal(g, state, w, h) {
       const rrPx = ringBase * frac;
       localReserved.push({ x: shipX + rrPx * 0.707 + 4, y: shipY - rrPx * 0.707 - 16, width: 64, height: 20 });
     }
+    this._edgeScalePxPerWU = 0;
     const labelLayout = this._placeLabels(labelCandidates, w, h, { reserved: localReserved });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {

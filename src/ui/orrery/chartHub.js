@@ -643,9 +643,27 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
         }
       } catch (_) { /* headless */ }
       try {
+        // Toolbar rides above the chrome under the map. Apron.top alone is not enough on the phone
+        // sheet: the navfoot can paint above the apron box, and the inspector (OVERVIEW/ROUTE/…)
+        // stacks under the stage — so take the highest of those tops when data-sf-mobile is on.
+        // Desktop keeps apron-only (inspector is stage-right; navfoot matches apron), so positions
+        // stay identical.
         const apron = root.querySelector('.gm-apron');
         if (apron && typeof apron.getBoundingClientRect === 'function') {
-          const foot = Math.max(0, root.getBoundingClientRect().bottom - apron.getBoundingClientRect().top);
+          const rootBottom = root.getBoundingClientRect().bottom;
+          let top = apron.getBoundingClientRect().top;
+          const mobile = typeof document !== 'undefined'
+            && document.documentElement
+            && document.documentElement.dataset.sfMobile === '1';
+          if (mobile) {
+            for (const sel of ['.gm-navfoot', '.gm-right-inspector', '.gm-tabs']) {
+              const el = root.querySelector(sel);
+              if (!el || typeof el.getBoundingClientRect !== 'function') continue;
+              const t = el.getBoundingClientRect().top;
+              if (Number.isFinite(t) && t > 0 && t < top) top = t;
+            }
+          }
+          const foot = Math.max(0, rootBottom - top);
           if (foot > 0) layer.style.setProperty('--gm-foot', `${Math.round(foot)}px`);
         }
       } catch (_) { /* headless */ }

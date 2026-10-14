@@ -83,6 +83,13 @@ ${F} .sf-commsfan__why { ${LABEL} font-stretch:100%; font-variation-settings:"wd
 
 html.sf-reduce-motion ${F} :is(.sf-commsfan__wedge, .sf-commsfan__wedge::after) { transition:none; }
 @media (max-width:1280px), (max-height:760px) { ${F} { width:min(340px, 44vw); } ${F} .sf-commsfan__pilot { font-size:18px; } }
+/* phone (portrait): the fan sat on the bottom cluster, over the contacts list, the radar, the ability
+   list and the ship card, at 44vw wide so the callsign broke onto two lines. Hold it in the clear sky
+   band under the status card instead, wide enough that the callsign and verbs each keep one line. */
+@media (max-width:760px) and (orientation:portrait) {
+  html:root[data-sf-mobile="1"] body #sf-commsfan { top:clamp(112px, 15svh, 150px); bottom:auto; width:min(340px, calc(100vw - 56px)); }
+  html:root[data-sf-mobile="1"] body #sf-commsfan::before { inset:-28px -28px -24px -28px; }
+}
 @media (forced-colors:active) {
   ${F}::before, ${F} .sf-commsfan__hub::before { display:none; }
   ${F} .sf-commsfan__wedge::before { background:CanvasText !important; box-shadow:none !important; }

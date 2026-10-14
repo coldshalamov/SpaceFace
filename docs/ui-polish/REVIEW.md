@@ -57,10 +57,10 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `crucibleHud` | SURVEYED | |
 | **`crucible-results`** | **DONE** (ui-polish-5) | See § Crucible results below |
 | `orrery-flight` | SURVEYED | |
-| `comms-radial` | SURVEYED | |
-| `wingman-radial` | SURVEYED | |
+| **`comms-radial`** | **DONE** (phone: fan lifted clear of the HUD cluster) | See § Comms fan — phone sky band (ui-polish-28). Desktop 960: a world-projected doctrine tell (FLYBY) can sit behind ROUTE depending on camera; tell placement is hud.js threat-tell territory, left alone |
+| **`wingman-radial`** | **DONE** (hub stack) | See § Wingman radial hub stack — ui-polish-28 |
 | **`ship`** | **DONE** (ui-polish-27) | See § THE SHIP flight host below — blurb off gauges; heroes two-up ≤1100 |
-| `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
+| **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
@@ -68,10 +68,10 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
 | **`crucible-refit`** | **DONE** | See § Crucible Refit below |
-| `crucible-results` | **DONE** (ui-polish-27 short plate + phone) | LAST 5 HITS kept at ≤600 tall, docked phone foot — see § Crucible results @960 below |
-| `demoEnd` | SURVEYED | |
+| **`crucible-results`** | **DONE** (ui-polish-27 ≤600 tall + ui-polish-28 phone sticky foot) | LAST 5 HITS kept at ≤600 tall desktop (#374); phone dial clears docked foot (polish-28) — see § Crucible results |
+| **`demoEnd`** | **DONE** (960/1280 one-line chain + phone stack) | See § Demo end — register at full width, phone stack (ui-polish-28) |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
-| `base` / `base-claimed` | SURVEYED | |
+| **`base` / `base-claimed`** | **DONE** (phone + narrow + 960 slot rail) | See § Base screen — phone module list, narrow spine, one slot rail (ui-polish-28) |
 | `loading` | SURVEYED | |
 | `automation` | SURVEYED | |
 | **`replay`** | **DONE** (ui-polish-27) | Empty-tape line wraps on phone instead of ellipsizing — see § Clips reel empty state below |
@@ -221,7 +221,7 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 **Still open on phone:** (Shipworks callouts fixed on ui-polish-27 — see § below.) Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
 
-**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame. Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27.
+**Leftover:** ~~Contracts TRACKED badge can sit off-frame~~ — on-frame at every size now (see § Phone Missions dossier, ui-polish-28). ~~filter search bury "Raw & rare" at 960~~ — fixed in ui-polish-28. ~~Shipworks left-rail "Starter / systems fitted" clip at 960~~ — fixed on ui-polish-27.
 
 ## Decision terms @960 + phone-on-its-side foot — session notes (2026-10-12, ui-polish-14)
 
@@ -578,7 +578,7 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P1 | Crucible | Hero arena title ("RICOCHET FOUNDRY") and its blurb sit straight on bright 3D art without a scrim — blurb unreadable over the lit floor. **Fixed** (void→transparent scrim under words + brief). |
 | P1 | Crucible @ 1080p | The 3D hull in the bottom-right renders over BACK / ESC and the footer hint. **Fixed** (foot z-index + solid void backing, stronger art bottom fade, `‹ BACK` + ESC keycap rail). |
 | P1 | Crucible | Step tabs mix three styles: boxed "01 ENCOUNTER", bare "02 SHIP & KIT", and lowercase "03 / Armory". **Fixed** (one uppercase tab face; selected = Hand underline; muted `03 ARMORY` / `03 LAUNCH`). |
-| P1 | Settings / Video | Live HUD preview's FOV readout collides with the speed dial at 1280 width. |
+| P1 | Settings / Video | Live HUD preview's FOV readout collides with the speed dial at 1280 width. **Fixed** (ui-polish-28, see § Settings / Video — FOV reading clears the Speed Dial). |
 | P1 | Settings | Value numerals (52%, 1.00x) use the thin read face while the rest of the row is Archivo legend caps — reads as two different products. |
 | P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. **Fixed** (Tab walks verbs → reference line → Credits/Achievements, wraps). |
 | P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. **Fixed** (dial fades up from under the name; awake verb seated clear of tick + leader). |
@@ -699,6 +699,187 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 
 **Code Work re-review fix (04:58 HOLD):** Landscape section rail is 104px (was 86px), so DISCOVERIES shows in full again. Landscape dials put each word beside its dial (row stays 26px), so the fractions keep their category. Phone section leaders are shorter (8/10/12px) so the current tick no longer strikes the label's last letter. Portrait: 7 dials fit one row (SURVEY no longer wraps alone), the plate is 140px, and the reader takes priority over the hang (hang min 150px), so the first entry's full first paragraph shows above PREVIOUS/NEXT at 390×844 (first line at 360×740). The `.orr-extent` comment now says the thumb is clipped out of view, not parked. Desktop 960/1280/1920 unchanged within shot noise. Shots: `ui-shots/codex-phone/review2/`.
 
+## Market family ladder @960 — session notes (2026-10-13, ui-polish-28)
+
+**Before (960×540):** the short-berth browser stands families as a vertical ladder beside the register (`max-width:1100` × `max-height:800`). The ladder column and the rail shared only ~4px of air, so the register spine / Hand ticks sat on the ends of **RAW & RARE** and **RESTRICTED**. The find field ("Find a commodity") stays on the mode line and was never the burier — the leftover wording was off.
+
+**After (`src/ui/orrery/marketLayouts.js` only):** same short-berth block — `grid-template-columns: max-content minmax(0,1fr)`, `column-gap:24px`, filters `width/min-width:max-content` + `z-index:1`, filter letter-spacing `.08em` / `white-space:nowrap`. Measured gap filter→rail ~16px (was ~4px); RAW & RARE and RESTRICTED read clear of the spine. Selectors/IDs and `marketPresentation.js` labels untouched.
+
+**Checked:** 960×540 (fix), 1280×720 / 1920×1080 (horizontal filters unchanged within shot noise), 390×844 (phone Market layout is `mobileScreenLayouts.js` — frozen on #374; phone Dismiss/hold toast overlap left alone). Main-menu SANDBOX-over-nose at 1080p surveyed, not changed this session (arcRail seating).
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28/{before,after,compare}/`.
+
+**Branch:** `ui-polish-28` pushed; no PR (freeze on #371/#374).
+
+## Chart inspector tabs — session notes (2026-10-13, ui-polish-28, second commit)
+
+**Main-menu SANDBOX-over-nose @1080p:** re-checked, no change. The live title paints the same authored plate (`backdrop-title.jpg`, `.k-world--plate`, cover/center) as the bench. Since #331's three-line reference line, SANDBOX ends ~240px left of the hull nose at 1920×1080 (~40px at 960×540). The "Was remaining" line under § Main menu is stale.
+
+**Before (all desktop sizes):** the nine inspector tabs (Overview … History) were one row of ~875px in a 288px column (wide) or 227px column (compact 761–1179). The deckplate `repeat(auto-fill, minmax(84px, 1fr))` template still sized every track at 84px, so OVERVIEW (87px of type) lost its O to the inspector's clip. ECONOMY through HISTORY sat past the right edge, where no pointer could reach them. On short screens ZOOM: SHIP AND DESTINATION was clipped too (`ZOOM: SHIP ▯` @720, `ZOOM` @540).
+
+**After (`src/ui/orrery/chartLayouts.js` only, ≥761px wide):** the tab words wrap onto the scales the tab instrument already draws per row (the same wrap non-English locales already used). That's 3 rows at 1280/1920 and 4 rows at 960/1024 (11px, .08em). The row gap clears the major ticks. The Hand springs to the open tab on any row (checked: Discovery @960). The framing words wrap to a second row instead of clipping, and in compact mode ZOOM breaks onto two lines. Phone (≤760, `mobileScreenLayouts.js`, frozen on #374) is unchanged. Selectors/IDs are unchanged.
+
+**Trade-off:** at 960×540 the extra tab rows take ~90px from the inspector body. The body already scrolls under its fade, and ENGAGE ROUTE stays pinned.
+
+**Checked:** 1920×1080, 1280×720, 1024×768, 960×540, 390×844 (phone identical apart from map animation). `check:map-information-depth` passes all 18 sections. `test/map-one-answer.test.mjs` fails the same way on master without this change.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28b/{before,after,compare}/`.
+
+*If #374's REVIEW.md leftovers sections conflict with this file on merge, keep both. This section only covers `chartLayouts.js`.*
+
+## Pause — flight brief off the dial's banks on short desktop (ui-polish-28)
+
+**Before (960×540):** the flight brief (TRACKED job, % ring, Next, Saved) is a reading pinned top-right at `top ≈ 82px`, about 230px tall. On a short frame the dial's SHIP and REFERENCE banks (Operations, Local Map, Codex, Achievements, Statistics) run out to x ≈ 720–840 at y ≈ 240–300, the same band where the brief's Next and Saved lines sat, so the two sets of words printed over each other. The same collision showed at 960×641, 800×600, 800×500 and 720×480. On phone portrait, the inline kind word ran into the job's name ("TRACKEDContract 47-A").
+
+**After (`src/ui/orrery/pauseLayouts.js` only, CSS):**
+- **Short desktop** (`≤640` tall, or `≤720` tall at `≤1100` wide): the brief becomes a top-right reading level with PAUSED (`top clamp(40px, 8vh, 52px)`, width `min(400px, 42vw)`). The name is 19px, the ring is 30px with a 22px numeral, and the line gaps are tighter. At 960×540 it ends at y 230, 13px above the first long bank (SHIP at 243). It clears every bank row at 960×540/600/641/700/720, 1024×576/600/700, 1100×640/720 and 1280×600.
+- **Very short window** (`≤520` tall): the FLIGHT BRIEF kicker and the save note are hidden (F5/F9 stay on the foot), so the brief ends at about y 170 and clears the ladder at 800×500 and 720×480.
+- **Phone:** `.orr-brief__kind` is block-level, so TRACKED stands on its own line over the name.
+
+1280×720 and 1920×1080 are pixel-identical to before. Selectors and IDs are unchanged, and arcRail is untouched. The `--walk` at all four sizes reaches all 18 controls.
+
+**Still open (not this pass):** at ≤800 wide × ≤500 tall the foot's keycaps wrap to two lines and the second line rises into EXIT / MAIN MENU. This is a foot/dial height issue that predates this change. Also, the Missions route strip (FROM / ROUTE PENDING / TO) is still clipped at 960×540, and its `H…` names truncate.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28c/{before,after,compare}/`.
+
+## Pause — foot keycaps on one line, clear of EXIT / MAIN MENU on narrow short frames (ui-polish-28)
+
+**Before:** the six keycaps + verbs (ESC Resume · P Photo · F5 Quick save · F9 Quick load · ↑↓ Category · ←→ Item) need ~790px at the rail's full spacing, so below ~890 wide CATEGORY / ITEM wrapped onto a second line. The foot is a grid row sized by its content, so the extra line grew the foot upward, and on short frames the first line rose into the dial's last bank. At 800×500 PHOTO / F5 / QUICK SAVE printed on top of EXIT / MAIN MENU, and at 720×480 the strip covered DEV / SANDBOX and EXIT. At 880×540 the brief's save note also printed over the GAME bank's LOAD, because below 960 wide the brief starts left of that bank's end.
+
+**After (`src/ui/orrery/pauseLayouts.js` only, CSS):**
+- **701–900 wide:** keycaps 10.5px / .1em with 5px padding, verbs 10.5px / .1em, verb gap `clamp(9px, 1.4vw, 14px)`. The strip is one line (659px at 800 wide).
+- **701–760 wide:** one more step (10px, .06–.07em, 9px verb gap), so the strip holds one line down to 701 wide (590px at 720).
+- **701–900 wide × ≤560 tall:** the foot's row gap closes to 2px, so the keys sit lower (at 800×500 the keycap top is at about y 386, 20px under EXIT at about y 366), and the brief's save note is hidden (F5 / F9 stay on the foot).
+
+960×540, 1280×720, 1920×1080 and 390×844 are pixel-identical to before. Selectors and IDs are unchanged, and the dial / arcRail is untouched. `--walk` at 800×500 and 720×480 reaches all 18 controls. The bench reports no overlaps at 701×480, 720×480, 761×500, 800×500/520/560/600, 850×540, 880×540, 900×500/560 and 920×500 (before: 10 at 800×500, 10 at 720×480, 4 at 880×540). Focused tests pass: `pause-save-line`, `wave-c3-pause-kit`, `pq-194-06-pause-shell` and `sf-275-pause-ownership`.
+
+**Still open (not this pass):** at ≤800 wide the dial's REFERENCE bank runs STATISTICS (and ACHIEVEMENTS at 701) past the right edge (800×600, 761×500, 720×480, 701×480). That is arcRail bank placement, which this pass did not change. The Missions route strip at 960×540 (archiveLayouts.js, frozen on #374) is also still open.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28d/{before,after,compare}/`.
+
+## Pause — REFERENCE bank stays on the glass at ≤800 wide (ui-polish-28)
+
+**Before:** the dial seats each category on one line (head, then its verbs). When a line runs past the right edge, the width split continues it on a new stop, but an arc carries at most nine stops and Pause already uses eight, so only one split is available. Below about 820 wide, SHIP took that split, and REFERENCE (HELP / CONTROLS · CODEX · ACHIEVEMENTS · STATISTICS) stayed whole and ran off the right edge: STATISTICS at 800×600, 780×560, 761×500, 760×540 and 720×480 (it ended at x 853 on an 800 frame), and ACHIEVEMENTS too at 701×480. The split also planned from a head width carried over from the last build, which could be measured before the display face loaded. So whether 960×540 split REFERENCE depended on build timing, and the greedy pack left STATISTICS alone on its continuation row.
+
+**After (`src/ui/orrery/arcRail.js` only, grouped dial = Pause only):**
+- **Tight form:** build() first plans the normal seat. If a row still overruns after the splits the stops allow, the host takes `orr-arcrail-host--tight`, which applies the same verbs in a narrower cut (`wdth` 76, .07em tracking; awake `wdth` 80), eases the head tracking from .28 to .16em, and sets the verb gap to 13px and the head bridge to 24px (from 22 and 30). The verbs are re-measured under that form before it plans. With it, SHIP fits whole (all four verbs, LOCAL MAP included) and the spare stop goes to REFERENCE. At 800×600 STATISTICS ends at x 574, and at 701×480 at x 533. Frames that already fit (≥ ~820 wide) never take it.
+- **Balanced split:** a split row keeps the same number of lines, but its verbs are dealt to minimise the longest line, so REFERENCE reads HELP / CONTROLS · CODEX over ACHIEVEMENTS · STATISTICS rather than three over one. Ties keep the greedy deal.
+- **Fresh head measure:** the split plans from each head engraved off-dial at a fixed size in the form being planned, with the current fonts, rather than from a width carried from the previous build. 960×540 now always splits REFERENCE (a 2+2 deal, where it used to be 3+1 with STATISTICS alone).
+
+820×600, 860×600, 1280×720 and the phone (390×844 `--phone`) are pixel-identical. 1920×1080 differs only in the dial's drift, with the same rows. 900×600 and 960×540 change only by the 2+2 REFERENCE deal. The bench reports no overlaps at 701×480, 720×480, 760×540, 761×500, 780×560, 800×600, 820/860/900×600, 960×540, 1280×720, 1920×1080 and 390×844 (before: STATISTICS cut off / off-frame at all six ≤800 sizes, and ACHIEVEMENTS too at 701). `--walk` at 800×600 and 701×480 clicks all 18 controls, and ACHIEVEMENTS and STATISTICS open their screens. The prior foot keycaps and flight brief are unchanged. Selectors and IDs are unchanged. Focused tests pass: `orrery-arcrail-width` (7), `pause-save-line`, `wave-c3-pause-kit`, `pq-194-06-pause-shell`, `sf-275-pause-ownership` and `pause-ship-fit`.
+
+**Still open (not this pass):** the Missions route strip at 960×540 (archiveLayouts.js, frozen on #374).
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28e/{before,after,compare}/`.
+
+**Branch:** pushed to ui-polish-28 without a PR while the #371/#374 freeze holds.
+
+## Wingman radial hub stack — ui-polish-28 (2026-10-13 evening)
+
+**Before (960×540):** the ORRERY hub restyle used `padding-top:38px` and a 20px craft-count numeral inside the 124px glass disc. At short windows (≤560 tall / the 960×540 bench) **2 CRAFT** crushed into **TAB**, so the count was only a clipped band of glyphs. 1920×1080 showed the same crush when the dial opened. (Bench "FLYBY / Break the beam on 2 CRAFT" lines are world objective copy overlapping the dial in projection — not hub nodes.)
+
+**After (`src/ui/orrery/wingmanLayouts.js` only):** hub padding is balanced (`14px 10px 12px`), gap 4px, overflow clipped to the disc; title 11px, craft count 14px, TAB 10px with tight line-heights so ALL WINGS → pips → 2 CRAFT → TAB read as four clear rows. Selectors and IDs unchanged; wedge labels / receipts / HUD chrome untouched.
+
+**Checked:** 960×540 (fix + `--walk` 12 controls, measured clean), 1280×720, 1920×1080 (measured clean). Phone left alone (no separate wingman phone shell this session).
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28f/{before,after,compare-hub-960.png}/`.
+
+*If #374's REVIEW.md leftovers sections conflict with this file on merge, keep both. This section only covers `wingmanLayouts.js`.*
+
+## Base screen — phone module list, narrow spine, one slot rail (ui-polish-28)
+
+**Before:** on a phone (390×844) the claimed-body screen was broken. Each BUILD MODULE row kept its desktop three-column grid with a nowrap RESEARCH button, so the button ran off the plate and every description wrapped one word per line (the plate scrolled about 4,400px). The slot and Operating Identity rails were horizontal-only, so in one column each tick climbed through the card above it (through "Cargo Depot", and the amber tick 2 through CLEAR SITE STORAGE; the same happened at 561–760 wide). The foot clipped the Esc keycap to "SC", DISPATCH CONVOY wrapped onto two lines, and the moon arc crossed the title. At 960×540 the five module slots wrapped 4 + 1, leaving the fifth slot alone with a tick rising into nothing.
+
+**After (`src/ui/screens/base.js` injected style only, no markup, selector or ID changes):**
+- At ≥761 wide the slots sit on one rail in one row.
+- At ≤760 the slot and identity rails become the same left spine the module list uses. Ticks and dots hang off it, the active identity's amber tick meets its card, and the 1/2/3 tick numbers hide.
+- At ≤560 module rows stack (name, description, cost, then a wrapping RESEARCH button), gutters drop from 44px to 24px, the moon is hidden, and the Esc keycap is hidden (touch). Close and Dispatch Convoy share one line. Phone scroll went from 4,365px to about 2,300px.
+- 1280 and 1920 are unchanged apart from a 16px slot gap.
+
+**Checked:** 390×844 (phone, every scroll stop), 700×900, 960×540, 1280×720, 1920×1080, plus the unclaimed `base` at phone and 960. A phone `--walk` showed Build, Deliver and identity controls responding. Remaining bench "buried" findings are content scrolling under the sticky foot, which is by design. Focused tests passed: wave-c4-base-kit, claim-specializations, claim-sensor-post, claim-travel-infrastructure, claim-site-discovery-plates, ui-grammar-matrix.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28g/{before,after,before-scroll,after-scroll}/` and `compare-*.png`.
+
+*If #374's REVIEW.md changes conflict with this file on merge, keep both. This section only covers `src/ui/screens/base.js`.*
+
+## Footprint — 960 reading column, phone stack (ui-polish-28)
+
+**Before:** at 960×540 (WANTED / MARKED / CLEAN) the reading column's answer grid sized its verb column to TAKE AMENDS CONTRACT at full 1080 type, which left each verb's cost a 110px stack wrapping three lines. Only PAY BOUNTY and BRIBE were on the glass, and the costs stacked down the right edge into the fold. The at-rest "Drag or ‹ › to trace" hint ran through the source tokens on the hub rim. On a phone (390×844) the desktop two-column stage stayed in place: the dial shrank to 203px with tier, sector and hub words printed over each other. The reading was a 139px column (the source name cut to "4,200 / CR / BOUN", one word per line), every verb's cost had zero width, and a link line ran down the right edge.
+
+**After (`src/ui/orrery/footprintLayouts.js` only, no markup, selector, ID or dial-geometry changes):**
+- At 761–1100 wide and ≤640 tall the reading tightens: a 16px stage gap, a smaller crest, a closer beam and receipts, and verbs at 12px / .1em with 14px between verb and cost. Costs now take one or two lines, so PAY BOUNTY, BRIBE and FIND THE ACCUSER read with their costs before the fold. The drag hint is hidden and the bottom rule tracks .16em so it ends before WANTED.
+- At ≤760 the dial stands over its reading as a full-bleed square (capped at 520px) and the screen scrolls as one page. The reading is full width, each cost sits under its verb, and the long record is one column. The keyboard hint and the dial-to-beam link are hidden, and the rule and WANTED track tighter so they part at the bottom gap.
+- 1280 and 1920 are unchanged; the only pixel differences are the dial's arrival animation.
+
+**Checked:** 960×540, 1280×720, 1920×1080, 390×844 (every scroll stop) and 700×900 for all three record states. The bench measures no tangled or buried type at 960 or phone. Before, the phone had 6–7 ON TOP OF findings per state. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. **Still open:** on a ~400px phone dial the hub's "4,200 cr bounty" line comes close to the two lower tokens. That spacing comes from the dial geometry in footprintDial.js and was not changed here.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28h/{before,after,after-scroll}/` and `compare-{960,390,1280-marked}.png`.
+
+## Settings / Video — FOV reading clears the Speed Dial (ui-polish-28)
+
+**Before:** on a narrow preview stage (every desktop size up to 1920, and the phone) the FOV reading was pinned 118px left of the corner fan. At 1280×720, "50°" sat inside the Speed Dial's tick ring and its FOV label crowded the first ability key. At 960×540 it printed "50° FOVWU/S" across the dial's own numeral. On the phone, FOV ran over the first two ability keys.
+
+**After (`src/ui/orrery/settingsPreview.js` only, no markup, selector or ID changes):** `layout()` places the reading from the Cluster's own geometry. It stacks the degrees over FOV, sets it beside the fan in the gap between the dial's ring and the fan, and keeps it above the first key. When the stage is too narrow for that gap (the 133px stage at 960), it sits as one line under the Cluster. Non-compact stages keep the CSS placement.
+
+**Checked:** 390×844, 960×540, 1280×720, 1920×1080 on Settings → Video with the FOV row focused. The bench boxes show ≥25px from the dial ring at 1280 and the reading above key 1 at every size. Focused tests pass: fb-settings-a11y, pro-15-settings-row-ownership, settings-slider-persistence. **Follow-up (ui-polish-28, after #371/#374 merge):** 901–1100 Settings grid now reserves `minmax(250px, 270px)` for the preview (was ~63px at 960 / ~122px at 1024). HULL/SHIELD/ARMOR and the FOV description stay on glass; FOV numeral still reads `50°`. See § Settings preview column @901–1100 below.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28i/{before,after}/settings-video-fov-*.png` and `compare-*.png`.
+
+*If #374's REVIEW.md changes conflict with this file on merge, keep both. This section only covers `src/ui/orrery/settingsPreview.js`.*
+
+## Settings preview column @901–1100 (ui-polish-28)
+
+**Before:** at 960×540 / 1024×768 the ≤1500 rule kept the stage at 516–560px, so the live preview collapsed to ~63px (960) / ~122px (1024). On Video→FOV the description read "How wide the cam…", HULL/SHIELD/ARMOR clipped off the right edge, and the ability fan sat on the Cluster. (FOV readout stacking was already fixed in `settingsPreview.js`.)
+
+**After (`src/ui/orrery/settingsLayouts.js` only, `min-width:901px and max-width:1100px`):** hang stays 176px (GAMEPLAY / CONTROLS intact), stage flexes, preview is `minmax(250px, 270px)` with tighter label/scale tracks so rows still fit. At 960 the preview is 270px; HULL/SHIELD/ARMOR and "How wide the camera sees." stay on glass; FOV numeral reads `50°`. 1280 / 1920 / phone (≤900, preview already hidden) unchanged by this block.
+
+**Checked:** 960×540, 1024×768, 1280×720, 1920×1080, 390×844. Shots: `ui-shots/polish28n/{before,after}/` (not committed).
+
+
+
+## Demo end — register at full width, phone stack (ui-polish-28)
+
+**Before:** the register was capped at `min(620px, 52vw)`, so at 960 and 1280 "Shove → Slam → Field pop — 960 points" broke "— 960 points" onto a second line. On the phone the 140px label column left about 40px for the readings, so the chain, the credits and "Fusion Drive M" stood one word per line, and KEEP PLAYING with its ENTER chip ran past the right edge.
+
+**After (`src/ui/orrery/screenLayouts.js`, demo-end block only, no markup, selector or ID changes):** the register column is `min(760px, 72vw)`, so the chain reads on one line at 960 and 1280 (1920 is unchanged). At ≤760 wide each row is label over reading at full width, the dial drops to 64px and still bears on the primary key, the ways out wrap, and the ENTER chip is hidden because a phone has no Enter key.
+
+**Checked:** 390×844, 960×540, 1280×720, 1920×1080. Focused test `demo-mode` passes.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28j/{before,after}/demoEnd-*.png` and `compare-*.png`.
+
+## Comms fan — phone sky band (ui-polish-28)
+
+**Before:** on the phone (390×844) the fan kept the desktop placement, `bottom:84px` and `44vw` (172px) wide, so it sat on the bottom cluster. HEAVE TO ran into the contacts list, the hub and its trace ran over the ability list (DRIVE/CHARGE/BLAST/LINE/FIELDS, which the bench flagged as overlaps), the ship card and the radar, and HAULER 12 / CIVILIAN FREIGHT broke one word per line.
+
+**After (`src/ui/orrery/commsLayouts.js` only, `html:root[data-sf-mobile="1"]` at ≤760 wide in portrait, no markup, selector or ID changes):** the fan stands in the clear band under the status card (`top:clamp(112px, 15svh, 150px)`) at `min(340px, 100vw − 56px)`. The callsign, class, frequency and each verb keep one line, the HUD cluster underneath reads again, and the shade pool is trimmed to the narrower screen. 960/1280/1920 are unchanged, because the rule never matches on desktop.
+
+**Checked:** 390×844, 960×540, 1280×720, 1920×1080. Bench: no overlaps on the phone (there were five). Focused test `inst-02-comms-fan-power-rail` passes.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28k/{before,after}/comms-radial-*.png` and `compare-390x844.png`.
+
+## Help at 761–1200 wide (ui-polish-28, `helpLayouts.js`)
+
+**Before (960×540, 1024×768):** the six sections stood as a 172px ladder beside the stage, so the Controls rig had about 400px for two callout columns and the berth. The berth stopped at its 200px floor and the right-hand callouts (REVERSE, MINE BEAM, STEER RIGHT, LATERAL RIGHT, COUNTERMEASURE, BOOST) printed over EVERY KEY. Ships and Commodities had no room for their hero (the price dial and ship ring were gone) and their readings ran past the frame. On Ores the reading sat on top of the mix ring.
+
+**After (desktop only, `min-width:761px and max-width:1200px`, not `data-sf-mobile`):** the sections lie as one row of words on a rule beside the title, using the same grammar as the register's FLIGHT / INTERFACE strip (a tick per word, a dot on the open one, amber on Controls). The stage takes the full width, so every callout clears EVERY KEY. Ships and Commodities show their hero again, and a tall reading scrolls in place under a fade. On Ores the reading stands beside the mix, and at its 80px ring floor the ring keeps the rock's name and share inside the band (the rock's tier-cap line drops at this size). 1280×720 is pixel-identical; 1920×1080 and the phone differ only in the rig's drift. Selectors and IDs are unchanged.
+
+**Checked:** 960×540 and 1024×768 `--walk` through all six sections, plus 1200×800, 1280×720, 1920×1080 and 390×844. The bench measures no tangled, buried or cut-off type. Focused tests pass: help-flight-verbs, help-gamepad-rebind, help-input-echo-lifetime, inf-teach-help-live-bindings. Shots: `ui-shots/polish28l/`.
+
+## Swarm Results phone — LAST 5 HITS clears the docked foot (ui-polish-28)
+
+**Before:** on a phone (390×844, `data-sf-mobile`) the Results plate kept a relative foot at the end of the scroll, so arrival focus jumped to the ways-out and the dial left the glass. Restoring a sticky docked foot (as on #374) put **LAST 5 HITS · N DAMAGE** and its weapon legend under **SKIP THE KILL-CAM / RUN IT AGAIN** at scroll 0 — Code Work's 2026-10-13 23:50 follow-up. Desktop ≤600-tall stacking stays on #374 (freeze); this branch only touches the phone path.
+
+**After (`src/ui/orrery/crucibleResultsLayouts.js` only, phone via `html:root[data-sf-mobile="1"]`, no markup / selector / ID changes):**
+- Phone rules use an `RP` selector (`data-sf-mobile`) instead of `@media (max-width:700px)`.
+- Ways-out stay `position:sticky; bottom:0` with an opaque scrim so the player can leave without hunting.
+- Dial height is `clamp(400px, calc(100svh - 300px), 520px)` with `margin-bottom:48px` and `z-index:3`, so the overflowing caption (strip + legend) ends above the foot (~41px clearance at 390×844 scroll 0) and THE TAKE cannot climb through it.
+- Warn line (not vitals) stays hidden on the small plate; hit legend stays shown.
+
+**Checked:** 390×844 at scroll 0 (LAST 5 HITS + legend clear of the sticky foot; measured clearance ~41px, no overlap). Natural arrival scroll stays near 0 with the sticky foot. Merge of origin/master (#374) keeps this phone `${RP}` path and adds the ≤600-tall / 601–720 desktop blocks — see § Crucible results @960 on master notes below.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28m/{before,after,after-scroll0}/` and `compare-390x844-scroll0-lower.png`.
+
+*If #374's REVIEW.md Results sections conflict with this file on merge, keep both. This section only covers the phone `data-sf-mobile` path in `crucibleResultsLayouts.js`.*
 ## Shipworks Starter / systems fitted @960 — session notes (2026-10-13, ui-polish-27)
 
 **Before:** at ≤1200 wide, `station-orbital` drops the side column so the circuit plate (`Starter` + `N/M systems fitted`) wraps under the stage; `orr-sw--jig { overflow:hidden }` at ≤1100×≤800 then clips it entirely at 960×540. The focused rename field also sat ~12px above the left callout column.
@@ -755,3 +936,127 @@ Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and
 
 **Checked:** 960×540, 1024×768, 1280×720, 1280×900, 1366×1024, 1440×900, 1600×900, 1920×1080, 390×844 (phone shows the list, unchanged). Shots: `ui-shots/leftovers28/{before,final}/`, `compare-*.png`.
 
+## Phone Missions dossier — session notes (2026-10-14, ui-polish-28)
+
+**Before (390×844):** the dossier's sticky ACCEPT only had a plate as wide as the key, faded out to the right, so the title, risk scale and reward scrolled visibly through and beside it ("…sport a" next to ACCEPT). The title was 36px (three lines for a short job name), and in the 304×200 route chart VESTA FORGE ran into CUSTOMS GATE.
+
+**After (`mobileScreenLayouts.js` only, phones over 800px tall):** ACCEPT docks on a full-width opaque band with a hairline above it, so the dossier scrolls under it. The title is 24px (two lines) and the reward 44px. The route chart is 240px tall on every phone, so the names place clear of each other. Phones at or under 800px tall (including 844×390 on its side) keep ACCEPT in flow with the compact title and are pixel-identical. 960×540 is identical; 1280/1920 differ only by route-drift noise. TRACKED stays on-frame at all four sizes. Shots: `ui-shots/polish28o/{before,after}/`, `{before,after}-scroll/`, `compare-contracts-phone.png`.
+
+
+## Station Ledger tape figures — close entries no longer collide (ui-polish-28)
+
+**Note:** Missions route strip at 960×540 (FROM / ROUTE PENDING / TO, H… truncation) was already fixed on leftovers27b / archiveLayouts.js compact query — re-shot and confirmed clear; no change this pass.
+
+**Before:** when trade entries sit close on the tape, the back-pass for `minGap` walked the first tip into the axis numeral column, so debit figures (−480) printed on the axis major (−750). The origin CYCLE label also tried to dive into the stem zone (`Math.min` with a short `maxUp`) and sat on the first debit. Bench: `"−750" is printed on top of "−480"` at 960 and 1280 with a filled ledger.
+
+**After (`ledgerTape.js` only):**
+- First tip stays clear of the axis column (`AXIS_COL` + clamp after the back-pass, compress if needed).
+- Origin CYCLE yields when the first tip stands in its run (the now cursor still names the cycle).
+- Same-side figures take vertical lanes (15px) and stay inside the tape height so they do not run into the reading under it.
+
+**Checked:** filled ledger (5 close entries) at 390×844 / 960×540 / 1280×720 / 1920×1080 — no −750/−480 or CYCLE/figure tangle; empty ledger still clean at those sizes. The 960/phone list-vs-reading leftover is closed in § Station Ledger list and phone column below. Selectors/IDs unchanged. Shots: `ui-shots/polish28p/{before,after}/`, `compare-ledger-filled-960.png`, `compare-tape-crop-960.png`.
+
+## Station Ledger list and phone column (ui-polish-28)
+
+**Before:** with receipts, at 960×540 the left column put the title, the two intro lines and the count above the list, so only the first of three rows showed and the other two ran under the destination foot. On a phone the desktop right column stayed pinned beside the list (`position:absolute`, left ≈ 46%), so the tape, the vertical TRADE reading and the purse lay over the rows, and the purse ran off the right edge (to x=541 on a 390 screen).
+
+**After:**
+- **960×540-class** (`stationTabsLayouts.js`, 761–1100 wide, ≤640 tall, desktop only): the left column is a flex column that ends at the body. While the list has rows, the intro and the narrator's line yield (the empty ledger keeps them), the count line stays, rows are 6px tighter, and the list fills the rest and scrolls under its fade. All three rows now show (list 116px, was 16px of view).
+- **Phone** (`mobileScreenLayouts.js`, `data-sf-mobile` only): the right column follows the list in flow. The tape is 196px at full width, then the reading (52px figure), then the purse centred at 240×190. Each entry puts CYCLE above the line, so the item and its figure share the full row ("Sold 20u Ore Iron · Vesta-For… +1,120 cr"). The arrow-key hint is hidden on glass.
+- 1280×720 and 1920×1080 are pixel-identical before and after (filled ledger). The empty ledger is clean at 960 and on phone. Selectors and IDs are unchanged.
+
+**Closed:** the 800×600 berth head leftover — see § Station berth head at 800×600 below. Ledger right-column "20u …" clip at 800×600 closed in § Station Ledger reading at 800×600 below.
+
+Shots (seeded ledger, scratch script): `ui-shots/polish28q/{before,final}/`, phone scroll strips `a4/strip.png`, empty `empty2/`.
+
+## Station berth head at 800×600 (ui-polish-28)
+
+**Before:** under 900 wide, station.css stacks the head one item per row and caps the vitals at two gauges' width (326px), so the five dials wrapped into three rows. The head ran ~500px down (crown to y=467 on 800×600) over the tab body. The mechanic's note and the next step sat under the body, and only ~40px of every tab showed clear (Ledger: one row; Market: the list header). The CTRL K trigger sat on the eyebrow.
+
+**After (`stationLayouts.js` only, desktop, 651–900 wide, ≤800 tall):** the head is three bands. The name sits with CTRL K and the purse at its right. The five dials run on one row across the full width. Under them come the mechanic's note and the next step, lifted above the crown's shade pool so the shade no longer dims them. Head 22→284 (was 22→358 plus a crown overflowing to 467). The body gets 224px clear on 800×600 and 700×600 (was 150, mostly covered), and 418px on 900×800 (was 74). All eight tabs were checked at 800×600, 700×600 and 880×700; the Ledger shows all three rows. Selectors and IDs are unchanged.
+
+**Checked:** 960×540, 1024×600, 1280×720, 1920×1080 and 390×844 (phone) are pixel-identical before and after (Ledger and Market). Shots: `ui-shots/polish28r/{before,after}/`, `compare-*.png`.
+
+
+## Station Ledger reading at 800×600 (ui-polish-28)
+
+**Before:** under the 761–1100 × ≤640 compact rule the right column was `minmax(0,1fr) 220px` with the figure beside the title/line. At 800×600 that left the cargo text only ~47px, so the reading showed "20u …" / "56 cr …". List rows kept CYCLE beside the line (~91px), so items collapsed to "S…" / "Bo…".
+
+**After (`stationTabsLayouts.js` only, desktop, 761–900 wide, ≤640 tall):** the purse yields to 140px so the reading column can hold the cargo line beside a 24px figure; title and line stay on the side-by-side band (no taller clip under the tape). Each list entry puts CYCLE above the line so the item shares the row with its figure ("Sold 20u Ore Iron · V…" — station still ellipsizes, cargo reads). Three rows still fit. BOUGHT / SOLD / NET stay on the purse. 960×540, 1280×720, 1920×1080 and 390×844 are pixel-identical. Selectors and IDs are unchanged.
+
+**Closed:** the polish28r leftover (Ledger right-column "20u …" clip at 800×600, tab layout).
+
+Shots: `ui-shots/polish28s/{before,after}/`, `compare-ledger-*.png`.
+
+## Chart foot at 960×540 and the narrow desktop chart head (ui-polish-28)
+
+**Before:** the short-screen rule (≤819 tall) folded every foot station onto one line, with the word beside its value. At 960×540 a quarter of the band is ~222px, so DESTINATION's value only had room for "No desti…", and the bench measured "No destination set" running under NEXT LEG. TRACKING also cut to "Beacon 419 …". In a 390×844 desktop window (not the phone sheet), the ≥820-tall header grid put title, search and the two words on one row. The title got a 0px track (bench: "HELIOS PRIME" clipped), and CONTROLS printed over CLOSE.
+
+**After (`chartLayouts.js` only):** the one-line foot now applies only at ≥1180 wide. Below that, the word stays over its value, and the value has the whole track: "No destination set" and "Beacon 419 WU" now read in full at 960×540. In a ≤760 desktop window with `data-layout="narrow"` (`html:not([data-sf-mobile="1"])`, so the phone sheet is untouched), CONTROLS and CLOSE (with ESC) take the top row on the right. Title, search, the QUIET reading and the scale then get a row each. Selectors and IDs are unchanged.
+
+**Checked:** 960×540 bench went from 4 tangled findings to none. 1280×720 is pixel-identical. 1920×1080 differs only by course-glow animation noise at the map centre (163px). The 390×844 desktop window went from 4 tangled and 2 clipped findings to none. The 390×844 phone (`--phone`, touch) is pixel-identical.
+
+**Leftover (closed in § Chart map labels vs zoom strip below):** the chart's zoom strip and "per bar" scale sit over the map's lower-left — map labels printed under them at 960; phone QUIET-on-search and tools-on-foot followed.
+
+Shots: `ui-shots/polish28t/{before,after}/`, `{before,after}-phone-touch/`, `compare-chart-960.png`, `compare-chart-390.png`.
+
+## Chart map labels vs zoom strip / per-bar scale (ui-polish-28)
+
+**Before:** `_chromeLabelRects` reserved the lens rail, inspector and apron, but not the chart hub's zoom strip (`.gmh-tools`), and the canvas edge ruler (`_drawEdgeScale`, "N WU per bar") was never reserved at all. At 960×540, "Customs Corridor · THREAT 1" printed on "2500 WU per bar" and through the ± / fit / ship strip. On the real phone (`--phone`), QUIET sat on the search underline (bench: buried), and the zoom strip crossed the foot's DESTINATION / NEXT LEG lines.
+
+**After:**
+- **`galaxyMap.js` (2D label layout, not perf render):** `.gmh-tools` joins the measured chrome rects fed to `placeChartLabels`. The edge ruler's geometry is shared (`_edgeScaleLayout` / `_edgeScaleReservedRect`) and reserved on SYSTEM/GALAXY before labels seat, so names keep clear of the scale. At 960 the colliding zone name yields rather than print under the chrome; 1280/1920 stay clear (pixel-identical aside from tiny label/noise drift).
+- **`mobileScreenLayouts.js` (phone only):** the chart head gets a fourth row for `.gm-weather` so QUIET sits under the search band; `.gmh-tools` uses `bottom: calc(var(--gm-foot) + 28px)` on the phone sheet.
+- **`chartHub.js` (phone-gated `--gm-foot` only):** apron.top alone under-measured the visual chrome on phone — the navfoot paints above the apron box, and the inspector (OVERVIEW/ROUTE/…) stacks under the stage. When `data-sf-mobile="1"`, `--gm-foot` takes the highest of apron / navfoot / inspector / tabs tops so the strip sits in the map stage just above OVERVIEW, fully clear of the foot rail and of "0 WU from origin" / "157 WU". Desktop still measures apron only (inspector is stage-right; navfoot matches apron), so 960/1280/1920 stay identical.
+
+Selectors and IDs are unchanged.
+
+**Checked:** 960×540 — chrome clear of map labels; pixel-identical to tip 75a6993d51 after this follow-up. 1280×720 — pixel-identical. 1920×1080 — route-glow noise only (~160px). Phone 390×844 (`--phone`) — QUIET not buried; tools clear of foot detail lines and of OVERVIEW/ROUTE (gap ~44px above tabs, ~126px above navfoot). Focused `test/unified-map-professional.test.mjs`: 10/10 pass.
+
+**Follow-up:** first phone lift (`+28px` on apron-based `--gm-foot`) only moved the strip from DESTINATION/NEXT LEG onto the POSITION/TRACKING detail lines; measuring the stacked inspector top on phone fixed it.
+
+**Closed:** polish28t leftover (map labels under zoom strip / per-bar; phone QUIET-on-search and tools-on-foot).
+
+Shots: `ui-shots/polish28u/{before,after}/`, `{before,after}-phone-touch/`, `compare-chart-960.png`, `compare-chart-phone.png`.
+
+## Credits — MADE BY clears the reel at 960×540 (ui-polish-28)
+
+**Before (960×540):** the mid-width orrery park (`901–1100`, `--orr-cr-d:min(80vh,38vw)`, `right: calc(d * -.3)`) still left the Hand tip on the reel's right edge (~x 707 vs reel end ~711). The current body's **MADE BY** name sat on the orbit disc and the reel head line, so the label printed over the graphic (and read as tangled with the head). 1280×720 / 1920×1080 were already clear.
+
+**After (`src/ui/orrery/settingsLayouts.js` only, Credits CSS):**
+- **901–1100 wide:** narrower reel (`max-width:min(380px,100%)`), sentence `34ch`, orrery `--orr-cr-d:min(72vh,34vw)` parked at `right: calc(d * -.44)`.
+- **901–1100 × ≤600 tall (960×540):** hide the current body name (ladder + reel head already name the section); orrery `--orr-cr-d:min(68vh,32vw)` at `right: calc(d * -.5)` so the Hand disc clears the reel (~x 828 vs reel end ~671).
+
+Selectors and IDs are unchanged. Phone (≤900) still hides the orrery — untouched.
+
+**Checked:** 960×540 — MADE BY gone from the Hand; disc clear of reel. 1024×768 / 1100×700 — name kept, body left of reel (834/895 vs reel ~673). 1280×720 / 1920×1080 — drift/glow noise only (~0.1% px). Phone 390×844 (`--phone`) — orrery hidden as before. Focused: `orrery-decrypt` 5/5; `pq-033-00-credits` 2/3 (pre-existing NOTICE/@elemaudio assert, unrelated).
+
+**Leftovers noticed (not this pass):** Automation conduct-strip labels still tight beside short beams at 960; phone Credits ladder/reel stack still reports ON TOP OF in the bench; Missions route strip at 960 (frozen on #374).
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish28v/{before,after}/`, `compare-credits-960.png`.
+
+## Automation conduct strip — labels clear the beams (ui-polish-28, polish28w)
+
+**Before:** each flow node was `ring · two-line text (count over class word) · beam`, all centred on one row. The text block straddled the ring axis, so every beam started straight out of the end of the class word and ran into the next ring — at 960×540 it read as `TRADERS —o—◯`, and at 1280×720 the OUTPOSTS beam touched the word.
+
+**After (`src/ui/screens/automationPanel.js` only, `@media (min-width: 761px)`):** the node is a small stepper grid — row 1 is ring, count and beam on one axis; row 2 is the class word under the ring (`.au-node__t` is `display: contents`, so no markup change). The beam has 3px clearance after the count and 10px before the next ring. The CONDUCT THE MACHINE caption sits on the ring axis. Selectors, IDs and `data-conduct` are unchanged. Phone (≤760 / `data-sf-mobile`) is untouched.
+
+**Checked:** 960×540, the words sit under the beams with no beam touching any letter; the strip is 8px taller, so the tabs move down 8px. 800×600 and 1120×700 are clean. At 1280×720 and 1920×1080 the strip stays inside the gauge row height and is clean. Conducted state (purse reads `OUTPOSTS 0/MIN`) and a forced live state (12/4/3/2, `TRADERS 1,284/MIN`) fit at 960 and 1280. Phone 390×844 (`--phone`): the only diff is the YOU route-pulse frame, and the 3 OFF FRAME spans were already there. Focused tests: `automation-panel-focus` 2/2, `automation-operational-limits` 21/21, `automation-drone-bay-capacity` 7/7.
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish28w/{before,after}/`, `after/live/`, `after/extra/`, `compare-{960,1280,1920}.png`.
+
+## Base (claimed) — TRADEOFF clears Esc / Dispatch on short desktop (ui-polish-28, #384 HOLD follow-up)
+
+**Before (tip 37c027bbc3):** the sticky `.base-foot` painted its glass as a `linear-gradient` only. The bench doesn't count a gradient as a plate, so every identity line scrolling under the foot read as text printed on the controls: `△ TRADEOFF · Convoys can be lost…` on **Esc** and `△ TRADEOFF · Produces no goods…` on **Dispatch convoy** at 960×540 and 800×600 (phone had the same with YOUR VERB on Close). At scroll 0 on 960×540, the cards were also cut mid-CONSEQUENCE, so no card read through to its TRADEOFF.
+
+**After (`src/ui/screens/base.js` style block only; selectors and IDs unchanged):**
+- **Every size:** `.base-foot` is one solid band (`background-color` in the glass tone, .995). The "more above" fade moved to a `::before` standing just above the band. Its 14px (10px on ≤800 tall and phone) come out of the foot's top padding and go back into its margin, so the foot and its controls don't move. 1280×720, 1920×1080 and 390×844 are pixel-identical to before.
+- **≤640 tall, ≥761 wide (960×540, 800×600):** a tighter stack above Operating Identity (plate gap 5px, Research Next plan 4px padding, slot 4px, section head 4px margin, card padding-top 2px / gap 3px, verb / consequence / tradeoff line-height 1.3) and a slimmer foot (8px / 12px padding). All three cards now read fully through TRADEOFF at scroll 0. Their buttons start at the band (a scroll cue) and are not centred under Dispatch. The identity rail's `padding-top:26px` stays, so the ticks and dots stay on the rail.
+
+**Bench (base-claimed findings):** 800×600 10 → 2, 960×540 12 → 6, 1280×720 6 → 6, 1920×1080 6 → 6, 390×844 10 → 4. No tangled lines remain anywhere. What's left is all **buried**: content one scroll down under the sticky foot, which is normal for a scrolling plate.
+
+**Chart:** the Drag-to-lay-a-course note vs the Click-destination engage reason, checked at 960×540 and 800×600 on this tip. The note fades out above ENGAGE ROUTE and nothing overlaps (bench 0), so chart is untouched.
+
+Focused tests: `claim-specializations`, `wave-c4-base-kit` pass.
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish29a/{before,after}/`, `after/compare-{960x540,800x600}.png`.

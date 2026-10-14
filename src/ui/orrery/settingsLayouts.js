@@ -297,6 +297,25 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:19px !important; }
   ${S} .sf-tabbar .sf-tab { min-height:40px !important; }
 }
+/* 901–1100 (960×540, 1024×768): the ≤1500 rule kept stage at 516–560px, so the preview
+   collapsed to ~63–122px and the HUD fan / HULL·SHIELD·ARMOR ran off the right edge.
+   Give the preview a real track and let the stage flex; tighten label/scale so rows still fit. */
+@media (min-width:901px) and (max-width:1100px) {
+  /* Hang stays wide enough for GAMEPLAY / CONTROLS; preview gets ≥250px so the HUD fan and
+     HULL·SHIELD·ARMOR stay on glass; stage flexes and keeps a readable FOV numeral (50°). */
+  ${S} { --orr-scale-w:140px; --orr-label-w:148px;
+    grid-template-columns:minmax(168px, 176px) minmax(0, 1fr) minmax(250px, 270px) !important;
+    column-gap:clamp(16px, 2vw, 24px) !important; }
+  ${S} #sf-settings-pane { padding-right:10px !important; }
+  ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:11.5px !important; letter-spacing:.07em !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:minmax(0, var(--orr-scale-w, 140px)) max-content !important; column-gap:8px !important; min-width:0 !important; }
+  /* the scale gives way before the readout: a fixed 140px scale pushed '55%' past the pane's clip edge */
+  ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:11.5px !important; letter-spacing:.1em !important; }
+  ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
+}
+
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale folded into the zoom), as the station does */
 @media (min-width:2200px) and (min-height:1200px) { ${S}, ${C} { zoom:1.25; --k-s:1; } }
 @media (min-width:3400px) and (min-height:1900px) { ${S}, ${C} { zoom:1.85; --k-s:1; } }
@@ -498,11 +517,17 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
 /* 901–1100 wide (960×540, 1024×768): an 80vh orrery reached into the reel and its body label sat on the
    sentence. Size it by width, park its left edge past a narrower reel, and keep the Hand on screen. */
 @media (min-width:901px) and (max-width:1100px) {
-  ${C} .orr-cr-reel { max-width:min(420px, 100%); }
-  ${C} .orr-cr-sec > .k-sentence { max-width:38ch !important; }
-  ${C} > .orr-cr-orrery { --orr-cr-d:min(80vh, 38vw); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.3); }
+  ${C} .orr-cr-reel { max-width:min(380px, 100%); }
+  ${C} .orr-cr-sec > .k-sentence { max-width:34ch !important; }
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(72vh, 34vw); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.44); }
   /* the smaller emblem keeps its current body's name readable (SVG units scale with it) */
-  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:28px !important; }
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:26px !important; }
+}
+/* 960×540-class: even parked, the Hand's MADE BY sat on the reel head line — keep the disc, drop the name;
+   the ladder and the reel head already name the section. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:600px) {
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:0 !important; opacity:0 !important; }
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(68vh, 32vw); right:calc(var(--orr-cr-d) * -.5); }
 }
 /* a window under 600 tall: the reel-progress dial (decoration) dropped onto ‹ BACK */
 @media (min-width:901px) and (max-height:600px) { ${C} .orr-cr-progress { display:none; } }

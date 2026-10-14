@@ -1812,6 +1812,16 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
 @media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
   ${D} .sx-ledger > .st-ledger { max-width:40%; }
   ${D} .sx-ledger > .st-ledger .st-sub-h { font-size:24px !important; }
+  /* the list owns what the ~192px body leaves under the title: the intro and the narrator's line yield, and
+     the rows scroll under the list's fade instead of running under the destination foot (only the first of
+     three showed). The count (and archive page) line stays. */
+  ${D} .sx-ledger > .st-ledger { display:flex !important; flex-direction:column !important; gap:0 !important; height:100% !important; min-height:0 !important; padding-top:20px !important; padding-bottom:0 !important; }
+  ${D} .sx-ledger > .st-ledger > * { flex:none; }
+  ${D} .sx-ledger:has(.st-ledger-list:not([hidden])) :is(.st-ledger-intro, .st-ledger-story) { display:none !important; }
+  ${D} .sx-ledger .st-ledger-status { margin-top:8px !important; }
+  ${D} .sx-ledger .st-ledger-list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; margin:6px 0 0 !important; }
+  ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:6px !important; padding-bottom:6px !important; }
+  ${D} .sx-ledger .sx-ledger__keys { display:none !important; }
   /* the purse needs ~220px so its ring (radius = half its box less 60, as at 1280) clears NET · CR */
   ${D} .sx-ledger > .sx-ledger__right { left:calc(40% + 22px) !important; display:grid !important; grid-template-columns:minmax(0, 1fr) 220px; grid-template-rows:auto minmax(0, 1fr); column-gap:8px; row-gap:0 !important; }
   /* the tape keeps the height its axis figures need (~176px: majors ~21px apart, as before); the reading rises into
@@ -1830,6 +1840,37 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2; grid-row:3; align-self:start; margin:0 !important; font-size:12.5px !important; line-height:1.3 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${D} .sx-ledger__read-num { font-size:30px !important; line-height:1 !important; }
   ${D} .sx-ledger__read-hand { display:none !important; }
+}
+
+/* Ledger at 800×600-class (761–900 wide, ≤640 tall): the compact 761–1100 rule seats a 220px
+   purse beside a ~200px reading, so the figure leaves the title/line only ~47px ("20u …" /
+   "56 cr …"), and the list's CYCLE|line row leaves the item ~90px ("S…", "Bo…"). Here the purse
+   yields width, the figure trims so title+cargo sit beside it in full, and each list entry puts
+   CYCLE above the line so the item shares the row with its figure. 960+ unchanged. */
+@media (min-width:761px) and (max-width:900px) and (max-height:640px) {
+  /* purse shrinks so the reading column can hold the cargo line beside the figure */
+  ${D} .sx-ledger > .sx-ledger__right { grid-template-columns:minmax(0, 1fr) 140px !important; column-gap:6px !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:0 !important; }
+  /* reading stays one band under the tape: figure | title+line */
+  ${D} .sx-ledger__row > .sx-ledger__read:not([hidden]) { grid-template-columns:auto minmax(0, 1fr) !important;
+    column-gap:6px !important; margin-top:-44px !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-kicker { grid-column:1 / -1 !important; grid-row:1 !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-hero { grid-column:1 !important; grid-row:2 / 4 !important; align-self:center !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-title { grid-column:2 !important; grid-row:2 !important; align-self:end !important;
+    margin:0 !important; font-size:13.5px !important; line-height:1.2 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2 !important; grid-row:3 !important; align-self:start !important;
+    margin:0 !important; font-size:12px !important; line-height:1.3 !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  /* smaller figure so "~56 cr per unit · Vesta-Forge" fits beside it (~150px+) */
+  ${D} .sx-ledger__read-num { font-size:24px !important; line-height:1 !important; }
+  ${D} .sx-ledger__read-unit { font-size:10px !important; letter-spacing:.1em !important; }
+  /* list: CYCLE above the item so the line owns the full row width (three entries still fit) */
+  ${D} .sx-ledger .st-ledger-entry-body { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-areas:"time" "line" "note" !important; row-gap:1px !important; column-gap:0 !important; }
+  ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
+  ${D} .sx-ledger .st-ledger-cycle { font-size:10.5px !important; letter-spacing:.1em !important; }
+  ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
 }
 
 `;

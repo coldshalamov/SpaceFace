@@ -614,11 +614,10 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
 }
 
 /**
- * Stepped twin — identical pack contents, commit, and return. The atomic pack
- * pays O(activeCount) inside most presents; drivers pace this across a 4ms
- * wall bound, parking mid-walk like the other stepped passes. Rows pack
- * atomically each, so a suspended pack's mix is bounded to row granularity —
- * the same staleness the suspended journal collect already produces.
+ * Loading-only stepped twin. With a stable source it matches the atomic pack.
+ * A parked iterator reads mutable rows on later presents, so it cannot supply
+ * a coherent completed-tick pose while gameplay advances. Live presentation
+ * must use packPresentationWorldToFence, independent of admission pacing.
  */
 export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, poseEpoch = 0, sliceEvery = 256) {
   if (!world || !fence) return 0;
