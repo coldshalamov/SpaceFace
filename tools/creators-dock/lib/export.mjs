@@ -234,6 +234,29 @@ function finiteMeasure(value, issues, label) {
   return null;
 }
 
+function overrideKeyNames(overrides) {
+  const keys = [];
+  const seen = new Set();
+  const push = (object) => {
+    if (!object || typeof object !== 'object') return;
+    for (const key of Object.getOwnPropertyNames(object)) {
+      if (seen.has(key) || key === 'constructor' || key === 'toJSON') continue;
+      if (key === 'length' && Array.isArray(object)) continue;
+      seen.add(key);
+      keys.push(key);
+    }
+  };
+  push(overrides);
+  let proto = Object.getPrototypeOf(overrides);
+  const seenProto = new Set();
+  while (proto && proto !== Object.prototype && proto !== Array.prototype && !seenProto.has(proto)) {
+    seenProto.add(proto);
+    push(proto);
+    proto = Object.getPrototypeOf(proto);
+  }
+  return keys;
+}
+
 function buildScenario(project, actors, triggers, objectives, attachments, issues, projectId) {
   if (!project || project.schema !== PROJECT_SCHEMA) return null;
   const entities = [];
@@ -245,13 +268,20 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
     } catch (error) {
       issues.push(`${actor.id}: ${error.message}`);
     }
+    let keptOverrides = null;
     if (resolved && actor.overrides && typeof actor.overrides === 'object') {
       const applied = new Set(OVERRIDE_APPLIED[resolved.kind] || []);
-      for (const key of Object.keys(actor.overrides)) {
+      const kept = {};
+      for (const key of overrideKeyNames(actor.overrides)) {
         if (!applied.has(key)) {
           issues.push(`${actor.id}.overrides.${key}: not applied on ${resolved.kind} profiles. Refusing to drop it.`);
+          continue;
         }
+        const value = actor.overrides[key];
+        if (typeof value === 'function') continue;
+        kept[key] = value && typeof value === 'object' ? clone(value) : value;
       }
+      if (Object.keys(kept).length) keptOverrides = kept;
     }
     if (resolved && resolved.kind !== 'ship' && actor.loadout != null) {
       issues.push(`${actor.id}.loadout: loadout is only applied to ship profiles. Refusing to drop it.`);
@@ -277,7 +307,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
     };
     if (actor.team != null) entity.team = actor.team;
     if (actor.factionId != null) entity.factionId = actor.factionId;
-    if (actor.overrides && Object.keys(actor.overrides).length) entity.overrides = clone(actor.overrides);
+    if (keptOverrides) entity.overrides = keptOverrides;
     if (actor.loadout != null) entity.loadout = clone(actor.loadout);
     entities.push(entity);
   }

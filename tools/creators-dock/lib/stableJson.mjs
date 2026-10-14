@@ -384,28 +384,60 @@ export function readAccessor(object, descriptor) {
   return failed ? undefined : read;
 }
 
+const SKIP_ELEMENT_GETTER = new Set(['marker', 'cell', 'echo']);
+
 function rememberPocket(read, records, seen, arrays) {
-  captureLive(read, new Set(), records);
-  records.push({
-    kind: 'ownNames',
-    object: read,
-    names: Object.getOwnPropertyNames(read),
-  });
+  let current = read;
+  const seenProto = new Set();
+  while (current && typeof current === 'object' && !seenProto.has(current)) {
+    if (current === Object.prototype || current === Array.prototype) break;
+    seenProto.add(current);
+    captureLive(current, new Set(), records);
+    records.push({
+      kind: 'ownNames',
+      object: current,
+      names: Object.getOwnPropertyNames(current),
+    });
+    current = Object.getPrototypeOf(current);
+  }
   if (arrays) {
     for (const entry of snapshotInheritedArrays(read)) arrays.push(entry);
   }
-  captureAccessorTrees(read, seen, records, true, true, arrays, false);
+  captureAccessorTrees(read, seen, records, true, true, arrays, false, true);
 }
 
-export function captureAccessorTrees(value, seen = new Set(), records = [], allowGetters = true, nested = false, arrays = null, enumerableOnly = false) {
+function readPocketGetter(host, descriptor, key, records, seen, arrays) {
+  if (!descriptor || typeof descriptor.get !== 'function' || typeof descriptor.set === 'function') return;
+  if (SKIP_ELEMENT_GETTER.has(key)) return;
+  const read = readAccessor(host, descriptor);
+  if (read && typeof read === 'object') rememberPocket(read, records, seen, arrays);
+}
+
+export function captureAccessorTrees(value, seen = new Set(), records = [], allowGetters = true, nested = false, arrays = null, enumerableOnly = false, walkIndexGetters = false) {
   if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return records;
   seen.add(value);
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true);
+        if (descriptor.value && typeof descriptor.value === 'object') {
+          captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true, false);
+        }
+      } else if (walkIndexGetters) {
+        readPocketGetter(value, descriptor, String(i), records, seen, arrays);
       }
+    }
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (key === 'length') continue;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      const index = String(Number(key)) === key && Number(key) >= 0;
+      if (index) {
+        if (!walkIndexGetters) continue;
+        if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+        readPocketGetter(value, descriptor, key, records, seen, arrays);
+        continue;
+      }
+      readPocketGetter(value, descriptor, key, records, seen, arrays);
     }
     return records;
   }
@@ -415,21 +447,19 @@ export function captureAccessorTrees(value, seen = new Set(), records = [], allo
     if (!descriptor) continue;
     if (!nested && (key === 'objects' || key === 'grid')) {
       if (key === 'objects' && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value && typeof descriptor.value === 'object') {
-        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true);
+        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true, false);
       }
       continue;
     }
     if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
       if (typeof descriptor.value === 'function') continue;
       if (descriptor.value && typeof descriptor.value === 'object') {
-        captureAccessorTrees(descriptor.value, seen, records, allowGetters, nested, arrays, enumerableOnly);
+        captureAccessorTrees(descriptor.value, seen, records, allowGetters, nested, arrays, enumerableOnly, walkIndexGetters);
       }
       continue;
     }
-    if (!allowGetters || typeof descriptor.get !== 'function' || typeof descriptor.set === 'function') continue;
-    if (enumerableOnly && descriptor.enumerable === false) continue;
-    const read = readAccessor(value, descriptor);
-    if (read && typeof read === 'object') rememberPocket(read, records, seen, arrays);
+    if (!allowGetters) continue;
+    readPocketGetter(value, descriptor, key, records, seen, arrays);
   }
   return records;
 }
@@ -467,7 +497,7 @@ function descHas(desc, key) {
 }
 
 function blocksDefine(obj, prop, desc) {
-  if (!protectedHas(obj) || !desc || typeof desc !== 'object') return false;
+  if (!protectedHas(obj) || !desc || (typeof desc !== 'object' && typeof desc !== 'function')) return false;
   if (typeof desc.get === 'function') return true;
   const current = Object.getOwnPropertyDescriptor(obj, prop);
   const hasValue = descHas(desc, 'value');
@@ -493,9 +523,11 @@ function blocksDefine(obj, prop, desc) {
   const replacesDataWithAccessor = !!current
     && Object.prototype.hasOwnProperty.call(current, 'value')
     && (typeof desc.get === 'function' || typeof desc.set === 'function');
-  const sealsMissing = !current
-    && hasValue
-    && (!descHas(desc, 'writable') || !desc.writable || !descHas(desc, 'configurable') || !desc.configurable);
+  const sealsMissing = !current && (
+    !hasValue
+    || !descHas(desc, 'writable') || !desc.writable
+    || !descHas(desc, 'configurable') || !desc.configurable
+  );
   const freezesLength = Array.isArray(obj) && prop === 'length' && descHas(desc, 'writable') && !desc.writable;
   return changesValue || sealsWritable || sealsConfigurable || sealsAccessor
     || replacesDataWithAccessor || sealsMissing || freezesLength;
@@ -552,8 +584,7 @@ export function protectLiveObjects(objects) {
       return reflectDefineBase.call(Reflect, obj, prop, desc);
     };
     Object.freeze = function shieldedFreeze(obj) {
-      if (protectedHas(obj)) return obj;
-      return freezeBase.call(Object, obj);
+      return obj;
     };
     Object.seal = function shieldedSeal(obj) {
       if (protectedHas(obj)) return obj;
