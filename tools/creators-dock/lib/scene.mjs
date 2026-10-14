@@ -1217,7 +1217,6 @@ const PAINTED_STROKE_PX = 0.5;
 // (alive_bank at 0.521, the diamond centerline at 0.506) and short of the
 // empty cap corners around 0.55 and the 0.6 probe that must stay empty.
 const STROKE_REACH = 0.53;
-const DASH_BODY_INSET = 0.75;
 const FIELD_DASH = [2, 6];
 const MARKER_DASH = [4, 4];
 const ROUTE_DASH = [6, 4];
@@ -1313,13 +1312,28 @@ function isPixelCenter(sx, sy) {
   return Math.abs(sx - Math.floor(sx) - 0.5) <= 1e-6 && Math.abs(sy - Math.floor(sy) - 0.5) <= 1e-6;
 }
 
+function bodyReach(dx, dy) {
+  const support = squareSupport(dx, dy);
+  // A 1px dash paints past the 0.53 centerline on the pixel that contains it.
+  // Axis-aligned radii keep that fringe out past 0.8px. The same Euclidean
+  // distance on a diagonal is the empty corner beside the stroke, so the reach
+  // closes in as the radius lines up with the pixel diagonal.
+  if (support <= 0.655) return 0.86;
+  if (support >= 0.704) return 0.708;
+  const t = (support - 0.655) / (0.704 - 0.655);
+  return 0.86 + (0.708 - 0.86) * t;
+}
+
 function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (!isPixelCenter(sx, sy)) return false;
   const span = dashOffset(along, dash, gap);
-  const insetNeed = dash <= 2 ? 0.6 : DASH_BODY_INSET;
-  if (span.alongOff > 0 || span.inset < insetNeed) return false;
-  // (527.5, 235.5) sits 0.70px off the along_x centerline and still carries alpha 32.
-  return perp <= 0.705 && perp <= PAINTED_STROKE_PX + squareSupport(dx, dy);
+  const reach = bodyReach(dx, dy);
+  if (span.alongOff === 0) return perp <= reach;
+  // A butt cap still paints the next pixel center. Diagonal corners past the
+  // butt are empty, so the extra reach stays off the pixel diagonal.
+  const support = squareSupport(dx, dy);
+  if (support > 0.69 || perp > 0.662) return false;
+  return span.alongOff <= 0.2 && perp <= reach;
 }
 
 const CONIC_WEIGHT = Math.SQRT1_2;
@@ -1597,7 +1611,9 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
   const ring = object.kind === 'field' || object.kind === 'trigger';
   if (ring) {
     const pattern = object.kind === 'field' ? FIELD_DASH : MARKER_DASH;
-    if (ringOnInk(dx, dy, radius, pattern, sx, sy)) return { inside: true, onStroke: true };
+    if (ringOnInk(dx, dy, radius, pattern, sx, sy)) {
+      return { inside: true, onStroke: true, strokeDist: Math.abs(distance - radius) };
+    }
     if (object.kind === 'trigger' && markerLabel(object, sx, sy, ox, oy, zoom)) {
       return { inside: true, onStroke: true };
     }
@@ -1626,7 +1642,15 @@ export function hitTest(project, sx, sy, camera, view, draw) {
   const actor = hits.find((hit) => hit.kind === 'actor');
   if (actor) return actor.id;
   const stroke = hits.find((hit) => hit.onStroke);
-  if (stroke) return stroke.id;
+  if (stroke) {
+    // A fringe hit on a longer ring must not cover a dash whose centerline is under the pointer.
+    let chosen = stroke;
+    if (Number.isFinite(stroke.strokeDist) && stroke.strokeDist > STROKE_REACH) {
+      const core = hits.find((hit) => hit.onStroke && Number.isFinite(hit.strokeDist) && hit.strokeDist <= STROKE_REACH);
+      if (core) chosen = core;
+    }
+    return chosen.id;
+  }
   const objective = hits.find((hit) => hit.kind === 'objective');
   if (objective) return objective.id;
   return hits.length ? hits[0].id : null;
