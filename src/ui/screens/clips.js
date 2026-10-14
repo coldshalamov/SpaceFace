@@ -643,7 +643,7 @@ function paintReelCounters(view) {
   if (view.pos) {
     view.pos.textContent = clips.length
       ? (view.chosenIdx + 1) + ' / ' + clips.length
-      : '0 / 0';
+      : '';
   }
 }
 
@@ -770,7 +770,8 @@ function layoutReel(view) {
       { label: 'A KILL', sub: 'SCORE A KILL', kind: 'kill' },
       { label: 'A SAVE', sub: 'PULL OFF A SAVE', kind: 'save' },
     ];
-    ghosts.forEach((ghost, k) => items.push({ ghost, d: (k - 1) * 1.8, s: 0.75 }));
+    layoutGhosts(view, geo, railW, cx, ghosts);
+    return;
   }
   items.forEach(({ clip, ghost, d, s: fixed }, order) => {
     const plate = clip ? buildPlate(clip, view, geo) : buildPlate(null, view, geo, { ghost });
@@ -790,6 +791,33 @@ function layoutReel(view) {
       plate.style.setProperty('--orr-order', String(order));
     }
     view.platesHost.appendChild(plate);
+  });
+}
+
+/**
+ * Empty reel: three ghost plates that always fit the rail. A ghost is laid out at its own
+ * width rather than scaled, so its words keep their size on a phone, and it stands on the
+ * rail under it instead of floating a populated plate's height above it.
+ */
+function layoutGhosts(view, geo, railW, cx, ghosts) {
+  const gutter = 8;
+  const gap = Math.max(10, Math.min(48, railW * 0.03));
+  const ghostW = Math.floor(Math.min(geo.plateW * 0.85, (railW - gutter * 2 - gap * 2) / ghosts.length));
+  const spread = Math.min(geo.spacing * 1.8, (railW - ghostW) / 2 - gutter);
+  const ghostGeo = { ...geo, plateW: ghostW };
+  ghosts.forEach((ghost, k) => {
+    const off = (k - 1) * spread;
+    const plate = buildPlate(null, view, ghostGeo, { ghost });
+    plate.style.opacity = '0.85';
+    plate.style.zIndex = String(20 - Math.abs(k - 1));
+    view.platesHost.appendChild(plate);
+    const h = plate.offsetHeight || Math.round(ghostW * 0.52) + 60;
+    const railAt = geo.railY(off / geo.spacing);
+    const x = cx + off - ghostW / 2;
+    // Clear the Hand: it stands ~50px proud of the crown and points at the middle ghost.
+    const y = railAt - h - (k === 1 ? 64 : 40);
+    plate._reelBase = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    plate.style.transform = plate._reelBase;
   });
 }
 
@@ -1176,7 +1204,7 @@ function buildContent(container, ctx) {
   view.platesHost = platesHost;
 
   const readline = el('div', 'orr-clips__readline');
-  const pos = el('span', 'orr-clips__pos', clips.length ? '1 / ' + clips.length : '0 / 0');
+  const pos = el('span', 'orr-clips__pos', clips.length ? '1 / ' + clips.length : '');
   const readout = el('p', 'orr-clips__readout', reelLegend(view));
   readout.dataset.role = 'clips-readout';
   readline.append(pos, readout);

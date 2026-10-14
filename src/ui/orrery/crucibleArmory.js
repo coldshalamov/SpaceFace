@@ -5,9 +5,10 @@ import { weaponClipUrl } from '../weaponClips.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
 import { createPipSpannerCrew } from './pipSpannerCrew.js';
+import { createArmoryPreviewMedia } from './armoryPreviewMedia.js';
 
-// DefIds whose clip 404'd this session — each missing file is requested once, not once
-// per inspection. Entries never expire: clips land with a build, not mid-session.
+// Missing/unsupported clips are requested once per session. Aborted loads and transient
+// network errors are not permanent catalog misses.
 const missingClips = new Set();
 
 export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
@@ -39,11 +40,24 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const balance = make('strong', '', '');
   wallet.append(balance, make('span', '', 'Run credits · not campaign credits'));
   root.querySelector('.k-title').appendChild(wallet);
-  let lastArt = null, lastFit = null;
+  const motionQuery = doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const motionReduced = () => !!doc.documentElement?.classList.contains('sf-reduce-motion')
+    || !!motionQuery?.matches;
+  const preview = createArmoryPreviewMedia({ motionReduced });
+  let lastArt = null, lastFit = null, lastOffer = null, disposed = false;
   return {
     wallet(credits, visible = true) { wallet.hidden = !visible; balance.textContent = `${Math.max(0, Number(credits) || 0).toLocaleString('en-US')} cr`; },
     show(offer, lines, { credits = 0, hullId = '', rows = [], armed = true, receipt = null, generation = null } = {}) {
-      const fitKey = `${hullId}:${rows.map(row => row.defId || '').join('|')}`;
+      if (disposed) return;
+      const offerKey = JSON.stringify([offer.kind, offer.id ?? offer.defId ?? offer.hullId, offer._ownedIndex]);
+      if (offerKey !== lastOffer) {
+        lastOffer = offerKey;
+        // A new selection starts at its sentence, not at the previous item's scrolled schematic.
+        // Do not scroll the outer phone page or reset inspection during a wallet/receipt refresh.
+        reading.scrollTop = 0;
+      }
+      const fitKey = JSON.stringify([hullId, rows.map(row => [row.defId, row.name, row.slotIndex,
+        row.slotType, row.slotSize, row.intrinsicDefId, row.intrinsicName])]);
       if (fitKey !== lastFit) {
         lastFit = fitKey; buildList.replaceChildren();
         buildSummary.textContent = `Current build · ${rows.filter(row => row.defId).length} fitted`
@@ -57,15 +71,16 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
           li.appendChild(text); buildList.appendChild(li);
         }
       }
-      const artId = `${offer.kind || ''}:${offer.defId || offer.id}`;
+      const reduceMotion = motionReduced();
+      const artId = JSON.stringify([offer.kind, offer.defId || offer.hullId || offer.id, reduceMotion]);
       if (lastArt !== artId) {
-        lastArt = artId; item.replaceChildren();
+        lastArt = artId;
+        const token = preview.begin();
+        item.replaceChildren();
         const url = offer.kind === 'hull' ? hullPosterUrl(offer.defId || offer.hullId) : null;
         // A recorded firing pass plays where a clip exists (src/ui/weaponClips.js names the
         // file); the schematic stands until the first frame is playable, so a missing clip is
         // never a blank box. Reduced motion keeps the still schematic.
-        const reduceMotion = !!doc.documentElement
-          && doc.documentElement.classList.contains('sf-reduce-motion');
         const clip = !reduceMotion && offer.kind !== 'hull' && offer.kind !== 'service' && offer.defId
           && !missingClips.has(offer.defId)
           ? weaponClipUrl(offer.defId)
@@ -74,22 +89,31 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
           item.appendChild(equipmentSvg(offer, doc));
           const video = make('video', '');
           video.muted = true; video.loop = true;
-          video.playsInline = true; video.autoplay = true;
+          video.playsInline = true; video.preload = 'auto';
+          preview.attach(token, video);
           video.setAttribute('aria-label', `${lines.name} firing`);
-          video.addEventListener('error', () => { missingClips.add(offer.defId); }, { once: true });
+          video.addEventListener('error', () => {
+            if (!preview.owns(token)) return;
+            if (video.error?.code === 4) missingClips.add(offer.defId);
+            preview.clear();
+            item.replaceChildren(equipmentSvg(offer, doc));
+            label.textContent = 'Equipment schematic';
+          }, { once: true });
           video.addEventListener('canplay', () => {
-            if (lastArt !== artId) return;
+            if (!preview.owns(token)) return;
             item.replaceChildren(video);
             label.textContent = 'In action';
-            if (typeof video.play === 'function') video.play().catch(() => {});
+            preview.ready(token, video);
           }, { once: true });
           video.src = clip;
         } else if (url) {
-          const image = make('img', ''); image.src = url; image.alt = ''; image.decoding = 'async';
-          image.addEventListener('error', () => {
-            if (lastArt === artId) item.replaceChildren(equipmentSvg(offer, doc));
+          item.appendChild(equipmentSvg(offer, doc));
+          const image = make('img', ''); image.alt = ''; image.decoding = 'async';
+          image.addEventListener('load', () => {
+            if (preview.owns(token)) item.replaceChildren(image);
           }, { once: true });
-          item.appendChild(image);
+          // The schematic remains visible if the image is slow or missing.
+          image.src = url;
         } else item.appendChild(equipmentSvg(offer, doc));
         label.textContent = offer.kind === 'hull' ? 'Ship preview' : 'Equipment schematic';
       }
@@ -106,8 +130,14 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       crew?.scope(generation); crew?.inspect(offer); crew?.receipt(receipt);
     },
     pending(offer) { crew?.pending(offer); buy.disabled = true; buy.setAttribute('aria-disabled', 'true'); },
-    setActive(value) { crew?.setActive(value); },
-    dispose() { lastArt = null; crew?.dispose(); },
+    setActive(value) { if (!disposed) { preview.setActive(value); crew?.setActive(value); } },
+    dispose() {
+      if (disposed) return;
+      disposed = true; lastArt = null;
+      preview.dispose();
+      buy.removeEventListener('click', onPurchase);
+      crew?.dispose();
+    },
     buy,
   };
 }

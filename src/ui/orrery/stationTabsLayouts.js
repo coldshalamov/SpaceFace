@@ -1568,6 +1568,21 @@ ${T} .sx-ind__list[data-snapped="1"] { -webkit-mask-image:none !important; mask-
 /* ================================ ROUND 10: FACTIONS ======================================== */
 /* the next rung's clause lives under its rung on the scale; the separate row retires there */
 ${T} .sx-fac-rung-next.is-on-scale { display:none !important; }
+/* ...unless the scale was too narrow to hang its rung words and drew them as ticks */
+${T} .sx-fac__detail:has(.orr-standing.is-rung-ticks) .sx-fac-rung-next.is-on-scale { display:block !important; }
+/* a tall screen under 1700 wide: the rail gives the ring room, so its west names (FULFILLMENT,
+   UNDERSTORY) stand inside the stage instead of under its edge, and the rim names track as a short screen's */
+@media (min-width:1101px) and (max-width:1700px) and (min-height:801px) {
+  ${T} .sx-fac { grid-template-columns:290px minmax(0, 1fr) !important; column-gap:24px !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(440px, 50%) minmax(0, 1fr) !important; column-gap:32px !important; }
+  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { letter-spacing:.08em !important; }
+}
+/* ...and under 1400 the rail cannot spare that room: the index folds into the ring, as on a short screen */
+@media (min-width:1101px) and (max-width:1400px) and (min-height:801px) {
+  ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
+  ${T} .sx-fac__rail { display:none !important; }
+  ${T} .sx-fac__stage { grid-template-columns:minmax(420px, 48%) minmax(0, 1fr) !important; }
+}
 /* a short screen's tier words keep their gaps */
 @media (max-height:800px) { ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { letter-spacing:.04em !important; } }
 
@@ -1790,6 +1805,31 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-talk__choices { margin-top:6px !important; }
   ${D} .sx-choice { font-size:13px !important; padding-top:3px !important; padding-bottom:3px !important; }
   ${D} .sx-talk__keys { display:none !important; }
+}
+/* Ledger at 960×540-class (761–1100 wide, ≤640 tall): the ~192px body held the tape (176px) and put the
+   reading and the purse under it, so BOUGHT / SOLD / NET and the entry's reading were clipped away. The
+   purse stands beside the tape at its full height; the reading sits under a shorter tape. */
+@media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
+  ${D} .sx-ledger > .st-ledger { max-width:40%; }
+  ${D} .sx-ledger > .st-ledger .st-sub-h { font-size:24px !important; }
+  /* the purse needs ~220px so its ring (radius = half its box less 60, as at 1280) clears NET · CR */
+  ${D} .sx-ledger > .sx-ledger__right { left:calc(40% + 22px) !important; display:grid !important; grid-template-columns:minmax(0, 1fr) 220px; grid-template-rows:auto minmax(0, 1fr); column-gap:8px; row-gap:0 !important; }
+  /* the tape keeps the height its axis figures need (~176px: majors ~21px apart, as before); the reading rises into
+     the strip under its stems that a wide screen keeps for the leader, so the leader sleeps here */
+  ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; height:176px !important; margin-top:-6px !important; }
+  ${D} .sx-ledger__right > .orr-ledger-tape .orr-ltape__leader { display:none !important; }
+  ${D} .sx-ledger__right:has(> .sx-ledger__row > .sx-ledger__read[hidden]) > .orr-ledger-tape { grid-row:1 / 3; height:auto !important; align-self:stretch; }
+  ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1 / 3; align-self:stretch; width:auto !important; height:auto !important; min-height:150px; margin:0 !important; }
+  /* the reading is one band under the tape: the kicker, then the figure beside what and where */
+  ${D} .sx-ledger__row > .sx-ledger__read:not([hidden]) { grid-column:1; grid-row:2; align-self:start; display:grid !important; grid-template-columns:auto minmax(0, 1fr);
+    grid-template-rows:auto auto auto; column-gap:14px; row-gap:0; margin-top:-44px !important; padding-top:4px !important; position:relative; z-index:3; }
+  ${D} .sx-ledger__read > .sx-ledger__read-kicker { grid-column:1 / -1; grid-row:1; }
+  ${D} .sx-ledger__read > .sx-ledger__read-hero { grid-column:1; grid-row:2 / 4; align-self:center; margin:0 !important; }
+  ${D} .sx-ledger__read > .sx-ledger__read-title { grid-column:2; grid-row:2; align-self:end; margin:0 !important; font-size:14.5px !important; line-height:1.2 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2; grid-row:3; align-self:start; margin:0 !important; font-size:12.5px !important; line-height:1.3 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${D} .sx-ledger__read-num { font-size:30px !important; line-height:1 !important; }
+  ${D} .sx-ledger__read-hand { display:none !important; }
 }
 
 `;

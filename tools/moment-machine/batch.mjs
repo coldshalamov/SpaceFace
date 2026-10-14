@@ -31,7 +31,7 @@ export async function writeBatch(outDir, options = {}) {
       ok: false,
       videoVerified: false,
       producedVideo: false,
-      error: headed.error || null,
+      error: headed.error || headed.stderr || null,
       chromeCode: headed.chromeCode == null ? null : headed.chromeCode,
       serverUp: headed.serverUp === true,
     },
@@ -42,8 +42,9 @@ export async function writeBatch(outDir, options = {}) {
     sessions: sessions.rows,
   };
   await writeFile(path.join(outDir, 'index.json'), JSON.stringify(index, null, 2));
-  if (headed.stderr) {
-    await writeFile(path.join(outDir, 'headed-capture-error.txt'), headed.stderr);
+  const captureError = headed.error || headed.stderr || null;
+  if (captureError) {
+    await writeFile(path.join(outDir, 'headed-capture-error.txt'), String(captureError));
   }
   return index;
 }

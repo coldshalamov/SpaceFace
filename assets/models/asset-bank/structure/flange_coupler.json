@@ -1,0 +1,185 @@
+{
+  "assetId": "flange_coupler",
+  "category": "structure",
+  "description": "flange coupler",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_A",
+      "position": [
+        -0.35,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_B",
+      "position": [
+        0.35,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -0.5,
+          0.5
+        ],
+        "size": [
+          0.7,
+          0.16,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5,
+          0.5
+        ],
+        "size": [
+          0.7,
+          0.16,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -0.5,
+          -0.5
+        ],
+        "size": [
+          0.7,
+          0.16,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5,
+          -0.5
+        ],
+        "size": [
+          0.7,
+          0.16,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -0.4450000524520874,
+      -0.8149999976158142,
+      -0.8149999976158142
+    ],
+    "max": [
+      0.4449999928474426,
+      0.8149999976158142,
+      0.8149999976158142
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "flange_coupler_lod0.glb",
+      "triangles": 3728,
+      "draws": 4,
+      "bytes": 424196,
+      "method": "source",
+      "sha256": "87baacb0364aaf3768c19fe3434de4d7accf4fb4dbb90b9dfd9c78a2ad99dbb4"
+    },
+    {
+      "level": 1,
+      "file": "flange_coupler_lod1.glb",
+      "triangles": 3344,
+      "draws": 4,
+      "bytes": 402316,
+      "method": "authored-topology",
+      "sha256": "906a0c6197195820f3075839c63fce44cb5f88006e7c4cd32f52d063abd2f3e5"
+    },
+    {
+      "level": 2,
+      "file": "flange_coupler_lod2.glb",
+      "triangles": 3152,
+      "draws": 3,
+      "bytes": 382516,
+      "method": "authored-topology",
+      "sha256": "b774f2e790827baf12542f337d9dff70bbaac6dfc3b96852a5749f9f7d186095"
+    }
+  ]
+}

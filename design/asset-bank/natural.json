@@ -1,0 +1,24 @@
+{
+  "title": "Geology, contact growth and ancient assembly asset bank",
+  "status": "authoring-library candidates; no live-runtime or whole-asset acceptance claim",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "tier": "C",
+  "authority": ["tools/blender/forge/FORGE.md", "docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md", "docs/worldbuilding/README.md", "tools/blender/forge/ships/borrowed_voice_tissue.py"],
+  "fictionDevelopmentAgreement": "ART EXTRAPOLATION: reusable geological cuts, host-contact tissue and dormant ceramic machine interfaces. No new species, maker, ancient civilization, history, gameplay promise or canon is asserted.",
+  "supportedViews": ["CPU source oblique", "CPU exported GLB oblique", "top"],
+  "allSupportedViewZonesClassified": false,
+  "visibleZones": [
+    {"zone":"geological mass and fracture faces","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Bare stratified mineral, fractured along deliberately stepped cleavages; untiled dry rough stone, no hull grid, plastic sheen or randomized spike decoration. Quarried parent and wedge share the identical mating plane; collars preserve bores."},
+    {"zone":"ice and crystalline faces","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Opaque mineral/ice crystal facets with satin dielectric response, physical ridges and split gaps. No transparent toy glass, emissive crystal or scientific claim."},
+    {"zone":"growth lamina and load-carrying stems","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Bare dry calcified organic tissue, pale outer ridges over dark channels. Branches taper continuously and root into host-contact feet; fan and lung folds have thickness. No lacquer, machinery panel tile, floating cyst or invented organism identity."},
+    {"zone":"host-contact pads and severed interfaces","disposition":"billed","dominant":false,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Flattened calcified bases transmit tissue loads to adjacent host surfaces; exposed stump channels receive distinct dark interior. Pads and end sockets identify actual mounting/contact surfaces."},
+    {"zone":"ancient ceramic shell and structural sections","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Sintered ceramic segments with broad dry faces, stepped laps, restrained chamfers and recessed joints. Load enters feet, tenons or rebates; folded/channeled sections retain deliberate service openings. No human lacquer, checker texture or arbitrary decorative rune."},
+    {"zone":"ancient recessed substrate and mineral inserts","disposition":"billed","dominant":false,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Dark bare mineral substrate and sparse warm mineral inserts set into ceramic housings, non-emissive and mechanically supported. No unexplained lights, floating trim or modern painted hazard marks."}
+  ],
+  "shapeGrammar": "Assemblies derive from fracture, cleavage, load paths, growth contact anatomy, ceramic channel sections and interlocking stepped joints. Tube-derived tissue is tapered and branched with continuous transported frames; ring apertures remain open; slab shells gain rebated edges and seated supports.",
+  "componentReferenceDecision": "not_needed",
+  "retainedZones": [],
+  "workingScene": "Regenerate each complete surfaced source scene with recipe --only ASSET_ID; no external blend dependency",
+  "review": {"scope":"supporting reusable pieces, not assembled landmarks", "G0":"source and metre/socket/collision contracts", "G1_G2_G4":"CPU source and exported candidate visual inspection; actual gameplay renderer still pending", "G3":"untiled material response and canonical Forge finishing", "G5":"three measured GLB LODs", "G6":"library only, runtime integration pending", "G7":"root independent validator and review pending", "hashBinding":"per-asset sidecar sha256 for every LOD"},
+  "assets": []
+}

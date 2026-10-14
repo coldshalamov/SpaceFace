@@ -1,16 +1,75 @@
 // Fixed-seed sessions on the authoritative production runtime.
 // Receipts are whatever the Adventure tape and Chronicle actually wrote.
-// Positions are copied only when those recorders stored them.
+// Positions are the entity poses the sim already has while the session steps.
 
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { makeShipEntitySpec } from '../../src/systems/ships.js';
-import { analyzeMomentStream } from '../../src/presentation/momentMachine/index.js';
+import { ADVENTURE_POSE_ACTORS, ADVENTURE_POSE_STRIDE } from '../../src/systems/killReplay.js';
+import { analyzeMomentStream, playRecordedPoses, verifyRecordedPoses } from '../../src/presentation/momentMachine/index.js';
 import { SHAPE_IDS } from '../../src/presentation/momentMachine/contract.js';
+
+const POSE_RANGE_SQ = 1400 * 1400;
 
 export const SESSION_COUNT = 40;
 export const SESSION_TICKS = 60;
 
-function plainTape(recording) {
+function generationOf(entity) {
+  const generation = entity && entity.occupantGeneration;
+  return Number.isInteger(generation) && generation >= 0 ? generation : 0;
+}
+
+/** Positions already on the sim. Nothing here is invented from a caption or a canvas. */
+function posesNow(state) {
+  const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
+  const tick = state.tick | 0;
+  const rows = [];
+  const consider = (entity) => {
+    if (!entity || entity.alive === false || !entity.pos || entity.id == null) return;
+    let distance = -1;
+    if (player && entity !== player) {
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      distance = dx * dx + dz * dz;
+      if (distance > POSE_RANGE_SQ) return;
+    }
+    rows.push({
+      distance,
+      pose: {
+        tick,
+        id: String(entity.id),
+        generation: generationOf(entity),
+        x: Number(entity.pos.x) || 0,
+        z: Number(entity.pos.z) || 0,
+        heading: Number(entity.rot) || 0,
+      },
+    });
+  };
+  if (Array.isArray(state.entityList)) {
+    for (let i = 0; i < state.entityList.length; i += 1) consider(state.entityList[i]);
+  } else if (state.entities && typeof state.entities.forEach === 'function') {
+    state.entities.forEach(consider);
+  }
+  rows.sort((a, b) => a.distance - b.distance);
+  if (rows.length > ADVENTURE_POSE_ACTORS) rows.length = ADVENTURE_POSE_ACTORS;
+  return rows.map((row) => row.pose);
+}
+
+function recorderSamples(recording) {
+  if (!recording || typeof recording !== 'object') return null;
+  if (Array.isArray(recording.samples) && recording.samples.length) {
+    return recording.samples.map((sample) => ({ ...sample }));
+  }
+  if (!Array.isArray(recording.poseFrames)) return null;
+  const samples = [];
+  for (let i = 0; i < recording.poseFrames.length; i += 1) {
+    const poses = recording.poseFrames[i] && recording.poseFrames[i].poses;
+    if (!Array.isArray(poses)) continue;
+    for (let j = 0; j < poses.length; j += 1) samples.push({ ...poses[j] });
+  }
+  return samples.length ? samples : null;
+}
+
+function plainTape(recording, samples) {
   if (!recording || typeof recording !== 'object') return null;
   const events = Array.isArray(recording.events) ? recording.events : [];
   return {
@@ -26,8 +85,7 @@ function plainTape(recording) {
       type: event && event.type,
       label: event && event.label,
     })),
-    samples: Array.isArray(recording.samples) ? recording.samples
-      : recording.poseFrames?.flatMap((frame) => frame.poses.map((pose) => ({ ...pose }))) || null,
+    samples: samples && samples.length ? samples : null,
     hasInputRing: !!(recording.inputRing && typeof recording.inputRing.read === 'function'),
   };
 }
@@ -47,8 +105,16 @@ export function runSession(seed) {
       pos: { x: 0, z: 0 },
     }));
     state.playerId = player.id;
-    runtime.runTicks(SESSION_TICKS);
-    const tape = plainTape(state.replay && state.replay.recording);
+    const logged = [];
+    for (let done = 0; done < SESSION_TICKS; done += ADVENTURE_POSE_STRIDE) {
+      runtime.runTicks(Math.min(ADVENTURE_POSE_STRIDE, SESSION_TICKS - done));
+      if ((state.tick % ADVENTURE_POSE_STRIDE) !== 0) continue;
+      const poses = posesNow(state);
+      for (let i = 0; i < poses.length; i += 1) logged.push(poses[i]);
+    }
+    const recording = state.replay && state.replay.recording;
+    const samples = logged.length ? logged : recorderSamples(recording);
+    const tape = plainTape(recording, samples);
     const analysis = analyzeMomentStream({
       seed,
       adventureTape: tape,
@@ -56,6 +122,11 @@ export function runSession(seed) {
     });
     const selection = analysis.selection || analysis;
     const ranked = Array.isArray(selection.ranked) ? selection.ranked : [];
+    const streamSamples = selection.stream && Array.isArray(selection.stream.samples)
+      ? selection.stream.samples : [];
+    const playback = playRecordedPoses(streamSamples);
+    const playbackVerification = verifyRecordedPoses(streamSamples, playback);
+    const playbackVerified = playbackVerification.verified;
     return {
       seed,
       ok: true,
@@ -64,6 +135,11 @@ export function runSession(seed) {
       tapeEvents: tape ? tape.events : [],
       hasInputRing: tape ? tape.hasInputRing === true : false,
       positionSource: selection.stream ? selection.stream.positionSource : 'none',
+      sampleCount: streamSamples.length,
+      samples: streamSamples,
+      playback,
+      playbackVerified,
+      playbackVerification,
       ranked: ranked.map((moment) => ({
         shape: moment.shape,
         footage: moment.footage && moment.footage.status,

@@ -223,7 +223,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { projectedWidthPx, resolvePresentedLodLevel } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -27129,11 +27129,14 @@ export const render = {
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? Math.max(hlodVisualRadius, cullRadius)
           : cullRadius;
-        const projectedPx = projectedWidthPx(
+        const projectedPx = presentedLodWidthPx(
+          userData,
           mesh.position,
           lodRadius,
           this.cam && this.cam.obj,
           this.viewport,
+          isPlayer,
+          typeName,
         );
         if (userData.lod && userData.updateLod) {
           lodChecked++;
