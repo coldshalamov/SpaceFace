@@ -6809,12 +6809,18 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.equal(hitTest({ objects: [objective, ring] }, 104, 100, unitZoom, view), 'ring');
   assert.equal(hitTest({ objects: [objective] }, 104, 100, unitZoom, view), null);
   const wideRing = { id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 8 };
-  assert.equal(hitTest({ objects: [wideRing, objective] }, 108, 100, unitZoom, view), 'mark');
-  assert.equal(hitTest({ objects: [wideRing, objective] }, 108.4, 100, unitZoom, view), 'mark');
+  assert.equal(hitTest({ objects: [wideRing, objective] }, 107.5, 99.5, unitZoom, view), 'mark');
+  assert.equal(hitTest({ objects: [objective] }, 107.5, 99.5, unitZoom, view), 'mark');
+  assert.equal(hitTest({ objects: [wideRing, objective] }, 108, 100, unitZoom, view), 'ring');
+  assert.equal(hitTest({ objects: [wideRing, objective] }, 108.4, 100, unitZoom, view), 'ring');
 
   assert.equal(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'to_stone');
   assert.notEqual(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 455.5, 258.1, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 455.5, 258.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 465.5, 244.5, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 395.45, 254.9, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 395.5, 255.5, stageCam, stage, profileDraw), 'player');
   assert.equal(hitTest(bank, 466.5, 244.5, stageCam, stage, profileDraw), 'player');
   assert.equal(hitTest(bank, 470.5, 244.5, stageCam, stage, profileDraw), 'player');
   assert.equal(hitTest(bank, 463.5, 244.5, stageCam, stage, profileDraw), 'player');
@@ -7088,4 +7094,6 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   const mark = { id: 'mark', kind: 'objective', x: 0, z: 0 };
   assert.equal(hitTest({ objects: [mark] }, 401.5, 306.5, stageCam, stage), 'mark');
   assert.equal(hitTest({ objects: [mark] }, 399.5, 292.5, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [mark] }, 399.9, 291.5, stageCam, stage), null);
+  assert.equal(hitTest({ objects: [mark] }, 399.5, 291.5, stageCam, stage), null);
 });

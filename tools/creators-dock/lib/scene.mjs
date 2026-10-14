@@ -1806,9 +1806,21 @@ function arrowHeadContains(sx, sy, x0, y0, x1, y1) {
   return (c1 <= 1e-6 && c2 <= 1e-6 && c3 <= 1e-6) || (c1 >= -1e-6 && c2 >= -1e-6 && c3 >= -1e-6);
 }
 
+function discPixelHolds(sx, sy, ox, oy, radius) {
+  // A hull sample selects only when its pixel center is still inside the disc
+  // reach. The next pixel's center sits past that reach, and that pixel is empty.
+  if (!(radius > 0)) return false;
+  const distance = Math.hypot(sx - ox, sy - oy);
+  if (distance > radius + STROKE_REACH) return false;
+  if (isPixelCenter(sx, sy)) return true;
+  const cx = Math.floor(sx) + 0.5;
+  const cy = Math.floor(sy) + 0.5;
+  return Math.hypot(cx - ox, cy - oy) <= radius + STROKE_REACH;
+}
+
 function actorInk(object, sx, sy, ox, oy, radius) {
   const distance = Math.hypot(sx - ox, sy - oy);
-  if (radius > 0 && distance <= radius + STROKE_REACH) return true;
+  if (discPixelHolds(sx, sy, ox, oy, radius) && distance > radius) return true;
   const heading = object.heading || 0;
   const nose = Math.max(18, radius) + 16;
   if (strokeSegment(sx, sy, ox, oy, ox + Math.cos(heading) * nose, oy - Math.sin(heading) * nose)) return true;
@@ -1833,6 +1845,36 @@ function routeHasInk(along, length, perp, tx, ty) {
   return dashAccepted(perp, Math.min(Math.max(along, 0), length), dash, gap, tx, ty);
 }
 
+function routeProject(ax, ay, bx, by, sx, sy) {
+  const ex = bx - ax;
+  const ey = by - ay;
+  const len2 = ex * ex + ey * ey;
+  const len = Math.sqrt(len2);
+  const t = ((sx - ax) * ex + (sy - ay) * ey) / len2;
+  const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
+  const px = ax + ex * clamped;
+  const py = ay + ey * clamped;
+  const tx = ex / len;
+  const ty = ey / len;
+  const signed = (sx - px) * -ty + (sy - py) * tx;
+  return { t, len, tx, ty, signed, along: clamped * len };
+}
+
+function routeSampleOnInk(ax, ay, bx, by, sx, sy) {
+  const sample = routeProject(ax, ay, bx, by, sx, sy);
+  if (!(sample.len > 0) || sample.t < -1e-6 || sample.t > 1 + 1e-6) return false;
+  if (!routeHasInk(sample.along, sample.len, sample.signed, sample.tx, sample.ty)) return false;
+  if (isPixelCenter(sx, sy)) return true;
+  // A sample in an empty gap pixel is still inside the dash reach. The painted
+  // pixel beside it has its center on the dash body, out at the pixel diagonal.
+  const center = routeProject(ax, ay, bx, by, Math.floor(sx) + 0.5, Math.floor(sy) + 0.5);
+  if (routeHasInk(center.along, center.len, center.signed, center.tx, center.ty)) return true;
+  if (!(center.t > 0 && center.t < 1)) return false;
+  const span = dashOffset(center.along, ROUTE_DASH[0], ROUTE_DASH[1]);
+  if (span.alongOff !== 0) return false;
+  return Math.abs(center.signed) <= squareSupport(center.tx, center.ty) + 1e-6;
+}
+
 function linkOnInk(object, sx, sy, camera, view, project) {
   const from = objectById(project, object.from || object.ownerAlias);
   const to = objectById(project, object.to || object.targetAlias);
@@ -1854,7 +1896,7 @@ function linkOnInk(object, sx, sy, camera, view, project) {
       const signed = (sx - px) * -ty + (sy - py) * tx;
       if (object.kind !== 'route') {
         if (Math.abs(signed) <= STROKE_REACH) return true;
-      } else if (routeHasInk(clamped * len, len, signed, tx, ty)) return true;
+      } else if (routeSampleOnInk(a.sx, a.sy, b.sx, b.sy, sx, sy)) return true;
     }
   }
   const label = object.label || object.kind;
@@ -1893,7 +1935,11 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
   const dy = sy - oy;
   if (object.kind === 'objective') {
     const shape = objectiveHit(dx, dy);
-    if (shape) return shape;
+    // The diamond reach accepts a sample in the empty pixel outside a tip.
+    // The painted tip's own center is on the stroke; that empty center is not.
+    const centerOnStroke = isPixelCenter(sx, sy)
+      || objectiveHit(Math.floor(sx) + 0.5 - ox, Math.floor(sy) + 0.5 - oy);
+    if (shape && centerOnStroke) return shape;
     if (markerLabel(object, sx, sy, ox, oy, zoom)) return { inside: true, onStroke: true };
     return null;
   }
@@ -1907,7 +1953,9 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
       : markerStroke(object, zoom);
   const distance = Math.hypot(dx, dy);
   if (usesCollider) {
-    if (distance <= radius + 1e-6) return { inside: true, onStroke: false };
+    if (distance <= radius + 1e-6 && discPixelHolds(sx, sy, ox, oy, radius)) {
+      return { inside: true, onStroke: false };
+    }
     if (object.kind === 'actor' && actorInk(object, sx, sy, ox, oy, radius)) {
       return { inside: true, onStroke: true };
     }
