@@ -15,6 +15,20 @@ try {
   else localStorage.removeItem('sf.simLane');
 } catch (_) { /* storage gated — the lane selector falls back to its default */ }
 
+// Diagnostic-only domain mirror selection. It is accepted only for the explicit
+// isolated-evidence shell used by profiling; ordinary launches always clear the
+// key, including when a stale diagnostic environment variable is inherited.
+try {
+  const isolatedEvidence = process.env.SPACEFACE_ELECTRON_TEST_MODE === 'isolated-evidence';
+  const domainProfile = isolatedEvidence
+    ? String(process.env.SPACEFACE_DOMAIN_PROFILE || '').trim()
+    : '';
+  if (domainProfile === 'station' || domainProfile === 'commodity') {
+    localStorage.setItem('sf.domainProfile', domainProfile);
+  }
+  else localStorage.removeItem('sf.domainProfile');
+} catch (_) { /* storage gated — the lane selector falls back to station */ }
+
 const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
 const ALLOWED_STATES = new Set([
   'foreground-visible',

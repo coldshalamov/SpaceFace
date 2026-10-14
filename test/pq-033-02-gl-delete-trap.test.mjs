@@ -25,7 +25,9 @@ import {
   installGlDeleteTrap,
   installGlProgramQueryTrap,
   installGlTrapsOnLivePage,
+  installPostTeardownGlDeleteTrapCapture,
   readGlDeleteTrap,
+  readPostTeardownGlDeleteTrapConsoleMessage,
 } from '../scripts/lib/releaseSoakProbe.mjs';
 
 // A minimal WebGL2-like realm. The `__alive` flag simulates the binding-layer behavior under
@@ -38,9 +40,10 @@ function createGlSandbox({ isTextureAnswer = true } = {}) {
   });
   vm.runInContext(`
     globalThis.__alive = ${isTextureAnswer ? 'true' : 'false'};
+    globalThis.__lost = false;
     globalThis.__deleted = [];
     globalThis.WebGL2RenderingContext = class {
-      isContextLost() { return false; }
+      isContextLost() { return globalThis.__lost === true; }
       isTexture(handle) { return handle != null && globalThis.__alive === true; }
       deleteTexture(handle) { globalThis.__deleted.push(handle); }
     };
@@ -224,4 +227,112 @@ test('a precise alive:false entry is never the eviction victim and saturation is
   const deadEntries = read.entries.filter((entry) => entry.alive === false);
   assert.equal(deadEntries.length, 3, 'every alive:false entry survives');
   assert.equal(read.dropped, 0);
+});
+
+test('invalid-object candidates use an independent bounded ring with deeper owner evidence', async () => {
+  const context = createGlSandbox({ isTextureAnswer: true });
+  await installGlTrapsOnLivePage(fakePage(context));
+  runIn(context, `
+    const gl = new WebGL2RenderingContext();
+    ${Array.from({ length: 128 }, (_, i) => `globalThis.normal${i} = () => gl.deleteTexture({ id: 'normal-${i}' });`).join('\n    ')}
+    ${Array.from({ length: 128 }, (_, i) => `globalThis.normal${i}();`).join('\n    ')}
+    globalThis.__alive = false;
+    ${Array.from({ length: 80 }, (_, i) => `globalThis.candidate${i} = () => gl.deleteTexture({ id: 'candidate-${i}' });`).join('\n    ')}
+    ${Array.from({ length: 80 }, (_, i) => `globalThis.candidate${i}();`).join('\n    ')}
+  `);
+  const read = await readGlDeleteTrap(fakePage(context));
+  assert.equal(runIn(context, 'globalThis.__deleted.length'), 208, 'candidate capture must never alter the delete call');
+  assert.equal(read.entries.length, 128, 'normal evidence remains bounded');
+  assert.equal(read.candidates.length, 64, 'candidate evidence has its own bound');
+  assert.equal(read.candidateEvicted, 16, 'old candidate callers are evicted only within the candidate ring');
+  assert.equal(read.candidateDropped, 0);
+  assert(read.candidates.every((entry) => entry.candidate === true));
+  assert(read.candidates.every((entry) => entry.candidateReason === 'predelete-isX-false'));
+  assert(read.candidates.every((entry) => entry.candidateInterpretation.includes('candidate only')));
+  assert(read.candidates.every((entry) => entry.api === 'deleteTexture'));
+  assert(read.candidates.every((entry) => entry.phase === 'context-live'));
+  assert(read.candidates.every((entry) => Number.isFinite(entry.at)));
+  assert(read.candidates.every((entry) => entry.ownerStack.includes('sf-gl-delete-trap')));
+});
+
+test('candidate evidence labels the context phase without reading GL error state', async () => {
+  const context = createGlSandbox({ isTextureAnswer: true });
+  await installGlTrapsOnLivePage(fakePage(context));
+  runIn(context, `
+    globalThis.__lost = true;
+    globalThis.__alive = false;
+    const gl = new WebGL2RenderingContext();
+    gl.deleteTexture({ id: 'lost-context-candidate' });
+  `);
+  const read = await readGlDeleteTrap(fakePage(context));
+  assert.equal(read.candidates.length, 1);
+  assert.equal(read.candidates[0].phase, 'context-lost');
+  assert.equal(read.candidates[0].lost, true);
+  assert.equal(read.candidates[0].candidate, true);
+  assert.equal(runIn(context, 'globalThis.__glErrorReads || 0'), 0,
+    'the diagnostic must not consume getError or change GL error state');
+});
+
+test('post-teardown capture wraps ordinary registry destroy once and preserves its result', async () => {
+  const context = vm.createContext({
+    console: { info: (value) => runIn(context, `globalThis.__logs.push(${JSON.stringify(String(value))})`) },
+  });
+  vm.runInContext(`
+    globalThis.__logs = [];
+    globalThis.__destroyCalls = 0;
+    globalThis.__SF_GL_DELETE_TRAP__ = [{ count: 7, api: 'deleteTexture', alive: true, lost: false, at: 42, stack: 'stack' }];
+    Object.defineProperty(globalThis.__SF_GL_DELETE_TRAP__, '__sfSaturation', {
+      value: { evicted: 3, dropped: 1 },
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+    Object.defineProperty(globalThis.__SF_GL_DELETE_TRAP__, '__sfCandidates', {
+      value: [{ candidate: true, api: 'deleteTexture', phase: 'context-lost', at: 43, ownerStack: 'owner-stack' }],
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+    Object.defineProperty(globalThis.__SF_GL_DELETE_TRAP__, '__sfCandidateSaturation', {
+      value: { evicted: 5, dropped: 2 },
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+    globalThis.SF = {
+      registry: {
+        destroy(value) {
+          globalThis.__destroyCalls += 1;
+          return { value };
+        },
+      },
+    };
+  `, context);
+
+  const page = fakePage(context);
+  const firstInstall = await installPostTeardownGlDeleteTrapCapture(page);
+  const secondInstall = await installPostTeardownGlDeleteTrapCapture(page);
+  assert.equal(firstInstall.installed, true);
+  assert.equal(firstInstall.already, false);
+  assert.equal(secondInstall.installed, true);
+  assert.equal(secondInstall.already, true);
+
+  const result = runIn(context, `globalThis.SF.registry.destroy('ordinary-close')`);
+  assert.equal(result.value, 'ordinary-close');
+  runIn(context, 'globalThis.SF.registry.destroy(\'second-call\')');
+  assert.equal(runIn(context, 'globalThis.__destroyCalls'), 2);
+  assert.equal(runIn(context, 'globalThis.__logs.length'), 1, 'capture must publish exactly once');
+
+  const snapshot = readPostTeardownGlDeleteTrapConsoleMessage(runIn(context, 'globalThis.__logs[0]'));
+  assert.equal(snapshot.armed, true);
+  assert.equal(snapshot.evicted, 3);
+  assert.equal(snapshot.dropped, 1);
+  assert.equal(snapshot.candidates.length, 1);
+  assert.equal(snapshot.candidates[0].phase, 'context-lost');
+  assert.equal(snapshot.candidateEvicted, 5);
+  assert.equal(snapshot.candidateDropped, 2);
+  assert.equal(snapshot.entries[0].count, 7);
+  assert.equal(runIn(context, 'Object.isFrozen(globalThis.__SF_GL_DELETE_TRAP_POST_TEARDOWN__)'), true);
+  assert.equal(runIn(context, 'Object.isFrozen(globalThis.__SF_GL_DELETE_TRAP_POST_TEARDOWN__.entries)'), true);
+  assert.equal(readPostTeardownGlDeleteTrapConsoleMessage('[spaceface] other-message'), null);
 });

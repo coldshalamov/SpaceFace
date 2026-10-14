@@ -31,6 +31,7 @@ import {
   applyFacadePose,
   canonicalClone,
   configureDomainMirroring,
+  createDomainMirroringProfile,
   DOMAIN_MIRROR_KEYS,
 } from '../../scripts/lib/simReadModel.mjs';
 import {
@@ -119,7 +120,9 @@ function collectLaneSaveStorage() {
  *   ?simSab=1        — opt into the SAB journal lane; requires
  *                      crossOriginIsolated (COOP/COEP). Without headers this
  *                      warns and the fallback transfer channel serves.
- * Returns { lane, sab, warnings[] }.
+ *   localStorage sf.domainProfile or the diagnostic Electron environment
+ *   SPACEFACE_DOMAIN_PROFILE may select the history-bearing commodity profile.
+ * Returns { lane, sab, domainProfile, warnings[] }.
  */
 export function resolveSimLaneFlags(search) {
   let params = null;
@@ -155,7 +158,21 @@ export function resolveSimLaneFlags(search) {
       sab = false;
     }
   }
-  return { lane, sab, warnings };
+  let requestedDomainProfile = params && params.get('domainProfile');
+  if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
+    try { requestedDomainProfile = localStorage.getItem('sf.domainProfile'); } catch (_) { /* storage gated */ }
+  }
+  requestedDomainProfile = typeof requestedDomainProfile === 'string'
+    ? requestedDomainProfile.trim() : '';
+  let domainProfile = null;
+  if (requestedDomainProfile === 'station' || requestedDomainProfile === 'commodity') {
+    domainProfile = requestedDomainProfile;
+  } else if (requestedDomainProfile) {
+    warnings.push(`unrecognized domainProfile='${requestedDomainProfile}' — station profile serves by default`);
+  }
+  return {
+    lane, sab, domainProfile, domainProfileRequested: requestedDomainProfile || null, warnings,
+  };
 }
 
 function nowMs() {
@@ -224,7 +241,11 @@ export function createSimLaneRuntime({
   }
 
   const readModel = createReadModel();
-  configureDomainMirroring({});
+  // This is a diagnostic-only profile selected before the first diff. The
+  // same object is installed in this facade realm and sent on init so the
+  // worker's differ cannot drift to a different path shape.
+  const domainMirroring = createDomainMirroringProfile(resolved.domainProfile || 'station');
+  configureDomainMirroring(domainMirroring);
 
   // ---- sim-owned state binding -------------------------------------------------
   // state.entities becomes the mirrored Map (insertion-ordered = spawn order,
@@ -1592,6 +1613,8 @@ export function createSimLaneRuntime({
         workerPumpTicks,
         workerPumpSteps,
         workerPumpShedSteps,
+        domainProfile: resolved.domainProfile || 'station',
+        domainProfileRequested: resolved.domainProfileRequested,
         laneReady: ready,
         replyCount,
         postedDirectives,
@@ -1638,7 +1661,7 @@ export function createSimLaneRuntime({
     timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
     seed: (state.meta && Number.isSafeInteger(state.meta.seed) ? state.meta.seed : 1) >>> 0,
     settings: canonicalClone(state.settings || {}),
-    domainMirroring: {},
+    domainMirroring,
     bridgeAll: true,
     tacticalAI: true,
     viewport: viewportSize(),
