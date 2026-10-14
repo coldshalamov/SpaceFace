@@ -6809,6 +6809,9 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
 
   assert.equal(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'to_stone');
   assert.notEqual(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 465.5, 244.5, stageCam, stage, profileDraw), 'to_stone');
+  assert.equal(hitTest(bank, 463.5, 244.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 465.5, 237.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 438.4, 271.2, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 554, 204, stageCam, stage, profileDraw), 'stone');
   assert.equal(hitTest(bank, 543, 204, stageCam, stage, profileDraw), 'stone');
@@ -6823,6 +6826,11 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   const noseRoute = { id: 'to_stone', kind: 'route', from: 'stone', to: 'far' };
   assert.equal(hitTest({ objects: [noseStone, noseFar, noseRoute] }, 112, 100, unitZoom, view), 'stone');
   assert.notEqual(hitTest({ objects: [noseStone, noseFar, noseRoute] }, 112, 100, unitZoom, view), 'to_stone');
+  const headingP = { id: 'p', kind: 'actor', x: 0, z: 0, heading: 0, overrides: { radius: 8 } };
+  const headingQ = { id: 'q', kind: 'actor', x: 80, z: 0, overrides: { radius: 8 } };
+  const headingRoute = { id: 'r', kind: 'route', from: 'p', to: 'q' };
+  assert.equal(hitTest({ objects: [headingP, headingQ, headingRoute] }, 120, 100, unitZoom, view), 'p');
+  assert.notEqual(hitTest({ objects: [headingP, headingQ, headingRoute] }, 120, 100, unitZoom, view), 'r');
   const steered = { id: 'ship', kind: 'actor', x: 0, z: 0, overrides: { radius: 8 }, heading: Math.PI / 2, velX: 10 };
   assert.equal(hitTest({ objects: [steered] }, 115, 100, unitZoom, view), 'ship');
   assert.equal(hitTest({ objects: [steered] }, 150, 150, unitZoom, view), null);

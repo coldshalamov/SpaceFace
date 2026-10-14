@@ -1215,6 +1215,36 @@ const PAINTED_STROKE_PX = 0.5;
 const FIELD_DASH = [2, 6];
 const MARKER_DASH = [4, 4];
 const ROUTE_DASH = [6, 4];
+const LABEL_GLYPHS = {
+  ' ': { w: 2.86, ascent: 0, descent: 0, right: 0 },
+  a: { w: 6.171, ascent: 6, descent: 0, right: 6 },
+  b: { w: 6.765, ascent: 8, descent: 0, right: 7 },
+  e: { w: 6.204, ascent: 6, descent: 0, right: 6 },
+  i: { w: 2.838, ascent: 8, descent: 0, right: 2 },
+  k: { w: 5.874, ascent: 8, descent: 0, right: 6 },
+  l: { w: 2.838, ascent: 8, descent: 0, right: 2 },
+  n: { w: 6.798, ascent: 6, descent: 0, right: 6 },
+};
+
+function labelGlyph(ch) {
+  if (Object.prototype.hasOwnProperty.call(LABEL_GLYPHS, ch)) return LABEL_GLYPHS[ch];
+  if (ch === ' ') return LABEL_GLYPHS[' '];
+  return { w: 6.2, ascent: 8, descent: 0, right: 6 };
+}
+
+function labelInk(text, anchorX, anchorY, sx, sy) {
+  let pen = 0;
+  for (const ch of text) {
+    const glyph = labelGlyph(ch);
+    const top = anchorY - glyph.ascent;
+    const bottom = anchorY + glyph.descent;
+    if (glyph.ascent + glyph.descent > 0 && sx >= anchorX + pen - 1e-6 && sx <= anchorX + pen + glyph.right + 1e-6 && sy >= top - 1e-6 && sy < bottom) {
+      return true;
+    }
+    pen += glyph.w;
+  }
+  return false;
+}
 
 function dashCovers(along, dash, gap) {
   const period = dash + gap;
@@ -1317,15 +1347,20 @@ function linkOnInk(object, sx, sy, camera, view, project) {
   const ex = b.sx - a.sx;
   const ey = b.sy - a.sy;
   const len = Math.hypot(ex, ey);
-  if (!(len > 0)) return false;
-  const t = ((sx - a.sx) * ex + (sy - a.sy) * ey) / (len * len);
-  if (t < -1e-6 || t > 1 + 1e-6) return false;
-  const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
-  const px = a.sx + ex * clamped;
-  const py = a.sy + ey * clamped;
-  if (Math.hypot(sx - px, sy - py) > PAINTED_STROKE_PX + 1e-6) return false;
-  if (object.kind !== 'route') return true;
-  return routeHasInk(clamped * len, len);
+  if (len > 0) {
+    const t = ((sx - a.sx) * ex + (sy - a.sy) * ey) / (len * len);
+    if (t >= -1e-6 && t <= 1 + 1e-6) {
+      const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
+      const px = a.sx + ex * clamped;
+      const py = a.sy + ey * clamped;
+      if (Math.hypot(sx - px, sy - py) <= PAINTED_STROKE_PX + 1e-6) {
+        if (object.kind !== 'route' || routeHasInk(clamped * len, len)) return true;
+      }
+    }
+  }
+  const label = object.label || object.kind;
+  if (typeof label !== 'string' || !label) return false;
+  return labelInk(label, (a.sx + b.sx) / 2, (a.sy + b.sy) / 2, sx, sy);
 }
 
 function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
