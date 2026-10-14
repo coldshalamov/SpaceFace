@@ -381,44 +381,52 @@ export function readAccessor(object, descriptor) {
   return failed ? undefined : read;
 }
 
-export function captureAccessorTrees(value, seen = new Set(), records = [], allowGetters = true, nested = false, arrays = null) {
+function rememberPocket(read, records, seen, arrays) {
+  captureLive(read, new Set(), records);
+  records.push({
+    kind: 'ownNames',
+    object: read,
+    names: Object.getOwnPropertyNames(read),
+  });
+  if (arrays) {
+    for (const entry of snapshotInheritedArrays(read)) arrays.push(entry);
+  }
+  captureAccessorTrees(read, seen, records, true, true, arrays, false);
+}
+
+export function captureAccessorTrees(value, seen = new Set(), records = [], allowGetters = true, nested = false, arrays = null, enumerableOnly = false) {
   if (!value || typeof value !== 'object' || seen.has(value) || boxedPrimitive(value)) return records;
   seen.add(value);
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(i));
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-        captureAccessorTrees(descriptor.value, seen, records, false, false, arrays);
+        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true);
       }
     }
     return records;
   }
   for (const key of Object.getOwnPropertyNames(value)) {
     if (key === 'constructor' || key === 'toJSON') continue;
-    if (!nested && (key === 'objects' || key === 'grid')) continue;
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (!descriptor) continue;
+    if (!nested && (key === 'objects' || key === 'grid')) {
+      if (key === 'objects' && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value && typeof descriptor.value === 'object') {
+        captureAccessorTrees(descriptor.value, seen, records, true, true, arrays, true);
+      }
+      continue;
+    }
     if (Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
       if (typeof descriptor.value === 'function') continue;
       if (descriptor.value && typeof descriptor.value === 'object') {
-        captureAccessorTrees(descriptor.value, seen, records, allowGetters, nested, arrays);
+        captureAccessorTrees(descriptor.value, seen, records, allowGetters, nested, arrays, enumerableOnly);
       }
       continue;
     }
     if (!allowGetters || typeof descriptor.get !== 'function' || typeof descriptor.set === 'function') continue;
+    if (enumerableOnly && descriptor.enumerable === false) continue;
     const read = readAccessor(value, descriptor);
-    if (read && typeof read === 'object') {
-      captureLive(read, new Set(), records);
-      records.push({
-        kind: 'ownNames',
-        object: read,
-        names: Object.getOwnPropertyNames(read),
-      });
-      if (arrays) {
-        for (const entry of snapshotInheritedArrays(read)) arrays.push(entry);
-      }
-      captureAccessorTrees(read, seen, records, true, true, arrays);
-    }
+    if (read && typeof read === 'object') rememberPocket(read, records, seen, arrays);
   }
   return records;
 }
@@ -450,43 +458,41 @@ let reflectDefineBase = null;
 let freezeBase = null;
 let sealBase = null;
 
-function flagIsFalse(desc, key) {
-  return Object.prototype.hasOwnProperty.call(desc, key) && !desc[key];
-}
-
-function omittedOrFalse(desc, key) {
-  return !Object.prototype.hasOwnProperty.call(desc, key) || !desc[key];
+function descHas(desc, key) {
+  return !!desc && (typeof desc === 'object' || typeof desc === 'function') && key in desc;
 }
 
 function blocksDefine(obj, prop, desc) {
   if (!protectedHas(obj) || !desc || typeof desc !== 'object') return false;
   if (typeof desc.get === 'function') return true;
   const current = Object.getOwnPropertyDescriptor(obj, prop);
+  const hasValue = descHas(desc, 'value');
   const changesValue = !!current
     && Object.prototype.hasOwnProperty.call(current, 'value')
-    && Object.prototype.hasOwnProperty.call(desc, 'value')
+    && hasValue
     && !Object.is(desc.value, current.value);
   const sealsWritable = !!current
     && Object.prototype.hasOwnProperty.call(current, 'value')
     && current.writable !== false
-    && flagIsFalse(desc, 'writable');
+    && descHas(desc, 'writable')
+    && !desc.writable;
   const sealsConfigurable = !!current
     && current.configurable !== false
-    && flagIsFalse(desc, 'configurable')
-    && Object.prototype.hasOwnProperty.call(desc, 'value');
+    && descHas(desc, 'configurable')
+    && !desc.configurable;
   const read = accessorValue(current, obj);
   const sealsAccessor = !!current
     && typeof current.get === 'function'
-    && Object.prototype.hasOwnProperty.call(desc, 'value')
+    && hasValue
     && read.read
     && !Object.is(desc.value, read.value);
   const replacesDataWithAccessor = !!current
     && Object.prototype.hasOwnProperty.call(current, 'value')
     && (typeof desc.get === 'function' || typeof desc.set === 'function');
   const sealsMissing = !current
-    && Object.prototype.hasOwnProperty.call(desc, 'value')
-    && (omittedOrFalse(desc, 'writable') || omittedOrFalse(desc, 'configurable'));
-  const freezesLength = Array.isArray(obj) && prop === 'length' && flagIsFalse(desc, 'writable');
+    && hasValue
+    && (!descHas(desc, 'writable') || !desc.writable || !descHas(desc, 'configurable') || !desc.configurable);
+  const freezesLength = Array.isArray(obj) && prop === 'length' && descHas(desc, 'writable') && !desc.writable;
   return changesValue || sealsWritable || sealsConfigurable || sealsAccessor
     || replacesDataWithAccessor || sealsMissing || freezesLength;
 }

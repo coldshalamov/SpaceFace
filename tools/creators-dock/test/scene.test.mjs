@@ -5413,6 +5413,136 @@ test('Object.seal cannot keep a new name or cargo height', async () => {
   assert.notEqual(entity.pos.y, 9);
 });
 
+test('a getter pocket on an actor does not keep a tag', async () => {
+  const { undone, present } = sceneWithFuture();
+  const cargo = objectById(present, 'cargo');
+  const overrides = { mass: 1 };
+  const label = { text: 'crossing cargo' };
+  Object.defineProperty(cargo, 'overrides', {
+    configurable: true,
+    enumerable: true,
+    get() { return overrides; },
+  });
+  Object.defineProperty(cargo, 'label', {
+    configurable: true,
+    enumerable: true,
+    get() { return label; },
+  });
+  undone.history.future[0].toJSON = function () {
+    Object.defineProperties(cargo.overrides, { tag: { value: 'poison', enumerable: true } });
+    label.tag = 'poison';
+    Object.defineProperties(cargo.label, { tag: { value: 'poison', enumerable: true } });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  const redone = back.ok ? restoreHistory(back.history, 'redo') : back;
+  if (!back.ok) assert.equal(back.history.present, present);
+  else {
+    assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+    assert.equal(redone.history.present, present);
+  }
+  assert.equal(Object.prototype.hasOwnProperty.call(overrides, 'tag'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(label, 'tag'), false);
+  const exported = await exportProject(present);
+  assert.equal((exported.issues || []).some((issue) => issue.includes('tag')), false, (exported.issues || []).join('\n'));
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+});
+
+test('an inherited descriptor value cannot seal credits, zoom, team, or height', async () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const camera = present.camera;
+  const cargo = objectById(present, 'cargo');
+  const team = cargo.team;
+  const yBefore = Object.prototype.hasOwnProperty.call(cargo, 'y') ? cargo.y : undefined;
+  assert.equal(world.credits, 5000);
+  assert.equal(camera.zoom, 3.2);
+  assert.equal(team, 2);
+  undone.history.future[0].toJSON = function () {
+    delete world.credits;
+    Object.defineProperties(world, { credits: Object.create({ value: 1, enumerable: true }) });
+    delete camera.zoom;
+    Object.defineProperties(camera, { zoom: Object.create({ value: 0, enumerable: true }) });
+    Object.defineProperties(cargo, { team: Object.create({ value: 1, enumerable: true }) });
+    Object.defineProperties(cargo, { y: Object.create({ value: 9, enumerable: true }) });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  if (!back.ok) assert.equal(back.history.present, present);
+  else {
+    const redone = restoreHistory(back.history, 'redo');
+    assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+    assert.equal(redone.history.present, present);
+  }
+  const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
+  const zoomDesc = Object.getOwnPropertyDescriptor(camera, 'zoom');
+  assert.equal(creditDesc.value, 5000);
+  assert.equal(creditDesc.writable, true);
+  assert.equal(zoomDesc.value, 3.2);
+  assert.equal(zoomDesc.writable, true);
+  world.credits = 9;
+  camera.zoom = 3.2;
+  assert.equal(world.credits, 9);
+  assert.equal(camera.zoom, 3.2);
+  world.credits = 5000;
+  assert.equal(cargo.team, team);
+  if (yBefore === undefined) assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
+  else assert.equal(cargo.y, yBefore);
+  const saved = savedProjectText(present);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(saved.text.includes('"y": 9'), false);
+  const exported = await exportProject(present);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const entity = exported.scenario.entities.find((row) => row.alias === 'cargo');
+  assert.notEqual(entity.pos.y, 9);
+  assert.equal(entity.pos.y, 0);
+});
+
+test('a configurable-only define cannot freeze a new field', async () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const cargo = objectById(present, 'cargo');
+  const yBefore = Object.prototype.hasOwnProperty.call(cargo, 'y') ? cargo.y : undefined;
+  present.grid.origin = { marks: ['keep'] };
+  undone.history.future[0].toJSON = function () {
+    world.name = 'poison';
+    Object.defineProperties(world, { name: { configurable: false } });
+    cargo.y = 9;
+    Object.defineProperties(cargo, { y: { configurable: false } });
+    present.grid.origin.tag = 'poison';
+    Object.defineProperties(present.grid.origin, { tag: { configurable: false } });
+    present.objects.note = 'poison';
+    Object.defineProperties(present.objects, { note: { configurable: false } });
+    present.grid.origin.marks.splice(0, 1);
+    Object.defineProperties(present.grid.origin.marks, {
+      0: Object.create({ value: 'poison', enumerable: true }),
+    });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  if (!back.ok) assert.equal(back.history.present, present);
+  else {
+    const redone = restoreHistory(back.history, 'redo');
+    assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+    assert.equal(redone.history.present, present);
+  }
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(present.grid.origin, 'tag'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(present.objects, 'note'), false);
+  if (yBefore === undefined) assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
+  else assert.equal(cargo.y, yBefore);
+  assert.deepEqual(present.grid.origin.marks, ['keep']);
+  const saved = savedProjectText(present);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(saved.text.includes('poison'), false);
+  assert.equal(saved.text.includes('"y": 9'), false);
+  const exported = await exportProject(present);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const entity = exported.scenario.entities.find((row) => row.alias === 'cargo');
+  assert.notEqual(entity.pos.y, 9);
+  assert.equal(entity.pos.y, 0);
+});
+
 test('prototype tags behind a get-only pocket stay keep', () => {
   for (const mode of ['push', 'splice', 'length', 'replace']) {
     const history = createHistory(getComposition('dock.intercept-cargo'));

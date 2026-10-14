@@ -656,7 +656,7 @@ function snapshotArrays(scenes) {
   return entries;
 }
 
-function collectArrays(value, entries, seen, allowGetters = true) {
+function collectArrays(value, entries, seen, allowGetters = true, enumerableOnly = false) {
   if (!value || typeof value !== 'object' || seen.has(value)) return;
   seen.add(value);
   if (Array.isArray(value)) {
@@ -667,7 +667,7 @@ function collectArrays(value, entries, seen, allowGetters = true) {
     }
     entries.push({ array: value, items, length: value.length });
     for (const item of items) {
-      if (item.kind === 'data') collectArrays(item.value, entries, seen, false);
+      if (item.kind === 'data') collectArrays(item.value, entries, seen, true, true);
     }
     return;
   }
@@ -677,13 +677,14 @@ function collectArrays(value, entries, seen, allowGetters = true) {
     if (!descriptor) continue;
     if (typeof descriptor.get === 'function' && typeof descriptor.set !== 'function') {
       if (!allowGetters || key === 'objects' || key === 'grid') continue;
+      if (enumerableOnly && descriptor.enumerable === false) continue;
       const read = readAccessor(value, descriptor);
-      if (read && typeof read === 'object') collectArrays(read, entries, seen, true);
+      if (read && typeof read === 'object') collectArrays(read, entries, seen, true, false);
       continue;
     }
     if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
     if (typeof descriptor.value === 'function') continue;
-    collectArrays(descriptor.value, entries, seen, allowGetters);
+    collectArrays(descriptor.value, entries, seen, allowGetters, enumerableOnly);
   }
 }
 
