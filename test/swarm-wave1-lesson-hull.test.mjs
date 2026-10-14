@@ -1,8 +1,15 @@
-// Seed 4242, Ricochet Foundry, fresh profile. Player-truth on 826c:
-// the lesson wasp dies to an asteroid at sim 8.3 (active) or a wreck at sim
-// 29.9 (idle), the empty cohort releases the pack, and round 1 never clears.
-// The headless foundry parks those rocks, so this drives the live kernel with
-// the same collision origin the damage path uses.
+// Seed 4242, Ricochet Foundry, fresh profile.
+//
+// 826c active: the lesson wasp and asteroid 33000368 die on the same tick at
+// sim 8.32, score stays 0, the empty cohort releases the pack ("The pack is
+// inbound" by sim 8.2), and round 1 is still open at sim 300 (12/15 resolved).
+// 4b3b active: the player kills that hull at sim 10.2 (score 101) and wave 1
+// clears at sim 50.8. Idle 826c: the same hull dies at sim 29.9 with no input.
+//
+// Current master refuses survival-cohort damage until the pilot acts
+// (damage.js swarm_waiting_for_input). The active failure is the hit AFTER
+// the thrust probe. The headless foundry parks the rocks, so the post-act
+// cases drive the live kernel with the same collision origin.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
@@ -11,6 +18,7 @@ import {
   restoreFeatureMaps,
   snapshotFeatureMaps,
 } from '../src/data/featureFlags.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { simulateCrucibleSwarm } from '../scripts/lib/bench/crucibleBench.mjs';
 
 const SEED = 4242;
@@ -127,9 +135,11 @@ function clearPlantedDestroy(state, target, plantedId) {
 /**
  * Idle fresh-profile foundry. `when` is 'early' (lesson still held) or 'late'
  * (the 45s clock has already brought the pack). `originKind` is 'collision'
- * or 'weapon'. attacker is 'rock' or 'player'.
+ * or 'weapon'. attacker is 'rock' or 'player'. `acted` notes this wave's
+ * pilot act immediately before the strike, which is the active-run case:
+ * the thrust probe has already released the damage latch.
  */
-async function runLesson({ when, originKind, attacker, tickCap, inspectParts = false }) {
+async function runLesson({ when, originKind, attacker, tickCap, inspectParts = false, acted = false }) {
   const note = {
     struck: null,
     strikeResult: null,
@@ -190,6 +200,10 @@ async function runLesson({ when, originKind, attacker, tickCap, inspectParts = f
         return;
       }
       const chip = inspectParts ? chipLessonParts(state, live) : null;
+      // The damage latch lives on the state object, not on state.run. Noting
+      // it here is the thrust probe: the packet is admitted, and the lesson
+      // hold is what has to keep a rock from clearing the hull.
+      if (acted) noteSwarmPilotAction(state);
       const result = strike(runtime, state, live, attackerId, originKind);
       if (chip) {
         const hitId = result && result.subsystemId;
@@ -216,9 +230,24 @@ async function runLesson({ when, originKind, attacker, tickCap, inspectParts = f
   return note;
 }
 
+test('before the pilot acts a foundry collision is refused and the lesson stays', { timeout: 90_000, concurrency: false }, async () => {
+  const note = await runLesson({
+    when: 'early', originKind: 'collision', attacker: 'rock', tickCap: 14 * 60,
+  });
+  assert.ok(note.struck, `lesson wasp was not on the field: ${JSON.stringify(note)}`);
+  assert.equal(note.strikeResult, 'swarm_waiting_for_input', JSON.stringify(note));
+  assert.equal(note.struck.alive, true, `pre-act collision cleared the lesson wasp: ${JSON.stringify(note)}`);
+  assert.equal(note.struck.spawned, 1, `pre-act collision released the pack: ${JSON.stringify(note)}`);
+  assert.ok(note.after, `no follow-up sample: ${JSON.stringify(note)}`);
+  assert.equal(note.after.alive, true, `wasp died after the refused collision: ${JSON.stringify(note)}`);
+  assert.equal(note.after.spawned, 1, `refused collision released the pack: ${JSON.stringify(note)}`);
+  assert.equal(note.after.resolved, 0, `refused collision counted a kill: ${JSON.stringify(note)}`);
+  assert.equal(note.after.released, false, `opening lesson released: ${JSON.stringify(note)}`);
+});
+
 test('a player shot still ends the opening lesson and brings the pack', { timeout: 90_000, concurrency: false }, async () => {
   const note = await runLesson({
-    when: 'early', originKind: 'weapon', attacker: 'player', tickCap: 16 * 60,
+    when: 'early', originKind: 'weapon', attacker: 'player', tickCap: 16 * 60, acted: true,
   });
   assert.ok(note.struck, `lesson wasp was not on the field: ${JSON.stringify(note)}`);
   assert.equal(note.strikeResult, 'ok', JSON.stringify(note));
@@ -228,9 +257,9 @@ test('a player shot still ends the opening lesson and brings the pack', { timeou
   assert.ok(note.after.spawned >= 2, `pack did not arrive: ${JSON.stringify(note)}`);
 });
 
-test('seed 4242: a foundry collision does not kill the lesson wasp or release the pack', { timeout: 90_000, concurrency: false }, async () => {
+test('seed 4242: after the pilot acts a foundry collision does not kill the lesson wasp', { timeout: 90_000, concurrency: false }, async () => {
   const note = await runLesson({
-    when: 'early', originKind: 'collision', attacker: 'rock', tickCap: 14 * 60, inspectParts: true,
+    when: 'early', originKind: 'collision', attacker: 'rock', tickCap: 14 * 60, inspectParts: true, acted: true,
   });
   assert.ok(note.struck, `lesson wasp was not on the field: ${JSON.stringify(note)}`);
   assert.equal(note.strikeResult, 'ok', JSON.stringify(note));
@@ -254,7 +283,7 @@ test('seed 4242: a foundry collision does not kill the lesson wasp or release th
 
 test('a rock the pilot threw still kills the lesson wasp', { timeout: 90_000, concurrency: false }, async () => {
   const note = await runLesson({
-    when: 'early', originKind: 'collision', attacker: 'player', tickCap: 16 * 60,
+    when: 'early', originKind: 'collision', attacker: 'player', tickCap: 16 * 60, acted: true,
   });
   assert.ok(note.struck, `lesson wasp was not on the field: ${JSON.stringify(note)}`);
   assert.equal(note.strikeResult, 'ok', JSON.stringify(note));
@@ -264,7 +293,7 @@ test('a rock the pilot threw still kills the lesson wasp', { timeout: 90_000, co
 
 test('after the lesson clock the same foundry collision kills', { timeout: 120_000, concurrency: false }, async () => {
   const note = await runLesson({
-    when: 'late', originKind: 'collision', attacker: 'rock', tickCap: 58 * 60,
+    when: 'late', originKind: 'collision', attacker: 'rock', tickCap: 58 * 60, acted: true,
   });
   assert.ok(note.struck, `lesson wasp was not alive when the pack arrived: ${JSON.stringify(note)}`);
   assert.equal(note.strikeResult, 'ok', JSON.stringify(note));
