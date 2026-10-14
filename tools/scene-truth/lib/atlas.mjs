@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPORT_SCHEMA, VERDICT_SCHEMA } from './constants.mjs';
+import { isSvgPayload } from './payload.mjs';
 
 export const LIMITATIONS = Object.freeze([
   'Lab rendering is detached. These images are semantic projections of sim poses and package metadata, not GPU frames.',
@@ -8,7 +9,7 @@ export const LIMITATIONS = Object.freeze([
   'Pixel, exposure, anti-alias, and compositor differences are review items. They do not fail the build.',
   'Stations, gates, beacons, and landmarks are joined from authored sector anchors because the flight-lab bundle does not call world.enterSector.',
   'Asteroid rings use the production place id and size range at the authored field center. They are not a second scatter simulation.',
-  'Shield hit points are not on the lab checkpoint surface. Shield discs use the ship or enemy def shield stat with coverage 0.22.',
+  'Live shield and shieldMax are on the lab checkpoint surface. While the current shield is above zero, the presented disc is the live shell radius (entity.radius) with coverage 0.22. A shield of 0 draws no disc.',
   'No WebGL context is created. runtimeFps is null. captureCostMs is witness wall time, not a frame-time measurement.',
   'Whole-ship LOD runtime demotion is off. Census LOD outline flags are review items, not drawn swaps.',
 ]);
@@ -25,6 +26,41 @@ function csvCell(value) {
   const text = value == null ? '' : String(value);
   if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
+}
+
+function payloadBytes(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const bytes = payload.bytes ?? payload.pixels ?? payload.image ?? null;
+  if (bytes == null || typeof bytes === 'string') return null;
+  if (typeof bytes.length === 'number') return bytes.length;
+  return null;
+}
+
+/**
+ * A semantic SVG diagram is not a captured frame.
+ * gpuFrame is true only for a non-SVG payload marked as a real capture.
+ * SVG bytes are recognized by an svg or xml marker, with or without a format tag.
+ */
+export function claimGpuFrame(witness) {
+  if (!witness || typeof witness !== 'object') return false;
+  if (witness.captureKind === 'semantic-projection' || witness.captureKind === 'svg' || witness.captureKind === 'semantic-svg') {
+    return false;
+  }
+  if (witness.captureKind !== 'gpu-frame') return false;
+  const payload = witness.frameCapture ?? witness.pixels ?? witness.frameBytes ?? null;
+  if (payload == null || isSvgPayload(payload)) return false;
+  if (typeof payload === 'string') return false;
+  const size = payloadBytes(payload);
+  return size != null && size > 0;
+}
+
+export function publishCapture(witness) {
+  const gpuFrame = claimGpuFrame(witness);
+  return {
+    ...witness,
+    gpuFrame,
+    captureKind: gpuFrame ? 'gpu-frame' : 'semantic-projection',
+  };
 }
 
 export function sceneSvg(witness) {
@@ -45,7 +81,19 @@ export function sceneSvg(witness) {
     if (!object.screen) return '';
     const color = colors[object.type] || '#cccccc';
     const dash = object.screen.onScreen ? '' : ' stroke-dasharray="2 2"';
-    return `<g><circle cx="${object.screen.x}" cy="${object.screen.z}" r="${Math.max(object.presentedRadius, 0.4)}" fill="${color}" fill-opacity="0.35" stroke="${color}"${dash}/><text x="${object.screen.x}" y="${object.screen.z - Math.max(object.presentedRadius, 1) - 1}" font-size="3" fill="#d5dbe6">${esc(object.alias || object.objectId)}</text></g>`;
+    const drawn = Number.isFinite(object.presentedRadius) && object.presentedRadius > 0
+      ? object.presentedRadius
+      : (Number.isFinite(object.colliderRadius) && object.colliderRadius > 0 ? object.colliderRadius : 0.4);
+    const shieldGeometry = Number(object.shieldGeometryRadius);
+    const shieldEffect = (object.effects || []).find((effect) => effect && effect.kind === 'shield');
+    const shieldDrawn = shieldEffect ? Number(shieldEffect.radius) : NaN;
+    const shieldRadius = Number.isFinite(shieldGeometry) && shieldGeometry > 0
+      ? shieldGeometry
+      : (Number.isFinite(shieldDrawn) && shieldDrawn > 0 ? shieldDrawn : 0);
+    const shieldCircle = shieldRadius > 0
+      ? `<circle class="shield" cx="${object.screen.x}" cy="${object.screen.z}" r="${shieldRadius}" fill="none" stroke="#7ee0ff" stroke-opacity="0.9"/>`
+      : '';
+    return `<g>${shieldCircle}<circle cx="${object.screen.x}" cy="${object.screen.z}" r="${Math.max(drawn, 0.4)}" fill="${color}" fill-opacity="0.35" stroke="${color}"${dash}/><text x="${object.screen.x}" y="${object.screen.z - Math.max(drawn, 1) - 1}" font-size="3" fill="#d5dbe6">${esc(object.alias || object.objectId)}</text></g>`;
   }).join('');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${width} ${height}">
@@ -59,11 +107,18 @@ export function sceneSvg(witness) {
 }
 
 export function writeAtlas(outDir, report) {
+  const published = {
+    ...report,
+    packs: (report.packs || []).map((pack) => ({
+      ...pack,
+      views: (pack.views || []).map((view) => publishCapture(view)),
+    })),
+  };
   fs.mkdirSync(outDir, { recursive: true });
   const captureDir = path.join(outDir, 'captures');
   fs.mkdirSync(captureDir, { recursive: true });
   const links = [];
-  for (const pack of report.packs || []) {
+  for (const pack of published.packs || []) {
     if (!pack.views) continue;
     const dir = path.join(captureDir, pack.id);
     fs.mkdirSync(dir, { recursive: true });
@@ -71,7 +126,13 @@ export function writeAtlas(outDir, report) {
       if (view.qualityTier !== 'medium') continue;
       const name = `z${view.zoom}.svg`;
       fs.writeFileSync(path.join(dir, name), sceneSvg(view));
-      links.push({ scenarioId: pack.id, zoom: view.zoom, file: `captures/${pack.id}/${name}` });
+      links.push({
+        scenarioId: pack.id,
+        zoom: view.zoom,
+        file: `captures/${pack.id}/${name}`,
+        gpuFrame: false,
+        captureKind: 'semantic-svg',
+      });
     }
   }
   const issues = report.issues || [];
@@ -83,10 +144,10 @@ export function writeAtlas(outDir, report) {
     ].map(csvCell).join(',')),
   ].join('\n');
   fs.writeFileSync(path.join(outDir, 'issues.csv'), `${csv}\n`);
-  fs.writeFileSync(path.join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
-  fs.writeFileSync(path.join(outDir, 'verdict.json'), `${JSON.stringify(report.verdict, null, 2)}\n`);
-  fs.writeFileSync(path.join(outDir, 'report.md'), markdown(report, links));
-  fs.writeFileSync(path.join(outDir, 'index.html'), html(report, links));
+  fs.writeFileSync(path.join(outDir, 'report.json'), `${JSON.stringify(published, null, 2)}\n`);
+  fs.writeFileSync(path.join(outDir, 'verdict.json'), `${JSON.stringify(published.verdict, null, 2)}\n`);
+  fs.writeFileSync(path.join(outDir, 'report.md'), markdown(published, links));
+  fs.writeFileSync(path.join(outDir, 'index.html'), html(published, links));
   return { outDir, files: ['index.html', 'report.md', 'issues.csv', 'report.json', 'verdict.json'] };
 }
 
@@ -132,7 +193,9 @@ function markdown(report, links) {
   lines.push('');
   lines.push('## Captures');
   lines.push('');
-  for (const link of links) lines.push(`- [${link.scenarioId} zoom ${link.zoom}](${link.file})`);
+  for (const link of links) {
+    lines.push(`- [${link.scenarioId} zoom ${link.zoom}](${link.file}) — semantic SVG, not a GPU frame`);
+  }
   lines.push('');
   lines.push('## Critique');
   lines.push('');
@@ -147,7 +210,7 @@ function issuesOf(report) {
 
 function html(report, links) {
   const cards = links.map((link) => (
-    `<figure><img src="${esc(link.file)}" alt="${esc(link.scenarioId)} zoom ${esc(link.zoom)}"/><figcaption>${esc(link.scenarioId)} zoom ${esc(link.zoom)}</figcaption></figure>`
+    `<figure><img src="${esc(link.file)}" alt="Semantic SVG of ${esc(link.scenarioId)} zoom ${esc(link.zoom)}, not a GPU frame"/><figcaption>${esc(link.scenarioId)} zoom ${esc(link.zoom)} — semantic SVG, not a GPU frame</figcaption></figure>`
   )).join('');
   const rows = issuesOf(report).map((row) => (
     `<tr class="${row.failBuild ? 'fail' : 'review'}"><td>${esc(row.confidence)}</td><td>${esc(row.kind)}</td><td>${esc(row.scenarioId)}</td><td>${esc(row.tick)}</td><td>${esc(row.zoom)}</td><td>${esc(row.qualityTier)}</td><td>${esc((row.objectIds || []).join(', '))}</td><td>${esc(row.summary)}</td></tr>`

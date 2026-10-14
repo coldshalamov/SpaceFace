@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import {
   applyEntityMeshVisibility,
+  retainShownCameraGlass,
   retainShownSurvivalGlass,
   shouldSubmitEntityMesh,
 } from '../src/render/entityMeshVisibility.js';
@@ -136,6 +137,20 @@ test('visibility helper only writes when the flag changes', () => {
   assert.equal(mesh.visible, true);
 });
 
+test('Adventure retains a shown wreck through a pending admission without revealing an unshown root', () => {
+  const shown = { alreadyVisible: true, onFrustum: true, snapshotMissing: false, alive: true };
+  const pending = { onLiveGlass: true, pipelinesPending: true, geometryPending: true };
+  const mesh = { visible: true };
+  assert.equal(shouldSubmitEntityMesh(pending), false, 'pending work still owns first admission');
+  assert.equal(applyEntityMeshVisibility(mesh,
+    retainShownCameraGlass(shown) || shouldSubmitEntityMesh(pending)), false);
+  assert.equal(mesh.visible, true, 'a published wreck does not blink during re-admission');
+  assert.equal(retainShownCameraGlass({ ...shown, alreadyVisible: false }), false);
+  assert.equal(retainShownCameraGlass({ ...shown, onFrustum: false }), false);
+  assert.equal(retainShownCameraGlass({ ...shown, snapshotMissing: true }), false);
+  assert.equal(retainShownCameraGlass({ ...shown, alive: false }), false);
+});
+
 test('the live camera owns submission in both directions, independent of sim glass membership', () => {
   const activityFrame = {
     complete: true,
@@ -191,7 +206,7 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /applyEntityMeshVisibility\(mesh,\s*retainShown \|\| shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)/);
   assert.match(source, /applyEntityMeshVisibility\(mesh,\s*retainShown \|\| \(posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)\)/,
     'the hidden-boundary site submits through the same scratch');
-  assert.match(source, /retainShownSurvivalGlass\(\{/);
+  assert.match(source, /this\.state\.mode === 'flight' && retainShownCameraGlass\(\{/);
   assert.match(source, /if \(!retainShown\) this\._queueHiddenSubtreeFreeze\(mesh\)/,
     'a retained survival body stays on the live compose path');
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*true/);

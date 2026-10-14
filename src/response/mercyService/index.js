@@ -11,8 +11,8 @@ export {
 export { commandFor, zeroCommand } from './pilot.js';
 export { noteImpact } from './physics.js';
 export {
-  acceptContract, beginIncident, commandFromGameState, createMercyRuntime,
-  createMercyServiceSystem, damagePlayer, destroyMercyRuntime, destroyRescueBody,
+  acceptContract, beginIncident, commandFromGameState, createMercyFixtureSystem,
+  createMercyRuntime, createMercyServiceSystem, damagePlayer, destroyMercyRuntime, destroyRescueBody,
   report, restoreMercy, runIncident, seedSector, shelveMercy, snapshotMercy,
   stepMercy, syncFocus, unshelveMercy, worldDigest,
 } from './runtime.js';

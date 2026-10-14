@@ -147,8 +147,14 @@ export const EVENTS = Object.freeze([
     banksRequired: 0, speedMax: 0, transfers: 0, minBend: 0.28, holdSeconds: 0,
     polarity: 'well',
     title: 'Bent Pocket',
-    solution: Object.freeze({ phases: phases([thrust(0.5, 0, -1)]) }),
-    alternate: Object.freeze({ phases: phases([thrust(0.55, 0.3, -1)]) }),
+    solution: Object.freeze({
+      shipAt: Object.freeze({ x: 14, z: 22 }),
+      phases: phases([thrust(0.5, 1, -1)]),
+    }),
+    alternate: Object.freeze({
+      shipAt: Object.freeze({ x: 16, z: 20 }),
+      phases: phases([thrust(0.7, 1, -0.5)]),
+    }),
   }),
   Object.freeze({
     id: 'kl-12', sport: 'contain', arena: 'slip', tier: 'champion', rival: null,

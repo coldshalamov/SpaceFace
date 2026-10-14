@@ -227,6 +227,11 @@ export async function simulateCrucibleSwarm({
   waveCount = CRUCIBLE_WAVE_TARGET,
   tickCap = CRUCIBLE_TICK_CAP,
   onTick = null,
+  // Fresh-profile door flag. Default off so existing bench hashes stay put.
+  // Player-truth seed 4242 is a first run and does pass this.
+  openingLesson = false,
+  // 'bench' is the close-range crucible pilot. 'idle' holds every key up.
+  pilot = 'bench',
 } = {}) {
   if (!Number.isFinite(seed)) {
     throw new Error('simulateCrucibleSwarm: `seed` must be a finite number (fixed seeds or it did not happen)');
@@ -379,6 +384,7 @@ export async function simulateCrucibleSwarm({
       //    a live survival run. runSession accepts a begin only from phase inactive.
       harnessEmit(bus, harnessBusEmits, 'run:beginRequested', {
         kind: 'survival', ruleset: 'swarm', seed, arenaId,
+        ...(openingLesson === true ? { openingLesson: true } : {}),
       });
 
       // 10. The registry shim is required — sandboxSetup's sys(ctx, name) reads ctx.registry.get,
@@ -448,16 +454,25 @@ export async function simulateCrucibleSwarm({
       rememberCohortIds(state, cohortSeen);
       const headingBefore = player && Number.isFinite(player.rot) ? player.rot : null;
       const kinBefore = samplePlayerKinematics(player);
-      drivePilot({
-        tick: t,
-        state,
-        player,
-        inputSys,
-        aim,
-        loadoutId,
-        verbCadence,
-        inputTape,
-      });
+      if (pilot === 'idle') {
+        // A quiet stick. Clearing here matches drivePilot's first lines so a
+        // previous beat cannot leak a held key into the idle window.
+        inputSys._keys = inputSys._keys || Object.create(null);
+        for (const k of Object.keys(inputSys._keys)) inputSys._keys[k] = false;
+        inputSys._m0 = false;
+        inputTape.push({ tick: t, acts: [] });
+      } else {
+        drivePilot({
+          tick: t,
+          state,
+          player,
+          inputSys,
+          aim,
+          loadoutId,
+          verbCadence,
+          inputTape,
+        });
+      }
       runtime.step(SIM_DT);
 
       const tick = state.tick | 0;
@@ -506,7 +521,7 @@ export async function simulateCrucibleSwarm({
           clearedWave = (ev.payload && ev.payload.wave) || (state.run && state.run.wave) || wavesCleared;
         }
       }
-      if (onTick) onTick({ state, tick, t, events: newEvents, player: playerAfter });
+      if (onTick) onTick({ state, tick, t, events: newEvents, player: playerAfter, runtime });
       sampleHostileInFrame(state, playerAfter, hostileInFrame, SIM_DT, aiIntent.phase);
       // Record heading ONCE per unique tick. Rapier emits a run of receipts for one contact;
       // stamping the whole tick rotation onto every receipt (then summing) invented heading.

@@ -44,6 +44,7 @@ jobs:
             assets/portraits
             assets/audio
             assets/fx/thruster
+            assets/wreck-court
       - uses: actions/setup-node@v4
         with:
           node-version: 22

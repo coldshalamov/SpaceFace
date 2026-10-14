@@ -24,8 +24,20 @@ export function mountSpectrumOverlay({ root, state, helpers, screens }) {
     if (svg.style.display === 'none') return;
     const now = st.simTime || 0;
     if (now >= last && now - last < 0.1) return; last = now;
-    const frame = buildSpectrumFrame(view);
+    const frame = buildSpectrumFrame(view, view.props || []);
     const lines = frame.rays.map(ray => segment([{ x: ray.x1, z: ray.z1 }, { x: ray.x2, z: ray.z2 }]));
+    const rings = frame.silhouettes || [];
+    for (let i = 0; i < frame.props.length; i++) {
+      const prop = frame.props[i];
+      let ring = null;
+      for (let r = 0; r < rings.length; r++) if (rings[r].id === prop.kind) ring = rings[r];
+      if (!ring) continue;
+      const placed = [];
+      for (let p = 0; p < ring.points.length; p++) {
+        placed.push({ x: ring.points[p].x + prop.x, z: ring.points[p].z + prop.z });
+      }
+      lines.push(segment(placed));
+    }
     if (frame.ellipse) lines.push(`${segment(frame.ellipse)} Z`);
     path.setAttribute('d', lines.join(' '));
   }, dispose() { svg.remove(); } };

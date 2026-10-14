@@ -24,7 +24,7 @@ The witness in this folder already runs the twelve emergencies on `LOOP_FIXED_DT
 - `src/runtime/authoritativeSystemManifest.js`
 - world placement, economy, factions, heat, and `src/ui/**`
 
-`publishedGlb` on every `MERCY_MODELS` entry is `null`. Collision states are what the witness measures. A Forge/GLB pass under `assets/ships/mercy-service/**` was not run.
+`publishedGlb` on every `MERCY_MODELS` entry is a release place GLB. Live bodies spawn as world place props (`type: 'fx'` plus that place id). `place_47a_rescue_capsule` is in `PLACE_FILES` so `placeFileForEntity` resolves it; the other rescue ids resolve through the same lookup when the spawn stamps `worldOneOff`. Collision circle parts stay the offline witness.
 
 ## Exact registration patch (withheld)
 

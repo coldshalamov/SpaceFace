@@ -14,6 +14,9 @@ function already(inc, key) {
 
 function pushIntent(rt, inc, intent) {
   if (!intent.key || already(inc, intent.key)) return false;
+  if (!rt.appliedGrants) rt.appliedGrants = {};
+  if (rt.appliedGrants[intent.key]) return false;
+  rt.appliedGrants[intent.key] = true;
   inc.settlementReceipt.keys[intent.key] = true;
   const row = {
     key: intent.key,
@@ -63,6 +66,9 @@ export function settleDelivery(rt, inc, body, beaconOk) {
   receipt.credits = quote.credits;
   receipt.beaconOk = beaconOk;
   inc.outcome = receipt.outcome;
+  // Bus handlers run synchronously. Publish the terminal latch before a payout
+  // listener can step, save, leave, or attempt to settle the same incident again.
+  inc.latches.settled = true;
   if (quote.credits > 0) {
     pushIntent(rt, inc, {
       key: `${inc.uid}:grant`,
@@ -100,7 +106,6 @@ export function settleDelivery(rt, inc, body, beaconOk) {
       reason: 'mercy:custody_without_beacon',
     });
   }
-  inc.latches.settled = true;
   return receipt;
 }
 

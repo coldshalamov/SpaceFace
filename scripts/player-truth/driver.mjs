@@ -53,12 +53,20 @@ export function noteKey(page, code) {
 /** One flight sample for the play watcher. `boot` is the opening overlay, which is a loading state. */
 /** Visible G4 chips and the exact shooter centers the live halo projects. Observer only. */
 export function observeEdgeMarkers({ drain = false } = {}) {
-    const batch = drain ? window.__playerTruth && window.__playerTruth.drain() : null;
+    const reader = window.__playerTruth;
+    const batch = drain ? reader && reader.drain() : null;
     if (drain && !batch) return null;
     const sf = window.SF;
     const state = sf && sf.state;
     const observedAt = performance.now();
     const out = [];
+    const markersBySample = new Map();
+    const recordMarker = (sample, marker) => {
+      if (!sample) return;
+      const rows = markersBySample.get(sample) || [];
+      rows.push(marker);
+      markersBySample.set(sample, rows);
+    };
     for (const el of document.querySelectorAll('.sf-threat-halo__slot--arc')) {
       const cs = getComputedStyle(el);
       if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) continue;
@@ -68,19 +76,14 @@ export function observeEdgeMarkers({ drain = false } = {}) {
       const rawId = el.getAttribute('data-entity-id');
       if (rawId != null && rawId !== '') {
         const id = Number.isFinite(Number(rawId)) ? Number(rawId) : rawId;
-        const shooter = state && state.entities && state.entities.get(id);
         let placed = null;
         try { placed = JSON.parse(el.getAttribute('data-placement-read')); } catch { /* missing producer read fails closed */ }
-        const data = shooter?.data || {};
-        const weapons = data.weapons || shooter?.weapons;
-        const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
-          && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
         const rawFrame = (el.parentElement || el.parentNode)?.getAttribute?.('data-placement-frame');
         const publication = rawFrame != null && rawFrame !== '' ? Number(rawFrame) : null;
         let reason = null;
-        if (!eligible) reason = 'ineligible shooter';
-        else if (placed?.version !== 1) reason = 'missing producer placement';
-        else if (placed.id !== id || placed.generation !== (shooter.occupantGeneration ?? null)) reason = 'different shooter life';
+        if (placed?.version !== 1) reason = 'missing producer placement';
+        else if (placed.id !== id) reason = 'different shooter life';
+        else if (drain && !Number.isSafeInteger(placed.tick)) reason = 'invalid producer placement';
         else if (!Number.isFinite(placed.at) || !Number.isFinite(placed.expiresAt)
           || !Number.isFinite(placed.checkedAt) || placed.at > placed.checkedAt
           || placed.checkedAt > observedAt || placed.expiresAt > placed.at + 250
@@ -88,17 +91,60 @@ export function observeEdgeMarkers({ drain = false } = {}) {
           || typeof placed.onScreen !== 'boolean') reason = 'invalid producer placement';
         else if (!Number.isSafeInteger(publication) || publication < 1 || placed.frame !== publication) reason = 'older halo publication';
         else if (placed.checkedAt > placed.expiresAt) reason = 'expired at halo publication';
-        // A producer-approved grace chip is the painted chip until the next publication.
+        const sourceSample = drain && Number.isSafeInteger(placed?.tick)
+          ? batch.samples.find((sample) => sample && sample.tick === placed.tick) || null
+          : null;
+        if (drain && !sourceSample && !reason) {
+          // The marker belongs to a HUD publication whose simulation sample was not retained.
+          // Leave it unmeasured instead of assigning its identity to a nearby frame.
+          continue;
+        }
+        if (!reason && drain) {
+          const sourceIdentity = typeof reader?.identityFor === 'function'
+            ? reader.identityFor(id, placed.generation)
+            : null;
+          const sourceHasShooter = sourceIdentity != null
+            && Array.isArray(sourceSample?.e)
+            && sourceSample.e.some((entity) => entity && entity[0] === sourceIdentity);
+          if (!sourceHasShooter) reason = 'no living shooter in publication sample';
+          else if (state?.tick === placed.tick) {
+            const shooter = state.entities?.get?.(id);
+            const data = shooter?.data || {};
+            const weapons = data.weapons || shooter?.weapons;
+            const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
+              && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
+            if (!shooter) reason = 'no living shooter in publication state';
+            else if (placed.generation !== (shooter.occupantGeneration ?? null)) reason = 'different shooter life';
+            else if (!eligible) reason = 'ineligible shooter';
+          }
+        } else if (!reason) {
+          // Direct reads have no retained source frame, so validate against the current actor.
+          const shooter = state?.entities?.get?.(id);
+          const data = shooter?.data || {};
+          const weapons = data.weapons || shooter?.weapons;
+          const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
+            && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
+          if (placed.generation !== (shooter?.occupantGeneration ?? null)) reason = 'different shooter life';
+          else if (!eligible) reason = 'ineligible shooter';
+        }
+        // A producer-approved grace chip is the painted chip until next publication.
         // Observation wall time alone cannot revoke an otherwise unchanged HUD frame.
         if (!reason) marker.shooter = { id, alive: true,
           onScreen: placed.onScreen, behind: placed.behind === true, x: placed.x, y: placed.y };
-        else marker.placementFailure = { reason, id, generation: shooter?.occupantGeneration ?? null, placement: placed };
-      } else marker.placementFailure = { reason: 'missing shooter identity', placement: null };
+        else marker.placementFailure = { reason, id,
+          generation: state?.entities?.get?.(id)?.occupantGeneration ?? null, placement: placed };
+        if (drain) recordMarker(sourceSample || (reason ? batch.samples.at(-1) : null), marker);
+      } else {
+        marker.placementFailure = { reason: 'missing shooter identity', placement: null };
+        if (drain) recordMarker(batch.samples.at(-1), marker);
+      }
       out.push(marker);
     }
     if (!drain) return out;
-    const last = batch.samples && batch.samples[batch.samples.length - 1];
-    if (last) { last.edgeMarkers = out; last.edgeMarkerAt = performance.now(); }
+    for (const [sample, markers] of markersBySample) {
+      sample.edgeMarkers = markers;
+      sample.edgeMarkerAt = observedAt;
+    }
     return batch;
 }
 

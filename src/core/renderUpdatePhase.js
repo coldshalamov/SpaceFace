@@ -8,6 +8,7 @@ import { updateBombPresentation, releaseBombPresentation } from '../render/bombP
 import { vfx as liveVfx } from '../render/vfx.js';
 import { installNpcJobLiveSignatureDraw } from '../render/npcJobSignatureVfx.js';
 import { shouldFreezeFlightSubmit, shouldSkipFlightDraw } from './presentationFreeze.js';
+import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 
 installNpcJobLiveSignatureDraw(liveVfx);
 import {
@@ -123,7 +124,8 @@ export function runRenderUpdatePhase({
     try {
       if (!renderError && renderedPreparedScene) {
         if (worldDrawFollows) warmUiStagePrewarm({ render, state });
-        render.drawPreparedFrame();
+        const submitted = render.drawPreparedFrame();
+        if (submitted === true) publishSceneTruthPlayStep(render);
       }
     } catch (err) {
       drawError = err;
