@@ -1211,6 +1211,31 @@ function paintLayer(object) {
   return 1;
 }
 
+const PAINTED_STROKE_PX = 0.5;
+
+function hitDisc(object, sx, sy, camera, view, zoom, draw) {
+  if (!object || !Number.isFinite(object.x) || !Number.isFinite(object.z)) return null;
+  const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
+  const dx = sx - ox;
+  const dy = sy - oy;
+  if (object.kind === 'objective') {
+    if (Math.abs(dx) + Math.abs(dy) <= OBJECTIVE_REACH) return { inside: true, onStroke: false };
+    return null;
+  }
+  const overrideRadius = object.overrides && object.overrides.radius;
+  const usesCollider = object.kind === 'actor'
+    || (typeof overrideRadius === 'number' && Number.isFinite(overrideRadius));
+  const radius = usesCollider
+    ? actorStroke(object, zoom, draw)
+    : object.kind === 'field'
+      ? fieldStroke(object, zoom)
+      : markerStroke(object, zoom);
+  const distance = Math.hypot(dx, dy);
+  if (distance > radius + 1e-6) return null;
+  const ring = object.kind === 'field' || object.kind === 'trigger';
+  return { inside: true, onStroke: ring && Math.abs(distance - radius) <= PAINTED_STROKE_PX };
+}
+
 export function hitTest(project, sx, sy, camera, view, draw) {
   const zoom = camera && Number.isFinite(camera.zoom) && camera.zoom > 0 ? camera.zoom : 1;
   const objects = asObjectList(project && project.objects).map((object, index) => ({ object, index }));
@@ -1219,27 +1244,18 @@ export function hitTest(project, sx, sy, camera, view, draw) {
     if (layer !== 0) return layer;
     return b.index - a.index;
   });
+  const hits = [];
   for (const entry of objects) {
-    const object = entry.object;
-    if (!object || !Number.isFinite(object.x) || !Number.isFinite(object.z)) continue;
-    const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
-    const dx = sx - ox;
-    const dy = sy - oy;
-    if (object.kind === 'objective') {
-      if (Math.abs(dx) + Math.abs(dy) <= OBJECTIVE_REACH) return object.id;
-      continue;
-    }
-    const overrideRadius = object.overrides && object.overrides.radius;
-    const usesCollider = object.kind === 'actor'
-      || (typeof overrideRadius === 'number' && Number.isFinite(overrideRadius));
-    const radius = usesCollider
-      ? actorStroke(object, zoom, draw)
-      : object.kind === 'field'
-        ? fieldStroke(object, zoom)
-        : markerStroke(object, zoom);
-    if (Math.hypot(dx, dy) <= radius + 1e-6) return object.id;
+    const disc = hitDisc(entry.object, sx, sy, camera, view, zoom, draw);
+    if (disc) hits.push({ id: entry.object.id, kind: entry.object.kind, ...disc });
   }
-  return null;
+  const actor = hits.find((hit) => hit.kind === 'actor');
+  if (actor) return actor.id;
+  const objective = hits.find((hit) => hit.kind === 'objective');
+  if (objective) return objective.id;
+  const stroke = hits.find((hit) => hit.onStroke);
+  if (stroke) return stroke.id;
+  return hits.length ? hits[0].id : null;
 }
 
 export function setCamera(project, camera) {

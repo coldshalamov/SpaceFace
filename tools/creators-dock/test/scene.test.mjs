@@ -34,6 +34,7 @@ import {
   savedProjectText,
   setCamera,
   hitTest,
+  worldToScreen,
   setPlayer,
   setVelocity,
   sortedClone,
@@ -5034,6 +5035,12 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(actorStroke(stone, 3.2, profileDraw), 8 * 3.2);
   assert.equal(hitTest(bank, 415, 300, stageCam, stage, profileDraw), 'player');
   assert.equal(hitTest(bank, 543, 204, stageCam, stage, profileDraw), 'stone');
+  const alive = objectById(bank, 'alive_bank');
+  assert.equal(markerStroke(alive, 3.2), 156.8);
+  assert.equal(hitTest(bank, 617.6, 204, stageCam, stage, profileDraw), 'bank_zone');
+  const alivePoint = worldToScreen(alive.x + alive.radius, alive.z, stageCam, stage);
+  assert.equal(hitTest(bank, alivePoint.sx, alivePoint.sy, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 637.6, 204, stageCam, stage, profileDraw), null);
   assert.notEqual(hitTest(bank, 450, 300, stageCam, stage, profileDraw), 'player');
   const zeroActor = { id: 'zero-actor', kind: 'actor', x: 0, z: 0, overrides: { radius: 0 } };
   assert.equal(actorStroke(zeroActor, 1, profileDraw), 0);
