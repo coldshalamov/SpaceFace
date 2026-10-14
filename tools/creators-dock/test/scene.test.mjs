@@ -4781,6 +4781,43 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(nearSettleRow.ok, false);
   assert.equal(Number.isFinite(nearSettleRow.expected.radius), false);
   assert.equal(nearSettleRow.closest < 10, true);
+  const close = [{ tick: 0, playerX: 0.02682, playerZ: 0, hull: 140, playerVelX: 0 }];
+  const missingClose = evaluateOracleKernel({
+    trace: close,
+    assertions: [{
+      kind: 'never',
+      signal: 'hull',
+      op: '<',
+      value: 0,
+      expected: { x: 0, z: 0 },
+    }],
+  });
+  assert.equal(missingClose.results.find((row) => row.id === 'never:hull').ok, false);
+  const wideClose = evaluateOracleKernel({
+    trace: close,
+    assertions: [{
+      kind: 'never',
+      signal: 'hull',
+      op: '<',
+      value: 0,
+      expected: { x: 0, z: 0, radius: 10 },
+    }],
+  });
+  assert.equal(wideClose.results.find((row) => row.id === 'never:hull').ok, true);
+  const settleClose = [];
+  for (let tick = 0; tick < 4; tick += 1) {
+    settleClose.push({ tick, playerX: 0.02682, playerZ: 0, playerVelX: 0 });
+  }
+  const missingSettleClose = evaluateOracleKernel({
+    trace: settleClose,
+    assertions: [{ kind: 'settles', signal: 'playerVelX', value: 1e9, expected: { x: 0, z: 0 } }],
+  });
+  assert.equal(missingSettleClose.results.find((row) => row.id === 'settles').ok, false);
+  const wideSettleClose = evaluateOracleKernel({
+    trace: settleClose,
+    assertions: [{ kind: 'settles', signal: 'playerVelX', value: 1e9, expected: { x: 0, z: 0, radius: 10 } }],
+  });
+  assert.equal(wideSettleClose.results.find((row) => row.id === 'settles').ok, true);
   const insideDisc = [];
   for (let tick = 0; tick < 8; tick += 1) {
     insideDisc.push({ tick, playerX: 0, playerZ: 0, hull: 140, playerVelX: 0 });
@@ -5648,9 +5685,7 @@ test('defineProperty configurable false does not keep a new name or height', asy
   const cargo = objectById(present, 'cargo');
   const yBefore = Object.prototype.hasOwnProperty.call(cargo, 'y') ? cargo.y : undefined;
   undone.history.future[0].toJSON = function () {
-    world.name = 'poison';
     Object.defineProperty(world, 'name', { configurable: false });
-    cargo.y = 9;
     Object.defineProperty(cargo, 'y', { configurable: false });
     return this;
   };
@@ -5658,6 +5693,8 @@ test('defineProperty configurable false does not keep a new name or height', asy
   assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
   if (yBefore === undefined) assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
   else assert.equal(cargo.y, yBefore);
+  assert.equal(delete world.name, true);
+  assert.equal(delete cargo.y, true);
   if (!back.ok) assert.equal(back.history.present, present);
   else {
     const redone = restoreHistory(back.history, 'redo');
@@ -5679,9 +5716,7 @@ test('defineProperty cannot freeze a pushed mark', () => {
   const { undone, present } = sceneWithFuture();
   present.grid.origin = { marks: ['keep'] };
   undone.history.future[0].toJSON = function () {
-    const marks = present.grid.origin.marks;
-    marks.push('poison');
-    Object.defineProperty(marks, '1', { configurable: false });
+    Object.defineProperty(present.grid.origin.marks, '1', { configurable: false });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -5692,6 +5727,7 @@ test('defineProperty cannot freeze a pushed mark', () => {
     assert.equal(redone.history.present, present);
   }
   assert.deepEqual(present.grid.origin.marks, ['keep']);
+  assert.equal(present.grid.origin.marks.length, 1);
 });
 
 test('preventExtensions cannot drop credits', () => {
@@ -5721,8 +5757,8 @@ test('a configurable-only define leaves credits deletable', () => {
   const { undone, present } = sceneWithFuture();
   const world = present.world;
   undone.history.future[0].toJSON = function () {
-    world.credits = 1;
-    Object.defineProperties(world, { credits: { configurable: false } });
+    delete world.credits;
+    Object.defineProperty(world, 'credits', { configurable: false });
     return this;
   };
   const back = restoreHistory(undone.history, 'undo');
@@ -5736,6 +5772,26 @@ test('a configurable-only define leaves credits deletable', () => {
   assert.equal(creditDesc.configurable, true);
   assert.equal(delete world.credits, true);
   assert.equal(Object.prototype.hasOwnProperty.call(world, 'credits'), false);
+});
+
+test('writable true on a missing name does not install a sealed field', () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  present.grid.origin = { marks: ['keep'] };
+  undone.history.future[0].toJSON = function () {
+    Object.defineProperty(world, 'name', { writable: true });
+    Object.defineProperty(present.grid.origin.marks, '1', { configurable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(redone.history.present, present);
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  assert.equal(delete world.name, true);
+  assert.deepEqual(present.grid.origin.marks, ['keep']);
+  assert.equal(present.grid.origin.marks.length, 1);
 });
 
 test('a non-enumerable override getter does not keep a tag or a frozen box', async () => {

@@ -1,6 +1,6 @@
 import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
 import {
-  FRAME_INPUT_FIELDS, deletePath, discRadius, fieldsFor, numberFieldValue, readPath, writeFrameInput, writePath,
+  FRAME_INPUT_FIELDS, deletePath, discRadius, fieldStroke, fieldsFor, markerStroke, numberFieldValue, readPath, writeFrameInput, writePath,
 } from '/lib/inspector.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
@@ -391,8 +391,7 @@ function drawMarker(object) {
     ctx.lineTo(point.sx - 8, point.sy);
     ctx.closePath();
   } else {
-    const radius = discRadius(object);
-    ctx.arc(point.sx, point.sy, Math.max(8, radius * (cam.zoom || 1)), 0, Math.PI * 2);
+    ctx.arc(point.sx, point.sy, markerStroke(object, cam.zoom), 0, Math.PI * 2);
   }
   ctx.stroke();
   ctx.setLineDash([]);
@@ -416,7 +415,7 @@ function drawField(object) {
   ctx.strokeStyle = '#6ea8ff';
   ctx.setLineDash([2, 6]);
   ctx.beginPath();
-  ctx.arc(point.sx, point.sy, Math.max(12, (object.radius || 20) * (cam.zoom || 1) * 0.35), 0, Math.PI * 2);
+  ctx.arc(point.sx, point.sy, fieldStroke(object, cam.zoom), 0, Math.PI * 2);
   ctx.stroke();
   ctx.fillStyle = '#6ea8ff';
   ctx.font = '11px Segoe UI, sans-serif';

@@ -16,6 +16,16 @@ export function discRadius(object) {
   return object && Number.isFinite(object.radius) ? object.radius : 0;
 }
 
+export function markerStroke(object, zoom = 1) {
+  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  return discRadius(object) * scale;
+}
+
+export function fieldStroke(object, zoom = 1) {
+  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  return discRadius(object) * scale * 0.35;
+}
+
 export function fieldsFor(object, profileChoices) {
   const common = [
     { key: 'label', label: 'Label', kind: 'text' },
