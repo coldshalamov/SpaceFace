@@ -11,6 +11,7 @@ const NOOP = { show() {}, hide() {}, destroy() {} };
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
 export const ADMISSION_QUIET_MS = 750;
+export const ADMISSION_DRAIN_CAP_MS = 5000;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
@@ -188,7 +189,12 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     let admissionsQuietSince = null;
     const clockNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now() : Date.now());
+    let firstDrawSeenAt = null;
     const admissionsSettled = () => {
+      // The drain has its own short cap past the first draw: smooth-from-the-first-second must
+      // not cost a long load. Whatever is still pending then links after the lift.
+      if (firstDrawSeenAt === null) firstDrawSeenAt = clockNow();
+      if (clockNow() - firstDrawSeenAt >= ADMISSION_DRAIN_CAP_MS) return true;
       const pendingFn = render && render.pendingPipelineAdmissions;
       if (typeof pendingFn !== 'function') return true;
       let pending = 0;
