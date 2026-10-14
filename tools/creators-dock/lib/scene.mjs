@@ -1885,19 +1885,30 @@ function routeProject(ax, ay, bx, by, sx, sy) {
   return { t, len, tx, ty, signed, along: clamped * len };
 }
 
+function routeCenterOnDash(sample) {
+  if (!(sample.t > 0 && sample.t < 1)) return false;
+  const span = dashOffset(sample.along, ROUTE_DASH[0], ROUTE_DASH[1]);
+  if (span.alongOff !== 0) return false;
+  return Math.abs(sample.signed) <= squareSupport(sample.tx, sample.ty) + 1e-6;
+}
+
 function routeSampleOnInk(ax, ay, bx, by, sx, sy) {
   const sample = routeProject(ax, ay, bx, by, sx, sy);
   if (!(sample.len > 0) || sample.t < -1e-6 || sample.t > 1 + 1e-6) return false;
-  if (!routeHasInk(sample.along, sample.len, sample.signed, sample.tx, sample.ty)) return false;
-  if (isPixelCenter(sx, sy)) return true;
-  // A sample in an empty gap pixel is still inside the dash reach. The painted
-  // pixel beside it has its center on the dash body, out at the pixel diagonal.
-  const center = routeProject(ax, ay, bx, by, Math.floor(sx) + 0.5, Math.floor(sy) + 0.5);
-  if (routeHasInk(center.along, center.len, center.signed, center.tx, center.ty)) return true;
-  if (!(center.t > 0 && center.t < 1)) return false;
-  const span = dashOffset(center.along, ROUTE_DASH[0], ROUTE_DASH[1]);
-  if (span.alongOff !== 0) return false;
-  return Math.abs(center.signed) <= squareSupport(center.tx, center.ty) + 1e-6;
+  if (routeHasInk(sample.along, sample.len, sample.signed, sample.tx, sample.ty)) {
+    if (isPixelCenter(sx, sy)) return true;
+    // A sample in an empty gap pixel is still inside the dash reach. The painted
+    // pixel beside it has its center on the dash body, out at the pixel diagonal.
+    const center = routeProject(ax, ay, bx, by, Math.floor(sx) + 0.5, Math.floor(sy) + 0.5);
+    if (routeHasInk(center.along, center.len, center.signed, center.tx, center.ty)) return true;
+    return routeCenterOnDash(center);
+  }
+  if (!isPixelCenter(sx, sy) || !routeCenterOnDash(sample)) return false;
+  // The center sits past the 0.53 reach. The same 0.45 step toward the stroke
+  // is the edge that already selects. Empty centers are further off the line.
+  const step = Math.sign(sample.signed) * 0.45;
+  const edge = routeProject(ax, ay, bx, by, sx - (-sample.ty) * step, sy - sample.tx * step);
+  return routeHasInk(edge.along, edge.len, edge.signed, edge.tx, edge.ty);
 }
 
 function linkOnInk(object, sx, sy, camera, view, project) {
