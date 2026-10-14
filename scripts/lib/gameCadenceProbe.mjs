@@ -7,6 +7,11 @@ export function installGameCadenceProbe() {
   const owner = typeof render?.drawPreparedFrame === 'function' ? render : null;
   const original = owner?.drawPreparedFrame;
   let submissions = 0;
+  let motionSubmissions = 0;
+  let lastMotionTick = null;
+  let lastMotionSim = null;
+  let lastMotionSubmit = null;
+  const motionSubmissionGaps = [];
   let lastSubmit = null;
   let previous = null;
   let lastSimAdvance = performance.now();
@@ -21,6 +26,14 @@ export function installGameCadenceProbe() {
       if (lastSubmit !== null) submissionGaps.push(now - lastSubmit);
       lastSubmit = now;
       submissions++;
+      if (sf.state.timeScale > 0
+          && (sf.state.tick !== lastMotionTick || sf.state.simTime !== lastMotionSim)) {
+        if (lastMotionSubmit !== null) motionSubmissionGaps.push(now - lastMotionSubmit);
+        lastMotionSubmit = now;
+        lastMotionTick = sf.state.tick;
+        lastMotionSim = sf.state.simTime;
+        motionSubmissions++;
+      }
     }
     return result;
   };
@@ -31,7 +44,7 @@ export function installGameCadenceProbe() {
         || st.mode !== 'flight' || !(st.timeScale > 0)) lastSimAdvance = performance.now();
     const row = {
       t: now, mode: st.mode, timeScale: st.timeScale,
-      sim: st.simTime, tick: st.tick, submissions,
+      sim: st.simTime, tick: st.tick, submissions, motionSubmissions,
       simStaleMs: Math.max(0, performance.now() - lastSimAdvance),
       worldStaleMs: Math.max(0, lastSubmit === null ? performance.now() - started : performance.now() - lastSubmit),
       calls: st.render?.diagnostics?.info?.calls ?? null,
@@ -46,7 +59,8 @@ export function installGameCadenceProbe() {
     stop() {
       cancelAnimationFrame(frameId);
       if (owner && owner.drawPreparedFrame === wrapped) owner.drawPreparedFrame = original;
-      return { started, ended: performance.now(), submissionObserved: !!owner, rows, submissionGaps };
+      return { started, ended: performance.now(), submissionObserved: !!owner, rows,
+        submissionGaps, motionSubmissionGaps };
     },
   };
 }
@@ -72,12 +86,18 @@ export function summarizeGameCadence(record) {
   const healthyCallbacksFrozenSimulation = frames.filter(r => r.gapMs <= 34 && r.simStaleMs > 100);
   const simDelta = first && last ? last.sim - first.sim : 0;
   const submits = first && last ? last.submissions - first.submissions : 0;
+  const motionObserved = record.submissionObserved
+    && Number.isFinite(first?.motionSubmissions) && Number.isFinite(last?.motionSubmissions);
+  const motionSubmits = motionObserved ? last.motionSubmissions - first.motionSubmissions : null;
   return {
     schema: 'spaceface.gameCadence.v1', wallMs, activeMs, simDelta,
     simWallRatio: wallMs > 0 ? simDelta * 1000 / wallMs : null,
     submissionObserved: record.submissionObserved,
     browserFps: activeMs > 0 ? frames.length * 1000 / activeMs : null,
     worldSubmitFps: record.submissionObserved && wallMs > 0 ? submits * 1000 / wallMs : null,
+    // Counts distinct simulation snapshots actually submitted, not repeated draws of one pose.
+    worldMotionFps: motionObserved && activeMs > 0 ? motionSubmits * 1000 / activeMs : null,
+    motionSubmissionGaps: motionObserved ? distribution(record.motionSubmissionGaps || []) : null,
     callbackGaps: distribution(frames.map(r => r.gapMs)),
     submissionGaps: record.submissionObserved ? distribution(record.submissionGaps || []) : null,
     healthyCallbacksFrozenWorld: healthyCallbacksFrozenWorld.length,

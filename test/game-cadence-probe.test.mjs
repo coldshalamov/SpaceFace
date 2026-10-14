@@ -54,15 +54,38 @@ test('live hook counts successful world draws only and restores the original ren
     callback(0);
     owner.drawPreparedFrame();
     callback(16);
+    owner.drawPreparedFrame();
+    callback(24);
+    window.SF.state.tick++;
+    window.SF.state.simTime += 1 / 60;
+    owner.drawPreparedFrame();
+    callback(28);
     window.SF.state.mode = 'loading';
     owner.drawPreparedFrame();
     callback(32);
     const record = window.__SF_GAME_CADENCE__.stop();
-    assert.deepEqual(record.rows.map(r => r.submissions), [0, 1, 1]);
+    assert.deepEqual(record.rows.map(r => r.submissions), [0, 1, 2, 3, 3]);
+    assert.deepEqual(record.rows.map(r => r.motionSubmissions), [0, 1, 1, 2, 2]);
+    assert.equal(record.motionSubmissionGaps.length, 1);
     assert.equal(owner.drawPreparedFrame, original);
   } finally {
     if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
     if (savedRequest === undefined) delete globalThis.requestAnimationFrame; else globalThis.requestAnimationFrame = savedRequest;
     if (savedCancel === undefined) delete globalThis.cancelAnimationFrame; else globalThis.cancelAnimationFrame = savedCancel;
   }
+});
+
+test('60 redraws per second distinguish 20 distinct world poses from smooth motion', () => {
+  const rows = Array.from({ length: 61 }, (_, i) => ({ t: i * 1000 / 60,
+    gapMs: i ? 1000 / 60 : undefined, mode: 'flight', timeScale: 1,
+    sim: i / 60, tick: i, submissions: i, motionSubmissions: Math.floor(i / 3),
+    worldStaleMs: 1, simStaleMs: 1,
+  }));
+  const result = summarizeGameCadence({ rows, submissionObserved: true,
+    motionSubmissionGaps: [50, 50], submissionGaps: [1000 / 60] });
+  assert.equal(result.worldSubmitFps, 60);
+  assert.ok(Math.abs(result.worldMotionFps - 20) < 1e-9);
+  assert.equal(result.motionSubmissionGaps.p99, 50);
+  assert.equal(summarizeGameCadence({ rows: rows.map(({ motionSubmissions, ...r }) => r),
+    submissionObserved: true }).worldMotionFps, null);
 });
