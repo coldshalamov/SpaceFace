@@ -115,6 +115,8 @@ function poseChanged(entity) {
 
 /**
  * Create one bounded journal. `journalStart`/`journalEnd` spans are `(start, end]` sequence ranges.
+ * Transport publishers mark copied records with `markTransferredThrough`; presentation ACKs
+ * release them with `discardThrough`. Only records beyond the transfer cursor can coalesce.
  * Overflow never changes gameplay: retained records are discarded, a rebuild is requested, and
  * publication resumes only after `rebuildFrom` emits a full current-entity spawn set.
  */
@@ -159,6 +161,10 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let writeSequence = 0;
   let lastRecordTick = -1;
   let lastDiscardedSequence = 0;
+  // Transfer copies leave the writer before presentation ACK frees their retained
+  // records. A later tick must append beyond this cursor rather than mutate a pose
+  // that the next transfer range will exclude.
+  let lastTransferredSequence = 0;
   let rebuildRequired = false;
   // True only while a stepped rebuild is suspended between presents — a foreign write
   // landing in that window is dropped by the same rebuildRequired early-outs it would
@@ -319,7 +325,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       const slot = retainedSlot(sequence);
       if (!slot || slot.entityId !== entityId
         || slot.generation !== generation) return;
-      // Coalesced writes (same-tick or cross-tick while retained) can precede another kind for
+      // Coalesced writes (same-tick or cross-tick while unsent) can precede another kind for
       // the same entity. Refresh later retained records too so sequence-order consumers never
       // observe a revision, tick, or scalar snapshot moving backwards.
       if (slot.tick < tick) slot.tick = tick;
@@ -458,11 +464,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     }
 
     const prior = retainedSlot(sequenceTable[entityId]);
-    // Coalesce across ticks while the prior record is still retained. Soft-GPU presents
+    // Coalesce across ticks while the prior record is still unsent. Soft-GPU presents
     // slower than the sim, so same-entity transform/visual spam was the top alloc-profile
-    // site (append @ presentationJournal). Presentation only needs the latest undrained
-    // pose/visual; intermediate ticks are overwritten in place (revision + scalars + tick).
-    if (prior && prior.kind === kind && prior.generation === generation && prior.tick <= tick) {
+    // site (append @ presentationJournal). One transfer only needs its latest pose/visual;
+    // already-transferred records remain immutable while waiting for presentation ACK.
+    if (prior && prior.sequence > lastTransferredSequence
+      && prior.kind === kind && prior.generation === generation && prior.tick <= tick) {
       const revision = nextCounter(revisions[entityId]);
       revisions[entityId] = revision;
       prior.tick = tick;
@@ -575,6 +582,13 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       if ((visited % every) === 0) yield;
     }
     return visited;
+  }
+
+  function markTransferredThrough(sequence) {
+    assertOpen();
+    if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > writeSequence) return false;
+    lastTransferredSequence = Math.max(lastTransferredSequence, sequence);
+    return true;
   }
 
   function discardThrough(sequence) {
@@ -745,6 +759,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     hasRange,
     visitRange,
     visitRangeSteps,
+    markTransferredThrough,
     discardThrough,
     requestRebuild,
     rebuildFrom,
@@ -776,6 +791,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
         writeSequence,
         oldestSequence: count > 0 ? records[read].sequence : 0,
         lastDiscardedSequence,
+        lastTransferredSequence,
         lastRecordTick,
         publishedCount,
         spawnCount,
