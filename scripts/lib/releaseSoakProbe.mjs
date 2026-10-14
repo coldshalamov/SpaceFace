@@ -85,6 +85,11 @@ export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 
 // or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
 export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
 export const DYNAMIC_BUFFER_FULL_SPAN_VARIANT = 'dynamic_buffer_full_span';
+// The teardown snapshot is emitted through the page's console while the page is still alive.
+// Keep the marker private to this probe so the normal issue tracker does not treat the diagnostic
+// payload as a runtime warning/error.
+export const POST_TEARDOWN_GL_DELETE_TRAP_PREFIX = '[spaceface] post-teardown-gl-delete-trap:';
+export const POST_TEARDOWN_GL_DELETE_TRAP_ARTIFACT = 'post-teardown-gl-delete-trap.json';
 // Get-Process CPU time advances in scheduler-sized quanta on Windows, so a near-zero threshold
 // mistakes ordinary dormant desktop roots for foreground work. Sample long enough to average those
 // ticks and reject sustained work (or churn); the route's no-op control and GPU validity checks remain
@@ -233,6 +238,37 @@ export async function runReleaseSoakProbe({
   let cleanupReport = null;
   let isolatedLaunch = null;
   let packagedStartup = null;
+  let postTeardownGlDeleteTrapInstall = null;
+  let postTeardownGlDeleteTrapSnapshot = null;
+  let postTeardownGlDeleteTrapConsoleHandler = null;
+
+  const removePostTeardownGlDeleteTrapConsoleHandler = () => {
+    if (!postTeardownGlDeleteTrapConsoleHandler || typeof page?.off !== 'function') return;
+    try { page.off('console', postTeardownGlDeleteTrapConsoleHandler); } catch (_) { /* page may already be closed */ }
+    postTeardownGlDeleteTrapConsoleHandler = null;
+  };
+
+  const armPostTeardownGlDeleteTrap = async () => {
+    if (postTeardownGlDeleteTrapInstall?.installed === true) return postTeardownGlDeleteTrapInstall;
+    if (!postTeardownGlDeleteTrapConsoleHandler) {
+      postTeardownGlDeleteTrapConsoleHandler = (message) => {
+        if (postTeardownGlDeleteTrapSnapshot) return;
+        const snapshot = readPostTeardownGlDeleteTrapConsoleMessage(message);
+        if (snapshot) postTeardownGlDeleteTrapSnapshot = snapshot;
+      };
+      if (typeof page?.on === 'function') page.on('console', postTeardownGlDeleteTrapConsoleHandler);
+    }
+    try {
+      postTeardownGlDeleteTrapInstall = await installPostTeardownGlDeleteTrapCapture(page);
+    } catch (error) {
+      postTeardownGlDeleteTrapInstall = {
+        installed: false,
+        reason: 'install-failed',
+        error: error?.message || String(error),
+      };
+    }
+    return postTeardownGlDeleteTrapInstall;
+  };
 
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
@@ -314,6 +350,10 @@ export async function runReleaseSoakProbe({
     page.setDefaultNavigationTimeout(60_000);
     await page.bringToFront();
     doLog(`${runtime} canonical root ${rootUrl}`);
+    // Arm before the public route so an early route/load failure still leaves a
+    // one-shot caller snapshot for the ordinary teardown in the failure path.
+    // The helper is idempotent and never initiates a second teardown.
+    await armPostTeardownGlDeleteTrap();
 
     const routeResult = await runBrowserPublicRoute({
       page,
@@ -575,6 +615,11 @@ export async function runReleaseSoakProbe({
       }`);
     }
 
+    // The pre-close trap above sees resource churn during the soak. Retry the
+    // install only when the early page-load attempt could not yet see SF.registry;
+    // this still wraps the same ordinary teardown exactly once.
+    await armPostTeardownGlDeleteTrap();
+
     const endFingerprint = await strictWorktreeFingerprint(root);
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
     if (!worktreeStable) {
@@ -618,12 +663,34 @@ export async function runReleaseSoakProbe({
     cleanupReport = runtime === 'electron'
       ? await closeOwnedElectronRuntime({ page, electronApp, childProcess, canonicalUrlTracker, processMonitor, rootUrl })
       : await closeOwnedResources({ page, context, browser, browserServer, browserChildProcess, server: ownedServer, canonicalUrlTracker });
+    // closeOwned* has now completed the ordinary page/app close. The wrapper ran during that
+    // close, and its console payload arrived while the document still existed; retain an explicit
+    // availability bit so a missing hook cannot be mistaken for a clean zero-delete result.
+    const glDeleteTrapPostTeardown = {
+      available: postTeardownGlDeleteTrapSnapshot !== null,
+      ...(postTeardownGlDeleteTrapSnapshot || {
+        armed: false,
+        entries: [],
+        evicted: 0,
+        dropped: 0,
+      }),
+      install: postTeardownGlDeleteTrapInstall,
+    };
+    if (glDeleteTrapPostTeardown.available) {
+      const entries = glDeleteTrapPostTeardown.entries;
+      const dead = entries.filter((entry) => entry.alive === false);
+      doLog(`post-teardown gl-delete trap captured ${entries.length} delete caller(s), ${dead.length} failed their own isX check`);
+    } else {
+      doLog(`post-teardown gl-delete trap unavailable (${postTeardownGlDeleteTrapInstall?.reason || 'no snapshot before close'})`);
+    }
+    removePostTeardownGlDeleteTrapConsoleHandler();
     if (runtime === 'electron') cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport);
     const cleanup = normalizeCleanup(runtime, cleanupReport);
     const cleanupValidation = validateCleanupEvidence(cleanup, { runtimeKind: runtime });
     const errors = buildErrorEvidence(runtime, pageIssueTracker);
     errors.programQueryTrap = programQueryTrap;
     errors.glDeleteTrap = glDeleteTrap;
+    errors.glDeleteTrapPostTeardown = glDeleteTrapPostTeardown;
     pageIssueTracker?.stop?.();
 
     const checks = [
@@ -737,6 +804,10 @@ export async function runReleaseSoakProbe({
       startFingerprint,
     };
   } catch (error) {
+    // Route or warmup failures can happen before the normal success-path retry sees
+    // SF.registry. Make one last install attempt while the page is still alive so
+    // ordinary cleanup can publish the same caller snapshot; this never calls teardown.
+    await armPostTeardownGlDeleteTrap().catch(() => {});
     if (page && !page.isClosed()) {
       await page.screenshot({ path: path.join(outputDir, 'failure-screenshot.png'), type: 'png', animations: 'allow' }).catch(() => {});
     }
@@ -749,8 +820,21 @@ export async function runReleaseSoakProbe({
         cleanupReport = await closeOwnedResources({ page, context, browser, browserServer, browserChildProcess, server: ownedServer, canonicalUrlTracker }).catch(() => null);
       }
     }
+    removePostTeardownGlDeleteTrapConsoleHandler();
     if (runtime === 'electron') cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport);
     pageIssueTracker?.stop?.();
+    if (page || postTeardownGlDeleteTrapInstall || postTeardownGlDeleteTrapSnapshot) {
+      const terminalTrap = buildPostTeardownGlDeleteTrapDiagnostic({
+        runtimeKind: runtime,
+        install: postTeardownGlDeleteTrapInstall,
+        snapshot: postTeardownGlDeleteTrapSnapshot,
+      });
+      await writeFile(
+        path.join(outputDir, POST_TEARDOWN_GL_DELETE_TRAP_ARTIFACT),
+        `${JSON.stringify(terminalTrap, null, 2)}\n`,
+        'utf8',
+      ).catch(() => {});
+    }
     await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8').catch(() => {});
   }
 }
@@ -834,7 +918,13 @@ async function launchElectron(
   processMonitor = createElectronProcessMonitor({ electronApp, childProcess });
   childProcess = processMonitor.childProcess;
   publishOwnership();
-  pageIssueTracker = createStrictElectronApplicationIssueTracker(electronApp);
+  // This soak intentionally runs without the optional shared player-store backend and
+  // dismisses the boot/intro visualizer. Keep the application tracker strict everywhere else;
+  // this opt-in only excuses the exact store GET 404 and cancelled cinematic media requests.
+  pageIssueTracker = createStrictElectronApplicationIssueTracker(electronApp, {
+    playerStoreMounted: false,
+    allowCancelledMedia: true,
+  });
   // Publish every cleanup handle before firstWindow/init/reload can fail. The caller's outer finally
   // then owns both the runtime and its isolated profile even if setup never returns a launch record.
   publishOwnership();
@@ -1198,6 +1288,101 @@ export async function readGlDeleteTrap(page) {
   }
 }
 
+// Install a diagnostic-only wrapper around the game's ordinary registry teardown. The wrapper
+// runs *after* registry.destroy() has released its renderer-owned resources, but before the
+// enclosing beforeunload/page-close transaction returns. It publishes one immutable trap snapshot
+// through console.info so the Node-side probe can retain it even though page.evaluate() is no
+// longer available once the owned page/application closes. No teardown is initiated here.
+export async function installPostTeardownGlDeleteTrapCapture(page) {
+  assert(page && typeof page.evaluate === 'function', 'post-teardown gl trap requires an evaluate seam');
+  return page.evaluate(() => {
+    const marker = '__SF_GL_DELETE_TRAP_POST_TEARDOWN__';
+    const registry = globalThis.window?.SF?.registry || globalThis.SF?.registry;
+    if (!registry || typeof registry.destroy !== 'function') {
+      return { installed: false, reason: 'registry-destroy-unavailable' };
+    }
+    if (registry.destroy.__sfPostTeardownGlDeleteTrap === true) {
+      return { installed: true, already: true, captured: !!globalThis[marker] };
+    }
+
+    let captured = false;
+    const capture = () => {
+      if (captured) return;
+      captured = true;
+      const armed = globalThis.__SF_GL_DELETE_TRAP__;
+      const meta = armed?.__sfSaturation || {};
+      const entries = Array.isArray(armed)
+        ? armed.map((entry) => Object.freeze({ ...entry }))
+        : [];
+      const snapshot = Object.freeze({
+        armed: Array.isArray(armed),
+        entries: Object.freeze(entries),
+        evicted: Number(meta.evicted) || 0,
+        dropped: Number(meta.dropped) || 0,
+      });
+      try {
+        Object.defineProperty(globalThis, marker, {
+          value: snapshot,
+          configurable: false,
+          enumerable: false,
+          writable: false,
+        });
+      } catch (_) { /* a prior immutable snapshot remains authoritative */ }
+      // This literal is intentionally stable: the Node-side listener uses the same marker, while
+      // page issue trackers only retain console errors/warnings and ignore this info diagnostic.
+      try {
+        globalThis.console?.info?.(`[spaceface] post-teardown-gl-delete-trap:${JSON.stringify(snapshot)}`);
+      } catch (_) { /* diagnostic transport must never affect runtime teardown */ }
+    };
+    const original = registry.destroy;
+    const wrapped = function (...args) {
+      try {
+        return Reflect.apply(original, this, args);
+      } finally {
+        capture();
+      }
+    };
+    Object.defineProperty(wrapped, '__sfPostTeardownGlDeleteTrap', {
+      value: true,
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+    try {
+      registry.destroy = wrapped;
+    } catch (_) {
+      return { installed: false, reason: 'registry-destroy-not-writable' };
+    }
+    if (registry.destroy !== wrapped) {
+      return { installed: false, reason: 'registry-destroy-assignment-rejected' };
+    }
+    return { installed: true, already: false, captured: false };
+  });
+}
+
+export function readPostTeardownGlDeleteTrapConsoleMessage(message) {
+  const text = typeof message === 'string'
+    ? message
+    : (typeof message?.text === 'function' ? message.text() : '');
+  if (!text.startsWith(POST_TEARDOWN_GL_DELETE_TRAP_PREFIX)) return null;
+  try {
+    const snapshot = JSON.parse(text.slice(POST_TEARDOWN_GL_DELETE_TRAP_PREFIX.length));
+    return snapshot && Array.isArray(snapshot.entries) ? snapshot : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function buildPostTeardownGlDeleteTrapDiagnostic({ runtimeKind, install, snapshot } = {}) {
+  return {
+    schema: 'spaceface.post-teardown-gl-delete-trap.v1',
+    runtimeKind: runtimeKind || null,
+    available: snapshot !== null && snapshot !== undefined,
+    install: install || null,
+    snapshot: snapshot || null,
+  };
+}
+
 export async function assertTier1CountersBooted(page, { timeoutMs = 30_000, phase = 'boot' } = {}) {
   assert(page && typeof page.waitForFunction === 'function' && typeof page.evaluate === 'function',
     'Tier-1 counters require a page readiness seam');
@@ -1497,8 +1682,10 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   assert(loadedAtEvent?.pos, 'save:loaded observer must capture the exact restored player pose');
   // F9 resolves 'latest' — a docking-triggered chunked autosave can land between the quick
   // save and the quick load, and the public load then legitimately restores the autosave.
-  // The honest invariant is restore fidelity against the envelope that was actually loaded,
-  // not the quick slot specifically.
+  // The worker owns the save bytes, while save:started/save:loaded are replayed onto the
+  // presentation mirror. The mirror can be a few replies behind at either event boundary, so
+  // the envelope for the slot actually loaded is the authoritative restore reference. Keep the
+  // event snapshots as diagnostics, but never compare them as if they were worker-owned bytes.
   const loadedEnvelope = await page.evaluate((slot) => {
     const raw = slot ? localStorage.getItem('sf.save.' + slot) : null;
     if (!raw) return null;
@@ -1516,7 +1703,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       };
     } catch { return null; }
   }, loadedSlot);
-  const restoreReference = loadedSlot === 'quick' ? saved : loadedEnvelope;
+  const restoreReference = loadedEnvelope || saved;
   assert(restoreReference?.pos, `loaded slot envelope must carry the restored pose (slot ${loadedSlot || 'unknown'})`);
   const loadedEconomy = await readEconomySnapshot(page);
   const divergedDistance = distance(saved.pos, diverged.pos);
@@ -2294,8 +2481,16 @@ async function exerciseMarketRoundtrip(page) {
   // Each roundtrip ends in Sell mode, which narrows the register to held cargo ("IN HOLD").
   // After the load+redock the hold can be empty, which collapses the console into the
   // HOLD_EMPTY data state — its public "Switch to Buy" verb is the designed way out.
-  const holdEmptyVerb = page.locator('.sf-state[data-sf-state="empty"] .sf-state__verb', { hasText: /switch to buy/i }).first();
-  if (await pBound(holdEmptyVerb.isVisible(), 4_000, false)) await pBound(holdEmptyVerb.click({ timeout: 4_000 }), 5_000, null);
+  // The cached market screen can reopen in two different empty-register states:
+  // HOLD_EMPTY offers “Switch to Buy”, while a previously selected lot that was
+  // sold in the prior cycle offers “Show <commodity>”. Both verbs are the
+  // market's public recovery path and both must be activated before looking for
+  // the trade console. Scoping to the visible market quote avoids unrelated
+  // data-state verbs elsewhere in the station shell.
+  const marketStateVerb = page.locator('.sx-mkt__stage:visible .sx-mkt__quote .sf-state[data-sf-state="empty"] .sf-state__verb').first();
+  if (await pBound(marketStateVerb.isVisible(), 4_000, false)) {
+    await pBound(marketStateVerb.click({ timeout: 4_000 }), 5_000, null);
+  }
   const activeTradeShell = page.locator('.sx-trade:visible').first();
   // Live station chrome refreshes under the pointer; when a pointer-path click loses the
   // hit test, dispatch the click on the node itself — the same event the delegated
@@ -2323,8 +2518,8 @@ async function exerciseMarketRoundtrip(page) {
   await buyMode.waitFor({ state: 'visible', timeout: 20_000 });
   const ensureBuyMode = async () => {
     for (let attempt = 0; attempt < 3 && !(await modeIsOn(buyMode)); attempt++) {
-      if (await pBound(holdEmptyVerb.isVisible(), 1_500, false)) {
-        await pBound(holdEmptyVerb.click({ timeout: 2_000 }), 3_000, null);
+      if (await pBound(marketStateVerb.isVisible(), 1_500, false)) {
+        await pBound(marketStateVerb.click({ timeout: 2_000 }), 3_000, null);
       }
       await clickWithFallback(buyMode);
     }
@@ -6398,5 +6593,6 @@ export {
   inspectPerformanceContaminants,
   inspectSystemLoad,
   readPerformanceRouteFailureState,
+  probeWebGlContextLoss,
   runPerformanceAttributionProbe,
 };

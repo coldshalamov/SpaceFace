@@ -25,7 +25,9 @@ import {
   installGlDeleteTrap,
   installGlProgramQueryTrap,
   installGlTrapsOnLivePage,
+  installPostTeardownGlDeleteTrapCapture,
   readGlDeleteTrap,
+  readPostTeardownGlDeleteTrapConsoleMessage,
 } from '../scripts/lib/releaseSoakProbe.mjs';
 
 // A minimal WebGL2-like realm. The `__alive` flag simulates the binding-layer behavior under
@@ -224,4 +226,52 @@ test('a precise alive:false entry is never the eviction victim and saturation is
   const deadEntries = read.entries.filter((entry) => entry.alive === false);
   assert.equal(deadEntries.length, 3, 'every alive:false entry survives');
   assert.equal(read.dropped, 0);
+});
+
+test('post-teardown capture wraps ordinary registry destroy once and preserves its result', async () => {
+  const context = vm.createContext({
+    console: { info: (value) => runIn(context, `globalThis.__logs.push(${JSON.stringify(String(value))})`) },
+  });
+  vm.runInContext(`
+    globalThis.__logs = [];
+    globalThis.__destroyCalls = 0;
+    globalThis.__SF_GL_DELETE_TRAP__ = [{ count: 7, api: 'deleteTexture', alive: true, lost: false, at: 42, stack: 'stack' }];
+    Object.defineProperty(globalThis.__SF_GL_DELETE_TRAP__, '__sfSaturation', {
+      value: { evicted: 3, dropped: 1 },
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+    globalThis.SF = {
+      registry: {
+        destroy(value) {
+          globalThis.__destroyCalls += 1;
+          return { value };
+        },
+      },
+    };
+  `, context);
+
+  const page = fakePage(context);
+  const firstInstall = await installPostTeardownGlDeleteTrapCapture(page);
+  const secondInstall = await installPostTeardownGlDeleteTrapCapture(page);
+  assert.equal(firstInstall.installed, true);
+  assert.equal(firstInstall.already, false);
+  assert.equal(secondInstall.installed, true);
+  assert.equal(secondInstall.already, true);
+
+  const result = runIn(context, `globalThis.SF.registry.destroy('ordinary-close')`);
+  assert.equal(result.value, 'ordinary-close');
+  runIn(context, 'globalThis.SF.registry.destroy(\'second-call\')');
+  assert.equal(runIn(context, 'globalThis.__destroyCalls'), 2);
+  assert.equal(runIn(context, 'globalThis.__logs.length'), 1, 'capture must publish exactly once');
+
+  const snapshot = readPostTeardownGlDeleteTrapConsoleMessage(runIn(context, 'globalThis.__logs[0]'));
+  assert.equal(snapshot.armed, true);
+  assert.equal(snapshot.evicted, 3);
+  assert.equal(snapshot.dropped, 1);
+  assert.equal(snapshot.entries[0].count, 7);
+  assert.equal(runIn(context, 'Object.isFrozen(globalThis.__SF_GL_DELETE_TRAP_POST_TEARDOWN__)'), true);
+  assert.equal(runIn(context, 'Object.isFrozen(globalThis.__SF_GL_DELETE_TRAP_POST_TEARDOWN__.entries)'), true);
+  assert.equal(readPostTeardownGlDeleteTrapConsoleMessage('[spaceface] other-message'), null);
 });
