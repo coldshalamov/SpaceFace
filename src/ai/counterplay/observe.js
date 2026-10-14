@@ -11,10 +11,11 @@ function copyPos(pos) {
 }
 
 function copyContact(contact) {
-  if (!contact || contact.id == null) return null;
+  if (!contact || contact.id == null || !Number.isFinite(contact.pos?.x)
+    || !Number.isFinite(contact.pos?.z)) return null;
   return {
     id: contact.id,
-    generation: Number.isInteger(contact.generation) ? contact.generation : 1,
+    generation: Number.isSafeInteger(contact.generation) && contact.generation >= 0 ? contact.generation : 1,
     kind: String(contact.kind || 'ship'),
     role: String(contact.role || ''),
     team: contact.team == null ? null : contact.team,
@@ -38,10 +39,11 @@ export function pointSegmentDistance(point, a, b) {
   return Math.hypot(num(point.x) - (num(a.x) + abx * t), num(point.z) - (num(a.z) + abz * t));
 }
 
-export function segmentBlocked(from, to, obstacles, pad = 0) {
+export function segmentBlocked(from, to, obstacles, pad = 0, ignoreId = null) {
   if (!from || !to || !obstacles) return false;
   for (const obstacle of obstacles) {
-    if (!obstacle || !obstacle.pos) continue;
+    if (!obstacle || !obstacle.pos || obstacle.alive === false
+      || (ignoreId != null && obstacle.id === ignoreId)) continue;
     const radius = num(obstacle.radius, 8) + pad;
     if (pointSegmentDistance(obstacle.pos, from, to) <= radius) return true;
   }
@@ -59,17 +61,19 @@ export function emptySensed() {
 
 /**
  * Filter a raw world down to what this doctrine is allowed to know at `tick`.
- * Mutates `memory.delay` only. `self` is returned live: a hull knows its own pose.
+ * Mutates `memory.delay` only. The caller keeps its live self pose; external poses are snapshots.
  */
 export function limitKnowledge(world, doctrine, memory, tick) {
   const range = Math.max(0, num(doctrine && doctrine.sensorRange, 0));
-  const delayTicks = Math.max(0, num(doctrine && doctrine.reactionDelayTicks, 0));
+  const delayTicks = Math.max(0, Math.ceil(num(doctrine && doctrine.reactionDelayTicks, 0)));
   const self = world && world.self;
-  const origin = self && self.pos ? self.pos : { x: 0, z: 0 };
+  if (!Number.isSafeInteger(tick) || tick < 0 || !Number.isFinite(self?.pos?.x)
+    || !Number.isFinite(self?.pos?.z)) return emptySensed();
+  const origin = self.pos;
   const obstacles = [];
   for (const obstacle of (world && world.obstacles) || []) {
     const copy = copyContact(obstacle);
-    if (!copy) continue;
+    if (!copy || copy.alive === false) continue;
     if (Math.hypot(copy.pos.x - origin.x, copy.pos.z - origin.z) > range + copy.radius) continue;
     obstacles.push(copy);
   }
@@ -79,14 +83,21 @@ export function limitKnowledge(world, doctrine, memory, tick) {
     if (!copy || copy.alive === false) continue;
     const dist = Math.hypot(copy.pos.x - origin.x, copy.pos.z - origin.z);
     if (dist > range) continue;
-    if (segmentBlocked(origin, copy.pos, obstacles.filter((obstacle) => obstacle.id !== copy.id), 0)) continue;
+    if (segmentBlocked(origin, copy.pos, obstacles, 0, copy.id)) continue;
     contacts.push(copy);
   }
+  const observedIds = new Set([self.id]);
+  for (const row of contacts) observedIds.add(row.id);
+  for (const row of obstacles) observedIds.add(row.id);
   const tethers = [];
   for (const tether of (world && world.tethers) || []) {
-    if (!tether) continue;
-    const length = num(tether.length);
-    if (length > range && tether.ownerId !== (self && self.id) && tether.targetId !== (self && self.id)) continue;
+    if (!tether || tether.ownerId == null || tether.targetId == null
+      || !Number.isFinite(tether.length) || tether.length < 0) continue;
+    // A short rope can be on the other side of the sector. Length is not sensor range.
+    // Own attachments are proprioception; third-party endpoints must both be observed.
+    const attachedToSelf = tether.ownerId === self.id || tether.targetId === self.id;
+    if (!attachedToSelf && (!observedIds.has(tether.ownerId) || !observedIds.has(tether.targetId))) continue;
+    const length = tether.length;
     tethers.push({
       id: String(tether.id || ''),
       ownerId: tether.ownerId,
@@ -96,19 +107,30 @@ export function limitKnowledge(world, doctrine, memory, tick) {
     });
   }
   const visible = { tick, contacts, obstacles, tethers };
-  if (memory) {
-    if (!Array.isArray(memory.delay)) memory.delay = [];
-    memory.delay.push(JSON.parse(JSON.stringify(visible)));
-    const keep = Math.max(4, delayTicks + 2);
-    while (memory.delay.length > keep) memory.delay.shift();
-  }
+  if (!memory) return delayTicks === 0 ? visible : emptySensed();
+  if (!Array.isArray(memory.delay)) memory.delay = [];
+  const history = memory.delay;
+  const last = history.at(-1);
+  // A new timeline must not inherit observations from the discarded future.
+  if (last && (!Number.isSafeInteger(last.tick) || last.tick > tick)) history.length = 0;
+  else if (last && last.tick === tick) history.pop();
+  // copyContact already detached the payload. A JSON round trip here only added churn.
+  history.push(visible);
   const due = tick - delayTicks;
   let sample = null;
-  if (memory && memory.delay) {
-    for (const row of memory.delay) {
-      if (row && row.tick <= due) sample = row;
+  let dueIndex = -1;
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    if (history[i] && Number.isSafeInteger(history[i].tick) && history[i].tick <= due) {
+      sample = history[i];
+      dueIndex = i;
+      break;
     }
   }
+  // Keep the newest due frame and all still-delayed frames, not a count of calls.
+  if (dueIndex > 0) history.splice(0, dueIndex);
+  const keep = Math.max(2, delayTicks + 2);
+  if (history.length > keep) history.splice(0, history.length - keep);
+
   if (!sample) return emptySensed();
   return {
     tick: sample.tick,
@@ -149,6 +171,7 @@ export function forgetStaleIdentity(memory, sensed) {
   memory.latchIssued = false;
   memory.phase = 'fallback';
   memory.phaseSince = sensed && Number.isInteger(sensed.tick) ? sensed.tick : memory.phaseSince;
+  if (!memory.identity || typeof memory.identity !== 'object') memory.identity = {};
   memory.identity[String(contact.id)] = { id: contact.id, generation: contact.generation };
   return true;
 }
