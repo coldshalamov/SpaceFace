@@ -33,6 +33,15 @@ import {
   resolveFrameSolidLinks,
   summarizeFrameSolid,
 } from './lib/frameSolidSampler.mjs';
+import {
+  DELAYED_READINESS_LIMITS,
+  createDelayedReadinessReceipt,
+  finalizeDelayedReadinessReceipt,
+  installFrameSolidDelayedReadiness,
+  recordDelayedReadinessSample,
+  recordPipelineCalls,
+  restoreFrameSolidDelayedReadiness,
+} from './lib/frameSolidDelayedReadiness.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
@@ -97,6 +106,7 @@ const server = spawn(process.execPath, ['server.js', String(port)], {
   env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
 });
 let browser = null;
+let restoreDelayedReadiness = null;
 const consoleErrors = [];
 const dumpErrors = () => {
   if (!consoleErrors.length) return;
@@ -153,6 +163,21 @@ try {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 300_000 });
   await page.bringToFront();
+
+  // Install before game:new so the receipt sees both opening-admission pipeline calls and
+  // the later delayed roots. The collector itself is invoked only during flight polls.
+  const delayedReadinessReceipt = createDelayedReadinessReceipt(Date.now());
+  const delayedReadinessInstall = await page.evaluate(installFrameSolidDelayedReadiness, {
+    maxRoots: DELAYED_READINESS_LIMITS.maxRoots,
+    maxRowsPerPoll: DELAYED_READINESS_LIMITS.maxRoots,
+    maxPipelineCalls: DELAYED_READINESS_LIMITS.maxPipelineCalls,
+    maxResidencyNodes: DELAYED_READINESS_LIMITS.maxResidencyNodes,
+    maxStringLength: DELAYED_READINESS_LIMITS.maxStringLength,
+  });
+  if (!delayedReadinessInstall || delayedReadinessInstall.installed !== true) {
+    console.warn(`delayed readiness observer unavailable: ${JSON.stringify(delayedReadinessInstall)}`);
+  }
+  restoreDelayedReadiness = async () => page.evaluate(restoreFrameSolidDelayedReadiness).catch(() => null);
 
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Frame Solid' }));
   // Same gate as probe-solid-world: the opening cook alone can run minutes on a
@@ -260,7 +285,8 @@ try {
   let lastFrameCount = 0;
   let lastFrameAt = 0;
 
-  const poll = async (sampleDue) => page.evaluate(({ stationId, wantSample }) => {
+  const poll = async (sampleDue) => {
+    const snapshot = await page.evaluate(({ stationId, wantSample }) => {
     const s = window.SF && window.SF.state;
     if (!s) return { mode: 'gone' };
     const p = s.entities && s.entities.get(s.playerId);
@@ -286,8 +312,17 @@ try {
         frames: (window.__SF_FRAME__ && window.__SF_FRAME__.frames) | 0,
       };
     }
+    out.delayedReadiness = typeof window.__SF_CAPTURE_D201_DELAYED_READINESS__ === 'function'
+      ? window.__SF_CAPTURE_D201_DELAYED_READINESS__()
+      : null;
     return out;
-  }, { stationId: station.id, wantSample: sampleDue });
+    }, { stationId: station.id, wantSample: sampleDue });
+    if (snapshot && snapshot.delayedReadiness) {
+      recordDelayedReadinessSample(delayedReadinessReceipt, snapshot.delayedReadiness,
+        Date.now() - delayedReadinessReceipt.startedAtMs);
+    }
+    return snapshot;
+  };
 
   const recordMetrics = (m) => {
     if (!m) return;
@@ -622,6 +657,14 @@ try {
     };
   }).catch(() => null);
 
+  const delayedReadinessObserver = restoreDelayedReadiness ? await restoreDelayedReadiness() : null;
+  restoreDelayedReadiness = null;
+  recordPipelineCalls(delayedReadinessReceipt,
+    delayedReadinessObserver && delayedReadinessObserver.calls,
+    delayedReadinessObserver && delayedReadinessObserver.dropped,
+    delayedReadinessObserver && delayedReadinessObserver.installed);
+  const delayedReadiness = finalizeDelayedReadinessReceipt(delayedReadinessReceipt);
+
   console.log('\nframe-solid audit — everything in the player frame stays drawn and solid');
   console.log(`  phases: ${JSON.stringify(phases.map((p) => ({ phase: p.phase, ms: p.ms, endDist: Math.round(p.endDist || 0), minDist: Math.round(p.minDist || 0), maxDist: Math.round(p.maxDist || 0) })))}`);
   if (modeLeaves.length) console.log(`  mode left flight: ${JSON.stringify(modeLeaves)}`);
@@ -657,6 +700,11 @@ try {
   const contextLosses = await page.evaluate(() => window.__SF_CONTEXT_LOSSES__ || 0).catch(() => null);
   console.log(`  admission lanes: ${JSON.stringify((summary && summary.lanes) || null)}`);
   console.log(`  authored composition jobs in flight: ${JSON.stringify(upgradeJobs)}`);
+  console.log(`  delayed readiness: roots=${delayedReadiness.rootsTracked}`
+    + ` samples=${delayedReadiness.samplesStored}/${delayedReadiness.delayedRowsSeen}`
+    + ` pipelineCalls=${delayedReadiness.observer.pipelineCalls.length}`
+    + ` dropped=${delayedReadiness.droppedRoots + delayedReadiness.droppedSamples
+      + delayedReadiness.observer.pipelineCallsDropped}`);
   if (upgradeJobs && upgradeJobs.phaseJobs > 0) {
     const totals = upgradeJobs.phaseTotals || {};
     const sum = Object.values(totals).reduce((acc, row) => acc + row.totalMs, 0) || 1;
@@ -717,6 +765,7 @@ try {
     timing: timing || null,
     lanes: (summary && summary.lanes) || null,
     upgradeJobs,
+    delayedReadiness,
     flightLinkEvents,
     offenders: (summary && summary.offenders) || [],
     phases,
@@ -751,6 +800,7 @@ try {
   dumpErrors();
   throw error;
 } finally {
+  if (restoreDelayedReadiness) await restoreDelayedReadiness();
   if (browser) await browser.close();
   server.kill();
 }
