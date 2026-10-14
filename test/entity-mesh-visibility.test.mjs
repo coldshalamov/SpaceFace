@@ -169,7 +169,7 @@ test('authored station and place commits merge static plates before freeze', asy
   assert.doesNotMatch(source, /optimizeStaticBatchesForRoot\(stationed\)/);
   // The authored place root merges inside buildPlacePropRoot via the static batch collector before
   // LOD/material binding; the commit freezes it. Re-batching at commit would orphan LOD bindings.
-  const builder = source.match(/function buildPlacePropRoot[\s\S]*?staticBatches\.flush\(\);/);
+  const builder = source.match(/function\* buildPlacePropRootSteps[\s\S]*?yield\* staticBatches\.flushSteps\(\);/);
   assert.ok(builder, 'buildPlacePropRoot flushes the static batch collector on the authored root');
   assert.match(source, /freezeStaticChildMatrices\(authored\.root\)/);
   assert.doesNotMatch(source, /optimizeStaticBatchesForRoot\(authored\.root\)/);

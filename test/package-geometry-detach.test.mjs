@@ -289,7 +289,7 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
   assert.match(asteroid, /armGeometryGpuResidentLedger\(drawable\);/);
   assert.match(asteroid, /dropGeometryGpuResidencyLedger\(renderer\);/);
   const bloom = read('src/render/bloom.js');
-  assert.match(bloom, /detachedPresentedDrawBlocked\(renderer, geometry, material\)/);
+  assert.match(bloom, /preparePresentedDraw\(renderer, geometry, material\)/);
   assert.match(bloom, /queuePresentedDetachRehydrate\(renderer\)/);
   assert.match(bloom, /const orientationHold = orientationDetachedHoldActive\(renderer\)/);
   assert.match(bloom, /if \(!orientationHold && unreadyProgramsPending !== true/);

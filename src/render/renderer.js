@@ -8,6 +8,7 @@ import { createAsyncAdmission } from './asyncAdmission.js';
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
+import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
@@ -221,7 +222,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { projectedWidthPx } from './lod.js';
+import { projectedWidthPx, resolvePresentedLodLevel } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -27099,8 +27100,8 @@ export const render = {
         }
         if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
 
-        // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
-        // width with hysteresis. Newly visible roots are fully posed above before this decision.
+        // Visible ships retain their authored body. Props still resolve their
+        // detail from projected size after the latest completed pose is applied.
         _viewBandOptions.isPlayer = isPlayer;
         _viewBandOptions.dx = mesh.position.x - bounds.x;
         _viewBandOptions.dz = mesh.position.z - bounds.z;
@@ -27112,6 +27113,7 @@ export const render = {
         // _viewBandOptions already carries forceInner; a middle band can only exist with it
         // false, so the pooled struct answers exactly like the callee's `{}` default.
         const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot, _viewBandOptions);
+        const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
         let lodLevel = userData.lod ? userData.lod.level : null;
         const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
         // Projected size must measure the drawn envelope, not the presence proxy: a station's
@@ -27132,7 +27134,7 @@ export const render = {
         );
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx, this.state.simTime);
+          lodLevel = resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
           if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
@@ -27142,7 +27144,6 @@ export const render = {
         }
         // Keeper masks remain correctness at every LOD and decorative sleep cadence.
         if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
-        const typeName = (entity && entity.type) || (world.getTypeName && world.getTypeName(slot)) || '';
         // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
         // directional depth pass. Far / low-LOD roots keep receiveShadow + contact shadows.
         // 'place' covers the landmark casters (hub, refinery, wreck cathedral) — the same
@@ -32423,7 +32424,7 @@ export const render = {
     // (scene.matrixWorldAutoUpdate is false; bloom, graph scene+normal passes, and the internal
     // shadow-map pass all reuse this result). No force flag: clean subtrees keep their
     // matrixWorldNeedsUpdate skip, matching the old per-pass call's multiply work.
-    if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
+    updatePresentedSceneMatrices(scene);
     // Still-linking drawables wait out the driver inside whichever scene pass draws them first.
     // The bloom route brackets its own passes; the graph and native routes get the same
     // hide→render→restore guard here so a mid-link program cannot stall either presented path.
