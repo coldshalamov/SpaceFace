@@ -6806,4 +6806,20 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   const wideRing = { id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 8 };
   assert.equal(hitTest({ objects: [wideRing, objective] }, 108, 100, unitZoom, view), 'mark');
   assert.equal(hitTest({ objects: [wideRing, objective] }, 108.4, 100, unitZoom, view), 'mark');
+
+  assert.equal(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'to_stone');
+  assert.notEqual(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 438.4, 271.2, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 554, 204, stageCam, stage, profileDraw), 'stone');
+  assert.equal(hitTest(bank, 543, 204, stageCam, stage, profileDraw), 'stone');
+  assert.equal(hitTest(bank, 555, 204, stageCam, stage, profileDraw), null);
+  const strokedActor = { id: 'stone', kind: 'actor', x: 0, z: 0, overrides: { radius: 8 } };
+  assert.equal(hitTest({ objects: [strokedActor] }, 104, 100, unitZoom, view), 'stone');
+  assert.equal(hitTest({ objects: [strokedActor] }, 108.4, 100, unitZoom, view), 'stone');
+  assert.equal(hitTest({ objects: [strokedActor] }, 108.6, 100, unitZoom, view), null);
+
+  const placeInk = { id: 'place', kind: 'field', fieldKind: 'place', x: 0, z: 0, radius: 80 };
+  const blankRing = { id: 'ring', kind: 'trigger', x: 26.49591388448094, z: -39.97171155901512, radius: 40 };
+  assert.equal(hitTest({ objects: [blankRing] }, 128, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [placeInk, blankRing] }, 128, 100, unitZoom, view), 'place');
 });

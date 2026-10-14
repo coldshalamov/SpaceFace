@@ -1214,6 +1214,7 @@ function paintLayer(object) {
 const PAINTED_STROKE_PX = 0.5;
 const FIELD_DASH = [2, 6];
 const MARKER_DASH = [4, 4];
+const ROUTE_DASH = [6, 4];
 
 function dashCovers(along, dash, gap) {
   const period = dash + gap;
@@ -1256,7 +1257,32 @@ function objectiveHit(dx, dy) {
   return null;
 }
 
-function hitDisc(object, sx, sy, camera, view, zoom, draw) {
+function linkOnInk(object, sx, sy, camera, view, project) {
+  const from = objectById(project, object.from || object.ownerAlias);
+  const to = objectById(project, object.to || object.targetAlias);
+  if (!from || !to || !Number.isFinite(from.x) || !Number.isFinite(from.z)) return false;
+  if (!Number.isFinite(to.x) || !Number.isFinite(to.z)) return false;
+  const a = worldToScreen(from.x, from.z, camera, view);
+  const b = worldToScreen(to.x, to.z, camera, view);
+  const ex = b.sx - a.sx;
+  const ey = b.sy - a.sy;
+  const len = Math.hypot(ex, ey);
+  if (!(len > 0)) return Math.hypot(sx - a.sx, sy - a.sy) <= PAINTED_STROKE_PX + 1e-6;
+  const t = ((sx - a.sx) * ex + (sy - a.sy) * ey) / (len * len);
+  if (t < -1e-6 || t > 1 + 1e-6) return false;
+  const clamped = t < 0 ? 0 : t > 1 ? 1 : t;
+  const px = a.sx + ex * clamped;
+  const py = a.sy + ey * clamped;
+  if (Math.hypot(sx - px, sy - py) > PAINTED_STROKE_PX + 1e-6) return false;
+  if (object.kind !== 'route') return true;
+  return dashCovers(clamped * len, ROUTE_DASH[0], ROUTE_DASH[1]);
+}
+
+function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
+  if (object && (object.kind === 'route' || object.kind === 'attachment')) {
+    if (!linkOnInk(object, sx, sy, camera, view, project)) return null;
+    return { inside: true, onStroke: true };
+  }
   if (!object || !Number.isFinite(object.x) || !Number.isFinite(object.z)) return null;
   const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
   const dx = sx - ox;
@@ -1271,7 +1297,14 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw) {
       ? fieldStroke(object, zoom)
       : markerStroke(object, zoom);
   const distance = Math.hypot(dx, dy);
-  const ring = !usesCollider && (object.kind === 'field' || object.kind === 'trigger');
+  if (usesCollider) {
+    if (distance <= radius + 1e-6) return { inside: true, onStroke: false };
+    if (object.kind === 'actor' && radius > 0 && distance <= radius + PAINTED_STROKE_PX + 1e-6) {
+      return { inside: true, onStroke: true };
+    }
+    return null;
+  }
+  const ring = object.kind === 'field' || object.kind === 'trigger';
   if (ring) {
     const pattern = object.kind === 'field' ? FIELD_DASH : MARKER_DASH;
     if (!ringOnInk(dx, dy, radius, pattern)) return null;
@@ -1291,7 +1324,7 @@ export function hitTest(project, sx, sy, camera, view, draw) {
   });
   const hits = [];
   for (const entry of objects) {
-    const disc = hitDisc(entry.object, sx, sy, camera, view, zoom, draw);
+    const disc = hitDisc(entry.object, sx, sy, camera, view, zoom, draw, project);
     if (disc) hits.push({ id: entry.object.id, kind: entry.object.kind, ...disc });
   }
   const actor = hits.find((hit) => hit.kind === 'actor');
