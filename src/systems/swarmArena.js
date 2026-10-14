@@ -364,6 +364,10 @@ export const SLALOM_WELL_DISTANCE = 205;
  */
 export const SWARM_WRECK_KEEP = 40;
 const SWARM_WRECK_RELEASE_S = 6;
+// A foundry rock whose center sits inside this of the pilot is welded, not in contact.
+// Player-truth seed 4242 held one asteroid at distance 0 from sim 60 through the round-3
+// thrust probe (Δv 2.6 u/s). The same run on 4b3b never came closer than 11 u.
+const SWARM_EMBEDDED_DEBRIS_WU = 4;
 
 const SWARM_DEBRIS_TTL_S = 900;
 const SWARM_DEBRIS_RELEASE_S = 20;
@@ -828,11 +832,17 @@ export const swarmArena = {
   // Between rounds the room comes to rest. A rock or wreck thrown in the last fight would otherwise still
   // be flying through the next round's opening breath, before the pilot has touched anything.
   // The stop is a counter-impulse through the physics port, so Rapier stays the authority.
+  //
+  // A latched foundry rock whose center has collapsed onto the pilot is not furniture to park.
+  // Seed 4242 head gate: from sim 60 the same asteroid shared the player's position through
+  // the round-3 probe, and 1.2 s of thrust from rest made 2.6 u/s. Centers inside
+  // SWARM_EMBEDDED_DEBRIS_WU are that weld. A graze stays (4b3b's closest rock was 11 u).
   _settleRoom() {
     const physics = this.helpers && this.helpers.combatPhysics;
     const entities = this.state && this.state.entities;
     if (!physics || (typeof physics.settlePassiveBody !== 'function' && typeof physics.applyImpulse !== 'function')) return;
     if (!entities || typeof entities.values !== 'function') return;
+    this._releaseEmbeddedDebris(entities);
     const SETTLE_SPEED = 6;
     const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
     for (const e of entities.values()) {
@@ -863,6 +873,31 @@ export const swarmArena = {
         provenance: { actorId: null, tag: 'swarm_round_settle' },
       });
     }
+  },
+
+  // Centers this close are one body, not two hulls in contact. See _settleRoom.
+  _releaseEmbeddedDebris(entities) {
+    const helpers = this.helpers;
+    const state = this.state;
+    if (!helpers || typeof helpers.removeEntity !== 'function' || !state) return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || player.alive === false || !player.pos) return;
+    const px = player.pos.x;
+    const pz = player.pos.z;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) return;
+    const limit2 = SWARM_EMBEDDED_DEBRIS_WU * SWARM_EMBEDDED_DEBRIS_WU;
+    const doomed = [];
+    for (const e of entities.values()) {
+      if (!e || e === player || e.alive === false || !e.pos) continue;
+      if (e.type !== 'asteroid' && e.type !== 'wreck') continue;
+      const dx = e.pos.x - px;
+      const dz = e.pos.z - pz;
+      if (dx * dx + dz * dz >= limit2) continue;
+      doomed.push(e.id);
+    }
+    for (const id of doomed) helpers.removeEntity(id, { reason: 'swarm_embedded_debris' });
   },
 
   _cullWrecks() {
