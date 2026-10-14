@@ -6695,6 +6695,14 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   assert.equal(arcs[0], 21);
   assert.equal(hitTest({ objects: [moth] }, 121, 100, camera, view, dialect.draw), 'moth');
   assert.equal(hitTest({ objects: [moth] }, 122, 100, camera, view, dialect.draw), null);
+  const prefixedMoth = { id: 'moth', kind: 'actor', profile: 'enemy.mothlight', x: 0, z: 0 };
+  assert.equal(actorStroke(prefixedMoth, 1, dialect.draw), 21);
+  assert.notEqual(actorStroke(prefixedMoth, 1, dialect.draw), 16);
+  arcs.length = 0;
+  drawActor(ctx, prefixedMoth, camera, view, dialect.draw);
+  assert.equal(arcs[0], 21);
+  assert.equal(hitTest({ objects: [prefixedMoth] }, 121, 100, camera, view, dialect.draw), 'moth');
+  assert.equal(hitTest({ objects: [prefixedMoth] }, 122, 100, camera, view, dialect.draw), null);
 });
 
 test('asteroid.spec profiles use the spawned radius', () => {
