@@ -676,6 +676,41 @@ function domainCadenceFor(rootKey) {
 //     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
 const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
 
+// Named diagnostic wire profiles. The ordinary runtime installs the empty
+// profile; callers must opt into a name before the first differ is created so
+// the worker and facade can receive the same shape. Keep the history-bearing
+// commodity profile separate from the no-history ceiling experiment: the
+// market UI still reads entry.history synchronously on reset/open.
+export const DOMAIN_MIRROR_PROFILE_NAMES = Object.freeze([
+  'station', 'commodity', 'commodity-nohist',
+]);
+
+export function createDomainMirroringProfile(name = 'station') {
+  const profile = String(name || 'station');
+  if (profile === 'station') return {};
+  if (profile !== 'commodity' && profile !== 'commodity-nohist') {
+    throw new RangeError(`unknown domain mirror profile: ${profile}`);
+  }
+  return {
+    expandPaths: [
+      { segs: ['economy', 'markets'], depth: 3 },
+      { segs: ['economy', 'cycles'], depth: 3 },
+    ],
+    leafViews: [
+      {
+        segs: ['economy', 'markets'], leafSegs: 4,
+        drop: profile === 'commodity-nohist' ? ['history'] : [],
+        deferFirstSign: true, firstSignTicks: 60,
+      },
+      {
+        segs: ['economy', 'cycles'], leafSegs: 4,
+        drop: [], deferFirstSign: true, firstSignTicks: 60,
+      },
+    ],
+    staggerCold: true,
+  };
+}
+
 export function configureDomainMirroring(config = {}) {
   activeDomainConfig.expandPaths = Array.isArray(config.expandPaths) ? config.expandPaths : [];
   activeDomainConfig.leafViews = Array.isArray(config.leafViews) ? config.leafViews : [];
