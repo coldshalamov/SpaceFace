@@ -18,26 +18,56 @@ function discOf(assertion) {
   };
 }
 
+function sampleDistance(sample, disc) {
+  if (!sample || !disc) return null;
+  if (!Number.isFinite(sample.playerX) || !Number.isFinite(sample.playerZ)) return null;
+  return Math.hypot(sample.playerX - disc.x, sample.playerZ - disc.z);
+}
+
 function closestApproach(samples, disc) {
   let closest = Infinity;
   for (const sample of samples || []) {
-    const x = sample && Number.isFinite(sample.playerX) ? sample.playerX : 0;
-    const z = sample && Number.isFinite(sample.playerZ) ? sample.playerZ : 0;
-    const distance = Math.hypot(x - disc.x, z - disc.z);
-    if (distance < closest) closest = distance;
+    const distance = sampleDistance(sample, disc);
+    if (distance != null && distance < closest) closest = distance;
   }
   return closest;
 }
 
-function sampleDistance(sample, disc) {
-  const x = sample && Number.isFinite(sample.playerX) ? sample.playerX : 0;
-  const z = sample && Number.isFinite(sample.playerZ) ? sample.playerZ : 0;
-  return Math.hypot(x - disc.x, z - disc.z);
-}
-
 function sampleInsideDisc(sample, disc) {
   if (!disc || !Number.isFinite(disc.radius)) return false;
-  return sampleDistance(sample, disc) <= disc.radius;
+  const distance = sampleDistance(sample, disc);
+  return distance != null && distance <= disc.radius;
+}
+
+function seriesValue(sample, signal) {
+  if (!sample || typeof signal !== 'string') return null;
+  // Same reduction as masslineMetrics signalSeries, so the disc is the sample that produced the metric.
+  if (signal === 'player.speed') {
+    const speed = Math.hypot(sample.playerVelX || 0, sample.playerVelZ || 0);
+    return Number.isFinite(speed) ? speed : null;
+  }
+  if (!Object.prototype.hasOwnProperty.call(sample, signal)) return null;
+  const value = sample[signal];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function metricFocus(trace, name, params) {
+  if (!Array.isArray(trace) || !trace.length) return null;
+  if (name === 'trace.min' || name === 'trace.max') {
+    const signal = params && params.signal;
+    let chosen = null;
+    let best = name === 'trace.min' ? Infinity : -Infinity;
+    for (const sample of trace) {
+      const value = seriesValue(sample, signal);
+      if (value == null) continue;
+      if (name === 'trace.min' ? value < best : value > best) {
+        best = value;
+        chosen = sample;
+      }
+    }
+    return chosen;
+  }
+  return trace[trace.length - 1];
 }
 
 function discReached(samples, disc) {
@@ -77,13 +107,17 @@ export function evaluateOracleKernel({
     metricResults,
     trace,
     ctx,
+    metrics,
   );
   const all = [
     ...invariantResults,
     ...metricResults.map((m) => {
       const disc = discByMetric.get(m.name) || null;
-      const approach = discReached(trace, disc);
-      const ok = m.ok === true && approach.ok === true;
+      const spec = (metrics || []).find((row) => row && row.name === m.name);
+      const focus = metricFocus(trace, m.name, spec && spec.params);
+      const distance = disc ? sampleDistance(focus, disc) : null;
+      const inside = !disc || sampleInsideDisc(focus, disc);
+      const ok = m.ok === true && inside;
       return {
         family: 'quantitative',
         source: 'metric',
@@ -91,7 +125,7 @@ export function evaluateOracleKernel({
         ok,
         expected: withDisc(m.threshold, disc),
         actual: m.value,
-        ...(disc ? { closest: approach.closest } : {}),
+        ...(disc ? { closest: distance } : {}),
         signedDelta: m.signedDelta,
         firstBadTick: ok ? null : findMetricFirstBadTick(trace, m, ctx),
       };
@@ -505,14 +539,17 @@ function evaluateTemporal(assertions, trace, ctx) {
       }
       const need = a.holdsTicks | 0;
       const disc = discOf(a);
-      const approach = discReached(scoped, disc);
       let run = 0;
       let maxRun = 0;
       let holdsOk = false;
       let firstBad = null;
-      // K2: only consecutive truthy samples INSIDE the declared interval count.
+      let closestHold = null;
+      // Only ticks that are inside the authored disc count toward the hold.
       for (const s of scoped) {
-        if (truthySignal(s, signal, a)) {
+        const alive = truthySignal(s, signal, a);
+        const distance = disc ? sampleDistance(s, disc) : null;
+        if (alive && distance != null && (closestHold == null || distance < closestHold)) closestHold = distance;
+        if (alive && (!disc || sampleInsideDisc(s, disc))) {
           run++;
           if (run > maxRun) maxRun = run;
           if (run >= need) {
@@ -523,18 +560,17 @@ function evaluateTemporal(assertions, trace, ctx) {
           run = 0;
         }
       }
-      const discOk = !disc || approach.ok === true;
-      const ok = holdsOk && discOk;
+      const ok = holdsOk;
       if (!ok && scoped.length) firstBad = scoped[scoped.length - 1].tick;
       let expected = withDisc({ holdsTicks: need }, disc);
-      if (disc) expected = { ...expected, closest: approach.closest };
+      if (disc) expected = { ...expected, closest: closestHold };
       results.push({
         family: 'temporal',
         id: `holds:${signal}`,
         ok,
         expected,
-        actual: disc ? { maxRun, closest: approach.closest } : { maxRun },
-        ...(disc ? { closest: approach.closest } : {}),
+        actual: disc ? { maxRun, closest: closestHold } : { maxRun },
+        ...(disc ? { closest: closestHold } : {}),
         signedDelta: ok ? 0 : need - maxRun,
         firstBadTick: firstBad,
       });
@@ -594,7 +630,7 @@ function evaluateTemporal(assertions, trace, ctx) {
   return results;
 }
 
-function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
+function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx, metrics = []) {
   const results = [];
   const byName = new Map(metricResults.map((m) => [`${m.name}@${m.version}`, m]));
 
@@ -631,10 +667,13 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
     }
     const threshold = a.threshold || (a.op ? { op: a.op, value: a.value, epsilon: a.delta } : a.expected);
     const disc = discOf(a);
-    const approach = discReached(trace, disc);
+    const spec = (metrics || []).find((row) => row && (row.name === m.name || `${row.name}@${row.version || 1}` === key));
+    const params = a.params || (spec && spec.params) || (a.signal ? { signal: a.signal } : null);
+    const focus = metricFocus(trace, m.name, params);
+    const distance = disc ? sampleDistance(focus, disc) : null;
     const value = extractNumeric(m.value, a);
     const cmp = compareThreshold(value, threshold);
-    const ok = cmp.ok === true && approach.ok === true;
+    const ok = cmp.ok === true && (!disc || sampleInsideDisc(focus, disc));
     results.push({
       family: 'quantitative',
       // H11: distinct source from declared metric results so consumption matches exactly once.
@@ -643,7 +682,7 @@ function evaluateQuantitativeAssertions(assertions, metricResults, trace, ctx) {
       ok,
       expected: withDisc(threshold, disc),
       actual: value,
-      ...(disc ? { closest: approach.closest } : {}),
+      ...(disc ? { closest: distance } : {}),
       signedDelta: cmp.delta,
       firstBadTick: ok ? null : findMetricFirstBadTick(trace, { ...m, threshold }, ctx),
     });
@@ -674,20 +713,33 @@ function numberMatches(v, assertion) {
     case '<': return v < value;
     case '<=': return v <= value;
     case '==':
-    case 'eq': return v === value;
+    case 'eq':
+    case '===': return v === value;
     case '!=':
-    case 'ne': return v !== value;
-    default: return v !== 0;
+    case 'ne':
+    case '!==': return v !== value;
+    default: return op ? false : v !== 0;
   }
+}
+
+function booleanMatches(v, assertion) {
+  const op = assertion && assertion.op;
+  if (op == null || op === '') return v;
+  if (op === '==' || op === '===' || op === 'eq') return v === assertion.value;
+  if (op === '!=' || op === '!==' || op === 'ne') return v !== assertion.value;
+  return false;
 }
 
 function truthySignal(sample, signal, assertion) {
   if (!signal) return false;
-  if (signal === 'attachmentActive') return sample.attachmentActive !== false && !!sample.attachmentActive;
-  if (signal === 'tetherActive') return !!sample.tetherActive;
+  const op = assertion && assertion.op;
+  if ((op == null || op === '') && signal === 'attachmentActive') {
+    return sample.attachmentActive !== false && !!sample.attachmentActive;
+  }
+  if ((op == null || op === '') && signal === 'tetherActive') return !!sample.tetherActive;
   if (Object.prototype.hasOwnProperty.call(sample, signal)) {
     const v = sample[signal];
-    if (typeof v === 'boolean') return v;
+    if (typeof v === 'boolean') return booleanMatches(v, assertion);
     if (typeof v === 'number') return numberMatches(v, assertion);
     return !!v;
   }

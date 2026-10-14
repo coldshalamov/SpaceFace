@@ -139,11 +139,11 @@
       "label": "heading fell through the bank",
       "metric": "trace.final",
       "op": "<",
-      "radius": 100,
+      "radius": 5,
       "signal": "playerRot",
       "value": -0.5,
-      "x": -90,
-      "z": -10
+      "x": -148.74324,
+      "z": 261.849976
     },
     {
       "assertion": {
@@ -169,10 +169,10 @@
       "label": "still moving",
       "metric": "flight.finalSpeed",
       "op": ">=",
-      "radius": 100,
+      "radius": 5,
       "value": 0.5,
-      "x": -90,
-      "z": -30
+      "x": -148.74324,
+      "z": 261.849976
     },
     {
       "assertion": {
@@ -184,10 +184,10 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive",
-      "radius": 12,
+      "radius": 49,
       "shape": "circle",
-      "x": 0,
-      "z": 0
+      "x": 24.138,
+      "z": 11.272
     },
     {
       "from": "player",

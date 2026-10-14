@@ -118,10 +118,10 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "tether stays active",
-      "radius": 12,
+      "radius": 10,
       "shape": "circle",
-      "x": 0,
-      "z": 0
+      "x": 0.685115,
+      "z": 9.138987
     },
     {
       "id": "peak_speed",
@@ -130,11 +130,11 @@
       "label": "opened with speed",
       "metric": "trace.max",
       "op": ">=",
-      "radius": 100,
+      "radius": 5,
       "signal": "player.speed",
       "value": 5,
-      "x": -90,
-      "z": 20
+      "x": 0,
+      "z": 0.599621
     },
     {
       "id": "end_speed",
@@ -143,10 +143,10 @@
       "label": "speed stayed bounded",
       "metric": "flight.finalSpeed",
       "op": "<=",
-      "radius": 100,
+      "radius": 5,
       "value": 80,
-      "x": -90,
-      "z": 0
+      "x": 62.02388,
+      "z": 74.877991
     },
     {
       "assertion": {
@@ -158,10 +158,10 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive",
-      "radius": 12,
+      "radius": 18,
       "shape": "circle",
-      "x": 0,
-      "z": 0
+      "x": 47.299,
+      "z": 67.671
     },
     {
       "from": "player",

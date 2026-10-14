@@ -148,11 +148,11 @@
       "label": "coasted toward the chain",
       "metric": "trace.final",
       "op": ">",
-      "radius": 40,
+      "radius": 5,
       "signal": "playerX",
       "value": 1,
-      "x": 40,
-      "z": -30
+      "x": 66.61338,
+      "z": 0
     },
     {
       "assertion": {
@@ -164,9 +164,9 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive",
-      "radius": 12,
+      "radius": 11,
       "shape": "circle",
-      "x": 0,
+      "x": 53.621,
       "z": 0
     },
     {

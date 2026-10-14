@@ -7,7 +7,7 @@ import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject } from '../lib/export.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
-import { TRIGGER_ASSERTION_FIELDS, writeFrameInput, writePath } from '../lib/inspector.mjs';
+import { TRIGGER_ASSERTION_FIELDS, fieldsFor, writeFrameInput, writePath } from '../lib/inspector.mjs';
 import { evaluateOracleKernel } from '../../../src/testing/lab/oracleKernel.js';
 import { resolveDockRead, resolveWorkspace } from '../lib/paths.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
@@ -4568,7 +4568,11 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(project.frames[0], frame);
   assert.equal(frame.input.moveZ, 1);
   const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
-  assert.equal(editor.includes('TRIGGER_ASSERTION_FIELDS'), true);
+  assert.equal(editor.includes('fieldsFor(object'), true);
+  const triggerFields = fieldsFor(trigger);
+  assert.equal(triggerFields.some((field) => field.key === 'assertion.signal'), true);
+  assert.equal(triggerFields.some((field) => field.key === 'assertion.byTick'), true);
+  assert.equal(triggerFields.some((field) => field.key === 'radius' && field.kind === 'number'), true);
   assert.equal(editor.includes('paintFrames'), true);
   assert.equal(editor.includes('writeFrameInput'), true);
 
@@ -4656,6 +4660,90 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   const nullRow = playerZ(nullRadius);
   assert.equal(nullRow.ok, false);
   assert.notEqual(nullRow.expected.radius, 20);
+  const aliveInside = evaluateOracleKernel({
+    trace: [{ tick: 0, playerX: 0, playerZ: 0, playerAlive: true }],
+    assertions: [{
+      kind: 'eventByTick',
+      signal: 'playerAlive',
+      op: '==',
+      value: false,
+      byTick: 4,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  });
+  const aliveRow = aliveInside.results.find((row) => row.id === 'eventByTick:playerAlive');
+  assert.equal(aliveRow.ok, false);
+  assert.notEqual(aliveRow.actual.foundTick, 0);
+  const tetherInside = evaluateOracleKernel({
+    trace: [{ tick: 0, playerX: 0, playerZ: 0, tetherActive: true }],
+    assertions: [{
+      kind: 'eventByTick',
+      signal: 'tetherActive',
+      op: '==',
+      value: false,
+      byTick: 4,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  });
+  const tetherRow = tetherInside.results.find((row) => row.id === 'eventByTick:tetherActive');
+  assert.equal(tetherRow.ok, false);
+  const strictEqual = judged([{ tick: 0, playerX: 0, playerZ: 4 }], '===', 99);
+  assert.equal(playerZ(strictEqual).ok, false);
+  assert.notEqual(playerZ(strictEqual).actual.foundTick, 0);
+  const unknownOp = judged([{ tick: 0, playerX: 0, playerZ: 4 }], 'approx', 4);
+  assert.equal(playerZ(unknownOp).ok, false);
+  assert.notEqual(playerZ(unknownOp).actual.foundTick, 0);
+  const holdTrace = [];
+  for (let tick = 0; tick < 60; tick += 1) {
+    holdTrace.push({ tick, playerX: 100, playerZ: 100, playerAlive: true });
+  }
+  holdTrace.push({ tick: 60, playerX: 0, playerZ: 0, playerAlive: false });
+  const holdResult = evaluateOracleKernel({
+    trace: holdTrace,
+    assertions: [{
+      kind: 'holds',
+      signal: 'playerAlive',
+      holdsTicks: 60,
+      expected: { x: 0, z: 0, radius: 1 },
+    }],
+  });
+  const holdRow = holdResult.results.find((row) => row.id === 'holds:playerAlive');
+  assert.equal(holdResult.ok, false);
+  assert.equal(holdRow.ok, false);
+  assert.equal(holdRow.actual.maxRun < 60, true);
+  const finalOutside = evaluateOracleKernel({
+    trace: [
+      { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },
+      { tick: 1, playerX: 100, playerZ: 100, playerRot: -1 },
+    ],
+    metrics: [{ name: 'trace.final', version: 1, params: { signal: 'playerRot' }, threshold: { op: '<', value: -0.25 } }],
+    assertions: [{
+      kind: 'metric',
+      metric: 'trace.final',
+      op: '<',
+      value: -0.25,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  });
+  const finalRow = finalOutside.results.find((row) => row.id === 'trace.final@1');
+  assert.equal(finalRow.ok, false);
+  const missingX = evaluateOracleKernel({
+    trace: [
+      { tick: 0, playerX: 100, playerZ: 20 },
+      { tick: 1, playerZ: -1 },
+    ],
+    assertions: [{
+      kind: 'eventByTick',
+      signal: 'playerZ',
+      op: '<',
+      value: -0.25,
+      byTick: 4,
+      expected: { x: 0, z: 0, radius: 2 },
+    }],
+  });
+  const missingRow = missingX.results.find((row) => row.id === 'eventByTick:playerZ');
+  assert.equal(missingRow.ok, false);
+  assert.notEqual(missingRow.actual.foundTick, 1);
   const crossed = judged(inside, '>', 0.5);
   assert.equal(crossed.ok, true);
   assert.equal(playerZ(crossed).ok, true);

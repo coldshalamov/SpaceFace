@@ -26,6 +26,7 @@ const FILES = new Map([
   ['/lib/stableJson.mjs', path.join(ROOT, 'lib', 'stableJson.mjs')],
   ['/lib/history.mjs', path.join(ROOT, 'lib', 'history.mjs')],
   ['/lib/security.mjs', path.join(ROOT, 'lib', 'security.mjs')],
+  ['/lib/inspector.mjs', path.join(ROOT, 'lib', 'inspector.mjs')],
 ]);
 
 const TYPES = new Map([

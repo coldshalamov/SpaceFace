@@ -131,7 +131,7 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive through the cross",
-      "radius": 12,
+      "radius": 1,
       "shape": "circle",
       "x": 0,
       "z": -20

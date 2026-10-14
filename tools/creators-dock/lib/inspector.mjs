@@ -12,6 +12,59 @@ export const ACTOR_OVERRIDE_FIELDS = Object.freeze([
   { key: 'overrides.mass', label: 'Mass', kind: 'number' },
 ]);
 
+export function fieldsFor(object, profileChoices) {
+  const common = [
+    { key: 'label', label: 'Label', kind: 'text' },
+    { key: 'x', label: 'X', kind: 'number' },
+    { key: 'z', label: 'Z', kind: 'number' },
+  ];
+  const choices = typeof profileChoices === 'function' ? profileChoices(object && object.profile) : [];
+  if (object && object.kind === 'actor') {
+    return [
+      ...common,
+      { key: 'role', label: 'Role', kind: 'text' },
+      { key: 'profile', label: 'Profile', kind: 'select', options: choices },
+      { key: 'isPlayer', label: 'Player', kind: 'checkbox' },
+      { key: 'y', label: 'Y', kind: 'number' },
+      { key: 'heading', label: 'Heading (radians)', kind: 'number' },
+      { key: 'velX', label: 'Velocity X (lab-only)', kind: 'number' },
+      { key: 'velY', label: 'Velocity Y (lab-only)', kind: 'number' },
+      { key: 'velZ', label: 'Velocity Z (lab-only)', kind: 'number' },
+      { key: 'team', label: 'Team', kind: 'number' },
+      { key: 'factionId', label: 'Faction', kind: 'text' },
+      ...ACTOR_OVERRIDE_FIELDS,
+    ];
+  }
+  if (object && object.kind === 'objective') {
+    return [
+      ...common,
+      { key: 'metric', label: 'Metric', kind: 'text' },
+      { key: 'signal', label: 'Signal', kind: 'text' },
+      { key: 'op', label: 'Op', kind: 'text' },
+      { key: 'value', label: 'Value', kind: 'number' },
+      { key: 'radius', label: 'Radius', kind: 'number' },
+    ];
+  }
+  if (object && object.kind === 'trigger') {
+    return [
+      ...common,
+      { key: 'radius', label: 'Radius', kind: 'number' },
+      ...TRIGGER_ASSERTION_FIELDS,
+    ];
+  }
+  if (object && object.kind === 'field') {
+    return [...common, { key: 'radius', label: 'Radius', kind: 'number' }];
+  }
+  if (object && object.kind === 'route') {
+    return [
+      { key: 'from', label: 'From', kind: 'text' },
+      { key: 'to', label: 'To', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+    ];
+  }
+  return common;
+}
+
 export const FRAME_INPUT_FIELDS = Object.freeze([
   { key: 'moveX', label: 'Move X', kind: 'number' },
   { key: 'moveZ', label: 'Move Z', kind: 'number' },

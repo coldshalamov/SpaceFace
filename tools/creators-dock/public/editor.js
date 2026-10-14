@@ -1,6 +1,6 @@
 import { commit, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '/lib/history.mjs';
 import {
-  ACTOR_OVERRIDE_FIELDS, FRAME_INPUT_FIELDS, TRIGGER_ASSERTION_FIELDS, readPath, writeFrameInput, writePath,
+  FRAME_INPUT_FIELDS, fieldsFor, readPath, writeFrameInput, writePath,
 } from '/lib/inspector.mjs';
 import { inspectValue } from '/lib/security.mjs';
 import {
@@ -159,7 +159,7 @@ function paintInspector() {
   if (object.kind === 'route') chips.append(chip('editor route', 'edit'));
   if (object.groupId) chips.append(chip(`group ${object.groupId}`, 'edit'));
 
-  const fields = fieldsFor(object);
+  const fields = fieldsFor(object, profileOptions);
   for (const field of fields) {
     const label = document.createElement('label');
     label.textContent = field.label;
@@ -256,58 +256,6 @@ function paintFrames(form) {
     }
     form.append(block);
   });
-}
-
-function fieldsFor(object) {
-  const common = [
-    { key: 'label', label: 'Label', kind: 'text' },
-    { key: 'x', label: 'X', kind: 'number' },
-    { key: 'z', label: 'Z', kind: 'number' },
-  ];
-  if (object.kind === 'actor') {
-    return [
-      ...common,
-      { key: 'role', label: 'Role', kind: 'text' },
-      { key: 'profile', label: 'Profile', kind: 'select', options: profileOptions(object.profile) },
-      { key: 'isPlayer', label: 'Player', kind: 'checkbox' },
-      { key: 'y', label: 'Y', kind: 'number' },
-      { key: 'heading', label: 'Heading (radians)', kind: 'number' },
-      { key: 'velX', label: 'Velocity X (lab-only)', kind: 'number' },
-      { key: 'velY', label: 'Velocity Y (lab-only)', kind: 'number' },
-      { key: 'velZ', label: 'Velocity Z (lab-only)', kind: 'number' },
-      { key: 'team', label: 'Team', kind: 'number' },
-      { key: 'factionId', label: 'Faction', kind: 'text' },
-      ...ACTOR_OVERRIDE_FIELDS,
-    ];
-  }
-  if (object.kind === 'objective') {
-    return [
-      ...common,
-      { key: 'metric', label: 'Metric', kind: 'text' },
-      { key: 'signal', label: 'Signal', kind: 'text' },
-      { key: 'op', label: 'Op', kind: 'text' },
-      { key: 'value', label: 'Value', kind: 'number' },
-      { key: 'radius', label: 'Radius', kind: 'number' },
-    ];
-  }
-  if (object.kind === 'trigger') {
-    return [
-      ...common,
-      { key: 'radius', label: 'Radius', kind: 'number' },
-      ...TRIGGER_ASSERTION_FIELDS,
-    ];
-  }
-  if (object.kind === 'field') {
-    return [...common, { key: 'radius', label: 'Radius', kind: 'number' }];
-  }
-  if (object.kind === 'route') {
-    return [
-      { key: 'from', label: 'From', kind: 'text' },
-      { key: 'to', label: 'To', kind: 'text' },
-      { key: 'label', label: 'Label', kind: 'text' },
-    ];
-  }
-  return common;
 }
 
 function profileOptions(current) {

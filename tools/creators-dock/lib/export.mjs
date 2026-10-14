@@ -161,13 +161,24 @@ export function exportProjectWithDialect(project, dialect) {
 
   const pack = buildPack(project, fields, dialect, issues, manifest);
   const ok = issues.length === 0 && !!scenario;
+  const withholdsScenario = issues.some((issue) => (
+    issue.includes('lab-only')
+    || issue.includes('radius must be a finite number')
+    || issue.includes('was dropped')
+  ));
   if (ok) {
     manifest.written.scenario = 'scenario.json';
     if (pack) {
       for (const file of Object.keys(pack.files)) manifest.written[file] = file;
     }
   }
-  return { ok, issues, scenario: scenario || null, pack: ok ? pack : null, manifest };
+  return {
+    ok,
+    issues,
+    scenario: ok || !withholdsScenario ? (scenario || null) : null,
+    pack: ok ? pack : null,
+    manifest,
+  };
 }
 
 function closedProjectKeys(project) {
@@ -314,7 +325,7 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
       metric: objective.metric,
       op: objective.op,
       value: objective.value,
-      expected: layoutGeometry(objective),
+      expected: layoutGeometry(objective, issues, objective.id),
     };
     assertions.push(assertion);
     rememberOracle(assertion, seenOracle, issues);
@@ -336,12 +347,12 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
       continue;
     }
     if (!canCarryGeometry(assertion)) {
-      const geometry = layoutGeometry(trigger);
+      const geometry = layoutGeometry(trigger, issues, trigger.id);
       droppedGeometry = true;
       issues.push(`${trigger.id}: geometry ${JSON.stringify(geometry)} was dropped`);
       continue;
     }
-    assertion.expected = layoutGeometry(trigger);
+    assertion.expected = layoutGeometry(trigger, issues, trigger.id);
     assertions.push(assertion);
     rememberOracle(assertion, seenOracle, issues);
     if (assertion.signal && !SIGNAL_SET.has(assertion.signal)) {
@@ -447,12 +458,19 @@ function labWorld(world) {
   return copied;
 }
 
-function layoutGeometry(source) {
+function layoutGeometry(source, issues, label) {
   const geometry = {
     x: Number.isFinite(source && source.x) ? round6(source.x) : 0,
     z: Number.isFinite(source && source.z) ? round6(source.z) : 0,
   };
-  if (Number.isFinite(source && source.radius)) geometry.radius = round6(source.radius);
+  if (source && Object.prototype.hasOwnProperty.call(source, 'radius')) {
+    if (typeof source.radius !== 'number' || !Number.isFinite(source.radius)) {
+      if (issues) issues.push(`${label || 'geometry'}: radius must be a finite number`);
+      geometry.radius = null;
+    } else {
+      geometry.radius = round6(source.radius);
+    }
+  }
   if (source && source.shape) geometry.shape = source.shape;
   return geometry;
 }

@@ -136,11 +136,11 @@
       "label": "credits unchanged",
       "metric": "trace.final",
       "op": "==",
-      "radius": 100,
+      "radius": 5,
       "signal": "credits",
       "value": 5000,
-      "x": -90,
-      "z": 20
+      "x": 0.000366,
+      "z": 471.091614
     },
     {
       "assertion": {
@@ -152,10 +152,10 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive",
-      "radius": 12,
+      "radius": 57,
       "shape": "circle",
       "x": 0,
-      "z": 0
+      "z": 29.539
     },
     {
       "from": "player",

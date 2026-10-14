@@ -8,7 +8,7 @@ import { compositionIds, getComposition } from '../lib/compositions.mjs';
 import { exportProject, importScenario, packFileText } from '../lib/export.mjs';
 import { validateProject, runProject } from '../lib/labRun.mjs';
 import { runLabScenario } from '../../../src/testing/lab/runScenario.js';
-import { ACTOR_OVERRIDE_FIELDS, writePath } from '../lib/inspector.mjs';
+import { ACTOR_OVERRIDE_FIELDS, fieldsFor, writePath } from '../lib/inspector.mjs';
 import { objectById } from '../lib/scene.mjs';
 import { byteLength, inspectValue } from '../lib/security.mjs';
 import { stableStringify } from '../lib/stableJson.mjs';
@@ -527,7 +527,9 @@ test('a place disc edits the exported place and objectives follow the lab metric
   assert.equal(importedTurned.z, -8);
   const nearRun = await runLabScenario(exported.scenario);
   const nearFail = (nearRun.oracle.failed || []).find((row) => row.expected && row.expected.x === 12 && row.expected.z === -8);
-  assert.equal(nearFail, undefined);
+  assert.notEqual(nearFail, undefined);
+  assert.equal(nearFail.expected.radius, 12);
+  assert.equal(nearFail.closest > 12, true);
   const moved = getComposition('dock.bank-shot');
   const along = objectById(moved, 'along_x');
   along.x = 400;
@@ -640,25 +642,23 @@ test('a place disc edits the exported place and objectives follow the lab metric
   }
   const held = getComposition('dock.bank-shot');
   const heldAlive = objectById(held, 'alive_bank');
-  assert.equal(heldAlive.x, 0);
-  assert.equal(heldAlive.z, 0);
-  assert.equal(heldAlive.radius, 12);
+  assert.equal(heldAlive.x, 24.138);
+  assert.equal(heldAlive.z, 11.272);
+  assert.equal(heldAlive.radius, 49);
   const heldExport = await exportProject(held);
   assert.equal(heldExport.ok, true, (heldExport.issues || []).join('\n'));
   const heldRun = await runLabScenario(heldExport.scenario);
-  const heldFail = (heldRun.oracle.failed || []).find((row) => String(row.id || '').includes('holds') && row.expected && row.expected.x === 0);
+  const heldFail = (heldRun.oracle.failed || []).find((row) => String(row.id || '').includes('holds') && row.expected && row.expected.x === 24.138);
   assert.equal(heldFail, undefined);
   const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
-  const fieldsAt = editor.indexOf('function fieldsFor');
-  const objectiveAt = editor.indexOf("object.kind === 'objective'", fieldsAt);
-  const triggerAt = editor.indexOf("object.kind === 'trigger'", objectiveAt);
-  const objectiveFields = editor.slice(objectiveAt, triggerAt);
-  assert.equal(objectiveFields.includes("key: 'metric'"), true);
-  assert.equal(objectiveFields.includes("key: 'signal'"), true);
-  assert.equal(objectiveFields.includes("key: 'op'"), true);
-  assert.equal(objectiveFields.includes("key: 'value'"), true);
-  assert.equal(objectiveFields.includes("key: 'radius'"), true);
-  assert.equal(alive.radius, 12);
+  assert.equal(editor.includes('fieldsFor(object'), true);
+  const objectiveFields = fieldsFor({ kind: 'objective', metric: 'trace.final' });
+  assert.equal(objectiveFields.some((field) => field.key === 'metric'), true);
+  assert.equal(objectiveFields.some((field) => field.key === 'signal'), true);
+  assert.equal(objectiveFields.some((field) => field.key === 'op'), true);
+  assert.equal(objectiveFields.some((field) => field.key === 'value'), true);
+  assert.equal(objectiveFields.some((field) => field.key === 'radius' && field.kind === 'number'), true);
+  assert.equal(alive.radius, 49);
 });
 
 test('a trigger disc that cannot be carried is refused', async () => {
@@ -672,14 +672,25 @@ test('a trigger disc that cannot be carried is refused', async () => {
   assert.equal(refused.ok, false);
   assert.equal(refused.scenario, null);
   assert.equal(refused.issues.some((issue) => issue.includes('along_x') && issue.includes('geometry') && issue.includes('999') && issue.includes('was dropped')), true);
-  let refusedPassed = false;
-  try {
-    const refusedRun = await runLabScenario(refused.scenario);
-    refusedPassed = !!(refusedRun && refusedRun.ok === true);
-  } catch (error) {
-    refusedPassed = false;
+  const hidden = getComposition('dock.bank-shot');
+  const hiddenAlong = objectById(hidden, 'along_x');
+  hiddenAlong.labOnly = false;
+  const hiddenExport = await exportProject(hidden);
+  assert.equal(hiddenExport.ok, false);
+  assert.equal(hiddenExport.scenario, null);
+  assert.equal(hiddenExport.issues.some((issue) => issue.includes('lab-only')), true);
+  for (const badRadius of [null, '12', Number.NaN]) {
+    const far = getComposition('dock.bank-shot');
+    const turnedFar = objectById(far, 'turned');
+    turnedFar.x = 99999;
+    turnedFar.z = 99999;
+    turnedFar.radius = badRadius;
+    turnedFar.value = Number.isNaN(badRadius) ? 999 : -0.5;
+    const farExport = await exportProject(far);
+    assert.equal(farExport.ok, false, String(badRadius));
+    assert.equal(farExport.scenario, null, String(badRadius));
+    assert.equal(farExport.issues.some((issue) => issue.includes('radius must be a finite number')), true, String(badRadius));
   }
-  assert.equal(refusedPassed, false);
   const carried = getComposition('dock.bank-shot');
   const carriedAlong = objectById(carried, 'along_x');
   carriedAlong.x = 999;
@@ -706,8 +717,11 @@ test('an actor collider radius and mass edit the exported overrides', async () =
   assert.equal(entity.overrides.radius, 11);
   assert.equal(entity.overrides.mass, 640);
   const editor = fs.readFileSync(new URL('../public/editor.js', import.meta.url), 'utf8');
-  assert.equal(editor.includes('ACTOR_OVERRIDE_FIELDS'), true);
-  assert.equal(editor.includes("key: 'role'"), true);
+  assert.equal(editor.includes('fieldsFor(object'), true);
+  const actorFields = fieldsFor({ kind: 'actor' });
+  assert.equal(actorFields.some((field) => field.key === 'role'), true);
+  assert.equal(actorFields.some((field) => field.key === 'overrides.radius'), true);
+  assert.equal(actorFields.some((field) => field.key === 'overrides.mass'), true);
 });
 
 test('export does not invoke a frames element grid getter', async () => {

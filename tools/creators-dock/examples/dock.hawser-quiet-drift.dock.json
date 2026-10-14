@@ -121,11 +121,11 @@
       "label": "tug moved +Z",
       "metric": "trace.final",
       "op": ">",
-      "radius": 40,
+      "radius": 5,
       "signal": "playerZ",
       "value": 0.5,
-      "x": -30,
-      "z": 40
+      "x": 0.000149,
+      "z": 401.006409
     },
     {
       "id": "speed",
@@ -134,10 +134,10 @@
       "label": "still moving",
       "metric": "flight.finalSpeed",
       "op": ">=",
-      "radius": 100,
+      "radius": 5,
       "value": 0.5,
-      "x": -90,
-      "z": 10
+      "x": 0.000149,
+      "z": 401.006409
     },
     {
       "assertion": {
@@ -149,10 +149,10 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive",
-      "radius": 12,
+      "radius": 19,
       "shape": "circle",
       "x": 0,
-      "z": 0
+      "z": 8.666
     },
     {
       "from": "player",

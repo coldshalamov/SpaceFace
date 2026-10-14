@@ -124,11 +124,11 @@
       "label": "closed on the convoy",
       "metric": "trace.final",
       "op": ">",
-      "radius": 40,
+      "radius": 5,
       "signal": "playerZ",
       "value": 0.5,
-      "x": -30,
-      "z": 70
+      "x": -0.880025,
+      "z": 469.557709
     },
     {
       "id": "speed",
@@ -137,10 +137,10 @@
       "label": "still moving",
       "metric": "flight.finalSpeed",
       "op": ">=",
-      "radius": 100,
+      "radius": 5,
       "value": 0.5,
-      "x": -90,
-      "z": 10
+      "x": -0.880025,
+      "z": 469.557709
     },
     {
       "assertion": {
@@ -152,10 +152,10 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "player stays alive",
-      "radius": 12,
+      "radius": 56,
       "shape": "circle",
-      "x": 0,
-      "z": 0
+      "x": -0.227,
+      "z": 29.67
     },
     {
       "from": "player",
