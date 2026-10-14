@@ -24,7 +24,6 @@ import { installAchievements } from './systems/achievements.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
 import { createTimeEffects } from './core/timeEffects.js';
-import { scheduleVeiledFoundryEnvDrain } from './core/veiledFoundryEnvDrain.js';
 
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
@@ -1078,11 +1077,6 @@ function enterLoadingMode(state, bus) {
       renderer.setClearColor(_loadingClearColor, prevAlpha);
     }
   } catch (_) { /* best effort — the shell still covers the handoff */ }
-  // A foundry HDRI that armed while a presented surface was up bakes its PMREM
-  // convolve outside this Launch task. The cancellable scheduler revalidates the
-  // loading generation and renderer before touching GPU resources. A timer is a
-  // liveness fallback, not proof that a compositor actually painted the veil.
-  scheduleVeiledFoundryEnvDrain(state, bus);
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
