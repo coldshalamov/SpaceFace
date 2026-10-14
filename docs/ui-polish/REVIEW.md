@@ -60,7 +60,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `comms-radial` | SURVEYED | |
 | **`wingman-radial`** | **DONE** (hub stack) | See § Wingman radial hub stack — ui-polish-28 |
 | `ship` | SURVEYED | Ledger DONE earlier |
-| `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
+| **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
@@ -765,3 +765,16 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28g/{before,after,before-scroll,after-scroll}/` and `compare-*.png`.
 
 *If #374's REVIEW.md changes conflict with this file on merge, keep both. This section only covers `src/ui/screens/base.js`.*
+
+## Footprint — 960 reading column, phone stack (ui-polish-28)
+
+**Before:** at 960×540 (WANTED / MARKED / CLEAN) the reading column's answer grid sized its verb column to TAKE AMENDS CONTRACT at full 1080 type, which left each verb's cost a 110px stack wrapping three lines. Only PAY BOUNTY and BRIBE were on the glass, and the costs stacked down the right edge into the fold. The at-rest "Drag or ‹ › to trace" hint ran through the source tokens on the hub rim. On a phone (390×844) the desktop two-column stage stayed in place: the dial shrank to 203px with tier, sector and hub words printed over each other. The reading was a 139px column (the source name cut to "4,200 / CR / BOUN", one word per line), every verb's cost had zero width, and a link line ran down the right edge.
+
+**After (`src/ui/orrery/footprintLayouts.js` only, no markup, selector, ID or dial-geometry changes):**
+- At 761–1100 wide and ≤640 tall the reading tightens: a 16px stage gap, a smaller crest, a closer beam and receipts, and verbs at 12px / .1em with 14px between verb and cost. Costs now take one or two lines, so PAY BOUNTY, BRIBE and FIND THE ACCUSER read with their costs before the fold. The drag hint is hidden and the bottom rule tracks .16em so it ends before WANTED.
+- At ≤760 the dial stands over its reading as a full-bleed square (capped at 520px) and the screen scrolls as one page. The reading is full width, each cost sits under its verb, and the long record is one column. The keyboard hint and the dial-to-beam link are hidden, and the rule and WANTED track tighter so they part at the bottom gap.
+- 1280 and 1920 are unchanged; the only pixel differences are the dial's arrival animation.
+
+**Checked:** 960×540, 1280×720, 1920×1080, 390×844 (every scroll stop) and 700×900 for all three record states. The bench measures no tangled or buried type at 960 or phone. Before, the phone had 6–7 ON TOP OF findings per state. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. **Still open:** on a ~400px phone dial the hub's "4,200 cr bounty" line comes close to the two lower tokens. That spacing comes from the dial geometry in footprintDial.js and was not changed here.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28h/{before,after,after-scroll}/` and `compare-{960,390,1280-marked}.png`.
