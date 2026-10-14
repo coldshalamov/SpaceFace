@@ -1,0 +1,206 @@
+{
+  "assetId": "ops_cargo_turntable",
+  "category": "mechanisms",
+  "description": "cargo turntable",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "payload",
+      "position": [
+        0.0,
+        0.59,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "turntable_yaw"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.125,
+          -0.0
+        ],
+        "size": [
+          2.3,
+          0.25,
+          2.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.35,
+          -0.0
+        ],
+        "size": [
+          2.8,
+          0.2,
+          2.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.52,
+          0.6
+        ],
+        "size": [
+          2,
+          0.14,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.52,
+          -0.6
+        ],
+        "size": [
+          2,
+          0.14,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "turntable_yaw",
+      "pivot": [
+        0.0,
+        0.25,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "rotating_deck",
+        "cargo_rail",
+        "cargo_rail.001",
+        "deck_seal",
+        "cargo_lock",
+        "cargo_lock.001",
+        "cargo_lock.002",
+        "cargo_lock.003"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.399999976158142,
+      -3.894947653293457e-08,
+      -1.399999976158142
+    ],
+    "max": [
+      1.399999976158142,
+      0.5899999737739563,
+      1.399999976158142
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_cargo_turntable_lod0.glb",
+      "triangles": 2464,
+      "draws": 5,
+      "bytes": 352800,
+      "method": "source",
+      "sha256": "095e754bd68e06990e0633be563d2ab2f254298bc7e79657b3519b86b2b49d04"
+    },
+    {
+      "level": 1,
+      "file": "ops_cargo_turntable_lod1.glb",
+      "triangles": 984,
+      "draws": 5,
+      "bytes": 282508,
+      "method": "Forge-decimation",
+      "sha256": "747e4634748e50cb74b0c30f5734a1e2659d16d29748a37ac53ab7b1c6f68048"
+    },
+    {
+      "level": 2,
+      "file": "ops_cargo_turntable_lod2.glb",
+      "triangles": 440,
+      "draws": 5,
+      "bytes": 262708,
+      "method": "Forge-decimation",
+      "sha256": "17e46a4872dbf6c5b8dc9279a958f0d899578be5191db2d38e34f3ce11bd8726"
+    }
+  ]
+}

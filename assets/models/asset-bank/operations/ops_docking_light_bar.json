@@ -1,0 +1,298 @@
+{
+  "assetId": "ops_docking_light_bar",
+  "category": "service",
+  "description": "docking light bar",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "power",
+      "position": [
+        -1.6,
+        0.3,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.3,
+          -0.0
+        ],
+        "size": [
+          3.2,
+          0.3,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.32,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.2,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.88,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.2,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.44,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.2,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.2,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.44,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.2,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.88,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.2,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.32,
+          0.5,
+          -0.0
+        ],
+        "size": [
+          0.36,
+          0.2,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.1,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          0.2,
+          0.24,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.1,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          0.2,
+          0.24,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -1.600000023841858,
+      0.0,
+      -0.375
+    ],
+    "max": [
+      1.600000023841858,
+      0.6699999570846558,
+      0.375
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_docking_light_bar_lod0.glb",
+      "triangles": 5828,
+      "draws": 5,
+      "bytes": 463428,
+      "method": "source",
+      "sha256": "7b765c7633a2ca31490a8143dc18563c5ab3873969baf1f852f9f9adba303fb1"
+    },
+    {
+      "level": 1,
+      "file": "ops_docking_light_bar_lod1.glb",
+      "triangles": 2330,
+      "draws": 5,
+      "bytes": 304136,
+      "method": "Forge-decimation",
+      "sha256": "9926fb458fbb83ce061aac371b9c22b1fb33a4c93a3ddbf4647f3f9a323fdac9"
+    },
+    {
+      "level": 2,
+      "file": "ops_docking_light_bar_lod2.glb",
+      "triangles": 1048,
+      "draws": 5,
+      "bytes": 244588,
+      "method": "Forge-decimation",
+      "sha256": "f69dd2ff4064473d5197efb0183582c6f4a516ba4fe08f5a43a0173c6b26ba75"
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-sealed-custody-safe",
+  "category": "cargo",
+  "description": "Armoured custody safe with locking wheel and tamper seal",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.5,
+        0.11500000953674316
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        0.75,
+        0.7000000029802322,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.75,
+          -0.0
+        ],
+        "size": [
+          1.5,
+          1.5,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -0.75,
+      -0.09999999403953552,
+      -0.550000011920929
+    ],
+    "max": [
+      0.75,
+      1.5,
+      0.7800000309944153
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-sealed-custody-safe_lod0.glb",
+      "triangles": 4332,
+      "draws": 6,
+      "bytes": 459768,
+      "method": "source",
+      "sha256": "20e07e30f401c317b68cc75576dfaa983ee6aca67738ff94a8290339f0d7b74c"
+    },
+    {
+      "level": 1,
+      "file": "cargo-sealed-custody-safe_lod1.glb",
+      "triangles": 444,
+      "draws": 6,
+      "bytes": 267200,
+      "method": "authored-topology",
+      "sha256": "2a185a740c4c5ed237e18caeaf6c41b142a3afb9765fed5dd839df6552f2b110"
+    },
+    {
+      "level": 2,
+      "file": "cargo-sealed-custody-safe_lod2.glb",
+      "triangles": 260,
+      "draws": 5,
+      "bytes": 255904,
+      "method": "authored-topology",
+      "sha256": "4cfb083bc66b9c0aa27be1bb7da37ea33c117fa372cebbe18c66534d852e8c4e"
+    }
+  ]
+}

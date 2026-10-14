@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-peeled-armor-corner",
+  "category": "cargo",
+  "description": "Armour corner peeled from fractured support plate",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.0375216007232666,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.0,
+        0.526282899081707,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.5,
+          0.3,
+          -0.0
+        ],
+        "size": [
+          1,
+          0.6,
+          1.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.0,
+      0.0150441974401474,
+      -0.800000011920929
+    ],
+    "max": [
+      1.0,
+      1.0375216007232666,
+      0.800000011920929
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-peeled-armor-corner_lod0.glb",
+      "triangles": 2376,
+      "draws": 4,
+      "bytes": 357068,
+      "method": "source",
+      "sha256": "ec730c3571d3178e8ec78ef7dbcf29b1d28540d6e0b3b57dfb2015cfa7699475"
+    },
+    {
+      "level": 1,
+      "file": "cargo-peeled-armor-corner_lod1.glb",
+      "triangles": 216,
+      "draws": 4,
+      "bytes": 246808,
+      "method": "authored-topology",
+      "sha256": "888517f5523d754bdabc7940216e477cd3dcc81619ed464490098234c0214221"
+    },
+    {
+      "level": 2,
+      "file": "cargo-peeled-armor-corner_lod2.glb",
+      "triangles": 112,
+      "draws": 4,
+      "bytes": 240040,
+      "method": "authored-topology",
+      "sha256": "38dda7626db00a97e6714bedac6478d008fcb90565f2c24bae88e79d242153f7"
+    }
+  ]
+}

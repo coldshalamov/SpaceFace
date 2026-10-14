@@ -1,0 +1,241 @@
+{
+  "assetId": "cargo-twin-tank-cradle",
+  "category": "cargo",
+  "description": "Paired semicircular tank saddles on a common bed",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        0.8500000238418579,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.475000023841858,
+        0.45750001072883606,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          1.0
+        ],
+        "size": [
+          2.7,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -1.0
+        ],
+        "size": [
+          2.7,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.9,
+          0.4,
+          0.55
+        ],
+        "size": [
+          0.25,
+          0.4,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.9,
+          0.4,
+          -0.55
+        ],
+        "size": [
+          0.25,
+          0.4,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9,
+          0.4,
+          0.55
+        ],
+        "size": [
+          0.25,
+          0.4,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9,
+          0.4,
+          -0.55
+        ],
+        "size": [
+          0.25,
+          0.4,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.475000023841858,
+      0.06499999761581421,
+      -1.125
+    ],
+    "max": [
+      1.475000023841858,
+      0.8500000238418579,
+      1.125
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-twin-tank-cradle_lod0.glb",
+      "triangles": 9464,
+      "draws": 4,
+      "bytes": 721056,
+      "method": "source",
+      "sha256": "8aec384587f5984463cec1d8d1c9dda0046fdcd1241ff6a4140219b14e5f0173"
+    },
+    {
+      "level": 1,
+      "file": "cargo-twin-tank-cradle_lod1.glb",
+      "triangles": 1112,
+      "draws": 4,
+      "bytes": 311336,
+      "method": "authored-topology",
+      "sha256": "1503f13f621c3567c80f70a711dcda3d0c66f127782e2750a9f62190c88b4e82"
+    },
+    {
+      "level": 2,
+      "file": "cargo-twin-tank-cradle_lod2.glb",
+      "triangles": 424,
+      "draws": 4,
+      "bytes": 266856,
+      "method": "authored-topology",
+      "sha256": "970697b10c367f8a800281dc8f1e1a7da049aab80f726b0546cd8f9b86297aa8"
+    }
+  ]
+}

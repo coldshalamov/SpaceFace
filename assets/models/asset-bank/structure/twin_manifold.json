@@ -1,0 +1,264 @@
+{
+  "assetId": "twin_manifold",
+  "category": "fluid",
+  "description": "twin manifold",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_2",
+      "position": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_3",
+      "position": [
+        -2.0,
+        0.0,
+        -1.7
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_4",
+      "position": [
+        2.0,
+        0.0,
+        -1.7
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "size": [
+          2.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -1.7000000476837158
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          -0.8500000238418579
+        ],
+        "size": [
+          1.7000000308541687,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          -0.8500000238418579
+        ],
+        "size": [
+          1.7000000308541687,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.099721670150757,
+      -0.5572904944419861,
+      -2.2572906017303467
+    ],
+    "max": [
+      2.09761905670166,
+      0.5572905540466309,
+      0.5550000071525574
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "twin_manifold_lod0.glb",
+      "triangles": 4460,
+      "draws": 3,
+      "bytes": 430228,
+      "method": "source",
+      "sha256": "f17acb6bd7dc572d152588011e26abac3fb8b929fd07cdbf15bd0449d31969db"
+    },
+    {
+      "level": 1,
+      "file": "twin_manifold_lod1.glb",
+      "triangles": 1784,
+      "draws": 3,
+      "bytes": 291160,
+      "method": "Forge-decimation",
+      "sha256": "d9704162ea428e04a1646919d25d087e1b03fb0bed3f0bbda2fe325c4dbb326d"
+    },
+    {
+      "level": 2,
+      "file": "twin_manifold_lod2.glb",
+      "triangles": 658,
+      "draws": 3,
+      "bytes": 217484,
+      "method": "Forge-decimation",
+      "sha256": "80ea64062ed1ed6eadf0f47d7a3fb051adbff31aa6567723dd68e6699457fc6f"
+    }
+  ]
+}

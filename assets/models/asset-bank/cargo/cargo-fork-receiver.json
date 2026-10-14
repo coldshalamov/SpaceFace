@@ -1,0 +1,319 @@
+{
+  "assetId": "cargo-fork-receiver",
+  "category": "cargo",
+  "description": "Twin hollow fork sleeves with rear crossmember",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Fork_Left",
+      "position": [
+        -1.1,
+        0.37,
+        0.58
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Fork_Right",
+      "position": [
+        -1.1,
+        0.37,
+        -0.58
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        0.824999988079071,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.1500000953674316,
+        0.45749999582767487,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.16,
+          0.58
+        ],
+        "size": [
+          2.2,
+          0.1,
+          0.55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.59,
+          0.58
+        ],
+        "size": [
+          2.2,
+          0.1,
+          0.55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37,
+          0.8099999999999999
+        ],
+        "size": [
+          2.2,
+          0.35,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37,
+          0.35
+        ],
+        "size": [
+          2.2,
+          0.35,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.16,
+          -0.58
+        ],
+        "size": [
+          2.2,
+          0.1,
+          0.55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.59,
+          -0.58
+        ],
+        "size": [
+          2.2,
+          0.1,
+          0.55
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37,
+          -0.35
+        ],
+        "size": [
+          2.2,
+          0.35,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37,
+          -0.8099999999999999
+        ],
+        "size": [
+          2.2,
+          0.35,
+          0.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.1500000953674316,
+      0.09000000357627869,
+      -0.8799999952316284
+    ],
+    "max": [
+      1.1500000953674316,
+      0.824999988079071,
+      0.8799999952316284
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-fork-receiver_lod0.glb",
+      "triangles": 3828,
+      "draws": 4,
+      "bytes": 431352,
+      "method": "source",
+      "sha256": "edfe6f7b92234f14ad364f1f1ad7d503f3b1ac313e481d3ff682d8a12c68ee22"
+    },
+    {
+      "level": 1,
+      "file": "cargo-fork-receiver_lod1.glb",
+      "triangles": 308,
+      "draws": 4,
+      "bytes": 259256,
+      "method": "authored-topology",
+      "sha256": "c1564a1ca11a05e8b7334c9fe63e3b28df50b319237ea2839e94bc51bb9f06da"
+    },
+    {
+      "level": 2,
+      "file": "cargo-fork-receiver_lod2.glb",
+      "triangles": 204,
+      "draws": 4,
+      "bytes": 252488,
+      "method": "authored-topology",
+      "sha256": "f13d1d4631af4a8ab6ff900db9d126a5a2513819fae3d7e7caffc6d416458bee"
+    }
+  ]
+}

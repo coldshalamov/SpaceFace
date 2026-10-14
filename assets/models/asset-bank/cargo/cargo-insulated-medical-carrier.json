@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-insulated-medical-carrier",
+  "category": "cargo",
+  "description": "Insulated medical carrier with latches and handles",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.1475000381469727,
+        -0.00875002145767212
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        0.9800000190734863,
+        0.5662500187754631,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6,
+          -0.0
+        ],
+        "size": [
+          1.8,
+          1.1,
+          1.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -0.9800000190734863,
+      -0.015000000596046448,
+      -0.6200000047683716
+    ],
+    "max": [
+      0.9800000190734863,
+      1.1475000381469727,
+      0.6024999618530273
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-insulated-medical-carrier_lod0.glb",
+      "triangles": 3776,
+      "draws": 7,
+      "bytes": 429480,
+      "method": "source",
+      "sha256": "f62070ae2802a83ac1168af8f352d2467fcd6cf1b97981de06b7e09ea429ff32"
+    },
+    {
+      "level": 1,
+      "file": "cargo-insulated-medical-carrier_lod1.glb",
+      "triangles": 576,
+      "draws": 7,
+      "bytes": 273532,
+      "method": "authored-topology",
+      "sha256": "e4f1447b1eca7b385616ac1cf7e92a2a5e969c957a84161ea6c4192f875a8d30"
+    },
+    {
+      "level": 2,
+      "file": "cargo-insulated-medical-carrier_lod2.glb",
+      "triangles": 352,
+      "draws": 7,
+      "bytes": 268348,
+      "method": "authored-topology",
+      "sha256": "3ac16c907fc72e1285079e0bc38fa32d073fc1e4cd16ded1c1b18684bcba4dfc"
+    }
+  ]
+}

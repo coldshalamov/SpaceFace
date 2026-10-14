@@ -12,11 +12,11 @@ catalog entries, recipe counts or this guide as evidence that exported models ha
 A delivered piece needs its committed GLBs and adjacent manifest; an accepted runtime piece also
 needs the owning feature's visual, physical and performance evidence.
 
-The current increment now delivers three exported candidates: `truss_short`,
-`flange_coupler` and `pressure_pipe_valve`, each with three LODs and a sidecar.
-Their transformed cross-LOD bounds, byte/hash receipts and socket contracts pass
-the structural validator. See [the delivery checkpoint](DELIVERY.md); the other
-commissioned entries and all runtime acceptance remain separate work.
+The current increment delivers 112 exported candidates: 36 structure, 36 operations,
+36 cargo and four natural pieces, each with three LODs and a sidecar. The 336 GLBs
+total 140,230,404 bytes. Their transformed cross-LOD bounds, byte/hash receipts and
+socket contracts pass the structural validator. See [the delivery checkpoint](DELIVERY.md);
+the remaining commissioned entries and all runtime acceptance remain separate work.
 
 See [coverage and comparison](COVERAGE.md) for the commission and reuse decisions. Count distinct
 asset IDs with verified exports, not LOD files, palette variants or proposed composition recipes.
@@ -101,7 +101,7 @@ names describe arrangements, not new canonical factions or destinations.
 
 ## Highest-value continuation work
 
-First deliver one small, coherent family end to end: committed LODs and manifests, freshly reimported
+Take one small, coherent exported family through integration: freshly reimported
 GLB contact sheets, a socket-mated example, collision clearance and a real game-camera capture.
 Expand the catalog only after that path works; more recipe names cannot repair a broken export path.
 

@@ -1,0 +1,490 @@
+{
+  "assetId": "pressure_corridor_tee",
+  "category": "habitat-dock",
+  "description": "pressure corridor tee",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_PASSAGE_-1_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_PASSAGE_1_0",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_PASSAGE_0_1",
+      "position": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          4,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.140000104904175,
+      -1.9399999380111694,
+      -2.140000104904175
+    ],
+    "max": [
+      2.140000104904175,
+      2.1575000286102295,
+      2.140000104904175
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_corridor_tee_lod0.glb",
+      "triangles": 6276,
+      "draws": 7,
+      "bytes": 573520,
+      "method": "source",
+      "sha256": "b0c14530c6e2dfda95cfe9eb13ef3869fd39a624ed7ff98d203fca972d796959"
+    },
+    {
+      "level": 1,
+      "file": "pressure_corridor_tee_lod1.glb",
+      "triangles": 2510,
+      "draws": 7,
+      "bytes": 395204,
+      "method": "Forge-decimation",
+      "sha256": "6b2fb649c4d168255e5b446560ce9e06042678dce3c0dd4d2d62c53c6527718d"
+    },
+    {
+      "level": 2,
+      "file": "pressure_corridor_tee_lod2.glb",
+      "triangles": 1128,
+      "draws": 7,
+      "bytes": 327152,
+      "method": "Forge-decimation",
+      "sha256": "98932444b411f3e52a3f63a0093f48abdaf88ee6635498f8cee4a04cf8ffc2c9"
+    }
+  ]
+}

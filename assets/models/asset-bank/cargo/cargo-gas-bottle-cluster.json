@@ -1,0 +1,279 @@
+{
+  "assetId": "cargo-gas-bottle-cluster",
+  "category": "cargo",
+  "description": "Six pressure bottles retained in a transport rack",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        2.119999885559082,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.125,
+        1.0924999415874481,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.65
+        ],
+        "size": [
+          2,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.65
+        ],
+        "size": [
+          2,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.65,
+          1.0,
+          0.32
+        ],
+        "size": [
+          0.5,
+          1.5,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.65,
+          1.0,
+          -0.32
+        ],
+        "size": [
+          0.5,
+          1.5,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          0.32
+        ],
+        "size": [
+          0.5,
+          1.5,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.32
+        ],
+        "size": [
+          0.5,
+          1.5,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.65,
+          1.0,
+          0.32
+        ],
+        "size": [
+          0.5,
+          1.5,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.65,
+          1.0,
+          -0.32
+        ],
+        "size": [
+          0.5,
+          1.5,
+          0.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "payload",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.125,
+      0.06499999761581421,
+      -0.7749999761581421
+    ],
+    "max": [
+      1.125,
+      2.119999885559082,
+      0.7749999761581421
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-gas-bottle-cluster_lod0.glb",
+      "triangles": 13980,
+      "draws": 8,
+      "bytes": 957568,
+      "method": "source",
+      "sha256": "569f138257b357c1b87cb9ac1fb3dcd3c56fcd2162b68f4d4b776aee4ae74480"
+    },
+    {
+      "level": 1,
+      "file": "cargo-gas-bottle-cluster_lod1.glb",
+      "triangles": 1684,
+      "draws": 8,
+      "bytes": 355784,
+      "method": "authored-topology",
+      "sha256": "63c527765d6b89050a7c26f719ee8dce57bc0fa1d2b648d85ee38e1faaad9a5b"
+    },
+    {
+      "level": 2,
+      "file": "cargo-gas-bottle-cluster_lod2.glb",
+      "triangles": 1140,
+      "draws": 8,
+      "bytes": 325252,
+      "method": "authored-topology",
+      "sha256": "0cd54cf874d99ff03893d00ab7b453f0ae0a191c123293676ad76efa527a8d63"
+    }
+  ]
+}
