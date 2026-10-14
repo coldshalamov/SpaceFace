@@ -962,6 +962,11 @@ async function runSteadyFlightProfile(page, cdp) {
     });
     fs.writeFileSync(path.join(OUT_DIR, 'worker-cost.json'), JSON.stringify(workerCost, null, 1));
     log(`worker costs: ${JSON.stringify(workerCost)}`);
+    const workerState = await page.evaluate(async () => {
+      const { laneRpc } = await import('/src/core/simLaneCommands.js');
+      return laneRpc('probeState', {});
+    });
+    fs.writeFileSync(path.join(OUT_DIR, 'worker-state.json'), JSON.stringify(workerState, null, 1));
   }
 
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
