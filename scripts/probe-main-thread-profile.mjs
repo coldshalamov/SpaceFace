@@ -37,6 +37,11 @@
 // --drop-profile.
 
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { installGameCadenceProbe, summarizeGameCadence } from './lib/gameCadenceProbe.mjs';
+import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
+import { racingToFlight } from './player-truth/routes.mjs';
+import { startSimulationWorkerProfile } from './lib/workerCpuProfile.mjs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
 import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
 import os from 'node:os';
@@ -49,6 +54,14 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const { electronEvidenceProfileRoot, inspectElectronEvidenceProfilePath } = launchProtocol;
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const sourceDigest = await digestSourcePaths(ROOT, [
+  ...await listSrcJsSourcePaths(ROOT),
+  'scripts/lib/simWorkerHost.mjs', 'scripts/lib/simReadModel.mjs',
+]);
+const probeDigest = await digestSourcePaths(ROOT, [
+  'scripts/probe-main-thread-profile.mjs', 'scripts/lib/gameCadenceProbe.mjs',
+  'scripts/lib/workerCpuProfile.mjs',
+]);
 const argValue = (name) => {
   const hit = process.argv.find((arg) => arg.startsWith(`${name}=`));
   return hit ? hit.slice(name.length + 1) : null;
@@ -83,7 +96,12 @@ const TRACE = process.argv.includes('--trace');
 // --crucible profiles the swarm mode (seed 4242, default kit, drafts auto-answered) instead of open flight;
 // --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
 const CRUCIBLE = process.argv.includes('--crucible');
+const CADENCE_ONLY = process.argv.includes('--cadence-only');
+const GAUNTLET = process.argv.includes('--gauntlet');
+const RACING = process.argv.includes('--racing');
+const WORKER_PROFILE = process.argv.includes('--worker-profile');
 const SETTLE_MS = Math.max(0, Number(argValue('--settle-ms')) || 0);
+const TRAVEL_MS = Math.max(0, Number(argValue('--travel-ms')) || 0);
 // --gpu-timers turns the capability-gated GPU timer queries on for the profile window and prints the per-pass report
 // (drawPreparedFrame, bloom passes): which GPU pass the frame is waiting on, where the main thread cannot see it.
 const GPU_TIMERS = process.argv.includes('--gpu-timers');
@@ -100,6 +118,7 @@ const HOLD_STILL = process.argv.includes('--hold-still');
 // --sampling-us=N sets the CPU profiler's sampling interval in microseconds (default 500 for a launch, 200 for steady flight).
 // A coarse interval (4000) keeps the profiler's own cost out of a loading-smoothness read.
 const SAMPLING_US = Math.max(100, Number(argValue('--sampling-us')) || 0);
+const EFFECTIVE_SAMPLING_US = SAMPLING_US > 100 ? SAMPLING_US : FROM_LAUNCH ? 500 : 200;
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
 ];
@@ -754,28 +773,38 @@ async function waitForFlight(page, timeoutMs, pollMs) {
 /** The Crucible button's own route (default kit, fixed seed); every armory draft is answered with 'keep'. */
 async function launchCrucible(page) {
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
-  const launched = await page.evaluate(async () => {
+  const launched = await page.evaluate(async (gauntlet) => {
     const launch = await import('/src/ui/crucibleLaunch.js');
-    const setup = launch.crucibleSetupFor({ seed: 4242 });
+    const setup = launch.crucibleSetupFor({ seed: 4242, ruleset: gauntlet ? 'scored' : undefined });
     if (!setup || !setup.ok) return false;
     window.__SF_PROFILE_DRAFT_ANSWER__ = setInterval(() => {
       const st = window.SF && window.SF.state;
       if (st && st.run && st.run.phase === 'draft') window.SF.bus.emit('run:draftPickRequested', { offerId: null });
     }, 250);
     return launch.requestCrucibleRun(window.SF.bus, setup.value, setup.ruleset) !== false;
-  });
+  }, GAUNTLET);
   if (!launched) throw new Error('Crucible run did not launch');
   log('Crucible run requested (seed 4242, default kit)');
 }
 
 async function runSteadyFlightProfile(page, cdp) {
-  if (CRUCIBLE) await launchCrucible(page); else await clickNewGameAndLaunch(page);
+  if (RACING) await racingToFlight(page, (name, ok, detail) => log(`${name}: ${ok} ${detail}`));
+  else if (CRUCIBLE || GAUNTLET) await launchCrucible(page);
+  else await clickNewGameAndLaunch(page);
   await waitForFlight(page, 180_000, 1000);
   if (SETTLE_MS > 0) { log(`flying ${SETTLE_MS} ms before the profile window`); await page.waitForTimeout(SETTLE_MS); }
+  if (TRAVEL_MS > 0) {
+    log(`held-thrust travel ${TRAVEL_MS} ms before the profile window`);
+    await page.keyboard.down('KeyW');
+    try { await page.waitForTimeout(TRAVEL_MS); }
+    finally { await page.keyboard.up('KeyW').catch(() => {}); }
+  }
   if (EVAL_FILE) {
     const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
     log(`running ${EVAL_FILE} in the page`);
+    if (process.argv.includes('--eval-thrust')) await page.keyboard.down('KeyW');
     const result = await page.evaluate(source);
+    await page.keyboard.up('KeyW').catch(() => {});
     fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
     log(`eval result: ${JSON.stringify(result).slice(0, 3000)}`);
     fs.writeFileSync(path.join(OUT_DIR, 'report.md'), ['# Eval run', '', 'See eval-result.json.', ''].join('\n'), 'utf8');
@@ -805,11 +834,82 @@ async function runSteadyFlightProfile(page, cdp) {
     log(`gpu timers: ${gpuOn}`);
   }
   log(`profiling ${WINDOW_MS} ms of held-thrust flight`);
-  await cdp.send('Profiler.start');
+  if (TRACE) await startTrace(cdp);
+  const machineStart = os.cpus();
+  const identity = await page.evaluate(() => {
+    const st = window.SF.state;
+    const gl = st.render?.renderer?.getContext();
+    const ext = gl?.getExtension('WEBGL_debug_renderer_info');
+    return {
+      userAgent: navigator.userAgent, gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : null,
+      viewport: [innerWidth, innerHeight], buffer: [gl?.drawingBufferWidth, gl?.drawingBufferHeight],
+      settings: JSON.parse(JSON.stringify(st.settings || {})), simLane: window.SF.simLaneDiag ? 'worker' : 'main',
+    };
+  });
+  if (!CADENCE_ONLY) await cdp.send('Profiler.start');
+  const workerProfiler = WORKER_PROFILE ? await startSimulationWorkerProfile(cdp) : null;
+  // Attaching a Worker profiler can pause its startup. Arm the measurement only
+  // after diagnostic setup, so that setup is not reported as a gameplay freeze.
+  await page.evaluate(installGameCadenceProbe);
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(WINDOW_MS);
   await page.keyboard.up('KeyW').catch(() => {});
-  const { profile } = await cdp.send('Profiler.stop');
+  const cadence = await page.evaluate(gpuTimers => {
+    const record = window.__SF_GAME_CADENCE__.stop();
+    if (gpuTimers) window.SF.state.render.gpuTimers?.pauseSubmissions();
+    return record;
+  }, GPU_TIMERS);
+  const summaryCadence = summarizeGameCadence(cadence);
+  const machineEnd = os.cpus();
+  const totals = cpus => cpus.reduce((out, cpu) => {
+    out.idle += cpu.times.idle;
+    out.total += Object.values(cpu.times).reduce((a, b) => a + b, 0);
+    return out;
+  }, { idle: 0, total: 0 });
+  const beginCpu = totals(machineStart), endCpu = totals(machineEnd);
+  const metadata = {
+    ...identity, cpu: machineStart[0]?.model, platform: process.platform, displayHz,
+    hostBusyPct: 100 * (1 - (endCpu.idle - beginCpu.idle) / (endCpu.total - beginCpu.total)),
+    commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(), sourceDigest, probeDigest,
+    mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
+    seed: CRUCIBLE || GAUNTLET ? 4242 : FIXED_SEED, sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
+    observer: (CADENCE_ONLY ? 'cadence-only' : `cpu-profile-${EFFECTIVE_SAMPLING_US}us`)
+      + (TRACE ? '+trace' : '') + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
+  };
+  fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify({ metadata, summary: summaryCadence, raw: cadence }, null, 1));
+  log(`game cadence: ${JSON.stringify(summaryCadence)}`);
+  const profile = CADENCE_ONLY ? null : (await cdp.send('Profiler.stop')).profile;
+  if (workerProfiler) {
+    const workerProfile = await workerProfiler.stop();
+    fs.writeFileSync(path.join(OUT_DIR, 'worker.cpuprofile'), JSON.stringify(workerProfile));
+    const summary = summarizeProfile(workerProfile, profileIndex(workerProfile));
+    fs.writeFileSync(path.join(OUT_DIR, 'worker-profile.md'), [
+      '# Simulation Worker profile', '', `Target: ${workerProfiler.targetUrl}`, '',
+      ...entryTable(summary, 15), ...selfTable(summary, summary.self, 25, '## Top self time'),
+      ...fileTable(summary, 15, '## Self time by source'),
+    ].join('\n'));
+  }
+  if (TRACE) {
+    const traceFile = path.join(OUT_DIR, 'trace.json');
+    await stopTraceToFile(cdp, traceFile);
+    const events = traceEventsOf(JSON.parse(fs.readFileSync(traceFile, 'utf8')));
+    let fromUs = Infinity, toUs = -Infinity;
+    for (const event of events) if (event.ph !== 'M' && Number.isFinite(event.ts) && event.ts > 0) {
+      fromUs = Math.min(fromUs, event.ts);
+      toUs = Math.max(toUs, event.ts + (event.dur || 0));
+    }
+    const summary = summarizeMainThread(events, { windows: [{ id: 'steady flight', fromUs, toUs }] });
+    fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.json'), JSON.stringify(summary, null, 1));
+    fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.md'), renderTraceSummaryMarkdown(summary));
+  }
+  if (process.argv.includes('--worker-cost')) {
+    const workerCost = await page.evaluate(async () => {
+      const { laneRpc } = await import('/src/core/simLaneCommands.js');
+      return laneRpc('probePerformance', {});
+    });
+    fs.writeFileSync(path.join(OUT_DIR, 'worker-cost.json'), JSON.stringify(workerCost, null, 1));
+    log(`worker costs: ${JSON.stringify(workerCost)}`);
+  }
 
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
   const longTasks = await page.evaluate(() => window.__SF_PROFILE_LONGTASKS__ || []).catch(() => []);
@@ -829,9 +929,14 @@ async function runSteadyFlightProfile(page, cdp) {
   }).catch((error) => ({ error: String(error) }));
   log(`flight footage: ${JSON.stringify(footage)}`);
   if (GPU_TIMERS) {
-    const report = await page.evaluate(() => {
+    const report = await page.evaluate(async () => {
       const timers = window.SF?.state?.render?.gpuTimers;
-      return timers && typeof timers.getReport === 'function' ? timers.getReport() : null;
+      if (!timers || typeof timers.getReport !== 'function') return null;
+      // Stop issuing queries before draining; otherwise each frame replaces the queries
+      // just completed and the capture can never have a valid terminal state.
+      const drain = await timers.drainPending({ timeoutMs: 2000,
+        yieldFn: () => new Promise(resolve => setTimeout(resolve, 16)) });
+      return { ...timers.getReport(), drain };
     }).catch(() => null);
     if (report) {
       fs.writeFileSync(path.join(OUT_DIR, 'gpu-timers.json'), JSON.stringify(report, null, 1), 'utf8');
@@ -846,8 +951,9 @@ async function runSteadyFlightProfile(page, cdp) {
     })
     .catch(() => {});
 
-  const summary = writeSteadyReport(profile, census, longTasks);
-  fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
+  const summary = profile ? writeSteadyReport(profile, census, longTasks) : { entries: [], totalMicros: 0 };
+  if (profile) fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
+  else fs.writeFileSync(path.join(OUT_DIR, 'report.md'), '# Game cadence\n\n' + JSON.stringify({ metadata, summary: summaryCadence }, null, 2) + '\n');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
 
   const top = summary.entries[0];
@@ -1001,17 +1107,24 @@ const profileNote = KEEP_PROFILE
   : 'fresh temporary evidence profile (cold GPU program cache and HTTP cache)';
 
 let app = null;
+let displayHz = null;
 let runtimeClosed = false;
 try {
   log(`launching isolated Electron; ${profileNote}`);
   app = await electron.launch(launch.options);
+  displayHz = await app.evaluate(({ screen, BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0];
+    const display = win ? screen.getDisplayMatching(win.getBounds()) : screen.getPrimaryDisplay();
+    return Number.isFinite(display.displayFrequency) && display.displayFrequency > 0
+      ? display.displayFrequency : null;
+  });
   const page = await app.firstWindow({ timeout: 180_000 });
   await page.waitForLoadState('domcontentloaded');
 
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Profiler.enable');
   // A launch window runs ~60 s; half-millisecond sampling keeps the profile a manageable size.
-  await cdp.send('Profiler.setSamplingInterval', { interval: SAMPLING_US > 100 ? SAMPLING_US : (FROM_LAUNCH ? 500 : 200) });
+  await cdp.send('Profiler.setSamplingInterval', { interval: EFFECTIVE_SAMPLING_US });
 
   if (FROM_LAUNCH) await runLaunchProfile(page, cdp, profileNote);
   else await runSteadyFlightProfile(page, cdp);

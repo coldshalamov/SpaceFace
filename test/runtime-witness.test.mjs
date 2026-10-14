@@ -39,6 +39,25 @@ test('a moving sim clock with a stuck GPU frame is draw-dead, not healthy', () =
   assert.equal(verdict.kind, 'draw-dead');
 });
 
+test('warm-up GPU draws cannot hide stopped world submissions', () => {
+  const verdict = classifyRuntimeWitness(series({ worldSubmissionsObserved: true, worldSubmittedFrames: 10 }));
+  assert.equal(verdict.kind, 'draw-dead');
+});
+
+test('successful world submissions take precedence over an intermediate render counter', () => {
+  const samples = series({ worldSubmissionsObserved: true, rendererFrame: 12 })
+    .map((row, index) => ({ ...row, worldSubmittedFrames: index * 60 }));
+  assert.equal(classifyRuntimeWitness(samples).kind, 'presenting');
+});
+
+test('short callback work does not hide a long interval between callbacks', () => {
+  const sample = collectRuntimeWitnessSample({ perfRuntime: {
+    readFrameSample: () => ({ callbackMs: 4, callbackIntervalMs: 150 }),
+  } });
+  assert.equal(sample.hitch, true);
+  assert.equal(sample.callbackIntervalMs, 150);
+});
+
 test('unchanged canvas hashes are draw-dead even when sim and rAF counters move', () => {
   const verdict = classifyRuntimeWitness(series(), {
     canvasHashes: ['aaaa', 'aaaa', 'aaaa'],

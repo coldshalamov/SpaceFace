@@ -1,6 +1,10 @@
 <!-- LIFETIME: STABLE -->
 # Systematic smoothness program
 
+Current owner-authorized real-machine execution: [2026-10-14 campaign](program/PERF_2026_10_14.md).
+That campaign adds independent world-submit cadence measurement and a sequential executable
+route matrix; historical rankings below require current measurements before reuse.
+
 Durable route for making SpaceFace hold vsync on the target Intel iGPU without
 changing the default picture. This file is plan-route and outcome law. It does
 not hold a queue snapshot, branch name, or cycle ledger.

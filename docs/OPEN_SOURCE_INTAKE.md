@@ -52,6 +52,13 @@ Wiring is `build_map.md` §23.4. Small auditions and grade checks are the TOOL l
 
 ## 1. Prefer the established toolchain
 
+Performance diagnostic intake, 2026-10-14: **Perfetto v58.2 Trace Processor**, Apache-2.0,
+installed through the official `get.perfetto.dev/trace_processor` wrapper under ignored
+`.devshots/tools/perfetto/`. It queries Chrome timeline traces offline; no runtime dependency,
+bundle bytes, save/schema or deterministic simulation effect. Keep it diagnostic-only and
+update through the official wrapper. Existing CDP/Playwright, Spector.js, stats-gl and MemLab
+remain the browser profiling tools. Execution: `design/program/PERF_2026_10_14.md`.
+
 Inspect `package.json`, the current asset builders, and the release manifests before adding a tool.
 Extend the established glTF Transform, meshoptimizer, KTX2/Basis, Playwright, Three.js, Rapier, and
 Blender/export/validation paths when they already own the required transformation.
