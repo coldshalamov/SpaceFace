@@ -139,6 +139,7 @@
       "label": "heading fell through the bank",
       "metric": "trace.final",
       "op": "<",
+      "radius": 100,
       "signal": "playerRot",
       "value": -0.5,
       "x": -90,
@@ -156,7 +157,7 @@
       "kind": "trigger",
       "labOnly": true,
       "label": "moved off the start",
-      "radius": 18,
+      "radius": 50,
       "shape": "circle",
       "x": 70,
       "z": -20
@@ -168,6 +169,7 @@
       "label": "still moving",
       "metric": "flight.finalSpeed",
       "op": ">=",
+      "radius": 100,
       "value": 0.5,
       "x": -90,
       "z": -30

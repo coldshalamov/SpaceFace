@@ -21,7 +21,7 @@ const ACTOR_KEYS = [
 ];
 const TRIGGER_KEYS = ['id', 'kind', 'shape', 'x', 'z', 'radius', 'assertion', 'label', 'groupId', 'labOnly'];
 const OBJECTIVE_KEYS = [
-  'id', 'kind', 'x', 'z', 'metric', 'signal', 'op', 'value', 'label', 'groupId', 'labOnly',
+  'id', 'kind', 'x', 'z', 'radius', 'metric', 'signal', 'op', 'value', 'label', 'groupId', 'labOnly',
 ];
 const FIELD_KEYS = [
   'id', 'kind', 'fieldKind', 'gameplay', 'x', 'z', 'radius', 'label', 'groupId',

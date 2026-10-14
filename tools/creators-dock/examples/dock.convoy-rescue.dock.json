@@ -124,6 +124,7 @@
       "label": "closed on the convoy",
       "metric": "trace.final",
       "op": ">",
+      "radius": 40,
       "signal": "playerZ",
       "value": 0.5,
       "x": -30,
@@ -136,6 +137,7 @@
       "label": "still moving",
       "metric": "flight.finalSpeed",
       "op": ">=",
+      "radius": 100,
       "value": 0.5,
       "x": -90,
       "z": 10

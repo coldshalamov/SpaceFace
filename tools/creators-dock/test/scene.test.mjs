@@ -4602,40 +4602,203 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
     byTick: 4,
     expected: { x: 0, z: 20, radius: 16, shape: 'circle' },
   });
-  const trace = [];
-  for (let tick = 0; tick <= 5; tick += 1) trace.push({ tick, playerX: 10, playerZ: 4 });
-  const judged = (op, value) => evaluateOracleKernel({
+  const outside = [];
+  const inside = [];
+  for (let tick = 0; tick <= 5; tick += 1) {
+    outside.push({ tick, playerX: 10, playerZ: 4 });
+    inside.push({ tick, playerX: 0, playerZ: 4 });
+  }
+  const judged = (trace, op, value) => evaluateOracleKernel({
     trace,
     assertions: [{ ...event, op, value }],
   });
   const playerZ = (result) => result.results.find((row) => row.id === 'eventByTick:playerZ');
-  const below = judged('<', -0.25);
+  const below = judged(outside, '<', -0.25);
   const belowRow = playerZ(below);
   assert.equal(belowRow.ok, false);
   assert.equal(belowRow.actual.foundTick, null);
   assert.equal(below.ok, false);
   assert.equal(below.failed.some((row) => row.id === 'eventByTick:playerZ'), true);
   assert.equal(Number.isFinite(belowRow.actual.closest), true);
-  assert.equal(belowRow.actual.closest <= 16 * 5, true);
-  const atLeastHundred = judged('>=', 100);
+  assert.equal(belowRow.actual.closest > 16, true);
+  const atLeastHundred = judged(outside, '>=', 100);
   assert.equal(playerZ(atLeastHundred).ok, false);
   assert.equal(playerZ(atLeastHundred).actual.foundTick, null);
   assert.equal(atLeastHundred.failed.some((row) => row.id === 'eventByTick:playerZ'), true);
-  const aboveHundred = judged('>', 100);
+  const aboveHundred = judged(outside, '>', 100);
   assert.equal(playerZ(aboveHundred).ok, false);
   assert.equal(playerZ(aboveHundred).actual.foundTick, null);
   assert.equal(aboveHundred.failed.some((row) => row.id === 'eventByTick:playerZ'), true);
-  const crossed = judged('>', 0.5);
+  const outsideCross = judged(outside, '>', 0.5);
+  assert.equal(playerZ(outsideCross).actual.foundTick, 0);
+  assert.equal(playerZ(outsideCross).ok, false);
+  assert.equal(outsideCross.ok, false);
+  const crossed = judged(inside, '>', 0.5);
   assert.equal(crossed.ok, true);
   assert.equal(playerZ(crossed).ok, true);
   assert.equal(playerZ(crossed).actual.foundTick, 0);
+  assert.equal(playerZ(crossed).actual.closest <= 16, true);
   assert.equal(crossed.failed.some((row) => row.id === 'eventByTick:playerZ'), false);
-  assert.equal(playerZ(judged('>=', 4)).ok, true);
-  assert.equal(playerZ(judged('<=', 4)).ok, true);
-  assert.equal(playerZ(judged('<=', 3)).ok, false);
-  assert.equal(playerZ(judged('==', 4)).ok, true);
-  assert.equal(playerZ(judged('!=', 4)).ok, false);
-  assert.equal(playerZ(judged('!=', 5)).ok, true);
+  assert.equal(playerZ(judged(inside, '>=', 4)).ok, true);
+  assert.equal(playerZ(judged(inside, '<=', 4)).ok, true);
+  assert.equal(playerZ(judged(inside, '<=', 3)).ok, false);
+  assert.equal(playerZ(judged(inside, '==', 4)).ok, true);
+  assert.equal(playerZ(judged(inside, '!=', 4)).ok, false);
+  assert.equal(playerZ(judged(inside, '!=', 5)).ok, true);
+  assert.equal(playerZ(judged(inside, '<', -0.25)).actual.foundTick, null);
+  assert.equal(playerZ(judged(inside, '>=', 100)).ok, false);
+  assert.equal(playerZ(judged(inside, '>', 100)).ok, false);
+});
+
+function dockReadyToUndo() {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const sceneA = getComposition('dock.intercept-cargo');
+  sceneA.title = 'A';
+  const sceneB = getComposition('dock.intercept-cargo');
+  sceneB.title = 'B';
+  return restoreHistory(commit(commit(history, sceneA), sceneB), 'undo');
+}
+
+function sealGridGetter(scene) {
+  const grid = scene.grid;
+  Object.defineProperty(scene, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return grid; },
+  });
+  return grid;
+}
+
+test('undo writes a sealed lens assignment back to the capture', () => {
+  const undone = dockReadyToUndo();
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const present = undone.history.present;
+  const grid = sealGridGetter(present);
+  const lens = { bias: 4, title: 'live' };
+  Object.defineProperty(grid, 'lens', {
+    enumerable: true,
+    configurable: true,
+    get() { return lens; },
+  });
+  sealGridGetter(undone.history.future[0]);
+  undone.history.future[0].toJSON = function () {
+    lens.bias = 2;
+    Object.defineProperty(lens, 'bias', { value: 2, writable: false, configurable: false });
+    lens.title = 'sealed';
+    Object.defineProperty(lens, 'title', { value: 'sealed', writable: false, configurable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(lens.bias, 4);
+  assert.equal(lens.title, 'live');
+  assert.equal(present.grid.lens, lens);
+  assert.equal(Object.getOwnPropertyDescriptor(lens, 'bias').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(lens, 'title').writable, true);
+  assert.deepEqual(clone(present).grid.lens, { bias: 4, title: 'live' });
+});
+
+test('undo writes a reflected bias seal back to 4', () => {
+  const undone = dockReadyToUndo();
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const present = undone.history.present;
+  const grid = sealGridGetter(present);
+  const lens = { bias: 4 };
+  Object.defineProperty(grid, 'lens', {
+    enumerable: true,
+    configurable: true,
+    get() { return lens; },
+  });
+  sealGridGetter(undone.history.future[0]);
+  undone.history.future[0].toJSON = function () {
+    lens.bias = 1;
+    Reflect.defineProperty(lens, 'bias', { value: 1, writable: false, configurable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(lens.bias, 4);
+  assert.equal(Object.getOwnPropertyDescriptor(lens, 'bias').writable, true);
+  assert.equal(present.grid.lens, lens);
+  assert.equal(clone(present).grid.lens.bias, 4);
+});
+
+test('undo writes a nested lens bias back onto the same inner object', () => {
+  const undone = dockReadyToUndo();
+  assert.equal(undone.ok, true, (undone.issues || []).join('\n'));
+  const present = undone.history.present;
+  const grid = sealGridGetter(present);
+  const inner = { bias: 4 };
+  const mid = {};
+  Object.defineProperty(mid, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return inner; },
+  });
+  const lens = {};
+  Object.defineProperty(lens, 'mid', {
+    enumerable: true,
+    configurable: true,
+    get() { return mid; },
+  });
+  Object.defineProperty(grid, 'lens', {
+    enumerable: true,
+    configurable: true,
+    get() { return lens; },
+  });
+  sealGridGetter(undone.history.future[0]);
+  undone.history.future[0].toJSON = function () {
+    inner.bias = 2;
+    Object.defineProperty(inner, 'bias', { value: 2, writable: false, configurable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(inner.bias, 4);
+  assert.equal(Object.getOwnPropertyDescriptor(inner, 'bias').writable, true);
+  assert.equal(present.grid.lens.mid.grid, inner);
+  assert.equal(clone(present).grid.lens.mid.grid.bias, 4);
+});
+
+test('a refused undo does not replace bias with a getter', () => {
+  const history = createHistory(getComposition('dock.intercept-cargo'));
+  const sceneA = getComposition('dock.intercept-cargo');
+  sceneA.title = 'A';
+  const sceneB = getComposition('dock.intercept-cargo');
+  sceneB.title = 'B';
+  const twice = commit(commit(history, sceneA), sceneB);
+  const present = twice.present;
+  const grid = present.grid;
+  grid.bias = 4;
+  const past = twice.past[0];
+  const pastGrid = past.grid;
+  Object.defineProperty(past, 'grid', {
+    enumerable: true,
+    configurable: true,
+    get() { return pastGrid; },
+  });
+  past.toJSON = function () {
+    Object.defineProperty(grid, 'bias', {
+      configurable: false,
+      enumerable: true,
+      get() { return 4; },
+    });
+    return this;
+  };
+  const back = restoreHistory(twice, 'undo');
+  const bias = Object.getOwnPropertyDescriptor(grid, 'bias');
+  assert.equal(bias.value, 4);
+  assert.equal(bias.writable, true);
+  assert.equal(typeof bias.get, 'undefined');
+  grid.bias = 9;
+  assert.equal(grid.bias, 9);
+  assert.equal(back.ok === false || back.history.present !== present, true);
 });
 
 test('prototype tags behind a get-only pocket stay keep', () => {

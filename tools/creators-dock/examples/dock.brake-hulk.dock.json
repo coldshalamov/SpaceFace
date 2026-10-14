@@ -130,6 +130,7 @@
       "label": "opened with speed",
       "metric": "trace.max",
       "op": ">=",
+      "radius": 100,
       "signal": "player.speed",
       "value": 5,
       "x": -90,
@@ -142,6 +143,7 @@
       "label": "speed stayed bounded",
       "metric": "flight.finalSpeed",
       "op": "<=",
+      "radius": 100,
       "value": 80,
       "x": -90,
       "z": 0

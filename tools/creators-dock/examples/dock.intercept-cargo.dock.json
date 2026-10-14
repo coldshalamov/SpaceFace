@@ -120,6 +120,7 @@
       "label": "final playerZ",
       "metric": "trace.final",
       "op": ">",
+      "radius": 50,
       "signal": "playerZ",
       "value": 0.5,
       "x": -40,
@@ -132,6 +133,7 @@
       "label": "still moving",
       "metric": "flight.finalSpeed",
       "op": ">=",
+      "radius": 80,
       "value": 0.5,
       "x": -70,
       "z": -10

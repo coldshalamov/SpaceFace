@@ -143,6 +143,7 @@
       "label": "began south",
       "metric": "trace.min",
       "op": "<=",
+      "radius": 50,
       "signal": "playerZ",
       "value": -5,
       "x": -40,

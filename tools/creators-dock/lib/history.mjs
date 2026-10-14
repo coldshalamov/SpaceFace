@@ -1,7 +1,7 @@
 import { clone, emptyProject, placePlayer, playerCanonIssues, requireOnePlayer, sameProject } from './scene.mjs';
 import {
   captureAccessorTrees, definePropertyBase, detachData, liveObjectsIn, protectLiveObjects,
-  readAccessor, restoreOwnShadows, snapshotInheritedArrays, unprotectLiveObjects,
+  readAccessor, restoreLive, restoreOwnShadows, snapshotInheritedArrays, unprotectLiveObjects,
 } from './stableJson.mjs';
 
 const CAP = 100;
@@ -375,6 +375,7 @@ function publish(value) {
   if (activeAccessors) restoreAccessors(activeAccessors);
   const settersStuck = restoreSetters(activeSetters);
   const arraysStuck = restoreArrays(activeArrays);
+  restoreLive(activeShadows);
   restoreOwnShadows(activeShadows);
   if (activeShields) restoreShieldList(activeShields);
   const map = activeShields ? replacementMap(activeShields) : new Map();

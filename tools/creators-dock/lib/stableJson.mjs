@@ -453,8 +453,12 @@ function blocksDefine(obj, prop, desc) {
     && Object.prototype.hasOwnProperty.call(desc, 'value')
     && read.read
     && !Object.is(desc.value, read.value);
+  const replacesDataWithAccessor = !!current
+    && Object.prototype.hasOwnProperty.call(current, 'value')
+    && (typeof desc.get === 'function' || typeof desc.set === 'function');
   const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
-  return changesValue || sealsWritable || sealsConfigurable || sealsAccessor || freezesLength;
+  return changesValue || sealsWritable || sealsConfigurable || sealsAccessor
+    || replacesDataWithAccessor || freezesLength;
 }
 
 function protectedHas(obj) {

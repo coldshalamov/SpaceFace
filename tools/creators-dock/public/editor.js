@@ -287,6 +287,7 @@ function fieldsFor(object) {
       { key: 'signal', label: 'Signal', kind: 'text' },
       { key: 'op', label: 'Op', kind: 'text' },
       { key: 'value', label: 'Value', kind: 'number' },
+      { key: 'radius', label: 'Radius', kind: 'number' },
     ];
   }
   if (object.kind === 'trigger') {

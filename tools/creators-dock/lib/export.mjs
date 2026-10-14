@@ -334,7 +334,12 @@ function buildScenario(project, actors, triggers, objectives, attachments, issue
       issues.push(`${trigger.id}: trigger.assertion could not be cloned`);
       continue;
     }
-    if (canCarryGeometry(assertion)) assertion.expected = layoutGeometry(trigger);
+    if (!canCarryGeometry(assertion)) {
+      const geometry = layoutGeometry(trigger);
+      issues.push(`${trigger.id}: geometry ${JSON.stringify(geometry)} was dropped`);
+      continue;
+    }
+    assertion.expected = layoutGeometry(trigger);
     assertions.push(assertion);
     rememberOracle(assertion, seenOracle, issues);
     if (assertion.signal && !SIGNAL_SET.has(assertion.signal)) {
@@ -820,6 +825,7 @@ export function importScenario(doc) {
         kind: 'objective',
         x: objectiveGeometry && Number.isFinite(objectiveGeometry.x) ? objectiveGeometry.x : 0,
         z: objectiveGeometry && Number.isFinite(objectiveGeometry.z) ? objectiveGeometry.z : 0,
+        ...(objectiveGeometry && Number.isFinite(objectiveGeometry.radius) ? { radius: objectiveGeometry.radius } : {}),
         metric: assertion.metric,
         ...(metric.params && metric.params.signal ? { signal: metric.params.signal } : {}),
         op: assertion.op,

@@ -148,6 +148,7 @@
       "label": "coasted toward the chain",
       "metric": "trace.final",
       "op": ">",
+      "radius": 40,
       "signal": "playerX",
       "value": 1,
       "x": 40,

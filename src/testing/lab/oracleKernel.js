@@ -5,10 +5,8 @@ import { evaluateMetrics, compareThreshold } from './metricRegistry.js';
 // Side-effect: register massline + flight metrics for both Node and Chromium hosts.
 import '../metrics/masslineMetrics.js';
 
-// A dock disc is met when the player comes within five authored radii. That keeps a
-// marker the tape actually crosses, and rejects a distant point such as (999, 999) r=1.
-const DISC_REACH = 5;
-// An objective authored at x,z without its own radius is still a disc of this size.
+// An objective authored at x,z without its own radius is still a disc. 20 is the
+// radius already used by a dock trigger (dock.dangerous-crossing).
 const DEFAULT_DISC_RADIUS = 20;
 
 function discOf(assertion) {
@@ -34,9 +32,10 @@ function closestApproach(samples, disc) {
 }
 
 function discReached(samples, disc) {
-  if (!disc || !Number.isFinite(disc.radius)) return { ok: true, closest: null };
+  if (!disc) return { ok: true, closest: null };
+  if (!Number.isFinite(disc.radius)) return { ok: false, closest: null };
   const closest = closestApproach(samples, disc);
-  return { ok: Number.isFinite(closest) && closest <= disc.radius * DISC_REACH, closest };
+  return { ok: Number.isFinite(closest) && closest <= disc.radius, closest };
 }
 
 function withDisc(base, disc) {
@@ -556,6 +555,7 @@ function evaluateTemporal(assertions, trace, ctx) {
         ok,
         expected: withDisc({ byTick }, disc),
         actual: disc ? { foundTick, closest: approach.closest } : { foundTick },
+        ...(disc ? { closest: approach.closest } : {}),
         signedDelta: foundTick != null ? foundTick - byTick : null,
         firstBadTick: ok ? null : byTick,
       });
