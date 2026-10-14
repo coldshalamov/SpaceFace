@@ -10,7 +10,7 @@ const NOOP = { show() {}, hide() {}, destroy() {} };
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
-export const ADMISSION_QUIET_MS = 750;
+export const ADMISSION_QUIET_MS = 400;
 export const ADMISSION_DRAIN_CAP_MS = 5000;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
