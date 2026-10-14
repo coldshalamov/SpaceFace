@@ -1,19 +1,31 @@
 # Reusable asset bank delivery
 
-144 distinct review-candidate models are published: all 36 structure, 36 operations, 36 cargo and 36 natural pieces. Every model has three actual GLBs and a sidecar. Full scope remains 156 pieces plus 12 composition recipes.
+The first complete authoring bank contains **156 distinct models and 12 composition recipes**: 36 structure pieces, 36 operations components, 36 cargo/aftermath pieces, 36 natural/ancient forms and 12 large place modules. LODs and recolors are not counted as additional models.
 
-## Verified checks
+## Verified exports and tests
 
-The published subset contains **144 models / 432 GLBs / 159,257,628 bytes**. The complete local candidate projection passes strict contract checks at156/468; its remaining12large pieces are not all published yet. Focused tests:66 JavaScript contract,18 Python bounds/cost,15 catalogue/planner and27 assembly tests. Actual all-LOD bounds, occurrence costs, hashes and embedded metadata remain verified.
+The exact combined file projection passes the independent contract validator: **156 models / 468 actual GLBs / 196,921,332 GLB bytes**. Each model has a sidecar, all-LOD transformed bounds, occurrence costs, collision/socket declarations and content hashes. All 12 recipes pass transformed bounds, joins, approach/exit proxy and actual dependency-file checks. Their 47 unique dependencies are pinned to141LOD hashes.
 
-## Visual and authoring work
+Focused JavaScript suites pass108tests (66contract,15catalogue/planner,27assembly), alongside18Python bounds/cost tests. Reviewer's strict scene semantics and newer changes are preserved. Repository-wide CI is not all green: observed failures also occur on the actual tested master68ace403 baseline, run38501227696; latest-head CI is monitored separately.
 
-Exported CPU views were inspected and weak pieces iterated. The latest natural replacements give the extracted core real fractured strata and bore grooves, and make nerve_lace_corner a genuine quarter-turn with turning branch anatomy and an updated outgoing socket. Detailed industrial, cargo, geological, ancient ceramic and biological forms retain distinct construction language.
+## Visual review
 
-Use scripts/list-asset-bank.mjs and scripts/plan-asset-bank-scene.mjs to discover exports and produce deterministic placement transforms, conservative bounds and occurrence costs without starting the game. See CATALOG.md and SCENE_PLANNING.md. Assembly checking now rejects stale hash bindings and verifies referenced export bytes/SHA256.
+Actual exported CPU views were inspected across all families, including coarse LODs. Revisions include continuous pipe elbows, planar coarse windows, preserved transformer fins and array patches, a detailed lathe, sagging sacks, fractured engine/hull pieces, natural strata cores, hollow growths and a genuinely curved nerve corner. Large pieces include dock supports, habitat shells, terraces, a fabrication hall, ring segments and a dish backframe. Composition renders show candidate arrangements using exact reviewed peers.
 
-## Pending
+See family review manifests and assets/models/asset-bank/large/evidence/recipes-v3. These are export views, not live gameplay captures or final visual acceptance.
 
-Twelve large modules and twelve dependency-locked recipes are being published. One large LOD upload returned transient ReadTimeout twice and was absent on exact-SHA readback; successful blobs are retained and unrelated work continues. No new authorization request is inferred from a timeout.
+## Use the bank
 
-All pieces remain authoring-library candidates. Live placement, collision/motion clearance, target-device performance and final visual acceptance remain open, as do the larger game goals in OPEN_GOALS.md. Observed CI failures match actual tested master68ace403 (baseline run38501227696); latest-head CI remains under observation. No all-green, master-merge or deployment claim.
+- CATALOG.md and scripts/list-asset-bank.mjs: discover published IDs, tags, dimensions, costs and sockets.
+- SCENE_PLANNING.md and scripts/plan-asset-bank-scene.mjs: deterministic placement matrices, conservative bounds and occurrence costs without booting the game.
+- design/asset-bank/assemblies.json:12candidate compositions with hash-locked dependencies.
+- scripts/check-asset-bank-assemblies.mjs: validate joins, proxy clearance, bounds and referenced export hashes/bytes.
+- INTEGRATION_BOUNDARY.md: current loader/release ownership and consumer checklist. The bank is not automatically preloaded or included in retail packages.
+
+## Open acceptance and next work
+
+This completes the first bank's modeled/exported/reviewed/published increment, not whole-game or integration acceptance. Consumers must explicitly package selected assets and verify live camera readability, collision/motion clearance, loading/Continue behavior and target-device performance. Repository storage/clone cost increases even though these assets are outside current retail copy roots.
+
+Keep SF-ASSETBANK, SF-ASSET-QUALITY and the larger goals in OPEN_GOALS.md open until usable integration and acceptance are demonstrated. Continue the active Orchard/world-depth work under existing path ownership. No master merge, deployment or security change is included.
+
+Transient blob timeouts were checked by exact remote SHA; successful objects were retained, independent work continued and the missing files were later verified successfully.

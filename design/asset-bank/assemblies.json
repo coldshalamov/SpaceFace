@@ -1,0 +1,6344 @@
+{
+  "schemaVersion": 1,
+  "modelCount": 12,
+  "recipeCount": 12,
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "socketToleranceMetres": 0.0002,
+  "recipes": [
+    {
+      "id": "customs_inspection_pen",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-sealed-custody-safe",
+        "large_drydock_side_wall",
+        "ops_optical_rangefinder"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_drydock_side_wall",
+          "translation": [
+            0,
+            0,
+            -27.322797775268555
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_drydock_side_wall",
+          "translation": [
+            0,
+            0,
+            33.322797775268555
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_optical_rangefinder",
+          "translation": [
+            0.0,
+            9.25,
+            -27.322797775268555
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-sealed-custody-safe",
+          "translation": [
+            0.0,
+            9.25,
+            33.32279968261719
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -42.0,
+          -4.800000190734863,
+          -31.472797393798828
+        ],
+        "max": [
+          42.0,
+          12.039999961853027,
+          37.472801208496094
+        ]
+      },
+      "approach": {
+        "min": [
+          -52.0,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          52.0,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "boresight"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 18.142002418131852,
+        "sampleComparisons": 41004,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-sealed-custody-safe": [
+          {
+            "level": 0,
+            "sha256": "20e07e30f401c317b68cc75576dfaa983ee6aca67738ff94a8290339f0d7b74c"
+          },
+          {
+            "level": 1,
+            "sha256": "2a185a740c4c5ed237e18caeaf6c41b142a3afb9765fed5dd839df6552f2b110"
+          },
+          {
+            "level": 2,
+            "sha256": "4cfb083bc66b9c0aa27be1bb7da37ea33c117fa372cebbe18c66534d852e8c4e"
+          }
+        ],
+        "large_drydock_side_wall": [
+          {
+            "level": 0,
+            "sha256": "dbd70e030ac7e55b530cf474e092338c5286ddd06f17bcbe21b05aeef41fc352"
+          },
+          {
+            "level": 1,
+            "sha256": "2b51c375c260e2353615bbcb6b31beceff82d7e4552d4982799ab03881fd56bd"
+          },
+          {
+            "level": 2,
+            "sha256": "7a9284a97c9ef65724e3b4dd9a72c295999e22451f35540aa7045ab4d74f7caa"
+          }
+        ],
+        "ops_optical_rangefinder": [
+          {
+            "level": 0,
+            "sha256": "b81f34de23de629099be0ce1bee080e9baf9370a79f5cb3df1d751322cbf3d7f"
+          },
+          {
+            "level": 1,
+            "sha256": "ded54a03dc152617769ebd2e4a4b743ad639016dfb55b6a0ef915758cb04faed"
+          },
+          {
+            "level": 2,
+            "sha256": "b6f491bf9b1e8f6b4554b6b999049d1bd91923dc0ffe7c14a669c790df7b5c0d"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "salvage_custody_court",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-ore-skip",
+        "large_drydock_side_wall",
+        "large_ore_transfer_terrace",
+        "ops_paired_capture_jaws"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_ore_transfer_terrace",
+          "translation": [
+            0,
+            0,
+            -37.0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_drydock_side_wall",
+          "translation": [
+            0,
+            0,
+            33.322797775268555
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_paired_capture_jaws",
+          "translation": [
+            0.0,
+            -0.25,
+            -51.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-ore-skip",
+          "translation": [
+            0.0,
+            9.25,
+            33.32279968261719
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -42.0,
+          -5.220000267028809,
+          -56.0
+        ],
+        "max": [
+          42.0,
+          12.039999961853027,
+          37.472801208496094
+        ]
+      },
+      "approach": {
+        "min": [
+          -52.0,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          52.0,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "actuator"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 18.0,
+        "sampleComparisons": 29346,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-ore-skip": [
+          {
+            "level": 0,
+            "sha256": "faaa656006c76ecf1487aad48016a9edafdb1edb3798a4f8fb64e51996e9847d"
+          },
+          {
+            "level": 1,
+            "sha256": "64d54ec2e341fd48bc2ba4e505f093c64e4c875d17e5a69ad7abbbbd3bbf422a"
+          },
+          {
+            "level": 2,
+            "sha256": "887871a71be0a87e78d0e07e21bbf4c2480dd781a7f5dea75d7d79111948af84"
+          }
+        ],
+        "large_drydock_side_wall": [
+          {
+            "level": 0,
+            "sha256": "dbd70e030ac7e55b530cf474e092338c5286ddd06f17bcbe21b05aeef41fc352"
+          },
+          {
+            "level": 1,
+            "sha256": "2b51c375c260e2353615bbcb6b31beceff82d7e4552d4982799ab03881fd56bd"
+          },
+          {
+            "level": 2,
+            "sha256": "7a9284a97c9ef65724e3b4dd9a72c295999e22451f35540aa7045ab4d74f7caa"
+          }
+        ],
+        "large_ore_transfer_terrace": [
+          {
+            "level": 0,
+            "sha256": "18fd6ebfb8712d98b823fe02b143c7c3b711b507f136e8a1b4e35677612a799d"
+          },
+          {
+            "level": 1,
+            "sha256": "6e599ff4f9a1f787b8f2d9cc78b76ef9a141c307622f9b156ff4b8f43fd4812d"
+          },
+          {
+            "level": 2,
+            "sha256": "3bb66c4cdb6d76a32399fa7a5bba004f780fcf4e76e7ecc3f70f62a7e119117b"
+          }
+        ],
+        "ops_paired_capture_jaws": [
+          {
+            "level": 0,
+            "sha256": "fa2c29ab0b4f1b94e169c30579a7dece5b98ae5ee16382b869244fcf15160064"
+          },
+          {
+            "level": 1,
+            "sha256": "3cccb421f0e086aba74f2d435ad723ac3389faad8ac8adcb2feffea663b6b493"
+          },
+          {
+            "level": 2,
+            "sha256": "4cc5b15756ed58bfbce0c3cdb41309cc5c31a53e99f53823735115120fff7750"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "relief_berth",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-insulated-medical-carrier",
+        "docking_collar",
+        "large_capital_berth_outrigger",
+        "large_pressure_dome_habitat",
+        "ops_docking_light_bar",
+        "pressure_corridor_straight"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_capital_berth_outrigger",
+          "translation": [
+            0,
+            0,
+            -36.5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_pressure_dome_habitat",
+          "translation": [
+            0,
+            0,
+            45.0
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_docking_light_bar",
+          "translation": [
+            -26.0,
+            3.25,
+            -33.5
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-insulated-medical-carrier",
+          "translation": [
+            -20.0,
+            6.139999866485596,
+            45.0
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "corridor",
+          "assetId": "pressure_corridor_straight",
+          "translation": [
+            -27.0,
+            1.0,
+            45.0
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collar",
+          "assetId": "docking_collar",
+          "translation": [
+            -30.0,
+            1.0,
+            45.0
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Airlock"
+          },
+          "child": {
+            "instance": "corridor",
+            "socket": "SOCKET_PASSAGE_-1_0"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "corridor",
+            "socket": "SOCKET_PASSAGE_1_0"
+          },
+          "child": {
+            "instance": "collar",
+            "socket": "SOCKET_PASSAGE_-1_0"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -36.75,
+          -3.0,
+          -55.0
+        ],
+        "max": [
+          38.5,
+          19.1558837890625,
+          66.0
+        ]
+      },
+      "approach": {
+        "min": [
+          -46.75,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          48.5,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "power"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 18.396738881870665,
+        "sampleComparisons": 25527,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload",
+            "corridor",
+            "collar"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload",
+            "corridor",
+            "collar"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "corridor",
+            "collar"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-insulated-medical-carrier": [
+          {
+            "level": 0,
+            "sha256": "f62070ae2802a83ac1168af8f352d2467fcd6cf1b97981de06b7e09ea429ff32"
+          },
+          {
+            "level": 1,
+            "sha256": "e4f1447b1eca7b385616ac1cf7e92a2a5e969c957a84161ea6c4192f875a8d30"
+          },
+          {
+            "level": 2,
+            "sha256": "3ac16c907fc72e1285079e0bc38fa32d073fc1e4cd16ded1c1b18684bcba4dfc"
+          }
+        ],
+        "docking_collar": [
+          {
+            "level": 0,
+            "sha256": "366e1df14a5fcbdd6dc7284ad79a234114d8c4c83c2ad88cb89e218a3697fe2e"
+          },
+          {
+            "level": 1,
+            "sha256": "7611174065ab970b79863225d0914a7ca74cc7961e28401865b3b0d3beced144"
+          },
+          {
+            "level": 2,
+            "sha256": "be2b0b3ce3f5a50b669d98c060f66793f1ec1b5a92e4075a2a5c88b373b334ac"
+          }
+        ],
+        "large_capital_berth_outrigger": [
+          {
+            "level": 0,
+            "sha256": "7c6740bf5daec4e2fcee465d42ac2fe37bd5ac2a303b1bf94b2b23fe21bbab6f"
+          },
+          {
+            "level": 1,
+            "sha256": "2ac52b2a49cbfe833750c375f6f43bbe901fe4c069193530c3358108b41041f3"
+          },
+          {
+            "level": 2,
+            "sha256": "bb0d1c7faa365e714e0fc165a375eb13b34283daec1aabbd4da1cbcf5614a96c"
+          }
+        ],
+        "large_pressure_dome_habitat": [
+          {
+            "level": 0,
+            "sha256": "6488916f2983e5ce2faa1ecc6153500573afd0b7ff8a2ec109df1a6494c85f30"
+          },
+          {
+            "level": 1,
+            "sha256": "916731e8c8143db3edc43d8c0d3d761955413f7c8e460b7c5c4277f24a8ed56e"
+          },
+          {
+            "level": 2,
+            "sha256": "082b3a25b86c4e473c2ba02e01a12187712340743cc12af0cd6391d5e98e49c2"
+          }
+        ],
+        "ops_docking_light_bar": [
+          {
+            "level": 0,
+            "sha256": "7b765c7633a2ca31490a8143dc18563c5ab3873969baf1f852f9f9adba303fb1"
+          },
+          {
+            "level": 1,
+            "sha256": "9926fb458fbb83ce061aac371b9c22b1fb33a4c93a3ddbf4647f3f9a323fdac9"
+          },
+          {
+            "level": 2,
+            "sha256": "f69dd2ff4064473d5197efb0183582c6f4a516ba4fe08f5a43a0173c6b26ba75"
+          }
+        ],
+        "pressure_corridor_straight": [
+          {
+            "level": 0,
+            "sha256": "80f4ef96580e1c792759a2c825266ff7a50e42d935fcb504ed8dbf9c625a7f6a"
+          },
+          {
+            "level": 1,
+            "sha256": "c4a2ca0e42d51f46f43a970ff262deac9037e9dc0924d25fd2ca1c9dde29ad66"
+          },
+          {
+            "level": 2,
+            "sha256": "1baa9b3c14d66aafa74207133fd71b242fdbd5c0657514427e4c8477d9430901"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "open_repair_quay",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-machine-tool-skid",
+        "large_drydock_side_wall",
+        "ops_gantry_swivel_pedestal"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_drydock_side_wall",
+          "translation": [
+            0,
+            0,
+            -27.322797775268555
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_drydock_side_wall",
+          "translation": [
+            0,
+            0,
+            33.322797775268555
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_gantry_swivel_pedestal",
+          "translation": [
+            0.0,
+            9.25,
+            -27.322797775268555
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-machine-tool-skid",
+          "translation": [
+            0.0,
+            9.25,
+            33.32279968261719
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -42.0,
+          -4.800000190734863,
+          -31.472797393798828
+        ],
+        "max": [
+          42.0,
+          12.039999961853027,
+          37.472801208496094
+        ]
+      },
+      "approach": {
+        "min": [
+          -52.0,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          52.0,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "boom"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 18.142002418131852,
+        "sampleComparisons": 42411,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-machine-tool-skid": [
+          {
+            "level": 0,
+            "sha256": "422e7d30f5cebe8a2e8fbf7a6cb9e9e50c61ee712d84a2dcc99ea81d78e21306"
+          },
+          {
+            "level": 1,
+            "sha256": "b14c36d0b973a4f8f6f3841fc7bd86637185a1b3f4364487082b3ca8851e8641"
+          },
+          {
+            "level": 2,
+            "sha256": "b4d68b03f0f139fa8683814b94e5cfbb2fc802b83d426c27dc0436d0ddd170b1"
+          }
+        ],
+        "large_drydock_side_wall": [
+          {
+            "level": 0,
+            "sha256": "dbd70e030ac7e55b530cf474e092338c5286ddd06f17bcbe21b05aeef41fc352"
+          },
+          {
+            "level": 1,
+            "sha256": "2b51c375c260e2353615bbcb6b31beceff82d7e4552d4982799ab03881fd56bd"
+          },
+          {
+            "level": 2,
+            "sha256": "7a9284a97c9ef65724e3b4dd9a72c295999e22451f35540aa7045ab4d74f7caa"
+          }
+        ],
+        "ops_gantry_swivel_pedestal": [
+          {
+            "level": 0,
+            "sha256": "d5d9385219a353bcae12fe4d555c8fc155bd177e19dfb22572a9d9b367db2b87"
+          },
+          {
+            "level": 1,
+            "sha256": "ea957120dd9bb38b528b9039de3bf310b9ac866dd7477b9b56654b741afdc68b"
+          },
+          {
+            "level": 2,
+            "sha256": "1b1c935a0f9b4080f42861f046b733be328343dfe12cbf03882ccadca6803c8f"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "screened_illicit_intake",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-gas-bottle-cluster",
+        "large_fabrication_hall_shell",
+        "ops_exclusion_baffle"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_fabrication_hall_shell",
+          "translation": [
+            0,
+            0,
+            -41.545000076293945
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_fabrication_hall_shell",
+          "translation": [
+            0,
+            0,
+            47.545000076293945
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_exclusion_baffle",
+          "translation": [
+            0.0,
+            9.25,
+            -21.544998168945312
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-gas-bottle-cluster",
+          "translation": [
+            0.0,
+            9.25,
+            27.544998168945312
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -36.75,
+          -5.220000267028809,
+          -65.08999633789062
+        ],
+        "max": [
+          36.75,
+          22.259807586669922,
+          71.08999633789062
+        ]
+      },
+      "approach": {
+        "min": [
+          -46.75,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          46.75,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "shielded_axis"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 20.64211603362657,
+        "sampleComparisons": 46230,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-gas-bottle-cluster": [
+          {
+            "level": 0,
+            "sha256": "569f138257b357c1b87cb9ac1fb3dcd3c56fcd2162b68f4d4b776aee4ae74480"
+          },
+          {
+            "level": 1,
+            "sha256": "63c527765d6b89050a7c26f719ee8dce57bc0fa1d2b648d85ee38e1faaad9a5b"
+          },
+          {
+            "level": 2,
+            "sha256": "0cd54cf874d99ff03893d00ab7b453f0ae0a191c123293676ad76efa527a8d63"
+          }
+        ],
+        "large_fabrication_hall_shell": [
+          {
+            "level": 0,
+            "sha256": "31a518922d77c2fb8ffb916b2b5acd80b72174207866b142f984909927303783"
+          },
+          {
+            "level": 1,
+            "sha256": "fde362b2f0670caa2cf644eced58577f2389d9f9a0bca90a7320cf28132cb06c"
+          },
+          {
+            "level": 2,
+            "sha256": "0f82c5777bd99ab8fe5372466d4f4573cf1c484648264c535365933ba3d9cea8"
+          }
+        ],
+        "ops_exclusion_baffle": [
+          {
+            "level": 0,
+            "sha256": "90635982f0a374cd84aa6eafce8fa37ceb0bbf11d7e7853d8ae67305b3a25bf5"
+          },
+          {
+            "level": 1,
+            "sha256": "27a37743d5713d79f8e6a3623d44b51c46cbf963d34fbe95144ead002f893618"
+          },
+          {
+            "level": 2,
+            "sha256": "0d39517812a64035657af5b23cc23db868224be1d6d6331729d48e9ed265ea5e"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "solar_orchard_hub",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "large_drydock_side_wall",
+        "large_ring_spoke",
+        "ops_rectangular_solar_wing",
+        "ops_solar_hinge_mast_adapter",
+        "terminal_cap",
+        "truss_cross",
+        "truss_long",
+        "truss_short",
+        "truss_tee"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_ring_spoke",
+          "translation": [
+            0,
+            0,
+            -23.300000190734863
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_drydock_side_wall",
+          "translation": [
+            0,
+            0,
+            33.322797775268555
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            0.0,
+            2.8499999046325684,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            0.0,
+            4.099999904632568,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_0",
+          "assetId": "truss_cross",
+          "translation": [
+            -36.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_0_hinge_0",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -36.0,
+            0.0,
+            -27.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            -0.7071067690849304,
+            0.7071067690849304,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_0_hinge_0_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -36.0,
+            7.450580596923828e-09,
+            -28.549999237060547
+          ],
+          "rotation": [
+            -0.5,
+            -0.4999999701976776,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_0_hinge_1",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -36.0,
+            0.0,
+            -19.299999237060547
+          ],
+          "rotation": [
+            0.7071067690849304,
+            0.0,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_0_hinge_1_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -36.0,
+            0.0,
+            -18.049999237060547
+          ],
+          "rotation": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_1",
+          "assetId": "truss_cross",
+          "translation": [
+            -44.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_1_hinge_0",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -44.0,
+            0.0,
+            -27.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            -0.7071067690849304,
+            0.7071067690849304,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_1_hinge_0_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -44.0,
+            7.450580596923828e-09,
+            -28.549999237060547
+          ],
+          "rotation": [
+            -0.5,
+            -0.4999999701976776,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_1_hinge_1",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -44.0,
+            0.0,
+            -19.299999237060547
+          ],
+          "rotation": [
+            0.7071067690849304,
+            0.0,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_1_hinge_1_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -44.0,
+            0.0,
+            -18.049999237060547
+          ],
+          "rotation": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_2",
+          "assetId": "truss_cross",
+          "translation": [
+            -52.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_2_hinge_0",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -52.0,
+            0.0,
+            -27.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            -0.7071067690849304,
+            0.7071067690849304,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_2_hinge_0_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -52.0,
+            7.450580596923828e-09,
+            -28.549999237060547
+          ],
+          "rotation": [
+            -0.5,
+            -0.4999999701976776,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_2_hinge_1",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -52.0,
+            0.0,
+            -19.299999237060547
+          ],
+          "rotation": [
+            0.7071067690849304,
+            0.0,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_2_hinge_1_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -52.0,
+            0.0,
+            -18.049999237060547
+          ],
+          "rotation": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_3",
+          "assetId": "truss_cross",
+          "translation": [
+            -60.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_3_hinge_0",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -60.0,
+            0.0,
+            -27.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            -0.7071067690849304,
+            0.7071067690849304,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_3_hinge_0_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -60.0,
+            7.450580596923828e-09,
+            -28.549999237060547
+          ],
+          "rotation": [
+            -0.5,
+            -0.4999999701976776,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_3_hinge_1",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -60.0,
+            0.0,
+            -19.299999237060547
+          ],
+          "rotation": [
+            0.7071067690849304,
+            0.0,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_3_hinge_1_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -60.0,
+            0.0,
+            -18.049999237060547
+          ],
+          "rotation": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_4",
+          "assetId": "truss_cross",
+          "translation": [
+            -68.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_4_hinge_0",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -68.0,
+            0.0,
+            -27.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            -0.7071067690849304,
+            0.7071067690849304,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_4_hinge_0_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -68.0,
+            7.450580596923828e-09,
+            -28.549999237060547
+          ],
+          "rotation": [
+            -0.5,
+            -0.4999999701976776,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_4_hinge_1",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -68.0,
+            0.0,
+            -19.299999237060547
+          ],
+          "rotation": [
+            0.7071067690849304,
+            0.0,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_4_hinge_1_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -68.0,
+            0.0,
+            -18.049999237060547
+          ],
+          "rotation": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_5",
+          "assetId": "truss_cross",
+          "translation": [
+            -76.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_5_hinge_0",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -76.0,
+            0.0,
+            -27.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            -0.7071067690849304,
+            0.7071067690849304,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_5_hinge_0_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -76.0,
+            7.450580596923828e-09,
+            -28.549999237060547
+          ],
+          "rotation": [
+            -0.5,
+            -0.4999999701976776,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_5_hinge_1",
+          "assetId": "ops_solar_hinge_mast_adapter",
+          "translation": [
+            -76.0,
+            0.0,
+            -19.299999237060547
+          ],
+          "rotation": [
+            0.7071067690849304,
+            0.0,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "collector_hub_5_hinge_1_wing",
+          "assetId": "ops_rectangular_solar_wing",
+          "translation": [
+            -76.0,
+            0.0,
+            -18.049999237060547
+          ],
+          "rotation": [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "tee",
+          "assetId": "truss_tee",
+          "translation": [
+            36.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "span_east",
+          "assetId": "truss_short",
+          "translation": [
+            42.0,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "span_branch",
+          "assetId": "truss_long",
+          "translation": [
+            36.0,
+            0.0,
+            -31.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "terminal",
+          "assetId": "terminal_cap",
+          "translation": [
+            44.25,
+            0.0,
+            -23.299999237060547
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "operations",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 1.1920928955078125e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Join_A"
+          },
+          "child": {
+            "instance": "collector_hub_0",
+            "socket": "SOCKET_LEG_1_1"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_0",
+            "socket": "SOCKET_LEG_2_1"
+          },
+          "child": {
+            "instance": "collector_hub_0_hinge_0",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_0_hinge_0",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_0_hinge_0_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998211860657
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_0",
+            "socket": "SOCKET_LEG_3_1"
+          },
+          "child": {
+            "instance": "collector_hub_0_hinge_1",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_0_hinge_1",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_0_hinge_1_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_0",
+            "socket": "SOCKET_LEG_0_1"
+          },
+          "child": {
+            "instance": "collector_hub_1",
+            "socket": "SOCKET_LEG_1_1"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_1",
+            "socket": "SOCKET_LEG_2_1"
+          },
+          "child": {
+            "instance": "collector_hub_1_hinge_0",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_1_hinge_0",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_1_hinge_0_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998211860657
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_1",
+            "socket": "SOCKET_LEG_3_1"
+          },
+          "child": {
+            "instance": "collector_hub_1_hinge_1",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_1_hinge_1",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_1_hinge_1_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_1",
+            "socket": "SOCKET_LEG_0_1"
+          },
+          "child": {
+            "instance": "collector_hub_2",
+            "socket": "SOCKET_LEG_1_1"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_2",
+            "socket": "SOCKET_LEG_2_1"
+          },
+          "child": {
+            "instance": "collector_hub_2_hinge_0",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_2_hinge_0",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_2_hinge_0_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998211860657
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_2",
+            "socket": "SOCKET_LEG_3_1"
+          },
+          "child": {
+            "instance": "collector_hub_2_hinge_1",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_2_hinge_1",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_2_hinge_1_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_2",
+            "socket": "SOCKET_LEG_0_1"
+          },
+          "child": {
+            "instance": "collector_hub_3",
+            "socket": "SOCKET_LEG_1_1"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_3",
+            "socket": "SOCKET_LEG_2_1"
+          },
+          "child": {
+            "instance": "collector_hub_3_hinge_0",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_3_hinge_0",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_3_hinge_0_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998211860657
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_3",
+            "socket": "SOCKET_LEG_3_1"
+          },
+          "child": {
+            "instance": "collector_hub_3_hinge_1",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_3_hinge_1",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_3_hinge_1_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_3",
+            "socket": "SOCKET_LEG_0_1"
+          },
+          "child": {
+            "instance": "collector_hub_4",
+            "socket": "SOCKET_LEG_1_1"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_4",
+            "socket": "SOCKET_LEG_2_1"
+          },
+          "child": {
+            "instance": "collector_hub_4_hinge_0",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_4_hinge_0",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_4_hinge_0_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998211860657
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_4",
+            "socket": "SOCKET_LEG_3_1"
+          },
+          "child": {
+            "instance": "collector_hub_4_hinge_1",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_4_hinge_1",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_4_hinge_1_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_4",
+            "socket": "SOCKET_LEG_0_1"
+          },
+          "child": {
+            "instance": "collector_hub_5",
+            "socket": "SOCKET_LEG_1_1"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_5",
+            "socket": "SOCKET_LEG_2_1"
+          },
+          "child": {
+            "instance": "collector_hub_5_hinge_0",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_5_hinge_0",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_5_hinge_0_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998211860657
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_5",
+            "socket": "SOCKET_LEG_3_1"
+          },
+          "child": {
+            "instance": "collector_hub_5_hinge_1",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "collector_hub_5_hinge_1",
+            "socket": "wing"
+          },
+          "child": {
+            "instance": "collector_hub_5_hinge_1_wing",
+            "socket": "hinge"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Join_B"
+          },
+          "child": {
+            "instance": "tee",
+            "socket": "SOCKET_LEG_0_1"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "tee",
+            "socket": "SOCKET_LEG_1_1"
+          },
+          "child": {
+            "instance": "span_east",
+            "socket": "SOCKET_LEG_0_0"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "tee",
+            "socket": "SOCKET_LEG_2_1"
+          },
+          "child": {
+            "instance": "span_branch",
+            "socket": "SOCKET_LEG_0_0"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "span_east",
+            "socket": "SOCKET_LEG_0_1"
+          },
+          "child": {
+            "instance": "terminal",
+            "socket": "SOCKET_FRAME"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -80.09500122070312,
+          -4.800000190734863,
+          -35.394996643066406
+        ],
+        "max": [
+          44.712501525878906,
+          12.039999961853027,
+          37.472801208496094
+        ]
+      },
+      "approach": {
+        "min": [
+          -90.09500122070312,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          54.712501525878906,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "wing"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 17.679999928193933,
+        "sampleComparisons": 198387,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "collector",
+            "collector_hub_0",
+            "collector_hub_0_hinge_0",
+            "collector_hub_0_hinge_0_wing",
+            "collector_hub_0_hinge_1",
+            "collector_hub_0_hinge_1_wing",
+            "collector_hub_1",
+            "collector_hub_1_hinge_0",
+            "collector_hub_1_hinge_0_wing",
+            "collector_hub_1_hinge_1",
+            "collector_hub_1_hinge_1_wing",
+            "collector_hub_2",
+            "collector_hub_2_hinge_0",
+            "collector_hub_2_hinge_0_wing",
+            "collector_hub_2_hinge_1",
+            "collector_hub_2_hinge_1_wing",
+            "collector_hub_3",
+            "collector_hub_3_hinge_0",
+            "collector_hub_3_hinge_0_wing",
+            "collector_hub_3_hinge_1",
+            "collector_hub_3_hinge_1_wing",
+            "collector_hub_4",
+            "collector_hub_4_hinge_0",
+            "collector_hub_4_hinge_0_wing",
+            "collector_hub_4_hinge_1",
+            "collector_hub_4_hinge_1_wing",
+            "collector_hub_5",
+            "collector_hub_5_hinge_0",
+            "collector_hub_5_hinge_0_wing",
+            "collector_hub_5_hinge_1",
+            "collector_hub_5_hinge_1_wing",
+            "tee",
+            "span_east",
+            "span_branch",
+            "terminal"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "collector",
+            "collector_hub_0",
+            "collector_hub_0_hinge_0",
+            "collector_hub_0_hinge_0_wing",
+            "collector_hub_0_hinge_1",
+            "collector_hub_0_hinge_1_wing",
+            "collector_hub_1",
+            "collector_hub_1_hinge_0",
+            "collector_hub_1_hinge_0_wing",
+            "collector_hub_1_hinge_1",
+            "collector_hub_1_hinge_1_wing",
+            "collector_hub_2",
+            "collector_hub_2_hinge_0",
+            "collector_hub_2_hinge_0_wing",
+            "collector_hub_2_hinge_1",
+            "collector_hub_2_hinge_1_wing",
+            "collector_hub_3",
+            "collector_hub_3_hinge_0",
+            "collector_hub_3_hinge_0_wing",
+            "collector_hub_3_hinge_1",
+            "collector_hub_3_hinge_1_wing",
+            "collector_hub_4",
+            "collector_hub_4_hinge_0",
+            "collector_hub_4_hinge_0_wing",
+            "collector_hub_4_hinge_1",
+            "collector_hub_4_hinge_1_wing",
+            "collector_hub_5",
+            "collector_hub_5_hinge_0",
+            "collector_hub_5_hinge_0_wing",
+            "collector_hub_5_hinge_1",
+            "collector_hub_5_hinge_1_wing",
+            "tee",
+            "span_east",
+            "span_branch",
+            "terminal"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "collector",
+            "collector_hub_0",
+            "collector_hub_0_hinge_0",
+            "collector_hub_0_hinge_0_wing",
+            "collector_hub_0_hinge_1",
+            "collector_hub_0_hinge_1_wing",
+            "collector_hub_1",
+            "collector_hub_1_hinge_0",
+            "collector_hub_1_hinge_0_wing",
+            "collector_hub_1_hinge_1",
+            "collector_hub_1_hinge_1_wing",
+            "collector_hub_2",
+            "collector_hub_2_hinge_0",
+            "collector_hub_2_hinge_0_wing",
+            "collector_hub_2_hinge_1",
+            "collector_hub_2_hinge_1_wing",
+            "collector_hub_3",
+            "collector_hub_3_hinge_0",
+            "collector_hub_3_hinge_0_wing",
+            "collector_hub_3_hinge_1",
+            "collector_hub_3_hinge_1_wing",
+            "collector_hub_4",
+            "collector_hub_4_hinge_0",
+            "collector_hub_4_hinge_0_wing",
+            "collector_hub_4_hinge_1",
+            "collector_hub_4_hinge_1_wing",
+            "collector_hub_5",
+            "collector_hub_5_hinge_0",
+            "collector_hub_5_hinge_0_wing",
+            "collector_hub_5_hinge_1",
+            "collector_hub_5_hinge_1_wing",
+            "tee",
+            "span_east",
+            "span_branch",
+            "terminal"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "large_drydock_side_wall": [
+          {
+            "level": 0,
+            "sha256": "dbd70e030ac7e55b530cf474e092338c5286ddd06f17bcbe21b05aeef41fc352"
+          },
+          {
+            "level": 1,
+            "sha256": "2b51c375c260e2353615bbcb6b31beceff82d7e4552d4982799ab03881fd56bd"
+          },
+          {
+            "level": 2,
+            "sha256": "7a9284a97c9ef65724e3b4dd9a72c295999e22451f35540aa7045ab4d74f7caa"
+          }
+        ],
+        "large_ring_spoke": [
+          {
+            "level": 0,
+            "sha256": "89109998bc60ef168fa6de9f09c47b9727d7bfb206b4406b5cbc1a8ecd1a2a3c"
+          },
+          {
+            "level": 1,
+            "sha256": "39a03907ad4763401d2b991be8fb2db461a856e6363729a66edaea959fd2f03a"
+          },
+          {
+            "level": 2,
+            "sha256": "133ba9c9fbb21b3b57bd613873e01d96229e6d9608ea07e6865976e504c3b8c5"
+          }
+        ],
+        "ops_rectangular_solar_wing": [
+          {
+            "level": 0,
+            "sha256": "17d263fc5b0fb787ad150d6b6c0590487d66d29be7cbcefac5ed0bce452c2e84"
+          },
+          {
+            "level": 1,
+            "sha256": "205061dfbe0ac6dc48165a64d08731d297ee801e59cf773d824cf81a9da8cdfb"
+          },
+          {
+            "level": 2,
+            "sha256": "16c144876089f2ca0d2dff9eedb1c7c5c0b16e5e3534247be0b8e08d0e368bcf"
+          }
+        ],
+        "ops_solar_hinge_mast_adapter": [
+          {
+            "level": 0,
+            "sha256": "98189756d7a6d7e72df9ae4e7c98f838fb22b6dd58f5dfb6d82177bf1f290da0"
+          },
+          {
+            "level": 1,
+            "sha256": "e1a010b1991c14cd8dcb1e1ef59d593e82256e3328ccfb4d857c79aa0ba4b864"
+          },
+          {
+            "level": 2,
+            "sha256": "5658ead5020ff3048b50ccdc84e118e8023c6760e4cc6dc9703bc7120164bc6d"
+          }
+        ],
+        "terminal_cap": [
+          {
+            "level": 0,
+            "sha256": "d155c7c4cf73fe818abc8393cd0526fc8080140eddc86bd1d14ce594c4ca83d4"
+          },
+          {
+            "level": 1,
+            "sha256": "c61b6bd438fc7385c7775fb55dd4d06b73a2dbbecb65ee258d6ffa150fcd96b0"
+          },
+          {
+            "level": 2,
+            "sha256": "438360ac241129e661bef064fb8592fd13519f1865a7cd18b4fc50d73b654c00"
+          }
+        ],
+        "truss_cross": [
+          {
+            "level": 0,
+            "sha256": "8d72202c4e9beda9950654a07affc696ba257cb7b0c461d2841a23401371a7e4"
+          },
+          {
+            "level": 1,
+            "sha256": "448a4adf750a1b7f47236acc2509ca3b3f491766a939cefe25a3a4ac7a1a568a"
+          },
+          {
+            "level": 2,
+            "sha256": "d2f10b8e38f2556a10ab480d7632dda704a2593115f838bc7f99a413e8c8dc39"
+          }
+        ],
+        "truss_long": [
+          {
+            "level": 0,
+            "sha256": "11df2240cf9ef9bc93f43757d48c29a640a2e285a5bfdf5db20d729b07e7d314"
+          },
+          {
+            "level": 1,
+            "sha256": "71eedd8d5b00aed38c7a4e347ce40bc4f6c4bb0c451d942ff740c560d59a4a8c"
+          },
+          {
+            "level": 2,
+            "sha256": "95fe5e1450f9f5344026930ac3cc9d78ca9cad40caaff28bd5b5f39b592bb0fe"
+          }
+        ],
+        "truss_short": [
+          {
+            "level": 0,
+            "sha256": "bd6e40e74ac788eaf7ab3408da2d4f4b42c3a778e960c6ac7c25563916e60f5e"
+          },
+          {
+            "level": 1,
+            "sha256": "1facff0e89fa0821ea50cf14fe2c102c4212ae3086d3af74df86da2d44da5c3d"
+          },
+          {
+            "level": 2,
+            "sha256": "857a3a0aa38a41764a7a9a440a9fb7c51b0a60061f4f97e24d047a557566a354"
+          }
+        ],
+        "truss_tee": [
+          {
+            "level": 0,
+            "sha256": "379f3e47dff7f6657f68144a8c8bb98e7625b0b65cb14aed4d3eb30efe406453"
+          },
+          {
+            "level": 1,
+            "sha256": "0844ff2586bec82acaab0fb5a52e4118769302a56d53c99985920667694f961d"
+          },
+          {
+            "level": 2,
+            "sha256": "908c83d8819a566611bde28877410a02af6a8f5e93bd33026b9a50a444e905bf"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "bulk_coolant_exchange",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-cryogenic-dewar",
+        "large_agricultural_cylinder",
+        "ops_coolant_fin_cassette",
+        "pressure_pipe_elbow_90",
+        "pressure_pipe_straight",
+        "pressure_pipe_valve",
+        "pump_skid"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_agricultural_cylinder",
+          "translation": [
+            0,
+            0,
+            -31.5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_agricultural_cylinder",
+          "translation": [
+            0,
+            0,
+            37.5
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_coolant_fin_cassette",
+          "translation": [
+            0.0,
+            15.739999771118164,
+            -31.5
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-cryogenic-dewar",
+          "translation": [
+            0.0,
+            15.739999771118164,
+            37.5
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "coolant_pump",
+          "assetId": "pump_skid",
+          "translation": [
+            -16,
+            11.8,
+            -31.5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "pipe",
+          "assetId": "pressure_pipe_straight",
+          "translation": [
+            -15.300000190734863,
+            11.800000190734863,
+            -35.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "elbow",
+          "assetId": "pressure_pipe_elbow_90",
+          "translation": [
+            -15.300000190734863,
+            11.800000190734863,
+            -38.5
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "valve",
+          "assetId": "pressure_pipe_valve",
+          "translation": [
+            -18.799999237060547,
+            11.800000190734863,
+            -38.5
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            1.7114270889351246e-08
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "coolant_pump",
+            "socket": "SOCKET_FLOW_1"
+          },
+          "child": {
+            "instance": "pipe",
+            "socket": "SOCKET_FLOW_0"
+          },
+          "positionErrorMetres": 1.7881393432617188e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "pipe",
+            "socket": "SOCKET_FLOW_1"
+          },
+          "child": {
+            "instance": "elbow",
+            "socket": "SOCKET_FLOW_0"
+          },
+          "positionErrorMetres": 1.1920928955078125e-07,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "elbow",
+            "socket": "SOCKET_FLOW_1"
+          },
+          "child": {
+            "instance": "valve",
+            "socket": "SOCKET_FLOW_0"
+          },
+          "positionErrorMetres": 8.344650268554688e-07,
+          "forwardDot": -0.9999999403953552,
+          "upDot": 0.9999998807907104
+        }
+      ],
+      "bounds": {
+        "min": [
+          -38.0,
+          -12.0,
+          -45.0
+        ],
+        "max": [
+          38.0,
+          18.165000915527344,
+          51.0
+        ]
+      },
+      "approach": {
+        "min": [
+          -48.0,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          48.0,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "outlet"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 18.4019190772265,
+        "sampleComparisons": 17889,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload",
+            "coolant_pump",
+            "pipe",
+            "elbow",
+            "valve"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload",
+            "coolant_pump",
+            "pipe",
+            "elbow",
+            "valve"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "coolant_pump",
+            "pipe",
+            "elbow",
+            "valve"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-cryogenic-dewar": [
+          {
+            "level": 0,
+            "sha256": "62febed5e9df2aabfdfcdcc16ec03ee584d0a767cc3b07e8c995c4f7e68257fd"
+          },
+          {
+            "level": 1,
+            "sha256": "579b877b347b879a794ef705e4f36fc4d05c76a11724f650cac28a1924c2d06e"
+          },
+          {
+            "level": 2,
+            "sha256": "88bdf30010574bb035d58dfe1d6af9331a43a3c4f5eb33fcde041d12018f1a04"
+          }
+        ],
+        "large_agricultural_cylinder": [
+          {
+            "level": 0,
+            "sha256": "60806e2f26af3ca89acb27d7ab4045824548d26f9b78723215bbdbe8a62d898d"
+          },
+          {
+            "level": 1,
+            "sha256": "af4d13aacd301e8e2199a51e94d3dd6f8d0318c748ff46cbef226a275e42ae2e"
+          },
+          {
+            "level": 2,
+            "sha256": "09787d5414639c863c260431c6737d9bd362d72a610a01c7d6abfe59387ddce0"
+          }
+        ],
+        "ops_coolant_fin_cassette": [
+          {
+            "level": 0,
+            "sha256": "abeb9ac968ec190d4396fe650f05a031aed68922e628fea5864b5033c47a9beb"
+          },
+          {
+            "level": 1,
+            "sha256": "d9788cb4b42646abba4fc789b7f9302b9070713fd76d650de047b8233852c303"
+          },
+          {
+            "level": 2,
+            "sha256": "05f7bd43221a3fe7a4d2eb37cf7d8c3a400723290f1617b7e0358d5a1580325d"
+          }
+        ],
+        "pressure_pipe_elbow_90": [
+          {
+            "level": 0,
+            "sha256": "aada35e66a3e60721b990ca5fce836703b10f38b377d0467c57ba11344a24ba5"
+          },
+          {
+            "level": 1,
+            "sha256": "73e74dcfec4e3b51b2af655c8a3785f32621cf6ef9d97701fe0e9bc4df242e07"
+          },
+          {
+            "level": 2,
+            "sha256": "19862d00ad004b0560475fd5392d250228ab6fcd3415354c4d92793a55a84825"
+          }
+        ],
+        "pressure_pipe_straight": [
+          {
+            "level": 0,
+            "sha256": "e6866767ed727c9b330109dfac787e5073a649d127d22af7c66eab8fc23f54ee"
+          },
+          {
+            "level": 1,
+            "sha256": "794db6d2848aa79ae9275ec2bd88f8538de0f53eae6733aad6cb4a01aedc371d"
+          },
+          {
+            "level": 2,
+            "sha256": "0774ed35308c4f2db222c44ac68339ceef5e4be4e332cab4b513d89d909a656d"
+          }
+        ],
+        "pressure_pipe_valve": [
+          {
+            "level": 0,
+            "sha256": "b9dbe7350b7a030d7b8c5797e9727e9e8ebbfb306896780a25a77db47860d8ad"
+          },
+          {
+            "level": 1,
+            "sha256": "47206b31fc44595384774f12ab22ad84f9ce1c580c32837b4e7d290c455bd03f"
+          },
+          {
+            "level": 2,
+            "sha256": "f11af9cb3c22b050fd7d85490b1d2c67978322c8b6f0418571e56a4934de9269"
+          }
+        ],
+        "pump_skid": [
+          {
+            "level": 0,
+            "sha256": "46e94de8901a314e3757892544761a5a7cf6af6d90087b3d5191f2ad20d83056"
+          },
+          {
+            "level": 1,
+            "sha256": "b35e66376b688a8a62c186d4d672b0b9e85549642f8a99540e2bbb9ad42fbf6d"
+          },
+          {
+            "level": 2,
+            "sha256": "2b3727d81192d7f96d1e9704ad1d5dba08d6924df7142cdee125b98f2065ce05"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "freight_rail_transfer_yard",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-habitat-panel-pack",
+        "large_launch_trench_bank",
+        "large_ore_transfer_terrace",
+        "ops_rail_carriage"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_launch_trench_bank",
+          "translation": [
+            0,
+            0,
+            -41.5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_ore_transfer_terrace",
+          "translation": [
+            0,
+            0,
+            43.0
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_rail_carriage",
+          "translation": [
+            -16.0,
+            8.75,
+            -61.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-habitat-panel-pack",
+          "translation": [
+            0.0,
+            -0.25,
+            57.0
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -49.0,
+          -7.0,
+          -65.0
+        ],
+        "max": [
+          49.0,
+          12.239999771118164,
+          62.0
+        ]
+      },
+      "approach": {
+        "min": [
+          -59.0,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          59.0,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "payload"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 22.073743726985548,
+        "sampleComparisons": 14874,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-habitat-panel-pack": [
+          {
+            "level": 0,
+            "sha256": "c45c17a6b1d111901a01c97859d4757d55b1ff9cea6f1ca4c868b91847ea2ac3"
+          },
+          {
+            "level": 1,
+            "sha256": "fb81766640de24822775600fa5f2c23cb0ba91f57600a261b36d320962bdae44"
+          },
+          {
+            "level": 2,
+            "sha256": "2eb4b56d4f558538e2e29762675aaf562347f0e8f6daf7c51b1c56fba26bd1f8"
+          }
+        ],
+        "large_launch_trench_bank": [
+          {
+            "level": 0,
+            "sha256": "451d88ad05ce72e99dcc15045f22c9b3e864c5778e8725affd8f278bf5352ee9"
+          },
+          {
+            "level": 1,
+            "sha256": "6978e5e526ade8046db59dd394a3701339e7f90c91074a82a76c047a24c3dbef"
+          },
+          {
+            "level": 2,
+            "sha256": "17f20c7ab79f920c3f72a71948eeed3b74530ab32f4f5d584d0920a6cb5c1c80"
+          }
+        ],
+        "large_ore_transfer_terrace": [
+          {
+            "level": 0,
+            "sha256": "18fd6ebfb8712d98b823fe02b143c7c3b711b507f136e8a1b4e35677612a799d"
+          },
+          {
+            "level": 1,
+            "sha256": "6e599ff4f9a1f787b8f2d9cc78b76ef9a141c307622f9b156ff4b8f43fd4812d"
+          },
+          {
+            "level": 2,
+            "sha256": "3bb66c4cdb6d76a32399fa7a5bba004f780fcf4e76e7ecc3f70f62a7e119117b"
+          }
+        ],
+        "ops_rail_carriage": [
+          {
+            "level": 0,
+            "sha256": "8907b7a4ffa19fb221d59feb8a712c5fdbb7e72af571b1296097cf76f24f1b67"
+          },
+          {
+            "level": 1,
+            "sha256": "2bc7a501d75a01b2d0fbc7803ab2668967dc4f39fd1813cf60afe577898955bf"
+          },
+          {
+            "level": 2,
+            "sha256": "f77b5cf0b266b71c264c607bbecc7cbb9320f3615ca3ce8b35454065032f16f1"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "survey_cut_face_worksite",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-bagged-regolith-pallet",
+        "large_ice_anchoring_terrace",
+        "matched_removable_wedge",
+        "ops_optical_rangefinder",
+        "seam_bearing_quarried_parent_rock"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_ice_anchoring_terrace",
+          "translation": [
+            0,
+            0,
+            -42.25
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_ice_anchoring_terrace",
+          "translation": [
+            0,
+            0,
+            48.25
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_optical_rangefinder",
+          "translation": [
+            0.0,
+            -0.25,
+            -60.25
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-bagged-regolith-pallet",
+          "translation": [
+            0.0,
+            -0.25,
+            66.25
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "cut_parent",
+          "assetId": "seam_bearing_quarried_parent_rock",
+          "translation": [
+            -20,
+            -0.8424142599105835,
+            -42.25
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "removable_wedge",
+          "assetId": "matched_removable_wedge",
+          "translation": [
+            -20.0,
+            -0.8424142599105835,
+            -42.25
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "cut_parent",
+            "socket": "SOCKET_MATCHED_CUT"
+          },
+          "child": {
+            "instance": "removable_wedge",
+            "socket": "SOCKET_MATCHED_CUT"
+          },
+          "positionErrorMetres": 3.5762786865234375e-07,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -40.70000076293945,
+          -16.0,
+          -66.5
+        ],
+        "max": [
+          40.70000076293945,
+          3.239999771118164,
+          72.5
+        ]
+      },
+      "approach": {
+        "min": [
+          -50.70000076293945,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          50.70000076293945,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "boresight"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 18.76814122287695,
+        "sampleComparisons": 20100,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload",
+            "cut_parent",
+            "removable_wedge"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload",
+            "cut_parent",
+            "removable_wedge"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "cut_parent"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-bagged-regolith-pallet": [
+          {
+            "level": 0,
+            "sha256": "2402517133c4e546c9b1b82d64545d67ec7434c0c2ad3c305ea3f0f4aabfda8b"
+          },
+          {
+            "level": 1,
+            "sha256": "8d2a559abf86715c19ea9056bc63566b26c8cc223dc0ee493089b773d54984d7"
+          },
+          {
+            "level": 2,
+            "sha256": "2d7bc07c9ea45acf6a731705f091ccf182ea9a47c315996052e4df7ffa9fd570"
+          }
+        ],
+        "large_ice_anchoring_terrace": [
+          {
+            "level": 0,
+            "sha256": "03a4a724a52564d704485c20c06e4fa5d7d3db2ea105e7656403f7918b5075cb"
+          },
+          {
+            "level": 1,
+            "sha256": "e513808eb9ec2b35b45a667bdcaae3ed9b8b9695fee2e30c593c6ed40d5ef70d"
+          },
+          {
+            "level": 2,
+            "sha256": "7e9a4ccafc0d433e7ad36cd001f3179ce66997429746abb9036c7e6e7b45642f"
+          }
+        ],
+        "matched_removable_wedge": [
+          {
+            "level": 0,
+            "sha256": "12823de16b70d502253c197606f93bbae29cec426cf06424e50b3e54790132ce"
+          },
+          {
+            "level": 1,
+            "sha256": "832f2dc1d576889b97aa88190eec10c159b41831fda1585ca30fbcd102772cb2"
+          },
+          {
+            "level": 2,
+            "sha256": "ed44ec10ccb85407520358671864aa7decd97c1df2b6acb4a277f9620a576991"
+          }
+        ],
+        "ops_optical_rangefinder": [
+          {
+            "level": 0,
+            "sha256": "b81f34de23de629099be0ce1bee080e9baf9370a79f5cb3df1d751322cbf3d7f"
+          },
+          {
+            "level": 1,
+            "sha256": "ded54a03dc152617769ebd2e4a4b743ad639016dfb55b6a0ef915758cb04faed"
+          },
+          {
+            "level": 2,
+            "sha256": "b6f491bf9b1e8f6b4554b6b999049d1bd91923dc0ffe7c14a669c790df7b5c0d"
+          }
+        ],
+        "seam_bearing_quarried_parent_rock": [
+          {
+            "level": 0,
+            "sha256": "cf98116bb243a8bf6aabfb71a400a47b22107c9cd6e56de943e690affc74a695"
+          },
+          {
+            "level": 1,
+            "sha256": "5f74a2a9c84d69ed84170f31a98b78a6592531e157b919431db747e69051f9fd"
+          },
+          {
+            "level": 2,
+            "sha256": "8eff58374d67ff08527f6828cd266529b03738e93cebcc833d1e53f285b3b606"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "quarantine_transfer_platform",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-biological-containment-cage",
+        "large_pressure_dome_habitat",
+        "ops_fire_suppression_head"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_pressure_dome_habitat",
+          "translation": [
+            0,
+            0,
+            -39.0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_pressure_dome_habitat",
+          "translation": [
+            0,
+            0,
+            45.0
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_fire_suppression_head",
+          "translation": [
+            20.0,
+            6.139999866485596,
+            -39.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-biological-containment-cage",
+          "translation": [
+            -20.0,
+            6.139999866485596,
+            45.0
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -25.19052505493164,
+          -3.0,
+          -60.0
+        ],
+        "max": [
+          25.19052505493164,
+          19.1558837890625,
+          66.0
+        ]
+      },
+      "approach": {
+        "min": [
+          -35.19052505493164,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          35.19052505493164,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "fluid"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 18.728821555732093,
+        "sampleComparisons": 19899,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-biological-containment-cage": [
+          {
+            "level": 0,
+            "sha256": "7e713ea8d51c644002ca2e94d8986a71fd9bd40751014d3ebcfaa7d3bafc0063"
+          },
+          {
+            "level": 1,
+            "sha256": "f53e75318ab00ed16894dae42d4d29c0af7838b86bb4c9dd1bc5eb2d2bfb2b3d"
+          },
+          {
+            "level": 2,
+            "sha256": "01bb255152020327140fa1f339f8ed9c61a8fbb0a6163046725346a780a762b1"
+          }
+        ],
+        "large_pressure_dome_habitat": [
+          {
+            "level": 0,
+            "sha256": "6488916f2983e5ce2faa1ecc6153500573afd0b7ff8a2ec109df1a6494c85f30"
+          },
+          {
+            "level": 1,
+            "sha256": "916731e8c8143db3edc43d8c0d3d761955413f7c8e460b7c5c4277f24a8ed56e"
+          },
+          {
+            "level": 2,
+            "sha256": "082b3a25b86c4e473c2ba02e01a12187712340743cc12af0cd6391d5e98e49c2"
+          }
+        ],
+        "ops_fire_suppression_head": [
+          {
+            "level": 0,
+            "sha256": "fc696d7ff2ff1f42ce40ef55b23e229094fcb814fadaf1fca75975473669fba0"
+          },
+          {
+            "level": 1,
+            "sha256": "9b1873caa0289403de3b084a55ce9f53390a0b755d6522b9b21bf50cd64466e9"
+          },
+          {
+            "level": 2,
+            "sha256": "39f662bca7ba68861c3993841502055be386d4aec9c3436dfa8d43911ad0c3d1"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "derelict_rib_corridor",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "cargo-inert-reactor-core-cask",
+        "large_capital_berth_outrigger",
+        "large_relay_dish_backframe",
+        "ops_camera_pod"
+      ],
+      "instances": [
+        {
+          "id": "primary",
+          "assetId": "large_relay_dish_backframe",
+          "translation": [
+            0,
+            0,
+            -53.79999923706055
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "return_bank",
+          "assetId": "large_capital_berth_outrigger",
+          "translation": [
+            0,
+            0,
+            42.5
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "operations",
+          "assetId": "ops_camera_pod",
+          "translation": [
+            0.0,
+            -2.25,
+            -53.79999923706055
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "payload",
+          "assetId": "cargo-inert-reactor-core-cask",
+          "translation": [
+            26.0,
+            3.25,
+            39.5
+          ],
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "primary",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "operations",
+            "socket": "mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "return_bank",
+            "socket": "SOCKET_Service"
+          },
+          "child": {
+            "instance": "payload",
+            "socket": "SOCKET_Mount"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -38.5,
+          -11.190526008605957,
+          -89.5999984741211
+        ],
+        "max": [
+          36.75,
+          27.216506958007812,
+          61.0
+        ]
+      },
+      "approach": {
+        "min": [
+          -48.5,
+          -2,
+          -2
+        ],
+        "max": [
+          0,
+          2,
+          2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -2,
+          -2
+        ],
+        "max": [
+          46.75,
+          2,
+          2
+        ]
+      },
+      "focalSocket": {
+        "instance": "primary",
+        "socket": "SOCKET_Service"
+      },
+      "operationsSockets": [
+        {
+          "instance": "operations",
+          "socket": "boresight"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 2,
+        "minimumSurfaceDistanceMetres": 24.004542000455068,
+        "sampleComparisons": 21105,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations",
+            "payload"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "primary",
+            "return_bank",
+            "operations"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "cargo-inert-reactor-core-cask": [
+          {
+            "level": 0,
+            "sha256": "1deda0db0111cc80c8dbf409318bc8d3ed62499e25ae0d9b24897e6ec08d76bb"
+          },
+          {
+            "level": 1,
+            "sha256": "1919caac0ec496038672bbf2d7fff3c38b80b8ec7fd069563a9e606ce329bd61"
+          },
+          {
+            "level": 2,
+            "sha256": "0eb16d17dce892deb30b713342b360192c6330bfdd6f826398d478dfa8450309"
+          }
+        ],
+        "large_capital_berth_outrigger": [
+          {
+            "level": 0,
+            "sha256": "7c6740bf5daec4e2fcee465d42ac2fe37bd5ac2a303b1bf94b2b23fe21bbab6f"
+          },
+          {
+            "level": 1,
+            "sha256": "2ac52b2a49cbfe833750c375f6f43bbe901fe4c069193530c3358108b41041f3"
+          },
+          {
+            "level": 2,
+            "sha256": "bb0d1c7faa365e714e0fc165a375eb13b34283daec1aabbd4da1cbcf5614a96c"
+          }
+        ],
+        "large_relay_dish_backframe": [
+          {
+            "level": 0,
+            "sha256": "fe8dfac18f6553d2b72ce984ca7e5bee45af96818c3cc69168badabbf8b2a525"
+          },
+          {
+            "level": 1,
+            "sha256": "7f7c4610aff4c6090aebb4a84e1728e98896bad8a94de0419f126b83c9a26eff"
+          },
+          {
+            "level": 2,
+            "sha256": "b0ad4a445330e28ec7bf15b0648388ee6d04080b059bba4e9ad7915a575974fc"
+          }
+        ],
+        "ops_camera_pod": [
+          {
+            "level": 0,
+            "sha256": "50714182dcf1c5debe00c8799496433db4535a0f6d7cd773c947dd6758ab666a"
+          },
+          {
+            "level": 1,
+            "sha256": "bf3fb957d800aed35f6b069ba30e8ab8d71939980fa9f6fb92adc925d81e2e3e"
+          },
+          {
+            "level": 2,
+            "sha256": "e76e38beebe75edf3dda2273dea3f7141e32e99913df43f66aaff567cf4b2ed2"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    },
+    {
+      "id": "ancient_service_threshold",
+      "status": "reusable template, no canonical location/gameplay spawning",
+      "dependencies": [
+        "measuring_rail",
+        "threshold_jamb",
+        "threshold_lintel"
+      ],
+      "instances": [
+        {
+          "id": "near_jamb_left",
+          "assetId": "threshold_jamb",
+          "translation": [
+            -36,
+            0,
+            2.2
+          ],
+          "rotation": [
+            0,
+            0.7071067811865476,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "near_lintel",
+          "assetId": "threshold_lintel",
+          "translation": [
+            -36.0,
+            4.149999618530273,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "near_jamb_right",
+          "assetId": "threshold_jamb",
+          "translation": [
+            -36.0,
+            0.0,
+            -2.200000047683716
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_a_jamb_left",
+          "assetId": "threshold_jamb",
+          "translation": [
+            -24,
+            0,
+            2.2
+          ],
+          "rotation": [
+            0,
+            0.7071067811865476,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_a_lintel",
+          "assetId": "threshold_lintel",
+          "translation": [
+            -24.0,
+            4.149999618530273,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_a_jamb_right",
+          "assetId": "threshold_jamb",
+          "translation": [
+            -24.0,
+            0.0,
+            -2.200000047683716
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_b_jamb_left",
+          "assetId": "threshold_jamb",
+          "translation": [
+            -12,
+            0,
+            2.2
+          ],
+          "rotation": [
+            0,
+            0.7071067811865476,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_b_lintel",
+          "assetId": "threshold_lintel",
+          "translation": [
+            -12.0,
+            4.149999618530273,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_b_jamb_right",
+          "assetId": "threshold_jamb",
+          "translation": [
+            -12.0,
+            0.0,
+            -2.200000047683716
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "center_jamb_left",
+          "assetId": "threshold_jamb",
+          "translation": [
+            0,
+            0,
+            2.2
+          ],
+          "rotation": [
+            0,
+            0.7071067811865476,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "center_lintel",
+          "assetId": "threshold_lintel",
+          "translation": [
+            0.0,
+            4.149999618530273,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "center_jamb_right",
+          "assetId": "threshold_jamb",
+          "translation": [
+            0.0,
+            0.0,
+            -2.200000047683716
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_c_jamb_left",
+          "assetId": "threshold_jamb",
+          "translation": [
+            12,
+            0,
+            2.2
+          ],
+          "rotation": [
+            0,
+            0.7071067811865476,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_c_lintel",
+          "assetId": "threshold_lintel",
+          "translation": [
+            12.0,
+            4.149999618530273,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_c_jamb_right",
+          "assetId": "threshold_jamb",
+          "translation": [
+            12.0,
+            0.0,
+            -2.200000047683716
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_d_jamb_left",
+          "assetId": "threshold_jamb",
+          "translation": [
+            24,
+            0,
+            2.2
+          ],
+          "rotation": [
+            0,
+            0.7071067811865476,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_d_lintel",
+          "assetId": "threshold_lintel",
+          "translation": [
+            24.0,
+            4.149999618530273,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inner_d_jamb_right",
+          "assetId": "threshold_jamb",
+          "translation": [
+            24.0,
+            0.0,
+            -2.200000047683716
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "far_jamb_left",
+          "assetId": "threshold_jamb",
+          "translation": [
+            36,
+            0,
+            2.2
+          ],
+          "rotation": [
+            0,
+            0.7071067811865476,
+            0,
+            0.7071067811865476
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "far_lintel",
+          "assetId": "threshold_lintel",
+          "translation": [
+            36.0,
+            4.149999618530273,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "far_jamb_right",
+          "assetId": "threshold_jamb",
+          "translation": [
+            36.0,
+            0.0,
+            -2.200000047683716
+          ],
+          "rotation": [
+            0.0,
+            0.7071067690849304,
+            0.0,
+            0.7071067690849304
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_0",
+          "assetId": "measuring_rail",
+          "translation": [
+            -35,
+            0,
+            -3.3
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_1",
+          "assetId": "measuring_rail",
+          "translation": [
+            -30.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_2",
+          "assetId": "measuring_rail",
+          "translation": [
+            -25.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_3",
+          "assetId": "measuring_rail",
+          "translation": [
+            -20.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_4",
+          "assetId": "measuring_rail",
+          "translation": [
+            -15.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_5",
+          "assetId": "measuring_rail",
+          "translation": [
+            -10.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_6",
+          "assetId": "measuring_rail",
+          "translation": [
+            -5.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_7",
+          "assetId": "measuring_rail",
+          "translation": [
+            0.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_8",
+          "assetId": "measuring_rail",
+          "translation": [
+            5.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_9",
+          "assetId": "measuring_rail",
+          "translation": [
+            10.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_10",
+          "assetId": "measuring_rail",
+          "translation": [
+            15.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_11",
+          "assetId": "measuring_rail",
+          "translation": [
+            20.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_12",
+          "assetId": "measuring_rail",
+          "translation": [
+            25.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_13",
+          "assetId": "measuring_rail",
+          "translation": [
+            30.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "port_rail_14",
+          "assetId": "measuring_rail",
+          "translation": [
+            35.0,
+            0.0,
+            -3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_0",
+          "assetId": "measuring_rail",
+          "translation": [
+            -35,
+            0,
+            3.3
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_1",
+          "assetId": "measuring_rail",
+          "translation": [
+            -30.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_2",
+          "assetId": "measuring_rail",
+          "translation": [
+            -25.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_3",
+          "assetId": "measuring_rail",
+          "translation": [
+            -20.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_4",
+          "assetId": "measuring_rail",
+          "translation": [
+            -15.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_5",
+          "assetId": "measuring_rail",
+          "translation": [
+            -10.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_6",
+          "assetId": "measuring_rail",
+          "translation": [
+            -5.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_7",
+          "assetId": "measuring_rail",
+          "translation": [
+            0.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_8",
+          "assetId": "measuring_rail",
+          "translation": [
+            5.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_9",
+          "assetId": "measuring_rail",
+          "translation": [
+            10.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_10",
+          "assetId": "measuring_rail",
+          "translation": [
+            15.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_11",
+          "assetId": "measuring_rail",
+          "translation": [
+            20.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_12",
+          "assetId": "measuring_rail",
+          "translation": [
+            25.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_13",
+          "assetId": "measuring_rail",
+          "translation": [
+            30.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "starboard_rail_14",
+          "assetId": "measuring_rail",
+          "translation": [
+            35.0,
+            0.0,
+            3.299999952316284
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "parent": {
+            "instance": "near_jamb_left",
+            "socket": "SOCKET_LINTEL"
+          },
+          "child": {
+            "instance": "near_lintel",
+            "socket": "SOCKET_JAMB_-2.2"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "near_lintel",
+            "socket": "SOCKET_JAMB_2.2"
+          },
+          "child": {
+            "instance": "near_jamb_right",
+            "socket": "SOCKET_LINTEL"
+          },
+          "positionErrorMetres": 5.960464477539063e-08,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_a_jamb_left",
+            "socket": "SOCKET_LINTEL"
+          },
+          "child": {
+            "instance": "inner_a_lintel",
+            "socket": "SOCKET_JAMB_-2.2"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_a_lintel",
+            "socket": "SOCKET_JAMB_2.2"
+          },
+          "child": {
+            "instance": "inner_a_jamb_right",
+            "socket": "SOCKET_LINTEL"
+          },
+          "positionErrorMetres": 5.960464477539063e-08,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_b_jamb_left",
+            "socket": "SOCKET_LINTEL"
+          },
+          "child": {
+            "instance": "inner_b_lintel",
+            "socket": "SOCKET_JAMB_-2.2"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_b_lintel",
+            "socket": "SOCKET_JAMB_2.2"
+          },
+          "child": {
+            "instance": "inner_b_jamb_right",
+            "socket": "SOCKET_LINTEL"
+          },
+          "positionErrorMetres": 5.960464477539063e-08,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "center_jamb_left",
+            "socket": "SOCKET_LINTEL"
+          },
+          "child": {
+            "instance": "center_lintel",
+            "socket": "SOCKET_JAMB_-2.2"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "center_lintel",
+            "socket": "SOCKET_JAMB_2.2"
+          },
+          "child": {
+            "instance": "center_jamb_right",
+            "socket": "SOCKET_LINTEL"
+          },
+          "positionErrorMetres": 5.960464477539063e-08,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_c_jamb_left",
+            "socket": "SOCKET_LINTEL"
+          },
+          "child": {
+            "instance": "inner_c_lintel",
+            "socket": "SOCKET_JAMB_-2.2"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_c_lintel",
+            "socket": "SOCKET_JAMB_2.2"
+          },
+          "child": {
+            "instance": "inner_c_jamb_right",
+            "socket": "SOCKET_LINTEL"
+          },
+          "positionErrorMetres": 5.960464477539063e-08,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_d_jamb_left",
+            "socket": "SOCKET_LINTEL"
+          },
+          "child": {
+            "instance": "inner_d_lintel",
+            "socket": "SOCKET_JAMB_-2.2"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "inner_d_lintel",
+            "socket": "SOCKET_JAMB_2.2"
+          },
+          "child": {
+            "instance": "inner_d_jamb_right",
+            "socket": "SOCKET_LINTEL"
+          },
+          "positionErrorMetres": 5.960464477539063e-08,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "far_jamb_left",
+            "socket": "SOCKET_LINTEL"
+          },
+          "child": {
+            "instance": "far_lintel",
+            "socket": "SOCKET_JAMB_-2.2"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "far_lintel",
+            "socket": "SOCKET_JAMB_2.2"
+          },
+          "child": {
+            "instance": "far_jamb_right",
+            "socket": "SOCKET_LINTEL"
+          },
+          "positionErrorMetres": 5.960464477539063e-08,
+          "forwardDot": -0.9999998807907104,
+          "upDot": 0.9999998807907104
+        },
+        {
+          "parent": {
+            "instance": "port_rail_0",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_1",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_1",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_2",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_2",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_3",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_3",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_4",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_4",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_5",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_5",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_6",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_6",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_7",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_7",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_8",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_8",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_9",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_9",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_10",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_10",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_11",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_11",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_12",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_12",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_13",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "port_rail_13",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "port_rail_14",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_0",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_1",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_1",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_2",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_2",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_3",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_3",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_4",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_4",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_5",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_5",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_6",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_6",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_7",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_7",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_8",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_8",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_9",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_9",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_10",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_10",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_11",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_11",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_12",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_12",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_13",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        },
+        {
+          "parent": {
+            "instance": "starboard_rail_13",
+            "socket": "SOCKET_B"
+          },
+          "child": {
+            "instance": "starboard_rail_14",
+            "socket": "SOCKET_A"
+          },
+          "positionErrorMetres": 0.0,
+          "forwardDot": -1.0,
+          "upDot": 1.0
+        }
+      ],
+      "bounds": {
+        "min": [
+          -37.5,
+          0.0,
+          -3.759999990463257
+        ],
+        "max": [
+          37.5,
+          4.549999713897705,
+          3.759999990463257
+        ]
+      },
+      "approach": {
+        "min": [
+          -47.5,
+          -1.2,
+          -1.2
+        ],
+        "max": [
+          0,
+          1.2,
+          1.2
+        ]
+      },
+      "exit": {
+        "min": [
+          0,
+          -1.2,
+          -1.2
+        ],
+        "max": [
+          47.5,
+          1.2,
+          1.2
+        ]
+      },
+      "focalSocket": {
+        "instance": "near_jamb_left",
+        "socket": "SOCKET_LINTEL"
+      },
+      "operationsSockets": [
+        {
+          "instance": "far_lintel",
+          "socket": "SOCKET_JAMB_2.2"
+        }
+      ],
+      "clearanceValidation": {
+        "method": "201 sphere samples along X against transformed compound oriented boxes",
+        "probeRadiusMetres": 1.2,
+        "minimumSurfaceDistanceMetres": 1.7060003244683695,
+        "sampleComparisons": 99696,
+        "scope": "authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified"
+      },
+      "states": [
+        {
+          "id": "working",
+          "visibleInstances": [
+            "near_jamb_left",
+            "near_lintel",
+            "near_jamb_right",
+            "inner_a_jamb_left",
+            "inner_a_lintel",
+            "inner_a_jamb_right",
+            "inner_b_jamb_left",
+            "inner_b_lintel",
+            "inner_b_jamb_right",
+            "center_jamb_left",
+            "center_lintel",
+            "center_jamb_right",
+            "inner_c_jamb_left",
+            "inner_c_lintel",
+            "inner_c_jamb_right",
+            "inner_d_jamb_left",
+            "inner_d_lintel",
+            "inner_d_jamb_right",
+            "far_jamb_left",
+            "far_lintel",
+            "far_jamb_right",
+            "port_rail_0",
+            "port_rail_1",
+            "port_rail_2",
+            "port_rail_3",
+            "port_rail_4",
+            "port_rail_5",
+            "port_rail_6",
+            "port_rail_7",
+            "port_rail_8",
+            "port_rail_9",
+            "port_rail_10",
+            "port_rail_11",
+            "port_rail_12",
+            "port_rail_13",
+            "port_rail_14",
+            "starboard_rail_0",
+            "starboard_rail_1",
+            "starboard_rail_2",
+            "starboard_rail_3",
+            "starboard_rail_4",
+            "starboard_rail_5",
+            "starboard_rail_6",
+            "starboard_rail_7",
+            "starboard_rail_8",
+            "starboard_rail_9",
+            "starboard_rail_10",
+            "starboard_rail_11",
+            "starboard_rail_12",
+            "starboard_rail_13",
+            "starboard_rail_14"
+          ],
+          "description": "Fixed equipment and seated payload present"
+        },
+        {
+          "id": "occupied",
+          "visibleInstances": [
+            "near_jamb_left",
+            "near_lintel",
+            "near_jamb_right",
+            "inner_a_jamb_left",
+            "inner_a_lintel",
+            "inner_a_jamb_right",
+            "inner_b_jamb_left",
+            "inner_b_lintel",
+            "inner_b_jamb_right",
+            "center_jamb_left",
+            "center_lintel",
+            "center_jamb_right",
+            "inner_c_jamb_left",
+            "inner_c_lintel",
+            "inner_c_jamb_right",
+            "inner_d_jamb_left",
+            "inner_d_lintel",
+            "inner_d_jamb_right",
+            "far_jamb_left",
+            "far_lintel",
+            "far_jamb_right",
+            "port_rail_0",
+            "port_rail_1",
+            "port_rail_2",
+            "port_rail_3",
+            "port_rail_4",
+            "port_rail_5",
+            "port_rail_6",
+            "port_rail_7",
+            "port_rail_8",
+            "port_rail_9",
+            "port_rail_10",
+            "port_rail_11",
+            "port_rail_12",
+            "port_rail_13",
+            "port_rail_14",
+            "starboard_rail_0",
+            "starboard_rail_1",
+            "starboard_rail_2",
+            "starboard_rail_3",
+            "starboard_rail_4",
+            "starboard_rail_5",
+            "starboard_rail_6",
+            "starboard_rail_7",
+            "starboard_rail_8",
+            "starboard_rail_9",
+            "starboard_rail_10",
+            "starboard_rail_11",
+            "starboard_rail_12",
+            "starboard_rail_13",
+            "starboard_rail_14"
+          ],
+          "description": "Same geometry; occupancy remains consumer behavior"
+        },
+        {
+          "id": "after_use",
+          "visibleInstances": [
+            "near_jamb_left",
+            "near_lintel",
+            "near_jamb_right",
+            "inner_a_jamb_left",
+            "inner_a_lintel",
+            "inner_a_jamb_right",
+            "inner_b_jamb_left",
+            "inner_b_lintel",
+            "inner_b_jamb_right",
+            "center_jamb_left",
+            "center_lintel",
+            "center_jamb_right",
+            "inner_c_jamb_left",
+            "inner_c_lintel",
+            "inner_c_jamb_right",
+            "inner_d_jamb_left",
+            "inner_d_lintel",
+            "inner_d_jamb_right",
+            "far_jamb_left",
+            "far_lintel",
+            "far_jamb_right",
+            "port_rail_0",
+            "port_rail_1",
+            "port_rail_2",
+            "port_rail_3",
+            "port_rail_4",
+            "port_rail_5",
+            "port_rail_6",
+            "port_rail_7",
+            "port_rail_8",
+            "port_rail_9",
+            "port_rail_10",
+            "port_rail_11",
+            "port_rail_12",
+            "port_rail_13",
+            "port_rail_14",
+            "starboard_rail_0",
+            "starboard_rail_1",
+            "starboard_rail_2",
+            "starboard_rail_3",
+            "starboard_rail_4",
+            "starboard_rail_5",
+            "starboard_rail_6",
+            "starboard_rail_7",
+            "starboard_rail_8",
+            "starboard_rail_9",
+            "starboard_rail_10",
+            "starboard_rail_11",
+            "starboard_rail_12",
+            "starboard_rail_13",
+            "starboard_rail_14"
+          ],
+          "description": "Removable payload or matched cut wedge absent; no damage state implied"
+        }
+      ],
+      "dependencyLocks": {
+        "measuring_rail": [
+          {
+            "level": 0,
+            "sha256": "9ca695f177b2579104ae2147064b7f323492feefdbdf2cc0bfccb374dd27ab8e"
+          },
+          {
+            "level": 1,
+            "sha256": "11a8861f0cdfc0b72d6f34f4bca415ff48a997d2e63beadac650265e2c8cde14"
+          },
+          {
+            "level": 2,
+            "sha256": "7f5bda4faa51ac53a39d98c87cfa6a6ccf221f73828b9131674da24aeb32ce01"
+          }
+        ],
+        "threshold_jamb": [
+          {
+            "level": 0,
+            "sha256": "a6b5618955d159a898e03125443998c2834b39ea6ec928132fb085c4659bc59f"
+          },
+          {
+            "level": 1,
+            "sha256": "c0c96d63cc36630fbe087dea7c4959909d255e0b5175889962db07fcd6327df6"
+          },
+          {
+            "level": 2,
+            "sha256": "c4a2e39263de8b636b36ff847c005aa4f86eaf7fc33b9c9447db829bbc14de35"
+          }
+        ],
+        "threshold_lintel": [
+          {
+            "level": 0,
+            "sha256": "0d853b8dc3976053099dabfec3be4c2f5bdf1af080e178b862d4b17f40df1ee4"
+          },
+          {
+            "level": 1,
+            "sha256": "2c95312870cdf77fa1760b0cbe1227c1ceede7e850953d98ce0028cfbeb2d4b2"
+          },
+          {
+            "level": 2,
+            "sha256": "758b7381dbde2567280ac843efd7742ba2a493036de715b2b5ac1472feb059a8"
+          }
+        ]
+      },
+      "normalization": "none; unit scale in absolute metres"
+    }
+  ]
+}
