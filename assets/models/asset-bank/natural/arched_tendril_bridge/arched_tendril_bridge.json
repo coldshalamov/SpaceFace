@@ -1,0 +1,165 @@
+{
+  "assetId": "arched_tendril_bridge",
+  "category": "growth",
+  "description": "arched tendril bridge; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_A",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_B",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.696,
+          0.12,
+          0.696
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.696,
+          0.12,
+          0.696
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.5900018215179443,
+      -0.00026181660359725356,
+      -0.6270378828048706
+    ],
+    "max": [
+      2.638000011444092,
+      1.9543615579605103,
+      0.6213961839675903
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "arched_tendril_bridge_lod0.glb",
+      "triangles": 9772,
+      "draws": 4,
+      "bytes": 431228,
+      "method": "source",
+      "sha256": "5cc10b79de86014f4addbe134a19edee897de8505ef1ad4a61b5daa3a14dfd66"
+    },
+    {
+      "level": 1,
+      "file": "arched_tendril_bridge_lod1.glb",
+      "triangles": 3908,
+      "draws": 4,
+      "bytes": 205344,
+      "method": "Forge-decimation",
+      "sha256": "7079d0f921ae82bb3d66c3ad1aedcb900b9d37316170d9252cccd697841fb038"
+    },
+    {
+      "level": 2,
+      "file": "arched_tendril_bridge_lod2.glb",
+      "triangles": 1758,
+      "draws": 4,
+      "bytes": 115236,
+      "method": "Forge-decimation",
+      "sha256": "eb3a300e5791146b354a3c72fd21fc734ffee79aa6330708c9b149f24ffe179e"
+    }
+  ]
+}

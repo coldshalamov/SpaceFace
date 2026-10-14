@@ -1,0 +1,106 @@
+{
+  "assetId": "metallic_vein_rib",
+  "category": "geology",
+  "description": "metallic vein rib; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.3,
+          -0.0
+        ],
+        "size": [
+          3.5,
+          0.65,
+          0.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -2.3854308128356934,
+      -0.5967220067977905,
+      -0.5627250671386719
+    ],
+    "max": [
+      2.6181719303131104,
+      0.7453370690345764,
+      0.5932382941246033
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "metallic_vein_rib_lod0.glb",
+      "triangles": 2636,
+      "draws": 3,
+      "bytes": 197112,
+      "method": "source",
+      "sha256": "acd09ac774c4a63bd6928993e499f177ff0e760cd5bd16985ee9ab559249a379"
+    },
+    {
+      "level": 1,
+      "file": "metallic_vein_rib_lod1.glb",
+      "triangles": 1040,
+      "draws": 3,
+      "bytes": 75284,
+      "method": "authored-topology",
+      "sha256": "b657d3fa4b7488bb7b44584b33f4bd5c67fb1362e2333db4d6e826a3556771f6"
+    },
+    {
+      "level": 2,
+      "file": "metallic_vein_rib_lod2.glb",
+      "triangles": 512,
+      "draws": 3,
+      "bytes": 41776,
+      "method": "authored-topology",
+      "sha256": "6a0a39c419a7446b00109f23cf67ece823f9192b0e16d6b833f1d4307793d2e7"
+    }
+  ]
+}

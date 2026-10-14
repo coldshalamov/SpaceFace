@@ -1,0 +1,106 @@
+{
+  "assetId": "dead_crown",
+  "category": "growth",
+  "description": "dead crown; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.66,
+          0.12,
+          0.66
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.3477126359939575,
+      -0.000265049806330353,
+      -1.3751024007797241
+    ],
+    "max": [
+      1.4401743412017822,
+      1.1257113218307495,
+      1.4368529319763184
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "dead_crown_lod0.glb",
+      "triangles": 8840,
+      "draws": 3,
+      "bytes": 388568,
+      "method": "source",
+      "sha256": "051eddf7f235d68436746c16315b27e916a67aaaec0312ceab9cb0ee323b6b23"
+    },
+    {
+      "level": 1,
+      "file": "dead_crown_lod1.glb",
+      "triangles": 3536,
+      "draws": 3,
+      "bytes": 184240,
+      "method": "Forge-decimation",
+      "sha256": "e8b26fdc24410f77d6f8601aad50e4ea7299052fb8bdff246b1725dc90aa5932"
+    },
+    {
+      "level": 2,
+      "file": "dead_crown_lod2.glb",
+      "triangles": 1590,
+      "draws": 3,
+      "bytes": 107168,
+      "method": "Forge-decimation",
+      "sha256": "9e84ee10d008ee733c196f2f7e35c7437eb93d50e22019a805c41adecf1a5c2d"
+    }
+  ]
+}

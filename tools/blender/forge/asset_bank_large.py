@@ -1,22 +1,26 @@
 """Twelve metre-scale Forge place components and twelve dependency-only assemblies.
 Run blender -b -t 4 --python tools/blender/forge/asset_bank_large.py.
-Options after --: --assemblies; --contacts [--source|--lod2] [--top].
+Options after --: --assemblies [--bank-root PATH]; --contacts [--source|--lod2] [--top].
+Assembly review: --assembly-contacts [--recipe ID] [--bank-root PATH].
 Candidate bank only: no runtime spawning, normalization, or visual acceptance implied.
 """
-import os,sys,json,math
+import os,sys,json,math,hashlib,struct
 from pathlib import Path
 sys.path.insert(0,os.path.dirname(__file__))
 import bpy
 from mathutils import Vector,Quaternion,Matrix
-from forge import Ship,box,cylinder,beams,truss,ring,sweep,annulus,reset_scene
-from asset_bank_export import export_asset,gltf
-ROOT=Path(__file__).resolve().parents[3];OUT=ROOT/'assets/models/asset-bank/large'
+from forge import Ship,box,cylinder,beams,truss,ring,sweep,annulus,reset_scene,loft,plate,vent,windows
+from asset_bank_export import export_asset,gltf,render_glb_preview,render_preview
+ROOT=Path(__file__).resolve().parents[3];OUT=Path(os.environ.get('SPACEFACE_LARGE_OUT',str(ROOT/'assets/models/asset-bank/large')))
 COLORS={'paint':'#78858a','paint2':'#354653','stripe':'#ad692e','ceramic':'#9b9789','glass':'#263f47'}
 NAMES=['drydock_side_wall','drydock_end_buttress','capital_berth_outrigger','habitation_ring_quadrant','ring_spoke','pressure_dome_habitat','agricultural_cylinder','fabrication_hall_shell','ice_anchoring_terrace','ore_transfer_terrace','relay_dish_backframe','launch_trench_bank']
 PREFLIGHT={'scope':'Tier B reusable component candidates; not visual/runtime acceptance','componentReferenceDecision':'not_needed','fiction':'ART EXTRAPOLATION: anonymous industrial infrastructure, no manufacturer/history/canon assertion','supportedViews':['top','60-degree overview','close component inspection'],'zones':{'load_frame':{'status':'billed','substrate':'welded alloy box beams; exposed diagonal load paths','finish':'gunmetal/bare','forbidden':'floating decoration, collision filling real voids'},'shell':{'status':'billed','substrate':'segmented pressure skins and service decks','finish':'lacquer paint/paint2, ceramic thermal surfaces','forbidden':'default plastic, noisy grain'},'interfaces':{'status':'billed','substrate':'machined flange/rim and fitted service mounting pads','finish':'bare, restrained stripe','forbidden':'unsupported sockets'},'occupancy':{'status':'billed','substrate':'sealed glazing and recessed navigation lamps','finish':'glass, warm lamps','forbidden':'emitting paint, indiscriminate cyan'}},'allSupportedViewZonesClassified':False,'review':'CPU source/export sheets; independent root review and normal-route G0-G7 remain separate','assemblySequence':'load frame, cross-bracing, seated shell, bearing flanges, attached equipment'}
 class Build:
  def __init__(self,n):
-  self.s=Ship('large_'+n,COLORS);self.s.bank_source='tools/blender/forge/asset_bank_large.py';self.col=[]
+  palette=dict(COLORS)
+  if n in ('habitation_ring_quadrant','pressure_dome_habitat','agricultural_cylinder'):palette.update({'paint':'#a69d8a','paint2':'#234b49','stripe':'#23706a'})
+  elif n=='launch_trench_bank':palette.update({'paint':'#39434f','paint2':'#171d25','stripe':'#7a241c'})
+  self.s=Ship('large_'+n,palette);self.s.bank_source='tools/blender/forge/asset_bank_large.py';self.col=[]
  def b(self,n,p,d,m='paint',collision=True,rot=None):
   o=box(self.s,n,p,d,m,bevel=min(.18,min(d)*.12),uv_scale=.25,rot=rot)
   if collision:self.col.append({'center':list(p),'size':list(d)})
@@ -48,20 +52,23 @@ def build(n,lod=0):
    for y in (-3,3):a.beam('upright',(x,y,-4),(x,y,8),1.3)
    if x<40:a.beam('external_diagonal',(x,3,-4),(x+10,3,8),.8);a.panel('walkway',x+5,0,8.5,9.6,7)
    if x%20==0:b('fender',(x,-4,1),(4,2,6),'dark');a.beam('fender_knee',(x,-4,-2),(x,0,-4),1.2)
-  a.port('Join_A',(-40,0,0),(-1,0,0));a.port('Join_B',(40,0,0));a.port('Berth',(0,-5,1),(0,-1,0));a.service((0,0,9))
+
+  for end in (-40,40):
+   a.beam('end_diaphragm',(end,-3,0),(end,3,0),1.2);b('join_bulkhead',(end,0,0),(.6,4,4),'paint2')
+  a.port('Join_A',(-40.3,0,0),(-1,0,0));a.port('Join_B',(40.3,0,0));a.port('Berth',(0,-5,1),(0,-1,0));a.service((0,0,9))
  elif n=='drydock_end_buttress':
   for x in (-12,12):
    a.beam('foot',(x,-25,-5),(x,25,-5),3);a.beam('tower',(x,0,-5),(x,0,22),3)
    for y in (-24,24):a.beam('flying_buttress',(x,y,-5),(x,0,20),2)
   for z in (-5,10,22):a.beam('transom',(-12,0,z),(12,0,z),2)
   for y in (-16,16):a.panel('landing',0,y,-3,24,12)
-  a.port('Join_A',(0,-25,-5),(0,-1,0));a.port('Join_B',(0,25,-5),(0,1,0));a.service((0,0,23))
+  a.port('Join_A',(12,-25,-5),(0,-1,0));a.port('Join_B',(12,25,-5),(0,1,0));a.service((0,0,23))
  elif n=='capital_berth_outrigger':
   for y in (-5,5):
    truss(s,'boom',(-36,y,0),(28,y,0),3,8,'gunmetal',chord=.7,web=.35);a.beam('boom_rail',(-36,y,2),(28,y,2),1)
   for x in (-36,-20,-4,12,28):a.beam('crossmember',(x,-7,0),(x,7,0),1.5)
   for y in (-1,1):a.beam('capture_prong',(24,y*5,0),(36,y*15,0),2);b('berth_fender',(36,y*15,1),(5,5,6),'dark')
-  a.panel('root_deck',-26,0,2,20,12);a.port('Join_A',(-36,0,0),(-1,0,0));a.port('Berth',(36,0,0));a.service((-26,0,3))
+  a.panel('root_deck',-26,0,2,20,12);a.port('Join_A',(-36,0,0),(-1,0,0));s.socket('SOCKET_Dock_Approach',(44,0,0),(1,0,0));a.port('Berth',(36,15,4.8),(0,0,1),1);a.service((-26,0,3))
  elif n=='habitation_ring_quadrant':
   for r,z in [(34,-3),(46,-3),(40,5)]:
    pts=[(r*math.cos(i*math.pi/32),r*math.sin(i*math.pi/32),z) for i in range(17)]
@@ -142,6 +149,7 @@ def build(n,lod=0):
    a.beam('guide_rail',(-48,y,2),(48,y,2),1,'bare')
   for x in (-48,0,48):a.beam('sub_trench_tie',(x,-20,-6),(x,20,-6),2)
   a.port('Join_A',(-48,-13,-4),(-1,0,0));a.port('Join_B',(48,-13,-4));a.service((0,19.5,8.5))
+ enrich(a,n,lod)
  if lod:
   retained=[]
   for obj in s.objects:
@@ -150,12 +158,143 @@ def build(n,lod=0):
   s.objects=retained
  return a
 
+def enrich(a,n,lod):
+ """Purpose-specific manufacturing anatomy, derived from existing Forge place language.
+ Fab: orange handling arms/dark lattice. Helios: ivory segmented halls, teal inlays,
+ warm occupied windows. Bastion: slate layered armour and restrained red bands.
+ No donor meshes or whole existing place copied into the bank.
+ """
+ s=a.s;b=a.b
+ def hood(name,p,length=8,width=4,height=3):
+  x,y,z=p
+  loft(s,name,[{'x':x-length/2,'w':width*.35,'ht':height*.6,'hb':.1,'zc':z,'y':y,'n':3},{'x':x-length*.32,'w':width/2,'ht':height,'hb':.1,'zc':z,'y':y,'n':3},{'x':x+length*.4,'w':width/2,'ht':height*.9,'hb':.1,'zc':z,'y':y,'n':3},{'x':x+length/2,'w':width*.32,'ht':height*.5,'hb':.1,'zc':z,'y':y,'n':3}],material='paint2',count=16)
+  a.col.append({'center':[x,y,z+height/2],'size':[length,width,height]})
+  b(name+'_roof',(x,y,z+height+.12),(length*.6,width*.72,.24),'paint',False)
+  for side in (-1,1):
+   for k in range(4):b(name+'_window',(x+(k-1.5)*length*.15,y+side*(width/2+.02),z+height*.58),(length*.11,.05,.42),'glow_warm',False)
+ def machinery(name,p,l=5):
+  x,y,z=p;b(name+'_mount',(x,y,z),(l+1,3,.35),'gunmetal')
+  cylinder(s,name+'_motor',(x-l/2,y,z+1.1),(x+l/2,y,z+1.1),1,material='paint2',segments=16)
+  for dx in (-l/2,l/2):ring(s,name+'_end',(x+dx,y,z+1.1),1.08,.14,material='bare',segments=16,sides=6)
+  b(name+'_controller',(x,y+1,z+1.2),(l*.6,.8,1.2),'paint',False)
+ def railing(name,p0,p1):
+  p0=Vector(p0);p1=Vector(p1);a.beam(name+'_rail',p0+Vector((0,0,1.2)),p1+Vector((0,0,1.2)),.15,'bare')
+  count=max(2,int((p1-p0).length/4))
+  for k in range(count+1):p=p0+(p1-p0)*k/count;a.beam(name+'_post',p,p+Vector((0,0,1.2)),.13,'bare')
+ if n=='drydock_side_wall':
+  hood('dock_control',(-25,0,8.8),10,5,3);machinery('reel_drive',(24,0,9),7)
+  for y in (-3.2,3.2):railing('service_guard',(-38,y,8.8),(38,y,8.8))
+  for z in (-1,1):cylinder(s,'utility_main',(-38,3.7,z),(38,3.7,z),.45,material='paint2',segments=12)
+  for x in (-10,10):
+   a.beam('service_arm_root',(x,-3,4),(x,-8,4),.8,'stripe');a.beam('folded_service_elbow',(x,-8,4),(x+4,-9,2),.6,'bare')
+   cylinder(s,'arm_pivot',(x-.7,-3,4),(x+.7,-3,4),.9,material='gunmetal',segments=16)
+ elif n=='drydock_end_buttress':
+  hood('watchhouse',(0,0,23),18,9,5)
+  for x in (-12,12):machinery('buttress_winch',(x,13,-2.5),6)
+  for y in (-20,20):railing('platform_guard',(-10,y,-2.7),(10,y,-2.7))
+ elif n=='capital_berth_outrigger':
+  hood('berth_controller',(-28,3,2.5),10,4,3)
+  for y in (-5,5):cylinder(s,'hydraulic_main',(-18,y,3),(24,y,3),.55,material='paint2',segments=16)
+  for sign in (-1,1):
+   b('jaw_backplate',(34,sign*15,4.3),(5,7,1),'paint2')
+   for k in (-1,0,1):b('jaw_tooth',(36.8,sign*15+k*1.5,2),(1.4,1,4),'bare')
+ elif n=='habitation_ring_quadrant':
+  for i in range(8):
+   t=(i+.5)*math.pi/16;x=40*math.cos(t);y=40*math.sin(t)
+   for k in (-1,0,1):b('roof_vent',(x+k*.5,y,3.45),(.23,2,.28),'bare',False,rot=(0,0,t+math.pi/2))
+   p=(46*math.cos(t),46*math.sin(t),0);b('outer_window',p,(2.3,.15,1),'glow_warm',False,rot=(0,0,t-math.pi/2))
+  for r in (33,47):
+   pts=[(r*math.cos(i*math.pi/32),r*math.sin(i*math.pi/32),-1.2) for i in range(17)];sweep(s,'district_utility_band',pts,.28,.5,'stripe',.02,.25)
+ elif n=='pressure_dome_habitat':
+  for y in (-9,-3,3,9):
+   b('interior_cultivation_bed',(0,y,.4),(22,3,.8),'paint2')
+   for x in (-8,-4,0,4,8):b('bed_tray',(x,y,.9),(3.4,2.3,.12),'ceramic',False)
+  for i in range(8):
+   t=i*math.pi/4;a.beam('eave_buttress',(20*math.cos(t),20*math.sin(t),-1),(17*math.cos(t),17*math.sin(t),5),.65,'bare')
+  hood('airlock_cap',(20,0,3.6),7,5,1.8)
+  cylinder(s,'crown_compression_cap',(0,0,18),(0,0,19),2.2,material='paint2',segments=32)
+  ring(s,'crown_clamping_rim',(0,0,19),2.25,.18,axis=(0,0,1),material='bare',segments=32,sides=6)
+  cylinder(s,'oculus_cover',(0,0,19),(0,0,19.12),1.45,material='glass',segments=32)
+ elif n=='agricultural_cylinder':
+  for y in (-12,12):
+   for x in (-24,24):machinery('atmosphere_recycler',(x,y,-4),7)
+  hood('central_service_house',(0,0,12),12,5,3)
+  for x in (-36,36):
+   ring(s,'pressure_end_seal',(x,0,0),7,.25,material='stripe',segments=32,sides=6)
+   for y in (-4,4):b('end_access_leaf',(x+.15,y,0),(.3,5,8),'paint',False)
+ elif n=='fabrication_hall_shell':
+  for x in (-24,24):
+   hood('side_workshop',(x,20,8.4),14,7,3)
+   cylinder(s,'roof_exhaust',(x,13,15),(x,13,22),1.5,material='paint2',segments=16)
+   ring(s,'exhaust_rim',(x,13,22),1.6,.3,axis=(0,0,1),material='bare',segments=16,sides=6)
+  for y in (-18,18):a.beam('crane_runway',(-34,y,10),(34,y,10),.7,'stripe')
+ elif n=='ice_anchoring_terrace':
+  hood('anchor_control',(-26,10,-1),13,7,4)
+  for x in (-32,32):
+   for y in (-22,22):machinery('anchor_gearbox',(x,y,-1),5)
+  for x in (-10,10,30):
+   b('hatch_recess',(x,-8,-1.18),(7,8,.12),'dark',False);b('hatch_leaf',(x-1,-8,-.9),(4.5,7,.35),'paint2',False)
+  railing('edge_guard',(-38,-22,-1),(38,-22,-1))
+ elif n=='ore_transfer_terrace':
+  for x in (-26,26):
+   for y in (-11,11):
+    plate(s,'hopper_apron',[(x-6,y-4),(x+6,y-4),(x+4,y+4),(x-4,y+4)],-.9,.7,'paint2',chamfer=.3)
+    a.beam('hopper_lip',(x-5,y,1),(x+5,y,1),.7,'stripe')
+  machinery('conveyor_drive',(-34,0,2),6);hood('weighing_house',(20,12,-1),12,6,4)
+ elif n=='relay_dish_backframe':
+  # Feed receiver sits on four load-bearing legs, leaving the reflector backing open.
+  for x,y in ((14,0),(-14,0),(0,14),(0,-14)):a.beam('receiver_support',(x,y,2),(0,0,24),.8,'bare')
+  cylinder(s,'receiver',(0,0,22),(0,0,27),2,material='paint2',segments=20);ring(s,'receiver_crown',(0,0,27),2.15,.25,axis=(0,0,1),material='bare',segments=24,sides=6)
+  for x in (-5,5):machinery('azimuth_drive',(x,0,-9),5)
+ elif n=='launch_trench_bank':
+  for sign in (-1,1):
+   for x in (-32,0,32):
+    plate(s,'armour_cheek',[(x-7,sign*16),(x+7,sign*16),(x+5,sign*23),(x-5,sign*23)],8.5,.8,'paint',chamfer=.4)
+    b('launcher_louvre',(x,sign*19.5,9.35),(9,4,.15),'dark',False)
+    for k in (-3,-1,1,3):b('louvre_vane',(x+k,sign*19.5,9.7),(.4,4,.45),'bare',False)
+  hood('launch_control',(-35,19.5,9),12,5,3)
+ # Small attachment plinths close measured gaps between deck and equipment pads.
+ if n=='capital_berth_outrigger':
+  for y in (0,-3):b('service_pad_pedestal',(-26,y,2.5),(5,5,.5),'gunmetal')
+ elif n=='ring_spoke':b('service_pad_pedestal',(0,0,2.1),(4,4,.5),'gunmetal')
+ elif n=='fabrication_hall_shell':b('service_bridge',(0,-20,8.375),(8,2,.75),'gunmetal')
+ elif n in ('ice_anchoring_terrace','ore_transfer_terrace'):b('service_pad_pedestal',(0,18 if n.startswith('ice') else 14,-1),(5,5,.5),'gunmetal')
+ elif n=='relay_dish_backframe':b('service_pad_pedestal',(0,0,-2.875),(5,5,.25),'gunmetal')
+ # Relocate equipment mounts onto the finished housing/deck rather than inside it.
+ if n=='drydock_end_buttress':a.service((0,0,28.49))
+ elif n=='pressure_dome_habitat':a.service((20,0,5.89))
+ elif n=='agricultural_cylinder':a.service((0,0,15.49))
+ elif n=='capital_berth_outrigger':a.service((-26,-3,3))
+ elif n=='launch_trench_bank':a.service((-16,19.5,8.5))
+ # Hardware is kept out of collision contracts unless explicitly structural above.
+ s.detail=1
+ for name,(p,f) in list(s.sockets.items()):
+  if name in ('SOCKET_Service','SOCKET_Dock_Approach'):continue
+  axis=Vector(f).normalized();up=Vector((0,0,1)) if abs(axis.z)<.9 else Vector((0,1,0));side=axis.cross(up).normalized();up=side.cross(axis).normalized()
+  for i in range(8):
+   t=i*math.pi/4;center=Vector(p)+(side*math.cos(t)+up*math.sin(t))*2
+   cylinder(s,'flange_fastener',center-axis*.1,center+axis*.18,.13,material='gunmetal',segments=6)
+ s.detail=0
+
+def describe_row(row,directory):
+ raw=(Path(directory)/row['lods'][0]['file']).read_bytes();n=struct.unpack_from('<I',raw,12)[0];doc=json.loads(raw[20:20+n])
+ row['materialSlots']=[{'name':m['name'],'finish':m.get('extras',{}).get('forgeFinish'),'role':m.get('extras',{}).get('spacefaceMaterialRole')} for m in doc.get('materials',[])]
+ row['pivot']={'position':[0,0,0],'space':'glTF asset-local metres','normalization':'none'}
+ row['stateCapability']={'type':'static','motion':'none; assembly visibility states belong to recipe','damage':'none; no invented destruction rig'}
+ row['provenance']={'source':'tools/blender/forge/asset_bank_large.py','method':'original Forge procedural authored construction; no external model sources','sourceSHA256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+ (Path(directory)/(row['assetId']+'.json')).write_text(json.dumps(row,indent=2)+'\n')
+ return row
+
 def main():
  rows=[]
  for n in NAMES:
+  if '--only' in sys.argv and n not in sys.argv[sys.argv.index('--only')+1].split(','):continue
   reset_scene();a=build(n);a.s.bank_lod_factory=lambda level,name=n:build(name,level).s
-  row=export_asset(a.s,str(OUT),'large_'+n,'large',n.replace('_',' '),a.col,['large','reusable','Forge','metre-scale']);row['preflight']=PREFLIGHT;rows.append(row);print('LARGE_DONE',n,flush=True)
- dest=ROOT/'design/asset-bank/large.json';dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text(json.dumps({'schemaVersion':1,'family':'large','assetCount':12,'recipeCount':12,'status':'authoring-library candidate; not live runtime','preflight':PREFLIGHT,'assets':rows},indent=2)+'\n')
+  row=export_asset(a.s,str(OUT),'large_'+n,'large',n.replace('_',' '),a.col,['large','reusable','Forge','metre-scale']);row=describe_row(row,OUT);row['preflight']=PREFLIGHT;rows.append(row);print('LARGE_DONE',n,flush=True)
+ dest=Path(os.environ.get('SPACEFACE_LARGE_MANIFEST',str(ROOT/'design/asset-bank/large.json')));dest.parent.mkdir(parents=True,exist_ok=True)
+ if '--only' in sys.argv and dest.exists():
+  keep={a['assetId']:a for a in json.loads(dest.read_text())['assets']};keep.update({a['assetId']:a for a in rows});rows=[keep['large_'+name] for name in NAMES if 'large_'+name in keep]
+ dest.write_text(json.dumps({'schemaVersion':1,'family':'large','assetCount':len(rows),'recipeCount':12,'status':'authoring-library candidate; not live runtime','preflight':PREFLIGHT,'assets':rows},indent=2)+'\n')
 
 def contacts(source=False,top=False):
  reset_scene()
@@ -176,9 +315,21 @@ def review_scene(name,top=False):
  d=bpy.data.cameras.new('review_camera');o=bpy.data.objects.new('review_camera',d);scene.collection.objects.link(o);target=Vector((7.95,5.6,0));o.location=target+Vector((0,0,32) if top else (0,-16,27.71));o.rotation_euler=(target-o.location).to_track_quat('-Z','Y').to_euler();d.type='ORTHO';d.ortho_scale=24;scene.camera=o
  path=ROOT/'.devshots/asset-bank'/(name+'.png');path.parent.mkdir(parents=True,exist_ok=True);scene.render.filepath=str(path);bpy.ops.render.render(write_still=True);print('LARGE_CONTACT_DONE',path,flush=True)
 
+def assembly_bank_root():
+ """Explicit final-file projection for generation and rendering; no hash equivalence assumed."""
+ if '--bank-root' in sys.argv:
+  index=sys.argv.index('--bank-root')
+  if index+1>=len(sys.argv) or sys.argv[index+1].startswith('--'):
+   raise ValueError('--bank-root requires a directory path')
+  path=Path(sys.argv[index+1]).expanduser().resolve()
+ else:
+  path=Path(os.environ.get('ASSET_BANK_ROOT',str(ROOT/'assets/models/asset-bank'))).expanduser().resolve()
+ if not path.is_dir():raise ValueError('Assembly bank directory does not exist: '+str(path))
+ return path
+
 def assemblies():
  db={}
- for f in (ROOT/'assets/models/asset-bank').rglob('*.json'):
+ for f in assembly_bank_root().rglob('*.json'):
   row=json.loads(f.read_text())
   if 'assetId' in row:db[row['assetId']]=row
  def basis(socket):
@@ -196,19 +347,45 @@ def assemblies():
    joins.append({'parent':{'instance':parent,'socket':parent_socket},'child':{'instance':i,'socket':child_socket},'positionErrorMetres':delta.length,'forwardDot':(rotation@Vector(cs['forward'])).dot(pq@Vector(ps['forward'])),'upDot':(rotation@Vector(cs['up'])).dot(pq@Vector(ps['up']))});return row
   aid='large_'+large;bb=db[aid]['bounds'];extent=max(abs(bb['min'][2]),abs(bb['max'][2]));side=extent+18
   if rid!='ancient_service_threshold':
-   root('primary',aid,(0,0,-side));root('return_bank','large_drydock_side_wall',(0,0,30),(0,1,0,0));attach('operations',operation,'mount','primary','SOCKET_Service')
+   root('primary',aid,(0,0,-side))
+   returns={'relief_berth':'pressure_dome_habitat','screened_illicit_intake':'fabrication_hall_shell','bulk_coolant_exchange':'agricultural_cylinder','freight_rail_transfer_yard':'ore_transfer_terrace','survey_cut_face_worksite':'ice_anchoring_terrace','quarantine_transfer_platform':'pressure_dome_habitat','derelict_rib_corridor':'capital_berth_outrigger'}
+   return_id='large_'+returns.get(rid,'drydock_side_wall');rb=db[return_id]['bounds'];return_z=max(abs(rb['min'][2]),abs(rb['max'][2]))+24
+   root('return_bank',return_id,(0,0,return_z),(0,1,0,0));attach('operations',operation,'mount','primary','SOCKET_Service')
    if payload.startswith('cargo-'):attach('payload',payload,'SOCKET_Mount','return_bank','SOCKET_Service')
    elif rid=='solar_orchard_hub':attach('collector',payload,'hinge','operations','wing')
    else:attach('instrument',payload,'mount','return_bank','SOCKET_Service')
   else:
-   for gate,x in [('near',-36),('far',36)]:
+   for gate,x in [('near',-36),('inner_a',-24),('inner_b',-12),('center',0),('inner_c',12),('inner_d',24),('far',36)]:
     root(gate+'_jamb_left','threshold_jamb',(x,0,2.2),(0,math.sqrt(.5),0,math.sqrt(.5)));attach(gate+'_lintel','threshold_lintel','SOCKET_JAMB_-2.2',gate+'_jamb_left','SOCKET_LINTEL');attach(gate+'_jamb_right','threshold_jamb','SOCKET_LINTEL',gate+'_lintel','SOCKET_JAMB_2.2')
+  if rid=='ancient_service_threshold':
+   for side_name,z in [('port',-3.3),('starboard',3.3)]:
+    root(side_name+'_rail_0','measuring_rail',(-35,0,z))
+    for j in range(1,15):attach(side_name+'_rail_'+str(j),'measuring_rail','SOCKET_A',side_name+'_rail_'+str(j-1),'SOCKET_B')
   if rid=='solar_orchard_hub':
-   root('tee','truss_tee',(0,0,-side-15));attach('span_west','truss_long','SOCKET_LEG_0_1','tee','SOCKET_LEG_0_1');attach('span_east','truss_short','SOCKET_LEG_0_0','tee','SOCKET_LEG_1_1');attach('terminal','terminal_cap','SOCKET_FRAME','tee','SOCKET_LEG_2_1')
+   # A continuous load-bearing collector spine extends from the real habitat-spoke end.
+   previous='primary';previous_port='SOCKET_Join_A'
+   for j in range(6):
+    hub='collector_hub_'+str(j);attach(hub,'truss_cross','SOCKET_LEG_1_1',previous,previous_port)
+    for k,port_name in enumerate(['SOCKET_LEG_2_1','SOCKET_LEG_3_1']):
+     hinge=hub+'_hinge_'+str(k);attach(hinge,'ops_solar_hinge_mast_adapter','mount',hub,port_name);attach(hinge+'_wing','ops_rectangular_solar_wing','hinge',hinge,'wing')
+    previous=hub;previous_port='SOCKET_LEG_0_1'
+   attach('tee','truss_tee','SOCKET_LEG_0_1','primary','SOCKET_Join_B')
+   attach('span_east','truss_short','SOCKET_LEG_0_0','tee','SOCKET_LEG_1_1')
+   attach('span_branch','truss_long','SOCKET_LEG_0_0','tee','SOCKET_LEG_2_1')
+   attach('terminal','terminal_cap','SOCKET_FRAME','span_east','SOCKET_LEG_0_1')
   if rid=='bulk_coolant_exchange':
-   root('pipe','pressure_pipe_straight',(0,0,-side-20));attach('elbow','pressure_pipe_elbow_90','SOCKET_FLOW_0','pipe','SOCKET_FLOW_1');attach('valve','pressure_pipe_valve','SOCKET_FLOW_0','elbow','SOCKET_FLOW_1')
-  if rid=='relief_berth':root('corridor','pressure_corridor_straight',(0,0,-side-20));attach('collar','docking_collar','SOCKET_PASSAGE_-1_0','corridor','SOCKET_PASSAGE_1_0')
-  if rid=='survey_cut_face_worksite':root('cut_parent','seam_bearing_quarried_parent_rock',(-20,0,-side-28));attach('removable_wedge','matched_removable_wedge','SOCKET_MATCHED_CUT','cut_parent','SOCKET_MATCHED_CUT')
+   # Pump skid bears directly on the cylinder crown; attached pipe flanges support the loop.
+   root('coolant_pump','pump_skid',(-16,11.8,-side))
+   attach('pipe','pressure_pipe_straight','SOCKET_FLOW_0','coolant_pump','SOCKET_FLOW_1')
+   attach('elbow','pressure_pipe_elbow_90','SOCKET_FLOW_0','pipe','SOCKET_FLOW_1')
+   attach('valve','pressure_pipe_valve','SOCKET_FLOW_0','elbow','SOCKET_FLOW_1')
+  if rid=='relief_berth':
+   attach('corridor','pressure_corridor_straight','SOCKET_PASSAGE_-1_0','return_bank','SOCKET_Airlock')
+   attach('collar','docking_collar','SOCKET_PASSAGE_-1_0','corridor','SOCKET_PASSAGE_1_0')
+  if rid=='survey_cut_face_worksite':
+   rock_y=-1.25-db['seam_bearing_quarried_parent_rock']['bounds']['min'][1]
+   root('cut_parent','seam_bearing_quarried_parent_rock',(-20,rock_y,-side))
+   attach('removable_wedge','matched_removable_wedge','SOCKET_MATCHED_CUT','cut_parent','SOCKET_MATCHED_CUT')
   corners=[]
   for m in instances:
    bounds=db[m['assetId']]['bounds'];q=Quaternion((m['rotation'][3],*m['rotation'][:3]));t=Vector(m['translation'])
@@ -226,10 +403,35 @@ def assemblies():
   assert 64<=max(hi[i]-lo[i] for i in range(3))<=240,(rid,lo,hi)
   focal={'instance':'near_jamb_left','socket':'SOCKET_LINTEL'} if rid=='ancient_service_threshold' else {'instance':'primary','socket':'SOCKET_Service'}
   ops=[{'instance':'far_lintel','socket':'SOCKET_JAMB_2.2'}] if rid=='ancient_service_threshold' else [{'instance':'operations','socket':db[operation]['sockets'][-1]['name']}]
-  recipes.append({'id':rid,'status':'reusable template, no canonical location/gameplay spawning','dependencies':sorted(set(i['assetId'] for i in instances)),'instances':instances,'joins':joins,'bounds':{'min':lo,'max':hi},'approach':{'min':[lo[0]-10,-radius,-radius],'max':[0,radius,radius]},'exit':{'min':[0,-radius,-radius],'max':[hi[0]+10,radius,radius]},'focalSocket':focal,'operationsSockets':ops,'clearanceValidation':{'method':'201 sphere samples along X against transformed compound oriented boxes','probeRadiusMetres':radius,'minimumSurfaceDistanceMetres':nearest,'sampleComparisons':samples,'scope':'authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified'},'states':[{'id':'working','visibleInstances':[i['id'] for i in instances],'description':'Fixed equipment and seated payload present'},{'id':'occupied','visibleInstances':[i['id'] for i in instances],'description':'Same geometry; occupancy remains consumer behavior'},{'id':'after_use','visibleInstances':[i['id'] for i in instances if i['id']!='payload'],'description':'Removable payload absent; no damage state implied'}],'normalization':'none; unit scale in absolute metres'})
+  recipes.append({'id':rid,'status':'reusable template, no canonical location/gameplay spawning','dependencies':sorted(set(i['assetId'] for i in instances)),'instances':instances,'joins':joins,'bounds':{'min':lo,'max':hi},'approach':{'min':[lo[0]-10,-radius,-radius],'max':[0,radius,radius]},'exit':{'min':[0,-radius,-radius],'max':[hi[0]+10,radius,radius]},'focalSocket':focal,'operationsSockets':ops,'clearanceValidation':{'method':'201 sphere samples along X against transformed compound oriented boxes','probeRadiusMetres':radius,'minimumSurfaceDistanceMetres':nearest,'sampleComparisons':samples,'scope':'authored proxies only; unrepresented pressure skins and decorative meshes not collision-certified'},'states':[{'id':'working','visibleInstances':[i['id'] for i in instances],'description':'Fixed equipment and seated payload present'},{'id':'occupied','visibleInstances':[i['id'] for i in instances],'description':'Same geometry; occupancy remains consumer behavior'},{'id':'after_use','visibleInstances':[i['id'] for i in instances if i['id'] not in ('payload','removable_wedge')],'description':'Removable payload or matched cut wedge absent; no damage state implied'}],'dependencyLocks':{asset: [{'level':l['level'],'sha256':l['sha256']} for l in db[asset]['lods']] for asset in sorted(set(i['assetId'] for i in instances))},'normalization':'none; unit scale in absolute metres'})
  dest=ROOT/'design/asset-bank/assemblies.json';dest.parent.mkdir(parents=True,exist_ok=True);dest.write_text(json.dumps({'schemaVersion':1,'modelCount':12,'recipeCount':12,'unit':'metre','coordinateSystem':'glTF +X forward +Y up +Z starboard','socketToleranceMetres':.0002,'recipes':recipes},indent=2)+'\n');print('ASSEMBLIES_DONE',len(recipes),flush=True)
 
+def assembly_contacts():
+ reset_scene();db={}
+ for file in assembly_bank_root().rglob('*.json'):
+  row=json.loads(file.read_text())
+  if 'assetId' in row:db[row['assetId']]=(row,file.parent)
+ recipes=json.loads((ROOT/'design/asset-bank/assemblies.json').read_text())['recipes']
+ conversion=Matrix.Rotation(math.pi/2,4,'X')
+ for index,recipe in enumerate(recipes):
+  if '--recipe' in sys.argv and recipe['id']!=sys.argv[sys.argv.index('--recipe')+1]:continue
+  new=[]
+  for member in recipe['instances']:
+   asset,directory=db[member['assetId']];before=set(bpy.data.objects);bpy.ops.import_scene.gltf(filepath=str(directory/asset['lods'][0]['file']));meshes=[o for o in bpy.data.objects if o not in before and o.type=='MESH'];q=Quaternion((member['rotation'][3],*member['rotation'][:3]));transform=conversion@Matrix.Translation(Vector(member['translation']))@q.to_matrix().to_4x4()@conversion.inverted()
+   for o in meshes:matrix=o.matrix_world.copy();o.parent=None;o.matrix_world=transform@matrix
+   new.extend(meshes)
+  if '--recipe' in sys.argv:
+   from types import SimpleNamespace
+   path=ROOT/'.devshots/asset-bank'/('assembly_'+recipe['id']+'_export.png');path.parent.mkdir(parents=True,exist_ok=True);render_preview(SimpleNamespace(objects=new),str(path),width=1400,height=1000,samples=32);return
+  corners=[o.matrix_world@Vector(c) for o in new for c in o.bound_box];lo=Vector(tuple(min(v[i] for v in corners) for i in range(3)));hi=Vector(tuple(max(v[i] for v in corners) for i in range(3)));center=(lo+hi)*.5;scale=4.3/max(hi-lo);offset=Vector(((index%4)*5.3,(index//4)*5.6,0))
+  for o in new:o.location=(o.location-center)*scale+offset;o.scale*=scale
+  curve=bpy.data.curves.new('label','FONT');curve.body=recipe['id'].replace('_',' ');curve.size=.19;curve.align_x='CENTER';label=bpy.data.objects.new('label',curve);bpy.context.scene.collection.objects.link(label);label.location=offset+Vector((0,-2.3,-1.2))
+ review_scene('large_assemblies_60')
+
 if __name__=='__main__':
- if '--assemblies' in sys.argv:assemblies()
+ if '--assembly-contacts' in sys.argv:assembly_contacts()
+ elif '--review' in sys.argv:
+  name=sys.argv[sys.argv.index('--review')+1];path=ROOT/'.devshots/asset-bank'/('large_'+name+'_individual.png');path.parent.mkdir(parents=True,exist_ok=True);render_glb_preview(str(OUT/('large_'+name+'_lod0.glb')),str(path))
+ elif '--assemblies' in sys.argv:assemblies()
  elif '--contacts' in sys.argv:contacts('--source' in sys.argv,'--top' in sys.argv)
  else:main()

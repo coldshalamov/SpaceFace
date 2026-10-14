@@ -446,7 +446,9 @@ export class WeaponVfxPresenter {
     this._pxCamera = camera || this._pxCamera;
     this._pxViewportHeight = viewportHeight;
     const index = this.state && this.state.entityIndex;
-    const entities = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles))
+    const entities = Array.isArray(this.state && this.state.weaponVfxProjectiles)
+      ? this.state.weaponVfxProjectiles
+      : (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles))
       ? index.projectiles
       : ((this.state && this.state.entityList) || []);
     ageShieldContacts(dt);
@@ -482,6 +484,9 @@ export class WeaponVfxPresenter {
   }
 
   _presenterProjectileEntities() {
+    if (Array.isArray(this.state && this.state.weaponVfxProjectiles)) {
+      return this.state.weaponVfxProjectiles;
+    }
     const index = this.state && this.state.entityIndex;
     if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)) {
       return index.projectiles;
@@ -554,6 +559,10 @@ export class WeaponVfxPresenter {
       return true;
     }
     const index = this.state && this.state.entityIndex;
+    if (Array.isArray(this.state && this.state.weaponVfxProjectiles)
+      && this.state.weaponVfxProjectiles.length > 0) {
+      return true;
+    }
     if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)
       && index.projectiles.length > 0) {
       return true;

@@ -3,22 +3,361 @@
   "status": "authoring-library candidates; no live-runtime or whole-asset acceptance claim",
   "source": "tools/blender/forge/asset_bank_natural.py",
   "tier": "C",
-  "authority": ["tools/blender/forge/FORGE.md", "docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md", "docs/worldbuilding/README.md", "tools/blender/forge/ships/borrowed_voice_tissue.py"],
+  "authority": [
+    "tools/blender/forge/FORGE.md",
+    "docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md",
+    "docs/worldbuilding/README.md",
+    "tools/blender/forge/ships/borrowed_voice.py",
+    "tools/blender/forge/ships/place_asteroid_rock_a.py"
+  ],
   "fictionDevelopmentAgreement": "ART EXTRAPOLATION: reusable geological cuts, host-contact tissue and dormant ceramic machine interfaces. No new species, maker, ancient civilization, history, gameplay promise or canon is asserted.",
-  "supportedViews": ["CPU source oblique", "CPU exported GLB oblique", "top"],
+  "supportedViews": [
+    "CPU source oblique",
+    "CPU exported GLB oblique",
+    "top"
+  ],
   "allSupportedViewZonesClassified": false,
   "visibleZones": [
-    {"zone":"geological mass and fracture faces","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Bare stratified mineral, fractured along deliberately stepped cleavages; untiled dry rough stone, no hull grid, plastic sheen or randomized spike decoration. Quarried parent and wedge share the identical mating plane; collars preserve bores."},
-    {"zone":"ice and crystalline faces","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Opaque mineral/ice crystal facets with satin dielectric response, physical ridges and split gaps. No transparent toy glass, emissive crystal or scientific claim."},
-    {"zone":"growth lamina and load-carrying stems","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Bare dry calcified organic tissue, pale outer ridges over dark channels. Branches taper continuously and root into host-contact feet; fan and lung folds have thickness. No lacquer, machinery panel tile, floating cyst or invented organism identity."},
-    {"zone":"host-contact pads and severed interfaces","disposition":"billed","dominant":false,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Flattened calcified bases transmit tissue loads to adjacent host surfaces; exposed stump channels receive distinct dark interior. Pads and end sockets identify actual mounting/contact surfaces."},
-    {"zone":"ancient ceramic shell and structural sections","disposition":"billed","dominant":true,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Sintered ceramic segments with broad dry faces, stepped laps, restrained chamfers and recessed joints. Load enters feet, tenons or rebates; folded/channeled sections retain deliberate service openings. No human lacquer, checker texture or arbitrary decorative rune."},
-    {"zone":"ancient recessed substrate and mineral inserts","disposition":"billed","dominant":false,"supportedViews":["CPU source oblique","CPU exported GLB oblique","top"],"bill":"Dark bare mineral substrate and sparse warm mineral inserts set into ceramic housings, non-emissive and mechanically supported. No unexplained lights, floating trim or modern painted hazard marks."}
+    {
+      "zone": "geological mass and fracture faces",
+      "disposition": "billed",
+      "dominant": true,
+      "supportedViews": [
+        "CPU source oblique",
+        "CPU exported GLB oblique",
+        "top"
+      ],
+      "bill": "Bare stratified mineral, fractured along deliberately stepped cleavages; untiled dry rough stone, no hull grid, plastic sheen or randomized spike decoration. Quarried parent and wedge share the identical mating plane; collars preserve bores."
+    },
+    {
+      "zone": "ice and crystalline faces",
+      "disposition": "billed",
+      "dominant": true,
+      "supportedViews": [
+        "CPU source oblique",
+        "CPU exported GLB oblique",
+        "top"
+      ],
+      "bill": "Opaque mineral/ice crystal facets with satin dielectric response, physical ridges and split gaps. No transparent toy glass, emissive crystal or scientific claim."
+    },
+    {
+      "zone": "growth lamina and load-carrying stems",
+      "disposition": "billed",
+      "dominant": true,
+      "supportedViews": [
+        "CPU source oblique",
+        "CPU exported GLB oblique",
+        "top"
+      ],
+      "bill": "Bare dry calcified organic tissue, pale outer ridges over dark channels. Branches taper continuously and root into host-contact feet; fan and lung folds have thickness. No lacquer, machinery panel tile, floating cyst or invented organism identity."
+    },
+    {
+      "zone": "host-contact pads and severed interfaces",
+      "disposition": "billed",
+      "dominant": false,
+      "supportedViews": [
+        "CPU source oblique",
+        "CPU exported GLB oblique",
+        "top"
+      ],
+      "bill": "Flattened calcified bases transmit tissue loads to adjacent host surfaces; exposed stump channels receive distinct dark interior. Pads and end sockets identify actual mounting/contact surfaces."
+    },
+    {
+      "zone": "ancient ceramic shell and structural sections",
+      "disposition": "billed",
+      "dominant": true,
+      "supportedViews": [
+        "CPU source oblique",
+        "CPU exported GLB oblique",
+        "top"
+      ],
+      "bill": "Sintered ceramic segments with broad dry faces, stepped laps, restrained chamfers and recessed joints. Load enters feet, tenons or rebates; folded/channeled sections retain deliberate service openings. No human lacquer, checker texture or arbitrary decorative rune."
+    },
+    {
+      "zone": "ancient recessed substrate and mineral inserts",
+      "disposition": "billed",
+      "dominant": false,
+      "supportedViews": [
+        "CPU source oblique",
+        "CPU exported GLB oblique",
+        "top"
+      ],
+      "bill": "Dark bare mineral substrate and sparse warm mineral inserts set into ceramic housings, non-emissive and mechanically supported. No unexplained lights, floating trim or modern painted hazard marks."
+    }
   ],
   "shapeGrammar": "Assemblies derive from fracture, cleavage, load paths, growth contact anatomy, ceramic channel sections and interlocking stepped joints. Tube-derived tissue is tapered and branched with continuous transported frames; ring apertures remain open; slab shells gain rebated edges and seated supports.",
   "componentReferenceDecision": "not_needed",
   "retainedZones": [],
   "workingScene": "Regenerate each complete surfaced source scene with recipe --only ASSET_ID; no external blend dependency",
-  "review": {"scope":"supporting reusable pieces, not assembled landmarks", "G0":"source and metre/socket/collision contracts", "G1_G2_G4":"CPU source and exported candidate visual inspection; actual gameplay renderer still pending", "G3":"untiled material response and canonical Forge finishing", "G5":"three measured GLB LODs", "G6":"library only, runtime integration pending", "G7":"root independent validator and review pending", "hashBinding":"per-asset sidecar sha256 for every LOD"},
-  "assets": []
+  "review": {
+    "scope": "supporting reusable pieces, not assembled landmarks",
+    "G0": "source and metre/socket/collision contracts",
+    "G1_G2_G4": "CPU source and exported candidate visual inspection; actual gameplay renderer still pending",
+    "G3": "untiled material response and canonical Forge finishing",
+    "G5": "three measured GLB LODs",
+    "G6": "library only, runtime integration pending",
+    "G7": "root independent validator and review pending",
+    "hashBinding": "per-asset sidecar sha256 for every LOD",
+    "inspected": {
+      "date": "2026-10-14",
+      "all36": "Source and freshly reimported LOD0 CPU oblique contact sheets personally inspected; silhouettes, visible construction, material distinction and source/export agreement checked.",
+      "sixRepresentatives": "LOD0 900x700 CPU oblique, top views and LOD2 CPU oblique inspected for the six qualityIteration reviewTargets.",
+      "resolved": [
+        "Clamped fracture cap overlap replaced by true complementary bisects",
+        "Organic bend frame discontinuities replaced with transported frames",
+        "Tube-segment cap artifacts replaced by continuous tapered sweeps",
+        "Floating bridge cross-laces reseated at authored curve stations",
+        "Primitive collar replaced by fractured multi-level wall with preserved bore",
+        "Copper-like geological bands replaced by geometric mineral strata",
+        "Cyst shell ridges and seated membrane supports added",
+        "Coplanar dark jamb core cap fixed"
+      ],
+      "limitations": [
+        "CPU lighting is not the live gameplay Look.",
+        "LOD2 deliberately simplifies small mineral strata and tissue shell ridges; lower-LOD shading is softer than LOD0.",
+        "Only six representative top/coarse-LOD views were reviewed; this is not whole-library gameplay acceptance.",
+        "Collision solids are approximate and do not certify assembly clearances."
+      ],
+      "hashBinding": "Every output sidecar records SHA256 for all three exact reviewed GLBs; output batch commit 3f8559e3."
+    }
+  },
+  "assets": [
+    {
+      "assetId": "seam_bearing_quarried_parent_rock",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/seam_bearing_quarried_parent_rock/seam_bearing_quarried_parent_rock.json"
+    },
+    {
+      "assetId": "matched_removable_wedge",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/matched_removable_wedge/matched_removable_wedge.json"
+    },
+    {
+      "assetId": "stepped_fracture_shelf",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/stepped_fracture_shelf/stepped_fracture_shelf.json"
+    },
+    {
+      "assetId": "bore_plug",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/bore_plug/bore_plug.json"
+    },
+    {
+      "assetId": "bored_rock_collar",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/bored_rock_collar/bored_rock_collar.json"
+    },
+    {
+      "assetId": "rock_bridge_span",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/rock_bridge_span/rock_bridge_span.json"
+    },
+    {
+      "assetId": "cleaved_slab",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/cleaved_slab/cleaved_slab.json"
+    },
+    {
+      "assetId": "rubble_berm",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/rubble_berm/rubble_berm.json"
+    },
+    {
+      "assetId": "ice_pressure_ridge",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/ice_pressure_ridge/ice_pressure_ridge.json"
+    },
+    {
+      "assetId": "split_ice_plate",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/split_ice_plate/split_ice_plate.json"
+    },
+    {
+      "assetId": "crystal_fan",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/crystal_fan/crystal_fan.json"
+    },
+    {
+      "assetId": "metallic_vein_rib",
+      "category": "geology",
+      "manifest": "assets/models/asset-bank/natural/metallic_vein_rib/metallic_vein_rib.json"
+    },
+    {
+      "assetId": "nerve_lace_corner",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/nerve_lace_corner/nerve_lace_corner.json"
+    },
+    {
+      "assetId": "branching_nerve_mat",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/branching_nerve_mat/branching_nerve_mat.json"
+    },
+    {
+      "assetId": "calcified_pipe_collar",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/calcified_pipe_collar/calcified_pipe_collar.json"
+    },
+    {
+      "assetId": "ribbed_vent_lung",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/ribbed_vent_lung/ribbed_vent_lung.json"
+    },
+    {
+      "assetId": "spore_chimney_stalk",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/spore_chimney_stalk/spore_chimney_stalk.json"
+    },
+    {
+      "assetId": "short_tendril_bridge",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/short_tendril_bridge/short_tendril_bridge.json"
+    },
+    {
+      "assetId": "arched_tendril_bridge",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/arched_tendril_bridge/arched_tendril_bridge.json"
+    },
+    {
+      "assetId": "supported_cyst_nest",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/supported_cyst_nest/supported_cyst_nest.json"
+    },
+    {
+      "assetId": "hull_leech_attachment_bed",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/hull_leech_attachment_bed/hull_leech_attachment_bed.json"
+    },
+    {
+      "assetId": "root_anchor_pad",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/root_anchor_pad/root_anchor_pad.json"
+    },
+    {
+      "assetId": "severed_tendril_stump",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/severed_tendril_stump/severed_tendril_stump.json"
+    },
+    {
+      "assetId": "dead_crown",
+      "category": "growth",
+      "manifest": "assets/models/asset-bank/natural/dead_crown/dead_crown.json"
+    },
+    {
+      "assetId": "threshold_jamb",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/threshold_jamb/threshold_jamb.json"
+    },
+    {
+      "assetId": "threshold_lintel",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/threshold_lintel/threshold_lintel.json"
+    },
+    {
+      "assetId": "shutter_vane",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/shutter_vane/shutter_vane.json"
+    },
+    {
+      "assetId": "repair_face_tile",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/repair_face_tile/repair_face_tile.json"
+    },
+    {
+      "assetId": "sealed_vault_seam",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/sealed_vault_seam/sealed_vault_seam.json"
+    },
+    {
+      "assetId": "quarantine_pylon_foot",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/quarantine_pylon_foot/quarantine_pylon_foot.json"
+    },
+    {
+      "assetId": "prism_instrument_mount",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/prism_instrument_mount/prism_instrument_mount.json"
+    },
+    {
+      "assetId": "dormant_machine_rack",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/dormant_machine_rack/dormant_machine_rack.json"
+    },
+    {
+      "assetId": "measuring_rail",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/measuring_rail/measuring_rail.json"
+    },
+    {
+      "assetId": "boundary_vane",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/boundary_vane/boundary_vane.json"
+    },
+    {
+      "assetId": "service_plinth",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/service_plinth/service_plinth.json"
+    },
+    {
+      "assetId": "ossuary_spine_segment",
+      "category": "ancient",
+      "manifest": "assets/models/asset-bank/natural/ossuary_spine_segment/ossuary_spine_segment.json"
+    }
+  ],
+  "qualityIteration": {
+    "request": "2026-10-14 higher detail, quality and coherent existing game style with meaningful variation",
+    "status": "Revised authoring-library candidates; first four independently reviewed for library use; remaining 32 await independent review. Live game Look, placement and scene performance remain open.",
+    "references": "Established belt-rock geometric strata and Borrowed Voice thick scalloped tissue laminae; ancient ceramic retains distinct dry rebated load-bearing sections",
+    "reviewTargets": [
+      "seam_bearing_quarried_parent_rock",
+      "matched_removable_wedge",
+      "stepped_fracture_shelf",
+      "bore_plug",
+      "bored_rock_collar",
+      "rock_bridge_span",
+      "cleaved_slab",
+      "rubble_berm",
+      "ice_pressure_ridge",
+      "split_ice_plate",
+      "crystal_fan",
+      "metallic_vein_rib",
+      "nerve_lace_corner",
+      "branching_nerve_mat",
+      "calcified_pipe_collar",
+      "ribbed_vent_lung",
+      "spore_chimney_stalk",
+      "short_tendril_bridge",
+      "arched_tendril_bridge",
+      "supported_cyst_nest",
+      "hull_leech_attachment_bed",
+      "root_anchor_pad",
+      "severed_tendril_stump",
+      "dead_crown",
+      "threshold_jamb",
+      "threshold_lintel",
+      "shutter_vane",
+      "repair_face_tile",
+      "sealed_vault_seam",
+      "quarantine_pylon_foot",
+      "prism_instrument_mount",
+      "dormant_machine_rack",
+      "measuring_rail",
+      "boundary_vane",
+      "service_plinth",
+      "ossuary_spine_segment"
+    ],
+    "notAcceptance": "CPU candidate views do not substitute for live game Look or independent whole-asset review",
+    "revisionFamilies": {
+      "geology": "Fractured strata and cleavage ledges, complementary split masses, chipped core extraction, branching in-situ mineral volume and terminated crystals. Bore and mineral LODs preserve semantic seam topology.",
+      "growth": "Continuous thick hollow tissue, reticulated nerve branches, supported intercostal membranes, forked host anchorage, torn stump lumen and suspended tendon webs.",
+      "ancient": "Swept ceramic load paths, replaceable sections, real recessed key channels, dark internal seats, indexed optical instrument terminal. Authored LODs preserve chamfers; simple shapes may retain source topology."
+    },
+    "inspectionScope": "All 36 revised candidates have source and exact-export CPU views. The latest 32 have each been inspected near and top; representative LOD2 views inspected. These views are not live-game evidence.",
+    "limitations": [
+      "Collision solids remain conservative authored approximations, with apertures kept open.",
+      "Growth and generic geological decimation simplify fine fibres/ledges; topology-preserving ancient LODs cost more than aggressive decimation.",
+      "No new species, precursor makers or lore canon introduced.",
+      "Unregistered reusable library candidates; no runtime or publication changes by this lane."
+    ],
+    "lastRevisionUtc": "2026-10-14T03:58:00Z"
+  }
 }

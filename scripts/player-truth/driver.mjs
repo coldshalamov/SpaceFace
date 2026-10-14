@@ -429,8 +429,9 @@ export async function fightBeat(page, beat) {
   await noteClick(page, x, y);
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
   // ~5 rad/s; holding it for a whole beat overshoots and the ship spins in place under fire).
-  const keys = []; let turn = null; let err = 0;
-  if (fighterMemory.breakBeats > 0 && tg.away != null) {
+  const keys = []; let err = 0;
+  const retreat = fighterMemory.breakBeats > 0 && tg.away != null;
+  if (retreat) {
     fighterMemory.breakBeats--;
     err = tg.away; keys.push('KeyW');
   } else {
@@ -438,7 +439,14 @@ export async function fightBeat(page, beat) {
     if (tg.dist < 230) keys.push('KeyS');
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
-  if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
+  const tapTurn = async (bearing) => {
+    if (!Number.isFinite(bearing) || Math.abs(bearing) <= 0.12) return;
+    const turn = bearing > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
+    noteKey(page, turn);
+    // Release within the public input call, before any observer/aim RPC can delay a
+    // simulation-time deadline. Reobserve between short taps instead of overshooting.
+    await page.keyboard.press(turn, { delay: Math.min(80, Math.abs(bearing) / 4.5 * 1000) });
+  };
   const refreshAim = async () => {
     const fresh = await page.evaluate(readTarget, { selectedOnly: true });
     if (!fresh || fresh.none || !fresh.selected) return true;
@@ -447,22 +455,14 @@ export async function fightBeat(page, beat) {
       x = nextX; y = nextY;
       await page.mouse.move(x, y, { steps: 1 });
     }
+    await tapTurn(retreat && fresh.away != null ? fresh.away : fresh.rel);
     return false;
   };
   try {
     await page.mouse.down();
     for (const k of keys) { noteKey(page, k); await page.keyboard.down(k); }
-    const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
-    let waited = null;
-    if (turn) {
-      noteKey(page, turn);
-      await page.keyboard.down(turn);
-      waited = await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
-      await page.keyboard.up(turn);
-    }
-    if (!waited?.stop && !waited?.watch && !waited?.timeout) {
-      await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
-    }
+    await tapTurn(err);
+    await waitSim(page, 0.6, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
   } finally {
     for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k).catch(() => {});
     await noteClick(page, x, y);

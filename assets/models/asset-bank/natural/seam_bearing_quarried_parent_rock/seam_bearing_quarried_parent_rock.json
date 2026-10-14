@@ -1,0 +1,126 @@
+{
+  "assetId": "seam_bearing_quarried_parent_rock",
+  "category": "geology",
+  "description": "seam bearing quarried parent rock; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_MATCHED_CUT",
+      "position": [
+        0.9,
+        1.3,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -0.1,
+          1.3,
+          -0.0
+        ],
+        "size": [
+          1.6,
+          2,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.8330028057098389,
+      -0.4075857400894165,
+      -1.8950741291046143
+    ],
+    "max": [
+      0.9058241844177246,
+      3.2041609287261963,
+      1.8001068830490112
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "seam_bearing_quarried_parent_rock_lod0.glb",
+      "triangles": 1898,
+      "draws": 4,
+      "bytes": 194708,
+      "method": "source",
+      "sha256": "cf98116bb243a8bf6aabfb71a400a47b22107c9cd6e56de943e690affc74a695"
+    },
+    {
+      "level": 1,
+      "file": "seam_bearing_quarried_parent_rock_lod1.glb",
+      "triangles": 758,
+      "draws": 3,
+      "bytes": 88448,
+      "method": "Forge-decimation",
+      "sha256": "5f74a2a9c84d69ed84170f31a98b78a6592531e157b919431db747e69051f9fd"
+    },
+    {
+      "level": 2,
+      "file": "seam_bearing_quarried_parent_rock_lod2.glb",
+      "triangles": 340,
+      "draws": 3,
+      "bytes": 45168,
+      "method": "Forge-decimation",
+      "sha256": "8eff58374d67ff08527f6828cd266529b03738e93cebcc833d1e53f285b3b606"
+    }
+  ]
+}

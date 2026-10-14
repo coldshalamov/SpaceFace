@@ -61,6 +61,7 @@ function foldBoostVitals(row, fields) {
 export function createReadModel() {
   return {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
+    weaponVfxProjectiles: new Map(), // visual-factory-skipped shots, for the weapon presenter only
     aux: new Map(),        // rowId -> aux row (far | rock | dressing)
     auxCells: new Map(),   // numeric cellKey -> Set(rowId)
     auxVersion: 0,
@@ -68,6 +69,39 @@ export function createReadModel() {
     meshScratch: [],
     domains: new Map(),    // domain key -> mirror facade (stage 4; mutate-in-place)
   };
+}
+
+export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
+  const seen = new Set();
+  for (const info of projectileInfos || []) {
+    if (!info || !Number.isSafeInteger(info.entityId)) continue;
+    const id = info.entityId;
+    seen.add(id);
+    let row = readModel.weaponVfxProjectiles.get(id);
+    if (!row) {
+      row = { id, type: 'projectile', pos: {}, prevPos: {}, vel: {}, data: {} };
+      readModel.weaponVfxProjectiles.set(id, row);
+    }
+    row.type = 'projectile';
+    row.alive = info.alive !== false;
+    row.team = Number.isFinite(info.team) ? info.team : 0;
+    row.ownerId = Number.isSafeInteger(info.ownerId) ? info.ownerId : null;
+    row.pos.x = finite(info.x);
+    row.pos.y = finite(info.y);
+    row.pos.z = finite(info.z);
+    row.prevPos.x = finite(info.prevX, row.pos.x);
+    row.prevPos.y = finite(info.prevY, row.pos.y);
+    row.prevPos.z = finite(info.prevZ, row.pos.z);
+    row.vel.x = finite(info.vx);
+    row.vel.y = finite(info.vy);
+    row.vel.z = finite(info.vz);
+    row.rot = finite(info.rot);
+    row.radius = finite(info.radius);
+    row.data.weaponId = typeof info.weaponId === 'string' ? info.weaponId : null;
+  }
+  for (const id of readModel.weaponVfxProjectiles.keys()) {
+    if (!seen.has(id)) readModel.weaponVfxProjectiles.delete(id);
+  }
 }
 
 export function applySpawnInfos(readModel, spawnInfos) {

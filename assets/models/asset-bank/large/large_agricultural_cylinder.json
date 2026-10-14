@@ -1,0 +1,431 @@
+{
+  "assetId": "large_agricultural_cylinder",
+  "category": "large",
+  "description": "agricultural cylinder",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_large.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Join_A",
+      "position": [
+        -36.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Join_B",
+      "position": [
+        36.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Service",
+      "position": [
+        0.0,
+        15.74,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -5.0,
+          12.0
+        ],
+        "size": [
+          76.0,
+          1.5,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -5.0,
+          -12.0
+        ],
+        "size": [
+          76.0,
+          1.5,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -30.0,
+          -5.0,
+          -0.0
+        ],
+        "size": [
+          26.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -5.0,
+          -0.0
+        ],
+        "size": [
+          26.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          30.0,
+          -5.0,
+          -0.0
+        ],
+        "size": [
+          26.0,
+          2,
+          2
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          72,
+          19,
+          19
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          11.8,
+          -0.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -24.0,
+          -4.0,
+          12.0
+        ],
+        "size": [
+          8,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          24.0,
+          -4.0,
+          12.0
+        ],
+        "size": [
+          8,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -24.0,
+          -4.0,
+          -12.0
+        ],
+        "size": [
+          8,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          24.0,
+          -4.0,
+          -12.0
+        ],
+        "size": [
+          8,
+          0.35,
+          3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          13.5,
+          -0.0
+        ],
+        "size": [
+          12,
+          3,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          15.49,
+          -0.0
+        ],
+        "size": [
+          5,
+          0.5,
+          5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "large",
+    "reusable",
+    "Forge",
+    "metre-scale"
+  ],
+  "bounds": {
+    "min": [
+      -38.0,
+      -12.0,
+      -13.5
+    ],
+    "max": [
+      38.0,
+      15.930525779724121,
+      13.5
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "large_agricultural_cylinder_lod0.glb",
+      "triangles": 22098,
+      "draws": 7,
+      "bytes": 1354252,
+      "method": "source",
+      "sha256": "60806e2f26af3ca89acb27d7ab4045824548d26f9b78723215bbdbe8a62d898d"
+    },
+    {
+      "level": 1,
+      "file": "large_agricultural_cylinder_lod1.glb",
+      "triangles": 17554,
+      "draws": 7,
+      "bytes": 1124260,
+      "method": "authored-topology",
+      "sha256": "af4d13aacd301e8e2199a51e94d3dd6f8d0318c748ff46cbef226a275e42ae2e"
+    },
+    {
+      "level": 2,
+      "file": "large_agricultural_cylinder_lod2.glb",
+      "triangles": 7952,
+      "draws": 7,
+      "bytes": 665548,
+      "method": "authored-topology",
+      "sha256": "09787d5414639c863c260431c6737d9bd362d72a610a01c7d6abfe59387ddce0"
+    }
+  ],
+  "materialSlots": [
+    {
+      "name": "Material_Armor",
+      "finish": "paint2",
+      "role": "hull"
+    },
+    {
+      "name": "Material_BrushedMetal",
+      "finish": "bare",
+      "role": "mechanical"
+    },
+    {
+      "name": "Material_Canopy",
+      "finish": "glass",
+      "role": "glass"
+    },
+    {
+      "name": "Material_Hull",
+      "finish": "paint",
+      "role": "hull"
+    },
+    {
+      "name": "Material_Emissive_Warm",
+      "finish": "glow_warm",
+      "role": "signal"
+    },
+    {
+      "name": "Material_Accent",
+      "finish": "stripe",
+      "role": "accent"
+    },
+    {
+      "name": "Material_Mechanical",
+      "finish": "gunmetal",
+      "role": "mechanical"
+    }
+  ],
+  "pivot": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "space": "glTF asset-local metres",
+    "normalization": "none"
+  },
+  "stateCapability": {
+    "type": "static",
+    "motion": "none; assembly visibility states belong to recipe",
+    "damage": "none; no invented destruction rig"
+  },
+  "provenance": {
+    "source": "tools/blender/forge/asset_bank_large.py",
+    "method": "original Forge procedural authored construction; no external model sources",
+    "sourceSHA256": "138252af96a36049fa91ac4f4c39dfcc96f493373757d8cbd5d687c29ba62fcf"
+  }
+}

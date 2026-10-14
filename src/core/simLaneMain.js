@@ -22,6 +22,7 @@
 import {
   createReadModel,
   applySpawnInfos,
+  applyWeaponVfxProjectiles,
   applyDestroyIds,
   applyAuxUpserts,
   applyAuxRemovals,
@@ -201,10 +202,19 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   // matching live entityList ordering); entityList keeps the same array object,
   // refilled from the map each reply so aliased references keep working.
   const laneEntityList = state.entityList;
+  const laneWeaponVfxProjectiles = [];
+  state.weaponVfxProjectiles = laneWeaponVfxProjectiles;
   state.entities = readModel.entities;
   function reconcileEntities() {
     laneEntityList.length = 0;
-    for (const row of readModel.entities.values()) laneEntityList.push(row);
+    laneWeaponVfxProjectiles.length = 0;
+    for (const row of readModel.entities.values()) {
+      laneEntityList.push(row);
+      if (row && row.type === 'projectile') laneWeaponVfxProjectiles.push(row);
+    }
+    for (const row of readModel.weaponVfxProjectiles.values()) {
+      if (row && row.alive !== false) laneWeaponVfxProjectiles.push(row);
+    }
   }
 
   // Event payloads cross the wire deep-flattened — live entities collapse to
@@ -502,6 +512,9 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       }
     }
     if (Array.isArray(msg.spawnInfos)) applySpawnInfos(readModel, msg.spawnInfos);
+    if (Array.isArray(msg.weaponVfxProjectiles)) {
+      applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
+    }
     if (Array.isArray(msg.auxUpserts)) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals)) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);
@@ -563,6 +576,9 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 
     if (Array.isArray(msg.spawnInfos) && msg.spawnInfos.length) {
       applySpawnInfos(readModel, msg.spawnInfos);
+    }
+    if (Array.isArray(msg.weaponVfxProjectiles)) {
+      applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
     }
     if (Array.isArray(msg.entityVitals) && msg.entityVitals.length) {
       applyEntityVitals(readModel, msg.entityVitals);

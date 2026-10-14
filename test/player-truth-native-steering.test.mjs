@@ -64,7 +64,15 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
       keyboard: {
         down: async code => { held.add(code); await send(0, { kind: 'domEvent', d: { type: 'keydown', code, pressed: true, blocked: false } }); },
         up: async code => { held.delete(code); await send(0, { kind: 'domEvent', d: { type: 'keyup', code, pressed: false } }); },
-        press: async () => {},
+        press: async (code, { delay = 0 } = {}) => {
+          held.add(code);
+          await send(0, { kind: 'domEvent', d: { type: 'keydown', code, pressed: true, blocked: false } });
+          try { if (delay) await send(Math.max(1, Math.ceil(delay / 1000 * 60))); }
+          finally {
+            held.delete(code);
+            await send(0, { kind: 'domEvent', d: { type: 'keyup', code, pressed: false } });
+          }
+        },
       },
       mouse: {
         move: async (clientX, clientY) => {

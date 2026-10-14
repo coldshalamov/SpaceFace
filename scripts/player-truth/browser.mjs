@@ -49,6 +49,49 @@ export function applyHarnessLaunchOptions(options = {}) {
   };
 }
 
+/** Restore only this headed Windows test page's window when minimized; never change its size or focus. */
+export async function keepHeadedWindowNormal(page, {
+  headed = false, platform = process.platform, setTimer = setTimeout, clearTimer = clearTimeout,
+} = {}) {
+  const noop = async () => {};
+  if (!headed || platform !== 'win32' || page.isClosed()) return noop;
+  let session;
+  try { session = await page.context().newCDPSession(page); } catch { return noop; }
+  let stopped = false; let timer = null; let detached = null;
+  const stop = () => {
+    stopped = true;
+    if (timer !== null) { clearTimer(timer); timer = null; }
+    page.off('close', onClose);
+    // Detach also releases an outstanding request if Chrome closes mid-query.
+    return detached ||= Promise.resolve().then(() => session.detach()).catch(() => {});
+  };
+  const onClose = () => { void stop(); };
+  page.once('close', onClose);
+  const check = async () => {
+    if (stopped) return;
+    try {
+      // Omitting targetId uses this CDP session's page, never another Chrome window.
+      const { windowId, bounds } = await session.send('Browser.getWindowForTarget');
+      if (!stopped && bounds?.windowState === 'minimized') {
+        await session.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } });
+      }
+    } catch { await stop(); }
+  };
+  const schedule = () => {
+    timer = setTimer(async () => {
+      timer = null;
+      await check();
+      if (!stopped) schedule();
+    }, 5000);
+    timer?.unref?.();
+  };
+  if (page.isClosed()) await stop();
+  else await check();
+  // Self-scheduling after completion allows only one outstanding check.
+  if (!stopped) schedule();
+  return stop;
+}
+
 /**
  * Record SIGHUP and SIGTERM. The first does not exit and does not close Chrome.
  * The second guarded signal exits (129 for SIGHUP, 143 for SIGTERM). Idempotent per emitter.

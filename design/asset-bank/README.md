@@ -12,11 +12,11 @@ catalog entries, recipe counts or this guide as evidence that exported models ha
 A delivered piece needs its committed GLBs and adjacent manifest; an accepted runtime piece also
 needs the owning feature's visual, physical and performance evidence.
 
-The current increment delivers 112 exported candidates: 36 structure, 36 operations,
-36 cargo and four natural pieces, each with three LODs and a sidecar. The 336 GLBs
-total 140,230,404 bytes. Their transformed cross-LOD bounds, byte/hash receipts and
+The current increment delivers 156 exported candidates: 36 structure, 36 operations,
+36 cargo, 36 natural and 12 large pieces, each with three LODs and a sidecar. The 468 GLBs
+total 196,921,332 bytes. Their transformed cross-LOD bounds, byte/hash receipts and
 socket contracts pass the structural validator. See [the delivery checkpoint](DELIVERY.md);
-the remaining commissioned entries and all runtime acceptance remain separate work.
+twelve dependency-locked recipes are available; all runtime acceptance remains separate work.
 
 See [coverage and comparison](COVERAGE.md) for the commission and reuse decisions. Count distinct
 asset IDs with verified exports, not LOD files, palette variants or proposed composition recipes.
