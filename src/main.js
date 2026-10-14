@@ -24,6 +24,7 @@ import { installAchievements } from './systems/achievements.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
 import { createTimeEffects } from './core/timeEffects.js';
+import { scheduleVeiledFoundryEnvDrain } from './core/veiledFoundryEnvDrain.js';
 
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
@@ -34,6 +35,7 @@ import {
   resetRunUiState,
 } from './core/newGameBoot.js';
 import {
+  GameStartReadinessError,
   describeGameStartFailure,
   runNewGameStartTransition,
 } from './core/newGameStartTransition.js';
@@ -333,8 +335,7 @@ async function boot() {
     ctx.telemetry = telemetry;
     // PQ-033.03 achievements: a META ledger on the same live bus — never a registry system and never
     // a GameState write, so the deterministic sim cannot see it. It unlocks from real gameplay events
-    // and the settled Crucible records, speaks through the one-voice arbiter, and mirrors unlocks to
-    // Steam when the desktop shell exposes it.
+    // on the bus; this is deliberately independent of the environment drain.
     ctx.achievements = installAchievements({ bus, state, telemetry });
     const eventTrace = createDeterministicEventTrace(bus, state);
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
@@ -1078,27 +1079,11 @@ function enterLoadingMode(state, bus) {
     }
   } catch (_) { /* best effort — the shell still covers the handoff */ }
   // A foundry HDRI that armed while a presented surface was up bakes its PMREM
-  // convolve under the veil — but not inside this call: enterLoadingMode runs in
-  // the Launch reply, and a 2K float upload + link + convolve there held the click
-  // ~450-510 ms before the loading shell could paint. Run it one veiled frame
-  // later instead, only while still loading; a cook seam that drains first makes
-  // this a no-op, and leaving loading first keeps it armed for the next seam.
-  scheduleVeiledFoundryEnvDrain(state);
+  // convolve outside this Launch task. The cancellable scheduler revalidates the
+  // loading generation and renderer before touching GPU resources. A timer is a
+  // liveness fallback, not proof that a compositor actually painted the veil.
+  scheduleVeiledFoundryEnvDrain(state, bus);
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
-}
-
-function scheduleVeiledFoundryEnvDrain(state) {
-  const render = state.render;
-  if (!render || render._foundryEnvPending !== true) return;
-  const drain = () => {
-    if (state.mode !== 'loading') return;
-    try { render._drainFoundryEnvPending?.(); } catch (_) { /* env optional */ }
-  };
-  // One presented veil frame first; the timer covers a starved rAF (the cook seams drain too).
-  let queued = false;
-  const later = () => { if (queued) return; queued = true; setTimeout(drain, 0); };
-  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(later);
-  setTimeout(later, 100);
 }
 
 function enterFlightMode(state, bus) {
