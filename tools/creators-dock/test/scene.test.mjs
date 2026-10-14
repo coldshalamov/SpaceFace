@@ -6972,6 +6972,16 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 507.5, 253.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 760.5, 279.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 587.5, 520.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 709.5, 229.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 536.5, 498.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 609.5, 242.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 348.5, 354.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 438.5, 205.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 480.5, 293.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 553.5, 118.5, stageCam, stage, profileDraw), null);
+  const emptyRing = { objects: [{ id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 20 }] };
+  assert.equal(hitTest(emptyRing, 352.5, 257.5, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 343.5, 270.5, stageCam, stage), null);
   const dialect = await loadDialect();
   const moth = { id: 'moth', kind: 'actor', profile: 'enemy.mothlight', x: 0, z: 0 };
   assert.equal(hitTest({ objects: [moth] }, 99.5, 78.5, camera, view, dialect.draw), 'moth');

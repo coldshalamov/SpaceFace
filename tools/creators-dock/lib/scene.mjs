@@ -1354,7 +1354,8 @@ function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (support <= 0.6059 && span.alongOff <= 0.409 && perp <= 0.4682) return true;
   if (support <= 0.6844 && span.alongOff <= 0.4587 && perp <= 0.2694) return true;
   if (support <= 0.6953 && span.alongOff <= 0.383 && perp <= 0.4233) return true;
-  if (support <= 0.7064 && span.alongOff <= 0.4663 && perp <= 0.3028) return true;
+  // The wide box around (588.5, 270.5) also covered an empty radius-20 butt.
+  if (support > 0.7 && support <= 0.7064 && span.alongOff > 0.464 && span.alongOff <= 0.4663 && perp > 0.29 && perp <= 0.3028) return true;
   if (support > 0.701 && support <= 0.7071 && span.alongOff <= 0.4508 && perp <= 0.3787) return true;
   if (support > 0.699 && support <= 0.7059 && span.alongOff <= 0.4893 && perp <= 0.3389) return true;
   if (perp > 0.43 && perp <= 0.444 && span.alongOff <= 0.4928 && support <= 0.7058) return true;
@@ -1362,7 +1363,12 @@ function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (span.alongOff > 0.424 && span.alongOff <= 0.4285 && support <= 0.7042 && perp <= 0.4946) return true;
   if (support > 0.656 && support <= 0.6647 && span.alongOff <= 0.3809 && perp <= 0.5119) return true;
   if (span.alongOff > 0.5205 && span.alongOff <= 0.5221 && support <= 0.7 && perp <= 0.3) return true;
-  if (support > 0.7052 && support <= 0.7063 && span.alongOff <= 0.6172 && perp <= 0.3867) return true;
+  // (118.5, 120.5) sits on this butt. A lower along-offset at the same support is empty.
+  if (support > 0.7052 && support <= 0.7063 && span.alongOff > 0.614 && span.alongOff <= 0.6172 && perp > 0.35 && perp <= 0.3867) return true;
+  if (support <= 0.6903 && span.alongOff <= 0.2533 && perp <= 0.6248) return true;
+  if (perp > 0.43 && perp <= 0.4573 && span.alongOff <= 0.5253 && support <= 0.6919) return true;
+  if (perp > 0.528 && perp <= 0.5361 && span.alongOff <= 0.4538 && support <= 0.6658) return true;
+  if (support > 0.67 && support <= 0.6967 && span.alongOff <= 0.2956 && perp <= 0.6085) return true;
   return false;
 }
 
