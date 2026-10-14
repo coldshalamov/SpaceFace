@@ -279,7 +279,9 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     const info = entry();
     const W = host.clientWidth || 0;
     const H = host.clientHeight || 0;
-    if (!artUrl || !info || W < 480 || H < 320 || !nodes.length) { standDown(); return; }
+    // Phone landscape stages can sit under 320px tall once the berth foot is reserved; still draw
+    // the jig there with compact columns instead of standing down to empty glass.
+    if (!artUrl || !info || W < 480 || H < 200 || !nodes.length) { standDown(); return; }
     on = true;
     host.classList.add('orr-hull--on');
     if (art.getAttribute('src') !== artUrl) { art.classList.remove('is-ready'); alphaMap = null; art.src = artUrl; }
@@ -287,6 +289,12 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     art.hidden = false;
     pool.style.display = '';
     markLabels();
+
+    const compact = W < 700 || H < 340;
+    let lw = compact ? Math.min(labelWidth, Math.max(88, Math.floor(W * 0.26))) : labelWidth;
+    const eg = compact ? Math.min(edge, 16) : edge;
+    const gp = compact ? Math.min(gap, 14) : gap;
+    const minR = compact ? 64 : 110;
 
     const hb = host.getBoundingClientRect();
     const local = (r, pad) => ({ left: r.left - hb.left - pad, top: r.top - hb.top - pad, right: r.right - hb.left + pad, bottom: r.bottom - hb.top + pad });
@@ -297,7 +305,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       if (r.width > 0 && r.height > 0) obstacles.push(local(r, 12));
     }
     // the ship's band: chrome that crosses the middle third pushes the band off it
-    const region = { left: edge, right: W - edge, top: 28, bottom: H - 28 };
+    const region = { left: eg, right: W - eg, top: compact ? 16 : 28, bottom: H - (compact ? 16 : 28) };
     const midL = W * 0.34; const midR = W * 0.66;
     for (const ob of obstacles) {
       if (ob.right <= midL || ob.left >= midR) continue;
@@ -305,19 +313,26 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       else region.bottom = Math.min(region.bottom, ob.top);
     }
 
-    // label heights at the column width
-    for (const n of nodes) {
-      n.el.classList.add('orr-hull__label');
-      n.el.style.width = `${labelWidth}px`;
-    }
-    const heights = nodes.map((n) => Math.max(24, n.el.offsetHeight || 64));
-
     // the dial: as large as the band allows with a label column clear of it on each side (the band
-    // also holds the drifting orbit above and the engraving below: 52 px of it each side)
-    const bandMargin = Math.min(52, Math.round((region.bottom - region.top) * 0.11));
-    const R = Math.max(110, Math.min(W / 2 - edge - gap - labelWidth, (region.bottom - region.top) / 2 - bandMargin));
+    // also holds the drifting orbit above and the engraving below: 52 px of it each side).
+    // Never force minR past what the host can hold — on a 362px phone that would park columns
+    // at x≈-8 and clip them under overflow:hidden.
+    const bandMargin = Math.min(compact ? 28 : 52, Math.round((region.bottom - region.top) * 0.11));
+    let R = Math.min(W / 2 - eg - gp - lw, (region.bottom - region.top) / 2 - bandMargin);
+    if (R < minR) {
+      lw = Math.max(72, Math.floor(W / 2 - eg - gp - minR));
+      R = Math.min(W / 2 - eg - gp - lw, (region.bottom - region.top) / 2 - bandMargin);
+    }
+    R = Math.max(40, R);
     const hx = (region.left + region.right) / 2;
     const hy = (region.top + region.bottom) / 2;
+
+    // label heights at the (possibly shrunk) column width
+    for (const n of nodes) {
+      n.el.classList.add('orr-hull__label');
+      n.el.style.width = `${lw}px`;
+    }
+    const heights = nodes.map((n) => Math.max(24, n.el.offsetHeight || 64));
     // the drawing: the plan frame is square with the ship inside ~0.85 of it; the ship's length fills
     // the dial's diameter less a margin
     const aspect = info.width && info.height ? info.width / info.height : 1;
@@ -329,7 +344,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     scan.style.webkitMaskImage = `url("${artUrl}")`;
     scan.style.maskImage = `url("${artUrl}")`;
     scan.hidden = false;
-    const reach = R + gap + labelWidth + 60;
+    const reach = R + gp + lw + 60;
     pool.style.background = `radial-gradient(circle at ${Math.round(hx)}px ${Math.round(hy)}px, rgb(4 6 9 / .66) 0, rgb(4 6 9 / .74) ${Math.round(reach)}px, rgb(4 6 9 / .86) 100%)`;
 
     // the beads on the render's own sockets; several of one type spread along their mark
@@ -353,8 +368,8 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     for (const [key, side] of [['left', -1], ['right', 1]]) {
       const list = cols[key];
       if (!list.length) continue;
-      const colLeft = side < 0 ? hx - R - gap - labelWidth : hx + R + gap;
-      const colRight = colLeft + labelWidth;
+      const colLeft = Math.max(eg, Math.min(W - eg - lw, side < 0 ? hx - R - gp - lw : hx + R + gp));
+      const colRight = colLeft + lw;
       let top = 24; let bottom = H - 24;
       for (const ob of obstacles) {
         if (ob.right <= colLeft || ob.left >= colRight) continue;
@@ -369,7 +384,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     nodes.forEach((n, i) => {
       const el = n.el;
       const side = sides[i];
-      const left = side < 0 ? hx - R - gap - labelWidth : hx + R + gap;
+      const left = Math.max(eg, Math.min(W - eg - lw, side < 0 ? hx - R - gp - lw : hx + R + gp));
       const op = el.offsetParent;
       const ob = op && typeof op.getBoundingClientRect === 'function' ? op.getBoundingClientRect() : hb;
       el.style.left = `${Math.round(left + hb.left - ob.left)}px`;
@@ -416,7 +431,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       const cy = tops[i] + Math.min(heights[i], 44) / 2 + 2;
       const [ex, ey] = rimExit(hx, hy, R, side, cy);
       exits[i] = [ex, ey];
-      const colEdge = side < 0 ? hx - R - gap + 6 : hx + R + gap - 6;
+      const colEdge = side < 0 ? hx - R - gp + 6 : hx + R + gp - 6;
       geo.angles[i] = bearing(hx, hy, ex, ey);
       // inside the ring the line leaves the node at 45 degrees and runs level to the rim (an
       // engineer's elbow, never a stray diagonal); outside it runs flat to its label

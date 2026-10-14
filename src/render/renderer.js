@@ -223,7 +223,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { projectedWidthPx, resolvePresentedLodLevel } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -19125,6 +19125,12 @@ export const render = {
           camObj.updateProjectionMatrix();
         }
       }
+      // particleQuality also selects the backdrop tier (star/flare counts, bake sizes), so a
+      // quality-mode switch must re-resolve the sky and not just the VFX pools. applyGpuTier
+      // rebuilds only when the tier actually changed, so a no-op settings re-emit pays nothing.
+      if (p.key === 'particleQuality' || p.key == null) {
+        if (this.spaceBg && typeof this.spaceBg.applyGpuTier === 'function') this.spaceBg.applyGpuTier();
+      }
     });
     // On sector change, reconcile rather than blindly clearing: the new sector's entities are
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
@@ -26734,13 +26740,16 @@ export const render = {
       previous,
       currentOnly
         ? 1
-        : poseSpanAlpha(
-          snapshot,
-          previous,
-          this.state ? this.state.accumulator : NaN,
-          LOOP_FIXED_DT,
-          alpha,
-        ),
+        : (Number.isFinite(this._snapshotPresentationAlpha)
+          && this._snapshotPresentationSequence === snapshot.sequence
+          ? this._snapshotPresentationAlpha
+          : poseSpanAlpha(
+            snapshot,
+            previous,
+            this.state ? this.state.accumulator : NaN,
+            LOOP_FIXED_DT,
+            alpha,
+          )),
       slot,
     );
     if (!applied) return false;
@@ -27129,11 +27138,14 @@ export const render = {
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? Math.max(hlodVisualRadius, cullRadius)
           : cullRadius;
-        const projectedPx = projectedWidthPx(
+        const projectedPx = presentedLodWidthPx(
+          userData,
           mesh.position,
           lodRadius,
           this.cam && this.cam.obj,
           this.viewport,
+          isPlayer,
+          typeName,
         );
         if (userData.lod && userData.updateLod) {
           lodChecked++;
@@ -28690,6 +28702,15 @@ export const render = {
       tryPresentedCall(this, 'ship-pitch', () => {
         updateShipPitchPresentation(this.state, this._presentationFrameDt);
       });
+      if (this._snapshotFence) {
+        this._snapshotPresentationAlpha = this._snapshotFence.samplePresentationAlpha(
+          this._presentationFrameDt,
+          this.state ? this.state.accumulator : 0,
+          LOOP_FIXED_DT,
+          alpha,
+        );
+        this._snapshotPresentationSequence = this._snapshotFence.sequence;
+      }
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
       if (this.cam && typeof this.cam.follow === 'function') {

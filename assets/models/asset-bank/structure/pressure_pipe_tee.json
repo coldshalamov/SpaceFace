@@ -1,0 +1,167 @@
+{
+  "assetId": "pressure_pipe_tee",
+  "category": "fluid",
+  "description": "pressure pipe tee",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_2",
+      "position": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "size": [
+          2.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.099721670150757,
+      -0.5550000071525574,
+      -2.094956874847412
+    ],
+    "max": [
+      2.09761905670166,
+      0.5550000071525574,
+      0.5550000071525574
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_pipe_tee_lod0.glb",
+      "triangles": 2424,
+      "draws": 3,
+      "bytes": 309460,
+      "method": "source",
+      "sha256": "70f41e6fb5152052addb0ae18688a182f7498c1302502eaca6917bfabb882161"
+    },
+    {
+      "level": 1,
+      "file": "pressure_pipe_tee_lod1.glb",
+      "triangles": 968,
+      "draws": 3,
+      "bytes": 233556,
+      "method": "Forge-decimation",
+      "sha256": "1d6151986c152b876ad15c09cabce200bb84cef3638ec9fe357ca39e90d67894"
+    },
+    {
+      "level": 2,
+      "file": "pressure_pipe_tee_lod2.glb",
+      "triangles": 348,
+      "draws": 3,
+      "bytes": 192000,
+      "method": "Forge-decimation",
+      "sha256": "c1bfae833419a604bb16dd15b7c2c700b380ea17467b613c25322e14b5c6ecc9"
+    }
+  ]
+}

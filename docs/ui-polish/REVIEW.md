@@ -59,7 +59,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `orrery-flight` | SURVEYED | |
 | **`comms-radial`** | **DONE** (phone: fan lifted clear of the HUD cluster) | See § Comms fan — phone sky band (ui-polish-28). Desktop 960: a world-projected doctrine tell (FLYBY) can sit behind ROUTE depending on camera; tell placement is hud.js threat-tell territory, left alone |
 | **`wingman-radial`** | **DONE** (hub stack) | See § Wingman radial hub stack — ui-polish-28 |
-| `ship` | SURVEYED | Ledger DONE earlier |
+| **`ship`** | **DONE** (ui-polish-27) | See § THE SHIP flight host below — blurb off gauges; heroes two-up ≤1100 |
 | **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
@@ -68,14 +68,14 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
 | **`crucible-refit`** | **DONE** | See § Crucible Refit below |
-| `crucible-results` | OPEN | Follow-up PR (not #322) |
+| **`crucible-results`** | **DONE** (ui-polish-27 ≤600 tall + ui-polish-28 phone sticky foot) | LAST 5 HITS kept at ≤600 tall desktop (#374); phone dial clears docked foot (polish-28) — see § Crucible results |
 | **`demoEnd`** | **DONE** (960/1280 one-line chain + phone stack) | See § Demo end — register at full width, phone stack (ui-polish-28) |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | **`base` / `base-claimed`** | **DONE** (phone + narrow + 960 slot rail) | See § Base screen — phone module list, narrow spine, one slot rail (ui-polish-28) |
 | `loading` | SURVEYED | |
 | `automation` | SURVEYED | |
-| `replay` | SURVEYED | |
-| `clips` | SURVEYED | |
+| **`replay`** | **DONE** (ui-polish-27) | Empty-tape line wraps on phone instead of ellipsizing — see § Clips reel empty state below |
+| **`clips`** | **DONE** (ui-polish-27) | Empty reel fits every width; see § Clips reel empty state below |
 | **`sandbox`** | **DONE** (ui-polish-24) | Launch no longer buries Combat Lab / Hull / Hornet; phone tiles no longer stack — see § Sandbox Launch below |
 | `localmap` / `localmap-legacy` | SURVEYED | |
 | `starmap` / `starmap-legacy` | SURVEYED | |
@@ -126,7 +126,7 @@ Shots: `ui-shots/save-load/{before,after}/` (960×540, 1024×768, 1280×720, 192
 
 **Code:** `shipworks.js` (clamp gate + short-stage keepOut/gap) + `calloutLayout.js` (hull-safe place). Selectors/IDs unchanged.
 
-**Still open:** SWORN ENEMY touching HATED at 1024×768; Shipworks left-rail "Starter / systems fitted" clip at 960; phone Shipworks callouts.
+**Still open:** (SWORN ENEMY / HATED at 1024×768 fixed on ui-polish-27, see § Factions scale and ring.) Phone Shipworks callouts fixed on ui-polish-27 (see § below). Shipworks "Starter / systems fitted" @960 fixed on ui-polish-27 (see § below).
 
 ### Industry / Factions / Bar @960×540 (ui-polish-13)
 
@@ -193,6 +193,15 @@ Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer 
 
 **Live-build check (Code Work's ask, 06:10 ET):** the real game (`?dev=screen:range`, then Esc and the real F4 key) matches ui-bench at 960 (146px), 1280 (224px) and 1920 (385px). On a real touch phone the coarse pointer gives AGAIN / TRY IT EMPTY 44px rows, so NEXT RULE wrapped to its own row and the 390×844 course was 314px, not 384. Under `(pointer: coarse)` the verbs now share one row (10px gap, phone-sized lamp key, as on the phone Market): course 390×844 **314→364**, 375×812 285→335, 360×740 217→267; 844×390 is 318. The drone's name (BRUISER) is now painted last on a small void plate, so the gate rung and turn ring that pack under it on the narrow course no longer cut through the letters. Shots: `ui-shots/range-course/live/` (before) and `live/after3/`.
 
+## Credits + Automation @960 — session notes (2026-10-13, ui-polish-27)
+
+- **Credits** (`settingsLayouts.js`, 901–1100px only): the 80vh orrery reached into the reel, so its MADE BY label sat on the blurb at 960×540 and the whole emblem covered the TYPE rows at 1024×768. The emblem is now `min(80vh, 38vw)`, parked 30% off the right edge, and the reel is 420px wide with a 38ch sentence; the current body name is 28 SVG units so it stays legible. Under 600px tall the reel-progress dial (decoration) is hidden because it fell onto ‹ BACK.
+- **Automation** (`automationPanel.js`, 761–1100px only): CONDUCT THE MACHINE takes its own row under the gauge, so DRONES/TRADERS/OUTPOSTS no longer run under the next ring. The board card's "4,000 cr starter" sits on its own line above the button, the body gets a third line, and the drone bay rungs put range and upkeep on a second line so "upkeep" isn't clipped by THROTTLE at 1024.
+- 1280×720, 1920×1080, and the phone are unchanged; the only pixel differences are the animated drift field and beads. Shots are in `ui-shots/leftovers27/{before,after2}/`.
+- **Mission Log route** (`archiveLayouts.js`, 761–1100 wide and ≤640 tall): the stage was a 235px column under a four-line title, so the FROM → TO route band started at y≈437 and the stage cut it off. The hang is now 312px and the dial is 140px in a 190px side column (so OPEN ON THE CHART fits). The title is 21px over two lines, the terms use a 104px label column so their values don't wrap, and the route discs are 44px, so the whole lane, its clock, and both faces sit in frame.
+- **Station Ledger purse** (`stationTabsLayouts.js`, 761–1100 wide and ≤640 tall): the ~192px body held the 176px tape and put the reading and the purse below it, so the purse was clipped. With no receipts that cut BOUGHT/SOLD/NET · CR; with receipts it also cut the whole reading. The right column is now a grid. The purse (220px, so its ring clears NET · CR as at 1280) stands beside the tape at full height. The reading is one band (kicker, then the figure beside what/where) that rises into the tape's empty leader strip, and the leader is hidden at this size. The left column is 40% wide with a 24px heading. Still in the tape's JS geometry at every size: when entries are close together, CYCLE labels and the −750/−480 figures collide.
+- The ledger with receipts was shot with a scratch script that seeds `player.tradeLedger`, because the bench catalog only has the empty ledger. 1280/1920/phone ledger shots are pixel-identical before and after, and mission-log differs only by beam-pulse noise, which matches the noise between two runs of the same code. Shots are in `ui-shots/leftovers27b/{before,after}/` plus `compare-*-960.png`.
+
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
 
 **Before (390×844):** the berth was one long scroll (~2180px). Title and mechanic scrolled off; vitals alone were ~454px (44px min-height on every act); destination tabs sat at y≈1810 under the whole tab body; Munitions spanned the vitals grid.
@@ -210,9 +219,9 @@ Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer 
 8. Tab badges are amber pills after their own word. The tabs sit on a 4-column grid.
 Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with the foot pinned. Desktop 960×540 is pixel-identical; at 1280×720 only the animated rule differs.
 
-**Still open on phone:** Shipworks callouts. Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
+**Still open on phone:** (Shipworks callouts fixed on ui-polish-27 — see § below.) Desktop Shipworks callouts @960 fixed in ui-polish-15. Market decision @≤1100×≤800 fixed in #337. Industry/Factions/Bar @960 done in #340.
 
-**Leftover:** Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. ~~filter search bury "Raw & rare" at 960~~ — fixed in ui-polish-28.
+**Leftover:** Contracts TRACKED badge can sit off-frame. ~~filter search bury "Raw & rare" at 960~~ — fixed in ui-polish-28. ~~Shipworks left-rail "Starter / systems fitted" clip at 960~~ — fixed on ui-polish-27.
 
 ## Decision terms @960 + phone-on-its-side foot — session notes (2026-10-12, ui-polish-14)
 
@@ -477,6 +486,17 @@ Bonus: a phone on its side (≤560px tall) scrolls the berth as one page with th
 
 **Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js` (Armory `${A}` polish block only).
 
+### Armory descriptions — ui-polish-25 (2026-10-13)
+
+Player-truth graded every Swarm armory offer "undescribed" (63 of the 67; the other 4 are refit rows). Two causes, both UI:
+
+1. **No lit row after a refresh.** Each refresh rebuilds the shelf, and `_paintReading` returns early when the reading is unchanged, so the rebuilt cards never got `is-lit` / `aria-pressed`. The reading panel kept its sentence, but nothing on the rail owned it (no Hand bar either). `_buildCard` now lights the row being read. Bench `readArmory`: 78/78 `none` → 78/78 `reading`.
+2. **761–1150 wide, the sentence sat under the schematic.** The single reading column kept `grid-template-rows:minmax(0,1fr)`, so the 350px visual overflowed onto the words (1024×768, 960×540). Rows now size to content and the words lead; at ≤640 tall the word margins close up so the purchase key is whole at 960×540. The schematic, crew and jig follow below in the panel's scroll.
+
+1280×720, 1920×1080 and 390×844 differ only in the lit card (the Hand bar is back). Loadout data untouched. Shots: `ui-shots/armory-desc/{before,after2}/`.
+
+**Fitted refit rows:** each fitted hardpoint now also carries `sentence` from `arsenalIdentity` (painted under the name with `orr-hp__contrast`). `contrast` stays `null` for fitted parts (INF-036 unchanged). Spare-vs-spare contrast on empty hardpoints is untouched.
+
 
 
 
@@ -604,6 +624,22 @@ New overlay `src/ui/orrery/crucibleResultsLayouts.js`, injected from the results
 - **Finish (P1):** each band title runs into a hairline. The share codes are framed fields with an underlined save link. Story and lead copy is brighter. The 1080p band lifts the figures, copy and build verbs.
 - Checked at 1280×720, 1920×1080 and 390×844, including scrolled to the bottom. Shots are in `/workspace/spaceface-scratch/ui-shots/results/` (not committed).
 
+
+## Crucible results @960×540 and phone — LAST 5 HITS stays, foot stays clear (2026-10-13, ui-polish-27)
+
+**Before:** At ≤600px tall (960×540) the death-dial caption's LAST 5 HITS strip printed through BACK TO THE HANGAR / MAIN MENU: the full-width foot row left the dial host ~400px, and the caption sits past its floor (`cy + Rc + 72`). The first fix hid the strip, which Code Work's review (glassres res2) rightly rejected: the strip is required, and the caption box still met RUN IT AGAIN. On a phone the foot sat at the end of the scroll, so at scroll 0 it was off-screen, and the 420px dial let its caption spill into THE TAKE.
+
+**After (`src/ui/orrery/crucibleResultsLayouts.js` only):**
+- `min-width:701px` and `max-height:600px`: the ways-out stack under the left column (RUN IT AGAIN on its own line, Seed under it, then BACK TO THE HANGAR / MAIN MENU; the Enter chip drops at this size) and stay left of the dial host. The dial runs the full right-hand height, so the whole caption shows (killer, detail, vitals, the LAST 5 HITS strip and its legend) with nothing hidden. The left column sits above the dial's dark pool, so SALVAGE no longer fades.
+- 601–720 tall: the dial only clips, so a long killer name cannot bleed into the foot.
+- Phone (≤700 wide): the foot is docked (`position:sticky; bottom:0`) on an opaque void, so it is always on-screen. The dial gets `clamp(470px, 100svh − 240px, 620px)`, so its caption ends above the foot, and it drops the tell line, which THE RUN repeats below. `ui-bench` reports THE TAKE "under" RUN IT AGAIN at 390; that is the band scrolling beneath the docked foot, which is expected.
+- 1280×720 and 1920×1080 are unchanged.
+
+Selectors/IDs unchanged. `test/crucible-results.test.mjs` has one failure (`the player dying ends the run…`, 0 !== 900). It fails the same way without this change. Shots: `/workspace/spaceface-scratch/ui-shots/res374/{tip,after}/` (not committed).
+
+**Still open (elsewhere):** Station Ledger CYCLE/−750 tape collisions (JS geometry); Market "Raw & rare" bury at 960; Contracts TRACKED badge can sit off-frame.
+
+
 ## New Game yard fixes (`new-game`) — ui-polish-5 (2026-10-12)
 
 CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-data changes.
@@ -630,7 +666,7 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 
 Bench, with the game's inline grid forced to match the real cascade, at 960 / 1280 / 1920 / 390×844 / 844×390, on first paint and at the end of the stage scroll: nothing sits under Launch, LIVE TOOLS never overlaps the ladder, and there's no tile-on-tile overlap. COMBAT LAB is on first paint everywhere except 844×390, where the stage is 189px tall. Module/Enemy are reachable above Launch at 844×390. `ui-bench` reports `measured: no tangled…` at all five sizes (phone was previously OFF FRAME). Selectors and IDs are unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/sandbox-launch/review-fix/` (not committed).
 
-**Still open (elsewhere):** the Shipworks left-rail "Starter / systems fitted" clip at 960 (waiting on #359/#365), phone Shipworks callouts, and focused rename-field spacing once those land.
+**Still open (elsewhere):** Starter / systems fitted @960 and focused rename spacing addressed on ui-polish-27 (see § below). Phone Shipworks callouts fixed on ui-polish-27 (see § below).
 
 ## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
 
@@ -829,8 +865,64 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 - Dial height is `clamp(400px, calc(100svh - 300px), 520px)` with `margin-bottom:48px` and `z-index:3`, so the overflowing caption (strip + legend) ends above the foot (~41px clearance at 390×844 scroll 0) and THE TAKE cannot climb through it.
 - Warn line (not vitals) stays hidden on the small plate; hit legend stays shown.
 
-**Checked:** 390×844 at scroll 0 (LAST 5 HITS + legend clear of the sticky foot; measured clearance ~41px, no overlap). Natural arrival scroll stays near 0 with the sticky foot. Desktop 960×540 / 1280×720 / 1920×1080 unchanged by this phone-only sheet (≤600-tall desktop still the pre-#374 layout on this branch).
+**Checked:** 390×844 at scroll 0 (LAST 5 HITS + legend clear of the sticky foot; measured clearance ~41px, no overlap). Natural arrival scroll stays near 0 with the sticky foot. Merge of origin/master (#374) keeps this phone `${RP}` path and adds the ≤600-tall / 601–720 desktop blocks — see § Crucible results @960 on master notes below.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28m/{before,after,after-scroll0}/` and `compare-390x844-scroll0-lower.png`.
 
 *If #374's REVIEW.md Results sections conflict with this file on merge, keep both. This section only covers the phone `data-sf-mobile` path in `crucibleResultsLayouts.js`.*
+## Shipworks Starter / systems fitted @960 — session notes (2026-10-13, ui-polish-27)
+
+**Before:** at ≤1200 wide, `station-orbital` drops the side column so the circuit plate (`Starter` + `N/M systems fitted`) wraps under the stage; `orr-sw--jig { overflow:hidden }` at ≤1100×≤800 then clips it entirely at 960×540. The focused rename field also sat ~12px above the left callout column.
+
+**After (`shipworksLayouts.js` ≤1100×≤640 desktop + `shipworks.js` nameplateInkRect focus pad):**
+- Clear the phantom third grid track; keep the fleet rail stretched.
+- Pin a one-line compact identity beside DOCKED (clear of hull callouts); sleep the dial/rack on that size only.
+- Focus grows the nameplate keep-out by 14px and re-places callouts (Utility gap 12→26px).
+- 1280 / 1920 keep the full side plate. Phone callouts fixed later on this branch (see § below).
+
+Shots: `ui-shots/shipworks28/{before,after,compare}/` (not committed).
+
+## Phone Shipworks callouts — session notes (2026-10-13, ui-polish-27)
+
+**Before:** on phone portrait (390×844) the dock stage is ~362×420 with `overflow:hidden`. The live-path callout solver had no keep-out (poster had already handed over), so the bead spread ran edge-to-edge and Utility / Drive / Cargo / Shield / … parked past the clip — beads and leaders visible, labels gone. On phone landscape (844×390) the jig was on, but the stage was forced to 420px in a 390px-tall viewport, so the dial and lower labels met the sticky destination foot.
+
+**After:**
+1. `shipworks.js` — on a narrow stage (`width < 520` or phone layout) invent side gutters for the live-path keep-out (same air the poster fit would leave), pull beads into that keep-out, and use a 16px gap so hardpoint cards stay on-glass. Poster path on narrow stages also gets the wider reserve / keep pad.
+2. `mobileScreenLayouts.js` — at ≤560px tall the Shipworks stage shrinks to `min(268px, 68vh)` so landscape jig callouts clear the foot; phone jig labels drop the leading numeral and use tighter type so EMPTY / STOCK lines ellipsize instead of clipping mid-glyph.
+3. `hullSchematic.js` — short stages (H ≥ 200) still draw the jig; compact columns clamp inside the host so a min dial radius cannot park labels at x≈−8.
+4. `shipworksLayouts.js` — jig `__state` gets the same overflow ellipsis as `__name`.
+
+Portrait keeps the live/poster hull (jig still requires W ≥ 480). Landscape keeps the jig. 960×540 / 1280×720 / 1920×1080 spot-checks stay clean (960 Drive/Cargo still kiss as before). Selectors/IDs unchanged. Shots: `ui-shots/shipworks-phone/{before,after,compare}/` (not committed).
+
+## THE SHIP flight host — session notes (2026-10-13, ui-polish-27)
+
+**Before:** the in-flight F2 host (`#sf-ship`) kept the hull sentence on the nameplate. At 1920×1080 it ran ~16 lines and printed over the Mass/Energy gauge strip under the stage; at 960/1024 it tangled with Cargo/Weapon callouts. The dock ORRERY sheet already sleeps that blurb on short jig frames; flight had no equivalent. Separately, ≤1100 forced four 30px heroes onto one nowrap row so +12/s landed on DOCKED.
+
+**After (`styles/station.css` only, `#sf-ship`):**
+1. Hide `.sx-sw__blurb` on the flight host (`display:none`). Handling heroes already say CAN TOW; dock (`.orr-station`) still paints the sentence.
+2. At ≤1100 wide, the four heroes become a 2×2 grid at 24px so each reading stays whole.
+
+Bench clean at 960×540 / 1024×768 / 1280×720 / 1920×1080 / 390×844 / 844×390. Station Shipworks unchanged. Shots: `ui-shots/ship-inspect/{before2,after2,compare}/` (not committed).
+
+---
+
+## Clips reel empty state — session notes (2026-10-13, ui-polish-27)
+
+**Before:** the three ghost plates (A STUNT / A KILL / A SAVE) were a populated plate scaled to 0.75 and spaced 1.8 reel steps apart. On a phone, STUNT and SAVE hung off both edges; at 960 they floated a populated plate's height above the rail, and the Hand ran into KILL's line. The legend ellipsized on phone (Replay's too), "0 / 0" led the empty legend, and "0.0 S TOTAL" set the unit larger than the number.
+
+**After (`clips.js` `layoutGhosts` + `styles/ui.css`, `.orr-clips` / `.orr-replay` scoped):**
+- Ghosts are laid out at their own width (≤85% of a plate, always three across the rail with gutters) instead of scaled, so their words keep size; each stands on the rail under it, the middle one clear of the Hand.
+- ≤640 wide: legends wrap (Clips and Replay), ghost names 15px. ≤640 tall: rail at 20% so the arc clears the legend. ≥900 tall: rail and legend step in so the reel isn't stranded above a void.
+- Empty reel drops "0 / 0"; S TOTAL is a 12px label under the numeral's size.
+- Populated reel geometry is unchanged (no bench fixture for a populated reel; the rail-top media rules apply to it too).
+
+Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and `--phone`), 960×540, 1280×720, 1920×1080.
+
+## Factions scale and ring at every width — session notes (2026-10-13, ui-polish-27)
+
+**Before:** the standing scale's bracket (150 · ABOVE HOSTILE / 30 · TO ACCEPTED) ran through the raised tier words (DISLIKED, ACCEPTED) at 960 and 1024, and its drops touched them at 1280/1920. On tall screens 1280–1700 wide (1440×900, 1600×900) the scale is ~560px, so the five rung words staircased down the column past the foot, SWORN ENEMY ran into HOSTILE, and the rung ticks struck −149 / −29. The ring's west names (FULFILLMENT, UNDERSTORY, ARCHIVE) were cut by the stage edge at 1280×900–1920×1080.
+
+**After:** `crestOrbit.js` — the bracket rides 13px above the tallest tier word; tier-word widths use the tracking the screen really has; an end word splits when it would reach its neighbour; a scale too narrow to hang its rung words on two rows draws them as ticks (and the "Next: …" line under it shows); values step down under rung ticks. The ring radius is bounded by each flank name's measured width (re-measured once the label font loads) instead of a flat 118px. `stationTabsLayouts.js`, `min-height:801px` only: 1101–1700 wide gives the rail 290px, the ring half the stage, and short-screen name tracking; 1101–1400 wide folds the rail into the ring as short screens already do. Selectors and IDs unchanged; the help screen's ring is unchanged.
+
+**Checked:** 960×540, 1024×768, 1280×720, 1280×900, 1366×1024, 1440×900, 1600×900, 1920×1080, 390×844 (phone shows the list, unchanged). Shots: `ui-shots/leftovers28/{before,final}/`, `compare-*.png`.
+

@@ -236,11 +236,15 @@ export function fromAdventureTape(recording) {
     });
   }
   const plain = Array.isArray(recording.samples) ? recording.samples
-    : Array.isArray(recording.poseFrames) ? recording.poseFrames.flatMap((frame) => frame.poses) : null;
+    : Array.isArray(recording.poseFrames) ? recording.poseFrames.flatMap((frame) => (
+      frame && Array.isArray(frame.poses) ? frame.poses : []
+    )) : null;
   if (plain) {
-    stream.positionSource = 'tape-samples';
     for (let i = 0; i < plain.length; i += 1) pushSample(stream, plain[i]);
-  } else {
+  }
+  // An empty pose list is not a position log. Claim tape samples only after one survives.
+  if (stream.samples.length) stream.positionSource = 'tape-samples';
+  else {
     stream.positionSource = 'none';
     stream.dropped.push({ id: null, reason: 'tape-positions-unrecorded' });
   }

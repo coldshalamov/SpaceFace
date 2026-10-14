@@ -1,0 +1,411 @@
+{
+  "assetId": "bored_rock_collar",
+  "category": "geology",
+  "description": "Engineered core bore through fractured geological mass, with cleavage-spalled lip, inset longitudinal tool scars and exposed fresh cut faces; metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_BORE",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          1.32,
+          0.7,
+          -0.0
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.2195209829148985,
+          0.7,
+          -0.5051421307219185
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9333809511662429,
+          0.7,
+          -0.9333809511662426
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5051421307219186,
+          0.7,
+          -1.2195209829148985
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          8.082668874372532e-17,
+          0.7,
+          -1.32
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5051421307219185,
+          0.7,
+          -1.2195209829148985
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.9333809511662426,
+          0.7,
+          -0.9333809511662429
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.2195209829148985,
+          0.7,
+          -0.5051421307219187
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.32,
+          0.7,
+          -1.6165337748745064e-16
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.2195209829148987,
+          0.7,
+          0.5051421307219184
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.933380951166243,
+          0.7,
+          0.9333809511662426
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5051421307219193,
+          0.7,
+          1.2195209829148983
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.4248006623117594e-16,
+          0.7,
+          1.32
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5051421307219188,
+          0.7,
+          1.2195209829148983
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9333809511662425,
+          0.7,
+          0.933380951166243
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.2195209829148983,
+          0.7,
+          0.5051421307219194
+        ],
+        "size": [
+          0.35,
+          1,
+          0.35
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.8032859563827515,
+      -0.25010406970977783,
+      -1.8051364421844482
+    ],
+    "max": [
+      1.8946027755737305,
+      1.6560580730438232,
+      1.8436341285705566
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "bored_rock_collar_lod0.glb",
+      "triangles": 4490,
+      "draws": 3,
+      "bytes": 375236,
+      "method": "source",
+      "sha256": "06cfc7c306bcad1f82edb0c74ac7175417580122c5573624336ef4db5ac986b4"
+    },
+    {
+      "level": 1,
+      "file": "bored_rock_collar_lod1.glb",
+      "triangles": 1796,
+      "draws": 3,
+      "bytes": 187980,
+      "method": "Forge-decimation",
+      "sha256": "4ffc2d28c3f56320cbf9fd6a0cea3268cc92dfb1c05b2ada008fe80686de5c44"
+    },
+    {
+      "level": 2,
+      "file": "bored_rock_collar_lod2.glb",
+      "triangles": 808,
+      "draws": 3,
+      "bytes": 95400,
+      "method": "Forge-decimation",
+      "sha256": "452c742cbac23f94904d81b926c22bef4b24cbde2cfbf10b4cd26c0a9969f265"
+    }
+  ]
+}

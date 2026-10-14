@@ -7,6 +7,7 @@
 // cannot mount stays with `ui-look`.
 
 import { createGameState } from '../src/core/gameState.js';
+import { createScreenMemory } from '../src/ui/screenMemory.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { createRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
@@ -163,6 +164,7 @@ function seededState() {
 }
 
 const state = seededState();
+const screenMemory = createScreenMemory(state);
 // Probes drive live changes on a mounted screen (a repair, a sale) through the same state the screen reads.
 window.__BENCH_STATE = state;
 
@@ -724,12 +726,12 @@ window.__BENCH_BUS = bus;
 /** Reseed a mounted Footprint with another record ('wanted' | 'marked' | 'clean' | 'empty' | 'loading') and refresh it. */
 window.__benchFootprint = (kind) => {
   seedFootprintShot(state, kind);
-  if (current === 'footprint' && currentScreen) currentScreen.refresh?.({ state, bus, screenManager: manager, registry });
+  if (current === 'footprint' && currentScreen) currentScreen.refresh?.({ state, bus, screenManager: manager, registry, screenMemory });
   return kind;
 };
 /** Refresh the mounted screen once, the way uiRoot's cadence does in the game (a probe that moves state
  *  the screen reads — the heat system's escape clock, say — calls this to see the screen follow it). */
-window.__benchRefresh = () => { currentScreen?.refresh?.({ state, bus, screenManager: manager, registry }); return current; };
+window.__benchRefresh = () => { currentScreen?.refresh?.({ state, bus, screenManager: manager, registry, screenMemory }); return current; };
 const manager = {
   pushScreen(id) { void goto(id); },
   popScreen() { void back(); },
@@ -977,7 +979,7 @@ async function goto(rawId) {
         (await import('../src/ui/screens/codex.js')).requestCodexTab('Figures');
       } else unseedRecordShot(state);
       const screen = await loader();
-      const ctx = { state, bus, screenManager: manager, registry, writeStorePage() {}, publishStoreStill() {} };
+      const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
       if (shot.record) screen._focus?.('record:deeds');
@@ -1001,7 +1003,7 @@ async function goto(rawId) {
 }
 
 async function openOverlay(kind) {
-  const ctx = { state, bus, screenManager: manager, registry, writeStorePage() {}, publishStoreStill() {} };
+  const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
   if (kind === 'comms') {
     const contact = {
       id: 7, type: 'ship', alive: true, team: 2, radius: 14,
@@ -1108,7 +1110,7 @@ async function mountFlightHud(opts = {}) {
     import('../src/ui/marketNews.js'),
   ]);
   const ctx = {
-    state, bus,
+    state, bus, screenMemory,
     screenManager: manager, registry,
     // Top-down camera stand-in: the player sits just below screen centre, so a world offset
     // projects to a real screen position and a tell/hostile low in the field lands over the

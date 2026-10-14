@@ -1,0 +1,297 @@
+{
+  "assetId": "spore_chimney_stalk",
+  "category": "growth",
+  "description": "spore chimney stalk; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_VENT_MOUTH",
+      "position": [
+        -0.12931275550434407,
+        2.63,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.8942092828138445,
+          0.057999999999999996,
+          0.8002435620044375
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.142800283862856,
+          0.057999999999999996,
+          0.36607036373213225
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0698819458343947,
+          0.057999999999999996,
+          -0.5434635424548819
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.7552944318884363,
+          0.057999999999999996,
+          -0.9324860970321885
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.353711223596713,
+          0.057999999999999996,
+          -1.1466858202235326
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7905429359018253,
+          0.057999999999999996,
+          -0.9027966916730048
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.1384798626117283,
+          0.057999999999999996,
+          -0.3792935570604646
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.1941942839885964,
+          0.057999999999999996,
+          0.11789831249413041
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.718931911689222,
+          0.057999999999999996,
+          0.9608001386109811
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.26467247758130225,
+          0.057999999999999996,
+          1.1704479824455998
+        ],
+        "size": [
+          0.22799999999999998,
+          0.036,
+          0.22799999999999998
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.3874707221984863,
+      0.01533872913569212,
+      -1.3520947694778442
+    ],
+    "max": [
+      1.3518003225326538,
+      2.8119614124298096,
+      1.3739937543869019
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "spore_chimney_stalk_lod0.glb",
+      "triangles": 35268,
+      "draws": 4,
+      "bytes": 1547816,
+      "method": "source",
+      "sha256": "fae2b8385bb8520e5aeee7947f771e94575de86347c545e83c42167b65609c48"
+    },
+    {
+      "level": 1,
+      "file": "spore_chimney_stalk_lod1.glb",
+      "triangles": 14106,
+      "draws": 4,
+      "bytes": 757748,
+      "method": "Forge-decimation",
+      "sha256": "89adc137d7df36ca37b448544585c41d5a20250475ec2db0a3ca0215675aadcc"
+    },
+    {
+      "level": 2,
+      "file": "spore_chimney_stalk_lod2.glb",
+      "triangles": 6348,
+      "draws": 4,
+      "bytes": 405820,
+      "method": "Forge-decimation",
+      "sha256": "563a2c3f7d93038aa2776d0a49b1987e17472183e4cc8635d567f2d7757c5f9e"
+    }
+  ]
+}

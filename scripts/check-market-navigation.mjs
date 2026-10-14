@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { applyTradeNavigation, computeBestTrades, describeTradeIntel, formatCargoUnits, unitPrice } from '../src/ui/market/tradeLogic.js';
+import { applyTradeNavigation, computeBestTrades, formatCargoUnits, unitPrice } from '../src/ui/market/tradeLogic.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 
 const TRADE_LOGIC_SOURCE = readFileSync(new URL('../src/ui/market/tradeLogic.js', import.meta.url), 'utf8');
@@ -237,6 +237,9 @@ function checkStationMarketSelectionContract() {
 
 function checkBestTradeExplainsBlockedLoad() {
   const { state } = makeHarness('sector_helios_prime');
+  // The fixture clock must cover the scan: economy quote trust (15da68c1fe) refuses
+  // future-dated intel, and without simTime the remembered prices read as unsourced.
+  state.simTime = 132;
   state.player.credits = 0;
   state.player.cargo.capVolume = 4;
   state.economy = {
@@ -248,11 +251,18 @@ function checkBestTradeExplainsBlockedLoad() {
 
   const trade = computeBestTrades(state, 'station_helios')[0];
   assert.equal(trade.loadUnits, 0, 'blocked route should carry zero load units');
-  assert.match(trade.loadReason, /need 10 CR\/u/, 'blocked route should explain the wallet gate');
+  assert.equal(trade.loadReason, 'spot estimate; no executable purchase quote',
+    'a wallet-blocked projection must disclose it is not an executable quote');
+  // With a live quote owner (the market screen's path), a zero-credit wallet plans no
+  // run at all; the screen's empty state names credits. No fabricated 'need X CR/u' row.
+  const quote = (sid, cid, mode, qty) => ({ ok: true, qty, unitAvg: 10, total: 10 * qty });
+  const actionable = computeBestTrades(state, 'station_helios', { quote }).filter((t) => t.loadUnits > 0);
+  assert.equal(actionable.length, 0, 'quote-backed zero-credit wallet must not plan an executable run');
 }
 
-function checkBestTradeUsesWarmedMarketSnapshots() {
+function checkBestTradeRefusesUnvisitedWarmedMarkets() {
   const { state } = makeHarness('sector_helios_prime');
+  state.simTime = 132;
   state.economy = {
     markets: {
       station_helios: { cmdty_food: { lastBuy: 10, lastSell: 9, stock: 1000, role: 'produce' } },
@@ -261,11 +271,18 @@ function checkBestTradeUsesWarmedMarketSnapshots() {
     marketIntel: {},
   };
 
+  // Economy quote trust (15da68c1fe): a warmed remote book is not knowledge. Without
+  // player memory or scan intel the planner must not see station_tethys at all —
+  // no memory is unknown, not omniscience — so no route is planned from live remote books.
+  assert.deepEqual(computeBestTrades(state, 'station_helios'), [],
+    'warmed remote books must not create routes before explicit visit intel');
+
+  // The same spread becomes a real route only once it is remembered as a scan.
+  state.economy.marketIntel.station_tethys = { seenAtT: 12, snapshot: { cmdty_food: { sell: 18 } } };
   const trade = computeBestTrades(state, 'station_helios')[0];
-  assert.equal(trade.destStation, 'station_tethys', 'planner should use warmed public markets even before explicit visit intel');
-  assert.equal(trade.loadProfit, 40, 'warmed market route should still show current-run profit');
-  assert.equal(trade.intelSource, 'market', 'warmed public market routes should carry market-feed source');
-  assert.equal(describeTradeIntel(state, trade), 'market feed', 'warmed public market routes should disclose they are market-feed projections');
+  assert.equal(trade.destStation, 'station_tethys', 'scanned intel restores the destination');
+  assert.equal(trade.loadProfit, 40, 'scanned route should still show current-run profit');
+  assert.equal(trade.intelSource, 'scanned', 'route must disclose its scan source');
 }
 
 checkOffSectorBestTradeSetsCourse();
@@ -278,6 +295,6 @@ checkMarketCargoUnitFormatting();
 checkStationMarketSelectionContract();
 checkBestTradeShowsCurrentLoadAndProfit();
 checkBestTradeExplainsBlockedLoad();
-checkBestTradeUsesWarmedMarketSnapshots();
+checkBestTradeRefusesUnvisitedWarmedMarkets();
 
 console.log('Market navigation checks OK');

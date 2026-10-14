@@ -1,0 +1,166 @@
+{
+  "assetId": "expansion_bellows",
+  "category": "fluid",
+  "description": "expansion bellows",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          0.6600000262260437
+        ],
+        "size": [
+          3.0,
+          0.12,
+          0.12
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.6600000262260437
+        ],
+        "size": [
+          3.0,
+          0.12,
+          0.12
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.099721670150757,
+      -0.5572904944419861,
+      -0.7200000286102295
+    ],
+    "max": [
+      2.09761905670166,
+      0.5550000071525574,
+      0.7200000286102295
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "expansion_bellows_lod0.glb",
+      "triangles": 4532,
+      "draws": 3,
+      "bytes": 412952,
+      "method": "source",
+      "sha256": "6d047ac124850a5f9121ccbb5b3e18f907da7b28fb677b3edfd0f722b523fa27"
+    },
+    {
+      "level": 1,
+      "file": "expansion_bellows_lod1.glb",
+      "triangles": 1812,
+      "draws": 3,
+      "bytes": 277896,
+      "method": "Forge-decimation",
+      "sha256": "5abeb32415ef7afa0410579007422be4dbd4d30774abf388149c34ba3940942b"
+    },
+    {
+      "level": 2,
+      "file": "expansion_bellows_lod2.glb",
+      "triangles": 758,
+      "draws": 3,
+      "bytes": 226832,
+      "method": "Forge-decimation",
+      "sha256": "afcd2f49d5e3a5db3a3d4efe06f121ba25c3cae5846d7ed2c7de919d823878f4"
+    }
+  ]
+}

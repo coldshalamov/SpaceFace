@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -128,6 +129,84 @@ test('live tape kill has real poses without fabricating a causal shape', () => {
   assert.equal(ring.exportableAsMoment, false);
 });
 
+test('a capture failure stays unverified and keeps the thrown error', async () => {
+  const headed = await attemptHeadedPlayback({
+    page: {
+      async evaluate() {
+        throw new Error('canvas-readback-failed');
+      },
+    },
+  });
+  assert.equal(headed.ok, false);
+  assert.equal(headed.videoVerified, false);
+  assert.equal(headed.producedVideo, false);
+  assert.equal(headed.framesArePlayback, false);
+  assert.equal(headed.error, 'canvas-readback-failed');
+  assert.deepEqual(headed.frames, []);
+});
+
+test('position rasters and missing flight frames are not playback', async () => {
+  const raster = await attemptHeadedPlayback({
+    page: {
+      async evaluate() {
+        return { frames: ['aaaa', 'bbbb'], source: 'position-raster', width: 2, height: 2 };
+      },
+    },
+  });
+  assert.equal(raster.ok, false);
+  assert.equal(raster.framesArePlayback, false);
+  assert.equal(raster.videoVerified, false);
+  assert.equal(raster.error, 'presented-flight-frames-required');
+  assert.deepEqual(raster.frames, []);
+
+  const empty = await attemptHeadedPlayback({
+    page: { async evaluate() { return null; } },
+  });
+  assert.equal(empty.videoVerified, false);
+  assert.equal(empty.framesArePlayback, false);
+  assert.equal(empty.error, 'presented-flight-frames-required');
+});
+
+test('recorded flight pixels stay unverified until a media check passes', async () => {
+  const bytes = Buffer.from(Array.from({ length: 16 }, (_, i) => i)).toString('base64');
+  const headed = await attemptHeadedPlayback({
+    page: {
+      async evaluate() {
+        return {
+          frames: [bytes, bytes],
+          width: 2,
+          height: 2,
+          startTick: 0,
+          endTick: 12,
+          fps: 10,
+          source: 'recorded-flight',
+          videoVerified: true,
+        };
+      },
+    },
+  });
+  assert.equal(headed.ok, true);
+  assert.equal(headed.framesArePlayback, true);
+  assert.equal(headed.source, 'recorded-flight');
+  assert.equal(headed.videoVerified, false);
+  assert.equal(headed.producedVideo, false);
+  assert.equal(headed.error, null);
+  assert.equal(headed.frames.length, 2);
+});
+
+test('recorded-flight frames with invalid metadata or truncated RGBA pixels stay unverified', async () => {
+  const valid = { frames: [Buffer.alloc(16).toString('base64'), Buffer.alloc(16).toString('base64')],
+    width: 2, height: 2, startTick: 0, endTick: 12, fps: 10, source: 'recorded-flight' };
+  for (const change of [{ width: 0 }, { height: 1.5 }, { fps: Infinity },
+    { endTick: 0 }, { startTick: -1 }, { frames: ['AAAA', 'AAAA'] }]) {
+    const headed = await attemptHeadedPlayback({ page: { async evaluate() { return { ...valid, ...change }; } } });
+    assert.equal(headed.ok, false, JSON.stringify(change));
+    assert.equal(headed.framesArePlayback, false);
+    assert.deepEqual(headed.frames, []);
+    assert.match(headed.error, /invalid-recorded-frame/);
+  }
+});
+
 test('encoder does not verify a non-playback raster', async () => {
   const selection = selectMoments(killStream(1700, []));
   const plan = planShot(selection.stream, selection.ranked[0]);
@@ -139,6 +218,32 @@ test('encoder does not verify a non-playback raster', async () => {
   assert.equal(encoded.wroteFile, false);
   assert.equal(encoded.videoVerified, false);
   assert.equal(encoded.reason, 'playback-frames-required');
+  assert.equal(encoded.error, 'playback-frames-required');
+});
+
+test('a failed encode stays unverified and keeps the encoder error', async () => {
+  const encoded = await encodeMoment({
+    exportSpan: {
+      exportable: true,
+      seconds: 15,
+      missingPreTicks: 0,
+      missingPostTicks: 0,
+      claimsUnrecorded: false,
+    },
+    moment: { seconds: 15 },
+  }, [], {
+    outPath: '/tmp/moment-encode-failed.webm',
+    framesArePlayback: true,
+    frames: [new Uint8Array(8), new Uint8Array(8)],
+    width: 160,
+    height: 90,
+    fps: 8,
+  });
+  assert.equal(encoded.ok, false);
+  assert.equal(encoded.wroteFile, false);
+  assert.equal(encoded.videoVerified, false);
+  assert.equal(encoded.reason, 'encode-failed');
+  assert.match(encoded.error, /Conversion failed/);
 });
 
 test('Moment Machine is integrated into the existing recorded Clips exporter', async () => {
@@ -169,12 +274,26 @@ test('cli ingest selects a logged kill and does not invent positions', () => {
   assert.equal(body.reason, 'tape-positions-unrecorded');
 });
 
-test('authoritative sessions store poses; absent live pixels stay unverified', { timeout: 240000 }, async () => {
+test('authoritative sessions store poses; absent live pixels stay unverified', { timeout: 240000 }, async (t) => {
   const sessions = runSessions(2);
   assert.equal(sessions.count, 2);
   assert.equal(sessions.evidenceClass, 'production-manifest');
   assert.equal(sessions.rows.every((row) => row.ok && row.tapeTicks === 60 && row.hasInputRing), true);
-  assert.equal(sessions.rows.every((row) => row.positionSource === 'tape-samples'), true);
+  assert.equal(sessions.rows.every((row) => row.positionSource === 'tape-samples' && row.sampleCount > 0), true);
+  assert.equal(sessions.rows.every((row) => row.playbackVerified === true), true);
+  for (const row of sessions.rows) {
+    assert.equal(row.playback.length, row.samples.length);
+    for (let i = 0; i < row.samples.length; i += 1) {
+      const sample = row.samples[i];
+      const played = row.playback[i];
+      assert.equal(played.tick, sample.tick);
+      assert.equal(played.id, sample.id);
+      assert.equal(played.x, sample.x);
+      assert.equal(played.z, sample.z);
+      assert.equal(played.heading, sample.heading);
+    }
+  }
+  assert.equal(sessions.rows.some((row) => (row.dropped || []).some((item) => item.reason === 'tape-positions-unrecorded')), false);
   for (const shape of SHAPE_IDS) {
     assert.equal(sessions.selectedShapes.includes(shape), false, shape);
   }
@@ -182,8 +301,8 @@ test('authoritative sessions store poses; absent live pixels stay unverified', {
   assert.equal(headed.videoVerified, false);
   assert.equal(headed.producedVideo, false);
   assert.ok(headed.error && headed.error.length > 0);
-  const outDir = path.join(ROOT, 'artifacts/moment-machine');
-  await mkdir(outDir, { recursive: true });
+  const outDir = await mkdtemp(path.join(tmpdir(), 'spaceface-moment-machine-test-'));
+  t.after(() => rm(outDir, { recursive: true, force: true }));
   const index = {
     schema: 'spaceface.momentIndex.v1',
     situations: sessions.count,

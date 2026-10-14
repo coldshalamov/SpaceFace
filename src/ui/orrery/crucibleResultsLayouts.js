@@ -95,6 +95,37 @@ ${RP} > .k-foot { order:5; position:sticky; bottom:0; z-index:4; flex:none; marg
   background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 18px) !important; }
 ${RP} > .k-foot > .k-words { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; column-gap:26px !important; row-gap:2px !important; }
 
+/* ≤600 tall desktop (960×540): the dial plus its full caption (killer, detail, vitals, the
+   LAST 5 HITS strip and its legend) needs ~520px, which the full-width foot row would cut in
+   half. So the ways-out stack under the left column, and the instrument takes the whole
+   right-hand height down to the plate's floor; nothing in the caption is hidden. */
+@media (min-width:701px) and (max-height:600px) {
+  ${R} > .sf-crres__dial { top:2px !important; bottom:4px !important; overflow:visible !important; }
+  ${R} .orr-deathdial__caption { padding-bottom:0 !important; }
+  ${R} .orr-deathdial__strip { margin-top:8px !important; }
+  ${R} .orr-crres-hitlegend { display:block !important; margin:2px 0 0 !important; }
+  ${R} > .k-foot { position:relative; z-index:5; max-width:calc(42vw - 60px) !important; box-sizing:border-box; }
+  ${R} > .k-foot > .k-words { flex-wrap:wrap !important; column-gap:26px !important; row-gap:6px !important; max-width:100% !important; }
+  ${R} > .k-foot .k-word.k-word--primary { flex:0 0 100%; font-size:15px !important; padding-bottom:8px !important; }
+  ${R} > .k-foot .k-word.k-word--primary::after { content:none !important; display:none !important; }
+  ${R} .sf-crres__stage { position:relative; z-index:2; gap:12px !important; padding:0 12px 16px 0 !important; }
+  ${R} .orr-crres-figure__n { font-size:30px !important; }
+  ${R} .orr-crres-figure__w { font-size:11px !important; letter-spacing:.18em !important; margin-top:4px !important; }
+  ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { margin:0 0 6px !important; }
+  ${R} > .k-title .k-t-title { font-size:clamp(34px, 7.2vh, 48px) !important; }
+  ${R} > .sf-crres-celebrate { margin:0 !important; }
+}
+@media (min-width:701px) and (max-width:880px) and (max-height:600px) {
+  ${R} > .k-foot .k-word.k-word--primary { font-size:13px !important; }
+}
+
+/* 601–720 tall: keep a thin safety clip so a long killer name cannot bleed into the foot */
+@media (min-width:701px) and (min-height:601px) and (max-height:720px) {
+  ${R} > .sf-crres__dial { overflow:hidden !important; }
+  ${R} > .k-foot { position:relative; z-index:5; }
+}
+
+
 `;
 
 export function injectCrucibleResultsLayouts(doc = globalThis.document) {

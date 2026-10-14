@@ -20,6 +20,32 @@ export function renderVerdict({ meta, results, overall, paths }) {
   }
   L.push(`- Run: ${meta.wallSeconds} s wall, ${meta.simSeconds} s of play sim time, ${meta.frames} frames sampled, ${meta.shots} screenshots · player script: ${meta.script}`);
   if (meta.stopReason) L.push(`- Stopped: ${meta.stopReason}`);
+  if (meta.gradedRun === 'retry') {
+    L.push('- Graded run: this verdict is the retry. The first run is not graded.');
+    if (meta.firstStopReason) L.push(`- First run stopped: ${meta.firstStopReason}`);
+  }
+  if (meta.environmentRetry) L.push(`- Environment retry: ${meta.environmentRetry}`);
+  if (meta.sessionSignals && meta.sessionSignals.length) L.push(`- Session signals ignored (Chrome left running): ${meta.sessionSignals.join(', ')}`);
+  if (meta.harnessFreezes && meta.harnessFreezes.length) {
+    const bits = meta.harnessFreezes.map((freeze) => {
+      const lagS = Math.round(Number(freeze.lagMs) / 1000);
+      const start = Number.isFinite(Number(freeze.startWall)) ? new Date(Number(freeze.startWall)).toISOString() : '?';
+      const end = Number.isFinite(Number(freeze.endWall)) ? new Date(Number(freeze.endWall)).toISOString() : '?';
+      return `${lagS} s (${start} → ${end})`;
+    });
+    L.push(`- Harness clock freezes (≥20 s): ${bits.join('; ')}`);
+  }
+  if (meta.hostPressureError) L.push(`- Host pressure: dmesg unavailable: ${meta.hostPressureError}`);
+  else if (meta.hostPressure && meta.hostPressure.length) {
+    L.push(`- Host pressure (dmesg, run window): ${meta.hostPressure.length} line(s)`);
+    const seen = new Set();
+    for (const line of meta.hostPressure) {
+      if (seen.has(line)) continue;
+      seen.add(line);
+      L.push(`  - ${line}`);
+      if (seen.size >= 4) break;
+    }
+  }
   if (overall === 'INCOMPLETE') {
     const unknown = results.filter((r) => r.status === 'UNKNOWN');
     L.push('');
@@ -68,6 +94,14 @@ export function printSummary({ meta, results, overall, paths }, log = console.lo
     for (const r of unknown) log(`    ${r.id}: ${r.detail}`);
   }
   if (overall === 'ENVIRONMENT') log('  harness environment — not a gameplay FAIL');
+  if (meta.gradedRun === 'retry') {
+    log('  graded run: retry, the first run is not graded');
+    if (meta.firstStopReason) log(`  first run stopped: ${meta.firstStopReason}`);
+  }
+  if (meta.environmentRetry) log(`  environment retry: ${meta.environmentRetry}`);
+  if (meta.sessionSignals && meta.sessionSignals.length) log(`  session signals ignored, chrome left running: ${meta.sessionSignals.join(', ')}`);
+  if (meta.harnessFreezes && meta.harnessFreezes.length) log(`  harness clock freezes: ${meta.harnessFreezes.length}`);
+  if (meta.hostPressure && meta.hostPressure.length) log(`  host pressure dmesg lines: ${meta.hostPressure.length}`);
   for (const r of results) if (r.status === 'ADVISORY') log(`  advisory ${r.id}: ${r.detail}`);
   for (const r of results) log(`  ${String(r.status).padEnd(12)} ${r.id.padEnd(19)} ${r.value == null ? '' : r.value}`);
   for (const [k, v] of Object.entries(paths || {})) log(`  ${k}: ${v}`);

@@ -98,7 +98,7 @@ export function policyHeavyAnchorGrappler(ctx) {
     if (lived < TELEGRAPH_TICKS) {
       return pack(doctrine, tick, 'spool', {
         self,
-        maneuver: steerToward(self, approach, { arrive: 50, brakeDist: 40 }),
+        maneuver: holdManeuver(self),
         telegraph: telegraph(doctrine.telegraphKind, memory.phaseSince),
         cue: { kind: doctrine.telegraphKind, anchor },
         explain: 'Spooling onto the heavy anchor. The swing has not started.',
@@ -107,7 +107,7 @@ export function policyHeavyAnchorGrappler(ctx) {
     }
     memory.commit = {
       id: 'swing',
-      untilTick: tick + doctrine.commitTicks,
+      untilTick: tick + Math.max(doctrine.commitTicks, 260),
       targetId: objective.anchorId ?? null,
       targetGeneration: 1,
       snapshot: { anchor, flank, heading: Math.atan2(-1, 0.15) },
@@ -115,14 +115,16 @@ export function policyHeavyAnchorGrappler(ctx) {
     memory.latchIssued = false;
   }
   const lived = enter(memory, tick, 'swing');
-  const tangent = memory.commit.snapshot.heading;
+  const flankPoint = memory.commit.snapshot.flank || flank;
   const issue = memory.latchIssued !== true;
   if (issue) memory.latchIssued = true;
   if (tick < memory.commit.untilTick) {
     return pack(doctrine, tick, 'swing', {
       self,
-      maneuver: steerHeading(self, tangent, 1),
-      verb: issue ? { kind: 'latch', targetRole: 'anchor', restScale: 0.72, maxRange: 170 } : null,
+      maneuver: flankPoint
+        ? steerToward(self, flankPoint, { boost: true, arrive: 18, boostDist: 24 })
+        : steerHeading(self, memory.commit.snapshot.heading, 1),
+      verb: issue ? { kind: 'latch', targetRole: 'anchor', restScale: 1, maxRange: 200 } : null,
       telegraph: lived < 8 ? telegraph(doctrine.telegraphKind, memory.phaseSince) : null,
       cue: { kind: doctrine.telegraphKind, anchor, flank },
       explain: 'Committed swing on the anchor line. The flank is fixed for this window.',
@@ -224,7 +226,10 @@ export function policyCorridorPackLeader(ctx) {
     memory.commit = { id: 'park', untilTick: tick + doctrine.commitTicks, snapshot: { lane, exit, park } };
   }
   const mateProgress = packmate ? Math.max(0, 1 - dist(packmate.pos, exit) / 280) : 0;
-  const waypoint = !packmate || dist(packmate.pos, lane) > 36 ? lane : exit;
+  const player = contactByRole(ctx.sensed, 'player');
+  const mouthBlocked = !!(player && dist(player.pos, lane) < 34);
+  const holdShort = { x: lane.x - 90, z: lane.z };
+  const waypoint = mouthBlocked ? holdShort : (!packmate || dist(packmate.pos, lane) > 36 ? lane : exit);
   return pack(doctrine, tick, 'hold_park', {
     self,
     maneuver: steerToward(self, park, { arrive: 22, brakeDist: 34, brakeSpeed: 6 }),
@@ -502,54 +507,24 @@ export function policyCollateralHold(ctx) {
       goal: goal('collateral', 0),
     });
   }
-  const blocked = civilian ? !laneClear(self, player, civilian, 6) : false;
+  const blocked = civilian ? !laneClear(self, player, civilian, 8) : false;
   const flankSign = memory.notes.flankSign || 1;
   const flank = {
-    x: self.pos.x,
-    z: self.pos.z + flankSign * 110,
+    x: self.pos.x + flankSign * 70,
+    z: self.pos.z,
   };
-  if (blocked && !memory.commit) {
+  if (blocked) {
     const lived = enter(memory, tick, 'show_flank');
     if (!memory.notes.flankSign) memory.notes.flankSign = 1;
-    if (lived < TELEGRAPH_TICKS) {
-      return pack(doctrine, tick, 'show_flank', {
-        self,
-        maneuver: holdManeuver(self),
-        telegraph: telegraph(doctrine.telegraphKind, memory.phaseSince),
-        cue: { kind: doctrine.telegraphKind, flank, flankSign },
-        explain: 'Civilian blocks the shot. Showing the flank before moving.',
-        goal: goal('collateral', 0.1),
-      });
-    }
-    memory.commit = { id: 'flank', untilTick: tick + doctrine.commitTicks, snapshot: { flank, flankSign } };
-  }
-  if (memory.commit && tick <= memory.commit.untilTick) {
-    enter(memory, tick, 'flank');
-    const point = memory.commit.snapshot.flank;
-    const clearNow = civilian ? laneClear(self, player, civilian, 6) : true;
-    const want = clearNow && dist(self.pos, player.pos) < 230 && tick >= 60 && noseOn(self, player);
-    return pack(doctrine, tick, 'flank', {
-      self,
-      maneuver: (want || dist(self.pos, player.pos) < 110) ? aimHold(self, player) : steerToward(self, point, { arrive: 24, brakeDist: 30 }),
-      attack: want ? fireAt(doctrine, self, player) : null,
-      cue: { kind: doctrine.telegraphKind, flank: point, flankSign: memory.commit.snapshot.flankSign },
-      explain: want
-        ? 'Flank lane is clear. Requesting a windowed shot.'
-        : 'Still flanked while the civilian owns the segment, or the window is not open.',
-      goal: goal('collateral', want ? 0.7 : 0.25),
-    });
-  }
-  const clear = civilian ? laneClear(self, player, civilian, 6) : true;
-  if (!clear) {
     memory.commit = null;
-    memory.notes.flankSign = -(memory.notes.flankSign || 1);
-    enter(memory, tick, 'show_flank');
+    delete memory.notes.clearSince;
     return pack(doctrine, tick, 'show_flank', {
       self,
-      maneuver: holdManeuver(self),
-      telegraph: telegraph(doctrine.telegraphKind, tick),
-      explain: 'Lane closed again. Holding fire.',
-      goal: goal('collateral', 0.2),
+      maneuver: lived < TELEGRAPH_TICKS ? holdManeuver(self) : steerToward(self, flank, { arrive: 20, brakeDist: 28 }),
+      telegraph: telegraph(doctrine.telegraphKind, memory.phaseSince),
+      cue: { kind: doctrine.telegraphKind, flank, flankSign },
+      explain: 'Civilian owns the live segment. The gun stays dark.',
+      goal: goal('collateral', 0.15),
     });
   }
   if (!Number.isInteger(memory.notes.clearSince)) memory.notes.clearSince = tick;
@@ -597,11 +572,11 @@ export function policyCoverPeel(ctx) {
       goal: goal('cover', 0),
     });
   }
-  const hidden = !laneClear(self, player, rock, 2);
+  const hidden = !laneClear(self, player, rock, 22);
   const side = memory.notes.peelSign || 1;
   const peel = {
-    x: rock.pos.x + 70,
-    z: rock.pos.z + side * 80,
+    x: rock.pos.x + 40,
+    z: rock.pos.z + side * 150,
   };
   if (hidden && !memory.commit) {
     const lived = enter(memory, tick, 'show_peel');
@@ -620,16 +595,24 @@ export function policyCoverPeel(ctx) {
         goal: goal('cover', 0.15),
       });
     }
-    memory.commit = { id: 'peel', untilTick: tick + doctrine.commitTicks, snapshot: { peel, peelSign: side } };
+    memory.commit = { id: 'peel', untilTick: tick + Math.max(doctrine.commitTicks, 220), snapshot: { peel, peelSign: side } };
   }
   if (memory.commit && tick <= memory.commit.untilTick) {
     enter(memory, tick, 'peel');
     const point = memory.commit.snapshot.peel;
-    const clear = laneClear(self, player, rock, 2);
-    const want = clear && dist(self.pos, player.pos) < 230 && tick >= 60 && noseOn(self, player);
+    const clear = laneClear(self, player, rock, 22);
+    if (clear) {
+      if (!Number.isInteger(memory.notes.peekSince)) memory.notes.peekSince = tick;
+    } else {
+      delete memory.notes.peekSince;
+    }
+    const peeked = Number.isInteger(memory.notes.peekSince) && tick - memory.notes.peekSince >= 45;
+    const want = peeked && dist(self.pos, player.pos) < 230 && tick >= 60 && noseOn(self, player);
     return pack(doctrine, tick, 'peel', {
       self,
-      maneuver: (want || dist(self.pos, player.pos) < 110) ? aimHold(self, player) : steerToward(self, point, { arrive: 22, brakeDist: 28 }),
+      maneuver: want
+        ? { ...steerHeading(self, Math.atan2(player.pos.z - self.pos.z, player.pos.x - self.pos.x), 0), brake: true, forward: 0 }
+        : steerToward(self, point, { arrive: 22, brakeDist: 28 }),
       attack: want ? fireAt(doctrine, self, player) : null,
       cue: { kind: doctrine.telegraphKind, peel: point, peelSign: memory.commit.snapshot.peelSign },
       explain: want ? 'Peeled clear of the rock. Requesting the window.' : 'Peel is committed. The gun stays dark in shadow.',
@@ -651,7 +634,7 @@ export function policyCoverPeel(ctx) {
       });
     }
     enter(memory, tick, 'fire');
-    const want = dist(self.pos, player.pos) < 230 && tick >= 60 && noseOn(self, player);
+    const want = shown >= 45 && dist(self.pos, player.pos) < 230 && tick >= 60 && noseOn(self, player);
     return pack(doctrine, tick, 'fire', {
       self,
       maneuver: (want || dist(self.pos, player.pos) < 110) ? aimHold(self, player) : steerToward(self, player.pos, { arrive: 150 }),
@@ -758,9 +741,9 @@ export function policyFieldMechanic(ctx) {
 function noseOn(self, target) {
   if (!self || !target || !target.pos) return false;
   const gap = dist(self.pos, target.pos);
-  if (gap < 60 || gap > 230) return false;
+  if (gap < 40 || gap > 220) return false;
   const desired = Math.atan2(target.pos.z - self.pos.z, target.pos.x - self.pos.x);
-  return Math.abs(wrapAngle(desired - (self.rot || 0))) < 0.5;
+  return Math.abs(wrapAngle(desired - (self.rot || 0))) < 0.35;
 }
 
 function aimHold(self, target) {

@@ -1,0 +1,586 @@
+{
+  "assetId": "ops_power_junction_saddle",
+  "category": "power",
+  "description": "power junction saddle",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "cable_1_0",
+      "position": [
+        0.88,
+        0.55,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "cable_-1_0",
+      "position": [
+        -0.88,
+        0.55,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "cable_0_1",
+      "position": [
+        0.0,
+        0.55,
+        -0.88
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "cable_0_-1",
+      "position": [
+        0.0,
+        0.55,
+        0.88
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          1.8,
+          0.24,
+          1.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.2525,
+          0.5599999999999999
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.28500000000000003,
+          0.5599999999999999
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.2525,
+          -0.5599999999999999
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.684,
+          0.28500000000000003,
+          -0.5599999999999999
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.2525,
+          0.5599999999999999
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.28500000000000003,
+          0.5599999999999999
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.2525,
+          -0.5599999999999999
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.684,
+          0.28500000000000003,
+          -0.5599999999999999
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.55,
+          -0.0
+        ],
+        "size": [
+          1,
+          0.6,
+          1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.45000000000000007,
+          0.9575,
+          0.45000000000000007
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.45000000000000007,
+          0.99,
+          0.45000000000000007
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.45000000000000007,
+          0.9575,
+          -0.45000000000000007
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.45000000000000007,
+          0.99,
+          -0.45000000000000007
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.45000000000000007,
+          0.9575,
+          0.45000000000000007
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.45000000000000007,
+          0.99,
+          0.45000000000000007
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.45000000000000007,
+          0.9575,
+          -0.45000000000000007
+        ],
+        "size": [
+          0.0896,
+          0.025000000000000022,
+          0.0896
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.45000000000000007,
+          0.99,
+          -0.45000000000000007
+        ],
+        "size": [
+          0.064,
+          0.039999999999999925,
+          0.064
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.6799999999999999,
+          0.55,
+          -0.0
+        ],
+        "size": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.6799999999999999,
+          0.55,
+          -0.0
+        ],
+        "size": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.55,
+          -0.6799999999999999
+        ],
+        "size": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.55,
+          0.6799999999999999
+        ],
+        "size": [
+          0.4,
+          0.4,
+          0.4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "operations",
+    "power",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.8999999761581421,
+      0.0,
+      -0.8799999952316284
+    ],
+    "max": [
+      0.8999999761581421,
+      1.0099999904632568,
+      0.8799999952316284
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_power_junction_saddle_lod0.glb",
+      "triangles": 11612,
+      "draws": 6,
+      "bytes": 818504,
+      "method": "source",
+      "sha256": "191b2903d0c8f1fee4c03cdd2b647b811cb31ff853a0edf508b2790d7432c640"
+    },
+    {
+      "level": 1,
+      "file": "ops_power_junction_saddle_lod1.glb",
+      "triangles": 1802,
+      "draws": 5,
+      "bytes": 329756,
+      "method": "Forge-decimation",
+      "sha256": "b94cf7ca3205fbe17bd502b61e2d8567e90a1cf45b6d8229103171dc53d2c98b"
+    },
+    {
+      "level": 2,
+      "file": "ops_power_junction_saddle_lod2.glb",
+      "triangles": 810,
+      "draws": 5,
+      "bytes": 288256,
+      "method": "Forge-decimation",
+      "sha256": "2306ff6c1c2765b4de315b04e8206b336fb61a59c3c5f728ed72caf6973fcd2a"
+    }
+  ]
+}

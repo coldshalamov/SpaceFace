@@ -138,7 +138,12 @@ export function createPlayWatch({ windowMs = STALL_WINDOW_MS, minSim = STALL_MIN
         if (idx > 1) samples.splice(0, idx - 1);
       }
       if (stall) {
-        const row = record({ kind: 'stall', ...stall, sim: sample.sim, t: sample.t });
+        const wallEnd = Number(sample.wall);
+        const wallStart = Number.isFinite(wallEnd) && Number.isFinite(stall.wallMs) ? wallEnd - stall.wallMs : null;
+        const row = record({
+          kind: 'stall', ...stall, sim: sample.sim, t: sample.t,
+          wallStart, wallEnd: Number.isFinite(wallEnd) ? wallEnd : null,
+        });
         if (row) fresh.push(row);
       }
       if (isGradingSample(sample)) {

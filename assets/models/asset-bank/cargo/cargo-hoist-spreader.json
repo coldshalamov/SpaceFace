@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-hoist-spreader",
+  "category": "cargo",
+  "description": "Spreader beam with central lift eye and end shackles",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.3300000429153442,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.8799999952316284,
+        0.6650000214576721,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.6,
+          -0.0
+        ],
+        "size": [
+          3.6,
+          0.42,
+          0.36
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "handling",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.8799999952316284,
+      0.0,
+      -0.2800000011920929
+    ],
+    "max": [
+      1.8799999952316284,
+      1.3300000429153442,
+      0.2800000011920929
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-hoist-spreader_lod0.glb",
+      "triangles": 4176,
+      "draws": 4,
+      "bytes": 438352,
+      "method": "source",
+      "sha256": "53335655d4b1d60aa4c63370a2d32da5129121474d07c6defa4a2d1b5e9e9e9c"
+    },
+    {
+      "level": 1,
+      "file": "cargo-hoist-spreader_lod1.glb",
+      "triangles": 960,
+      "draws": 4,
+      "bytes": 286940,
+      "method": "authored-topology",
+      "sha256": "2972e9b21a6611500da1a5919eeb6f2ac6b2d5f95b1d9557fd21599b81cd411b"
+    },
+    {
+      "level": 2,
+      "file": "cargo-hoist-spreader_lod2.glb",
+      "triangles": 384,
+      "draws": 4,
+      "bytes": 261612,
+      "method": "authored-topology",
+      "sha256": "e17c73532c9956290fb251ba4ca0d2c8101ad42a2c6c84699340804f8d131d43"
+    }
+  ]
+}

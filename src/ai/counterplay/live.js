@@ -7,6 +7,19 @@ import { nemesisFireAllowed } from '../nemesisTactics.js';
 import { occupantGenerationOf } from '../../core/entity.js';
 import { clearAIFiringIntent } from '../../systems/aiFireIntent.js';
 
+// Only minds normalized and published by this live owner may bypass restoration.
+// Saved replacements, doctrine swaps and recycled hulls enter through restore again.
+const liveMinds = new WeakMap();
+
+function liveMemoryFor(ai, generation) {
+  const cached = liveMinds.get(ai);
+  if (cached && cached.memory === ai.counterplayMemory
+    && cached.doctrineId === ai.counterplayDoctrineId && cached.generation === generation) return cached.memory;
+  const memory = restoreCounterplayMemory(ai.counterplayMemory, ai.counterplayDoctrineId);
+  liveMinds.set(ai, { memory, doctrineId: ai.counterplayDoctrineId, generation });
+  return memory;
+}
+
 export function isCounterplayActor(entity, state) {
   return entity?.id !== state?.playerId && entity?.alive !== false
     && isCounterplayDoctrineId(entity?.data?.ai?.counterplayDoctrineId)
@@ -96,15 +109,19 @@ export function driveCounterplay({ ctx, entities, sensorPort, maneuverPort } = {
       continue;
     }
     const ai = entity.data.ai, frame = sensorPort.frameFor(entity.id, state.tick);
-    const memory = restoreCounterplayMemory(ai.counterplayMemory, ai.counterplayDoctrineId);
+    const generation = occupantGenerationOf(entity);
+    const memory = liveMemoryFor(ai, generation);
     if (!ai.counterplayMemory) { memory.phaseSince = state.tick; memory.stallSince = state.tick; }
-    memory.notes.boundGeneration = occupantGenerationOf(entity);
+    memory.notes.boundGeneration = generation;
     const input = counterplaySensorInput(state, entity, frame);
     const decision = decideCounterplay({ ...input, doctrineId: ai.counterplayDoctrineId,
       tick: state.tick, objective: ai.counterplayObjective || {}, memory });
     decision.phaseStartedTick = memory.phaseSince;
     const delay = counterplayDoctrineById(ai.counterplayDoctrineId).reactionDelayTicks;
-    const due = memory.delay.filter((row) => row.tick <= state.tick - delay).at(-1);
+    let due = null;
+    for (let index = memory.delay.length - 1; index >= 0; index--) {
+      if (memory.delay[index].tick <= state.tick - delay) { due = memory.delay[index]; break; }
+    }
     const sensed = due?.contacts || [];
     const targetRow = sensed.find((row) => row.id === decision.attack?.targetId);
     const target = targetRow && state.entities.get(targetRow.id);
