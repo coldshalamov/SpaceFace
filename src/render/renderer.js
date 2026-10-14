@@ -24945,14 +24945,19 @@ export const render = {
   _scheduleVeiledFoundryEnvDrain() {
     if (this._foundryEnvDrainScheduled === true) return;
     this._foundryEnvDrainScheduled = true;
+    let fallback = null;
     const run = () => {
+      if (this._foundryEnvDrainScheduled !== true) return;
       this._foundryEnvDrainScheduled = false;
+      if (fallback !== null) { clearTimeout(fallback); fallback = null; }
       if (!this._rendererLifecycle || (this.state && this.state.mode) !== 'loading') return;
       this._drainFoundryEnvPending();
     };
+    // A tab that never paints (hidden, throttled rAF) must not strand the flag: a plain timer
+    // runs the same one-shot drain if the paint has not come within 500 ms.
+    fallback = setTimeout(run, 500);
     const raf = globalThis.requestAnimationFrame;
     if (typeof raf === 'function') raf(() => setTimeout(run, 0));
-    else setTimeout(run, 0);
   },
 
   _bakeEnv(options = {}) {

@@ -330,7 +330,9 @@ test('an armed foundry promotion is retired before reveal on every route, and re
   // The armed promotion retires once at the head of the veil (rAF, then a fresh task), so the
   // convolve's GPU work cannot ride to the flight backstop and stall the first presented frames.
   assert.match(src, /this\._foundryEnvPending = true;\s*(\/\/[^\n]*\n\s*)*this\._scheduleVeiledFoundryEnvDrain\?\.\(\);/);
-  assert.match(src, /_scheduleVeiledFoundryEnvDrain\(\) \{[\s\S]{0,600}raf\(\(\) => setTimeout\(run, 0\)\)/);
+  assert.match(src, /_scheduleVeiledFoundryEnvDrain\(\) \{[\s\S]{0,1200}raf\(\(\) => setTimeout\(run, 0\)\)/);
+  // A never-painting tab cannot strand the scheduled flag: a timer fallback runs the same one-shot drain.
+  assert.match(src, /_scheduleVeiledFoundryEnvDrain\(\) \{[\s\S]{0,1200}fallback = setTimeout\(run, 500\)/);
   assert.match(src, /onBus\('mode:changed'[^\n]*\n(\s*\/\/[^\n]*\n)*\s*if \(mode === 'flight'\) \{\s*this\._drainFoundryEnvPending\?\.\(\);/);
   // The first playable paint (every route) stamps the env it lit with.
   assert.match(src, /render\.foundryEnvAtReveal = \{\s*source: owner\._envMapSource \?\? null,\s*pending: owner\._foundryEnvPending === true,/);
