@@ -246,6 +246,7 @@ export const stationContacts = {
     on('survivorPod:promoted', (payload = {}) => this._notePodReceipt(payload, 'promoted'));
     on('survivorPod:delivered', (payload = {}) => this._notePodReceipt(payload, 'delivered'));
     on('survivorPod:rescued', (payload = {}) => this._notePodReceipt(payload, 'rescued'));
+    on('encounter:convoyEscorted', (payload = {}) => this._noteConvoyEscort(payload));
     on('save:restoring', () => this._clearVonnFreightReceipts());
     on('vestaOreCache:resolved', (payload = {}) => {
       if (payload.recordId === 'vesta-ore-cache:shift-end:v1') this._reconcileDossArchive('vesta-resolved');
@@ -483,6 +484,33 @@ export const stationContacts = {
       text,
       simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
       intentId,
+    };
+    if (rec.intentId && model.traffic.some((entry) => entry.intentId === rec.intentId)) return false;
+    model.traffic.unshift(rec);
+    if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
+    this.bus.emit('stationLife:trafficChanged', { ...rec });
+    return true;
+  },
+
+  /**
+   * U3: a convoy the pilot pledged to defend docks safe at its destination — the desk
+   * remembers the wingman. Only the defended-escorted resolve emits, and only with a real
+   * destination station id; robbed, passed and lost convoys tell no thank-you story. The
+   * line lands on the destination's traffic rail (the berth-arrival view already reads it).
+   * Record-only: no rep, credits, or cargo move on this path.
+   */
+  _noteConvoyEscort(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    const stationId = String(payload.stationId || '').trim();
+    if (!stationId) return false;
+    const model = ensureLifeState(state);
+    const rec = {
+      kind: 'convoy_escort',
+      stationId,
+      text: 'A convoy under your screen docked safe. The desk codes you a lane wingman.',
+      simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+      intentId: payload.encounterId != null ? `encounter:convoyEscorted:${payload.encounterId}` : null,
     };
     if (rec.intentId && model.traffic.some((entry) => entry.intentId === rec.intentId)) return false;
     model.traffic.unshift(rec);

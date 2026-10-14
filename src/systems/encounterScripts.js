@@ -2741,8 +2741,17 @@ function convoyTick(d, live, state, now, isConvoy) {
   }
   if (isConvoy && live.data.convoyStance === 'defend' && !live.data.robbed && live.data.noticed) {
     // Pledged the screen, showed up in person, freight intact: no pay without kills,
-    // but the carrier's faction notes the wingman.
+    // but the carrier's faction notes the wingman. The destination desk remembers too —
+    // the escorted resolve is the one outcome that earns a thank-you story, so it names
+    // the arrival berth and the station's traffic rail records the wingman line (U3).
     d.rep(carrierFaction || 'faction_mts', 2, 'convoy_escorted');
+    if (typeof d.emit === 'function') {
+      d.emit('encounter:convoyEscorted', {
+        stationId: live.data.destId || null,
+        sectorId: live.sectorId || null,
+        encounterId: live.id,
+      });
+    }
     live.vars.faction = FACTION_LABELS[carrierFaction] || live.vars.faction;
     return d.resolve(live, 'escorted', { vars: live.vars });
   }
