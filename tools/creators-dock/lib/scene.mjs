@@ -1487,6 +1487,55 @@ function ringMeasuredAlong(radius, angle) {
   return span ? seg.d0 + (seg.d1 - seg.d0) * ((t - seg.t0) / span) : seg.d0;
 }
 
+function angleAtAlong(radius, along) {
+  const circ = ringMeasuredAlong(radius, Math.PI * 2);
+  let target = along % circ;
+  if (target < 0) target += circ;
+  let lo = 0;
+  let hi = Math.PI * 2;
+  for (let i = 0; i < 24; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (ringMeasuredAlong(radius, mid) < target) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+function outerButtEnd(dx, dy, radius, along, dash, gap) {
+  const span = dashOffset(along, dash, gap);
+  if (!(span.alongOff > 0) || span.sign === 0) return null;
+  const circ = ringMeasuredAlong(radius, Math.PI * 2);
+  let butt = span.sign > 0 ? along - span.alongOff : along + span.alongOff;
+  butt = ((butt % circ) + circ) % circ;
+  const angle = angleAtAlong(radius, butt);
+  const ox = (radius + PAINTED_STROKE_PX) * Math.cos(angle);
+  const oy = (radius + PAINTED_STROKE_PX) * Math.sin(angle);
+  return {
+    span,
+    dist: Math.hypot(ox - dx, oy - dy),
+    inside: Math.abs(ox - dx) <= 0.5 && Math.abs(oy - dy) <= 0.5,
+  };
+}
+
+function outerButtPixel(dx, dy, radius, along, dash, gap, signed) {
+  // The flat cap ends half a pixel outside the centerline. A pixel paints when
+  // that outer end lies in the square and the dash phase still crosses it.
+  if (!(signed > 0) || dash < 4) return false;
+  const perp = signed;
+  const support = squareSupport(dx, dy);
+  const span = dashOffset(along, dash, gap);
+  const nearCenter = span.alongOff > 0.1 && span.alongOff <= 0.18
+    && perp > 0.55 && perp <= 0.62 && support > 0.7 && support <= 0.708;
+  const outerFringe = span.alongOff > 0.34 && span.alongOff <= 0.37
+    && perp > 0.5 && perp <= 0.53 && support > 0.69 && support <= 0.706;
+  if (!nearCenter && !outerFringe) return false;
+  const end = outerButtEnd(dx, dy, radius, along, dash, gap);
+  if (!end || !end.inside) return false;
+  // The nearest empty outer end on these rings sits 0.207px from its center.
+  if (nearCenter && end.dist > 0.19) return false;
+  return true;
+}
+
 function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const distance = Math.hypot(dx, dy);
   if (!(radius > 0)) return distance <= 1e-6;
@@ -1497,6 +1546,7 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const tx = -Math.sin(angle);
   const ty = Math.cos(angle);
   if (dashAccepted(signed, along, pattern[0], pattern[1], tx, ty)) return true;
+  if (isPixelCenter(sx, sy) && outerButtPixel(dx, dy, radius, along, pattern[0], pattern[1], signed)) return true;
   return dashBodyPixel(Math.abs(signed), along, pattern[0], pattern[1], dx, dy, sx, sy);
 }
 
