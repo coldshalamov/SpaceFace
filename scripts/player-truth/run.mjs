@@ -43,6 +43,7 @@ import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmor
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
+import { decodePlayerTruthRows } from '../../src/testing/playerTruth/packedRows.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
@@ -96,7 +97,20 @@ export async function launchPreparationChoice(page, { ruleset, word }) {
 function packedEntityRows(rows) {
   const rowCount = rows.length;
   const packed = new Float64Array(rowCount * 12);
-  for (let i = 0; i < rowCount; i++) packed.set(rows[i], i * 12);
+  // A nullable life id (an observer-untracked world record) must not force the
+  // entire frame back into thousands of boxed numeric arrays. Preserve null and
+  // undefined separately: checks and JSON still see the original field values.
+  let missing = null;
+  for (let i = 0; i < rowCount; i++) for (let j = 0; j < 12; j++) {
+    const value = rows[i][j];
+    if (value == null) {
+      missing ||= new Uint32Array(rowCount);
+      missing[i] |= (value === null ? 1 : 2) << (j * 2);
+    } else packed[i * 12 + j] = value;
+  }
+  return packedRowsView({ rowCount, packed, missing });
+}
+function packedRowsView({ rowCount, packed, missing }) {
   const indexOf = (key) => {
     if (typeof key !== 'string') return -1;
     const index = Number(key);
@@ -110,22 +124,58 @@ function packedEntityRows(rows) {
     has(target, key) { return indexOf(key) >= 0 || Reflect.has(target, key); },
     get(target, key, receiver) {
       const index = indexOf(key);
-      return index >= 0 ? packed.subarray(index * 12, (index + 1) * 12)
-        : Reflect.get(target, key, receiver);
+      if (index < 0) return Reflect.get(target, key, receiver);
+      const flags = missing?.[index] || 0;
+      if (!flags) return packed.subarray(index * 12, (index + 1) * 12);
+      return new Proxy(new Array(12), {
+        has(row, field) { return indexOfField(field) >= 0 || Reflect.has(row, field); },
+        get(row, field, recv) {
+          const j = indexOfField(field);
+          if (j < 0) return Reflect.get(row, field, recv);
+          const kind = (flags >>> (j * 2)) & 3;
+          return kind === 1 ? null : kind === 2 ? undefined : packed[index * 12 + j];
+        },
+      });
     },
   });
 }
 
+function indexOfField(key) {
+  if (typeof key !== 'string') return -1;
+  const index = Number(key);
+  return Number.isInteger(index) && index >= 0 && index < 12 && String(index) === key ? index : -1;
+}
+
 /** Keep all play/opening data; a paused preparation needs only its latest diagnostic frames. */
 export function appendReaderDrain(trace, data) {
+  if (!trace.rowStorage) Object.defineProperty(trace, 'rowStorage', {
+    value: { rows: 0, packedRows: 0, nullableFrames: 0, unrecognizedFrames: 0, maxBatchSamples: 0, pendingPeak: 0 },
+    enumerable: false,
+  });
+  const storage = trace.rowStorage;
+  storage.maxBatchSamples = Math.max(storage.maxBatchSamples, data.samples.length);
+  storage.pendingPeak = Math.max(storage.pendingPeak, data.pendingSamples || 0);
   // CDP returns millions of separately boxed numeric rows on a long Racing route.
   // One backing store per frame retains every value without paying that heap cost.
   for (const sample of data.samples) {
+    if (sample.ePacked) {
+      const decoded = decodePlayerTruthRows(sample.ePacked);
+      sample.e = packedRowsView(decoded);
+      delete sample.ePacked;
+      storage.rows += decoded.rowCount; storage.packedRows += decoded.rowCount;
+      if (decoded.missing) storage.nullableFrames++;
+      continue;
+    }
     const rows = sample.e;
-    if (!Array.isArray(rows) || !rows.length
-      || !rows.every(row => Array.isArray(row) && row.length === 12
-        && row.every(value => typeof value === 'number'))) continue;
+    if (!Array.isArray(rows) || !rows.length) continue;
+    storage.rows += rows.length;
+    if (!rows.every(row => Array.isArray(row) && row.length === 12
+        && row.every(value => typeof value === 'number' || value == null))) {
+      storage.unrecognizedFrames++; continue;
+    }
+    if (rows.some(row => row.some(value => value == null))) storage.nullableFrames++;
     sample.e = packedEntityRows(rows);
+    storage.packedRows += rows.length;
   }
   trace.samples.push(...data.samples);
   if (trace.meta.playStartSim == null) {
@@ -422,18 +472,23 @@ async function runOne(args, arena, extra = {}) {
   let lastProgress = 0; let progressMark = null;
   let readerOn = false; let stopReason = null; let environmentLoss = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
 
-  const drain = async () => {
+  const drain = async ({ all = false } = {}) => {
     if (!readerOn || draining) return;
     draining = true;
-    let d;
-    try { d = await drainPlayerTruth(page).catch(() => null); }
-    finally { draining = false; }
-    if (!d) return;
-    appendReaderDrain(trace, d);
+    let d, pages = 0;
+    try {
+      do {
+        d = await drainPlayerTruth(page).catch(() => null);
+        if (!d) return;
+        appendReaderDrain(trace, d);
+      } while (d.pendingSamples > 0 && (all || ++pages < 4));
+    } finally { draining = false; }
     const last = trace.samples[trace.samples.length - 1];
     if (last && Date.now() - lastProgress > 30000) {
       const prev = progressMark; progressMark = { wall: Date.now(), sim: last.sim, f: trace.samples.length };
       if (prev) log(`progress: sim ${last.sim.toFixed(1)} s · ${((progressMark.f - prev.f) / ((progressMark.wall - prev.wall) / 1000)).toFixed(1)} fps · ${((progressMark.sim - prev.sim) / ((progressMark.wall - prev.wall) / 1000)).toFixed(2)} sim s per wall s · phase ${last.run ? last.run.ph : last.mode}`);
+      const memory = process.memoryUsage();
+      log(`trace storage: ${JSON.stringify(trace.rowStorage)} · heap ${(memory.heapUsed / 1048576).toFixed(0)} MiB · numeric ${(memory.arrayBuffers / 1048576).toFixed(0)} MiB`);
       lastProgress = Date.now();
     }
   };
@@ -464,7 +519,7 @@ async function runOne(args, arena, extra = {}) {
     if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
   const installReader = async () => {
-    await page.addScriptTag({ type: 'module', content: "import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24 }).start(); window.__playerTruthReady = true;" });
+    await page.addScriptTag({ type: 'module', content: `import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24, rounds: ${args.mode === 'swarm' || args.mode === 'gauntlet'} }).start(); window.__playerTruthReady = true;` });
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
     // Preparation can legitimately pause the simulation. Drain from installation, before
@@ -623,7 +678,8 @@ async function runOne(args, arena, extra = {}) {
       if (round.endSim == null) { const ph = await phaseNow(); round.cutSim = ph.sim; }
       step('play', true, `${trace.rounds.length} round(s): ${trace.rounds.map((r) => `${r.wave}:${r.endPhase || 'cut'}${r.endSim != null ? '@' + (r.endSim - r.startSim).toFixed(1) + 's' : ''}`).join(' ')}`);
     } else {
-      if (args.mode === 'adventure') doorInfo = await adventureToFlight(page, step); else doorInfo = await racingToFlight(page, step);
+      if (args.mode === 'adventure') doorInfo = await adventureToFlight(page, step, { seed: args.seed }); else doorInfo = await racingToFlight(page, step);
+      trace.meta.runSeed = doorInfo.runSeed;
       const st0 = await phaseNow();
       step('spawn', true, `flight at sim ${st0.sim.toFixed(1)} s`);
       trace.meta.playStartSim = st0.sim;
@@ -700,11 +756,14 @@ async function runOne(args, arena, extra = {}) {
       await shoot('route failure', false);
     }
   } finally {
+    // Stop the producer before waiting for a paged consumer to finish. Otherwise
+    // a slow transport can chase newly recorded frames forever during teardown.
+    await page.evaluate(() => window.__playerTruth?.stop()).catch(() => {});
     await stopWindowGuard();
     page.__ptObserve = null;
     clearInterval(shotTimer); clearInterval(drainTimer);
     while (busy || draining) await new Promise((r) => setTimeout(r, 100));
-    await drain().catch(() => {});
+    await drain({ all: true }).catch(() => {});
   }
   if (args.fight) {
     trace.pacing = summarizePacing(await page.evaluate(() => window.__ptPacing || []).catch(() => []));
@@ -726,6 +785,7 @@ async function runOne(args, arena, extra = {}) {
     label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
+    rowStorage: trace.rowStorage || null,
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: RMB select a reachable hostile, track its visible lead pip or hull while firing, hold 230–400 u range, burn away from packs, chase a fresh public radar bearing with sustained forward thrust and aligned boost, reposition after selection misses, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · public gameplay admission; no probe-owned invulnerability toggle`,
     stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
     sessionSignals: seenSignals, chromePid: chrome.pid, chromePgid: chrome.pgid, chromeSid: chrome.sid, chromeOwnSession: chrome.ownGroup,

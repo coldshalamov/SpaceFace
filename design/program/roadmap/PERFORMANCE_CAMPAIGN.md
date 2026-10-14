@@ -1,6 +1,11 @@
 <!-- LIFETIME: DURABLE -->
 # Performance campaign — the complete path to optimal
 
+2026-10-14 correction: [current executable campaign](../PERF_2026_10_14.md).
+Contention does not automatically cancel in A/B ratios: matching and interleaving are needed.
+Counts diagnose work; they do not independently establish a player-facing speedup. Dated
+phase verdicts below require a current workload before they select implementation.
+
 The full ordered program from where the game is now to as fast as it can be. Every phase states the
 **question it answers**, the **work**, and the **exit condition**. Do not start a phase before its
 predecessor's exit condition is met — the ordering exists because later phases waste effort when

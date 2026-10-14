@@ -140,8 +140,12 @@ const CORE_SECTORS = [
           body: 'A maintenance pad the station still files tickets for. The odor is consistent with transit. No action.',
         },
       },
-      { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD' },
-      { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle' },
+      { id: 'poi_helios_ash_pin', type: 'derelict', name: 'Ash Pin — SPAN-HOLD',
+        discoveryPlate: { title: 'Span-Hold 9',
+          body: 'A claim pin burned down to its own socket. The SPAN-HOLD partnership registered this rock in the first Ceres rush, lapsed, and left the pin to cook in the sun. Its ash line still reads on a scanner as a lane marker, which is more than the partnership ever got back.' } },
+      { id: 'poi_helios_whistle', type: 'derelict', name: 'Outer Yard Whistle',
+        discoveryPlate: { title: 'The Whistle',
+          body: 'A decommissioned approach horn cut loose when the yard frame came down. Its residual charge ticks one flat note across the approach band; the yard logs it as weather, and the weather has never once objected.' } },
       {
         // The Pit convoy's final leg: the dark plinth's black-box smear (landmark
         // quest landmark_c3_pit_bearing) resolves to this drift line, and the
@@ -223,7 +227,9 @@ const CORE_SECTORS = [
     ],
     hazards: [ { type: 'dense_asteroid', center: { x: 600, z: -400 }, radius: 700, intensity: 0.5 } ],
     pois: [
-      { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller' },
+      { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller',
+        discoveryPlate: { title: 'Sold Twice',
+          body: 'A head-class rig abandoned bit-down on a face it never cracked. The Ceres yard records list it sold for scrap twice. The armor plating bolted over its survey lamps is presumably the second buyer\u2019s work.' } },
       { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache', contents: { commodityId: 'cmdty_ore_copper', amount: 4 } },
       {
         // First light on the inbound leg from the Helios gate.
@@ -338,8 +344,12 @@ const CORE_SECTORS = [
             + 'the standard limit. The desk codes it WT-TETH-19 — the lane just calls it the Tally.',
         },
       },
-      { id: 'poi_tethys_tally_rack', type: 'derelict', name: 'Held-for-Count Rack', pos: { x: -710, z: -990 }, landmarkGlb: 'place_container_rack', visualRadius: 14 },
-      { id: 'poi_tethys_tally_pod', type: 'derelict', name: 'Seized Cargo Pod', pos: { x: -660, z: -1050 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8 },
+      { id: 'poi_tethys_tally_rack', type: 'derelict', name: 'Held-for-Count Rack', pos: { x: -710, z: -990 }, landmarkGlb: 'place_container_rack', visualRadius: 14,
+        discoveryPlate: { title: 'Held, For Count',
+          body: 'Nine racks of bonded freight the Tally desk seized and never finished counting. The desk still codes them pending; the queue lamps have outlived three desk supervisors. Nothing here has been legally lost, which is why nobody has legally taken it.' } },
+      { id: 'poi_tethys_tally_pod', type: 'derelict', name: 'Seized Cargo Pod', pos: { x: -660, z: -1050 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8,
+        discoveryPlate: { title: 'Exhibit A',
+          body: 'One pod off a hauler that ran the gate dark. The seizure stamp is still legible; the manifest is not. It sits where the desk can see it, which is where the desk wants it.' } },
       { id: 'poi_tethys_tally_light', type: 'beacon', name: 'Count-Face Worklight', pos: { x: -650, z: -950 }, landmarkGlb: 'place_worklight_tower', visualRadius: 8 },
       // RUBRIC / HM-11 (src/data/rubric.js, src/systems/rubric.js): the Customs Gate's retired hull marker works a
       // filing it was ordered to mark CLEARED. South of the held-for-count rack, off the inbound queue lane.
@@ -373,7 +383,9 @@ const CORE_SECTORS = [
     ],
     hazards: [ { type: 'radiation', center: { x: -540, z: -480 }, radius: 600, intensity: 0.4 } ],
     pois: [
-      { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter' },
+      { id: 'poi_freighter', type: 'derelict', name: 'Derelict Freighter',
+        discoveryPlate: { title: 'Slag-Run Nineteen',
+          body: 'A Meridian ore hauler parked on the beltward approach with her drive cold and her holds open. The radiation shadow says she has been here longer than the hazard map that should have flagged her. Nobody claims her because claiming her means towing her.' } },
       {
         id: 'poi_vesta_slag_relay', type: 'beacon', name: 'Slag-Choir Relay', factionId: 'faction_choir',
         requiresActiveScan: true, scannerSignalKind: 'ore', manualInvestigation: true,
@@ -450,6 +462,8 @@ const CORE_SECTORS = [
         id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage',
         requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
         manualInvestigation: true,
+        discoveryPlate: { title: 'Somebody\u2019s Problem',
+          body: 'Kinetic kill, close work — the hull came apart from the inside. Whatever the crew was carrying left with whoever won. The suit scores in the plating read older than the wreck.' },
       },
       {
         id: 'poi_hcache', type: 'cache', name: 'Hidden Cache', hidden: true,

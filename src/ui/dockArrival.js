@@ -413,6 +413,17 @@ function yardBerthLine(state, stationId) {
   return 'Holding for a pad.';
 }
 
+// The berth-truth rule every surface shares: which essential services this station
+// cannot provide. The dock card words it as a berth notice; the galaxy chart says the
+// same at the point where the player decides whether to fly there at all.
+const ESSENTIAL_SERVICES = ['refuel', 'repair'];
+
+export function stationServiceGaps(station) {
+  return Array.isArray(station && station.services)
+    ? ESSENTIAL_SERVICES.filter((req) => !station.services.includes(req))
+    : [];
+}
+
 export function buildDockArrival(state = {}, station = {}) {
   const stationId = station.id || station.stationId || '';
   const action = primaryActionFor(state);
@@ -438,6 +449,10 @@ export function buildDockArrival(state = {}, station = {}) {
   const ledger = mechanic ? null : ledgerCard;
   const patch = leftoverStructurePatch(state, station);
   const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
+  const serviceGaps = stationServiceGaps(station);
+  const serviceNotice = serviceGaps.length
+    ? `Berth notice: no ${serviceGaps.join(' or ')} on site`
+    : null;
   const identity = String(station.name || stationId || 'Station');
   const ident = [station.typeLabel, station.factionName].filter(Boolean).join(' · ') || null;
   const patchText = patch && patch.text ? patch.text : null;
@@ -446,7 +461,10 @@ export function buildDockArrival(state = {}, station = {}) {
   const berthLine = yardBerthLine(state, stationId);
   const returnSummary = returningPilotLine(state);
   const hull = activeHullIdentity(state);
-  const lines = [action.label, berthLine, returnSummary, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  // serviceNotice rides position 4: the seven-line slice must never spend the berth's
+  // missing-refuel/repair warning on flavor cards. A station with news, traffic and
+  // paperwork still shows it; patch/ledger/mechanic dressing falls off first.
+  const lines = [action.label, berthLine, returnSummary, serviceNotice, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -469,6 +487,8 @@ export function buildDockArrival(state = {}, station = {}) {
     hull,
     traffic,
     paperwork,
+    serviceGaps,
+    serviceNotice,
     serviceState: serviceCount ? `${serviceCount} berth services listed` : 'No berth services listed',
     lines,
   };

@@ -2,18 +2,22 @@
 // sell, module unfit, mission abandon, save-overwrite, load (discards current), Pause→Main Menu,
 // market Max-then-Buy. Returns a Promise<boolean>: resolve(true) on confirm, false on dismiss.
 //
-// Design (frontend direction sheet, Task D §4.2): the dialog is kit words on a dark ground — a
-// display title, a sentence, and two words in a row (the destructive one `k-word--danger`). No
-// plate, no border, no glow; the rules live in styles/kit.css under "Task D additions".
-// Focus-trapped: Tab cycles within the dialog, Esc cancels, focus moves to the safe default on
-// open, and restores to the opener on close. Accessible (role=dialog, aria-modal,
-// labelled/described). Honors the existing body.ui-modal-open class so the HUD hides underneath.
-// `#sf-confirm-root`, `.sf-confirm`, `.sf-confirm__ok/__cancel`, `#sf-confirm-title/-body` and
-// `sf-confirm__title--danger` are inert hooks the checks and probes query — keep them.
+// Design (design/frontend/ORRERY.md §3/§4.24 + the Deckplate control language): the dialog is a
+// printed field on the void — no border, no card radius; its edge is corner ticks and a flag word
+// (CONFIRM / IRREVERSIBLE), so kind never rides on colour alone. The verbs are pressable fields
+// with the one 45° cut: the destructive verb is bone at rest with a red rule — red arrives with
+// intent (hover/focus); a non-danger affirmative is the lamp key. Rules live in styles/kit.css
+// under "Task D additions". Focus-trapped: Tab cycles within the dialog, Esc cancels, focus moves
+// to the safe default on open, and restores to the opener on close. Accessible (role=dialog,
+// aria-modal, labelled/described). Honors the existing body.ui-modal-open class so the HUD hides
+// underneath. `#sf-confirm-root`, `.sf-confirm`, `.sf-confirm__ok/__cancel`, `#sf-confirm-title/-body`
+// and `sf-confirm__title--danger` are inert hooks the checks and probes query — keep them.
 //
 // Usage:
 //   import { confirm } from './confirm.js';
 //   if (await confirm({ title: 'Sell ship?', body: 'Refund: 12,500 CR (50%).', confirmLabel: 'Sell', danger: true })) { ... }
+// `body` may contain \n for a second line (rendered pre-line); `note` renders as the standalone
+// danger line (the loss statement) when a call site wants it out of the reading flow.
 
 import { planConfirmCopy } from './kit/motion.js';
 
@@ -111,18 +115,21 @@ export function confirm(opts) {
     : document.body.classList.contains('ui-modal-open');
   _confirmOwnsModalOpen = !hadModalOpen;
 
-  const titleCls = 'k-display k-t-sub sf-confirm__title' + (opts.danger ? ' sf-confirm__title--danger' : '');
+  const titleCls = 'sf-confirm__title' + (opts.danger ? ' sf-confirm__title--danger' : '');
   const dialog = document.createElement('div');
   dialog.className = 'sf-confirm';
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
   dialog.innerHTML =
+    `<div class="sf-confirm__head"><span class="sf-confirm__flag` + (opts.danger ? ' sf-confirm__flag--danger' : '') +
+      `"></span></div>` +
     `<h2 class="${titleCls}" id="sf-confirm-title"></h2>` +
-    `<p class="k-sentence sf-confirm__body" id="sf-confirm-body"></p>` +
-    `<ul class="k-words k-words--row sf-confirm__btns">` +
-      `<li><button class="k-word k-word--body sf-confirm__cancel" type="button"></button></li>` +
-      `<li><button class="k-word sf-confirm__ok" type="button"></button></li>` +
-    `</ul>`;
+    `<p class="sf-confirm__body" id="sf-confirm-body"></p>` +
+    `<p class="sf-confirm__note" id="sf-confirm-note" hidden></p>` +
+    `<div class="sf-confirm__keys">` +
+      `<button class="sf-confirm__key sf-confirm__cancel" type="button"></button>` +
+      `<button class="sf-confirm__key sf-confirm__ok" type="button"></button>` +
+    `</div>`;
   dialog.setAttribute('aria-labelledby', 'sf-confirm-title');
   dialog.setAttribute('aria-describedby', 'sf-confirm-body');
   // Demo-prep: copy runs through the pure plan so blank titles/labels can
@@ -130,12 +137,25 @@ export function confirm(opts) {
   const copy = planConfirmCopy(opts);
   dialog.querySelector('#sf-confirm-title').textContent = copy.title;
   dialog.querySelector('#sf-confirm-body').textContent = copy.body;
+  const noteEl = dialog.querySelector('#sf-confirm-note');
+  const note = String(opts.note == null ? '' : opts.note).replace(/[^\S\n]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+  if (note) { noteEl.textContent = note; noteEl.hidden = false; }
+  dialog.querySelector('.sf-confirm__flag').textContent = opts.danger ? 'Irreversible' : 'Confirm';
   const cancelBtn = dialog.querySelector('.sf-confirm__cancel');
   const okBtn = dialog.querySelector('.sf-confirm__ok');
-  cancelBtn.textContent = opts.cancelLabel || 'Cancel';
+  // same whitespace discipline as the plan, with Cancel as the safe default label
+  cancelBtn.textContent = String(opts.cancelLabel == null ? '' : opts.cancelLabel).replace(/\s+/g, ' ').trim() || 'Cancel';
   okBtn.textContent = copy.confirmLabel;
-  // the destructive word is red; otherwise the confirming word is the primary (signal) one
-  okBtn.className = 'k-word k-word--emph ' + (opts.danger ? 'k-word--danger' : 'k-word--primary') + ' sf-confirm__ok';
+  // the destructive verb keeps a red rule at rest and only floods red on intent (hover/focus);
+  // a non-danger affirmative is the screen's one lamp key
+  okBtn.className = 'sf-confirm__key sf-confirm__ok ' + (opts.danger ? 'sf-confirm__key--hazard' : 'sf-confirm__key--lamp');
+  // Esc always cancels this dialog — printed on the safe key, not guessed. (createElement +
+  // appendChild, not insertAdjacentHTML: headless DOM shims in the checks implement only those.)
+  const kbd = document.createElement('span');
+  kbd.className = 'sf-confirm__kbd';
+  kbd.setAttribute('aria-hidden', 'true');
+  kbd.textContent = 'ESC';
+  cancelBtn.appendChild(kbd);
 
   root.innerHTML = '';
   root.appendChild(dialog);

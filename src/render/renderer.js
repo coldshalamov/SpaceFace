@@ -12068,6 +12068,7 @@ export const render = {
 
     state.render.scene = scene;
     state.render.renderer = renderer;
+    state.render.worldSubmittedFrames = 0;
     state.render.camera = cam.obj;
     state.render.meshes = this._meshes;
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
@@ -29564,6 +29565,9 @@ export const render = {
         : null;
       afterBrowserPaint(release, schedule);
     }
+    // Only a completed world draw counts; Three's frame counter also counts warm-up and
+    // intermediate post passes, which can advance behind a held flight picture.
+    this.state.render.worldSubmittedFrames = (this.state.render.worldSubmittedFrames || 0) + 1;
     return true;
   },
 

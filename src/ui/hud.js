@@ -249,6 +249,23 @@ function cargoDisplayName(id) {
   return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
 }
 
+export function manifestSummary(e) {
+  const man = e && e.data && e.data.manifest;
+  if (Array.isArray(man) && man.length) {
+    const top = man.slice(0, 2).map((it) => `${cargoDisplayName(it.id)} ×${it.qty}`).join(', ');
+    return man.length > 2 ? `${top} +${man.length - 2}` : top;
+  }
+  const pool = e && e.data && (e.data.salvagePool || e.data.authoredSalvagePool);
+  if (pool && typeof pool === 'object') {
+    const entries = Object.entries(pool).filter(([_, qty]) => Number(qty) > 0);
+    if (entries.length) {
+      const top = entries.slice(0, 2).map(([id, qty]) => `${cargoDisplayName(id)} ×${qty}`).join(', ');
+      return entries.length > 2 ? `${top} +${entries.length - 2}` : top;
+    }
+  }
+  return 'stripped';
+}
+
 function stationRoleLabel(id) {
   return STATION_ROLE_LABELS[id] || String(id || 'unknown').replace(/_/g, ' ');
 }
@@ -4816,12 +4833,7 @@ export function createHud(ctx, alerts) {
     for (let i = 0; i < 3; i++) s += i < tier ? '▰' : '▱';
     return s;
   }
-  function manifestSummary(e) {
-    const man = e.data && e.data.manifest;
-    if (!Array.isArray(man) || !man.length) return 'stripped';
-    const top = man.slice(0, 2).map((it) => `${cargoDisplayName(it.id)} ×${it.qty}`).join(', ');
-    return man.length > 2 ? `${top} +${man.length - 2}` : top;
-  }
+
 
   const OVERVIEW_TIER_TITLE = 'Threat tier (mass + faction)';
 

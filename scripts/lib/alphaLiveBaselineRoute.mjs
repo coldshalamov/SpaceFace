@@ -67,7 +67,9 @@ export async function runBrowserPublicRoute({
       return check;
     };
 
-    await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 30_000 });
+    // Cold native boot can render the title before the debug facade is ready. This is a
+    // readiness bound; boot-to-menu wall time is measured separately below.
+    await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 90_000 });
     recordCanonicalUrl('boot-ready');
 
     const splash = page.locator('#cinematic-splash');

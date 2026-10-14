@@ -67,7 +67,7 @@ function fixture({ width = 200, height = 120, cssWidth = 200, cssHeight = 120,
       render: { renderer, scene, camera, meshes } } },
   };
   const reader = installPlayerTruthReader(win, { pxEvery: 1, vfxEvery: 1000 });
-  return { scene, camera, renderer, nativeSize, originalTarget, draws, reads, beforeDraw, reader,
+  return { scene, camera, renderer, nativeSize, originalTarget, draws, reads, beforeDraw, reader, state: win.SF.state,
     sky, combat, instrument,
     frame() { tick++; reader.start(); callback(); reader.stop(); return reader.drain().samples[0]; },
     failOnDraw(n) { throwDraw = n; },
@@ -77,6 +77,25 @@ function fixture({ width = 200, height = 120, cssWidth = 200, cssHeight = 120,
     },
   };
 }
+
+test('preparation records opening state without staging-model draws or GPU readbacks', () => {
+  const f = fixture();
+  try {
+    for (const mode of ['menu', 'loading']) {
+      f.state.mode = mode;
+      const sample = f.frame();
+      assert.equal(sample.mode, mode);
+      assert.equal(sample.e.length, 1, 'cheap entity history remains available');
+      assert.equal(sample.px, undefined);
+      assert.equal(sample.vfx, null);
+      assert.equal(f.draws.length, 0);
+      assert.equal(f.reads.length, 0);
+    }
+    f.state.mode = 'flight';
+    assert.ok(f.frame().px, 'flight still receives the binding native pixel measurements');
+    assert.ok(f.reads.length > 0);
+  } finally { f.dispose(); }
+});
 
 function setPixel(pixels, width, height, x, y, value) {
   const offset = ((height - 1 - y) * width + x) * 4;

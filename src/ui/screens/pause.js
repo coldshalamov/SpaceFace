@@ -503,16 +503,37 @@ export function pauseStatusLines(state) {
   };
 }
 
+// The exit gate carries facts, not coaching: one consequence sentence, the save fact, and the
+// loss line separate (`confirm`'s note). Objective and next-step guidance stay on the flight
+// brief behind the dialog — reading them here taught the player nothing they couldn't already see.
+export function pauseExitSaveFact(state) {
+  const run = state && state.run;
+  if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
+    return 'Arena runs are never saved.';
+  }
+  const slot = state && state.save && state.save.currentSlot;
+  const savedWhen = fmtSavedAt(state && state.meta && state.meta.lastSavedAt);
+  if (savedWhen) {
+    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
+  }
+  if (slot) return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session.';
+  return 'Nothing saved this session.';
+}
+
+export function pauseExitConfirmNote(state) {
+  const run = state && state.run;
+  if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
+    return 'Leaving ends the run; your campaign save is untouched.';
+  }
+  const savedWhen = fmtSavedAt(state && state.meta && state.meta.lastSavedAt);
+  return savedWhen ? 'Progress since then will be lost.' : 'All progress this session will be lost.';
+}
+
 export function pauseExitConfirmBody(state, target = 'menu') {
-  const lines = pauseStatusLines(state);
   const opening = target === 'load'
-    ? 'Opening Load lets you review slots; choosing one will replace the current session.'
-    : 'Returning to main menu closes the current session.';
-  const loss = target === 'load'
-    ? 'If you complete a load, unsaved progress is lost.'
-    : 'Unsaved progress will be lost.';
-  return opening + ' Current objective: ' + lines.objective + '. ' + lines.next +
-    ' Save status: ' + lines.save + ' ' + loss;
+    ? 'Opening Load lets you review saves; choosing a slot replaces this session.'
+    : 'Returning to the main menu ends this session.';
+  return opening + '\n' + pauseExitSaveFact(state);
 }
 
 let els = null;
@@ -963,6 +984,7 @@ export const pauseScreen = {
       const ok = await confirm({
         title: 'Open load screen?',
         body: pauseExitConfirmBody(ctx && ctx.state, 'load'),
+        note: pauseExitConfirmNote(ctx && ctx.state),
         confirmLabel: 'Open Load', danger: true,
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
@@ -1017,6 +1039,7 @@ export const pauseScreen = {
       const ok = await confirm({
         title: 'Return to main menu?',
         body: pauseExitConfirmBody(ctx && ctx.state, 'menu'),
+        note: pauseExitConfirmNote(ctx && ctx.state),
         confirmLabel: 'Main Menu', danger: true,
       });
       if (ok) this._toMenu(ctx);
@@ -1024,10 +1047,10 @@ export const pauseScreen = {
 
     // Web build: Main Menu above is the way out; Quit Game is offered only where the shell can quit.
     if (canQuit()) mk(coreText('quitGame'), async () => {
-      const lines = pauseStatusLines(ctx && ctx.state);
       const ok = await confirm({
         title: 'Quit game?',
-        body: 'Quitting closes the game. ' + lines.save + ' ' + lines.next + ' Unsaved progress will be lost.',
+        body: 'Quitting closes the game.\n' + pauseExitSaveFact(ctx && ctx.state),
+        note: pauseExitConfirmNote(ctx && ctx.state),
         confirmLabel: coreText('quitGame'), danger: true,
       });
       if (ok) requestQuit(ctx);

@@ -1157,6 +1157,19 @@ export function createSimHost() {
       // Returns the live player entity slice, input, and the freeze verdict so a
       // probe can tell sim-side state from shipping-side state without shipping
       // the whole state object.
+      ['probePerformance', () => ({
+        tickCount: host.tickCount,
+        avgWorkMs: host.tickCount ? Number(host.totalWorkNs) / 1e6 / host.tickCount : 0,
+        avgPackMs: host.tickCount ? Number(host.totalPackNs) / 1e6 / host.tickCount : 0,
+        avgDomainDiffMs: host.tickCount ? Number(host.domainDiffNsTotal) / 1e6 / host.tickCount : 0,
+        maxDomainDiffMs: host.domainDiffMsMax,
+        domainShipBytesTotal: host.domainShipBytesTotal,
+        domainSignedBytesTotal: host.domainSignedBytesTotal,
+        domainShipBytesMax: host.domainShipBytesMax,
+        domainShipPerPath: [...host.domainShipPerPath.entries()]
+          .sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 12)
+          .map(([path, stats]) => ({ path, ships: stats.ships, bytes: stats.bytes })),
+      })],
       ['probeState', (args) => {
         const id = (args && Number.isSafeInteger(args.entityId)) ? args.entityId : state.playerId;
         const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
@@ -1165,6 +1178,7 @@ export function createSimHost() {
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {
           tick: state.tick,
+          seed: state.meta?.seed ?? null,
           simTime: state.simTime,
           mode: state.mode,
           timeScale: state.timeScale,

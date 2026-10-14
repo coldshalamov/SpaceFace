@@ -45,6 +45,8 @@ export const ROOM_PROFILES = Object.freeze({
 export function resolveRoomProfile(frame) {
   if (!frame) return ROOM_PROFILES.void;
   if (frame.phase === 'dock') return ROOM_PROFILES.berth;
+  const roomKind = (typeof frame.room === 'string' && frame.room) || frame.roomKind || frame.roomProfile;
+  if (roomKind && ROOM_PROFILES[roomKind]) return ROOM_PROFILES[roomKind];
   const ident = frame.identity || resolveScoreIdentity(frame.sectorId);
   return ROOM_PROFILES[ident.room] || ROOM_PROFILES.void;
 }
@@ -165,14 +167,16 @@ export function createRoomToneRuntime(ctx, destination, options = {}) {
         this.activeGraph = buildRoomGraph(ctx, destination, profileRow, pedal, getNoise(), sig);
       }
       const g = this.activeGraph;
-      const mix = frame.room || { level: 1, air: 1, sub: 1, events: 1, open: 1 };
-      const level = Math.max(SILENCE, profileRow.level * mix.level);
+      const mix = (frame.room && typeof frame.room === 'object')
+        ? frame.room
+        : { level: 1, air: 1, sub: 1, events: 1, open: 1 };
+      const level = Math.max(SILENCE, profileRow.level * (mix.level ?? 1));
       setTarget(g.output.gain, level, now, g.events === 0 && !g._warm ? crossfadeS / 3 : 0.6);
       g._warm = true;
-      setTarget(g.airGain.gain, profileRow.air * mix.air, now, 0.8);
+      setTarget(g.airGain.gain, profileRow.air * (mix.air ?? 1), now, 0.8);
       setTarget(g.airFilter.frequency, profileRow.airHz * (0.3 + 0.7 * (mix.open ?? 1)), now, 1.2);
       setTarget(g.rumbleGain.gain, profileRow.rumble, now, 0.8);
-      if (g.subGain) setTarget(g.subGain.gain, profileRow.sub * mix.sub, now, 1.0);
+      if (g.subGain) setTarget(g.subGain.gain, profileRow.sub * (mix.sub ?? 1), now, 1.0);
       this._scheduleEvents(g, profileRow, mix, now);
       return g;
     },

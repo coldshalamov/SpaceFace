@@ -190,12 +190,15 @@ function copySample(dst, src) {
   dst.renderUpdates = src.renderUpdates;
   dst.rendererFrame = src.rendererFrame;
   dst.rendererFrameObserved = src.rendererFrameObserved === true;
+  dst.worldSubmittedFrames = src.worldSubmittedFrames;
+  dst.worldSubmissionsObserved = src.worldSubmissionsObserved === true;
   dst.drawCalls = src.drawCalls;
   dst.costs = Array.isArray(src.costs) ? src.costs.slice() : [];
   dst.contextLost = src.contextLost;
   dst.lastFrameError = src.lastFrameError;
   dst.frameErrorCount = src.frameErrorCount;
   dst.callbackMs = src.callbackMs;
+  dst.callbackIntervalMs = src.callbackIntervalMs;
   dst.simMs = src.simMs;
   dst.renderMs = src.renderMs;
   dst.vfxMs = src.vfxMs;
@@ -230,12 +233,15 @@ function emptySample() {
     renderUpdates: 0,
     rendererFrame: 0,
     rendererFrameObserved: false,
+    worldSubmittedFrames: 0,
+    worldSubmissionsObserved: false,
     drawCalls: 0,
     costs: [],
     contextLost: false,
     lastFrameError: null,
     frameErrorCount: 0,
     callbackMs: 0,
+    callbackIntervalMs: 0,
     simMs: 0,
     renderMs: 0,
     vfxMs: 0,
@@ -289,11 +295,14 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   const rendererFrame = Number(rendererInfo?.frame);
   sample.rendererFrameObserved = Number.isFinite(rendererFrame);
   sample.rendererFrame = sample.rendererFrameObserved ? rendererFrame : 0;
+  sample.worldSubmissionsObserved = Number.isFinite(state?.render?.worldSubmittedFrames);
+  sample.worldSubmittedFrames = finite(state?.render?.worldSubmittedFrames);
   sample.drawCalls = finite(completedRenderInfo?.calls, finite(rendererInfo?.calls));
   sample.contextLost = readContextLost(state);
   sample.lastFrameError = errorText(diagnostics.lastFrameError);
   sample.frameErrorCount = finite(diagnostics.frameErrorCount);
   sample.callbackMs = callbackMs;
+  sample.callbackIntervalMs = finite(frameSample?.callbackIntervalMs);
   sample.simMs = finite(frameSample?.simMs);
   sample.renderMs = finite(frameSample?.renderMs);
   sample.vfxMs = finite(frameSample?.vfxMs);
@@ -315,7 +324,7 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   // queue stats). The witness prints it so an arrival drain is a number falling to 0, not a
   // per-mesh flag an agent has to hunt for.
   sample.geometryPending = finite(state?.render?.geometryPending);
-  sample.hitch = callbackMs >= 33.4;
+  sample.hitch = Math.max(callbackMs, sample.callbackIntervalMs) >= 33.4;
   sample.costs = costs;
   return sample;
 }
@@ -346,6 +355,8 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
   const renderDelta = delta(last, first, 'renderUpdates');
   const rendererObserved = first.rendererFrameObserved === true && last.rendererFrameObserved === true;
   const rendererFrameDelta = rendererObserved ? delta(last, first, 'rendererFrame') : null;
+  const worldSubmissionsObserved = first.worldSubmissionsObserved === true && last.worldSubmissionsObserved === true;
+  const worldSubmissionDelta = worldSubmissionsObserved ? delta(last, first, 'worldSubmittedFrames') : null;
   const errorDelta = delta(last, first, 'frameErrorCount');
   const posDelta = first.hasPos && last.hasPos
     ? hypot2(last.posX - first.posX, last.posZ - first.posZ)
@@ -361,6 +372,7 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     frameDelta,
     renderDelta,
     rendererFrameDelta,
+    worldSubmissionDelta,
     posDelta,
     errorDelta,
     canvasChanged,
@@ -440,11 +452,12 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     };
   }
 
-  if (simDelta >= 1 && rendererObserved && rendererFrameDelta <= 1) {
+  if (simDelta >= 1 && (worldSubmissionsObserved
+      ? worldSubmissionDelta <= 1 : rendererObserved && rendererFrameDelta <= 1)) {
     return {
       ok: false,
       kind: 'draw-dead',
-      headline: 'The simulation is still running, but the GPU frame counter is not. That is a frozen 3D picture with a live HUD.',
+      headline: 'The simulation is still running, but world submissions have stopped. The HUD can keep animating over the last 3D picture.',
       next: last.lastFrameError
         ? `Last frame error: ${last.lastFrameError}`
         : 'Look at renderer.submit / WebGL present, not sim or HUD code.',
@@ -462,7 +475,8 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     };
   }
 
-  const rendererLive = rendererObserved && rendererFrameDelta >= 2;
+  const rendererLive = worldSubmissionsObserved
+    ? worldSubmissionDelta >= 2 : rendererObserved && rendererFrameDelta >= 2;
   const pictureLive = rendererLive || canvasChanged;
   if (simDelta >= 0.5 && frameDelta >= 8 && pictureLive && !canvasStuck) {
     const hitchHeavy = hitchCount >= Math.max(3, Math.floor(tail.length * 0.4));
@@ -595,6 +609,7 @@ export function formatRuntimeWitnessReport({
     `- contextLost: ${last?.contextLost === true}`,
     `- executedFrames: ${last?.executedFrames ?? 'n/a'}`,
     `- rendererFrame: ${last?.rendererFrame ?? 'n/a'}`,
+    `- successful world submissions: ${last?.worldSubmissionsObserved ? last.worldSubmittedFrames : 'unobserved'} (CPU submit, display scanout unmeasured)`,
     `- drawCalls: ${last?.drawCalls ?? 'n/a'}`,
     `- lastFrameError: ${last?.lastFrameError || 'none'}`,
     `- gpu: ${gpu ? `${gpu.renderer || '?'} (tier ${gpu.tier ?? '?'})` : 'n/a'}`,
@@ -616,6 +631,7 @@ export function formatRuntimeWitnessReport({
   lines.push(`- simDelta: ${finite(facts.simDelta).toFixed(2)}`);
   lines.push(`- executedFrames delta: ${finite(facts.frameDelta).toFixed(0)}`);
   lines.push(`- rendererFrame delta: ${finite(facts.rendererFrameDelta).toFixed(0)}`);
+  if (facts.worldSubmissionDelta != null) lines.push(`- world submission delta: ${facts.worldSubmissionDelta}`);
   lines.push(`- hitch samples: ${facts.hitchCount ?? 0}`);
   lines.push(`- canvas hashes: ${canvasHashes.length} unique ${new Set(canvasHashes.filter(Boolean)).size}`);
   if (pageErrors.length) {

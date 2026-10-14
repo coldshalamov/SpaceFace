@@ -86,8 +86,10 @@ export function planArrivalStagger(count, { gap = 60, budget = 1000 } = {}) {
  */
 export function planConfirmCopy({ title = '', body = '', confirmLabel = 'Confirm' } = {}) {
   const clean = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  // Body keeps authored line breaks (the dialog sets white-space:pre-line) but collapses the rest.
+  const cleanBody = (v) => String(v == null ? '' : v).replace(/[^\S\n]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
   const safeTitle = clean(title) || 'Confirm';
-  const safeBody = clean(body);
+  const safeBody = cleanBody(body);
   const safeConfirm = clean(confirmLabel) || 'Confirm';
   return { title: safeTitle, body: safeBody, confirmLabel: safeConfirm };
 }

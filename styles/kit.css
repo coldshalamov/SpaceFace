@@ -432,24 +432,95 @@ body.k-screen-top #modal-backdrop { background: none; }
 .k-screen .sf-drawer__x { all: unset; cursor: pointer; font-size: var(--k-fs-body); color: var(--k-bone-62); }
 
 /* Task D additions */
-/* §4.2: the confirm dialog (src/ui/confirm.js) — a modal, so it gets a real surface. The old
-   "words on a dark ground, no plate" rule cited Task D of the voided direction sheet
-   (FIELD_HARDWARE_PROGRAM §8) and read as a rendering glitch over the dark flight world.
-   Glass register, same tokens the prompt deck consumes. */
-#sf-confirm-root { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--k-ink) 82%, transparent); opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); pointer-events: auto; }
+/* §4.2: the confirm dialog (src/ui/confirm.js) — the Deckplate modal: a printed field on the
+   void, no border, no card radius; its edge is corner ticks plus the flag word, never colour
+   alone. The verbs are pressable fields with the one 45° cut: destructive is bone at rest with a
+   red rule and red arrives with intent; a non-danger affirmative is the lamp key. Deckplate
+   tokens with kit fallbacks, so the dialog renders the same wherever it mounts. */
+#sf-confirm-root { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--dp-void, #05070a) 78%, transparent); opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); pointer-events: auto; }
 #sf-confirm-root:empty { display: none; pointer-events: none; }
 #sf-confirm-root.sf-confirm--in { opacity: 1; }
-.sf-confirm { width: min(calc(560px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: var(--k-gap);
-  box-sizing: border-box; padding: calc(22px * var(--k-s)) calc(26px * var(--k-s));
-  background-color: var(--glass-fill, rgb(9 14 22 / 0.82));
-  background-image: var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 46%));
-  border: 1px solid var(--glass-edge, rgb(188 220 255 / 0.2));
-  border-radius: 10px;
-  box-shadow: none; }
-.sf-confirm__title { margin: 0; }
-.sf-confirm__title--danger { color: var(--k-red); }
-.sf-confirm__body { margin: 0; white-space: pre-line; }
+.sf-confirm { position: relative; width: min(calc(560px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: calc(14px * var(--k-s));
+  box-sizing: border-box; padding: calc(20px * var(--k-s)) calc(26px * var(--k-s)) calc(24px * var(--k-s));
+  background: var(--dp-field, rgb(10 12 16 / .84));
+  box-shadow: none;
+  animation: sf-confirm-settle 200ms var(--k-ease) both; }
+/* The edge: four corner ticks (two 1 px strokes per corner), never a border. */
+.sf-confirm::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  --sf-confirm-tick: var(--dp-rule-hi, rgb(232 226 212 / .38));
+  background:
+    linear-gradient(var(--sf-confirm-tick) 0 0) left top / 16px 1px,
+    linear-gradient(var(--sf-confirm-tick) 0 0) left top / 1px 16px,
+    linear-gradient(var(--sf-confirm-tick) 0 0) right top / 16px 1px,
+    linear-gradient(var(--sf-confirm-tick) 0 0) right top / 1px 16px,
+    linear-gradient(var(--sf-confirm-tick) 0 0) left bottom / 16px 1px,
+    linear-gradient(var(--sf-confirm-tick) 0 0) left bottom / 1px 16px,
+    linear-gradient(var(--sf-confirm-tick) 0 0) right bottom / 16px 1px,
+    linear-gradient(var(--sf-confirm-tick) 0 0) right bottom / 1px 16px;
+  background-repeat: no-repeat; }
+@keyframes sf-confirm-settle { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sf-confirm { animation: none; } }
+html.sf-reduce-motion .sf-confirm { animation: none; }
+
+.sf-confirm__head { display: flex; align-items: center; gap: 14px; min-height: 14px; }
+.sf-confirm__flag { flex: none; font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif);
+  font-variation-settings: "wght" 700, "wdth" 72; font-size: max(10px, calc(11px * var(--k-s)));
+  letter-spacing: .22em; text-transform: uppercase; color: var(--dp-ink-mute, #b0aea6); }
+.sf-confirm__flag--danger { color: var(--dp-danger-hot, #ff8a70); }
+.sf-confirm__head::after { content: ""; flex: 1; height: 1px; background: var(--dp-rule, rgb(232 226 212 / .14)); }
+
+.sf-confirm__title { margin: 0; font-family: var(--dp-face-display, "Archivo", "Instrument Sans", system-ui, sans-serif);
+  font-variation-settings: "wght" 780, "wdth" 110; font-size: var(--k-fs-emph);
+  letter-spacing: .04em; text-transform: uppercase; line-height: 1.1; color: var(--dp-ink, #e8e2d4); }
+.sf-confirm__title--danger { color: var(--dp-danger-hot, #ff8a70); }
+.sf-confirm__body { margin: calc(-4px * var(--k-s)) 0 0; white-space: pre-line;
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  font-size: var(--k-fs-data); line-height: 1.5; letter-spacing: .01em; color: var(--dp-ink-dim, #b7b4a6); }
 .sf-confirm__body:empty { display: none; }
+.sf-confirm__note { margin: 0; font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  font-size: var(--k-fs-data); font-weight: 600; line-height: 1.45; color: var(--dp-danger-hot, #ff8a70); }
+.sf-confirm__note[hidden] { display: none; }
+
+/* Verbs: pressable fields with the one cut (top-right 45°, painted by the fill gradient —
+   deckplate CUT_FILL). Focus is the bone bracket; the destructive verb floods red on intent. */
+.sf-confirm__keys { display: flex; flex-wrap: wrap; gap: 10px; margin-top: calc(4px * var(--k-s)); }
+.sf-confirm__key { all: unset; box-sizing: border-box; cursor: pointer; position: relative;
+  display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px 0 15px;
+  font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif);
+  font-variation-settings: "wght" 700, "wdth" 92; font-size: var(--k-fs-fine);
+  letter-spacing: .12em; text-transform: uppercase; line-height: 1;
+  color: var(--dp-ink, #e8e2d4);
+  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink, rgb(232 226 212 / .06)) 0);
+  transition: color 120ms var(--k-ease), box-shadow 120ms var(--k-ease); }
+.sf-confirm__key:hover, .sf-confirm__key:focus-visible {
+  color: var(--dp-lamp-hot, #ffd98c);
+  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink-hi, rgb(232 226 212 / .12)) 0); }
+.sf-confirm__key:active { transform: translateY(1px); }
+.sf-confirm__key:focus-visible { outline: 2px solid var(--dp-ink, #e8e2d4); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .sf-confirm__key:active { transform: none; } }
+html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
+.sf-confirm__key--lamp { color: var(--dp-metal-0, #10131a);
+  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp, #f2b950) 0);
+  font-variation-settings: "wght" 800, "wdth" 100; }
+.sf-confirm__key--lamp:hover, .sf-confirm__key--lamp:focus-visible {
+  color: var(--dp-metal-0, #10131a);
+  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp-hot, #ffd98c) 0);
+  box-shadow: 0 0 18px var(--dp-lamp-bloom, rgb(242 185 80 / .35)); }
+.sf-confirm__key--hazard { box-shadow: inset 0 -2px 0 var(--dp-danger, #ff5038); }
+.sf-confirm__key--hazard:hover, .sf-confirm__key--hazard:focus-visible {
+  color: var(--dp-metal-0, #10131a);
+  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-danger, #ff5038) 0);
+  box-shadow: 0 0 18px var(--dp-danger-bloom, rgb(255 80 56 / .4)); }
+.sf-confirm__kbd { display: inline-block; margin-left: 9px; padding: 3px 5px 2px;
+  border: 1px solid var(--dp-rule-hi, rgb(232 226 212 / .38)); border-radius: 0;
+  font-size: max(9px, calc(10px * var(--k-s))); letter-spacing: .08em; color: var(--dp-ink-mute, #b0aea6); }
+.sf-confirm__key:hover .sf-confirm__kbd, .sf-confirm__key:focus-visible .sf-confirm__kbd { color: inherit; border-color: currentColor; }
+@media (forced-colors: active) {
+  .sf-confirm { background: Canvas; }
+  .sf-confirm__key { background: Canvas; color: CanvasText; box-shadow: none; border: 1px solid CanvasText; }
+  .sf-confirm__key:hover, .sf-confirm__key:focus-visible { color: Highlight; }
+  .sf-confirm__kbd { border-color: CanvasText; }
+}
 
 /* ===== PQ-183.02 global find — the `/` palette ===== */
 /* Over a screen it is a floating panel; in flight it is the screen itself (.screen host so the
