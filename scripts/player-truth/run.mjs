@@ -767,7 +767,8 @@ async function runOne(args, arena, extra = {}) {
             // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter.
             // Adventure has no run phase, so the play watcher never treats these as an interrupt.
             if (ph.top && !['hud', null].includes(ph.top) && beat % 5 === 4) { noteKey(page, 'Enter'); await page.keyboard.press('Enter'); }
-            if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
+            if (args.fight) await fightBeat(page, beat++);
+            else await cruiseBeat(page, beat++, { racing: args.mode === 'racing' });
             if (await haltIfInterrupted()) break;
           }
         }
