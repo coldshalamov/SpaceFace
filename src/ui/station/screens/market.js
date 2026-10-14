@@ -202,6 +202,36 @@ export function marketGoDecision({ lastQuotedTerms = null, selectedId = null, qt
   return { emit: true, payload, reason: null };
 }
 
+/**
+ * Rebuild the selected console's quote from the transaction authority's refusal.
+ *
+ * In the worker lane the market facade can be one cold mirror pass behind the
+ * authoritative economy. A stale displayed sell total can therefore be sent
+ * repeatedly after the worker correctly refuses it. The refusal already carries
+ * the exact live total for the exact lot and quantity; retain that read-only
+ * value until the normal market mirror catches up. The economy's strict
+ * expectedTotal check remains the final authority.
+ */
+export function marketPriceChangedQuote(failure, { selectedId = null, side = null, qty = 0 } = {}) {
+  if (!failure || failure.reason !== 'price_changed') return null;
+  const namedQty = Math.floor(Number(qty));
+  const failedQty = Math.floor(Number(failure.qty));
+  if (!selectedId || failure.commodityId !== selectedId || failure.side !== side
+    || !Number.isFinite(namedQty) || namedQty <= 0 || failedQty !== namedQty) return null;
+  const total = Math.round(Number(failure.liveTotal));
+  if (!Number.isFinite(total) || total < 0) return null;
+  return {
+    ok: true,
+    partial: false,
+    commodityId: selectedId,
+    side,
+    qty: namedQty,
+    total,
+    unitAvg: total / namedQty,
+    priceImpactPct: null,
+  };
+}
+
 /** After the trade console is rebuilt, the Hand returns to the go control, the quantity, or the selected row. */
 export function marketTradeFocusChoice({ goEnabled = false, hasQuantity = false, hasRow = false } = {}) {
   if (goEnabled) return 'go';
@@ -664,6 +694,11 @@ export function createMarketScreen(ctx) {
   // market move between render and confirm aborts with an explanation instead of a
   // surprise settlement. Refreshed on every console render; never read blind.
   let lastQuotedTerms = null;
+  // A worker refusal carries the authoritative live total even when the main
+  // market facade is still on its cold cadence. Retain that read-only quote
+  // until the ordinary mirror catches up, so retrying does not resend stale
+  // terms forever.
+  let authoritativeTradeQuote = null;
   let cargoOnly = false;
   let marketFilter = 'all';
   let marketQuery = '';
@@ -828,7 +863,25 @@ export function createMarketScreen(ctx) {
     const sid = stationId(state);
     const economy = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
     if (!economy || typeof economy.quote !== 'function' || !sid || quantity < 1) return null;
-    try { return economy.quote(sid, row.id, mode, quantity); } catch (_) { return null; }
+    let live = null;
+    try { live = economy.quote(sid, row.id, mode, quantity); } catch (_) { live = null; }
+    const retained = authoritativeTradeQuote;
+    if (!retained) return live;
+    const sameTerms = retained.commodityId === row.id
+      && retained.side === mode
+      && retained.qty === Math.floor(Number(quantity));
+    if (!sameTerms) {
+      authoritativeTradeQuote = null;
+      return live;
+    }
+    // Once the ordinary mirror reports the same total, return its complete
+    // quote (impact, stock and fill fields) and release the temporary value.
+    const mirrorTotal = live && live.ok === true ? Math.round(Number(live.total)) : null;
+    if (Number.isFinite(mirrorTotal) && mirrorTotal === retained.total) {
+      authoritativeTradeQuote = null;
+      return live;
+    }
+    return retained;
   }
 
   // INF-083: the contemplated-sale line quotes the FULL batch through the economy
@@ -870,6 +923,7 @@ export function createMarketScreen(ctx) {
   }
 
   function openTradeMode(nextMode, state, options = {}) {
+    authoritativeTradeQuote = null;
     mode = nextMode === 'sell' ? 'sell' : 'buy';
     // Sell is a cargo operation, so its selector always begins with things actually in the hold.
     // options.cargoOnly remains accepted for call-site compatibility, but never widens Sell into
@@ -1009,6 +1063,7 @@ export function createMarketScreen(ctx) {
     if (!id || !tbodyEl) return;
     const changed = id !== selectedId;
     selectedId = id;
+    if (changed) authoritativeTradeQuote = null;
     for (const row of rowEls()) {
       const on = row.getAttribute('data-cmdty') === id;
       row.classList.toggle('is-active', on);
@@ -1702,6 +1757,35 @@ export function createMarketScreen(ctx) {
   // Presentation timers belong to this visible screen, never a retired dock session.
   let visible = true;
   let disposed = false;
+
+  // A worker-side price refusal is already an authoritative quote for this exact
+  // lot. The domain mirror may not carry the changed market row until its cold
+  // cadence, so retain the refusal's total and let the next render show/submit it.
+  // This keeps the strict economy expectedTotal guard intact while preventing a
+  // retry loop that resends the same stale terms.
+  const onTradeFailed = (failure = {}) => {
+    if (disposed || !visible || failure.reason !== 'price_changed') return;
+    const retained = marketPriceChangedQuote(failure, {
+      selectedId,
+      side: mode,
+      qty,
+    });
+    if (!retained) return;
+    authoritativeTradeQuote = retained;
+    // The normal post-click deferred refresh handles synchronous main-lane
+    // refusals. A worker reply may arrive after that timer, so repaint once the
+    // busy guard has settled; this also updates lastQuotedTerms from the retained
+    // authority value through selectedTradeQuote above.
+    if (!tradeBusy) renderAll(ctx.state || {});
+  };
+  const onTradeCompleted = () => {
+    authoritativeTradeQuote = null;
+  };
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    ctx.bus.on('economy:tradeFailed', onTradeFailed);
+    ctx.bus.on('economy:tradeCompleted', onTradeCompleted);
+  }
+
   const deferred = new Set();
   function cancelDeferred() {
     for (const timer of deferred) clearTimeout(timer);
@@ -2141,6 +2225,7 @@ export function createMarketScreen(ctx) {
     onShow(c) {
       if (disposed) return;
       visible = true;
+      authoritativeTradeQuote = null;
       const open = c || ctx;
       const st = open.state || {};
       // Enable trading: the economy system opens/initializes this station's live market on show
@@ -2180,6 +2265,14 @@ export function createMarketScreen(ctx) {
     },
     refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
     onHide() { visible = false; cancelDeferred(); },
-    dispose() { disposed = true; visible = false; cancelDeferred(); },
+    dispose() {
+      disposed = true;
+      visible = false;
+      cancelDeferred();
+      if (ctx.bus && typeof ctx.bus.off === 'function') {
+        ctx.bus.off('economy:tradeFailed', onTradeFailed);
+        ctx.bus.off('economy:tradeCompleted', onTradeCompleted);
+      }
+    },
   };
 }

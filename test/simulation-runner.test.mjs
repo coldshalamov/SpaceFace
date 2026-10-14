@@ -103,6 +103,7 @@ test('SimulationRunner publishes ordered completed ticks and presentation may co
     lifecycleGeneration: 3,
     journalStart: 0,
     journalEnd: 0,
+    coalescedCount: 3,
   });
   assert.equal(runner.getPendingCompletedTickCount(), 0);
   assert.equal(runner.getDiagnostics().skippedPresentationTicks, 2);
@@ -161,7 +162,7 @@ test('SimulationRunner carries between-tick journal writes and aggregates the ea
   assert.equal(runner.getDiagnostics().committedJournalSequence, 3);
 });
 
-test('completed-tick queue exhaustion fails before advancing authoritative state', () => {
+test('completed-tick queue pressure coalesces metadata without closing the simulation', () => {
   const state = createState();
   const runner = createSimulationRunner(state, createRegistry(state), {
     maxSteps: 1,
@@ -172,12 +173,59 @@ test('completed-tick queue exhaustion fails before advancing authoritative state
   assert.equal(state.tick, 1);
   assert.equal(runner.getPendingCompletedTickCount(), 1);
 
-  assert.throws(
-    () => runner.advance(LOOP_FIXED_DT, 1),
-    /completed-tick queue overflow/,
-  );
-  assert.equal(state.tick, 1, 'overflow must fail before registry.step mutates simulation state');
+  runner.advance(LOOP_FIXED_DT, 1);
+  assert.equal(state.tick, 2, 'a stalled presenter must not stop authoritative fixed-step work');
+  assert.equal(runner.isClosed(), false);
+  assert.equal(runner.getPendingCompletedTickCount(), 2,
+    'one physical slot plus one bounded metadata tail represents both ticks');
   assert.equal(runner.getDiagnostics().overflowCount, 1);
+  assert.equal(runner.getDiagnostics().completedTickSlotsPending, 1);
+  assert.equal(runner.getDiagnostics().completedTickOverflowPending, 1);
+
+  const latest = {};
+  assert.equal(runner.consumeLatestCompletedTick(latest), 2);
+  assert.equal(latest.tick, 2);
+  assert.equal(latest.coalescedCount, 2);
+  assert.equal(runner.getPendingCompletedTickCount(), 0);
+});
+
+test('coalesced completed metadata retains the full journal range and newest state', () => {
+  const state = createState();
+  const journal = createPresentationJournal(16);
+  const ship = {
+    id: 1,
+    type: 'ship',
+    alive: true,
+    pos: { x: 0, y: 0, z: 0 },
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+    presentationVisualRevision: 0,
+  };
+  journal.recordSpawn(0, ship);
+  const runner = createSimulationRunner(state, {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+      ship.pos.x = state.tick;
+      journal.recordTransform(state.tick, ship);
+    },
+  }, {
+    presentationJournal: journal,
+    maxSteps: 1,
+    completedTickCapacity: 1,
+  });
+
+  runner.advance(LOOP_FIXED_DT, 1);
+  runner.advance(LOOP_FIXED_DT, 1);
+  const latest = {};
+  assert.equal(runner.consumeLatestCompletedTick(latest), 2);
+  assert.equal(latest.tick, 2);
+  assert.equal(latest.journalStart, 0);
+  assert.equal(latest.journalEnd, 2,
+    'the transform is coalesced in the journal while the retained range still starts at the spawn');
+  assert.equal(latest.coalescedCount, 2);
 });
 
 test('prepareWithoutAdvance and interpolationAlpha retain the existing accumulator phase', () => {

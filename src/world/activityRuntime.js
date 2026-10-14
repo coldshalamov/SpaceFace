@@ -118,13 +118,17 @@ function wakeEventForEntity(entity) {
     || null;
 }
 
-function simCamera(state) {
+function simCamera(state, out = null) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
   const zoom = Number.isFinite(camera.zoom) ? camera.zoom : 144;
   const fov = Number.isFinite(video.fov) ? video.fov : 50;
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-  return { zoom, fov, tilt };
+  const result = out || {};
+  result.zoom = zoom;
+  result.fov = fov;
+  result.tilt = tilt;
+  return result;
 }
 
 export function simGlassHalfExtentsFromState(state) {
@@ -161,6 +165,7 @@ function emptyPinFacts() {
     fieldDriven: new Set(),
     damagedByPlayerUntil: new Map(),
     damagedPlayerUntil: new Map(),
+    _intentPinsScratch: { dockId: null, hailId: null, targetId: null },
   };
 }
 
@@ -201,6 +206,8 @@ function ensureRuntime(state) {
       runwayIds: new ActivityIdSet(),
       counts: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, physics: 0, r0: 0, r1: 0, r2: 0, r3: 0 },
       pinFacts: emptyPinFacts(),
+      cameraScratch: { zoom: 0, fov: 0, tilt: 0 },
+      intentPinsScratch: { dockId: null, hailId: null, targetId: null },
       contextScratch: {},
       published: null,
       publishedCounts: null,
@@ -533,7 +540,7 @@ function setMatchesList(set, list) {
 //     .patrolWorldRecordId, resolved through entityIndex.byWorldRecordId). No comms target
 //     record exists.
 //   targetId — the player combat record (weapons.js writes combat.lockTarget on missile lock).
-function playerIntentPins(state, player) {
+function playerIntentPins(state, player, out = null) {
   const ui = state && state.ui;
   const index = state && state.entityIndex;
   let dockId = null;
@@ -560,7 +567,11 @@ function playerIntentPins(state, player) {
   const targetId = combat && (combat.targetId ?? combat.lockTarget) != null
     ? (combat.targetId ?? combat.lockTarget)
     : null;
-  return { dockId, hailId, targetId };
+  const result = out || {};
+  result.dockId = dockId;
+  result.hailId = hailId;
+  result.targetId = targetId;
+  return result;
 }
 
 function rebuildPinFacts(state, player, facts, simTime) {
@@ -588,7 +599,7 @@ function rebuildPinFacts(state, player, facts, simTime) {
   if (state.player && state.player.miningTargetId != null) {
     nextMiningId = state.player.miningTargetId;
   }
-  const intentPins = playerIntentPins(state, player);
+  const intentPins = playerIntentPins(state, player, facts._intentPinsScratch);
   nextTargetId = intentPins.targetId;
   nextDockId = intentPins.dockId;
   nextHailId = intentPins.hailId;
@@ -635,7 +646,8 @@ function rebuildPinFacts(state, player, facts, simTime) {
   }
 
   if (attachments && typeof attachments === 'object') {
-    for (const key of Object.keys(attachments)) {
+    for (const key in attachments) {
+      if (!Object.prototype.hasOwnProperty.call(attachments, key)) continue;
       const att = attachments[key];
       // Only a live coupling may pin residency. Terminal records ('broken'; defensively also
       // 'cut'/'dead') are a receipt ledger: they hold no joint, are prunable by
@@ -1186,7 +1198,7 @@ function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   const tick = state.tick | 0;
   if ((tick - (latch.armedTick | 0)) >= CLASSIFY_EARLY_QUIET_RESCAN_TICKS) return false;
   if (latch.originX !== origin.x || latch.originZ !== origin.z) return false;
-  const cam = simCamera(state);
+  const cam = simCamera(state, runtime.cameraScratch);
   if (latch.zoom !== cam.zoom || latch.fov !== cam.fov || latch.tilt !== cam.tilt) return false;
   const membership = entityIndexVersion(state);
   if (latch.membership !== membership) return false;
@@ -1198,7 +1210,7 @@ function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   const miningId = state.player && state.player.miningTargetId != null
     ? state.player.miningTargetId : null;
   if (latch.miningId !== miningId) return false;
-  const intentPins = playerIntentPins(state, player);
+  const intentPins = playerIntentPins(state, player, runtime.intentPinsScratch);
   if (latch.dockId !== intentPins.dockId) return false;
   if (latch.hailId !== intentPins.hailId) return false;
   if (latch.targetId !== intentPins.targetId) return false;
@@ -1248,8 +1260,8 @@ function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
     runtime._earlyQuietLatch = null;
     return;
   }
-  const cam = simCamera(state);
-  const intentPins = playerIntentPins(state, player);
+  const cam = simCamera(state, runtime.cameraScratch);
+  const intentPins = playerIntentPins(state, player, runtime.intentPinsScratch);
   runtime._earlyQuietLatch = {
     armed: true,
     armedTick: state.tick | 0,
@@ -1575,7 +1587,7 @@ function classifyWorld(state, runtime) {
   // selectClassify / retain re-arm. Wakes on move, camera, membership, pin intent, rescan.
   if (tryEarlyQuietClassifyLatch(state, runtime, player, origin)) return;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  const cam = simCamera(state);
+  const cam = simCamera(state, runtime.cameraScratch);
   const glass = glassHalfExtents(cam.zoom, cam.fov, TABLE_SIM_ASPECT, cam.tilt);
   const speed = Math.max(
     TABLE_REFERENCE_SPEED_WU,

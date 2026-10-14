@@ -419,6 +419,9 @@ export class Sg02DynamicBodyOwner {
       return false;
     }
     rec.entity = entity;
+    // A restored entity may have been mutated outside this owner turn. Force the next
+    // expected-yaw capture through the native quaternion before trusting the mirror again.
+    invalidatePreStepYaw(rec);
     this._syncCeresWorkfleetRecord(rec);
     for (const attachment of this.attachments.values()) {
       if (attachment.owner===rec) {attachment.ownerEntity=entity;attachment.ownerLife=entity.occupantGeneration;}
@@ -932,6 +935,21 @@ export class Sg02DynamicBodyOwner {
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
       _postStepSleepSkip: false,
       _postStepReadTick: -1,
+      // During the pre-step command pass, cache the native angular sample so the expected
+      // kinematics capture does not ask Rapier for the same vector a second time. The cache is
+      // opened only for that pass and is updated by every owner-side yaw write; it is never used
+      // after world.step(), where solver state is authoritative again.
+      _preStepAngularCaptureOpen: false,
+      _preStepAngularValid: false,
+      // The expected-yaw mirror is valid only after an authoritative post-step native read and
+      // only for the owner-controlled pre-step window. Dirty/rebound records take one native
+      // quaternion read before they can re-enter the fast path; this preserves direct-write and
+      // save/load boundaries without bypassing rotation() globally.
+      _preStepYawCaptureOpen: false,
+      _preStepYawValid: false,
+      _preStepYawTrusted: false,
+      _preStepYawDirty: true,
+      _preStepYaw: 0,
       proxyId: proxyManifest ? proxyManifest.id : null,
       ghostPoolKey,
       appliedForce: zero3(),
@@ -1470,14 +1488,26 @@ export class Sg02DynamicBodyOwner {
   }
 
   _stepFixed() {
-    const tumbleFling = combatFlag('tumbleFling');
-    this._refreshSleepPolicy();
+    // A skipped sleeping record never reaches expected-kinematics capture. Keep the owner-turn
+    // cache closed on that path, and close every record if any pre-solver work throws so an
+    // out-of-phase public torque call cannot consume a stale pre-step sample.
+    const preStepRecords = [];
+    try {
+      const tumbleFling = combatFlag('tumbleFling');
+      this._refreshSleepPolicy();
     // Ceres includes a fixed cradle, so its bounded registration set is independent of
     // dynamicRecords. No additional full records scan merely to discover moving rigs.
     for (const rec of this.ceresWorkfleetRecords) {
       stepCeresWorkfleetSlides(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
     }
     for (const rec of this.dynamicRecords) {
+      // This cache covers only the command-to-prediction interval. Any direct external torque
+      // write before this owner turn remains safe: the first command/impulse path rereads the
+      // body when the cache is invalid, then subsequent owner writes update that sample.
+      rec._preStepAngularCaptureOpen = true;
+      rec._preStepAngularValid = false;
+      openPreStepYaw(rec);
+      preStepRecords.push(rec);
       stepLatchNative(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
       setZero3(rec.appliedForce);
       setZero3(rec.appliedTorque);
@@ -1493,7 +1523,12 @@ export class Sg02DynamicBodyOwner {
       // body — so the bounce rewrite is authoritative motion, never "pure contact response".
       const continuation = consumeProjectileContinuation(rec.entity);
       rec._hadCommand = !!command;
-      if (!command && !continuation && this._sleepingRecordSkipsCpu(rec, false)) continue;
+      if (!command && !continuation && this._sleepingRecordSkipsCpu(rec, false)) {
+        closePreStepAngular(rec);
+        invalidatePreStepYaw(rec);
+        closePreStepYaw(rec);
+        continue;
+      }
       // resetForces/resetTorques carry a wake arg, so they are only safe to skip when the body
       // is provably awake (canSleep=false steady state) and the force accumulator is provably
       // zero — i.e. no addForce/addTorque landed since the last reset (rec._forcesDirty).
@@ -1531,9 +1566,17 @@ export class Sg02DynamicBodyOwner {
       const command = rec.entity.isPlayer ? consumeSaucerVelocity(rec.entity, this._simTick) : null;
       if (command) {
         rec.body.setLinvel({ x: command.x, y: 0, z: command.z }, true);
-        if (command.haltYaw) rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        if (command.haltYaw) {
+          rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+          cachePreStepAngular(rec, 0, 0, 0);
+        }
       }
-      if (this._sleepingRecordSkipsCpu(rec, false)) continue;
+      if (this._sleepingRecordSkipsCpu(rec, false)) {
+        closePreStepAngular(rec);
+        invalidatePreStepYaw(rec);
+        closePreStepYaw(rec);
+        continue;
+      }
       this._captureExpectedKinematics(rec);
     }
 
@@ -1568,7 +1611,13 @@ export class Sg02DynamicBodyOwner {
       // island's kinematics did not move, so neither the WASM readback nor the give pass — which
       // would only compare that frozen pose against a stale prediction — has anything to do.
       rec._postStepSleepSkip = this._sleepingRecordSkipsCpu(rec, true);
-      if (rec._postStepSleepSkip) continue;
+      if (rec._postStepSleepSkip) {
+        // The body can be directly mutated while an island is asleep. Keep its mirror dirty
+        // until a later awake turn performs a native quaternion read.
+        invalidatePreStepYaw(rec);
+        closePreStepYaw(rec);
+        continue;
+      }
       this._readPostStepKinematics(rec);
       this._applyStructuralGive(rec);
     }
@@ -1617,6 +1666,13 @@ export class Sg02DynamicBodyOwner {
     }
     for (const rec of recoilRecords) this._syncEntityFromKinematics(rec, this._enforcePlane(rec));
     this._persistIslandSleep();
+    } catch (error) {
+      for (const rec of preStepRecords) {
+        closePreStepAngular(rec);
+        closePreStepYaw(rec);
+      }
+      throw error;
+    }
   }
 
   _stepAnchoredRecoil() {
@@ -1766,6 +1822,7 @@ export class Sg02DynamicBodyOwner {
     rec._bodyPoseZ = Math.fround(z);
     if (rec.postStep) rec.postStep.pDirty = true;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    invalidatePreStepYaw(rec);
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
     _vecWriteScratch.z = vz;
@@ -1784,18 +1841,36 @@ export class Sg02DynamicBodyOwner {
 
   _captureExpectedKinematics(rec) {
     const v = rec.body.linvel();
-    const w = rec.body.angvel();
+    // A controlled body was sampled while its command torque was clamped, and queued yaw
+    // impulses update that retained sample. Reusing it removes a second Rapier vector wrapper in
+    // the same pre-step interval. Bodies without a pre-step angular sample still take the native
+    // read here, preserving the old fallback for every unowned mutation path.
+    let wx;
+    let wy;
+    let wz;
+    if (rec._preStepAngularCaptureOpen === true && rec._preStepAngularValid === true) {
+      wx = rec._preStepAngvelX;
+      wy = rec._preStepAngvelY;
+      wz = rec._preStepAngvelZ;
+    } else {
+      const w = rec.body.angvel();
+      wx = w.x;
+      wy = w.y;
+      wz = w.z;
+      cachePreStepAngular(rec, wx, wy, wz);
+    }
     const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0, x: 0, z: 0 });
     const dt = this.fixedDt;
-    const yawClampedByWrite = !Number.isFinite(w.y) || Math.abs(w.y) > SANE_MAX_YAW_RATE;
-    if (yawClampedByWrite || !Number.isFinite(w.x) || !Number.isFinite(w.z)
-        || Math.abs(w.x) > 1e-9 || Math.abs(w.z) > 1e-9) {
+    const yawClampedByWrite = !Number.isFinite(wy) || Math.abs(wy) > SANE_MAX_YAW_RATE;
+    if (yawClampedByWrite || !Number.isFinite(wx) || !Number.isFinite(wz)
+        || Math.abs(wx) > 1e-9 || Math.abs(wz) > 1e-9) {
       _vecWriteScratch.x = 0;
-      _vecWriteScratch.y = boundedYawRate(w.y);
+      _vecWriteScratch.y = boundedYawRate(wy);
       _vecWriteScratch.z = 0;
       rec.body.setAngvel(_vecWriteScratch, true);
+      cachePreStepAngular(rec, 0, _vecWriteScratch.y, 0);
     }
-    const wyBody = yawClampedByWrite ? boundedYawRate(w.y) : w.y;
+    const wyBody = yawClampedByWrite ? boundedYawRate(wy) : wy;
     e.vx = finite(v.x) + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * dt;
     e.vz = finite(v.z) + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * dt;
     const wyUndamped = -wyBody
@@ -1818,8 +1893,16 @@ export class Sg02DynamicBodyOwner {
     // Rapier can integrate a contact-generated angular response into the pose before the
     // post-step structural-give pass clamps that response's angular velocity. Keep the pose a
     // no-contact prediction so a glancing station/rock contact cannot leave a one-frame heading
-    // kick behind after its spin has been removed.
-    e.yaw = wrapAngle(yawFromQuat(rec.body.rotation()) + e.wy * dt);
+    // kick behind after its spin has been removed. A trusted mirror avoids a second quaternion
+    // wrapper in this owner-controlled phase; dirty/rebound records take the native fallback.
+    let baseYaw;
+    if (rec._preStepYawCaptureOpen === true && rec._preStepYawValid === true) {
+      baseYaw = rec._preStepYaw;
+    } else {
+      baseYaw = yawFromQuat(rec.body.rotation());
+      cachePreStepYaw(rec, baseYaw);
+    }
+    e.yaw = wrapAngle(baseYaw + e.wy * dt);
     let px = rec._bodyPoseX;
     let pz = rec._bodyPoseZ;
     if (!Number.isFinite(px) || !Number.isFinite(pz)) {
@@ -1829,6 +1912,10 @@ export class Sg02DynamicBodyOwner {
     }
     e.x = px + e.vx * dt;
     e.z = pz + e.vz * dt;
+    // No later pre-step owner path consumes this cache. Closing it also prevents a public
+    // applyTorqueImpulse call after prediction from being mistaken for a command-pass sample.
+    closePreStepAngular(rec);
+    closePreStepYaw(rec);
   }
 
   // Reads pose/linvel/angvel (and rotation for the player, whose give rule needs solver yaw) into a
@@ -2094,6 +2181,7 @@ export class Sg02DynamicBodyOwner {
 
     const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    invalidatePreStepYaw(rec);
     _vecWriteScratch.x = 0;
     _vecWriteScratch.y = -finite(e.wy);
     _vecWriteScratch.z = 0;
@@ -2277,6 +2365,7 @@ export class Sg02DynamicBodyOwner {
     }
     if (contactYaw && Number.isFinite(e.yaw)) {
       rec.body.setRotation(quatFromYawInto(e.yaw, _quatWriteScratch), true);
+      invalidatePreStepYaw(rec);
       if (post) post.qDirty = true;
       touched = true;
     }
@@ -2477,6 +2566,19 @@ export class Sg02DynamicBodyOwner {
       _createdCanSleep: spec.dynamic === true && mayRapierIslandSleep(entity, spec) === true,
       _postStepSleepSkip: false,
       _postStepReadTick: -1,
+      // During the pre-step command pass, cache the native angular sample so the expected
+      // kinematics capture does not ask Rapier for the same vector a second time. The cache is
+      // opened only for that pass and is updated by every owner-side yaw write; it is never used
+      // after world.step(), where solver state is authoritative again.
+      _preStepAngularCaptureOpen: false,
+      _preStepAngularValid: false,
+      // See _createRecord: restored native records deliberately take a first authoritative
+      // rotation read before the mirrored expected-yaw path resumes.
+      _preStepYawCaptureOpen: false,
+      _preStepYawValid: false,
+      _preStepYawTrusted: false,
+      _preStepYawDirty: true,
+      _preStepYaw: 0,
       proxyId: proxyManifest ? proxyManifest.id : null,
       ghostPoolKey,
       appliedForce: zero3(),
@@ -3031,6 +3133,7 @@ export class Sg02DynamicBodyOwner {
     rec._bodyPoseZ = Math.fround(resyncZ);
     if (rec.postStep) rec.postStep.pDirty = true;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    invalidatePreStepYaw(rec);
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
     _vecWriteScratch.z = vz;
@@ -3129,7 +3232,9 @@ export class Sg02DynamicBodyOwner {
       const force = planeForceInto(command.control.force, _planeForceScratch);
       const torque = yawTorqueInto(command.control.torque, _yawTorqueScratch);
       rec.body.addForce(force, true);
-      const currentGameWy = boundedYawRate(-rec.body.angvel().y);
+      const angular = rec.body.angvel();
+      cachePreStepAngular(rec, angular.x, angular.y, angular.z);
+      const currentGameWy = boundedYawRate(-angular.y);
       const inertiaY = positive(rec.effectiveInertiaY, rec.spec.inertiaY);
       const minTorque = (-SANE_MAX_YAW_RATE - currentGameWy) * inertiaY / this.fixedDt;
       const maxTorque = (SANE_MAX_YAW_RATE - currentGameWy) * inertiaY / this.fixedDt;
@@ -3191,6 +3296,7 @@ export class Sg02DynamicBodyOwner {
     rec._bodyPoseZ = Math.fround(pz);
     if (rec.postStep) rec.postStep.pDirty = true;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+    invalidatePreStepYaw(rec);
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
     _vecWriteScratch.z = vz;
@@ -3245,6 +3351,7 @@ export class Sg02DynamicBodyOwner {
     const v = post && post.vDirty !== true ? post.v : rec.body.linvel();
     const q = post && post.qRead === true && post.qDirty !== true ? post.q : rec.body.rotation();
     const yaw = wrapAngle(yawFromQuat(q));
+    let rotationRewritten = false;
     const w = post && post.wDirty !== true ? post.w : rec.body.angvel();
     const x = finite(p.x);
     const z = finite(p.z);
@@ -3273,6 +3380,8 @@ export class Sg02DynamicBodyOwner {
     }
     if (Math.abs(finite(q.x)) > 1e-9 || Math.abs(finite(q.z)) > 1e-9 || !Number.isFinite(q.y) || !Number.isFinite(q.w)) {
       rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
+      invalidatePreStepYaw(rec);
+      rotationRewritten = true;
     }
     if (Math.abs(finite(w.x)) > 1e-9 || Math.abs(finite(w.z)) > 1e-9 || w.y !== -wy) {
       _vecWriteScratch.x = 0;
@@ -3287,6 +3396,7 @@ export class Sg02DynamicBodyOwner {
     out.vz = vz;
     out.yaw = yaw;
     out.wy = wy;
+    if (!rotationRewritten) markPreStepYawAuthoritative(rec, yaw);
     return out;
   }
 
@@ -4133,18 +4243,98 @@ function applyYawTorqueImpulse(rec, value, evidence = null) {
   const impulseY = finite(value && value.y);
   if (impulseY === 0) return true;
   const inertiaY = positive(rec.effectiveInertiaY, rec.spec.inertiaY);
-  const current = finite(rec.body.angvel && rec.body.angvel().y);
+  let current;
+  if (rec._preStepAngularCaptureOpen === true && rec._preStepAngularValid === true) {
+    // A command's continuous-torque clamp already sampled this body for the current pre-step
+    // interval. Queued yaw impulses are ordered after that clamp, so consume the retained scalar
+    // and update it below instead of allocating another Rapier vector wrapper.
+    current = finite(rec._preStepAngvelY);
+  } else {
+    const angular = rec.body.angvel && rec.body.angvel();
+    current = finite(angular && angular.y);
+    cachePreStepAngular(rec, angular && angular.x, angular && angular.y, angular && angular.z);
+  }
   // Rapier's applyTorqueImpulse currently produces zero yaw on our Y-only rotation-constrained
   // bodies. The owner is the sanctioned body writer, so apply the identical J = I*deltaOmega
   // relation explicitly rather than leaking an entity.angVel fallback into gameplay systems.
   _vecWriteScratch.x = 0;
-  _vecWriteScratch.y = current - impulseY / inertiaY;
+  const nextY = current - impulseY / inertiaY;
+  _vecWriteScratch.y = nextY;
   _vecWriteScratch.z = 0;
   rec.body.setAngvel(_vecWriteScratch, true);
+  cachePreStepAngular(rec, 0, nextY, 0);
   // The post-write angvel() allocates a fresh Rapier vector; observeAppliedSurfaceTorque
   // returns early without a journal, so only pay the read when a journal exists.
   if (journalFor()) observeAppliedSurfaceTorque(rec.entity, -current, -rec.body.angvel().y, evidence);
   return true;
+}
+
+function cachePreStepAngular(rec, x, y, z) {
+  if (!rec || rec._preStepAngularCaptureOpen !== true) return;
+  // setAngvel crosses Rapier's f32 boundary. Keep the retained scalar at the same precision as
+  // the subsequent native getter; otherwise a second fractional impulse can predict from a JS
+  // double that the body never actually held. Preserve non-finite sentinels for the safety clamp.
+  rec._preStepAngvelX = Number.isFinite(x) ? Math.fround(x) : x;
+  rec._preStepAngvelY = Number.isFinite(y) ? Math.fround(y) : y;
+  rec._preStepAngvelZ = Number.isFinite(z) ? Math.fround(z) : z;
+  rec._preStepAngularValid = true;
+}
+
+function closePreStepAngular(rec) {
+  if (!rec) return;
+  rec._preStepAngularCaptureOpen = false;
+  rec._preStepAngularValid = false;
+}
+
+function openPreStepYaw(rec) {
+  if (!rec) return;
+  rec._preStepYawCaptureOpen = true;
+  rec._preStepYawValid = false;
+  // A sleeping body can be written by a native caller between owner turns. Its mirrored yaw is
+  // therefore never a safe source when the previous turn skipped kinematics or the record was
+  // explicitly marked dirty by an owner-side setRotation/rebind.
+  if (rec._preStepYawDirty === true
+      || rec._preStepYawTrusted !== true
+      || rec._postStepSleepSkip === true
+      || rec._skippedSleepKinematics === true
+      || rec.entity?.physicsSleeping === true) return;
+  const yaw = rec.kinematics && rec.kinematics.yaw;
+  if (Number.isFinite(yaw)) {
+    rec._preStepYaw = yaw;
+    rec._preStepYawValid = true;
+  } else {
+    rec._preStepYawDirty = true;
+  }
+}
+
+function cachePreStepYaw(rec, yaw) {
+  if (!rec || rec._preStepYawCaptureOpen !== true || !Number.isFinite(yaw)) return;
+  // yawFromQuat() has already crossed Rapier's f32 quaternion boundary. Keep its JS value as-is;
+  // Math.fround here would introduce a second quantization and could move fractional headings.
+  rec._preStepYaw = yaw;
+  rec._preStepYawValid = true;
+  rec._preStepYawDirty = false;
+}
+
+function closePreStepYaw(rec) {
+  if (!rec) return;
+  rec._preStepYawCaptureOpen = false;
+  rec._preStepYawValid = false;
+}
+
+function invalidatePreStepYaw(rec) {
+  if (!rec) return;
+  rec._preStepYawValid = false;
+  rec._preStepYawTrusted = false;
+  rec._preStepYawDirty = true;
+}
+
+function markPreStepYawAuthoritative(rec, yaw) {
+  if (!rec || !Number.isFinite(yaw)) return;
+  rec._preStepYaw = yaw;
+  rec._preStepYawTrusted = true;
+  rec._preStepYawDirty = false;
+  rec._preStepYawValid = false;
 }
 
 function vector3(source) {

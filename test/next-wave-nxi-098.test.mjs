@@ -630,6 +630,43 @@ function openSell(state) {
   return { screen, emitted };
 }
 
+function openSellWithEventBus(state, quoteState) {
+  const emitted = [];
+  const handlers = new Map();
+  const bus = {
+    emit(name, payload) {
+      emitted.push({ name, payload });
+      for (const handler of [...(handlers.get(name) || [])]) handler(payload);
+    },
+    on(name, handler) {
+      const list = handlers.get(name) || [];
+      list.push(handler);
+      handlers.set(name, list);
+      return () => handlers.set(name, (handlers.get(name) || []).filter((entry) => entry !== handler));
+    },
+    off(name, handler) {
+      handlers.set(name, (handlers.get(name) || []).filter((entry) => entry !== handler));
+    },
+  };
+  const screen = createMarketScreen({
+    state,
+    bus,
+    registry: {
+      get(name) {
+        if (name !== 'economy') return null;
+        return {
+          quote(_stationId, commodityId, side, qty) {
+            return { ok: true, side, qty, total: quoteState.total, commodityId, partial: false, priceImpactPct: 0 };
+          },
+        };
+      },
+    },
+  });
+  document.body.appendChild(screen.el);
+  screen.onShow({ tradeMode: 'sell', state });
+  return { screen, emitted, bus };
+}
+
 function row(screen, id) {
   return screen.el.querySelector(`[data-cmdty="${id}"]`);
 }
@@ -728,6 +765,34 @@ test('NXI-098: a hold that is only sealed cargo is not described as empty', () =
     assert.equal(screen.el.querySelector('[data-sale-line]').getAttribute('data-sale-qty'), '0');
     assert.equal(screen.el.querySelector('.sx-qty__in').value, '0');
     assert.equal(emitted.some((entry) => entry.name === 'ui:sell'), false);
+  } finally {
+    dom.restore();
+  }
+});
+
+test('NXI-098: a worker price refusal refreshes the next sell terms from the authority', () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 1);
+    const quoteState = { total: 30 };
+    const { screen, emitted, bus } = openSellWithEventBus(state, quoteState);
+    const food = row(screen, FOOD);
+    assert.ok(food, 'the sellable row is listed');
+    food.click();
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false);
+
+    // The facade remains at 30 while the worker reports the exact live total 29.
+    bus.emit('economy:tradeFailed', {
+      stationId: STATION, commodityId: FOOD, side: 'sell', qty: 1,
+      reason: 'price_changed', expectedTotal: 30, liveTotal: 29,
+    });
+    assert.match(screen.el.querySelector('[data-trade-total]').getAttribute('aria-label'), /29/);
+
+    screen.el.querySelector('[data-go]').click();
+    const sell = emitted.find((entry) => entry.name === 'ui:sell');
+    assert.equal(sell && sell.payload.expectedTotal, 29,
+      'the retry binds to the worker refusal, not the stale facade total');
+    screen.dispose();
   } finally {
     dom.restore();
   }

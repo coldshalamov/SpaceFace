@@ -73,6 +73,7 @@ import {
   advanceFixedTimestep,
   LOOP_FIXED_DT,
   MAX_CATCHUP_STEPS,
+  frameSimStepCap,
 } from './simulationRunner.js';
 
 const SIM_LANE = Object.freeze({ MAIN: 'main', WORKER: 'worker' });
@@ -82,9 +83,9 @@ const SIM_LANE = Object.freeze({ MAIN: 'main', WORKER: 'worker' });
 // a chance to dispatch a queued reply after a cold-start GL/DOM task.
 const LANE_STALL_MS = 5000;
 const LANE_WATCHDOG_SAMPLE_MS = 100;
-// Replies can never outpace posts (one outstanding directive), but the ring
-// keeps the production bound — an overflow is an impossible-state failure,
-// not a silent drop.
+// The directive-driven lane has one outstanding reply, while worker-local clock
+// replies can outpace rAF presentation. The physical ring stays bounded and a
+// single coalesced metadata tail absorbs that presentation-only backlog.
 const LANE_COMPLETED_TICK_CAPACITY = 8;
 
 // Sim-bus events that legitimately originate main-side and must replay in the
@@ -178,9 +179,36 @@ function viewportSize() {
  * deps.simulationRunner and journal is the transport journal to hand to
  * deps.presentationJournal.
  */
-export function createSimLaneRuntime({ state, registry, bus, flags, onInputCommandSnapshot, channelFactory, helpers }) {
+export function createSimLaneRuntime({
+  state,
+  registry,
+  bus,
+  flags,
+  onInputCommandSnapshot,
+  channelFactory,
+  helpers,
+  pumpScheduler,
+  clockMode,
+}) {
   const resolved = flags || resolveSimLaneFlags();
   if (!resolved || resolved.lane !== SIM_LANE.WORKER) return null;
+  // Browser production gets an autonomous worker clock. Injected channels are
+  // directive-driven on purpose: the node/manual fixtures must retain their
+  // explicit tick order and never acquire a second wall clock.
+  const workerClockMode = clockMode === 'worker-local' || clockMode === 'worker-pump'
+    ? clockMode
+    : (typeof channelFactory === 'function' ? 'worker-pump' : 'worker-local');
+  // The worker clock is injectable only for deterministic transport tests. The production path
+  // uses the browser timer and monotonic performance clock; presentationRunner owns when this
+  // clock is active, while this module owns its fixed-step cadence and transport wakeups.
+  const workerPumpNow = typeof pumpScheduler?.nowMs === 'function'
+    ? pumpScheduler.nowMs : nowMs;
+  const workerPumpSetTimeout = typeof pumpScheduler?.setTimeout === 'function'
+    ? pumpScheduler.setTimeout
+    : (fn, delay) => setTimeout(fn, delay);
+  const workerPumpClearTimeout = typeof pumpScheduler?.clearTimeout === 'function'
+    ? pumpScheduler.clearTimeout
+    : (handle) => clearTimeout(handle);
   for (const w of resolved.warnings) console.warn(`[simLane] ${w}`);
   console.warn('[simLane] worker lane active — the sim realm runs the whole authoritative step');
 
@@ -284,8 +312,22 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       if (key.indexOf('.') === -1 && state[key] === undefined) state[key] = {};
     }
     let touchedEmits = null;
+    let dockRelease = false;
     for (const u of updates) {
+      // The UI's committed undock is a main-side transition, but the
+      // authoritative ui.docked fold lands here later.  ScreenManager already
+      // popped the station before that mirror reply, so remember the edge and
+      // wake its aggregate pause owner after the authoritative value arrives.
+      // Do this only for a true -> false edge and an empty local screen stack:
+      // a nested modal remains a real pause owner and must not receive a resume
+      // edge merely because the dock latch changed.
+      const updatePath = Array.isArray(u?.segs) ? u.segs.join('.') : '';
+      const wasDocked = updatePath === 'ui.docked' && state.ui?.docked === true;
       applyDomainUpdate(u);
+      if (wasDocked && state.ui?.docked !== true
+        && !(Array.isArray(state.ui?.screenStack) && state.ui.screenStack.length > 0)) {
+        dockRelease = true;
+      }
       const root = u && Array.isArray(u.segs) && u.segs.length
         ? String(u.segs[0]).split('.')[0] : null;
       if (root && DOMAIN_MIRROR_EMITS[root]) {
@@ -297,6 +339,14 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         try { bus.emit(type, { missionId: null, stationId: null }); }
         catch (_) { /* listener faults stay caller-owned */ }
       }
+    }
+    if (dockRelease && bus && typeof bus.emit === 'function') {
+      // sim:resume is a main-only signal (the event surface deliberately does
+      // not forward it to the worker).  It lets screenManager reconcile its
+      // UI-owned timeEffects source without inventing a second dock event or
+      // replaying the station transition.
+      try { bus.emit('sim:resume', { source: 'sim-lane-domain-mirror' }); }
+      catch (_) { /* listener faults stay caller-owned */ }
     }
   }
 
@@ -374,6 +424,35 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       failLane(`sim worker directive failed: ${msg.message || 'unknown'}`, msg.stack || null);
       return;
     }
+    // Worker-local clock replies are unsolicited: the worker keeps stepping
+    // while rAF (and therefore this callback) is blocked. They are coalesced
+    // at the worker and carry the command sequence that has been applied.
+    if (msg.kind === 'clockTick') {
+      try {
+        applyTickReply(msg);
+        if (Number.isSafeInteger(msg.clockSequence)) {
+          workerClockLastReceivedSequence = Math.max(workerClockLastReceivedSequence, msg.clockSequence);
+          workerClockAckPending = {
+            clockSequence: msg.clockSequence,
+            journalEnd: Number.isSafeInteger(msg.journalEnd) ? msg.journalEnd : 0,
+          };
+        }
+        if (Number.isSafeInteger(msg.commandSequence)
+          && msg.commandSequence > workerClockLastAppliedCommandSequence) {
+          workerClockLastAppliedCommandSequence = msg.commandSequence;
+        }
+        if (Number.isSafeInteger(msg.commandSequence)
+          && msg.commandSequence >= workerClockCommandInFlightSequence) {
+          workerClockCommandInFlight = false;
+          workerClockCommandInFlightSequence = 0;
+        }
+        flushDirectives();
+      } catch (error) {
+        failLane(`sim worker clock reply apply failed: ${(error && error.message) || error}`,
+          error && error.stack ? String(error.stack) : null);
+      }
+      return;
+    }
     const tracked = pending.get(msg.seq);
     if (!tracked) return;
     pending.delete(msg.seq);
@@ -382,6 +461,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         applyInitReply(msg);
         ready = true;
         tracked.resolve?.(msg);
+        startWorkerPump();
       } else if (msg.kind === 'tickDone') {
         if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
         applyTickReply(msg);
@@ -400,6 +480,9 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       return;
     }
     flushDirectives();
+    // A reply can release a long-running directive while timer dispatch is otherwise quiet. The
+    // wake is disposable and generation-guarded; normal timer cadence remains the steady clock.
+    if (workerPumpRequested && pendingSteps > 0) armWorkerPumpAckWake();
   }
 
   function releaseFlight(msg, flight) {
@@ -465,17 +548,51 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     }
   }
 
+  function postWorkerClockControl() {
+    if (laneClosed || !ready || workerClockMode !== 'worker-local') return;
+    postLaneDirective({
+      kind: 'clockControl',
+      seq: nextToken(),
+      active: workerClockRequested === true,
+      generation: workerClockGeneration,
+      lifecycleGeneration,
+      timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+    });
+  }
+
+  function postWorkerClockAck() {
+    if (laneClosed || !ready || workerClockMode !== 'worker-local' || !workerClockAckPending) return false;
+    const ack = workerClockAckPending;
+    workerClockAckPending = null;
+    postLaneDirective({
+      kind: 'clockAck',
+      seq: nextToken(),
+      clockSequence: ack.clockSequence,
+      ackJournalEnd: ack.journalEnd,
+      generation: workerClockGeneration,
+      lifecycleGeneration,
+    });
+    workerClockLastAckedSequence = Math.max(workerClockLastAckedSequence, ack.clockSequence || 0);
+    return true;
+  }
+
   // ---- envelope queue (descriptor → wire via the shared ring) --------------------
   const envelopeRing = createSimCommandRing();
   const cursorScreen = { x: null, y: null };
   const cursorNdc = { x: 0, y: 0 };
   const cursorHit = { x: 0, z: 0 };
+  let cursorProjectionPending = false;
   // The sink's return value is what the caller receives — for rpc descriptors
   // that is a promise resolved/rejected off the wire ack (laneRpc callers
   // like startNewGame await it), for everything else the ring's push result.
   const uninstallSink = installSimCommandSink((d) => enqueueDescriptor(d));
   function enqueueDescriptor(d) {
     if (laneClosed || !d) return null;
+    if (workerClockMode === 'worker-local' && d.kind === 'domEvent') {
+      // Preserve the boundary request if a prior worker command is still in
+      // flight; the reply flush will project this batch before shipping it.
+      cursorProjectionPending = true;
+    }
     const pointer = d.kind === 'domEvent' ? d.d : null;
     if (pointer && ['mousemove', 'pointermove', 'mousedown'].includes(pointer.type)
       && Number.isFinite(pointer.clientX) && Number.isFinite(pointer.clientY)) {
@@ -490,7 +607,17 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       flushDirectives();
       return rpcPromise;
     }
-    return pushLaneCommand(envelopeRing, d);
+    const queued = pushLaneCommand(envelopeRing, d);
+    if (workerClockMode === 'worker-local') {
+      // Input/UI batches are a valid projection boundary. RPC-only batches
+      // deliberately stay projection-free and preserve the command FIFO.
+      flushDirectives({ projectCursor: d.kind === 'domEvent' });
+    }
+    // Input/UI descriptors should not wait for the next render callback while the worker owns
+    // the clock. A single disposable zero-delay wake preserves FIFO order and coalesces pointer
+    // motion without creating one timer per DOM event.
+    if (workerPumpRequested) armWorkerPumpAckWake();
+    return queued;
   }
 
   // ---- input boundary -------------------------------------------------------------
@@ -508,6 +635,15 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   let completedRead = 0;
   let completedWrite = 0;
   let completedCount = 0;
+  // rAF is allowed to stop presenting while the worker-local clock keeps the
+  // authoritative sim moving. Keep the physical ring bounded, but retain a
+  // single metadata tail once the ring is full. Journal packs/events are
+  // already applied in reply order; this tail only coalesces the presentation
+  // fence that tells the renderer which latest range is ready.
+  let completedOverflow = null;
+  let completedTickCoalescingEvents = 0;
+  let completedTickCoalescedCount = 0;
+  let completedFullRebuildsCoalesced = 0;
   let consumedTickCount = 0;
   let skippedPresentationTicks = 0;
   let lifecycleGeneration = 0;
@@ -687,6 +823,27 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 
     if (Number.isSafeInteger(msg.stateTick)) state.tick = msg.stateTick;
     if (Number.isFinite(msg.simTime)) state.simTime = msg.simTime;
+    if (Number.isFinite(msg.clockAccumulator)) state.accumulator = Math.max(0, msg.clockAccumulator);
+    if (msg.clockDiagnostics && typeof msg.clockDiagnostics === 'object') {
+      const d = msg.clockDiagnostics;
+      const bounded = (value, max = 0xffffffff) => Number.isFinite(value)
+        ? Math.max(0, Math.min(max, value)) : null;
+      workerClockLastDiagnostics = {
+        active: d.active === true,
+        scale: bounded(d.scale, 4),
+        accumulator: bounded(d.accumulator, 1),
+        timerPending: d.timerPending === true,
+        timerFires: bounded(d.timerFires),
+        directiveTicks: bounded(d.directiveTicks),
+        steps: bounded(d.steps),
+        shedSteps: bounded(d.shedSteps),
+        commands: bounded(d.commands),
+        pendingCommands: bounded(d.pendingCommands, 4096),
+        appliedCommandSequence: bounded(d.appliedCommandSequence),
+        awaitingAck: d.awaitingAck === true,
+        backpressured: d.backpressured === true,
+      };
+    }
 
     if (msg.completedTick) {
       const ct = msg.completedTick;
@@ -703,6 +860,12 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         journalEnd: ct.journalEnd,
         fullRebuild: msg.journalFullRebuild === true,
         rebuildGeneration: msg.journalRebuildGeneration || 0,
+        coalescedCount: Number.isSafeInteger(msg.completedTickCount)
+          ? msg.completedTickCount : ct.coalescedCount,
+        fullRebuildCount: Number.isSafeInteger(msg.completedFullRebuildCount)
+          ? msg.completedFullRebuildCount : ct.fullRebuildCount,
+        fullRebuildStart: Number.isSafeInteger(msg.journalFullRebuildStart)
+          ? msg.journalFullRebuildStart : ct.fullRebuildStart,
       });
     } else if (journalHi > journalLo || msg.journalFullRebuild === true) {
       // A steps:0 reply that produced journal records is still presentation-
@@ -728,11 +891,75 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     }
   }
 
+  function completedRecordCount(record) {
+    return Number.isSafeInteger(record?.coalescedCount) && record.coalescedCount > 0
+      ? record.coalescedCount : 1;
+  }
+
+  function completedFullCount(record) {
+    return Number.isSafeInteger(record?.fullRebuildCount) && record.fullRebuildCount > 0
+      ? record.fullRebuildCount : (record?.fullRebuild === true ? 1 : 0);
+  }
+
+  function normalizeCompletedTick(fields) {
+    const record = { ...(fields || {}) };
+    const full = record.fullRebuild === true;
+    const journalStart = Number.isSafeInteger(record.journalStart) ? record.journalStart : 0;
+    record.coalescedCount = completedRecordCount(record);
+    record.fullRebuildCount = completedFullCount(record);
+    record.fullRebuildStart = full
+      ? (Number.isSafeInteger(record.fullRebuildStart) ? record.fullRebuildStart : journalStart)
+      : null;
+    return record;
+  }
+
+  function mergeCompletedTickMetadata(target, incoming) {
+    const targetCount = completedRecordCount(target);
+    const incomingCount = completedRecordCount(incoming);
+    const targetFull = target?.fullRebuild === true;
+    const incomingFull = incoming?.fullRebuild === true;
+    const targetFullStart = Number.isSafeInteger(target?.fullRebuildStart)
+      ? target.fullRebuildStart : null;
+    const incomingFullStart = Number.isSafeInteger(incoming?.fullRebuildStart)
+      ? incoming.fullRebuildStart : null;
+    const targetStart = Number.isSafeInteger(target?.journalStart) ? target.journalStart : 0;
+    const incomingStart = Number.isSafeInteger(incoming?.journalStart) ? incoming.journalStart : targetStart;
+    const targetEnd = Number.isSafeInteger(target?.journalEnd) ? target.journalEnd : targetStart;
+    const incomingEnd = Number.isSafeInteger(incoming?.journalEnd) ? incoming.journalEnd : incomingStart;
+    const full = targetFull || incomingFull;
+    const fullStart = incomingFull
+      ? (incomingFullStart ?? incomingStart)
+      : targetFullStart;
+    const fullCount = completedFullCount(target) + completedFullCount(incoming);
+    const rebuildGeneration = Math.max(
+      Number.isSafeInteger(target?.rebuildGeneration) ? target.rebuildGeneration : 0,
+      Number.isSafeInteger(incoming?.rebuildGeneration) ? incoming.rebuildGeneration : 0,
+    );
+
+    // The incoming record is the latest snapshot for all scalar/input fields.
+    Object.assign(target, incoming);
+    target.coalescedCount = targetCount + incomingCount;
+    target.fullRebuildCount = fullCount;
+    target.fullRebuild = full;
+    target.fullRebuildStart = full ? fullStart : null;
+    target.rebuildGeneration = rebuildGeneration;
+    target.journalStart = full
+      ? (Number.isSafeInteger(fullStart) ? fullStart : Math.min(targetStart, incomingStart))
+      : Math.min(targetStart, incomingStart);
+    target.journalEnd = Math.max(targetEnd, incomingEnd);
+  }
+
   function pushCompletedTick(fields) {
+    const record = normalizeCompletedTick(fields);
     if (completedCount >= LANE_COMPLETED_TICK_CAPACITY) {
-      throw new Error(`SimulationRunner completed-tick queue overflow (${LANE_COMPLETED_TICK_CAPACITY})`);
+      if (!completedOverflow) completedOverflow = record;
+      else mergeCompletedTickMetadata(completedOverflow, record);
+      completedTickCoalescingEvents++;
+      completedTickCoalescedCount += completedRecordCount(record);
+      completedFullRebuildsCoalesced += completedFullCount(record);
+      return;
     }
-    completedTicks[completedWrite] = fields;
+    completedTicks[completedWrite] = record;
     completedWrite = (completedWrite + 1) % LANE_COMPLETED_TICK_CAPACITY;
     completedCount++;
   }
@@ -741,12 +968,49 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   const advanceResult = { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
   let pendingSteps = 0;
   let queuedShedSteps = 0;
+  // Worker mode normally receives its wall-clock budget from presentationRunner. Once the
+  // renderer is busy, however, rAF is no longer a reliable simulation clock. The worker pump
+  // owns only this lane's cadence; main fallback never sees these fields or methods.
+  let workerPumpRequested = false;
+  let workerClockRequested = false;
+  let workerClockGeneration = 0;
+  let workerClockCommandSequence = 0;
+  let workerClockCommandInFlight = false;
+  let workerClockCommandInFlightSequence = 0;
+  let workerClockAckPending = null;
+  let workerClockLastReceivedSequence = 0;
+  let workerClockLastAckedSequence = 0;
+  let workerClockLastAppliedCommandSequence = 0;
+  let workerClockLastCommandScale = null;
+  let workerClockLastDiagnostics = null;
+  let workerPumpTimer = null;
+  let workerPumpAckWake = null;
+  let workerPumpGeneration = 0;
+  let workerPumpAnchorMs = 0;
+  let workerPumpTicks = 0;
+  let workerPumpSteps = 0;
+  let workerPumpShedSteps = 0;
 
   function capPendingSteps(stepCap) {
     const shed = Math.max(0, pendingSteps - stepCap);
     pendingSteps -= shed;
     queuedShedSteps += shed;
     return shed;
+  }
+
+  function clearWorkerPumpWake(handleName) {
+    const handle = handleName === 'ack' ? workerPumpAckWake : workerPumpTimer;
+    if (handle === null) return;
+    try { workerPumpClearTimeout(handle); } catch (_) { /* teardown is best-effort */ }
+    if (handleName === 'ack') workerPumpAckWake = null;
+    else workerPumpTimer = null;
+  }
+
+  function stopWorkerPump() {
+    workerPumpGeneration++;
+    clearWorkerPumpWake('timer');
+    clearWorkerPumpWake('ack');
+    workerPumpAnchorMs = 0;
   }
 
   function watchFlight(flight, delayMs = LANE_WATCHDOG_SAMPLE_MS, confirm = false) {
@@ -774,26 +1038,100 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     }, delayMs);
   }
 
-  function flushDirectives() {
+  function appendCursorProjection(commands) {
+    // Camera/galactic-origin geometry belongs to presentation. The worker has
+    // no renderer raycast helper: project on main for every batch, even when
+    // the cursor has not moved.
+    if (!helpers || typeof helpers.raycastToPlane !== 'function') return;
+    const size = viewportSize();
+    const mouse = state.settings?.controls?.mouse || {};
+    const sensitivity = normalizePadSensitivity(mouse.sensitivity);
+    const centered = state.input?.autoFire || cursorScreen.x == null;
+    cursorNdc.x = centered || size.w <= 0 ? 0 : (cursorScreen.x / size.w * 2 - 1) * sensitivity;
+    cursorNdc.y = centered || size.h <= 0 ? 0 : (1 - cursorScreen.y / size.h * 2) * sensitivity * (mouse.invertY ? -1 : 1);
+    const hit = helpers.raycastToPlane(cursorNdc, cursorHit);
+    if (hit && Number.isFinite(hit.x) && Number.isFinite(hit.z)) {
+      pushLaneCommand(envelopeRing, { kind: 'domEvent', d: { type: 'cursorProjection', x: hit.x, z: hit.z } });
+      commands.push(...envelopeRing.drain());
+    }
+  }
+
+  function flushWorkerClockDirectives({ projectCursor = false } = {}) {
+    if (laneClosed || !ready || workerClockMode !== 'worker-local') return;
+    // A timer tick can publish just before a main command reaches the worker's
+    // serialized chain. Its reply has commandSequence 0 (or an older command
+    // sequence) but still needs an ACK; withholding that ACK while the command
+    // is in flight deadlocks the worker's coalesced reply and leaves every later
+    // RPC buffered. ACKs are safe to send alone; commands remain FIFO below.
+    if (workerClockCommandInFlight) {
+      if (workerClockAckPending) postWorkerClockAck();
+      return;
+    }
+    const commands = envelopeRing.drain();
+    // A clock reply is an acknowledgement boundary, not an input/presentation
+    // boundary. Projecting the cursor here turns a real raycast helper into a
+    // synthetic cursorProjection command on every reply, which schedules the
+    // next reply indefinitely. Reproject only at rAF or input boundaries.
+    if (projectCursor || cursorProjectionPending) {
+      appendCursorProjection(commands);
+      cursorProjectionPending = false;
+    }
+    const hasJournalAck = pendingAckEnd > 0;
+    const hasClockAck = !!workerClockAckPending;
+    if (commands.length === 0 && pendingSteps <= 0 && !hasJournalAck && !hasClockAck) return;
+
+    // A pure presentation acknowledgement does not need a synthetic sim tick.
+    // The worker consumes it on its serial chain and only emits a reply when a
+    // coalesced snapshot is waiting; command and journal acknowledgements ride
+    // a clockCommand so their ordering stays before the next fixed step.
+    if (commands.length === 0 && !hasJournalAck && hasClockAck) {
+      postWorkerClockAck();
+      return;
+    }
+
+    const ack = workerClockAckPending;
+    // A worker reply can have advanced its retained journal beyond the last
+    // presentation ACK by the time a queued command is ready. Keep the larger
+    // cumulative watermark so the worker does not mistake the combined
+    // command for a gap and request a full rebuild on every coalesced reply.
+    const ackJournalEnd = Math.max(
+      pendingAckEnd,
+      Number.isSafeInteger(ack?.journalEnd) ? ack.journalEnd : 0,
+    );
+    const commandSequence = ++workerClockCommandSequence;
+    const msg = {
+      kind: 'clockCommand',
+      seq: nextToken(),
+      commandSequence,
+      commands,
+      steps: Math.max(0, pendingSteps),
+      ackJournalEnd,
+      ackClockSequence: ack ? ack.clockSequence : 0,
+      generation: lifecycleGeneration,
+      lifecycleGeneration,
+      timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+    };
+    pendingAckEnd = 0;
+    postedSteps += Math.max(0, pendingSteps);
+    pendingSteps = 0;
+    workerClockAckPending = null;
+    workerClockCommandInFlight = true;
+    workerClockCommandInFlightSequence = commandSequence;
+    workerClockLastCommandScale = msg.timeScale;
+    postedDirectives++;
+    postLaneDirective(msg);
+  }
+
+  function flushDirectives(options = {}) {
     if (laneClosed || !ready) return;
+    if (workerClockMode === 'worker-local') {
+      flushWorkerClockDirectives(options);
+      return;
+    }
     if (inFlight) return;
     const commands = envelopeRing.drain();
     if (pendingSteps <= 0 && commands.length === 0 && pendingAckEnd === 0) return;
-    // Camera/galactic-origin geometry belongs to presentation. The worker has no renderer
-    // raycast helper: project on main for every batch, even when the cursor has not moved.
-    if (helpers && typeof helpers.raycastToPlane === 'function') {
-      const size = viewportSize();
-      const mouse = state.settings?.controls?.mouse || {};
-      const sensitivity = normalizePadSensitivity(mouse.sensitivity);
-      const centered = state.input?.autoFire || cursorScreen.x == null;
-      cursorNdc.x = centered || size.w <= 0 ? 0 : (cursorScreen.x / size.w * 2 - 1) * sensitivity;
-      cursorNdc.y = centered || size.h <= 0 ? 0 : (1 - cursorScreen.y / size.h * 2) * sensitivity * (mouse.invertY ? -1 : 1);
-      const hit = helpers.raycastToPlane(cursorNdc, cursorHit);
-      if (hit && Number.isFinite(hit.x) && Number.isFinite(hit.z)) {
-        pushLaneCommand(envelopeRing, { kind: 'domEvent', d: { type: 'cursorProjection', x: hit.x, z: hit.z } });
-        commands.push(...envelopeRing.drain());
-      }
-    }
+    appendCursorProjection(commands);
     capPendingSteps(MAX_CATCHUP_STEPS);
 
     const seq = nextToken();
@@ -815,6 +1153,91 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     pending.set(seq, { kind: 'tick' });
     watchFlight(inFlight);
     postLaneDirective(msg);
+  }
+
+  function advanceWorkerPump(frameDt) {
+    if (laneClosed || !ready) return;
+    const dt = Number.isFinite(frameDt) ? Math.max(0, Math.min(frameDt, 0.25)) : 0;
+    const effectiveStepCap = frameSimStepCap({
+      frameDt: dt,
+      fixedDt: LOOP_FIXED_DT,
+      maxSteps: MAX_CATCHUP_STEPS,
+    });
+    state.simCatchupIndex = 0;
+    advanceFixedTimestep(
+      state.accumulator,
+      dt,
+      state.timeScale,
+      () => { pendingSteps++; state.simCatchupIndex = (state.simCatchupIndex | 0) + 1; },
+      advanceResult,
+      LOOP_FIXED_DT,
+      effectiveStepCap,
+    );
+    // Keep the same transport ceiling as runner.advance(): a slow worker reply must not allow
+    // timer callbacks to build an unbounded batch while the previous directive is in flight.
+    const queuedOverflow = capPendingSteps(MAX_CATCHUP_STEPS);
+    if (queuedOverflow > 0) {
+      advanceResult.shedBacklog = true;
+      advanceResult.shedSteps += queuedOverflow;
+      advanceResult.steps = Math.max(0, advanceResult.steps - queuedOverflow);
+    }
+    advanceResult.stepCap = effectiveStepCap;
+    advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
+    state.accumulator = advanceResult.accumulator;
+    workerPumpTicks++;
+    workerPumpSteps += advanceResult.steps;
+    workerPumpShedSteps += advanceResult.shedSteps;
+    sampleLaneUiFold();
+    flushDirectives();
+  }
+
+  function scheduleWorkerPump(generation = workerPumpGeneration) {
+    if (laneClosed || !ready || !workerPumpRequested || generation !== workerPumpGeneration
+      || workerPumpTimer !== null) return;
+    const delayMs = Math.max(1, LOOP_FIXED_DT * 1000);
+    workerPumpTimer = workerPumpSetTimeout(() => {
+      workerPumpTimer = null;
+      if (laneClosed || !ready || !workerPumpRequested || generation !== workerPumpGeneration) return;
+      const now = workerPumpNow();
+      const elapsedMs = Number.isFinite(now) && Number.isFinite(workerPumpAnchorMs)
+        ? Math.max(0, now - workerPumpAnchorMs) : 0;
+      workerPumpAnchorMs = Number.isFinite(now) ? now : workerPumpAnchorMs;
+      advanceWorkerPump(elapsedMs / 1000);
+      scheduleWorkerPump(generation);
+    }, delayMs);
+  }
+
+  function armWorkerPumpAckWake() {
+    if (laneClosed || !ready || !workerPumpRequested || workerPumpAckWake !== null) return;
+    const generation = workerPumpGeneration;
+    workerPumpAckWake = workerPumpSetTimeout(() => {
+      workerPumpAckWake = null;
+      if (laneClosed || !ready || !workerPumpRequested || generation !== workerPumpGeneration) return;
+      const now = workerPumpNow();
+      const elapsedMs = Number.isFinite(now) && Number.isFinite(workerPumpAnchorMs)
+        ? Math.max(0, now - workerPumpAnchorMs) : 0;
+      workerPumpAnchorMs = Number.isFinite(now) ? now : workerPumpAnchorMs;
+      advanceWorkerPump(elapsedMs / 1000);
+      scheduleWorkerPump(generation);
+    }, 0);
+  }
+
+  function startWorkerPump() {
+    if (workerClockMode === 'worker-local') {
+      if (laneClosed || !ready || !workerClockRequested) return;
+      postWorkerClockControl();
+      flushDirectives();
+      return;
+    }
+    if (laneClosed || !ready || !workerPumpRequested) return;
+    if (workerPumpTimer !== null) return;
+    workerPumpGeneration++;
+    workerPumpAnchorMs = workerPumpNow();
+    // Fold UI ownership and any command queued before the worker became ready before waiting for
+    // the first cadence interval. This is the same zero-step flush used by prepareWithoutAdvance.
+    sampleLaneUiFold();
+    flushDirectives();
+    scheduleWorkerPump(workerPumpGeneration);
   }
 
   // ---- DOM surface -------------------------------------------------------------------------
@@ -976,6 +1399,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   const runner = {
     fixedDt: LOOP_FIXED_DT,
     maxSteps: MAX_CATCHUP_STEPS,
+    clockOwner: workerClockMode,
     advance(frameDt, timeScale = state.timeScale, perCallStepCap = MAX_CATCHUP_STEPS) {
       assertLaneOpen();
       const requestedStepCap = Number.isFinite(perCallStepCap)
@@ -1008,13 +1432,13 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
       sampleLaneUiFold();
-      flushDirectives();
+      flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
       return advanceResult;
     },
     stepOnce() {
       assertLaneOpen();
       pendingSteps++;
-      flushDirectives();
+      flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
       return true;
     },
     prepareWithoutAdvance() {
@@ -1024,7 +1448,11 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       advanceResult.shedSteps = 0;
       advanceResult.accumulator = Number.isFinite(state.accumulator)
         ? Math.max(0, state.accumulator) : 0;
-      flushDirectives();
+      // Worker-local presentation frames do not call advance(), but they still
+      // own the main→worker UI boundary. Keep modal depth and screen-stack
+      // admission in sync before flushing the frame's cursor/clock command.
+      sampleLaneUiFold();
+      flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
       return advanceResult;
     },
     interpolationAlpha() {
@@ -1038,12 +1466,18 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
       if (!out || typeof out !== 'object') {
         throw new TypeError('consumeLatestCompletedTick requires a caller-owned output object');
       }
-      let consumed = 0;
+      let physicalConsumed = 0;
+      let representedConsumed = 0;
       let earliestJournalStart = 0;
+      let latestFullRebuildStart = null;
+      let fullRebuild = false;
+      let rebuildGeneration = 0;
+      let fullRebuildCount = 0;
       drainSabRepliesNow(); // SAB-mode replies must surface even when waitAsync is absent
-      while (completedCount > 0) {
-        const rec = completedTicks[completedRead];
-        if (consumed === 0) earliestJournalStart = rec.journalStart;
+      const absorb = (rec) => {
+        const represented = completedRecordCount(rec);
+        const full = rec.fullRebuild === true;
+        if (physicalConsumed === 0) earliestJournalStart = rec.journalStart;
         out.sequence = rec.sequence;
         out.tick = rec.tick;
         out.simTime = rec.simTime;
@@ -1054,23 +1488,55 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         out.lifecycleGeneration = rec.lifecycleGeneration;
         out.journalStart = rec.journalStart;
         out.journalEnd = rec.journalEnd;
-        out.fullRebuild = rec.fullRebuild === true;
-        out.rebuildGeneration = rec.rebuildGeneration || 0;
+        if (full) {
+          fullRebuild = true;
+          latestFullRebuildStart = Number.isSafeInteger(rec.fullRebuildStart)
+            ? rec.fullRebuildStart : rec.journalStart;
+        }
+        rebuildGeneration = Math.max(
+          rebuildGeneration,
+          Number.isSafeInteger(rec.rebuildGeneration) ? rec.rebuildGeneration : 0,
+        );
+        fullRebuildCount += completedFullCount(rec);
+        representedConsumed += represented;
+        physicalConsumed++;
+      };
+      while (completedCount > 0) {
+        const rec = completedTicks[completedRead];
+        absorb(rec);
         completedRead = (completedRead + 1) % LANE_COMPLETED_TICK_CAPACITY;
         completedCount--;
-        consumed++;
       }
-      if (consumed > 0) out.journalStart = earliestJournalStart;
-      if (consumed > 1) skippedPresentationTicks += consumed - 1;
-      consumedTickCount += consumed;
-      return consumed;
+      if (completedOverflow) {
+        absorb(completedOverflow);
+        completedOverflow = null;
+      }
+      if (representedConsumed > 0) {
+        // A rebuild supersedes every older range still waiting in the ring. Do
+        // not hand presentation a pre-rebuild start that the worker already
+        // discarded; the full boundary is the only valid beginning.
+        out.journalStart = fullRebuild
+          ? (Number.isSafeInteger(latestFullRebuildStart)
+            ? latestFullRebuildStart : earliestJournalStart)
+          : earliestJournalStart;
+        out.fullRebuild = fullRebuild;
+        out.rebuildGeneration = rebuildGeneration;
+        out.coalescedCount = representedConsumed;
+        out.fullRebuildCount = fullRebuildCount;
+        out.fullRebuildStart = fullRebuild
+          ? (Number.isSafeInteger(latestFullRebuildStart) ? latestFullRebuildStart : out.journalStart)
+          : null;
+      }
+      if (representedConsumed > 1) skippedPresentationTicks += representedConsumed - 1;
+      consumedTickCount += representedConsumed;
+      return representedConsumed;
     },
     alignJournalCursor(sequence) {
       assertLaneOpen();
       if (!Number.isSafeInteger(sequence) || sequence < 0) {
         throw new RangeError(`SimulationRunner journal cursor is invalid (${sequence})`);
       }
-      if (completedCount > 0) {
+      if (completedCount > 0 || completedOverflow) {
         throw new Error('SimulationRunner cannot align the journal cursor with pending completed ticks');
       }
       // The real cursor lives in the worker; only bounds-check on this side.
@@ -1079,8 +1545,29 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     setLifecycleGeneration(value) {
       lifecycleGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
     },
+    setClockActive(active) {
+      if (laneClosed) return false;
+      if (workerClockMode === 'worker-local') {
+        workerClockRequested = active === true;
+        workerClockGeneration++;
+        if (ready) {
+          postWorkerClockControl();
+          flushDirectives();
+        }
+        return workerClockRequested;
+      }
+      if (active === true) {
+        workerPumpRequested = true;
+        startWorkerPump();
+      } else {
+        workerPumpRequested = false;
+        stopWorkerPump();
+      }
+      return workerPumpRequested;
+    },
     getLifecycleGeneration: () => lifecycleGeneration,
-    getPendingCompletedTickCount: () => completedCount,
+    getPendingCompletedTickCount: () => completedCount
+      + (completedOverflow ? completedRecordCount(completedOverflow) : 0),
     isClosed: () => laneClosed,
     close,
     getDiagnostics() {
@@ -1088,6 +1575,23 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         closed: laneClosed,
         closeComplete: laneClosedComplete,
         lane: 'worker',
+        clockOwner: workerClockMode,
+        workerClockMode,
+        workerClockRequested,
+        workerClockGeneration,
+        workerClockCommandInFlight,
+        workerClockCommandSequence,
+        workerClockLastReceivedSequence,
+        workerClockLastAckedSequence,
+        workerClockLastAppliedCommandSequence,
+        workerClockLastCommandScale,
+        workerClockLastDiagnostics,
+        workerPumpRequested,
+        workerPumpTimerPending: workerPumpTimer !== null,
+        workerPumpAckWakePending: workerPumpAckWake !== null,
+        workerPumpTicks,
+        workerPumpSteps,
+        workerPumpShedSteps,
         laneReady: ready,
         replyCount,
         postedDirectives,
@@ -1110,7 +1614,12 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
         unforwardedEmitTypes: Object.fromEntries(unforwardedEmitTypes),
         skippedPresentationTicks,
         consumedTickCount,
-        completedTicksPending: completedCount,
+        completedTicksPending: completedCount
+          + (completedOverflow ? completedRecordCount(completedOverflow) : 0),
+        completedTickSlotsPending: completedCount,
+        completedTickCoalescingEvents,
+        completedTickCoalescedCount,
+        completedFullRebuildsCoalesced,
         journal: journal.getDiagnostics(),
         readModelEntities: readModel.entities.size,
         error: laneError,
@@ -1125,6 +1634,8 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     kind: 'init',
     seq: initSeq,
     profile: 'production',
+    clockMode: workerClockMode,
+    timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
     seed: (state.meta && Number.isSafeInteger(state.meta.seed) ? state.meta.seed : 1) >>> 0,
     settings: canonicalClone(state.settings || {}),
     domainMirroring: {},
@@ -1157,6 +1668,15 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 
   function close() {
     if (laneClosed) return false;
+    if (workerClockMode === 'worker-local') {
+      workerClockRequested = false;
+      workerClockGeneration++;
+      if (ready) {
+        try { postWorkerClockControl(); } catch (_) { /* dead channel */ }
+      }
+    }
+    workerPumpRequested = false;
+    stopWorkerPump();
     laneClosed = true;
     if (stallWatchdogTimer !== null) {
       clearTimeout(stallWatchdogTimer);

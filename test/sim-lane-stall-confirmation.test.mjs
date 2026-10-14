@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { LOOP_FIXED_DT, MAX_CATCHUP_STEPS } from '../src/core/simulationRunner.js';
 import { laneWriteSetting } from '../src/core/simLaneCommands.js';
@@ -11,10 +12,13 @@ async function fixture(t) {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const posts = [];
   let onMessage;
+  const bus = createBus();
+  const resumeSignals = [];
+  bus.on('sim:resume', payload => resumeSignals.push(payload));
   const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
     tick: 0, simTime: 0, accumulator: 0, timeScale: 1, ui: { screenStack: [] } };
   const lane = createSimLaneRuntime({
-    state,
+    state, bus,
     registry: {},
     flags: { lane: 'worker', warnings: [], sab: false },
     channelFactory: () => ({
@@ -34,10 +38,24 @@ async function fixture(t) {
   const firstFlight = posts.at(-1);
   return {
     lane, state, posts, firstFlight, receive: onMessage,
+    resumeSignals,
     advanceWall: (ms) => { clock += ms; },
     dispatch: (ms = 100) => { clock += ms; t.mock.timers.tick(ms); },
   };
 }
+
+test('a mirrored worker undock wakes the main UI pause owner after the station pop', async (t) => {
+  const f = await fixture(t);
+  f.state.ui.docked = true;
+  f.lane.runner.stepOnce();
+  const flight = f.posts.at(-1);
+  f.receive({
+    kind: 'tickDone', seq: flight.seq, stateTick: 1,
+    domainUpdates: [{ segs: ['ui.docked'], v: false }],
+  });
+  assert.equal(f.state.ui.docked, false);
+  assert.deepEqual(f.resumeSignals, [{ source: 'sim-lane-domain-mirror' }]);
+});
 
 test('cold main-thread work is excluded even when WebKit dispatches timers before a queued worker reply', async (t) => {
   const f = await fixture(t);

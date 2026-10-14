@@ -402,9 +402,19 @@ export const survivalWave = {
     if (!this._cohort || this._cohort.size === 0) return;
     const tick = this._cursor;
     for (const [id, member] of this._cohort.entries()) {
+      // Damage can mark the admitted hull dead before its lifecycle receipt arrives.
+      // Resolve that recorded generation before publishing the clear; aftermath may
+      // replace its id with a live wreck before the delayed receipt is delivered.
+      if (member.entity && member.entity.alive === false) {
+        this._resolveCohort(id);
+        continue;
+      }
       if (this._bossIds && this._bossIds.has(id)) continue;
       const entity = this._resolveCohortEntity(id, member);
-      if (!entity || entity.alive === false) continue;
+      if (!entity || entity.alive === false) {
+        this._resolveCohort(id);
+        continue;
+      }
       if (!this._isCohortMemberDisabled(id, member)) continue;
       const data = entity.data || {};
       if (data.isBoss === true || data.bossId != null

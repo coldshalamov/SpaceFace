@@ -627,6 +627,10 @@ export const DOMAIN_CADENCE = Object.freeze({
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
   // field motion misrepresents the public round; score/history retain the run root cadence.
   'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1,
+  // The completion census is sampled alongside phase by player-truth and the HUD. Keep the
+  // resolved count on the same reply as cleanup so a finished wave cannot present a stale kill
+  // total after its phase has already advanced.
+  'run.resolvedThreat': 1,
   // The accept beat must reach the facade inside its own publish window, not the
   // missions root cadence — Mission Log / HUD / contracts render off the mirror.
   'missions.active': 1,
