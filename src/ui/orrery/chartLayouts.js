@@ -32,6 +32,8 @@ const SPINE = `linear-gradient(90deg, transparent ${SPINE_X - 1}px, rgb(${BONE} 
 /** focus and hover on a word: a vertical segment of light at its leading edge (never an underline) */
 const SEG = (a = 1, x = '0') => `background:linear-gradient(90deg, rgb(248 244 234 / ${a}) 0 2px, transparent 2px) ${x} 50% / 2px 72% no-repeat !important;`;
 /** visually hidden, still read aloud */
+// the chart in a desktop window: never the phone sheet (mobileScreenLayouts owns that)
+const CD = 'html:not([data-sf-mobile="1"]) body #screens #sf-galaxymap.of-chart.orr-chart[data-layout="narrow"]';
 const SR = 'position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; padding:0 !important;';
 /** a word hanging off the spine: its tick */
 const TICK = (w = 12, a = 0.5, h = 2) => `content:"" !important; display:block !important; position:absolute !important; left:${SPINE_X}px !important; top:50% !important;
@@ -174,6 +176,22 @@ html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-char
 html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart.orr-chart .gm-tab.k-word {
   min-width:0 !important; max-width:100% !important;
   white-space:normal !important; overflow-wrap:anywhere !important;
+}
+/* Desktop English too: the one-row strip was ~875px of words in a 288px (wide) / ~227px (compact)
+   column. The deckplate repeat(auto-fill, minmax(84px, 1fr)) template still sized every track at
+   84px, so OVERVIEW (87px of type) lost its O to the inspector's clip, and ECONOMY…HISTORY sat past
+   the right edge where no pointer could reach them. Above phone width the words wrap onto the
+   scales the tab instrument already draws per row, so all nine stand inside the column. Phone
+   (<=760) keeps its own strip in the mobile deck. */
+@media (min-width: 761px) {
+  ${C} .gm-tabs.k-words { display:flex !important; flex-wrap:wrap !important; align-items:end; grid-template-columns:none !important;
+    width:100% !important; max-width:100% !important; min-width:0 !important; gap:10px 16px !important; }
+  ${C} .gm-tab.k-word { flex:0 0 auto !important; }
+}
+/* compact chart (761-1179, ~227px column): smaller, tighter words so three share a row (4 rows, not 5) */
+@media (min-width: 761px) and (max-width: 1179px) {
+  ${C} .gm-tabs.k-words { gap:9px 12px !important; }
+  ${C} .gm-tab.k-word { font-size:11px !important; letter-spacing:.08em !important; padding:2px 0 9px !important; }
 }
 ${C} .orr-chart-tabscale { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:0; }
 /* the two ways back: words with their notch */
@@ -347,7 +365,6 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} .gm-weather-head { white-space:nowrap !important; }
   ${C} .gm-rail-commodity label { white-space:normal !important; }
   ${C} .gm-navfoot { padding-top:17px !important; }
-  ${C} .gm-navfoot .gm-nav-row { flex-direction:row !important; align-items:baseline !important; gap:0 10px !important; }
   ${C} .gm-navfoot .gm-nav-row::before { top:-13px; }
   ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { top:-14px; }
   ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { top:-10px; }
@@ -368,6 +385,36 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} :is(#gm-set-course-btn, .gm-plot-btn) { font-size:14px !important; padding:2px 0 4px 12px !important; }
   ${C} #gm-engage-route-btn.orr-lampkey { margin-top:2px !important; }
   ${C} .gm-place-actions { gap:0 14px !important; }
+}
+
+/* the foot folds each answer to one line (word beside value) only where a quarter of the band holds
+   both: below 1180 px a long value ("No destination set") ran on under the next station's word, so
+   there the word stays over its value and the value keeps the whole track */
+@media (max-height: 819px) and (min-width: 1180px) {
+  ${C} .gm-navfoot .gm-nav-row { flex-direction:row !important; align-items:baseline !important; gap:0 10px !important; }
+}
+
+/* a narrow desktop window (no phone sheet): the wide header's one row of title, search and two
+   words gave the title a 0 px track and printed CONTROLS over CLOSE. Here the two words (CLOSE keeps
+   its ESC) take the top row on the right, and the title, search, reading and scale each get a row. */
+@media (max-width: 760px) {
+  ${CD} .gm-head { grid-template-columns:minmax(0, 1fr) auto auto !important; grid-template-rows:auto !important; column-gap:18px !important; row-gap:8px !important; }
+  ${CD} .gm-hint-btn { grid-column:2 !important; grid-row:1 !important; }
+  ${CD} .gm-close { grid-column:3 !important; grid-row:1 !important; }
+  ${CD} .gm-title-lockup { grid-column:1 / -1 !important; grid-row:2 !important; min-width:0; }
+  ${CD} .gm-title { white-space:normal !important; overflow:visible !important; }
+  ${CD} .gm-search-container { grid-column:1 / -1 !important; grid-row:3 !important; width:100% !important; }
+  ${CD} .gm-weather { grid-column:1 / -1 !important; grid-row:4 !important; justify-self:start; text-align:left; }
+  ${CD} .gm-rail { grid-column:1 / -1 !important; grid-row:5 !important; }
+}
+
+/* the two ways back keep their whole words above phone width: a second row, never a clipped ZOOM
+   (after the short-screen block, which folds them onto one nowrap row) */
+@media (min-width: 761px) {
+  ${C} .gm-frame-group { flex-wrap:wrap !important; row-gap:0 !important; }
+}
+@media (min-width: 761px) and (max-width: 1179px) {
+  ${C} .gm-frame-group .gm-frame-btn { max-width:100% !important; white-space:normal !important; text-align:left !important; line-height:1.25 !important; }
 }
 
 @media (forced-colors:active) {

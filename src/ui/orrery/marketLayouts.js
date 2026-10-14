@@ -466,20 +466,23 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   /* the browser: legend + find share one line (the find's rule is that line's foot); the families
      stand as a vertical ladder beside the register, so every family stays visible (D170) and the
      names get the width */
-  ${M} .sx-mkt-browser { display:grid !important; grid-template-columns:auto minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) !important;
-    column-gap:12px !important; row-gap:6px !important; }
+  ${M} .sx-mkt-browser { display:grid !important; grid-template-columns:max-content minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) !important;
+    column-gap:24px !important; row-gap:6px !important; }
   ${M} .sx-mkt-browser__mode { grid-column:1 / -1; grid-row:1; padding-right:min(50%, 190px) !important; min-height:24px !important; margin:0 !important;
     font-size:11px !important; letter-spacing:.18em !important; }
   ${M} .orr-mkt-find { width:min(48%, 180px) !important; padding:0 0 6px !important; }
   ${M} .orr-mkt-find__cursor { bottom:9px; height:11px; }
   ${M} .sx-mkt-search { padding:2px 0 2px 9px !important; font-size:12px !important; }
+  /* family ladder owns its max-content width; 20px gutter keeps RAW & RARE / RESTRICTED
+     clear of the register spine (was ~4px — the find never overlapped, the rail did) */
   ${M} .sx-mkt-browser__filters { grid-column:1; grid-row:2; align-self:start; flex-direction:column !important; flex-wrap:nowrap !important;
-    overflow:visible !important; gap:0 !important; margin:0 !important; padding:0 0 0 9px !important;
+    overflow:visible !important; gap:0 !important; margin:0 !important; padding:0 4px 0 9px !important; z-index:1; margin-right:0 !important;
+    width:max-content !important; max-width:none !important; min-width:max-content !important;
     background:linear-gradient(rgb(${BONE} / .3), rgb(${BONE} / .3)) 0 4px / 1px calc(100% - 8px) no-repeat !important; }
   ${M} .sx-mkt-browser__filters { align-items:flex-start !important; }
   ${M} .sx-mkt-browser__filters li { display:flex !important; justify-content:flex-start !important; padding:0 !important; background:none !important; }
-  ${M} .sx-mkt-filter { padding:2px 0 !important; font-size:9.5px !important; letter-spacing:.1em !important; line-height:13px !important; text-align:left !important;
-    justify-content:flex-start !important; }
+  ${M} .sx-mkt-filter { padding:2px 0 !important; font-size:9.5px !important; letter-spacing:.08em !important; line-height:13px !important; text-align:left !important;
+    justify-content:flex-start !important; min-width:max-content !important; white-space:nowrap !important; }
   ${M} .sx-mkt-filter::after { left:-9px !important; top:50% !important; width:5px !important; height:1.5px !important; margin:-.75px 0 0 !important; }
   ${M} .sx-mkt-filter.is-on::after { width:8px !important; height:2px !important; margin:-1px 0 0 !important; }
   ${M} .sx-mkt-browser__rail { grid-column:2; grid-row:2; min-height:0 !important; }

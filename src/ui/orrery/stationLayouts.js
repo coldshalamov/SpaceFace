@@ -54,6 +54,7 @@ export function vitalValueHtml(value, escape) {
 }
 
 const S = 'html body #screens > .sx-berth.orr-station';
+const D = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station';
 const BONE = '236 230 216';
 
 const CSS = `
@@ -333,6 +334,25 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-ops { column-gap:10px !important; }
   ${S} .sxb-launch { gap:10px !important; }
   ${S} .sxb-launch__label { letter-spacing:.08em !important; }
+}
+/* a short narrow desktop (800×600-class): station.css stacks the head one item per row under 900 and
+   caps the vitals at two gauges' width, so the five dials wrapped into three rows and the head ran
+   ~500px down over every tab's body. Here the head is three bands: the name with the purse at its
+   right, the five dials on one row across the full width, then the mechanic's note and the next step. */
+@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
+  ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) auto !important;
+    grid-template-areas:"title trigger" "crown crown" "tape tape" "handoff handoff" !important; grid-template-rows:auto auto auto auto !important;
+    max-height:none !important; }
+  ${D} .sxb-berth.dp-frame__head > .so-command-trigger { justify-self:end !important; }
+  ${D} .sxb-berth .sxb-crown { width:auto !important; justify-self:stretch !important; left:0 !important; right:auto !important; top:0 !important; margin-top:8px !important; }
+  ${D} .sxb-crown .sxb-purse { position:absolute !important; right:0; bottom:calc(100% + 6px); }
+  ${D} .sxb-crown .sxb-vitals { max-width:none !important; width:100%; flex-wrap:nowrap !important; justify-content:space-between !important; gap:6px !important; margin-top:0 !important; }
+  ${D} .sxb-vital { min-width:max-content !important; width:auto !important; }
+  /* station.css pins each head item's grid-column to auto; the bands span both columns */
+  ${D} .sxb-berth.dp-frame__head > :is(.sxb-crown, .sxb-tape, .sxb-handoff) { grid-column:1 / -1 !important; }
+  /* the note and the next step sit under the crown's shade pool now: they stand above it, not dimmed by it */
+  ${D} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; position:relative; z-index:1; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { margin-top:8px !important; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
