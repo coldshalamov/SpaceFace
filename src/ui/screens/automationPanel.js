@@ -586,6 +586,23 @@ html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-digit.is-new { 
 /* r2 F9: under reduced motion the traveller rests and the parked bead stays mid-beam — pulses
    park, they never vanish, and every numeral beside them is untouched. */
 html.sf-reduce-motion body #screens #sf-automation.au-orrery .au-node__beam i { display: none; }
+/* polish28w: desktop strip reads as a stepper — ring, count and beam share one axis, the class
+   word sits under it. The two-line text block used to straddle the axis, so each beam ran out of
+   the end of TRADERS/OUTPOSTS/FLEET and into the next ring. (.au-node__t is display:contents so
+   the count and word take their own cells; no markup change.) */
+@media (min-width: 761px) {
+  html body #screens #sf-automation.au-orrery .au-node {
+    display: grid; grid-template-columns: auto auto minmax(14px, 1fr); grid-template-rows: auto auto;
+    align-items: center; column-gap: 7px; row-gap: 3px; padding: 2px 0; }
+  html body #screens #sf-automation.au-orrery .au-node__ring { grid-area: 1 / 1; }
+  html body #screens #sf-automation.au-orrery .au-node__t { display: contents; }
+  html body #screens #sf-automation.au-orrery .au-node__t b { grid-area: 1 / 2; line-height: 1; }
+  html body #screens #sf-automation.au-orrery .au-node__t i {
+    grid-area: 2 / 1 / 3 / 4; line-height: 1.1; white-space: nowrap; }
+  html body #screens #sf-automation.au-orrery .au-node__beam { grid-area: 1 / 3; margin: 0 10px 0 3px; }
+  /* the caption rides the ring axis, not the middle of the two rows */
+  html body #screens #sf-automation.au-orrery .au-flow__cap { align-self: flex-start; margin-top: 6px; line-height: 15px; }
+}
 /* O4 (A3): tabs are stations on an arc rail — bone dotted words, ticks to the spine,
    and the ONE amber Hand (arm + bead) riding the chosen station. */
 html body #screens #sf-automation.au-orrery .au-tabs {

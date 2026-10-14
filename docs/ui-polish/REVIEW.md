@@ -1034,3 +1034,13 @@ Selectors and IDs are unchanged. Phone (≤900) still hides the orrery — untou
 **Leftovers noticed (not this pass):** Automation conduct-strip labels still tight beside short beams at 960; phone Credits ladder/reel stack still reports ON TOP OF in the bench; Missions route strip at 960 (frozen on #374).
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish28v/{before,after}/`, `compare-credits-960.png`.
+
+## Automation conduct strip — labels clear the beams (ui-polish-28, polish28w)
+
+**Before:** each flow node was `ring · two-line text (count over class word) · beam`, all centred on one row. The text block straddled the ring axis, so every beam started straight out of the end of the class word and ran into the next ring — at 960×540 it read as `TRADERS —o—◯`, and at 1280×720 the OUTPOSTS beam touched the word.
+
+**After (`src/ui/screens/automationPanel.js` only, `@media (min-width: 761px)`):** the node is a small stepper grid — row 1 is ring, count and beam on one axis; row 2 is the class word under the ring (`.au-node__t` is `display: contents`, so no markup change). The beam has 3px clearance after the count and 10px before the next ring. The CONDUCT THE MACHINE caption sits on the ring axis. Selectors, IDs and `data-conduct` are unchanged. Phone (≤760 / `data-sf-mobile`) is untouched.
+
+**Checked:** 960×540, the words sit under the beams with no beam touching any letter; the strip is 8px taller, so the tabs move down 8px. 800×600 and 1120×700 are clean. At 1280×720 and 1920×1080 the strip stays inside the gauge row height and is clean. Conducted state (purse reads `OUTPOSTS 0/MIN`) and a forced live state (12/4/3/2, `TRADERS 1,284/MIN`) fit at 960 and 1280. Phone 390×844 (`--phone`): the only diff is the YOU route-pulse frame, and the 3 OFF FRAME spans were already there. Focused tests: `automation-panel-focus` 2/2, `automation-operational-limits` 21/21, `automation-drone-bay-capacity` 7/7.
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish28w/{before,after}/`, `after/live/`, `after/extra/`, `compare-{960,1280,1920}.png`.
