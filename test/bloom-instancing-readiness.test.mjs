@@ -46,8 +46,8 @@ function fixture(stamped = true) {
   const keyFor = (object) => nativePrograms.getProgramCacheKey(
     nativePrograms.getParameters(material, lights, [], scene, object, []));
   const programs = {
-    instanced: { cacheKey: keyFor(instanced), isReady: () => true },
-    mesh: { cacheKey: keyFor(mesh), isReady: () => true },
+    instanced: { program: {}, cacheKey: keyFor(instanced), isReady: () => true },
+    mesh: { program: {}, cacheKey: keyFor(mesh), isReady: () => true },
   };
   rec.currentProgram = programs.instanced;
   rec.programs.set(programs.instanced.cacheKey, programs.instanced);
@@ -98,5 +98,22 @@ test('ready Mesh and InstancedMesh variants alternate without requeueing or rebu
     }
     assert.equal(f.admissions.length, 0, 'linked sibling variants are never hidden or readmitted');
     assert.equal(f.cacheKeyCalls(), warmedKeyCalls, 'steady alternation reuses parsed variant keys');
+  } finally { f.dispose(); }
+});
+
+test('a disposed cached sibling is readmitted without querying its destroyed GL program', () => {
+  const f = fixture();
+  try {
+    let staleQueries = 0;
+    // Three's destroy() clears the public handle, but isReady() still closes
+    // over the original raw handle and would query it if called afterwards.
+    f.programs.mesh.program = undefined;
+    f.programs.mesh.isReady = () => { staleQueries++; return null; };
+    f.rec.programs.set(f.programs.mesh.cacheKey, f.programs.mesh);
+    f.guard.hide(f.scene);
+    assert.equal(draw(f, f.mesh), undefined);
+    assert.equal(staleQueries, 0, 'destroyed siblings must never reach the readiness GL query');
+    assert.deepEqual(f.admissions, [f.mesh], 'the missing live variant follows existing readmission');
+    assert.equal(draw(f, f.instanced), 'drawn', 'the retained live sibling keeps drawing');
   } finally { f.dispose(); }
 });

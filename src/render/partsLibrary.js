@@ -77,7 +77,7 @@ import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
-import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, installStaticLodLeafMatrixUpdate } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
@@ -10371,16 +10371,16 @@ function suppressAuthoredReadableSilhouette(authoredRoot) {
 }
 
 
-function primeAuthoredState(authoredRoot, fallbackRoot, entity) {
+export function primeAuthoredState(authoredRoot, fallbackRoot, entity) {
   const previousLod = fallbackRoot.userData && fallbackRoot.userData.lod;
   const nextLod = authoredRoot.userData && authoredRoot.userData.lod;
-  if (nextLod && Number.isFinite(previousLod && previousLod.lastPx)) {
-    let level = nextLod.level;
-    // The shared resolver moves one hysteresis boundary per call. Two passes can transfer lod0→lod2
-    // without exposing a one-frame high-detail flash when an off-screen ship finishes loading.
-    for (let i = 0; i < 2; i++) level = nextLod.resolve(previousLod.lastPx);
-    if (typeof authoredRoot.userData.updateLod === 'function') authoredRoot.userData.updateLod(level);
+  // Admission and the live renderer must present the same ship body. Replaying
+  // the old proxy's small pixel width demoted the authored root before its first
+  // paint, then the renderer promoted it again on the next frame.
+  if (nextLod && typeof nextLod.adopt === 'function') {
+    nextLod.adopt('lod0', previousLod && previousLod.lastPx);
   }
+  if (typeof authoredRoot.userData.updateLod === 'function') authoredRoot.userData.updateLod('lod0');
   if (typeof authoredRoot.userData.updateDamageState === 'function') {
     const now = globalThis.performance && typeof globalThis.performance.now === 'function'
       ? globalThis.performance.now() : Date.now();
@@ -15352,6 +15352,7 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, whol
   let appliedLevel = null;
   for (const [bucket, objects] of Object.entries(bindings.lod)) {
     for (const object of objects) {
+      installStaticLodLeafMatrixUpdate(object);
       const key = lodPartKey(object);
       if (!levelsByPart.has(key)) levelsByPart.set(key, new Set());
       levelsByPart.get(key).add(bucket);

@@ -1764,6 +1764,7 @@ export class Sg02DynamicBodyOwner {
     rec.body.setTranslation(_vecWriteScratch, true);
     rec._bodyPoseX = Math.fround(x);
     rec._bodyPoseZ = Math.fround(z);
+    if (rec.postStep) rec.postStep.pDirty = true;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
@@ -1830,7 +1831,7 @@ export class Sg02DynamicBodyOwner {
     e.z = pz + e.vz * dt;
   }
 
-  // Reads linvel/angvel (and rotation for the player, whose give rule needs solver yaw) into a
+  // Reads pose/linvel/angvel (and rotation for the player, whose give rule needs solver yaw) into a
   // retained scratch. Rapier's getters allocate fresh objects with no out-parameter API, so the
   // per-record object absorbs the per-tick allocation; dirty flags mark components a give pass
   // rewrote so _enforcePlane re-reads the authoritative WASM value.
@@ -1842,6 +1843,7 @@ export class Sg02DynamicBodyOwner {
       w: { x: 0, y: 0, z: 0 },
       q: { x: 0, y: 0, z: 0, w: 1 },
       qRead: false,
+      pDirty: false,
       vDirty: false,
       wDirty: false,
       qDirty: false,
@@ -1851,6 +1853,7 @@ export class Sg02DynamicBodyOwner {
     pp.x = p.x;
     pp.y = p.y;
     pp.z = p.z;
+    post.pDirty = false;
     const v = rec.body.linvel();
     const w = rec.body.angvel();
     post.v.x = v.x;
@@ -2064,11 +2067,13 @@ export class Sg02DynamicBodyOwner {
         rec.body.setTranslation(_vecWriteScratch, true);
         rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
         rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
+        if (post) post.pDirty = true;
       } else {
         // The episode ceiling bounds the kick, never the wall: the budgeted branch keeps the
         // solver's post-solve translation so contact de-penetration still carries the hull out
         // of solids — rewriting it to predicted + accepted·dt made ordinary contact tunnel.
-        const pose = rec.body.translation();
+        const pose = post && post.pDirty !== true && rec._postStepReadTick === this.tick
+          ? post.p : rec.body.translation();
         rec._bodyPoseX = Math.fround(finite(pose && pose.x));
         rec._bodyPoseZ = Math.fround(finite(pose && pose.z));
       }
@@ -2174,7 +2179,7 @@ export class Sg02DynamicBodyOwner {
     if (!rec.body || typeof rec.body.translation !== 'function') return;
     if (this.attachments && this.attachments.size > 0 && this._endpointOfStepJoint(rec)) return;
     const post = rec.postStep;
-    const pose = (post && post.p && rec._postStepReadTick === this.tick)
+    const pose = (post && post.p && post.pDirty !== true && rec._postStepReadTick === this.tick)
       ? post.p : rec.body.translation();
     const px = Number(pose && pose.x);
     const pz = Number(pose && pose.z);
@@ -2188,6 +2193,7 @@ export class Sg02DynamicBodyOwner {
     rec.body.setTranslation(_vecWriteScratch, true);
     rec._bodyPoseX = Math.fround(e.x);
     rec._bodyPoseZ = Math.fround(e.z);
+    if (post) post.pDirty = true;
   }
 
   // True when a live impulse joint solves this record inside world.step — the one motion source
@@ -2241,6 +2247,7 @@ export class Sg02DynamicBodyOwner {
       rec.body.setTranslation(_vecWriteScratch, true);
       rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
       rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
+      if (post) post.pDirty = true;
       if (!Number.isFinite(rawDv)) {
         vx = e.vx;
         vz = e.vz;
@@ -3022,6 +3029,7 @@ export class Sg02DynamicBodyOwner {
     rec.body.setTranslation(_vecWriteScratch, true);
     rec._bodyPoseX = Math.fround(resyncX);
     rec._bodyPoseZ = Math.fround(resyncZ);
+    if (rec.postStep) rec.postStep.pDirty = true;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
@@ -3062,6 +3070,7 @@ export class Sg02DynamicBodyOwner {
       rec.body.setTranslation(_vecWriteScratch, true);
       rec._bodyPoseX = Math.fround(local.x);
       rec._bodyPoseZ = Math.fround(local.z);
+      if (rec.postStep) rec.postStep.pDirty = true;
       const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
       kin.x = local.x;
       kin.z = local.z;
@@ -3180,6 +3189,7 @@ export class Sg02DynamicBodyOwner {
     rec.body.setTranslation(_vecWriteScratch, true);
     rec._bodyPoseX = Math.fround(px);
     rec._bodyPoseZ = Math.fround(pz);
+    if (rec.postStep) rec.postStep.pDirty = true;
     rec.body.setRotation(quatFromYawInto(yaw, _quatWriteScratch), true);
     _vecWriteScratch.x = vx;
     _vecWriteScratch.y = 0;
@@ -3230,7 +3240,8 @@ export class Sg02DynamicBodyOwner {
     // pass that rewrote a component flags it dirty so this pass re-reads the authoritative WASM
     // value (Rapier stores f32, so mirroring the written f64 would diverge by an ulp).
     const post = rec.postStep;
-    const p = rec.body.translation();
+    const p = post && post.pDirty !== true && rec._postStepReadTick === this.tick
+      ? post.p : rec.body.translation();
     const v = post && post.vDirty !== true ? post.v : rec.body.linvel();
     const q = post && post.qRead === true && post.qDirty !== true ? post.q : rec.body.rotation();
     const yaw = wrapAngle(yawFromQuat(q));
@@ -3249,6 +3260,7 @@ export class Sg02DynamicBodyOwner {
       rec.body.setTranslation(_vecWriteScratch, true);
       rec._bodyPoseX = Math.fround(x);
       rec._bodyPoseZ = Math.fround(z);
+      if (post) post.pDirty = true;
     } else {
       rec._bodyPoseX = p.x;
       rec._bodyPoseZ = p.z;

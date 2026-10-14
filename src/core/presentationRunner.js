@@ -11,7 +11,7 @@ import {
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
-import { resolveFrameCap, stepFrameCapDebtInto } from '../render/adaptiveQuality.js';
+import { resolveFrameCap } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
@@ -25,7 +25,7 @@ const GRAPHICS_RECOVERY_TIMEOUT_MS = 60_000;
 
 const _stepCapArgs = { frameDt: 0, fixedDt: LOOP_FIXED_DT, maxSteps: 0 };
 const _frameCapArgs = { cap: 0, vsync: true, displayHz: 60 };
-const _capStepArgs = { cap: 0, displayHz: 60, debt: 0 };
+const _capStepArgs = { cap: 0, displayHz: 60, debt: 0, frameDt: 0 };
 const _capStepScratch = { present: true, debt: 0 };
 const _drainCompileArg = { leftoverMs: 0, late: false };
 export const LOOP_LIFECYCLE_STATES = Object.freeze({
@@ -47,6 +47,24 @@ function isShellState(state) {
     || state === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
     || state === LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED
     || state === LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED;
+}
+
+function stepElapsedFrameCapDebtInto({ cap, displayHz, debt, frameDt }, out) {
+  const hz = Number(displayHz) > 0 ? Number(displayHz) : 60;
+  const limit = Number.isFinite(cap) && cap > 0 ? cap : 0;
+  if (limit <= 0 || limit >= hz) {
+    out.present = true;
+    out.debt = 0;
+    return out;
+  }
+  const carried = Number.isFinite(debt) && debt > 0 ? debt : 0;
+  const elapsed = Number.isFinite(frameDt) && frameDt > 0 ? frameDt : 0;
+  const next = carried + elapsed * limit;
+  out.present = next + 1e-9 >= 1;
+  // A late callback can owe several intervals, but presents once. Retain its fractional
+  // phase without replaying missed pictures in a burst when callback throughput recovers.
+  out.debt = out.present ? Math.max(0, next - Math.floor(next + 1e-9)) : next;
+  return out;
 }
 
 function createCompletedTickRecord() {
@@ -1136,8 +1154,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       const skipPresentation = destroyed || suspended
         || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
       // Player frame-cap (Settings → Video). Sim keeps its 60 Hz leftover; only the GPU present
-      // is gated. Debt is fractional so 30 fps on 60 Hz and 120 fps on 144 Hz both land on rAF
-      // beats instead of trying to present off vsync.
+      // is gated. Fractional debt accrues from elapsed time: a busy 60 Hz display delivering
+      // 30 callbacks/s must still present all of them under a 30 fps cap. Counting callbacks
+      // at the panel's nominal refresh instead used to halve that overloaded rate again.
       const video = (state && state.settings && state.settings.video) || {};
       const dtMs = frameDt * 1000;
       if (!restoring && dtMs > 1 && dtMs < 80) {
@@ -1179,7 +1198,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         _capStepArgs.cap = effectiveCap;
         _capStepArgs.displayHz = displayHz;
         _capStepArgs.debt = diagnostics.frameCapDebt;
-        capStep = stepFrameCapDebtInto(_capStepArgs, _capStepScratch);
+        _capStepArgs.frameDt = frameDt;
+        capStep = stepElapsedFrameCapDebtInto(_capStepArgs, _capStepScratch);
       }
       diagnostics.frameCapDebt = capStep.debt;
       const capSkip = !skipPresentation && !capStep.present;

@@ -657,11 +657,17 @@ export function detachPackageGeometry(geometry, renderer) {
  */
 export function detachedGeometryUploadPending(geometry, renderer) {
   const found = geometryManifestEntry(geometry);
-  if (!found || !found.entry.detached) return false;
-  const entry = found.entry;
+  return detachedGeometryEntryUploadPending(found && found.entry, renderer);
+}
+
+function detachedGeometryEntryUploadPending(entry, renderer) {
+  if (!entry || !entry.detached) return false;
   if (entry.recordsDied) return true;
-  for (const [record, version] of entry.detachedVersions) {
-    if (record.version !== version) return true;
+  // Walk the existing release records by index: Map iteration creates an entry pair
+  // for every released attribute on every presented draw.
+  for (let i = 0; i < entry.released.length; i++) {
+    const record = entry.released[i].record;
+    if (record.version !== entry.detachedVersions.get(record)) return true;
   }
   return entry.uploadedOn.get(renderer) !== true;
 }
@@ -907,6 +913,55 @@ export function presentedCompressedUploadUnsafe(renderer, material) {
     }
   }
   return false;
+}
+
+/**
+ * Restore available compressed donors and test this draw's live upload state in
+ * one slot pass. The old helpers remain for callers that need their separate
+ * answers; the per-draw guard needs both and must not allocate singleton lists
+ * or rescan every material three times. No material cache: versions, slot
+ * replacements, disposed GPU records, and orientation holds can change each draw.
+ */
+export function preparePresentedDraw(renderer, geometry, material) {
+  const hold = !!(renderer && orientationHolds.has(renderer));
+  let blocked = false;
+  const geometryMark = geometry && geometry.userData && geometry.userData.spacefaceCpuDetach;
+  if (geometryMark && geometryMark.kind === 'geometry') {
+    const manifest = manifests.get(geometryMark.contentHash);
+    const entry = manifest && !manifest.evicted && manifest.geometryEntries[geometryMark.ordinal];
+    if (entry && entry.geometry === geometry && entry.detached) {
+      blocked = hold || detachedGeometryEntryUploadPending(entry, renderer);
+    }
+  }
+  if (!material) return blocked;
+  const array = Array.isArray(material);
+  const length = array ? material.length : 1;
+  const properties = renderer && renderer.properties;
+  for (let i = 0; i < length; i++) {
+    const mat = array ? material[i] : material;
+    if (!mat) continue;
+    for (let k = 0; k < PRESENTED_DETACH_TEXTURE_KEYS.length; k++) {
+      const texture = mat[PRESENTED_DETACH_TEXTURE_KEYS[k]];
+      if (!texture) continue;
+      let missing = compressedMipsMissing(texture);
+      let detached = false;
+      if (texture.isTexture === true) {
+        if (missing && (restoreSharedCompressedMips(texture) || adoptManifestCompressedMips(texture))) {
+          missing = false;
+        }
+        detached = isPackageTextureDetached(texture);
+      }
+      if (hold && detached) blocked = true;
+      const detachedUpload = detached
+        && texture.isRenderTargetTexture !== true && texture.isExternalTexture !== true;
+      if ((!missing && !detachedUpload) || !(texture.version > 0)) continue;
+      const props = properties && typeof properties.get === 'function'
+        ? properties.get(texture)
+        : null;
+      if (!props || props.__version !== texture.version) blocked = true;
+    }
+  }
+  return blocked;
 }
 
 export function orientationHoldHidesDrawable(renderer, object) {
