@@ -965,7 +965,15 @@ Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and
 - **Phone** (`mobileScreenLayouts.js`, `data-sf-mobile` only): the right column follows the list in flow. The tape is 196px at full width, then the reading (52px figure), then the purse centred at 240×190. Each entry puts CYCLE above the line, so the item and its figure share the full row ("Sold 20u Ore Iron · Vesta-For… +1,120 cr"). The arrow-key hint is hidden on glass.
 - 1280×720 and 1920×1080 are pixel-identical before and after (filled ledger). The empty ledger is clean at 960 and on phone. Selectors and IDs are unchanged.
 
-**Still open:** at 800×600 the whole berth head (vitals wrap into two rows) leaves the tab body almost no room on every station tab. That's a berth layout issue, not the Ledger's.
+**Closed:** the 800×600 berth head leftover — see § Station berth head at 800×600 below.
 
 Shots (seeded ledger, scratch script): `ui-shots/polish28q/{before,final}/`, phone scroll strips `a4/strip.png`, empty `empty2/`.
+
+## Station berth head at 800×600 (ui-polish-28)
+
+**Before:** under 900 wide, station.css stacks the head one item per row and caps the vitals at two gauges' width (326px), so the five dials wrapped into three rows. The head ran ~500px down (crown to y=467 on 800×600) over the tab body. The mechanic's note and the next step sat under the body, and only ~40px of every tab showed clear (Ledger: one row; Market: the list header). The CTRL K trigger sat on the eyebrow.
+
+**After (`stationLayouts.js` only, desktop, 651–900 wide, ≤800 tall):** the head is three bands. The name sits with CTRL K and the purse at its right. The five dials run on one row across the full width. Under them come the mechanic's note and the next step, lifted above the crown's shade pool so the shade no longer dims them. Head 22→284 (was 22→358 plus a crown overflowing to 467). The body gets 224px clear on 800×600 and 700×600 (was 150, mostly covered), and 418px on 900×800 (was 74). All eight tabs were checked at 800×600, 700×600 and 880×700; the Ledger shows all three rows. Selectors and IDs are unchanged.
+
+**Checked:** 960×540, 1024×600, 1280×720, 1920×1080 and 390×844 (phone) are pixel-identical before and after (Ledger and Market). Shots: `ui-shots/polish28r/{before,after}/`, `compare-*.png`.
 
