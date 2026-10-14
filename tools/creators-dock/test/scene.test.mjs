@@ -6696,3 +6696,47 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   assert.equal(hitTest({ objects: [moth] }, 121, 100, camera, view, dialect.draw), 'moth');
   assert.equal(hitTest({ objects: [moth] }, 122, 100, camera, view, dialect.draw), null);
 });
+
+test('asteroid.spec profiles use the spawned radius', () => {
+  const view = { width: 200, height: 200 };
+  const camera = { x: 0, z: 0, zoom: 1 };
+  const arcs = [];
+  const ctx = {
+    save() {},
+    restore() {},
+    beginPath() {},
+    arc(_x, _y, radius) { arcs.push(radius); },
+    stroke() {},
+    fill() {},
+    fillText() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+  };
+  const nine = { id: 'rock', kind: 'actor', profile: 'asteroid.spec:9:100', x: 0, z: 0 };
+  assert.equal(actorStroke(nine, 1), 9);
+  assert.notEqual(actorStroke(nine, 1), 8);
+  drawActor(ctx, nine, camera, view, {});
+  assert.equal(arcs[0], 9);
+  assert.equal(hitTest({ objects: [nine] }, 109, 100, camera, view), 'rock');
+  assert.equal(hitTest({ objects: [nine] }, 110, 100, camera, view), null);
+  const wide = { id: 'rock', kind: 'actor', profile: 'asteroid.spec:100:1', x: 0, z: 0 };
+  assert.equal(actorStroke(wide, 1), 100);
+  assert.notEqual(actorStroke(wide, 1), 8);
+  arcs.length = 0;
+  drawActor(ctx, wide, camera, view, {});
+  assert.equal(arcs[0], 100);
+  assert.equal(hitTest({ objects: [wide] }, 200, 100, camera, view), 'rock');
+  assert.equal(hitTest({ objects: [wide] }, 201, 100, camera, view), null);
+  const none = { id: 'rock', kind: 'actor', profile: 'asteroid.spec:0:10', x: 0, z: 0 };
+  assert.equal(actorStroke(none, 1), 0);
+  assert.notEqual(actorStroke(none, 1), 8);
+  arcs.length = 0;
+  drawActor(ctx, none, camera, view, {});
+  assert.equal(arcs[0], 0);
+  assert.equal(hitTest({ objects: [none] }, 108, 100, camera, view), null);
+  const other = { id: 'rock', kind: 'actor', profile: 'asteroid.spec:12:40', x: 0, z: 0 };
+  assert.equal(actorStroke(other, 1), 12);
+  assert.equal(hitTest({ objects: [other] }, 112, 100, camera, view), 'rock');
+  assert.equal(hitTest({ objects: [other] }, 113, 100, camera, view), null);
+});

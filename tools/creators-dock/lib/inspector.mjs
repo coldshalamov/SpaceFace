@@ -31,11 +31,20 @@ export function fieldStroke(object, zoom = 1) {
   return discRadius(object) * zoomScale(zoom) * 0.35;
 }
 
+function spawnedSpecRadius(profileId) {
+  if (typeof profileId !== 'string' || !profileId.startsWith('asteroid.spec:')) return null;
+  const radius = Number(profileId.slice('asteroid.spec:'.length).split(':')[0]);
+  return Number.isFinite(radius) ? radius : null;
+}
+
 export function colliderRadius(object, draw) {
   const overrides = object && object.overrides;
   if (overrides && typeof overrides.radius === 'number' && Number.isFinite(overrides.radius)) return overrides.radius;
-  const hint = draw && object && draw[object.profile];
+  const profileId = object && object.profile;
+  const hint = draw && profileId && draw[profileId];
   if (hint && typeof hint.radius === 'number' && Number.isFinite(hint.radius)) return hint.radius;
+  const spawned = spawnedSpecRadius(profileId);
+  if (spawned != null) return spawned;
   return 8;
 }
 
