@@ -69,7 +69,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
 | **`crucible-refit`** | **DONE** | See § Crucible Refit below |
 | `crucible-results` | OPEN | Follow-up PR (not #322) |
-| `demoEnd` | SURVEYED | |
+| **`demoEnd`** | **DONE** (960/1280 one-line chain + phone stack) | See § Demo end — register at full width, phone stack (ui-polish-28) |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | **`base` / `base-claimed`** | **DONE** (phone + narrow + 960 slot rail) | See § Base screen — phone module list, narrow spine, one slot rail (ui-polish-28) |
 | `loading` | SURVEYED | |
@@ -790,3 +790,13 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28i/{before,after}/settings-video-fov-*.png` and `compare-*.png`.
 
 *If #374's REVIEW.md changes conflict with this file on merge, keep both. This section only covers `src/ui/orrery/settingsPreview.js`.*
+
+## Demo end — register at full width, phone stack (ui-polish-28)
+
+**Before:** the register was capped at `min(620px, 52vw)`, so at 960 and 1280 "Shove → Slam → Field pop — 960 points" broke "— 960 points" onto a second line. On the phone the 140px label column left about 40px for the readings, so the chain, the credits and "Fusion Drive M" stood one word per line, and KEEP PLAYING with its ENTER chip ran past the right edge.
+
+**After (`src/ui/orrery/screenLayouts.js`, demo-end block only, no markup, selector or ID changes):** the register column is `min(760px, 72vw)`, so the chain reads on one line at 960 and 1280 (1920 is unchanged). At ≤760 wide each row is label over reading at full width, the dial drops to 64px and still bears on the primary key, the ways out wrap, and the ENTER chip is hidden because a phone has no Enter key.
+
+**Checked:** 390×844, 960×540, 1280×720, 1920×1080. Focused test `demo-mode` passes.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28j/{before,after}/demoEnd-*.png` and `compare-*.png`.
