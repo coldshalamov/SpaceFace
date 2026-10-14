@@ -45,6 +45,8 @@ export {
   clipWindow,
   poseAt,
   playRecordedPoses,
+  createPoseReader,
+  verifyRecordedPoses,
 } from './shotPlan.js';
 
 export { captionSidecar, captionVtt } from './captions.js';

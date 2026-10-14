@@ -5,7 +5,7 @@
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { makeShipEntitySpec } from '../../src/systems/ships.js';
 import { ADVENTURE_POSE_ACTORS, ADVENTURE_POSE_STRIDE } from '../../src/systems/killReplay.js';
-import { analyzeMomentStream, playRecordedPoses } from '../../src/presentation/momentMachine/index.js';
+import { analyzeMomentStream, playRecordedPoses, verifyRecordedPoses } from '../../src/presentation/momentMachine/index.js';
 import { SHAPE_IDS } from '../../src/presentation/momentMachine/contract.js';
 
 const POSE_RANGE_SQ = 1400 * 1400;
@@ -125,12 +125,8 @@ export function runSession(seed) {
     const streamSamples = selection.stream && Array.isArray(selection.stream.samples)
       ? selection.stream.samples : [];
     const playback = playRecordedPoses(streamSamples);
-    const playbackVerified = streamSamples.length > 0 && playback.length === streamSamples.length
-      && playback.every((pose, index) => {
-        const sample = streamSamples[index];
-        return pose && pose.tick === sample.tick && pose.id === sample.id
-          && pose.x === sample.x && pose.z === sample.z && pose.heading === sample.heading;
-      });
+    const playbackVerification = verifyRecordedPoses(streamSamples, playback);
+    const playbackVerified = playbackVerification.verified;
     return {
       seed,
       ok: true,
@@ -143,6 +139,7 @@ export function runSession(seed) {
       samples: streamSamples,
       playback,
       playbackVerified,
+      playbackVerification,
       ranked: ranked.map((moment) => ({
         shape: moment.shape,
         footage: moment.footage && moment.footage.status,
