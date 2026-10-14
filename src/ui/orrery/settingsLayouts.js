@@ -516,11 +516,17 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
 /* 901–1100 wide (960×540, 1024×768): an 80vh orrery reached into the reel and its body label sat on the
    sentence. Size it by width, park its left edge past a narrower reel, and keep the Hand on screen. */
 @media (min-width:901px) and (max-width:1100px) {
-  ${C} .orr-cr-reel { max-width:min(420px, 100%); }
-  ${C} .orr-cr-sec > .k-sentence { max-width:38ch !important; }
-  ${C} > .orr-cr-orrery { --orr-cr-d:min(80vh, 38vw); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.3); }
+  ${C} .orr-cr-reel { max-width:min(380px, 100%); }
+  ${C} .orr-cr-sec > .k-sentence { max-width:34ch !important; }
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(72vh, 34vw); width:var(--orr-cr-d); height:var(--orr-cr-d); margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.44); }
   /* the smaller emblem keeps its current body's name readable (SVG units scale with it) */
-  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:28px !important; }
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:26px !important; }
+}
+/* 960×540-class: even parked, the Hand's MADE BY sat on the reel head line — keep the disc, drop the name;
+   the ladder and the reel head already name the section. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:600px) {
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:0 !important; opacity:0 !important; }
+  ${C} > .orr-cr-orrery { --orr-cr-d:min(68vh, 32vw); right:calc(var(--orr-cr-d) * -.5); }
 }
 /* a window under 600 tall: the reel-progress dial (decoration) dropped onto ‹ BACK */
 @media (min-width:901px) and (max-height:600px) { ${C} .orr-cr-progress { display:none; } }

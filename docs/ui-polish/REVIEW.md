@@ -1018,3 +1018,19 @@ Selectors and IDs are unchanged.
 **Closed:** polish28t leftover (map labels under zoom strip / per-bar; phone QUIET-on-search and tools-on-foot).
 
 Shots: `ui-shots/polish28u/{before,after}/`, `{before,after}-phone-touch/`, `compare-chart-960.png`, `compare-chart-phone.png`.
+
+## Credits — MADE BY clears the reel at 960×540 (ui-polish-28)
+
+**Before (960×540):** the mid-width orrery park (`901–1100`, `--orr-cr-d:min(80vh,38vw)`, `right: calc(d * -.3)`) still left the Hand tip on the reel's right edge (~x 707 vs reel end ~711). The current body's **MADE BY** name sat on the orbit disc and the reel head line, so the label printed over the graphic (and read as tangled with the head). 1280×720 / 1920×1080 were already clear.
+
+**After (`src/ui/orrery/settingsLayouts.js` only, Credits CSS):**
+- **901–1100 wide:** narrower reel (`max-width:min(380px,100%)`), sentence `34ch`, orrery `--orr-cr-d:min(72vh,34vw)` parked at `right: calc(d * -.44)`.
+- **901–1100 × ≤600 tall (960×540):** hide the current body name (ladder + reel head already name the section); orrery `--orr-cr-d:min(68vh,32vw)` at `right: calc(d * -.5)` so the Hand disc clears the reel (~x 828 vs reel end ~671).
+
+Selectors and IDs are unchanged. Phone (≤900) still hides the orrery — untouched.
+
+**Checked:** 960×540 — MADE BY gone from the Hand; disc clear of reel. 1024×768 / 1100×700 — name kept, body left of reel (834/895 vs reel ~673). 1280×720 / 1920×1080 — drift/glow noise only (~0.1% px). Phone 390×844 (`--phone`) — orrery hidden as before. Focused: `orrery-decrypt` 5/5; `pq-033-00-credits` 2/3 (pre-existing NOTICE/@elemaudio assert, unrelated).
+
+**Leftovers noticed (not this pass):** Automation conduct-strip labels still tight beside short beams at 960; phone Credits ladder/reel stack still reports ON TOP OF in the bench; Missions route strip at 960 (frozen on #374).
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish28v/{before,after}/`, `compare-credits-960.png`.
