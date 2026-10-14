@@ -1706,11 +1706,12 @@ function pixelHoldsDash(dx, dy, radius, along, pattern, sx, sy) {
     }
   }
   // The coarse grid misses the inward edge of an outer axis pixel. That edge
-  // is on the dash and the center is still inside the painted step. Farther
-  // centers, and gap pixels at the same radius, stay empty.
+  // is on the dash and the center is still inside the painted step. On a
+  // larger ring the same step sits slightly further off the axis. Farther
+  // centers, and gap pixels at this radius, stay empty.
   const perp = Math.abs(Math.hypot(dx, dy) - radius);
   const support = squareSupport(dx, dy);
-  if (!(support < 0.516 && perp > bodyReach(dx, dy) && perp <= 0.94)) return false;
+  if (!(support < 0.536 && perp > bodyReach(dx, dy) && perp <= 0.94)) return false;
   const dist = Math.hypot(dx, dy) || 1;
   const inward = 0.45;
   const pdx = dx - (dx / dist) * inward;

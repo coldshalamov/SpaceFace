@@ -7030,6 +7030,10 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   assert.equal(hitTest(bank, 523.5, 115.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 547.5, 115.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 547.5, 292.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 463.5, 352.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 463.95, 352.05, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 463.5, 375.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 463.9, 375.05, stageCam, stage, profileDraw), 'along_x');
   const zoneOnly = { objects: bank.objects.filter((object) => object.id === 'bank_zone') };
   assert.equal(hitTest(zoneOnly, 618.5, 203.5, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(zoneOnly, 618.5, 204.5, stageCam, stage, profileDraw), 'bank_zone');
