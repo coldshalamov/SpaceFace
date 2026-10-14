@@ -1044,3 +1044,19 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish28v/{before,after}/`, `compa
 **Checked:** 960×540, the words sit under the beams with no beam touching any letter; the strip is 8px taller, so the tabs move down 8px. 800×600 and 1120×700 are clean. At 1280×720 and 1920×1080 the strip stays inside the gauge row height and is clean. Conducted state (purse reads `OUTPOSTS 0/MIN`) and a forced live state (12/4/3/2, `TRADERS 1,284/MIN`) fit at 960 and 1280. Phone 390×844 (`--phone`): the only diff is the YOU route-pulse frame, and the 3 OFF FRAME spans were already there. Focused tests: `automation-panel-focus` 2/2, `automation-operational-limits` 21/21, `automation-drone-bay-capacity` 7/7.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish28w/{before,after}/`, `after/live/`, `after/extra/`, `compare-{960,1280,1920}.png`.
+
+## Base (claimed) — TRADEOFF clears Esc / Dispatch on short desktop (ui-polish-28, #384 HOLD follow-up)
+
+**Before (tip 37c027bbc3):** the sticky `.base-foot` painted its glass as a `linear-gradient` only. The bench doesn't count a gradient as a plate, so every identity line scrolling under the foot read as text printed on the controls: `△ TRADEOFF · Convoys can be lost…` on **Esc** and `△ TRADEOFF · Produces no goods…` on **Dispatch convoy** at 960×540 and 800×600 (phone had the same with YOUR VERB on Close). At scroll 0 on 960×540, the cards were also cut mid-CONSEQUENCE, so no card read through to its TRADEOFF.
+
+**After (`src/ui/screens/base.js` style block only; selectors and IDs unchanged):**
+- **Every size:** `.base-foot` is one solid band (`background-color` in the glass tone, .995). The "more above" fade moved to a `::before` standing just above the band. Its 14px (10px on ≤800 tall and phone) come out of the foot's top padding and go back into its margin, so the foot and its controls don't move. 1280×720, 1920×1080 and 390×844 are pixel-identical to before.
+- **≤640 tall, ≥761 wide (960×540, 800×600):** a tighter stack above Operating Identity (plate gap 5px, Research Next plan 4px padding, slot 4px, section head 4px margin, card padding-top 2px / gap 3px, verb / consequence / tradeoff line-height 1.3) and a slimmer foot (8px / 12px padding). All three cards now read fully through TRADEOFF at scroll 0. Their buttons start at the band (a scroll cue) and are not centred under Dispatch. The identity rail's `padding-top:26px` stays, so the ticks and dots stay on the rail.
+
+**Bench (base-claimed findings):** 800×600 10 → 2, 960×540 12 → 6, 1280×720 6 → 6, 1920×1080 6 → 6, 390×844 10 → 4. No tangled lines remain anywhere. What's left is all **buried**: content one scroll down under the sticky foot, which is normal for a scrolling plate.
+
+**Chart:** the Drag-to-lay-a-course note vs the Click-destination engage reason, checked at 960×540 and 800×600 on this tip. The note fades out above ENGAGE ROUTE and nothing overlaps (bench 0), so chart is untouched.
+
+Focused tests: `claim-specializations`, `wave-c4-base-kit` pass.
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish29a/{before,after}/`, `after/compare-{960x540,800x600}.png`.
