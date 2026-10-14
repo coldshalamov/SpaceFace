@@ -60,7 +60,8 @@ export function playSamples(trace) {
 export function flightPhaseSample(sample, trace) {
   if (!sample || sample.mode !== 'flight') return false;
   const phase = sample.run && sample.run.ph;
-  if (phase && phase !== 'active') return false;
+  const rounds = trace?.meta?.rounds ?? sample.roundMode ?? (sample.run?.kind === 'survival');
+  if (phase && phase !== 'active' && (rounds || phase !== 'inactive')) return false;
   if (trace && trace.meta && trace.meta.rounds && phase !== 'active') return false;
   return true;
 }

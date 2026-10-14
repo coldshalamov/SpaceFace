@@ -9,6 +9,8 @@
 // One sample per animation frame (registered after the game's own frame callback, so the camera
 // and meshes are the ones the player just saw). The harness drains samples every second or so.
 
+import { encodePlayerTruthRows } from './packedRows.js';
+
 export const PLAYER_TRUTH_CLASSES = Object.freeze([
   'player', 'enemy', 'asteroid', 'projectile', 'pickup', 'fx', 'neutral', 'station', 'other',
 ]);
@@ -715,7 +717,8 @@ export function installPlayerTruthReader(win, opts = {}) {
     const pc = boxFrac(cMask, playerBox); const pb = boxFrac(bMask, playerBox);
     const ct = occ(cMask);
     let attribution = null;
-    const activePlay = SF.state.mode === 'flight' && (!SF.state.run || SF.state.run.phase === 'active');
+    const activePlay = SF.state.mode === 'flight'
+      && (!(opts.rounds ?? (SF.state.run?.kind === 'survival')) || SF.state.run?.phase === 'active');
     if (activePlay && ct > 0 && !pxAttributionAttempted) {
       pxAttributionAttempted = true;
       attribution = attributeCombatSplit({ renderer, draw, combat, baseline: bufA, mask: cMask,
@@ -744,7 +747,8 @@ export function installPlayerTruthReader(win, opts = {}) {
       top: SF.ctx && SF.ctx.screenManager && SF.ctx.screenManager.top ? SF.ctx.screenManager.top() : null,
       screens,
       run: run ? { kind: run.kind, rs: run.ruleset, ph: run.phase, w: run.wave, a: run.arenaId, res: run.resolvedThreat, sp: run.spawnedThreat, bud: run.threatBudget, sc: Number.isFinite(run.score) ? run.score : null } : null,
-      vw, vh, p: null, e: [], info: null, vfx: null };
+      vw, vh, p: null, e: [], info: null, vfx: null,
+      ...(typeof opts.rounds === 'boolean' ? { roundMode: opts.rounds } : {}) };
     if (r.renderer && r.renderer.info) s.info = { calls: r.renderer.info.render.calls, tris: r.renderer.info.render.triangles };
     const list = st.entityList || [];
     let player = null;
@@ -804,11 +808,23 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   const api = {
     version: 1,
+    packBatch(batch) {
+      for (const sample of batch.samples) {
+        const packet = encodePlayerTruthRows(sample.e);
+        if (packet) { sample.e = []; sample.ePacked = packet; }
+      }
+      return batch;
+    },
     identityFor(id, generation) { return lifeTracker.identityFor(id, generation); },
     start() { if (running) return; running = true; lastT = 0; raf = win.requestAnimationFrame(loop); },
     stop() { running = false; if (raf) win.cancelAnimationFrame(raf); },
-    drain() {
-      const out = { samples: samples.splice(0), events: events.splice(0), longTasks: longTasks.splice(0), keys: keys.slice(), firstInput };
+    drain({ maxSamples = 32 } = {}) {
+      // CDP boxes every numeric value before Node can pack it. A screenshot/GPU wait
+      // can leave minutes of observations queued; returning that entire batch creates
+      // a multi-GB deserialization peak. Page the transfer, preserving every frame.
+      const count = Math.max(1, Math.min(128, Math.trunc(maxSamples) || 32));
+      const out = { samples: samples.splice(0, count), pendingSamples: samples.length,
+        events: events.splice(0), longTasks: longTasks.splice(0), keys: keys.slice(), firstInput };
       return out;
     },
     dispose() {

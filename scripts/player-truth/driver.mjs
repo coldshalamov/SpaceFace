@@ -145,7 +145,7 @@ export function observeEdgeMarkers({ drain = false } = {}) {
       sample.edgeMarkers = markers;
       sample.edgeMarkerAt = observedAt;
     }
-    return batch;
+    return typeof reader.packBatch === 'function' ? reader.packBatch(batch) : batch;
 }
 
 export async function readEdgeMarkers(page) {

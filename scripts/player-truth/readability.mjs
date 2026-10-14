@@ -130,8 +130,8 @@ function captureWindow(shot, nearestSample, samples) {
   return [...new Set([start, ...samples.filter((s) => s.t >= shot.t && s.t <= shot.endT), end])];
 }
 
-function capturePose(entity, window) {
-  const entries = window.map((s) => s.e.find((e) => e[E.id] === entity[E.id]));
+function capturePose(entity, window, entitiesBySample) {
+  const entries = entitiesBySample.map(index => index.get(entity[E.id]));
   if (entries.some((e, i) => !e || e[E.cls] !== entity[E.cls]
       || e[E.key] !== entity[E.key] || e[E.type] !== entity[E.type]
       || ![VIS.onscreen, VIS.pooled].includes(e[E.vis])
@@ -159,7 +159,10 @@ function capturePose(entity, window) {
 export function summarizeBodyOcclusion(samples) {
   const types = new Map();
   for (const sample of samples) {
-    if (sample.mode !== 'flight' || (sample.run && sample.run.ph !== 'active')) continue;
+    const phase = sample.run?.ph;
+    const rounds = sample.roundMode ?? (sample.run?.kind === 'survival');
+    if (sample.mode !== 'flight' || (phase && phase !== 'active'
+      && (rounds || phase !== 'inactive'))) continue;
     const receipt = sample.px?.bodyOcclusion;
     if (receipt?.version !== 1 || receipt.method !== 'native-opaque-id-depth') continue;
     for (const row of receipt.rows || []) {
@@ -198,8 +201,23 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
     let img;
     try { img = await sharp(shot.file).removeAlpha().raw().toBuffer({ resolveWithObject: true }); } catch { continue; }
     const { data, info } = img; const W = info.width; const H = info.height; const sc = W / s.vw;
-    for (const entity of s.e) {
-      const aligned = capturePose(entity, window);
+    // Off-screen/unknown classes were never graded below. Reject them before
+    // temporal alignment, then index only this screenshot's candidate identities.
+    // The former per-entity find walked every dense world row for every candidate
+    // on every captured frame, allocating millions of packed-row views.
+    const candidates = s.e.filter(entity => [...CLASSES, ...BODY_CLASSES].some(c => CLS[c] === entity[E.cls])
+      && [VIS.onscreen, VIS.pooled].includes(entity[E.vis]));
+    const ids = new Set(candidates.map(entity => entity[E.id]));
+    const entitiesBySample = window.map(sample => {
+      const index = new Map();
+      for (const entity of sample.e) {
+        const id = entity[E.id];
+        if (ids.has(id) && !index.has(id)) index.set(id, entity);
+      }
+      return index;
+    });
+    for (const entity of candidates) {
+      const aligned = capturePose(entity, window, entitiesBySample);
       const e = aligned.pose || entity;
       const cls = [...CLASSES, ...BODY_CLASSES].find((c) => CLS[c] === e[E.cls]); if (!cls) continue;
       if (!(e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled)) continue;

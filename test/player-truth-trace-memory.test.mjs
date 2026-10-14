@@ -20,6 +20,21 @@ function courseFrames(n = 30, bodies = 1300) {
       id === 0 && frame % 4 < 2 ? VIS.hidden : VIS.onscreen, id === 0 ? frame % 2 : 0, 0]) }));
 }
 
+test('one nullable observer field cannot disable packing for an entire dense frame', () => {
+  const expected = racingTrace(); expected.samples = courseFrames(8, 1300);
+  for (const sample of expected.samples) { sample.e[1299][0] = null; sample.e[1299][11] = undefined; }
+  const actual = racingTrace();
+  appendReaderDrain(actual, { samples: structuredClone(expected.samples), events: [], longTasks: [], keys: expected.keys });
+  for (let i = 0; i < actual.samples.length; i++) {
+    const rows = actual.samples[i].e;
+    assert.ok(rows[0] instanceof Float64Array, 'numeric rows remain packed');
+    assert.equal(rows[1299][0], null); assert.equal(rows[1299][11], undefined);
+    assert.deepEqual(rows.map(row => Array.from(row)), expected.samples[i].e);
+  }
+  assert.deepEqual(runChecks(actual), runChecks(expected));
+  assert.equal([...traceJsonChunks(actual)].join(''), JSON.stringify(expected));
+});
+
 test('large moving-course drains retain every numeric field and every check verdict in packed rows', () => {
   const expected = racingTrace(); expected.samples = courseFrames();
   const actual = racingTrace();
