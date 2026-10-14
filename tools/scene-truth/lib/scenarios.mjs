@@ -410,7 +410,7 @@ function authoredScenarios() {
     spec('scene.shields', ['shield'], flightDoc({
       id: 'scene.shields',
       title: 'Shielded starter and swarmer',
-      description: 'Both hulls carry a production shield stat. The witness draws a translucent shield disc and must not treat it as occlusion.',
+      description: 'Both hulls carry live shield hit points on the lab surface. At tick 4 the witness draws each disc at the live shell radius.',
       seed: 47013,
       ticks: 4,
       entities: [

@@ -4,6 +4,7 @@ import { noteLaneFault, serviceFaultEpoch } from '../core/warnDedup.js';
 import { busFaultSummary } from '../core/eventBus.js';
 import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
+import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 // Render system: owns the WebGLRenderer, scene, lights, camera, starfield, and the entity→mesh
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
@@ -327,7 +328,7 @@ import {
   applyEntityMeshVisibility,
   isAuthoredPendingStatus,
   isProtectedEntityMesh,
-  retainShownSurvivalGlass,
+  retainShownCameraGlass,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
 import {
@@ -8181,6 +8182,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   let navMatrixDirty = false;
   let navColorDirty = false;
   let entitiesVisited = classifiedFrame ? classifiedFrame.entitiesVisited : 0;
+  const sceneTruthArmed = globalThis.__SF_SCENE_TRUTH_WITNESS__ === true;
   for (const item of entities) {
     if (!classifiedFrame) entitiesVisited++;
     const entity = item && item.entity || item;
@@ -8190,6 +8192,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
     const bubble = root.userData.shieldBubble;
     if (bubble) {
       bubble.visible = false;
+      if (sceneTruthArmed) bubble.userData.sceneTruthShieldInstance = -1;
       const uniforms = bubble.material && bubble.material.uniforms;
       const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
       if (shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id))) {
@@ -8199,6 +8202,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
         const shieldIndex = shieldCount++;
         if (shieldIndex < pool.shield.capacity) {
           const shieldMesh = pool.shield.mesh;
+          if (sceneTruthArmed) bubble.userData.sceneTruthShieldInstance = shieldIndex;
           const shieldAttrs = shieldAuxAttrs(shieldMesh);
           const flashAttr = shieldAttrs.flash;
           const baseAttr = shieldAttrs.base;
@@ -26994,8 +26998,7 @@ export const render = {
         // the query takes the row back, is the in-view pop. The hold does not
         // reveal a root that has not been shown, and it does not keep a root
         // whose pose is missing. Off the frustum the ordinary rule releases it.
-        const retainShown = retainShownSurvivalGlass({
-          survival: survivalRun,
+        const retainShown = this.state.mode === 'flight' && retainShownCameraGlass({
           alreadyVisible: mesh.visible !== false,
           onFrustum: isOnLiveCameraView(liveViewFrustum, mesh.position, cullRadius),
           snapshotMissing: !posed,
@@ -27253,8 +27256,7 @@ export const render = {
         // the camera is already drawing, that blank and the later reveal are the
         // in-view pop. The hold is not a first-show skip: a root that is not
         // already visible still waits on shouldSubmitEntityMesh.
-        const retainShown = retainShownSurvivalGlass({
-          survival: survivalRun,
+        const retainShown = this.state.mode === 'flight' && retainShownCameraGlass({
           alreadyVisible: mesh.visible !== false,
           onFrustum: onLiveGlass === true,
           snapshotMissing: !posed,
@@ -29655,7 +29657,7 @@ export const render = {
 
   renderFrame(alpha, frameDt, presentationFrame = null) {
     if (!this.prepareFrame(alpha, frameDt, presentationFrame)) return;
-    this.drawPreparedFrame();
+    if (this.drawPreparedFrame() === true) publishSceneTruthPlayStep(this);
   },
 
   // Center the key light + its shadow camera on the player each frame. The light direction stays

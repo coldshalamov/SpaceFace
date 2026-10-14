@@ -58,8 +58,12 @@ export function legalQualityTiers() {
 export function projectScreen(object, focus, frame) {
   const x = Number(object.pos.x) - Number(focus.x);
   const z = Number(object.pos.z) - Number(focus.z);
-  const radius = Number(object.presentedRadius);
-  const reach = Number.isFinite(radius) && radius > 0 ? radius : 0;
+  const presented = Number(object.presentedRadius);
+  const collider = Number(object.colliderRadius);
+  const radius = Number.isFinite(presented) && presented > 0
+    ? presented
+    : (Number.isFinite(collider) && collider > 0 ? collider : 0);
+  const reach = radius;
   const onScreen = Number.isFinite(x) && Number.isFinite(z)
     && Math.abs(x) <= frame.halfH + reach
     && Math.abs(z) <= frame.halfV + reach;

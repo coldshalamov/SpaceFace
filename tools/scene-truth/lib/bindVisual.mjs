@@ -16,6 +16,9 @@ import {
 import { renderPackagePilotForSourceUrl } from '../../../src/render/renderPackageManifest.js';
 import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION } from '../../../src/render/wholeShipLodPolicy.js';
 import { repoPath } from './root.mjs';
+import { liveShieldGeometryRadius } from './shieldShell.mjs';
+
+export { liveShieldGeometryRadius };
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((enemy) => [enemy.id, enemy]));
@@ -91,14 +94,17 @@ function censusRowFor(entity) {
     || null;
 }
 
-function shieldStat(entity) {
-  const data = entity.data || {};
-  if (data.labProfile && ENEMY_BY_ID.has(data.labProfile)) {
-    const enemy = ENEMY_BY_ID.get(data.labProfile);
-    if (Number(enemy.shield) > 0) return Number(enemy.shield);
-  }
-  const ship = SHIP_BY_ID.get(data.defId);
-  return ship && Number(ship.shield) > 0 ? Number(ship.shield) : 0;
+/**
+ * Presented shield disc. While `entity.shield` is above zero the disc is the
+ * live shell (`entity.radius`). A recorded `presentedShieldRadius` or bubble
+ * scale does not replace it. A shield of 0 emits nothing, even if those
+ * leftovers are set. A ship def shield stat is not a disc.
+ */
+export function presentedShieldDiscRadius(entity) {
+  if (!entity) return null;
+  const now = Number(entity.shield);
+  if (!(Number.isFinite(now) && now > 0)) return null;
+  return liveShieldGeometryRadius(entity);
 }
 
 /**
@@ -144,16 +150,26 @@ export function bindEntity(entity) {
     pos: entity.pos || { x: 0, z: 0 },
     rot: entity.rot || 0,
   });
-  const presentedRadius = Number.isFinite(entity.presentedRadius)
-    ? Number(entity.presentedRadius)
-    : expectedRadius;
+  // A missing draw measurement stays unmeasured. A presentedRadius that repeats
+  // the expected keep-out is a copy unless the caller marked it measured.
+  const rawPresented = Number(entity.presentedRadius);
+  const keepOutCopy = Number.isFinite(rawPresented)
+    && Number.isFinite(expectedRadius)
+    && expectedRadius > 0
+    && Math.abs(rawPresented - expectedRadius) <= 1e-6
+    && entity.presentationSource !== 'measured';
+  const measuredPresentation = Number.isFinite(rawPresented) && !keepOutCopy;
+  const presentedRadius = Number.isFinite(rawPresented) ? rawPresented : null;
   const hull = Number(entity.hull);
   const hullMax = Number(entity.hullMax);
+  const shield = Number(entity.shield);
+  const shieldGeometryRadius = liveShieldGeometryRadius(entity);
+  const shieldDiscRadius = presentedShieldDiscRadius(entity);
   const effects = [];
-  if (shieldStat(entity) > 0 && Number.isFinite(colliderRadius) && colliderRadius > 0) {
+  if (shieldDiscRadius != null) {
     effects.push({
       kind: 'shield',
-      radius: colliderRadius * 1.12,
+      radius: shieldDiscRadius,
       baseCoverage: 0.22,
       occludesContacts: false,
     });
@@ -194,8 +210,11 @@ export function bindEntity(entity) {
     y: Number.isFinite(entity.y) ? entity.y : 0,
     rot: Number(entity.rot) || 0,
     colliderRadius: Number.isFinite(colliderRadius) ? colliderRadius : 0,
+    shield: Number.isFinite(shield) ? shield : null,
+    shieldGeometryRadius,
     expectedRadius: Number.isFinite(expectedRadius) ? expectedRadius : 0,
-    presentedRadius: Number.isFinite(presentedRadius) ? presentedRadius : 0,
+    presentedRadius,
+    presentationSource: measuredPresentation ? 'measured' : 'unmeasured',
     hull: Number.isFinite(hull) ? hull : null,
     hullMax: Number.isFinite(hullMax) ? hullMax : null,
     lodLevel,

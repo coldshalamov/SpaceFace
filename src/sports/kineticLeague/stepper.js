@@ -151,7 +151,11 @@ function applyTether(session, cmd, dt, contacts) {
   const dz = payload.z - ship.z;
   const dist = Math.hypot(dx, dz);
   const reach = session.tetherReach ?? 18;
-  if (cmd.tether && !session.tether && dist <= reach && dist > 0.01) {
+  // A latch press is remembered. A one-tick Massline pulse still attaches once the hull is in reach.
+  if (cmd.latch === true) session.tetherArmed = true;
+  if (cmd.cut) session.tetherArmed = false;
+  if (!cmd.cut && (session.tetherArmed || cmd.tether) && !session.tether && dist <= reach && dist > 0.01) {
+    session.tetherArmed = false;
     session.tether = { targetId: payload.id, rest: 11, attachAt: session.simTime };
     session.lastAttachAt = session.simTime;
     session.lastTouch = 'player';
