@@ -68,7 +68,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
 | **`crucible-refit`** | **DONE** | See § Crucible Refit below |
-| `crucible-results` | **DONE** (ui-polish-27 short plate) | Foot vs LAST 5 HITS at ≤600 tall — see § Crucible results @960 below |
+| `crucible-results` | **DONE** (ui-polish-27 short plate + phone) | LAST 5 HITS kept at ≤600 tall, docked phone foot — see § Crucible results @960 below |
 | `demoEnd` | SURVEYED | |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | `base` / `base-claimed` | SURVEYED | |
@@ -614,13 +614,17 @@ New overlay `src/ui/orrery/crucibleResultsLayouts.js`, injected from the results
 - Checked at 1280×720, 1920×1080 and 390×844, including scrolled to the bottom. Shots are in `/workspace/spaceface-scratch/ui-shots/results/` (not committed).
 
 
-## Crucible results @960×540 — foot clears LAST 5 HITS (2026-10-13, ui-polish-27)
+## Crucible results @960×540 and phone — LAST 5 HITS stays, foot stays clear (2026-10-13, ui-polish-27)
 
-**Before:** At ≤600px tall (960×540) the death-dial caption's LAST 5 HITS strip printed through BACK TO THE HANGAR / MAIN MENU. Cause: the dial host is ~400–440px with `overflow:visible`, and the caption sits past its floor (`cy + Rc + 72`).
+**Before:** At ≤600px tall (960×540) the death-dial caption's LAST 5 HITS strip printed through BACK TO THE HANGAR / MAIN MENU: the full-width foot row left the dial host ~400px, and the caption sits past its floor (`cy + Rc + 72`). The first fix hid the strip, which Code Work's review (glassres res2) rightly rejected: the strip is required, and the caption box still met RUN IT AGAIN. On a phone the foot sat at the end of the scroll, so at scroll 0 it was off-screen, and the 420px dial let its caption spill into THE TAKE.
 
-**After (`src/ui/orrery/crucibleResultsLayouts.js` only):** At `min-width:701px` and `max-height:600px` the strip hides (the short `orr-crres-hitlegend` already stands in at ≤820), the dial clips and lifts off the foot (`bottom:90px`), and the foot gets z-index + a void fade. The left column tightens so WHAT YOU BUILT peeks above the stage fade. At 601–720 tall the dial only clips and the foot stays above any bleed; 1280/1920 keep the full hit strip. Phone layout unchanged.
+**After (`src/ui/orrery/crucibleResultsLayouts.js` only):**
+- `min-width:701px` and `max-height:600px`: the ways-out stack under the left column (RUN IT AGAIN on its own line, Seed under it, then BACK TO THE HANGAR / MAIN MENU; the Enter chip drops at this size) and stay left of the dial host. The dial runs the full right-hand height, so the whole caption shows (killer, detail, vitals, the LAST 5 HITS strip and its legend) with nothing hidden. The left column sits above the dial's dark pool, so SALVAGE no longer fades.
+- 601–720 tall: the dial only clips, so a long killer name cannot bleed into the foot.
+- Phone (≤700 wide): the foot is docked (`position:sticky; bottom:0`) on an opaque void, so it is always on-screen. The dial gets `clamp(470px, 100svh − 240px, 620px)`, so its caption ends above the foot, and it drops the tell line, which THE RUN repeats below. `ui-bench` reports THE TAKE "under" RUN IT AGAIN at 390; that is the band scrolling beneath the docked foot, which is expected.
+- 1280×720 and 1920×1080 are unchanged.
 
-Selectors/IDs unchanged. Shots: `/workspace/spaceface-scratch/ui-shots/crucible-results30/{before,after,compare}/` (not committed).
+Selectors/IDs unchanged. `test/crucible-results.test.mjs` has one failure (`the player dying ends the run…`, 0 !== 900). It fails the same way without this change. Shots: `/workspace/spaceface-scratch/ui-shots/res374/{tip,after}/` (not committed).
 
 **Still open (elsewhere):** Station Ledger CYCLE/−750 tape collisions (JS geometry); Market "Raw & rare" bury at 960; Contracts TRACKED badge can sit off-frame.
 
