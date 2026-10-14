@@ -568,8 +568,9 @@ function dangerousCrossing() {
       {
         id: 'north',
         kind: 'objective',
-        x: 0,
-        z: 10,
+        x: -2.124893,
+        z: 216.404465,
+        radius: 5,
         metric: 'trace.final',
         signal: 'playerZ',
         op: '>',

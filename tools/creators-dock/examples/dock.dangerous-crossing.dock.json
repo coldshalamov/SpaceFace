@@ -156,10 +156,11 @@
       "label": "finished north",
       "metric": "trace.final",
       "op": ">",
+      "radius": 5,
       "signal": "playerZ",
       "value": 0,
-      "x": 0,
-      "z": 10
+      "x": -2.124893,
+      "z": 216.404465
     },
     {
       "from": "player",

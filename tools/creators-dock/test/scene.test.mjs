@@ -4711,6 +4711,28 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(holdResult.ok, false);
   assert.equal(holdRow.ok, false);
   assert.equal(holdRow.actual.maxRun < 60, true);
+  for (const x of [10, 16]) {
+    const openTrace = [];
+    for (let tick = 0; tick < 60; tick += 1) {
+      openTrace.push({ tick, playerX: x, playerZ: 0, playerAlive: true });
+    }
+    const openResult = evaluateOracleKernel({
+      trace: openTrace,
+      assertions: [{
+        kind: 'holds',
+        signal: 'playerAlive',
+        holdsTicks: 60,
+        expected: { x: 0, z: 0 },
+      }],
+    });
+    const openRow = openResult.results.find((row) => row.id === 'holds:playerAlive');
+    assert.equal(openResult.ok, false, String(x));
+    assert.equal(openRow.ok, false, String(x));
+    assert.equal(openRow.actual.maxRun < 60, true, String(x));
+    assert.equal(Number.isFinite(openRow.expected && openRow.expected.radius), false, String(x));
+    assert.notEqual(openRow.expected.radius, 10, String(x));
+    assert.notEqual(openRow.expected.radius, 20, String(x));
+  }
   const finalOutside = evaluateOracleKernel({
     trace: [
       { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },
@@ -5258,6 +5280,129 @@ test('a reflected new key is not installed when its flags are omitted', async ()
   assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
   assert.equal(redone.history.present, present);
+  const saved = savedProjectText(present);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(saved.text.includes('"name": "poison"'), false);
+  const exported = await exportProject(present);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const entity = exported.scenario.entities.find((row) => row.alias === 'cargo');
+  assert.equal(entity.pos.y, 0);
+  assert.notEqual(entity.pos.y, 9);
+});
+
+test('defineProperties cannot seal a deleted credits or zoom field', () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const camera = present.camera;
+  assert.equal(world.credits, 5000);
+  assert.equal(camera.zoom, 3.2);
+  undone.history.future[0].toJSON = function () {
+    delete world.credits;
+    Object.defineProperties(world, { credits: { value: 1, enumerable: true } });
+    delete camera.zoom;
+    Object.defineProperties(camera, { zoom: { value: 0, enumerable: true } });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
+  const zoomDesc = Object.getOwnPropertyDescriptor(camera, 'zoom');
+  assert.notEqual(creditDesc && creditDesc.value, 1);
+  assert.notEqual(zoomDesc && zoomDesc.value, 0);
+  if (!back.ok) {
+    assert.equal(back.history.present, present);
+    assert.equal(creditDesc.writable, true);
+    assert.equal(zoomDesc.writable, true);
+    return;
+  }
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(redone.history.present, present);
+  assert.equal(world.credits, 5000);
+  assert.equal(camera.zoom, 3.2);
+  assert.equal(Object.getOwnPropertyDescriptor(world, 'credits').writable, true);
+  assert.equal(Object.getOwnPropertyDescriptor(camera, 'zoom').writable, true);
+  world.credits = 9;
+  camera.zoom = 3.2;
+  assert.equal(world.credits, 9);
+  assert.equal(camera.zoom, 3.2);
+});
+
+test('a nested grid label does not survive undo', () => {
+  const { undone, present } = sceneWithFuture();
+  present.grid.origin = { kind: 'marker' };
+  undone.history.future[0].toJSON = function () {
+    present.grid.origin.label = 'poison';
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  const redone = back.ok ? restoreHistory(back.history, 'redo') : back;
+  if (back.ok) assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  else assert.equal(back.history.present, present);
+  assert.equal(Object.prototype.hasOwnProperty.call(present.grid.origin, 'label'), false);
+  assert.equal(redone.history.present, present);
+  const saved = savedProjectText(present);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(saved.text.includes('"label": "poison"'), false);
+});
+
+test('an array note does not survive undo', () => {
+  const { undone, present } = sceneWithFuture();
+  undone.history.future[0].toJSON = function () {
+    present.objects.note = 'poison';
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  const redone = back.ok ? restoreHistory(back.history, 'redo') : back;
+  if (back.ok) assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  else assert.equal(back.history.present, present);
+  assert.equal(Object.prototype.hasOwnProperty.call(present.objects, 'note'), false);
+  assert.equal(Object.getOwnPropertyNames(present.objects).includes('note'), false);
+  assert.equal(redone.history.present, present);
+});
+
+test('a nested marks push does not survive undo', () => {
+  const { undone, present } = sceneWithFuture();
+  present.grid.origin = { marks: ['keep'] };
+  undone.history.future[0].toJSON = function () {
+    present.grid.origin.marks.push('poison');
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  const redone = back.ok ? restoreHistory(back.history, 'redo') : back;
+  if (back.ok) assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  else assert.equal(back.history.present, present);
+  assert.deepEqual(present.grid.origin.marks, ['keep']);
+  assert.equal(redone.history.present, present);
+  const saved = savedProjectText(present);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(saved.text.includes('poison'), false);
+});
+
+test('Object.seal cannot keep a new name or cargo height', async () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const cargo = objectById(present, 'cargo');
+  const team = cargo.team;
+  const yBefore = Object.prototype.hasOwnProperty.call(cargo, 'y') ? cargo.y : undefined;
+  assert.equal(team, 2);
+  undone.history.future[0].toJSON = function () {
+    world.name = 'poison';
+    Object.seal(world);
+    cargo.y = 9;
+    Object.seal(cargo);
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  if (yBefore === undefined) assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
+  else assert.equal(cargo.y, yBefore);
+  assert.equal(cargo.team, team);
+  if (!back.ok) assert.equal(back.history.present, present);
+  else {
+    const redone = restoreHistory(back.history, 'redo');
+    assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+    assert.equal(redone.history.present, present);
+  }
   const saved = savedProjectText(present);
   assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
   assert.equal(saved.text.includes('"name": "poison"'), false);

@@ -9,8 +9,7 @@ function discOf(assertion) {
   const expected = assertion && assertion.expected;
   if (!expected || typeof expected !== 'object' || Array.isArray(expected)) return null;
   if (!Number.isFinite(expected.x) || !Number.isFinite(expected.z)) return null;
-  // An objective with only x,z is not a disc. Do not invent a radius.
-  if (!Object.prototype.hasOwnProperty.call(expected, 'radius')) return null;
+  // x and z name a disc. A missing or non-finite radius cannot be satisfied, and is not invented.
   return {
     x: expected.x,
     z: expected.z,

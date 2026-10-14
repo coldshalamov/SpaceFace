@@ -169,7 +169,13 @@ export function captureLive(value, seen = new Set(), records = []) {
         items.push(undefined);
       }
     }
-    records.push({ kind: 'array', object: value, length: value.length, items });
+    records.push({
+      kind: 'array',
+      object: value,
+      length: value.length,
+      items,
+      names: Object.getOwnPropertyNames(value),
+    });
     return records;
   }
   const entries = [];
@@ -422,7 +428,7 @@ export function restoreOwnShadows(records) {
   let stuck = false;
   for (const record of records) {
     if (!record || !record.object || !record.names) continue;
-    if (record.kind !== 'ownNames' && record.kind !== 'object') continue;
+    if (record.kind !== 'ownNames' && record.kind !== 'object' && record.kind !== 'array') continue;
     const names = new Set(record.names);
     for (const key of Object.getOwnPropertyNames(record.object)) {
       if (names.has(key)) continue;
@@ -442,6 +448,7 @@ export let definePropertyBase = null;
 let definePropertiesBase = null;
 let reflectDefineBase = null;
 let freezeBase = null;
+let sealBase = null;
 
 function flagIsFalse(desc, key) {
   return Object.prototype.hasOwnProperty.call(desc, key) && !desc[key];
@@ -520,6 +527,7 @@ export function protectLiveObjects(objects) {
     definePropertiesBase = Object.defineProperties;
     reflectDefineBase = Reflect.defineProperty;
     freezeBase = Object.freeze;
+    sealBase = Object.seal;
     Object.defineProperty = function shieldedDefine(obj, prop, desc) {
       if (blocksDefine(obj, prop, desc)) return obj;
       return definePropertyBase.call(Object, obj, prop, desc);
@@ -535,6 +543,10 @@ export function protectLiveObjects(objects) {
     Object.freeze = function shieldedFreeze(obj) {
       if (protectedHas(obj)) return obj;
       return freezeBase.call(Object, obj);
+    };
+    Object.seal = function shieldedSeal(obj) {
+      if (protectedHas(obj)) return obj;
+      return sealBase.call(Object, obj);
     };
   }
   protectedStack.push(set);
@@ -557,6 +569,10 @@ export function unprotectLiveObjects() {
     if (freezeBase) {
       Object.freeze = freezeBase;
       freezeBase = null;
+    }
+    if (sealBase) {
+      Object.seal = sealBase;
+      sealBase = null;
     }
   }
 }

@@ -497,6 +497,7 @@ function runShielded(scenes, fn) {
   }
   for (const entry of activeAccessors) {
     if (entry.value && typeof entry.value === 'object') {
+      captureLive(entry.value, new Set(), shadows);
       for (const object of liveObjectsIn([entry.value])) protectedLive.add(object);
       captureAccessorTrees(entry.value, new Set(), shadows, true, true, []);
     }
@@ -642,6 +643,7 @@ function snapshotArrays(scenes) {
   }
   for (const entry of activeAccessors || []) {
     if (!entry.value || typeof entry.value !== 'object') continue;
+    collectArrays(entry.value, entries, seen);
     for (const extra of snapshotInheritedArrays(entry.value)) {
       if (entries.some((row) => row.array === extra.array)) continue;
       entries.push({
@@ -1045,5 +1047,13 @@ function restoreHistoryBody(history, direction) {
 }
 
 export function restoreHistory(history, direction) {
-  return runShielded(historyScenes(history), () => restoreHistoryBody(history, direction));
+  const result = runShielded(historyScenes(history), () => restoreHistoryBody(history, direction));
+  if (result && result.ok === false && result.history !== history) {
+    return {
+      ok: false,
+      history,
+      issues: result.issues && result.issues.length ? result.issues : ['scene could not be cloned'],
+    };
+  }
+  return result;
 }

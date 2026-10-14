@@ -867,7 +867,7 @@ export function importScenario(doc) {
         shape: triggerGeometry && triggerGeometry.shape ? triggerGeometry.shape : 'circle',
         x: triggerGeometry && Number.isFinite(triggerGeometry.x) ? triggerGeometry.x : 0,
         z: triggerGeometry && Number.isFinite(triggerGeometry.z) ? triggerGeometry.z : 0,
-        radius: triggerGeometry && Number.isFinite(triggerGeometry.radius) ? triggerGeometry.radius : 10,
+        ...(triggerGeometry && Number.isFinite(triggerGeometry.radius) ? { radius: triggerGeometry.radius } : {}),
         assertion: storedAssertion,
         labOnly: true,
         label: assertion.kind,
