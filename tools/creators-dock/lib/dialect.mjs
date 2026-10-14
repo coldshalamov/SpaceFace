@@ -1,6 +1,7 @@
 // Live dialect: read the shipped validators and registries. Nothing here is a second schema.
 
 import { listEntityProfiles, resolveEntityProfile } from '../../../src/testing/lab/entityProfiles.js';
+import { mothlightPhysicalBody } from '../../../src/data/mothlightBody.js';
 import { SHIPS } from '../../../src/data/ships.js';
 import {
   ENCOUNTER_KEYS,
@@ -57,9 +58,14 @@ export async function loadDialect() {
         };
       } else if (resolved.kind === 'enemy') {
         const enemy = enemyById.get(resolved.enemyTypeId);
+        let radius = enemy && Number.isFinite(enemy.collisionRadius) ? enemy.collisionRadius : null;
+        if (resolved.enemyTypeId === 'mothlight') {
+          const spawned = mothlightPhysicalBody();
+          if (spawned && Number.isFinite(spawned.radius)) radius = spawned.radius;
+        }
         draw[profileId] = {
           kind: 'enemy',
-          radius: enemy && Number.isFinite(enemy.collisionRadius) ? enemy.collisionRadius : null,
+          radius,
           mass: enemy ? enemy.mass : null,
         };
       }

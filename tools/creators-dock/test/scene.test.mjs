@@ -5071,13 +5071,17 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(hitTest({ objects: [colliderStone] }, 108, 100, unitZoom, view), 'stone');
   const placeDisc = { id: 'bank_zone', kind: 'field', fieldKind: 'place', x: 0, z: 0, radius: 80 };
   assert.equal(fieldStroke(placeDisc, 1), 28);
-  assert.equal(hitTest({ objects: [placeDisc] }, 150, 100, unitZoom, view), null);
   assert.equal(hitTest({ objects: [placeDisc] }, 128, 100, unitZoom, view), 'bank_zone');
+  assert.equal(hitTest({ objects: [placeDisc] }, 129, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [placeDisc] }, 150, 100, unitZoom, view), null);
   const wideStone = { id: 'stone', kind: 'actor', x: 0, z: 0, overrides: { radius: 100 } };
   assert.equal(Object.prototype.hasOwnProperty.call(wideStone, 'radius'), false);
   assert.equal(actorStroke(wideStone, 1), 100);
   assert.equal(hitTest({ objects: [wideStone] }, 150, 100, unitZoom, view), 'stone');
   assert.equal(hitTest({ objects: [wideStone] }, 200, 100, unitZoom, view), 'stone');
+  assert.equal(hitTest({ objects: [wideStone] }, 201, 100, unitZoom, view), null);
+  const nineStone = { id: 'stone', x: 0, z: 0, overrides: { radius: 9 } };
+  assert.equal(hitTest({ objects: [nineStone] }, 109, 100, unitZoom, view), 'stone');
   const finalOutside = evaluateOracleKernel({
     trace: [
       { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },
@@ -6665,4 +6669,23 @@ test('Hawser and Quiet Ghost use their collision radii', async () => {
   assert.equal(arcs[0], 13);
   assert.equal(hitTest({ objects: [prefixed] }, 113, 100, camera, view, dialect.draw), 'ghost');
   assert.equal(hitTest({ objects: [prefixed] }, 114, 100, camera, view, dialect.draw), null);
+  const trader = { id: 'trader', kind: 'actor', profile: 'enemy.mule_trader', x: 0, z: 0 };
+  assert.equal(dialect.draw['enemy.mule_trader'].radius, 18);
+  assert.equal(actorStroke(trader, 1, dialect.draw), 18);
+  assert.notEqual(actorStroke(trader, 1, dialect.draw), 8);
+  arcs.length = 0;
+  drawActor(ctx, trader, camera, view, dialect.draw);
+  assert.equal(arcs[0], 18);
+  assert.equal(hitTest({ objects: [trader] }, 118, 100, camera, view, dialect.draw), 'trader');
+  assert.equal(hitTest({ objects: [trader] }, 119, 100, camera, view, dialect.draw), null);
+  const moth = { id: 'moth', kind: 'actor', profile: 'mothlight', x: 0, z: 0 };
+  assert.equal(dialect.draw.mothlight.radius, 21);
+  assert.notEqual(dialect.draw.mothlight.radius, 16);
+  assert.equal(dialect.draw['enemy.mothlight'].radius, 21);
+  assert.equal(actorStroke(moth, 1, dialect.draw), 21);
+  arcs.length = 0;
+  drawActor(ctx, moth, camera, view, dialect.draw);
+  assert.equal(arcs[0], 21);
+  assert.equal(hitTest({ objects: [moth] }, 121, 100, camera, view, dialect.draw), 'moth');
+  assert.equal(hitTest({ objects: [moth] }, 122, 100, camera, view, dialect.draw), null);
 });
