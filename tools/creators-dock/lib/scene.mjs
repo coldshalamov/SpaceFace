@@ -1601,6 +1601,32 @@ function shortPlaceCap(dx, dy, radius, along, dash, gap, signed) {
   return !!end && end.chord >= 0.55 && end.chord < 0.6;
 }
 
+function pixelHoldsShortCap(dx, dy, radius, along, dash, gap, signed, sx, sy) {
+  // The cap rule is defined on a point inside the pixel. A click on the
+  // painted center uses that same rule: the center selects when the pixel
+  // already contains a point the cap accepts.
+  if (!isPixelCenter(sx, sy) || !(dash <= 2) || !(signed < 0)) return false;
+  const span = dashOffset(along, dash, gap);
+  const perp = -signed;
+  if (!(span.alongOff > 0.2 && span.alongOff < 0.9 && perp < 0.7 && squareSupport(dx, dy) > 0.65)) return false;
+  const x0 = Math.floor(sx);
+  const y0 = Math.floor(sy);
+  const steps = [0.15, 0.35, 0.5, 0.65, 0.85];
+  for (let i = 0; i < steps.length; i += 1) {
+    for (let j = 0; j < steps.length; j += 1) {
+      const pdx = dx + (x0 + steps[i]) - sx;
+      const pdy = dy + (y0 + steps[j]) - sy;
+      const distance = Math.hypot(pdx, pdy);
+      const ps = distance - radius;
+      if (!(ps < 0)) continue;
+      let angle = Math.atan2(pdy, pdx);
+      if (angle < 0) angle += Math.PI * 2;
+      if (shortPlaceCap(pdx, pdy, radius, ringMeasuredAlong(radius, angle), dash, gap, ps)) return true;
+    }
+  }
+  return false;
+}
+
 function ringOnInk(dx, dy, radius, pattern, sx, sy) {
   const distance = Math.hypot(dx, dy);
   if (!(radius > 0)) return distance <= 1e-6;
@@ -1632,7 +1658,8 @@ function ringOnInk(dx, dy, radius, pattern, sx, sy) {
     return true;
   }
   if (isPixelCenter(sx, sy) && outerButtPixel(dx, dy, radius, along, pattern[0], pattern[1], signed)) return true;
-  return dashBodyPixel(Math.abs(signed), along, pattern[0], pattern[1], dx, dy, sx, sy);
+  if (dashBodyPixel(Math.abs(signed), along, pattern[0], pattern[1], dx, dy, sx, sy)) return true;
+  return pixelHoldsShortCap(dx, dy, radius, along, pattern[0], pattern[1], signed, sx, sy);
 }
 
 function objectiveHit(dx, dy) {
