@@ -185,7 +185,12 @@ export function captureLive(value, seen = new Set(), records = []) {
     });
     captureLive(descriptor.value, seen, records);
   }
-  records.push({ kind: 'object', object: value, entries });
+  records.push({
+    kind: 'object',
+    object: value,
+    entries,
+    names: Object.getOwnPropertyNames(value),
+  });
   return records;
 }
 
@@ -211,6 +216,7 @@ function writeLive(object, key, value, enumerable) {
 }
 
 export function restoreLive(records) {
+  let stuck = false;
   for (let i = records.length - 1; i >= 0; i -= 1) {
     const record = records[i];
     if (!record || record.kind === 'ownNames') continue;
@@ -240,9 +246,10 @@ export function restoreLive(records) {
         ? descriptor.value
         : undefined;
       if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && current === entry.value) continue;
-      writeLive(record.object, entry.key, entry.value, entry.enumerable);
+      if (!writeLive(record.object, entry.key, entry.value, entry.enumerable)) stuck = true;
     }
   }
+  return stuck;
 }
 
 function rememberArray(array, entries, seen) {
@@ -411,10 +418,12 @@ export function captureAccessorTrees(value, seen = new Set(), records = [], allo
 }
 
 export function restoreOwnShadows(records) {
-  if (!records) return;
+  if (!records) return false;
+  let stuck = false;
   for (const record of records) {
-    if (!record || record.kind !== 'ownNames' || !record.object) continue;
-    const names = new Set(record.names || []);
+    if (!record || !record.object || !record.names) continue;
+    if (record.kind !== 'ownNames' && record.kind !== 'object') continue;
+    const names = new Set(record.names);
     for (const key of Object.getOwnPropertyNames(record.object)) {
       if (names.has(key)) continue;
       try {
@@ -422,8 +431,10 @@ export function restoreOwnShadows(records) {
       } catch (error) {
         // A non-configurable own key stays until the caller refuses the travel.
       }
+      if (Object.prototype.hasOwnProperty.call(record.object, key)) stuck = true;
     }
   }
+  return stuck;
 }
 
 const protectedStack = [];
@@ -457,9 +468,12 @@ function blocksDefine(obj, prop, desc) {
   const replacesDataWithAccessor = !!current
     && Object.prototype.hasOwnProperty.call(current, 'value')
     && (typeof desc.get === 'function' || typeof desc.set === 'function');
+  const sealsMissing = !current
+    && Object.prototype.hasOwnProperty.call(desc, 'value')
+    && (desc.writable === false || desc.configurable === false);
   const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
   return changesValue || sealsWritable || sealsConfigurable || sealsAccessor
-    || replacesDataWithAccessor || freezesLength;
+    || replacesDataWithAccessor || sealsMissing || freezesLength;
 }
 
 function protectedHas(obj) {

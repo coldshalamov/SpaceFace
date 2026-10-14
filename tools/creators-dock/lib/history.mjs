@@ -426,16 +426,16 @@ function publish(value) {
   if (activeAccessors) restoreAccessors(activeAccessors);
   const settersStuck = restoreSetters(activeSetters);
   const arraysStuck = restoreArrays(activeArrays);
-  restoreLive(activeShadows);
-  restoreOwnShadows(activeShadows);
+  const liveStuck = restoreLive(activeShadows) === true;
+  const shadowStuck = restoreOwnShadows(activeShadows) === true;
   if (activeShields) restoreShieldList(activeShields);
   const map = activeShields ? replacementMap(activeShields) : new Map();
-  const failed = settersStuck || arraysStuck || !!(value && value.ok === false);
+  const failed = settersStuck || arraysStuck || liveStuck || shadowStuck || !!(value && value.ok === false);
   if (!failed && map.size && value && typeof value === 'object') {
     if (Object.prototype.hasOwnProperty.call(value, 'history')) applySceneMap(value.history, map);
     else if (Object.prototype.hasOwnProperty.call(value, 'present')) applySceneMap(value, map);
   }
-  return refusePoisoned(value, settersStuck || arraysStuck);
+  return refusePoisoned(value, settersStuck || arraysStuck || liveStuck || shadowStuck);
 }
 
 function refusePoisoned(value, refused) {

@@ -4990,6 +4990,88 @@ test('a reflected credits getter is not left on the caller', () => {
   assert.equal(returned.history.present.world, live);
 });
 
+test('a deleted credits field cannot be sealed back as data', async () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const camera = present.camera;
+  const credits = world.credits;
+  const zoom = camera.zoom;
+  undone.history.future[0].toJSON = function () {
+    delete world.credits;
+    Reflect.defineProperty(world, 'credits', {
+      value: 1,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    delete camera.zoom;
+    Reflect.defineProperty(camera, 'zoom', {
+      value: 0,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
+  const zoomDesc = Object.getOwnPropertyDescriptor(camera, 'zoom');
+  assert.equal(creditDesc.value, credits);
+  assert.equal(creditDesc.writable, true);
+  assert.equal(creditDesc.configurable, true);
+  assert.equal(zoomDesc.value, zoom);
+  assert.equal(zoomDesc.writable, true);
+  assert.equal(zoomDesc.configurable, true);
+  world.credits = 9;
+  camera.zoom = 3.2;
+  assert.equal(world.credits, 9);
+  assert.equal(camera.zoom, 3.2);
+  world.credits = credits;
+  camera.zoom = zoom;
+  assert.equal(clone(present).world.credits, credits);
+  assert.equal(clone(present).camera.zoom, zoom);
+  assert.equal(redone.history.present, present);
+});
+
+test('a new nested field does not survive undo', async () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const cargo = objectById(present, 'cargo');
+  const team = cargo.team;
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  const yBefore = Object.prototype.hasOwnProperty.call(cargo, 'y') ? cargo.y : undefined;
+  undone.history.future[0].toJSON = function () {
+    world.name = 'poison';
+    Object.defineProperty(world, 'name', { value: 'poison', writable: false, configurable: false });
+    cargo.y = 9;
+    Object.defineProperty(cargo, 'y', { value: 9, writable: false, configurable: false });
+    cargo.team = 7;
+    Object.defineProperty(cargo, 'team', { value: 7, writable: false, configurable: false });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  assert.equal(cargo.team, team);
+  assert.equal(Object.getOwnPropertyDescriptor(cargo, 'team').writable, true);
+  if (yBefore === undefined) assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
+  else assert.equal(cargo.y, yBefore);
+  const saved = savedProjectText(present);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(saved.text.includes('"name": "poison"'), false);
+  const exported = await exportProject(present);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const entity = exported.scenario.entities.find((row) => row.alias === 'cargo');
+  assert.equal(entity.pos.y, 0);
+  assert.notEqual(entity.pos.y, 9);
+  assert.equal(redone.history.present, present);
+});
+
 test('prototype tags behind a get-only pocket stay keep', () => {
   for (const mode of ['push', 'splice', 'length', 'replace']) {
     const history = createHistory(getComposition('dock.intercept-cargo'));
