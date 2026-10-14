@@ -292,7 +292,9 @@ test('renderer wires the foundry as env input only — the visible sky is never 
   assert.match(src, /resolveIblSource\(\{\s*foundryTexture:\s*this\._foundryEnvTexture,\s*background:\s*scene\.background,\s*\}\)/);
   // Load once at init, promote on unfreeze, and release on dispose — the full lifecycle.
   assert.match(src, /this\._loadFoundryIbl\(\);/);
-  assert.match(src, /this\._envMapSource !== IBL_SOURCE_FOUNDRY\)\s*\{\s*this\._bakeEnv\(\{ force: true \}\)/);
+  // Unfreeze promotion is armed for a veiled seam, not baked inside the Launch reply.
+  assert.match(src, /this\._envMapSource !== IBL_SOURCE_FOUNDRY\)\s*\{\s*this\._foundryEnvPending = true;/);
+  assert.match(src, /if \(this\._openingEnvFrozen === true\) return;\s*this\._foundryEnvPending = false;\s*this\._bakeEnv\(\);/);
   assert.match(src, /invokeRendererDisposer\(owner\._foundryEnvTexture/);
   // The contract's failure mode: nothing may draw the foundry as the visible sky.
   assert.doesNotMatch(src, /scene\.background\s*=\s*[^;]*foundry/i);
@@ -318,4 +320,20 @@ test('every PMREM bake pins one cube size so env swaps never rekey lit programs'
     /pmrem\.fromScene\([^;]*size:\s*(?:IBL_PMREM_CUBE_SIZE|SPACE_REFLECTION_PMREM_CUBE_SIZE)/gs,
   ) || [];
   assert.equal(bakes.length, 2, 'both the equirect wrap scene and the card rig must bake pinned');
+});
+
+test('an armed foundry promotion is retired before reveal on every route, and reveal reports it', () => {
+  const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  // Any committed foundry bake disarms the promotion (the opening freeze bake included).
+  assert.match(src, /this\._envMapSource = iblSource;\s*(\/\/[^\n]*\s*)*if \(iblSource === IBL_SOURCE_FOUNDRY\) this\._foundryEnvPending = false;/);
+  // Flight entry drains a still-armed promotion when no veiled seam ran (real-GPU readiness, Continue).
+  // The armed promotion retires once at the head of the veil (rAF, then a fresh task), so the
+  // convolve's GPU work cannot ride to the flight backstop and stall the first presented frames.
+  assert.match(src, /this\._foundryEnvPending = true;\s*(\/\/[^\n]*\n\s*)*this\._scheduleVeiledFoundryEnvDrain\?\.\(\);/);
+  assert.match(src, /_scheduleVeiledFoundryEnvDrain\(\) \{[\s\S]{0,1200}raf\(\(\) => setTimeout\(run, 0\)\)/);
+  // A never-painting tab cannot strand the scheduled flag: a timer fallback runs the same one-shot drain.
+  assert.match(src, /_scheduleVeiledFoundryEnvDrain\(\) \{[\s\S]{0,1200}fallback = setTimeout\(run, 500\)/);
+  assert.match(src, /onBus\('mode:changed'[^\n]*\n(\s*\/\/[^\n]*\n)*\s*if \(mode === 'flight'\) \{\s*this\._drainFoundryEnvPending\?\.\(\);/);
+  // The first playable paint (every route) stamps the env it lit with.
+  assert.match(src, /render\.foundryEnvAtReveal = \{\s*source: owner\._envMapSource \?\? null,\s*pending: owner\._foundryEnvPending === true,/);
 });
