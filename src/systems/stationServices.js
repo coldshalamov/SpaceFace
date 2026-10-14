@@ -23,6 +23,7 @@
 import { hash32, mulberry32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
 import { stationYardRateMult } from '../economy/stationConditions.js';
+import { removeCargo } from './cargo.js';
 
 const DAY_SECONDS = 600;                 // sector-day contract (mirrors encounterDirector)
 const REFUEL_U_PER_S = 4;                // pump rate for a mid tank at a neutral yard
@@ -37,6 +38,14 @@ const CREWS_BY_SIZE = { S: 1, M: 2, L: 3 };
 const CLIENTS_PER_DAY = { S: [2, 4], M: [3, 6], L: [5, 9] };
 const CLIENT_KINDS = ['hauler', 'barge', 'cutter', 'liner', 'patrol'];
 const CLIENT_SERVICES = ['refuel', 'repair', 'transfer'];
+
+// Self-serve decant (U5): carried cmdty_fuel_cells burned into the tank by the pilot's own
+// labor at any berth — including one with no refuel service. At the base cell price (~97 cr)
+// 24 tank units per cell reads ~4.0 cr/unit against the pump's 3, so decant is the emergency
+// and short-credits path, never the deal. Whole cells only; a hard per-pass cap keeps the
+// verb a decision, not a held key.
+const FUEL_UNITS_PER_CELL = 24;
+const DECANT_MAX_CELLS_PER_PASS = 8;
 
 // Station catalog lookup — same source economy.stationInfo reads (SECTORS graph + live content
 // registry), duplicated as a small pure function so this file never reaches into economy.
@@ -225,6 +234,8 @@ export const stationServices = {
       this.bus.on('dock:undocked', this._onUndocked);
       this.bus.on('sector:exit', this._onExit);
       this.bus.on('ship:statsChanged', this._onHullChanged);
+      this._onDecantRequest = () => this.decantFuelCells();
+      this.bus.on('service:decantRequest', this._onDecantRequest);
     }
   },
 
@@ -424,6 +435,35 @@ export const stationServices = {
       }
     }
     return out;
+  },
+
+  /**
+   * U5 self-serve decant: burn carried fuel cells into the tank while docked at ANY berth.
+   * No yard job and no credits — the pilot is the crew. Needs no station service, so a
+   * fuel-less outpost notice (dock card, chart) now has a play attached. Refuses honestly
+   * with a reason word the UI can speak; never burns a partial cell and never overfills.
+   */
+  decantFuelCells() {
+    const state = this.state;
+    if (!state || !isProductionDocked(state)) return { ok: false, reason: 'not_docked', cells: 0, units: 0 };
+    const cargo = state.player && state.player.cargo;
+    const fuel = state.fuel;
+    if (!cargo || !fuel) return { ok: false, reason: 'unavailable', cells: 0, units: 0 };
+    const room = Math.max(0, (fuel.max || 0) - (fuel.current || 0));
+    const held = cargo.items ? Math.floor(Number(cargo.items.cmdty_fuel_cells) || 0) : 0;
+    if (held <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
+    if (room < FUEL_UNITS_PER_CELL) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
+    const cells = Math.min(held, DECANT_MAX_CELLS_PER_PASS, Math.floor(room / FUEL_UNITS_PER_CELL));
+    if (cells <= 0) return { ok: false, reason: 'tank_full', cells: 0, units: 0 };
+    const removed = removeCargo(state, 'cmdty_fuel_cells', cells);
+    if (removed <= 0) return { ok: false, reason: 'no_cells', cells: 0, units: 0 };
+    const units = removed * FUEL_UNITS_PER_CELL;
+    fuel.current = Math.min(fuel.max, (fuel.current || 0) + units);
+    if (this.bus) {
+      this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+      this.bus.emit('service:decanted', { cells: removed, units, stationId: state.ui && state.ui.dockedStationId });
+    }
+    return { ok: true, reason: 'decanted', cells: removed, units };
   },
 
   // ── tick ────────────────────────────────────────────────────────────────────────────────
@@ -739,8 +779,9 @@ export const stationServices = {
       if (this._onUndocked) this.bus.off('dock:undocked', this._onUndocked);
       if (this._onExit) this.bus.off('sector:exit', this._onExit);
       if (this._onHullChanged) this.bus.off('ship:statsChanged', this._onHullChanged);
+      if (this._onDecantRequest) this.bus.off('service:decantRequest', this._onDecantRequest);
     }
-    this._onDocked = this._onUndocked = this._onExit = this._onHullChanged = null;
+    this._onDocked = this._onUndocked = this._onExit = this._onHullChanged = this._onDecantRequest = null;
   },
 };
 

@@ -771,6 +771,17 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     subscriptions.push(() => { try { bus.off && bus.off(event, handler); } catch (_) {} });
   }
 
+  // U5 self-serve decant: the yard answers the request, the meter moves on fuel:changed,
+  // and the pilot hears the receipt in the same voice the services use.
+  subscribe('service:decanted', (p = {}) => {
+    if (!Number.isFinite(Number(p.cells)) || !(p.cells > 0)) return;
+    const bus = ctx && ctx.bus;
+    if (bus) bus.emit('toast', {
+      text: `Decanted ${p.cells} fuel cell${p.cells === 1 ? '' : 's'} — +${p.units} fuel.`,
+      kind: 'info', ttl: 2.5,
+    });
+  });
+
   subscribe('station:navigate', (request = {}) => {
     // INF-095: a hidden app takes no navigation — it would corrupt the active tab for the
     // next dock. onShow re-renders the current destination from live state.
@@ -902,6 +913,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
+    if (id === 'decant') {
+      // U5 self-serve decant: the yard is not involved, so no quote and no pricing —
+      // the yard request event carries the result and fuel:changed moves the meter.
+      if (bus) bus.emit('service:decantRequest', {});
+      setTimeout(refresh, 60);
+      return true;
+    }
     const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights', loan: 'loan', settle: 'settle', cargoInsure: 'cargo_insurance' };
     const type = typeMap[id];
     if (!type && bus) {
@@ -1011,6 +1029,20 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${copy}</button>`;
   }
 
+  /**
+   * U5 self-serve decant: the fuel vital's second verb, offered only while the hold carries
+   * fuel cells and the tank has room. It needs no station service — the pilot is the crew —
+   * so it renders even at the outposts the chart marks "no refuel".
+   */
+  function decantActHtml(s, fuel) {
+    const held = Math.floor(Number(s && s.player && s.player.cargo && s.player.cargo.items
+      && s.player.cargo.items.cmdty_fuel_cells) || 0);
+    const room = Math.max(0, (Number(fuel && fuel.max) || 0) - (Number(fuel && fuel.current) || 0));
+    if (held <= 0 || room <= 0) return '';
+    return `<button type="button" ${stationControlAttrs('decant')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="decant"` +
+      ` aria-label="Decant carried fuel cells into the tank — ${held} cell${held === 1 ? '' : 's'} held">Decant</button>`;
+  }
+
   // A vital is one static kit row: the label at body 62 %, the value at emphasis (data-tone kept:
   // bad → k-bad, warn → k-signal), the verb as a fine word — and a 2 px k-bar under the label as
   // the track (the tab check reads its width). Hold's head is the manifest button.
@@ -1099,7 +1131,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         k: 'fuel', label: 'Fuel', frac: fuelF, tone: vitalTone(fuelF, 'fuel'),
         value: `${fmtCr(fuel.current)} / ${fmtCr(fuel.max)}`,
         aria: `Fuel ${(fuelF * 100).toFixed(0)} percent`,
-        acts: [vitalActHtml('refuel', costs.refuel, 'Refuel')],
+        acts: [vitalActHtml('refuel', costs.refuel, 'Refuel'), decantActHtml(s, fuel)],
       },
       {
         k: 'hold', label: 'Hold', frac: holdF, tone: vitalTone(holdF, 'hold'), openHold: true,
