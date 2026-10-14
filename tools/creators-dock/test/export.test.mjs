@@ -737,6 +737,18 @@ test('a place disc edits the exported place and objectives follow the lab metric
   const enteredRun = await runLabScenario(enteredExport.scenario);
   assert.equal(enteredRun.ok, true, (enteredRun.oracle && enteredRun.oracle.failed || []).map((row) => row.id).join(','));
   assert.equal((enteredRun.oracle.failed || []).some((row) => String(row.id || '').includes('never:hull')), false);
+  const settledInside = getComposition('dock.bank-shot');
+  const settledHold = objectById(settledInside, 'alive_bank');
+  settledHold.x = 0;
+  settledHold.z = 0;
+  settledHold.radius = 1;
+  settledHold.assertion = { kind: 'settles', signal: 'playerVelX', value: 1e9 };
+  const settledExport = await exportProject(settledInside);
+  assert.equal(settledExport.ok, true, (settledExport.issues || []).join('\n'));
+  const settledRun = await runLabScenario(settledExport.scenario);
+  const settledFail = (settledRun.oracle.failed || []).find((row) => row.id === 'settles');
+  assert.equal(settledFail, undefined, JSON.stringify(settledRun.oracle && settledRun.oracle.failed));
+  assert.equal(settledRun.ok, true, (settledRun.oracle && settledRun.oracle.failed || []).map((row) => row.id).join(','));
   assert.equal(discRadius({ kind: 'trigger', x: 0, z: 0 }), 0);
   assert.notEqual(discRadius({ kind: 'trigger', x: 0, z: 0 }), 10);
   assert.equal(discRadius({ kind: 'trigger', radius: 12 }), 12);

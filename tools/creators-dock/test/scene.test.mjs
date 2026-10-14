@@ -4818,6 +4818,58 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
     assertions: [{ kind: 'settles', signal: 'playerVelX', value: 1e9, expected: { x: 0, z: 0, radius: 10 } }],
   });
   assert.equal(wideSettleClose.results.find((row) => row.id === 'settles').ok, true);
+  const leftDisc = [
+    { tick: 0, playerX: 0, playerZ: 0, playerVelX: 0, hull: 140, playerAlive: true },
+    { tick: 1, playerX: 100, playerZ: 0, playerVelX: 0, hull: 140, playerAlive: true },
+  ];
+  const leftSettle = evaluateOracleKernel({
+    trace: leftDisc,
+    assertions: [{
+      kind: 'settles',
+      signal: 'playerVelX',
+      value: 1e9,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  });
+  const leftSettleRow = leftSettle.results.find((row) => row.id === 'settles');
+  assert.equal(leftSettleRow.ok, true);
+  assert.equal(leftSettleRow.actual.settled, true);
+  assert.equal(leftSettleRow.firstBadTick, null);
+  assert.equal(leftSettleRow.closest, 0);
+  const leftNever = evaluateOracleKernel({
+    trace: leftDisc,
+    assertions: [{
+      kind: 'never',
+      signal: 'hull',
+      op: '<',
+      value: 0,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  });
+  assert.equal(leftNever.results.find((row) => row.id === 'never:hull').ok, true);
+  const leftHold = evaluateOracleKernel({
+    trace: leftDisc,
+    assertions: [{
+      kind: 'holds',
+      signal: 'playerAlive',
+      holdsTicks: 1,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  });
+  assert.equal(leftHold.results.find((row) => row.id === 'holds:playerAlive').ok, true);
+  const unsettledInside = evaluateOracleKernel({
+    trace: [
+      { tick: 0, playerX: 0, playerZ: 0, playerVelX: 50 },
+      { tick: 1, playerX: 100, playerZ: 0, playerVelX: 0 },
+    ],
+    assertions: [{
+      kind: 'settles',
+      signal: 'playerVelX',
+      value: 1,
+      expected: { x: 0, z: 0, radius: 5 },
+    }],
+  });
+  assert.equal(unsettledInside.results.find((row) => row.id === 'settles').ok, false);
   const insideDisc = [];
   for (let tick = 0; tick < 8; tick += 1) {
     insideDisc.push({ tick, playerX: 0, playerZ: 0, hull: 140, playerVelX: 0 });
