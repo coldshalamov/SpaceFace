@@ -290,11 +290,16 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     pump(2);
     assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first playable paint landed');
     assert.equal(a.state.render.veilLiftReason, 'first-draw');
+    assert.equal(a.state.render.veilStage, undefined, 'a quick first draw never shows the stage label');
     assert.equal(a.state.render.flightVeilHoldsSim, false, 'the lift releases the sim');
     a.presenter.destroy();
 
     const b = run();
-    t.mock.timers.tick(19900); pump(1);
+    t.mock.timers.tick(2900); pump(1);
+    assert.equal(b.state.render.veilStage, undefined, 'no stage label inside the short grace');
+    t.mock.timers.tick(200); pump(1);
+    assert.equal(b.state.render.veilStage, 'rendering-sector', 'a long first-draw wait names its stage');
+    t.mock.timers.tick(16800); pump(1);
     assert.equal(b.overlay.classList.contains('hidden'), false, 'still waiting before the cap');
     t.mock.timers.tick(200); pump(1);
     assert.equal(b.overlay.classList.contains('hidden'), true, 'the cap lifts the veil so it cannot stick');

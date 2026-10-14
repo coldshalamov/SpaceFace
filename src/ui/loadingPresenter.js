@@ -9,6 +9,7 @@ const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
 const NOOP = { show() {}, hide() {}, destroy() {} };
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
+export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
@@ -32,7 +33,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   label?.setAttribute?.('role', 'status'); label?.setAttribute?.('aria-live', 'polite');
   let terminalArt = null, retainWorkerArt = false, retainedCanvas = null;
   let retainedPointerMove = null, needsPointerBridge = false;
-  let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null, revealCapTimer = null;
+  let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null, revealCapTimer = null, revealStageTimer = null;
   let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
   let session = 0;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
@@ -82,6 +83,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     revealDeadlineTimer = null;
     if (revealCapTimer !== null) clearTimeout(revealCapTimer);
     revealCapTimer = null;
+    if (revealStageTimer !== null) clearTimeout(revealStageTimer);
+    revealStageTimer = null;
   }
   function paint(fraction, formatted) {
     if (!visible() || disposed) return;
@@ -177,6 +180,14 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const tracksFirstDraw = !!render && Object.prototype.hasOwnProperty.call(render, 'firstPlayableFrameAt');
     const firstDrawSubmitted = () => !tracksFirstDraw || Number.isFinite(render.firstPlayableFrameAt);
     let capped = false;
+    // A long first-draw wait (≈15–17 s on software GPUs) with the needle parked near 96% reads as
+    // a hang: past a short grace, name the stage the shell is actually waiting on.
+    revealStageTimer = setTimeout(() => {
+      revealStageTimer = null;
+      if (disposed || firstDrawSubmitted()) return;
+      if (render) render.veilStage = 'rendering-sector';
+      ring?.report({ id: 'rendering-sector', progress: .96, ceiling: .997, label: 'Rendering the sector…' });
+    }, FIRST_DRAW_STAGE_LABEL_MS);
     // Hold the sim at spawn while the veil waits (presentationRunner reads this); every hide clears it.
     if (render && tracksFirstDraw) render.flightVeilHoldsSim = true;
     revealCapTimer = setTimeout(() => {
