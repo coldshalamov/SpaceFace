@@ -442,6 +442,22 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:19px !important; }
   ${CX} .cx-reader__turn { column-gap:18px !important; flex-wrap:nowrap; white-space:nowrap; }
 }
+/* 640–760: the 316px hang left too little stage for plate + PREVIOUS/NEXT; shrink hang, dials and
+   plate so the reader column stays clear (800×600 already clears with the ≤900 rules above) */
+@media (max-width:760px) and (min-width:640px) {
+  ${CX} { --cx-sections:96px; --cx-gap:12px; --cx-plate:min(132px, 32vh, 18vw); grid-template-columns:minmax(220px, 38vw) minmax(0, 1fr) !important; }
+  ${CX} > .k-title { column-gap:16px; }
+  ${CX} > .k-title > p { max-width:160px !important; font-size:12px !important; }
+  ${CX} .cx-index__item { grid-template-rows:36px auto; width:48px; }
+  ${CX} .cx-index__dial { width:34px; height:34px; }
+  ${CX} .cx-index__n { font-size:11px !important; }
+  ${CX} .cx-index__of { font-size:9px; }
+  ${CX} .cx-index__w { margin-top:2px !important; font-size:9px !important; letter-spacing:.02em !important; }
+  ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 14px) !important; }
+  ${CX} .cx-reader__num-n { font-size:34px; }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:16px !important; }
+  ${CX} .cx-reader__turn { column-gap:12px !important; }
+}
 /* ...and a short one (960×540): the scale's rungs and the foot close up so LEDGER clears CLOSE */
 @media (max-width:1100px) and (min-width:640px) and (max-height:640px) {
   ${CX} { row-gap:14px !important; }
