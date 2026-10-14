@@ -20435,6 +20435,20 @@ export const render = {
       preparation.catch(() => {});
     });
     onBus('mode:changed', ({ mode } = {}) => {
+      // Backstop for the armed foundry promotion: the sector-load yields and the un-awaited
+      // preparePostOpeningPipelines normally drain it under the veil, but a route that reaches
+      // flight without either (real-GPU readiness, Continue) still bakes before the first frame.
+      if (mode === 'flight') {
+        this._drainFoundryEnvPending?.();
+        // Debug hook: the env the revealed flight lights with. firstPlayable paint (below)
+        // re-stamps foundryEnvAtReveal on routes that present a playable frame.
+        state.render.foundryEnvAtFlight = {
+          source: this._envMapSource ?? null,
+          pending: this._foundryEnvPending === true,
+          foundryResident: !!this._foundryEnvTexture,
+          frozen: this._openingEnvFrozen === true,
+        };
+      }
       if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
       if (mode === 'loading') {
         const recook = this._sessionLiveSectorCookedId != null
@@ -20489,10 +20503,19 @@ export const render = {
           }
         } else {
           this._openingEnvFrozen = false;
-          // A foundry HDRI that landed during the frozen first picture is promoted now — the
-          // curated shot kept its env; the live one gets the industrial light.
+          // A foundry HDRI that landed during the frozen first picture is promoted under the
+          // veil — the curated shot kept its env; the live one gets the industrial light. Armed,
+          // not baked here: this listener runs inside the Launch reply (enterLoadingMode's
+          // mode:changed), where the 2K float upload + PMREM convolve held the click for
+          // ~400-900 ms on software GL. The cook seams and the post-opening pass drain it before
+          // the first flight frame; the source differs, so the same-source guard cannot skip it.
           if (this._foundryEnvTexture && this._envMapSource !== IBL_SOURCE_FOUNDRY) {
-            this._bakeEnv({ force: true });
+            this._foundryEnvPending = true;
+            // Retire it at the head of the veil, out of the Launch reply: once the loading
+            // veil has painted (rAF, then a fresh task). Left to the cook seams alone it could
+            // ride to the flight backstop, whose GPU convolve then landed on the first
+            // presented flight frames (a 2.6-3.7 s program-link stall on software GL).
+            this._scheduleVeiledFoundryEnvDrain?.();
           }
           releaseOpeningGraphPublication(this);
           this._openingFirstPicturePrepared = false;
@@ -24913,8 +24936,29 @@ export const render = {
   // context that already tolerates paced spend, instead of a presented frame.
   _drainFoundryEnvPending() {
     if (this._foundryEnvPending !== true) return;
+    // A frozen opening picture would turn the bake into a no-op; stay armed for the next seam.
+    if (this._openingEnvFrozen === true) return;
     this._foundryEnvPending = false;
     this._bakeEnv();
+  },
+
+  // One veiled drain shortly after loading begins: after the veil's next paint, in its own task.
+  _scheduleVeiledFoundryEnvDrain() {
+    if (this._foundryEnvDrainScheduled === true) return;
+    this._foundryEnvDrainScheduled = true;
+    let fallback = null;
+    const run = () => {
+      if (this._foundryEnvDrainScheduled !== true) return;
+      this._foundryEnvDrainScheduled = false;
+      if (fallback !== null) { clearTimeout(fallback); fallback = null; }
+      if (!this._rendererLifecycle || (this.state && this.state.mode) !== 'loading') return;
+      this._drainFoundryEnvPending();
+    };
+    // A tab that never paints (hidden, throttled rAF) must not strand the flag: a plain timer
+    // runs the same one-shot drain if the paint has not come within 500 ms.
+    fallback = setTimeout(run, 500);
+    const raf = globalThis.requestAnimationFrame;
+    if (typeof raf === 'function') raf(() => setTimeout(run, 0));
   },
 
   _bakeEnv(options = {}) {
@@ -25011,6 +25055,9 @@ export const render = {
       // source the live env never reached (every later non-force bake would
       // early-out on the phantom source).
       this._envMapSource = iblSource;
+      // Any committed foundry bake (the opening-picture freeze, a seam drain, a context-restore
+      // force) satisfies an armed promotion — leaving it armed would re-convolve the same source.
+      if (iblSource === IBL_SOURCE_FOUNDRY) this._foundryEnvPending = false;
     } catch (error) {
       // env-map is optional — chrome falls back to high-metalness matte — but
       // a failed bake is a quality deficit worth a line of telemetry.
@@ -32875,6 +32922,14 @@ export function applyFirstPlayablePaintRelease(owner) {
       render.firstPlayableFrameAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();
+      // Debug hook: which env the first revealed frame lit with, and whether a foundry
+      // promotion was still armed (it must not be). Read by perf/evidence probes.
+      render.foundryEnvAtReveal = {
+        source: owner._envMapSource ?? null,
+        pending: owner._foundryEnvPending === true,
+        foundryResident: !!owner._foundryEnvTexture,
+        frozen: owner._openingEnvFrozen === true,
+      };
       if (!Number.isFinite(render.firstFlightResidencyHoldUntil)) {
         render.firstFlightResidencyHoldUntil = (Number(owner.state.simTime) || 0) + 20;
       }
