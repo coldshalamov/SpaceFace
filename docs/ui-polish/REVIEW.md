@@ -558,7 +558,7 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P1 | Crucible | Hero arena title ("RICOCHET FOUNDRY") and its blurb sit straight on bright 3D art without a scrim — blurb unreadable over the lit floor. **Fixed** (void→transparent scrim under words + brief). |
 | P1 | Crucible @ 1080p | The 3D hull in the bottom-right renders over BACK / ESC and the footer hint. **Fixed** (foot z-index + solid void backing, stronger art bottom fade, `‹ BACK` + ESC keycap rail). |
 | P1 | Crucible | Step tabs mix three styles: boxed "01 ENCOUNTER", bare "02 SHIP & KIT", and lowercase "03 / Armory". **Fixed** (one uppercase tab face; selected = Hand underline; muted `03 ARMORY` / `03 LAUNCH`). |
-| P1 | Settings / Video | Live HUD preview's FOV readout collides with the speed dial at 1280 width. |
+| P1 | Settings / Video | Live HUD preview's FOV readout collides with the speed dial at 1280 width. **Fixed** (ui-polish-28, see § Settings / Video — FOV reading clears the Speed Dial). |
 | P1 | Settings | Value numerals (52%, 1.00x) use the thin read face while the rest of the row is Archivo legend caps — reads as two different products. |
 | P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. **Fixed** (Tab walks verbs → reference line → Credits/Achievements, wraps). |
 | P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. **Fixed** (dial fades up from under the name; awake verb seated clear of tick + leader). |
@@ -778,3 +778,15 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Checked:** 960×540, 1280×720, 1920×1080, 390×844 (every scroll stop) and 700×900 for all three record states. The bench measures no tangled or buried type at 960 or phone. Before, the phone had 6–7 ON TOP OF findings per state. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. **Still open:** on a ~400px phone dial the hub's "4,200 cr bounty" line comes close to the two lower tokens. That spacing comes from the dial geometry in footprintDial.js and was not changed here.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28h/{before,after,after-scroll}/` and `compare-{960,390,1280-marked}.png`.
+
+## Settings / Video — FOV reading clears the Speed Dial (ui-polish-28)
+
+**Before:** on a narrow preview stage (every desktop size up to 1920, and the phone) the FOV reading was pinned 118px left of the corner fan. At 1280×720, "50°" sat inside the Speed Dial's tick ring and its FOV label crowded the first ability key. At 960×540 it printed "50° FOVWU/S" across the dial's own numeral. On the phone, FOV ran over the first two ability keys.
+
+**After (`src/ui/orrery/settingsPreview.js` only, no markup, selector or ID changes):** `layout()` places the reading from the Cluster's own geometry. It stacks the degrees over FOV, sets it beside the fan in the gap between the dial's ring and the fan, and keeps it above the first key. When the stage is too narrow for that gap (the 133px stage at 960), it sits as one line under the Cluster. Non-compact stages keep the CSS placement.
+
+**Checked:** 390×844, 960×540, 1280×720, 1920×1080 on Settings → Video with the FOV row focused. The bench boxes show ≥25px from the dial ring at 1280 and the reading above key 1 at every size. Focused tests pass: fb-settings-a11y, pro-15-settings-row-ownership, settings-slider-persistence. **Still open (frozen file):** at 960×540 the Settings grid (`settingsLayouts.js`, #374 freeze) gives the preview a 133px column that runs past the right edge. The description reads "How wide the cam…", the HUD legend is cut off (HULL/SHIELD/ARMO) and the fan sits on the Cluster. That needs the grid to drop or narrow the preview at 901–1100 once the freeze lifts.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28i/{before,after}/settings-video-fov-*.png` and `compare-*.png`.
+
+*If #374's REVIEW.md changes conflict with this file on merge, keep both. This section only covers `src/ui/orrery/settingsPreview.js`.*

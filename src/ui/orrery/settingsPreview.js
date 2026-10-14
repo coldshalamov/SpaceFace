@@ -239,6 +239,7 @@ const CSS = `
 .orr-set-hud.is-compact .orr-set-hud__fov { width:112px; height:84px; }
 .orr-set-hud.is-compact .orr-set-hud__fovread { top:54px; right:118px; width:auto; }
 .orr-set-hud.is-compact .orr-set-hud__fovread b { font-size:22px; }
+.orr-set-hud.is-compact .orr-set-hud__fovread.is-stacked { flex-direction:column; align-items:center; gap:3px; }
 .orr-set-hud__fovread b { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 300; font-weight:300; font-size:26px; line-height:1; color:rgb(248 244 234);
   display:inline-flex; font-variant-numeric:tabular-nums; }
 .orr-set-hud__fovread b .orr-counter { height:1em; }
@@ -558,6 +559,11 @@ function buildDial(doc) {
 
 // ---- the miniature HUD ---------------------------------------------------------------------------
 const CL = Object.freeze({ W: 760, H: 540, compactW: 560 });
+// Cluster units: the Speed Dial's right edge with its tick ring and labels (face 244 + the 34 the beam
+// also keeps clear of), and the top of the first ability key. The compact fan is 112px wide (CSS).
+const DIAL_EDGE = 278;
+const KEYS_TOP = 108;
+const FAN_COMPACT_W = 112;
 const DEMO = Object.freeze({
   hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armor: 20, armorMax: 30,
   energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, boost: 0.7, drift: 0,
@@ -700,6 +706,34 @@ function buildHud(doc) {
     scaleRead.style.transform = 'translateX(-100%)';
     scaleRead.style.top = `${f1(ft - 40)}px`;
     footCorner = { x: fl, y: ft };
+    placeFovRead(left, top, s, h);
+  };
+  // A narrow stage tucks the fan into the top-right corner. The FOV reading used to sit at a fixed
+  // offset left of it, which at 1280 put "50°" inside the Speed Dial's tick ring and its label on
+  // the first ability key. It now stands, stacked (degrees over FOV), in the gap between the dial's
+  // ring and the fan, above the keys. A stage too narrow for that gap sets it as one line under the
+  // Cluster instead. A wide stage keeps the CSS placement under the fan.
+  const placeFovRead = (left, top, s, h) => {
+    const st = fovRead.style;
+    if (!compact()) {
+      fovRead.classList.remove('is-stacked');
+      st.left = ''; st.top = ''; st.right = '';
+      return;
+    }
+    fovRead.classList.add('is-stacked');
+    st.right = 'auto';
+    const rw = fovRead.offsetWidth || 44;
+    const rh = fovRead.offsetHeight || 42;
+    const from = left + DIAL_EDGE * s + 8;
+    const to = box.w - FAN_COMPACT_W - 8;
+    if (to - from >= rw) {
+      st.left = `${f1(to - rw)}px`;   // beside the fan it reads
+      st.top = `${f1(Math.max(4, top + KEYS_TOP * s - rh - 8))}px`;
+      return;
+    }
+    fovRead.classList.remove('is-stacked');
+    st.left = `${f1(left)}px`;
+    st.top = `${f1(Math.min(box.h - (fovRead.offsetHeight || 26), top + h + 6))}px`;
   };
   const fit = () => Math.max(0.2, Math.min(box.w / (compact() ? CL.compactW : CL.W), (box.h - reserveCap() - reserveHint()) / CL.H));
   // room over and under the Cluster only on the tab that draws the hint (Gameplay) or the caption (Access)
