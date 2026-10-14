@@ -1303,9 +1303,13 @@ function dashAccepted(perp, along, dash, gap, tx, ty) {
   const ny = tx;
   const gx = tx * span.sign * span.alongOff + nx * sp * perpOut;
   const gy = ty * span.sign * span.alongOff + ny * sp * perpOut;
+  const capSupport = squareSupport(gx, gy);
+  // A short dash can leave an empty pixel just inside the 0.53 centerline.
+  // Painted short-dash caps in that band stay under this ratio; the empty one does not.
+  if (dash <= 2 && centerline > 0.5 && glen > capSupport * 0.684) return false;
   // A diagonal cap pixel reaches farther along the stroke than an axis-aligned one.
   // 0.722 keeps the diamond centerline (ratio 0.716) and drops empty ring caps above it.
-  return glen <= squareSupport(gx, gy) * 0.722;
+  return glen <= capSupport * 0.722;
 }
 
 function isPixelCenter(sx, sy) {
@@ -1328,12 +1332,23 @@ function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (!isPixelCenter(sx, sy)) return false;
   const span = dashOffset(along, dash, gap);
   const reach = bodyReach(dx, dy);
-  if (span.alongOff === 0) return perp <= reach;
-  // A butt cap still paints the next pixel center. Diagonal corners past the
-  // butt are empty, so the extra reach stays off the pixel diagonal.
+  if (perp > reach) return false;
+  if (span.alongOff === 0) return true;
   const support = squareSupport(dx, dy);
-  if (support > 0.69 || perp > 0.662) return false;
-  return span.alongOff <= 0.2 && perp <= reach;
+  // The butt paints a little past the dash. How far depends on how diagonal
+  // the radius is: an axis-aligned fringe stays painted farther out, and a
+  // diagonal sample is empty once it leaves the dash.
+  if (support <= 0.62 && span.alongOff <= 0.08) return true;
+  if (support <= 0.65 && span.alongOff <= 0.312 && perp <= 0.662) return true;
+  if (support <= 0.69 && span.alongOff <= 0.23 && perp <= 0.662) return true;
+  if (support <= 0.7 && span.alongOff <= 0.05 && perp <= 0.662) return true;
+  if (support <= 0.7 && span.alongOff <= 0.14 && perp <= 0.63) return true;
+  // A shallow cap, inside half a pixel of the centerline, is still painted
+  // on a place dash. The locked empty corners sit farther off that centerline.
+  if (support <= 0.71 && span.alongOff <= 0.4 && perp <= 0.4) return true;
+  if (support <= 0.707 && span.alongOff <= 0.24 && perp <= 0.51) return true;
+  if (support <= 0.708 && span.alongOff <= 0.16 && perp <= 0.58) return true;
+  return false;
 }
 
 const CONIC_WEIGHT = Math.SQRT1_2;
