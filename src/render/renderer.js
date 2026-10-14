@@ -26740,13 +26740,16 @@ export const render = {
       previous,
       currentOnly
         ? 1
-        : poseSpanAlpha(
-          snapshot,
-          previous,
-          this.state ? this.state.accumulator : NaN,
-          LOOP_FIXED_DT,
-          alpha,
-        ),
+        : (Number.isFinite(this._snapshotPresentationAlpha)
+          && this._snapshotPresentationSequence === snapshot.sequence
+          ? this._snapshotPresentationAlpha
+          : poseSpanAlpha(
+            snapshot,
+            previous,
+            this.state ? this.state.accumulator : NaN,
+            LOOP_FIXED_DT,
+            alpha,
+          )),
       slot,
     );
     if (!applied) return false;
@@ -28699,6 +28702,15 @@ export const render = {
       tryPresentedCall(this, 'ship-pitch', () => {
         updateShipPitchPresentation(this.state, this._presentationFrameDt);
       });
+      if (this._snapshotFence) {
+        this._snapshotPresentationAlpha = this._snapshotFence.samplePresentationAlpha(
+          this._presentationFrameDt,
+          this.state ? this.state.accumulator : 0,
+          LOOP_FIXED_DT,
+          alpha,
+        );
+        this._snapshotPresentationSequence = this._snapshotFence.sequence;
+      }
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
       if (this.cam && typeof this.cam.follow === 'function') {

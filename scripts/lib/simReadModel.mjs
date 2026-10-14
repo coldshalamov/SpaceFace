@@ -575,15 +575,15 @@ export const DOMAIN_WARM_TICKS = 10;
 // every pass (add/remove detection trails by the interval; leaf signing inside
 // the known set keeps its own tier cadence). Warm leaves and enumerations are
 // staggered round-robin by node slot so per-pass cost stays flat. Cold leaves
-// fire in ALIGNED bursts (a bounded 1/DOMAIN_COLD_TICKS of passes — excluded
-// from p95, amortized and reported as diffMs max) at DOMAIN_COLD_OFFSET,
-// offset half a period from the probe sweep so no single pass does both.
+// use the same staggering: signing every market/history leaf on one pass
+// stalls the worker's next pose reply even if the average cost looks small.
+// The old aligned offset remains available for explicit diagnostic comparisons.
 export const DOMAIN_ENUM_TICKS = 10;
 export const DOMAIN_COLD_OFFSET = DOMAIN_COLD_TICKS >> 1;
 // Stage-6 per-domain freshness budgets (item C): leaf paths under a listed
 // root re-sign no more often than N passes. The effective interval is
 // max(sizeTier, cadence) — cadence only ever RELAXES a leaf (markets refresh
-// ~6x/s, slow UI bags ~1x/s); a cold leaf keeps its aligned-burst slot.
+// ~6x/s, slow UI bags ~1x/s); a cold leaf keeps its 60-pass freshness budget.
 // Roots not listed keep the size-tier schedule unchanged.
 export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
@@ -626,7 +626,7 @@ function domainCadenceFor(rootKey) {
 // worker realm; the facade probe/checker consumes it in the main realm. Both
 // realms must install the SAME profile before the first diff pass or the probe
 // path sets diverge — the runner ships it on the init directive so the two
-// realms can't drift. Empty profile reproduces the stage-6 shape byte-for-byte.
+// realms can't drift. Empty profile keeps the stage-6 shape and staggers cold work.
 //   expandPaths: [{segs, depth}] — prefix expansion overrides (was the frozen
 //     DOMAIN_EXPAND_PATHS knob; a matching prefix raises expand depth).
 //   leafViews: [{segs, leafSegs, drop, deferFirstSign, firstSignTicks}] — leaf
@@ -634,14 +634,14 @@ function domainCadenceFor(rootKey) {
 //     sign/ship the leaf minus the named keys; deferFirstSign spreads
 //     first-signs onto a slot schedule (firstSignTicks ticks — defaults to the
 //     root cadence, DOMAIN_COLD_TICKS flattens a mass-mint hardest).
-//   staggerCold: cold leaves join the staggered schedule instead of firing in
-//     the aligned DOMAIN_COLD_OFFSET burst.
-const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: false };
+//   staggerCold: defaults true; explicit false restores the aligned
+//     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
+const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
 
 export function configureDomainMirroring(config = {}) {
   activeDomainConfig.expandPaths = Array.isArray(config.expandPaths) ? config.expandPaths : [];
   activeDomainConfig.leafViews = Array.isArray(config.leafViews) ? config.leafViews : [];
-  activeDomainConfig.staggerCold = config.staggerCold === true;
+  activeDomainConfig.staggerCold = config.staggerCold !== false;
 }
 
 // Find the leaf-view rule covering a leaf path, or null. leafSegs must equal
@@ -1177,10 +1177,9 @@ export function createDomainDiffer(options = {}) {
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       const interval = Math.max(tierTicks, cadence);
       if (interval > 1) {
-        // Stage-6 semantics: cold leaves fire in an aligned burst (the
-        // amortized pass the p95 exclusion covers); every other interval
-        // staggers by node slot. staggerCold moves cold onto the same
-        // staggered schedule — the burst becomes a flat per-pass cost.
+        // Keep the same maximum freshness interval while spreading recurring
+        // large canonical/signature walks across replies. Initial values still
+        // ship immediately below; only an explicit diagnostic profile aligns.
         if (!activeDomainConfig.staggerCold
             && tierTicks === DOMAIN_COLD_TICKS && interval === DOMAIN_COLD_TICKS) {
           if (tick % DOMAIN_COLD_TICKS !== DOMAIN_COLD_OFFSET) return;
