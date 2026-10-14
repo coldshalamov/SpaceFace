@@ -1307,6 +1307,11 @@ function dashAccepted(perp, along, dash, gap, tx, ty) {
   // A short dash can leave an empty pixel just inside the 0.53 centerline.
   // Painted short-dash caps in that band stay under this ratio; the empty one does not.
   if (dash <= 2 && centerline > 0.5 && glen > capSupport * 0.684) return false;
+  // An outside trigger sample can land inside that same ball after the flat butt
+  // has left the pixel. The inner side, a short place dash, and an axis-aligned
+  // cap still paint; this outside diagonal does not.
+  if (dash > 2 && perp > 0 && centerline > 0.515 && span.alongOff > 0.408
+    && squareSupport(tx, ty) > 0.66 && absPerp < 0.34) return false;
   // A diagonal cap pixel reaches farther along the stroke than an axis-aligned one.
   // 0.722 keeps the diamond centerline (ratio 0.716) and drops empty ring caps above it.
   return glen <= capSupport * 0.722;

@@ -6990,6 +6990,7 @@ test('empty dash pixels stay empty and painted dash pixels select', async () => 
   const emptyRing = { objects: [{ id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 20 }] };
   assert.equal(hitTest(emptyRing, 352.5, 257.5, stageCam, stage), null);
   assert.equal(hitTest(emptyRing, 343.5, 270.5, stageCam, stage), null);
+  assert.equal(hitTest(emptyRing, 455.5, 267.5, stageCam, stage), null);
   const dialect = await loadDialect();
   const moth = { id: 'moth', kind: 'actor', profile: 'enemy.mothlight', x: 0, z: 0 };
   assert.equal(hitTest({ objects: [moth] }, 99.5, 78.5, camera, view, dialect.draw), 'moth');
