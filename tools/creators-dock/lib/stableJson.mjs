@@ -443,6 +443,14 @@ let definePropertiesBase = null;
 let reflectDefineBase = null;
 let freezeBase = null;
 
+function flagIsFalse(desc, key) {
+  return Object.prototype.hasOwnProperty.call(desc, key) && !desc[key];
+}
+
+function omittedOrFalse(desc, key) {
+  return !Object.prototype.hasOwnProperty.call(desc, key) || !desc[key];
+}
+
 function blocksDefine(obj, prop, desc) {
   if (!protectedHas(obj) || !desc || typeof desc !== 'object') return false;
   if (typeof desc.get === 'function') return true;
@@ -454,10 +462,10 @@ function blocksDefine(obj, prop, desc) {
   const sealsWritable = !!current
     && Object.prototype.hasOwnProperty.call(current, 'value')
     && current.writable !== false
-    && desc.writable === false;
+    && flagIsFalse(desc, 'writable');
   const sealsConfigurable = !!current
     && current.configurable !== false
-    && desc.configurable === false
+    && flagIsFalse(desc, 'configurable')
     && Object.prototype.hasOwnProperty.call(desc, 'value');
   const read = accessorValue(current, obj);
   const sealsAccessor = !!current
@@ -470,8 +478,8 @@ function blocksDefine(obj, prop, desc) {
     && (typeof desc.get === 'function' || typeof desc.set === 'function');
   const sealsMissing = !current
     && Object.prototype.hasOwnProperty.call(desc, 'value')
-    && (desc.writable === false || desc.configurable === false);
-  const freezesLength = Array.isArray(obj) && prop === 'length' && desc.writable === false;
+    && (omittedOrFalse(desc, 'writable') || omittedOrFalse(desc, 'configurable'));
+  const freezesLength = Array.isArray(obj) && prop === 'length' && flagIsFalse(desc, 'writable');
   return changesValue || sealsWritable || sealsConfigurable || sealsAccessor
     || replacesDataWithAccessor || sealsMissing || freezesLength;
 }

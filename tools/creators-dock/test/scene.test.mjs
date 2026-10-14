@@ -5124,6 +5124,84 @@ test('a deleted credits field cannot be sealed back as data', async () => {
   assert.equal(redone.history.present, present);
 });
 
+test('an omitted define flag does not seal deleted credits or zoom', () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const camera = present.camera;
+  assert.equal(world.credits, 5000);
+  assert.equal(camera.zoom, 3.2);
+  undone.history.future[0].toJSON = function () {
+    delete world.credits;
+    Reflect.defineProperty(world, 'credits', { value: 5000 });
+    delete camera.zoom;
+    Reflect.defineProperty(camera, 'zoom', { value: 3.2 });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
+  const zoomDesc = Object.getOwnPropertyDescriptor(camera, 'zoom');
+  assert.equal(creditDesc.value, 5000);
+  assert.equal(creditDesc.writable, true);
+  assert.equal(creditDesc.configurable, true);
+  assert.equal(typeof creditDesc.get, 'undefined');
+  assert.equal(zoomDesc.value, 3.2);
+  assert.equal(zoomDesc.writable, true);
+  assert.equal(zoomDesc.configurable, true);
+  world.credits = 9;
+  camera.zoom = 3.2;
+  assert.equal(world.credits, 9);
+  assert.equal(camera.zoom, 3.2);
+  assert.equal(redone.history.present, present);
+  assert.equal(redone.history.present.world, world);
+  assert.equal(redone.history.present.camera, camera);
+});
+
+test('a zero define flag does not seal deleted credits or zoom', () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const camera = present.camera;
+  assert.equal(world.credits, 5000);
+  assert.equal(camera.zoom, 3.2);
+  undone.history.future[0].toJSON = function () {
+    delete world.credits;
+    Reflect.defineProperty(world, 'credits', {
+      value: 5000,
+      writable: 0,
+      configurable: 0,
+      enumerable: true,
+    });
+    delete camera.zoom;
+    Reflect.defineProperty(camera, 'zoom', {
+      value: 3.2,
+      writable: 0,
+      configurable: 0,
+      enumerable: true,
+    });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  const creditDesc = Object.getOwnPropertyDescriptor(world, 'credits');
+  const zoomDesc = Object.getOwnPropertyDescriptor(camera, 'zoom');
+  assert.equal(creditDesc.value, 5000);
+  assert.equal(creditDesc.writable, true);
+  assert.equal(creditDesc.configurable, true);
+  assert.equal(zoomDesc.value, 3.2);
+  assert.equal(zoomDesc.writable, true);
+  assert.equal(zoomDesc.configurable, true);
+  world.credits = 9;
+  camera.zoom = 3.2;
+  assert.equal(world.credits, 9);
+  assert.equal(camera.zoom, 3.2);
+  assert.equal(redone.history.present, present);
+  assert.equal(redone.history.present.world, world);
+});
+
 test('a new nested field does not survive undo', async () => {
   const { undone, present } = sceneWithFuture();
   const world = present.world;
@@ -5158,6 +5236,36 @@ test('a new nested field does not survive undo', async () => {
   assert.equal(entity.pos.y, 0);
   assert.notEqual(entity.pos.y, 9);
   assert.equal(redone.history.present, present);
+});
+
+test('a reflected new key is not installed when its flags are omitted', async () => {
+  const { undone, present } = sceneWithFuture();
+  const world = present.world;
+  const cargo = objectById(present, 'cargo');
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
+  undone.history.future[0].toJSON = function () {
+    Reflect.defineProperty(world, 'name', { value: 'poison', enumerable: true });
+    Reflect.defineProperty(cargo, 'y', { value: 9, enumerable: true });
+    return this;
+  };
+  const back = restoreHistory(undone.history, 'undo');
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
+  assert.equal(back.ok, true, (back.issues || []).join('\n'));
+  const redone = restoreHistory(back.history, 'redo');
+  assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
+  assert.equal(Object.prototype.hasOwnProperty.call(world, 'name'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(cargo, 'y'), false);
+  assert.equal(redone.history.present, present);
+  const saved = savedProjectText(present);
+  assert.equal(saved.ok, true, (saved.issues || []).join('\n'));
+  assert.equal(saved.text.includes('"name": "poison"'), false);
+  const exported = await exportProject(present);
+  assert.equal(exported.ok, true, (exported.issues || []).join('\n'));
+  const entity = exported.scenario.entities.find((row) => row.alias === 'cargo');
+  assert.equal(entity.pos.y, 0);
+  assert.notEqual(entity.pos.y, 9);
 });
 
 test('prototype tags behind a get-only pocket stay keep', () => {
