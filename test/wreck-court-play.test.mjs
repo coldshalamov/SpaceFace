@@ -20,11 +20,39 @@ import {
   buildAdventureOffer,
   openCourtFromOffer,
   listCourtCases,
+  createWreckCourtSystem,
 } from '../src/systems/wreckCourt.js';
-import { WRECK_COURT_ENTRY_CASE, WRECK_COURT_EVIDENCE } from '../src/data/wreckCourt/index.js';
+import { WRECK_COURT_ENTRY_CASE, WRECK_COURT_EVIDENCE, caseDef, materializeCase } from '../src/data/wreckCourt/index.js';
+import { jitterSource, runIncident, segmentBlocked } from '../src/data/wreckCourt/physics.js';
+import { ballisticFit } from '../src/data/wreckCourt/reconstruct.js';
 
 const SEED = 40404;
 const SEED_B = 909;
+
+test('live court reuses a body contact sample for history and crushing', () => {
+  const session = openCourt({ caseId: WRECK_COURT_ENTRY_CASE, seed: SEED });
+  const player = { id: 'player', alive: true, pos: { ...session.player } };
+  const state = { entities: new Map([[player.id, player]]), playerId: player.id, simTime: session.simTime };
+  session.uid = 'contact-sample-test';
+  session.live = true;
+  const counts = new Map();
+  for (const body of session.bodies) {
+    body.entityId = `live:${body.id}`;
+    state.entities.set(body.entityId, { id: body.entityId, alive: true,
+      pos: { x: body.x, z: body.z }, vel: { x: body.vx, z: body.vz }, rot: body.heading,
+      data: { wreckCourt: { uid: session.uid, bodyId: body.id } } });
+  }
+  const system = createWreckCourtSystem();
+  system.ctx = { state, helpers: { combatPhysics: { sampleSolidContacts(id) {
+    counts.set(id, (counts.get(id) || 0) + 1);
+    return [{ normalImpulse: 1, relativeVelocity: { x: 0, z: 0 } }];
+  } } } };
+  system.session = session;
+  system.observe();
+  assert.equal(counts.size, session.bodies.length);
+  assert.equal([...counts.values()].every(count => count === 1), true);
+  assert.equal(session.bodies.every(body => body.historySpoiled), true);
+});
 
 test('twelve cases, two readings, save, and no sealed truth in the view', () => {
   const ids = listCourtCases();
@@ -168,6 +196,126 @@ test('the ambush skiff is not in the opening view', () => {
   const view = publicView(session);
   assert.equal(view.bodies.some((b) => b.id === 'shooter'), false);
   assert.equal(view.rumors.some((r) => r.bodyId === 'shooter'), false);
+});
+
+test('the seven placed answers are produced by the step', () => {
+  const kinds = (caseId) => proofTruth(openCourt({ caseId, seed: SEED })).events.map((e) => e.kind);
+  assert.ok(kinds('wc_faked_collision').includes('coat'));
+  assert.ok(kinds('wc_faked_collision').includes('thrust'));
+  assert.equal(kinds('wc_industrial_overload').includes('patch'), false);
+  assert.ok(kinds('wc_industrial_overload').includes('split'));
+  assert.ok(kinds('wc_ambush_as_accident').includes('groove'));
+  assert.equal(kinds('wc_ambush_as_accident').includes('patch'), false);
+  assert.ok(kinds('wc_abandoned_tow').includes('tether'));
+  assert.equal(kinds('wc_abandoned_tow').includes('fuel'), false);
+  assert.ok(kinds('wc_massline_snap').includes('impulse'));
+  assert.ok(kinds('wc_massline_snap').includes('shed'));
+  assert.equal(kinds('wc_massline_snap').includes('patch'), false);
+  assert.ok(kinds('wc_cookoff_chain').includes('shed'));
+  assert.equal(kinds('wc_cookoff_chain').includes('patch'), false);
+  assert.ok(kinds('wc_ricochet_blame').includes('reflect'));
+  assert.equal(kinds('wc_ricochet_blame').includes('patch'), false);
+  assert.ok(kinds('wc_clamp_shear').includes('shear'));
+  assert.equal(kinds('wc_clamp_shear').includes('untether'), false);
+
+  const cook = openCourt({ caseId: 'wc_cookoff_chain', seed: SEED });
+  const pods = cook.bodies.filter((b) => b.id.startsWith('pod_')).sort((a, b) => a.x - b.x);
+  assert.equal(pods.length, 4);
+  assert.ok(pods.every((p) => p.bornAt > 1));
+  const gaps = [];
+  for (let i = 1; i < pods.length; i += 1) gaps.push(pods[i].bornAt - pods[i - 1].bornAt);
+  assert.ok(gaps.every((g) => g > 0.6));
+
+  const fake = openCourt({ caseId: 'wc_faked_collision', seed: SEED });
+  assert.ok(fake.bodies.every((b) => b.scar && b.scar.material === 'polymer_coat'));
+  const tow = openCourt({ caseId: 'wc_abandoned_tow', seed: SEED });
+  const cable = tow.bodies.find((b) => b.id === 'cable_end');
+  const tug = tow.bodies.find((b) => b.id === 'tug');
+  assert.equal(cable.scar.material, 'tensile_neck');
+  assert.equal(tug.fuel, 0);
+  const snap = openCourt({ caseId: 'wc_massline_snap', seed: SEED });
+  assert.equal(snap.bodies.find((b) => b.id === 'skiff').integrity, 0);
+  assert.equal(snap.bodies.find((b) => b.id === 'cable').scar.material, 'tensile_neck');
+  const ambush = openCourt({ caseId: 'wc_ambush_as_accident', seed: SEED });
+  assert.ok(ambush.bodies.find((b) => b.id === 'rock').scar.faces.some((f) => f.kind === 'groove'));
+  const rico = openCourt({ caseId: 'wc_ricochet_blame', seed: SEED });
+  assert.ok(rico.bodies.find((b) => b.id === 'plate').scar.faces.some((f) => f.kind === 'plate'));
+});
+
+test('clamp shear faces are written when the line parts', () => {
+  const seed = 40404;
+  const def = caseDef('wc_clamp_shear');
+  const spawned = def.build({ seed, j: jitterSource(seed, def.id) });
+  for (const body of spawned.bodies) assert.equal(body.scar, null, `${body.id} spawned with a scar`);
+  const tetherEvent = spawned.events.find((e) => e.kind === 'tether');
+  assert.equal(tetherEvent.breakForce < 1e6, true);
+  const full = runIncident({ bodies: spawned.bodies, events: spawned.events, until: spawned.until });
+  const line = full.tethers[0];
+  assert.equal(line.broken, true);
+  assert.ok(line.brokeAt, 'the clamp released on a timer instead of the break force');
+  const shear = full.events.find((e) => e.kind === 'shear');
+  assert.ok(shear && shear.t > 2);
+  assert.equal(full.events.some((e) => e.kind === 'untether'), false);
+  const ship = full.bodies.find((b) => b.id === 'ship');
+  const pylon = full.bodies.find((b) => b.id === 'pylon');
+  assert.ok(ship.scar.faces.some((f) => f.kind === 'shear'));
+  assert.ok(pylon.scar.faces.some((f) => f.kind === 'shear'));
+  assert.ok(ship.vx > 12);
+
+  const session = openCourt({ caseId: 'wc_clamp_shear', seed });
+  const read = act(session, { verb: 'scan', targetId: 'ship', mode: 'structure' });
+  assert.equal(read.measurement.data.facesStation, true);
+
+  const bare = def.build({ seed, j: jitterSource(seed, def.id) });
+  bare.events = bare.events.filter((e) => !['tether', 'thrust', 'thrust_heading', 'untether'].includes(e.kind));
+  const stripped = runIncident({ bodies: bare.bodies, events: bare.events, until: bare.until });
+  const quiet = openCourt({ caseId: 'wc_clamp_shear', seed });
+  quiet.bodies = stripped.bodies;
+  quiet.notebook = { measurements: Object.create(null) };
+  for (const body of quiet.bodies) quiet.revealed[body.id] = true;
+  const missed = act(quiet, { verb: 'scan', targetId: 'ship', mode: 'structure' });
+  assert.equal(missed.ok, true, missed.error);
+  assert.equal(missed.measurement.data.facesStation, false);
+});
+
+test('internal overload stays an internal release', () => {
+  for (const seed of [4, 286, 40404]) {
+    const session = openCourt({ caseId: 'wc_industrial_overload', seed });
+    carefulInvestigation(session);
+    assert.equal(session.ruling && session.ruling.hypothesisId, 'internal_overload', `seed ${seed}`);
+  }
+  for (let seed = 0; seed < 400; seed += 1) {
+    const scene = materializeCase('wc_industrial_overload', seed);
+    const plates = scene.bodies.filter((b) => b.transponderGroup === 'barge');
+    const fit = ballisticFit(plates.map((b) => ({ x: b.x, z: b.z, vx: b.vx, vz: b.vz, mass: b.mass })));
+    assert.equal(plates.length >= 5, true, String(seed));
+    assert.equal(fit.residual < 48, true, `${seed} residual ${fit.residual}`);
+    assert.equal(fit.spreadSpeed > 12, true, `${seed} spread ${fit.spreadSpeed}`);
+  }
+  const spec = caseDef('wc_industrial_overload').build({ seed: 40404, j: jitterSource(40404, 'wc_industrial_overload') });
+  spec.events = spec.events.filter((e) => e.kind !== 'split');
+  const stripped = runIncident({ bodies: spec.bodies, events: spec.events, until: spec.until });
+  assert.equal(stripped.bodies.some((b) => b.id === 'barge'), true);
+  assert.equal(stripped.bodies.some((b) => b.id.startsWith('barge_')), false);
+  assert.equal(stripped.bodies.find((b) => b.id === 'tender').integrity, 1);
+});
+
+test('the necked cable sits on the far side of the rock', () => {
+  const seed = 40404;
+  const session = openCourt({ caseId: 'wc_massline_snap', seed });
+  const cable = session.bodies.find((b) => b.id === 'cable');
+  const skiff = session.bodies.find((b) => b.id === 'skiff');
+  const rock = session.bodies.find((b) => b.id === 'rock');
+  assert.equal(session.player.x, 260);
+  assert.equal(session.player.z, 200);
+  assert.ok(Math.hypot(cable.x - skiff.x, cable.z - skiff.z) > skiff.radius + cable.radius);
+  assert.equal(segmentBlocked(session.player.x, session.player.z, cable.x, cable.z, rock), true);
+  assert.equal(cable.scar && cable.scar.material, 'tensile_neck');
+  const spec = caseDef('wc_massline_snap').build({ seed, j: jitterSource(seed, 'wc_massline_snap') });
+  spec.events = spec.events.filter((e) => e.kind !== 'impulse' && e.kind !== 'shed');
+  const stripped = runIncident({ bodies: spec.bodies, events: spec.events, until: spec.until });
+  assert.equal(stripped.bodies.find((b) => b.id === 'skiff').integrity, 1);
+  assert.equal(stripped.bodies.some((b) => b.id === 'cable'), false);
 });
 
 test('the slingshot ship has left the scene', () => {

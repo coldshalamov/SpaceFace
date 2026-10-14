@@ -4,9 +4,12 @@ import { detectFailures, compareDigests } from '../../tools/agentic/stranger-lab
 import { assessJourney, listJourneys } from '../../tools/agentic/stranger-lab/lib/journeys.mjs';
 import { buildRouteManifest, SWEEP_SEEDS } from '../../tools/agentic/stranger-lab/lib/manifest.mjs';
 import { PERSONA_IDS, getPersona } from '../../tools/agentic/stranger-lab/lib/personas.mjs';
-import { redact } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
+import { redact, redactString } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
 import { runSession } from '../../tools/agentic/stranger-lab/lib/session.mjs';
 import { shrinkFailure } from '../../tools/agentic/stranger-lab/lib/shrink.mjs';
+import { compactRun, personaIdForSweepIndex, publicSweepRow, selectHeaded } from '../../tools/agentic/stranger-lab/lib/sweep.mjs';
+import { journeyWorldStepped, replayJourneyTape } from '../../tools/agentic/stranger-lab/lib/browserJourneyHost.js';
+import { createTapeReader } from '../../tools/agentic/stranger-lab/lib/tape.mjs';
 
 const CANARY = {
   journeyId: 'flight',
@@ -15,6 +18,37 @@ const CANARY = {
   fault: 'drop-thrust',
   surface: 'keyboard',
 };
+
+test('sparse tapes hold axes and recorded faults without repeating one-shot commands', async () => {
+  const tape = { frames: [
+    { tick: 2, moveX: 0.5, moveZ: 0, issuedMoveZ: 1, injectedFault: 'drop-thrust',
+      turnIntent: 0, scanPulse: true, tetherNearest: true, commands: [{ type: 'scan' }] },
+    { tick: 6, moveX: 0, moveZ: 0.75, turnIntent: 0.2, commands: [] },
+  ] };
+  const read = createTapeReader(tape);
+  assert.equal(read(0).moveX, 0);
+  assert.equal(read(2).commands.length, 1);
+  const held = read(3);
+  assert.equal(held.moveX, 0.5);
+  assert.equal(held.moveZ, 0);
+  assert.equal(held.issuedMoveZ, 1);
+  assert.equal(held.injectedFault, 'drop-thrust');
+  assert.equal(held.scanPulse, false);
+  assert.equal(held.tetherNearest, false);
+  assert.deepEqual(held.commands, []);
+  assert.equal(tape.frames[0].commands.length, 1);
+  const options = { journeyId: 'flight', seed: 7, ticks: 7 };
+  const sparse = await runSession({ ...options, playbackTape: tape, fault: 'drop-thrust' });
+  const denseRead = createTapeReader(tape);
+  const denseTape = { frames: Array.from({ length: 7 }, (_, tick) => ({ ...denseRead(tick), tick })) };
+  const dense = await runSession({ ...options, playbackTape: denseTape });
+  assert.notEqual(sparse.status, 'infra', sparse.error);
+  assert.equal(sparse.digest, dense.digest);
+  assert.equal(sparse.tape.frames[6].moveZ, 0.75, 'playback must not reinject the fault');
+  const browser = await replayJourneyTape({ journeyId: 'flight', seed: 7, tape });
+  assert.equal(browser.status, 'stepped', browser.error);
+  assert.equal(browser.ticks, 7, 'browser replays through the last recorded tick');
+});
 
 test('route manifest names twelve journeys, eight personas, and the live control schema', () => {
   const manifest = buildRouteManifest();
@@ -32,7 +66,7 @@ test('route manifest names twelve journeys, eight personas, and the live control
 
 test('personas are pure functions of the observation and seed', () => {
   const obs = {
-    tick: 30,
+    tick: 2,
     journeyId: 'flight',
     x: 0,
     z: 0,
@@ -46,22 +80,199 @@ test('personas are pure functions of the observation and seed', () => {
   };
   for (const id of PERSONA_IDS) {
     const persona = getPersona(id);
-    const left = persona.decide(obs, { seed: 7, tick: 30 });
-    const right = persona.decide(obs, { seed: 7, tick: 30 });
+    const left = persona.decide(obs, { seed: 7, tick: 2 });
+    const right = persona.decide(obs, { seed: 7, tick: 2 });
     assert.deepEqual(left, right, id);
+    const other = persona.decide(obs, { seed: 8, tick: 2 });
+    assert.notDeepEqual(left, other, `${id} ignored the seed`);
   }
 });
 
-test('redact strips account material', () => {
+test('failing sweep rows keep their tape, and combat or docking are not a flight replay', () => {
+  const kept = publicSweepRow({
+    status: 'fail',
+    tapeHash: 'abc',
+    confirmed: [{ id: 'unresponsive-commands' }],
+    tape: { frames: [{ tick: 0, moveZ: 1 }] },
+  });
+  assert.equal(kept.tape.frames.length, 1);
+  const dropped = publicSweepRow({
+    status: 'pass',
+    tapeHash: 'def',
+    confirmed: [],
+    tape: { frames: [{ tick: 0 }, { tick: 1 }] },
+  });
+  assert.equal(dropped.tape, undefined);
+  assert.equal(dropped.tapeTicks, 2);
+  const missed = publicSweepRow({
+    status: 'incomplete',
+    tapeHash: 'ghi',
+    confirmed: [],
+    tape: { frames: [{ tick: 3, moveZ: 0.65 }] },
+  });
+  assert.equal(missed.tape.frames.length, 1);
+  assert.equal(missed.tape.frames[0].moveZ, 0.65);
+  const forced = compactRun({
+    journeyId: 'mission',
+    personaId: 'first-time-pilot',
+    seed: 7,
+    status: 'incomplete',
+    tapeHash: 'forced',
+    tape: { frames: [{ tick: 3, moveZ: 0.65 }, { tick: 4, moveZ: 0.65 }] },
+  });
+  assert.equal(forced.tape.frames.length, 2);
+  const forcedRow = publicSweepRow(forced);
+  assert.equal(forcedRow.tape.frames.length, 2);
+  assert.equal(forcedRow.tape.frames[0].tick, 3);
+  const flightOnly = {
+    systems: ['actions', 'flight', 'weapons', 'physics'],
+    builtKinds: { ship: 1 },
+    builtHostile: 0,
+    builtTetherActive: false,
+  };
+  assert.equal(journeyWorldStepped('docking', flightOnly), false);
+  assert.equal(journeyWorldStepped('combat-death-retry', flightOnly), false);
+  assert.equal(journeyWorldStepped('launch', flightOnly), false);
+  assert.equal(journeyWorldStepped('mining', flightOnly), false);
+  assert.equal(journeyWorldStepped('flight', flightOnly), true);
+  assert.equal(journeyWorldStepped('docking', {
+    systems: ['actions', 'flight', 'weapons', 'physics', 'dockingCorridor'],
+    builtKinds: { station: 1, ship: 1 },
+  }), true);
+  assert.equal(journeyWorldStepped('combat-death-retry', {
+    systems: ['actions', 'flight', 'tacticalAI', 'weapons', 'physics', 'aiPorts', 'combat'],
+    builtKinds: { ship: 4 },
+    builtHostile: 3,
+  }), true);
+});
+
+test('the journey host steps docking and combat worlds, not an empty flight', async () => {
+  const docking = await runSession({
+    journeyId: 'docking', seed: 7, ticks: 2, personaId: 'meticulous-cargo-handler',
+  });
+  const dockingReplay = await replayJourneyTape({ journeyId: 'docking', seed: 7, tape: docking.tape });
+  assert.equal(dockingReplay.status, 'stepped', dockingReplay.error);
+  assert.equal(journeyWorldStepped('docking', dockingReplay.evidence), true);
+  const combat = await runSession({
+    journeyId: 'combat-death-retry', seed: 7, ticks: 2, personaId: 'reckless-improvisor',
+  });
+  const combatReplay = await replayJourneyTape({
+    journeyId: 'combat-death-retry', seed: 7, tape: combat.tape,
+  });
+  assert.equal(combatReplay.status, 'stepped', combatReplay.error);
+  assert.equal(journeyWorldStepped('combat-death-retry', combatReplay.evidence), true);
+  const flightOnly = {
+    systems: ['actions', 'flight', 'weapons', 'physics'],
+    builtKinds: { ship: 1 },
+    builtHostile: 0,
+  };
+  assert.equal(journeyWorldStepped('combat-death-retry', flightOnly), false);
+});
+
+test('a persona that does not know the route is not given the winning cue', () => {
+  const launch = {
+    tick: 5, journeyId: 'launch', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: true,
+    nearest: null,
+  };
+  for (const id of ['reckless-improvisor', 'weak-hardware-input-stress']) {
+    const action = getPersona(id).decide(launch, { seed: 7, tick: 5 });
+    assert.equal(action.commands.some((command) => command.type === 'undock'), false, id);
+  }
+  const mission = {
+    tick: 7, journeyId: 'mission', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: false,
+    nearest: null, missionActiveId: null,
+  };
+  const accept = getPersona('first-time-pilot').decide(mission, { seed: 7, tick: 7 });
+  assert.equal(accept.commands.some((command) => command.type === 'accept-mission'), false);
+  const crucible = {
+    tick: 3, journeyId: 'crucible-wave', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: false,
+    runPhase: 'inactive', nearest: null,
+  };
+  const begin = getPersona('first-time-pilot').decide(crucible, { seed: 7, tick: 3 });
+  assert.equal(begin.commands.some((command) => command.type === 'begin-run'), false);
+  const save = {
+    tick: 13, journeyId: 'save-continue', x: 0, z: 0, rot: 0, speed: 0, alive: true, docked: false,
+    sectorId: 'sector_helios_prime', jumpState: null, nearest: null,
+  };
+  const jump = getPersona('hostile-edge-case-explorer').decide(save, { seed: 7, tick: 13 });
+  assert.equal(jump.commands.some((command) => command.type === 'jump'), false);
+});
+
+test('headed selection covers every journey and keeps touch viewports', () => {
+  const runs = [];
+  let index = 0;
+  for (const journey of listJourneys()) {
+    for (const seed of SWEEP_SEEDS) {
+      runs.push({
+        journeyId: journey.id,
+        seed,
+        surface: index % 4 === 0 ? 'simulated-touch' : 'keyboard',
+        personaId: personaIdForSweepIndex(index),
+      });
+      index += 1;
+    }
+  }
+  const picked = selectHeaded(runs, 25);
+  assert.equal(picked.length, 25);
+  for (const journey of listJourneys()) {
+    assert.equal(picked.some((run) => run.journeyId === journey.id), true, journey.id);
+  }
+  assert.ok(picked.some((run) => run.journeyId === 'crucible-wave'));
+  assert.ok(picked.some((run) => run.journeyId === 'save-continue'));
+  assert.ok(picked.filter((run) => run.surface === 'simulated-touch').length >= 8);
+});
+
+test('the sweep assigns every persona, including hostile and weak-hardware', () => {
+  const seen = new Set();
+  for (let index = 0; index < 12 * SWEEP_SEEDS.length; index++) seen.add(personaIdForSweepIndex(index));
+  for (const id of PERSONA_IDS) assert.equal(seen.has(id), true, id);
+});
+
+test('redact strips account material and does not truncate tapes', () => {
+  const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
   const out = redact({
     email: 'pilot@example.com',
-    note: 'mail pilot@example.com bearer abcdef',
+    userId: 'pilot-9',
+    user_id: 'pilot-underscore',
+    username: 'Ada',
+    playerName: 'Ada',
+    player_name: 'Ada Underscore',
+    session: 'sess-live',
+    note: `mail pilot@example.com bearer abcdef password=hunter2 password hunter2 password"=sekret Authorization: Basic dXNlcjpwYXNz cookie=sid api_key=sk-live-abc123 ${jwt} user_id=pilot-underscore player_name=Ada Underscore Authorization Basic dXNlcjpwYXNz Cookie: session=sess-live supersecret user_id=pilot-underscore`,
     ok: true,
+    rows: Array.from({ length: 100 }, (_, index) => index),
   });
   assert.equal(out.email, '[redacted]');
+  assert.equal(out.userId, '[redacted]');
+  assert.equal(out.user_id, '[redacted]');
+  assert.equal(out.username, '[redacted]');
+  assert.equal(out.playerName, '[redacted]');
+  assert.equal(out.player_name, '[redacted]');
+  assert.equal(out.session, '[redacted]');
   assert.equal(out.note.includes('pilot@example.com'), false);
   assert.equal(out.note.includes('abcdef'), false);
+  assert.equal(out.note.includes('hunter2'), false);
+  assert.equal(out.note.includes('sekret'), false);
+  assert.equal(out.note.includes('dXNlcjpwYXNz'), false);
+  assert.equal(out.note.includes('cookie=sid'), false);
+  assert.equal(out.note.includes('sk-live-abc123'), false);
+  assert.equal(out.note.includes('eyJ'), false);
+  assert.equal(out.note.includes('pilot-underscore'), false);
+  assert.equal(out.note.includes('Ada Underscore'), false);
+  assert.equal(out.note.includes('sess-live'), false);
+  assert.equal(out.note.includes('supersecret:'), false);
+  const assigned = redactString('user_id=pilot-underscore player_name=Ada Underscore Authorization Basic dXNlcjpwYXNz Cookie: session=sess-live supersecret user_id=pilot-underscore');
+  assert.equal(assigned.includes('pilot-underscore'), false);
+  assert.equal(assigned.includes('Ada Underscore'), false);
+  assert.equal(assigned.includes('dXNlcjpwYXNz'), false);
+  assert.equal(assigned.includes('sess-live'), false);
+  assert.equal(assigned.includes('supersecret:'), false);
+  assert.match(assigned, /user_id=\[redacted\]/);
+  assert.match(assigned, /player_name=\[redacted\]/);
+  assert.match(assigned, /cookie: \[redacted\]/);
   assert.equal(out.ok, true);
+  assert.equal(out.rows.length, 100);
+  assert.equal(out.rows[99], 99);
 });
 
 test('negative controls do not invent unresponsive, dock, payment, or model failures', () => {
@@ -116,6 +327,272 @@ test('negative controls do not invent unresponsive, dock, payment, or model fail
   assert.equal(compareDigests('abc', 'abc'), null);
 });
 
+test('each causal detector fires on a crafted failure and stays quiet on its control', () => {
+  const flying = (patch = {}) => Array.from({ length: 40 }, (_, tick) => ({
+    tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false, x: tick, z: 0,
+    speed: 4, angVel: 0.2, nearest: null, credits: 100, ...patch,
+  }));
+  const thrusting = (patch = {}) => flying().map((sample) => ({
+    tick: sample.tick, moveZ: 1, moveX: 0, turnIntent: 0, brake: false, issuedMoveZ: 1, commands: [], ...patch,
+  }));
+  const stuck = detectFailures({
+    samples: flying({ x: 0, speed: 0 }),
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(stuck.failures.some((row) => row.id === 'unresponsive-commands' && row.origin === 'product'));
+  const approach = flying({
+    x: 0, speed: 0, dockPhase: 'approach', nearest: { kind: 'station', dist: 80 },
+  });
+  const approachStuck = detectFailures({
+    samples: approach,
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(approachStuck.failures.some((row) => row.id === 'unresponsive-commands'));
+  const close = flying({
+    x: 0, speed: 0, dockPhase: 'approach', nearest: { kind: 'station', dist: 12 },
+  });
+  const closeStuck = detectFailures({
+    samples: close,
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(closeStuck.failures.some((row) => row.id === 'unresponsive-commands'));
+  const closeSlow = flying().map((sample, index) => ({
+    ...sample,
+    x: index < 20 ? index * 0.5 : 10,
+    speed: index < 20 ? 4 : 0.2,
+    nearest: { kind: 'station', dist: 12 },
+    dockPhase: 'approach',
+  }));
+  const closeContact = detectFailures({
+    samples: closeSlow,
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(closeContact.failures.some((row) => row.id === 'unresponsive-commands'), false);
+  const pressed = Array.from({ length: 80 }, (_, tick) => {
+    const pinned = tick >= 40;
+    return {
+      tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
+      x: pinned ? 39 * 3.5 : tick * 3.5,
+      z: 0,
+      speed: pinned ? 217.72 : 210,
+      rot: 0.2,
+      angVel: 0,
+      nearest: { kind: 'station', dist: pinned ? 16.9 : 80, radius: 42 },
+    };
+  });
+  const pressedFrames = pressed.map((sample) => ({
+    tick: sample.tick, moveZ: 0.75, moveX: 0, turnIntent: 0, brake: false, issuedMoveZ: 0.75, commands: [],
+  }));
+  const pressedHull = detectFailures({
+    samples: pressed,
+    frames: pressedFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(pressedHull.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const pressedDead = detectFailures({
+    samples: pressed,
+    frames: pressedFrames.map((frame) => (
+      frame.tick < 40 ? frame : { ...frame, moveX: 1, turnIntent: 1 }
+    )),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(pressedDead.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const yawOnly = pressed.map((sample, tick) => (
+    tick < 40 ? sample : { ...sample, rot: 0.2 + (tick - 40) * 0.05, angVel: 0.05 }
+  ));
+  const yawOnlyFrames = pressedFrames.map((frame) => ({ ...frame, moveX: 0, turnIntent: frame.tick >= 40 ? 1 : 0 }));
+  const yawAfterMatch = detectFailures({
+    samples: yawOnly,
+    frames: yawOnlyFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(yawAfterMatch.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const yawIgnoresStrafe = detectFailures({
+    samples: yawOnly,
+    frames: yawOnlyFrames.map((frame) => ({ ...frame, moveX: frame.tick >= 40 ? 1 : 0 })),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(yawIgnoresStrafe.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const creepRot = -0.1309;
+  const creepStep = 0.098 / 24;
+  const creep = pressed.map((sample) => {
+    if (sample.tick < 40) return { ...sample, rot: creepRot };
+    const along = (sample.tick - 39) * creepStep;
+    return {
+      ...sample,
+      rot: creepRot,
+      x: 39 * 3.5 + (-Math.sin(creepRot) * along),
+      z: Math.cos(creepRot) * along,
+    };
+  });
+  const creepStart = creep[40];
+  const creepEnd = creep[64];
+  const creepDx = creepEnd.x - creepStart.x;
+  const creepDz = creepEnd.z - creepStart.z;
+  const creepMoved = Math.hypot(creepDx, creepDz);
+  const creepForward = creepDx * Math.cos(creepRot) + creepDz * Math.sin(creepRot);
+  const creepLateral = Math.abs(creepDx * -Math.sin(creepRot) + creepDz * Math.cos(creepRot));
+  assert.ok(creepMoved < 0.25 && creepMoved > 0.09);
+  assert.ok(Math.abs(creepForward) < 0.02);
+  assert.ok(creepLateral > 0.09 && creepLateral < 0.11);
+  const creepStraight = detectFailures({
+    samples: creep,
+    frames: pressedFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(creepStraight.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const creepStrafe = detectFailures({
+    samples: creep,
+    frames: pressedFrames.map((frame) => ({ ...frame, moveX: frame.tick >= 40 ? 1 : 0 })),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(creepStrafe.confirmed.some((row) => row.id === 'unresponsive-commands'), true);
+  const creepYaw = detectFailures({
+    samples: creep.map((sample, tick) => (
+      tick < 40 ? sample : { ...sample, rot: creepRot + (tick - 40) * 0.05, angVel: 0.05 }
+    )),
+    frames: pressedFrames.map((frame) => ({ ...frame, turnIntent: frame.tick >= 40 ? 1 : 0 })),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(creepYaw.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const reversed = pressed.map((sample) => (
+    sample.tick < 40 ? sample : { ...sample, speed: sample.tick < 50 ? 217.72 : 40 }
+  ));
+  const reverseFrames = pressedFrames.map((frame) => (
+    frame.tick < 50 ? frame : { ...frame, moveZ: -0.75, issuedMoveZ: -0.75 }
+  ));
+  const reverseHeld = detectFailures({
+    samples: reversed,
+    frames: reverseFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(reverseHeld.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const yawing = Array.from({ length: 40 }, (_, tick) => ({
+    tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
+    x: -16.75, z: 222.19, speed: 0, rot: tick * 0.05, angVel: 0.05,
+    nearest: { kind: 'station', dist: 16.9, radius: 42 },
+  }));
+  const yawFrames = yawing.map((sample) => ({
+    tick: sample.tick, moveZ: 1, moveX: 0, turnIntent: 0.8, brake: false, issuedMoveZ: 1, commands: [],
+  }));
+  const yawHeld = detectFailures({
+    samples: yawing,
+    frames: yawFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.equal(yawHeld.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
+  const deadInside = Array.from({ length: 40 }, (_, tick) => ({
+    tick, simTime: tick / 60, mode: 'flight', alive: true, docked: false,
+    x: -16.75, z: 222.19, speed: 217.72, rot: 0.4, angVel: 0,
+    nearest: { kind: 'station', dist: 16.9, radius: 42 },
+  }));
+  const deadFrames = deadInside.map((sample) => ({
+    tick: sample.tick, moveZ: 1, moveX: 1, turnIntent: 1, brake: false, issuedMoveZ: 1, commands: [],
+  }));
+  const deadStick = detectFailures({
+    samples: deadInside,
+    frames: deadFrames,
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(deadStick.failures.some((row) => row.id === 'unresponsive-commands' && row.origin === 'product'));
+
+  const menu = detectFailures({
+    samples: flying({ mode: 'menu' }),
+    frames: thrusting(),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(menu.failures.some((row) => row.id === 'unexpected-menu-fallback'));
+
+  const stalledSamples = flying();
+  for (const sample of stalledSamples) sample.simTime = 1;
+  const stalled = detectFailures({ samples: stalledSamples, frames: thrusting(), commands: [], asset: { essentialModelCheck: 'passed' } });
+  assert.ok(stalled.failures.some((row) => row.id === 'stalled-loading'));
+
+  const docked = flying();
+  docked[10] = { ...docked[10], docked: true, nearest: { kind: 'station', dist: 900 } };
+  const dock = detectFailures({ samples: docked, frames: thrusting(), commands: [], asset: { essentialModelCheck: 'passed' } });
+  assert.ok(dock.failures.some((row) => row.id === 'impossible-docking'));
+
+  const paid = detectFailures({
+    samples: flying(),
+    frames: thrusting({ moveZ: 0, issuedMoveZ: 0 }),
+    commands: [
+      { type: 'buy', tick: 2, intentId: 'twice', ok: true, charged: true, duplicate: false, total: 8 },
+      { type: 'buy', tick: 3, intentId: 'twice', ok: true, charged: true, duplicate: false, total: 8 },
+    ],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(paid.failures.some((row) => row.id === 'double-payment'));
+
+  const fake = detectFailures({
+    samples: flying(),
+    frames: thrusting({ moveZ: 0, issuedMoveZ: 0 }),
+    commands: [{ type: 'probe-dock', tick: 4, ok: true, berthed: false }],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(fake.failures.some((row) => row.id === 'false-success'));
+
+  const missionSamples = flying();
+  for (const sample of missionSamples) {
+    sample.missionStatus = 'active';
+    sample.missionActiveId = 'stuck-contract';
+  }
+  const stuckMission = detectFailures({
+    samples: missionSamples,
+    frames: thrusting({ moveZ: 0, issuedMoveZ: 0 }),
+    commands: [{ type: 'abandon-mission', tick: 1, missionId: 'stuck-contract', ok: true }],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(stuckMission.failures.some((row) => row.id === 'stuck-missions'));
+
+  const yaw = detectFailures({
+    samples: flying({ angVel: -0.2, x: 0 }),
+    frames: thrusting({ turnIntent: 1, moveZ: 0, issuedMoveZ: 0 }),
+    commands: [],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(yaw.failures.some((row) => row.id === 'wrong-ship-controls'));
+
+  const saved = detectFailures({
+    samples: flying(),
+    frames: thrusting({ moveZ: 0, issuedMoveZ: 0 }),
+    commands: [
+      { type: 'save', tick: 2, snapshot: { sectorId: 'a', credits: 10, x: 0, z: 0 } },
+      { type: 'continue', tick: 4, snapshot: { sectorId: 'b', credits: 10, x: 0, z: 0 } },
+    ],
+    asset: { essentialModelCheck: 'passed' },
+  });
+  assert.ok(saved.failures.some((row) => row.id === 'save-discontinuity'));
+
+  const missing = detectFailures({
+    samples: flying(),
+    frames: thrusting({ moveZ: 0, issuedMoveZ: 0 }),
+    commands: [],
+    asset: { essentialModelCheck: 'failed', detail: 'ship_missing' },
+  });
+  assert.ok(missing.confirmed.some((row) => row.id === 'missing-essential-model'));
+  assert.ok(compareDigests('left', 'right').id === 'determinism-drift');
+});
+
 test('no detected defect is not completion of docking or death and recovery', () => {
   const samples = [{ tick: 0, alive: true, mode: 'flight', docked: false },
     { tick: 100, alive: true, mode: 'flight', docked: false, dockPhase: 'approach' }];
@@ -148,6 +625,11 @@ test('canary reproduces the same fingerprint and the green control stays clean',
   assert.equal(green.status, 'pass', JSON.stringify(green.failures || green.error));
   assert.equal(green.confirmed.length, 0);
   assert.equal(green.digest, greenAgain.digest);
+  const bare = await runSession({ ...CANARY, fault: null, playbackTape: first.tape, ticks: first.ticks });
+  assert.equal(bare.fingerprint, first.fingerprint);
+  assert.equal(bare.digest, first.digest);
+  assert.ok(bare.failures.some((failure) => failure.origin === 'canary'));
+  assert.equal(bare.confirmed.length, 0);
 });
 
 test('shrinking keeps the canary and shortens the tape', async () => {
@@ -163,4 +645,61 @@ test('the docking pilot reaches the actual manifest berth without a synthetic do
   assert.equal(run.status, 'pass', JSON.stringify(run.completion || run.error));
   assert.equal(run.final.berthed, true);
   assert.equal(run.final.docked, false, 'headless sim does not pretend the station UI opened');
+});
+
+test('launch leaves a real berth and the mission route completes then fails', async () => {
+  const launch = await runSession({ journeyId: 'launch', seed: 7 });
+  assert.equal(launch.status, 'pass', JSON.stringify(launch.completion || launch.error));
+  assert.ok(launch.commands.some((row) => row.type === 'undock' && row.ok));
+  const mission = await runSession({ journeyId: 'mission', seed: 7 });
+  assert.equal(mission.status, 'pass', JSON.stringify({ completion: mission.completion, commands: mission.commands, error: mission.error }));
+  assert.ok(mission.milestones['mission:completed'] > 0);
+  assert.ok(mission.milestones['mission:failed'] > 0);
+});
+
+test('personas that do not know the route miss it and keep the tape', async () => {
+  const cases = [
+    ['launch', 'reckless-improvisor', 'fail'],
+    ['launch', 'weak-hardware-input-stress', 'fail'],
+    ['mining', 'first-time-pilot', 'incomplete'],
+    ['mission', 'first-time-pilot', 'fail'],
+    ['crucible-wave', 'first-time-pilot', 'fail'],
+    ['save-continue', 'hostile-edge-case-explorer', 'fail'],
+    ['docking', 'reckless-improvisor', 'incomplete'],
+    ['combat-death-retry', 'massline-stunt-pilot', 'fail'],
+    ['tether-attach-cut', 'first-time-pilot', 'incomplete'],
+  ];
+  for (const [journeyId, personaId, expected] of cases) {
+    const run = await runSession({ journeyId, personaId, seed: 7 });
+    assert.equal(run.status, expected, `${personaId} ${journeyId} ${JSON.stringify(run.completion && run.completion.missing)} ${JSON.stringify((run.failures || []).map((row) => row.id))}`);
+    assert.notEqual(run.status, 'pass');
+    const row = publicSweepRow(run);
+    assert.ok(row.tape && row.tape.frames && row.tape.frames.length > 0, `${personaId} ${journeyId} dropped the tape`);
+  }
+});
+
+test('drop-thrust docking still fails with no applied closure thrust', async () => {
+  const run = await runSession({
+    journeyId: 'docking',
+    personaId: 'meticulous-cargo-handler',
+    seed: 7,
+    fault: 'drop-thrust',
+  });
+  assert.equal(run.status, 'fail');
+  assert.ok(run.failures.some((failure) => failure.id === 'unresponsive-commands'));
+  assert.equal(run.tape.frames.filter((frame) => frame.moveZ > 0.5).length, 0);
+  assert.ok(run.tape.frames.some((frame) => frame.issuedMoveZ > 0.5));
+});
+
+test('combat death is a live wreck and recovery uses the combat owner', async () => {
+  const run = await runSession({ journeyId: 'combat-death-retry', seed: 7 });
+  assert.equal(run.status, 'pass', JSON.stringify({
+    completion: run.completion,
+    hull: run.final && run.final.hull,
+    shield: run.final && run.final.shield,
+    milestones: run.milestones,
+    error: run.error,
+  }));
+  assert.ok(run.milestones['player:death'] > 0);
+  assert.ok(run.commands.some((row) => row.type === 'recover' && row.ok));
 });

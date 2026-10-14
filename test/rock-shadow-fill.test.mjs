@@ -25,7 +25,7 @@ function terrainFill(shader, albedo, metalness, light, bodyLight) {
     .replace(/diffuseColor\.rgb/g, 'albedo');
   const evaluate = new Function(
     'albedo', 'metalnessFactor', 'sfLookShadowTint', 'sfRockSurface', 'sfLookRockFill',
-    'sfLight', 'sfBodyLight', 'saturate', `return ${expression};`,
+    'sfRockIllumination', 'sfBodyLight', 'saturate', `return ${expression};`,
   );
   const tint = shader.uniforms.sfLookShadowTint.value.toArray();
   return albedo.map((value, channel) => evaluate(
@@ -34,6 +34,36 @@ function terrainFill(shader, albedo, metalness, light, bodyLight) {
     value => Math.max(0, Math.min(1, value)),
   ));
 }
+
+function visibleRockIllumination(shader, diffuse, paintLuma) {
+  const expression = shader.fragmentShader.match(/float sfRockIllumination = ([\s\S]*?);/)[1];
+  const evaluate = new Function('totalDiffuse', 'sfPaintLuma', 'dot', 'max', 'vec3', `return ${expression};`);
+  return evaluate(diffuse, paintLuma,
+    (a, b) => a.reduce((sum, value, i) => sum + value * b[i], 0),
+    (a, b) => a.map((value, i) => Math.max(value, b[i])),
+    (...values) => values.length === 1 ? Array(3).fill(values[0]) : values,
+  );
+}
+
+test('terrain fill follows final AO-adjusted diffuse light, not pre-AO irradiance', async () => {
+  await preloadRockSurfaceLibrary(null, { loadTexture: async () => new THREE.Texture() });
+  const { material } = asteroidLeafResources('ast_common_rock', 4);
+  const shader = compiledShader(material);
+  assert.ok(shader.fragmentShader.indexOf('#include <aomap_fragment>')
+    < shader.fragmentShader.indexOf('float sfRockIllumination ='), 'measure only after AO has adjusted diffuse light');
+  const albedo = [0.06, 0.05, 0.04];
+  const paintLuma = 0.051404;
+  const lit = visibleRockIllumination(shader, albedo.map(v => v * 2), paintLuma);
+  assert.ok(lit > 1);
+  assert.deepEqual(terrainFill(shader, albedo, 0.025, lit, 1), [0, 0, 0], 'fully lit rock gains no fill');
+  const dark = visibleRockIllumination(shader, albedo.map(v => v * 0.08), paintLuma);
+  const filled = terrainFill(shader, albedo, 0.025, dark, 1);
+  const unlit = terrainFill(shader, albedo, 0.025, 0, 1);
+  assert.ok(filled.every((value, channel) => value >= unlit[channel] * 0.9),
+    'AO-darkened rock retains pigment fill even with a sun-facing geometric band');
+  assert.equal(visibleRockIllumination(shader, [-0.1, -0.1, -0.1], paintLuma), 0,
+    'negative shaped diffuse cannot over-amplify the fill');
+});
 
 test('dark geological faces retain reflected fill when their geometric light band disagrees', async () => {
   await preloadRockSurfaceLibrary(null, { loadTexture: async () => new THREE.Texture() });

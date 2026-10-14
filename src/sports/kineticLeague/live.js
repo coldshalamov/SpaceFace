@@ -122,10 +122,23 @@ export function createLiveKineticLeague() {
     },
     _line(payload, cut) {
       const session = this.session, venue = this._venue;
+      // The authority may break a line while its ball is being retired between serves.
+      if (cut && payload?.attachmentId && payload.attachmentId === session?.masslineAttachmentId) {
+        session.masslineLatched = false;
+        session.masslineAttachmentId = null;
+      }
       if (!venue || session?.phase !== 'play' || !payload || !venue.owned.has(payload.targetId)
           || ![payload.actorId, payload.ownerId, payload.controllerId].includes(this.state.playerId)) return;
       session.playerTouched = true; session.lastTouch = 'player'; session.touchAt = session.simTime;
-      if (!cut) { session.lastAttachAt = session.simTime; return; }
+      if (!cut) {
+        session.lastAttachAt = session.simTime;
+        if (payload.attachmentId) {
+          session.masslineAttachmentId = payload.attachmentId;
+          session.masslineLatched = true;
+          session.masslineArmed = false;
+        }
+        return;
+      }
       if (!['cut', 'pilot', 'throw_release', 'action_cut', 'tether_cut'].includes(payload.reason)) return;
       this._contacts.push({ kind: 'tether-cut', a: 'ship', b: venue.key(payload.targetId) });
     },
@@ -141,6 +154,7 @@ export function createLiveKineticLeague() {
       }
       const session = this.session, venue = this._venue;
       if (!venue || !session?.liveInput) return;
+      if (session.phase === 'play') this._consumeMassline();
       if (!['play', 'result'].includes(session.phase)) return;
       const poses = venue.snapshot(session.bodies);
       const previousPhase = session.phase;
@@ -187,6 +201,55 @@ export function createLiveKineticLeague() {
         result: session && !['play', 'result'].includes(session.phase) ? resultView(session) : null };
     },
     _publish() { this.state.physicsVenuePublic = { kind: 'league', ...this.status() }; },
+    _consumeMassline() {
+      const session = this.session;
+      const command = this.state.input?.actions?.massline;
+      const attachments = this._venue?.kernel?.attachments;
+      if (session.masslineAttachmentId && typeof attachments?.get === 'function'
+          && attachments.get(session.masslineAttachmentId)?.state !== 'active') {
+        session.masslineLatched = false;
+        session.masslineAttachmentId = null;
+      }
+      // The command object stays the caller's. A latch press is remembered until the hull is in reach.
+      if (command?.latch === true && !session.masslineLatched) session.masslineArmed = true;
+      if (command?.cut === true) {
+        session.masslineArmed = false;
+        const id = session.masslineAttachmentId;
+        if (id && attachments?.cut(id, this.state.playerId, 'action_cut')?.ok) {
+          session.masslineLatched = false;
+          session.masslineAttachmentId = null;
+        }
+        return;
+      }
+      if (!session.masslineArmed || session.masslineLatched) return;
+      const venue = this._venue;
+      const player = this.state.entities.get(this.state.playerId);
+      if (!attachments || !player?.pos) return;
+      let target = null;
+      let best = (session.tetherReach ?? 20) ** 2;
+      for (const body of session.bodies) {
+        if (!body.alive || !['ball', 'payload', 'stone', 'puck'].includes(body.role)) continue;
+        const entity = venue.entity(body.id);
+        if (!entity?.alive || !entity.pos) continue;
+        const dx = entity.pos.x - player.pos.x, dz = entity.pos.z - player.pos.z;
+        const dist2 = dx * dx + dz * dz;
+        if (dist2 <= best && dist2 > 0.25) { best = dist2; target = entity; }
+      }
+      if (!target) return;
+      const created = attachments.create({
+        defId: 'tether_standard', ownerId: player.id, targetId: target.id, restLength: 18,
+        sourceWorld: { x: player.pos.x, y: 0, z: player.pos.z },
+        targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
+      });
+      if (created?.ok) {
+        session.masslineArmed = false;
+        session.masslineLatched = true;
+        session.masslineAttachmentId = created.attachment?.id || null;
+        session.playerTouched = true;
+        session.lastTouch = 'player';
+        session.touchAt = session.simTime;
+      }
+    },
     footprint() { return this._venue ? this._venue.owned.size : 0; },
     newGame() { this.leave(); this.session = null; this.state.kineticLeague = freshLeagueMemory(); },
     serialize() {

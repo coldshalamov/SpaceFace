@@ -350,6 +350,7 @@ const PLACE_FILES = Object.freeze([
   ...Object.values(CERES_SHIPBREAK_FILES),
   'places/place_lane_beacon.glb',
   'places/place_nav_buoy.glb',
+  'places/place_47a_rescue_capsule.glb',
   'places/place_asteroid_seamed.glb',
   OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_debris_chunk,
   'places/place_station_billboard.glb',

@@ -5,8 +5,10 @@
 // this stepper produces. Y is up and unused. Heading 0 points +X, positive toward +Z.
 
 import { hash32, mulberry32 } from '../../core/rng.js';
+import { SIM_DT } from '../../core/sim.js';
 
-export const DT = 1 / 30;
+// One sim clock. Live court bodies are Rapier; this incident step uses the same dt.
+export const DT = SIM_DT;
 export const AMBIENT_K = 40;
 export const SHED_K = 900;
 export const COOL_TAU_S = 80;
@@ -106,16 +108,17 @@ function applyThrust(body, dt) {
   }
   const h = Math.min(dt, phase.remaining);
   phase.remaining -= h;
+  const scale = dt > 0 ? h / dt : 0;
   if (phase.mode === 'heading') {
     body.heading += (phase.spin || 0) * h;
-    const ax = Math.cos(body.heading) * phase.accel;
-    const az = Math.sin(body.heading) * phase.accel;
+    const ax = Math.cos(body.heading) * phase.accel * scale;
+    const az = Math.sin(body.heading) * phase.accel * scale;
     if (body.fuel != null && body.fuel > 0) body.fuel = Math.max(0, body.fuel - h);
     if (phase.remaining <= 0) body.thrust = null;
     return { ax, az };
   }
   if (phase.remaining <= 0) body.thrust = null;
-  return { ax: phase.ax, az: phase.az };
+  return { ax: phase.ax * scale, az: phase.az * scale };
 }
 
 function tetherForces(body, bodies, tethers) {
@@ -137,7 +140,15 @@ function tetherForces(body, bodies, tethers) {
     const force = tether.stiffness * stretch;
     if (Math.abs(force) > tether.breakForce) {
       tether.broken = true;
-      tether.brokeAt = { x: (body.x + other.x) / 2, z: (body.z + other.z) / 2 };
+      if (!tether.brokeAt) {
+        tether.brokeAt = { x: (body.x + other.x) / 2, z: (body.z + other.z) / 2 };
+        // dx points from this end toward the other. The torn face looks that way.
+        if (tether.shearOnBreak) {
+          tether.shearFrom = body.id;
+          tether.shearNx = dx / dist;
+          tether.shearNz = dz / dist;
+        }
+      }
       continue;
     }
     // Pull toward the other when stretched (stretch > 0). dx points at the other.
@@ -234,6 +245,7 @@ function fireEvent(event, bodies, tethers, log, t) {
     if (!body || body.fixed || body.destroyed) return;
     body.vx += event.jx / body.mass;
     body.vz += event.jz / body.mass;
+    if (event.breach) body.integrity = 0;
     return;
   }
   if (event.kind === 'thrust') {
@@ -260,13 +272,14 @@ function fireEvent(event, bodies, tethers, log, t) {
     parent.destroyed = true;
     parent.departed = true;
     for (const piece of event.children) bodies.push(spawnChild(parent, piece, t));
+    if (event.radiant) scorchNearby(parent, bodies, event.radiant);
     return;
   }
   if (event.kind === 'eject' || event.kind === 'shed') {
     const parent = bodies.find((b) => b.id === event.from);
     if (!parent || parent.destroyed || parent.departed) return;
     const child = spawnChild(parent, event.child, t);
-    if (event.kind === 'shed' && !child.noCollide) {
+    if (event.kind === 'shed' && !child.noCollide && event.child.ox == null && event.child.oz == null) {
       // Vent scale leaves beside the hull with the parent's velocity, not inside it.
       const hx = Math.cos(parent.heading);
       const hz = Math.sin(parent.heading);
@@ -276,19 +289,36 @@ function fireEvent(event, bodies, tethers, log, t) {
       child.vx = parent.vx;
       child.vz = parent.vz;
     }
+    if (event.part) {
+      const sp = Math.hypot(parent.vx, parent.vz) || 1;
+      const nx = parent.vx / sp;
+      const nz = parent.vz / sp;
+      child.scar = { nx, nz, material: 'tensile_neck', faces: [{ kind: 'neck', nx, nz }] };
+    }
     if (event.kind === 'eject' && parent.mass > child.mass) parent.mass -= child.mass;
     bodies.push(child);
     return;
   }
   if (event.kind === 'tether') {
+    const a = bodies.find((b) => b.id === event.a);
+    const b = bodies.find((b) => b.id === event.b);
+    let rest = event.rest;
+    if (rest === 'current' && a && b) rest = Math.hypot(a.x - b.x, a.z - b.z);
     tethers.push({
       a: event.a,
       b: event.b,
-      rest: event.rest,
+      rest,
       stiffness: event.stiffness,
       breakForce: event.breakForce,
       broken: false,
       brokeAt: null,
+      partOnBreak: !!event.partOnBreak,
+      shearOnBreak: !!event.shearOnBreak,
+      shearFrom: null,
+      shearNx: 0,
+      shearNz: 0,
+      sheared: false,
+      spawned: false,
     });
     return;
   }
@@ -315,6 +345,133 @@ function fireEvent(event, bodies, tethers, log, t) {
     if (!body) return;
     body.fuel = event.remaining;
     return;
+  }
+  if (event.kind === 'depart') {
+    const body = bodies.find((b) => b.id === event.id);
+    if (body) body.departed = true;
+    return;
+  }
+  if (event.kind === 'coat') {
+    const body = bodies.find((b) => b.id === event.id);
+    const other = bodies.find((b) => b.id === event.other);
+    if (!body || !other) return;
+    const dx = other.x - body.x;
+    const dz = other.z - body.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const nx = dx / len;
+    const nz = dz / len;
+    body.scar = { nx, nz, material: 'polymer_coat', faces: [{ kind: 'coat', nx, nz }] };
+    if (event.integrity != null) body.integrity = event.integrity;
+    return;
+  }
+  if (event.kind === 'reflect') {
+    const body = bodies.find((b) => b.id === event.id);
+    const plate = bodies.find((b) => b.id === event.plate);
+    if (!body || body.destroyed) return;
+    const nlen = Math.hypot(event.nx || 0, event.nz || 0) || 1;
+    const nnx = (event.nx || 0) / nlen;
+    const nnz = (event.nz || 0) / nlen;
+    const dot = body.vx * nnx + body.vz * nnz;
+    body.vx -= 2 * dot * nnx;
+    body.vz -= 2 * dot * nnz;
+    body.heading = Math.atan2(body.vz, body.vx);
+    if (plate && !(plate.scar && (plate.scar.faces || []).some((f) => f.kind === 'plate'))) {
+      plate.scar = { nx: nnx, nz: nnz, material: 'folded_ore', faces: [{ kind: 'plate', nx: nnx, nz: nnz }] };
+      plate.integrity = Math.min(plate.integrity ?? 1, 0.9);
+    }
+  }
+}
+
+function scorchNearby(origin, bodies, range) {
+  for (const other of bodies) {
+    if (other.id === origin.id || other.destroyed || other.departed || other.fixed) continue;
+    const dx = origin.x - other.x;
+    const dz = origin.z - other.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > range || dist < 1) continue;
+    const nx = dx / dist;
+    const nz = dz / dist;
+    other.scar = { nx, nz, material: 'soot', faces: [{ kind: 'soot', nx, nz }] };
+    other.integrity = Math.min(other.integrity ?? 1, 0.64);
+  }
+}
+
+function partCables(bodies, tethers, t) {
+  for (const tether of tethers) {
+    if (!tether.broken || !tether.partOnBreak || tether.spawned || !tether.brokeAt) continue;
+    tether.spawned = true;
+    const a = bodies.find((b) => b.id === tether.a);
+    const b = bodies.find((b) => b.id === tether.b);
+    if (!a || !b) continue;
+    const child = spawnChild(a, {
+      id: 'cable_end',
+      variant: 'wc_cable',
+      mass: 6,
+      radius: 5,
+      dvx: 0,
+      dvz: 0,
+      integrity: 0.45,
+      noCollide: true,
+      flavor: 'The end that stayed at the break.',
+    }, t);
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const nx = dx / len;
+    const nz = dz / len;
+    child.scar = { nx, nz, material: 'tensile_neck', faces: [{ kind: 'neck', nx, nz }] };
+    child.x = tether.brokeAt.x;
+    child.z = tether.brokeAt.z;
+    child.vx = (a.vx + b.vx) / 2;
+    child.vz = (a.vz + b.vz) / 2;
+    bodies.push(child);
+  }
+}
+
+function stampShear(body, nx, nz) {
+  const faces = (body.scar?.faces || []).filter((f) => f.kind !== 'shear').map((f) => ({ ...f }));
+  faces.push({ kind: 'shear', nx, nz });
+  body.scar = { nx, nz, material: 'torn_alloy', faces };
+}
+
+// A clamp parts when the line force exceeds breakForce. The faces are the
+// direction of that load, written here, not on the spawned bodies.
+function shearClamps(bodies, tethers, log, t) {
+  for (const tether of tethers) {
+    if (!tether.shearOnBreak || !tether.broken || tether.sheared || !tether.brokeAt || tether.shearFrom == null) continue;
+    const from = bodies.find((b) => b.id === tether.shearFrom);
+    const toId = tether.a === tether.shearFrom ? tether.b : tether.a;
+    const to = bodies.find((b) => b.id === toId);
+    if (!from || !to) continue;
+    tether.sheared = true;
+    stampShear(from, tether.shearNx, tether.shearNz);
+    stampShear(to, -tether.shearNx, -tether.shearNz);
+    log.push({ t, kind: 'shear', id: from.id, note: 'clamp parted under load' });
+  }
+}
+
+function cutGrooves(bodies, log, t) {
+  for (const round of bodies) {
+    if (round.variant !== 'wc_round' || round.destroyed || round.departed || round._grooved) continue;
+    const px = round.x - round.vx * DT;
+    const pz = round.z - round.vz * DT;
+    for (const rock of bodies) {
+      if (rock.variant !== 'wc_rock' || rock.destroyed || rock.departed) continue;
+      if (!segmentBlocked(px, pz, round.x, round.z, rock)) continue;
+      const sp = Math.hypot(round.vx, round.vz) || 1;
+      const nx = -round.vx / sp;
+      const nz = -round.vz / sp;
+      const faces = (rock.scar?.faces || []).map((f) => ({ ...f }));
+      if (!faces.some((f) => f.kind === 'groove')) faces.push({ kind: 'groove', nx, nz });
+      rock.scar = {
+        nx: rock.scar?.nx ?? nx,
+        nz: rock.scar?.nz ?? nz,
+        material: rock.scar?.material || 'stone',
+        faces,
+      };
+      round._grooved = true;
+      log.push({ t, kind: 'groove', id: rock.id, note: 'round cut the far face in flight' });
+    }
   }
 }
 
@@ -357,6 +514,9 @@ export function runIncident({ bodies, events = [], until, assayPoints = [], grav
       if (!body.thrust || body.thrust.mode !== 'heading') body.heading += body.omega * DT;
     }
     resolveCircles(live);
+    partCables(live, tethers, t);
+    shearClamps(live, tethers, log, t);
+    cutGrooves(live, log, t);
     sweepDepart(live);
   }
   for (const body of live) {

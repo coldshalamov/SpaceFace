@@ -26,6 +26,7 @@ export function observeState(state, ctx = {}) {
     sectorId: state.world && state.world.currentSectorId || null,
     alive: !!(player && player.alive !== false),
     hull: player && Number.isFinite(player.hull) ? round6(player.hull) : null,
+    shield: player && Number.isFinite(player.shield) ? round6(player.shield) : null,
     x: round6(pos.x || 0),
     z: round6(pos.z || 0),
     vx: round6(vel.x || 0),
@@ -69,12 +70,16 @@ function nearestContact(state, player) {
     const dist = Math.hypot(dx, dz);
     if (dist < bestD) {
       bestD = dist;
+      const collisionRadius = entity.data && Number.isFinite(entity.data.collisionRadius)
+        ? entity.data.collisionRadius
+        : entity.radius;
       best = {
         id: entity.id,
         kind: entity.type || 'unknown',
         dist: round6(dist),
         x: round6(entity.pos.x),
         z: round6(entity.pos.z),
+        radius: Number.isFinite(collisionRadius) ? round6(collisionRadius) : null,
         mass: Number.isFinite(entity.mass) ? round6(entity.mass) : null,
       };
     }

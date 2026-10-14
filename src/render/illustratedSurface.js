@@ -1,14 +1,14 @@
 // Illustrated industrial surfaces: shape the light, never quantize the texture.
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
 //
-// v10-v15 (the Look): every constant that decides the vibe is a shared Look
+// v10-v16 (the Look): every constant that decides the vibe is a shared Look
 // uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
 // gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
 import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v15';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v16';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -343,12 +343,14 @@ export function installIllustratedSurface(material) {
       // bloom threshold, so a sunlit ivory wall keeps its form instead of glowing. Coat, rim,
       // specular and lamps are light and stay free to bloom.
       .replace(OUTPUT_NEEDLE, `
-        // Retain scanned pigment/strata under reflected terrain fill. Attenuate by
-        // actual visible illumination: the geometric band ignores key visibility and
-        // normal-map relief, so it can report a bright roof on an actually dark face.
+        // Retain scanned pigment/strata under reflected terrain fill. Read the final
+        // diffuse response here: aomap_fragment runs after lights_fragment_end and
+        // can darken an apparently well-lit geological face. Pre-AO sfLight and the
+        // geometric band are not measurements of the pigment reaching the screen.
         // Lit stone keeps its response; the pigment ceiling still bounds dark-face fill.
+        float sfRockIllumination = dot(max(totalDiffuse, vec3(0.0)), vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
         vec3 sfRockFill = diffuseColor.rgb * (1.0 - metalnessFactor) * sfLookShadowTint
-          * (sfRockSurface * sfLookRockFill * (1.0 - saturate(sfLight)));
+          * (sfRockSurface * sfLookRockFill * (1.0 - saturate(sfRockIllumination)));
         vec3 sfPaint = (totalDiffuse + sfRockFill) * sfContour;
         float sfPaintY = dot(sfPaint, vec3(0.2126, 0.7152, 0.0722));
         // Gloss needs headroom: on pigment already near the ceiling (sunlit ivory) the coat and
