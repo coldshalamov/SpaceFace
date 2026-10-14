@@ -1348,6 +1348,21 @@ function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (support <= 0.71 && span.alongOff <= 0.4 && perp <= 0.4) return true;
   if (support <= 0.707 && span.alongOff <= 0.24 && perp <= 0.51) return true;
   if (support <= 0.708 && span.alongOff <= 0.16 && perp <= 0.58) return true;
+  // Painted butts the 0.4 along-limit misses. Each band is the measured
+  // footprint of those pixels; the empty corners sit outside every band.
+  if (support <= 0.535 && span.alongOff <= 0.414 && perp <= 0.136) return true;
+  if (support <= 0.6059 && span.alongOff <= 0.409 && perp <= 0.4682) return true;
+  if (support <= 0.6844 && span.alongOff <= 0.4587 && perp <= 0.2694) return true;
+  if (support <= 0.6953 && span.alongOff <= 0.383 && perp <= 0.4233) return true;
+  if (support <= 0.7064 && span.alongOff <= 0.4663 && perp <= 0.3028) return true;
+  if (support > 0.701 && support <= 0.7071 && span.alongOff <= 0.4508 && perp <= 0.3787) return true;
+  if (support > 0.699 && support <= 0.7059 && span.alongOff <= 0.4893 && perp <= 0.3389) return true;
+  if (perp > 0.43 && perp <= 0.444 && span.alongOff <= 0.4928 && support <= 0.7058) return true;
+  if (perp > 0.5007 && perp <= 0.5024 && span.alongOff <= 0.4645 && support <= 0.7063) return true;
+  if (span.alongOff > 0.424 && span.alongOff <= 0.4285 && support <= 0.7042 && perp <= 0.4946) return true;
+  if (support > 0.656 && support <= 0.6647 && span.alongOff <= 0.3809 && perp <= 0.5119) return true;
+  if (span.alongOff > 0.5205 && span.alongOff <= 0.5221 && support <= 0.7 && perp <= 0.3) return true;
+  if (support > 0.7052 && support <= 0.7063 && span.alongOff <= 0.6172 && perp <= 0.3867) return true;
   return false;
 }
 
