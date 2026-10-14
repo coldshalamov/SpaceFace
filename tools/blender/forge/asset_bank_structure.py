@@ -3,9 +3,10 @@ blender -b --python tools/blender/forge/asset_bank_structure.py [-- --only ID,ID
 Supporting authoring candidates, not live-runtime promotion.
 """
 import argparse,json,math,os,sys
+import bmesh
 from mathutils import Vector
 HERE=os.path.dirname(os.path.abspath(__file__));sys.path.insert(0,HERE)
-from forge import Ship,reset_scene,box,cylinder,ring as _ring,truss as _truss,beams,plate,plate_v,band
+from forge import Ship,reset_scene,box,cylinder,ring as _ring,truss as _truss,beams,plate,plate_v,band,_new_object
 from asset_bank_export import export_asset,render_preview,socket_rotation
 ROOT=os.path.abspath(os.path.join(HERE,'../../..'));OUT=os.path.join(ROOT,'assets/models/asset-bank/structure')
 COLORS={'paint':'#737d83','paint2':'#394b57','stripe':'#ad652c','hazard':'#c69328'}
@@ -40,7 +41,9 @@ def truss(s,name,a,b,w,bays,material='gunmetal',chord=None,web=None,**kwargs):
     return obj
 
 def solid(s,name,center,size,mat='paint',collision=True):
-    obj=box(s,name,center,size,mat,bevel=.035)
+    edge=.005 if mat=='glass' else .035
+    if s.id=='windowed_observation_end' and s.bank_lod_level>0:edge=0
+    obj=box(s,name,center,size,mat,bevel=edge)
     if collision:s.bank_boxes.append({'center':list(center),'size':list(size)})
     return obj
 
@@ -110,6 +113,28 @@ def structure(s,kind):
 def pipe(s,name,a,b,r=.37,r1=None,mat='paint2'):
     cylinder(s,name,a,b,r,r1=r1,material=mat,segments=16,cap=True,bevel=.025);beam_proxy(s,a,b,2*max(r,r1 or r))
 
+def curved_pipe(s,angle):
+    """Continuous formed elbow, not intersecting capped pipe segments.
+
+    Same end positions/tangents as the prior fitting, authored through Forge's
+    mesh/material/finish path; lower LODs reduce arc/cross-section samples.
+    """
+    steps=(16,12,8)[s.bank_lod_level];sides=(24,16,12)[s.bank_lod_level]
+    bm=bmesh.new();rings=[];path=[]
+    for i in range(steps+1):
+        a=angle*i/steps;c=Vector((-1.5+1.5*math.sin(a),1.5-1.5*math.cos(a),0));path.append(c)
+        side=Vector((-math.sin(a),math.cos(a),0));up=Vector((0,0,1))
+        rings.append([bm.verts.new(c+.37*(side*math.cos(j*2*math.pi/sides)+up*math.sin(j*2*math.pi/sides))) for j in range(sides)])
+    for i in range(steps):
+        for j in range(sides):k=(j+1)%sides;bm.faces.new((rings[i][j],rings[i][k],rings[i+1][k],rings[i+1][j]))
+    bm.faces.new(list(reversed(rings[0])));bm.faces.new(rings[-1]);bmesh.ops.recalc_face_normals(bm,faces=bm.faces)
+    s.add(_new_object('formed_elbow',bm,s.slots(['paint2']),bevel=.015,smooth_angle=35))
+    for a,b in zip(path[:-1],path[1:]):beam_proxy(s,a,b,.74)
+    for t in (.18,.82):
+        a=angle*t;c=(-1.5+1.5*math.sin(a),1.5-1.5*math.cos(a),0)
+        ring(s,'welded_reinforcement',c,.374,.025,axis=(math.cos(a),math.sin(a),0),material='stripe',segments=24,sides=6)
+
+
 def fluid(s,kind):
     paths=[];ports=[]
     if kind in ('pressure_pipe_straight','pressure_pipe_reducer','pressure_pipe_valve','pressure_pipe_capped_end','expansion_bellows'):
@@ -117,7 +142,7 @@ def fluid(s,kind):
     elif kind in ('pressure_pipe_elbow_90','pressure_pipe_elbow_45'):
         angle=math.pi/2 if kind.endswith('90') else math.pi/4
         pts=[(-1.5+1.5*math.sin(angle*i/8),1.5-1.5*math.cos(angle*i/8),0) for i in range(9)]
-        paths=list(zip(pts[:-1],pts[1:]));ports=[(pts[0],(-1,0,0)),(pts[-1],(math.cos(angle),math.sin(angle),0))]
+        curved_pipe(s,angle);ports=[(pts[0],(-1,0,0)),(pts[-1],(math.cos(angle),math.sin(angle),0))]
     elif kind in ('pressure_pipe_tee','pressure_pipe_cross','twin_manifold'):
         paths=[((-2,0,0),(2,0,0)),((0,0,0),(0,2,0))];ports=[((-2,0,0),(-1,0,0)),((2,0,0),(1,0,0)),((0,2,0),(0,1,0))]
         if kind.endswith('cross'):paths += [((0,0,0),(0,-2,0))];ports += [((0,-2,0),(0,-1,0))]
@@ -159,7 +184,7 @@ def habitat(s,kind):
             for x in (-1.5,1.5):ring(s,'saddle',(x,0,.35),1.25,.14,material='paint',segments=16,sides=6)
         return
     if kind=='service_umbilical':
-        solid(s,'wall_unit',(-2,0,0),(.5,1.4,1.8));truss(s,'arm',(-1.8,0,0),(1.5,0,0),.65,4,'gunmetal')
+        solid(s,'wall_unit',(-2,0,0),(.5,1.4,1.8));truss(s,'arm',(-1.8,0,0),(1.85,0,0),.65,4,'gunmetal')
         for y in (-.28,0,.28):pipe(s,'hose',(-1.8,y,-.4),(2,y,-.4),.09,mat='stripe')
         solid(s,'connector',(2,0,0),(.4,1.1,1.2),'paint2');s.socket('SOCKET_WALL',(-2.25,0,0),(-1,0,0));s.socket('SOCKET_CONNECTOR',(2.2,0,0),(1,0,0));return
     openings={(-1,0),(1,0)}
@@ -235,6 +260,30 @@ def quality_pass(s,kind):
         if kind=='heat_exchanger_cassette':
             for x in (-2,2):
                 beams(s,'release_handle',[((x,-.6,.58),(x,-.6,.88)),((x,-.6,.88),(x,.6,.88)),((x,.6,.88),(x,.6,.58))],.105,'hazard')
+    if kind in ('berth_jaw','loading_bridge','escape_capsule_cradle'):
+        length=6 if kind=='loading_bridge' else 4
+        # Rail feet bridge the old air gap between lattice and deck.
+        for x in (-length*.35,length*.35):
+            for y in (-1.4,1.4):solid(s,'rail_foot',(x,y,-.73),(.4,.45,.4),'paint2')
+        for x in (-length*.46,length*.46):solid(s,'threshold_grip',(x,0,-.84),(.18,2.5,.055),'hazard')
+        if kind!='loading_bridge':
+            for x in (-1.5,1.5):
+                for side in (-1,1):
+                    y=side*1.4;solid(s,'jaw_foot',(x,y,-.8),(.7,.7,.2),'gunmetal')
+                    cylinder(s,'jaw_pivot',(x,y-.3,.75),(x,y+.3,.75),.18,material='bare',segments=16,bevel=.015)
+                    solid(s,'jaw_grip',(x,side*1.13,.66),(.34,.14,.65),'dark')
+        else:
+            for x in (-1.42,1.42):
+                plate(s,'deck_tread',[(x-1.18,-1.1),(x+1.18,-1.1),(x+1.27,-.95),(x+1.27,.95),(x+1.18,1.1),(x-1.18,1.1),(x-1.27,.95),(x-1.27,-.95)],-.895,.1,'paint',chamfer=.035)
+            solid(s,'deck_expansion_joint',(0,0,-.85),(.15,2.5,.045),'dark',False)
+            for y in (-1.4,1.4):solid(s,'rail_guide',(0,y,-.135),(length*.72,.045,.035),'glow_amber',False)
+    if kind=='service_umbilical':
+        solid(s,'connector_recess',(2.202,0,0),(.015,.88,.95),'dark',False)
+        for y in (-.27,.27):
+            for z in (-.27,.27):
+                cylinder(s,'quick_connect',(2.205,y,z),(2.245,y,z),.135,material='bare',segments=12,bevel=.01)
+                cylinder(s,'connector_insert',(2.246,y,z),(2.25,y,z),.075,material='stripe',segments=12,bevel=0)
+        solid(s,'connector_lamp',(2.215,0,.42),(.03,.48,.045),'glow_cyan',False)
     if kind in HAB and kind not in ('berth_jaw','loading_bridge','escape_capsule_cradle','service_umbilical'):
         length=2 if kind in ('blank_endcap','windowed_observation_end','docking_collar') else 4
         # Helios-like folded shell panels and a dark gasket frame distinguish occupied spaces.
@@ -277,7 +326,7 @@ def build(asset_id,lod=0,reset=True):
     elif asset_id in FLUID:fluid(s,asset_id);category='fluid'
     else:habitat(s,asset_id);category='habitat-dock'
     quality_pass(s,asset_id)
-    if asset_id in STRUCT+['berth_jaw','loading_bridge','escape_capsule_cradle','service_umbilical'] and lod==0:s.bank_lod_factory=lambda level:build(asset_id,level,False)[0]
+    if asset_id in STRUCT+['berth_jaw','loading_bridge','escape_capsule_cradle','service_umbilical','pressure_pipe_elbow_90','pressure_pipe_elbow_45','windowed_observation_end'] and lod==0:s.bank_lod_factory=lambda level:build(asset_id,level,False)[0]
     return s,category
 
 def main():

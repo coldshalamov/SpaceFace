@@ -1,0 +1,596 @@
+{
+  "schemaVersion": 1,
+  "status": "Three library-reviewed replacement candidates; original historical exports retained locally; not live runtime acceptance",
+  "source": "tools/blender/forge/asset_bank_cargo_quality.py",
+  "dependencies": [
+    "tools/blender/forge/asset_bank_cargo.py",
+    "tools/blender/forge/forge.py",
+    "tools/blender/forge/forge_export.py",
+    "tools/blender/forge/asset_bank_export.py",
+    "tools/blender/forge/asset_bank_bounds.py",
+    "tools/blender/forge/asset_bank_cost.py",
+    "tools/blender/forge/motion.py",
+    "tools/blender/forge/textures/"
+  ],
+  "modelDirectory": "assets/models/asset-bank/cargo",
+  "generation": "blender -b -t 2 --python tools/blender/forge/asset_bank_cargo_quality.py --",
+  "canonicalReplacementGeneration": "After the original36 batch: blender -b -t 2 --python tools/blender/forge/asset_bank_cargo_quality.py -- --out assets/models/asset-bank/cargo",
+  "styleReferences": [
+    "tools/blender/forge/ships/place_cargo_pod_standard.py",
+    "tools/blender/forge/ships/place_dead_hulk.py"
+  ],
+  "reviewScope": "Actual GLB reimports at near and 96px small-object scale, including authored LOD2. No claim of live-game material or placement acceptance.",
+  "assets": [
+    {
+      "assetId": "cargo-machine-tool-skid",
+      "category": "cargo",
+      "description": "Spindle and carriage secured on a machine transport skid",
+      "unit": "metre",
+      "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+      "source": "tools/blender/forge/asset_bank_cargo_quality.py",
+      "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+      "surfaceGeometryRemaster": "forge-v1",
+      "sockets": [
+        {
+          "name": "SOCKET_Mount",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forward": [
+            0.0,
+            -1.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        },
+        {
+          "name": "SOCKET_Grab",
+          "position": [
+            0.0,
+            1.7400000095367432,
+            -0.0
+          ],
+          "forward": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        },
+        {
+          "name": "SOCKET_Forward",
+          "position": [
+            1.625,
+            0.9025000035762787,
+            -0.0
+          ],
+          "forward": [
+            1.0,
+            0.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        }
+      ],
+      "collision": {
+        "type": "compound-boxes",
+        "solids": [
+          {
+            "type": "box",
+            "center": [
+              0.0,
+              0.2,
+              0.75
+            ],
+            "size": [
+              3.0,
+              0.2,
+              0.14
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "type": "box",
+            "center": [
+              0.0,
+              0.2,
+              -0.75
+            ],
+            "size": [
+              3.0,
+              0.2,
+              0.14
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "type": "box",
+            "center": [
+              -0.97,
+              1.13,
+              -0.0
+            ],
+            "size": [
+              0.72,
+              1.18,
+              0.88
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "type": "box",
+            "center": [
+              0.0,
+              0.69,
+              -0.0
+            ],
+            "size": [
+              2.55,
+              0.24,
+              0.72
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "type": "box",
+            "center": [
+              1.02,
+              1.07,
+              -0.0
+            ],
+            "size": [
+              0.48,
+              0.54,
+              0.6
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "status": "authored approximate solids",
+        "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+      },
+      "motionGroups": [],
+      "tags": [
+        "cargo-quality-review",
+        "candidate",
+        "forge"
+      ],
+      "bounds": {
+        "min": [
+          -1.625,
+          0.06499999761581421,
+          -0.875
+        ],
+        "max": [
+          1.625,
+          1.7400000095367432,
+          0.875
+        ]
+      },
+      "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+      "lods": [
+        {
+          "level": 0,
+          "file": "cargo-machine-tool-skid_lod0.glb",
+          "triangles": 15334,
+          "draws": 9,
+          "bytes": 1017264,
+          "method": "source",
+          "sha256": "422e7d30f5cebe8a2e8fbf7a6cb9e9e50c61ee712d84a2dcc99ea81d78e21306"
+        },
+        {
+          "level": 1,
+          "file": "cargo-machine-tool-skid_lod1.glb",
+          "triangles": 2656,
+          "draws": 9,
+          "bytes": 410572,
+          "method": "authored-topology",
+          "sha256": "b14c36d0b973a4f8f6f3841fc7bd86637185a1b3f4364487082b3ca8851e8641"
+        },
+        {
+          "level": 2,
+          "file": "cargo-machine-tool-skid_lod2.glb",
+          "triangles": 1444,
+          "draws": 9,
+          "bytes": 359400,
+          "method": "authored-topology",
+          "sha256": "b4d68b03f0f139fa8683814b94e5cfbb2fc802b83d426c27dc0436d0ddd170b1"
+        }
+      ]
+    },
+    {
+      "assetId": "cargo-bagged-regolith-pallet",
+      "category": "cargo",
+      "description": "Bulged regolith sacks strapped to a forkable pallet",
+      "unit": "metre",
+      "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+      "source": "tools/blender/forge/asset_bank_cargo_quality.py",
+      "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+      "surfaceGeometryRemaster": "forge-v1",
+      "sockets": [
+        {
+          "name": "SOCKET_Mount",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forward": [
+            0.0,
+            -1.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        },
+        {
+          "name": "SOCKET_Grab",
+          "position": [
+            0.0,
+            1.1554399728775024,
+            -0.0
+          ],
+          "forward": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        },
+        {
+          "name": "SOCKET_Forward",
+          "position": [
+            1.3250000476837158,
+            0.6102199852466583,
+            -0.0
+          ],
+          "forward": [
+            1.0,
+            0.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        }
+      ],
+      "collision": {
+        "type": "compound-boxes",
+        "solids": [
+          {
+            "type": "box",
+            "center": [
+              0.0,
+              0.2,
+              0.75
+            ],
+            "size": [
+              2.4,
+              0.2,
+              0.14
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "type": "box",
+            "center": [
+              0.0,
+              0.2,
+              -0.75
+            ],
+            "size": [
+              2.4,
+              0.2,
+              0.14
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "type": "box",
+            "center": [
+              0.0,
+              0.65,
+              -0.0
+            ],
+            "size": [
+              2.2,
+              0.72,
+              1.4
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "status": "authored approximate solids",
+        "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+      },
+      "motionGroups": [],
+      "tags": [
+        "cargo-quality-review",
+        "candidate",
+        "forge"
+      ],
+      "bounds": {
+        "min": [
+          -1.3250000476837158,
+          0.06499999761581421,
+          -0.875
+        ],
+        "max": [
+          1.3250000476837158,
+          1.1554399728775024,
+          0.875
+        ]
+      },
+      "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+      "lods": [
+        {
+          "level": 0,
+          "file": "cargo-bagged-regolith-pallet_lod0.glb",
+          "triangles": 9708,
+          "draws": 5,
+          "bytes": 724748,
+          "method": "source",
+          "sha256": "2402517133c4e546c9b1b82d64545d67ec7434c0c2ad3c305ea3f0f4aabfda8b"
+        },
+        {
+          "level": 1,
+          "file": "cargo-bagged-regolith-pallet_lod1.glb",
+          "triangles": 4476,
+          "draws": 5,
+          "bytes": 489344,
+          "method": "authored-topology",
+          "sha256": "8d2a559abf86715c19ea9056bc63566b26c8cc223dc0ee493089b773d54984d7"
+        },
+        {
+          "level": 2,
+          "file": "cargo-bagged-regolith-pallet_lod2.glb",
+          "triangles": 2876,
+          "draws": 5,
+          "bytes": 403124,
+          "method": "authored-topology",
+          "sha256": "2d7bc07c9ea45acf6a731705f091ccf182ea9a47c315996052e4df7ffa9fd570"
+        }
+      ]
+    },
+    {
+      "assetId": "cargo-torn-hull-strip",
+      "category": "cargo",
+      "description": "Jagged torn hull skin exposing stiffening ribs",
+      "unit": "metre",
+      "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+      "source": "tools/blender/forge/asset_bank_cargo_quality.py",
+      "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+      "surfaceGeometryRemaster": "forge-v1",
+      "sockets": [
+        {
+          "name": "SOCKET_Mount",
+          "position": [
+            0.0,
+            0.0,
+            -0.0
+          ],
+          "forward": [
+            0.0,
+            -1.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        },
+        {
+          "name": "SOCKET_Grab",
+          "position": [
+            -0.11000001430511475,
+            1.9950000047683716,
+            0.05988776683807373
+          ],
+          "forward": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        },
+        {
+          "name": "SOCKET_Forward",
+          "position": [
+            1.600000023841858,
+            0.9975000023841858,
+            -0.0
+          ],
+          "forward": [
+            1.0,
+            0.0,
+            -0.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "role": "attachment",
+          "metadataFrame": "asset bind pose; use node world transform for motion"
+        }
+      ],
+      "collision": {
+        "type": "compound-boxes",
+        "solids": [
+          {
+            "type": "box",
+            "center": [
+              -0.8,
+              0.2,
+              -0.0
+            ],
+            "size": [
+              2.1,
+              0.19,
+              1.15
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "type": "box",
+            "center": [
+              0.75,
+              0.95,
+              -0.0
+            ],
+            "size": [
+              0.7,
+              0.8,
+              1.05
+            ],
+            "rotation": [
+              0,
+              0,
+              0,
+              1
+            ]
+          }
+        ],
+        "status": "authored approximate solids",
+        "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+      },
+      "motionGroups": [],
+      "tags": [
+        "cargo-quality-review",
+        "candidate",
+        "forge"
+      ],
+      "bounds": {
+        "min": [
+          -1.8200000524520874,
+          0.0,
+          -0.6200000047683716
+        ],
+        "max": [
+          1.600000023841858,
+          1.9950000047683716,
+          0.739775538444519
+        ]
+      },
+      "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+      "lods": [
+        {
+          "level": 0,
+          "file": "cargo-torn-hull-strip_lod0.glb",
+          "triangles": 5664,
+          "draws": 5,
+          "bytes": 521096,
+          "method": "source",
+          "sha256": "b95efc94f9f8fe8ccd9a9f57c6f35cdbfc4221c5208e04b6cd0ccaa658597fbf"
+        },
+        {
+          "level": 1,
+          "file": "cargo-torn-hull-strip_lod1.glb",
+          "triangles": 616,
+          "draws": 5,
+          "bytes": 277592,
+          "method": "authored-topology",
+          "sha256": "445e40270fff718d77e116ce11d30eec5bba31725a84ec9c2a42db94e5d86ff7"
+        },
+        {
+          "level": 2,
+          "file": "cargo-torn-hull-strip_lod2.glb",
+          "triangles": 304,
+          "draws": 5,
+          "bytes": 257288,
+          "method": "authored-topology",
+          "sha256": "3e414ee1c8d7c44ce40c0ada99acab4a1030f007ade9454ae7fac0b5b76e9051"
+        }
+      ]
+    }
+  ]
+}

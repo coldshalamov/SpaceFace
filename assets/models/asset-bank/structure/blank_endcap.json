@@ -1,0 +1,488 @@
+{
+  "assetId": "blank_endcap",
+  "category": "habitat-dock",
+  "description": "blank endcap",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_PASSAGE_-1_0",
+      "position": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          2,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          2,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          0.18,
+          3.6,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          2,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          2,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -2.0
+        ],
+        "size": [
+          2,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -1.1399999856948853,
+      -1.9399999380111694,
+      -2.140000104904175
+    ],
+    "max": [
+      1.1399999856948853,
+      2.1575000286102295,
+      2.140000104904175
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "blank_endcap_lod0.glb",
+      "triangles": 6652,
+      "draws": 7,
+      "bytes": 588520,
+      "method": "source",
+      "sha256": "f9a855ecfecd6de32bdb44e92ad0d0edb2003b14e361b6b0b4e38e2d95b087cd"
+    },
+    {
+      "level": 1,
+      "file": "blank_endcap_lod1.glb",
+      "triangles": 2660,
+      "draws": 7,
+      "bytes": 402192,
+      "method": "Forge-decimation",
+      "sha256": "8b5e8212bcb46ce226206dc1abc6d78626d840b373cd99e46bced9cd7cb68e9c"
+    },
+    {
+      "level": 2,
+      "file": "blank_endcap_lod2.glb",
+      "triangles": 1196,
+      "draws": 7,
+      "bytes": 331328,
+      "method": "Forge-decimation",
+      "sha256": "0e0c6038a0f6322265466ed69c39b93ae55564d59631c444d7dee87d2e9b1acc"
+    }
+  ]
+}

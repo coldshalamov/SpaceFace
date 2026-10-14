@@ -12,7 +12,7 @@ GEO=['seam_bearing_quarried_parent_rock','matched_removable_wedge','stepped_frac
 GROW=['nerve_lace_corner','branching_nerve_mat','calcified_pipe_collar','ribbed_vent_lung','spore_chimney_stalk','short_tendril_bridge','arched_tendril_bridge','supported_cyst_nest','hull_leech_attachment_bed','root_anchor_pad','severed_tendril_stump','dead_crown']
 ANCIENT=['threshold_jamb','threshold_lintel','shutter_vane','repair_face_tile','sealed_vault_seam','quarantine_pylon_foot','prism_instrument_mount','dormant_machine_rack','measuring_rail','boundary_vane','service_plinth','ossuary_spine_segment']
 for key,role,rough,metal in [('tissue','geology',.82,0),('calcite','geology',.88,0),('ancient','ceramic',.76,0),('substrate','ceramic',.9,0),('ice','geology',.38,0),('vein','mechanical',.38,.85)]:F.FINISHES[key]=dict(role=role,rough=rough,metal=metal,tex=None)
-COLORS={'stone':'#625b4f','stone.cut':'#7c7363','stone.strata':'#423c35','tissue':'#8e9690','tissue.fold':'#52676a','tissue.mature':'#778a81','tissue.young':'#a0a58b','calcite':'#bbb9a4','ancient':'#96917f','substrate':'#353f40','ice':'#8eaab1','vein':'#9b7750'}
+COLORS={'stone':'#625b4f','stone.cut':'#7c7363','stone.strata':'#423c35','tissue':'#8e9690','tissue.fold':'#52676a','tissue.mature':'#778a81','tissue.young':'#a0a58b','calcite':'#bbb9a4','ancient':'#96917f','substrate':'#353f40','ice':'#8eaab1','ice.fracture':'#b1c1bf','ice.deep':'#557b87','vein':'#9b7750'}
 def proxy(s,p,size):s.bank_boxes.append({'center':list(p),'size':list(size)})
 def mesh(s,n,verts,faces,mat,bevel=.015):
  d=bpy.data.meshes.new(n);d.from_pydata(verts,[],faces);d.update();o=bpy.data.objects.new(n,d);bpy.context.collection.objects.link(o);o.data.materials.append(s.mat(mat));o['forge_bevel']=bevel;return s.add(o)
@@ -43,7 +43,7 @@ def stem(s,n,path,r=.15,mat='tissue',end=.045):
  faces.extend([tuple(reversed(range(sides))),tuple((len(curve)-1)*sides+j for j in range(sides))]);obj=mesh(s,n,verts,faces,mat,0)
  for poly in obj.data.polygons:poly.use_smooth=True
  return obj
-def foot(s,p=(0,0,0),r=1,mat='calcite'):
+def foot(s,p=(0,0,0),r=1,mat='calcite',height_scale=1):
  if mat not in ('calcite','tissue'):
   return slab(s,'contact_foot',[(p[0]+r*math.cos(i*math.pi/5)*(1+.09*math.cos(i*3)),p[1]+r*math.sin(i*math.pi/5)) for i in range(10)],p[2],.18,mat,True)
  # Scalloped basal lamina with folded radial roots, not a flat polygonal token.
@@ -51,12 +51,12 @@ def foot(s,p=(0,0,0),r=1,mat='calcite'):
  for radius,z in [(r*.96,0),(r,.07),(r*.58,.21),(r*.07,.24)]:
   for i in range(count):
    a=i*2*math.pi/count;scallop=1+.1*math.cos(a*7)+.035*math.sin(a*11)
-   verts.append((p[0]+radius*math.cos(a)*scallop,p[1]+radius*math.sin(a)*scallop,p[2]+z+.025*math.cos(a*7)*(z/.24)))
+   verts.append((p[0]+radius*math.cos(a)*scallop,p[1]+radius*math.sin(a)*scallop,p[2]+height_scale*(z+.025*math.cos(a*7)*(z/.24))))
  for ring in range(3):
   for i in range(count):faces.append((ring*count+i,ring*count+(i+1)%count,(ring+1)*count+(i+1)%count,(ring+1)*count+i))
- faces.extend([tuple(reversed(range(count))),tuple(3*count+i for i in range(count))]);obj=mesh(s,'folded_contact_lamina',verts,faces,mat,0);proxy(s,(p[0],p[1],p[2]+.06),(r*1.2,r*1.2,.12))
+ faces.extend([tuple(reversed(range(count))),tuple(3*count+i for i in range(count))]);obj=mesh(s,'folded_contact_lamina',verts,faces,mat,0);proxy(s,(p[0],p[1],p[2]+.06*height_scale),(r*1.2,r*1.2,.12*height_scale))
  for i in range(7):
-  a=i*2*math.pi/7;stem(s,'root_fold',[(p[0]+r*.2*math.cos(a),p[1]+r*.2*math.sin(a),p[2]+.23),(p[0]+r*.6*math.cos(a),p[1]+r*.6*math.sin(a),p[2]+.2),(p[0]+r*.98*math.cos(a),p[1]+r*.98*math.sin(a),p[2]+.065)],r*.026,'tissue',r*.008)
+  a=i*2*math.pi/7;stem(s,'root_fold',[(p[0]+r*.2*math.cos(a),p[1]+r*.2*math.sin(a),p[2]+.23*height_scale),(p[0]+r*.6*math.cos(a),p[1]+r*.6*math.sin(a),p[2]+.2*height_scale),(p[0]+r*.98*math.cos(a),p[1]+r*.98*math.sin(a),p[2]+.065*height_scale)],r*.026,'tissue',r*.008)
  return obj
 
 def lamina(s,n,base,angle,radius,mat='tissue'):
@@ -185,8 +185,37 @@ def geo(s,k):
   for i in range(7):
    x=-2.4+i*.8;y=.22*math.sin(i*3);F.rock(s,'interlocked_rubble',(x,y,.45),.7,23+i,subdiv=2,terrace=.8);proxy(s,(x,y,.45),(.75,.8,.75))
  elif k=='ice_pressure_ridge':
-  for i in range(6):
-   x=-2.3+i*.8;h=1.1+i%2*.4;mesh(s,'compression_tooth',[(x-.55,-.8,0),(x+.6,-.8,0),(x+.6,.8,0),(x-.55,.8,0),(x+.2,-.5,h),(x+.2,.6,h)],[(0,3,2,1),(0,1,4),(1,2,5,4),(2,3,5),(3,0,4,5)],'ice');proxy(s,(x,0,.4),(.6,1.2,.7))
+  # Compression fault: irregular fractured plates overlap grounded ice rubble.
+  from mathutils import Matrix
+  for i,(x,y,sx,sy) in enumerate([(-1.8,-.15,1.2,.8),(-.25,.2,1.25,.92),(1.5,.1,1.4,.85)]):
+   obj=F.rock(s,'fractured_fault_bed',(0,0,0),1,410+i,material='ice.deep',subdiv=3,relief=.32,terrace=.45)
+   for v in obj.data.vertices:v.co=Vector((x+v.co.x*sx,y+v.co.y*sy,.14+v.co.z*.19))
+   proxy(s,(x,y,.15),(sx*1.2,sy*1.2,.25))
+  # Several differently tilted thin sheets meet along the pressure fault; no dominant upright boulder.
+  sheets=[(-2.05,.02,.39,.65,.65,-.72,-.18,.085),
+          (-1.02,-.12,.58,.8,.67,.82,.30,.11),
+          (-.60,.22,.48,.74,.78,-.56,-.35,.075),
+          (.03,-.08,.70,.75,.70,.93,.16,.13),
+          (.68,.12,.52,.78,.71,-.70,.43,.085),
+          (.98,.13,.51,.7,.69,.71,-.25,.10),
+          (2.03,.18,.32,.60,.57,-.44,.18,.07)]
+  for i,(x,y,z,sx,sy,tilt,yaw,thickness) in enumerate(sheets):
+   obj=F.rock(s,'overlapping_pressure_sheet_'+str(i),(0,0,0),1,460+i,material='ice.fracture' if i in (1,4,6) else 'ice',subdiv=3,relief=.30,terrace=.45)
+   # Cleavage planes remove broad circular shoulders and expose angular broken sheet edges.
+   bm=bmesh.new();bm.from_mesh(obj.data)
+   for point,normal in [((.57 if i%2 else .72,0,0),(1,.35*(-1 if i%3 else 1),0)),((0,-.60 if i%2 else .65,0),(-.25,-1 if i%2 else 1,0))]:
+    cut=bmesh.ops.bisect_plane(bm,geom=list(bm.verts)+list(bm.edges)+list(bm.faces),dist=.00001,plane_co=Vector(point),plane_no=Vector(normal),clear_outer=True)
+    edges=[e for e in cut['geom_cut'] if isinstance(e,bmesh.types.BMEdge) and e.is_boundary]
+    if edges:bmesh.ops.holes_fill(bm,edges=edges,sides=0)
+   bmesh.ops.recalc_face_normals(bm,faces=bm.faces);bm.to_mesh(obj.data);bm.free()
+   rot=Matrix.Rotation(yaw+(.23 if i%2 else -.15),3,'Z')@Matrix.Rotation(tilt,3,'X')
+   for v in obj.data.vertices:v.co=Vector((x,y,z))+rot@Vector((v.co.x*sx,v.co.y*sy,v.co.z*thickness))
+  for i,(x,y,z,sx,sy,tilt) in enumerate([(-1.05,-.15,.3,.52,.35,.28),(.38,.15,.32,.42,.48,-.4),(1.65,.15,.21,.46,.30,.15)]):
+   obj=F.rock(s,'buried_secondary_shear',(0,0,0),1,480+i,material='ice',subdiv=3,relief=.3,terrace=.6)
+   rot=Matrix.Rotation(tilt,3,'X')
+   for v in obj.data.vertices:v.co=Vector((x,y,z))+rot@Vector((v.co.x*sx,v.co.y*sy,v.co.z*.1))
+  for i,(x,y,r) in enumerate([(-1.2,-.23,.18),(.25,.35,.20),(1.5,-.18,.16)]):
+   F.rock(s,'tucked_compression_rubble',(x,y,.24),r,490+i,material='ice.fracture',subdiv=2,terrace=.6)
  elif k=='split_ice_plate':
   for side in (-1,1):
    pts=[(-2,side*.15),(-1,side*.35),(0,side*.16),(1,side*.42),(2,side*.2),(2.1,side*1.7),(-1.8,side*1.6)]
@@ -223,10 +252,36 @@ def growth(s,k):
   for i in range(9):
    x=-1.3+i*.325;w=1.3*math.sqrt(max(.1,1-(x/1.7)**2));stem(s,'vent_rib',[(x,-w,.2),(x,-w*.7,.75),(x,0,1),(x,w*.7,.75),(x,w,.2)],.11,'calcite',.11)
  elif k=='spore_chimney_stalk':
-  foot(s,r=1);stem(s,'stalk_support',[(0,0,.1),(.2,0,1),(-.1,0,2)],.4,'tissue',.3);F.annulus(s,'open_chimney_lip',(-.1,0),.29,.58,2,.55,'calcite',segments=24)
-  for i in range(7):
-   a=i*math.pi*2/7;stem(s,'stalk_root',[(.25*math.cos(a),.25*math.sin(a),1),(.8*math.cos(a),.8*math.sin(a),.15)],.12)
-  proxy(s,(0,0,1),(.5,.5,2))
+  # Continuous hollow, fluted growth stalk and irregular flared rim; no capped tube plus torus.
+  stations=[(.14,.59),(.38,.48),(.72,.36),(1.1,.28),(1.5,.25),(1.85,.33),(2.15,.49),(2.42,.66),(2.63,.62)]
+  count=48;verts=[];faces=[]
+  for inner in (False,True):
+   for row,(z,r) in enumerate(stations):
+    t=row/(len(stations)-1);cx=.22*math.sin(t*math.pi*1.2);cy=.1*math.sin(t*math.pi)
+    for i in range(count):
+     a=i*2*math.pi/count;fold=(.075 if not inner else .025)*math.cos(a*7+t*1.4)*(.4+.6*math.sin(math.pi*t));rad=r+fold-(.075 if inner else 0)
+     lip=(.13*math.sin(a*3)+.06*math.cos(a*5)-.27*max(0,math.cos(a-1.1))**18)*t**5
+     verts.append((cx+rad*math.cos(a),cy+rad*math.sin(a),z+lip))
+  layer=len(stations)*count
+  for inner in (0,1):
+   for row in range(len(stations)-1):
+    for i in range(count):
+     a=inner*layer+row*count+i;b=inner*layer+row*count+(i+1)%count;q=(a,b,b+count,a+count);faces.append(q if inner==0 else tuple(reversed(q)))
+  for row in (0,len(stations)-1):
+   for i in range(count):
+    a=row*count+i;b=row*count+(i+1)%count;q=(a,a+layer,b+layer,b);faces.append(q if row==0 else tuple(reversed(q)))
+  obj=mesh(s,'hollow_laminar_chimney',verts,faces,'tissue',0);obj.data.materials.append(s.mat('tissue.fold'));obj.data.materials.append(s.mat('tissue.mature'))
+  outer=(len(stations)-1)*count
+  for poly in obj.data.polygons:
+   poly.use_smooth=True
+   if outer<=poly.index<outer*2:poly.material_index=1
+   elif poly.index<outer and (poly.index%count)//6 in (1,4):poly.material_index=2
+  for i,a in enumerate((-.55,.65,2.05,3.0,4.25)):
+   root=(.48*math.cos(a),.48*math.sin(a),.4);fork=(.82*math.cos(a),.82*math.sin(a),.18)
+   stem(s,'stalk_root_buttress',[(.21+.1*math.cos(a),.09+.1*math.sin(a),1.1),(.18+.3*math.cos(a),.06+.3*math.sin(a),.74),root,fork],.115,'calcite',.085)
+   for turn in (-.18,.24):
+    end=(1.2*math.cos(a+turn),1.2*math.sin(a+turn),.04);stem(s,'anchoring_root',[fork,(end[0]*.9,end[1]*.9,.09),end],.065,'tissue.mature',.025);foot(s,end,.19,'tissue',height_scale=.3)
+  s.socket('SOCKET_VENT_MOUTH',(.22*math.sin(1.2*math.pi),0,2.63),(0,0,1))
  elif k in ('short_tendril_bridge','arched_tendril_bridge'):
   h=.35 if k.startswith('short') else 1.6
   for x in (-2,2):foot(s,(x,0,0),.65)

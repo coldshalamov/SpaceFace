@@ -23,6 +23,9 @@ def frame(s,x=1.2,y=.75,z=.2,top=None):
  for yy in(-y,y):box(s,'skid',(0,yy,z),(2*x,.14,.2),'gunmetal');solid(s,(0,yy,z),(2*x,.14,.2))
  for xx in(-x,x):
   box(s,'cross-member',(xx,0,z),(.14,2*y,.2),'gunmetal')
+  for yy in(-y,y):
+   box(s,'cast-corner',(xx,yy,z),(.25,.25,.27),'paint2')
+   if LOD<2:cyl(s,'corner-bolt',(xx,yy,z+.13),(xx,yy,z+.175),.04,'bare')
   if top:
    for yy in(-y,y):bar(s,'upright',(xx,yy,z),(xx,yy,top),.11)
  if top:
@@ -37,11 +40,21 @@ def arc(s,n,r,t,z0,z1,start,end,m='paint',steps=24,flare=0):
  for j in range(steps):
   for a,b in((0,1),(1,3),(3,2),(2,0)):faces.append((a*stride+j,a*stride+j+1,b*stride+j+1,b*stride+j))
  faces.extend([(0,stride,3*stride,2*stride),(steps,2*stride-1,4*stride-1,3*stride-1)])
+ if n in('bell-shell','fractured-lip'):
+  for k,(vx,vy,vz) in enumerate(v):
+   j=k%stride
+   if k>=2*stride and(j<3 or j>steps-3):
+    dz=(.13,-.07,.045)[min(j,steps-j)]
+    v[k]=(vx*1.025,vy*1.025,vz+dz)
  me=bpy.data.meshes.new(n);me.from_pydata(v,[],faces);me.update();o=bpy.data.objects.new(n,me);bpy.context.scene.collection.objects.link(o);me.materials.append(s.mat(m));o['forge_bevel']=.01;o['forge_uv_scale']=1.;o['forge_smooth']=35;s.add(o);return o
 
 def build(name,lod=0):
  global LOD
- LOD=lod;s=F.Ship('cargo-'+name,{'paint':'#66797d','paint2':'#343e48','stripe':'#ad7432','bare':'#8f989c','hazard':'#bc8b2b','ceramic':'#9a9382'});s.solids=[];s.bank_source='tools/blender/forge/asset_bank_cargo.py'
+ LOD=lod
+ colors={'paint':'#1c5552','paint2':'#262a2f','stripe':'#9c7a2a','bare':'#8f989c','hazard':'#b88a22','ceramic':'#9a9382'}
+ if name in {'insulated-medical-carrier','biological-containment-cage','sample-carousel','habitat-panel-pack'}:colors.update(paint='#a69d8a',stripe='#276d76',paint2='#303e45')
+ if name in {n for n,_ in AFTERMATH}:colors.update(paint='#4a4438',paint2='#23282e',stripe='#6b5416',bare='#81776a',ceramic='#867b66')
+ s=F.Ship('cargo-'+name,colors);s.solids=[];s.bank_source='tools/blender/forge/asset_bank_cargo.py'
  s.socket('SOCKET_Mount',(0,0,0),(0,0,-1))
  if name=='cryogenic-dewar':
   frame(s,.7,.65);cyl(s,'vacuum-vessel',(0,0,.25),(0,0,1.8),.62,'ceramic');cyl(s,'shoulder',(0,0,1.8),(0,0,2),.62,'ceramic',.26);cyl(s,'neck',(0,0,2),(0,0,2.27),.14,'bare');ring(s,'guard',(0,0,2.22),.4,.05)
@@ -110,7 +123,7 @@ def build(name,lod=0):
   frame(s,1.35,1)
   for x in(-.9,.9):
    for y in(-.55,.55):
-    o=arc(s,'tank-saddle',.5,.12,0,.18,math.pi,math.tau,'stripe',12);o.rotation_euler[1]=math.pi/2;o.location=(x,y,.85);box(s,'saddle-foot',(x,y,.4),(.25,.9,.4),'paint2');solid(s,(x,y,.4),(.25,.9,.4))
+    o=arc(s,'tank-saddle',.5,.12,-.09,.09,-math.pi/2,math.pi/2,'stripe',12);o.rotation_euler[1]=math.pi/2;o.location=(x,y,.85);box(s,'saddle-foot',(x,y,.4),(.25,.9,.4),'paint2');solid(s,(x,y,.4),(.25,.9,.4))
  elif name=='v-load-cradle':
   frame(s,1.3,.95)
   for y in(-.52,.52):box(s,'inclined-pad',(0,y,.65),(2.5,.85,.16),'dark',rot=(math.copysign(.65,y),0,0));solid(s,(0,y,.45),(2.5,.75,.3))
@@ -168,9 +181,9 @@ def build(name,lod=0):
  elif name=='peeled-armor-corner':
   plate(s,'base',[(-1,-.8),(1,-.8),(.6,.1),(.9,.6),(-1,.8)],.1,.12,'paint2');box(s,'attached-armor',(-.45,0,.32),(1,1.45,.2));o=plate(s,'peeled-leaf',[(0,-.7),(.9,-.7),(.7,-.1),(1.1,.3),(.65,.7),(0,.7)],.3,.13);o.rotation_euler[1]=-.7;bar(s,'broken-strut',(-.8,0,.1),(.75,0,.15),.17,'bare');solid(s,(-.5,0,.3),(1,1.5,.6))
  elif name=='split-pressure-vessel':
-  o=arc(s,'half-shell',.85,.075,-1.25,1.25,0,math.pi,'paint',24);o.rotation_euler=(math.pi/2,math.pi/2,0);o.location.z=.2
-  for x in(-1.1,1.1):o=arc(s,'stiffening-band',.89,.09,-.07,.07,0,math.pi,'bare',16);o.rotation_euler=(math.pi/2,math.pi/2,0);o.location=(x,0,.2)
-  for x in(-.8,.1,.7):plate(s,'tear-tab',[(x,-.83),(x+.18,-1),(x+.35,-.83)],.18,.06,'bare')
+  o=arc(s,'half-shell',.85,.075,-1.25,1.25,-math.pi/2,math.pi/2,'paint',24);o.rotation_euler=(0,math.pi/2,0);o.location.z=.85
+  for x in(-1.1,1.1):o=arc(s,'stiffening-band',.89,.09,-.07,.07,-math.pi/2,math.pi/2,'bare',16);o.rotation_euler=(0,math.pi/2,0);o.location=(x,0,.85)
+  for x in(-.8,.1,.7):plate(s,'tear-tab',[(x,-.83),(x+.18,-1),(x+.35,-.83)],.82,.06,'bare')
   solid(s,(0,0,.15),(2.5,1.7,.16))
  elif name=='fractured-drive-bell':
   arc(s,'bell-shell',.38,.09,.15,1.45,.35,5.7,'paint2',24,flare=.65);arc(s,'fractured-lip',1.03,.1,1.38,1.5,.35,5.7,'bare',24);cyl(s,'throat',(0,0,0),(0,0,.25),.42,'dark',cap=False)
@@ -179,17 +192,20 @@ def build(name,lod=0):
  elif name=='snapped-truss-node':
   box(s,'node',(0,0,.55),(.45,.45,.45),'paint2')
   for a,length in((0,1.35),(1.57,.8),(3.14,1),(4.71,.65)):
-   F.truss(s,'fractured-arm',(0,0,.55),(length*math.cos(a),length*math.sin(a),.55),.35,2,material='gunmetal')
-   for k in(-1,1):bar(s,'torn-chord',(length*math.cos(a),length*math.sin(a)+k*.17,.72),((length+.23)*math.cos(a),(length+.23)*math.sin(a)+k*.21,.8),.055,'bare')
+   F.truss(s,'fractured-arm',(0,0,.55),(length*math.cos(a),length*math.sin(a),.55),.35,2,material='gunmetal',chord=.055,web=.028)
+   for k in(-1,1):bar(s,'torn-chord',(length*math.cos(a)-k*.175*math.sin(a),length*math.sin(a)+k*.175*math.cos(a),.725),((length+.2)*math.cos(a)-k*.2*math.sin(a),(length+.2)*math.sin(a)+k*.2*math.cos(a),.79),.055,'bare')
   solid(s,(0,0,.55),(.5,.5,.5))
  elif name=='buckled-solar-wing':
   for i,angle in enumerate((-.3,.18,-.55)):
    x=(i-1)*1.15;box(s,'solar-leaf',(x,0,.4+abs(i-1)*.23),(1.08,1.6,.07),'paint2',rot=(0,angle,0))
-   for y in(-.82,.82):bar(s,'leaf-rail',(x-.52,y,.4),(x+.52,y,.4),.06,'bare')
+   for y in(-.82,.82):bar(s,'leaf-rail',(x-.52*math.cos(angle),y,.4+abs(i-1)*.23+.52*math.sin(angle)),(x+.52*math.cos(angle),y,.4+abs(i-1)*.23-.52*math.sin(angle)),.06,'bare')
    for j in range(4):box(s,'cell-strip',(x,(j-1.5)*.36,.49+abs(i-1)*.23),(.92,.3,.015),'glass',rot=(0,angle,0))
   F.sweep(s,'broken-spar',[(-1.8,0,.25),(-.5,0,.25),(.65,0,.45),(1.6,0,.95)],.1,.1,'bare');solid(s,(0,0,.45),(1,1.6,.15))
  elif name=='severed-umbilical':
-  F.sweep(s,'jacket',[(-1.5,0,.25),(-1,0,.27),(-.4,.12,.3),(.1,.35,.45),(.7,.4,.5)],.35,.35,'dark');cyl(s,'connector',(-1.65,0,.25),(-1.3,0,.25),.28,'bare')
+  hose=[(-1.5,0,.25),(-1,0,.27),(-.4,.12,.3),(.1,.35,.45),(.7,.4,.5)]
+  for a,b in zip(hose,hose[1:]):cyl(s,'jacket',a,b,.18,'dark')
+  for c in hose[1:-1]:F.sphere(s,'hose-bend',c,.18,material='dark',segments=(16,12,8)[LOD])
+  cyl(s,'connector',(-1.65,0,.25),(-1.3,0,.25),.28,'bare')
   for i,m in enumerate(('stripe','bare','paint','ceramic')):F.sweep(s,'exposed-conductor',[(.5,.3+i*.06,.45),(.9,.3+i*.1,.5),(1.4-i*.15,.2+i*.2,.45+i*.1)],.055,.055,m)
   for x in(-1.2,-.85):ring(s,'strain-relief',(x,0,.26),.2,.035,axis=(1,0,0))
   solid(s,(-.7,.08,.3),(1.6,.4,.4))
@@ -225,6 +241,7 @@ def build(name,lod=0):
    y=(i-2.5)*.3;F.sweep(s,'buckled-louvre',[(-1.1,y,.2),(-.4,y,.22),(.1,y,.3+(.2 if i%2 else 0)),(.55,y,.17),(1.1,y,.2)],.24,.045,'ceramic')
   bar(s,'snapped-rail',(-1.1,.9,.15),(-.4,1.05,.25),.1,'bare');solid(s,(0,0,.2),(2.3,1.8,.25))
  else:raise ValueError(name)
+ details(s,name)
  from forge_export import ship_bounds
  bpy.context.view_layer.update();lo,hi=ship_bounds(s);s.socket('SOCKET_Grab',((lo.x+hi.x)/2,(lo.y+hi.y)/2,hi.z),(0,0,1));s.socket('SOCKET_Forward',(hi.x,0,(hi.z+lo.z)/2),(1,0,0))
  if lod:
@@ -232,9 +249,189 @@ def build(name,lod=0):
  else:s.bank_lod_factory=lambda level:build(name,level)
  return s
 
+def details(s,name):
+ """Manufactured anatomy, following freight pod castings and dead-hulk fracture layering.
+ Deliberately different clinical, industrial and salvage families; no noise texture overlays.
+ """
+ def dial(c,r=.12):
+  x,y,z=c;cyl(s,'gauge-housing',(x,y+.04,z),(x,y-.025,z),r,'gunmetal');cyl(s,'gauge-face',(x,y-.026,z),(x,y-.033,z),r*.8,'ceramic');bar(s,'gauge-needle',(x,y-.04,z),(x+r*.5,y-.04,z+r*.4),.012,'dark')
+ def bolts(points):
+  if LOD==2:return
+  for x,y,z in points:cyl(s,'fastener',(x,y,z),(x,y,z+.035),.035,'bare')
+ def pads(points):
+  for x,y,z in points:box(s,'mount-pad',(x,y,z),(.24,.24,.07),'paint2');bolts([(x,y,z+.035)])
+ if name=='cryogenic-dewar':
+  box(s,'instrument-box',(.27,-.54,1.54),(.42,.25,.36),'paint2');dial((.27,-.68,1.57),.13)
+  cyl(s,'relief-stem',(0,0,2.22),(0,0,2.38),.075,'bare');ring(s,'valve-wheel',(0,0,2.4),.16,.025,m='stripe')
+  for a in range(3):bar(s,'valve-spoke',(0,0,2.4),(.15*math.cos(a*math.tau/3),.15*math.sin(a*math.tau/3),2.4),.025,'stripe')
+  for z in(.65,1.2):box(s,'vent-standoff',(.57,0,z),(.22,.1,.1),'paint2')
+  for x in(-.38,.38):box(s,'foot-shoe',(x,0,.2),(.17,1.1,.22),'paint2')
+ elif name=='gas-bottle-cluster':
+  cyl(s,'header',(-.83,0,1.98),(.83,0,1.98),.065,'bare')
+  for x in(-.65,0,.65):
+   for y in(-.32,.32):F.sweep(s,'bottle-feed',[(x,y,1.82),(x,y,1.98),(x,0,1.98)],.035,.035,'bare')
+  dial((.7,-.11,2.02),.1)
+  for x in(-.65,0,.65):box(s,'strap-anchor',(x,-.64,.65),(.18,.13,.2),'paint2')
+ elif name=='ore-skip':
+  for y in(-.95,.95):
+   for x in(-.85,0,.85):bar(s,'welded-stiffener',(x,y,.3),(x,y,1.3),.065,'paint2')
+  for x in(-1.22,1.22):
+   for y in(-.45,.45):plate(s,'trunnion-gusset',[(x-.12,y-.12),(x+.12,y-.12),(x,y+.15)],1.2,.1,'stripe')
+  bolts([(x,y,.39)for x in(-.85,.85)for y in(-.4,.4)])
+ elif name=='bagged-regolith-pallet':
+  for x in(-.95,-.48,0,.48,.95):box(s,'pallet-deck',(x,0,.3),(.32,1.5,.08),'paint2')
+  for x in(-.75,0,.75):
+   for y in(-.38,.38):F.sweep(s,'gathered-seam',[(x-.24,y-.13,.87),(x-.24,y,.96),(x-.24,y+.13,.87)],.025,.025,'stripe')
+  for x in(-.85,.85):box(s,'strap-buckle',(x,-.72,.72),(.12,.07,.16),'bare')
+ elif name=='machine-tool-skid':
+  cyl(s,'lead-screw',(-.4,-.48,.62),(1.2,-.48,.62),.055,'bare');box(s,'feed-motor',(1.1,-.4,.5),(.36,.42,.32),'paint2')
+  box(s,'belt-guard',(-.9,.48,1),(.55,.16,.68),'paint2')
+  for z in(.79,.91,1.03,1.15):box(s,'motor-vent',(-.9,.57,z),(.35,.02,.035),'dark')
+  ring(s,'carriage-wheel',(.75,-.59,.64),.16,.03,axis=(0,1,0),m='stripe');F.sweep(s,'power-cable',[(-.8,.5,.6),(-.8,.62,.4),(.8,.62,.4)],.045,.045,'dark')
+  bolts([(x,y,.76)for x in(-1.05,1.05)for y in(-.32,.32)])
+ elif name=='inert-reactor-core-cask':
+  ring(s,'lid-shadow',(0,0,1.94),.58,.035,m='dark');cyl(s,'shield-insert',(0,0,1.95),(0,0,2.01),.48,'paint2')
+  for a in range(4):
+   t=a*math.tau/4;x,y=.7*math.cos(t),.7*math.sin(t);box(s,'locking-dog',(x,y,1.82),(.34,.17,.16),'gunmetal',rot_z=t)
+  for y in(-.83,.83):box(s,'impact-rail',(0,y,.9),(.25,.1,1.4),'paint2')
+ elif name=='habitat-panel-pack':
+  for x in(-1.3,1.3):
+   for y in(-.39,.39):box(s,'corner-protector',(x,y,1.56),(.26,.2,.26),'paint2')
+   box(s,'ratchet-strap',(x,0,1.7),(.12,.9,.06),'stripe')
+  for x in(-1.2,1.2):box(s,'ratchet-catch',(x,-.68,.56),(.22,.17,.28),'gunmetal')
+ elif name=='biological-containment-cage':
+  box(s,'filter-housing',(0,.63,.95),(.7,.33,.55),'ceramic')
+  for x in(-.24,-.12,0,.12,.24):box(s,'filter-vent',(x,.806,.95),(.045,.025,.38),'dark')
+  cyl(s,'service-line',(.52,0,.5),(.52,0,1.58),.05,'bare');dial((-.32,-.69,1.62),.08)
+  for x in(-.8,.8):
+   for y in(-.8,.8):box(s,'isolation-mount',(x,y,.31),(.22,.22,.22),'dark')
+  bolts([(x,-.7,z)for x in(-.32,.32)for z in(.72,1.38)])
+ elif name=='insulated-medical-carrier':
+  for x in(-.6,.6):box(s,'foot',(x,0,.035),(.23,.85,.1),'paint2');box(s,'hinge',(x,.55,.85),(.25,.14,.2),'bare')
+  box(s,'display-bezel',(.45,-.55,.6),(.4,.07,.2),'paint2');box(s,'cold-status',(.45,-.59,.6),(.29,.025,.09),'glow_cyan')
+  for x in(-.92,.92):box(s,'handle-mount',(x,0,.65),(.12,.46,.13),'paint2')
+ elif name=='sealed-custody-safe':
+  for x in(-.7,.7):box(s,'door-coaming',(x,-.625,.75),(.09,.08,1.4),'dark')
+  for z in(.07,1.43):box(s,'door-coaming',(0,-.625,z),(1.4,.08,.09),'dark')
+  box(s,'keypad',(-.38,-.7,.78),(.2,.08,.34),'paint2')
+  if LOD<2:
+   for z in(.68,.76,.84):
+    for x in(-.43,-.34):box(s,'key',(x,-.747,z),(.05,.018,.045),'ceramic')
+  for x in(-.55,.55):box(s,'safe-foot',(x,0,-.04),(.22,.95,.12),'dark')
+ elif name=='sample-carousel':
+  for i in range(8):
+   a=i*math.tau/8;x,y=.65*math.cos(a),.65*math.sin(a);bar(s,'carousel-spoke',(0,0,.34),(x,y,.34),.065,'bare');ring(s,'vial-neck',(x,y,.78),.16,.025,m='gunmetal')
+  cyl(s,'hub-lock',(0,0,.82),(0,0,.97),.24,'stripe');bolts([(.8*math.cos(a*math.tau/8),.8*math.sin(a*math.tau/8),.3)for a in range(8)])
+ elif name=='wound-conductor-spool':
+  cyl(s,'axle',(-.99,0,1),(.99,0,1),.13,'bare')
+  for x in(-.82,.82):
+   ring(s,'hub-bearing',(x,0,1),.23,.06,axis=(1,0,0),m='stripe')
+   for i in range(6):a=i*math.tau/6;bar(s,'flange-rib',(x,.24*math.cos(a),1+.24*math.sin(a)),(x,.7*math.cos(a),1+.7*math.sin(a)),.045,'bare')
+ elif name=='twin-tank-cradle':
+  for x in(-.9,.9):
+   for y in(-.55,.55):
+    box(s,'saddle-fastener-pad',(x,y,.23),(.4,.35,.08),'bare');bolts([(x,y-.12,.28),(x,y+.12,.28)])
+  for y in(-1,1):bar(s,'bed-diagonal',(-1.2,y,.28),(1.2,-y,.28),.075,'paint2')
+ elif name=='v-load-cradle':
+  for x in(-1,.0,1):
+   for y in(-.52,.52):box(s,'replaceable-pad',(x,y,.75),(.55,.6,.07),'paint2',rot=(math.copysign(.65,y),0,0))
+  for x in(-1.2,1.2):ring(s,'tie-eye',(x,0,.38),.16,.04,axis=(1,0,0),m='stripe')
+ elif name=='hoist-spreader':
+  for x in(-1.4,0,1.4):box(s,'web-doubler',(x,-.2,.6),(.2,.06,.35),'paint2')
+  for x in(-1.6,1.6):cyl(s,'shackle-pin',(x,-.28,.39),(x,.28,.39),.065,'bare')
+  bolts([(x,y,.83)for x in(-1.4,1.4)for y in(-.1,.1)])
+ elif name=='four-point-sling-frame':
+  for x in(-1.25,1.25):
+   for y in(-.85,.85):cyl(s,'sling-clevis',(x,y,.28),(x*.87,y*.87,.52),.095,'stripe')
+  cyl(s,'master-ferrule',(0,0,1.66),(0,0,1.84),.13,'gunmetal')
+ elif name=='tether-fairlead':
+  for y in(-.65,.65):
+   for z in(.2,1.55):box(s,'roller-bearing',(0,y,z),(.38,.35,.14),'paint2')
+  for y in(-.85,.85):bolts([(-.23,y,.2),(.23,y,.2)])
+ elif name=='tow-bridle-yoke':
+  plate(s,'apex-gusset',[(.42,-.29),(1.16,0),(.42,.29)],.43,.07,'paint2')
+  for y in(-.85,.85):cyl(s,'tow-pin',(-1,y,.15),(-1,y,.49),.08,'bare')
+  bolts([(.55,-.13,.5),(.55,.13,.5)])
+ elif name=='magnetic-handling-shoe':
+  for y in(-.46,.46):box(s,'contact-guard',(0,y,.3),(1.8,.09,.24),'stripe')
+  for x in(-.58,.58):box(s,'coil-housing',(x,0,.65),(.3,.66,.2),'paint')
+  F.sweep(s,'coil-feed',[(-.5,.35,.6),(0,.44,.64),(.5,.35,.6)],.055,.055,'dark');bolts([(x,y,.61)for x in(-.72,.72)for y in(-.3,.3)])
+ elif name=='docking-bumper':
+  for x in(-.75,0,.75):
+   for z in(.36,.47,.58):box(s,'compression-slot',(x,-.434,z),(.45,.018,.035),'paint2')
+  for x in(-1,1):
+   for y in(-.38,.38):cyl(s,'mount-bolt',(x,y,.22),(x,y,.3),.06,'bare')
+ elif name=='fork-receiver':
+  for y in(-.58,.58):
+   for x in(-1.08,1.08):
+    for z in(.15,.6):box(s,'entry-wear-lip',(x,y,z),(.14,.6,.12),'bare')
+  bolts([(1,y,.79)for y in(-.65,.65)])
+ elif name=='rail-cargo-dolly':
+  for x in(-.85,.85):
+   for y in(-.68,.68):box(s,'axle-bearing',(x,y,.48),(.36,.22,.28),'paint2')
+  box(s,'brake-box',(.0,.7,.45),(.4,.28,.35),'paint');bar(s,'brake-lever',(0,.7,.65),(.35,.7,1),.045,'stripe');bar(s,'underdeck-brace',(-1.1,-.6,.6),(1.1,.6,.6),.09)
+ elif name=='load-restraint-hoop':
+  o=arc(s,'inner-cushion',.88,.06,-.08,.08,.1,math.pi-.1,'dark',20);o.rotation_euler[0]=math.pi/2;o.location.z=.25
+  for x in(-1,1):bolts([(x,-.2,.27),(x,.2,.27)])
+  bar(s,'ratchet-handle',(1,0,.49),(1.25,0,.75),.065,'stripe')
+ elif name=='transit-pressure-cap':
+  cyl(s,'recessed-centre',(0,0,.35),(0,0,.385),.55,'paint2');ring(s,'cover-bead',(0,0,.39),.6,.025,m='bare')
+  for i in range(6):a=i*math.tau/6;bolts([(.78*math.cos(a),.78*math.sin(a),.5)])
+ elif name=='torn-hull-strip':
+  plate(s,'insulation-exposure',[(-1.6,-.45),(.6,-.5),(1.3,-.18),(.7,.35),(-1.6,.48)],.14,.055,'ceramic')
+  F.sweep(s,'severed-service-line',[(-1.6,.37,.1),(-.4,.37,.1),(.5,.45,.13),(1,.62,.3)],.055,.055,'bare')
+  bolts([(x,y,.36)for x in(-1.25,-.25)for y in(-.45,.48)])
+ elif name=='peeled-armor-corner':
+  plate(s,'insulation-sheet',[(-.3,-.65),(.7,-.55),(.42,.05),(.6,.35),(-.3,.6)],.25,.04,'ceramic')
+  for y in(-.5,0,.5):bar(s,'ripped-stud',(.1,y,.22),(.28,y,.52),.045,'bare')
+  bolts([(-.75,-.55,.45),(-.75,.55,.45)])
+ elif name=='split-pressure-vessel':
+  for x in(-.9,0,.8):
+   bar(s,'seam-stud',(x,-.8,.82),(x,-.98,.86),.04,'bare')
+  F.sweep(s,'broken-sensor-line',[(-1.1,.5,.18),(-.4,.5,.18),(.2,.4,.36)],.035,.035,'stripe')
+ elif name=='fractured-drive-bell':
+  ring(s,'feed-manifold',(0,0,.3),.48,.05,m='bare')
+  for a in(.6,2.1,3.6,5.1):
+   cyl(s,'injector',(.24*math.cos(a),.24*math.sin(a),.15),(.24*math.cos(a),.24*math.sin(a),.45),.055,'bare')
+  plate(s,'torn-lip',[(.85,-.16),(1.15,-.28),(1.0,.08)],1.4,.06,'bare')
+ elif name=='snapped-truss-node':
+  for x in(-.24,.24):box(s,'node-gusset',(x,0,.55),(.05,.6,.55),'stripe')
+  bolts([(x,y,.84)for x in(-.18,.18)for y in(-.18,.18)])
+  F.sweep(s,'dangling-harness',[(-.2,.2,.7),(-.7,.35,.62),(-.82,.52,.2)],.045,.045,'dark')
+ elif name=='buckled-solar-wing':
+  for x in(-.57,.57):cyl(s,'hinge-barrel',(x,-.65,.4),(x,.65,.4),.055,'bare')
+  F.sweep(s,'torn-bus-cable',[(-1.3,.72,.5),(-.4,.72,.4),(.25,.9,.7),(.65,1,.8)],.035,.035,'stripe')
+ elif name=='severed-umbilical':
+  for a in range(4):
+   t=a*math.tau/4;cyl(s,'connector-pin',(-1.76,.13*math.cos(t),.25+.13*math.sin(t)),(-1.61,.13*math.cos(t),.25+.13*math.sin(t)),.027,'stripe')
+  for x in(-1.05,-.62):ring(s,'jacket-retainer',(x,.02,.28),.205,.022,axis=(1,0,0),m='paint2')
+ elif name=='broken-docking-collar':
+  for i in range(8):
+   a=.3+i*.57;x,y=1.13*math.cos(a),1.13*math.sin(a);cyl(s,'bolt-socket',(x,y,.44),(x,y,.5),.06,'dark')
+  F.sweep(s,'seal-peel',[(-.85,-.6,.5),(-.72,-.85,.55),(-.45,-1,.7)],.055,.055,'dark')
+ elif name=='exposed-avionics-tray':
+  for x in(-.78,.78):box(s,'tray-latch',(x,-.76,.35),(.15,.2,.25),'stripe')
+  for i in range(4):
+   x=(i-1.5)*.43;box(s,'board-connector',(x,-.5,.32),(.24,.14,.13),'bare')
+   for j in range(3):bar(s,'cooling-fin',(x-.07,(j-1)*.3,.37),(x+.07,(j-1)*.3,.37),.025,'bare')
+  bolts([(x,y,.24)for x in(-.9,.9)for y in(-.6,.6)])
+ elif name=='punctured-cargo-cage':
+  for z in(.45,.9,1.35):bar(s,'rear-mesh',(-.85,.7,z),(.85,.7,z),.025,'bare')
+  plate(s,'torn-panel',[(-.8,-.71),(-.3,-.71),(-.45,-.98),(-.7,-1.05)],.25,.045,'paint')
+  for x in(-1,1):ring(s,'cargo-eye',(x,0,1.6),.14,.035,m='stripe')
+ elif name=='scavenged-pipe-bundle':
+  for x in(-.8,.8):box(s,'strap-clamp',(x,-.57,.48),(.22,.15,.25),'gunmetal');bolts([(x,-.57,.63)])
+  ring(s,'old-pipe-flange',(-1.4,0,.3),.27,.045,axis=(1,0,0),m='paint2')
+ elif name=='crumpled-shield-louvre':
+  for y in(-.72,-.12,.48):bar(s,'broken-hinge',(-1.25,y,.15),(-.98,y,.15),.045,'bare')
+  plate(s,'missing-corner',[(-1.1,.55),(-.7,.62),(-.86,1.1),(-1.1,.95)],.1,.045,'paint2')
+  bolts([(1.1,y,.23)for y in(-.7,0,.7)])
+
 def main():
  p=argparse.ArgumentParser();p.add_argument('--only');p.add_argument('--render-all',action='store_true');p.add_argument('--render',action='store_true');p.add_argument('--render-lod2',action='store_true');args=p.parse_args(sys.argv[sys.argv.index('--')+1:]if'--'in sys.argv else[])
- for index,(name,description,kind)in enumerate(RECORDS):
+ preview_first=['cryogenic-dewar','insulated-medical-carrier','machine-tool-skid','tether-fairlead','fractured-drive-bell','exposed-avionics-tray']
+ ordered=sorted(RECORDS,key=lambda r:preview_first.index(r[0])if r[0]in preview_first else len(preview_first)+RECORDS.index(r))if args.render_all else RECORDS
+ for index,(name,description,kind)in enumerate(ordered):
   if args.only and args.only!=name:continue
   F.reset_scene();s=build(name);aid='cargo-'+name
   export_asset(s,OUT,aid,'cargo',description,collision_boxes=s.solids,tags=[kind,'reusable','industrial','forge'])
@@ -249,5 +446,5 @@ def main():
    with open(os.path.join(OUT,'cargo-'+n+'.json'))as f:d=json.load(f)
    d.update(recipe='tools/blender/forge/asset_bank_cargo.py',recipeKey=n);assets.append(d)
   dst=os.path.join(ROOT,'design/asset-bank/cargo.json');os.makedirs(os.path.dirname(dst),exist_ok=True)
-  with open(dst,'w')as f:json.dump({'schemaVersion':1,'category':'cargo','assetCount':len(assets),'provenance':'Original deterministic Forge geometry; no external media','reviewRenderer':'Blender Cycles CPU exact GLB reimport; not gameplay material proof','assets':assets},f,indent=2);f.write('\n')
+  with open(dst,'w')as f:json.dump({'schemaVersion':1,'category':'cargo','assetCount':len(assets),'provenance':'Original deterministic Forge geometry; no external media','styleReferences':['tools/blender/forge/ships/place_cargo_pod_standard.py','tools/blender/forge/ships/place_dead_hulk.py'],'designLanguage':{'industrial':'Freight teal, charcoal castings, ochre load hardware and exposed machined interfaces','civil':'Ivory insulation, teal identification, dark protected instruments','salvage':'Faded skins, exposed bare edges, missing members and interrupted service paths'},'reviewRenderer':'Blender Cycles CPU exact GLB reimport; not gameplay material proof','assets':assets},f,indent=2);f.write('\n')
 if __name__=='__main__':main()
