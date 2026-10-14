@@ -71,7 +71,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `crucible-results` | OPEN | Follow-up PR (not #322) |
 | `demoEnd` | SURVEYED | |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
-| `base` / `base-claimed` | SURVEYED | |
+| **`base` / `base-claimed`** | **DONE** (phone + narrow + 960 slot rail) | See § Base screen — phone module list, narrow spine, one slot rail (ui-polish-28) |
 | `loading` | SURVEYED | |
 | `automation` | SURVEYED | |
 | `replay` | SURVEYED | |
@@ -749,3 +749,19 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28f/{before,after,compare-hub-960.png}/`.
 
 *If #374's REVIEW.md leftovers sections conflict with this file on merge, keep both. This section only covers `wingmanLayouts.js`.*
+
+## Base screen — phone module list, narrow spine, one slot rail (ui-polish-28)
+
+**Before:** on a phone (390×844) the claimed-body screen was broken. Each BUILD MODULE row kept its desktop three-column grid with a nowrap RESEARCH button, so the button ran off the plate and every description wrapped one word per line (the plate scrolled about 4,400px). The slot and Operating Identity rails were horizontal-only, so in one column each tick climbed through the card above it (through "Cargo Depot", and the amber tick 2 through CLEAR SITE STORAGE; the same happened at 561–760 wide). The foot clipped the Esc keycap to "SC", DISPATCH CONVOY wrapped onto two lines, and the moon arc crossed the title. At 960×540 the five module slots wrapped 4 + 1, leaving the fifth slot alone with a tick rising into nothing.
+
+**After (`src/ui/screens/base.js` injected style only, no markup, selector or ID changes):**
+- At ≥761 wide the slots sit on one rail in one row.
+- At ≤760 the slot and identity rails become the same left spine the module list uses. Ticks and dots hang off it, the active identity's amber tick meets its card, and the 1/2/3 tick numbers hide.
+- At ≤560 module rows stack (name, description, cost, then a wrapping RESEARCH button), gutters drop from 44px to 24px, the moon is hidden, and the Esc keycap is hidden (touch). Close and Dispatch Convoy share one line. Phone scroll went from 4,365px to about 2,300px.
+- 1280 and 1920 are unchanged apart from a 16px slot gap.
+
+**Checked:** 390×844 (phone, every scroll stop), 700×900, 960×540, 1280×720, 1920×1080, plus the unclaimed `base` at phone and 960. A phone `--walk` showed Build, Deliver and identity controls responding. Remaining bench "buried" findings are content scrolling under the sticky foot, which is by design. Focused tests passed: wave-c4-base-kit, claim-specializations, claim-sensor-post, claim-travel-infrastructure, claim-site-discovery-plates, ui-grammar-matrix.
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28g/{before,after,before-scroll,after-scroll}/` and `compare-*.png`.
+
+*If #374's REVIEW.md changes conflict with this file on merge, keep both. This section only covers `src/ui/screens/base.js`.*
