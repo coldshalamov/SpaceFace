@@ -17989,7 +17989,11 @@ export const render = {
       const postNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
       let postSliceStart = postNow();
-      let postSliceArmed = state.mode === 'flight';
+      // While the flight veil holds the sim at spawn nothing playable is on screen: run the
+      // pass with loading-shell pacing (no presented-frame ledger spend, batched touches) so
+      // its links finish under the veil instead of in the first playable seconds.
+      const veilHeld = () => !!(state.render && state.render.flightVeilHoldsSim === true);
+      let postSliceArmed = state.mode === 'flight' && !veilHeld();
       // One paced clock for the whole pass: the fused census, the bucket/dedupe
       // legs and every rescan re-collect ride it — a joiner-armed rescan inside
       // a presented frame must not pay the old atomic traverse set.
@@ -18008,11 +18012,11 @@ export const render = {
       });
       const postPace = async () => {
         const tick = postNow();
-        if (tick - postSliceStart <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return postSuperseded();
+        if (tick - postSliceStart <= (veilHeld() ? 16 : 4) && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return postSuperseded();
         if (postSliceArmed) notePacedFrameSpend(tick - postSliceStart);
         if (typeof yieldToBrowser === 'function') await yieldToBrowser();
         postSliceStart = postNow();
-        postSliceArmed = state.mode === 'flight';
+        postSliceArmed = state.mode === 'flight' && !veilHeld();
         return postSuperseded();
       };
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
@@ -18304,7 +18308,7 @@ export const render = {
             // Thousands of units on a Crucible cook (the bounded roster warm's palette subjects):
             // one touch each was ~6 ms of whole-scene hide/render/restore — ~20 s of the launch.
             // Loading only; the same shell-less path keeps one subject per touch.
-            touchMany: state.mode === 'loading'
+            touchMany: state.mode === 'loading' || veilHeld()
               ? async (subjects) => {
                 // Mint the session before the reveal (paced mint suspends).
                 lateTouchSession = lateTouchSession || (await mintTouchDrawableSession(scene));
@@ -18511,7 +18515,7 @@ export const render = {
               return whileRevealed(subject, () => this._compilePostRoute(rescanRoute, subject, cam.obj, scene));
             },
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
-            touchMany: state.mode === 'loading'
+            touchMany: state.mode === 'loading' || veilHeld()
               ? async (subjects) => {
                 // Mint the session before the reveal (paced mint suspends).
                 rescanTouchSession = rescanTouchSession || (await mintTouchDrawableSession(scene));
@@ -18596,8 +18600,13 @@ export const render = {
       }
       const inFlight = runPostOpeningPipelines();
       this._postOpeningPipelinesInFlight = inFlight;
+      // Read by the loading presenter: the flight veil stays up (capped) while this pass links.
+      state.render.postOpeningPipelinesPending = true;
       const clear = () => {
-        if (this._postOpeningPipelinesInFlight === inFlight) this._postOpeningPipelinesInFlight = null;
+        if (this._postOpeningPipelinesInFlight === inFlight) {
+          this._postOpeningPipelinesInFlight = null;
+          state.render.postOpeningPipelinesPending = false;
+        }
       };
       inFlight.then(clear, clear);
       return inFlight;

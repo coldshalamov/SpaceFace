@@ -188,7 +188,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const poll = (source) => {
       if (source === 'timer') revealPollTimer = null; else if (source === 'raf') revealRaf = null;
       if (disposed) return;
-      if (frameNow() > baseline && (capped || firstDrawSubmitted())) {
+      // Also wait out an in-flight post-opening pipeline pass so its links land under the veil.
+      if (frameNow() > baseline && (capped || (firstDrawSubmitted() && render?.postOpeningPipelinesPending !== true))) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
         if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
         // Release the sim with the lift itself, not after the fade: the first visible frame plays.
