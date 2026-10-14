@@ -1328,6 +1328,15 @@ function bodyReach(dx, dy) {
   return 0.86 + (0.708 - 0.86) * t;
 }
 
+function buttPastLimit(support) {
+  // Distance past the geometric butt (half-width 0.5, flat cap). A diagonal
+  // radius leaves less of the pixel on the cap, so the allowance shrinks.
+  if (support < 0.6) return 0.4;
+  if (support < 0.66) return 0.25;
+  if (support < 0.7) return 0.2;
+  return 0.15;
+}
+
 function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (!isPixelCenter(sx, sy)) return false;
   const span = dashOffset(along, dash, gap);
@@ -1335,6 +1344,8 @@ function dashBodyPixel(perp, along, dash, gap, dx, dy, sx, sy) {
   if (perp > reach) return false;
   if (span.alongOff === 0) return true;
   const support = squareSupport(dx, dy);
+  const past = Math.hypot(span.alongOff, Math.max(0, perp - 0.5));
+  if (past <= buttPastLimit(support)) return true;
   // The butt paints a little past the dash. How far depends on how diagonal
   // the radius is: an axis-aligned fringe stays painted farther out, and a
   // diagonal sample is empty once it leaves the dash.
