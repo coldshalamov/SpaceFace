@@ -790,9 +790,6 @@ test('a place disc edits the exported place and objectives follow the lab metric
   assert.equal(drawFieldSource.includes('|| 20'), false);
   assert.equal(drawFieldSource.includes('Math.max'), false);
   assert.equal(drawFieldSource.includes('fieldStroke(object, cam.zoom)'), true);
-  const actorSource = markerSource.slice(markerSource.indexOf('function drawActor'), markerSource.indexOf('function colliderRadius'));
-  assert.equal(actorSource.includes('Math.max(8, radius)'), false);
-  assert.equal(actorSource.includes('ctx.arc(point.sx, point.sy, radius, 0, Math.PI * 2)'), true);
   assert.equal(fieldStroke({ kind: 'field', fieldKind: 'place' }, 3.2), 0);
   assert.notEqual(fieldStroke({ kind: 'field', fieldKind: 'place' }, 3.2), 20);
   const zeroZoneProject = getComposition('dock.bank-shot');

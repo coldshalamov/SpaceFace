@@ -5,6 +5,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { applyDockOp, applyRequest } from '../lib/agent.mjs';
 import { compositionIds, getComposition } from '../lib/compositions.mjs';
+import { loadDialect } from '../lib/dialect.mjs';
+import { drawActor } from '../lib/paint.mjs';
 import { exportProject } from '../lib/export.mjs';
 import { commit, createHistory, loadExampleHistory, newDockHistory, openDockHistory, restoreHistory } from '../lib/history.mjs';
 import { TRIGGER_ASSERTION_FIELDS, actorStroke, deletePath, discRadius, fieldStroke, fieldsFor, markerStroke, numberFieldValue, writeFrameInput, writePath } from '../lib/inspector.mjs';
@@ -5048,6 +5050,34 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   const zeroField = { id: 'flat', kind: 'field', x: 0, z: 0, radius: 0 };
   assert.equal(fieldStroke(zeroField, 1), 0);
   assert.equal(hitTest({ objects: [zeroField] }, 115, 100, unitZoom, view), null);
+  const stroked = [];
+  const paintCtx = {
+    save() {},
+    restore() {},
+    beginPath() {},
+    arc(_x, _y, radius) { stroked.push(radius); },
+    stroke() {},
+    fill() {},
+    fillText() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+  };
+  drawActor(paintCtx, { kind: 'actor', x: 0, z: 0, overrides: { radius: 0 } }, { x: 0, z: 0, zoom: 1 }, view, {});
+  assert.equal(stroked[0], 0);
+  assert.notEqual(stroked[0], 8);
+  const colliderStone = { id: 'stone', x: 0, z: 0, overrides: { radius: 8 } };
+  assert.equal(hitTest({ objects: [colliderStone] }, 104, 100, unitZoom, view), 'stone');
+  assert.equal(hitTest({ objects: [colliderStone] }, 108, 100, unitZoom, view), 'stone');
+  const placeDisc = { id: 'bank_zone', kind: 'field', fieldKind: 'place', x: 0, z: 0, radius: 80 };
+  assert.equal(fieldStroke(placeDisc, 1), 28);
+  assert.equal(hitTest({ objects: [placeDisc] }, 150, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [placeDisc] }, 128, 100, unitZoom, view), 'bank_zone');
+  const wideStone = { id: 'stone', kind: 'actor', x: 0, z: 0, overrides: { radius: 100 } };
+  assert.equal(Object.prototype.hasOwnProperty.call(wideStone, 'radius'), false);
+  assert.equal(actorStroke(wideStone, 1), 100);
+  assert.equal(hitTest({ objects: [wideStone] }, 150, 100, unitZoom, view), 'stone');
+  assert.equal(hitTest({ objects: [wideStone] }, 200, 100, unitZoom, view), 'stone');
   const finalOutside = evaluateOracleKernel({
     trace: [
       { tick: 0, playerX: 0, playerZ: 0, playerRot: 0 },
@@ -6582,4 +6612,39 @@ test('a symbol field on cargo survives undo', () => {
   assert.equal(redone.ok, true, (redone.issues || []).join('\n'));
   assert.equal(cargo[sym], 30);
   assert.equal(cargo.x, 30);
+});
+
+test('Hawser and Quiet Ghost use their collision radii', async () => {
+  const dialect = await loadDialect();
+  const view = { width: 200, height: 200 };
+  const camera = { x: 0, z: 0, zoom: 1 };
+  const hawser = { id: 'hawser', kind: 'actor', profile: 'ship_hawser', x: 0, z: 0 };
+  const ghost = { id: 'ghost', kind: 'actor', profile: 'quiet_ghost', x: 0, z: 0 };
+  assert.equal(dialect.draw.ship_hawser.radius, 22);
+  assert.equal(dialect.draw.quiet_ghost.radius, 13);
+  assert.equal(actorStroke(hawser, 1, dialect.draw), 22);
+  assert.equal(actorStroke(ghost, 1, dialect.draw), 13);
+  assert.notEqual(actorStroke(hawser, 1, dialect.draw), 8);
+  assert.notEqual(actorStroke(ghost, 1, dialect.draw), 8);
+  const arcs = [];
+  const ctx = {
+    save() {},
+    restore() {},
+    beginPath() {},
+    arc(_x, _y, radius) { arcs.push(radius); },
+    stroke() {},
+    fill() {},
+    fillText() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+  };
+  drawActor(ctx, hawser, camera, view, dialect.draw);
+  drawActor(ctx, ghost, camera, view, dialect.draw);
+  assert.equal(arcs[0], 22);
+  assert.equal(arcs[1], 13);
+  assert.equal(hitTest({ objects: [hawser] }, 108, 100, camera, view, dialect.draw), 'hawser');
+  assert.equal(hitTest({ objects: [hawser] }, 122, 100, camera, view, dialect.draw), 'hawser');
+  assert.equal(hitTest({ objects: [ghost] }, 108, 100, camera, view, dialect.draw), 'ghost');
+  assert.equal(hitTest({ objects: [ghost] }, 113, 100, camera, view, dialect.draw), 'ghost');
 });

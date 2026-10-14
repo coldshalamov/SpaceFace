@@ -32,8 +32,15 @@ export async function loadDialect() {
     for (const zone of list) if (zone && zone.id) zoneIds.add(zone.id);
   }
   const shipById = new Map(SHIPS.map((ship) => [ship.id, ship]));
+  const enemyById = new Map(enemies.ENEMY_TYPES.map((enemy) => [enemy.id, enemy]));
   const draw = {};
-  for (const profileId of ['ship.starter', 'ship.kestrel', 'asteroid.light', 'asteroid.mid', 'asteroid.heavy', 'payload.anchor']) {
+  const profileIds = [
+    'ship.starter', 'ship.kestrel', 'asteroid.light', 'asteroid.mid', 'asteroid.heavy', 'payload.anchor',
+    ...SHIPS.map((ship) => ship.id),
+    ...enemies.ENEMY_TYPES.map((enemy) => enemy.id),
+  ];
+  for (const profileId of profileIds) {
+    if (draw[profileId]) continue;
     try {
       const resolved = resolveEntityProfile(profileId);
       if (resolved.kind === 'asteroid') {
@@ -43,8 +50,15 @@ export async function loadDialect() {
         draw[profileId] = {
           kind: 'ship',
           shipId: resolved.shipId,
-          radius: ship ? ship.collisionRadius : null,
+          radius: ship && Number.isFinite(ship.collisionRadius) ? ship.collisionRadius : null,
           mass: ship ? ship.mass : null,
+        };
+      } else if (resolved.kind === 'enemy') {
+        const enemy = enemyById.get(resolved.enemyTypeId);
+        draw[profileId] = {
+          kind: 'enemy',
+          radius: enemy && Number.isFinite(enemy.collisionRadius) ? enemy.collisionRadius : null,
+          mass: enemy ? enemy.mass : null,
         };
       }
     } catch {

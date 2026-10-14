@@ -27,6 +27,7 @@ const FILES = new Map([
   ['/lib/history.mjs', path.join(ROOT, 'lib', 'history.mjs')],
   ['/lib/security.mjs', path.join(ROOT, 'lib', 'security.mjs')],
   ['/lib/inspector.mjs', path.join(ROOT, 'lib', 'inspector.mjs')],
+  ['/lib/paint.mjs', path.join(ROOT, 'lib', 'paint.mjs')],
 ]);
 
 const TYPES = new Map([

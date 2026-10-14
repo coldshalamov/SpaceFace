@@ -1229,7 +1229,10 @@ export function hitTest(project, sx, sy, camera, view, draw) {
       if (Math.abs(dx) + Math.abs(dy) <= OBJECTIVE_REACH) return object.id;
       continue;
     }
-    const radius = object.kind === 'actor'
+    const overrideRadius = object.overrides && object.overrides.radius;
+    const usesCollider = object.kind === 'actor'
+      || (typeof overrideRadius === 'number' && Number.isFinite(overrideRadius));
+    const radius = usesCollider
       ? actorStroke(object, zoom, draw)
       : object.kind === 'field'
         ? fieldStroke(object, zoom)
