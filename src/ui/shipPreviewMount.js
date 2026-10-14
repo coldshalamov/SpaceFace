@@ -59,6 +59,30 @@ const DEFAULT_DOCK_PREVIEW_MOUNT = Object.freeze({
  */
 export const DOCK_INTERIOR_BY_ARCHETYPE = Object.freeze({});
 
+// A context's renderer string never changes, and reading it is a synchronous round trip to the GPU
+// process (seconds while that process is busy linking), so each context pays it once.
+const RENDERER_NAMES = new WeakMap();
+function rendererNameOf(context) {
+  if (!context || (typeof context !== 'object' && typeof context !== 'function')) return '';
+  const known = RENDERER_NAMES.get(context);
+  if (known !== undefined) return known;
+  let name = '';
+  try {
+    const debug = typeof context.getExtension === 'function'
+      ? context.getExtension('WEBGL_debug_renderer_info')
+      : null;
+    name = debug && typeof context.getParameter === 'function'
+      ? String(context.getParameter(debug.UNMASKED_RENDERER_WEBGL) || '')
+      : (typeof context.getParameter === 'function'
+        ? String(context.getParameter(context.RENDERER) || '')
+        : '');
+  } catch {
+    return '';
+  }
+  RENDERER_NAMES.set(context, name);
+  return name;
+}
+
 export function secondaryPreviewWebGlBlocked(state, gl = null) {
   if (!state) return false;
   const docked = !!(state.ui && state.ui.docked);
@@ -72,21 +96,43 @@ export function secondaryPreviewWebGlBlocked(state, gl = null) {
     return true;
   }
   if (!context) return false;
-  try {
-    const debug = typeof context.getExtension === 'function'
-      ? context.getExtension('WEBGL_debug_renderer_info')
-      : null;
-    const gpu = debug && typeof context.getParameter === 'function'
-      ? String(context.getParameter(debug.UNMASKED_RENDERER_WEBGL) || '')
-      : (typeof context.getParameter === 'function'
-        ? String(context.getParameter(context.RENDERER) || '')
-        : '');
-    // A second hangar compile on Intel/ANGLE TDR's the live flight context
-    // (headed dock witness). Discrete GPUs keep the authored berth picture.
-    return /intel/i.test(gpu);
-  } catch {
-    return false;
-  }
+  // A second hangar compile on Intel/ANGLE TDR's the live flight context
+  // (headed dock witness). Discrete GPUs keep the authored berth picture.
+  return /intel/i.test(rendererNameOf(context));
+}
+
+/**
+ * When a UI preview may open its own WebGL context beside the live renderer's.
+ *
+ * - `'defer'`: the live GPU queue still holds the opening cook or the next round's warm batch. A new
+ *   context's first calls (getContext, getExtension, setSize, getParameter) are synchronous round
+ *   trips to the GPU process, so they queue behind the whole backlog and freeze the main thread. The
+ *   Swarm armory opens while the arena cooks behind it; creating its crew preview there held the page
+ *   for about 18 minutes on software GL, the draft stuck at sim 0 with no frames (D195). Ask again later.
+ * - `'never'`: `secondaryPreviewWebGlBlocked`, a GPU that cannot take a second context beside the flight
+ *   one; or software GL, where the new context shares the CPUs with the live one (about 40 s of blocked
+ *   main thread measured on SwiftShader, once per armory) for a picture the schematic already carries.
+ * - `'allow'`: open it.
+ *
+ * Touches no GL while deferring, so a caller can poll it.
+ */
+export function secondaryPreviewWebGlWhen(state, gl = null) {
+  if (!state) return 'allow';
+  const warm = state.render && state.render.swarmDeferredWarm;
+  if (state.mode === 'loading' || (warm && warm.pending === true)) return 'defer';
+  if (secondaryPreviewWebGlBlocked(state, gl)) return 'never';
+  return liveRendererIsSoftware(state, gl) ? 'never' : 'allow';
+}
+
+const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render/i;
+
+function liveRendererIsSoftware(state, gl = null) {
+  const context = gl || (
+    state.render && state.render.renderer && typeof state.render.renderer.getContext === 'function'
+      ? state.render.renderer.getContext()
+      : null
+  );
+  return !!context && SOFTWARE_GL.test(rendererNameOf(context));
 }
 
 export function dockInteriorIdForArchetype(archetypeGlb) {

@@ -34,7 +34,7 @@ import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
-import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
+import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, PAGE_READ_MS, answerWithin, remainingBudgetMs, pageUnresponsiveError, readRouteStall, formatRouteStall } from './routes.mjs';
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 
@@ -310,6 +310,8 @@ async function runOne(args, arena, extra = {}) {
   const wallCapMs = (args.wall || (args.headed ? 10 : 40)) * 60000;
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
+  // What is left of --wall. Every pre-play wait takes the smaller of its own budget and this (D195).
+  const wallLeft = () => remainingBudgetMs(T0, wallCapMs);
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
   const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), loadavg: { start: [...loadavg()], end: null } }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const shots = [];
@@ -317,12 +319,17 @@ async function runOne(args, arena, extra = {}) {
 
   const server = await startBenchServer();
   const { chromium } = await loadPlaywright();
+  // The bench server keeps the event loop alive: a browser that will not launch must release it, or
+  // the process prints its error and then never exits.
   const { browser, executable } = await launchChromium(chromium, {
     headless: !args.headed,
     args: args.headed
-      ? ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows']
+      // CalculateNativeWinOcclusion: on a shared Windows desktop another window over the gate's makes
+      // Chromium report the page hidden, and the game suspends its loop on a hidden page (a draft
+      // frozen at sim 0.1 s with no frames). The sibling headed probes already carry this flag.
+      ? ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--disable-renderer-backgrounding', '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-features=CalculateNativeWinOcclusion']
       : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
-  });
+  }).catch(async (error) => { await server.close().catch(() => {}); throw error; });
   const page = await browser.newPage({ viewport: { width: vw, height: vh }, deviceScaleFactor: 1 });
   const pageErrors = [];
   const browserNotes = [];
@@ -337,13 +344,21 @@ async function runOne(args, arena, extra = {}) {
   });
   let lastProgress = 0; let progressMark = null;
   let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
+  // Set once a wait proved the page answers nothing: further reads would each burn their full bound.
+  let pageDead = false;
 
   const drain = async () => {
-    if (!readerOn || draining) return;
+    if (!readerOn || draining || pageDead) return;
     draining = true;
     let d;
-    try { d = await drainPlayerTruth(page).catch(() => null); }
-    finally { draining = false; }
+    try {
+      const work = drainPlayerTruth(page);
+      const got = await answerWithin(work, PAGE_READ_MS);
+      // A page that recovers from a long block answers late; its buffered samples are still
+      // evidence. Playwright answers in call order, so a late drain lands before any newer one.
+      if (!got.answered) work.then((late) => { if (late) appendReaderDrain(trace, late); }, () => {});
+      d = got.answered && !got.error ? got.value : null;
+    } finally { draining = false; }
     if (!d) return;
     appendReaderDrain(trace, d);
     const last = trace.samples[trace.samples.length - 1];
@@ -354,8 +369,13 @@ async function runOne(args, arena, extra = {}) {
     }
   };
   const shoot = async (tag, play) => {
-    if (busy) return; busy = true;
-    try {
+    if (busy || pageDead) return; busy = true;
+    // A blocked page answers none of these reads, and Playwright gives evaluate/screenshot no deadline
+    // of their own: bound the whole capture so one frozen frame cannot pin `busy` and the shutdown
+    // drain below (the harness outlived --wall on exactly this, D195). A capture abandoned here that
+    // finishes later records nothing.
+    let abandoned = false;
+    const capture = async () => {
       const info = await page.evaluate(() => {
         const st = window.SF ? window.SF.state : null;
         // Adventure-realm markers visible in this frame: the 47-A rescue objective / Helios
@@ -370,10 +390,14 @@ async function runOne(args, arena, extra = {}) {
       await page.screenshot({ path: file, type: 'jpeg', quality: 72 });
       const end = await page.evaluate(() => ({ t: performance.now(), sim: window.SF ? window.SF.state.simTime : null }));
       overlays.push(...await page.evaluate(screenshotHudOccluders));
+      if (abandoned) return;
       shots.push({ t: info.t, endT: end.t, sim: info.sim, endSim: end.sim,
         file, play, label: tag, overlays, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
       if (play && info.realm) (trace.realm || (trace.realm = [])).push({ t: info.t, sim: info.sim, file, ...info.realm });
-    } catch { /* page navigating */ } finally { busy = false; }
+    };
+    const got = await answerWithin(capture, PAGE_READ_MS);
+    if (!got.answered) abandoned = true;
+    busy = false;
   };
   const startStreams = (tag) => {
     if (!shotTimer) shotTimer = setInterval(() => { shoot(tag(), true).catch(() => {}); }, shotEveryMs);
@@ -387,7 +411,12 @@ async function runOne(args, arena, extra = {}) {
     // the actor enters flight, so a route timeout remains reportable without one huge RPC.
     if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
-  const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
+  const phaseNow = async () => {
+    const got = await answerWithin(() => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) })), Math.max(wallLeft(), PAGE_READ_MS));
+    if (!got.answered) throw pageUnresponsiveError('play', got.waitedMs);
+    if (got.error) throw got.error;
+    return got.value;
+  };
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
   const playWatch = createPlayWatch();
   const observePlay = async () => {
@@ -423,10 +452,11 @@ async function runOne(args, arena, extra = {}) {
     if (args.mode === 'swarm' || args.mode === 'gauntlet') {
       doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step, {
         onShip: async () => { await shoot('ship step', false); },
+        remainingMs: wallLeft,
       });
       if (args.mode === 'swarm') {
-        await waitForPreparationLaunch(page);
-        await waitBootOverlayGone(page);
+        await waitForPreparationLaunch(page, { timeoutMs: Math.min(600000, wallLeft()), patienceMs: wallLeft() });
+        await waitBootOverlayGone(page, Math.min(300000, wallLeft()));
         await shoot('armory', false);
         const shelf = await readArmoryShelf(page);
         const classified = classifyOfferRead(shelf);
@@ -455,7 +485,7 @@ async function runOne(args, arena, extra = {}) {
             : `${shelf.cards.length} armory offers read`;
         step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${source} · ${fitted.length} fitted${fittedRead ? '' : ' (fit list not read)'} · ${probe.swapProbe}`);
         const word = await armoryLaunchWord(page);
-        await clickText(page, word || 'Launch round 1');
+        await clickText(page, word || 'Launch round 1', { timeout: Math.min(240000, wallLeft()) });
       } else if (doorInfo && doorInfo.doorPrep) {
         const door = doorInfo.doorPrep;
         const claimed = door.fittedClaimed || 0;
@@ -467,8 +497,8 @@ async function runOne(args, arena, extra = {}) {
         };
         step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${door.quote || 'no hull sentence'} · no armory shelf`);
       }
-      await waitUntilFlight(page, { timeout: 600000, active: true });
-      await waitBootOverlayGone(page);
+      await waitUntilFlight(page, { timeout: Math.min(600000, wallLeft()), active: true, patienceMs: wallLeft() });
+      await waitBootOverlayGone(page, Math.min(300000, wallLeft()));
       const st0 = await phaseNow();
       step('spawn', true, `flight · round ${st0.w} active at sim ${st0.sim.toFixed(1)} s`);
       trace.meta.playStartSim = st0.sim;
@@ -565,9 +595,10 @@ async function runOne(args, arena, extra = {}) {
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
   } catch (err) {
+    if (err && err.pageUnresponsive) pageDead = true;
     let quote = err && err.environmentQuote;
     if (!quote) quote = quoteLoadError(String(err && err.message || err));
-    if (!quote) quote = await readLoadError(page);
+    if (!quote && !pageDead) quote = await readLoadError(page);
     if (quote) {
       trace.meta.environmentQuote = quote;
       stopReason = `HARNESS ENVIRONMENT: route load failed: "${quote}"`;
@@ -581,7 +612,14 @@ async function runOne(args, arena, extra = {}) {
         else if (typeof browser.isConnected === 'function' && !browser.isConnected()) note('browser not connected');
       }
       stopReason = formatRouteFailure(err && err.message || err, { notes: browserNotes });
-      trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
+      // Who owns the stall: a page that answers but never lit its launch button, or a page whose main
+      // thread is blocked and answers nothing (a GPU/driver link under the opening admission). The
+      // verdict carries the line; the full read rides trace.meta.routeStall (D195).
+      const stall = pageDead ? { answered: false, waitedMs: err.waitedMs } : await readRouteStall(page).catch(() => null);
+      if (stall) trace.meta.routeStall = stall;
+      const stallLine = formatRouteStall(stall);
+      log(stallLine);
+      trace.route.steps.push({ name: 'route', ok: false, detail: `${stopReason} · ${stallLine}` });
       if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));
       console.error(err);
       await shoot('route failure', false);
@@ -589,7 +627,7 @@ async function runOne(args, arena, extra = {}) {
   } finally {
     page.__ptObserve = null;
     clearInterval(shotTimer); clearInterval(drainTimer);
-    while (busy || draining) await new Promise((r) => setTimeout(r, 100));
+    for (const until = Date.now() + PAGE_READ_MS; (busy || draining) && Date.now() < until;) await new Promise((r) => setTimeout(r, 100));
     await drain().catch(() => {});
   }
   if (args.fight) {

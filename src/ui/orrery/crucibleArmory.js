@@ -10,7 +10,7 @@ import { createPipSpannerCrew } from './pipSpannerCrew.js';
 // per inspection. Entries never expire: clips land with a build, not mid-session.
 const missingClips = new Set();
 
-export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
+export function createVisualArmory({ root, reading, parts, onPurchase, contextPolicy } = {}) {
   const doc = root?.ownerDocument;
   if (!doc?.createElementNS || !reading || !parts) return null;
   injectCruciblePreparation(doc); root.classList.add('orr-visual-armory');
@@ -28,7 +28,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const buildSummary = make('summary', '', 'Current build');
   const buildList = make('ul', ''); build.append(buildSummary, buildList);
   visual.append(item, label, parts.jig, build); reading.prepend(visual);
-  const crew = createPipSpannerCrew({ host: visual, doc });
+  const crew = createPipSpannerCrew({ host: visual, doc, contextPolicy });
   const fitline = make('p', 'orr-armory-fitline', '');
   parts.act.after(fitline);
   // The words remain accessible even when the catalog is empty or no illustration is available.

@@ -5,10 +5,120 @@ import { quoteLoadError } from './environment.mjs';
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 
+/**
+ * Run `work` (a promise or a function returning one) for at most `ms`. A page whose main thread is
+ * blocked (a driver shader link, a runaway task) never answers `page.evaluate`, and Playwright's
+ * evaluate has no deadline of its own, so an unbounded read lets a wait outlive its own cap.
+ * Never rejects: `{ answered: true, value }`, `{ answered: true, error }`, or `{ answered: false }`.
+ */
+export function answerWithin(work, ms) {
+  return new Promise((resolve) => {
+    let timer = null;
+    const done = (outcome) => { clearTimeout(timer); resolve(outcome); };
+    timer = setTimeout(() => resolve({ answered: false, waitedMs: ms }), Math.max(1, ms));
+    Promise.resolve()
+      .then(() => (typeof work === 'function' ? work() : work))
+      .then((value) => done({ answered: true, value }), (error) => done({ answered: true, error }));
+  });
+}
+
+/** Milliseconds left of a wall cap that started at `startedAt`; never below `floorMs` so a spent cap still gets one read. */
+export function remainingBudgetMs(startedAt, capMs, { now = Date.now, floorMs = 1000 } = {}) {
+  return Math.max(floorMs, capMs - (now() - startedAt));
+}
+
+/** The named route failure for a page that did not answer: distinguishes a frozen page from a screen that never lit. */
+export function pageUnresponsiveError(where, waitedMs) {
+  const err = new Error(`${where}: page did not answer for ${Math.round(waitedMs / 1000)} s (main thread blocked, no DOM read)`);
+  err.pageUnresponsive = true;
+  err.waitedMs = waitedMs;
+  return err;
+}
+
+/** How long a read of an already-failed route may take; the page is not expected to answer. */
+export const STALL_READ_MS = 5000;
+
+/** The longest one telemetry drain or screenshot may hold the harness; software GL answers slowly, not never. */
+export const PAGE_READ_MS = 30000;
+
 /** Page text that is a load failure, or null. The sentence is the player's, quoted unchanged. */
-export async function readLoadError(page) {
-  const text = await page.evaluate(() => (document.body && document.body.innerText) || '').catch(() => '');
-  return quoteLoadError(text);
+export async function readLoadError(page, { answerMs = 8000 } = {}) {
+  const got = await answerWithin(() => page.evaluate(() => (document.body && document.body.innerText) || ''), answerMs);
+  return quoteLoadError(got.answered && !got.error ? got.value : '');
+}
+
+/**
+ * What the page looks like after a route failed: screen, run phase, boot overlay, the launch
+ * button, whether animation frames still arrive, and the tail of the opening cook ledger. When the
+ * page does not answer at all that is the finding (`answered: false`): a blocked main thread, not a
+ * missing button. Bounded; safe to call on a dead page.
+ */
+export async function readRouteStall(page, { answerMs = STALL_READ_MS } = {}) {
+  const got = await answerWithin(() => page.evaluate(async () => {
+    const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const sf = window.SF; const st = sf && sf.state; const run = st && st.run;
+    const sm = sf && sf.ctx && sf.ctx.screenManager;
+    const screens = document.getElementById('screens');
+    const overlay = document.getElementById('boot-overlay');
+    const ocs = overlay ? getComputedStyle(overlay) : null;
+    const overlayUp = !!overlay && !(ocs.display === 'none' || ocs.visibility === 'hidden' || Number(ocs.opacity) < 0.05 || overlay.hidden);
+    const button = [...document.querySelectorAll('#screens button')]
+      .find((b) => /Launch round|Keep current loadout|Readying the field|^Continue/.test(n(b.textContent)));
+    const render = st && st.render;
+    const ledger = render && Array.isArray(render.openingCookLedger) ? render.openingCookLedger : [];
+    const rows = ledger.filter((r) => r && r.step !== 'lane' && r.step !== 'begin');
+    // The game's own loop state (src/core/presentationRunner.js). A hidden or occluded window
+    // suspends presentation by design: no frames, no sim, a draft that never hands off.
+    let loop = null;
+    try {
+      const w = window.__SF_WITNESS__ && typeof window.__SF_WITNESS__.snapshot === 'function' ? window.__SF_WITNESS__.snapshot() : null;
+      if (w) loop = { lifecycle: w.lifecycle || null, suspended: w.suspended === true, executedFrames: w.executedFrames, documentHidden: w.documentHidden === true };
+    } catch { loop = null; }
+    const frames = await new Promise((resolve) => {
+      let ticks = 0; const t0 = performance.now();
+      const tick = () => { ticks += 1; if (performance.now() - t0 >= 1000) resolve(ticks); else requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+      setTimeout(() => resolve(ticks), 1500);
+    });
+    return {
+      top: sm && typeof sm.top === 'function' ? sm.top() : null,
+      mode: st ? st.mode : null,
+      run: run ? `${run.kind}/${run.ruleset || '-'}/${run.phase}` : null,
+      sim: st && Number.isFinite(st.simTime) ? +st.simTime.toFixed(2) : null,
+      screensShown: !!(screens && screens.style.display !== 'none' && screens.getAttribute('aria-hidden') !== 'true'),
+      overlayUp,
+      button: button ? { text: n(button.textContent).replace(/Esc$/, '').trim().slice(0, 40), disabled: !!button.disabled || button.getAttribute('aria-disabled') === 'true' } : null,
+      framesPerSec: frames,
+      loop,
+      tabVisible: document.visibilityState,
+      focused: document.hasFocus(),
+      cookTail: rows.slice(-6).map((r) => `${r.step} ${r.outcome} ${r.ms}ms`),
+      cookAtMs: ledger.length ? Math.max(...ledger.map((r) => Number(r && r.t) || 0)) : null,
+    };
+  }), answerMs + 1500);
+  if (!got.answered) return { answered: false, waitedMs: got.waitedMs };
+  if (got.error) return { answered: true, error: String(got.error && got.error.message || got.error).split('\n')[0].slice(0, 120) };
+  return { answered: true, ...got.value };
+}
+
+/** One line for a route step's detail. The full object rides in the trace meta. */
+export function formatRouteStall(stall) {
+  if (!stall) return 'page state: not read';
+  if (stall.answered === false) return `page state: no answer within ${Math.round((stall.waitedMs || 0) / 1000)} s — main thread blocked`;
+  if (stall.error) return `page state: unreadable (${stall.error})`;
+  const bits = [
+    `screen ${stall.top || 'none'}`,
+    `mode ${stall.mode || 'none'}`,
+    `run ${stall.run || 'none'}${stall.sim != null ? ` sim ${stall.sim}` : ''}`,
+    stall.screensShown ? 'screens shown' : 'screens hidden',
+    stall.overlayUp ? 'boot overlay up' : 'boot overlay gone',
+    stall.button ? `button "${stall.button.text}"${stall.button.disabled ? ' disabled' : ''}` : 'no launch button',
+    `${stall.framesPerSec}/s frames`,
+    stall.loop ? `loop ${stall.loop.lifecycle || 'unknown'}${stall.loop.suspended ? ' SUSPENDED' : ''}` : 'loop unread',
+    `tab ${stall.tabVisible}${stall.focused ? '' : ' unfocused'}`,
+  ];
+  if (stall.cookTail && stall.cookTail.length) bits.push(`cook@${stall.cookAtMs} ms: ${stall.cookTail.join(', ')}`);
+  return `page state: ${bits.join(' · ')}`.slice(0, 480);
 }
 
 function environmentError(quote) {
@@ -36,22 +146,25 @@ export async function bootToMenu(page, baseUrl, step) {
 }
 
 /** Flight, or a quoted load error. `active` also requires the run phase to be active. */
-export async function waitUntilFlight(page, { timeout = 600000, active = false } = {}) {
+export async function waitUntilFlight(page, { timeout = 600000, active = false, patienceMs = 0 } = {}) {
   const deadline = Date.now() + timeout;
+  let unanswered = 0;
   while (Date.now() < deadline) {
-    const quote = await readLoadError(page);
+    const quote = await readLoadError(page, { answerMs: Math.max(1, Math.min(8000, deadline - Date.now())) });
     if (quote) throw environmentError(quote);
-    const flight = await page.evaluate((needActive) => {
+    const got = await answerWithin(() => page.evaluate((needActive) => {
       const st = window.SF && window.SF.state;
       if (!st || st.mode !== 'flight') return false;
       if (!needActive) return true;
       return !!(st.run && st.run.phase === 'active');
-    }, active).catch(() => false);
-    if (flight) return;
-    await page.waitForTimeout(400);
+    }, active), Math.max(1, deadline - Date.now(), patienceMs));
+    if (got.answered && !got.error && got.value) return;
+    if (!got.answered) { unanswered = got.waitedMs; break; }
+    await page.waitForTimeout(Math.max(1, Math.min(400, deadline - Date.now())));
   }
   const quote = await readLoadError(page);
   if (quote) throw environmentError(quote);
+  if (unanswered) throw pageUnresponsiveError(active ? 'flight' : 'flight start', unanswered);
   throw new Error(active ? 'flight did not become active before the timeout' : 'flight did not start before the timeout');
 }
 
@@ -87,7 +200,11 @@ export async function listHulls(page) {
  *  `hooks.onShip(doorPrep)` runs after the hull is selected and before the launch click, so a
  *  caller can photograph the ship step. Gauntlet never opens an armory; the door sentence is the preparation. */
 export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step, hooks = {}) {
-  await clickText(page, 'Crucible', { exact: true });
+  // `hooks.remainingMs()` is what is left of the run's --wall cap. Every wait on this route takes
+  // the smaller of its own budget and that, so a stalled door cannot outlive the cap (D195).
+  const within = (ms) => (typeof hooks.remainingMs === 'function' ? Math.max(1000, Math.min(ms, hooks.remainingMs())) : ms);
+  const patience = () => (typeof hooks.remainingMs === 'function' ? hooks.remainingMs() : 0);
+  await clickText(page, 'Crucible', { exact: true, timeout: within(240000) });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: 60000 });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
   const arenas = await listDoorArenas(page);
@@ -126,7 +243,7 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   await trySeed();
   const chosen = await listDoorArenas(page);
   step('mode select', true, `Crucible · ${ruleset} · arena ${(chosen.find((x) => x.pressed) || {}).name || arena || 'default'} · seed ${seedSet ? seed : 'field not visible'}`);
-  await clickText(page, 'Choose ship');
+  await clickText(page, 'Choose ship', { timeout: within(240000) });
   await trySeed();
   const hulls = await listHulls(page);
   if (wantHull) {
@@ -156,15 +273,15 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   const doorPrep = await readDoorPreparation(page);
   if (hooks && typeof hooks.onShip === 'function') await hooks.onShip(doorPrep);
   if (ruleset === 'swarm') {
-    await clickText(page, 'Open armory');
+    await clickText(page, 'Open armory', { timeout: within(240000) });
     // #318: a Training Derelict fallthrough fails immediately. Any other non-draft
     // world still gets the 60 s named miss (mode, kind, phase, top, helios_core spawn).
-    await waitForArmory(page, { failOnTutorial: true });
+    await waitForArmory(page, { failOnTutorial: true, timeoutMs: within(300000), patienceMs: patience() });
   } else {
     // Gauntlet does not stop on the draft screen. A survival run is the landing.
     // The same adventure/inactive flight that swallows Swarm is still a miss.
-    await clickText(page, 'Enter the Gauntlet');
-    await waitForArmory(page, { acceptSurvival: true, verb: 'Enter the Gauntlet' });
+    await clickText(page, 'Enter the Gauntlet', { timeout: within(240000) });
+    await waitForArmory(page, { acceptSurvival: true, verb: 'Enter the Gauntlet', timeoutMs: within(300000), patienceMs: patience() });
   }
   return { arenas, seedSet, hull, hulls, doorPrep };
 }
@@ -251,12 +368,14 @@ async function readArmorySnap(page) {
 }
 
 /** Poll the live page. Ready on crucibleDraft. Lost when the world is not a draft. */
-async function waitForArmory(page, { timeoutMs = 300000, graceMs = ARMORY_WORLD_GRACE_MS, acceptSurvival = false, failOnTutorial = false, verb = 'Open armory' } = {}) {
+async function waitForArmory(page, { timeoutMs = 300000, graceMs = ARMORY_WORLD_GRACE_MS, acceptSurvival = false, failOnTutorial = false, verb = 'Open armory', patienceMs = 0 } = {}) {
   const deadline = Date.now() + timeoutMs;
   let flightSince = null;
   let last = null;
   while (Date.now() < deadline) {
-    last = await readArmorySnap(page);
+    const got = await answerWithin(() => readArmorySnap(page), Math.max(1, deadline - Date.now(), patienceMs));
+    if (!got.answered) throw pageUnresponsiveError(verb, got.waitedMs);
+    last = got.error ? null : got.value;
     if (last) {
       const survivalLive = acceptSurvival && last.kind === 'survival' && last.phase && last.phase !== 'inactive';
       const inWorld = (last.mode === 'flight' || last.mode === 'loading') && last.phase !== 'draft' && last.top !== 'crucibleDraft' && !survivalLive;
@@ -627,13 +746,22 @@ export async function waitForPreparationLaunch(page, {
   pollMs = 250,
   now = Date.now,
   read = null,
+  patienceMs = 0,
 } = {}) {
   const deadline = now() + timeoutMs;
   let hold = null;
   let last = null;
   const load = read || (() => readPreparationSnap(page));
   while (now() < deadline) {
-    last = await load();
+    // A blocked page never answers, and an unbounded read here outlived the wall cap by minutes
+    // (D195). The read gets the time that is left, or `patienceMs` when that is longer; silence for
+    // all of it is its own named failure. Patience is how long a page may stay silent and still be
+    // waited for: slow software GL blocks for minutes in the opening and then answers, so the route
+    // passes the wall time left, not the wait's polling timeout.
+    const got = await answerWithin(load, Math.max(1, deadline - now(), patienceMs));
+    if (!got.answered) throw pageUnresponsiveError('preparation', got.waitedMs);
+    if (got.error) throw got.error;
+    last = got.value;
     const note = notePreparationWait(hold, last, now(), unexpectedMs);
     if (note.status === 'ready') return last;
     if (note.due) throw new Error(`unexpected screen: ${note.name}`);

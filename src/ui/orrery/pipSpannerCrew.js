@@ -2,7 +2,17 @@
 // this presenter owns neither run money nor equipment and never delays a launch.
 import { createPipSpannerPreview } from './pipSpannerPreview.js';
 import { equipmentSvg } from './equipmentGlyphs.js';
-export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
+// How soon a deferred crew preview asks the context policy again.
+export const CREW_CONTEXT_RETRY_MS = 400;
+
+/**
+ * `contextPolicy()` answers `'allow' | 'defer' | 'never'` (see secondaryPreviewWebGlWhen). The 3D crew
+ * is an enhancement over the schematic and never delays a launch, so it opens its own WebGL context
+ * only when that cannot freeze the page: a context created while the GPU queue is full waits behind
+ * all of it on the main thread (D195). Until then, and for good where the policy says never, the
+ * schematic is the crew.
+ */
+export function createPipSpannerCrew({ host, doc = host?.ownerDocument, contextPolicy = () => 'allow' } = {}) {
   if (!host || !doc?.createElementNS) return null;
   const make = (tag, cls, text) => {
     const node = doc.createElement(tag); node.className = cls;
@@ -41,9 +51,20 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
   status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   root.append(svg, names, status); host.appendChild(root);
   let selection = null, receiptKey = null, generation = null, active = true;
-  let preview = null, stage = null, item = null, itemLabel = null, selectedOffer = null;
+  let preview = null, stage = null, item = null, itemLabel = null, selectedOffer = null, retry = null;
+  const cancelRetry = () => {
+    if (retry != null) doc.defaultView?.clearTimeout?.(retry);
+    retry = null;
+  };
   const ensurePreview = () => {
     if (preview || !active || !doc.defaultView) return;
+    let when = 'never';
+    try { when = contextPolicy(); } catch { when = 'never'; }
+    if (when === 'never') { root.dataset.visual = 'schematic'; return; }
+    if (when === 'defer') {
+      if (retry == null) retry = doc.defaultView.setTimeout?.(() => { retry = null; ensurePreview(); }, CREW_CONTEXT_RETRY_MS) ?? null;
+      return;
+    }
     const canvas = doc.createElement('canvas');
     if (!canvas.getContext) return;
     if (!stage) {
@@ -65,6 +86,7 @@ export function createPipSpannerCrew({ host, doc = host?.ownerDocument } = {}) {
     if (selectedOffer) preview?.inspect(selectedOffer);
   };
   const retirePreview = () => {
+    cancelRetry();
     preview?.dispose(); preview = null;
     stage?.querySelector('canvas')?.remove();
     if (stage) stage.hidden = true;

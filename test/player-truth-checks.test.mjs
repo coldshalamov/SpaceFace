@@ -9,7 +9,7 @@ import {
   isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
-import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS, classifyPreparationScreen, notePreparationWait, waitForPreparationLaunch, PREPARATION_UNEXPECTED_MS } from '../scripts/player-truth/routes.mjs';
+import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS, classifyPreparationScreen, notePreparationWait, waitForPreparationLaunch, PREPARATION_UNEXPECTED_MS, answerWithin, remainingBudgetMs, pageUnresponsiveError, readRouteStall, formatRouteStall, waitUntilFlight } from '../scripts/player-truth/routes.mjs';
 import { separation, sampleBox, rimMatchesThreat, threatMarkerCredit, THREAT_MARKER } from '../scripts/player-truth/readability.mjs';
 import { offscreenShooterMarker } from '../src/ui/threatHalo.js';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
@@ -552,6 +552,91 @@ test('preparation names a Rearm screen in about 30s and keeps waiting on the arm
     /Launch round 1 did not appear/,
   );
   assert.ok(now - 9_000_000 >= 5000 && now - 9_000_000 < 30000);
+});
+
+test('a wait on a blocked page ends at its own cap with a named failure, not after it (D195)', async () => {
+  // The headed Intel gate sat in preparation for 711 s of a --wall=10: its page reads had no deadline,
+  // so a page whose main thread was blocked held the wait past the cap. The read now gets only the
+  // time that is left, and silence for all of it is its own failure.
+  const never = () => new Promise(() => {});
+  assert.deepEqual(await answerWithin(Promise.resolve(7), 1000), { answered: true, value: 7 });
+  const boom = await answerWithin(() => Promise.reject(new Error('gone')), 1000);
+  assert.equal(boom.answered, true);
+  assert.equal(boom.error.message, 'gone');
+  assert.equal((await answerWithin(never, 40)).answered, false);
+
+  const started = Date.now();
+  await assert.rejects(
+    () => waitForPreparationLaunch({ waitForTimeout: async () => {} }, { timeoutMs: 150, unexpectedMs: 30000, pollMs: 10, read: never }),
+    (err) => err.pageUnresponsive === true && /preparation: page did not answer for \d+ s \(main thread blocked/.test(err.message),
+  );
+  assert.ok(Date.now() - started < 1500, 'the wait must end at its cap, not after it');
+
+  // A page that answers but never lights Launch keeps its older, distinct miss.
+  await assert.rejects(
+    () => waitForPreparationLaunch({ waitForTimeout: (ms) => new Promise((r) => setTimeout(r, ms)) }, {
+      timeoutMs: 120, unexpectedMs: 30000, pollMs: 20,
+      read: async () => ({ visible: true, title: 'Armory', sub: 'Fit out before round 1', top: 'crucibleDraft', launch: false }),
+    }),
+    (err) => err.pageUnresponsive !== true && /Launch round 1 did not appear/.test(err.message),
+  );
+
+  // Patience is separate from the polling timeout: slow software GL blocks for minutes in the opening
+  // and then answers, so a page may stay silent past the wait's own cap while wall time remains.
+  const late = await waitForPreparationLaunch({ waitForTimeout: async () => {} }, {
+    timeoutMs: 60, patienceMs: 2000, unexpectedMs: 30000, pollMs: 10,
+    read: () => new Promise((resolve) => setTimeout(() => resolve({ visible: true, title: 'Armory', top: 'crucibleDraft', launch: true }), 250)),
+  });
+  assert.equal(late.launch, true);
+  const patientStart = Date.now();
+  await assert.rejects(
+    () => waitForPreparationLaunch({ waitForTimeout: async () => {} }, { timeoutMs: 60, patienceMs: 300, pollMs: 10, read: never }),
+    (err) => err.pageUnresponsive === true,
+  );
+  assert.ok(Date.now() - patientStart >= 280 && Date.now() - patientStart < 1500, 'silence ends at the patience, not the polling timeout');
+
+  // Flight start shares the rule: an evaluate that never returns is the named failure.
+  const frozen = { evaluate: () => never(), waitForTimeout: async () => {} };
+  await assert.rejects(() => waitUntilFlight(frozen, { timeout: 150, active: true }), (err) => err.pageUnresponsive === true && /^flight:/.test(err.message));
+
+  assert.equal(pageUnresponsiveError('x', 61000).pageUnresponsive, true);
+  assert.equal(pageUnresponsiveError('x', 61000).waitedMs, 61000);
+  assert.match(pageUnresponsiveError('x', 61000).message, /^x: page did not answer for 61 s/);
+});
+
+test('the wall budget floors at one read so a spent cap still reports', () => {
+  assert.equal(remainingBudgetMs(1_000, 600_000, { now: () => 301_000 }), 300_000);
+  assert.equal(remainingBudgetMs(1_000, 600_000, { now: () => 700_000 }), 1000);
+  assert.equal(remainingBudgetMs(1_000, 600_000, { now: () => 700_000, floorMs: 5000 }), 5000);
+});
+
+test('the route-stall witness tells a blocked page from a screen that never lit', async () => {
+  const frozen = { evaluate: () => new Promise(() => {}) };
+  const none = await readRouteStall(frozen, { answerMs: 30 });
+  assert.equal(none.answered, false);
+  assert.match(formatRouteStall(none), /main thread blocked/);
+
+  const read = {
+    answered: true, top: 'crucibleDraft', mode: 'loading', run: 'survival/swarm/draft', sim: 0.1,
+    screensShown: true, overlayUp: true, button: { text: 'Readying the field…', disabled: true },
+    framesPerSec: 0, loop: { lifecycle: 'hidden-or-minimized', suspended: true, executedFrames: 12, documentHidden: true },
+    tabVisible: 'hidden', focused: false,
+    cookTail: ['wait.prepareOpeningGpuResources timeout 10000ms'], cookAtMs: 41230,
+  };
+  const live = await readRouteStall({ evaluate: async () => read });
+  assert.equal(live.answered, true);
+  assert.equal(live.top, 'crucibleDraft');
+  const line = formatRouteStall(live);
+  for (const part of ['screen crucibleDraft', 'mode loading', 'run survival/swarm/draft sim 0.1', 'boot overlay up', 'button "Readying the field…" disabled', '0/s frames', 'loop hidden-or-minimized SUSPENDED', 'tab hidden', 'unfocused', 'cook@41230 ms: wait.prepareOpeningGpuResources timeout 10000ms']) {
+    assert.ok(line.includes(part), `${part} missing from: ${line}`);
+  }
+  assert.ok(line.length <= 480 + 'page state: '.length);
+  assert.match(formatRouteStall({ ...read, loop: null }), /loop unread/);
+  assert.match(formatRouteStall({ answered: true, error: 'x'.repeat(10) }), /unreadable/);
+  assert.equal(formatRouteStall(null), 'page state: not read');
+  const lit = await readRouteStall({ evaluate: async () => { throw new Error('Execution context was destroyed'); } });
+  assert.equal(lit.answered, true);
+  assert.match(lit.error, /Execution context was destroyed/);
 });
 
 test('Open armory is ready on the draft screen and lost in a non-draft world', () => {

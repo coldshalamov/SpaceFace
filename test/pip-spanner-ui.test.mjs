@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createPipSpannerCrew } from '../src/ui/orrery/pipSpannerCrew.js';
+import { readFileSync } from 'node:fs';
+import { createPipSpannerCrew, CREW_CONTEXT_RETRY_MS } from '../src/ui/orrery/pipSpannerCrew.js';
 import { crucibleDraftScreen } from '../src/ui/screens/crucibleDraft.js';
 
 class Node {
@@ -75,4 +76,49 @@ test('receipt-driven cosmetic motion uses no simulation time and does not schedu
   assert.equal(view.status.attrs['aria-live'], 'polite');
   assert.equal(view.root.children[0].attrs['aria-hidden'], 'true');
   assert.equal(view.root.children[0].attrs.focusable, 'false');
+});
+
+// A crew whose document has a window with a manual timer queue and counts the canvases it is asked
+// for. The canvas has no getContext, so a context the policy allows is requested but never built.
+function gatedCrew(contextPolicy) {
+  const timers = [], canvases = [];
+  const defaultView = { setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimeout: (id) => { timers[id - 1] = null; } };
+  const doc = { defaultView, createElement: (tag) => { const node = new Node(doc); if (tag === 'canvas') canvases.push(node); return node; }, createElementNS: () => new Node(doc) };
+  return { view: createPipSpannerCrew({ host: new Node(doc), doc, contextPolicy }), timers, canvases };
+}
+
+test('the crew keeps the schematic and opens no WebGL context while the GPU queue is busy, then opens one when it clears (D195)', () => {
+  let when = 'defer';
+  const { view, timers, canvases } = gatedCrew(() => when);
+  view.inspect(offer);
+  assert.equal(canvases.length, 0, 'no second context while the opening or a warm batch holds the GPU');
+  assert.equal(timers.length, 1); assert.equal(timers[0].ms, CREW_CONTEXT_RETRY_MS);
+  timers[0].fn();
+  assert.equal(canvases.length, 0); assert.equal(timers.length, 2, 'still deferred: asks again later');
+  when = 'allow'; timers[1].fn();
+  assert.equal(canvases.length, 1, 'the queue cleared: the crew asks for its context once');
+  assert.equal(timers.length, 2, 'and stops polling');
+});
+
+test('the crew never opens a context where the GPU policy forbids one, and a hidden crew stops asking', () => {
+  const never = gatedCrew(() => 'never');
+  never.view.inspect(offer);
+  assert.equal(never.canvases.length, 0); assert.equal(never.timers.length, 0);
+  assert.equal(never.view.root.dataset.visual, 'schematic');
+  const broken = gatedCrew(() => { throw new Error('state unreadable'); });
+  broken.view.inspect(offer);
+  assert.equal(broken.canvases.length, 0, 'an unreadable policy is the safe answer, not a context');
+  const hidden = gatedCrew(() => 'defer');
+  hidden.view.inspect(offer); assert.ok(hidden.timers[0]);
+  hidden.view.setActive(false);
+  assert.equal(hidden.timers[0], null, 'closing the armory cancels the pending retry');
+  hidden.view.dispose();
+});
+
+test('with no policy the crew keeps its old behaviour, and the draft screen supplies the live-state policy', () => {
+  const plain = gatedCrew(undefined);
+  plain.view.inspect(offer);
+  assert.equal(plain.canvases.length, 1);
+  const source = readFileSync(new URL('../src/ui/screens/crucibleDraft.js', import.meta.url), 'utf8');
+  assert.match(source, /contextPolicy:\s*\(\)\s*=>\s*secondaryPreviewWebGlWhen\(this\._ctx && this\._ctx\.state\)/);
 });

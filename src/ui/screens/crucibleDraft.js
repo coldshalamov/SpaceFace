@@ -44,6 +44,7 @@ import { createHullSchematic } from '../orrery/hullSchematic.js';
 import { createSlotJig } from '../orrery/slotJig.js';
 import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
 import { createVisualArmory } from '../orrery/crucibleArmory.js';
+import { secondaryPreviewWebGlWhen } from '../shipPreviewMount.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectCruciblePreparation } from '../orrery/cruciblePreparationLayouts.js';
 
@@ -733,7 +734,10 @@ export const crucibleDraftScreen = {
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
       cards.addEventListener('focusin', (event) => this._readFrom(event));
       this._visualArmory = createVisualArmory({ root: rootEl, reading, parts,
-        onPurchase: () => this._purchaseSelected(this._ctx) });
+        onPurchase: () => this._purchaseSelected(this._ctx),
+        // The armory opens while the arena still cooks behind it; the crew's own WebGL context waits
+        // for that GPU backlog to clear instead of freezing the draft (D195).
+        contextPolicy: () => secondaryPreviewWebGlWhen(this._ctx && this._ctx.state) });
       const railScale = el('div', 'orr-rail-scale');
       railScale.setAttribute('aria-hidden', 'true');
       const track = el('div', 'orr-rail-scale__track');
