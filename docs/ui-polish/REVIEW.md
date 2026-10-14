@@ -58,7 +58,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`crucible-results`** | **DONE** (ui-polish-5) | See § Crucible results below |
 | `orrery-flight` | SURVEYED | |
 | `comms-radial` | SURVEYED | |
-| `wingman-radial` | SURVEYED | |
+| **`wingman-radial`** | **DONE** (hub stack) | See § Wingman radial hub stack — ui-polish-28 |
 | `ship` | SURVEYED | Ledger DONE earlier |
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
@@ -737,3 +737,15 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28e/{before,after,compare}/`.
 
 **Branch:** pushed to ui-polish-28 without a PR while the #371/#374 freeze holds.
+
+## Wingman radial hub stack — ui-polish-28 (2026-10-13 evening)
+
+**Before (960×540):** the ORRERY hub restyle used `padding-top:38px` and a 20px craft-count numeral inside the 124px glass disc. At short windows (≤560 tall / the 960×540 bench) **2 CRAFT** crushed into **TAB**, so the count was only a clipped band of glyphs. 1920×1080 showed the same crush when the dial opened. (Bench "FLYBY / Break the beam on 2 CRAFT" lines are world objective copy overlapping the dial in projection — not hub nodes.)
+
+**After (`src/ui/orrery/wingmanLayouts.js` only):** hub padding is balanced (`14px 10px 12px`), gap 4px, overflow clipped to the disc; title 11px, craft count 14px, TAB 10px with tight line-heights so ALL WINGS → pips → 2 CRAFT → TAB read as four clear rows. Selectors and IDs unchanged; wedge labels / receipts / HUD chrome untouched.
+
+**Checked:** 960×540 (fix + `--walk` 12 controls, measured clean), 1280×720, 1920×1080 (measured clean). Phone left alone (no separate wingman phone shell this session).
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28f/{before,after,compare-hub-960.png}/`.
+
+*If #374's REVIEW.md leftovers sections conflict with this file on merge, keep both. This section only covers `wingmanLayouts.js`.*
