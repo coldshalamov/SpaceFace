@@ -20510,6 +20510,11 @@ export const render = {
           // the first flight frame; the source differs, so the same-source guard cannot skip it.
           if (this._foundryEnvTexture && this._envMapSource !== IBL_SOURCE_FOUNDRY) {
             this._foundryEnvPending = true;
+            // Retire it at the head of the veil, out of the Launch reply: once the loading
+            // veil has painted (rAF, then a fresh task). Left to the cook seams alone it could
+            // ride to the flight backstop, whose GPU convolve then landed on the first
+            // presented flight frames (a 2.6-3.7 s program-link stall on software GL).
+            this._scheduleVeiledFoundryEnvDrain?.();
           }
           releaseOpeningGraphPublication(this);
           this._openingFirstPicturePrepared = false;
@@ -24934,6 +24939,20 @@ export const render = {
     if (this._openingEnvFrozen === true) return;
     this._foundryEnvPending = false;
     this._bakeEnv();
+  },
+
+  // One veiled drain shortly after loading begins: after the veil's next paint, in its own task.
+  _scheduleVeiledFoundryEnvDrain() {
+    if (this._foundryEnvDrainScheduled === true) return;
+    this._foundryEnvDrainScheduled = true;
+    const run = () => {
+      this._foundryEnvDrainScheduled = false;
+      if (!this._rendererLifecycle || (this.state && this.state.mode) !== 'loading') return;
+      this._drainFoundryEnvPending();
+    };
+    const raf = globalThis.requestAnimationFrame;
+    if (typeof raf === 'function') raf(() => setTimeout(run, 0));
+    else setTimeout(run, 0);
   },
 
   _bakeEnv(options = {}) {
