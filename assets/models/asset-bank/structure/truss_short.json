@@ -484,12 +484,12 @@
   ],
   "bounds": {
     "min": [
-      -2.082272529602051,
+      -2.0950000286102295,
       -0.8149999976158142,
       -0.8149999976158142
     ],
     "max": [
-      2.082272529602051,
+      2.0950000286102295,
       0.8149999976158142,
       0.8675000071525574
     ]
@@ -501,27 +501,27 @@
       "file": "truss_short_lod0.glb",
       "triangles": 5024,
       "draws": 6,
-      "bytes": 515172,
+      "bytes": 515176,
       "method": "source",
-      "sha256": "0a9d1e2b234ec221444984fe9f14b81b176e822372edef03639959f72fa1d209"
+      "sha256": "bd6e40e74ac788eaf7ab3408da2d4f4b42c3a778e960c6ac7c25563916e60f5e"
     },
     {
       "level": 1,
       "file": "truss_short_lod1.glb",
       "triangles": 4592,
       "draws": 6,
-      "bytes": 489944,
+      "bytes": 489948,
       "method": "authored-topology",
-      "sha256": "a2625f4052f9a52cb1abd6c9a8be56a7639e982b8768dde4cae45009daf01eec"
+      "sha256": "1facff0e89fa0821ea50cf14fe2c102c4212ae3086d3af74df86da2d44da5c3d"
     },
     {
       "level": 2,
       "file": "truss_short_lod2.glb",
       "triangles": 4304,
       "draws": 6,
-      "bytes": 461136,
+      "bytes": 461140,
       "method": "authored-topology",
-      "sha256": "fdf19ed9679e68967b30da3ea3c4aa8c6457dc5ad93cdf0e2056b07dbbfb5c79"
+      "sha256": "857a3a0aa38a41764a7a9a440a9fb7c51b0a60061f4f97e24d047a557566a354"
     }
   ]
 }

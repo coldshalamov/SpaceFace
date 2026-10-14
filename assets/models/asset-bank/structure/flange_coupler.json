@@ -142,12 +142,12 @@
   ],
   "bounds": {
     "min": [
-      -0.4399999976158142,
+      -0.4450000524520874,
       -0.8149999976158142,
       -0.8149999976158142
     ],
     "max": [
-      0.4399999976158142,
+      0.4449999928474426,
       0.8149999976158142,
       0.8149999976158142
     ]
@@ -161,7 +161,7 @@
       "draws": 4,
       "bytes": 424196,
       "method": "source",
-      "sha256": "9df54f779c67acd30efa61d6b56746a4ecc6c5050797daa1a5a4b92fd6796079"
+      "sha256": "87baacb0364aaf3768c19fe3434de4d7accf4fb4dbb90b9dfd9c78a2ad99dbb4"
     },
     {
       "level": 1,
@@ -170,7 +170,7 @@
       "draws": 4,
       "bytes": 402316,
       "method": "authored-topology",
-      "sha256": "5d5e2b0421280176656f98bf4720cdc3cba3ee3dbedc6ae510c861330ff42510"
+      "sha256": "906a0c6197195820f3075839c63fce44cb5f88006e7c4cd32f52d063abd2f3e5"
     },
     {
       "level": 2,
@@ -179,7 +179,7 @@
       "draws": 3,
       "bytes": 382516,
       "method": "authored-topology",
-      "sha256": "bb3a7fa7360ad1948f5d1dc18a735419a18c4fd4d1327f98be2692cb5f08acba"
+      "sha256": "b774f2e790827baf12542f337d9dff70bbaac6dfc3b96852a5749f9f7d186095"
     }
   ]
 }
