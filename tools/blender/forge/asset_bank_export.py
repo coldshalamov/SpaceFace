@@ -1,10 +1,11 @@
 """Asset-bank adapter over canonical Forge. Units metres; glTF Y-up metadata.
 No global collision hull is inferred. Factories may author topology-preserving LODs.
 """
-import hashlib,json,os
+import hashlib,json,os,struct
 import bpy
 from mathutils import Vector,Matrix
 import forge_export as fe
+from asset_bank_bounds import finalize_asset_bounds
 from asset_bank_cost import scene_cost
 
 def gltf(v):return [float(v[0]),float(v[2]),-float(v[1])]
@@ -14,6 +15,29 @@ def socket_rotation(forward):
     preferred=Vector((0,0,1)) if abs(x.z)<.999 else Vector((0,1,0))
     z=(preferred-x*preferred.dot(x)).normalized();y=z.cross(x).normalized()
     return Matrix((x,y,z)).transposed().to_quaternion()
+
+def canonicalize_triangle_order(path):
+    """Stabilize Blender's nondeterministic face ordering without changing winding/topology."""
+    data=bytearray(open(path,'rb').read());jlen=struct.unpack_from('<I',data,12)[0]
+    doc=json.loads(data[20:20+jlen]);binary=28+jlen;done=set()
+    for mesh in doc.get('meshes',[]):
+        for primitive in mesh['primitives']:
+            index=primitive.get('indices')
+            if index is None or index in done or primitive.get('mode',4)!=4:continue
+            done.add(index);a=doc['accessors'][index];v=doc['bufferViews'][a['bufferView']]
+            if v.get('byteStride'):raise ValueError('Unexpected interleaved index buffer')
+            fmt={5121:'B',5123:'H',5125:'I'}[a['componentType']];count=a['count']
+            if count%3:raise ValueError('Triangle index count is not divisible by three')
+            offset=binary+v.get('byteOffset',0)+a.get('byteOffset',0)
+            indices=struct.unpack_from('<'+fmt*count,data,offset)
+            triangles=[]
+            for i in range(0,count,3):
+                tri=indices[i:i+3]
+                triangles.append(min(tri,tri[1:]+tri[:1],tri[2:]+tri[:2]))
+            triangles.sort();flat=[n for tri in triangles for n in tri]
+            struct.pack_into('<'+fmt*count,data,offset,*flat)
+    with open(path,'wb') as f:f.write(data)
+
 
 def export_asset(ship,out_dir,asset_id,category,description,collision_boxes=None,tags=None):
     os.makedirs(out_dir,exist_ok=True);ship.finish();fe._rename_materials(ship)
@@ -55,9 +79,9 @@ def export_asset(ship,out_dir,asset_id,category,description,collision_boxes=None
             doc['asset']['generator']='SpaceFace Forge asset bank v1'
             doc['asset'].setdefault('extras',{})['spacefaceAsset']=meta
             doc['scenes'][doc.get('scene',0)].setdefault('extras',{})['spacefaceAsset']=meta
+        canonicalize_triangle_order(path)
         doc=fe.patch_glb_json(path,stamp)
-        # Shared meshes cost once per active node, not once per mesh definition.
-        # This also supports valid non-indexed triangle primitives.
+        # Count reachable mesh occurrences, including non-indexed primitives.
         costs=scene_cost(doc)
         with open(path,'rb') as exported: digest=hashlib.sha256(exported.read()).hexdigest()
         base['lods'].append({'level':level,'file':os.path.basename(path),**costs,'bytes':os.path.getsize(path),'method':'authored-topology' if authored else ('source' if level==0 else 'Forge-decimation'),'sha256':digest})
@@ -66,6 +90,7 @@ def export_asset(ship,out_dir,asset_id,category,description,collision_boxes=None
                 world=pivot.matrix_world.copy();pivot.parent=None;pivot.matrix_world=world
         fe._clear_export_objects([root]+meshes+empties)
         if authored:fe._clear_export_objects(source.objects)
+    finalize_asset_bounds(base,out_dir)
     with open(os.path.join(out_dir,asset_id+'.json'),'w') as f:json.dump(base,f,indent=2);f.write('\n')
     return base
 
