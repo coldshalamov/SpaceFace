@@ -1071,7 +1071,7 @@ export function sameDomainContainerKind(a, b) {
 // Worker-side per-pass differ. Maintains a path table: expanded (container)
 // nodes enumerate their live children each pass; leaf nodes sign on their
 // cadence (hot every pass, cold every DOMAIN_COLD_TICKS passes) and ship a
-// canonical clone when the digest drifts. The probe is the digest set of every
+// canonical clone when the signature changes. The probe is the digest set of every
 // leaf path — the runner replays the same walk over its facades and compares.
 //
 // Node records: { leaf, kids:Set<string>|null, digest, bytes, lastSign, segs }.
@@ -1129,7 +1129,7 @@ export function createDomainDiffer(options = {}) {
     let n = paths.get(path);
     if (!n) {
       n = {
-        leaf: true, kids: null, digest: null, bytes: 0,
+        leaf: true, kids: null, digest: null, signature: null, bytes: 0,
         lastSign: -1, lastEnum: null, segs, slot: nextSlot++,
         probeSlot: null, probeChanged: false,
       };
@@ -1232,14 +1232,20 @@ export function createDomainDiffer(options = {}) {
     }
     const pv = projectDomainLeaf(leafRule, v);
     const sig = canonicalSignature(pv, sigScratch);
-    const digest = domainSigDigest(sig);
+    // Production sends the canonical value, never its hash. Compare the retained
+    // text directly instead of UTF-8 encoding and SHA-256 hashing every leaf on
+    // every due reply. The optional parity probe still gets the same digest,
+    // computed only when its source changes. This keeps complete payloads and
+    // freshness unchanged, and exact text equality cannot hide a hash collision.
+    const changed = node.lastSign < 0 || sig !== node.signature;
     stats.signedBytes += sig.length;
     node.lastSign = tick;
     node.bytes = sig.length;
     const freshSlot = node.probeSlot == null;
     if (freshSlot) assignProbeSlot(node, path);
-    if (digest !== node.digest) {
-      node.digest = digest;
+    if (changed) {
+      node.signature = sig;
+      node.digest = probeEnabled ? domainSigDigest(sig) : null;
       node.probeChanged = true;
       updates.push({ segs, v: canonicalClone(pv, cloneScratch), bytes: sig.length });
       stats.shipBytes += sig.length;
