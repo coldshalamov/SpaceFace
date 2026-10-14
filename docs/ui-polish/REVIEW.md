@@ -942,3 +942,16 @@ Shots: `ui-shots/survey29/` (before), `iter1`–`iter3` (after) at 390×844 (and
 
 **After (`mobileScreenLayouts.js` only, phones over 800px tall):** ACCEPT docks on a full-width opaque band with a hairline above it, so the dossier scrolls under it. The title is 24px (two lines) and the reward 44px. The route chart is 240px tall on every phone, so the names place clear of each other. Phones at or under 800px tall (including 844×390 on its side) keep ACCEPT in flow with the compact title and are pixel-identical. 960×540 is identical; 1280/1920 differ only by route-drift noise. TRACKED stays on-frame at all four sizes. Shots: `ui-shots/polish28o/{before,after}/`, `{before,after}-scroll/`, `compare-contracts-phone.png`.
 
+
+## Station Ledger tape figures — close entries no longer collide (ui-polish-28)
+
+**Note:** Missions route strip at 960×540 (FROM / ROUTE PENDING / TO, H… truncation) was already fixed on leftovers27b / archiveLayouts.js compact query — re-shot and confirmed clear; no change this pass.
+
+**Before:** when trade entries sit close on the tape, the back-pass for `minGap` walked the first tip into the axis numeral column, so debit figures (−480) printed on the axis major (−750). The origin CYCLE label also tried to dive into the stem zone (`Math.min` with a short `maxUp`) and sat on the first debit. Bench: `"−750" is printed on top of "−480"` at 960 and 1280 with a filled ledger.
+
+**After (`ledgerTape.js` only):**
+- First tip stays clear of the axis column (`AXIS_COL` + clamp after the back-pass, compress if needed).
+- Origin CYCLE yields when the first tip stands in its run (the now cursor still names the cycle).
+- Same-side figures take vertical lanes (15px) and stay inside the tape height so they do not run into the reading under it.
+
+**Checked:** filled ledger (5 close entries) at 390×844 / 960×540 / 1280×720 / 1920×1080 — no −750/−480 or CYCLE/figure tangle; empty ledger still clean at those sizes. Remaining at 960/phone: list row "Bought 20u…" vs reading "−750 cr" (reading band under the tape, not tape SVG geometry). Selectors/IDs unchanged. Shots: `ui-shots/polish28p/{before,after}/`, `compare-ledger-filled-960.png`, `compare-tape-crop-960.png`.
