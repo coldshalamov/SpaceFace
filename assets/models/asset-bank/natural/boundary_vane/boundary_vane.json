@@ -1,0 +1,144 @@
+{
+  "assetId": "boundary_vane",
+  "category": "ancient",
+  "description": "boundary vane; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.02999999999999997,
+          0.125,
+          -0.010000000000000009
+        ],
+        "size": [
+          1.3280000000000003,
+          0.25,
+          0.8160000000000001
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.23,
+          1.5,
+          -0.0
+        ],
+        "size": [
+          0.21,
+          2.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.23,
+          1.5,
+          -0.0
+        ],
+        "size": [
+          0.21,
+          2.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -0.7984817624092102,
+      0.0,
+      -0.5192225575447083
+    ],
+    "max": [
+      0.856724739074707,
+      3.4916458129882812,
+      0.5
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "boundary_vane_lod0.glb",
+      "triangles": 1460,
+      "draws": 3,
+      "bytes": 85160,
+      "method": "source",
+      "sha256": "a5be1f9e132957808341a74500b2741c0d8323b2bdfa8b53a22e1cef7baea3e9"
+    },
+    {
+      "level": 1,
+      "file": "boundary_vane_lod1.glb",
+      "triangles": 896,
+      "draws": 2,
+      "bytes": 50544,
+      "method": "authored-topology",
+      "sha256": "4af75181af5cfdf448d666f79caf478d5f2bf3960f768226d7e828e07b2cf36c"
+    },
+    {
+      "level": 2,
+      "file": "boundary_vane_lod2.glb",
+      "triangles": 896,
+      "draws": 2,
+      "bytes": 50544,
+      "method": "authored-topology",
+      "sha256": "7988e2ea83e3411681853925b3281d2330cd344874f8005eb91efd622b1ba195"
+    }
+  ]
+}

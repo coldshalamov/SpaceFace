@@ -1,0 +1,146 @@
+{
+  "assetId": "branching_nerve_mat",
+  "category": "growth",
+  "description": "branching nerve mat; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_A",
+      "position": [
+        -1.5,
+        0.2,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_B",
+      "position": [
+        2.1,
+        0.18,
+        -0.2
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          -1.5,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.45599999999999996,
+          0.12,
+          0.45599999999999996
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.8865529298782349,
+      -0.00011771763820433989,
+      -1.2553482055664062
+    ],
+    "max": [
+      2.122037410736084,
+      0.4249347150325775,
+      1.1080079078674316
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "branching_nerve_mat_lod0.glb",
+      "triangles": 12372,
+      "draws": 5,
+      "bytes": 539304,
+      "method": "source",
+      "sha256": "439ea7fdf40009167587f63e8e4b9220116104d7ccf0d1a439bb0160a62aa041"
+    },
+    {
+      "level": 1,
+      "file": "branching_nerve_mat_lod1.glb",
+      "triangles": 4948,
+      "draws": 5,
+      "bytes": 259956,
+      "method": "Forge-decimation",
+      "sha256": "11226e8ed0d99a6b72c7d095654eb662c92709298c8bd78eabb27e1e0b57f177"
+    },
+    {
+      "level": 2,
+      "file": "branching_nerve_mat_lod2.glb",
+      "triangles": 2226,
+      "draws": 5,
+      "bytes": 145780,
+      "method": "Forge-decimation",
+      "sha256": "2aafcade1e490084f333b7df250eaa6bae7a48ccfef6c48e9d0dca2dd9accc01"
+    }
+  ]
+}

@@ -1,0 +1,335 @@
+{
+  "assetId": "calcified_pipe_collar",
+  "category": "growth",
+  "description": "calcified pipe collar; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_PIPE",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          1.08,
+          0.45,
+          -0.0
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9353074360871939,
+          0.45,
+          -0.5399999999999999
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5400000000000001,
+          0.45,
+          -0.9353074360871938
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          6.613092715395707e-17,
+          0.45,
+          -1.08
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5399999999999998,
+          0.45,
+          -0.9353074360871939
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.9353074360871939,
+          0.45,
+          -0.5399999999999999
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.08,
+          0.45,
+          -1.3226185430791415e-16
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.935307436087194,
+          0.45,
+          0.5399999999999997
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.5400000000000005,
+          0.45,
+          0.9353074360871935
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.9839278146187122e-16,
+          0.45,
+          1.08
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5400000000000001,
+          0.45,
+          0.9353074360871938
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.9353074360871935,
+          0.45,
+          0.5400000000000005
+        ],
+        "size": [
+          0.17,
+          0.7,
+          0.17
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.8002814054489136,
+      0.016129767522215843,
+      -1.805271029472351
+    ],
+    "max": [
+      1.7805428504943848,
+      1.0227961540222168,
+      1.796454668045044
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "calcified_pipe_collar_lod0.glb",
+      "triangles": 11420,
+      "draws": 4,
+      "bytes": 507416,
+      "method": "source",
+      "sha256": "3e8896dd70da43403c08cf988321e2249a59f9fb13bec6c44987808008ec0a54"
+    },
+    {
+      "level": 1,
+      "file": "calcified_pipe_collar_lod1.glb",
+      "triangles": 4568,
+      "draws": 4,
+      "bytes": 245540,
+      "method": "Forge-decimation",
+      "sha256": "8c0185b4ab8c52b043323b5a8a1990bcd5762398bd2a130e0c93f87917e65ce9"
+    },
+    {
+      "level": 2,
+      "file": "calcified_pipe_collar_lod2.glb",
+      "triangles": 2054,
+      "draws": 4,
+      "bytes": 134528,
+      "method": "Forge-decimation",
+      "sha256": "803739ab46af31623d1234e57e5b21ddabfc2783b9352d0c257837d768ea1036"
+    }
+  ]
+}

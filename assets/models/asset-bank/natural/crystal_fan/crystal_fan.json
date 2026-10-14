@@ -1,0 +1,106 @@
+{
+  "assetId": "crystal_fan",
+  "category": "geology",
+  "description": "crystal fan; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.18,
+          -0.0
+        ],
+        "size": [
+          1.4,
+          0.3,
+          0.85
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.4462037086486816,
+      -0.026315780356526375,
+      -0.6980386972427368
+    ],
+    "max": [
+      1.3299509286880493,
+      2.9947218894958496,
+      0.6090424060821533
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "crystal_fan_lod0.glb",
+      "triangles": 3988,
+      "draws": 3,
+      "bytes": 193352,
+      "method": "source",
+      "sha256": "69e3905627ae52ceb2b2b8e3188eb79b6a248e27e823ac68f6b267ab3d7ed81e"
+    },
+    {
+      "level": 1,
+      "file": "crystal_fan_lod1.glb",
+      "triangles": 1594,
+      "draws": 3,
+      "bytes": 87328,
+      "method": "Forge-decimation",
+      "sha256": "07948b487f6878213094b0b3d87485f2e24bcaa23b34c84ddf59ded9ca9429ca"
+    },
+    {
+      "level": 2,
+      "file": "crystal_fan_lod2.glb",
+      "triangles": 716,
+      "draws": 3,
+      "bytes": 53400,
+      "method": "Forge-decimation",
+      "sha256": "3d8d8883bceb6ea9e8b8a5720ba53961051b95fd2a9ca1ccc9bc4fdbc2d918ef"
+    }
+  ]
+}

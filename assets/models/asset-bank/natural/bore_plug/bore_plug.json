@@ -1,0 +1,126 @@
+{
+  "assetId": "bore_plug",
+  "category": "geology",
+  "description": "bore plug; reusable geology assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_BORE",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.2,
+          -0.0
+        ],
+        "size": [
+          1.2,
+          2.4,
+          1.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "geology",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -0.8299999833106995,
+      0.0,
+      -0.8360000252723694
+    ],
+    "max": [
+      0.8299999833106995,
+      2.4996275901794434,
+      0.8240000009536743
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "bore_plug_lod0.glb",
+      "triangles": 13762,
+      "draws": 4,
+      "bytes": 692936,
+      "method": "source",
+      "sha256": "fbf28ade07e031ff84a4f5d01417cf99e3a7b7f4b95d9d13983636bbcec6a8f9"
+    },
+    {
+      "level": 1,
+      "file": "bore_plug_lod1.glb",
+      "triangles": 11088,
+      "draws": 4,
+      "bytes": 572664,
+      "method": "authored-topology",
+      "sha256": "57e9d3f3dd12fc905cc113361bb427e628cad3ebbed02b65c7b3ecb116fbab39"
+    },
+    {
+      "level": 2,
+      "file": "bore_plug_lod2.glb",
+      "triangles": 9014,
+      "draws": 4,
+      "bytes": 480248,
+      "method": "authored-topology",
+      "sha256": "8f15d27c14f6afaf1431312690c9f8021325fa337bb6a8c6c2bd893dd3aed21c"
+    }
+  ]
+}
