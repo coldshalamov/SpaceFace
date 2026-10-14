@@ -27,10 +27,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # No full asset bank, no history, no browser install. This is not a shipped-game build.
+          # Runtime-owned JSON/code under assets is required even without rendering.
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /*
-            !/assets/
+            !/assets/**
+            /assets/**/*.json
+            /assets/**/*.js
+            /assets/**/*.mjs
+            /assets/**/*.cjs
             !/design/
             !/tools/blender/
             !/docs/
