@@ -1510,16 +1510,35 @@ function outerButtEnd(dx, dy, radius, along, dash, gap) {
   const angle = angleAtAlong(radius, butt);
   const ox = (radius + PAINTED_STROKE_PX) * Math.cos(angle);
   const oy = (radius + PAINTED_STROKE_PX) * Math.sin(angle);
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  let lo = radius - PAINTED_STROKE_PX;
+  let hi = radius + PAINTED_STROKE_PX;
+  for (const [u, min, max] of [[ux, dx - 0.5, dx + 0.5], [uy, dy - 0.5, dy + 0.5]]) {
+    if (Math.abs(u) < 1e-9) {
+      if (0 < min || 0 > max) { lo = 1; hi = 0; break; }
+      continue;
+    }
+    let t0 = min / u;
+    let t1 = max / u;
+    if (t0 > t1) [t0, t1] = [t1, t0];
+    lo = Math.max(lo, t0);
+    hi = Math.min(hi, t1);
+  }
   return {
     span,
     dist: Math.hypot(ox - dx, oy - dy),
     inside: Math.abs(ox - dx) <= 0.5 && Math.abs(oy - dy) <= 0.5,
+    lx: ox - dx,
+    ly: oy - dy,
+    chord: hi > lo ? hi - lo : 0,
   };
 }
 
 function outerButtPixel(dx, dy, radius, along, dash, gap, signed) {
-  // The flat cap ends half a pixel outside the centerline. A pixel paints when
-  // that outer end lies in the square and the dash phase still crosses it.
+  // The flat cap is the radial segment from half a pixel inside the centerline
+  // to half a pixel outside it. A pixel paints when that segment still crosses
+  // the square at the dash phase.
   if (!(signed > 0) || dash < 4) return false;
   const perp = signed;
   const support = squareSupport(dx, dy);
@@ -1528,9 +1547,17 @@ function outerButtPixel(dx, dy, radius, along, dash, gap, signed) {
     && perp > 0.55 && perp <= 0.62 && support > 0.7 && support <= 0.708;
   const outerFringe = span.alongOff > 0.34 && span.alongOff <= 0.37
     && perp > 0.5 && perp <= 0.53 && support > 0.69 && support <= 0.706;
-  if (!nearCenter && !outerFringe) return false;
+  // Outer part of the stroke, more than half a pixel past a diagonal butt.
+  const outerHalf = perp > 0.35 && perp < PAINTED_STROKE_PX
+    && span.alongOff > PAINTED_STROKE_PX && support > 0.7;
+  // The pixel holds the outer endpoint and at least half of the cap.
+  const halfCap = perp < PAINTED_STROKE_PX;
+  if (!nearCenter && !outerFringe && !outerHalf && !halfCap) return false;
   const end = outerButtEnd(dx, dy, radius, along, dash, gap);
-  if (!end || !end.inside) return false;
+  if (!end) return false;
+  if (outerHalf && end.chord >= 0.15) return true;
+  if (halfCap && end.inside && end.chord >= PAINTED_STROKE_PX) return true;
+  if (!end.inside || (!nearCenter && !outerFringe)) return false;
   // The nearest empty outer end on these rings sits 0.207px from its center.
   if (nearCenter && end.dist > 0.19) return false;
   return true;
