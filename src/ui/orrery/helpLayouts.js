@@ -12,6 +12,8 @@ import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 
 const STYLE_ID = 'sf-orrery-help-layouts';
 const H = 'html body #screens > .k-screen.of-help.orr-help';
+/** Help on a desktop (not the phone shell); same weight as H plus the mobile guard. */
+const HD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help';
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
@@ -287,6 +289,49 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:22px !important; }
   ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::after { width:16px !important; }
   ${H} .orr-hreg__name { font-size:13px; }
+}
+/* UI polish 28: a short desktop (761–1200 wide). The six sections stood as a 172px ladder beside the stage,
+   which left the Controls rig ~400px for two callout columns and the berth; the rig's floor (a 200px berth)
+   then pushed REVERSE / MINE BEAM / STEER RIGHT / COUNTERMEASURE / BOOST over EVERY KEY. Here the sections
+   lie as one row of words on a rule beside the title (the register's own FLIGHT / INTERFACE strip grammar),
+   and the stage takes the full width. The phone (data-sf-mobile) keeps its own row. */
+@media (min-width:761px) and (max-width:1200px) {
+  ${HD} { grid-template-columns:auto minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title hang" "stage stage" "foot foot" !important; }
+  ${HD} > .k-hang { grid-area:hang; align-self:end; justify-self:end; -webkit-mask-image:none; mask-image:none; } /* one row: nothing scrolls, so the kit fade would only dim the rule */
+  ${HD} > .k-foot { grid-area:foot; }
+  ${HD} > .orr-help__stage { grid-area:stage; }
+  ${HD} .orr-help__tabs { flex-direction:row !important; gap:clamp(14px, 2.2vw, 26px) !important; padding:0 0 14px !important;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
+  ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
+  ${HD} .orr-help__tabs > li::before { display:none; }
+  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:32px !important; padding:3px 0 4px !important; font-size:12px !important; letter-spacing:.16em !important; }
+  ${HD} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-12px !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
+  html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:12px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:50% !important; bottom:-14px !important; width:9px !important; height:9px !important; margin:0 0 0 -4.5px !important;
+    clip-path:none !important; border-radius:50% !important; filter:none !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 244 222 / .55) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:none !important; display:none !important; }
+  /* the tab rule now carries the line; the profile word's trailing flourish would run into it */
+  ${HD} > .k-title > .sf-help-now::after { content:none; }
+  /* the readings (Ships, Commodities) are taller than this stage: they scroll in place under a fade instead
+     of running past the frame's foot; the shade pool goes, since the hero now stands clear beside them */
+  ${HD} .orr-help-list__stage > .orr-help-reading { align-self:center; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding-bottom:22px; box-sizing:border-box;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
+  ${HD} .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list__stage > .orr-help-reading::before { content:none; }
+  /* ORES: no height for the mix plus a reading under it, so the reading stands beside the mix */
+  ${HD} .orr-help-list--ores { grid-template-columns:200px minmax(0, 1fr); column-gap:24px; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(220px, 24vw, 280px); grid-template-rows:minmax(0, 1fr); column-gap:20px; align-items:center; }
+  ${HD} .orr-help-list--ores .orr-hmix__rock-name { letter-spacing:.1em; }
+  /* the ring is at its 80px floor here: its words keep inside the band (the rock's name and share; its tier-cap line drops) */
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre { translate:0 -14px; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:13px; letter-spacing:.03em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:0 0 22px; }
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
 }
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
 ${SCROLL_EXTENT_CSS}

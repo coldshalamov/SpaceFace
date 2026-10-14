@@ -810,3 +810,11 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **Checked:** 390×844, 960×540, 1280×720, 1920×1080. Bench: no overlaps on the phone (there were five). Focused test `inst-02-comms-fan-power-rail` passes.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28k/{before,after}/comms-radial-*.png` and `compare-390x844.png`.
+
+## Help at 761–1200 wide (ui-polish-28, `helpLayouts.js`)
+
+**Before (960×540, 1024×768):** the six sections stood as a 172px ladder beside the stage, so the Controls rig had about 400px for two callout columns and the berth. The berth stopped at its 200px floor and the right-hand callouts (REVERSE, MINE BEAM, STEER RIGHT, LATERAL RIGHT, COUNTERMEASURE, BOOST) printed over EVERY KEY. Ships and Commodities had no room for their hero (the price dial and ship ring were gone) and their readings ran past the frame. On Ores the reading sat on top of the mix ring.
+
+**After (desktop only, `min-width:761px and max-width:1200px`, not `data-sf-mobile`):** the sections lie as one row of words on a rule beside the title, using the same grammar as the register's FLIGHT / INTERFACE strip (a tick per word, a dot on the open one, amber on Controls). The stage takes the full width, so every callout clears EVERY KEY. Ships and Commodities show their hero again, and a tall reading scrolls in place under a fade. On Ores the reading stands beside the mix, and at its 80px ring floor the ring keeps the rock's name and share inside the band (the rock's tier-cap line drops at this size). 1280×720 is pixel-identical; 1920×1080 and the phone differ only in the rig's drift. Selectors and IDs are unchanged.
+
+**Checked:** 960×540 and 1024×768 `--walk` through all six sections, plus 1200×800, 1280×720, 1920×1080 and 390×844. The bench measures no tangled, buried or cut-off type. Focused tests pass: help-flight-verbs, help-gamepad-rebind, help-input-echo-lifetime, inf-teach-help-live-bindings. Shots: `ui-shots/polish28l/`.
