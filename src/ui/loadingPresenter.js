@@ -7,6 +7,8 @@ const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
   label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
 const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
 const NOOP = { show() {}, hide() {}, destroy() {} };
+// Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
+export const FIRST_DRAW_REVEAL_CAP_MS = 8000;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
@@ -30,7 +32,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   label?.setAttribute?.('role', 'status'); label?.setAttribute?.('aria-live', 'polite');
   let terminalArt = null, retainWorkerArt = false, retainedCanvas = null;
   let retainedPointerMove = null, needsPointerBridge = false;
-  let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null;
+  let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null, revealCapTimer = null;
   let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
   let session = 0;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
@@ -78,6 +80,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     revealPollTimer = null;
     if (revealDeadlineTimer !== null) clearTimeout(revealDeadlineTimer);
     revealDeadlineTimer = null;
+    if (revealCapTimer !== null) clearTimeout(revealCapTimer);
+    revealCapTimer = null;
   }
   function paint(fraction, formatted) {
     if (!visible() || disposed) return;
@@ -162,10 +166,25 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     // rAF alone can starve the whole escape window on a throttled host (background tab,
     // occluded window) while the game presents frames on its own cadence — pair it with a
     // self-clearing timer channel like the continue-fade veil so the shell still lifts.
+    // A renderer frame alone is not the world: the opening first draw can hold for seconds
+    // after flight starts, and lifting then revealed the HUD over a black playfield. Wait for
+    // the opening submission's first draw too (renderers without that stamp keep the frame gate),
+    // bounded by a cap so the veil can never stick. The fade itself is unchanged.
+    const render = state?.render;
+    const tracksFirstDraw = !!render && Object.prototype.hasOwnProperty.call(render, 'openingSubmissionFirstDrawSubmittedAt');
+    const firstDrawSubmitted = () => !tracksFirstDraw || Number.isFinite(render.openingSubmissionFirstDrawSubmittedAt);
+    let capped = false;
+    revealCapTimer = setTimeout(() => {
+      revealCapTimer = null; capped = true;
+      if (!firstDrawSubmitted()) console.info('[loading] veil lifted by the first-draw cap', { capMs: FIRST_DRAW_REVEAL_CAP_MS });
+      poll(true);
+    }, FIRST_DRAW_REVEAL_CAP_MS);
     const poll = (viaTimer) => {
       if (viaTimer) revealPollTimer = null; else revealRaf = null;
       if (disposed) return;
-      if (frameNow() > baseline) {
+      if (frameNow() > baseline && (capped || firstDrawSubmitted())) {
+        // Debug flag: tells a capped lift apart from a first-draw lift.
+        if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
         cancelRevealWait(); ring?.finish();
         // A small, bounded finish interval lets the needle settle before removing the shell.
         if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide(), 450);

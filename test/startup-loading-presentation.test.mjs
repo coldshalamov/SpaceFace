@@ -254,6 +254,58 @@ test('flight handoff keeps the shell up until the renderer presents past the mod
   }
 });
 
+test('flight reveal also waits for the opening first draw, bounded by a cap', (t) => {
+  // HUD over a black world: a presented frame is not the world when the opening submission's
+  // first draw is still pending. The veil waits for that stamp; the cap lifts it anyway and says so.
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let rafQueue = [];
+  const prevRaf = globalThis.requestAnimationFrame;
+  const prevCancel = globalThis.cancelAnimationFrame;
+  const prevInfo = console.info;
+  const infos = [];
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
+  globalThis.cancelAnimationFrame = () => { rafQueue = []; };
+  console.info = (...a) => infos.push(a);
+  try {
+    const pump = (frames) => { for (let i = 0; i < frames; i++) { const q = rafQueue; rafQueue = []; for (const fn of q) fn(i * 16.7); } };
+    const run = () => {
+      const bus = createBus();
+      const overlay = fakeElement();
+      const document = { getElementById: () => overlay, querySelector: () => null };
+      const info = { render: { frame: 10 } };
+      const state = { render: { renderer: { info }, openingSubmissionFirstDrawSubmittedAt: null } };
+      const presenter = createLoadingPresenter({ document, bus, state });
+      bus.emit('game:loadingProgress', { id: 'entering-flight', progress: 0.96 });
+      bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+      info.render.frame = 11;
+      pump(3);
+      return { overlay, state, presenter };
+    };
+
+    const a = run();
+    assert.equal(a.overlay.classList.contains('hidden'), false,
+      'a presented frame without the opening first draw must keep the veil up');
+    a.state.render.openingSubmissionFirstDrawSubmittedAt = 1234;
+    pump(2);
+    assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first draw submitted');
+    assert.equal(a.state.render.veilLiftReason, 'first-draw');
+    a.presenter.destroy();
+
+    const b = run();
+    t.mock.timers.tick(7900); pump(1);
+    assert.equal(b.overlay.classList.contains('hidden'), false, 'still waiting before the cap');
+    t.mock.timers.tick(200); pump(1);
+    assert.equal(b.overlay.classList.contains('hidden'), true, 'the cap lifts the veil so it cannot stick');
+    assert.equal(b.state.render.veilLiftReason, 'cap');
+    assert.ok(infos.some((x) => /first-draw cap/.test(String(x[0]))), 'a capped lift is logged');
+    b.presenter.destroy();
+  } finally {
+    globalThis.requestAnimationFrame = prevRaf;
+    globalThis.cancelAnimationFrame = prevCancel;
+    console.info = prevInfo;
+  }
+});
+
 test('Continue yields its destructive restore until the loading shell can paint', () => {
   const bus = createBus();
   const deferred = [];
