@@ -797,7 +797,22 @@ export function installPlayerTruthReader(win, opts = {}) {
       try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes,
         meshes?.get(st.playerId), bodies); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }
+    // Harness window: wall ms this sample spent on the main thread (scan, vfx census, pixel
+    // redraw + readback). The grader subtracts it from the next frame's dt and from any long
+    // task it overlaps, so frame metrics describe the game, not the reader.
+    const end = now();
+    s.rw = +(end - t).toFixed(1);
+    markReaderWindow(t, end, !!s.px);
     samples.push(s);
+  }
+
+  function markReaderWindow(start, end, px) {
+    const perf = win.performance;
+    if (!perf || typeof perf.measure !== 'function') return;
+    try {
+      perf.measure(px ? 'player-truth:reader:px' : 'player-truth:reader', { start, end });
+      if (typeof perf.clearMeasures === 'function') perf.clearMeasures(px ? 'player-truth:reader:px' : 'player-truth:reader');
+    } catch { /* measure is diagnostic only */ }
   }
 
   function loop() {
