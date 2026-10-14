@@ -6820,6 +6820,10 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.equal(hitTest(bank, 463.5, 244.5, stageCam, stage, profileDraw), 'player');
   assert.equal(hitTest(bank, 537.5, 162.5, stageCam, stage, profileDraw), 'stone');
   assert.equal(hitTest(bank, 403.5, 357.5, stageCam, stage, profileDraw), 'along_x');
+  assert.equal(hitTest(bank, 228.5, 258.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 226.5, 266.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 276.5, 266.5, stageCam, stage, profileDraw), 'alive_bank');
+  assert.equal(hitTest(bank, 228.5, 257.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 468.5, 245.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 465.5, 237.5, stageCam, stage, profileDraw), null);
   const labelEnds = [

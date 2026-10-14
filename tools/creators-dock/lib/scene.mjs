@@ -1251,7 +1251,7 @@ function labelInk(text, anchorX, anchorY, sx, sy, size, align) {
         const dy = rows[r][0];
         const min = rows[r][1];
         const bits = rows[r][2];
-        if (Math.floor(anchorY + dy) !== py) continue;
+        if (Math.round(anchorY + dy) !== py) continue;
         const local = px - (origin + min);
         if (local >= 0 && local < 24 && (bits & (1 << local))) return true;
       }
