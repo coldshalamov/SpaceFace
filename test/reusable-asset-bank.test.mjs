@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
@@ -30,6 +30,20 @@ async function fixture(t) {
 test('valid authored library validates without claiming visual acceptance', async t => {
   const f=await fixture(t); const result=await validateBank(f.dir);
   assert.equal(result.assets,1);assert.equal(result.glbs,3);assert.equal(result.accepted,undefined);
+});
+test('bank ignores review evidence receipts but still rejects malformed model sidecars', async t => {
+  const f=await fixture(t); const evidence=path.join(f.dir,'evidence','recipes-v3');
+  await mkdir(evidence,{recursive:true});
+  await writeFile(path.join(evidence,'dependencies.json'),JSON.stringify({dependencies:[]}));
+  assert.equal((await validateBank(f.dir)).assets,1);
+  await writeFile(path.join(f.dir,'broken_piece.json'),JSON.stringify({assetId:null}));
+  await assert.rejects(validateBank(f.dir),/invalid asset identity/);
+});
+test('review evidence alone does not make an empty bank pass', async t => {
+  const f=await fixture(t); await rm(f.manifest);
+  await mkdir(path.join(f.dir,'evidence'));
+  await writeFile(path.join(f.dir,'evidence','dependencies.json'),'{}');
+  await assert.rejects(validateBank(f.dir),/No model manifests found/);
 });
 for (const [name, mutate, error] of [
  ['changed byte receipts', r=>r.lods[0].bytes++, /byte count differs/],

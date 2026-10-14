@@ -40,7 +40,8 @@ export async function validateBank(root) {
   async function visit(dir) {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const p = path.join(dir, entry.name);
-      if (entry.isDirectory()) await visit(p);
+      // Export review receipts are not model sidecars; match the catalog's evidence boundary.
+      if (entry.isDirectory() && entry.name !== 'evidence') await visit(p);
       else if (entry.isFile() && entry.name.endsWith('.json')) files.push(p);
     }
   }

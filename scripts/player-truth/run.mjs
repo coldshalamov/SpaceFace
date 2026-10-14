@@ -22,15 +22,17 @@
 //            loss is retried once. The graded verdict is that retry and keeps the first
 //            run's stopReason. A sim stall is not retried. ENVIRONMENT is printed on its own line.
 
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, createWriteStream } from 'node:fs';
 import { freemem, loadavg, totalmem } from 'node:os';
-import { gzipSync } from 'node:zlib';
+import { createGzip } from 'node:zlib';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { loadPlaywright } from '../lib/load-playwright.mjs';
-import { BROWSER_LOSS_SETTLE_MS, chromeStderrNotes, classifyBrowserLoss, launchChromium, readRecentKernelOom, signalsSince, installSessionSignalGuard } from './browser.mjs';
+import { BROWSER_LOSS_SETTLE_MS, chromeStderrNotes, classifyBrowserLoss, launchChromium, readRecentKernelOom, signalsSince, installSessionSignalGuard, keepHeadedWindowNormal } from './browser.mjs';
 import { startBenchServer } from '../lib/benchServer.mjs';
 import { runChecks, overall } from './checks.mjs';
 import { analyzeReadability } from './readability.mjs';
@@ -93,6 +95,19 @@ export async function launchPreparationChoice(page, { ruleset, word }) {
 
 /** Keep all play/opening data; a paused preparation needs only its latest diagnostic frames. */
 export function appendReaderDrain(trace, data) {
+  // CDP returns millions of separately boxed numeric rows on a long Racing route.
+  // One backing store per frame retains every value without paying that heap cost.
+  for (const sample of data.samples) {
+    const rows = sample.e;
+    if (!Array.isArray(rows) || !rows.length
+      || !rows.every(row => Array.isArray(row) && row.length === 12
+        && row.every(value => typeof value === 'number'))) continue;
+    const packed = new Float64Array(rows.length * 12);
+    for (let i = 0; i < rows.length; i++) {
+      packed.set(rows[i], i * 12);
+      rows[i] = packed.subarray(i * 12, (i + 1) * 12);
+    }
+  }
   trace.samples.push(...data.samples);
   if (trace.meta.playStartSim == null) {
     let preparationLeft = 120;
@@ -461,6 +476,7 @@ async function runOne(args, arena, extra = {}) {
   };
 
   let doorInfo = null; let renderer = 'unknown'; let browserVersion = browser.version();
+  const stopWindowGuard = await keepHeadedWindowNormal(page, { headed: args.headed });
   try {
     await bootToMenu(page, server.baseUrl, step);
     await installReader();
@@ -665,6 +681,7 @@ async function runOne(args, arena, extra = {}) {
       await shoot('route failure', false);
     }
   } finally {
+    await stopWindowGuard();
     page.__ptObserve = null;
     clearInterval(shotTimer); clearInterval(drainTimer);
     while (busy || draining) await new Promise((r) => setTimeout(r, 100));
@@ -728,6 +745,35 @@ export async function exitAfterFlush(code, { stdout = process.stdout, stderr = p
   exit(code);
 }
 
+/** Preserve the JSON schema while keeping encoding memory bounded to one sample. */
+export function* traceJsonChunks(trace) {
+  yield '{';
+  let first = true;
+  for (const [key, value] of Object.entries(trace)) {
+    if (value === undefined || typeof value === 'function' || typeof value === 'symbol') continue;
+    if (!first) yield ',';
+    first = false;
+    yield `${JSON.stringify(key)}:`;
+    if (!Array.isArray(value)) { yield JSON.stringify(value); continue; }
+    yield '[';
+    for (let i = 0; i < value.length; i++) {
+      if (i) yield ',';
+      let item = value[i];
+      if (key === 'samples' && Array.isArray(item?.e)) {
+        item = { ...item, e: item.e.map(row => row instanceof Float64Array ? Array.from(row) : row) };
+      }
+      yield JSON.stringify(item) ?? 'null';
+    }
+    yield ']';
+  }
+  yield '}';
+}
+
+export async function writeTraceGzip(file, trace) {
+  await pipeline(Readable.from(traceJsonChunks(trace), { objectMode: false, highWaterMark: 64 * 1024 }),
+    createGzip(), createWriteStream(file));
+}
+
 /** Grade a recorded trace and write verdict.md/json, contact sheet and (with evidence) the compact copy. */
 export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pruneFrames = false, vw, vh }) {
   const nearestSample = (t) => { let best = null; let bd = Infinity; for (const s of trace.samples) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } } return bd < 2000 ? best : null; };
@@ -744,7 +790,7 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pru
   const briefItem = (x) => ({ name: x.name, category: x.category, desc: x.desc });
   const compact = { meta, overall: verdict, results: results.map((r) => ({ ...r, offenders: (r.offenders || []).slice(0, 4) })), rounds: trace.rounds, probes: trace.probes, route: trace.route, pacing: trace.pacing || null, readability: trace.readability, loadout: trace.loadout && { ...trace.loadout, items: (trace.loadout.items || []).map(briefItem), fitted: (trace.loadout.fitted || []).map(briefItem) } };
   writeFileSync(path.join(outDir, 'verdict.json'), JSON.stringify(compact, null, 1));
-  writeFileSync(path.join(outDir, 'trace.json.gz'), gzipSync(JSON.stringify({ ...trace, shots: shots.map((s) => ({ ...s, file: path.basename(s.file) })) })));
+  await writeTraceGzip(path.join(outDir, 'trace.json.gz'), { ...trace, shots: shots.map((s) => ({ ...s, file: path.basename(s.file) })) });
   if (evidence) {
     const evDir = path.join(ROOT, 'design/program/player-truth', label);
     mkdirSync(evDir, { recursive: true });
