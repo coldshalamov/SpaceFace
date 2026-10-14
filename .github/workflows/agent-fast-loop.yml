@@ -79,7 +79,9 @@ jobs:
             /assets/**/*.js
             /assets/**/*.mjs
             /assets/**/*.cjs
-            /assets/ui/backdrops/
+            /assets/**/*.css
+            /assets/**/*.woff2
+            /assets/ui/backdrops/**
             !/design/
             !/tools/blender/
             !/docs/
