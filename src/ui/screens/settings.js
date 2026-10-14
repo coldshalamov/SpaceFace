@@ -26,11 +26,12 @@ import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
 import {
-  DEFAULT_QUALITY_PRESET,
+  CANONICAL_QUALITY_PRESET_IDS,
   QUALITY_PRESETS,
   applyQualityPreset,
   createFrameCap,
   frameCapLabel,
+  matchingQualityPreset,
   normalizeFrameCap,
 } from '../../render/adaptiveQuality.js';
 import { BINDINGS } from '../bindings.js';
@@ -596,8 +597,10 @@ export const settingsScreen = {
     try { if (refs && refs.preview) refs.preview.changed(section, key, s); } catch (e) { /* the preview is cosmetic */ }
   },
 
-  // Apply a Performance / Balanced / Quality preset. `applyQualityPreset` writes only presentation keys, then we
-  // publish each changed key so the renderer live-applies exactly what moved.
+  // Apply a High performance / Balanced / High quality mode (or a hardware bundle). `applyQualityPreset`
+  // writes only presentation keys, then we publish each changed key so the renderer live-applies
+  // exactly what moved, and keep the live frame-cap mirror in step with the carried request
+  // (Integrated GPU caps at 30).
   _applyPreset(ctx, presetId) {
     const applied = applyQualityPreset(ctx.state.settings, presetId);
     if (!applied) return;
@@ -606,6 +609,7 @@ export const settingsScreen = {
       if (key === 'qualityPreset') this._set(ctx, 'video', 'qualityPreset', applied.preset);
       else this._set(ctx, 'video', key, video[key]);
     }
+    publishFrameCap(ctx);
     this._render(ctx);
   },
 
@@ -678,15 +682,32 @@ export const settingsScreen = {
           }).catch(() => {});
         }
       }
-      // One-click preset: writes the adaptive-quality tier (render scale, particle density, render
-      // graph) and keeps the individual rows below as the source of truth for advanced edits.
-      rowSelect('Quality preset', () => vd.qualityPreset || DEFAULT_QUALITY_PRESET,
-        QUALITY_PRESETS.map((preset) => [preset.id, preset.label]),
+      // Quality modes (owner 2026-10-13): the three pictures as one press each, so the cost of the
+      // expensive settings can be A/B'd live instead of tuned blind. applyQualityPreset pins every
+      // picture-defining key; the rows below stay the source of truth for advanced edits, and one
+      // hand-tweak truthfully un-presses the mode (Modified note).
+      const matched = matchingQualityPreset(vd);
+      const isModePreset = CANONICAL_QUALITY_PRESET_IDS.includes(matched);
+      build.choice('Quality mode',
+        [['low', 'High performance'], ['medium', 'Balanced'], ['high', 'High quality']],
+        () => (isModePreset ? matched : ''),
         (value) => this._applyPreset(ctx, value));
-      const chosen = QUALITY_PRESETS.find((preset) => preset.id === (vd.qualityPreset || DEFAULT_QUALITY_PRESET));
-      if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
-        build.note(settingsQualityKeepsNote(chosen.stays.join(', '), chosen.substitutes.join(', ')));
+      if (isModePreset) {
+        const chosen = QUALITY_PRESETS.find((preset) => preset.id === matched);
+        if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
+          build.note(settingsQualityKeepsNote(chosen.stays.join(', '), chosen.substitutes.join(', ')));
+        }
+      } else if (matched) {
+        build.note('Hardware preset in effect — pick a quality mode to return to the three pictures.');
+      } else {
+        build.note('Modified — the video rows differ from every preset. Pick a quality mode to re-pin them.');
       }
+      // The hardware bundles keep their own row: named pictures for a known machine class,
+      // applied by the same applyQualityPreset contract. To leave one, pick a quality mode.
+      rowSelect('Hardware preset',
+        () => (vd.qualityPreset === 'igpu60' || vd.qualityPreset === 'integrated' ? vd.qualityPreset : 'none'),
+        [['none', 'None'], ['igpu60', 'iGPU 60'], ['integrated', 'Integrated GPU']],
+        (value) => { if (value !== 'none') this._applyPreset(ctx, value); });
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
       // Empty space does not receive them. Off skips that extra pass — now the shipped default

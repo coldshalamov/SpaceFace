@@ -56,25 +56,33 @@ export function detectGpu(renderer) {
 }
 
 // --- Player quality presets -------------------------------------------------------------------
-// Low / Medium / High are the player-facing presets. Each one maps to an adaptive-quality tier: the
-// internal-resolution posture (dynamic-resolution floor + persisted render scale) and the optional
-// presentation features that tier may use. A preset NEVER changes simulation content — no actor,
-// spawn, cargo, mission, or economy count is read or written; it only trades rendering quality for
-// headroom. Medium is the shipped default and matches the gameState video defaults.
+// High performance / Balanced / High quality are the player-facing modes (settings → Video →
+// Quality mode, one press each so the cost of the expensive settings can be A/B'd live). Each mode
+// maps to an adaptive-quality tier: the internal-resolution posture (dynamic-resolution floor +
+// persisted render scale + pixel-ratio cap) and the optional presentation features that tier may
+// use. A preset NEVER changes simulation content — no actor, spawn, cargo, mission, or economy
+// count is read or written; it only trades rendering quality for headroom. Balanced is the shipped
+// default and matches the gameState video defaults exactly, so a fresh install IS Balanced.
 //
 // Presets deliberately do not disable authored world content (ships, trails, stations): they lower
 // resolution and particle density, not the number of things in the world.
 export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
+  // Max FPS. Keeps the light language (bloom, engine trails, energy materials — the game reads
+  // black without them) and sheds the measured costs instead: shading resolution (pixel ratio 1x —
+  // a 2x-DPI panel otherwise shades 4x the pixels; renderer.applyRendererSize), the tight
+  // single-level bloom, and the low particle tier (the full sky tier locked an Intel iGPU to a
+  // 30 fps frame — spaceBackground._resolveTier). CAS sharpening holds the 0.75 scale crisp.
   low: Object.freeze({
     id: 'low',
-    label: 'Performance',
+    label: 'High performance',
     adaptiveFloor: 0.5,
     renderScale: 0.75,
+    pixelRatioCap: 1,
     bloom: true,
     bloomStrength: 0.52,
-    bloomLevels: 2,
-    // Sun shadow-maps stay out of Performance/Balanced: at the neighbourhood ortho's texel
-    // density they read as crawling clumps, not depth. The Quality tier opts back in.
+    bloomLevels: 1,
+    // Sun shadow-maps stay out of High performance/Balanced: at the neighbourhood ortho's texel
+    // density they read as crawling clumps, not depth. The High quality tier opts back in.
     shadows: false,
     energyMaterials: true,
     renderGraph: false,
@@ -83,13 +91,17 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     frameCap: 0,
     dynamicResolution: false,
     postFx: true,
-    sharpen: false,
+    sharpen: true,
   }),
+  // The shipped picture, unchanged: full-resolution render, medium particles, no shadow map, no
+  // render graph. Every key matches the gameState video defaults so the chooser presses Balanced
+  // on a fresh install.
   medium: Object.freeze({
     id: 'medium',
     label: 'Balanced',
     adaptiveFloor: 0.6,
     renderScale: 1,
+    pixelRatioCap: 2,
     bloom: true,
     bloomStrength: 0.52,
     bloomLevels: 2,
@@ -103,11 +115,15 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     postFx: true,
     sharpen: false,
   }),
+  // Everything the picture can spend: sun shadow maps (+14.6 ms at the trade hub on the iGPU
+  // target — LOOK.md), the render graph's GTAO + multiscale composite, and the high particle /
+  // starfield tier. Meant for GPUs with headroom; flip back to Balanced to feel the difference.
   high: Object.freeze({
     id: 'high',
-    label: 'Quality',
+    label: 'High quality',
     adaptiveFloor: 0.6,
     renderScale: 1,
+    pixelRatioCap: 2,
     bloom: true,
     bloomStrength: 0.52,
     bloomLevels: 2,
@@ -129,6 +145,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     label: 'iGPU 60',
     adaptiveFloor: 0.5,
     renderScale: 0.75,
+    pixelRatioCap: 1,
     bloom: true,
     bloomStrength: 0.52,
     bloomLevels: 2,
@@ -152,6 +169,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     label: 'Integrated GPU',
     adaptiveFloor: 0.5,
     renderScale: 0.85,
+    pixelRatioCap: 1,
     bloom: true,
     bloomStrength: 0.28,
     bloomLevels: 1,
@@ -168,9 +186,42 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
 });
 
 export const QUALITY_PRESETS = Object.freeze([
-  Object.freeze({ id: 'low', label: 'Performance', tier: 'low' }),
-  Object.freeze({ id: 'medium', label: 'Balanced (recommended)', tier: 'medium' }),
-  Object.freeze({ id: 'high', label: 'Quality', tier: 'high' }),
+  Object.freeze({
+    id: 'low',
+    label: 'High performance',
+    tier: 'low',
+    stays: Object.freeze(['bloom', 'engine trails', 'energy materials']),
+    substitutes: Object.freeze([
+      'pixel ratio 1x',
+      'render scale 0.75 + sharpen',
+      'tight single-level bloom',
+      'low particles',
+      'no sun-shadow map',
+      'no render graph',
+    ]),
+  }),
+  Object.freeze({
+    id: 'medium',
+    label: 'Balanced',
+    tier: 'medium',
+    stays: Object.freeze(['bloom', 'engine trails', 'energy materials']),
+    substitutes: Object.freeze([
+      'pixel ratio 2x',
+      'medium particles',
+      'no sun-shadow map',
+      'no render graph',
+    ]),
+  }),
+  Object.freeze({
+    id: 'high',
+    label: 'High quality',
+    tier: 'high',
+    stays: Object.freeze(['sun shadows', 'render graph + contact AO', 'engine trails', 'energy materials']),
+    substitutes: Object.freeze([
+      'pixel ratio 2x',
+      'high particles',
+    ]),
+  }),
   Object.freeze({
     id: 'igpu60',
     label: 'iGPU 60',
@@ -179,6 +230,7 @@ export const QUALITY_PRESETS = Object.freeze([
     stays: Object.freeze(['bloom', 'engine trails', 'energy materials']),
     substitutes: Object.freeze([
       'render scale 0.75',
+      'pixel ratio 1x',
       'medium particles',
       'no sun-shadow map',
       'no render graph',
@@ -192,6 +244,7 @@ export const QUALITY_PRESETS = Object.freeze([
     stays: Object.freeze(['bloom', 'engine trails', 'energy materials']),
     substitutes: Object.freeze([
       'render scale 0.85 + sharpen',
+      'pixel ratio 1x',
       'single bloom level',
       'post effects off',
       'dynamic resolution on',
@@ -201,9 +254,12 @@ export const QUALITY_PRESETS = Object.freeze([
 ]);
 export const DEFAULT_QUALITY_PRESET = 'medium';
 
+/** The three picture modes the Quality mode chooser shows; the hardware bundles sit beside them. */
+export const CANONICAL_QUALITY_PRESET_IDS = Object.freeze(['low', 'medium', 'high']);
+
 const QUALITY_PRESET_IDS = new Set(QUALITY_PRESETS.map((p) => p.id));
 const PRESET_VIDEO_KEYS = Object.freeze([
-  'renderScale', 'bloom', 'bloomStrength', 'bloomLevels', 'shadows', 'energyMaterials',
+  'renderScale', 'pixelRatioCap', 'bloom', 'bloomStrength', 'bloomLevels', 'shadows', 'energyMaterials',
   'renderGraph', 'engineTrails', 'particleQuality', 'frameCap', 'dynamicResolution',
   'postFx', 'sharpen',
 ]);
@@ -212,6 +268,24 @@ const PRESET_VIDEO_KEYS = Object.freeze([
 export function qualityTierForPreset(presetId) {
   const id = QUALITY_PRESET_IDS.has(presetId) ? presetId : DEFAULT_QUALITY_PRESET;
   return ADAPTIVE_QUALITY_TIERS[id];
+}
+
+/** True when every preset-owned video key equals the tier `presetId` resolves to — the chooser's
+ * pressed state, so one hand-tweaked row truthfully un-presses the mode that set it. */
+export function videoMatchesQualityTier(video, presetId) {
+  if (!video || typeof video !== 'object') return false;
+  const tier = qualityTierForPreset(presetId);
+  return PRESET_VIDEO_KEYS.every((key) => video[key] === tier[key]);
+}
+
+/** The preset whose tier `video` currently matches exactly, or null when the granular settings
+ * have drifted into a modified picture no preset represents. */
+export function matchingQualityPreset(video) {
+  if (!video || typeof video !== 'object') return null;
+  for (const row of QUALITY_PRESETS) {
+    if (videoMatchesQualityTier(video, row.id)) return row.id;
+  }
+  return null;
 }
 
 /**

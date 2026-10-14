@@ -19125,6 +19125,12 @@ export const render = {
           camObj.updateProjectionMatrix();
         }
       }
+      // particleQuality also selects the backdrop tier (star/flare counts, bake sizes), so a
+      // quality-mode switch must re-resolve the sky and not just the VFX pools. applyGpuTier
+      // rebuilds only when the tier actually changed, so a no-op settings re-emit pays nothing.
+      if (p.key === 'particleQuality' || p.key == null) {
+        if (this.spaceBg && typeof this.spaceBg.applyGpuTier === 'function') this.spaceBg.applyGpuTier();
+      }
     });
     // On sector change, reconcile rather than blindly clearing: the new sector's entities are
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
