@@ -309,7 +309,8 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane { padding-right:10px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
   ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:11.5px !important; letter-spacing:.07em !important; }
-  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 140px) 54px !important; column-gap:8px !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:minmax(0, var(--orr-scale-w, 140px)) max-content !important; column-gap:8px !important; min-width:0 !important; }
+  /* the scale gives way before the readout: a fixed 140px scale pushed '55%' past the pane's clip edge */
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:11.5px !important; letter-spacing:.1em !important; }
   ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
