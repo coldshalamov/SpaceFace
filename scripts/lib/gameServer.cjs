@@ -20,6 +20,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { resolveStaticCacheHeaders, ifNoneMatchSatisfied } = require('./staticCachePolicy.cjs');
 const { attachPlayerStore } = require('./playerSaveStore.cjs');
@@ -163,6 +164,11 @@ const devReleaseReceiptCache = new Map(); // root -> receipt object
 // drive a new module graph. localStorage and cookies are untouched (cache directive only).
 const APP_SOURCE_BUILD_RECEIPT = 'build/web/spaceface-release-build.json';
 const APP_SOURCE_BUILD_COOKIE = 'sf-build';
+const SOURCE_OVERLAY_SCHEMA = 'spaceface.sourceBaseline.v1';
+const SOURCE_OVERLAY_MAX_FILES = 128;
+const SOURCE_OVERLAY_MAX_FILE_BYTES = 8 * 1024 * 1024;
+const SOURCE_OVERLAY_MAX_TOTAL_BYTES = 32 * 1024 * 1024;
+const SOURCE_OVERLAY_SHA256 = /^[a-f0-9]{64}$/i;
 
 function readAppSourceBuildDigest(root) {
   try {
@@ -184,6 +190,90 @@ function requestCookieValue(cookieHeader, name) {
     if (part.slice(0, idx).trim() === name) return part.slice(idx + 1).trim();
   }
   return null;
+}
+
+function normalizeSourceOverlayPath(value) {
+  const raw = String(value || '').replace(/\\/g, '/');
+  if (!raw || raw.includes('\0') || raw.startsWith('/') || /^[a-zA-Z]:/.test(raw)) return null;
+  const normalized = path.posix.normalize(raw);
+  if (normalized === '.' || normalized === '..' || normalized.startsWith('../') || normalized.includes('/../')) return null;
+  if (normalized === 'index.html' || normalized.startsWith('src/') || normalized.startsWith('scripts/lib/')) {
+    return normalized;
+  }
+  return null;
+}
+
+function sourceOverlayDigest(entries) {
+  const rows = [...entries]
+    .map((entry) => `${entry.path}\0${entry.sha256.toLowerCase()}\0${entry.bytes}`)
+    .sort();
+  return crypto.createHash('sha256').update(rows.join('\0'), 'utf8').digest('hex');
+}
+
+function sourceOverlayRequestPath(decodedPath) {
+  let raw = String(decodedPath || '/').replace(/\\/g, '/');
+  if (raw === '/' || raw === '') return 'index.html';
+  const hadTrailingSlash = raw.endsWith('/');
+  const normalized = path.posix.normalize(raw);
+  if (normalized === '..' || normalized.startsWith('../') || normalized.includes('\0')) return null;
+  const relative = normalized.replace(/^\/+/, '');
+  if (!relative || relative === '..' || relative.startsWith('../')) return null;
+  return hadTrailingSlash ? `${relative.replace(/\/+$/, '')}/index.html` : relative;
+}
+
+function loadSourceOverlayManifest(sourceOverlay) {
+  if (!sourceOverlay) return null;
+  let manifest = sourceOverlay;
+  if (typeof sourceOverlay === 'string') {
+    const file = path.resolve(sourceOverlay);
+    manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+  }
+  if (!manifest || typeof manifest !== 'object' || manifest.schema !== SOURCE_OVERLAY_SCHEMA) {
+    throw new Error(`invalid source overlay manifest schema (expected ${SOURCE_OVERLAY_SCHEMA})`);
+  }
+  if (!/^[a-f0-9]{40}$/i.test(String(manifest.sourceCommit || ''))) {
+    throw new Error('source overlay manifest requires a full frozen sourceCommit');
+  }
+  if (!Array.isArray(manifest.files) || manifest.files.length < 1 || manifest.files.length > SOURCE_OVERLAY_MAX_FILES) {
+    throw new Error(`source overlay manifest files must contain 1..${SOURCE_OVERLAY_MAX_FILES} entries`);
+  }
+  const entries = [];
+  const byPath = new Map();
+  let totalBytes = 0;
+  for (const rawEntry of manifest.files) {
+    const relativePath = normalizeSourceOverlayPath(rawEntry && rawEntry.path);
+    if (!relativePath) throw new Error(`source overlay path is outside the runtime allowlist: ${rawEntry && rawEntry.path}`);
+    if (byPath.has(relativePath)) throw new Error(`source overlay contains duplicate path: ${relativePath}`);
+    const encoded = rawEntry && typeof rawEntry.contentBase64 === 'string' ? rawEntry.contentBase64 : '';
+    if (!encoded || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length % 4 !== 0) {
+      throw new Error(`source overlay contentBase64 is invalid for ${relativePath}`);
+    }
+    const bytes = Buffer.from(encoded, 'base64');
+    if (bytes.length > SOURCE_OVERLAY_MAX_FILE_BYTES) throw new Error(`source overlay file is too large: ${relativePath}`);
+    if (Number(rawEntry.bytes) !== bytes.length) throw new Error(`source overlay byte count mismatch: ${relativePath}`);
+    const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+    if (!SOURCE_OVERLAY_SHA256.test(String(rawEntry.sha256 || '')) || sha256 !== String(rawEntry.sha256).toLowerCase()) {
+      throw new Error(`source overlay hash mismatch: ${relativePath}`);
+    }
+    totalBytes += bytes.length;
+    if (totalBytes > SOURCE_OVERLAY_MAX_TOTAL_BYTES) throw new Error('source overlay manifest exceeds the total byte limit');
+    const entry = Object.freeze({ path: relativePath, bytes: bytes.length, sha256, body: bytes });
+    entries.push(entry);
+    byPath.set(relativePath, entry);
+  }
+  const digest = sourceOverlayDigest(entries);
+  if (String(manifest.sourceOverlayDigest || '').toLowerCase() !== digest) {
+    throw new Error('source overlay aggregate digest mismatch');
+  }
+  const identity = Object.freeze({
+    schema: SOURCE_OVERLAY_SCHEMA,
+    sourceCommit: String(manifest.sourceCommit).toLowerCase(),
+    sourceOverlayDigest: digest,
+    fileCount: entries.length,
+    totalBytes,
+    files: Object.freeze(entries.map(({ path: relativePath, bytes, sha256 }) => ({ path: relativePath, bytes, sha256 }))),
+  });
+  return Object.freeze({ entries: byPath, identity });
 }
 
 function devReleaseReceipt(root) {
@@ -247,6 +337,8 @@ function isAllowedStateChangingRequest(req) {
  *                                      When set, each index.html serve carries the scanned mod
  *                                      payload inline so src/data merges it at module-eval time.
  *                                      Omitted → the game boots with no mods mounted.
+ * @param {string|object} [opts.sourceOverlay] Optional probe-only immutable source manifest. Only
+ *                                      index.html, src/**, and scripts/lib/** entries are eligible.
  * @returns {http.Server}               An http.Server (not yet listening).
  */
 function createGameServer(opts) {
@@ -254,6 +346,7 @@ function createGameServer(opts) {
   const useAsync = opts.async !== false;
   const extraRoutes = attachPlayerStore(opts);
   const userContentDir = opts.userContentDir ? path.resolve(opts.userContentDir) : null;
+  const sourceOverlay = loadSourceOverlayManifest(opts.sourceOverlay || opts.sourceOverlayManifest);
   // Cross-origin isolation: every byte this server sends is same-origin loopback,
   // so COOP same-origin + COEP credentialless are free — they unlock full-resolution
   // performance.now() (~100µs clamped otherwise), SharedArrayBuffer (the built phase-14
@@ -334,9 +427,43 @@ function createGameServer(opts) {
         return;
       }
 
+      // Historical performance baselines may pin a small, explicitly owned source set. This
+      // read-only identity endpoint lets a probe bind its receipt to the bytes the server loaded;
+      // it is absent on ordinary launches and never exposes source contents.
+      if (sourceOverlay && method === 'GET' && url.startsWith('/__source_overlay_identity')) {
+        const body = JSON.stringify(sourceOverlay.identity);
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Length': Buffer.byteLength(body),
+          'X-SpaceFace-Source-Overlay-Digest': sourceOverlay.identity.sourceOverlayDigest,
+        });
+        res.end(body);
+        return;
+      }
+
       // Static file serving. URL paths are POSIX; Windows must not treat `\` or `C:` as roots.
       let file = resolveContainedFile(root, decodedPath);
       if (!file) { res.writeHead(403, { 'Content-Type': 'text/plain' }); res.end('Forbidden'); return; }
+
+      const overlayPath = sourceOverlayRequestPath(decodedPath);
+      const overlayEntry = overlayPath ? sourceOverlay?.entries.get(overlayPath) : null;
+      if (overlayEntry) {
+        const headers = {
+          ...staticHeaders,
+          ...(staticHeadersByPath[overlayEntry.path] || {}),
+          'Cache-Control': 'no-store',
+          'Content-Length': overlayEntry.bytes,
+          'Content-Type': MIME[path.extname(overlayEntry.path).toLowerCase()] || 'application/octet-stream',
+          'ETag': `"sf-source-${overlayEntry.sha256}"`,
+          'X-SpaceFace-Source-Overlay-Digest': sourceOverlay.identity.sourceOverlayDigest,
+          'X-SpaceFace-Source-File-Sha256': overlayEntry.sha256,
+        };
+        res.writeHead(200, headers);
+        if (method !== 'HEAD') res.end(overlayEntry.body);
+        else res.end();
+        return;
+      }
 
       // Packaged builds place the release receipt at the app root; a dev tree keeps it under
       // build/web/. Serve the generated bytes at the packaged URL so the version label and any
@@ -480,6 +607,9 @@ module.exports = {
   isAllowedStateChangingRequest,
   decodeRequestPath,
   resolveContainedFile,
+  normalizeSourceOverlayPath,
+  sourceOverlayDigest,
+  loadSourceOverlayManifest,
   maxMtimeMsSync,
   maxMtimeMsAsync,
 };

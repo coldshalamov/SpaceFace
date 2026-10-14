@@ -21,6 +21,8 @@ await mkdir(out, { recursive: false });
 const baseline = value('--baseline');
 if (baseline && !/^[a-z0-9-]{1,24}$/.test(baseline)) throw new Error('Invalid baseline label');
 if (process.argv.includes('--require-target') && !baseline) throw new Error('--require-target needs --baseline');
+const baselineSource = value('--baseline-source');
+const baselineSourceArgs = baselineSource ? ['--baseline-source=' + baselineSource] : [];
 const cells = [
   { id: 'adventure-early', args: [] },
   { id: 'adventure-settled', args: ['--settle-ms=25000'] },
@@ -52,7 +54,10 @@ async function execute(id, args, timeoutMs = 300_000, executable = process.execP
 }
 for (const cell of cells.filter(c => !requested || requested.includes(c.id))) {
   const probeLabel = label + '-' + cell.id;
-  const exit = await execute(cell.id, ['scripts/probe-main-thread-profile.mjs', '--cadence-only', '--ms=20000', '--label=' + probeLabel, ...cell.args]);
+  const exit = await execute(cell.id, [
+    'scripts/probe-main-thread-profile.mjs', '--cadence-only', '--ms=20000', '--label=' + probeLabel,
+    ...baselineSourceArgs, ...cell.args,
+  ]);
   if (exit !== 0) {
     results.push({ cell: cell.id, status: 'probe-failed', exit });
     await writeFile(path.join(out, 'results.json'), JSON.stringify(results, null, 2));
@@ -78,7 +83,7 @@ if (process.argv.includes('--diagnose')) {
     const cell = cells.find(c => c.id === worst.cell);
     const exit = await execute('diagnose-' + cell.id, ['scripts/probe-main-thread-profile.mjs',
       '--ms=20000', '--sampling-us=4000', '--trace', '--gpu-timers', '--worker-profile',
-      '--worker-cost', '--label=' + label + '-diagnose', ...cell.args]);
+      '--worker-cost', '--label=' + label + '-diagnose', ...baselineSourceArgs, ...cell.args]);
     workflow.push({ kind: 'attribution', cell: cell.id, exit,
       output: path.join('.devshots/main-thread-profile', label + '-diagnose'),
       authority: 'diagnostic; profiling changes timing, do not compare with cadence-only' });
@@ -118,6 +123,7 @@ const coherentCandidate = digests.size === 1
 const targetMet = !!baseline && coherentCandidate && results.length > 0 && results.every(r => r.comparison?.targetMet);
 await writeFile(path.join(out, 'report.md'), '# Performance campaign: ' + label
   + `\n\nTarget: ${baseline ? targetMet ? 'MET in every measured cell' : 'NOT MET' : 'UNMEASURED; baseline required'}.\n\n`
+  + `Source overlay: ${baselineSource || 'none (current checkout)'}\n\n`
   + `Candidate across cells: ${coherentCandidate ? 'one source digest' : 'CHANGED or unobserved; matrix is diagnostic only'}.\n\n`
   + results.map(r => `- ${r.cell}: ${r.status || `${r.summary.worldSubmitFps?.toFixed(1)} world submissions/s; p95 ${r.summary.submissionGaps?.p95?.toFixed(1)} ms; p99 ${r.summary.callbackGaps.p99?.toFixed(1)} ms; >50 ms ${r.summary.callbackGaps.over50}; frozen callback samples ${r.summary.healthyCallbacksFrozenWorld}; stale simulation samples ${r.summary.healthyCallbacksFrozenSimulation}`}${r.baselineError ? `; baseline unavailable: ${r.baselineError}` : ''}${r.comparison ? `; 3x ${r.comparison.targetMet ? 'MET' : 'NOT MET'}; ${r.comparison.failures.join(', ')}` : ''}`).join('\n')
   + '\n\n' + workflow.map(r => `- ${r.kind}${r.mode ? ' ' + r.mode : ''}: exit ${r.exit}${r.output ? '; ' + r.output : ''}`).join('\n') + '\n');
