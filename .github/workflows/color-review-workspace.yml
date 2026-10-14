@@ -1,0 +1,61 @@
+# Branch-local review workspace; removed before the color PR is submitted.
+name: color-review-workspace
+on:
+  push:
+    branches: [design/intentional-color-20261014]
+    paths: [.github/workflows/color-review-workspace.yml]
+permissions:
+  contents: read
+  statuses: write
+concurrency:
+  group: color-review-workspace
+  cancel-in-progress: true
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            src
+            styles
+            test
+            scripts
+            docs
+            design/frontend
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Export source without media or historical proof dumps
+        run: |
+          python3 - <<'PY'
+          import pathlib, subprocess, zipfile, json
+          root=pathlib.Path('.')
+          paths=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
+          roots=('src/','styles/','test/','scripts/','design/frontend/')
+          docs={'docs/visual-assets/LOOK.md','docs/ORIENTATION.md','docs/MODULE_MAP.md','docs/UI_VISUAL_ITERATION.md'}
+          with zipfile.ZipFile('color-review-source.zip','w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
+            for p in paths:
+              f=root/p
+              if not p or not f.is_file() or f.stat().st_size>2097152: continue
+              if not (p.startswith(roots) or p in docs or '/' not in p or p.endswith('/AGENTS.md')): continue
+              if f.suffix.lower() not in {'.js','.mjs','.cjs','.json','.md','.css','.html','.ts','.yml','.yaml','.svg','.txt'}: continue
+              z.write(f,p)
+            z.writestr('.color-review-base.json',json.dumps({'commit':subprocess.check_output(['git','rev-parse','HEAD']).decode().strip()}))
+          PY
+      - uses: actions/upload-artifact@v4
+        id: artifact
+        with:
+          name: color-review-source
+          path: color-review-source.zip
+          retention-days: 3
+      - name: Publish snapshot locator
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT: ${{ steps.artifact.outputs.artifact-id }}
+          RESULT: ${{ job.status }}
+        run: |
+          if [ "$RESULT" = success ]; then STATE=success; else STATE=failure; fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$STATE" -f context=color-review-workspace -f description="run=$GITHUB_RUN_ID artifact=$ARTIFACT" -f target_url="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
