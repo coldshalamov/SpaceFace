@@ -1212,23 +1212,6 @@ function paintLayer(object) {
 }
 
 const PAINTED_STROKE_PX = 0.5;
-const FIELD_DASH = [2, 6];
-const MARKER_DASH = [4, 4];
-
-function paintedDash(kind) {
-  if (kind === 'field') return FIELD_DASH;
-  if (kind === 'trigger') return MARKER_DASH;
-  return null;
-}
-
-function onPaintedDash(dx, dy, radius, dash) {
-  const period = dash[0] + dash[1];
-  let angle = Math.atan2(dy, dx);
-  if (angle < 0) angle += Math.PI * 2;
-  const along = angle * radius;
-  const phase = along - Math.floor(along / period) * period;
-  return phase <= dash[0] + 1e-6;
-}
 
 function hitDisc(object, sx, sy, camera, view, zoom, draw) {
   if (!object || !Number.isFinite(object.x) || !Number.isFinite(object.z)) return null;
@@ -1248,16 +1231,14 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw) {
       ? fieldStroke(object, zoom)
       : markerStroke(object, zoom);
   const distance = Math.hypot(dx, dy);
-  const dash = usesCollider ? null : paintedDash(object.kind);
-  if (dash) {
+  const ring = !usesCollider && (object.kind === 'field' || object.kind === 'trigger');
+  if (ring) {
     if (!(radius > 0)) {
       if (distance > 1e-6) return null;
-      return { inside: true, onStroke: true, centerError: distance };
+      return { inside: true, onStroke: true };
     }
-    const centerError = Math.abs(distance - radius);
-    if (centerError > PAINTED_STROKE_PX + 1e-6) return null;
-    if (!onPaintedDash(dx, dy, radius, dash)) return null;
-    return { inside: true, onStroke: true, centerError };
+    if (Math.abs(distance - radius) > PAINTED_STROKE_PX + 1e-6) return null;
+    return { inside: true, onStroke: true };
   }
   if (distance > radius + 1e-6) return null;
   return { inside: true, onStroke: false };
@@ -1278,14 +1259,10 @@ export function hitTest(project, sx, sy, camera, view, draw) {
   }
   const actor = hits.find((hit) => hit.kind === 'actor');
   if (actor) return actor.id;
+  const stroke = hits.find((hit) => hit.onStroke);
+  if (stroke) return stroke.id;
   const objective = hits.find((hit) => hit.kind === 'objective');
   if (objective) return objective.id;
-  let stroke = null;
-  for (const hit of hits) {
-    if (!hit.onStroke) continue;
-    if (!stroke || hit.centerError < stroke.centerError - 1e-9) stroke = hit;
-  }
-  if (stroke) return stroke.id;
   return hits.length ? hits[0].id : null;
 }
 
