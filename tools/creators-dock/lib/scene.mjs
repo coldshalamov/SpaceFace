@@ -1693,7 +1693,8 @@ function pixelHoldsDash(dx, dy, radius, along, pattern, sx, sy) {
   // A painted center on the dash body selects when the pixel already contains
   // a sample the stroke accepts. The cap rule above does not see that sample.
   if (!isPixelCenter(sx, sy)) return false;
-  if (dashOffset(along, pattern[0], pattern[1]).alongOff !== 0) return false;
+  const span = dashOffset(along, pattern[0], pattern[1]);
+  if (span.alongOff !== 0) return false;
   const x0 = Math.floor(sx);
   const y0 = Math.floor(sy);
   const steps = [0.15, 0.35, 0.65, 0.85];
@@ -1704,7 +1705,25 @@ function pixelHoldsDash(dx, dy, radius, along, pattern, sx, sy) {
       if (dashSampleOnInk(pdx, pdy, radius, pattern, dx, dy)) return true;
     }
   }
-  return false;
+  // The coarse grid misses the inward edge of an outer axis pixel. That edge
+  // is on the dash and the center is still inside the painted step. Farther
+  // centers, and gap pixels at the same radius, stay empty.
+  const perp = Math.abs(Math.hypot(dx, dy) - radius);
+  const support = squareSupport(dx, dy);
+  if (!(support < 0.516 && perp > bodyReach(dx, dy) && perp <= 0.94)) return false;
+  const dist = Math.hypot(dx, dy) || 1;
+  const inward = 0.45;
+  const pdx = dx - (dx / dist) * inward;
+  const pdy = dy - (dy / dist) * inward;
+  const pd = Math.hypot(pdx, pdy);
+  let pangle = Math.atan2(pdy, pdx);
+  if (pangle < 0) pangle += Math.PI * 2;
+  const palong = ringMeasuredAlong(radius, pangle);
+  const tx = -Math.sin(pangle);
+  const ty = Math.cos(pangle);
+  // The edge toward the ring already selects. Promote the center from that
+  // sample, not from a denser scan of the square.
+  return dashAccepted(pd - radius, palong, pattern[0], pattern[1], tx, ty);
 }
 
 function ringOnInk(dx, dy, radius, pattern, sx, sy) {
