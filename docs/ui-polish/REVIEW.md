@@ -818,3 +818,19 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 **After (desktop only, `min-width:761px and max-width:1200px`, not `data-sf-mobile`):** the sections lie as one row of words on a rule beside the title, using the same grammar as the register's FLIGHT / INTERFACE strip (a tick per word, a dot on the open one, amber on Controls). The stage takes the full width, so every callout clears EVERY KEY. Ships and Commodities show their hero again, and a tall reading scrolls in place under a fade. On Ores the reading stands beside the mix, and at its 80px ring floor the ring keeps the rock's name and share inside the band (the rock's tier-cap line drops at this size). 1280×720 is pixel-identical; 1920×1080 and the phone differ only in the rig's drift. Selectors and IDs are unchanged.
 
 **Checked:** 960×540 and 1024×768 `--walk` through all six sections, plus 1200×800, 1280×720, 1920×1080 and 390×844. The bench measures no tangled, buried or cut-off type. Focused tests pass: help-flight-verbs, help-gamepad-rebind, help-input-echo-lifetime, inf-teach-help-live-bindings. Shots: `ui-shots/polish28l/`.
+
+## Swarm Results phone — LAST 5 HITS clears the docked foot (ui-polish-28)
+
+**Before:** on a phone (390×844, `data-sf-mobile`) the Results plate kept a relative foot at the end of the scroll, so arrival focus jumped to the ways-out and the dial left the glass. Restoring a sticky docked foot (as on #374) put **LAST 5 HITS · N DAMAGE** and its weapon legend under **SKIP THE KILL-CAM / RUN IT AGAIN** at scroll 0 — Code Work's 2026-10-13 23:50 follow-up. Desktop ≤600-tall stacking stays on #374 (freeze); this branch only touches the phone path.
+
+**After (`src/ui/orrery/crucibleResultsLayouts.js` only, phone via `html:root[data-sf-mobile="1"]`, no markup / selector / ID changes):**
+- Phone rules use an `RP` selector (`data-sf-mobile`) instead of `@media (max-width:700px)`.
+- Ways-out stay `position:sticky; bottom:0` with an opaque scrim so the player can leave without hunting.
+- Dial height is `clamp(400px, calc(100svh - 300px), 520px)` with `margin-bottom:48px` and `z-index:3`, so the overflowing caption (strip + legend) ends above the foot (~41px clearance at 390×844 scroll 0) and THE TAKE cannot climb through it.
+- Warn line (not vitals) stays hidden on the small plate; hit legend stays shown.
+
+**Checked:** 390×844 at scroll 0 (LAST 5 HITS + legend clear of the sticky foot; measured clearance ~41px, no overlap). Natural arrival scroll stays near 0 with the sticky foot. Desktop 960×540 / 1280×720 / 1920×1080 unchanged by this phone-only sheet (≤600-tall desktop still the pre-#374 layout on this branch).
+
+**Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28m/{before,after,after-scroll0}/` and `compare-390x844-scroll0-lower.png`.
+
+*If #374's REVIEW.md Results sections conflict with this file on merge, keep both. This section only covers the phone `data-sf-mobile` path in `crucibleResultsLayouts.js`.*

@@ -10,6 +10,7 @@ const STYLE_ID = 'orr-crucible-results-style';
 const BONE = '236 230 216';
 const VOID = '5 7 10';
 const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial.has-deathdial';
+const RP = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial.has-deathdial';
 const FADE = 'linear-gradient(180deg, #000 calc(100% - 28px), transparent)';
 
 export const CRUCIBLE_RESULTS_LAYOUT_CSS = `
@@ -67,32 +68,32 @@ ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot,
   ${R} :is(.sf-crres__share-item, .sf-crres__ledger > .sf-crres__band:not([data-band]) .sf-crd-grid) { max-width:660px; }
 }
 
-/* phone: one scrolling plate — the title, the instrument, then the column; the ways out stay docked */
-@media (max-width:700px) {
-  ${R} { display:flex !important; flex-direction:column !important; gap:18px !important; overflow:hidden auto !important; padding:18px 20px 0 !important; }
-  ${R}::before { position:fixed !important; inset:0 !important; }
-  ${R} > :is(.k-title, .sf-crres-celebrate, .sf-crres__stage) { position:relative !important; z-index:2; }
-  ${R} > .k-title { order:1; }
-  ${R} > .k-title { padding-right:0 !important; max-width:none !important; }
-  ${R} > .k-title .k-t-title { font-size:46px !important; white-space:nowrap; }
-  ${R} > .sf-crres__dial { order:2; position:relative !important; inset:auto !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important;
-    flex:none; width:100%; height:590px; }
-  ${R} > .sf-crres__dial :is(.orr-deathdial__groups, .orr-deathdial__engrave) { display:none; }
-  ${R} > .sf-crres__dial .orr-crres-hitlegend { display:block; }
-  ${R} > .sf-crres-celebrate { order:3; max-width:none !important; }
-  ${R} .sf-crres__stage { order:4; flex:none !important; max-width:none !important; overflow:visible !important; -webkit-mask-image:none; mask-image:none; padding:0 0 8px !important; }
-  ${R} .orr-crres-figures { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; row-gap:16px !important; }
-  ${R} .sf-crres__build { flex-wrap:wrap; }
-  ${R} .sf-crres__share-row { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; }
-  ${R} .sf-crres__share-cap { grid-column:1 / -1; }
-  /* Dock the ways-out in normal flow (not sticky). Sticky + a 590px dial left "The take"
-     under RUN IT AGAIN at 390×844 (ui-bench ON TOP OF / BURIED). */
-  ${R} > .k-foot { order:5; position:relative; bottom:auto; z-index:4; flex:none; margin:0 -20px !important; padding:18px 20px 14px !important;
-    background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 22px) !important; }
-  ${R} > .k-foot > .k-words { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; column-gap:26px !important; row-gap:2px !important; }
-  /* Shorter dial so title + dial + take + foot can share one 844-tall plate without pile-up. */
-  ${R} > .sf-crres__dial { height:min(420px, 52vh); }
-}
+/* phone (data-sf-mobile): one scrolling plate — title, instrument, column; ways-out stay docked.
+   The sticky foot must leave the dial caption (LAST 5 HITS + legend) clear at scroll 0. */
+${RP} { display:flex !important; flex-direction:column !important; gap:18px !important; overflow:hidden auto !important; padding:18px 20px 0 !important; }
+${RP}::before { position:fixed !important; inset:0 !important; }
+${RP} > :is(.k-title, .sf-crres-celebrate, .sf-crres__stage) { position:relative !important; z-index:2; }
+${RP} > .k-title { order:1; padding-right:0 !important; max-width:none !important; }
+${RP} > .k-title .k-t-title { font-size:46px !important; white-space:nowrap; }
+${RP} > .sf-crres__dial { order:2; position:relative !important; inset:auto !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important;
+  flex:none; width:100%; z-index:3;
+  /* Tall enough for the ring + caption, short enough that LAST 5 HITS + legend end above the docked foot
+     (Code Work 2026-10-13 23:50: sticky foot was covering them at 390×844 scroll 0).
+     margin-bottom keeps THE TAKE (celebrate) from climbing through the overflowing caption. */
+  height:clamp(400px, calc(100svh - 300px), 520px); margin-bottom:48px; }
+${RP} > .sf-crres__dial :is(.orr-deathdial__groups, .orr-deathdial__engrave) { display:none; }
+${RP} > .sf-crres__dial .orr-crres-hitlegend { display:block; }
+${RP} > .sf-crres__dial .orr-deathdial__warn:not(.orr-deathdial__vitals) { display:none; }
+${RP} > .sf-crres-celebrate { order:3; max-width:none !important; }
+${RP} .sf-crres__stage { order:4; flex:none !important; max-width:none !important; overflow:visible !important; -webkit-mask-image:none; mask-image:none; padding:0 0 8px !important; }
+${RP} .orr-crres-figures { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; row-gap:16px !important; }
+${RP} .sf-crres__build { flex-wrap:wrap; }
+${RP} .sf-crres__share-row { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; }
+${RP} .sf-crres__share-cap { grid-column:1 / -1; }
+/* Ways-out stay docked at the glass floor while the plate scrolls under them. */
+${RP} > .k-foot { order:5; position:sticky; bottom:0; z-index:4; flex:none; margin:auto -20px 0 !important; padding:12px 20px 8px !important;
+  background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 18px) !important; }
+${RP} > .k-foot > .k-words { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; column-gap:26px !important; row-gap:2px !important; }
 
 `;
 
