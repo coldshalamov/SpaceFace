@@ -801,7 +801,7 @@ export function domainSigDigest(sig) {
 const SIG_OPAQUE = '@@opaque';
 const SIG_CYCLE = '@@cycle';
 
-function writeDomainSignature(value, parts, seen) {
+export function writeDomainSignature(value, parts, seen) {
   if (value === null) {
     parts.push('null');
     return;
