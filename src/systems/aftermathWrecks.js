@@ -485,7 +485,21 @@ function wreckCargoResidueFor(cargoManifest) {
   return total > 0 ? residue : null;
 }
 
-function initialPoolForMarker(marker) {
+function normalizeSalvagePool(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const pool = {};
+  for (const [commodityId, rawQty] of Object.entries(input)) {
+    const qty = Math.max(0, Math.floor(Number(rawQty) || 0));
+    if (qty > 0) pool[commodityId] = qty;
+  }
+  return pool;
+}
+
+export function initialPoolForMarker(marker) {
+  if (marker && marker.salvagePool && typeof marker.salvagePool === 'object') {
+    const custom = normalizeSalvagePool(marker.salvagePool);
+    if (custom && Object.keys(custom).length) return custom;
+  }
   const residue = marker && marker.manifestResidue;
   if (residue && Object.keys(residue).length) {
     // The +1 hull scrap is additive: a manifest that itself carried scrap must not swallow it.
@@ -499,16 +513,6 @@ function initialPoolForMarker(marker) {
     return { cmdty_scrap_metal: 2, cmdty_salvage_electronics: 2 };
   }
   return { ...DEFAULT_POOL };
-}
-
-function normalizeSalvagePool(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
-  const pool = {};
-  for (const [commodityId, rawQty] of Object.entries(input)) {
-    const qty = Math.max(0, Math.floor(Number(rawQty) || 0));
-    if (qty > 0) pool[commodityId] = qty;
-  }
-  return pool;
 }
 
 function boundedIdentityText(value) {
