@@ -12173,7 +12173,7 @@ export const render = {
       sc.traverse((o) => {
         const ud = o.userData;
         if (!ud) return;
-        if (ud.kind === 'bracket' || ud.kind === 'vesper') roots.push(o);
+        if (ud.bracket != null || ud.vesper != null) roots.push(o);
         if (!prelinkRocksDone && ud.asteroidInstancePool && o.isInstancedMesh && o.material
           && !Array.isArray(o.material) && o.geometry) rockPools.push(o);
       });
