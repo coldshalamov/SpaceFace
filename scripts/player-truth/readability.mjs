@@ -210,6 +210,15 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
       const r = e[E.pr] * sc; if (r < 2.5) continue;
       const cx = Math.round(e[E.sx] * sc); const cy = Math.round(e[E.sy] * sc);
       if (cx < r || cy < r || cx > W - r || cy > H - r) continue;
+      // Both pigment and its background ring must be game pixels. A target HUD
+      // panel over either patch cannot establish an asteroid's brightness.
+      const ring = Math.round(Math.max(r * 1.6, r + 4));
+      const patch = [(cx - ring) / sc, (cy - ring) / sc, (cx + ring) / sc, (cy + ring) / sc];
+      if ((shot.overlays || []).some((b) => patch[0] < b[2] && patch[2] > b[0]
+          && patch[1] < b[3] && patch[3] > b[1])) {
+        rejected[cls]['hud-occlusion'] = (rejected[cls]['hud-occlusion'] || 0) + 1;
+        continue;
+      }
       const m = sampleBox(data, W, H, info.channels, cx, cy, Math.min(r, 60), r);
       if (!m) continue;
       const box = [e[E.sx] - e[E.pr], e[E.sy] - e[E.pr], e[E.sx] + e[E.pr], e[E.sy] + e[E.pr]]; const pb = s.p && s.p.onScreen ? s.p.box : null;
@@ -262,6 +271,6 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
       meanRadiusPx: group.n ? group.radiusSum / group.n : 0, occlusion: group });
   }
   const rejectedCount = Object.values(rejected).reduce((n, reasons) => n + Object.values(reasons).reduce((a, b) => a + b, 0), 0);
-  const measurementNote = `capture coherence: ${rejectedCount} body samples rejected for capture-motion or identity/visibility changes; ${unboundedShots} screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic`;
+  const measurementNote = `capture coherence: ${rejectedCount} body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; ${unboundedShots} screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic`;
   return { classes, pairs, census, captureCoherence: { rejected, unboundedShots }, measurementNote };
 }

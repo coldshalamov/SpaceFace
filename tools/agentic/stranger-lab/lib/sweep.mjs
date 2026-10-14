@@ -3,16 +3,23 @@
 import { listJourneys } from './journeys.mjs';
 import { PERSONA_IDS } from './personas.mjs';
 import { SWEEP_SEEDS } from './manifest.mjs';
+import { compareDigests } from './detectors.mjs';
+import { verifyHeadedBrowser } from './headed.mjs';
 import { runSession } from './session.mjs';
+
+export function personaIdForSweepIndex(index) {
+  return PERSONA_IDS[index % PERSONA_IDS.length];
+}
 
 export async function runSweep(options = {}) {
   const journeys = options.journeys || listJourneys().map((journey) => journey.id);
   const seeds = options.seeds || SWEEP_SEEDS;
   const runs = [];
+  const full = [];
   let index = 0;
   for (const journeyId of journeys) {
     for (const seed of seeds) {
-      const personaId = options.personaId || PERSONA_IDS[index % PERSONA_IDS.length];
+      const personaId = options.personaId || personaIdForSweepIndex(index);
       const surface = index % 4 === 0 ? 'simulated-touch' : 'keyboard';
       const result = await runSession({
         journeyId,
@@ -21,7 +28,8 @@ export async function runSweep(options = {}) {
         surface,
         fault: null,
       });
-      runs.push(compact(result));
+      full.push(result);
+      runs.push(compactRun(result));
       index += 1;
     }
   }
@@ -34,7 +42,19 @@ export async function runSweep(options = {}) {
     fingerprint: run.fingerprint,
     tapeHash: run.tapeHash,
   })));
-  const headed = selectHeaded(runs, 25);
+  const headed = selectHeaded(full, 25);
+  const repeated = runs[0]
+    ? await runSession({
+      journeyId: runs[0].journeyId,
+      personaId: runs[0].personaId,
+      seed: runs[0].seed,
+      surface: runs[0].surface,
+      fault: null,
+    })
+    : null;
+  const drift = repeated ? compareDigests(runs[0].digest, repeated.digest) : null;
+  if (drift) confirmed.push({ ...drift, journeyId: runs[0].journeyId, seed: runs[0].seed });
+  const headedBrowser = await verifyHeadedBrowser(headed);
   const walls = runs.map((run) => run.wallMs).filter((ms) => Number.isFinite(ms)).sort((a, b) => a - b);
   return {
     schema: 'spaceface.strangerSweep.v1',
@@ -49,11 +69,8 @@ export async function runSweep(options = {}) {
     incompleteCount: runs.filter((run) => run.status === 'incomplete').length,
     infraCount: runs.filter((run) => run.status === 'infra').length,
     confirmed,
-    headedBrowser: {
-      status: 'unverified',
-      reason: 'This host does not claim a headed GPU session. The 25 runs below are the selection, not a browser result.',
-      runs: headed,
-    },
+    determinismDrift: drift,
+    headedBrowser,
     performance: {
       medianWallMs: walls.length ? walls[(walls.length / 2) | 0] : null,
       maxWallMs: walls.length ? walls[walls.length - 1] : null,
@@ -63,7 +80,20 @@ export async function runSweep(options = {}) {
   };
 }
 
-function compact(result) {
+export function publicSweepRow(run) {
+  if (!run || typeof run !== 'object') return run;
+  const keepTape = run.status !== 'pass'
+    || (Array.isArray(run.confirmed) && run.confirmed.length > 0);
+  if (keepTape) return run;
+  const { tape, ...rest } = run;
+  return {
+    ...rest,
+    tapeHash: run.tapeHash,
+    tapeTicks: tape && tape.frames ? tape.frames.length : undefined,
+  };
+}
+
+export function compactRun(result) {
   return {
     journeyId: result.journeyId,
     personaId: result.personaId,
@@ -81,23 +111,47 @@ function compact(result) {
     failures: result.failures || [],
     confirmed: result.confirmed || [],
     error: result.error || null,
-    tape: result.status === 'fail' ? result.tape : undefined,
+    tape: result.status !== 'pass' ? result.tape : undefined,
     fault: result.fault,
   };
 }
 
-function selectHeaded(runs, count) {
+export function selectHeaded(runs, count) {
   const picked = [];
-  for (let i = 0; i < runs.length && picked.length < count; i += Math.max(1, Math.floor(runs.length / count))) {
-    const run = runs[i];
-    picked.push({
-      journeyId: run.journeyId,
-      personaId: run.personaId,
-      seed: run.seed,
-      surface: run.surface,
-      tapeHash: run.tapeHash,
-      headedBrowser: 'unverified',
-    });
+  const seen = new Set();
+  const byJourney = new Map();
+  for (const run of runs) {
+    const list = byJourney.get(run.journeyId) || [];
+    list.push(run);
+    byJourney.set(run.journeyId, list);
   }
-  return picked;
+  for (const list of byJourney.values()) {
+    if (picked.length >= count) break;
+    const touch = list.find((run) => run.surface === 'simulated-touch');
+    const choice = touch || list[0];
+    picked.push(choice);
+    seen.add(choice);
+  }
+  const touch = runs.filter((run) => run.surface === 'simulated-touch' && !seen.has(run));
+  const touchGoal = Math.min(8, count);
+  let touchCount = picked.filter((run) => run.surface === 'simulated-touch').length;
+  const touchStep = Math.max(1, Math.floor(touch.length / touchGoal) || 1);
+  for (let i = 0; i < touch.length && touchCount < touchGoal && picked.length < count; i += touchStep) {
+    picked.push(touch[i]);
+    seen.add(touch[i]);
+    touchCount += 1;
+  }
+  const stride = Math.max(1, Math.floor(runs.length / count));
+  for (let i = 0; i < runs.length && picked.length < count; i += stride) {
+    if (seen.has(runs[i])) continue;
+    picked.push(runs[i]);
+    seen.add(runs[i]);
+  }
+  for (const run of runs) {
+    if (picked.length >= count) break;
+    if (seen.has(run)) continue;
+    picked.push(run);
+    seen.add(run);
+  }
+  return picked.slice(0, count);
 }

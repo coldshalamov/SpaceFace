@@ -126,6 +126,16 @@ export function roundHandoffSnapshot({ previousWave, simLimit = null, includeBut
   return button ? { kind: 'launch', word: norm(button.textContent).replace(/Esc$/, '').trim() } : null;
 }
 
+// The target, contact list and radar can cover an otherwise onscreen body. Their DOM pixels
+// belong to the instrument, not to the entity colour/sky contrast measurement.
+export function screenshotHudOccluders() {
+  return [...document.querySelectorAll('#hud .sf-rightdock')].filter((node) => node.offsetParent)
+    .map((node) => {
+      const r = node.getBoundingClientRect();
+      return [r.left, r.top, r.right, r.bottom];
+    }).filter((r) => r[2] > r[0] && r[3] > r[1]);
+}
+
 export async function awaitRoundHandoff(page, {
   previousWave, simLimit = null, timeoutMs = 300000, beforeLaunch = async () => {},
 }) {
@@ -149,7 +159,12 @@ export async function awaitRoundHandoff(page, {
     try { await button.click({ timeout: Math.max(1, Math.min(1000, deadline - Date.now())) }); }
     catch (error) {
       const progressed = await page.evaluate(roundHandoffSnapshot, { previousWave, simLimit, includeButton: false });
-      return progressed || { kind: 'launch-error', message: String(error?.message || error) };
+      if (progressed) return progressed;
+      // Native wave_intro can remove the control before the next wave becomes active.
+      // Reobserve that transition within the same deadline; a still available control
+      // retains its actual click error instead of disguising an actor failure.
+      if (!await button.isVisible().catch(() => false) || !await button.isEnabled().catch(() => false)) continue;
+      return { kind: 'launch-error', message: String(error?.message || error) };
     }
     return observe(false);
   }
@@ -350,11 +365,13 @@ async function runOne(args, arena, extra = {}) {
         return { t: performance.now(), sim: st ? st.simTime : null, hud: (document.querySelector('.sf-crun') || document.querySelector('#hud') || {}).innerText || '',
           realm: st ? { advText, onboarding: !!(st.onboarding && st.onboarding.active), sector: st.world ? st.world.currentSectorId || null : null, run: st.run ? st.run.kind + '/' + st.run.phase : null } : null };
       });
+      const overlays = await page.evaluate(screenshotHudOccluders);
       const file = path.join(outDir, 'frames', `${String(shots.length).padStart(4, '0')}.jpg`);
       await page.screenshot({ path: file, type: 'jpeg', quality: 72 });
       const end = await page.evaluate(() => ({ t: performance.now(), sim: window.SF ? window.SF.state.simTime : null }));
+      overlays.push(...await page.evaluate(screenshotHudOccluders));
       shots.push({ t: info.t, endT: end.t, sim: info.sim, endSim: end.sim,
-        file, play, label: tag, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
+        file, play, label: tag, overlays, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
       if (play && info.realm) (trace.realm || (trace.realm = [])).push({ t: info.t, sim: info.sim, file, ...info.realm });
     } catch { /* page navigating */ } finally { busy = false; }
   };

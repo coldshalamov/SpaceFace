@@ -167,11 +167,83 @@ test('alternate deliveries also win, and the false shots do not', () => {
     },
   });
   assert.equal(rightLane.reason, 'stolen');
+  const idleMagnet = runMatch('kl-11', {
+    practice: true, enforceTier: false,
+    solution: { shipAt: { x: 0, z: 36 }, phases: [{ for: 9, thrustX: 0, thrustZ: 0 }] },
+  });
+  assert.equal(idleMagnet.won, false);
+  assert.equal(idleMagnet.reason, 'timeout');
   const idlePen = runMatch('kl-12', {
     seed: 8, practice: true, enforceTier: false,
     solution: { phases: [{ for: 14, thrustX: 0, thrustZ: 0 }] },
   });
   assert.equal(idlePen.won, false);
+});
+
+test('a Massline latch press stays armed until the hull is in reach', () => {
+  const session = createSession('kl-09', { practice: true, enforceTier: false });
+  const ship = session.bodies.find((body) => body.role === 'ship');
+  const payload = session.bodies.find((body) => body.role === 'payload');
+  ship.x = payload.x + 40;
+  ship.z = payload.z;
+  stepSession(session, { latch: true }, DT);
+  assert.equal(session.tether, null);
+  assert.equal(session.tetherArmed, true);
+  ship.x = payload.x + 8;
+  ship.z = payload.z;
+  stepSession(session, { thrustX: 0, thrustZ: 0 }, DT);
+  assert.equal(session.tether?.targetId, payload.id);
+  const memory = careerMemory();
+  const won = runMatch('kl-05', { memory, enforceTier: false });
+  assert.equal(won.won, true);
+  assert.equal(claimPurse(memory, won.event), 8);
+  assert.equal(claimPurse(memory, won.event), 0);
+});
+
+test('live Massline pulses survive input clearing and can rearm after an authority break', () => {
+  const player = { id: 'player', pos: { x: 0, z: 0 } };
+  const payload = { id: 'payload-live', alive: true, pos: { x: 40, z: 0 } };
+  const state = { playerId: player.id, entities: new Map([[player.id, player]]), input: { actions: {} } };
+  const system = createKineticLeague();
+  system.state = state;
+  system.session = { phase: 'play', simTime: 3, bodies: [{ id: 'payload', role: 'payload', alive: true }] };
+  const lines = new Map();
+  let creates = 0;
+  system._venue = { owned: new Set([payload.id]), entity: () => payload, key: () => 'payload',
+    kernel: { attachments: {
+      get: id => lines.get(id),
+      create: () => { const attachment = { id: `line-${++creates}`, state: 'active' }; lines.set(attachment.id, attachment); return { ok: true, attachment }; },
+    } } };
+  const pulse = { latch: true };
+  state.input.actions.massline = pulse;
+  system._consumeMassline();
+  assert.equal(creates, 0);
+  assert.equal(system.session.masslineArmed, true);
+  delete state.input.actions.massline;
+  payload.pos.x = 8;
+  system._consumeMassline();
+  assert.equal(creates, 1, 'the one-tick pulse still attaches after input clears');
+  assert.deepEqual(pulse, { latch: true });
+  const firstId = system.session.masslineAttachmentId;
+  lines.get(firstId).state = 'broken';
+  system._line({ attachmentId: firstId, targetId: payload.id, ownerId: player.id, reason: 'physics_break' }, true);
+  assert.equal(system.session.masslineLatched, false);
+  state.input.actions.massline = { latch: true };
+  system._consumeMassline();
+  assert.equal(creates, 2, 'a native break does not permanently block the next latch');
+  lines.delete(system.session.masslineAttachmentId);
+  system._consumeMassline();
+  assert.equal(creates, 3, 'reconcile a removed authority record even without a break event');
+});
+
+test('cut takes precedence over a simultaneous fixture tether command', () => {
+  const session = createSession('kl-09', { practice: true, enforceTier: false });
+  const ship = session.bodies.find(body => body.role === 'ship');
+  const payload = session.bodies.find(body => body.role === 'payload');
+  ship.x = payload.x + 8; ship.z = payload.z;
+  stepSession(session, { tether: true, cut: true }, DT);
+  assert.equal(session.tether, null);
+  assert.equal(session.contacts.some(contact => contact.kind === 'tether-attach'), false);
 });
 
 test('large timestep can score; a teleport and an own-goal cannot; a post is not a goal', () => {

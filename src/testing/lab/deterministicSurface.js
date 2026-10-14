@@ -17,6 +17,7 @@ export const DETERMINISTIC_COVERED = Object.freeze([
   'entities.team',
   'entities.mass',
   'entities.hull',
+  'entities.shield',
   'player.credits',
   'player.tether.active',
   'player.tether.targetId',
@@ -107,6 +108,8 @@ export function buildDeterministicSurface(state, meta = {}) {
         radius: round6(e.radius || 0),
         hull: round6(e.hull || 0),
         hullMax: round6(e.hullMax || 0),
+        shield: round6(e.shield || 0),
+        shieldMax: round6(e.shieldMax || 0),
         data: e.data ? {
           scenarioAlias: e.data.scenarioAlias || null,
           scenarioRole: e.data.scenarioRole || null,

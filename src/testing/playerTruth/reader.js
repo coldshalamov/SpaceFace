@@ -272,7 +272,8 @@ export function createPlayerTruthLifeTracker() {
     }
     return current ? observe(current) : (history ? [...history.values()].at(-1) : p.id);
   };
-  return { observe, receiptId };
+  const identityFor = (id, generation) => lives.get(id)?.get(generation) ?? null;
+  return { observe, receiptId, identityFor };
 }
 
 /** Read the presented contents once per admission/model change, rather than walking per frame. */
@@ -803,6 +804,7 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   const api = {
     version: 1,
+    identityFor(id, generation) { return lifeTracker.identityFor(id, generation); },
     start() { if (running) return; running = true; lastT = 0; raf = win.requestAnimationFrame(loop); },
     stop() { running = false; if (raf) win.cancelAnimationFrame(raf); },
     drain() {
