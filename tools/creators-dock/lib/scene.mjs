@@ -1,7 +1,7 @@
 // Pure XZ scene model for Creator's Dock.
 // No Node builtins, no physics step. The lab is the only simulator.
 
-import { GLYPHS } from './glyphs.mjs';
+import { GLYPH_PHASES, GLYPHS, KERN } from './glyphs.mjs';
 import { actorStroke, fieldStroke, markerStroke, OBJECTIVE_REACH } from './inspector.mjs';
 import {
   captureAccessorTrees,   captureLive, detachData, liveObjectsIn, protectLiveObjects,
@@ -1216,29 +1216,48 @@ const PAINTED_STROKE_PX = 0.5;
 const FIELD_DASH = [2, 6];
 const MARKER_DASH = [4, 4];
 const ROUTE_DASH = [6, 4];
-function labelInk(text, anchorX, anchorY, sx, sy, size) {
-  const atlas = GLYPHS[size === 12 ? '12' : '11'];
+function glyphAdvance(atlas, ch) {
+  const glyph = atlas[ch];
+  return glyph ? glyph[0] : 6;
+}
+
+function labelWidth(atlas, kern, text) {
+  let width = 0;
+  let prev = '';
+  for (const ch of text) {
+    width += glyphAdvance(atlas, ch) + (prev && kern[prev + ch] ? kern[prev + ch] : 0);
+    prev = ch;
+  }
+  return width;
+}
+
+function labelInk(text, anchorX, anchorY, sx, sy, size, align) {
+  const key = size === 12 ? '12' : '11';
+  const atlas = GLYPHS[key];
+  const kern = KERN[key];
   const px = Math.floor(sx);
   const py = Math.floor(sy);
-  let pen = anchorX;
-  for (const ch of String(text)) {
+  const source = String(text);
+  let pen = align === 'right' ? anchorX - labelWidth(atlas, kern, source) : anchorX;
+  let prev = '';
+  for (const ch of source) {
     const glyph = atlas[ch];
-    if (!glyph) {
-      pen += 6;
-      continue;
-    }
-    const advance = glyph[0];
-    const rows = glyph[1];
-    for (let r = 0; r < rows.length; r += 1) {
-      const dy = rows[r][0];
-      const min = rows[r][1];
-      const bits = rows[r][2];
-      if (Math.floor(anchorY + dy) !== py) continue;
-      for (let i = 0; i < 24; i += 1) {
-        if ((bits & (1 << i)) && Math.floor(pen + min + i) === px) return true;
+    pen += prev && kern[prev + ch] ? kern[prev + ch] : 0;
+    if (glyph) {
+      const phase = Math.floor((((pen % 1) + 1) % 1) * GLYPH_PHASES) % GLYPH_PHASES;
+      const origin = Math.floor(pen);
+      const rows = glyph[1][phase];
+      for (let r = 0; r < rows.length; r += 1) {
+        const dy = rows[r][0];
+        const min = rows[r][1];
+        const bits = rows[r][2];
+        if (Math.floor(anchorY + dy) !== py) continue;
+        const local = px - (origin + min);
+        if (local >= 0 && local < 24 && (bits & (1 << local))) return true;
       }
-    }
-    pen += advance;
+      pen += glyph[0];
+    } else pen += 6;
+    prev = ch;
   }
   return false;
 }
@@ -1377,9 +1396,6 @@ function objectiveHit(dx, dy) {
     if (dashCovers((i + t) * edge, MARKER_DASH[0], MARKER_DASH[1])) onStroke = true;
   }
   if (onStroke) return { inside: true, onStroke: true };
-  if (Math.abs(dx) + Math.abs(dy) <= reach - PAINTED_STROKE_PX * Math.SQRT2 + 1e-6) {
-    return { inside: true, onStroke: false };
-  }
   return null;
 }
 
@@ -1461,6 +1477,21 @@ function linkOnInk(object, sx, sy, camera, view, project) {
   return labelInk(label, (a.sx + b.sx) / 2, (a.sy + b.sy) / 2, sx, sy);
 }
 
+function markerMark(object, zoom) {
+  const radius = object && typeof object.radius === 'number' && Number.isFinite(object.radius) ? object.radius : 0;
+  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  return Math.max(12, radius * scale);
+}
+
+function markerLabel(object, sx, sy, ox, oy, zoom) {
+  const label = object.label || object.id;
+  if (typeof label !== 'string' || !label) return false;
+  const mark = markerMark(object, zoom);
+  if (object.kind === 'trigger') return labelInk(label, ox - mark - 8, oy, sx, sy, 11, 'right');
+  if (object.kind === 'objective') return labelInk(label, ox + 12, oy + mark + 14, sx, sy, 11, 'left');
+  return false;
+}
+
 function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
   if (object && (object.kind === 'route' || object.kind === 'attachment')) {
     if (!linkOnInk(object, sx, sy, camera, view, project)) return null;
@@ -1470,7 +1501,12 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
   const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
   const dx = sx - ox;
   const dy = sy - oy;
-  if (object.kind === 'objective') return objectiveHit(dx, dy);
+  if (object.kind === 'objective') {
+    const shape = objectiveHit(dx, dy);
+    if (shape) return shape;
+    if (markerLabel(object, sx, sy, ox, oy, zoom)) return { inside: true, onStroke: true };
+    return null;
+  }
   const overrideRadius = object.overrides && object.overrides.radius;
   const usesCollider = object.kind === 'actor'
     || (typeof overrideRadius === 'number' && Number.isFinite(overrideRadius));
@@ -1490,8 +1526,11 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
   const ring = object.kind === 'field' || object.kind === 'trigger';
   if (ring) {
     const pattern = object.kind === 'field' ? FIELD_DASH : MARKER_DASH;
-    if (!ringOnInk(dx, dy, radius, pattern)) return null;
-    return { inside: true, onStroke: true };
+    if (ringOnInk(dx, dy, radius, pattern)) return { inside: true, onStroke: true };
+    if (object.kind === 'trigger' && markerLabel(object, sx, sy, ox, oy, zoom)) {
+      return { inside: true, onStroke: true };
+    }
+    return null;
   }
   if (distance > radius + 1e-6) return null;
   return { inside: true, onStroke: false };

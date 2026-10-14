@@ -5046,7 +5046,9 @@ test('the inspector edits a trigger oracle and the input tape', async () => {
   assert.equal(actorStroke(zeroActor, 1, profileDraw), 0);
   assert.equal(hitTest({ objects: [zeroActor] }, 100, 115, unitZoom, view), null);
   const objective = { id: 'mark', kind: 'objective', x: 0, z: 0 };
-  assert.equal(hitTest({ objects: [objective] }, 400, 294, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [objective] }, 400, 300, stageCam, stage), null);
+  assert.equal(hitTest({ objects: [objective] }, 400, 294, stageCam, stage), null);
+  assert.equal(hitTest({ objects: [objective] }, 400.5, 292.5, stageCam, stage), 'mark');
   assert.equal(hitTest({ objects: [objective] }, 400, 280, stageCam, stage), null);
   const zone = objectById(bank, 'bank_zone');
   assert.equal(zone.radius, 80);
@@ -6805,7 +6807,7 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   const objective = { id: 'mark', kind: 'objective', x: 0, z: 0 };
   const ring = { id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 4 };
   assert.equal(hitTest({ objects: [objective, ring] }, 104, 100, unitZoom, view), 'ring');
-  assert.equal(hitTest({ objects: [objective] }, 104, 100, unitZoom, view), 'mark');
+  assert.equal(hitTest({ objects: [objective] }, 104, 100, unitZoom, view), null);
   const wideRing = { id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 8 };
   assert.equal(hitTest({ objects: [wideRing, objective] }, 108, 100, unitZoom, view), 'mark');
   assert.equal(hitTest({ objects: [wideRing, objective] }, 108.4, 100, unitZoom, view), 'mark');
@@ -6814,7 +6816,10 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.notEqual(hitTest(bank, 456.32, 257.76, stageCam, stage, profileDraw), 'bank_zone');
   assert.equal(hitTest(bank, 465.5, 244.5, stageCam, stage, profileDraw), 'player');
   assert.equal(hitTest(bank, 466.5, 244.5, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 470.5, 244.5, stageCam, stage, profileDraw), 'player');
   assert.equal(hitTest(bank, 463.5, 244.5, stageCam, stage, profileDraw), 'player');
+  assert.equal(hitTest(bank, 537.5, 162.5, stageCam, stage, profileDraw), 'stone');
+  assert.equal(hitTest(bank, 403.5, 357.5, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 468.5, 245.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 465.5, 237.5, stageCam, stage, profileDraw), null);
   const labelEnds = [
@@ -6828,6 +6833,14 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   const cargo = getComposition('dock.intercept-cargo');
   assert.equal(hitTest(cargo, 488.5, 215.5, stageCam, stage, profileDraw), 'to_cargo');
   assert.equal(hitTest(cargo, 460.5, 212.5, stageCam, stage, profileDraw), null);
+  const unitView = { width: 200, height: 200 };
+  assert.equal(hitTest(cargo, 155.5, 70.5, unitZoom, unitView, profileDraw), 'to_cargo');
+  assert.equal(hitTest(cargo, 151.5, 75.5, unitZoom, unitView, profileDraw), 'to_cargo');
+  assert.equal(hitTest(cargo, 152.5, 75.5, unitZoom, unitView, profileDraw), 'to_cargo');
+  assert.equal(hitTest(cargo, 140.5, 75.5, unitZoom, unitView, profileDraw), null);
+  assert.equal(hitTest(cargo, 136.5, 80.5, unitZoom, unitView, profileDraw), null);
+  assert.equal(hitTest(cargo, 125.5, 67.5, unitZoom, unitView, profileDraw), null);
+  assert.equal(hitTest(cargo, 110.5, 72.5, unitZoom, unitView, profileDraw), 'player');
   assert.equal(hitTest(bank, 438.4, 271.2, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 554, 204, stageCam, stage, profileDraw), 'stone');
   assert.equal(hitTest(bank, 543, 204, stageCam, stage, profileDraw), 'stone');
