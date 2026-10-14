@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { beginBootWork } from '../core/bootWork.js';
-import { makeGpuQueuePacer } from './gpuQueuePace.js';
+import { makeGpuQueuePacer, makeGpuQueueSubmitter } from './gpuQueuePace.js';
 import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import {
   detachPackageGeometry,
@@ -738,6 +738,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
     : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+  const submitSerial = makeGpuQueueSubmitter(renderer, {
+    scheduleTask: postTaskAtBackgroundPriorityBounded, paceQueue,
+  });
   await yieldToMain();
   let batches;
   if (typeof partitionGeometryWorkSteps === 'function') {
@@ -757,102 +760,119 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   camera.layers.enableAll();
   camera.updateMatrixWorld(true);
   const results = [];
+  let interrupted = null;
   const geometriesBefore = rendererMemoryGeometries(renderer);
 
   try {
     const counters = options.counters || null;
     await enqueueGeometryResidencyBatches(renderer, async () => {
       for (let index = 0; index < batches.length; index++) {
-      const batch = batches[index];
-      if (paceQueue) await paceQueue();
-      await yieldToMain();
-      const scene = new THREE.Scene();
-      scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
-      const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
-      for (const entry of proxyEntries) scene.add(entry.proxy);
-      try {
-        if (typeof renderer.compileAsync === 'function') {
-          const { compilePipelinesContextSafe } = await import('./bloom.js');
-          const compileState = captureRendererState(renderer);
-          let wait;
-          try {
-            applyResidencyRendererState(renderer, target);
-            wait = compilePipelinesContextSafe(renderer, scene, camera, scene, { skipSharedBatch: true });
-          } finally {
-            // Presented draws may run while the driver links this private variant.
-            restoreRendererState(renderer, compileState);
+        const batch = batches[index];
+        if (!submitSerial && paceQueue) await paceQueue();
+        await yieldToMain();
+        const scene = new THREE.Scene();
+        scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
+        const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
+        for (const entry of proxyEntries) scene.add(entry.proxy);
+        try {
+          if (typeof renderer.compileAsync === 'function') {
+            const { compilePipelinesContextSafe } = await import('./bloom.js');
+            const compile = () => {
+              if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
+              if (typeof options.isActive === 'function' && !options.isActive()) {
+                throw new Error('Residency program admission was superseded');
+              }
+              const compileState = captureRendererState(renderer);
+              try {
+                applyResidencyRendererState(renderer, target);
+                // A reserved unit must never join a surrounding cook batch: its owner may
+                // itself be waiting for this reservation before it can drain that batch.
+                return compilePipelinesContextSafe(renderer, scene, camera, scene, { skipSharedBatch: true });
+              } finally {
+                // Presented draws may run while the driver links this private variant.
+                restoreRendererState(renderer, compileState);
+              }
+            };
+            // Compile and draw are separate serial units. Release the compiled prefix before
+            // yielding and queueing the draw, so sibling uploads cannot pile onto either unit.
+            const ready = submitSerial
+              ? await submitSerial(compile, { urgent: options.urgent === true })
+              : await compile();
+            if (ready?.skipped && ready?.contextLost) { interrupted = ready; break; }
+            if (ready?.contextLost || ready?.readinessTimedOut
+                || (typeof options.isActive === 'function' && !options.isActive())) {
+              throw new Error('Residency program was not ready');
+            }
+            await yieldToMain();
+            if ((typeof options.isActive === 'function' && !options.isActive())
+                || renderer.getContext?.()?.isContextLost?.() === true) {
+              throw new Error('Residency program admission was superseded');
+            }
           }
-          const ready = await wait;
-          if (ready?.contextLost || ready?.readinessTimedOut
-              || (typeof options.isActive === 'function' && !options.isActive())) {
-            throw new Error('Residency program was not ready');
-          }
-          await yieldToMain();
-          if ((typeof options.isActive === 'function' && !options.isActive())
-              || renderer.getContext?.()?.isContextLost?.() === true) {
-            throw new Error('Residency program admission was superseded');
-          }
-        }
-      } catch (error) {
-        for (const entry of proxyEntries) {
-          scene.remove(entry.proxy);
-          if (entry.cleanup) entry.cleanup();
-        }
-        throw error;
-      }
-      const state = captureRendererState(renderer);
-      const started = now();
-      let success = false;
-      // Upload events inherit the caller's admission label; swap in the batch's source names so
-      // the probe can say WHICH meshes still reach first-bind inside a live round.
-      const priorSubject = counters ? counters.admissionSubject : null;
-      if (counters) {
-        counters.admissionSubject = `res:${batch.work
-          .map((item) => item.object && (item.object.name || item.object.type) || 'mesh')
-          .slice(0, 10)
-          .join(',')}`;
-      }
-      try {
-        applyResidencyRendererState(renderer, target);
-        renderer.render(scene, camera);
-        success = true;
-      } finally {
-        if (counters) counters.admissionSubject = priorSubject;
-        const durationMs = now() - started;
-        try { restoreRendererState(renderer, state); } finally {
+          const upload = () => {
+            if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
+            if (typeof options.isActive === 'function' && !options.isActive()) {
+              throw new Error('Residency program admission was superseded');
+            }
+            const state = captureRendererState(renderer);
+            const started = now();
+            let success = false;
+            // Upload events inherit the caller's admission label; swap in the batch's source names so
+            // the probe can say WHICH meshes still reach first-bind inside a live round.
+            const priorSubject = counters ? counters.admissionSubject : null;
+            if (counters) {
+              counters.admissionSubject = `res:${batch.work
+                .map((item) => item.object && (item.object.name || item.object.type) || 'mesh')
+                .slice(0, 10)
+                .join(',')}`;
+            }
+            try {
+              applyResidencyRendererState(renderer, target);
+              renderer.render(scene, camera);
+              success = true;
+            } finally {
+              if (counters) counters.admissionSubject = priorSubject;
+              const durationMs = now() - started;
+              restoreRendererState(renderer, state);
+              const receipt = {
+                kind: 'gpuGeometryResidency',
+                durationMs,
+                index,
+                count: batches.length,
+                drawables: batch.work.length,
+                geometries: new Set(batch.work.map((item) => item.geometry)).size,
+                estimatedBytes: batch.estimatedBytes,
+                success,
+              };
+              if (success) {
+                for (const item of batch.work) {
+                  const geometry = item.geometry;
+                  if (geometry) {
+                    const data = geometry.userData || (geometry.userData = {});
+                    data.spacefaceGpuResident = true;
+                    // The proxy render proved this context's attribute records: note the ledger for
+                    // the N2 pending gate, then release the marked non-kept CPU arrays (position +
+                    // index stay live for raycast/bounds).
+                    noteGeometryGpuResident(geometry, renderer);
+                    detachPackageGeometry(geometry, renderer);
+                  }
+                }
+                results.push(receipt);
+              }
+              reportBlockingSlice(onBlockingSlice, receipt);
+              geometryProgress.update(index + 1, success);
+            }
+          };
+          if (submitSerial) {
+            const outcome = await submitSerial(upload, { urgent: options.urgent === true });
+            if (outcome && outcome.contextLost) { interrupted = outcome; break; }
+          } else upload();
+        } finally {
           for (const entry of proxyEntries) {
             scene.remove(entry.proxy);
             if (entry.cleanup) entry.cleanup();
           }
         }
-        const receipt = {
-          kind: 'gpuGeometryResidency',
-          durationMs,
-          index,
-          count: batches.length,
-          drawables: batch.work.length,
-          geometries: new Set(batch.work.map((item) => item.geometry)).size,
-          estimatedBytes: batch.estimatedBytes,
-          success,
-        };
-        if (success) {
-          for (const item of batch.work) {
-            const geometry = item.geometry;
-            if (geometry) {
-              const data = geometry.userData || (geometry.userData = {});
-              data.spacefaceGpuResident = true;
-              // The proxy render proved this context's attribute records: note the ledger for
-              // the N2 pending gate, then release the marked non-kept CPU arrays (position +
-              // index stay live for raycast/bounds).
-              noteGeometryGpuResident(geometry, renderer);
-              detachPackageGeometry(geometry, renderer);
-            }
-          }
-          results.push(receipt);
-        }
-        reportBlockingSlice(onBlockingSlice, receipt);
-        geometryProgress.update(index + 1, success);
-      }
       }
     }, { urgent: options.urgent === true });
   } finally {
@@ -860,6 +880,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
     // program and force every later admission to relink it. It dies with the GL context.
   }
 
+  if (interrupted) return { ...interrupted, batches: results };
   const geometriesAfter = rendererMemoryGeometries(renderer);
   return {
     skipped: false,
@@ -892,6 +913,9 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
     : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+  const submitSerial = makeGpuQueueSubmitter(renderer, {
+    scheduleTask: postTaskAtBackgroundPriorityBounded, paceQueue,
+  });
   let textures;
   if (typeof collectStartupTexturesSteps === 'function') {
     const collectIt = collectStartupTexturesSteps(subjects);
@@ -973,38 +997,59 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       hitDeadline = true;
       break;
     }
-    const started = now();
-    let success = false;
-    try {
-      renderer.initTexture(texture);
-      success = true;
-    } finally {
-      const durationMs = now() - started;
-      const name = texture.name || texture.source?.data?.name || 'unnamed';
-      const width = Number(texture.image?.width) || Number(texture.source?.data?.width) || 0;
-      const height = Number(texture.image?.height) || Number(texture.source?.data?.height) || 0;
-      if (success) {
-        uploads.push({ name, width, height, durationMs });
-        uploadVersions.set(texture, texture.version);
-        // The GPU copy is proven: release the decoded CPU mirror (mipmaps/source.data) for
-        // marked render-package textures. Context restore rehydrates them on demand. The same
-        // stamp may complete a dedupe entry's all-resident set — attempt the shared release.
-        detachPackageTexture(texture);
-        releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
+    const upload = () => {
+      if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
+      if (hasDeadline && now() - startedAt >= deadlineMs) {
+        hitDeadline = true;
+        return;
       }
-      reportBlockingSlice(onBlockingSlice, {
-        kind: 'gpuResidencyUpload',
-        durationMs,
-        name,
-        width,
-        height,
-        index,
-        count,
-        success,
-      });
-      textureProgress.update(index + 1, success);
+      // A sibling root can finish this shared texture while this unit waits for its turn.
+      if (typeof texture.version === 'number' && texture.isVideoTexture !== true
+          && texture.isExternalTexture !== true && uploadVersions.get(texture) === texture.version) {
+        residentTextures += 1;
+        textureProgress.update(index + 1);
+        return;
+      }
+      const started = now();
+      let success = false;
+      try {
+        renderer.initTexture(texture);
+        success = true;
+      } finally {
+        const durationMs = now() - started;
+        const name = texture.name || texture.source?.data?.name || 'unnamed';
+        const width = Number(texture.image?.width) || Number(texture.source?.data?.width) || 0;
+        const height = Number(texture.image?.height) || Number(texture.source?.data?.height) || 0;
+        if (success) {
+          uploads.push({ name, width, height, durationMs });
+          uploadVersions.set(texture, texture.version);
+          // The GPU copy is proven: release the decoded CPU mirror (mipmaps/source.data) for
+          // marked render-package textures. Context restore rehydrates them on demand. The same
+          // stamp may complete a dedupe entry's all-resident set — attempt the shared release.
+          detachPackageTexture(texture);
+          releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
+        }
+        reportBlockingSlice(onBlockingSlice, {
+          kind: 'gpuResidencyUpload',
+          durationMs,
+          name,
+          width,
+          height,
+          index,
+          count,
+          success,
+        });
+        textureProgress.update(index + 1, success);
+      }
+    };
+    if (submitSerial) {
+      const outcome = await submitSerial(upload, { urgent: options.urgent === true });
+      if (outcome && outcome.contextLost) return { ...outcome, textures: uploads.length, uploads, residentTextures };
+    } else {
+      upload();
+      if (paceQueue) await paceQueue();
     }
-    if (paceQueue) await paceQueue();
+    if (hitDeadline) break;
   }
   let geometryResidency;
   if (hitDeadline) {
