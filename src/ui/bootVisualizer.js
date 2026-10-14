@@ -2,6 +2,7 @@ import { BOOT_MEDIA, createBootMediaPlayback } from './bootMediaPlayback.js';
 
 const owners = new WeakMap();
 const EMPTY = Object.freeze({ ready: Promise.resolve({ status: 'unavailable' }),
+  playbackReady: Promise.resolve({ status: 'unavailable' }),
   start() {}, stop() {}, updateProgress() {}, destroy() {}, inspect: () => ({ status: 'unavailable' }) });
 
 /** The SAME owner is acquired by the entry shell and every loading presenter.
@@ -91,6 +92,7 @@ export function getBootVisualizer(document = globalThis.document, options = {}) 
   }
   const ctl = {
     ready: media.ready,
+    playbackReady: media.playbackReady,
     start() { if (disposed) return media.ready; wanted = true; media.start(); if (media.inspect().failed) fallback(); refresh(); return media.ready; },
     stop() { wanted = false; media.stop(); art?.stop(); stopClock(); },
     updateProgress(stage = {}) { progress = stage; art?.updateProgress(stage); },

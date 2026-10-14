@@ -51,6 +51,7 @@ import { flattenEventPayload, resolveEventEntityRef } from '../../scripts/lib/si
 import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
+import { normalizePadSensitivity } from '../systems/gamepad.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -466,12 +467,21 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 
   // ---- envelope queue (descriptor → wire via the shared ring) --------------------
   const envelopeRing = createSimCommandRing();
+  const cursorScreen = { x: null, y: null };
+  const cursorNdc = { x: 0, y: 0 };
+  const cursorHit = { x: 0, z: 0 };
   // The sink's return value is what the caller receives — for rpc descriptors
   // that is a promise resolved/rejected off the wire ack (laneRpc callers
   // like startNewGame await it), for everything else the ring's push result.
   const uninstallSink = installSimCommandSink((d) => enqueueDescriptor(d));
   function enqueueDescriptor(d) {
     if (laneClosed || !d) return null;
+    const pointer = d.kind === 'domEvent' ? d.d : null;
+    if (pointer && ['mousemove', 'pointermove', 'mousedown'].includes(pointer.type)
+      && Number.isFinite(pointer.clientX) && Number.isFinite(pointer.clientY)) {
+      cursorScreen.x = pointer.clientX;
+      cursorScreen.y = pointer.clientY;
+    }
     if (d.kind === 'rpc') {
       const rpcPromise = new Promise((resolve, reject) => {
         pendingRpcs.set(d.id, { resolve, reject });
@@ -769,6 +779,21 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
     if (inFlight) return;
     const commands = envelopeRing.drain();
     if (pendingSteps <= 0 && commands.length === 0 && pendingAckEnd === 0) return;
+    // Camera/galactic-origin geometry belongs to presentation. The worker has no renderer
+    // raycast helper: project on main for every batch, even when the cursor has not moved.
+    if (helpers && typeof helpers.raycastToPlane === 'function') {
+      const size = viewportSize();
+      const mouse = state.settings?.controls?.mouse || {};
+      const sensitivity = normalizePadSensitivity(mouse.sensitivity);
+      const centered = state.input?.autoFire || cursorScreen.x == null;
+      cursorNdc.x = centered || size.w <= 0 ? 0 : (cursorScreen.x / size.w * 2 - 1) * sensitivity;
+      cursorNdc.y = centered || size.h <= 0 ? 0 : (1 - cursorScreen.y / size.h * 2) * sensitivity * (mouse.invertY ? -1 : 1);
+      const hit = helpers.raycastToPlane(cursorNdc, cursorHit);
+      if (hit && Number.isFinite(hit.x) && Number.isFinite(hit.z)) {
+        pushLaneCommand(envelopeRing, { kind: 'domEvent', d: { type: 'cursorProjection', x: hit.x, z: hit.z } });
+        commands.push(...envelopeRing.drain());
+      }
+    }
     capPendingSteps(MAX_CATCHUP_STEPS);
 
     const seq = nextToken();
