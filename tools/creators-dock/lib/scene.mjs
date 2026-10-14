@@ -1252,13 +1252,112 @@ function dashCovers(along, dash, gap) {
   return phase <= dash + 1e-6;
 }
 
+const CONIC_WEIGHT = Math.SQRT1_2;
+const CONIC_T_MAX = 0x3FFFFFFF;
+const RING_FLATTEN_TOLERANCE = 0.5;
+const ringModelCache = new Map();
+
+function conicAt(conic, t) {
+  const u = 1 - t;
+  const w0 = u * u;
+  const w1 = 2 * conic.w * t * u;
+  const w2 = t * t;
+  const denom = w0 + w1 + w2;
+  return {
+    x: (w0 * conic.p0.x + w1 * conic.p1.x + w2 * conic.p2.x) / denom,
+    y: (w0 * conic.p0.y + w1 * conic.p1.y + w2 * conic.p2.y) / denom,
+  };
+}
+
+function conicTooCurvy(start, mid, end) {
+  const dx = Math.abs(mid.x - (start.x + end.x) * 0.5);
+  const dy = Math.abs(mid.y - (start.y + end.y) * 0.5);
+  return Math.max(dx, dy) > RING_FLATTEN_TOLERANCE;
+}
+
+function measureConic(conic, mint, start, maxt, end, depth, segs, acc) {
+  const halft = (mint + maxt) >> 1;
+  const mid = conicAt(conic, halft / CONIC_T_MAX);
+  if (depth < 8 && ((maxt - mint) >> 10) && conicTooCurvy(start, mid, end)) {
+    measureConic(conic, mint, start, halft, mid, depth + 1, segs, acc);
+    measureConic(conic, halft, mid, maxt, end, depth + 1, segs, acc);
+    return;
+  }
+  const chord = Math.hypot(end.x - start.x, end.y - start.y);
+  segs.push({
+    t0: mint / CONIC_T_MAX,
+    t1: maxt / CONIC_T_MAX,
+    d0: acc.distance,
+    d1: acc.distance + chord,
+  });
+  acc.distance += chord;
+}
+
+function ringModel(radius) {
+  const cached = ringModelCache.get(radius);
+  if (cached) return cached;
+  const right = Math.PI / 2;
+  const conics = [];
+  const segs = [];
+  const acc = { distance: 0 };
+  for (let quad = 0; quad < 4; quad += 1) {
+    const a0 = quad * right;
+    const a1 = a0 + right;
+    const conic = {
+      p0: { x: radius * Math.cos(a0), y: radius * Math.sin(a0) },
+      p1: { x: radius * (Math.cos(a0) - Math.sin(a0)), y: radius * (Math.sin(a0) + Math.cos(a0)) },
+      p2: { x: radius * Math.cos(a1), y: radius * Math.sin(a1) },
+      w: CONIC_WEIGHT,
+    };
+    const before = segs.length;
+    measureConic(conic, 0, conic.p0, CONIC_T_MAX, conic.p2, 0, segs, acc);
+    for (let i = before; i < segs.length; i += 1) segs[i].quad = quad;
+    conics.push(conic);
+  }
+  const model = { conics, segs };
+  ringModelCache.set(radius, model);
+  return model;
+}
+
+function conicAngle(point, quad) {
+  let angle = Math.atan2(point.y, point.x);
+  if (angle < 0) angle += Math.PI * 2;
+  if (quad === 3 && angle < Math.PI) angle += Math.PI * 2;
+  return angle;
+}
+
+function ringMeasuredAlong(radius, angle) {
+  const model = ringModel(radius);
+  const quad = Math.min(3, Math.max(0, Math.floor(angle / (Math.PI / 2))));
+  const conic = model.conics[quad];
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (conicAngle(conicAt(conic, mid), quad) < angle) lo = mid;
+    else hi = mid;
+  }
+  const t = (lo + hi) / 2;
+  let seg = null;
+  for (let i = 0; i < model.segs.length; i += 1) {
+    const candidate = model.segs[i];
+    if (candidate.quad === quad && t <= candidate.t1) {
+      seg = candidate;
+      break;
+    }
+  }
+  if (!seg) seg = model.segs[model.segs.length - 1];
+  const span = seg.t1 - seg.t0;
+  return span ? seg.d0 + (seg.d1 - seg.d0) * ((t - seg.t0) / span) : seg.d0;
+}
+
 function ringOnInk(dx, dy, radius, pattern) {
   const distance = Math.hypot(dx, dy);
   if (!(radius > 0)) return distance <= 1e-6;
   if (Math.abs(distance - radius) > PAINTED_STROKE_PX + 1e-6) return false;
   let angle = Math.atan2(dy, dx);
   if (angle < 0) angle += Math.PI * 2;
-  return dashCovers(angle * radius, pattern[0], pattern[1]);
+  return dashCovers(ringMeasuredAlong(radius, angle), pattern[0], pattern[1]);
 }
 
 function objectiveHit(dx, dy) {
