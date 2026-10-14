@@ -1213,6 +1213,7 @@ function paintLayer(object) {
 }
 
 const PAINTED_STROKE_PX = 0.5;
+const DASH_PAINT_PX = 0.35;
 const FIELD_DASH = [2, 6];
 const MARKER_DASH = [4, 4];
 const ROUTE_DASH = [6, 4];
@@ -1264,8 +1265,9 @@ function labelInk(text, anchorX, anchorY, sx, sy, size, align) {
 
 function dashCovers(along, dash, gap) {
   const period = dash + gap;
-  const phase = along - Math.floor(along / period) * period;
-  return phase <= dash + 1e-6;
+  let phase = along - Math.floor(along / period) * period;
+  if (phase < 0) phase += period;
+  return phase <= dash + DASH_PAINT_PX || phase >= period - DASH_PAINT_PX;
 }
 
 const CONIC_WEIGHT = Math.SQRT1_2;
@@ -1483,6 +1485,11 @@ function markerMark(object, zoom) {
   return Math.max(12, radius * scale);
 }
 
+function fieldLabel(object, sx, sy, ox, oy) {
+  const text = object.fieldKind === 'place' ? 'PLACE' : 'FIELD';
+  return labelInk(text, ox - 18, oy, sx, sy, 11);
+}
+
 function markerLabel(object, sx, sy, ox, oy, zoom) {
   const label = object.label || object.id;
   if (typeof label !== 'string' || !label) return false;
@@ -1528,6 +1535,9 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw, project) {
     const pattern = object.kind === 'field' ? FIELD_DASH : MARKER_DASH;
     if (ringOnInk(dx, dy, radius, pattern)) return { inside: true, onStroke: true };
     if (object.kind === 'trigger' && markerLabel(object, sx, sy, ox, oy, zoom)) {
+      return { inside: true, onStroke: true };
+    }
+    if (object.kind === 'field' && fieldLabel(object, sx, sy, ox, oy)) {
       return { inside: true, onStroke: true };
     }
     return null;

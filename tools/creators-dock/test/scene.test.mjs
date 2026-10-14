@@ -6824,6 +6824,20 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.equal(hitTest(bank, 226.5, 266.5, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 276.5, 266.5, stageCam, stage, profileDraw), 'alive_bank');
   assert.equal(hitTest(bank, 228.5, 257.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 232.5, 255.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(bank, 266.5, 255.5, stageCam, stage, profileDraw), null);
+  assert.equal(hitTest(zoneOnly, 522.5, 114.5, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 522.5, 114.5, stageCam, stage, profileDraw), 'bank_zone');
+  const placeWord = { id: 'bank_zone', kind: 'field', fieldKind: 'place', x: 0, z: 0, radius: 80 };
+  assert.equal(hitTest({ objects: [placeWord] }, 83.5, 92.5, unitZoom, view), 'bank_zone');
+  assert.equal(hitTest({ objects: [placeWord] }, 90.5, 85.5, unitZoom, view), null);
+  const loneMark = { id: 'mark', kind: 'objective', x: 0, z: 0 };
+  assert.equal(hitTest({ objects: [loneMark] }, 393.5, 298.5, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [loneMark] }, 407.5, 300.5, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [loneMark] }, 405.5, 297.5, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [loneMark] }, 400.5, 292.5, stageCam, stage), 'mark');
+  assert.equal(hitTest({ objects: [loneMark] }, 400, 294, stageCam, stage), null);
+  assert.equal(hitTest({ objects: [loneMark] }, 400, 300, stageCam, stage), null);
   assert.equal(hitTest(bank, 468.5, 245.5, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, 465.5, 237.5, stageCam, stage, profileDraw), null);
   const labelEnds = [
