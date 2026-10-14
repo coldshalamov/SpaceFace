@@ -438,6 +438,12 @@ export function buildDockArrival(state = {}, station = {}) {
   const ledger = mechanic ? null : ledgerCard;
   const patch = leftoverStructurePatch(state, station);
   const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
+  const serviceGaps = Array.isArray(station.services)
+    ? ['refuel', 'repair'].filter((req) => !station.services.includes(req))
+    : [];
+  const serviceNotice = serviceGaps.length
+    ? `Berth notice: no ${serviceGaps.join(' or ')} on site`
+    : null;
   const identity = String(station.name || stationId || 'Station');
   const ident = [station.typeLabel, station.factionName].filter(Boolean).join(' · ') || null;
   const patchText = patch && patch.text ? patch.text : null;
@@ -446,7 +452,7 @@ export function buildDockArrival(state = {}, station = {}) {
   const berthLine = yardBerthLine(state, stationId);
   const returnSummary = returningPilotLine(state);
   const hull = activeHullIdentity(state);
-  const lines = [action.label, berthLine, returnSummary, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  const lines = [action.label, berthLine, returnSummary, news, traffic, paperwork, patchText, ledgerLine, mechanicLine, serviceNotice]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -469,6 +475,8 @@ export function buildDockArrival(state = {}, station = {}) {
     hull,
     traffic,
     paperwork,
+    serviceGaps,
+    serviceNotice,
     serviceState: serviceCount ? `${serviceCount} berth services listed` : 'No berth services listed',
     lines,
   };
