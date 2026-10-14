@@ -1212,16 +1212,56 @@ function paintLayer(object) {
 }
 
 const PAINTED_STROKE_PX = 0.5;
+const FIELD_DASH = [2, 6];
+const MARKER_DASH = [4, 4];
+
+function dashCovers(along, dash, gap) {
+  const period = dash + gap;
+  const phase = along - Math.floor(along / period) * period;
+  return phase <= dash + 1e-6;
+}
+
+function ringOnInk(dx, dy, radius, pattern) {
+  const distance = Math.hypot(dx, dy);
+  if (!(radius > 0)) return distance <= 1e-6;
+  if (Math.abs(distance - radius) > PAINTED_STROKE_PX + 1e-6) return false;
+  let angle = Math.atan2(dy, dx);
+  if (angle < 0) angle += Math.PI * 2;
+  return dashCovers(angle * radius, pattern[0], pattern[1]);
+}
+
+function objectiveHit(dx, dy) {
+  const reach = OBJECTIVE_REACH;
+  const edge = reach * Math.SQRT2;
+  const verts = [[0, -reach], [reach, 0], [0, reach], [-reach, 0]];
+  let onStroke = false;
+  for (let i = 0; i < verts.length; i += 1) {
+    const ax = verts[i][0];
+    const ay = verts[i][1];
+    const bx = verts[(i + 1) % verts.length][0];
+    const by = verts[(i + 1) % verts.length][1];
+    const ex = bx - ax;
+    const ey = by - ay;
+    const len2 = ex * ex + ey * ey;
+    let t = ((dx - ax) * ex + (dy - ay) * ey) / len2;
+    if (t < 0) t = 0;
+    else if (t > 1) t = 1;
+    if (Math.hypot(dx - (ax + ex * t), dy - (ay + ey * t)) > PAINTED_STROKE_PX + 1e-6) continue;
+    if (dashCovers((i + t) * edge, MARKER_DASH[0], MARKER_DASH[1])) onStroke = true;
+  }
+  if (onStroke) return { inside: true, onStroke: true };
+  if (Math.abs(dx) + Math.abs(dy) <= reach - PAINTED_STROKE_PX * Math.SQRT2 + 1e-6) {
+    return { inside: true, onStroke: false };
+  }
+  return null;
+}
 
 function hitDisc(object, sx, sy, camera, view, zoom, draw) {
   if (!object || !Number.isFinite(object.x) || !Number.isFinite(object.z)) return null;
   const { sx: ox, sy: oy } = worldToScreen(object.x, object.z, camera, view);
   const dx = sx - ox;
   const dy = sy - oy;
-  if (object.kind === 'objective') {
-    if (Math.abs(dx) + Math.abs(dy) <= OBJECTIVE_REACH) return { inside: true, onStroke: false };
-    return null;
-  }
+  if (object.kind === 'objective') return objectiveHit(dx, dy);
   const overrideRadius = object.overrides && object.overrides.radius;
   const usesCollider = object.kind === 'actor'
     || (typeof overrideRadius === 'number' && Number.isFinite(overrideRadius));
@@ -1233,11 +1273,8 @@ function hitDisc(object, sx, sy, camera, view, zoom, draw) {
   const distance = Math.hypot(dx, dy);
   const ring = !usesCollider && (object.kind === 'field' || object.kind === 'trigger');
   if (ring) {
-    if (!(radius > 0)) {
-      if (distance > 1e-6) return null;
-      return { inside: true, onStroke: true };
-    }
-    if (Math.abs(distance - radius) > PAINTED_STROKE_PX + 1e-6) return null;
+    const pattern = object.kind === 'field' ? FIELD_DASH : MARKER_DASH;
+    if (!ringOnInk(dx, dy, radius, pattern)) return null;
     return { inside: true, onStroke: true };
   }
   if (distance > radius + 1e-6) return null;

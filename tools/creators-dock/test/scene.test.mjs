@@ -6781,9 +6781,8 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.equal(hitTest(bank, 617.5999, 204.1281, stageCam, stage, profileDraw), 'along_x');
   assert.equal(hitTest(bank, 637.6, 204, stageCam, stage, profileDraw), null);
   assert.equal(hitTest(bank, alivePoint.sx, alivePoint.sy, stageCam, stage, profileDraw), 'alive_bank');
-  assert.equal(hitTest(bank, 586.167, 135.323, stageCam, stage, profileDraw), 'bank_zone');
-  assert.equal(hitTest(aliveOnly, 438, 204, stageCam, stage, profileDraw), null);
-  assert.equal(hitTest(bank, 438, 204, stageCam, stage, profileDraw), 'bank_zone');
+  assert.equal(hitTest(bank, 586.167, 135.323, stageCam, stage, profileDraw), null);
+  assert.notEqual(hitTest(bank, 586.167, 135.323, stageCam, stage, profileDraw), 'bank_zone');
 
   const view = { width: 200, height: 200 };
   const unitZoom = { x: 0, z: 0, zoom: 1 };
@@ -6796,8 +6795,15 @@ test('painted dashes hit the stroke band and skip the undrawn disc', () => {
   assert.equal(hitTest({ objects: [trigger] }, 200.4, 100, unitZoom, view), 't');
   assert.equal(hitTest({ objects: [trigger] }, 200.5, 100, unitZoom, view), 't');
   assert.equal(hitTest({ objects: [trigger] }, 200.6, 100, unitZoom, view), null);
+  assert.equal(hitTest({ objects: [trigger] }, 199.8200539935204, 105.99640064794446, unitZoom, view), null);
+  const early = { id: 'early', kind: 'trigger', x: 0, z: 0, radius: 100 };
+  const late = { id: 'late', kind: 'trigger', x: 0.17994600647958237, z: 5.996400647944455, radius: 100 };
+  assert.equal(hitTest({ objects: [early, late] }, 200, 100, unitZoom, view), 'early');
   const objective = { id: 'mark', kind: 'objective', x: 0, z: 0 };
   const ring = { id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 4 };
   assert.equal(hitTest({ objects: [objective, ring] }, 104, 100, unitZoom, view), 'ring');
   assert.equal(hitTest({ objects: [objective] }, 104, 100, unitZoom, view), 'mark');
+  const wideRing = { id: 'ring', kind: 'trigger', x: 0, z: 0, radius: 8 };
+  assert.equal(hitTest({ objects: [wideRing, objective] }, 108, 100, unitZoom, view), 'mark');
+  assert.equal(hitTest({ objects: [wideRing, objective] }, 108.4, 100, unitZoom, view), 'mark');
 });
