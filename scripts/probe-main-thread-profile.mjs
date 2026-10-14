@@ -27,7 +27,7 @@
 //                         the stage hull may still be building its shaders. A diagnosis switch (it told
 //                         the preview's own shader links apart from the loading cook), never the
 //                         baseline for a before/after comparison.
-//   --footage-source=video|video-frame
+//   --footage-source=default|presented|video|video-frame
 //                         choose the real flight-footage capture source for a steady-flight diagnostic;
 //                         both arms use the same five-second post-first-frame opening delay.
 //   --drop-profile=NAME   delete that kept profile and exit
@@ -135,9 +135,9 @@ const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
 const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile', ...(LABEL ? [LABEL] : []));
 const FIXED_SEED = 47;
-const requestedFootageSource = argValue('--footage-source') || 'video';
-if (!['video', 'video-frame'].includes(requestedFootageSource)) {
-  throw new Error(`--footage-source must be video or video-frame (received ${requestedFootageSource})`);
+const requestedFootageSource = argValue('--footage-source') || 'default';
+if (!['default', 'presented', 'video', 'video-frame'].includes(requestedFootageSource)) {
+  throw new Error(`--footage-source must be default, presented, video or video-frame (received ${requestedFootageSource})`);
 }
 const FOOTAGE_OPENING_DELAY_MS = 5_000;
 // --chromium-arg=--flag lets an A/B run change one browser behaviour (for example
@@ -851,7 +851,7 @@ async function installProfileFootageSource(page) {
     const active = module.installFlightFootage(window.SF.bus, {
       stateOf: () => window.SF.state,
       startDelayMs,
-      captureSource,
+      ...(captureSource === 'default' ? {} : { captureSource }),
     });
     return active?.status?.() || { installed: false, requestedCaptureSource: captureSource, captureSource: null };
   }, { captureSource: requestedFootageSource, startDelayMs: FOOTAGE_OPENING_DELAY_MS });

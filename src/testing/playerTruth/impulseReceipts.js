@@ -62,12 +62,19 @@ function normalizeReceipt(observation) {
   const valid = rawEntityId != null && occupantGeneration != null && tick != null
     && validPoint(before) && validPoint(after) && validPoint(actualDeltaV)
     && kind != null && fieldComplete;
+  // External/environmental fields intentionally have no owning entity. They are real force
+  // sources, but without an owner they can never be an admissible causal receipt for a reader
+  // life. Ignore only a structurally complete ownerless field; malformed claimed provenance
+  // remains invalid and still fails closed.
+  const unownedField = kind === 'field' && field != null && fieldId != null && fieldOwnerId == null
+    && fieldKind != null && validPoint(fieldCenter) && fieldRadius != null && fieldRadius > 0;
   return {
     valid,
     // Overlapping fields are intentionally reported without provenance. They cannot explain
     // motion, but they are not a malformed claimed receipt. Keep them out of the bounded proof
     // stream while retaining fail-closed grading for a claimed field with incomplete metadata.
-    ignorable: kind === 'field' && field == null,
+    ignorable: kind === 'field' && (field == null || unownedField),
+    unownedField,
     receipt: {
       rawEntityId: rawEntityId ?? null,
       occupantGeneration,
@@ -167,6 +174,7 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
   let overflow = false;
   let invalidCount = 0;
   let ignoredCount = 0;
+  let ignoredUnownedFieldCount = 0;
   const receipts = [];
   const pending = [];
   const fieldBuckets = new Map();
@@ -281,6 +289,7 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
     if (!normalized.valid) {
       if (normalized.ignorable) {
         ignoredCount++;
+        if (normalized.unownedField) ignoredUnownedFieldCount++;
         return false;
       }
       invalidCount++;
@@ -327,6 +336,7 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
       overflow,
       invalidCount,
       ignoredCount,
+      ignoredUnownedFieldCount,
       unresolvedIdentityCount: 0,
       receipts: receipts.map(cloneReceipt),
     };

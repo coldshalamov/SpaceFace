@@ -14,7 +14,9 @@ const run = (fps, p95) => ({ metadata: { cpu: 'Intel CPU', platform: 'win32', gp
   simLane: 'worker', mode: 'adventure', seed: 47, sampleMs: 20000, settleMs: 0, travelMs: 0,
   observer: 'cadence-only', displayHz: 60, sourceStable: true, settings: { bloom: true } }, summary: {
   submissionObserved: true, wallMs: 20000, activeMs: 20000, healthyCallbacksFrozenWorld: 0, healthyCallbacksFrozenSimulation: 0,
-  worldSubmitFps: fps, simWallRatio: 1, callbackGaps: { p99: p95, max: p95 * 2, over50: fps === 20 ? 30 : 3 }, submissionGaps: { p95 },
+  worldSubmitFps: fps, worldMotionFps: fps, simWallRatio: 1,
+  motionSubmissionGaps: { p99: p95, max: p95 * 2, over50: fps === 20 ? 30 : 3 },
+  callbackGaps: { p99: p95, max: p95 * 2, over50: fps === 20 ? 30 : 3 }, submissionGaps: { p95 },
 } });
 test('a matched hitch reduction and lower tail meets the owner-selected target', () => {
   assert.equal(comparePerformanceRuns(run(20, 50), run(60, 16)).targetMet, true);
@@ -44,4 +46,27 @@ test('missing identity in both arms cannot establish a comparable measurement', 
   const comparison = comparePerformanceRuns(before, after);
   assert.equal(comparison.comparable, false);
   assert.equal(comparison.targetMet, false);
+});
+
+test('repeated smooth draws cannot conceal worse world snapshot gaps', () => {
+  const after = run(60, 16);
+  after.summary.motionSubmissionGaps = { p99: 150, max: 300, over50: 60 };
+  const result = comparePerformanceRuns(run(20, 50), after);
+  assert.equal(result.targetMet, false);
+  assert.ok(result.failures.includes('world snapshot hitch rate regressed'));
+});
+
+test('old captures without distinct world cadence cannot promote the target', () => {
+  const before = run(20, 50);
+  delete before.summary.worldMotionFps;
+  assert.equal(comparePerformanceRuns(before, run(60, 16)).targetMet, false);
+});
+
+test('already smooth zero-hitch routes preserve their floor', () => {
+  const before = run(60, 16), after = run(60, 16);
+  for (const candidate of [before, after]) {
+    candidate.summary.callbackGaps.over50 = 0;
+    candidate.summary.motionSubmissionGaps.over50 = 0;
+  }
+  assert.equal(comparePerformanceRuns(before, after).targetMet, true);
 });

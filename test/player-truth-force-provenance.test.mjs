@@ -72,6 +72,16 @@ test('collector is bounded and fail-closed for overflow and incomplete field pro
     readerLifeId: 35, rawEntityId: 35, occupantGeneration: 7, throughTick: 1, velocity: { x: 18, z: 0 },
   }).ok, false);
 
+  const external = createBoundedImpulseReceiptCollector();
+  external.arm();
+  assert.equal(external.record(observation({ tick: 1, field: {
+    id: 'planet_pull', ownerId: null, x: 20, z: -4, radius: 240,
+  } })), false);
+  external.begin(1);
+  assert.equal(external.snapshot().status, 'complete', 'ownerless external fields cannot poison owned-field proof');
+  assert.equal(external.snapshot().invalidCount, 0);
+  assert.equal(external.snapshot().ignoredUnownedFieldCount, 1);
+
   const ambiguous = createBoundedImpulseReceiptCollector();
   ambiguous.arm();
   const withoutField = observation({ tick: 1 });
