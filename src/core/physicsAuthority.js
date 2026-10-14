@@ -331,6 +331,7 @@ export function clearPhysicsAuthority(entity) {
 /** Physics-only: publish measured post-solve state without polluting authoritative serialization. */
 export function writePhysicsTelemetry(entity, telemetry = {}) {
   if (!entity || typeof entity !== 'object') return null;
+  const previous = TELEMETRY.get(entity);
   const value = Object.freeze({
     schemaVersion: PHYSICS_TELEMETRY_SCHEMA_VERSION,
     tick: Math.max(0, Math.trunc(finite(telemetry.tick))),
@@ -339,12 +340,16 @@ export function writePhysicsTelemetry(entity, telemetry = {}) {
     ccd: !!telemetry.ccd,
     mass: positive(telemetry.mass, 1),
     inertiaY: positive(telemetry.inertiaY, 1),
-    force: Object.freeze(vector3(telemetry.force)),
-    torque: Object.freeze(vector3(telemetry.torque)),
-    linearAcceleration: Object.freeze(vector3(telemetry.linearAcceleration)),
+    // The outer snapshot is intentionally fresh because tick is a freshness signal and old
+    // readers may retain it. Its immutable value parts can safely be shared when unchanged,
+    // avoiding three short-lived vector objects on steady telemetry without mutating history.
+    force: sharedFrozenVector3(previous && previous.force, telemetry.force),
+    torque: sharedFrozenVector3(previous && previous.torque, telemetry.torque),
+    linearAcceleration: sharedFrozenVector3(previous && previous.linearAcceleration,
+      telemetry.linearAcceleration),
     angularAccelerationY: finite(telemetry.angularAccelerationY),
     lateralAcceleration: finite(telemetry.lateralAcceleration),
-    authority: Object.freeze(normalizeAuthority(telemetry.authority)),
+    authority: sharedFrozenAuthority(previous && previous.authority, telemetry.authority),
     mode: String(telemetry.mode || 'uncontrolled'),
   });
   TELEMETRY.set(entity, value);
@@ -653,6 +658,24 @@ function vector3(source) {
     y: finite(source && source.y),
     z: finite(source && source.z),
   };
+}
+
+function sharedFrozenVector3(previous, source) {
+  const x = finite(source && source.x);
+  const y = finite(source && source.y);
+  const z = finite(source && source.z);
+  if (previous && previous.x === x && previous.y === y && previous.z === z) return previous;
+  return Object.freeze({ x, y, z });
+}
+
+function sharedFrozenAuthority(previous, authority = {}) {
+  const forward = clamp(finite(authority && authority.forward, 1), 0, 1);
+  const reverse = clamp(finite(authority && authority.reverse, 1), 0, 1);
+  const strafe = clamp(finite(authority && authority.strafe, 1), 0, 1);
+  const yaw = clamp(finite(authority && authority.yaw, 1), 0, 1);
+  if (previous && previous.forward === forward && previous.reverse === reverse
+    && previous.strafe === strafe && previous.yaw === yaw) return previous;
+  return Object.freeze({ forward, reverse, strafe, yaw });
 }
 
 function normalizeAuthority(authority = {}) {

@@ -190,6 +190,99 @@ export async function holdKey(page, code, seconds, label, probes, until = null) 
   return rec;
 }
 
+/**
+ * Read only the race cue that is painted for a player. The compact map is the authoritative
+ * visible course projection: its target circle and ship path are both screen-space SVG nodes,
+ * so this actor never reads race params, world coordinates, or a simulation command. The text
+ * hint remains a useful fallback for a reduced/older HUD where the map is not mounted.
+ */
+export function readVisibleRaceCue() {
+  const doc = globalThis.document;
+  const root = doc?.querySelector?.('#race-tape');
+  if (!root || root.hidden === true) return null;
+  const visible = (node) => {
+    if (!node || node.hidden === true) return false;
+    const style = globalThis.getComputedStyle?.(node);
+    if (style && (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) < 0.05)) return false;
+    return true;
+  };
+  if (!visible(root)) return null;
+  const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+  const attr = (node, key) => node?.getAttribute?.(key);
+  let bearingDeg = null;
+  let distanceWU = null;
+  const map = root.querySelector?.('.race-tape-map svg') || doc.querySelector?.('#race-tape .race-map');
+  if (visible(map)) {
+    const target = map.querySelector?.('circle');
+    const ship = map.querySelector?.('path');
+    const targetX = finite(attr(target, 'cx'));
+    const targetY = finite(attr(target, 'cy'));
+    const transform = String(attr(ship, 'transform') || '');
+    const translate = /translate\(\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*[, ]\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*\)/i.exec(transform);
+    const rotate = /rotate\(\s*([-+]?\d*\.?\d+(?:e[-+]?\d+)?)\s*[, ]?/i.exec(transform);
+    const shipX = finite(translate?.[1]);
+    const shipY = finite(translate?.[2]);
+    const rotationDeg = finite(rotate?.[1]);
+    if (targetX !== null && targetY !== null && shipX !== null && shipY !== null && rotationDeg !== null) {
+      const dx = targetX - shipX;
+      const dy = targetY - shipY;
+      if (Math.hypot(dx, dy) > 0.5) {
+        // The map ship path points up before its authored +90deg SVG rotation. Subtracting
+        // that quarter turn recovers the same +X/+Z nose frame used by the painted course.
+        const yaw = (rotationDeg - 90) * Math.PI / 180;
+        const fx = Math.cos(yaw); const fz = Math.sin(yaw);
+        bearingDeg = Math.atan2(fx * dy - fz * dx, fx * dx + fz * dy) * 180 / Math.PI;
+      }
+    }
+  }
+  const hints = root.querySelectorAll?.('.race-tape-hint') || [];
+  let hintText = '';
+  for (const node of hints) {
+    if (!visible(node)) continue;
+    const text = String(node.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) { hintText = text; break; }
+  }
+  const directionMatch = /\b(LEFT|RIGHT|AHEAD)\b/i.exec(hintText);
+  const direction = bearingDeg !== null
+    ? (bearingDeg > 12 ? 'right' : bearingDeg < -12 ? 'left' : 'ahead')
+    : directionMatch ? directionMatch[1].toLowerCase() : null;
+  const distanceMatch = /(\d[\d,]*(?:\.\d+)?)\s*wu\b/i.exec(hintText);
+  if (distanceMatch) distanceWU = Number(distanceMatch[1].replace(/,/g, ''));
+  if (!direction) return null;
+  if (bearingDeg === null) bearingDeg = direction === 'right' ? 30 : direction === 'left' ? -30 : 0;
+  return { direction, bearingDeg, distanceWU, hintText };
+}
+
+async function holdPublicKeys(page, codes, seconds, until = null) {
+  const unique = [...new Set(codes.filter(Boolean))];
+  const pressed = [];
+  const startSim = await simNow(page); const startT = await wallNow(page);
+  let waited = null;
+  try {
+    for (const code of unique) {
+      noteKey(page, code);
+      await page.keyboard.down(code);
+      pressed.push(code);
+    }
+    waited = await waitSim(page, seconds, { maxWallMs: 90000, until });
+  } finally {
+    for (let i = pressed.length - 1; i >= 0; i--) await page.keyboard.up(pressed[i]).catch(() => {});
+  }
+  return { startSim, endSim: await simNow(page), startT, endT: await wallNow(page), waited };
+}
+
+async function resolveBoostCode(page) {
+  try {
+    const code = await page.evaluate(async () => {
+      const { resolveActionCodes } = await import('../../src/systems/input.js');
+      return resolveActionCodes(window.SF.state, 'boost')[0] || null;
+    });
+    return typeof code === 'string' && code ? code : 'ShiftLeft';
+  } catch {
+    return 'ShiftLeft';
+  }
+}
+
 /** Thrust and yaw probes: the "can I move at all" question, asked at every spawn/round start. */
 export async function controlProbes(page, tag, probes) {
   const thrust = await holdKey(page, 'KeyW', 1.2, `${tag} thrust`, probes);
@@ -352,8 +445,9 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
       else { held.delete(code); await page.keyboard.up(code); }
     };
     const searchStart = await simNow(page);
+    let boostUntil = searchStart;
+    let wasAligned = false;
     try {
-      await setHeld('KeyW', true);
       await waitSim(page, 2.4, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: async () => {
         const fresh = await page.evaluate(readTarget);
         if (!fresh) return true;
@@ -362,12 +456,21 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
         // cover briefly, following its visible bearing, before attempting selection again.
         const bearing = fresh.none ? fresh.radarRel : fresh.rel;
         if (!Number.isFinite(bearing)) return true;
-        // Keep forward held while closing. Correct from the newly painted public dial,
-        // and boost only once the nose points along that course rather than burning away.
+        const now = await simNow(page);
         const turn = Math.abs(bearing) > 0.12 ? (bearing > 0 ? 'KeyD' : 'KeyA') : null;
+        const aligned = Math.abs(bearing) <= 0.35;
+        // Keep the public pilot from adding translation while a large radar error still needs
+        // a turn. Once the course is close, ordinary W resumes; this avoids the old full-speed
+        // circle around a moving off-screen contact without steering from hidden coordinates.
+        await setHeld('KeyW', Math.abs(bearing) <= 1.3);
+        if (aligned && !wasAligned) boostUntil = now + 0.35;
+        wasAligned = aligned;
         await setHeld('KeyA', turn === 'KeyA'); await setHeld('KeyD', turn === 'KeyD');
-        await setHeld(boostCode, Math.abs(bearing) < 0.35);
-        return false;
+        // Boost is a short public course pulse, not a second continuous chase throttle.
+        await setHeld(boostCode, aligned && now < boostUntil);
+        // A keydown can itself open a public draft/overlay. Stop before waitSim asks the
+        // frozen clock for another sample, while its finally block still releases every key.
+        return await page.evaluate(readCombatPhaseEnded);
       } });
     } finally {
       for (const key of new Set(['KeyW', 'KeyA', 'KeyD', boostCode].filter(Boolean))) await page.keyboard.up(key).catch(() => {});
@@ -475,8 +578,32 @@ export async function fightBeat(page, beat) {
   if (beat % 7 === 3 && !await page.evaluate(readCombatPhaseEnded)) { noteKey(page, 'Space'); await page.keyboard.press('Space'); }
 }
 
-/** A non-combat flyer for Adventure / racing: thrust bursts and gentle turns, never idle long. */
-export async function cruiseBeat(page, beat) {
+/** A bounded public pilot for the temporary circuit. Turn first on the painted next-gate cue;
+ * only add thrust (and then a short boost) once the nose is aligned. */
+export async function racingCruiseBeat(page, beat) {
+  const cue = await page.evaluate(readVisibleRaceCue).catch(() => null);
+  if (!cue) {
+    // A transiently unmounted tape is a route transition, not permission to fly blind through
+    // authored scenery. Keep a small public yaw pulse so a remounted map gets a fresh heading.
+    return holdKey(page, beat % 2 ? 'KeyD' : 'KeyA', 0.18, null, null);
+  }
+  const bearing = Number.isFinite(cue.bearingDeg)
+    ? cue.bearingDeg : cue.direction === 'right' ? 30 : cue.direction === 'left' ? -30 : 0;
+  const absBearing = Math.abs(bearing);
+  if (absBearing > 14) {
+    const turn = bearing > 0 ? 'KeyD' : 'KeyA';
+    const duration = Math.min(0.46, Math.max(0.12, absBearing / 180 * 0.7));
+    return holdKey(page, turn, duration, null, null);
+  }
+  const pulse = Number.isFinite(cue.distanceWU) && cue.distanceWU < 120 ? 0.22 : 0.34;
+  const boost = absBearing <= 8 && (!Number.isFinite(cue.distanceWU) || cue.distanceWU > 160)
+    ? await resolveBoostCode(page) : null;
+  return holdPublicKeys(page, ['KeyW', boost], pulse);
+}
+
+/** A non-combat flyer for Adventure: thrust bursts and gentle turns, never idle long. */
+export async function cruiseBeat(page, beat, { racing = false } = {}) {
+  if (racing) return racingCruiseBeat(page, beat);
   const thrust = await holdKey(page, 'KeyW', 0.8, null, null);
   if (thrust && thrust.watch) return thrust.watch;
   if (beat % 4 === 1) {

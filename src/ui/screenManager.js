@@ -679,6 +679,11 @@ export function createScreenManager(ctx) {
   const runtimeUnsubscribers = [
     bus.on('mode:changed', syncPause),
     bus.on('save:error', syncPause),
+    // Worker-lane UI folds land on the facade after the station screen has
+    // already popped.  Reconcile the aggregate source on that main-only
+    // resume edge; syncPause still recomputes from the real stack/dock state,
+    // so nested screens and other pause owners remain intact.
+    bus.on('sim:resume', syncPause),
 
     // J4, two hooks that are not optional:
     //

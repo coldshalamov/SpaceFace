@@ -74,6 +74,11 @@ const ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY = "default-src 'none'; script
 const launchConfig = resolveElectronLaunchConfig(process.env);
 const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
 const playerStoreDir = launchConfig.isolatedEvidence ? null : resolvePlayerSaveDir(process.env);
+// Historical source overlays are a probe-only feature. Never let an environment variable alter
+// the player or packaged route; isolated evidence is the only launch mode that may pin bytes.
+const sourceOverlayManifest = launchConfig.isolatedEvidence
+  ? String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim() || null
+  : null;
 const migratePlayerStore = process.env.SPACEFACE_MIGRATE_PLAYER_STORE === '1';
 // Player windows use normal Chromium throttling. A temporary evidence profile may opt out only
 // through the explicit dual gate; the environment variable alone has no effect on normal play.
@@ -350,6 +355,7 @@ function listenGameServer(root, requestedPort) {
       appSourceImmutable: app.isPackaged,
       playerStoreDir,
       userContentDir: mountedUserContentDir(),
+      sourceOverlay: sourceOverlayManifest,
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
       staticHeadersByPath: {
         [KTX2_TRANSCODER_WORKER_PATH]: {

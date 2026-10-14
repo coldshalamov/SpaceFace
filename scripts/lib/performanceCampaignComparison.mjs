@@ -29,6 +29,19 @@ export function comparePerformanceRuns(before, after, target = 3) {
   const oldRate = hitchRate(a), newRate = hitchRate(b);
   if (newRate > oldRate * 1.1 + 0.05) failures.push('hitch rate regressed');
   const hitchRatio = newRate > 0 ? oldRate / newRate : oldRate > 0 ? Infinity : 1;
+  const motionObserved = Number.isFinite(a.worldMotionFps) && Number.isFinite(b.worldMotionFps)
+    && a.motionSubmissionGaps && b.motionSubmissionGaps;
+  if (!motionObserved) failures.push('distinct world snapshot cadence unobserved');
+  const motionRate = s => s.activeMs > 0 ? s.motionSubmissionGaps.over50 * 1000 / s.activeMs : null;
+  const oldMotionRate = motionObserved ? motionRate(a) : null;
+  const newMotionRate = motionObserved ? motionRate(b) : null;
+  const motionHitchRatio = motionObserved
+    ? newMotionRate > 0 ? oldMotionRate / newMotionRate : oldMotionRate > 0 ? Infinity : 1
+    : null;
+  if (motionObserved && newMotionRate > oldMotionRate * 1.1 + 0.05) failures.push('world snapshot hitch rate regressed');
+  const lowerMotionTail = motionObserved
+    && b.motionSubmissionGaps.p99 <= Math.max(34, a.motionSubmissionGaps.p99 * 0.9)
+    && b.motionSubmissionGaps.max <= Math.max(34, a.motionSubmissionGaps.max * 0.9);
   const lowerTail = b.callbackGaps.p99 <= Math.max(17, a.callbackGaps.p99 * 0.9)
     && b.callbackGaps.max <= Math.max(34, a.callbackGaps.max * 0.9);
   const atDisplayLimit = after.metadata.displayHz > 0
@@ -37,9 +50,14 @@ export function comparePerformanceRuns(before, after, target = 3) {
     comparable: mismatches.length === 0, failures, fpsRatio, p95Ratio,
     beforeHitchesPerSecond: oldRate, afterHitchesPerSecond: newRate,
     hitchRatio: Number.isFinite(hitchRatio) ? hitchRatio : 'no-after-hitches',
+    beforeMotionHitchesPerSecond: oldMotionRate, afterMotionHitchesPerSecond: newMotionRate,
+    motionHitchRatio: motionHitchRatio === Infinity ? 'no-after-hitches' : motionHitchRatio,
+    beforeSnapshotFps: a.worldMotionFps ?? null, afterSnapshotFps: b.worldMotionFps ?? null,
     displayHz: after.metadata.displayHz ?? null, atDisplayLimit,
-    targetMetric: '3x fewer >50ms gaps, lower p99, protect maximum and world/sim cadence, >=95% display Hz',
-    targetMet: failures.length === 0 && hitchRatio >= target && lowerTail && atDisplayLimit,
+    targetMetric: '3x fewer >50ms callback and world snapshot gaps (preserve zero-hitch floor), lower tails, protect world/sim cadence, >=95% display Hz submissions',
+    targetMet: failures.length === 0 && newRate <= oldRate / target
+      && motionObserved && newMotionRate <= oldMotionRate / target
+      && lowerTail && lowerMotionTail && atDisplayLimit,
     // Neither call counts nor matching settings certify identical pixels.
     pictureAcceptance: 'separate required check; this comparison measures cadence',
   };

@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { economy } from '../src/systems/economy.js';
-import { expectedTotalForTerms } from '../src/ui/station/screens/market.js';
+import { expectedTotalForTerms, marketPriceChangedQuote } from '../src/ui/station/screens/market.js';
 
 const SID = 'station_helios';
 const IRON = 'cmdty_ore_iron';
@@ -134,4 +134,22 @@ test('stated terms bind only the exact rendered quantity', () => {
   assert.equal(expectedTotalForTerms({ qty: 5, total: 570.4 }, 4), undefined, 'qty drift unbinds');
   assert.equal(expectedTotalForTerms(null, 5), undefined, 'no render, no binding');
   assert.equal(expectedTotalForTerms({ qty: 5, total: NaN }, 5), undefined, 'non-numeric never binds');
+});
+
+test('a worker price refusal supplies the next exact quote without weakening the guard', () => {
+  const refreshed = marketPriceChangedQuote({
+    reason: 'price_changed', commodityId: IRON, side: 'sell', qty: 1, expectedTotal: 30, liveTotal: 29,
+  }, { selectedId: IRON, side: 'sell', qty: 1 });
+  assert.deepEqual(refreshed, {
+    ok: true, partial: false, commodityId: IRON, side: 'sell', qty: 1,
+    total: 29, unitAvg: 29, priceImpactPct: null,
+  });
+  assert.equal(marketPriceChangedQuote({
+    reason: 'price_changed', commodityId: IRON, side: 'sell', qty: 1, liveTotal: 29,
+  }, { selectedId: 'cmdty_ore_copper', side: 'sell', qty: 1 }), null,
+    'a refusal for another lot cannot overwrite the selected quote');
+  assert.equal(marketPriceChangedQuote({
+    reason: 'price_changed', commodityId: IRON, side: 'sell', qty: 1, liveTotal: NaN,
+  }, { selectedId: IRON, side: 'sell', qty: 1 }), null,
+    'an untrusted total never becomes a quote');
 });

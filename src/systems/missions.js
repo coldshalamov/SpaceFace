@@ -7666,9 +7666,16 @@ export const missions = {
     const params = m.params || {};
     const gates = Array.isArray(params.gates) ? params.gates : [];
     if (!gates.length) return;
-    const occupied = new Set((m.targetEntityIds || []).map((id) => (
-      missionTargetSlotOf(this.state.entities.get(id), m.id)
-    )).filter((slot) => slot != null));
+    const occupied = new Set((m.targetEntityIds || []).map((id) => {
+      const entity = this.state.entities.get(id);
+      const data = entity && entity.data;
+      if (data && data.physicalRole === PHYSICAL_ROLE.GATE
+        && data.missionTag != null && String(data.missionTag) === String(m.id)) {
+        const slot = Number(data.raceGateIndex);
+        if (Number.isInteger(slot) && slot >= 0) return slot;
+      }
+      return missionTargetSlotOf(entity, m.id);
+    }).filter((slot) => slot != null));
     let spawned = 0;
     for (let slot = 0; slot < gates.length; slot++) {
       // A closed circuit reuses the start plane as its finish, not a second overlapping buoy.
@@ -7687,6 +7694,9 @@ export const missions = {
         hull: 1,
         hullMax: 1,
         collides: false,
+        // Gate buoys own their presentation pose and are scored from the authored course plane;
+        // they are never Rapier bodies. `collides:false` alone still enters the SG-02 body index.
+        physicsBody: false,
         flags: { noInterp: true, missionPinned: true, durable: true },
         data: {
           missionTag: m.id,
@@ -9443,6 +9453,10 @@ export const missions = {
     if (!m || !m.id) return 0;
     const existing = new Set(m.targetEntityIds || []);
     const follow = m.params && m.params.poiSignalFollowup;
+    // Race gates are beacons, so they deliberately sit outside the living ship/actor view used
+    // by ordinary mission targets. Keep their exact durable identities in the beacon domain or a
+    // 15-gate course will look empty on every retry and spawn another 15 physical bodies.
+    if (m.type === 'race' && !follow) return this._adoptRaceGateTargets(m, existing);
     const list = [];
     forEachLivingWorldActor(this.state, (e) => { list.push(e); });
     if (follow) {
@@ -9502,6 +9516,89 @@ export const missions = {
       }
     }
     ordered.sort((a, b) => a.slot - b.slot || stableEntityId(a.id).localeCompare(stableEntityId(b.id)));
+    m.targetEntityIds = ordered.map((entry) => entry.id);
+    return adopted;
+  },
+
+  /**
+   * Reattach authored race buoys from the entityList beacon domain. Race markers are visual
+   * mission furniture, not actors, and therefore cannot be recovered through
+   * forEachLivingWorldActor. Existing target ids win per gate slot so Continue preserves the
+   * canonical identity; only exact same-mission gate duplicates are retired.
+   */
+  _adoptRaceGateTargets(m, existing = new Set()) {
+    const params = m.params || {};
+    const gates = Array.isArray(params.gates) ? params.gates : [];
+    if (!gates.length) return 0;
+    const closedFinal = params.racingContractId && params.closedCircuit ? gates.length - 1 : -1;
+    const validSlot = (slot) => Number.isInteger(slot) && slot >= 0 && slot < gates.length
+      && slot !== closedFinal;
+    const state = this.state;
+    const list = Array.isArray(state && state.entityList) ? state.entityList.slice() : [];
+    const targetOrder = new Map((Array.isArray(m.targetEntityIds) ? m.targetEntityIds : [])
+      .map((id, index) => [id, index]));
+    const bySlot = new Map();
+    const retire = [];
+    const ownedGate = (entity) => {
+      if (!entity || entity.alive === false || entity.isPlayer || entity.type !== 'beacon') return false;
+      const data = entity.data;
+      return !!(data && data.physicalRole === PHYSICAL_ROLE.GATE
+        && data.missionTag != null && String(data.missionTag) === String(m.id));
+    };
+    for (const entity of list) {
+      if (!ownedGate(entity)) continue;
+      const slot = Number(entity.data && entity.data.raceGateIndex);
+      if (!validSlot(slot)) {
+        // A closed-circuit finish marker or a slot from an older course revision cannot be a
+        // current target. It is safe to retire only with both exact mission and gate-role proof.
+        retire.push(entity);
+        continue;
+      }
+      const rows = bySlot.get(slot) || [];
+      rows.push({ entity, existing: existing.has(entity.id) });
+      bySlot.set(slot, rows);
+    }
+    const canonical = new Map();
+    const stableCandidateOrder = (a, b) => {
+      if (a.existing !== b.existing) return a.existing ? -1 : 1;
+      const ao = targetOrder.get(a.entity.id);
+      const bo = targetOrder.get(b.entity.id);
+      if (ao != null && bo != null && ao !== bo) return ao - bo;
+      if (ao != null) return -1;
+      if (bo != null) return 1;
+      return stableEntityId(a.entity.id).localeCompare(stableEntityId(b.entity.id));
+    };
+    for (const [slot, rows] of bySlot) {
+      rows.sort(stableCandidateOrder);
+      const keeper = rows[0];
+      canonical.set(slot, keeper.entity);
+      for (let i = 1; i < rows.length; i++) retire.push(rows[i].entity);
+    }
+    // Remove only exact-owned duplicate markers. Foreign beacons at the same gate index remain
+    // untouched, as do malformed rows without an exact mission identity.
+    const remove = this.helpers && this.helpers.removeEntity;
+    const retired = new Set();
+    for (const entity of retire) {
+      if (!ownedGate(entity) || retired.has(entity.id)) continue;
+      retired.add(entity.id);
+      if (typeof remove === 'function') {
+        if (!remove(entity.id, { immediate: true, reason: 'race_gate_duplicate' })) entity.alive = false;
+      } else {
+        entity.alive = false;
+      }
+    }
+    let adopted = 0;
+    const ordered = [];
+    for (let slot = 0; slot < gates.length; slot++) {
+      const entity = canonical.get(slot);
+      if (!entity || entity.alive === false) continue;
+      // Gate markers are presentation-owned and must stay out of the native physics body set,
+      // including Continue-adopted rows authored before this explicit contract was added.
+      entity.physicsBody = false;
+      this._stampMissionTargetIdentity(entity, m, slot);
+      ordered.push({ slot, id: entity.id });
+      if (!existing.has(entity.id)) adopted++;
+    }
     m.targetEntityIds = ordered.map((entry) => entry.id);
     return adopted;
   },

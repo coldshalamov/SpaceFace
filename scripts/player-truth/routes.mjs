@@ -166,7 +166,11 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
     await clickText(page, 'Enter the Gauntlet');
     await waitForArmory(page, { acceptSurvival: true, verb: 'Enter the Gauntlet' });
   }
-  return { arenas, seedSet, hull, hulls, doorPrep };
+  const runSeed = await readLaunchedRunSeed(page);
+  if (seedSet && Number.isSafeInteger(seed) && runSeed !== seed) {
+    throw new Error(`Crucible seed mismatch: requested ${seed}, launched ${runSeed}`);
+  }
+  return { arenas, seedSet, seed, runSeed, hull, hulls, doorPrep };
 }
 
 /** A non-draft world may sit this long after Open armory before the route is lost. */
@@ -654,16 +658,27 @@ export async function armoryLaunchWord(page) {
   });
 }
 
+/** Choose a positive worker run seed before the lagging UI mirror or a zero sentinel. */
+export function selectAuthoritativeRunSeed(probe = {}, fallback = null) {
+  const candidates = [probe && probe.runSeed, probe && probe.seed, fallback];
+  return candidates.find((value) => Number.isSafeInteger(value) && value > 0 && value <= 0xffffffff) ?? null;
+}
+
 export async function readLaunchedRunSeed(page) {
-  return page.evaluate(async () => {
+  const probe = await page.evaluate(async () => {
     const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
     if (laneCommandSink()) {
       const response = await laneRpc('probeState', {});
-      if (!response?.ok || !Number.isSafeInteger(response.result?.seed)) throw new Error('Authoritative run seed unavailable');
-      return response.result.seed;
+      const result = response?.result;
+      if (!response?.ok) throw new Error('Authoritative run seed unavailable');
+      return { runSeed: result?.runSeed ?? null, seed: result?.seed ?? null };
     }
-    return window.SF.state.meta?.seed ?? null;
+    const state = window.SF.state;
+    return { runSeed: state?.run?.seed ?? null, seed: state?.meta?.seed ?? null };
   });
+  const seed = selectAuthoritativeRunSeed(probe);
+  if (seed == null) throw new Error('Authoritative run seed unavailable');
+  return seed;
 }
 
 export async function adventureToFlight(page, step, { seed = null } = {}) {

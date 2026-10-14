@@ -27,10 +27,12 @@
 //                         the stage hull may still be building its shaders. A diagnosis switch (it told
 //                         the preview's own shader links apart from the loading cook), never the
 //                         baseline for a before/after comparison.
-//   --footage-source=video|video-frame
+//   --footage-source=default|presented|video|video-frame
 //                         choose the real flight-footage capture source for a steady-flight diagnostic;
 //                         both arms use the same five-second post-first-frame opening delay.
 //   --drop-profile=NAME   delete that kept profile and exit
+//   --baseline-source=PATH serve the validated ignored source manifest for an immutable
+//                         historical comparison; assets and unlisted files remain canonical.
 //
 // Writes .devshots/main-thread-profile/[NAME/]{profile.cpuprofile,report.md,canvas-census.json}.
 // The .cpuprofile opens directly in Chrome DevTools' Performance panel (Load profile...).
@@ -50,25 +52,71 @@ import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from '.
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import launchProtocol from './lib/electronLaunchProtocol.cjs';
 import { buildIsolatedElectronEnv, createIsolatedElectronLaunch } from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const { electronEvidenceProfileRoot, inspectElectronEvidenceProfilePath } = launchProtocol;
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const sourceDigest = await digestSourcePaths(ROOT, [
-  ...await listSrcJsSourcePaths(ROOT),
-  'scripts/lib/simWorkerHost.mjs', 'scripts/lib/simReadModel.mjs',
-]);
-const probeDigest = await digestSourcePaths(ROOT, [
-  'scripts/probe-main-thread-profile.mjs', 'scripts/lib/gameCadenceProbe.mjs',
-  'scripts/lib/workerCpuProfile.mjs',
-]);
 const argValue = (name) => {
   const hit = process.argv.find((arg) => arg.startsWith(`${name}=`));
   return hit ? hit.slice(name.length + 1) : null;
 };
+const baselineSourceArg = argValue('--baseline-source');
+const baselineSourceManifestPath = baselineSourceArg
+  ? path.resolve(ROOT, baselineSourceArg)
+  : null;
+if (baselineSourceManifestPath) {
+  const relative = path.relative(ROOT, baselineSourceManifestPath).replace(/\\/g, '/');
+  if (!relative || relative.startsWith('../') || !relative.startsWith('.devshots/')) {
+    throw new Error('--baseline-source must point to an ignored manifest under .devshots/');
+  }
+}
+const baselineSourceOverlay = baselineSourceManifestPath
+  ? loadSourceOverlayManifest(baselineSourceManifestPath)
+  : null;
+const profileSourcePaths = [
+  'index.html',
+  ...await listSrcJsSourcePaths(ROOT),
+  'scripts/lib/simWorkerHost.mjs', 'scripts/lib/simReadModel.mjs',
+];
+async function digestServedSourcePaths() {
+  if (!baselineSourceOverlay) {
+    return digestSourcePaths(ROOT, profileSourcePaths.slice(1));
+  }
+  const sourceTexts = {};
+  for (const relativePath of profileSourcePaths) {
+    const entry = baselineSourceOverlay.entries.get(relativePath);
+    sourceTexts[relativePath] = entry
+      ? entry.body.toString('utf8')
+      : fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+  }
+  // The overlay's per-file hashes are validated by the shared server; this digest binds the
+  // merged source graph (pinned owned bytes + canonical current bytes for everything else).
+  const { computeSourceSetDigest } = await import('./lib/validationFingerprint.mjs');
+  return computeSourceSetDigest(sourceTexts);
+}
+const sourceDigest = await digestServedSourcePaths();
+const probeDigest = await digestSourcePaths(ROOT, [
+  'scripts/probe-main-thread-profile.mjs', 'scripts/lib/gameCadenceProbe.mjs',
+  'scripts/lib/workerCpuProfile.mjs',
+]);
+let servedSourceOverlayIdentity = null;
+
+function sourceOverlayMetadata() {
+  if (!baselineSourceOverlay) return null;
+  return {
+    manifest: path.relative(ROOT, baselineSourceManifestPath).replace(/\\/g, '/'),
+    sourceCommit: baselineSourceOverlay.identity.sourceCommit,
+    sourceOverlayDigest: baselineSourceOverlay.identity.sourceOverlayDigest,
+    fileCount: baselineSourceOverlay.identity.fileCount,
+    totalBytes: baselineSourceOverlay.identity.totalBytes,
+    servedIdentity: servedSourceOverlayIdentity,
+  };
+}
 const safeName = (value, max) => String(value || '')
   .toLowerCase()
   .replace(/[^a-z0-9_-]+/g, '-')
@@ -87,9 +135,9 @@ const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
 const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile', ...(LABEL ? [LABEL] : []));
 const FIXED_SEED = 47;
-const requestedFootageSource = argValue('--footage-source') || 'video';
-if (!['video', 'video-frame'].includes(requestedFootageSource)) {
-  throw new Error(`--footage-source must be video or video-frame (received ${requestedFootageSource})`);
+const requestedFootageSource = argValue('--footage-source') || 'default';
+if (!['default', 'presented', 'video', 'video-frame'].includes(requestedFootageSource)) {
+  throw new Error(`--footage-source must be default, presented, video or video-frame (received ${requestedFootageSource})`);
 }
 const FOOTAGE_OPENING_DELAY_MS = 5_000;
 // --chromium-arg=--flag lets an A/B run change one browser behaviour (for example
@@ -803,7 +851,7 @@ async function installProfileFootageSource(page) {
     const active = module.installFlightFootage(window.SF.bus, {
       stateOf: () => window.SF.state,
       startDelayMs,
-      captureSource,
+      ...(captureSource === 'default' ? {} : { captureSource }),
     });
     return active?.status?.() || { installed: false, requestedCaptureSource: captureSource, captureSource: null };
   }, { captureSource: requestedFootageSource, startDelayMs: FOOTAGE_OPENING_DELAY_MS });
@@ -835,9 +883,7 @@ async function runSteadyFlightProfile(page, cdp) {
     const result = await page.evaluate(source);
     await page.keyboard.up('KeyW').catch(() => {});
     fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
-    const sourceDigestAfter = await digestSourcePaths(ROOT, [
-      ...await listSrcJsSourcePaths(ROOT), 'scripts/lib/simWorkerHost.mjs', 'scripts/lib/simReadModel.mjs',
-    ]);
+    const sourceDigestAfter = await digestServedSourcePaths();
     const evalIdentity = await page.evaluate(() => {
       const state = window.SF.state;
       const gl = state.render?.renderer?.getContext();
@@ -850,6 +896,7 @@ async function runSteadyFlightProfile(page, cdp) {
     });
     fs.writeFileSync(path.join(OUT_DIR, 'eval-metadata.json'), JSON.stringify({
       ...evalIdentity, sourceDigest, sourceDigestAfter, sourceStable: sourceDigest === sourceDigestAfter,
+      sourceOverlay: sourceOverlayMetadata(),
       probeDigest, displayHz, seed: launchedSeed, requestedSeed: expectedSeed,
       mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
       observer: 'same-flight-eval', evalFile: EVAL_FILE,
@@ -921,6 +968,7 @@ async function runSteadyFlightProfile(page, cdp) {
     ...identity, cpu: machineStart[0]?.model, platform: process.platform, displayHz,
     hostBusyPct: 100 * (1 - (endCpu.idle - beginCpu.idle) / (endCpu.total - beginCpu.total)),
     commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(), sourceDigest, probeDigest,
+    sourceOverlay: sourceOverlayMetadata(),
     mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
     seed: launchedSeed, requestedSeed: expectedSeed,
     requestedFootageSource, footageOpeningDelayMs: FOOTAGE_OPENING_DELAY_MS,
@@ -1165,7 +1213,13 @@ async function runLaunchProfile(page, cdp, profileNote) {
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 const { _electron: electron } = await loadPlaywright();
-const baseEnv = { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' };
+const baseEnv = {
+  ...process.env,
+  SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1',
+  ...(baselineSourceManifestPath
+    ? { SPACEFACE_BASELINE_SOURCE_MANIFEST: baselineSourceManifestPath }
+    : {}),
+};
 const launch = KEEP_PROFILE
   ? createKeptElectronLaunch(KEEP_PROFILE, baseEnv)
   : createIsolatedElectronLaunch({ root: ROOT, taskId: 'main-thread-profile', timeout: 180_000, baseEnv });
@@ -1190,6 +1244,16 @@ try {
   // A cold native source boot can outlast Playwright's default 30-second apparatus timeout.
   // This does not change the measured flight window or the game's loading-time result.
   await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
+  if (baselineSourceOverlay) {
+    servedSourceOverlayIdentity = await page.evaluate(async () => {
+      const response = await fetch('/__source_overlay_identity', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`source overlay identity endpoint returned ${response.status}`);
+      return response.json();
+    });
+    if (servedSourceOverlayIdentity.sourceOverlayDigest !== baselineSourceOverlay.identity.sourceOverlayDigest) {
+      throw new Error('served source overlay digest differs from the validated baseline manifest');
+    }
+  }
 
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Profiler.enable');
@@ -1200,9 +1264,7 @@ try {
   else await runSteadyFlightProfile(page, cdp);
   if (fs.existsSync(path.join(OUT_DIR, 'cadence.json'))) {
     const record = JSON.parse(fs.readFileSync(path.join(OUT_DIR, 'cadence.json'), 'utf8'));
-    record.metadata.sourceDigestAfter = await digestSourcePaths(ROOT, [
-      ...await listSrcJsSourcePaths(ROOT), 'scripts/lib/simWorkerHost.mjs', 'scripts/lib/simReadModel.mjs',
-    ]);
+    record.metadata.sourceDigestAfter = await digestServedSourcePaths();
     record.metadata.sourceStable = record.metadata.sourceDigest === record.metadata.sourceDigestAfter;
     fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify(record, null, 1));
     if (!record.metadata.sourceStable) log('source changed during capture; diagnostic only');
