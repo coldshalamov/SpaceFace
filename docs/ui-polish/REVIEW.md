@@ -1169,3 +1169,16 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 **After (`src/ui/orrery/footprintDial.js`, `dialGeometry` plus two guards):** the geometry reports whether the pads have radial room between the clock's ticks and the source band. Where they don't, the pads and the Hand's ring around the traced pad are not drawn, and the Hand's arm runs from the clock to the band's inner edge instead. The band still names each source and the reading still shows the crest. Dials of ~510px and up keep their pads (700×900 and 1024×768 are 516–520px). Selectors and IDs are unchanged.
 
 **Checked:** hub-line vs pad probe (`_tools/fp-hub.mjs`) at 390×844 and 360×740 (`--phone`), 960×540, 1024×768, 700×900 and 1280×720: 0 overlaps on all three records. 1280×720 is pixel-identical to master. The bench measures clean at 390×844, 960×540, 1280×720 and 1920×1080. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. Shots: `ui-shots/polish38/{before,after}/`, `compare-{phone,960}-{wanted,marked}.png`.
+
+## Help on a short desktop — EVERY KEY clears the frame (ui-polish-42)
+
+**Before (844×390, 801×440, 700×400):** the 761–1200 Help strip still put the six sections beside the title and split the Controls stage into the ship rig + EVERY KEY. Under ~460px of height the title row, the section ticks, the rig's "PRESS ANY KEY · THE RIG LIGHTS WHAT IT DRIVES" echo and the register's rebound footnote all shared one band — tabs ran through CONTROL SCHEME, KEYS/PAD clipped the foot, and CLOSE sat under the echo. Loops stayed `is-off` (host under the instrument's 260px floor).
+
+**After (`src/ui/orrery/helpLayouts.js` only, desktop `html:root:not([data-sf-mobile="1"])`, `@media (max-height:460px)`):**
+- Title, section strip, stage and CLOSE stack as four rows with a tight chrome budget so the stage stays ≥260px at 390 tall.
+- Sections are one row of words on a rule (same grammar as the 761–1200 strip), even under 761 wide.
+- Controls sleeps the ship rig; EVERY KEY fills the stage and scrolls. Rebound footnote clears CLOSE.
+- Loops wakes (ring + reading). Ring names sleep at this height — the reading already carries LOOP N OF 06 + title — so they cannot climb into the section rule.
+- Ships / Commodities / Ores / Factions keep a side ladder + scrolling reading. Selectors and IDs unchanged.
+
+**Checked:** bench clean (0 findings) at 700×400, 801×440, 844×390, 900×420. 960×540 and 1280×720 keep the prior 761–1200 / wide layouts (Controls still shows the rig). Phone (`data-sf-mobile`) untouched. `--walk` at 844×390 through CONTROLS → FACTIONS. Shots: `/workspace/spaceface-scratch/ui-shots/polish42/{before,after}/`, `compare-help-844x390.png`, `compare-help-700x400.png`, `compare-help-801x440.png`.
