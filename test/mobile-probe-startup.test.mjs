@@ -151,7 +151,8 @@ test('save receipt uses the read-only stored envelope when the retail bus observ
     window: { __SF_MOBILE_STARTUP_OBSERVER__: { snapshot: () => ({ busAvailable: false, events: [] }) } },
     localStorage: { getItem(key) { assert.equal(key, 'sf.save.quick'); return ++reads < 2 ? null : stored; },
       setItem() { writes++; }, removeItem() { writes++; } },
-    page: { evaluate: async (callback, ...args) => callback(...args), waitForTimeout: async ms => { now += ms; } } };
+    page: { evaluate: async function(callback, arg) { assert.equal(arguments.length, 2); return callback(arg); },
+      waitForTimeout: async ms => { now += ms; } } };
   const run = runInNewContext(`${helper}\nwaitForPublicSave`, scope);
   assert.deepEqual({ ...(await run(scope.page, { slot: 'quick', afterAt: 120, timeoutMs: 1000 })) },
     { source: 'storage-envelope', slot: 'quick', format: 'spaceface-save', savedAt: '2026-10-15T00:00:00Z' });
@@ -162,7 +163,8 @@ test('save receipt uses the read-only stored envelope when the retail bus observ
     boundedBrowserRead: read => read(), window: { __SF_MOBILE_STARTUP_OBSERVER__: null },
     localStorage: { getItem: () => '{bad-json' }, page: null,
   });
-  const noReceiptPage = { evaluate: async (callback, ...args) => callback(...args), waitForTimeout: async () => {} };
+  const noReceiptPage = { evaluate: async function(callback, arg) { assert.equal(arguments.length, 2); return callback(arg); },
+    waitForTimeout: async () => {} };
   await assert.rejects(noReceipt(noReceiptPage, { slot: 'quick', afterAt: 0, timeoutMs: 300 }),
     /Public Save did not emit save:completed/);
 });

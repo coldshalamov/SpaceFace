@@ -102,7 +102,7 @@ function installStartupObserver() {
 async function waitForPublicSave(page, { slot, afterAt, timeoutMs = 90000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const result = await boundedBrowserRead(() => page.evaluate((slot, startedAt) => {
+    const result = await boundedBrowserRead(() => page.evaluate(({ slot, startedAt }) => {
       const events = window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.()?.events || [];
       const saved = events.findLast(event => event.type === 'save:completed' && event.at >= startedAt);
       if (saved) return { saved: { source: 'save:completed', slot, ...saved } };
@@ -121,7 +121,7 @@ async function waitForPublicSave(page, { slot, afterAt, timeoutMs = 90000 } = {}
         } catch (_) { /* keep waiting for the complete envelope */ }
       }
       return null;
-    }, slot, afterAt), 5000);
+    }, { slot, startedAt: afterAt }), 5000);
     if (result?.saved) return result.saved;
     if (result?.failed) {
       const failed = result.failed;
