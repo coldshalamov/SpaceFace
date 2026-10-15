@@ -1184,3 +1184,30 @@ test('active worker-local commands wait for the next timer tick', { timeout: 600
     else delete globalThis.self;
   }
 });
+
+test('worker-local clock holds through a presentation stall and resumes with a main-lane hitch clamp', async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  globalThis.self = { postMessage() {} };
+  try {
+    const { localPresentStallHolds, localStepsForElapsed } = await import(
+      `../src/core/wholeSimBrowserWorker.js?present-stall-${Date.now()}`);
+    const clock = { active: true, sentAwaitingAck: true, sentAtMs: 1000 };
+    // Normal presentation ACKs within a frame: never held.
+    assert.equal(localPresentStallHolds(clock, 1000 + 33), false);
+    assert.equal(localPresentStallHolds(clock, 1000 + 100), false);
+    // Past the 6.5-step hitch window the worker stops accumulating wall time.
+    assert.equal(localPresentStallHolds(clock, 1000 + 120), true);
+    assert.equal(localPresentStallHolds({ ...clock, sentAwaitingAck: false }, 5000), false, 'an ACKed reply never holds');
+    assert.equal(localPresentStallHolds({ ...clock, active: false }, 5000), false);
+    assert.equal(localPresentStallHolds(clock, 5000, true), false, 'forced maintenance ticks still run');
+    assert.equal(localPresentStallHolds(clock, 5000, false, 3), false, 'explicit steps still run');
+    // The tick after the ACK sees the stall as one long frame: same as the main lane.
+    assert.equal(localStepsForElapsed(16.7), 1, 'a normal frame takes one fixed step');
+    assert.equal(localStepsForElapsed(50), 3, 'a slow but non-hitch frame keeps real time');
+    assert.equal(localStepsForElapsed(3000), 2, 'a multi-second stall costs two steps, not three seconds');
+  } finally {
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
