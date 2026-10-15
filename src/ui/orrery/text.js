@@ -1,5 +1,6 @@
 // ORRERY text effects: telemetry that resolves, counters that roll (design/frontend/ORRERY.md §4).
 import { reducedMotion, onFrame } from './motion.js';
+import { injectOrrery } from './tokens.js';
 
 const NOISE = '▚▞▖▗▘▝▙▟#%&*+=<>/\\0123456789';
 
@@ -113,6 +114,7 @@ export function typewriter(element, text, { cps = 48, delay = 0, onDone = null }
  * digit count or separator layout changes.
  */
 export function createCounter(element, { format = (n) => Math.round(n).toLocaleString('en-US') } = {}) {
+  injectOrrery();
   let layout = '';
   let columns = [];
 
@@ -125,6 +127,7 @@ export function createCounter(element, { format = (n) => Math.round(n).toLocaleS
         const cell = globalThis.document.createElement('span');
         cell.className = 'orr-counter__digit';
         const strip = globalThis.document.createElement('span');
+        strip.setAttribute('aria-hidden', 'true');
         for (let d = 0; d <= 9; d += 1) {
           const i = globalThis.document.createElement('i');
           i.textContent = String(d);

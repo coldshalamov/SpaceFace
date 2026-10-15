@@ -483,6 +483,11 @@ export const mainMenuScreen = {
     if (IS_DEMO) bNew.setAttribute('aria-label', coreText('newGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
+    if (bHelp) bHelp.setAttribute('aria-label', 'Help and flight controls');
+    if (bCircuits) bCircuits.setAttribute('aria-label', 'Logic circuit sandbox');
+    if (bSandbox) bSandbox.setAttribute('aria-label', 'Free flight sandbox');
+    if (bPhysics) bPhysics.setAttribute('aria-label', 'Orbital physics challenges');
+
     // Web build: no shell to quit, so no Quit verb (it stays in the DOM, hidden like an empty
     // Continue, so the hooks and the verb order are unchanged).
     if (!quitShown && bQuit.closest('li')) bQuit.closest('li').hidden = true;

@@ -2537,7 +2537,7 @@ export const missionLogScreen = {
     this._listEl.innerHTML = '';
 
     if (!activeMissions.length) {
-      this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts.</p></div>';
+      this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts. Visit a station board or bar to accept work.</p></div>';
       this._focusedId = null;
       this._renderStage(state, null, tracked);
       if (this._compVisible) this._renderCompleted();
