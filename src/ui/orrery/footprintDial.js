@@ -352,10 +352,15 @@ export function dialGeometry(w, h) {
   const rTok = rS - SB / 2 - tok / 2 - clamp(R * 0.03, 7, 14);
   const hubR = clamp(R * 0.5, 96, 260);
   const clockW = clamp(R * 0.03, 9, 14);
+  // The crest pads sit between the escape clock (its band and ticks) and the source band. On a dial under ~510px
+  // (960x540, phones) the hub's 96px floor puts the clock where the pads go, so the pads printed over the clock and
+  // over the hub's tier, clears and bounty lines. There the pads yield: the band still names each source, the reading
+  // carries the crest, and the Hand reaches the band instead of a pad.
+  const tokens = rTok - tok * 0.59 - 2 >= hubR + clockW + 9;
   const arm0 = hubR + 4;
-  const arm1 = rTok - tok * 0.62 - 3;
+  const arm1 = tokens ? rTok - tok * 0.62 - 3 : rS - SB / 2 - 3;
   const ts = clamp(R / 380, 1, 1.35);
-  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, hubR, clockW, arm0, arm1, ts };
+  return { S, M, cx: w / 2, cy: h / 2, R, B, gap, SB, rB, rShoe, rS, tok, rTok, tokens, hubR, clockW, arm0, arm1, ts };
 }
 
 /** Shortest signed turn from a to b, degrees. */
@@ -632,7 +637,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     arm.appendChild(svg('path', { class: 'fp-hand__arm', d: armD }));
     arm.appendChild(svg('circle', { class: 'fp-hand__beadbloom', cx: f(g.cx), cy: f(g.cy - g.arm0), r: 8 }));
     arm.appendChild(svg('circle', { class: 'fp-hand__bead', cx: f(g.cx), cy: f(g.cy - g.arm0), r: 4.5 }));
-    arm.appendChild(svg('circle', { class: 'fp-hand__ring', cx: f(g.cx), cy: f(g.cy - g.rTok), r: f(g.tok * 0.5 * 1.18 + 4) }));
+    if (g.tokens) arm.appendChild(svg('circle', { class: 'fp-hand__ring', cx: f(g.cx), cy: f(g.cy - g.rTok), r: f(g.tok * 0.5 * 1.18 + 4) }));
     // the grip: two ticks across the shoe, where a thumb would take the Hand
     const grip = [];
     for (const d of [-1.3, 1.3]) {
@@ -705,7 +710,7 @@ export function createHeatDial(host, { onTrace = null, onEnter = null } = {}) {
     // a rebuild (a resize, new sources) keeps each token's element, so nothing re-decodes or blinks
     const old = tokenEls;
     tokenEls = new Map();
-    if (!geo) { tokensHost.textContent = ''; return; }
+    if (!geo || !geo.tokens) { tokensHost.textContent = ''; return; }
     const g = geo;
     for (const sec of sectors) {
       const src = sources.find((s) => s.id === sec.id) || {};

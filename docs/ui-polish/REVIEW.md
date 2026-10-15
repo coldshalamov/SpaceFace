@@ -819,7 +819,7 @@ Bench, with the game's inline grid forced to match the real cascade, at 960 / 12
 - At ≤760 the dial stands over its reading as a full-bleed square (capped at 520px) and the screen scrolls as one page. The reading is full width, each cost sits under its verb, and the long record is one column. The keyboard hint and the dial-to-beam link are hidden, and the rule and WANTED track tighter so they part at the bottom gap.
 - 1280 and 1920 are unchanged; the only pixel differences are the dial's arrival animation.
 
-**Checked:** 960×540, 1280×720, 1920×1080, 390×844 (every scroll stop) and 700×900 for all three record states. The bench measures no tangled or buried type at 960 or phone. Before, the phone had 6–7 ON TOP OF findings per state. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. **Still open:** on a ~400px phone dial the hub's "4,200 cr bounty" line comes close to the two lower tokens. That spacing comes from the dial geometry in footprintDial.js and was not changed here.
+**Checked:** 960×540, 1280×720, 1920×1080, 390×844 (every scroll stop) and 700×900 for all three record states. The bench measures no tangled or buried type at 960 or phone. Before, the phone had 6–7 ON TOP OF findings per state. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. ~~**Still open:** on a ~400px phone dial the hub's "4,200 cr bounty" line comes close to the two lower tokens.~~ Fixed on ui-polish-38, see § Footprint dial: crest pads yield on a small dial.
 
 **Shots (not committed):** `/workspace/spaceface-scratch/ui-shots/polish28h/{before,after,after-scroll}/` and `compare-{960,390,1280-marked}.png`.
 
@@ -1162,6 +1162,14 @@ Overlap probe (text boxes in the tape) on two seeded ledgers, 6 receipts over th
 
 Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×390 / 960×540 / 1280×720 / 1920×1080: master 3 + 1 → 0. `test/ledger-tape-yield.test.mjs` gains a case that fails on master ("+1,806 prints on the 3,000 cr numeral") and passes here. Shots: `ui-shots/polish37/{before,after}/`, compares in `ui-shots/polish37/compare/` (seeded with `_tools/ledger-seed.mjs` sets c and d).
 
+## Footprint dial: crest pads yield on a small dial (ui-polish-38)
+
+**Before:** the hub's radius has a 96px floor, so on a dial under ~510px (960×540 at 430px, phones at 368–401px) the escape clock and its ticks sat exactly where the source crest pads go. The pads printed over the clock, and the lower pads printed over the hub's CLEARS IN, the bounty line and (MARKED) T0 · NO SEARCH. The probe found 2–3 hub lines under a pad on every WANTED and MARKED dial at those sizes.
+
+**After (`src/ui/orrery/footprintDial.js`, `dialGeometry` plus two guards):** the geometry reports whether the pads have radial room between the clock's ticks and the source band. Where they don't, the pads and the Hand's ring around the traced pad are not drawn, and the Hand's arm runs from the clock to the band's inner edge instead. The band still names each source and the reading still shows the crest. Dials of ~510px and up keep their pads (700×900 and 1024×768 are 516–520px). Selectors and IDs are unchanged.
+
+**Checked:** hub-line vs pad probe (`_tools/fp-hub.mjs`) at 390×844 and 360×740 (`--phone`), 960×540, 1024×768, 700×900 and 1280×720: 0 overlaps on all three records. 1280×720 is pixel-identical to master. The bench measures clean at 390×844, 960×540, 1280×720 and 1920×1080. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. Shots: `ui-shots/polish38/{before,after}/`, `compare-{phone,960}-{wanted,marked}.png`.
+
 ## Shipworks short desktop: verbs stay on-frame; next-step clears DISMISS (ui-polish-39)
 
 **Before:** at 844×390, TAKE THE HITCH · RECORD · PAINT ran past the right edge (Paint at x≈922 on an 844 frame) and overlapped UNDOCK. The next-step sentence under OPEN YOUR HOLD printed on DISMISS (bench ON TOP OF ×4). Weapon / Mining / fleet rows under the sticky foot were already the expected below-fold remainder from ui-polish-33.
@@ -1169,4 +1177,3 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 **After (`shipworksLayouts.js` + `stationLayouts.js`, CSS only, `651–1100 × ≤460` desktop):** the verb row wraps inside the main (`left/right:8px`, `flex-wrap`) so RECORD · PAINT stay on-frame (Paint at x≈804). The next-step is one row — title + DISMISS — and the sentence and 2/3 count sleep (full text stays in `data-why` / aria). Selectors and IDs are unchanged. Phones and every height above 460 are untouched.
 
 **Bench:** station-shipworks 844×390 19 → 10 (remaining: below-fold under the sticky foot + mechanic clamp). 1024×440 6 → 6 (geometry clear of DISMISS; probe still notes title vs DISMISS from hidden text). 960×540 / 1280×720 / 1920×1080 / 390×844 unchanged (1280 matches master’s 2 HITCH-pool notes). Shots: `ui-shots/polish39/{before,after,compare}/`.
-
