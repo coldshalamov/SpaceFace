@@ -319,12 +319,41 @@ export async function readTarget({ selectedOnly = false } = {}) {
     if (row) { row.count++; return; }
     if (targetRejections.reasons.length >= 8) return;
     const number = value => Number.isFinite(value) ? value : null;
+    const boolean = value => typeof value === 'boolean' ? value : null;
+    // Only the first pending witness carries the producer state. These are existing scalar
+    // receipts, not another projection, mesh lookup or DOM read, and never steer the actor.
+    let pending = null;
+    if (reason === 'presentation' && e.presentationAdmission === 'pending') {
+      const render = st.render || {};
+      const laneFaults = [];
+      for (const lane of ['residencyReconcile', 'residencyPoll', 'holdExemptEnqueue',
+        'holdExemptDegrade', 'holdExemptStepped', 'meshBuildDrain', 'presentationRebind',
+        'presentedTail.residency-service']) {
+        const fault = render.laneFaults?.[lane];
+        if (fault) laneFaults.push({ lane, faults: number(fault.faults), lastAt: number(fault.lastAt),
+          parkedEpoch: typeof fault.parkedEpoch === 'string' ? fault.parkedEpoch.slice(0, 80) : null });
+      }
+      pending = {
+        noMesh: boolean(e._noMesh), noMeshByRenderer: boolean(e._noMeshByRenderer),
+        hasEntityMesh: !!e.mesh, meshBuildFailures: number(e._meshBuildFailures),
+        meshBuildLastError: typeof e._meshBuildLastError === 'string' ? e._meshBuildLastError.slice(0, 240) : null,
+        meshBuildRetryAtSim: number(e._meshBuildRetryAtSim), meshBuildRetryAtWallMs: number(e._meshBuildRetryAtWallMs),
+        deferNoncriticalMeshStreaming: boolean(render.deferNoncriticalMeshStreaming),
+        firstPlayableFrameAt: number(render.firstPlayableFrameAt),
+        firstFlightResidencyHoldUntil: number(render.firstFlightResidencyHoldUntil),
+        firstFlightDeferredHoldUntil: number(render.firstFlightDeferredHoldUntil),
+        openingGraphPublicationFrozen: boolean(render.openingGraphPublicationFrozen),
+        liveSectorGpuAdmission: boolean(render.liveSectorGpuAdmission),
+        sectorShellAdmission: boolean(render.sectorShellAdmission), laneFaults,
+      };
+    }
     row = { reason, count: 1, sample: {
       sim: number(st.simTime), tick: number(st.tick), id: e.id,
       generation: number(e.occupantGeneration), type: e.type,
       admission: e.presentationAdmission ?? null, fallbackVisible: e.presentationFallbackVisible ?? null,
       hasRoot: root === undefined ? null : !!root, rootVisible: root?.visible ?? null,
       authoredState: root?.userData?.authoredAssetState ?? null,
+      ...(pending ? { pending } : {}),
       projection: projection ? { x: number(projection.x), y: number(projection.y), depth: number(projection.depth),
         onScreen: projection.onScreen ?? null, behind: projection.behind ?? null } : null,
       hit: hit ? { tag: String(hit.tagName || '').slice(0, 40), id: String(hit.id || '').slice(0, 80),

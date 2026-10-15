@@ -81,6 +81,9 @@ for (const becomesReachable of [true, false]) test(becomesReachable
       assert.equal(targetReceipt.reachableReads, 0);
       assert.ok(targetReceipt.reasons[0].count > 1, 'repeated misses survive a null fight return');
       assert.equal(targetReceipt.reasons[0].reason, 'presentation');
+      assert.equal(targetReceipt.reasons[0].sample.pending.noMesh, null, 'absent producer receipts stay unknown');
+      assert.equal(targetReceipt.reasons[0].sample.pending.firstPlayableFrameAt, null);
+      assert.deepEqual(targetReceipt.reasons[0].sample.pending.laneFaults, []);
     }
   } finally {
     if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
@@ -95,12 +98,20 @@ test('readTarget reports bounded public rejection causes without admitting cover
   const hidden = { id: 2, alive: true, type: 'ship', team: 3, pos: { x: 10, z: 0 }, data: { runRole: 'enemy' } };
   const covered = { id: 3, occupantGeneration: 9, alive: true, type: 'ship', team: 3, pos: { x: 20, z: 0 },
     presentationAdmission: 'unavailable', presentationFallbackVisible: true, data: { runRole: 'enemy' } };
-  const pending = { ...covered, id: 4, presentationAdmission: 'pending', presentationFallbackVisible: false };
+  const pending = { ...covered, id: 4, presentationAdmission: 'pending', presentationFallbackVisible: false,
+    _noMesh: true, _noMeshByRenderer: true, _meshBuildFailures: 3, _meshBuildLastError: 'build failure '.repeat(40),
+    _meshBuildRetryAtSim: 9.5, _meshBuildRetryAtWallMs: 1234 };
+  const pendingAgain = { ...pending, id: 7, _meshBuildLastError: 'later failure' };
   const offscreen = { ...covered, id: 5, pos: { x: 200, z: 0 } };
   const coveredAgain = { ...covered, id: 6 };
   const state = { mode: 'flight', simTime: 10, tick: 600, playerId: 1, player: { targetId: null },
-    entityList: [player, hidden, covered, pending, offscreen, coveredAgain],
-    render: { camera: {}, scene: {}, meshes: new Map([[hidden.id, { visible: false, matrixWorld: hidden.pos }]]), renderer: { domElement: surface } } };
+    entityList: [player, hidden, covered, pending, offscreen, coveredAgain, pendingAgain],
+    render: { camera: {}, scene: {}, meshes: new Map([[hidden.id, { visible: false, matrixWorld: hidden.pos }]]),
+      renderer: { domElement: surface }, deferNoncriticalMeshStreaming: false, firstPlayableFrameAt: 500,
+      firstFlightResidencyHoldUntil: 20, firstFlightDeferredHoldUntil: 21, openingGraphPublicationFrozen: true,
+      liveSectorGpuAdmission: false, sectorShellAdmission: false,
+      laneFaults: { meshBuildDrain: { faults: 2, lastAt: 600, parkedEpoch: '1|0', ignored: surface },
+        unrelated: { faults: 99 } } } };
   let projections = 0; let hitTests = 0;
   try {
     globalThis.window = { SF: { THREE: { Vector3: vector3() }, state,
@@ -116,7 +127,7 @@ test('readTarget reports bounded public rejection causes without admitting cover
     assert.ok(result.rejects.length <= 4);
     assert.equal(projections, 3, 'pending and hidden bodies do not cause diagnostic projection reads');
     assert.equal(hitTests, 2, 'offscreen bodies do not cause diagnostic DOM hit tests');
-    assert.equal(result.targetRejections.candidates, 5);
+    assert.equal(result.targetRejections.candidates, 6);
     assert.equal(result.targetRejections.reachable, false);
     const rows = Object.fromEntries(result.targetRejections.reasons.map(row => [row.reason, row]));
     assert.equal(rows.covered.count, 2);
@@ -130,6 +141,22 @@ test('readTarget reports bounded public rejection causes without admitting cover
     assert.equal(rows.hidden.sample.rootVisible, false);
     assert.equal(rows.presentation.sample.admission, 'pending');
     assert.equal(rows.presentation.sample.hasRoot, null, 'presentation rejection does not invent a mesh lookup');
+    assert.equal(rows.presentation.count, 2);
+    assert.deepEqual(rows.presentation.sample.pending, {
+      noMesh: true, noMeshByRenderer: true, hasEntityMesh: false, meshBuildFailures: 3,
+      meshBuildLastError: pending._meshBuildLastError.slice(0, 240),
+      meshBuildRetryAtSim: 9.5, meshBuildRetryAtWallMs: 1234,
+      deferNoncriticalMeshStreaming: false, firstPlayableFrameAt: 500,
+      firstFlightResidencyHoldUntil: 20, firstFlightDeferredHoldUntil: 21,
+      openingGraphPublicationFrozen: true, liveSectorGpuAdmission: false, sectorShellAdmission: false,
+      laneFaults: [{ lane: 'meshBuildDrain', faults: 2, lastAt: 600, parkedEpoch: '1|0' }],
+    }, 'the first pending witness carries bounded primitive producer state');
+    assert.equal(rows.covered.sample.pending, undefined, 'other reasons do not repeat producer state');
+    const receipt = foldTargetRejections(undefined, result);
+    state.render.laneFaults.meshBuildDrain.faults = 200;
+    pending._meshBuildLastError = 'changed after read';
+    assert.equal(receipt.reasons.find(row => row.reason === 'presentation').sample.pending.laneFaults[0].faults, 2);
+    assert.doesNotThrow(() => JSON.stringify(receipt));
     assert.deepEqual(rows.projection.sample.projection, { x: 1200, y: 300, depth: null, onScreen: false, behind: true });
   } finally {
     if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
