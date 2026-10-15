@@ -23,6 +23,7 @@ import {
   saveCrucibleMeta,
 } from '../../systems/survivalRecords.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SHIPS } from '../../data/ships.js';
 import {
   CRUCIBLE_ARENA_ID,
@@ -239,6 +240,91 @@ export function ghostShareForRun(profile, { seed = null, hash = null } = {}) {
     seed: row.seed,
     text: ghostShareTextForTape(row),
   };
+}
+
+/* ---- the finished run as one pasteable line (INF: results Copy result) ---- */
+
+const RAW_ID_WORD = /^[a-z0-9]+(?:[_-][a-z0-9]+)+$|[a-z][A-Z]/;
+const SUMMARY_VERB_LIMIT = 4;
+
+/** 1234 -> "1.2K", 1_200_000 -> "1.2M": a score read out loud, not a column of digits. */
+function compactCount(value) {
+  const n = Math.max(0, Math.floor(Number(value) || 0));
+  if (n < 1000) return String(n);
+  const units = [[1e3, 'K'], [1e6, 'M'], [1e9, 'B']];
+  let i = n >= 1e9 ? 2 : n >= 1e6 ? 1 : 0;
+  let scaled = Math.round((n / units[i][0]) * 10) / 10;
+  // 999_950 rounds to 1000K: that is 1M, not a four-digit K.
+  if (scaled >= 1000 && i < units.length - 1) { i += 1; scaled = Math.round((n / units[i][0]) * 10) / 10; }
+  return `${scaled >= 100 ? Math.round(scaled) : scaled}${units[i][1]}`;
+}
+
+/** The arena's authored name, or '' - an id never reaches a pasted line. */
+function arenaWordFor(arenaId) {
+  const arena = survivalArenaById(arenaId);
+  const label = arena && typeof arena.label === 'string' ? arena.label.trim() : '';
+  return label && label !== arenaId && !RAW_ID_WORD.test(label) ? label : '';
+}
+
+/** The draft verbs the run took, in order, each once - authored words only. */
+function pickVerbsFor(picks) {
+  const seen = new Set();
+  const out = [];
+  for (const pick of Array.isArray(picks) ? picks : []) {
+    const verb = pick && typeof pick.verb === 'string' ? pick.verb.trim() : '';
+    if (!verb || RAW_ID_WORD.test(verb) || seen.has(verb.toLowerCase())) continue;
+    seen.add(verb.toLowerCase());
+    out.push(verb);
+    if (out.length >= SUMMARY_VERB_LIMIT) break;
+  }
+  return out;
+}
+
+/**
+ * The settled result as ONE line a player can post: where, how far, the seed, the build, and the
+ * run code that reproduces it. Pure - reads only the summary survivalResults already published.
+ * With no round to report the line has nothing to say beyond the code, so it IS the code (null
+ * when there is neither). Never wraps: no newline, no raw ids.
+ */
+export function runShareSummary(result, { code = null } = {}) {
+  const runCode = typeof code === 'string' && code.trim() ? code.trim() : null;
+  const res = result && typeof result === 'object' ? result : null;
+  const reached = res ? Math.max(Number(res.deepestWave) || 0, Number(res.wave) || 0) : 0;
+  if (!res || reached < 1) return runCode;
+  const swarm = res.ruleset === 'swarm';
+  const parts = ['SpaceFace Crucible'];
+  const arena = arenaWordFor(res.arenaId);
+  if (arena) parts.push(arena);
+  const score = Math.max(0, Math.floor(Number(res.score) || 0));
+  const chain = Math.max(0, Math.floor(Number(res.bestChain) || 0));
+  const figures = [`${swarm ? 'Round' : 'Wave'} ${reached}`];
+  if (swarm && chain > 0) figures.push(`chain x${chain}`);
+  if (score > 0) figures.push(`score ${compactCount(score)}`);
+  parts.push(figures.join(', '));
+  if (Number.isInteger(res.seed)) parts.push(`seed ${res.seed}`);
+  const verbs = pickVerbsFor(res.picks);
+  if (verbs.length) parts.push(`build: ${verbs.join(', ')}`);
+  if (runCode) parts.push(`code ${runCode}`);
+  return parts.join(' - ').replace(/\s*[\r\n]+\s*/g, ' ');
+}
+
+/**
+ * Best-effort clipboard write. Resolves true only when the host accepted the text; false for no
+ * clipboard, empty text, or a refusal (permissions, focus) - the caller then falls back to a
+ * field the player can select. Never throws, never a service.
+ */
+export function copyShareText(text, clipboard = (typeof navigator !== 'undefined' ? navigator.clipboard : null)) {
+  return new Promise((resolve) => {
+    try {
+      if (typeof text !== 'string' || !text || !clipboard || typeof clipboard.writeText !== 'function') {
+        resolve(false);
+        return;
+      }
+      Promise.resolve(clipboard.writeText(text)).then(() => resolve(true), () => resolve(false));
+    } catch {
+      resolve(false);
+    }
+  });
 }
 
 /* ---- file export helper: a data-URI href any Chromium host can download ---- */

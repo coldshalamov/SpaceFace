@@ -84,6 +84,11 @@ ${R} .sf-crres__share-link { white-space:nowrap; font-size:12px !important; lett
   background:linear-gradient(0deg, rgb(${BONE} / .26) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; padding:4px 0 !important; }
 ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important;
   background:linear-gradient(0deg, var(--dp-hand, #f2b950) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
+/* Copy result / Copy ghost ride the same fine words; the status line is its own element
+   (the band's note is hidden on the death-dial plate, so it cannot carry "Copied"). */
+${R} .sf-crres__share-actions { display:flex; flex-wrap:wrap; gap:6px 22px; margin:10px 0 0; max-width:560px; }
+${R} .sf-crres__share-status { margin:6px 0 0 !important; max-width:560px; color:rgb(${BONE} / .72) !important; }
+${R} .sf-crres__share-status:empty { display:none; }
 
 /* 1080p band: the left column at the dial's weight */
 @media (min-width:1800px) and (min-height:1000px) {

@@ -111,10 +111,12 @@ import {
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
+  copyShareText,
   doorRunShareCode,
   ghostShareForRun,
   importGhostShareText,
   runShareCodeForRun,
+  runShareSummary,
   shareTextHref,
 } from './shareCode.js';
 import {
@@ -3128,8 +3130,9 @@ function renderBuild(band, result) {
 /* --- SHARE BAND (PQ-160.02) ------------------------------------------------------------------
    The run as a code and its ghost as a block — files and codes, never a service. The code carries
    the seed, the build the run launched with, and the rules; the ghost block carries the recorded
-   pose tape. Both are selectable text and real download links on every host — the plate's three
-   action buttons stay the only buttons.
+   pose tape. Both are selectable text and real download links on every host. The three ways out
+   stay the plate's only actions; the band adds two fine words, Copy result and Copy ghost —
+   ordinary buttons, so a pad reaches them — that put the finished run on the clipboard.
    ------------------------------------------------------------------------------------------- */
 
 /** A kit-fine download link: a real anchor carrying a data URI, not a button. */
@@ -3153,17 +3156,80 @@ function selectableText(row, className, value, ariaLabel) {
   field.addEventListener('focus', () => { try { field.select(); } catch { /* stub DOM */ } });
   field.addEventListener('click', () => { try { field.select(); } catch { /* stub DOM */ } });
   row.appendChild(field);
+  return field;
 }
 
-/** One share item: a single aligned row — caption, field, save link. */
+/** One share item: a single aligned row — caption, field, save link. Returns the field. */
 function shareItem(band, { caption, value, ariaLabel, linkLabel, filename, linkAria }) {
   const item = el('div', 'sf-crres__share-item');
   const row = el('div', 'sf-crres__share-row');
   row.appendChild(el('span', 'k-caps sf-crres__share-cap', caption));
-  selectableText(row, 'k-input sf-crres__share-code', value, ariaLabel);
-  shareLink(row, linkLabel, value + '\n', filename, linkAria);
+  const field = selectableText(row, 'k-input sf-crres__share-code', value, ariaLabel);
+  if (linkLabel) shareLink(row, linkLabel, value + '\n', filename, linkAria);
   item.appendChild(row);
   band.appendChild(item);
+  return field;
+}
+
+/** Select a field's text so a manual copy is one keystroke away. Best effort on any host. */
+function selectField(field) {
+  try { field.focus(); field.select(); } catch { /* manual selection stays available */ }
+}
+
+/**
+ * Copy result / Copy ghost: two fine words that put the finished run on the clipboard. The
+ * clipboard is a convenience, never a service: when the host refuses, the text lands selected in
+ * a field and the status line says so — the note follows what actually happened, not the click.
+ */
+function shareCopyRow(band, { summary, ghostText, ghostField }) {
+  if (!summary && !ghostText) return;
+  const actions = el('div', 'sf-crres__share-actions');
+  const status = el('p', 'k-t-fine k-62 sf-crres__share-status');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  let resultField = null;
+  const copyWord = (label, ariaLabel, onClick) => {
+    const button = word(label, 'k-word--fine sf-crres__share-link sf-crres__share-copy');
+    button.setAttribute('aria-label', ariaLabel);
+    button.addEventListener('click', onClick);
+    actions.appendChild(button);
+    return button;
+  };
+  if (summary) {
+    copyWord('Copy result', 'Copy the result as one line to post', () => {
+      copyShareText(summary).then((copied) => {
+        if (copied) {
+          status.textContent = 'Result copied — paste it anywhere.';
+          cue('confirm');
+          return;
+        }
+        // No clipboard (or it refused): show the line itself, selected, in a field of its own.
+        if (!resultField) {
+          resultField = shareItem(band, {
+            caption: 'Result', value: summary, ariaLabel: 'Result line', linkLabel: null,
+          });
+        }
+        resultField.value = summary;
+        selectField(resultField);
+        status.textContent = 'Result is selected in the field — copy it from there.';
+      });
+    });
+  }
+  if (ghostText) {
+    copyWord('Copy ghost', 'Copy the ghost block', () => {
+      copyShareText(ghostText).then((copied) => {
+        if (copied) {
+          status.textContent = 'Ghost copied — paste it into another copy of the game.';
+          cue('confirm');
+          return;
+        }
+        if (ghostField) selectField(ghostField);
+        status.textContent = 'Ghost is selected in its field — copy it from there.';
+      });
+    });
+  }
+  band.appendChild(actions);
+  band.appendChild(status);
 }
 
 function buildShareBand(result) {
@@ -3202,8 +3268,9 @@ function buildShareBand(result) {
     });
   }
 
+  let ghostField = null;
   if (ghost && ghost.text) {
-    shareItem(band, {
+    ghostField = shareItem(band, {
       caption: 'Ghost file',
       value: ghost.text,
       ariaLabel: 'Ghost share code',
@@ -3212,6 +3279,11 @@ function buildShareBand(result) {
       linkAria: 'Download the ghost as a file',
     });
   }
+  shareCopyRow(band, {
+    summary: runShareSummary(result, { code }),
+    ghostText: ghost && ghost.text ? ghost.text : null,
+    ghostField,
+  });
   return band;
 }
 
