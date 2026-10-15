@@ -92,6 +92,7 @@ import {
   fetchSharedPlayerStore,
   mergeSharedStoreKeys,
   pushSharedPlayerStore,
+  SHARED_STORE_TIMEOUT_MS,
   sharedPlayerStoreAvailable,
 } from './sharedPlayerStore.js';
 
@@ -342,6 +343,7 @@ export const save = {
     // is configured (localStorage is then the only — and fully durable — store), false once a
     // configured mirror demonstrably misses a write, until a later write lands.
     this._sharedStoreMirrorHealthy = true;
+    this._publishSharedStoreStatus();
     this._sharedStorePatch = null;
     this._sharedStoreFlushTimer = null;
     this._dirtyJournal = createSaveDirtyJournal();
@@ -512,12 +514,28 @@ export const save = {
       // Public New Game already opened the epoch on `game:new`. The live route now also emits
       // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
       // orphan the autosave generation started by `game:new`.
-      if (this._epochOpenedByNew) return;
+      if (this._epochOpenedByNew) {
+        // resetRunState() replaces state.save before this alias, so carry the shared-store
+        // status onto the fresh transient save bag without minting another run epoch.
+        this._publishSharedStoreStatus();
+        return;
+      }
       this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._beginRunEpoch('game:newGame');
+      this._publishSharedStoreStatus();
     });
-    bus.on('game:started', () => { this._epochOpenedByNew = false; });
-    bus.on('save:loaded', () => { this._epochOpenedByNew = false; this._ephemeralRacing = false; this.state.physicsVenueSession = false; });
+    bus.on('game:started', () => {
+      this._epochOpenedByNew = false;
+      this._publishSharedStoreStatus();
+    });
+    bus.on('save:loaded', () => {
+      this._epochOpenedByNew = false;
+      this._ephemeralRacing = false;
+      this.state.physicsVenueSession = false;
+      // A restore owner may replace the transient save bag before this boundary; republish the
+      // authoritative shared-store flags before downstream Continue/title listeners run.
+      this._publishSharedStoreStatus();
+    });
     bus.on('save:restoring', () => { this.state.physicsVenueSession = false; });
     bus.on('race:launchFailed', () => {
       if (!this._ephemeralRacing || this.state?.mode !== 'menu') return;
@@ -596,6 +614,17 @@ export const save = {
   // best-effort and reported as such.
   isSharedStoreMirrorHealthy() {
     return this._sharedStoreMirrorHealthy !== false;
+  },
+
+  // Shared-store readiness is a transient presentation fact. Keep it on state.save so worker
+  // facades can answer synchronously while the authoritative save system remains in the worker.
+  // Use exact booleans here; an incomplete host must never look settled or healthy by accident.
+  _publishSharedStoreStatus() {
+    if (!this.state || !this.state.save || typeof this.state.save !== 'object') return;
+    this.state.save.sharedStoreStatus = {
+      syncPending: this._sharedStoreReady !== true,
+      mirrorHealthy: this._sharedStoreMirrorHealthy === true,
+    };
   },
 
   async _syncSharedPlayerStore() {
@@ -679,7 +708,9 @@ export const save = {
             }
           }
         }
-        const pushed = delta == null ? true : await pushSharedPlayerStore(delta);
+        const pushed = delta == null ? true : await pushSharedPlayerStore(delta, {
+          timeoutMs: SHARED_STORE_TIMEOUT_MS,
+        });
         if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }
     } catch (err) {
@@ -689,6 +720,7 @@ export const save = {
     } finally {
       this._sharedStoreReady = true;
       this._sharedStoreMirrorHealthy = !mirrorConfigured || ok;
+      this._publishSharedStoreStatus();
       if (this.bus && typeof this.bus.emit === 'function') {
         // Still emitted in both outcomes: achievements merge + title refresh key off the
         // timing, and now off a truthful ok. No save write and no transition rides along.
@@ -739,17 +771,21 @@ export const save = {
       // duplicates a save nor touches transitions.
       pushSharedPlayerStore(keys, { keepalive: true }).then((landed) => {
         if (landed) {
-          if (this._sharedStoreMirrorHealthy === false) {
-            this._sharedStoreMirrorHealthy = true;
+          const wasUnhealthy = this._sharedStoreMirrorHealthy === false;
+          this._sharedStoreMirrorHealthy = true;
+          this._publishSharedStoreStatus();
+          if (wasUnhealthy) {
             if (this.bus && typeof this.bus.emit === 'function') {
               this.bus.emit('save:store-synced', { ok: true, mirror: 'shared', durableStore: 'local', mirrorRecovered: true });
             }
           }
         } else {
           this._sharedStoreMirrorHealthy = false;
+          this._publishSharedStoreStatus();
         }
       }, () => {
         this._sharedStoreMirrorHealthy = false;
+        this._publishSharedStoreStatus();
       });
     };
     if (typeof setTimeout === 'function') this._sharedStoreFlushTimer = setTimeout(flush, 0);

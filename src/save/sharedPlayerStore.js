@@ -13,7 +13,7 @@ const KEEPALIVE_BODY_BUDGET_BYTES = 60000;
 // Every store call gets its own deadline: a store that accepts the connection but never answers
 // must not pin isSharedStoreSyncPending() (Continue's "Checking saves…") forever. This module's
 // header already promises an absent store never breaks anything — a stalled one must not either.
-const SHARED_STORE_TIMEOUT_MS = 10000;
+export const SHARED_STORE_TIMEOUT_MS = 10000;
 
 // Mirror PUTs carry a wider deadline than the boot probe: the request can sit queued in
 // Chromium's per-origin socket pool behind a scene-build asset storm (six-socket limit), and the
@@ -401,7 +401,7 @@ export async function fetchSharedPlayerStore() {
   }
 }
 
-export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
+export function pushSharedPlayerStore(keys, { keepalive = false, timeoutMs = SHARED_STORE_PUT_TIMEOUT_MS } = {}) {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return Promise.resolve(false);
   const patch = {};
   const deletions = new Map();
@@ -442,13 +442,15 @@ export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
     try { byteLength = new TextEncoder().encode(body).byteLength; } catch { byteLength = body.length; }
   }
   const carriesKeepalive = keepalive === true && byteLength <= KEEPALIVE_BODY_BUDGET_BYTES;
+  const putTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0
+    ? timeoutMs : SHARED_STORE_PUT_TIMEOUT_MS;
   const attempt = async () => {
     try {
       const response = await fetch(SHARED_PLAYER_STORE_PATH, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body,
-        signal: AbortSignal.timeout(SHARED_STORE_PUT_TIMEOUT_MS),
+        signal: AbortSignal.timeout(putTimeoutMs),
         keepalive: carriesKeepalive,
       });
       if (response.status === 404) storeRouteAbsent = true;

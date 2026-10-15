@@ -28,6 +28,7 @@ import test from 'node:test';
 import { createRequire } from 'node:module';
 
 import { createGameState } from '../src/core/gameState.js';
+import { createSimulation } from '../src/core/sim.js';
 import { save as saveDefinition } from '../src/save/saveSystem.js';
 import { resetSharedPlayerStoreMemoForTests } from '../src/save/sharedPlayerStore.js';
 
@@ -100,7 +101,17 @@ function makeShell({ seed = 73, marker = 'local-world' } = {}) {
   const events = [];
   const save = Object.create(saveDefinition);
   save.state = state;
-  save.bus = { emit(name, payload = {}) { events.push({ name, payload }); } };
+  save.bus = {
+    emit(name, payload = {}) {
+      events.push({
+        name,
+        payload,
+        sharedStoreStatus: state.save && state.save.sharedStoreStatus
+          ? { ...state.save.sharedStoreStatus }
+          : null,
+      });
+    },
+  };
   save.registry = {
     get(name) {
       if (name !== 'economy') return null;
@@ -140,6 +151,7 @@ function makeShell({ seed = 73, marker = 'local-world' } = {}) {
   save._rollbackInProgress = false;
   save._sharedStoreReady = false;
   save._sharedStoreMirrorHealthy = true;
+  save._publishSharedStoreStatus();
   save._sharedStorePatch = null;
   save._sharedStoreFlushTimer = null;
   return { save, state, events };
@@ -198,6 +210,14 @@ test('a save written in one shell is the save Continue restores in the other', a
     const shellA = makeShell({ seed: 73, marker: 'browser-campaign' });
     await shellA.save._syncSharedPlayerStore();
     assert.equal(shellA.save.isSharedStoreSyncPending(), false, 'boot sync settles');
+    assert.deepEqual(shellA.state.save.sharedStoreStatus, {
+      syncPending: false,
+      mirrorHealthy: true,
+    }, 'the settled status is published before the boot sync receipt');
+    assert.deepEqual(shellA.events.find((event) => event.name === 'save:store-synced').sharedStoreStatus, {
+      syncPending: false,
+      mirrorHealthy: true,
+    }, 'synchronous sync listeners see the fresh settled status');
     assert.equal(shellA.save.save('quick'), true, 'the local slot write succeeds');
     await flushMirror();
     restoreEnv();
@@ -294,6 +314,10 @@ test('a failed mirror still leaves the local save durable and the mirror health 
     await flushMirror();
     assert.equal(shellA.save.isSharedStoreMirrorHealthy(), false,
       'a missed mirror reports unhealthy instead of pretending sync');
+    assert.deepEqual(shellA.state.save.sharedStoreStatus, {
+      syncPending: false,
+      mirrorHealthy: false,
+    }, 'a failed mirror publishes unhealthy status immediately');
     assert.equal(typeof storageA.getItem('sf.save.quick'), 'string',
       'the durable copy lives in this shell\'s storage either way');
 
@@ -304,6 +328,75 @@ test('a failed mirror still leaves the local save durable and the mirror health 
   } finally {
     fs.rmSync(storeDir, { recursive: true, force: true });
   }
+});
+
+test('local-only status is settled and a later mirror write publishes recovery', async () => {
+  const localOnly = createSimulation({ seed: 73, systems: [saveDefinition], updateOrder: [] });
+  assert.deepEqual(localOnly.state.save.sharedStoreStatus, {
+    syncPending: false,
+    mirrorHealthy: true,
+  }, 'init publishes a settled local-only status before any sync receipt');
+  localOnly.state.save = { currentSlot: null };
+  localOnly.bus.emit('save:loaded', {});
+  assert.deepEqual(localOnly.state.save.sharedStoreStatus, {
+    syncPending: false,
+    mirrorHealthy: true,
+  }, 'restore publication survives a replaced transient save bag');
+
+  const storeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-shared-store-'));
+  let mirrorDown = true;
+  try {
+    resetSharedPlayerStoreMemoForTests();
+    const fetchStore = async (url, options = {}) => {
+      assert.equal(String(url), PLAYER_STORE_ROUTE);
+      if ((options.method || 'GET') === 'PUT') {
+        if (mirrorDown) throw new Error('connection refused');
+        const body = JSON.parse(options.body);
+        const keys = writePlayerStoreKeysSync(storeDir, body.keys);
+        return { ok: true, status: 200, json: async () => ({ ok: true, keys }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ keys: readPlayerStoreKeysSync(storeDir) }) };
+    };
+    const storage = memoryStorage();
+    const restoreEnv = installEnv({ storage, fetchImpl: fetchStore });
+    try {
+      const shell = makeShell({ seed: 73, marker: 'recovering-mirror' });
+      shell.save._sharedStoreReady = true;
+      shell.save._publishSharedStoreStatus();
+      assert.equal(shell.save.save('quick'), true);
+      await flushMirror();
+      assert.deepEqual(shell.state.save.sharedStoreStatus, {
+        syncPending: false,
+        mirrorHealthy: false,
+      }, 'a failed asynchronous mirror is visible before retry');
+
+      mirrorDown = false;
+      assert.equal(shell.save.save('quick'), true);
+      await flushMirror();
+      assert.deepEqual(shell.state.save.sharedStoreStatus, {
+        syncPending: false,
+        mirrorHealthy: true,
+      }, 'a landed mirror restores the published health flag');
+      const recovered = shell.events.find((event) => event.payload && event.payload.mirrorRecovered);
+      assert.deepEqual(recovered && recovered.sharedStoreStatus, {
+        syncPending: false,
+        mirrorHealthy: true,
+      }, 'recovery listeners see healthy status before the recovery receipt');
+    } finally {
+      restoreEnv();
+    }
+  } finally {
+    fs.rmSync(storeDir, { recursive: true, force: true });
+  }
+});
+
+test('shared-store status stays transient and out of the serialized envelope', () => {
+  const shell = makeShell({ seed: 73, marker: 'serialized-world' });
+  shell.state.save.sharedStoreStatus = { syncPending: true, mirrorHealthy: false };
+  const envelope = shell.save.serialize('quick');
+  assert.equal(envelope.data.save, undefined, 'the save transient bag is not a data section');
+  assert.equal(JSON.stringify(envelope).includes('sharedStoreStatus'), false,
+    'shared-store publication does not change the versioned envelope');
 });
 
 test('both shells resolve the same default player drawer', () => {

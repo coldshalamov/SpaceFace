@@ -113,6 +113,32 @@ function collectLaneSaveStorage() {
   return out;
 }
 
+// Worker save writes ride on the next reply. Keep the relay per-operation so one malformed or
+// quota-blocked write cannot suppress later operations, and keep clear scoped to SpaceFace keys.
+function applyLaneSaveStorageOps(ops) {
+  if (!Array.isArray(ops) || !ops.length) return;
+  let storage;
+  try { storage = globalThis.localStorage; } catch { return; }
+  if (!storage) return;
+  for (const op of ops) {
+    try {
+      if (!op) continue;
+      if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') {
+        storage.setItem(op.key, op.value);
+      } else if (op.op === 'remove' && typeof op.key === 'string') {
+        storage.removeItem(op.key);
+      } else if (op.op === 'clear') {
+        const doomed = [];
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
+          if (key && key.startsWith('sf.')) doomed.push(key);
+        }
+        for (const key of doomed) storage.removeItem(key);
+      }
+    } catch (_) { /* persistence relay is best-effort; quota policy stayed worker-side */ }
+  }
+}
+
 /**
  * Resolve the sim-lane runtime flags once at boot.
  *   (default)        — the whole-sim Worker IS the runtime (Stage-E flip).
@@ -715,6 +741,7 @@ export function createSimLaneRuntime({
 
   // ---- reply application ------------------------------------------------------------------
   function applyInitReply(msg) {
+    applyLaneSaveStorageOps(msg.storageOps);
     if (msg.initRebuild && msg.initRebuild.pack) {
       journal.applyRebuildPack(msg.initRebuild);
       foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end);
@@ -759,6 +786,10 @@ export function createSimLaneRuntime({
   function applyTickReply(msg) {
     replyCount++;
     if (Number.isSafeInteger(msg.stateTick)) lastShippedTick = msg.stateTick;
+
+    // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
+    // listeners must see the fresh index/envelope while the worker event is being dispatched.
+    applyLaneSaveStorageOps(msg.storageOps);
 
     // Input boundary: replay the worker's publishes into the ring via
     // publish() — reserve+capture atomically, the only order the ring accepts
@@ -868,24 +899,6 @@ export function createSimLaneRuntime({
     }
     if (Array.isArray(msg.spawnAcks) && msg.spawnAcks.length) {
       laneNotifySpawnAcks(msg.spawnAcks);
-    }
-
-    // Worker realm storage writes — the sim's own save bytes — persist to real
-    // localStorage here. Ordered with tick replies, same authority ordering the
-    // sim had when it wrote them.
-    if (Array.isArray(msg.storageOps) && msg.storageOps.length) {
-      for (const op of msg.storageOps) {
-        try {
-          if (!op) continue;
-          if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') localStorage.setItem(op.key, op.value);
-          else if (op.op === 'remove' && typeof op.key === 'string') localStorage.removeItem(op.key);
-          else if (op.op === 'clear') {
-            const doomed = [];
-            for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('sf.')) doomed.push(k); }
-            for (const k of doomed) localStorage.removeItem(k);
-          }
-        } catch (_) { /* persistence relay is best-effort; quota policy stayed worker-side */ }
-      }
     }
 
     if (Number.isSafeInteger(msg.stateTick)) state.tick = msg.stateTick;

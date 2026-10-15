@@ -8,6 +8,27 @@ import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommand
 import { applyDomainPathUpdate, createDomainDiffer, DOMAIN_MIRROR_KEYS } from '../scripts/lib/simReadModel.mjs';
 import { CRUCIBLE_ARENA_ID } from '../src/ui/crucibleLaunch.js';
 
+function memoryStorage() {
+  const values = new Map();
+  return {
+    get length() { return values.size; },
+    key(index) { return [...values.keys()][index] ?? null; },
+    getItem(key) { return values.get(String(key)) ?? null; },
+    setItem(key, value) { values.set(String(key), String(value)); },
+    removeItem(key) { values.delete(String(key)); },
+  };
+}
+
+function installStorage(storage) {
+  const hadOwn = Object.prototype.hasOwnProperty.call(globalThis, 'localStorage');
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = storage;
+  return () => {
+    if (hadOwn) globalThis.localStorage = previous;
+    else delete globalThis.localStorage;
+  };
+}
+
 test('worker career/site hydration preserves records and exposes the current read generation', async (t) => {
   for (const key of ['careers', 'sites.order', 'survivalResultsPublic']) assert.ok(DOMAIN_MIRROR_KEYS.includes(key));
   const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
@@ -51,6 +72,102 @@ test('worker career/site hydration preserves records and exposes the current rea
     'the fresh authority receipt must reach synchronous readers before its results event');
   lane.close();
   assert.equal(helpers.workerReadGeneration(), -1, 'closed bridges cannot authorize stale read receipts');
+});
+
+test('worker save facade treats unknown shared-store status as pending and unhealthy', async () => {
+  const { createGameState } = await import('../src/core/gameState.js');
+  const { createRegistry } = await import('../src/core/registry.js');
+  const state = createGameState(8182);
+  const registry = createRegistry({
+    state,
+    bus: createBus(),
+    helpers: { workerReadGeneration: () => 0 },
+    simLane: 'worker',
+  });
+  const save = registry.get('save');
+
+  delete state.save.sharedStoreStatus;
+  assert.equal(save.isSharedStoreSyncPending(), true, 'missing status cannot unblock Continue');
+  assert.equal(save.isSharedStoreMirrorHealthy(), false, 'missing status cannot claim mirror health');
+
+  state.save.sharedStoreStatus = { syncPending: true, mirrorHealthy: false };
+  assert.equal(save.isSharedStoreSyncPending(), true);
+  assert.equal(save.isSharedStoreMirrorHealthy(), false);
+
+  state.save.sharedStoreStatus = { syncPending: false, mirrorHealthy: true };
+  assert.equal(save.isSharedStoreSyncPending(), false, 'settled status unblocks Continue');
+  assert.equal(save.isSharedStoreMirrorHealthy(), true, 'settled status reports the exact mirror state');
+});
+
+test('worker ready and tick storage relays precede synchronous save listeners', async (t) => {
+  const storage = memoryStorage();
+  storage.setItem('outside.key', 'keep');
+  const restoreStorage = installStorage(storage);
+  t.after(restoreStorage);
+
+  const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
+    tick: 0, simTime: 0, accumulator: 0, timeScale: 0, ui: { screenStack: [] },
+    sites: { localPresentation: true } };
+  const bus = createBus();
+  const seen = [];
+  bus.on('save:store-synced', () => seen.push({ event: 'synced', index: storage.getItem('sf.save.index') }));
+  bus.on('save:completed', () => seen.push({ event: 'completed', index: storage.getItem('sf.save.index') }));
+  const posts = [];
+  let receive;
+  const lane = createSimLaneRuntime({ state, helpers: {}, registry: {}, bus,
+    flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+    channelFactory: () => ({ post: (message) => posts.push(message), onMessage: (handler) => { receive = handler; }, terminate() {} }),
+  });
+  t.after(() => lane.close());
+
+  receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0, storageOps: [
+    { op: 'set', key: 'sf.save.index', value: 'ready-index' },
+  ], domainUpdates: [] });
+  await lane.readyPromise;
+  assert.equal(storage.getItem('sf.save.index'), 'ready-index', 'ready replies relay save bytes');
+
+  receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60, storageOps: [
+    { op: 'set', key: 'sf.save.index', value: 'fresh-index' },
+  ], domainUpdates: [], events: [
+    { t: 'save:store-synced', p: { ok: true } },
+    { t: 'save:completed', p: { slot: 'quick' } },
+  ] });
+  assert.deepEqual(seen, [
+    { event: 'synced', index: 'fresh-index' },
+    { event: 'completed', index: 'fresh-index' },
+  ], 'both synchronous listeners see storageOps before replayed events');
+
+  receive({ kind: 'clockTick', stateTick: 2, simTime: 2 / 60, storageOps: [
+    { op: 'clear' },
+  ], domainUpdates: [] });
+  assert.equal(storage.getItem('sf.save.index'), null, 'scoped clear removes sf.* relay keys');
+  assert.equal(storage.getItem('outside.key'), 'keep', 'scoped clear preserves unrelated localStorage');
+});
+
+test('blocked storage access cannot quarantine otherwise healthy worker replies', async (t) => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true, get() { throw new Error('storage blocked'); },
+  });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'localStorage', previous);
+    else delete globalThis.localStorage;
+  });
+  let receive;
+  const posts = [];
+  const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
+    tick: 0, simTime: 0, accumulator: 0, timeScale: 0, ui: { screenStack: [] } };
+  const lane = createSimLaneRuntime({ state, helpers: {}, registry: {}, bus: createBus(),
+    flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+    channelFactory: () => ({ post: message => posts.push(message), onMessage: handler => { receive = handler; }, terminate() {} }),
+  });
+  t.after(() => lane.close());
+  receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0,
+    storageOps: [{ op: 'set', key: 'sf.save.index', value: 'index' }], domainUpdates: [] });
+  await lane.readyPromise;
+  receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60,
+    storageOps: [{ op: 'set', key: 'sf.save.index', value: 'new-index' }], domainUpdates: [] });
+  assert.equal(state.tick, 1, 'the reply still publishes when persistence access is blocked');
 });
 
 test('large replacement result receipts bypass cold signing on their own reply', () => {

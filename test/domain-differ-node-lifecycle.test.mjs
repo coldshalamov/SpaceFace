@@ -10,6 +10,26 @@ import {
 
 const DOMAIN_ENUM_TICKS = 10;
 
+test('shared-store status reaches the next reply without the save metadata cadence', () => {
+  const state = { save: { sharedStoreStatus: { syncPending: true, mirrorHealthy: false } } };
+  const differ = createDomainDiffer();
+  const mirror = new Map();
+  const apply = (tick) => {
+    const result = differ.diff(state, tick);
+    for (const update of result.updates) applyDomainPathUpdate(mirror, update, new WeakSet());
+    return result;
+  };
+  apply(0);
+  state.save.sharedStoreStatus = { syncPending: false, mirrorHealthy: true };
+  const settled = apply(1);
+  assert.ok(settled.updates.some((update) => update.segs[0] === 'save.sharedStoreStatus'));
+  assert.deepEqual(mirror.get('save.sharedStoreStatus'), { syncPending: false, mirrorHealthy: true });
+  state.save.sharedStoreStatus.mirrorHealthy = false;
+  apply(2);
+  assert.equal(mirror.get('save.sharedStoreStatus').mirrorHealthy, false,
+    'in-place health changes also publish on the next reply');
+});
+
 function pathIs(update, ...segs) {
   return update && update.segs.length === segs.length
     && update.segs.every((segment, index) => segment === segs[index]);

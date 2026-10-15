@@ -556,6 +556,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // machineGate/machine-route standing for the main-side computeRoute facade
   // (routePlanner reads machineAccess + machineProtocol only).
   'world.alienEcology',
+  // Native store status settles Continue and is read synchronously by save event listeners.
+  'save.sharedStoreStatus',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -626,6 +628,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
   sites: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
+  'save.sharedStoreStatus': 1,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
   // field motion misrepresents the public round; score/history retain the run root cadence.
   'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1,

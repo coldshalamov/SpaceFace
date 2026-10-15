@@ -1045,6 +1045,16 @@ export function createRegistry(ctx) {
           },
           get slots() { return (st && st.save && st.save.slots) || []; },
           get currentSlot() { return st && st.save ? st.save.currentSlot : null; },
+          isSharedStoreSyncPending: () => {
+            const value = st && st.save && st.save.sharedStoreStatus
+              && st.save.sharedStoreStatus.syncPending;
+            return typeof value === 'boolean' ? value : true;
+          },
+          isSharedStoreMirrorHealthy: () => {
+            const value = st && st.save && st.save.sharedStoreStatus
+              && st.save.sharedStoreStatus.mirrorHealthy;
+            return typeof value === 'boolean' ? value : false;
+          },
           deferRunTransition: () => false,
           deferLoadedGameRestore: () => false,
         };
