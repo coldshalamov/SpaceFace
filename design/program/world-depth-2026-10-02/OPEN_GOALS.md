@@ -13,18 +13,18 @@ Updated2026-10-15. This register preserves the original twenty-concept map and I
 
 ## SF-ORCHARD
 - Outcome: authored finite three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: focused player route, thermal persistence, reachable maximal tow and finite-pod shock tested. Live thermal target facts now cross the bounded worker read model; forecast phase/force facts now cross the bounded worker read model. Normal browser/camera and target-device gates remain open.
+- State: focused player route, thermal persistence, reachable maximal tow, finite-pod shock, and Alin first-contact voice tested. Live thermal target facts and forecast phase/force facts cross bounded worker read models. A read-only mobile camera witness is now in the source snapshot; ordinary browser/camera visibility and target-device gates remain open.
 - Owner: Orchard implementation owner and independent reviewer; integration owner publishes coherent increments.
-- Evidence: ORCHARD_SHOCK_2026-10-15.md and ORCHARD_READOUT_2026-10-15.md and ORCHARD_FORECAST_TRANSPORT_2026-10-15.md; current-e3 player-route receipt;579Orchard,94activity and93neighbor checks passed. Natural4-unit harvest, mid-opening Continue, physical collection and postcollection Continue preserve finite custody.
-- Next action: review the integrated forecast and pod readouts during ordinary live-camera gameplay, then measure target-device performance.
+- Evidence: public Orchard shock, thermal/tow, readout, forecast, and Alin receipts plus their exact manifests; current-e3 player-route receipt; 579 Orchard, 94 activity and 93 neighbor checks passed on e3; forecast125 combined646/646 and Alin129 isolated661/661 on canonical b7 support. The mobile camera witness is read-only, independently reviewed, and limited to geometry/pose diagnostics; it does not prove visibility or playability.
+- Next action: use the next ordinary mobile-readiness run to capture camera/zoom/seed/geometry diagnostics, then assess true visibility in an ordinary live route and measure target-device performance. Keep worldVisibility unverified until direct evidence supports it.
 - Awaiting user: no engineering choice; final visual/experience acceptance remains open.
 
 ## SF-PUBLISH
 - Outcome: coherent tested increments delivered as verified GitHub commits and draft PRs without overwriting newer work.
-- State: open; prior frozen Orchard recovery is on recovery/orchard-reconcile-frozen-f564. Current player-route feature is published in draft PR391 at013fd560793fe16ebfa3a15416950af5b545268a. Thermal/tow successor is separately tested. GPU PR383 remains draft under reviewer HOLD.
+- State: open; prior frozen Orchard recovery remains on its recovery branch. Draft PR391 is open and unmerged; its latest published increments cover player-route, thermal/tow, shock, readout, forecast transport, and Alin voice. The camera witness is a diagnostic-only successor, not acceptance. GPU PR383 remains draft under reviewer HOLD.
 - Owner: publication owner, one writer per branch.
-- Evidence: recovery commit56ab4abb59d80694b452e2396fe86976d2ada5eb; GPU PR383 headb9bfe3f7941191b7d49f84a3dfdcda9de6551a21; player-route receipt records tested source baseline.
-- Next action: verify new feature branch commit and draft PR, inspect CI, fix attributable failures, preserve review gates.
+- Evidence: verified PR391 commits and public source/test manifests; separate recovery commit and manifest; GPU PR383 headb9bfe3f7941191b7d49f84a3dfdcda9de6551a21; no merge or acceptance claim.
+- Next action: verify the diagnostic-only commit and current draft PR head; inspect the new mobile artifact and full CI, fix only failures attributable to this work, and preserve review/acceptance gates.
 - Awaiting user: no new permission request recorded here; explicit platform confirmations, if any, remain outside this source register.
 
 ## SF-RECOVER

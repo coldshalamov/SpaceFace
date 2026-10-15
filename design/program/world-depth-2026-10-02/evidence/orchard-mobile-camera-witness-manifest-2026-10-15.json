@@ -1,0 +1,27 @@
+{
+  "fileCount": 3,
+  "status": "6/6 focused,37/37 mobile neighbors,independent6/6 plus malformed/frozen/cross-realm checks pass; browser capture pending",
+  "files": [
+    {
+      "path": "scripts/probe-deployed-mobile.mjs",
+      "bytes": 13952,
+      "sha256": "1e0a08d8a52648f9ab3b2b2038d2547923b488497a5334f74b73ab82d49d544b",
+      "gitBlob": "9ed9bf70f1d576b2f9ddac2b31d02d8911fbbc8c",
+      "baseBlob": "72e4f3660d097dd37688a9edf738796c8f3dec7c"
+    },
+    {
+      "path": "scripts/lib/mobileCameraWitness.mjs",
+      "bytes": 7782,
+      "sha256": "610d1dab3756022492e16d348ae60cf1ee74885f7296af30c7cad1283a28d4a7",
+      "gitBlob": "2ef0b9f681aefdaf05227ef41fd264ae242f4b50",
+      "baseBlob": null
+    },
+    {
+      "path": "test/mobile-camera-witness.test.mjs",
+      "bytes": 4486,
+      "sha256": "d98ab9519488838c7997be22ad40ff67db8a1de62754ad1f2d6f6327cd5259bf",
+      "gitBlob": "01a87d873e4f2276c5028e39918906c81d81f7e6",
+      "baseBlob": null
+    }
+  ]
+}
