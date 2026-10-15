@@ -841,7 +841,7 @@ export const asteroidScreen = {
     }
     paintEmptyRock();
     const onEmptyResize = () => {
-      if (!emptyLayer.hidden && !state.drill) paintEmptyRock();
+      if (!emptyLayer.hidden && !state.drill && stage.clientWidth > 0 && stage.clientHeight > 0) paintEmptyRock();
     };
     window.addEventListener('resize', onEmptyResize);
 
