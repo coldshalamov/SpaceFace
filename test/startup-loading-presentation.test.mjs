@@ -291,7 +291,12 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     assert.equal(a.overlay.classList.contains('hidden'), true, 'the veil lifts once the first playable paint landed');
     assert.equal(a.state.render.veilLiftReason, 'first-draw');
     assert.equal(a.state.render.veilStage, undefined, 'a quick first draw never shows the stage label');
-    assert.equal(a.state.render.flightVeilHoldsSim, false, 'the lift releases the sim');
+    assert.equal(a.state.render.flightVeilHoldsSim, true,
+      'the sim stays held through the fade so the first steerable frame is the spawn state');
+    t.mock.timers.tick(600); pump(1);
+    assert.equal(a.state.render.flightVeilHoldsSim, true, 'held until a frame is presented after the fade');
+    a.state.render.renderer.info.render.frame += 1; pump(1);
+    assert.equal(a.state.render.flightVeilHoldsSim, false, 'a presented frame after the fade releases the sim');
     a.presenter.destroy();
 
     const b = run();
@@ -304,7 +309,8 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
     t.mock.timers.tick(200); pump(1);
     assert.equal(b.overlay.classList.contains('hidden'), true, 'the cap lifts the veil so it cannot stick');
     assert.equal(b.state.render.veilLiftReason, 'cap');
-    assert.equal(b.state.render.flightVeilHoldsSim, false, 'a capped lift releases the sim too');
+    t.mock.timers.tick(600 + 1000); pump(1);
+    assert.equal(b.state.render.flightVeilHoldsSim, false, 'a capped lift releases the sim too (bounded fallback)');
     assert.ok(infos.some((x) => /first-draw cap/.test(String(x[0]))), 'a capped lift is logged');
     b.presenter.destroy();
   } finally {

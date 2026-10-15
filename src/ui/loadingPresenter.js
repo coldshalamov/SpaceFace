@@ -11,7 +11,9 @@ const NOOP = { show() {}, hide() {}, destroy() {} };
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
 export const ADMISSION_QUIET_MS = 400;
-export const ADMISSION_DRAIN_CAP_MS = 5000;
+export const ADMISSION_DRAIN_CAP_MS = 3000;
+// Needle settle before the shell starts its fade.
+export const REVEAL_FINISH_MS = 200;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
 // Sets the flight-veil sim hold and tells the presentation runner at once, so a worker-owned sim
@@ -126,6 +128,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   });
 
   function show(stage = DEFAULT_STAGE) {
+    // A new load must never inherit a held sim from the previous reveal's fade.
+    if (pendingRelease) releaseHoldNow();
     if (disposed) return;
     cancelRevealWait();
     if (hideTimer !== null) clearTimeout(hideTimer);
@@ -151,8 +155,35 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     art.updateProgress({ ...stage, progress: ring?.snapshot().shown ?? Number(stage.progress) ?? 0 });
   }
   /** completed=false on error/timeout/menu cancellation: never celebrate a failed load as 100%. */
-  function hide({ completed = true } = {}) {
+  // The sim stays held through the veil fade and until a real frame has been presented after it,
+  // so the first frame the player can see and steer is the spawn state (the fade itself covers
+  // the playfield). A bounded fallback releases it even if no frame ever lands.
+  let pendingRelease = null;
+  function releaseHoldNow() {
+    if (pendingRelease) {
+      if (pendingRelease.raf !== null) cancelRaf?.(pendingRelease.raf);
+      clearTimeout(pendingRelease.fallback);
+      pendingRelease = null;
+    }
     setFlightVeilHold(state?.render, false);
+  }
+  function releaseHoldAfterPresentedFrame() {
+    if (!pendingRelease) return;
+    const base = frameNow();
+    if (base === null || !raf) { releaseHoldNow(); return; }
+    const check = () => {
+      if (!pendingRelease) return;
+      pendingRelease.raf = null;
+      if (frameNow() > base) { releaseHoldNow(); return; }
+      pendingRelease.raf = raf(check);
+    };
+    pendingRelease.raf = raf(check);
+  }
+  function hide({ completed = true, releaseAfterFade = false } = {}) {
+    if (!releaseAfterFade || disposed) releaseHoldNow();
+    else if (!pendingRelease) {
+      pendingRelease = { raf: null, fallback: setTimeout(releaseHoldNow, hideDelayMs + 1000) };
+    }
     if (disposed) return;
     cancelRevealWait(); clearWork(); accumulator = null; session++;
     if (completed) ring?.finish();
@@ -166,6 +197,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     hideTimer = setTimeout(() => {
       hideTimer = null;
       if (overlay.classList.contains('hidden')) overlay.style.display = 'none';
+      releaseHoldAfterPresentedFrame();
     }, hideDelayMs);
   }
   const frameNow = () => {
@@ -234,12 +266,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       if (frameNow() > baseline && (capped || (firstDrawSubmitted() && admissionsSettled()))) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
         if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
-        // Release the sim with the lift itself, not after the fade: the first visible frame plays.
-        setFlightVeilHold(render, false);
+        // The sim stays held through the fade (hide releases it after a presented frame).
         cancelRevealWait(); ring?.finish();
         // A small, bounded finish interval lets the needle settle before removing the shell.
-        if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide(), 450);
-        else hide(); // no decorative instrument to finish on minimal shells
+        if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide({ releaseAfterFade: true }), REVEAL_FINISH_MS);
+        else hide({ releaseAfterFade: true }); // no decorative instrument to finish on minimal shells
         return;
       }
       if (raf && revealRaf === null) revealRaf = raf(() => poll('raf'));
@@ -269,7 +300,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     art.updateProgress({ id: 'boot-state', progress: ring?.snapshot().shown || .14 });
   }
   return { show, hide, destroy() {
-    setFlightVeilHold(state?.render, false);
+    releaseHoldNow();
     if (disposed) return;
     for (const unsub of unsubs) if (typeof unsub === 'function') unsub();
     unsubscribePaint(); unsubscribeWork(); cancelRevealWait(); clearWork();
