@@ -35,10 +35,12 @@ const SAMPLE_TICKS = 240;
 //   * 16 are REDUCED-tier neighbour residents (Helios Prime 7, Pallas Drift 9): the M2a residency
 //     plan keeps the stations, gates and rocks of adjacent sectors materialized 10-17k WU from
 //     the pocket, so they sit in the same list but are not part of the Ceres pocket itself.
-// No worldRecordId is duplicated, every FULL Ceres entity is within ~5.6k WU of the player, and
-// the "invisible" Second Measure collision-envelope wrecks are the site's solid mass-1e9 static
-// colliders (worldSiteRuntime.js: _noMesh only hides the mesh) - physics, not waste. So the
-// number is authored content the old pin predates; the pin becomes the budget below.
+// No worldRecordId is duplicated and every FULL Ceres entity is within ~5.6k WU of the player.
+// The invisible Second Measure bodies are not waste either (checked on the live entities): the 5
+// collision-envelope wrecks are collides:true static physicsBody colliders at mass 1e9 (_noMesh
+// only hides the mesh), and the 3 clamp components are mesh-less but targetable brace/release
+// points (worldSiteTargetable). So the number is authored content the old pin predates; the pin
+// becomes the budget below.
 //
 // HOW TO UPDATE: when authored content legitimately grows the pocket, raise the matching row's
 // `max`, and extend its `from` text with what was added (name the content, not just the count).
@@ -55,7 +57,7 @@ const CENSUS_BUDGET = Object.freeze({
     station: { max: 6, from: 'Ceres Refinery, Belt Outpost, and the 4 sector gates (Helios Prime, Tethys Junction, Pallas Drift, Hyperion Cut)' },
     asteroid: { max: 6, from: 'the geology/activity set on fields f_ceres_1, f_ceres_2, f_ceres_3 (the other ~320 rocks live in asteroidField)' },
     fx: { max: 21, from: '8 authored POI markers (Abandoned Driller, Refinery Flare Rack, Inbound Weigh Pin, Throughline Weigh Beacon, 3 Kettle Line, Rookery Prospect), 5 place-dressing pieces (Throughline Distress Beacon, Disabled Refinery Client, Throughline Bait Wreck, Cathedral Grave Shard, Refinery Cargo Staging Pod), 3 world-site roots (Cinder Sluice, Second Measure, Wreck Cathedral), 4 spectrum landmarks (reflector, relay, gallery rock, beacon), 1 reactive-matter crane' },
-    wreck: { max: 14, from: 'The Long Berth one-off, Second Measure shipbreak (3 clamp components + 5 collision-envelope colliders + 3 released payload wrecks = 11), Ceres Refinery Tender, 1 debris wreck' },
+    wreck: { max: 14, from: 'The Long Berth one-off, Second Measure shipbreak (3 mesh-less targetable clamp components + 5 invisible solid collision-envelope colliders + 3 released payload wrecks = 11), Ceres Refinery Tender, 1 debris wreck' },
     fauna: { max: 12, from: 'closed_refinery fauna cast (11 scavengers + 1 sessile)' },
     payload: { max: 6, from: '4 reactive-matter payloads (iron, spar, spring, fuel), 1 yard tug lot, 1 Tally-3 claim crate' },
     poi: { max: 4, from: 'Red Kite course marks (timing buoy + 3 gates)' },
@@ -77,7 +79,7 @@ const CENSUS_BUDGET = Object.freeze({
 // that puts bodies in the quiet pocket must be added here with its attribution, or it fails.
 const WORLD_SITE_BUDGET = Object.freeze({
   world_site_ceres_cinder_sluice: { max: 1, from: 'Cinder Sluice root marker (its reactive-matter payloads are budgeted under FULL payload)' },
-  world_site_ceres_second_measure: { max: 12, from: 'Second Measure shipbreak: root + 3 clamp components + 5 collision-envelope colliders + 3 released payload wrecks' },
+  world_site_ceres_second_measure: { max: 12, from: 'Second Measure shipbreak: root + 3 mesh-less targetable clamp components + 5 invisible solid collision-envelope colliders + 3 released payload wrecks' },
   world_site_wreck_cathedral: { max: 1, from: 'Wreck Cathedral root marker' },
 });
 
