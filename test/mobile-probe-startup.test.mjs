@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { devices } from 'playwright';
 
 const source = readFileSync(new URL('../scripts/probe-deployed-mobile.mjs', import.meta.url), 'utf8');
 const flightSource = source.slice(source.indexOf('  const waitForFlight = '), source.indexOf('\n  await waitForMenu();'));
@@ -64,6 +65,44 @@ test('a new post-click save rejection fails promptly with the existing hidden fe
   assert.equal(result.now, 2000);
   assert.deepEqual([...result.report.continueRejection.feedback], [rejected.toastLive]);
   assert.deepEqual([...result.report.continueRejection.appendedEvents], ['save:error']);
+});
+
+test('requested iPhone touch profile is reported against effective runtime capabilities', () => {
+  const profile = devices['iPhone 14'];
+  assert.equal(profile.isMobile, true);
+  assert.equal(profile.hasTouch, true);
+  assert.match(source, /const mobileDeviceName = 'iPhone 14'/);
+  assert.match(source, /browser\.newContext\(\{ \.\.\.mobileDeviceProfile/);
+  assert.doesNotMatch(source, /navigator\.maxTouchPoints\s*=|Object\.defineProperty\([^\n]*maxTouchPoints/,
+    'the probe observes capabilities without manufacturing browser identity');
+
+  const start = source.indexOf('function recordMobileCapabilities(');
+  const end = source.indexOf('\n// Concrete GL failures', start);
+  const report = { mobileProfile: { requested: { hasTouch: true, isMobile: true }, effective: null, mismatches: [] },
+    acceptance: { mobileCapabilities: 'pending' } };
+  runInNewContext(`${source.slice(start, end)}\nrecordMobileCapabilities`, { report })({
+    touchPoints: 0, touchEvents: true, coarse: true, anyCoarse: true, mobileUserAgent: true,
+    userAgent: 'iPhone UA', platform: 'iPhone', width: 390, height: 664, dpr: 3,
+  });
+  assert.equal(report.acceptance.mobileCapabilities, 'mismatch');
+  assert.deepEqual([...report.mobileProfile.mismatches],
+    ['requested touch support but navigator.maxTouchPoints is not positive']);
+  assert.equal(report.mobileProfile.effective.maxTouchPoints, 0);
+});
+
+test('bus-free public recovery text is retained in startup failure diagnostics', async () => {
+  const baseline = [];
+  const click = { action: 'continue', isTrusted: true, disabled: false, ariaDisabled: null,
+    at: 100, simLaneEventsBeforeClick: baseline };
+  const rejected = { ...state('menu'), simLaneEvents: ['save:error'],
+    startupObserver: { busAvailable: false, events: [] },
+    alerts: ['Slot quick is corrupt or not a SpaceFace save'],
+    toastLive: 'Slot quick is corrupt or not a SpaceFace save', toasts: [] };
+  const result = await replay([rejected], { click, baseline });
+  assert.match(result.error.message, /Slot quick is corrupt or not a SpaceFace save/);
+  assert.deepEqual([...result.report.continueRejection.feedback],
+    ['Slot quick is corrupt or not a SpaceFace save']);
+  assert.equal(result.report.continueRejection.debugBusAvailable, false);
 });
 
 test('historical save errors and unaccepted clicks cannot become a new Continue rejection', async () => {

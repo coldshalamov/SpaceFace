@@ -17,11 +17,16 @@ const drawErrorMode = process.env.MOBILE_PROBE_DRAW_ERRORS || 'off';
 const drawErrorProbe = ['1', 'on-error'].includes(drawErrorMode);
 const headed = process.env.MOBILE_PROBE_HEADED === '1';
 const channel = process.env.MOBILE_PROBE_CHANNEL || null;
+const mobileDeviceName = 'iPhone 14';
+const mobileDeviceProfile = devices[mobileDeviceName];
 if (channel && engine !== 'chromium') throw new Error('MOBILE_PROBE_CHANNEL is supported only for Chromium');
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
   launch: { headless: !headed, channel }, drawErrorProbe, drawErrorMode,
-  acceptance: { startupAndControls: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
+  mobileProfile: { requested: { name: mobileDeviceName, isMobile: mobileDeviceProfile.isMobile === true,
+    hasTouch: mobileDeviceProfile.hasTouch === true, viewport: mobileDeviceProfile.viewport,
+    deviceScaleFactor: mobileDeviceProfile.deviceScaleFactor }, effective: null, mismatches: [] },
+  acceptance: { startupAndControls: 'pending', mobileCapabilities: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
     rendererHealth: 'pending', worldVisibility: 'unverified' },
   responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
   startupErrors: [], runtimeMessages: [], rendererErrors: [], rendererErrorCount: 0,
@@ -29,6 +34,27 @@ const report = { url: url.href, engine, startedAt: new Date().toISOString(), pas
 const pendingDiagnosticReads = new Set();
 let activeRoute = 'new-game';
 let actorStage = 'boot-menu';
+function recordMobileCapabilities(capabilities) {
+  if (!capabilities) return;
+  const mismatches = [];
+  if (report.mobileProfile.requested.hasTouch && !(Number(capabilities.touchPoints) > 0))
+    mismatches.push('requested touch support but navigator.maxTouchPoints is not positive');
+  if (report.mobileProfile.requested.isMobile && capabilities.mobileUserAgent !== true)
+    mismatches.push('requested mobile profile but the effective user agent is not mobile');
+  report.mobileProfile.effective = {
+    maxTouchPoints: capabilities.touchPoints,
+    touchEvents: capabilities.touchEvents,
+    coarsePointer: capabilities.coarse,
+    anyCoarsePointer: capabilities.anyCoarse,
+    mobileUserAgent: capabilities.mobileUserAgent,
+    userAgent: capabilities.userAgent,
+    platform: capabilities.platform,
+    viewport: { width: capabilities.width, height: capabilities.height },
+    deviceScaleFactor: capabilities.dpr,
+  };
+  report.mobileProfile.mismatches = mismatches;
+  report.acceptance.mobileCapabilities = mismatches.length ? 'mismatch' : 'passed';
+}
 // Concrete GL failures only: ordinary warnings and intentional preview-context disposal are not gates.
 const rendererError = text => /(?:WebGL|GL_INVALID|CONTEXT_LOST_WEBGL)/i.test(text)
   && /(?:drawElements.*(?:Vertex buffer is not big enough|out of bounds)|INVALID_.*(?:generateMipmap|mipmap|texture|framebuffer)|(?:generateMipmap|mipmap|texture|framebuffer).*(?:INVALID_|incomplete|not (?:valid|renderable)|unsupported)|OUT_OF_MEMORY)/i.test(text);
@@ -158,6 +184,8 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
     flight: document.documentElement.dataset.sfMobileFlight || null,
     capabilities: { coarse: matchMedia('(pointer: coarse)').matches, anyCoarse: matchMedia('(any-pointer: coarse)').matches,
       touchPoints: navigator.maxTouchPoints ?? null, touchEvents: 'ontouchstart' in window,
+      mobileUserAgent: navigator.userAgentData?.mobile ?? /(?:Mobile|iPhone|iPad|Android)/i.test(navigator.userAgent),
+      userAgent: navigator.userAgent, platform: navigator.platform,
       width: innerWidth, height: innerHeight, dpr: devicePixelRatio, cores: navigator.hardwareConcurrency ?? null },
     loading: [...document.querySelectorAll('[data-loading-label], [data-loading-detail]')].filter(shown).map(e => e.textContent),
     screens: [...document.querySelectorAll('[data-screen]')].filter(shown).map(e => e.dataset.screen),
@@ -190,6 +218,7 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
 }));
 const snapshot = async (page, includeCamera = false) => {
   const result = await snapshotBase(page);
+  recordMobileCapabilities(result.capabilities);
   if (includeCamera) {
     const observerStartedAt = performance.now();
     result.cameraWitness = await boundedBrowserRead(() => page.evaluate(collectMobileCameraWitness))
@@ -219,7 +248,7 @@ try {
   browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: !headed,
     ...(channel ? { channel } : {}),
     ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio'] } : {}) });
-  const context = await browser.newContext({ ...devices['iPhone 14'], serviceWorkers: 'block',
+  const context = await browser.newContext({ ...mobileDeviceProfile, serviceWorkers: 'block',
     // Official Vercel E2E header: exclude preview-only feedback UI, not game code
     // or deployment protection. Production visitors do not normally load this toolbar.
     extraHTTPHeaders: { 'x-vercel-skip-toolbar': '1' } });
@@ -389,6 +418,8 @@ try {
   };
   const waitForFlight = async (route, launchAt) => {
     const label = route === 'continue' ? 'Continue' : 'New Game';
+    const publicRecoveryFeedback = state => [...new Set([...(state?.alerts || []), state?.toastLive,
+      ...(state?.toasts || [])].map(text => String(text || '').trim()).filter(Boolean))];
     let observations = 0;
     let leftMenu = false;
     const click = report.continueClick;
@@ -425,16 +456,22 @@ try {
       }
       if (acceptedContinue && (appendedEvents.includes('save:error')
           || state.startupObserver?.events?.some(event => event.type === 'save:error' && event.at > click.at))) {
-        const feedback = [...new Set([state.toastLive, ...(state.toasts || [])].filter(Boolean))];
-        report.continueRejection = { elapsedMs: Date.now() - launchAt, feedback, appendedEvents };
+        const feedback = publicRecoveryFeedback(state);
+        report.continueRejection = { elapsedMs: Date.now() - launchAt, feedback, appendedEvents,
+          debugBusAvailable: state.startupObserver?.busAvailable === true };
         throw new Error(`Continue received a new save:error after its accepted click${feedback.length
           ? ': ' + feedback.join(' | ') : '; save feedback unavailable'}`);
       }
       const consoleRows = report.console.filter(entry => entry.route === route);
       if (consoleRows.some(entry => /\[SpaceFace\].*(?:startup failed|save restore failed)/.test(entry.text))
           || state.startupObserver?.events?.some(event => event.type === 'game:startFailed'
-            || (route !== 'continue' && event.type === 'save:error' && event.reason === 'load_failed')))
-        throw new Error(`${label} reported a startup-readiness failure; see structured errors and failed asset URLs`);
+            || (route !== 'continue' && event.type === 'save:error' && event.reason === 'load_failed'))) {
+        const feedback = publicRecoveryFeedback(state);
+        report.startupFailureObservation = { route, elapsedMs: Date.now() - launchAt, feedback,
+          debugBusAvailable: state.startupObserver?.busAvailable === true };
+        throw new Error(`${label} reported a startup-readiness failure${feedback.length
+          ? `: ${feedback.join(' | ')}` : '; no visible public recovery text was found'}; see structured errors and failed asset URLs`);
+      }
       if (/SimulationRunner is closed/.test(state.runtime?.frame?.lastFrameError || '')
           || consoleRows.some(entry => /SimulationRunner is closed|PRESENTATION STALLED/.test(entry.text)))
         throw new Error('Game reported a terminal simulation or presentation failure; see runtime and console');
@@ -444,8 +481,13 @@ try {
       if (state.flight === '1' && !state.loading.length
           && Number.isFinite(state.runtime?.post?.firstPlayableFrameAt)) return Date.now() - launchAt;
       if (leftMenu && mode === 'menu' && !state.loading.length
-          && Date.now() - launchAt > 5000 && await visible(page, menu))
-        throw new Error(`${label} returned to the main menu without entering flight`);
+          && Date.now() - launchAt > 5000 && await visible(page, menu)) {
+        const feedback = publicRecoveryFeedback(state);
+        report.returnedToMenu = { route, elapsedMs: Date.now() - launchAt, feedback,
+          debugBusAvailable: state.startupObserver?.busAvailable === true };
+        throw new Error(`${label} returned to the main menu without entering flight${feedback.length
+          ? `: ${feedback.join(' | ')}` : '; no visible public recovery text was found'}`);
+      }
     }
     throw new Error(`${label} did not reach mobile flight UI with the loading shell cleared within five minutes`);
   };
@@ -569,7 +611,11 @@ try {
     if (report.responses.some(critical)) throw new Error('Runtime script, model or decoder returned an HTTP error');
     report.acceptance.continue = 'passed';
   }
-  report.passed = true; // Renderer health is applied below; world visibility remains unverified.
+  report.passed = report.acceptance.mobileCapabilities === 'passed'; // Renderer health is applied below; world visibility remains unverified.
+  if (report.acceptance.mobileCapabilities === 'mismatch') {
+    report.failure = `Mobile device capability mismatch: ${report.mobileProfile.mismatches.join('; ')}`;
+    process.exitCode = 1;
+  }
 } catch (error) {
   report.failedStage = actorStage;
   if (activeRoute === 'continue') report.acceptance.continue = 'failed';
