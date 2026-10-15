@@ -53,6 +53,11 @@ import { racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
 import { startSimulationWorkerProfile } from './lib/workerCpuProfile.mjs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
 import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
+import {
+  flightStartFailureError,
+  installFlightStartFailureObserver,
+  normalizeFlightStartFailure,
+} from './lib/flightStartFailure.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -757,6 +762,50 @@ async function installLaunchObservers(page) {
   });
 }
 
+// The public launch boundary reports a structured game:startFailed event before the state returns
+// to the menu. Keep this observer separate from the loading-stage recorder so each launch attempt
+// can be armed before its public control is clicked and disposed when the route reaches flight.
+// Passing the self-contained installer directly avoids adding a diagnostic module request to the
+// measured page, including when a historical source overlay predates this helper.
+async function installFlightFailureObserver(page) {
+  const result = await page.evaluate(installFlightStartFailureObserver).catch(() => ({ installed: false }));
+  if (!result.installed) log('game:startFailed observer unavailable; preserving the normal flight deadline');
+  return result;
+}
+
+async function disposeFlightFailureObserver(page) {
+  await page.evaluate(() => {
+    try { globalThis.__SF_PROFILE_FLIGHT_FAILURE_WATCH__?.dispose?.(); } catch { /* route teardown */ }
+  }).catch(() => {});
+}
+
+function flightWaitAbortError(signal) {
+  if (signal?.reason instanceof Error) return signal.reason;
+  const error = new Error('flight wait cancelled after the launch route settled');
+  error.name = 'AbortError';
+  return error;
+}
+
+async function waitForFlightPoll(page, pollMs, signal) {
+  if (!signal) return page.waitForTimeout(pollMs);
+  if (signal.aborted) throw flightWaitAbortError(signal);
+  await new Promise((resolve, reject) => {
+    let timer = setTimeout(() => {
+      timer = null;
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, pollMs);
+    function onAbort() {
+      if (timer == null) return;
+      clearTimeout(timer);
+      timer = null;
+      signal.removeEventListener('abort', onAbort);
+      reject(flightWaitAbortError(signal));
+    }
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 async function collectLaunchObservers(page) {
   return page.evaluate(() => {
     const trace = window.__SF_PROFILE_LAUNCH__;
@@ -822,17 +871,24 @@ async function clickNewGameAndLaunch(page) {
   }
 }
 
-async function waitForFlight(page, timeoutMs, pollMs) {
+async function waitForFlight(page, timeoutMs, pollMs, { signal = null } = {}) {
   const deadline = Date.now() + timeoutMs;
   let mode = null;
   while (Date.now() < deadline) {
-    mode = await page
+    if (signal?.aborted) throw flightWaitAbortError(signal);
+    const snapshot = await page
       .evaluate(() => {
-        try { return window.__SF_WITNESS__?.verdict?.()?.facts?.mode ?? null; } catch { return null; }
+        let mode = null;
+        let failure = null;
+        try { mode = window.__SF_WITNESS__?.verdict?.()?.facts?.mode ?? null; } catch { /* witness is best-effort */ }
+        try { failure = window.__SF_PROFILE_FLIGHT_FAILURE_WATCH__?.read?.() || null; } catch { /* route teardown */ }
+        return { mode, failure };
       })
-      .catch(() => null);
+      .catch(() => ({ mode: null, failure: null }));
+    mode = snapshot.mode;
+    if (snapshot.failure) throw flightStartFailureError(snapshot.failure, mode);
     if (mode === 'flight') return Date.now();
-    await page.waitForTimeout(pollMs);
+    await waitForFlightPoll(page, pollMs, signal);
   }
   throw new Error(`never entered flight (mode=${mode})`);
 }
@@ -870,10 +926,31 @@ async function installProfileFootageSource(page) {
 }
 
 async function runSteadyFlightProfile(page, cdp) {
-  if (RACING) await racingToFlight(page, (name, ok, detail) => log(`${name}: ${ok} ${detail}`));
-  else if (CRUCIBLE || GAUNTLET) await launchCrucible(page);
-  else await clickNewGameAndLaunch(page);
-  await waitForFlight(page, 180_000, 1000);
+  await installFlightFailureObserver(page);
+  try {
+    // racingToFlight owns a six-minute readiness deadline. Race it against the same event-aware
+    // reader so a real start failure exits immediately without shortening the genuine route wait.
+    if (RACING) {
+      const flightWaitAbort = new AbortController();
+      const route = racingToFlight(page, (name, ok, detail) => log(`${name}: ${ok} ${detail}`));
+      try {
+        await Promise.race([
+          route.then(() => Date.now()),
+          waitForFlight(page, 600_000, 1000, { signal: flightWaitAbort.signal }),
+        ]);
+      } finally {
+        // Promise.race does not cancel the losing reader. Abort its poll as soon as the route
+        // settles so a rejected route cannot keep evaluating a closing page for six minutes.
+        flightWaitAbort.abort();
+      }
+    } else {
+      if (CRUCIBLE || GAUNTLET) await launchCrucible(page);
+      else await clickNewGameAndLaunch(page);
+      await waitForFlight(page, 180_000, 1000);
+    }
+  } finally {
+    await disposeFlightFailureObserver(page);
+  }
   const launchedSeed = await readLaunchedRunSeed(page);
   const expectedSeed = CRUCIBLE || GAUNTLET ? 4242 : RACING ? null : FIXED_SEED;
   if (expectedSeed != null && launchedSeed !== expectedSeed) throw new Error(`Universe seed mismatch: requested ${expectedSeed}, launched ${launchedSeed}`);
@@ -1170,6 +1247,8 @@ async function runLaunchProfile(page, cdp, profileNote) {
     .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
   if (MENU_DWELL_MS > 0) { log(`reading the title menu for ${MENU_DWELL_MS} ms first`); await page.waitForTimeout(MENU_DWELL_MS); }
   await installLaunchObservers(page);
+  await installFlightFailureObserver(page);
+  try {
   const heapMarks = [];
   const markHeap = async (label) => {
     const used = await page.evaluate(() => (performance.memory ? performance.memory.usedJSHeapSize : null)).catch(() => null);
@@ -1231,6 +1310,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
   if (TRACE) writeTraceSummary(traceFile, clockSync, timeline, trace.stages);
   log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
   log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);
+  } finally {
+    await disposeFlightFailureObserver(page);
+  }
 }
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -1315,8 +1397,18 @@ try {
       mode: window.SF?.state?.mode,
     }));
   } catch (_) { /* the failed runtime may have closed its page */ }
+  let flightFailure = error?.flightFailure || null;
+  if (!flightFailure) {
+    try {
+      const rawFlightFailure = await diagnosticPage?.evaluate(() =>
+        window.__SF_PROFILE_FLIGHT_FAILURE_WATCH__?.read?.() || null);
+      flightFailure = rawFlightFailure ? normalizeFlightStartFailure(rawFlightFailure) : null;
+    } catch (_) { /* the failed runtime may have closed its page */ }
+  }
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  fs.writeFileSync(path.join(OUT_DIR, 'failure.json'), JSON.stringify({ error: String(error?.stack || error), startupIssues, route }, null, 2));
+  fs.writeFileSync(path.join(OUT_DIR, 'failure.json'), JSON.stringify({
+    error: String(error?.stack || error), startupIssues, route, flightFailure,
+  }, null, 2));
   throw error;
 } finally {
   try {
