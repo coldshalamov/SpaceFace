@@ -1,6 +1,11 @@
 // 342 — Vael station screen. A warden pair interdicts the checkpoint approach:
 // lawful security forcing a decision, not pirates. Inverted gates (minimum
 // security, not maximum) put it in policed space where ambushes rarely go.
+// Gates used to demand tier 2 AND security >= 0.6, and no border_checkpoint /
+// civilian_core host satisfies both (tier-2 hosts run 0.30-0.35 security; the
+// 0.6+ hosts are all tier 0-1) — the shape could not schedule anywhere. The
+// security floor is the authored intent and stays; the tier floor drops to 1 so
+// the policed core hosts it (Ceres 0.72, Tethys 0.65, Dione 0.68).
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 342;
@@ -16,7 +21,7 @@ export const trigger = deepFreeze({
   proximity: true,
   gates: {
     minSecurity: 0.6,
-    minSectorTier: 2,
+    minSectorTier: 1,
     storyBeatMin: 1,
   },
 });
