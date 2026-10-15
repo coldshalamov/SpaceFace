@@ -186,9 +186,9 @@ export function installFlightFootage(bus, {
   // The normal recorder has one readback worker. An explicit value of 2 creates two independent
   // worker/canvas contexts so the capture candidate can overlap at most two bounded readbacks.
   readbackConcurrency = 1,
-  // WebCodecs is an explicit experiment arm. JPEG remains the default and the fallback when the
-  // host or encoder cannot provide a usable codec.
-  captureBackend = 'jpeg',
+  // Prefer the measured WebCodecs path in production. JPEG remains the bounded fallback when the
+  // host or encoder cannot provide a usable codec, and callers can still request it explicitly.
+  captureBackend = 'webcodecs',
 } = {}) {
   active?.dispose();
   if (typeof document === 'undefined' || typeof stateOf !== 'function') { active = null; return null; }
@@ -691,7 +691,7 @@ export function installFlightFootage(bus, {
       encoderTried = true;
       createEncoderSlot();
     }
-    if (requestedCaptureSource === 'presented' && source && !source.captureStream) {
+    if (requestedCaptureSource === 'presented' && source) {
       const state = stateOf();
       if (attachPresentedHook(state, source)) {
         activeCaptureSource = 'presented';
