@@ -40,6 +40,7 @@ import {
 } from '../data/alienEcology.js';
 import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
 import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
+import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -1178,6 +1179,7 @@ export function tickAlienEcology(world, dt) {
     }
 
     const predatorAlive = predatorsOn.some((f) => f.data.ecology.siteId === site.siteId);
+    applySiteFoodWeb(rec, fauna, site.siteId, Math.floor(Number(now) || 0));
     // stealthMult is a pure function of state — fittings and simTime are invariant for the
     // whole tick — so it is hoisted out of the per-fauna call (each call otherwise rebuilds
     // the fitted-module-def array per fauna).
@@ -1219,6 +1221,37 @@ function exposureFilterMult(state) {
     }
     return mult;
   } catch (_) { return 1; }
+}
+
+export function applySiteFoodWeb(rec, fauna, siteId, stepAt) {
+  if (!rec || !siteId) return null;
+  let hasPredator = false;
+  let hasPrey = false;
+  let hasScavenger = false;
+  const members = [];
+  for (const e of fauna || []) {
+    const eco = e && e.data && e.data.ecology;
+    if (!eco || eco.siteId !== siteId || e.alive === false) continue;
+    const species = faunaSpeciesById(eco.speciesId);
+    const role = species && species.role;
+    if (role !== 'hunter' && role !== 'grazer' && role !== 'scavenger') continue;
+    if (role === 'hunter') hasPredator = true;
+    else if (role === 'grazer') hasPrey = true;
+    else hasScavenger = true;
+    members.push({ eco, role });
+  }
+  if (!hasPredator && !hasPrey && !hasScavenger) return rec.foodWeb || null;
+  const prev = normalizeFoodWeb(rec.foodWeb);
+  const at = Number.isFinite(stepAt) ? Math.floor(stepAt) : null;
+  if (at != null && prev.stepAt === at) return rec.foodWeb;
+  const next = stepFoodWeb({ ...prev, hasPredator, hasPrey, hasScavenger });
+  rec.foodWeb = { ...next, stepAt: at };
+  for (const member of members) {
+    if (member.role === 'hunter') member.eco.web = rec.foodWeb.predator;
+    else if (member.role === 'grazer') member.eco.web = rec.foodWeb.prey;
+    else member.eco.web = rec.foodWeb.scavenger;
+  }
+  return rec.foodWeb;
 }
 
 function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, sectorId,
@@ -1764,6 +1797,8 @@ export function deserializeAlienEcologyState(state, data) {
         bloomAt: Number.isFinite(rec.bloomAt) ? rec.bloomAt : -1,
         beats: rec.beats && typeof rec.beats === 'object' ? { ...rec.beats } : {},
         deadFauna: rec.deadFauna && typeof rec.deadFauna === 'object' ? { ...rec.deadFauna } : {},
+        ...(rec.foodWeb && typeof rec.foodWeb === 'object'
+          ? { foodWeb: normalizeFoodWeb(rec.foodWeb) } : {}),
         ...(siteId === VEIL_NURSERY_ID && rec.nursery && typeof rec.nursery === 'object'
           ? { nursery: JSON.parse(JSON.stringify(rec.nursery)) } : {}),
         siteC: Number.isFinite(rec.siteC) ? rec.siteC : 0,
