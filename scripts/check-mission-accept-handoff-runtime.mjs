@@ -165,10 +165,8 @@ try {
   // Go to Contracts, select the seeded offer, and Accept & Track it.
   await domClick(page, '[data-screen="station"] .sx-dock [data-nav="contracts"]');
   await waitForVisible(page, '[data-screen="station"] .sx-ct', 8000, 'Contracts board');
-  // On the worker lane the seeded offer crosses back on the missions domain mirror —
-  // a cold-tier leaf that re-signs on a multi-second cadence. Wait for the mirrored
-  // board to carry the offer before expecting the row; the main lane resolves on
-  // the first poll since the mutation is in-process.
+  // The board owner's posting event publishes the changed missions mirror in its reply.
+  // Wait for that authoritative row before expecting its rendered control.
   await page.waitForFunction((sid) => {
     const b = window.SF && window.SF.state && window.SF.state.missions && window.SF.state.missions.boards;
     return !!(b && b[sid]
@@ -214,33 +212,14 @@ try {
   // tracked mission — was working the whole time. The selector is corrected; every downstream
   // assertion below is unchanged, and the disabled-state check is new so a readiness-gated dossier
   // reports "blocked" rather than silently clicking nothing.
-  // The dossier re-renders on board events (the entry-tier writ's epoch refresh among them), so a
-  // single pre-queried click can land on a detached node under runner load. Re-query and click on
-  // a short cadence until the board reports the commit or the window closes.
-  let commit = null;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    commit = await page.evaluate(() => {
-      const btn = document.querySelector('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]')
-        || document.querySelector('[data-screen="station"] [data-accept="handoff_probe_bulk_trade"]');
-      if (!btn) return { found: false };
-      if (btn.disabled) return { found: true, disabled: true, label: (btn.textContent || '').trim() };
-      btn.click();
-      return { found: true, disabled: false, connected: btn.isConnected };
-    });
-    if (!commit.found || commit.disabled) break;
-    await page.waitForTimeout(250);
-    const settled = await page.evaluate(() => {
-      const state = window.SF.state;
-      const trackedId = state.ui && state.ui.trackedMissionId;
-      // The board offer becomes a newly numbered m_N instance; its sourceOfferId is the receipt.
-      return !!(state.missions.active || []).some((m) => m && m.status === 'active'
-        && m.sourceOfferId === 'handoff_probe_bulk_trade' && trackedId === m.id);
-    });
-    if (settled) break;
-  }
+  // Query and activate in one page callback so a repaint cannot detach a pre-queried node.
+  // A valid activation starts the hold and worker request exactly once. The controller disables
+  // its still-labelled "Accept" key while that RPC is pending; this is distinct from an authored
+  // readiness blocker, which says "Cannot accept…" and renders the actual reason.
+  const commit = await page.evaluate(attemptSeededMissionAccept);
   // HOLD-COMMIT RACE (probe-robustness, 2026-10-03). A synthetic click on [data-accept] arms the
   // dossier's assistive-tech auto-hold (450ms + ~260ms retract). On a frame-starved host the hold
-  // fires after this poll window; on a live-frame host it fires inside it — acceptMission then
+  // fires after this callback; on a live-frame host it may already have fired — acceptMission then
   // filters the consumed offer off the board and [data-accept] legitimately disappears. Either
   // outcome proves the control worked, so a missing button must fall back to the accept's own
   // evidence (the mission is active + tracked) before asserting.
@@ -255,7 +234,8 @@ try {
     (commit && commit.found) || (consumed.grew && consumed.tracked), true,
     'Contracts dossier should expose an accept-and-bind control for the offer: ' + JSON.stringify({ commit, consumed }),
   );
-  assert.equal(!!(commit && commit.found && commit.disabled), false,
+  assert.equal(!!(commit && commit.found
+    && (commit.readinessBlocked || (commit.disabled && !commit.pending))), false,
     'the seeded offer should be route-clear, not readiness-blocked: ' + JSON.stringify(commit));
 
   // Accept + Track continuity: the seeded mission becomes active AND tracked (nav waypoint plotting
@@ -399,6 +379,24 @@ function collectDockHandoffSnapshot() {
   };
 }
 
+// Self-contained actor callback: readiness comes from the live dossier's authored explanation.
+function attemptSeededMissionAccept() {
+  const key = document.querySelector('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]')
+    || document.querySelector('[data-screen="station"] [data-accept="handoff_probe_bulk_trade"]');
+  if (!key) return { found: false };
+  const ariaLabel = String(key.getAttribute('aria-label') || '').slice(0, 600);
+  const gate = document.querySelector('[data-screen="station"] .sx-dossier__gate.k-bad');
+  const reason = String(gate?.textContent || '').trim().slice(0, 600);
+  const readinessBlocked = !!gate || /^Cannot accept\b/.test(ariaLabel);
+  const pending = key.disabled && !readinessBlocked && /^Accept\b/.test(ariaLabel);
+  const attempt = { found: true, disabled: !!key.disabled, pending, readinessBlocked,
+    label: String(key.textContent || '').trim().slice(0, 300), ariaLabel,
+    reason: reason || (readinessBlocked ? ariaLabel : null) };
+  if (key.disabled || readinessBlocked) return attempt;
+  key.click();
+  return { ...attempt, activated: true, connected: key.isConnected };
+}
+
 function collectAcceptHandoffSnapshot() {
   const state = window.SF?.state;
   const stationId = state?.ui?.dockedStationId;
@@ -425,6 +423,7 @@ function collectAcceptHandoffSnapshot() {
     acceptKey: key ? { missionId: key.getAttribute('data-accept'), connected: key.isConnected,
       disabled: key.disabled, holding: key.classList.contains('is-holding'),
       label: String(key.textContent || '').trim().slice(0, 300),
+      ariaLabel: String(key.getAttribute('aria-label') || '').slice(0, 600),
       holdProgress: ring?.style?.getPropertyValue('--sf-hold-p') ?? null } : null,
   };
 }
