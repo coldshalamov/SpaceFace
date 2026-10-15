@@ -34,6 +34,7 @@ import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import { requestCodexTab } from './codex.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
+import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
 import {
   PHOTO_EXPOSURE_DEFAULT,
   PHOTO_EXPOSURE_MAX,
@@ -354,69 +355,34 @@ export function saveLine(state) {
 // The combat trace (damage.routed / physics.impulse / collision.consequence) and the hull's
 // scar list are the receipts that already record what hit the player. A gun's impulse row is
 // written after its damage row and must stay a gun — only a later receipt may replace it.
-const PAUSE_HIT_CAUSES = new Set(['gun', 'shove', 'slam', 'rock']);
 const PAUSE_HIT_LINES = Object.freeze({
   gun: 'A gun hit you.',
   shove: 'A shove hit you.',
   slam: 'A slam hit you.',
   rock: 'A rock hit you.',
 });
-const PAUSE_SHOVE_TAGS = new Set(['inertial_shunt', 'impulse_charge_blast', 'bomb_blast']);
-const PAUSE_SHOVE_ORIGINS = new Set(['impulse_charge', 'bomb', 'massline_whip']);
-
-function pauseHitWord(value) {
-  return typeof value === 'string' && PAUSE_HIT_CAUSES.has(value) ? value : '';
-}
-
-function causeFromTraceEvent(event) {
-  if (!event || typeof event !== 'object') return '';
-  const named = pauseHitWord(event.cause);
-  if (named) return named;
-  if (event.kind === 'collision.consequence') {
-    if (event.surface === 'terrain') return 'rock';
-    if (event.control === 'tumble' || event.surface === 'structure') return 'slam';
-    if (event.surface === 'craft' || event.surface === 'debris') return 'shove';
-    return '';
-  }
-  if (event.kind === 'physics.impulse') {
-    const tag = typeof event.provenance === 'string' ? event.provenance : '';
-    if (pauseHitWord(tag)) return pauseHitWord(tag);
-    if (PAUSE_SHOVE_TAGS.has(tag)) return 'shove';
-    if (event.reason === 'weapon_hit' || event.reason === 'damage') return 'gun';
-    return '';
-  }
-  if (event.kind !== 'damage.routed' && event.kind !== 'damage') return '';
-  const origin = event.origin && typeof event.origin === 'object' ? event.origin : null;
-  const kind = origin && typeof origin.kind === 'string' ? origin.kind : '';
-  if (kind === 'weapon' || kind === 'legacy') return 'gun';
-  if (PAUSE_SHOVE_ORIGINS.has(kind)) return 'shove';
-  if (kind === 'collision' || kind.startsWith('collision')) {
-    const surface = String((origin && origin.id) || kind);
-    if (surface === 'terrain' || surface.endsWith('terrain')) return 'rock';
-    return 'slam';
-  }
-  return '';
-}
 
 function causeFromScar(scar) {
   if (!scar || typeof scar !== 'object') return '';
   if (scar.cause === 'weapon') return 'gun';
   if (scar.cause === 'slam') return scar.surface === 'terrain' ? 'rock' : 'slam';
-  return pauseHitWord(scar.cause);
+  return pauseImpactCause(scar.cause);
 }
 
 function newestTraceHit(state) {
-  const events = state && state.combat && state.combat.trace && state.combat.trace.events;
+  const trace = state && state.combat && state.combat.trace;
   const playerId = state && state.playerId;
-  if (!Array.isArray(events) || playerId == null) return null;
-  for (let i = events.length - 1; i >= 0; i--) {
-    const event = events[i];
-    if (!event || event.targetId !== playerId) continue;
-    const cause = causeFromTraceEvent(event);
-    if (!cause) continue;
-    return { tick: Number.isFinite(event.tick) ? event.tick : 0, cause };
+  if (!trace || playerId == null) return null;
+  const projected = trace.latestPlayerImpact;
+  if (trace.playerId === playerId && projected && typeof projected === 'object') {
+    const cause = pauseImpactCause(projected.cause);
+    if (cause && Number.isFinite(projected.tick)) {
+      return { tick: projected.tick, cause };
+    }
   }
-  return null;
+  // Compatibility path for in-process state, diagnostics, and malformed or
+  // stale projected receipts. The authoritative full trace remains readable.
+  return latestPlayerImpactFromTrace(trace, playerId);
 }
 
 function hullScarLists(state) {

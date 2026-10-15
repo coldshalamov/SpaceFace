@@ -6,10 +6,12 @@ import {
   canonicalSignature,
   configureDomainMirroring,
   createDomainDiffer,
+  createDomainMirroringProfile,
   DOMAIN_COLD_TICKS,
 } from '../scripts/lib/simReadModel.mjs';
 
 const TRACE_PATH = 'combat.trace';
+const FULL_TRACE_DIAGNOSTIC_PROFILE = Object.freeze({ combatTraceProjection: false });
 
 function makeEvent(seq, reads, suffix = '') {
   const event = { seq, tick: seq, kind: 'trace.test', payload: null };
@@ -64,7 +66,7 @@ function assertFullTracePayload(update, trace, message) {
 }
 
 test('same-input combat trace cold pass bypasses canonical traversal and preserves payload', () => {
-  configureDomainMirroring({});
+  configureDomainMirroring(FULL_TRACE_DIAGNOSTIC_PROFILE);
   const reads = { count: 0 };
   const trace = makeTrace(reads);
   const state = { combat: { trace } };
@@ -90,7 +92,7 @@ test('same-input combat trace cold pass bypasses canonical traversal and preserv
 });
 
 test('same-input trace bypass stays kernel-only across repeated cold passes', (t) => {
-  configureDomainMirroring({});
+  configureDomainMirroring(FULL_TRACE_DIAGNOSTIC_PROFILE);
   const reads = { count: 0 };
   const state = { combat: { trace: makeTrace(reads) } };
   const differ = createDomainDiffer();
@@ -104,7 +106,7 @@ test('same-input trace bypass stays kernel-only across repeated cold passes', (t
 });
 
 test('append and capacity trim fall back to the exact full-payload path', () => {
-  configureDomainMirroring({});
+  configureDomainMirroring(FULL_TRACE_DIAGNOSTIC_PROFILE);
   const reads = { count: 0 };
   const trace = makeTrace(reads, { count: 8, capacity: 8 });
   const state = { combat: { trace } };
@@ -137,7 +139,7 @@ test('append and capacity trim fall back to the exact full-payload path', () => 
 });
 
 test('trace replacement, scalar watermark changes, and unknown shape never bypass exact signing', () => {
-  configureDomainMirroring({});
+  configureDomainMirroring(FULL_TRACE_DIAGNOSTIC_PROFILE);
   const reads = { count: 0 };
   const trace = makeTrace(reads);
   const state = { combat: { trace } };
@@ -179,7 +181,7 @@ test('trace replacement, scalar watermark changes, and unknown shape never bypas
 });
 
 test('combat trace reset replaces the watermark and ships the new complete record', () => {
-  configureDomainMirroring({});
+  configureDomainMirroring(FULL_TRACE_DIAGNOSTIC_PROFILE);
   const reads = { count: 0 };
   const firstTrace = makeTrace(reads, { suffix: 'first' });
   const state = { combat: { trace: firstTrace } };
@@ -205,4 +207,92 @@ test('combat trace reset replaces the watermark and ships the new complete recor
     canonicalSignature(replacement),
     'reset replacement facade remains exact',
   );
+});
+
+test('station profile projects the newest player impact without cloning the trace', () => {
+  configureDomainMirroring(createDomainMirroringProfile('station'));
+  const reads = { count: 0 };
+  const payload = (label) => {
+    const event = {
+      seq: label,
+      tick: label,
+      kind: 'trace.test',
+      targetId: 99,
+    };
+    Object.defineProperty(event, 'payload', {
+      enumerable: true,
+      get() {
+        reads.count++;
+        return 'large-' + 'x'.repeat(4096);
+      },
+    });
+    return event;
+  };
+  const trace = {
+    nextSeq: 5,
+    capacity: 32,
+    events: [
+      {
+        seq: 1, tick: 3, kind: 'damage.routed', targetId: 7,
+        origin: { kind: 'weapon', id: 'wpn_test' }, payload: payload(1),
+      },
+      {
+        seq: 2, tick: 4, kind: 'physics.impulse', targetId: 7,
+        reason: 'weapon_hit', payload: payload(2),
+      },
+      {
+        seq: 3, tick: 7, kind: 'damage.routed', targetId: 7,
+        origin: { kind: 'impulse_charge', id: 'charge' }, payload: payload(3),
+      },
+      payload(4),
+    ],
+    dropped: 0,
+    hashU32: 0x811c9dc5,
+    digest: '811c9dc5',
+  };
+  const state = { playerId: 7, combat: { trace } };
+  const differ = createDomainDiffer();
+  const domains = new Map();
+  const initial = differ.diff(state, 0);
+  const update = traceUpdate(initial);
+  assert.ok(update);
+  assert.deepEqual(update.v, {
+    playerId: 7,
+    latestPlayerImpact: { tick: 7, cause: 'shove' },
+  });
+  assert.ok(update.bytes < 256, 'presentation payload stays bounded');
+  assert.equal(reads.count, 0, 'projection does not read or clone unrelated event payloads');
+  applyUpdates(domains, initial);
+  assert.deepEqual(domains.get('combat').trace, update.v);
+
+  const traceNode = differ.paths.get(TRACE_PATH);
+  const playerSwitchTick = 1;
+  state.playerId = 99;
+  const switched = differ.diff(state, playerSwitchTick);
+  assert.deepEqual(traceUpdate(switched).v, {
+    playerId: 99,
+    latestPlayerImpact: null,
+  }, 'a player identity change invalidates the retained projection');
+  assert.equal(reads.count, 0);
+
+  const replacement = {
+    nextSeq: 2,
+    capacity: 32,
+    events: [{
+      seq: 1, tick: 42, kind: 'collision.consequence', targetId: 99,
+      surface: 'terrain',
+    }],
+    dropped: 0,
+    hashU32: 0x811c9dc5,
+    digest: '811c9dc5',
+  };
+  state.playerId = 99;
+  state.combat = { trace: replacement };
+  const replacementTick = nextSlotTick(traceNode, 10, playerSwitchTick);
+  const restored = differ.diff(state, replacementTick);
+  assert.deepEqual(traceUpdate(restored).v, {
+    playerId: 99,
+    latestPlayerImpact: { tick: 42, cause: 'rock' },
+  }, 'a replacement trace gets a fresh immutable presentation snapshot');
+  assert.equal(replacement.events.length, 1, 'source trace remains authoritative and intact');
 });

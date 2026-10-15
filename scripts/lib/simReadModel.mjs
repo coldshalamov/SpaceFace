@@ -29,6 +29,7 @@
 import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { nowNs } from './simRealm.mjs';
 import { projectNpcJobsById } from './npcJobsMirror.mjs';
+import { latestPlayerImpactFromTrace } from '../../src/combat/presentationImpact.js';
 import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
 import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
 import {
@@ -676,6 +677,9 @@ function domainCadenceFor(rootKey) {
 //     minCadenceTicks}] — leaf projections: at a leaf path of length leafSegs
 //     matching prefix segs, sign/ship the projected leaf; `drop` removes named
 //     keys from one object and `project` selects a named bounded projection.
+//   combatTraceProjection: when true, replace combat.trace with the bounded
+//     player-impact receipt used by the pause screen; false retains the full
+//     trace for diagnostics.
 //     deferFirstSign spreads
 //     first-signs onto a slot schedule (firstSignTicks ticks — defaults to the
 //     root cadence, DOMAIN_COLD_TICKS flattens a mass-mint hardest).
@@ -683,8 +687,11 @@ function domainCadenceFor(rootKey) {
 //     it does not delay the first mint or structural deletion.
 //   staggerCold: defaults true; explicit false restores the aligned
 //     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
-const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
+const activeDomainConfig = {
+  expandPaths: [], leafViews: [], staggerCold: true, combatTraceProjection: false,
+};
 const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
+const COMBAT_TRACE_PRESENTATION_RULE = Object.freeze({ project: 'combatPause' });
 
 // Named diagnostic wire profiles. The ordinary runtime installs the station
 // profile before the first differ is created and ships the same object to the
@@ -707,6 +714,7 @@ export function createDomainMirroringProfile(name = 'station') {
       project: 'marketLive', minCadenceTicks: DOMAIN_COLD_TICKS,
     }],
     staggerCold: true,
+    combatTraceProjection: true,
   };
   if (profile !== 'commodity' && profile !== 'commodity-nohist') {
     throw new RangeError(`unknown domain mirror profile: ${profile}`);
@@ -728,6 +736,7 @@ export function createDomainMirroringProfile(name = 'station') {
       },
     ],
     staggerCold: true,
+    combatTraceProjection: true,
   };
 }
 
@@ -735,12 +744,16 @@ export function configureDomainMirroring(config = {}) {
   activeDomainConfig.expandPaths = Array.isArray(config.expandPaths) ? config.expandPaths : [];
   activeDomainConfig.leafViews = Array.isArray(config.leafViews) ? config.leafViews : [];
   activeDomainConfig.staggerCold = config.staggerCold !== false;
+  activeDomainConfig.combatTraceProjection = config.combatTraceProjection === true;
 }
 
 // Find the leaf-view rule covering a leaf path, or null. leafSegs must equal
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (activeDomainConfig.combatTraceProjection && isCombatTracePath(segs)) {
+    return COMBAT_TRACE_PRESENTATION_RULE;
+  }
   // DOMAIN_MIRROR_KEYS keeps dotted leaf paths as one logical root on the worker wire; the main
   // lane splits that segment while grafting it into state.npcJobs.byId.
   if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
@@ -795,12 +808,21 @@ function projectMarketLive(v) {
   return out;
 }
 
-function projectDomainLeaf(rule, v) {
+function projectCombatTraceForPause(v, playerId) {
+  if (!isCanonicalObject(v) || !Array.isArray(v.events)) return v;
+  return {
+    playerId: playerId == null ? null : playerId,
+    latestPlayerImpact: latestPlayerImpactFromTrace(v, playerId),
+  };
+}
+
+function projectDomainLeaf(rule, v, playerId) {
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
   if (rule && rule.project === 'marketLive') return projectMarketLive(v);
+  if (rule && rule.project === 'combatPause') return projectCombatTraceForPause(v, playerId);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
   let has = false;
   for (const k of rule.drop) {
@@ -846,7 +868,7 @@ const COMBAT_TRACE_KEYS = Object.freeze([
 ]);
 const COMBAT_TRACE_KEY_SET = new Set(COMBAT_TRACE_KEYS);
 
-function combatTraceWatermark(trace, previous = null) {
+function combatTraceWatermark(trace, previous = null, playerId = null) {
   if (!isCanonicalObject(trace) || !Array.isArray(trace.events)) return null;
   const keys = Object.keys(trace);
   if (keys.length !== COMBAT_TRACE_KEYS.length
@@ -875,6 +897,7 @@ function combatTraceWatermark(trace, previous = null) {
   return {
     trace,
     events,
+    playerId: playerId == null ? null : playerId,
     eventLength: events.length,
     firstEvent,
     lastEvent,
@@ -890,6 +913,7 @@ function sameCombatTraceWatermark(a, b) {
   if (!a || !b
       || a.trace !== b.trace
       || a.events !== b.events
+      || a.playerId !== b.playerId
       || a.eventLength !== b.eventLength
       || a.firstEvent !== b.firstEvent
       || a.lastEvent !== b.lastEvent
@@ -1318,7 +1342,7 @@ export function createDomainDiffer(options = {}) {
     return n;
   }
 
-  function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext) {
+  function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext, playerId) {
     const node = ensureNode(path, segs);
     // This owner publishes detached immutable snapshots only at settlement.
     // A new stock/hold receipt must not wait for the large-leaf cold cadence.
@@ -1340,7 +1364,8 @@ export function createDomainDiffer(options = {}) {
       if (enumDue) {
         const liveKids = new Set(Object.keys(v));
         for (const c of liveKids) {
-          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision, runContext);
+          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision, runContext,
+            playerId);
         }
         if (node.kids) {
           for (const c of node.kids) {
@@ -1363,7 +1388,8 @@ export function createDomainDiffer(options = {}) {
             dropNode(`${path}.${c}`);
             node.kids.delete(c);
           } else {
-            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision, runContext);
+            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision, runContext,
+              playerId);
           }
         }
       }
@@ -1406,6 +1432,9 @@ export function createDomainDiffer(options = {}) {
     if (isNpcJobsByIdPath(segs) && Number.isSafeInteger(npcJobsRevision)) {
       node.npcJobsRevision = npcJobsRevision;
     }
+    const normalizedPlayerId = playerId == null ? null : playerId;
+    const combatTracePlayerChanged = isCombatTrace && node.combatTraceWatermark
+      && node.combatTraceWatermark.playerId !== normalizedPlayerId;
     const cadence = domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]);
     const minCadenceTicks = leafRule && Number.isFinite(leafRule.minCadenceTicks)
       ? Math.max(1, Math.floor(leafRule.minCadenceTicks)) : 0;
@@ -1434,7 +1463,7 @@ export function createDomainDiffer(options = {}) {
       }
     }
     if (node.lastSign >= 0 && !freshDraftSnapshot && !npcJobsRevisionChanged
-        && !runAdmissionBootstrap && !marketLiveSourceChanged) {
+        && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       // minCadenceTicks is a true minimum after a sign, rather than a slot
@@ -1465,20 +1494,20 @@ export function createDomainDiffer(options = {}) {
     const previousCombatTraceWatermark = isCombatTrace
       ? node.combatTraceWatermark : null;
     const currentCombatTraceWatermark = isCombatTrace
-      ? combatTraceWatermark(v, previousCombatTraceWatermark) : null;
-    // combat.trace is a large append-only leaf. When its producer watermark
-    // and event identities are unchanged, the exact canonical signature and
-    // full mirror payload are already retained on this node. Advance the
-    // freshness clock without re-walking the record; any append, trim,
-    // replacement, reset, malformed shape, or unknown field falls through to
-    // the existing exact path below.
+      ? combatTraceWatermark(v, previousCombatTraceWatermark, normalizedPlayerId) : null;
+    // combat.trace is a large append-only leaf. When its producer watermark,
+    // event identities, and player identity are unchanged, the canonical
+    // signature and retained presentation payload are already on this node.
+    // Advance the freshness clock without re-walking the record; any append,
+    // trim, replacement, reset, malformed shape, unknown field, or player
+    // switch falls through to the exact path below.
     if (currentCombatTraceWatermark
         && node.lastSign >= 0
         && sameCombatTraceWatermark(previousCombatTraceWatermark, currentCombatTraceWatermark)) {
       node.lastSign = tick;
       return;
     }
-    const pv = projectDomainLeaf(leafRule, v);
+    const pv = projectDomainLeaf(leafRule, v, playerId);
     const sig = canonicalSignature(pv, sigScratch);
     // Production sends the canonical value, never its hash. Compare the retained
     // text directly instead of UTF-8 encoding and SHA-256 hashing every leaf on
@@ -1529,7 +1558,7 @@ export function createDomainDiffer(options = {}) {
       const runContext = resolveDomainValue(state, 'run');
       for (const key of DOMAIN_MIRROR_KEYS) {
         walk(key, [key], resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
-          runContext);
+          runContext, state && state.playerId);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
       let probe = null;
