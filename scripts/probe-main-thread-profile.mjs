@@ -1457,6 +1457,11 @@ try {
             complete: typeof capturedPlan?.complete === 'boolean' ? capturedPlan.complete : null,
             blockingReasons,
             counts,
+            roots: Array.isArray(capturedPlan?.roots)
+              ? capturedPlan.roots.slice(0, 50).map(root => ({
+                ...scalarFields(root, 48),
+                productionBoundary: scalarFields(root?.productionBoundary, 32),
+              })) : null,
           },
           pendingPipelineAdmissions,
         },
