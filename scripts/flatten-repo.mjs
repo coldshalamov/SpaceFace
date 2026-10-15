@@ -2,8 +2,11 @@
 // Flatten the repo's text content into one LLM-consumable file.
 //
 //   node scripts/flatten-repo.mjs                    # preset=game -> .devshots/flatten/spaceface-game.txt
+//   node scripts/flatten-repo.mjs --preset=spine     # engine spine + orientation docs, fits one context
+//   node scripts/flatten-repo.mjs --preset=bones     # bare bones: engine+gameplay, no render/ui/content
 //   node scripts/flatten-repo.mjs --preset=dev       # game + scripts/test/tools/docs
 //   node scripts/flatten-repo.mjs --preset=all       # every text file outside the policy ignore list
+//   node scripts/flatten-repo.mjs --roots=src/core,src/systems/flightV3.js   # ad-hoc file/dir list
 //   node scripts/flatten-repo.mjs --list             # sizes only, write nothing
 //   node scripts/flatten-repo.mjs --stdout > x.txt   # stream instead of a file
 //   extra: --out=<file> --include=<root> (repeatable) --exclude=<substr> (repeatable)
@@ -29,10 +32,12 @@ function parseArgs(argv) {
     else if (key === 'toc') flags[key] = value !== 'false';
     else flags[key] = value;
   }
-  if (!['game', 'dev', 'all'].includes(flags.preset)) {
-    throw new Error(`--preset must be game | dev | all (got ${flags.preset})`);
+  if (!['spine', 'bones', 'game', 'dev', 'all'].includes(flags.preset)) {
+    throw new Error(`--preset must be spine | bones | game | dev | all (got ${flags.preset})`);
   }
-  flags.maxKb = flags['max-kb'] === undefined ? 2048 : Number(flags['max-kb']);
+  flags.maxKb = flags['max-kb'] === undefined
+    ? (PRESETS[flags.preset].defaultMaxKb ?? 2048)
+    : Number(flags['max-kb']);
   if (!Number.isFinite(flags.maxKb) || flags.maxKb <= 0) throw new Error('--max-kb must be a positive number');
   return flags;
 }
@@ -92,12 +97,44 @@ const POLICY_SKIP_DIR_PATTERNS = [
 ];
 
 const PRESETS = {
-  game: { roots: ['src', 'styles', 'electron', 'schemas'], includeRootFiles: true },
+  // Engine spine + orientation: the smallest cut that explains how the game runs.
+  spine: {
+    roots: [
+      'src/main.js',
+      'src/core/gameState.js',
+      'src/core/eventBus.js',
+      'src/core/registry.js',
+      'src/core/coreSystem.js',
+      'src/core/simLaneMain.js',
+      'src/core/flight',
+      'src/systems/flightV3.js',
+      'src/systems/input.js',
+    ],
+    includeRootFiles: true,
+    rootFilesAllowlist: ['ARCHITECTURE.md', 'README.md', 'SAVE_SCHEMA.md', 'server.js'],
+    defaultMaxKb: 2048,
+  },
+  game: { roots: ['src', 'styles', 'electron', 'schemas'], includeRootFiles: true, defaultMaxKb: 2048 },
+  // Bare bones: the sim spine and gameplay logic a code reader needs. Presentation
+  // (render/ui/audio) and content tables (data/careers/story...) are named in the
+  // omitted manifest; pull them with --include when a task needs them.
+  bones: {
+    roots: [
+      'src/core', 'src/ai', 'src/combat', 'src/sim', 'src/world', 'src/save', 'src/economy',
+      'src/missions', 'src/contracts', 'src/balance', 'src/physicalCargo', 'src/law',
+      'src/nemesis', 'src/systems',
+    ],
+    excludeRoots: [],
+    includeRootFiles: true,
+    rootFilesAllowlist: ['ARCHITECTURE.md', 'README.md', 'SAVE_SCHEMA.md', 'index.html', 'server.js'],
+    defaultMaxKb: 288,
+  },
   dev: {
     roots: ['src', 'styles', 'electron', 'schemas', 'scripts', 'test', 'tests', 'tools', 'docs'],
     includeRootFiles: true,
+    defaultMaxKb: 2048,
   },
-  all: { roots: ['.'], includeRootFiles: true },
+  all: { roots: ['.'], includeRootFiles: true, defaultMaxKb: 2048 },
 };
 
 let maxKbValue = 2048;
@@ -136,6 +173,10 @@ function collectFiles(preset, extraIncludes, extraExcludes) {
     const top = relDir.split('/')[0];
     if (ALWAYS_SKIP_DIRS.has(top)) {
       markSkip(`${relDir}/`, 'scratch/deps/export directory');
+      return true;
+    }
+    if (spec.excludeRoots?.some((r) => relDir === r || relDir.startsWith(`${r}/`))) {
+      markSkip(`${relDir}/`, 'excluded by preset (presentation/content tree)');
       return true;
     }
     if (preset !== 'all' && !roots.includes(top)) {
@@ -225,12 +266,27 @@ function collectFiles(preset, extraIncludes, extraExcludes) {
   } else {
     for (const root of roots) {
       const absRoot = path.join(REPO_ROOT, root);
-      if (!fs.existsSync(absRoot)) continue;
+      let stat = null;
+      try {
+        stat = fs.statSync(absRoot);
+      } catch {
+        continue;
+      }
+      if (stat.isFile()) {
+        considerFile(root.replace(/\\/g, '/'), absRoot);
+        continue;
+      }
+      if (!stat.isDirectory()) continue;
       walkTree(root, absRoot);
     }
     if (spec.includeRootFiles) {
       for (const entry of listDir(REPO_ROOT, '')) {
-        if (!entry.isDir) considerFile(entry.rel, entry.abs);
+        if (entry.isDir) continue;
+        if (spec.rootFilesAllowlist && !spec.rootFilesAllowlist.includes(entry.rel)) {
+          markSkip(entry.rel, 'not in preset root-file allowlist');
+          continue;
+        }
+        considerFile(entry.rel, entry.abs);
       }
     }
   }
