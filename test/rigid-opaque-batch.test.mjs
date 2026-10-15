@@ -885,6 +885,111 @@ test('incomplete residency preparation never suppresses source draws', async () 
   b.material.dispose();
 });
 
+test('rejected residency preparation retries once after a quiet window and can activate', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let attempts = 0;
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('transient residency failure');
+      return { ready: true };
+    },
+  });
+  try {
+    const failed = await controller.sync(root);
+    assert.equal(failed.lastReason, 'preparation-failed');
+    for (let frame = 1; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES; frame += 1) {
+      await controller.sync(root);
+      assert.equal(attempts, 1, 'failure does not retry on each frame');
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+    }
+    const recovered = await controller.sync(root);
+    assert.equal(attempts, 2);
+    assert.equal(recovered.status, 'active');
+    assert.equal(recovered.hiddenSources, 2);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+  }
+});
+
+test('permanent preparation rejection parks an unchanged cohort after one retry', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  let attempts = 0;
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => { attempts += 1; throw new Error('permanent residency failure'); },
+  });
+  try {
+    await controller.sync(root);
+    for (let frame = 0; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES * 5; frame += 1) {
+      await controller.sync(root);
+    }
+    assert.equal(attempts, 2, 'a persistent failure cannot start a preparation loop');
+    assert.equal(controller.getDiagnostics().lastReason, 'preparation-failed');
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+    assert.equal(scene.children.some((child) => child.userData?.spacefaceRigidOpaqueBatch), false);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+  }
+});
+
+test('departure and disposal cancel rejected preparation retries and ignore late rejections', async () => {
+  for (const stop of ['departure', 'dispose']) {
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    let attempts = 0, rejectPending;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error('first rejection');
+        return new Promise((resolve, reject) => { rejectPending = reject; });
+      },
+    });
+    try {
+      await controller.sync(root);
+      for (let frame = 1; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES; frame += 1) {
+        await controller.sync(root);
+      }
+      const retry = controller.sync(root);
+      await Promise.resolve();
+      assert.equal(attempts, 2);
+      if (stop === 'dispose') controller.dispose();
+      else await controller.sync([]);
+      const stopped = controller.getDiagnostics();
+      rejectPending(new Error('late rejected retry'));
+      await retry;
+      for (let frame = 0; frame < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES * 2; frame += 1) {
+        await controller.sync(stop === 'dispose' ? root : []);
+      }
+      assert.equal(attempts, 2, `${stop} cancels further work`);
+      assert.equal(controller.getDiagnostics().status, stopped.status);
+      assert.equal(controller.getDiagnostics().lastReason, stopped.lastReason);
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+      assert.equal(scene.children.some((child) => child.userData?.spacefaceRigidOpaqueBatch), false);
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+    }
+  }
+});
+
 test('unsupported BatchedMesh capability leaves the direct path untouched', async () => {
   const scene = new THREE.Scene();
   const { root, a, b } = makeRoot();

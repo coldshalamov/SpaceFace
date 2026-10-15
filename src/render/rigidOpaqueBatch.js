@@ -714,6 +714,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   let lastSignature = null;
   let lastRoots = [];
   let lastTopology = null;
+  let preparationRetry = null;
   let deferredMembershipRoots = [];
   let deferredMembershipTopology = null;
   let deferredMembershipFrames = 0;
@@ -1056,7 +1057,15 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     }
     if (lastSignature === signature && rootsEqual(lastRoots, normalized)
         && topologyMatches(lastTopology, normalized)) {
-      return refreshDiagnostics();
+      // One real preparation rejection may be transient. Reuse the membership quiet window
+      // before retrying, then park a second rejection until the cohort actually changes.
+      if (!preparationRetry || preparationRetry.used
+          || ++preparationRetry.frames < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES) {
+        return refreshDiagnostics();
+      }
+      preparationRetry.used = true;
+    } else {
+      preparationRetry = null;
     }
     lastSignature = signature;
     lastRoots = normalized.slice();
@@ -1169,14 +1178,18 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         active.topology = lastTopology;
         active.entryTopology = record.entryTopology;
         pending = null;
+        preparationRetry = null;
         stats.status = 'active';
         stats.activations += 1;
         stats.lastReason = 'activated-after-residency';
         return refreshDiagnostics();
       })
       .catch((error) => {
+        const wasActive = activeNow();
         releaseCandidate(candidate, scene, true);
+        if (!wasActive) return refreshDiagnostics();
         if (pending === record) pending = null;
+        preparationRetry ||= { frames: 0, used: false };
         stats.status = 'failed';
         stats.lastReason = 'preparation-failed';
         stats.lastError = String(error && error.message || error);
@@ -1202,6 +1215,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       lastSignature = null;
       lastRoots = [];
       lastTopology = null;
+      preparationRetry = null;
       return refreshDiagnostics();
     },
     dispose() {
@@ -1213,6 +1227,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         pending = null;
       }
       disposeActive('disposed');
+      preparationRetry = null;
       stats.enabled = false;
       stats.status = 'disposed';
       return true;
