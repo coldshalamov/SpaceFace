@@ -1134,6 +1134,11 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { inset:22px 0 50px 0 !important; }
   ${W}.orr-sw--jig > .sx-sw__side { left:calc(190px + 52px) !important; top:4px !important; max-width:calc(100% - 250px) !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
+  /* RECORD · PAINT ran past the right edge into UNDOCK (r≈922 on an 844 frame): keep the verb row
+     inside the main and wrap TAKE THE HITCH onto its own line */
+  ${W}.orr-sw--jig .sx-sw-verbs.sx-sw-verbs,
+  ${W} .sx-sw-verbs.sx-sw-verbs--unseated { left:8px !important; right:8px !important; width:auto !important; max-width:none !important;
+    flex-wrap:wrap !important; justify-content:flex-end !important; gap:2px 12px !important; }
 }
 /* …and at 651-800 wide (the identity rides over the nameplate as above). The verbs (in flow
    under the stage here) always break after TAKE THE HITCH, so LEFT · CENTER · RIGHT stand on the

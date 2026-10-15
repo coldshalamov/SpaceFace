@@ -411,17 +411,17 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-tape .sxb-event:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important;
     width:auto !important; max-width:100% !important; min-width:0 !important; margin:0 !important; padding:0 !important; line-height:16px !important; }
   ${D} .sxb-tape .sxb-event :is(.sxb-event__badge, .sxb-event__title, .sxb-event__body) { display:inline !important; margin:0 8px 0 0 !important; }
-  /* the next step: title, count and DISMISS on one line, its sentence ellipsized under (the full
-     sentence stays in data-why and the button's label) */
+  /* the next step: title + DISMISS on one row. Sentence and 2/3 printed on DISMISS at 844×390 /
+     1024×440 (bench ON TOP OF); both sleep — full text stays in data-why / aria */
   ${D} .sxb-berth.dp-frame__head > .sxb-handoff { margin-left:0 !important; padding-left:0 !important; }
-  ${D} .sxb-handoff { display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:auto auto !important;
-    align-items:end !important; column-gap:10px !important; }
-  ${D} .sxb-handoff > .sxb-next { grid-column:1 / -1; grid-row:1 / 3; }
-  ${D} .sxb-handoff > .sxb-next__x { grid-column:2; grid-row:2; position:relative; z-index:1; }
-  ${D} .sxb-next { flex-wrap:wrap !important; align-items:baseline !important; row-gap:2px !important; padding-block:0 !important; min-width:0 !important; }
-  ${D} .sxb-next__t { white-space:nowrap !important; flex:0 1 auto !important; }
-  ${D} .sxb-next__n { margin-left:auto !important; }
-  ${D} .sxb-next__w { order:3; flex:0 0 calc(100% - 76px) !important; min-width:0 !important; padding-left:17px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${D} .sxb-handoff { display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:auto !important;
+    align-items:center !important; column-gap:12px !important; }
+  ${D} .sxb-handoff > .sxb-next { grid-column:1; grid-row:1; min-width:0 !important; }
+  ${D} .sxb-handoff > .sxb-next__x { grid-column:2; grid-row:1; position:relative; z-index:1; }
+  ${D} .sxb-next { flex-wrap:nowrap !important; align-items:baseline !important; row-gap:0 !important; padding-block:0 !important; min-width:0 !important; }
+  ${D} .sxb-next__t { white-space:nowrap !important; flex:1 1 auto !important; min-width:0 !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${D} .sxb-next__n { display:none !important; }
+  ${D} .sxb-next__w { display:none !important; }
   ${D} .sxb-next__x { margin:0 !important; padding:0 !important; }
 }
 /* …from 901 wide the search key shows its "Find a service" word (station-orbital.css drops it at

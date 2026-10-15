@@ -1161,3 +1161,12 @@ Overlap probe (text boxes in the tape) on two seeded ledgers, 6 receipts over th
 **After (`src/ui/orrery/ledgerTape.js`):** each axis numeral adds its own box to the clear set at its measured printed width (the same cached `measure()` the names and figures use), and a figure near the origin slides right past whichever numeral shares its row, not just past the fixed column. Nothing else moves: the column, the tick spacing and the empty ledger are unchanged. Where the slide takes a neighbour's slot, that neighbour yields as before (at 960 `+1,500` now yields; the list and the reading carry it).
 
 Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×390 / 960×540 / 1280×720 / 1920×1080: master 3 + 1 → 0. `test/ledger-tape-yield.test.mjs` gains a case that fails on master ("+1,806 prints on the 3,000 cr numeral") and passes here. Shots: `ui-shots/polish37/{before,after}/`, compares in `ui-shots/polish37/compare/` (seeded with `_tools/ledger-seed.mjs` sets c and d).
+
+## Shipworks short desktop: verbs stay on-frame; next-step clears DISMISS (ui-polish-39)
+
+**Before:** at 844×390, TAKE THE HITCH · RECORD · PAINT ran past the right edge (Paint at x≈922 on an 844 frame) and overlapped UNDOCK. The next-step sentence under OPEN YOUR HOLD printed on DISMISS (bench ON TOP OF ×4). Weapon / Mining / fleet rows under the sticky foot were already the expected below-fold remainder from ui-polish-33.
+
+**After (`shipworksLayouts.js` + `stationLayouts.js`, CSS only, `651–1100 × ≤460` desktop):** the verb row wraps inside the main (`left/right:8px`, `flex-wrap`) so RECORD · PAINT stay on-frame (Paint at x≈804). The next-step is one row — title + DISMISS — and the sentence and 2/3 count sleep (full text stays in `data-why` / aria). Selectors and IDs are unchanged. Phones and every height above 460 are untouched.
+
+**Bench:** station-shipworks 844×390 19 → 10 (remaining: below-fold under the sticky foot + mechanic clamp). 1024×440 6 → 6 (geometry clear of DISMISS; probe still notes title vs DISMISS from hidden text). 960×540 / 1280×720 / 1920×1080 / 390×844 unchanged (1280 matches master’s 2 HITCH-pool notes). Shots: `ui-shots/polish39/{before,after,compare}/`.
+
