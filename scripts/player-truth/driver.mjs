@@ -477,10 +477,12 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
         const now = await simNow(page);
         const turn = Math.abs(bearing) > 0.12 ? (bearing > 0 ? 'KeyD' : 'KeyA') : null;
         const aligned = Math.abs(bearing) <= 0.35;
-        // Keep the public pilot from adding translation while a large radar error still needs
-        // a turn. Once the course is close, ordinary W resumes; this avoids the old full-speed
-        // circle around a moving off-screen contact without steering from hidden coordinates.
-        await setHeld('KeyW', Math.abs(bearing) <= 1.3);
+        // Keep closing while the public pilot turns onto the course. A lost contact can orbit at
+        // the edge of the radar band; turning in place until the nose is nearly aligned leaves
+        // the fighter circling that same distance indefinitely. W is still an ordinary public
+        // input and the turn remains bounded by the painted bearing, so this never steers from
+        // hidden world coordinates. Boost stays alignment-gated below.
+        await setHeld('KeyW', true);
         if (aligned && !wasAligned) boostUntil = now + 0.35;
         wasAligned = aligned;
         await setHeld('KeyA', turn === 'KeyA'); await setHeld('KeyD', turn === 'KeyD');
