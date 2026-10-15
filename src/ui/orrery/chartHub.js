@@ -656,10 +656,20 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
             && document.documentElement
             && document.documentElement.dataset.sfMobile === '1';
           if (mobile) {
+            // The portrait sheet scrolls: measure in page coordinates so the strip stays on the
+            // sky window while the inspector scrolls past (the .gmh layer scrolls with the page).
+            const scrolled = Number(root.scrollTop) || 0;
+            top += scrolled;
+            // When the sky is a window in the page (phone sheets), the strip rides its bottom edge.
+            const sky = root.querySelector('.gm-viewport');
+            if (sky && typeof sky.getBoundingClientRect === 'function') {
+              const sb = sky.getBoundingClientRect().bottom - root.getBoundingClientRect().top + scrolled;
+              if (Number.isFinite(sb) && sb > 0) layer.style.setProperty('--gm-sky-bottom', `${Math.round(sb)}px`);
+            }
             for (const sel of ['.gm-navfoot', '.gm-right-inspector', '.gm-tabs']) {
               const el = root.querySelector(sel);
               if (!el || typeof el.getBoundingClientRect !== 'function') continue;
-              const t = el.getBoundingClientRect().top;
+              const t = el.getBoundingClientRect().top + scrolled;
               if (Number.isFinite(t) && t > 0 && t < top) top = t;
             }
           }
