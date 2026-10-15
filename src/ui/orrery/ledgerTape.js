@@ -131,6 +131,11 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
   let frame = 0;
   let ro = null;
   let drawnKey = '';
+  // printed label widths, kept between relayouts of one size: each getComputedTextLength forces a style and
+  // layout pass, and a pick (or the ledger ticking) relayouts the whole tape. Cleared when the tape's size
+  // changes (a breakpoint can restyle the labels) and only filled once the fonts are in
+  const widths = new Map();
+  let widthsKey = '';
 
   const schedule = () => {
     if (frame) return;
@@ -221,13 +226,18 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
     }
 
     // a label's printed width, measured in the live layer (its own class sets face, size and tracking)
+    if (widthsKey !== `${W}x${H}` || widths.size > 512) { widths.clear(); widthsKey = `${W}x${H}`; }
     const measure = (cls, str) => {
+      const wk = `${cls}|${str}`;
+      const known = widths.get(wk);
+      if (known) return known;
       const t = svg('text', { x: -9999, y: -9999, class: cls });
       t.textContent = str;
       layer.appendChild(t);
       let w = 0;
       try { w = t.getComputedTextLength(); } catch (_) { w = 0; }
       t.remove();
+      if (w > 0 && (!doc.fonts || doc.fonts.status === 'loaded')) widths.set(wk, w);
       return w > 0 ? w : str.length * 8.6;
     };
     // boxes already printed under the tape (cycle names, the now name): debit figures keep clear of them
