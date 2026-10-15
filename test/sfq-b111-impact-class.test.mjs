@@ -16,7 +16,8 @@ import {
   impactLinkFromPresentation,
 } from '../src/combat/killCausality.js';
 import { buildKillPresentationReceipt } from '../src/systems/combat.js';
-import { buildCollisionPresentationProvenance } from '../src/systems/collisionConsequences.js';
+import { collisionConsequences, buildCollisionPresentationProvenance } from '../src/systems/collisionConsequences.js';
+import { bindStuntEvidence, contactKey, unbindStuntEvidence } from '../src/combat/stuntEvidence.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { collisionResponsibilityLine } from '../src/ui/sectorLawPresenter.js';
 import { createSimulation } from '../src/core/sim.js';
@@ -160,6 +161,100 @@ test('a held throw past the impulse window stays indirect on the live collision 
   } finally {
     clearImpulseProvenance(thrown);
     clearImpulseProvenance(victim);
+  }
+});
+
+test('a stunt-evidence root keeps a held throw indirect on the contact the game resolves', () => {
+  const appliedTick = 10;
+  const impactTick = appliedTick + WINDOW + 40;
+  const holdUntilTick = appliedTick + WINDOW + 80;
+  const victim = {
+    id: 9, type: 'ship', mass: 20, hull: 40, hullMax: 40, alive: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    physicsBody: { mass: 20, material: 'ship' },
+  };
+  const thrown = {
+    id: 3, type: 'asteroid', mass: 80, alive: true,
+    pos: { x: 2, z: 0 }, vel: { x: 0, z: 0 },
+    physicsBody: { mass: 80, material: 'rock' },
+  };
+  const state = {
+    playerId: PLAYER, mode: 'flight', tick: impactTick, simTime: impactTick / 60,
+    combat: {},
+    entities: new Map([[victim.id, victim], [thrown.id, thrown]]),
+    entityList: [victim, thrown],
+    player: { heat: 0 },
+    world: { currentSectorId: 'sector_tethys_junction' },
+  };
+  const seen = [];
+  const system = {
+    ...collisionConsequences,
+    state,
+    bus: {
+      on() { return () => {}; },
+      emit(name, payload) {
+        if (name === 'combat:collisionConsequence') seen.push(payload);
+      },
+    },
+    registry: null,
+    helpers: {},
+    _pairTicks: new Map(),
+    _pendingCraftContacts: new Map(),
+    _tearOffLive: new Set(),
+    _tearOffTickByVictim: new Map(),
+  };
+  const journal = bindStuntEvidence(state);
+  const classifySeen = (receipt) => {
+    const presentation = buildCollisionPresentationProvenance(victim, thrown, receipt);
+    const kill = buildKillPresentationReceipt({ playerId: PLAYER }, victim, PLAYER, {
+      origin: { kind: 'collision', id: 'terrain' },
+      packet: { source: { kind: 'collision_terrain', collisionPresentation: presentation } },
+    });
+    return classifyImpactResponsibility(
+      impactLinkFromPresentation(kill, { impactTick, playerId: PLAYER }),
+    );
+  };
+  try {
+    const heldRoot = {
+      id: 'root:throw', actorId: PLAYER, weaponId: null, tick: appliedTick,
+      kind: 'impulse', truncated: false, nodes: [],
+    };
+    journal.roots.set(heldRoot.id, heldRoot);
+    journal.contacts.set(contactKey(impactTick, victim.id, thrown.id), {
+      tick: impactTick,
+      paths: [{ targetId: victim.id, rootId: heldRoot.id, changedCorridor: true }],
+    });
+    system._resolveTarget(victim, thrown, {
+      pos: { x: 1, z: 0 }, normal: { x: 1, z: 0 }, aId: thrown.id, bId: victim.id,
+    }, 4000, impactTick, {
+      actorId: PLAYER, tag: 'massline_throw', appliedTick, holdUntilTick,
+    }, false, false);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].provenance.appliedTick, appliedTick);
+    assert.equal(seen[0].provenance.holdUntilTick, holdUntilTick);
+    assert.equal(classifySeen(seen[0]).class, 'indirect');
+
+    seen.length = 0;
+    const freshRoot = {
+      id: 'root:fresh', actorId: PLAYER, weaponId: null, tick: impactTick,
+      kind: 'impulse', truncated: false, nodes: [],
+    };
+    journal.roots.set(freshRoot.id, freshRoot);
+    journal.contacts.set(contactKey(impactTick, victim.id, thrown.id), {
+      tick: impactTick,
+      paths: [{ targetId: victim.id, rootId: freshRoot.id, changedCorridor: true }],
+    });
+    system._resolveTarget(victim, thrown, {
+      pos: { x: 1, z: 0 }, normal: { x: 1, z: 0 }, aId: thrown.id, bId: victim.id,
+    }, 4000, impactTick, {
+      actorId: PLAYER, tag: 'massline_throw', appliedTick: impactTick, holdUntilTick: null,
+    }, false, false);
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].provenance.appliedTick, impactTick);
+    assert.equal(seen[0].provenance.holdUntilTick ?? null, null);
+    assert.equal(classifySeen(seen[0]).class, 'indirect');
+  } finally {
+    unbindStuntEvidence(state);
   }
 });
 
