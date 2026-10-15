@@ -23,6 +23,7 @@ jobs:
     env:
       MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
       MOBILE_PROBE_URL: ${{ inputs.url }}
+      MOBILE_PROBE_CONTINUE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
