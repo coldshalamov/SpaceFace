@@ -2325,6 +2325,7 @@ export const lawSecurity = {
       witnessCount: receipt.witnessCount,
       responderAvailability: receipt.responderAvailability,
     });
+    if (kind === 'payload_theft') this._noteCrimeRestitution(victim, reportId);
     return receipt;
   },
 
@@ -2585,6 +2586,8 @@ export const lawSecurity = {
       // Nobody saw it — the law cannot act, including when the victim flies for the network
       // or the body lies inside a protection ring. The wreck can still testify later. The
       // hull stays destroyed; this only records the case.
+      const pendingPerson = restitutionPerson(victim && victim.data);
+      const pendingCr = pricedCargoCr(victim && victim.data);
       this._recordUnreportedKill({
         victimEntityId: payload.id,
         victimStableId,
@@ -2598,6 +2601,7 @@ export const lawSecurity = {
         pos: { x: pos.x, z: pos.z },
         causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
         reportId: victimStableId != null ? cleanLawId(`kill:${victimStableId}`) : null,
+        ...(pendingPerson && pendingCr > 0 ? { forPerson: pendingPerson, restitutionCr: pendingCr } : {}),
       });
       this._lawResponse('kill_unwitnessed', {
         outcome: 'no_charge',
@@ -2693,6 +2697,7 @@ export const lawSecurity = {
       stationId: receipt.stationId,
       text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : sustainedAssault ? 'sustained collision attack' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
     });
+    this._noteCrimeRestitution(victim, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
     this._lawResponse('crime_validated', {
       kind,
@@ -2846,6 +2851,7 @@ export const lawSecurity = {
       stationId: null,
       text: `CRIME DISCOVERED — wreck black box ties the kill to the suspect (${via === 'wreck_salvage' ? 'salvage' : 'scan'}).`,
     });
+    this._noteStoredRestitution(pending, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
     this._lawResponse('crime_discovered', {
       kind: pending.kind,
@@ -2915,6 +2921,7 @@ export const lawSecurity = {
       stationId: null,
       text: 'CONTRACTOR LOSS — a licensed hunter\'s transponder names the suspect.',
     });
+    this._noteStoredRestitution(pending, reportId);
     this._emit('law:reportIncidentReceipt', receipt);
     return receipt;
   },
@@ -4593,6 +4600,27 @@ export const lawSecurity = {
     return publicMemorial(row, finder);
   },
 
+  // A named, priced harm. Zero cargo or a blank name opens nothing, and a second
+  // note of the same cause does not stack.
+  _noteCrimeRestitution(entity, causeId) {
+    const forPerson = restitutionPerson(entity && entity.data);
+    const amountCr = pricedCargoCr(entity && entity.data);
+    if (!forPerson || !(amountCr > 0) || !causeId) return null;
+    return this.noteComposedObligation({ kind: 'restitution', causeId, forPerson, amountCr });
+  },
+
+  _noteStoredRestitution(pending, causeId) {
+    const forPerson = pending && typeof pending.forPerson === 'string' ? pending.forPerson.trim() : '';
+    const amountCr = Math.round(Number(pending && pending.restitutionCr));
+    if (!forPerson || !(amountCr > 0) || !causeId) return null;
+    return this.noteComposedObligation({
+      kind: 'restitution',
+      causeId,
+      forPerson: forPerson.length > 80 ? forPerson.slice(0, 80) : forPerson,
+      amountCr,
+    });
+  },
+
   // PB-CONS-D / NXB-044 — toll, warrant, and restitution stay separate bills.
   // The same cause does not stack, and paying one does not clear the others.
   noteComposedObligation(request = {}) {
@@ -4644,6 +4672,15 @@ export const lawSecurity = {
     const pay = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : row.remainingCr;
     if (!(pay > 0)) return { accepted: false, reason: 'no_amount', obligation: publicObligation(row) };
     const applied = Math.min(pay, row.remainingCr);
+    const credits = state.player && state.player.credits;
+    if (credits != null && Number(credits) < applied) {
+      return {
+        accepted: false,
+        reason: 'short',
+        shortfall: applied - Number(credits),
+        obligation: publicObligation(row),
+      };
+    }
     this._emit('economy:chargeCredits', {
       amount: applied,
       reason: `law:${row.kind}`,
@@ -4730,6 +4767,25 @@ export const lawSecurity = {
   _chooseFine(payload = {}) {
     const state = this.state;
     if (!state) return null;
+    if (payload.kind === 'restitution') {
+      if ((payload.choice || payload.fineChoice) !== 'pay') {
+        return { accepted: false, reason: 'not_pay' };
+      }
+      const paid = this.payComposedObligation({
+        kind: 'restitution',
+        causeId: payload.causeId,
+        amountCr: payload.amountCr,
+      });
+      if (paid && paid.reason === 'short') {
+        this._emit('law:fineRefused', {
+          reason: 'short',
+          kind: 'restitution',
+          causeId: payload.causeId || null,
+          shortfall: paid.shortfall,
+        });
+      }
+      return paid;
+    }
     const choice = payload.choice || payload.fineChoice;
     if (choice !== 'pay' && choice !== 'work' && choice !== 'leave') return null;
     const own = ensureState(state);
@@ -5106,6 +5162,44 @@ export function aggressionCauseFor(state, attacker, target) {
   if (ai.engagementTrigger === 'wanted_status') return 'wanted_status';
   if (ai.encounterId || DANGEROUS_CONTEXTS.has(String(ai.spawnContext || ''))) return 'authored_danger';
   return 'unmotivated';
+}
+
+function restitutionPerson(data) {
+  if (!data || typeof data !== 'object') return '';
+  const raw = data.ownerName || data.name || data.displayName || '';
+  const name = String(raw).trim();
+  if (!name) return '';
+  return name.length > 80 ? name.slice(0, 80) : name;
+}
+
+function pricedLineCr(id, qty) {
+  if (typeof id !== 'string' || !id) return 0;
+  const units = Math.floor(Number(qty));
+  if (!(units > 0)) return 0;
+  const unit = COMMODITY_VALUE.get(id);
+  return unit > 0 ? units * unit : 0;
+}
+
+/** One price source. A pod's commodity line wins; a manifest or a cargo map is the fallback. */
+function pricedCargoCr(data) {
+  if (!data || typeof data !== 'object') return 0;
+  const directId = typeof data.commodityId === 'string' ? data.commodityId : '';
+  if (directId) return pricedLineCr(directId, data.amount != null ? data.amount : data.qty);
+  const lines = data.cargoManifest && Array.isArray(data.cargoManifest.lines)
+    ? data.cargoManifest.lines : null;
+  if (lines) {
+    let total = 0;
+    for (const line of lines) {
+      if (!line || typeof line !== 'object') continue;
+      total += pricedLineCr(line.commodityId || line.id, line.amount != null ? line.amount : line.qty);
+    }
+    return total;
+  }
+  const cargo = data.cargo;
+  if (!cargo || typeof cargo !== 'object' || Array.isArray(cargo)) return 0;
+  let total = 0;
+  for (const id of Object.keys(cargo)) total += pricedLineCr(id, cargo[id]);
+  return total;
 }
 
 export function playerCargoValue(state) {
@@ -6464,7 +6558,10 @@ function normalizeUnreportedKillLedger(raw) {
     const kind = typeof e.kind === 'string' && e.kind.trim() ? e.kind : null;
     if (victimStableId == null || reportId == null || kind == null) continue;
     if (e.victimEntityId == null) continue;
-    out[victimStableId] = {
+    const forPerson = typeof e.forPerson === 'string' && e.forPerson.trim()
+      ? e.forPerson.trim().slice(0, 80) : '';
+    const restitutionCr = Math.round(Number(e.restitutionCr));
+    const row = {
       victimEntityId: e.victimEntityId,
       victimStableId,
       victimClass: typeof e.victimClass === 'string' && e.victimClass ? e.victimClass : null,
@@ -6476,6 +6573,11 @@ function normalizeUnreportedKillLedger(raw) {
       causalTick: Number.isInteger(e.causalTick) && e.causalTick >= 0 ? e.causalTick : 0,
       reportId,
     };
+    if (forPerson && restitutionCr > 0) {
+      row.forPerson = forPerson;
+      row.restitutionCr = restitutionCr;
+    }
+    out[victimStableId] = row;
     if (Object.keys(out).length >= UNREPORTED_KILL_CAP) break;
   }
   return out;
