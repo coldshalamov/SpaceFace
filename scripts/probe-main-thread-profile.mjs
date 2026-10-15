@@ -54,6 +54,7 @@ import { racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
 import { startSimulationWorkerProfile } from './lib/workerCpuProfile.mjs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
 import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
+import { formatPresentedCanvasContentSummary, selectPresentedCanvasFrames, summarizePresentedCanvasContent } from './lib/presentedCanvasContent.mjs';
 import {
   flightStartFailureError,
   installFlightStartFailureObserver,
@@ -113,6 +114,7 @@ const sourceDigest = await digestServedSourcePaths();
 const probeDigest = await digestSourcePaths(ROOT, [
   'scripts/probe-main-thread-profile.mjs', 'scripts/lib/gameCadenceProbe.mjs',
   'scripts/lib/workerCpuProfile.mjs',
+  'scripts/lib/presentedCanvasContent.mjs',
 ]);
 let servedSourceOverlayIdentity = null;
 
@@ -932,6 +934,92 @@ async function installProfileFootageSource(page) {
   return status;
 }
 
+// This is serialized into page.evaluate, so keep it self-contained instead of importing a Node
+// helper through a served source overlay. It only reads the already-retained recorder ring.
+async function readPresentedFootageRingInPage() {
+  const module = await import('/src/ui/screens/flightFootage.js');
+  const active = module.getFlightFootage();
+  if (!active) return { installed: false };
+  const frames = active.ring.frames;
+  const last = frames.at(-1);
+  return {
+    installed: true,
+    ...active.status(),
+    frames: frames.map(frame => ({ tick: frame.tick, width: frame.width, height: frame.height })),
+    lastTick: last?.tick ?? null,
+    lastBytes: last?.byteSize ?? last?.blob?.size ?? last?.encoded?.byteLength
+      ?? last?.encoded?.data?.byteLength ?? 0,
+  };
+}
+
+// Pixel work runs only after the cadence window has stopped. The capture itself happened at the
+// existing successful-present hook and its bounded worker/codec pipeline; this reads small
+// thumbnails from those retained frames and never asks WebGL for a fresh readback.
+async function decodePresentedFootageSamplesInPage({ ticks = [], lastTick = null } = {}) {
+  const module = await import('/src/ui/screens/flightFootage.js');
+  const codec = await import('/src/ui/screens/footageVideoCodec.js');
+  const active = module.getFlightFootage();
+  if (!active) return { installed: false, samples: [], decodeFailures: 0, lastDecoded: null };
+  const frames = active.ring.frames;
+  const frameByTick = new Map(frames.map(frame => [frame.tick, frame]));
+  const last = frameByTick.get(lastTick) || frames.at(-1) || null;
+  let canvas = null;
+  let context = null;
+  let thumbnailError = null;
+  try {
+    canvas = typeof OffscreenCanvas === 'function'
+      ? new OffscreenCanvas(32, 18)
+      : Object.assign(document.createElement('canvas'), { width: 32, height: 18 });
+    context = canvas.getContext('2d', { willReadFrequently: true }) || canvas.getContext('2d');
+    if (!context) throw new Error('2D thumbnail context unavailable');
+  } catch (error) { thumbnailError = String(error); }
+  const signature = data => {
+    let a = 0x811c9dc5, b = 0x9e3779b9;
+    for (let index = 0; index < data.length; index += 4) {
+      a = Math.imul(a ^ data[index], 0x01000193);
+      a = Math.imul(a ^ data[index + 1], 0x01000193);
+      a = Math.imul(a ^ data[index + 2], 0x01000193);
+      b = Math.imul(b ^ data[index], 0x85ebca6b);
+      b = Math.imul(b ^ data[index + 1], 0xc2b2ae35);
+      b = Math.imul(b ^ data[index + 2], 0x27d4eb2f);
+    }
+    return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+  };
+  let lastDecoded = null;
+  let decodeFailures = 0;
+  const samples = [];
+  const decode = async (frame, includePixels) => {
+    const blob = await codec.decodeFootageFrameToBlob(frame);
+    if (!blob) throw new Error('frame codec returned no blob');
+    const bitmap = await createImageBitmap(blob);
+    try {
+      if (!includePixels) return { width: bitmap.width, height: bitmap.height };
+      if (!context) throw new Error(thumbnailError || '2D thumbnail context unavailable');
+      context.drawImage(bitmap, 0, 0, 32, 18);
+      const pixels = context.getImageData(0, 0, 32, 18).data;
+      return { width: bitmap.width, height: bitmap.height, signature: signature(pixels) };
+    } finally { bitmap.close(); }
+  };
+  try {
+    if (last) {
+      try { lastDecoded = await decode(last, false); }
+      catch (error) { lastDecoded = { error: String(error) }; }
+    }
+    for (const tick of ticks) {
+      const frame = frameByTick.get(tick);
+      if (!frame) { decodeFailures++; samples.push({ tick, error: 'frame no longer in recorder ring' }); continue; }
+      try { samples.push({ tick, ...(await decode(frame, true)) }); }
+      catch (error) { decodeFailures++; samples.push({ tick, error: String(error) }); }
+    }
+  } finally {
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  }
+  return { installed: true, samples, decodeFailures, lastDecoded };
+}
+
 async function runSteadyFlightProfile(page, cdp) {
   await installFlightFailureObserver(page, { timeoutMs: 150_000 });
   try {
@@ -1057,6 +1145,10 @@ async function runSteadyFlightProfile(page, cdp) {
     return record;
   }, GPU_TIMERS);
   const summaryCadence = summarizeGameCadence(cadence);
+  const activeCadenceRows = (cadence.rows || []).filter(row => row.mode === 'flight'
+    && row.timeScale > 0 && Number.isSafeInteger(row.tick));
+  const measuredStartTick = activeCadenceRows[0]?.tick ?? null;
+  const measuredEndTick = activeCadenceRows.at(-1)?.tick ?? null;
   const clockEnd = await page.evaluate(() => ({ mainTimeScale: window.SF?.state?.timeScale, diagnostics: window.SF?.simLaneDiag?.() || null }));
   const machineEnd = os.cpus();
   const totals = cpus => cpus.reduce((out, cpu) => {
@@ -1128,33 +1220,43 @@ async function runSteadyFlightProfile(page, cdp) {
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
   const longTasks = await page.evaluate(() => window.__SF_PROFILE_LONGTASKS__ || []).catch(() => []);
   // Both production ring formats must still fill and decode. Decode after the timed window.
-  const footage = await page.evaluate(async () => {
-    const module = await import('/src/ui/screens/flightFootage.js');
-    const active = module.getFlightFootage();
-    if (!active) return { installed: false };
-    const frames = active.ring.frames;
-    const last = frames.at(-1);
-    let decoded = null;
-    if (last) {
-      try {
-        const { decodeFootageFrameToBlob } = await import('/src/ui/screens/footageVideoCodec.js');
-        const blob = await decodeFootageFrameToBlob(last);
-        const bitmap = await createImageBitmap(blob);
-        decoded = { width: bitmap.width, height: bitmap.height };
-        bitmap.close();
-      }
-      catch (error) { decoded = { error: String(error) }; }
-    }
-    return { installed: true, ...active.status(),
-      lastBytes: last?.byteSize ?? last?.blob?.size ?? last?.encoded?.byteLength
-        ?? last?.encoded?.data?.byteLength ?? 0, decoded };
-  }).catch((error) => ({ error: String(error) }));
+  const footageCapture = await page.evaluate(readPresentedFootageRingInPage)
+    .catch((error) => ({ error: String(error) }));
+  const footageFrames = Array.isArray(footageCapture?.frames) ? footageCapture.frames : [];
+  const presentedFramesInWindow = footageFrames.filter(frame => Number.isSafeInteger(frame?.tick)
+    && measuredStartTick != null && measuredEndTick != null
+    && frame.tick >= measuredStartTick && frame.tick <= measuredEndTick);
+  const selectedFootageFrames = footageCapture?.captureSource === 'presented'
+    ? selectPresentedCanvasFrames(footageFrames, { startTick: measuredStartTick, endTick: measuredEndTick })
+    : [];
+  const decodedFootage = await page.evaluate(decodePresentedFootageSamplesInPage, {
+    ticks: selectedFootageFrames.map(frame => frame.tick),
+    lastTick: footageCapture?.lastTick ?? null,
+  }).catch((error) => ({ error: String(error), samples: [], decodeFailures: selectedFootageFrames.length }));
+  const canvasContent = summarizePresentedCanvasContent({
+    captureSource: footageCapture?.captureSource,
+    samples: decodedFootage?.samples,
+    startTick: measuredStartTick,
+    endTick: measuredEndTick,
+    openingDelayMs: FOOTAGE_OPENING_DELAY_MS,
+    decodeFailures: decodedFootage?.decodeFailures ?? selectedFootageFrames.length,
+    eligibleFrameCount: footageCapture?.captureSource === 'presented' ? presentedFramesInWindow.length : 0,
+    analysisCapped: footageCapture?.captureSource === 'presented'
+      && presentedFramesInWindow.length > selectedFootageFrames.length,
+  });
+  const footage = {
+    ...footageCapture,
+    frames: undefined,
+    decoded: decodedFootage?.lastDecoded ?? null,
+    canvasContent,
+  };
   log(`flight footage: ${JSON.stringify(footage)}`);
   metadata.footage = {
     requestedSource: requestedFootageSource,
     actualSource: footage?.captureSource ?? null,
     openingDelayMs: FOOTAGE_OPENING_DELAY_MS,
     decoded: footage?.decoded ?? null,
+    canvasContent: footage?.canvasContent ?? null,
   };
   // Keep the original cadence payload, but publish the source and decode result beside it so an
   // A/B report cannot mistake a requested arm for the source the browser actually used.
@@ -1185,6 +1287,7 @@ async function runSteadyFlightProfile(page, cdp) {
   const summary = profile ? writeSteadyReport(profile, census, longTasks) : { entries: [], totalMicros: 0 };
   if (profile) fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   else fs.writeFileSync(path.join(OUT_DIR, 'report.md'), '# Game cadence\n\n' + JSON.stringify({ metadata, summary: summaryCadence }, null, 2) + '\n');
+  fs.appendFileSync(path.join(OUT_DIR, 'report.md'), `\n\n## Presented canvas content\n\n${formatPresentedCanvasContentSummary(canvasContent)}\n`, 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
 
   const top = summary.entries[0];

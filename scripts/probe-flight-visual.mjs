@@ -187,6 +187,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
   step('canvas');
   const canvasShot = await screenshotCanvas(page);
   const pixels = await sampleCanvas(page, canvasShot);
+  const openingAdmission = await getOpeningAdmissionDiagnostics(page, pageIssues.issues);
   const suffix = cleanRuns > 1 ? `-run${runIndex}` : '';
   let screenshot = null;
   if (writeShots) {
@@ -263,6 +264,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
     diagnostics,
     sg02Diagnostics,
     pixels,
+    openingAdmission,
     warningSummary,
     issueCount: issues.length,
     ignoredIssueCount: ignoredIssues.length,
@@ -275,6 +277,80 @@ async function runViewportProbe(browser, viewport, runIndex) {
       try { await page.close(); } catch (_) {}
     }
   }
+}
+
+async function getOpeningAdmissionDiagnostics(page, issues) {
+  const warnings = issues.filter((issue) => /\[render\] opening /.test(issue.text || ''))
+    .slice(0, 8).map((issue) => ({ type: issue.type, at: issue.at || null,
+      text: String(issue.text || '').slice(0, 4096) }));
+  const labels = [...new Set(warnings.flatMap((issue) =>
+    [...issue.text.matchAll(/plan:\d+:material:\d+/g)].map((match) => match[0])))].slice(0, 8);
+  return page.evaluate(({ warnings, labels }) => {
+    const sf = window.SF, state = sf?.state, render = state?.render;
+    if (!render) return { available: false, warnings };
+    const owner = sf.registry?.get?.('render');
+    const text = (value) => value == null ? null : String(value).slice(0, 240);
+    const finite = (value) => Number.isFinite(value) ? value : null;
+    const list = (value) => Array.isArray(value) ? value.slice(0, 16).map(text) : null;
+    const validation = (value) => value ? {
+      ok: value.ok === true, reason: text(value.reason),
+      uncaptured: list(value.uncaptured), missingProgramKeys: list(value.missingProgramKeys),
+      missingProgramBindings: list(value.missingProgramBindings),
+      delta: value.delta ? { programs: finite(value.delta.programs),
+        geometries: finite(value.delta.geometries), textures: finite(value.delta.textures) } : null,
+    } : null;
+    const settle = render.openingCompositionSettle;
+    const queue = settle?.queue;
+    const plan = render.openingSubmissionReceipt?.plan;
+    // Labels are scoped to the current terminal receipt: a recovered/rebuilt plan may have
+    // replaced the one named by an earlier warning, so do not present this as warning-time identity.
+    const subjects = labels.map((label) => {
+      const [, planIndex, materialIndex] = /^plan:(\d+):material:(\d+)$/.exec(label);
+      const subject = plan?.compileSubjects?.[Number(planIndex)];
+      if (!subject) return { label, available: false };
+      const material = Array.isArray(subject.material)
+        ? subject.material[Number(materialIndex)] : subject.material;
+      const ancestors = [];
+      let node = subject, identity = null, asset = null, authoredState = null;
+      while (node && ancestors.length < 6) {
+        const data = node.userData || {};
+        ancestors.push({ name: text(node.name), type: text(node.type) });
+        if (!identity && data.presentationEntityId != null) identity = {
+          entityId: text(data.presentationEntityId), generation: text(data.presentationOccupantGeneration),
+        };
+        asset ||= data.spacefaceRenderPackage || data.flightRenderPackage || null;
+        authoredState ||= data.authoredAssetState || null;
+        node = node.parent;
+      }
+      return { label, available: true, name: text(subject.name), uuid: text(subject.uuid),
+        type: text(subject.type), ancestors, identity, authoredState: text(authoredState),
+        asset: asset ? { assetId: text(asset.assetId), contentHash: text(asset.contentHash) } : null,
+        material: material ? { name: text(material.name), uuid: text(material.uuid),
+          type: text(material.type), version: finite(material.version) } : null };
+    });
+    return { available: true, observedAt: performance.now(), mode: state.mode,
+      tick: finite(state.tick), simTime: finite(state.simTime), warnings,
+      firstPlayableFrameAt: finite(render.firstPlayableFrameAt),
+      flightVeilHoldsSim: render.flightVeilHoldsSim === true,
+      firstPicturePhase: text(render.openingFirstPicturePhase),
+      preSubmit: validation(render.openingSubmissionPreSubmitValidation),
+      final: validation(render.openingSubmissionValidation),
+      refusedFrames: owner ? finite(owner._openingPreSubmitRefusals) : null,
+      missingBindingFailsafe: owner ? owner._openingMissingHoldFailOpen === true : null,
+      composition: settle ? { settled: settle.settled === true, reason: text(settle.reason),
+        waitedMs: finite(settle.waitedMs), pending: finite(settle.pending),
+        ids: list(settle.ids), statuses: list(settle.statuses),
+        queue: queue ? { pending: finite(queue.pending), inFlight: finite(queue.inFlight),
+          compiling: finite(queue.compiling), held: queue.held === true,
+          jobs: (queue.jobs || []).slice(0, 8).map((job) => ({ key: text(job.key),
+            lifecycle: text(job.lifecycle), status: text(job.status) })) } : null } : null,
+      compositionSteps: (render.openingCookLedger || [])
+        .filter((row) => /^live\.openingComposition/.test(row.step || '')).slice(0, 4)
+        .map((row) => ({ step: text(row.step), outcome: text(row.outcome), ms: finite(row.ms),
+          reason: text(row.reason), pending: finite(row.pending), ids: text(row.ids), statuses: text(row.statuses) })),
+      subjectScope: 'terminal-current-receipt', subjects,
+    };
+  }, { warnings, labels }).catch((error) => ({ available: false, warnings, error: String(error.message).slice(0, 400) }));
 }
 
 function logProgress(message) {
@@ -302,6 +378,7 @@ function compactProbeResult(result) {
     ignoredIssueCount: result.ignoredIssueCount,
     issues: result.issues,
     ignoredIssues: result.ignoredIssues,
+    openingAdmission: result.openingAdmission,
     pixels: result.pixels && {
       width: result.pixels.width,
       height: result.pixels.height,

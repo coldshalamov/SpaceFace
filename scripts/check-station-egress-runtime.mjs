@@ -166,7 +166,8 @@ try {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
     const stack = (state.ui && state.ui.screenStack) || [];
-    return !!(state.mode === 'flight' && state.ui.docked === false && !stack.includes('station') &&
+    return !!(state.mode === 'flight' && state.ui.docked === false
+      && state.ui.dockedStationId === null && state.timeScale === 1 && !stack.includes('station') &&
       player && player.alive && player.hull > 0);
   }, null, { timeout: DOCK_TIMEOUT_MS });
 
@@ -204,7 +205,9 @@ try {
     'backdrop click must not undock immediately — it must confirm first');
 
   await domClick(page, '.sx-pop--dep [data-pop-launch]');
-  await page.waitForFunction(() => window.SF.state.ui.docked === false && window.SF.state.mode === 'flight',
+  await page.waitForFunction(() => window.SF.state.ui.docked === false
+    && window.SF.state.ui.dockedStationId === null && window.SF.state.timeScale === 1
+    && window.SF.state.mode === 'flight',
     null, { timeout: DOCK_TIMEOUT_MS });
 
   assert.deepEqual(issues.errorIssues(), [],
