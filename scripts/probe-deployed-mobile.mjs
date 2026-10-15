@@ -13,7 +13,9 @@ const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
   acceptance: { startupAndControls: 'pending', worldVisibility: 'unverified' },
-  responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [] };
+  responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
+  startupErrors: [], runtimeMessages: [] };
+const pendingDiagnosticReads = new Set();
 let browser;
 async function boundedBrowserRead(read, timeoutMs = 20000) {
   let timer;
@@ -24,6 +26,41 @@ async function boundedBrowserRead(read, timeoutMs = 20000) {
     })]);
   } finally { clearTimeout(timer); }
 }
+function installStartupObserver() {
+  window.__SF_MOBILE_STARTUP_OBSERVER__?.stop?.();
+  const bus = window.SF?.bus;
+  const events = [], unsubs = [];
+  const record = (type, payload = {}) => {
+    if (events.length >= 64) events.shift();
+    events.push({ type, at: performance.now(), ...payload });
+  };
+  if (typeof bus?.on === 'function') {
+    for (const type of ['game:startFailed', 'save:error', 'mode:changed', 'game:loadingProgress']) {
+      unsubs.push(bus.on(type, payload => {
+        const row = {};
+        for (const key of ['code', 'stage', 'error', 'text', 'retryable', 'reason', 'mode', 'previousMode',
+          'id', 'label', 'detail', 'transition', 'progress', 'slot']) {
+          const value = payload?.[key];
+          if (typeof value === 'string') row[key] = value.slice(0, 3000);
+          else if (typeof value === 'number' || typeof value === 'boolean') row[key] = value;
+        }
+        record(type, row);
+      }));
+    }
+  }
+  const contextEvent = event => record(event.type, { canvasId: event.target?.id || null,
+    canvasClass: typeof event.target?.className === 'string' ? event.target.className : null,
+    width: event.target?.width ?? null, height: event.target?.height ?? null,
+    statusMessage: String(event.statusMessage || '').slice(0, 1000) });
+  for (const type of ['webglcontextlost', 'webglcontextrestored', 'webglcontextcreationerror']) {
+    document.addEventListener(type, contextEvent, true);
+    unsubs.push(() => document.removeEventListener(type, contextEvent, true));
+  }
+  window.__SF_MOBILE_STARTUP_OBSERVER__ = {
+    snapshot: () => ({ busAvailable: typeof bus?.on === 'function', events: events.slice() }),
+    stop() { for (const off of unsubs) if (typeof off === 'function') off(); },
+  };
+}
 const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
   const shown = e => !e.hidden && e.getBoundingClientRect().width > 0
     && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
@@ -31,6 +68,7 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
   const render = window.SF?.state?.render;
   const frame = window.__SF_WITNESS__?.snapshot?.();
   const graphics = window.__THREE_GAME_DIAGNOSTICS__?.getReport?.();
+  const lane = window.SF?.simLaneDiag?.();
   return {
     launchButton: (() => { const e = document.querySelector('.sf-ng-launch'); return e ? { text: e.textContent, disabled: e.disabled, ariaDisabled: e.getAttribute('aria-disabled') } : null; })(),
     title: document.title, mobile: document.documentElement.dataset.sfMobile || null,
@@ -41,13 +79,23 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
     loading: [...document.querySelectorAll('[data-loading-label], [data-loading-detail]')].filter(shown).map(e => e.textContent),
     screens: [...document.querySelectorAll('[data-screen]')].filter(shown).map(e => e.dataset.screen),
     alerts: [...document.querySelectorAll('[role="alert"], .boot-error')].filter(shown).map(e => e.textContent),
+    startupObserver: window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.() || null,
     runtime: render || frame ? {
       gpu: render?.gpu,
       parallelCompile: render ? !!render.renderer?.extensions?.get('KHR_parallel_shader_compile') : undefined,
-      admission: render?.requiredPackageAdmission,
-      cook: render?.openingCookLedger,
+      debugStateAvailable: !!render,
+      admission: render?.requiredPackageAdmission ?? null,
+      cook: Array.isArray(render?.openingCookLedger) ? render.openingCookLedger.slice(-24) : null,
+      context: { lost: frame?.contextLost ?? render?.contextLost ?? null,
+        recovery: render?.contextRecovery ? { losses: render.contextRecovery.losses,
+          restores: render.contextRecovery.restores, pending: render.contextRecovery.pending,
+          generation: render.contextRecovery.generation, lastError: render.contextRecovery.lastError } : null },
+      simLane: lane ? { lane: lane.lane, laneReady: lane.laneReady, closed: lane.closed,
+        error: lane.error, errorSite: lane.errorSite, closeCauseMessage: lane.closeCauseMessage,
+        closeCauseSite: lane.closeCauseSite, pendingRpcs: lane.pendingRpcs } : null,
       frame,
       render: graphics?.render,
+      memory: graphics?.memory,
       post: graphics?.post,
     } : null,
   };
@@ -87,6 +135,38 @@ try {
   page.on('close', () => report.lifecycle.push({ event: 'page-close', at: new Date().toISOString() }));
   page.on('pageerror', error => report.pageErrors.push(String(error?.stack || error)));
   page.on('console', message => {
+    const text = message.text();
+    if (/\[render\] GPU:|\[opening-cook\]|startup failed|\[simLane\]|PRESENTATION STALLED|WebGL.*context/i.test(text)) {
+      if (report.runtimeMessages.length >= 64) report.runtimeMessages.shift();
+      report.runtimeMessages.push({ type: message.type(), text: text.slice(0, 4000) });
+    }
+    if (/\[SpaceFace\].*(?:startup failed|save restore failed)|SimulationRunner is closed|PRESENTATION STALLED/.test(text)) {
+      // Error.message text drops custom readiness code/stage in production. Read the original
+      // console arguments; this observes the release route without enabling its mutable debug API.
+      const read = boundedBrowserRead(() => Promise.all(message.args().slice(0, 5).map(arg => arg.evaluate(value => {
+        if (!value || typeof value !== 'object') return null;
+        const error = (v, depth) => {
+          const result = {};
+          for (const key of ['name', 'message', 'code', 'stage', 'stack', 'retryable']) {
+            const field = v?.[key];
+            if (typeof field === 'string') result[key] = field.slice(0, key === 'stack' ? 6000 : 3000);
+            else if (typeof field === 'boolean') result[key] = field;
+          }
+          if (depth && v?.cause) result.cause = typeof v.cause === 'object'
+            ? error(v.cause, depth - 1) : String(v.cause).slice(0, 3000);
+          return result;
+        };
+        return error(value, 2);
+      })))).then(args => {
+        if (report.startupErrors.length < 16) report.startupErrors.push({ source: 'console-error-arguments',
+          text: text.slice(0, 3000), errors: args.filter(value => value && Object.keys(value).length) });
+      }).catch(error => {
+        if (report.startupErrors.length < 16) report.startupErrors.push({ source: 'console-error-arguments',
+          text: text.slice(0, 3000), unavailable: String(error?.message || error) });
+      });
+      pendingDiagnosticReads.add(read);
+      void read.finally(() => pendingDiagnosticReads.delete(read));
+    }
     if (message.type() === 'log' && /\[render\] GPU:|\[opening-cook\]/.test(message.text()))
       console.log(`[mobile:${engine}] ${message.text()}`);
     if (['error', 'warning'].includes(message.type()) && !/was preloaded using link preload/.test(message.text())) {
@@ -97,6 +177,10 @@ try {
   });
   page.on('requestfailed', request => {
     if (report.requestFailures.length < 500) report.requestFailures.push({ url: request.url(), error: request.failure()?.errorText });
+  });
+  page.on('framenavigated', frame => {
+    if (frame === page.mainFrame() && report.lifecycle.length < 64)
+      report.lifecycle.push({ event: 'main-frame-navigation', url: frame.url(), at: new Date().toISOString() });
   });
   page.on('response', response => {
     if (report.responses.length < 3000) report.responses.push({ url: response.url(), status: response.status(),
@@ -115,6 +199,7 @@ try {
   }
   await page.screenshot({ path: join(out, '01-menu.png') });
   if (!(await visible(page, menu))) throw new Error('Main menu never became playable');
+  await boundedBrowserRead(() => page.evaluate(installStartupObserver));
   report.stages.push({ stage: 'menu', ...await snapshot(page) });
   console.log(`[mobile:${engine}] menu ready`);
   await tapControl(menu);
@@ -202,6 +287,7 @@ try {
   }
   process.exitCode = 1;
 } finally {
+  await Promise.allSettled([...pendingDiagnosticReads]);
   // Persist diagnostics before a crashed renderer can stall browser shutdown.
   await writeFile(join(out, 'report.json'), JSON.stringify(report, null, 2));
   await Promise.race([browser?.close(), new Promise(resolve => {
