@@ -64,8 +64,10 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * @param {number} [o.artWidth]
  * @param {Object<string,number>} [o.mass]  data-action -> tonnes (how the ring answers with that hull in front)
  * @param {(i0:number, i1:number, f:number) => void} [o.onTurn]
+ * @param {(geometry:object) => void} [o.onLayout]  called after a build that really moved the yard, so
+ *   whatever is seated against it (the screen's hull ring) can re-measure; a skipped build never calls it
  */
-export function createYardCarousel({ row, host, anchor, hero, art = null, artWidth = 132, mass = null, onTurn = null, modelRing = false, onModelsReady = null } = {}) {
+export function createYardCarousel({ row, host, anchor, hero, art = null, artWidth = 132, mass = null, onTurn = null, modelRing = false, onModelsReady = null, onLayout = null } = {}) {
   const doc = (row && row.ownerDocument) || globalThis.document;
   if (!row || !host || !anchor || !doc || typeof doc.createElementNS !== 'function' || typeof anchor.getBoundingClientRect !== 'function') {
     return { el: null, update() {}, layout() {}, setActive() {}, dispose() {} };
@@ -210,17 +212,28 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     }
   }
 
-  function build() {
-    if (disposed || !active) return;
+  // The yard is rebuilt only when a box it is laid out from really moved. Every trigger (the first frame,
+  // fonts, the resize observer, a re-show, the position watch) asks through scheduleBuild(), the pass
+  // measures, and an unchanged signature of what it measured ends it before the first write. So five
+  // triggers at one layout cost a few reads and no writes instead of five forced layouts.
+  let lastSig = null;
+  let buildDirty = false;
+  let buildFrame = false;
+  const q1 = (v) => Math.round(v * 10) / 10;
+
+  // `force` (an explicit layout()) always rebuilds; returns whether the pass wrote anything
+  function build(force = false) {
+    buildDirty = false;
+    if (disposed || !active) return false;
     const hb = host.getBoundingClientRect();
     const heroEl = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null;
     const hr = heroEl ? heroEl.getBoundingClientRect() : null;
     const ab = hr && hr.width ? hr : anchor.getBoundingClientRect();
-    if (!hb.width || !ab.width) return;
+    if (!hb.width || !ab.width) { lastSig = null; return false; }
     const W = hb.width; const H = hb.height;
     const rx = Math.min(ab.width * 0.42, 420);
     const ry = rx * 0.2;
-    g = { cx: ab.left - hb.left + ab.width / 2, cy: Math.min(ab.top - hb.top + ab.height + 4, H - ry - 96), rx, ry };
+    const next = { cx: ab.left - hb.left + ab.width / 2, cy: Math.min(ab.top - hb.top + ab.height + 4, H - ry - 96), rx, ry };
     if (modelRing && typeof host.querySelector === 'function') {
       const routeEl = host.querySelector('.sf-ng-route');
       if (routeEl && typeof routeEl.getBoundingClientRect === 'function') {
@@ -228,7 +241,7 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
         if (rt && rt.top) {
           let liH = 40;
           for (const li of items()) { const r = li.getBoundingClientRect(); if (r && r.height > liH) liH = r.height; }
-          g.cy = Math.min(g.cy, rt.top - hb.top - ry - 14 - liH - 16);
+          next.cy = Math.min(next.cy, rt.top - hb.top - ry - 14 - liH - 16);
         }
       }
     }
@@ -238,6 +251,11 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     const sb = hr && hr.width ? anchor.getBoundingClientRect() : ab;
     const posterEl = modelRing && typeof anchor.querySelector === 'function' ? anchor.querySelector('.k-stage__poster') : null;
     const pr = posterEl ? posterEl.getBoundingClientRect() : null;
+    const sig = [W, H, next.cx, next.cy, next.rx, ab.top - hb.top, ab.width, ab.height, hr ? hr.width : -1, hr ? hr.height : -1,
+      sb.left - hb.left, sb.top - hb.top, sb.width, sb.height, pr ? pr.width : -1, pr ? pr.height : -1, items().length].map(q1).join('|');
+    if (!force && g && sig === lastSig) return false;
+    lastSig = sig;
+    g = next;
     face.setAttribute('viewBox', `0 0 ${W} ${H}`);
     // the back layer lives in the anchor (the stage), under its picture, measured in the host's box
     if (!back.isConnected && anchor.firstChild) anchor.insertBefore(back, anchor.firstChild);
@@ -299,6 +317,22 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     }
     if (!drag && !settling) rot = pressedIndex() * sp();
     place(rot);
+    if (typeof onLayout === 'function') onLayout(g);
+    return true;
+  }
+
+  // The one way anything asks for a build: a dirty flag and a single frame, so any number of triggers in a
+  // frame cost one measuring pass (which ends before its first write when nothing moved).
+  function scheduleBuild() {
+    if (disposed || !active) return;
+    if (typeof requestAnimationFrame !== 'function') { build(); return; }
+    buildDirty = true;
+    if (buildFrame) return;
+    buildFrame = true;
+    requestAnimationFrame(() => {
+      buildFrame = false;
+      if (buildDirty) build();
+    });
   }
 
   const setModelsReady = (v) => {
@@ -537,7 +571,7 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     });
   }
   let ro = null;
-  if (typeof ResizeObserver === 'function') ro = new ResizeObserver(() => build());
+  if (typeof ResizeObserver === 'function') ro = new ResizeObserver(() => scheduleBuild());
   const observeAll = () => {
     if (mo) mo.observe(row, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'], childList: true });
     if (ro) {
@@ -550,22 +584,41 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     }
   };
   observeAll();
-  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => build());
-  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => build());
+  if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === 'function') doc.fonts.ready.then(() => scheduleBuild());
+  // the one build at mount (so the first gesture has geometry); the frame after it only checks it
   build();
-  // the columns settle for a moment after mount and SLIDE the stage without resizing it (a ResizeObserver
-  // cannot see a move): watch the hull's box for two seconds and re-centre the yard if it moved
-  const watchUntil = (typeof performance !== 'undefined' ? performance.now() : 0) + 2000;
+  scheduleBuild();
+  // the columns settle for a moment after the screen shows and SLIDE the stage without resizing it (a
+  // ResizeObserver cannot see a move): watch the hull's box and re-centre the yard if it moved. The
+  // watch rests once the box has held still for WATCH_STILL_FRAMES (or after WATCH_MAX_MS), and every
+  // show starts it again, so a still screen costs no per-frame reads.
+  const WATCH_STILL_FRAMES = 8;
+  const WATCH_MAX_MS = 2000;
+  const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : 0);
+  let watching = false;
+  let watchUntil = 0;
+  let watchStill = 0;
   let lastAt = null;
   const heroAt = () => { const h = hero && typeof anchor.querySelector === 'function' ? anchor.querySelector(hero) : null; const r = (h || anchor).getBoundingClientRect(); return r.left + r.width / 2 + ',' + (r.top + r.height); };
   const watch = () => {
+    watching = false;
     if (disposed || !active) return;
     const at = heroAt();
-    if (lastAt !== null && at !== lastAt && !drag) build();
+    if (lastAt !== null && at !== lastAt) {
+      watchStill = 0;
+      if (!drag) build();
+    } else watchStill += 1;
     lastAt = at;
-    if (performance.now() < watchUntil && typeof requestAnimationFrame === 'function') requestAnimationFrame(watch);
+    if (watchStill < WATCH_STILL_FRAMES && nowMs() < watchUntil) { watching = true; requestAnimationFrame(watch); }
   };
-  if (typeof requestAnimationFrame === 'function' && typeof performance !== 'undefined') requestAnimationFrame(watch);
+  const startWatch = () => {
+    if (typeof requestAnimationFrame !== 'function' || typeof performance === 'undefined') return;
+    watchStill = 0;
+    lastAt = null;
+    watchUntil = nowMs() + WATCH_MAX_MS;
+    if (!watching) { watching = true; requestAnimationFrame(watch); }
+  };
+  startWatch();
   const setActive = (v = true) => {
     if (disposed) return;
     if (!v) {
@@ -583,13 +636,16 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
     }
     active = true;
     observeAll();
-    build();
+    // re-seat on the committed hull now (the geometry stands from the last build), then measure on the
+    // frame: a re-show at an unchanged layout writes nothing, a moved one rebuilds once
     update({ instant: true });
+    scheduleBuild();
+    startWatch();
   };
   return {
     el: wrap,
     update,
-    layout: build,
+    layout: () => { build(true); },
     setActive,
     get geometry() { return g; },
     get rotation() { return rot; },

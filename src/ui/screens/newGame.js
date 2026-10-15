@@ -780,7 +780,9 @@ export const newGameScreen = {
           const list = starterOfLi();
           if (this._hullRing && list[i0]) this._hullRing.paint(ringStatsMix(list[i0], list[i1], f));
           stage.style.setProperty('--ng-spin-mix', (Math.min(f, 1 - f) * 2).toFixed(3));
-        } });
+        },
+        // the yard moved: the ring round the hull re-seats on the render (it measures only on a move)
+        onLayout: () => { if (this._hullRing) this._hullRing.layout(); } });
     }
     rootEl.appendChild(stage);
     // the hull alone inside its ring (ORRERY 6): the stage is the instrument, not a photograph of a dock
@@ -1038,16 +1040,30 @@ export const newGameScreen = {
     // Native iPhone focus opens the keyboard and scrolls before the form has settled. Let a
     // touch choose the field; desktop retains the immediate name-entry shortcut.
     if (!isPhoneLayout()) {
-      try { refs.name.focus(); refs.name.select(); } catch (e) {}
+      // focus() and select() make the browser lay the whole screen out: do it after the first frame has
+      // painted (the yard and the ring measure in that frame), not inside the show, and not at all if the
+      // screen is hidden or disposed first
+      const field = refs.name;
+      const token = {};
+      this._nameFocus = token;
+      const focusName = () => {
+        if (this._nameFocus !== token) return;
+        this._nameFocus = null;
+        try { field.focus(); field.select(); } catch (e) {}
+      };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(focusName));
+      else focusName();
     }
   },
   onHide() {
+    this._nameFocus = null;
     cue('close');
     if (this._starterDial) this._starterDial.setActive(false);
     if (this.hull) this.hull.deactivate();
   },
   refresh() {},
   dispose() {
+    this._nameFocus = null;
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
     if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }
     if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }
