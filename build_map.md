@@ -608,7 +608,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 294 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -840,6 +840,7 @@ real missing capability, never by another lane's sitting.
 | 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves; decompose disjoint M-rows and Depth tables in parallel | ADMIT | OPEN — parallel |
 
 SFQ-B119 landed 2026-10-15: after a fight the field offers rescue, salvage, pursuit, and escape from what is actually there, and choosing does not pause physics (`test/sfq-b119-aftermath-choices.test.mjs`). Row 293 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+| 294 | SFQ-B120 | A witnessed crime that names a person opens one restitution bill for that cause. Paying it in full returns only the standing that cause took, a second payment does not charge, and other hostility and heat stay. | BUILD | OPEN |
 
 SFQ-B111 landed 2026-10-15: a collision is classed direct, indirect, accidental, or stale, and the law card says which (`test/sfq-b111-impact-class.test.mjs`). Row 292 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 
