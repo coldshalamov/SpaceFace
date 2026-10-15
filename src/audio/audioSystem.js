@@ -2639,6 +2639,7 @@ export const audio = {
     }
     bus.on('buildIdentity:revealed', (p) => this._onBuildIdentityRevealed(p));
     bus.on('discovery:plateUnlocked', (p) => this._onDiscoveryUnlocked(p));
+    bus.on('uniqueWreck:bearingFixed', (p) => this._onUniqueWreckBearingFixed(p));
     bus.on('poi:discovered', (p) => this._onPoiDiscovered(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     bus.on('combat:shove', (p) => {
@@ -4313,6 +4314,21 @@ export const audio = {
       this.play('sfx_discovery_plate_note', { gain: 0.62, rate: 1.26, critical: true });
       this.play('sfx_discovery_plate_note', { gain: 0.55, rate: 1.5, critical: true });
     }
+  },
+
+  // The historic-wreck bearing fix is the discovery loop's payoff beat — the rumor bought, the
+  // ring swept, the position fixed — and its HISTORIC WRECK LOCATED plate was silent while the
+  // same plate's POI path answered with the motif. The wreck fix is that plate, so it speaks
+  // with the same voice: reuse the plate motif rather than a second discovery fanfare. Same
+  // never-repeat discipline as _onPoiDiscovered: the emitter gates on the record phase, this
+  // Set keeps a re-emitted row from re-ringing.
+  _onUniqueWreckBearingFixed(p) {
+    const rt = this.rt;
+    if (!rt || !p || !p.wreckId) return;
+    const heard = rt._wreckBearingHeard || (rt._wreckBearingHeard = new Set());
+    if (heard.has(p.wreckId)) return;
+    heard.add(p.wreckId);
+    this._onDiscoveryUnlocked({ sectorId: p.sectorId, poiId: `uniqueWreck:${p.wreckId}` });
   },
 
   // INST-18: a point of interest resolving on the scope is the authored wonder beat — the

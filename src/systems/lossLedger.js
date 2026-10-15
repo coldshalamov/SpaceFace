@@ -590,13 +590,16 @@ export const lossLedger = {
     const sectorId = e.data.sectorId || (state.world && state.world.currentSectorId);
     if (!sectorId) return;
     const isComms = e.data.isCommunicator || e.data.parentType === 'communicator';
+    const hasAuthoredScanLabel = typeof e.data.scanLabel === 'string'
+      && e.data.scanLabel.trim().length > 0
+      && e.data.scanLabel !== 'Wreck Debris';
     const authoredClass = e.data.berthConsign ? wreckClassById(e.data.wreckClass) : null;
     const loss = latestLossFor(state, sectorId);
     if (!loss) {
       if (authoredClass && e.data.playerWreck !== true) {
         e.data.wreckClass = authoredClass.id;
         if (!isComms) {
-          e.data.scanLabel = authoredClass.scanLabel;
+          if (!hasAuthoredScanLabel) e.data.scanLabel = authoredClass.scanLabel;
           e.data.wreckClassBlurb = authoredClass.blurb;
         }
         e.data.wreckClassLabel = authoredClass.label;
@@ -621,6 +624,7 @@ export const lossLedger = {
     const cls = wreckClassById(classId) || wreckClassById('debris');
     // Additive metadata (these fields are new; producers don't read them, so no behavior change).
     e.data.provenance = {
+      ...(existing && typeof existing === 'object' ? existing : {}),
       lossId: loss.lossId,
       kind: loss.kind,
       factionId: loss.factionId,
@@ -638,7 +642,7 @@ export const lossLedger = {
     const labelClass = authoredClass || cls;
     e.data.wreckClass = authoredClass ? authoredClass.id : classId;
     if (!isComms) {
-      e.data.scanLabel = labelClass.scanLabel;
+      if (!hasAuthoredScanLabel) e.data.scanLabel = labelClass.scanLabel;
       e.data.wreckClassLabel = labelClass.label;
       e.data.wreckClassBlurb = labelClass.blurb;
     } else {

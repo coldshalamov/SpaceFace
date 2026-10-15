@@ -47,6 +47,7 @@
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { installGameCadenceProbe, summarizeGameCadence } from './lib/gameCadenceProbe.mjs';
+import { captureHostPowerState } from './lib/performancePowerState.mjs';
 import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
 import { racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
 import { startSimulationWorkerProfile } from './lib/workerCpuProfile.mjs';
@@ -884,6 +885,7 @@ async function runSteadyFlightProfile(page, cdp) {
     finally { await page.keyboard.up('KeyW').catch(() => {}); }
   }
   if (EVAL_FILE) {
+    const powerStateStart = await captureHostPowerState(page);
     const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
     log(`running ${EVAL_FILE} in the page`);
     if (process.argv.includes('--eval-thrust')) await page.keyboard.down('KeyW');
@@ -903,6 +905,7 @@ async function runSteadyFlightProfile(page, cdp) {
     });
     fs.writeFileSync(path.join(OUT_DIR, 'eval-metadata.json'), JSON.stringify({
       ...evalIdentity, sourceDigest, sourceDigestAfter, sourceStable: sourceDigest === sourceDigestAfter,
+      powerState: { start: powerStateStart, end: await captureHostPowerState(page) },
       sourceOverlay: sourceOverlayMetadata(),
       probeDigest, displayHz, seed: launchedSeed, requestedSeed: expectedSeed,
       domainProfileRequested: requestedDomainProfile,
@@ -938,6 +941,7 @@ async function runSteadyFlightProfile(page, cdp) {
     }).catch((error) => String(error));
     log(`gpu timers: ${gpuOn}`);
   }
+  const powerStateStart = await captureHostPowerState(page);
   log(`profiling ${WINDOW_MS} ms of held-thrust flight`);
   if (TRACE) await startTrace(cdp);
   const machineStart = os.cpus();
@@ -975,8 +979,10 @@ async function runSteadyFlightProfile(page, cdp) {
     return out;
   }, { idle: 0, total: 0 });
   const beginCpu = totals(machineStart), endCpu = totals(machineEnd);
+  const powerStateEnd = await captureHostPowerState(page);
   const metadata = {
     ...identity, cpu: machineStart[0]?.model, platform: process.platform, displayHz,
+    powerState: { start: powerStateStart, end: powerStateEnd },
     hostBusyPct: 100 * (1 - (endCpu.idle - beginCpu.idle) / (endCpu.total - beginCpu.total)),
     commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(), sourceDigest, probeDigest,
     sourceOverlay: sourceOverlayMetadata(),

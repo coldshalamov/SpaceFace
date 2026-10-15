@@ -3337,8 +3337,9 @@ const namedHunter = {
           // next time, capped like the escape grudge. World kills carry no grudge.
           for (const survivor of NAMED_CAPTAINS) {
             if (survivor.id === live.data.captainId) continue;
-            const srec = named[survivor.id];
-            if (srec && srec.alive !== false) srec.tier = Math.min(3, (srec.tier | 0) + 1);
+            const srec = named[survivor.id]
+              || (named[survivor.id] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+            if (srec.alive !== false) srec.tier = Math.min(3, (srec.tier | 0) + 1);
           }
         }
       }
@@ -3348,6 +3349,12 @@ const namedHunter = {
         pos: { x: at.x, z: at.z },
         pool: { ...(live.shape.killCachePool || { cmdty_salvage_electronics: 2, cmdty_scrap_metal: 3 }) },
         scanLabel: `${captainName}'s Hulk`,
+        wreckClass: 'battlefield',
+        provenance: {
+          victimLabel: captainName,
+          killerLabel: p.byPlayer ? 'You' : 'Unknown',
+          source: 'named_hunter',
+        },
       });
       d.emit('comms:log', {
         from: 'RUMOR',

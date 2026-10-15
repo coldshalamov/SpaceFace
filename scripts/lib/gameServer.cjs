@@ -165,9 +165,12 @@ const devReleaseReceiptCache = new Map(); // root -> receipt object
 const APP_SOURCE_BUILD_RECEIPT = 'build/web/spaceface-release-build.json';
 const APP_SOURCE_BUILD_COOKIE = 'sf-build';
 const SOURCE_OVERLAY_SCHEMA = 'spaceface.sourceBaseline.v1';
-const SOURCE_OVERLAY_MAX_FILES = 128;
+// Probe-only source overlays may pin the complete runtime map (index + src/**/*.js + the two
+// worker mirror modules).  Keep the validator bounded while leaving room for the current
+// checkout's measured 2,220-file / ~55 MiB map; ordinary launches never use this path.
+const SOURCE_OVERLAY_MAX_FILES = 4096;
 const SOURCE_OVERLAY_MAX_FILE_BYTES = 8 * 1024 * 1024;
-const SOURCE_OVERLAY_MAX_TOTAL_BYTES = 32 * 1024 * 1024;
+const SOURCE_OVERLAY_MAX_TOTAL_BYTES = 64 * 1024 * 1024;
 const SOURCE_OVERLAY_SHA256 = /^[a-f0-9]{64}$/i;
 
 function readAppSourceBuildDigest(root) {
