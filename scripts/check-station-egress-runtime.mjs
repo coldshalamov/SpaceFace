@@ -50,12 +50,56 @@ try {
   await waitForVisible(page, '[data-screen="mainMenu"]', MENU_TIMEOUT_MS, 'main menu');
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game rail');
+  await page.evaluate(() => {
+    window.__sfStationEgressLaunch = { started: false, failure: null };
+    const bus = window.SF && window.SF.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    bus.on('game:started', () => { window.__sfStationEgressLaunch.started = true; });
+    bus.on('game:startFailed', (payload) => {
+      window.__sfStationEgressLaunch.failure = {
+        code: String(payload?.code || '').slice(0, 200),
+        stage: String(payload?.stage || '').slice(0, 200),
+        error: String(payload?.error || payload?.message || payload || '').slice(0, 400),
+      };
+    });
+  });
   assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
   await page.waitForFunction(() => {
+    if (window.__sfStationEgressLaunch?.failure) {
+      throw new Error(`game:startFailed ${JSON.stringify(window.__sfStationEgressLaunch.failure)}`);
+    }
     const state = window.SF && window.SF.state;
     const player = state && state.entities && state.entities.get(state.playerId);
-    return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
-  }, null, { timeout: START_TIMEOUT_MS });
+    const render = state && state.render;
+    return !!(state && state.mode === 'flight'
+      && window.__sfStationEgressLaunch?.started === true
+      && player && player.alive && player.hull > 0
+      && render && render.flightVeilHoldsSim !== true
+      && Number.isFinite(render.firstPlayableFrameAt));
+  }, null, { timeout: START_TIMEOUT_MS, polling: 250 }).catch(async (error) => {
+    const detail = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const render = state && state.render;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      return {
+        launch: window.__sfStationEgressLaunch,
+        mode: state && state.mode,
+        tick: state && state.tick,
+        simTime: state && state.simTime,
+        player: player ? {
+          id: player.id,
+          alive: player.alive !== false,
+          hull: player.hull,
+        } : null,
+        flightVeilHoldsSim: render && render.flightVeilHoldsSim,
+        firstPlayableFrameAt: render && render.firstPlayableFrameAt != null
+          ? render.firstPlayableFrameAt : null,
+        firstPicturePhase: render && render.openingFirstPicturePhase != null
+          ? render.openingFirstPicturePhase : null,
+      };
+    }).catch(() => null);
+    throw new Error(`${error.message} :: Station launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
+  });
 
   const dockTarget = await page.evaluate(() => {
     const sf = window.SF;
