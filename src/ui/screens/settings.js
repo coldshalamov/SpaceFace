@@ -25,8 +25,10 @@ import { reelRebindText } from '../../systems/masslineInputGrammar.js';
 import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
+import { createGameState } from '../../core/gameState.js';
 import {
   CANONICAL_QUALITY_PRESET_IDS,
+  DEFAULT_QUALITY_PRESET,
   QUALITY_PRESETS,
   applyQualityPreset,
   createFrameCap,
@@ -466,6 +468,91 @@ export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Pause', key: 'Esc / P', note: 'pause menu: resume, settings, save/load, map review' },
 ]);
 
+// --- Reset this page ---------------------------------------------------------------------------
+// One word at the foot of Audio, Video, Gameplay and Access returns that page to how the game
+// shipped. The shipped values are createGameState(0).settings (the single owner of defaults); each
+// changed key goes through `_set`, so the renderer/audio live-apply, the profile persists and the
+// worker lane mirrors it exactly as if the player had moved the row by hand.
+//
+// What a reset never touches, because it is not that page's preference to give back:
+//  - Audio: the default-mute migration stamp.
+//  - Video: motionReduce (the mirror of the motion choice made under Access) and the shadows
+//    migration stamp. The Video picture goes back through applyQualityPreset, not key by key, so the
+//    pinned keys stay consistent and the Quality mode lamp lights.
+//  - Gameplay: the build-contract backends, the control scheme (a Controls row) and, while Ironman
+//    is chosen, difficulty (leaving Ironman has its own confirm). Key bindings are never touched.
+//  - Access: the recorded motion choice (an explicit Reduce is kept; motion is asked, never assumed)
+//    and the language.
+const RESET_SKIP = Object.freeze({
+  audio: Object.freeze(['defaultMuteVersion']),
+  video: Object.freeze(['motionReduce', 'shadowsDefaultVersion']),
+  gameplay: Object.freeze(['physicsBackend', 'aiBackend', 'flightBackend', 'runtimeProfile', 'controlScheme', 'controlSchemeV2']),
+  accessibility: Object.freeze(['motionPreference', 'motionAsked', 'motionPrompted', 'motionDefaultVersion']),
+});
+// Keys a page's rows read through a fallback while the shipped defaults leave them out. Writing the
+// fallback explicitly is what returns a stored profile to it (a profile merge cannot delete a key).
+const RESET_FALLBACKS = Object.freeze({
+  gameplay: Object.freeze({
+    steeringView: 'overhead', racingDistance: 58, racingHeight: 22, racingLookAhead: 36,
+    velocityVectoring: true, damageNumbers: true,
+  }),
+  accessibility: Object.freeze({ textScale: 1 }),
+});
+const RESET_PAGES = Object.freeze({
+  Audio: Object.freeze({ sections: ['audio'] }),
+  Video: Object.freeze({ sections: ['video'], preset: true }),
+  Gameplay: Object.freeze({ sections: ['gameplay'], extras: [['controls', 'flightMode']] }),
+  Access: Object.freeze({ sections: ['accessibility'], extras: [[null, 'uiScale']] }),
+});
+export const SETTINGS_RESET_PAGES = Object.freeze(Object.keys(RESET_PAGES));
+
+export const SETTINGS_RESET_COPY = Object.freeze({
+  Audio: 'Every volume and mute switch on this page returns to how the game shipped.',
+  Video: 'The picture returns to Balanced and every video row to how the game shipped. Motion effects are set under Access and stay as they are.',
+  Gameplay: 'Assists, cameras, autosave and hints return to how the game shipped. Difficulty returns to Standard unless you are on Ironman. Key bindings are not touched.',
+  Access: 'Contrast, text size, captions and the rest return to how the game shipped. Your motion choice and your language stay as you set them.',
+});
+
+function sameSettingValue(a, b) {
+  if (a === b) return true;
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; }
+  }
+  return false;
+}
+
+function cloneSettingValue(value) {
+  return value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
+}
+
+/**
+ * The writes that return one page to its shipped values: `[{ section, key, value }]`, in the order
+ * the page lists them. Pure: `defaults` is `createGameState(0).settings`. Video lists only the keys
+ * the quality preset does not pin; `settingsScreen._resetPage` applies the preset first. Items with
+ * `fallback: true` are keys the shipped defaults omit and the rows read through a fallback.
+ */
+export function settingsPageResetPlan(page, defaults) {
+  const spec = RESET_PAGES[page];
+  if (!spec || !defaults) return [];
+  const plan = [];
+  for (const section of spec.sections) {
+    const shipped = defaults[section] || {};
+    const skip = RESET_SKIP[section] || [];
+    for (const key of Object.keys(shipped)) {
+      if (!skip.includes(key)) plan.push({ section, key, value: cloneSettingValue(shipped[key]) });
+    }
+    const fallbacks = RESET_FALLBACKS[section] || {};
+    for (const key of Object.keys(fallbacks)) {
+      if (!(key in shipped)) plan.push({ section, key, value: fallbacks[key], fallback: true });
+    }
+  }
+  for (const [section, key] of spec.extras || []) {
+    const shipped = section ? (defaults[section] || {}) : defaults;
+    if (key in shipped) plan.push({ section, key, value: cloneSettingValue(shipped[key]) });
+  }
+  return plan;
+}
+
 /**
  * The pane's row builders (Task B §1.3). Rows are `k-row k-row--static` in a `k-rows` list: the label
  * at body size 62 % on the left, the control on the right. A section header is a `k-caps` row; a note
@@ -611,6 +698,74 @@ export const settingsScreen = {
     }
     publishFrameCap(ctx);
     this._render(ctx);
+  },
+
+  // The foot of Audio / Video / Gameplay / Access: one word, behind the kit confirm, so a single
+  // misclick can never wipe a page of settings.
+  _resetFoot(ctx, build, page) {
+    build.break();
+    build.word('Reset this page', () => { this._askReset(ctx, page); }, 'Returns this page to how the game shipped.');
+  },
+
+  // The seam the focused test replaces; the shipped route is the kit confirm.
+  _confirmReset(opts) { return confirm(opts); },
+
+  _askReset(ctx, page) {
+    if (!RESET_PAGES[page]) return Promise.resolve(false);
+    return Promise.resolve(this._confirmReset({
+      title: 'Reset this page?',
+      body: SETTINGS_RESET_COPY[page],
+      confirmLabel: 'Reset',
+      cancelLabel: 'Keep',
+    })).then((ok) => {
+      if (ok) this._resetPage(ctx, page);
+      return !!ok;
+    });
+  },
+
+  // Return `page` to its shipped values (see the notes above RESET_SKIP). Returns how many keys
+  // moved; each one published `settings:changed` once through `_set`.
+  _resetPage(ctx, page) {
+    const spec = RESET_PAGES[page];
+    if (!spec || !ctx || !ctx.state || !ctx.state.settings) return 0;
+    const s = ctx.state.settings;
+    const defaults = createGameState(0).settings;
+    let moved = 0;
+    const write = (section, key, value, fallback) => {
+      if (section && (!s[section] || typeof s[section] !== 'object')) s[section] = {};
+      const current = section ? s[section][key] : s[key];
+      if (sameSettingValue(current, value)) return;
+      // An absent fallback key already reads as the shipped value; writing it would only add noise.
+      if (fallback && current == null) return;
+      // Leaving Ironman has its own confirm and its own locks; a page reset never decides it.
+      if (section === 'gameplay' && key === 'difficulty') {
+        const decision = ironmanChoiceChange(ctx.state, value);
+        if (!decision.ok || decision.needsConfirm) return;
+      }
+      this._set(ctx, section, key, cloneSettingValue(value));
+      moved++;
+    };
+    // The picture first: the live default is the Balanced preset (a detected integrated GPU only
+    // ever gets a suggestion toast), applied through the same contract the Quality mode row uses
+    // so every pinned key moves together; the rest of the page follows key by key.
+    if (spec.preset) {
+      const applied = applyQualityPreset(s, DEFAULT_QUALITY_PRESET);
+      if (applied) {
+        for (const key of applied.changed) { this._set(ctx, 'video', key, s.video[key]); moved++; }
+      }
+    }
+    for (const item of settingsPageResetPlan(page, defaults)) write(item.section, item.key, item.value, item.fallback === true);
+    if (page === 'Video') publishFrameCap(ctx);
+    if (page === 'Access') {
+      applyTextScaleFromSettings(s);
+      try {
+        const root = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
+        if (root && root.style) root.style.setProperty('--ui-scale', String(s.uiScale));
+      } catch (e) { /* the CSS variable is cosmetic; the setting is already written */ }
+    }
+    this._render(ctx);
+    cue('confirm');
+    return moved;
   },
 
   _render(ctx) {
@@ -1006,6 +1161,8 @@ export const settingsScreen = {
       this._renderFixedShortcuts(pane);
       this._renderGamepadSettings(ctx, pane);
     }
+    // Controls has its own, narrower reset (key bindings, below the grid); the other pages share this.
+    if (RESET_PAGES[refs.active]) this._resetFoot(ctx, build, refs.active);
     dressSettingsControls(pane);
     // a category arrives row by row when it is opened; a rebuild after a change does not replay it
     dressSettingsPane(pane, { arrive: !!refs.arrive });
@@ -1173,7 +1330,7 @@ export const settingsScreen = {
     });
 
     // reset word
-    build.word('Reset to defaults', () => {
+    build.word('Reset key bindings', () => {
       s.controls.bindings = null;
       s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
       laneWriteSetting(ctx.state, 'settings.controls.bindings', null);
