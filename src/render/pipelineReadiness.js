@@ -1314,6 +1314,11 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   const capturedGeneration = render ? render.admissionRunGeneration : undefined;
   const generationNow = () => (render ? render.admissionRunGeneration : undefined);
   const sameGeneration = () => generationNow() === capturedGeneration;
+  // The present leg belongs to the opening this call was started for. Capture whether the
+  // loading shell owned the picture at entry: on software GL the cook is fire-and-forget, so by
+  // the time prepare settles (~0.7 s) the mode is already 'flight' and a live read of state.mode
+  // skipped the present leg outright — liveScenePresentReady was never assigned.
+  const shellOwnedAtEntry = !!(state && state.mode === 'loading') || options.presentLeg === true;
   const resident = !!(render
     && render.requiredPackageAdmission
     && render.requiredPackageAdmission.status === 'accepted'
@@ -1416,7 +1421,7 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   // Same-sector F9 recook skips the opening 1x1; programs/buffers are resident.
   // That shortcut runs only after this generation already accepted the package.
   // A stamp this generation did not accept is not a shortcut and not a refusal.
-  if (!(state && state.mode === 'loading')) {
+  if (!shellOwnedAtEntry) {
     finishLedger();
     if (prepareClassification && prepareClassification.status === 'rejected') return false;
     if (prepareClassification && prepareClassification.status === 'pending'
