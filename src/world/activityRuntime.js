@@ -166,6 +166,7 @@ function emptyPinFacts() {
     damagedByPlayerUntil: new Map(),
     damagedPlayerUntil: new Map(),
     _intentPinsScratch: { dockId: null, hailId: null, targetId: null },
+    _setMatchScratch: new Set(),
   };
 }
 
@@ -515,17 +516,24 @@ function applyStamp(entity, classified, simTime, runtime) {
   return rec;
 }
 
-function setMatchesList(set, list) {
-  if (set.size === 0 && list.length === 0) return true;
-  if (list.length === 0 && set.size > 0) return false;
+function setMatchesList(set, list, scratch) {
+  if (set.size === 0) return list.length === 0;
   if (set.size > list.length) return false;
+  if (set.size === 1) {
+    for (let i = 0; i < list.length; i++) {
+      if (!set.has(list[i])) return false;
+    }
+    return true;
+  }
+  scratch.clear();
   for (let i = 0; i < list.length; i++) {
     if (!set.has(list[i])) return false;
+    scratch.add(list[i]);
   }
-  for (const item of set) {
-    if (!list.includes(item)) return false;
-  }
-  return true;
+  // Every list entry belongs to set. Equal distinct counts therefore prove equality even
+  // when several live attachments or projectiles repeat an endpoint. Avoid the old reverse
+  // list.includes walk, which made a stable pin collection quadratic in its distinct ids.
+  return scratch.size === set.size;
 }
 
 // Player-intent pins the classify key and the early-quiet latch both watch. Every derivation
@@ -744,11 +752,11 @@ function rebuildPinFacts(state, player, facts, simTime) {
     || cache.trackedSignal !== trackedSignal
     || cache.attachments !== attachments
     || damageChanged
-    || !setMatchesList(facts.aggro, aggroScratch)
-    || !setMatchesList(facts.tracked, trackedScratch)
-    || !setMatchesList(facts.tether, tetherScratch)
-    || !setMatchesList(facts.projectileThreat, threatScratch)
-    || !setMatchesList(facts.fieldDriven, fieldScratch)
+    || !setMatchesList(facts.aggro, aggroScratch, facts._setMatchScratch)
+    || !setMatchesList(facts.tracked, trackedScratch, facts._setMatchScratch)
+    || !setMatchesList(facts.tether, tetherScratch, facts._setMatchScratch)
+    || !setMatchesList(facts.projectileThreat, threatScratch, facts._setMatchScratch)
+    || !setMatchesList(facts.fieldDriven, fieldScratch, facts._setMatchScratch)
   );
 
   if (changed) {

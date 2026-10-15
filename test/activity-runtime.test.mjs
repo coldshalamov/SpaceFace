@@ -246,6 +246,53 @@ test('broken tether receipt does not pin a far payload', () => {
   assert.equal(entityNeedsPhysics(live), true);
 });
 
+test('duplicate tether endpoints preserve pins and apply missing or replacement pins next tick', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0, vx: 40 });
+  const first = rock(9, 3000);
+  const second = rock(10, 3000);
+  const replacement = rock(11, 3000);
+  const links = {
+    first: { ownerId: 1, targetId: 9, state: 'active' },
+    second: { ownerId: 1, targetId: 10, state: 'active' },
+  };
+  const state = makeState([player, first, second, replacement], {
+    combat: { attachments: { byId: links } },
+  });
+  const step = () => {
+    state.tick++;
+    state.simTime += 1 / 60;
+    return ensureActivityClassified(state);
+  };
+  const pinned = (entity) => entity.activity.pins.includes('TETHER_OR_ATTACHMENT_COMPONENT');
+  const runtime = ensureActivityClassified(state);
+  assert.equal(pinned(first), true);
+  assert.equal(pinned(second), true);
+  assert.equal(pinned(replacement), false);
+
+  const revision = runtime.pinFacts._revision;
+  step();
+  assert.equal(runtime.pinFacts._revision, revision,
+    'repeated owner endpoints must compare equal without rebuilding pin facts');
+
+  // Four endpoint entries now name only two distinct ids. All entries belong to the old
+  // set, but id 10 disappeared: checking only list membership would retain its stale pin.
+  links.second.targetId = 9;
+  step();
+  assert.equal(pinned(first), true);
+  assert.equal(pinned(second), false, 'removed endpoint loses its pin immediately');
+  assert.equal(pinned(replacement), false);
+
+  // The attachment bag is unchanged and the distinct count stays two; fresh content must
+  // still wake classification, rather than relying on length or object-identity changes.
+  links.first.targetId = 11;
+  links.second.targetId = 11;
+  step();
+  assert.equal(pinned(first), false);
+  assert.equal(pinned(second), false);
+  assert.equal(pinned(replacement), true, 'new endpoint receives its pin immediately');
+  assert.equal(replacement.activity.simTier, SIM_TIER.S0_EXACT);
+});
+
 test('job-pinned far actor stays exact', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const courier = ship(8, 5000, { data: { jobId: 'job_courier_1' } });
