@@ -13,7 +13,7 @@ import { BINDINGS } from '../src/ui/bindings.js';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
-import { reportStationHandoffFailure, installStationHandoffTimingObserver } from './lib/stationHandoffDiagnostics.mjs';
+import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
@@ -22,6 +22,7 @@ const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
+let acceptTrace = null;
 
 try {
   server = await startFreshServer();
@@ -216,6 +217,9 @@ try {
   // A valid activation starts the hold and worker request exactly once. The controller disables
   // its still-labelled "Accept" key while that RPC is pending; this is distinct from an authored
   // readiness blocker, which says "Cannot accept…" and renders the actual reason.
+  // Browser-process tracing can still finish when a main-thread task prevents
+  // the failure-only page snapshot from running. Keep it to this one handoff.
+  acceptTrace = await startStationHandoffTrace(browser);
   const commit = await page.evaluate(attemptSeededMissionAccept);
   // HOLD-COMMIT RACE (probe-robustness, 2026-10-03). A synthetic click on [data-accept] arms the
   // dossier's assistive-tech auto-hold (450ms + ~260ms retract). On a frame-starved host the hold
@@ -250,7 +254,8 @@ try {
       && m.sourceOfferId === 'handoff_probe_bulk_trade');
     return !!(active.length > prev && tracked);
   }, before, { timeout: 10000 }).catch((error) =>
-    reportAcceptHandoffFailure(page, { before, seeded, commit, consumed }, issues, error));
+    reportAcceptHandoffFailure(page, { before, seeded, commit, consumed }, issues, error))
+    .finally(() => acceptTrace.stop());
 
   // Plot a trade course for the tracked commodity (what tracking a cargo job does in flight); the
   // Market must then flag it. Run the shipped helper in the page realm so its laneSetNavWaypoint
@@ -309,6 +314,7 @@ try {
 } catch (err) {
   throw err;
 } finally {
+  if (acceptTrace) await acceptTrace.stop();
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
 }
@@ -331,6 +337,9 @@ async function reportMarketHandoffFailure(page, attempt, issues, originalError) 
 
 async function reportHandoffFailure(page, collector, label, context, issues, originalError) {
   let timer;
+  const recent = (rows) => rows.slice(-8).map((row) => ({
+    ...row, text: String(row.text || '').slice(0, 1200),
+  }));
   try {
     const snapshot = await Promise.race([
       page.evaluate(collector),
@@ -338,15 +347,14 @@ async function reportHandoffFailure(page, collector, label, context, issues, ori
         timer = setTimeout(() => reject(new Error(label + ' snapshot exceeded 2000ms')), 2000);
       }),
     ]);
-    const recent = (rows) => rows.slice(-8).map((row) => ({
-      ...row, text: String(row.text || '').slice(0, 1200),
-    }));
     console.error('[mission-handoff] ' + label + ' snapshot:', JSON.stringify({
       ...context, ...snapshot,
       pageErrors: recent(issues.errorIssues()), pageWarnings: recent(issues.warningIssues()),
     }));
   } catch (diagnosticError) {
-    try { console.error('[mission-handoff] ' + label + ' snapshot unavailable:', diagnosticError?.message); }
+    try { console.error('[mission-handoff] ' + label + ' snapshot unavailable:', diagnosticError?.message,
+      JSON.stringify({ ...context,
+        pageErrors: recent(issues.errorIssues()), pageWarnings: recent(issues.warningIssues()) })); }
     catch (_) { /* Even a diagnostic logging failure cannot replace the original assertion. */ }
   } finally {
     clearTimeout(timer);

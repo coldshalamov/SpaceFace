@@ -168,6 +168,22 @@ test('acceptance observer includes actor evidence and bounded issues, preserving
   assert.equal(snapshot.pageWarnings[0].text.length, 1200);
 });
 
+test('unresponsive acceptance page preserves the existing actor evidence and bounded browser issues', async () => {
+  const h = helpers({ setTimeout: (fn) => { queueMicrotask(fn); return 19; }, clearTimeout() {} });
+  const attempt = { before: 2, seeded: { stationId: 'station_ceres' },
+    commit: { found: true, activated: true }, consumed: { grew: false, tracked: false } };
+  const original = new Error('original 10s acceptance timeout');
+  await assert.rejects(h.reportAcceptHandoffFailure({ evaluate: () => new Promise(() => {}) },
+    attempt, { errorIssues: () => Array.from({ length: 10 }, () => ({ text: 'x'.repeat(2000) })),
+      warningIssues: () => [] }, original), candidate => candidate === original);
+  assert.match(h.logs[0][0], /snapshot unavailable/);
+  assert.match(h.logs[0][1], /exceeded 2000ms/);
+  const retained = JSON.parse(h.logs[0][2]);
+  assert.deepEqual(retained.attempt, attempt);
+  assert.equal(retained.pageErrors.length, 8);
+  assert.equal(retained.pageErrors[0].text.length, 1200);
+});
+
 for (const failure of ['async evaluation', 'sync evaluation', 'hung evaluation', 'serialization', 'logger']) {
   test(`acceptance ${failure} failure cannot replace the original timeout`, async () => {
     const armed = [], cleared = [];
