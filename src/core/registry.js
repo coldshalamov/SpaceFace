@@ -141,7 +141,7 @@ import {
   getCareerOfferViewReadOnly,
   getCareerProgress,
 } from '../careers/origins/careerOrigins.js';
-import { careerLadders } from '../careers/ladders/careerLadders.js';
+import { careerLadders, listLadderDefinitions } from '../careers/ladders/careerLadders.js';
 import { liveCareerLadderBranches } from '../careers/ladders/liveCareerLadderBranches.js';
 import { story } from '../systems/story.js';
 import { scenarioRuntime } from '../systems/scenarioRuntime.js';
@@ -1226,6 +1226,15 @@ export function createRegistry(ctx) {
             'transferGoods', [siteId, machineId, goodId, qty, dir],
           ),
           tickWorkbench: (dt, siteId) => call('tickWorkbench', [dt, siteId]),
+        };
+      }
+      case 'careerLadders': {
+        // Definitions are process-local data. The presenter derives offers/progress from the
+        // mirrored leaves; native getters hydrate state and must stay on the simulation owner.
+        return {
+          name: 'careerLadders',
+          getDefinition: (careerId) => careerLadders.getDefinition(careerId),
+          listLadderDefinitions,
         };
       }
       case 'careerOrigins': {

@@ -144,6 +144,16 @@ test('presentation registry facades guard generations and unwrap native asteroid
     simLane: 'worker',
   });
 
+  const ladders = registry.get('careerLadders');
+  const careersBeforeRead = JSON.stringify(state.careers);
+  assert.equal(ladders.name, 'careerLadders');
+  const definitions = ladders.listLadderDefinitions();
+  assert.ok(definitions.length > 0, 'the presentation facade exposes registered career data');
+  assert.equal(ladders.getDefinition(definitions[0].careerId), definitions[0]);
+  assert.equal(ladders.getDefinition('missing-career'), null);
+  assert.equal(ladders.getOfferView, undefined, 'native hydrating getters remain on the worker');
+  assert.equal(JSON.stringify(state.careers), careersBeforeRead, 'definition reads do not hydrate mirrored leaves');
+
   state.survivalResultsPublic = {
     result: { outcome: 'victory', score: 900 },
     revision: 12,
