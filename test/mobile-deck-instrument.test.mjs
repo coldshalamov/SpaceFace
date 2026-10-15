@@ -56,6 +56,19 @@ test('only informational receipts compact in touch flight; critical copy and tou
   assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/);
 });
 
+test('short landscape flight receipts start below the HUD while portrait keeps its lower lane', () => {
+  const shortLandscape = MOBILE_CSS.slice(MOBILE_CSS.indexOf('@media (max-height:500px) and (orientation:landscape) {'));
+  const flightReceipt = /:root\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\] #toasts\s*\{([^}]+)\}/.exec(shortLandscape)?.[1];
+  assert.ok(flightReceipt, 'phone flight receipt placement is scoped to short landscape');
+  assert.match(flightReceipt, /top:calc\(118px \+ var\(--sf-safe-top,0px\)\)!important/);
+  assert.match(flightReceipt, /bottom:auto!important/);
+  assert.match(MOBILE_CSS,
+    /:root\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\] #toasts \{[^}]*top:auto!important; bottom:calc\(max\(224px/,
+    'portrait continues using the existing bottom-anchored receipt lane');
+  assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/,
+    'receipt placement retains touch-through');
+});
+
 function withDoc(fn) {
   const prev = globalThis.document; const doc = fakeDoc(); globalThis.document = doc;
   try { return fn(doc); } finally { globalThis.document = prev; }

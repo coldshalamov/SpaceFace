@@ -396,6 +396,11 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(68px + var(--sf-safe-top,0px)); right:calc(84px + var(--sf-safe-right,0px)); width:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
 }
+@media (max-height:500px) and (orientation:landscape) {
+ /* Short landscape HUD owns the first 118px; anchor the receipt stack below it so multiple rows
+    flow down toward, but remain clear of, the left stick. Portrait keeps its bottom-up placement. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(118px + var(--sf-safe-top,0px))!important; bottom:auto!important; }
+}
 @media (max-width:600px) {
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] { top:calc(172px + var(--sf-safe-top,0px)); left:14px; right:14px; max-height:calc(100dvh - 372px); }
 }
