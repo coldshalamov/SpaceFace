@@ -230,6 +230,14 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     // The Gyre Snare pad chord (RB+Y) is a held verb: a grip carried across a dock or
     // tab-hide stays quarantined until a connected neutral sample.
     gyreSnare: true,
+    // Continuous pad flight controls retain raw samples but cannot become authoritative
+    // again until their connected neutral sample proves a release.
+    fire: true,
+    mine: true,
+    boost: true,
+    brake: true,
+    leftStick: true,
+    rightStick: true,
   });
   assert.deepEqual(host._edgePrev, { cruise: false, tether: false });
   assert.deepEqual(grammarResetBlocks, [undefined]);

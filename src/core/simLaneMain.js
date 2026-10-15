@@ -324,6 +324,10 @@ export function createSimLaneRuntime({
     domainAppliedKeys[segs.join('.')] = (domainAppliedKeys[segs.join('.')] || 0) + 1;
     domainHolder.clear();
     domainHolder.set(root, state[root]);
+    // `touched` guards repeated visits within one source graph. Each wire update
+    // is a separate merge, so stale entries would make the next nested snapshot
+    // replace its already-mirrored root instead of mutating it in place.
+    domainTouched.clear();
     applyDomainPathUpdate(domainHolder, { ...u, segs }, domainTouched);
     state[root] = domainHolder.get(root);
   }

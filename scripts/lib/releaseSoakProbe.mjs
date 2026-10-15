@@ -82,6 +82,10 @@ import {
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
+// Optional lifecycle diagnostic bound. The ordinary soak never enables this mode; when
+// requested, its measured cycle loop performs one public save followed by a small number of
+// public quick-load round-trips against that same untouched slot.
+export const MAX_IMMUTABLE_SAVE_CYCLES = 4;
 // Six hours — the acceptance soak is two hours; the bound catches a dropped
 // or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
 export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
@@ -197,6 +201,7 @@ export async function runReleaseSoakProbe({
   cycleTimeoutMs = 300_000,
   minDurationMs = 0,
   cycleScreenshots = true,
+  immutableSaveCycles = 0,
   baselineSource = null,
   log = () => {},
 } = {}) {
@@ -205,6 +210,12 @@ export async function runReleaseSoakProbe({
   assert(
     Number.isInteger(minDurationMs) && minDurationMs >= 0 && minDurationMs <= MAX_MIN_DURATION_MS,
     `minDurationMs must be an integer in [0, ${MAX_MIN_DURATION_MS}]`,
+  );
+  assert(
+    Number.isInteger(immutableSaveCycles)
+      && (immutableSaveCycles === 0
+        || (immutableSaveCycles >= 2 && immutableSaveCycles <= MAX_IMMUTABLE_SAVE_CYCLES)),
+    `immutableSaveCycles must be 0 or an integer in [2, ${MAX_IMMUTABLE_SAVE_CYCLES}]`,
   );
   // Direct callers may pass 0/'0'/'false'; normalize so only an explicit
   // off-value suppresses per-cycle screenshots.
@@ -242,6 +253,7 @@ export async function runReleaseSoakProbe({
   let sourceOverlayCoverage = null;
   let startUncoveredFingerprint = null;
   let endUncoveredFingerprint = null;
+  let immutableSaveDiagnostic = null;
   let cleanupReport = null;
   let isolatedLaunch = null;
   let packagedStartup = null;
@@ -496,12 +508,16 @@ export async function runReleaseSoakProbe({
     const soakStartedAt = Date.now();
     const soakThreshold = readMinSpecHitchThreshold(root);
     await installSoakRecorder(page, { hitchThresholdMs: soakThreshold });
-    doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${cycles}${minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
+    const immutableMeasured = immutableSaveCycles > 0;
+    const measuredCycleCount = immutableMeasured ? immutableSaveCycles : cycles;
+    let immutableSaveReference = null;
+    const immutableSaveRows = [];
+    doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${measuredCycleCount}${immutableMeasured ? ', fixed quick-save' : minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
 
     const cycleResults = [];
     const memoryCheckpoints = [];
     let index = 0;
-    while (index < cycles || Date.now() - soakStartedAt < minDurationMs) {
+    while (index < measuredCycleCount || (!immutableMeasured && Date.now() - soakStartedAt < minDurationMs)) {
       let cycle = null;
       let cycleError = null;
       // One retry per cycle. A cycle that fails mid-market dies docked at the
@@ -512,7 +528,13 @@ export async function runReleaseSoakProbe({
       for (let attempt = 0; attempt < 2 && !cycle && !cycleError; attempt++) {
         try {
           cycle = await withTimeout(
-            runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
+            runSoakCycle(page, {
+              index,
+              outputDir,
+              log: doLog,
+              screenshots: takeCycleScreenshots,
+              fixedSave: immutableSaveReference,
+            }),
             cycleTimeoutMs,
             `release-soak cycle ${index}`,
           );
@@ -559,6 +581,14 @@ export async function runReleaseSoakProbe({
         } catch { /* trail dump is best-effort over the primary diag */ }
         throw cycleError;
       }
+      if (immutableMeasured && !immutableSaveReference) {
+        assert(cycle.saveEnvelope?.available === true, 'immutable diagnostic could not establish a fixed save envelope');
+        immutableSaveReference = {
+          slot: cycle.saveEnvelope.slot || 'quick',
+          saved: cycle.saved,
+          envelope: cycle.saveEnvelope,
+        };
+      }
       cycleResults.push(cycle);
       const checkpoint = await withTimeout(
         readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
@@ -567,7 +597,48 @@ export async function runReleaseSoakProbe({
       );
       checkpoint.restorePopulation = cycle.restorePopulation || null;
       memoryCheckpoints.push(checkpoint);
+      if (immutableMeasured) {
+        const population = summarizeImmutableSavePopulation({
+          savedEnvelopeEntities: immutableSaveReference?.envelope?.envelopeEntities || [],
+          postLoadEntities: cycle.loadedEnvelope?.postLoadEntities || [],
+        });
+        const expectedHash = immutableSaveReference?.envelope?.serializedIdentity?.sha256 || null;
+        const observedHash = cycle.loadedEnvelope?.serializedIdentity?.sha256 || null;
+        const unchanged = cycle.fixedSaveUnchanged === true
+          && expectedHash !== null
+          && observedHash === expectedHash;
+        immutableSaveRows.push({
+          index,
+          pass: unchanged,
+          loadedSlot: cycle.loadedEnvelope?.slot || null,
+          fixedSaveUnchanged: unchanged,
+          saveSerializedIdentity: immutableSaveReference?.envelope?.serializedIdentity || null,
+          loadedSerializedIdentity: cycle.loadedEnvelope?.serializedIdentity || null,
+          population,
+          postGcMemory: checkpoint,
+          marks: cycle.marks.map((entry) => entry.name),
+        });
+        doLog(`[immutable-save] cycle ${index + 1}/${immutableSaveCycles}: ${unchanged ? 'unchanged' : 'MUTATED'} `
+          + `slot=${immutableSaveReference?.slot || 'missing'} base=${expectedHash || 'missing'} `
+          + `postLoad=${population.postLoadEntityCount} extra=${population.newlyMaterialized.count}`);
+      }
       index += 1;
+    }
+    if (immutableMeasured) {
+      immutableSaveDiagnostic = {
+        requestedCycles: immutableSaveCycles,
+        pass: immutableSaveRows.length === immutableSaveCycles
+          && immutableSaveRows.every((row) => row.pass === true),
+        fixedSave: {
+          slot: immutableSaveReference?.slot || null,
+          serializedIdentity: immutableSaveReference?.envelope?.serializedIdentity || null,
+          envelopeIdentity: immutableSaveReference?.envelope?.envelopeIdentity || null,
+          envelopeEntityCount: immutableSaveReference?.envelope?.envelopeEntities?.length || 0,
+          envelopeEntities: immutableSaveReference?.envelope?.envelopeEntities || [],
+        },
+        cycles: immutableSaveRows,
+      };
+      doLog(`immutable save diagnostic ${immutableSaveDiagnostic.pass ? 'passed' : 'found slot mutation'}`);
     }
     doLog(`soak cycles complete: ${cycleResults.length} cycles in ${((Date.now() - soakStartedAt) / 60_000).toFixed(1)} min`);
 
@@ -763,11 +834,17 @@ export async function runReleaseSoakProbe({
       { name: 'source stable', status: sourceStability.pass ? 'pass' : 'fail' },
       { name: authority.primaryAcceptance ? 'broker claim consumed' : 'diagnostic evidence is non-promoting', status: 'pass' },
     ];
+    if (immutableSaveDiagnostic) {
+      checks.push({
+        name: 'immutable save slot stayed unchanged',
+        status: immutableSaveDiagnostic.pass ? 'pass' : 'fail',
+      });
+    }
     if (runtime === 'electron' && authority.primaryAcceptance) {
       checks.push({ name: 'exact packaged startup subroute', status: packagedStartup?.pass === true ? 'pass' : 'fail' });
     }
 
-    const telemetry = { performance, memory, errors, contextLoss };
+    const telemetry = { performance, memory, errors, contextLoss, immutableSaveDiagnostic };
     await writeTelemetry(outputDir, telemetry, `${logLines.join('\n')}\n`);
     const artifactDescriptors = buildArtifactDescriptors(
       root,
@@ -816,6 +893,7 @@ export async function runReleaseSoakProbe({
       runtimeKind: runtime,
       mode,
       cycles: { count: cycleResults.length, results: cycleResults.map((cycle) => cycle.summary) },
+      immutableSaveDiagnostic,
       boot,
       hardware,
       soakWindow,
@@ -1880,7 +1958,124 @@ function summarizeRestorePopulation({
   return base;
 }
 
-async function runSoakCycle(page, { index, outputDir, log, screenshots = true }) {
+const IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT = 2_048;
+
+/**
+ * Return a bounded identity for one serialized save envelope. The raw payload is deliberately
+ * not retained in evidence: its digest proves the exact bytes while the compact envelope rows
+ * make a repeated-load population mismatch actionable.
+ */
+export function summarizeSaveEnvelope(raw, { slot = 'quick' } = {}) {
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return {
+      available: false,
+      slot: slot || null,
+      serializedIdentity: null,
+      envelopeIdentity: null,
+      envelopeEntities: [],
+    };
+  }
+  const serializedIdentity = {
+    sha256: createHash('sha256').update(raw, 'utf8').digest('hex'),
+    bytes: Buffer.byteLength(raw, 'utf8'),
+  };
+  try {
+    const envelope = JSON.parse(raw);
+    const player = envelope?.data?.entities?.player;
+    const persistent = Array.isArray(envelope?.data?.entities?.persistent)
+      ? envelope.data.entities.persistent : [];
+    const envelopeEntities = [player, ...persistent]
+      .map(compactRestorePopulationEntity)
+      .filter((row) => row.id != null || row.worldRecordId != null);
+    return {
+      available: true,
+      slot: slot || null,
+      serializedIdentity,
+      envelopeIdentity: {
+        fmt: envelope?.fmt ?? null,
+        version: envelope?.version ?? envelope?.data?.version ?? null,
+        savedAt: envelope?.data?.meta?.savedAt ?? envelope?.savedAt ?? null,
+        tick: envelope?.data?.meta?.tick ?? envelope?.data?.tick ?? envelope?.tick ?? null,
+        simTime: envelope?.data?.meta?.simTime ?? envelope?.data?.simTime ?? envelope?.simTime ?? null,
+        checksum: envelope?.checksum ?? null,
+      },
+      envelopeEntities: envelopeEntities.slice(0, IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+      omittedEntityCount: Math.max(0, envelopeEntities.length - IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+    };
+  } catch (_) {
+    return {
+      available: false,
+      slot: slot || null,
+      serializedIdentity,
+      envelopeIdentity: null,
+      envelopeEntities: [],
+      parseError: true,
+    };
+  }
+}
+
+async function readSaveEnvelopeSnapshot(page, slot = 'quick') {
+  const raw = await page.evaluate((saveSlot) => {
+    try { return localStorage.getItem(`sf.save.${saveSlot}`); } catch (_) { return null; }
+  }, slot).catch(() => null);
+  return summarizeSaveEnvelope(raw, { slot });
+}
+
+function populationIdentityRows(rows) {
+  const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  return list.slice(0, IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT).map((row) => ({
+    key: restorePopulationIdentity(row),
+    ...compactRestorePopulationEntity(row),
+  }));
+}
+
+/**
+ * Compare the same fixed save envelope with each post-load materialized entity list. This is a
+ * diagnostic witness only: it does not decide whether regenerated sector bodies are a leak.
+ */
+export function summarizeImmutableSavePopulation({
+  savedEnvelopeEntities = [],
+  postLoadEntities = [],
+} = {}) {
+  const baseRows = Array.isArray(savedEnvelopeEntities) ? savedEnvelopeEntities.filter(Boolean) : [];
+  const postRows = Array.isArray(postLoadEntities) ? postLoadEntities.filter(Boolean) : [];
+  const baseKeys = new Set(baseRows.map(restorePopulationIdentity).filter(Boolean));
+  const postKeys = new Set(postRows.map(restorePopulationIdentity).filter(Boolean));
+  const extras = postRows.filter((row) => {
+    const key = restorePopulationIdentity(row);
+    return !key || !baseKeys.has(key);
+  });
+  const byType = Object.create(null);
+  for (const row of extras) {
+    const type = String(row?.type || 'unknown');
+    byType[type] = (byType[type] || 0) + 1;
+  }
+  const typeEntries = Object.entries(byType).sort(([a], [b]) => a.localeCompare(b));
+  return {
+    baseEntityCount: baseRows.length,
+    postLoadEntityCount: postRows.length,
+    delta: postRows.length - baseRows.length,
+    baseIdentities: populationIdentityRows(baseRows),
+    postLoadIdentities: populationIdentityRows(postRows),
+    omittedBaseIdentityCount: Math.max(0, baseRows.length - IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+    omittedPostLoadIdentityCount: Math.max(0, postRows.length - IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+    newlyMaterialized: {
+      count: extras.length,
+      byType: Object.fromEntries(typeEntries),
+      samples: populationIdentityRows(extras).slice(0, RESTORE_POPULATION_SAMPLE_LIMIT),
+    },
+    stableBaseIdentitySet: baseRows.length <= postRows.length
+      && [...baseKeys].every((key) => postKeys.has(key)),
+  };
+}
+
+async function runSoakCycle(page, {
+  index,
+  outputDir,
+  log,
+  screenshots = true,
+  fixedSave = null,
+}) {
   const marks = [];
   const samples = [];
   const mark = (name, detail = {}) => {
@@ -1937,36 +2132,69 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   await sampleDiagnostics(page, samples);
 
   await armSaveLoadObservers(page);
-  await transition('save-write');
-  await page.keyboard.press('F5');
-  try {
-    await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.saved === true && !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
-  } catch (saveWaitError) {
-    const diag = await page.evaluate(() => {
-      let storageBytes = 0;
-      try { for (let i = 0; i < localStorage.length; i += 1) storageBytes += (localStorage.getItem(localStorage.key(i)) || '').length; } catch { /* ignore */ }
-      const state = window.SF?.state;
-      return {
-        errors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
-        startedSnapshotCaptured: !!window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot,
-        storageBytes,
-        mode: state?.mode || null,
-        run: state?.run ? { kind: state.run.kind, phase: state.run.phase } : null,
-        docked: state?.ui?.docked ?? null,
-        playerId: state?.playerId || null,
-        hasPlayerEntity: !!(state?.entities?.get?.(state.playerId)),
-      };
-    }).catch(() => null);
-    throw new Error(`quick-save wait timed out: ${JSON.stringify(diag)} (cause: ${saveWaitError?.message || saveWaitError})`);
+  let saved;
+  let savedStorage;
+  let saveEnvelope;
+  if (fixedSave) {
+    // The immutable diagnostic deliberately skips F5 after its first cycle. F9 is still the
+    // public quick-load binding, so every iteration reads the same slot without private state
+    // writes. Verify the bytes before the load as well as after it to catch autosave overlap.
+    const observed = await readSaveEnvelopeSnapshot(page, fixedSave.slot || 'quick');
+    assert(observed.available === true, 'fixed quick-save envelope disappeared before reload');
+    saved = fixedSave.saved;
+    savedStorage = {
+      bytes: observed.serializedIdentity?.bytes || 0,
+      slot: observed.slot,
+    };
+    saveEnvelope = observed;
+    mark('save-reused', {
+      ...savedStorage,
+      serializedIdentity: observed.serializedIdentity,
+      unchangedBeforeLoad: observed.serializedIdentity?.sha256 === fixedSave.envelope?.serializedIdentity?.sha256,
+    });
+  } else {
+    await transition('save-write');
+    await page.keyboard.press('F5');
+    try {
+      await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.saved === true && !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
+    } catch (saveWaitError) {
+      const diag = await page.evaluate(() => {
+        let storageBytes = 0;
+        try { for (let i = 0; i < localStorage.length; i += 1) storageBytes += (localStorage.getItem(localStorage.key(i)) || '').length; } catch { /* ignore */ }
+        const state = window.SF?.state;
+        return {
+          errors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
+          startedSnapshotCaptured: !!window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot,
+          storageBytes,
+          mode: state?.mode || null,
+          run: state?.run ? { kind: state.run.kind, phase: state.run.phase } : null,
+          docked: state?.ui?.docked ?? null,
+          playerId: state?.playerId || null,
+          hasPlayerEntity: !!(state?.entities?.get?.(state.playerId)),
+        };
+      }).catch(() => null);
+      throw new Error(`quick-save wait timed out: ${JSON.stringify(diag)} (cause: ${saveWaitError?.message || saveWaitError})`);
+    }
+    await transition(null);
+    saved = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null);
+    assert(saved?.pos, 'save:started observer must capture the exact serialized player pose');
+    assert(saved?.economy, 'save:started observer must capture the serialized economy state');
+    const saveCompletedPose = await readPlayerSnapshot(page);
+    saveEnvelope = await readSaveEnvelopeSnapshot(page, 'quick');
+    savedStorage = {
+      bytes: saveEnvelope.serializedIdentity?.bytes || 0,
+      slot: saveEnvelope.slot,
+    };
+    assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
+    assert(saveEnvelope.available === true, 'quick-save envelope could not be parsed');
+    mark('save-written', {
+      ...savedStorage,
+      saved,
+      saveCompletedPose,
+      serializedIdentity: saveEnvelope.serializedIdentity,
+      completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos),
+    });
   }
-  await transition(null);
-  const saved = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null);
-  assert(saved?.pos, 'save:started observer must capture the exact serialized player pose');
-  assert(saved?.economy, 'save:started observer must capture the serialized economy state');
-  const saveCompletedPose = await readPlayerSnapshot(page);
-  const savedStorage = await page.evaluate(() => ({ bytes: localStorage.getItem('sf.save.quick')?.length || 0, slot: window.SF?.state?.save?.currentSlot || null }));
-  assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
-  mark('save-written', { ...savedStorage, saved, saveCompletedPose, completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos) });
 
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(650);
@@ -2060,6 +2288,20 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     } catch { return { available: false, postLoadEntities };
     }
   }, loadedSlot);
+  const loadedEnvelopeSnapshot = await readSaveEnvelopeSnapshot(page, fixedSave?.slot || loadedSlot || 'quick');
+  const fixedSaveUnchanged = fixedSave
+    ? loadedEnvelopeSnapshot.available === true
+      && loadedEnvelopeSnapshot.serializedIdentity?.sha256 === fixedSave.envelope?.serializedIdentity?.sha256
+    : true;
+  if (fixedSave && !fixedSaveUnchanged) {
+    mark('fixed-save-mutated', {
+      expected: fixedSave.envelope?.serializedIdentity || null,
+      observed: loadedEnvelopeSnapshot.serializedIdentity || null,
+    });
+  }
+  loadedEnvelope.serializedIdentity = loadedEnvelopeSnapshot.serializedIdentity || null;
+  loadedEnvelope.envelopeIdentity = loadedEnvelopeSnapshot.envelopeIdentity || null;
+  loadedEnvelope.slot = loadedSlot || loadedEnvelopeSnapshot.slot || null;
   const restoreReference = loadedEnvelope?.available === true ? loadedEnvelope : saved;
   assert(restoreReference?.pos, `loaded slot envelope must carry the restored pose (slot ${loadedSlot || 'unknown'})`);
   const restorePopulation = summarizeRestorePopulation({
@@ -2081,6 +2323,8 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     divergedDistance,
     restoredDistance,
     postLoadAdvanceDistance,
+    fixedSaveUnchanged,
+    serializedIdentity: loadedEnvelope.serializedIdentity,
     restorePopulation,
   });
   assert(
@@ -2389,8 +2633,15 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       sampleCount: samples.length,
       saveBytes: savedStorage.bytes,
       restorePopulation,
+      fixedSaveUnchanged,
+      saveSerializedIdentity: saveEnvelope.serializedIdentity,
+      loadedSerializedIdentity: loadedEnvelope.serializedIdentity,
       screenshot,
     },
+    saved,
+    saveEnvelope,
+    loadedEnvelope,
+    fixedSaveUnchanged,
     restorePopulation,
     marks,
     samples,

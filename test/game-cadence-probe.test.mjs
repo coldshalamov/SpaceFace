@@ -89,3 +89,155 @@ test('60 redraws per second distinguish 20 distinct world poses from smooth moti
   assert.equal(summarizeGameCadence({ rows: rows.map(({ motionSubmissions, ...r }) => r),
     submissionObserved: true }).worldMotionFps, null);
 });
+
+function createMeshProbeHarness({ mode = 'flight', timeScale = 1, speed = 30,
+  origin = 1, generation = 1, mesh = true } = {}) {
+  const savedWindow = globalThis.window;
+  const savedRequest = globalThis.requestAnimationFrame;
+  const savedCancel = globalThis.cancelAnimationFrame;
+  const savedPerformance = globalThis.performance;
+  let now = 0;
+  const callbacks = [];
+  const elements = new Array(16).fill(0);
+  elements[12] = 0;
+  elements[13] = 0;
+  elements[14] = 0;
+  const player = { occupantGeneration: generation, vel: { x: speed, z: 0 } };
+  const playerMesh = mesh ? { visible: true, parent: {}, matrixWorld: { elements } } : null;
+  const state = {
+    mode, timeScale, tick: 0, simTime: 0, playerId: 1,
+    entities: new Map([[1, player]]),
+    world: { frameOriginSeq: origin },
+    render: {
+      meshes: new Map(mesh ? [[1, playerMesh]] : []),
+      diagnostics: { info: { calls: 1 } },
+    },
+  };
+  const owner = { drawPreparedFrame: () => true };
+  globalThis.performance = { now: () => now };
+  globalThis.requestAnimationFrame = callback => {
+    callbacks.push(callback);
+    return callbacks.length;
+  };
+  globalThis.cancelAnimationFrame = () => {};
+  globalThis.window = { SF: { state, registry: { get: () => owner } } };
+  installGameCadenceProbe();
+  let stopped = false;
+  return {
+    state,
+    player,
+    mesh: playerMesh,
+    setNow(value) { now = value; },
+    draw() { return owner.drawPreparedFrame(); },
+    sample(t = now) {
+      const callback = callbacks.shift();
+      assert.ok(callback, 'expected a queued cadence callback');
+      callback(t);
+    },
+    stop() {
+      if (!stopped) {
+        stopped = true;
+        return window.__SF_GAME_CADENCE__.stop();
+      }
+      return null;
+    },
+    restore() {
+      if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
+      if (savedRequest === undefined) delete globalThis.requestAnimationFrame;
+      else globalThis.requestAnimationFrame = savedRequest;
+      if (savedCancel === undefined) delete globalThis.cancelAnimationFrame;
+      else globalThis.cancelAnimationFrame = savedCancel;
+      globalThis.performance = savedPerformance;
+    },
+  };
+}
+
+test('actual mesh observation counts interpolated movement when the simulation tick repeats', () => {
+  const harness = createMeshProbeHarness();
+  try {
+    harness.setNow(10);
+    harness.draw();
+    harness.setNow(20);
+    harness.mesh.matrixWorld.elements[12] = 1;
+    harness.draw();
+    const result = summarizeGameCadence(harness.stop());
+    assert.equal(result.actualMeshObserved, true);
+    assert.equal(result.actualMeshEligibleSamples, 2);
+    assert.equal(result.actualMeshPoseChanges, 1);
+    assert.equal(result.actualMeshIdenticalPoses, 0);
+    assert.equal(result.actualMeshPoseChangeGaps.count, 1);
+    assert.equal(result.actualMeshPoseChangeGaps.max, 10);
+  } finally {
+    harness.restore();
+  }
+});
+
+test('actual mesh observation exposes a frozen drawn pose despite healthy callbacks and changing ticks', () => {
+  const harness = createMeshProbeHarness();
+  try {
+    harness.sample(0);
+    for (const t of [16, 32, 48, 64, 80, 96, 112, 128]) {
+      harness.setNow(t);
+      harness.state.tick++;
+      harness.state.simTime += 1 / 60;
+      harness.draw();
+      harness.sample(t);
+    }
+    const result = summarizeGameCadence(harness.stop());
+    assert.equal(result.healthyCallbacksFrozenWorld, 0);
+    assert.equal(result.actualMeshPoseChanges, 0);
+    assert.equal(result.actualMeshIdenticalPoses, 7);
+    assert.ok(result.actualMeshStaleMs.max > 100);
+    assert.ok(result.actualMeshStaleMs.over100 > 0);
+  } finally {
+    harness.restore();
+  }
+});
+
+test('idle frames and identity boundaries do not create a false actual-pose freeze', () => {
+  const idle = createMeshProbeHarness({ mode: 'menu', timeScale: 0 });
+  try {
+    idle.draw();
+    const result = summarizeGameCadence(idle.stop());
+    assert.equal(result.actualMeshObserved, false);
+    assert.equal(result.actualMeshStatus, 'unavailable-no-eligible-samples');
+    assert.equal(result.actualMeshMissingSamples, null);
+    assert.equal(result.actualMeshPoseChanges, null);
+    assert.equal(result.actualMeshStaleMs, null);
+  } finally {
+    idle.restore();
+  }
+
+  const boundary = createMeshProbeHarness();
+  try {
+    boundary.setNow(0);
+    boundary.draw();
+    boundary.setNow(120);
+    boundary.state.world.frameOriginSeq = 2;
+    boundary.draw();
+    boundary.setNow(136);
+    boundary.draw();
+    const result = summarizeGameCadence(boundary.stop());
+    assert.equal(result.actualMeshObserved, true);
+    assert.equal(result.actualMeshIdentityBoundaryResets, 1);
+    assert.equal(result.actualMeshStaleMs.max, 16);
+    assert.equal(result.actualMeshStaleMs.over100, 0);
+  } finally {
+    boundary.restore();
+  }
+});
+
+test('missing player mesh is reported as unavailable rather than healthy zero motion', () => {
+  const harness = createMeshProbeHarness({ mesh: false });
+  try {
+    harness.draw();
+    const result = summarizeGameCadence(harness.stop());
+    assert.equal(result.actualMeshObserved, false);
+    assert.equal(result.actualMeshStatus, 'unavailable-no-eligible-samples');
+    assert.equal(result.actualMeshMissingSamples, 1);
+    assert.equal(result.actualMeshPoseChanges, null);
+    assert.equal(result.actualMeshStaleMs, null);
+  } finally {
+    harness.restore();
+  }
+});

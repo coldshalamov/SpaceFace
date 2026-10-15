@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   DEFAULT_CYCLES,
   DEFAULT_VIEWPORT,
+  MAX_IMMUTABLE_SAVE_CYCLES,
   MAX_MIN_DURATION_MS,
   runReleaseSoakProbe,
 } from './releaseSoakProbe.mjs';
@@ -52,6 +53,7 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     'cycle-timeout-ms',
     'min-duration-ms',
     'cycle-screenshots',
+    'immutable-save-cycles',
     'baseline-source',
   ]);
   for (const name of values.keys()) {
@@ -68,6 +70,10 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     throw new Error('--task-id must be 1-80 safe filename characters (letters, numbers, dot, underscore, or hyphen)');
   }
   const baselineSource = resolveBaselineSource(values.get('baseline-source'), repoRoot);
+  const immutableSaveCycles = readBoundedInteger(values, 'immutable-save-cycles', 0, MAX_IMMUTABLE_SAVE_CYCLES);
+  if (immutableSaveCycles === 1) {
+    throw new Error('--immutable-save-cycles must be 0 or at least 2 (one fixed save plus one reload)');
+  }
 
   return {
     runtime,
@@ -82,6 +88,7 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     cycleTimeoutMs: readPositiveInteger(values, 'cycle-timeout-ms', 300_000),
     minDurationMs: readBoundedInteger(values, 'min-duration-ms', 0, MAX_MIN_DURATION_MS),
     cycleScreenshots: readBoolean(values, 'cycle-screenshots', true),
+    immutableSaveCycles,
     baselineSource,
   };
 }
