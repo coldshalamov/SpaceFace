@@ -1051,7 +1051,8 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     const costLH = Math.round(costPx * 1.25);
     measureSig = measureNow();
     const widest = Math.max(...data.nodes.map((n) => measureText(n.name, px, 'read')));
-    const labelOut = Math.min(200, Math.max(110, widest + 26));
+    // a few px past the measured glyph so the outermost name (Industrial Mining @960) clears the sky clip
+    const labelOut = Math.min(220, Math.max(110, widest + 38));
     const avoidRects = avoidNow();
     avoidSig = sigOf(avoidRects);
     const key = `${W}x${H}|${px}|${avoidSig}|${data.nodes.map((n) => n.id + ':' + stateOf(n.id) + ':' + (data.costs && data.costs[n.id] || '')).join(',')}`;
@@ -1333,7 +1334,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       const one = measureText(n.name, px, 'read');
       const boxes = [];
       const mk = (lines) => {
-        const w = Math.ceil(Math.max(costW, ...lines.map((l) => measureText(l, px, 'read')))) + 2;
+        const w = Math.ceil(Math.max(costW, ...lines.map((l) => measureText(l, px, 'read')))) + 8;
         return { w, h: lines.length * nameLH + (cost ? costLH + 2 : 0), nameH: nameLH, lines, cost };
       };
       boxes.push(mk([n.name]));
@@ -1347,7 +1348,7 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       const assoc = { own: body(n.id, s), others, margin: 20, soft: 4 };
       return { id: n.id, star: { x: s.x, y: s.y, ox: s.x - cx, oy: s.y - cy }, boxes, gap: bodyR + 12, rank: rankOf(n.id), depth: s.depth, rest, assoc };
     });
-    const bounds = { x: 2, y: 2, w: geo.W - 4, h: geo.H - 4 };
+    const bounds = { x: 6, y: 4, w: geo.W - 12, h: geo.H - 8 };
     // within a rank, the label with the fewest free places goes first
     // a name beside the screen's title would read as part of its line: it keeps a wide berth to the right
     // (the berth is the heading's: the line under it only keeps its own margin)
