@@ -46,7 +46,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
 | **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait stack + landscape hang\|reader; review1+review2 fixes in § Phone Codex |
-| **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
+| **`mission-log`** / `missionLog` | **DONE** (+ narrow desktop, ui-polish-43) | See § Mission Log; § Missions on a narrow desktop (ui-polish-43) |
 | **`credits`** | **DONE** | See § Credits below; phone / ≤900 ladder fixed in ui-polish-30 |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
@@ -1217,3 +1217,18 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Checked:** bench clean (0 findings) at 700×400, 801×440, 844×390, 900×420. 960×540 and 1280×720 keep the prior 761–1200 / wide layouts (Controls still shows the rig). Phone (`data-sf-mobile`) untouched. `--walk` at 844×390 through CONTROLS → FACTIONS. Shots: `/workspace/spaceface-scratch/ui-shots/polish42/{before,after}/`, `compare-help-844x390.png`, `compare-help-700x400.png`, `compare-help-801x440.png`.
 
+
+## Missions on a narrow desktop — dial clears the reading; route ends unstack (ui-polish-43)
+
+**Before (master d49ec7c93b):** below 761px wide a desktop window kept hang|stage as two equal columns, so at 700×900 the dial sat on CONTRACT 47-A, LOCAL MAP printed through PAYS, and the route band was crushed. At 800×600 (and the 761–1100 × ≤640 band) FROM / ROUTE PENDING / TO shared ~200px and From sat on the mid word; the destination disc's ring clipped the stage edge at 960×540.
+
+**After (`src/ui/orrery/archiveLayouts.js` only, desktop `html:root:not([data-sf-mobile="1"])`):**
+- **640–760 wide:** hang is 248px, the card stacks (dial + verbs on one row, then the reading), route discs 44px with host padding so TO clears the edge.
+- **761–1100 × ≤640:** mid (ROUTE PENDING + clock) takes its own row above FROM / TO; dial column 176px with tighter verb tracking so OPEN ON THE CHART fits; route host padded, discs 40px.
+- 1280×720 / 1920×1080 / phone (`data-sf-mobile` and sub-640) unchanged. Selectors and IDs unchanged.
+
+**Bench:** 0 findings at 700×900, 800×600, 960×540, 1280×720, 1920×1080, 390×844 (+ `--phone`). `--walk` exercised SHOW / Track / Local map / Abandon / Close at each size.
+
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage and "Industrial Mining" last letter clipped at 960 (`labelOut` under-measure in constellation.js); Shipworks second Cargo callout line at 1024×440 under rail fade; Station Ledger right column can still feel tight at 800×600 with receipts.
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compare-700x900.png`, `compare-800x600.png`, `compare-960x540.png`.
