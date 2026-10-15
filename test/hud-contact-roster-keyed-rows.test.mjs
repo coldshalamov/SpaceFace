@@ -10,6 +10,18 @@ import assert from 'node:assert/strict';
 import * as hud from '../src/ui/hud.js';
 import { createBus } from '../src/core/eventBus.js';
 
+test('destroying the HUD releases its event-bus subscriptions', () => {
+  const fx = mountHudFixture();
+  try {
+    assert.ok(fx.activeBusSubscriptions.size > 0, 'fixture mounts HUD event subscriptions');
+    fx.hud.destroy();
+    assert.equal(fx.activeBusSubscriptions.size, 0,
+      `a detached HUD must not retain callbacks on the shared event bus: ${[...fx.activeBusSubscriptions].map((off) => off.event).join(', ')}`);
+  } finally {
+    fx.restore();
+  }
+});
+
 test('a distance tick rewrites text in place and never recreates a row', () => {
   const fx = mountHudFixture();
   try {
@@ -385,6 +397,18 @@ function mountHudFixture() {
     simTime: 0, tick: 0,
   };
   const bus = createBus();
+  const activeBusSubscriptions = new Set();
+  const busOn = bus.on.bind(bus);
+  bus.on = (event, listener, options) => {
+    const rawOff = busOn(event, listener, options);
+    const trackedOff = () => {
+      activeBusSubscriptions.delete(trackedOff);
+      return typeof rawOff === 'function' ? rawOff() : undefined;
+    };
+    trackedOff.event = event;
+    activeBusSubscriptions.add(trackedOff);
+    return trackedOff;
+  };
   const mounted = hud.createHud({
     state,
     bus,
@@ -392,7 +416,7 @@ function mountHudFixture() {
   }, null);
 
   const fx = {
-    state, bus, hud: mounted, document, contacts, clock, spy: WRITE_SPY,
+    state, bus, hud: mounted, document, contacts, clock, spy: WRITE_SPY, activeBusSubscriptions,
     get overview() { return document.querySelector('.sf-overview'); },
     entity(id) { return state.entities.get(id); },
     add(entity) {
@@ -525,6 +549,10 @@ class HudElement {
     if (i >= 0) this.children.splice(i, 1);
     if (child.parentNode === this) child.parentNode = null;
     return child;
+  }
+  remove() {
+    if (this.parentNode) this.parentNode.removeChild(this);
+    this.isConnected = false;
   }
   setAttribute(name, value) {
     const text = String(value);
