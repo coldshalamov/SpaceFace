@@ -79,6 +79,8 @@ const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'src/render/renderer.js',
   'src/render/assetLoader.js',
   'src/render/renderPackageManifest.js',
+  'src/render/rigidOpaqueBatchPolicy.js',
+  'src/render/materialBatchKey.js',
   'assets/ships/render-packages/pilots.json',
   'scripts/probe-authored-assets-live.mjs',
 ]);
@@ -200,6 +202,7 @@ try {
     // catch. On a route where the hubs are out of reach this returns on the first poll.
     isReady: (snapshot) => !!(snapshot && Array.isArray(snapshot.criticalStations)
       && snapshot.criticalStations.length > 0
+      && snapshot.presentationUnknownCount === 0
       && snapshot.criticalStations.every((station) => (
         !station.presented || station.assetState === 'authored'
       ))),
@@ -228,6 +231,7 @@ try {
   const badFlightSnapshots = startupTrace.filter((entry) => entry.mode === 'flight' && (
     entry.playerState !== 'authored'
     || entry.nonAuthored !== 0
+    || entry.presentationUnknownCount !== 0
     || entry.criticalStations.some((station) => station.presented && station.assetState !== 'authored')
   ));
   assert.equal(report.mode, 'flight', 'live probe should be in playable flight mode');
@@ -292,6 +296,7 @@ try {
     onPoll: () => forceShipRender(cdp),
     sample: () => collectCriticalStationSnapshot(cdp),
     isReady: (snapshot) => !!(snapshot && Array.isArray(snapshot.criticalStations)
+      && snapshot.presentationUnknownCount === 0
       && snapshot.criticalStations.some((station) => (
         station.stationId === 'station_helios' && station.assetState === 'authored'
       ))),
@@ -337,14 +342,14 @@ try {
     'all visibly presented live ships should include a main hull/body-sized authored surface');
   assert.deepEqual(report.ships.filter((ship) => ship.presented && ship.state === 'authored' && ship.mode !== 'release').map(summarizeShip), [],
     'all visibly presented authored ships should use release asset mode');
-  // A non-presented ship may legitimately be in EITHER state. 'awaiting-authored-admission' is
-  // the one on its way in; 'authored' is one that has fully admitted its authored asset and is
-  // simply outside the spatial runway. Treating the second as a fallback identity had it
-  // backwards -- 'authored' is the state this whole probe exists to require, and ship_atlas was
-  // failing the gate for being in it while off camera. What must never appear here is an actual
-  // fallback: a procedural or placeholder identity standing in for an authored hull.
-  assert.deepEqual(report.ships.filter((ship) => !ship.presented && ship.state !== 'awaiting-authored-admission' && ship.state !== 'authored').map(summarizeShip), [],
+  // Off-camera roots may await, run, or retire an admission as their runway relevance changes.
+  // A lifecycle cancellation is not a substituted hull; terminal content fallback stays a failure.
+  assert.deepEqual(report.ships.filter((ship) => !ship.presented
+    && !['awaiting-authored-admission', 'authored', 'loading', 'compiling-pipelines',
+      'cancelled-before-load', 'orphaned-before-swap', 'orphaned-after-pipeline-compile'].includes(ship.state)).map(summarizeShip), [],
     'non-presented ship boundaries may wait for spatial admission but must not expose a fallback identity');
+  assert.equal(report.presentationUnknownCount, 0,
+    `live camera geometry must be measurable: ${JSON.stringify(report.presentationUnknownReasons)}`);
   assert.equal(report.loaderDiagnostics.available, true,
     `authored asset runtime diagnostics should be available: ${JSON.stringify(report.loaderDiagnostics)}`);
   assert.equal(report.loaderDiagnostics.release, true, 'live asset probe should exercise default release mode');
@@ -360,11 +365,19 @@ try {
     'authored opaque GLB primitives should be wired into scene static batches or instance pools');
   assert.ok(report.instancePoolLiveCount + report.staticBatchCount > 0,
     'scene should contain live authored GLB static batches or pooled instances');
-  assert.ok(report.repeatedPackageShipPoolKeys.length > 0,
-    `a real Wasp/freighter package surface should share one pool across at least two authored roots: ${JSON.stringify(report.packageShipPoolRoots)}`);
-  const repeatedPackagePoolProof = assessRepeatedAuthoredPackagePoolProof(report);
-  assert.equal(repeatedPackagePoolProof.pass, true,
-    `two frequent authored roots must own distinct live slots in one exact package pool chunk: ${JSON.stringify(repeatedPackagePoolProof, null, 2)}`);
+  const packagePoolApplicability = assessAuthoredPackagePoolApplicability(report);
+  assert.equal(packagePoolApplicability.pass, true,
+    `package pooling eligibility must be measured: ${JSON.stringify(packagePoolApplicability)}`);
+  const repeatedPackagePoolProof = packagePoolApplicability.status === 'required'
+    ? assessRepeatedAuthoredPackagePoolProof(report, { compatibleCandidates: packagePoolApplicability.compatibleCandidates })
+    : { pass: null, status: 'not-applicable', reason: packagePoolApplicability.reason,
+      representation: 'authored body proof required; retained rigid sharing not assessed' };
+  if (packagePoolApplicability.status === 'required') {
+    assert.ok(report.repeatedPackageShipPoolKeys.length > 0,
+      `eligible repeated package surfaces must share a real pool: ${JSON.stringify(report.packageShipPoolRoots)}`);
+    assert.equal(repeatedPackagePoolProof.pass, true,
+      `two frequent authored roots must own distinct live slots in one exact package pool chunk: ${JSON.stringify(repeatedPackagePoolProof, null, 2)}`);
+  }
   assert.deepEqual(report.ships.filter((ship) => (
     ship.packageInstancePoolKeys.length > 0 && !ship.packagePoolTextureResidency.allResident
   )).map(summarizeShip), [],
@@ -399,6 +412,7 @@ try {
     instancePoolCount: report.instancePoolCount,
     instancePoolLiveCount: report.instancePoolLiveCount,
     packageShipPoolRoots: report.packageShipPoolRoots,
+    packagePoolApplicability,
     repeatedPackageShipPoolKeys: report.repeatedPackageShipPoolKeys,
     repeatedPackagePoolProof,
     staticBatchCount: report.staticBatchCount,
@@ -559,6 +573,10 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
   const proofs = [];
   for (const group of groups.values()) {
     if (group.roots.size < 2 || group.tokens.size < 2) continue;
+    if (options.compatibleCandidates && !options.compatibleCandidates.some(candidate => (
+      candidate.poolKey === group.key
+        && candidate.rootIds.filter(id => group.roots.has(id)).length >= 2
+    ))) continue;
     proofs.push({
       key: group.key,
       chunk: group.chunk,
@@ -576,6 +594,199 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
   proofs.sort((a, b) => exactPoolIdentity(a.key, a.chunk).localeCompare(exactPoolIdentity(b.key, b.chunk)));
   if (!proofs.length) failures.push({ reason: 'no-two-root-two-slot-exact-package-pool-proof' });
   return { pass: proofs.length > 0, matrixEpsilon, proofs, failures };
+}
+
+// Serialized into the page so every snapshot reads the same live camera contract. An
+// unreadable bound/range is owed evidence, never a reason to call a core body off camera.
+export function createAuthoredPresentationReader(THREE, camera, scene) {
+  const unknown = new Map();
+  const worldSphere = THREE ? new THREE.Sphere() : null;
+  let frustum = null;
+  try {
+    if (!camera.projectionMatrix.elements.every(Number.isFinite)
+        || !camera.matrixWorldInverse.elements.every(Number.isFinite)) throw new Error('unreadable camera');
+    const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum = new THREE.Frustum().setFromProjectionMatrix(projection, camera.coordinateSystem, camera.reversedDepth);
+  } catch (_) { /* unknown camera stays conservative below */ }
+  const noteUnknown = (object, reason) => {
+    const key = String(object?.uuid || object?.name || 'unknown');
+    if (!unknown.has(key)) unknown.set(key, { name: String(object?.name || '').slice(0, 160), reason });
+    return true;
+  };
+  function isPresented(object, root) {
+    const proxy = object?.userData?.spacefaceRenderPackagePooled === true
+      && object?.userData?.spacefaceInstanceProxy === true;
+    if (!object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || proxy)) return false;
+    let reachedRoot = false, reachedScene = false;
+    for (let node = object; node; node = node.parent) {
+      if (node.visible === false) return false;
+      if (node === root) reachedRoot = true;
+      if (node === scene) { reachedScene = true; break; }
+    }
+    if (!reachedRoot || !reachedScene) return false;
+    if (camera?.layers && object.layers && !camera.layers.test(object.layers)) return false;
+    if (object.isInstancedMesh && object.count === 0) return false;
+    if (object.geometry?.isInstancedBufferGeometry && object.geometry.instanceCount === 0) return false;
+    if (!frustum) return noteUnknown(object, 'unreadable-live-camera');
+    try {
+      if (object.isSprite) {
+        if (!frustum.intersectsSprite(object)) return false;
+      } else {
+        const geometry = object.geometry;
+        if (!geometry) return noteUnknown(object, 'missing-draw-geometry');
+        // Instanced/SkinnedMesh own aggregate bounds. Falling back to one primitive's
+        // geometry sphere would misclassify displaced instances; missing caches are UNKNOWN.
+        const sphere = object.boundingSphere !== undefined ? object.boundingSphere : geometry.boundingSphere;
+        if (!sphere || !Number.isFinite(sphere.radius) || sphere.radius < 0
+            || ![sphere.center.x, sphere.center.y, sphere.center.z].every(Number.isFinite)
+            || !object.matrixWorld?.elements?.every(Number.isFinite)) {
+          return noteUnknown(object, 'unreadable-draw-bound');
+        }
+        worldSphere.copy(sphere).applyMatrix4(object.matrixWorld);
+        if (!frustum.intersectsSphere(worldSphere)) return false;
+      }
+    } catch (_) { return noteUnknown(object, 'unreadable-draw-bound'); }
+    const geometry = object.geometry;
+    if (object.isSprite) return object.material?.visible !== false;
+    if (object.isInstancedMesh && (!Number.isInteger(object.count) || object.count < 0)
+        || geometry.isInstancedBufferGeometry && !(geometry.instanceCount === Infinity
+          || Number.isInteger(geometry.instanceCount) && geometry.instanceCount >= 0)) {
+      return noteUnknown(object, 'unreadable-instance-count');
+    }
+    const count = geometry.index?.count ?? geometry.attributes?.position?.count;
+    const start = geometry.drawRange?.start ?? 0;
+    const range = geometry.drawRange?.count ?? Infinity;
+    if (!Number.isFinite(count) || count < 0 || !Number.isFinite(start) || start < 0
+        || !(range === Infinity || Number.isFinite(range) && range >= 0)) {
+      return noteUnknown(object, 'unreadable-draw-range');
+    }
+    const end = Math.min(count, start + range);
+    const minimum = object.isMesh || proxy ? 3 : object.isLine ? 2 : 1;
+    if (end - start < minimum) return false;
+    if (!object.material) return noteUnknown(object, 'missing-draw-material');
+    if (!Array.isArray(object.material)) return object.material.visible !== false;
+    if (!Array.isArray(geometry.groups)) return noteUnknown(object, 'unreadable-material-groups');
+    let visible = false;
+    for (const group of geometry.groups) {
+      if (!Number.isFinite(group.start) || !Number.isFinite(group.count)) {
+        visible = noteUnknown(object, 'unreadable-material-group');
+        continue;
+      }
+      if (Math.min(end, group.start + group.count) - Math.max(start, group.start) >= minimum
+          && object.material[group.materialIndex] && object.material[group.materialIndex].visible !== false) visible = true;
+    }
+    return visible;
+  }
+  return {
+    isPresented,
+    hasPresentedSurface(root) {
+      let presented = false;
+      root?.traverse(object => { if (isPresented(object, root)) presented = true; });
+      return presented;
+    },
+    unknownReasons: () => [...unknown.values()].slice(0, 12),
+    unknownCount: () => unknown.size,
+  };
+}
+
+// Read the actual package source plan, before per-instance material/drive specialization.
+// Known motion excludes generic pooling; a missing plan is UNKNOWN, not an exemption.
+export function inspectLegacyPackagePoolEligibility(root, isRigidOpaqueBatchableSurface, objectPrototype, contracts = {}) {
+  const result = { packageCount: 0, primitiveCount: 0, eligiblePrimitiveCount: 0,
+    unknownPrimitiveCount: 0, exclusions: {}, candidates: [] };
+  const exclude = reason => { result.exclusions[reason] = (result.exclusions[reason] || 0) + 1; };
+  root?.traverse(object => {
+    const instance = object.userData?.renderPackageInstance;
+    if (!instance) return;
+    result.packageCount++;
+    if (!Array.isArray(instance.planEntries) || instance.planEntries.length === 0) {
+      if (instance.root?.userData?.spacefaceFlightStaticV3 === true) exclude('flight-static-direct-route');
+      else { result.unknownPrimitiveCount++; exclude('unreadable-source-plan'); }
+      return;
+    }
+    for (let index = 0; index < instance.planEntries.length; index++) {
+      const entry = instance.planEntries[index];
+      const source = entry?.source;
+      if (!source?.isObject3D) { result.unknownPrimitiveCount++; exclude('unreadable-source-node'); continue; }
+      if (!source?.isMesh) continue;
+      result.primitiveCount++;
+      const tags = source.userData?.spacefaceTags || {};
+      if (!source.geometry || !source.material) {
+        result.unknownPrimitiveCount++; exclude('unreadable-source-primitive'); continue;
+      }
+      let moving = false;
+      for (let node = source; node; node = node.parent) {
+        const t = node.userData?.spacefaceTags || {};
+        if (t.motionGroup || t.animated || t.drive || t.fan || t.turret
+            || node.userData?.animated || node.userData?.isTurret) moving = true;
+      }
+      if (moving) { exclude('authored-motion'); continue; }
+      if (source.onBeforeRender !== objectPrototype.onBeforeRender
+          || source.onAfterRender !== objectPrototype.onAfterRender) {
+        exclude('per-object-render-hook'); continue;
+      }
+      if (tags.instance === false || source.material.depthWrite === false) {
+        exclude('dedicated-per-owner-surface'); continue;
+      }
+      if (!isRigidOpaqueBatchableSurface(source, tags)) { exclude('non-rigid-or-non-opaque-surface'); continue; }
+      result.eligiblePrimitiveCount++;
+      const live = instance.planNodes?.[index];
+      const poolKey = live?.userData?.spacefaceInstancePoolKey;
+      let programKey = null, expectedPoolKey = null;
+      try {
+        programKey = contracts.rigidOpaqueMaterialProgramKey?.(live?.material);
+        expectedPoolKey = contracts.instancePoolIdentity?.(live?.geometry, live?.material);
+      } catch (_) { /* unreadable canonical identity is UNKNOWN below */ }
+      if (!live?.geometry?.uuid || !live?.material?.uuid || live.geometry !== source.geometry
+          || typeof poolKey !== 'string' || !poolKey || poolKey !== expectedPoolKey
+          || typeof programKey !== 'string' || !programKey || !live.layers
+          || !Number.isFinite(live.renderOrder)) {
+        result.unknownPrimitiveCount++; exclude('unreadable-compatible-candidate-key'); continue;
+      }
+      const key = JSON.stringify([poolKey, live.geometry.uuid, live.material.uuid, programKey,
+        live.layers.mask, live.renderOrder, live.castShadow === true, live.receiveShadow === true]);
+      if (!result.candidates.some(candidate => candidate.key === key)) result.candidates.push({ key, poolKey });
+    }
+  });
+  if (!result.packageCount) exclude('no-render-package-source-plan');
+  return result;
+}
+
+export function assessAuthoredPackagePoolApplicability(report) {
+  const roots = (report?.ships || []).filter(ship => ship.presented === true
+    && ship.state === 'authored' && isFrequentAuthoredRoot(ship));
+  const unknown = roots.filter(ship => !ship.legacyPackagePoolEligibility
+    || ship.legacyPackagePoolEligibility.unknownPrimitiveCount > 0
+    || ship.legacyPackagePoolEligibility.eligiblePrimitiveCount > 0
+      && !ship.legacyPackagePoolEligibility.candidates?.length);
+  const eligible = roots.filter(ship => ship.legacyPackagePoolEligibility?.eligiblePrimitiveCount > 0);
+  const byCandidate = new Map();
+  for (const ship of eligible) {
+    for (const candidate of ship.legacyPackagePoolEligibility.candidates || []) {
+      if (!candidate?.key || !candidate.poolKey) {
+        if (!unknown.includes(ship)) unknown.push(ship);
+        continue;
+      }
+      let group = byCandidate.get(candidate.key);
+      if (!group) byCandidate.set(candidate.key, group = { key: candidate.key, poolKey: candidate.poolKey, rootIds: new Set() });
+      group.rootIds.add(ship.id);
+    }
+  }
+  const compatibleCandidates = [...byCandidate.values()].filter(candidate => candidate.rootIds.size >= 2)
+    .map(candidate => ({ ...candidate, rootIds: [...candidate.rootIds] }));
+  const applicable = compatibleCandidates.length > 0;
+  return {
+    status: unknown.length ? 'unknown' : applicable ? 'required' : 'not-applicable',
+    pass: unknown.length === 0,
+    presentedFrequentRootCount: roots.length,
+    eligibleRootCount: eligible.length,
+    compatibleCandidates,
+    unknownRootIds: unknown.map(ship => ship.id),
+    reason: unknown.length ? 'unreadable-package-source-eligibility'
+      : applicable ? 'two-compatible-authored-roots' : 'no-compatible-repeated-package-primitives',
+    roots: roots.map(ship => ({ id: ship.id, defId: ship.defId,
+      ...ship.legacyPackagePoolEligibility })),
+  };
 }
 
 // WHAT CAN ACTUALLY CHANGE THIS PROBE'S ANSWER.
@@ -761,6 +972,7 @@ export async function waitForAuthoredShips(cdp, options = {}) {
       && snapshot.playerState === 'authored'
       && snapshot.presentedShipCount >= MIN_AUTHORED_SHIPS
       && snapshot.authoredShipCount === snapshot.presentedShipCount
+      && snapshot.presentationUnknownCount === 0
     ),
   });
   const diagnosticsStartedAtMs = reportStartedAtMs = now();
@@ -771,9 +983,13 @@ export async function waitForAuthoredShips(cdp, options = {}) {
   lastReportCompletedAtMs = now();
   for (let attempt = 0; attempt < 50; attempt++) {
     if (!deadline.passed) break;
+    const applicability = assessAuthoredPackagePoolApplicability(report);
     if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
       && report.authoredShipCount === report.presentedShipCount
-      && report.repeatedPackageShipPoolKeys.length > 0) break;
+      && report.presentationUnknownCount === 0
+      && applicability.pass
+      && (applicability.status === 'not-applicable'
+        || assessRepeatedAuthoredPackagePoolProof(report, { compatibleCandidates: applicability.compatibleCandidates }).pass)) break;
     retryAttempts++;
     retryStartedAtMs ??= now();
     operation = 'retry-wait';
@@ -856,6 +1072,7 @@ function compactAuthoredShipReport(report) {
     ...scalarRow(value),
     packageInstancePoolKeys: value.packageInstancePoolKeys?.slice(0, 8) || [],
     packageSubmittedPoolKeys: value.packageSubmittedPoolKeys?.slice(0, 8) || [],
+    legacyPackagePoolEligibility: value.legacyPackagePoolEligibility || null,
     authoredBodyProof: value.authoredBodyProof ? {
       ...scalarRow(value.authoredBodyProof), failures: value.authoredBodyProof.failures?.slice(0, 8) || [],
     } : null,
@@ -863,6 +1080,8 @@ function compactAuthoredShipReport(report) {
   const upgrade = report.authoredUpgradeDiagnostics;
   return {
     ...scalarRow(report), player: ship(report.player), ships: report.ships?.slice(0, 16).map(ship) || [],
+    presentationUnknownReasons: report.presentationUnknownReasons || [],
+    packagePoolApplicability: assessAuthoredPackagePoolApplicability(report),
     repeatedPackageShipPoolKeys: report.repeatedPackageShipPoolKeys?.slice(0, 12) || [],
     packageShipPoolRoots: report.packageShipPoolRoots?.slice(0, 12).map(pool => ({
       ...scalarRow(pool), roots: pool.roots?.slice(0, 8).map(scalarRow) || [],
@@ -922,28 +1141,15 @@ function collectCriticalStationSnapshot(cdp) {
   // to the player because the two ways this gate can fail look identical in `assetState` alone:
   // a package that is still streaming, and a station that is simply outside the seeded route's
   // streaming reach. Only the geometry tells them apart, so a timeout here reports both.
-  return evalJson(cdp, `(() => {
+  return evalJson(cdp, `(async () => {
     const state = window.SF && window.SF.state || null;
+    const THREE = state?.render?.scene && state.render.camera ? await import('three') : null;
+    const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state?.render?.camera, state?.render?.scene);
+    const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
     const player = state && state.entities ? state.entities.get(state.playerId) : null;
     const px = player && player.pos ? Number(player.pos.x) : null;
     const pz = player && player.pos ? Number(player.pos.z) : null;
-    function hasPresentedSurface(root) {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    }
+
     const stations = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'station' && entity.alive !== false)
         .map((entity) => {
@@ -963,13 +1169,17 @@ function collectCriticalStationSnapshot(cdp) {
         })
         .filter((station) => station.stationId === 'station_helios' || station.archetypeGlb === 'place_station_trade_hub')
       : [];
-    return { player: { x: px, z: pz }, criticalStations: stations };
+    return { player: { x: px, z: pz }, criticalStations: stations,
+      presentationUnknownCount: presentation.unknownCount(), presentationUnknownReasons: presentation.unknownReasons() };
   })()`);
 }
 
 function collectAuthoredGateSnapshot(cdp) {
-  return evalJson(cdp, `(() => {
+  return evalJson(cdp, `(async () => {
     const state = window.SF && window.SF.state || null;
+    const THREE = state?.render?.scene && state.render.camera ? await import('three') : null;
+    const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state?.render?.camera, state?.render?.scene);
+    const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
@@ -984,24 +1194,10 @@ function collectAuthoredGateSnapshot(cdp) {
       if (presented && assetState === 'authored') authoredShipCount++;
       if (state && entity.id === state.playerId) playerState = assetState;
     }
-    function hasPresentedSurface(root) {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    }
+
     return {
+      presentationUnknownCount: presentation.unknownCount(),
+      presentationUnknownReasons: presentation.unknownReasons(),
       mode: state && state.mode || null,
       tick: state && state.tick || 0,
       shipCount: ships.length,
@@ -1020,6 +1216,13 @@ export async function collectAuthoredReport(cdp) {
     const sf = window.SF || null;
     const state = sf && sf.state || null;
     const scene = state && state.render && state.render.scene || null;
+    const THREE = state?.render?.scene && state.render.camera ? await import('three') : null;
+    const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state?.render?.camera, state?.render?.scene);
+    const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
+    const { isRigidOpaqueBatchableSurface, rigidOpaqueMaterialProgramKey } = scene
+      ? await import('./src/render/rigidOpaqueBatchPolicy.js') : {};
+    const { instancePoolIdentity } = scene ? await import('./src/render/materialBatchKey.js') : {};
+    const inspectPoolEligibility = ${inspectLegacyPackagePoolEligibility.toString()};
     const loaderDiagnostics = { available: false, skipped: true, error: 'collected in the explicit authored asset catalog step' };
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
@@ -1098,6 +1301,8 @@ export async function collectAuthoredReport(cdp) {
       entry.roots.filter(isFrequentShipRoot).length >= 2
     )).map((entry) => entry.key);
     return {
+      presentationUnknownCount: presentation.unknownCount(),
+      presentationUnknownReasons: presentation.unknownReasons(),
       mode: state && state.mode || null,
       tick: state && state.tick || 0,
       playerId: state && state.playerId || null,
@@ -1207,6 +1412,8 @@ export async function collectAuthoredReport(cdp) {
         team: entity.team,
         factionId: entity.factionId || null,
         presented: hasPresentedSurface(root),
+        legacyPackagePoolEligibility: inspectPoolEligibility(root, isRigidOpaqueBatchableSurface, THREE.Object3D.prototype,
+          { instancePoolIdentity, rigidOpaqueMaterialProgramKey }),
         state: data.authoredAssetState || 'unknown',
         mode: data.authoredAssetMode || null,
         compositionId: data.authoredCompositionId || null,
@@ -1231,23 +1438,7 @@ export async function collectAuthoredReport(cdp) {
       };
     }
 
-    function hasPresentedSurface(root) {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    }
+
 
     function inspectAuthoredBodyProof(root, entity) {
       const metrics = {
@@ -1285,7 +1476,7 @@ export async function collectAuthoredReport(cdp) {
           || urls.some((url) => String(url || '').includes('readability/'));
         const isBody = urls.some(isAuthoredBodyUrl) && !isReadability;
         if (!isBody && !isReadability) return;
-        const visible = visibleThroughRoot(object, root) && materialIsVisible(object.material);
+        const visible = presentation.isPresented(object, root);
         const bounds = meshWorldBounds(object, Vector3);
         if (!bounds.ok) return;
         if (isReadability) {
@@ -1363,8 +1554,8 @@ export async function collectAuthoredReport(cdp) {
       const geometry = object && object.geometry;
       if (!geometry) return { ok: false };
       try {
-        if (!geometry.boundingBox && typeof geometry.computeBoundingBox === 'function') geometry.computeBoundingBox();
-        const box = geometry.boundingBox;
+        const position = geometry.getAttribute && geometry.getAttribute('position');
+        const box = geometry.boundingBox || (position ? new THREE.Box3().setFromBufferAttribute(position) : null);
         if (!box) return { ok: false };
         object.updateWorldMatrix(true, false);
         const min = [Infinity, Infinity, Infinity];
@@ -1736,16 +1927,6 @@ async function forceShipRender(cdp) {
     if (typeof render.warmPostProcess !== 'function') {
       throw new Error('authored asset probe requires the production-owned render epoch');
     }
-    for (const entity of state.entityList || []) {
-      if (!entity || entity.type !== 'ship' || !entity.mesh) continue;
-      entity.mesh.traverse((object) => { if (object) object.frustumCulled = false; });
-    }
-    try {
-      const partsLibrary = await import('./src/render/partsLibrary.js');
-      if (partsLibrary && typeof partsLibrary.syncAuthoredInstancePools === 'function') {
-        partsLibrary.syncAuthoredInstancePools(render.scene);
-      }
-    } catch (_) {}
     await render.warmPostProcess();
   })()`);
 }
@@ -1769,12 +1950,15 @@ function isBootReady(cdp) {
 }
 
 async function installStartupTrace(cdp) {
-  await evalVoid(cdp, `(() => {
+  await evalVoid(cdp, `(async () => {
     const sf = window.SF || null;
     if (!sf || !sf.bus || !sf.state || window.__SF_AUTHORED_ASSET_STARTUP_TRACE__) return;
     const trace = [];
+    const THREE = await import('three');
     const snapshot = (label, detail = {}) => {
       const state = sf.state || {};
+      const presentation = (${createAuthoredPresentationReader.toString()})(THREE, state.render?.camera, state.render?.scene);
+      const hasPresentedSurface = root => presentation.hasPresentedSurface(root);
       const ships = Array.isArray(state.entityList)
         ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
         : [];
@@ -1817,28 +2001,14 @@ async function installStartupTrace(cdp) {
         states,
         nonAuthored: Math.max(0, presentedShipCount - authoredPresentedCount),
         pendingInvisibleAdmissions: Math.max(0, ships.length - presentedShipCount),
+        presentationUnknownCount: presentation.unknownCount(),
+        presentationUnknownReasons: presentation.unknownReasons(),
         playerState,
         criticalStations,
         ...detail,
       });
     };
-    const hasPresentedSurface = (root) => {
-      let presented = false;
-      if (!root) return false;
-      root.traverse((object) => {
-        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
-          && object?.userData?.spacefaceInstanceProxy === true;
-        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
-        let cursor = object;
-        while (cursor) {
-          if (cursor.visible === false) return;
-          if (cursor === root) break;
-          cursor = cursor.parent;
-        }
-        if (cursor === root && object.geometry && object.material) presented = true;
-      });
-      return presented;
-    };
+
     window.__SF_AUTHORED_ASSET_STARTUP_TRACE__ = trace;
     sf.bus.on('mode:changed', () => snapshot('mode:changed'));
     sf.bus.on('game:started', () => snapshot('game:started'));

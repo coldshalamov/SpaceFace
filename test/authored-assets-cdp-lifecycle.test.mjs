@@ -334,7 +334,7 @@ function shipReportDeadlineFixture({ entryCount = 119, passiveReply = null } = {
     if (f.cdp.stage === 'authored ship admission') {
       if (!request.params.returnByValue) f.socket.reply(request.id);
       else jsonReply({ mode: 'flight', tick: 120, shipCount: 4, playerState: 'authored',
-        presentedShipCount: 3, authoredShipCount: 3 });
+        presentedShipCount: 3, authoredShipCount: 3, presentationUnknownCount: 0 });
     } else if (f.cdp.stage === 'authored asset catalog') {
       jsonReply({ available: true, runtime: {}, release: true, partRoot: 'assets/ships/release/parts/', entries });
     } else if (f.cdp.stage.startsWith('authored asset ')) {
@@ -381,10 +381,16 @@ test('a 170ms passive snapshot timeout retains actual completed catalog and admi
 test('a retry deadline preserves the last ship/pool producer report without treating it as a pass', async () => {
   const passiveReply = {
     mode: 'flight', tick: 440, shipCount: 4, presentedShipCount: 3, authoredShipCount: 3,
+    presentationUnknownCount: 0,
     repeatedPackageShipPoolKeys: [], instancePoolCount: 2, instancePoolLiveCount: 3,
     player: { id: 1, defId: 'ship_kestrel', state: 'authored', authoredBodyProof: { ok: true, bodySurfaceCount: 2 } },
     ships: [{ id: 40, defId: 'ship_wasp', presented: false, state: 'awaiting-authored-admission',
-      packageInstancePoolKeys: ['package:wasp'], packageSubmittedPoolKeys: [] }],
+      packageInstancePoolKeys: ['package:wasp'], packageSubmittedPoolKeys: [] },
+      ...[41, 42].map(id => ({ id, defId: 'ship_wasp', presented: true, state: 'authored',
+        legacyPackagePoolEligibility: { packageCount: 1, primitiveCount: 1,
+          eligiblePrimitiveCount: 1, unknownPrimitiveCount: 0, exclusions: {},
+          candidates: [{ key: 'actual-compatible-primitive', poolKey: 'package:wasp' }] },
+        packagePoolSubmissions: [] }))],
     packageShipPoolRoots: [{ key: 'package:wasp', distinctAuthoredRootCount: 1, roots: [{ id: 41, defId: 'ship_wasp' }] }],
     instancePools: [{ key: 'package:wasp', count: 1, submittedSlotCount: 1 }],
     criticalStations: [], authoredUpgradeDiagnostics: { activeJobs: 1,

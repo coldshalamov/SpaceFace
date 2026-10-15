@@ -3,6 +3,16 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import test from 'node:test';
+import * as THREE from 'three';
+import { isRigidOpaqueBatchableSurface, rigidOpaqueMaterialProgramKey } from '../src/render/rigidOpaqueBatchPolicy.js';
+import { instancePoolIdentity } from '../src/render/materialBatchKey.js';
+import {
+  assessAuthoredPackagePoolApplicability,
+  assessRepeatedAuthoredPackagePoolProof,
+  collectAuthoredReport,
+  createAuthoredPresentationReader,
+  inspectLegacyPackagePoolEligibility,
+} from '../scripts/probe-authored-assets-live.mjs';
 
 const source = readFileSync(new URL('../scripts/probe-authored-assets-live.mjs', import.meta.url), 'utf8');
 const electronSource = readFileSync(new URL('../scripts/check-electron-new-game-launch.mjs', import.meta.url), 'utf8');
@@ -71,12 +81,16 @@ test('live asset proof respects spatial streaming while forbidding visible subst
     'normal-route proof must not defeat the production residency policy by demanding every offscreen body');
   assert.match(source, /report\.ships\.filter\(\(ship\) => ship\.presented && ship\.state !== 'authored'/,
     'every presented ship remains required to use its authored identity');
-  assert.match(source, /!ship\.presented && ship\.state !== 'awaiting-authored-admission'/,
-    'offscreen boundaries must wait invisibly instead of publishing procedural boxes');
+  assert.match(source, /!ship\.presented[\s\S]*?'cancelled-before-load'/,
+    'off-camera admission cancellation remains distinct from a visible substituted body');
+  assert.doesNotMatch(source, /frustumCulled\s*=/,
+    'the observer may not make off-camera ships render to manufacture presentation demand');
   assert.match(source, /maxConcurrentDecode <= 1/,
     'production decode admission remains serial and bounded');
   assert.match(source, /repeatedPackageShipPoolKeys\.length > 0/,
-    'the live route must bind one real package pool key to at least two Wasp or freighter roots');
+    'eligible repeated roots still require a real shared package pool');
+  assert.match(source, /packagePoolApplicability\.status === 'required'/,
+    'the legacy pool assertion must follow actual primitive eligibility');
   assert.match(source, /entry\.roots\.filter\(isFrequentShipRoot\)\.length >= 2/,
     'both roots counted by repeated package proof must be members of the frequent Wasp/freighter population');
   assert.match(source, /spacefaceRenderPackagePooled === true/,
@@ -93,6 +107,232 @@ test('live asset proof respects spatial streaming while forbidding visible subst
     'forced presentation must use the production-owned renderer epoch so dynamic buffers publish before upload');
   assert.doesNotMatch(source, /render\.renderer\.render\(render\.scene, render\.camera\)/,
     'the live probe must not bypass dynamic-buffer publication through the exposed raw renderer');
+});
+
+function presentationFixture() {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+  camera.position.z = 40;
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  const root = new THREE.Group();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), new THREE.MeshStandardMaterial());
+  mesh.geometry.computeBoundingSphere(); // The render owner, not the observer, prepares its cache.
+  root.add(mesh);
+  scene.add(root);
+  const reader = () => {
+    scene.updateMatrixWorld(true);
+    return createAuthoredPresentationReader(THREE, camera, scene);
+  };
+  return { scene, camera, root, mesh, reader };
+}
+
+test('live presentation uses the real frustum, layers, visibility and draw ranges without changing culling', () => {
+  const f = presentationFixture();
+  assert.equal(f.reader().hasPresentedSurface(f.root), true);
+  f.root.position.x = 1000;
+  assert.equal(f.reader().hasPresentedSurface(f.root), false, 'an off-camera visible root is not on the glass');
+  assert.equal(f.mesh.frustumCulled, true);
+  f.root.position.x = 0;
+  f.mesh.layers.set(2);
+  assert.equal(f.reader().hasPresentedSurface(f.root), false);
+  f.mesh.layers.set(0);
+  f.root.visible = false;
+  assert.equal(f.reader().hasPresentedSurface(f.root), false);
+  f.root.visible = true;
+  f.mesh.geometry.setDrawRange(0, 0);
+  assert.equal(f.reader().hasPresentedSurface(f.root), false);
+  f.mesh.geometry.setDrawRange(0, Infinity);
+  const hidden = new THREE.MeshStandardMaterial({ visible: false });
+  f.mesh.material = [hidden, new THREE.MeshStandardMaterial()];
+  f.mesh.geometry.clearGroups();
+  f.mesh.geometry.addGroup(0, 3, 0);
+  assert.equal(f.reader().hasPresentedSurface(f.root), false, 'an unreferenced visible material cannot prove a draw');
+  f.mesh.geometry.addGroup(3, 3, 1);
+  assert.equal(f.reader().hasPresentedSurface(f.root), true);
+  f.mesh.geometry.setDrawRange(0, 3);
+  assert.equal(f.reader().hasPresentedSurface(f.root), false, 'groups outside the draw range do not render');
+});
+
+test('on-camera unresolved markers stay owed and unknown core geometry cannot silently pass', () => {
+  const f = presentationFixture();
+  f.root.userData.authoredAssetState = 'awaiting-authored-admission';
+  f.mesh.userData.authoredResolvingMarker = true;
+  assert.equal(f.reader().hasPresentedSurface(f.root), true,
+    'a marker on the glass still enters the unchanged authored-state/body failure checks');
+  f.mesh.geometry.computeBoundingSphere();
+  f.mesh.geometry.boundingSphere.radius = NaN;
+  const unreadable = f.reader();
+  assert.equal(unreadable.hasPresentedSurface(f.root), true);
+  assert.deepEqual(unreadable.unknownReasons().map(row => row.reason), ['unreadable-draw-bound']);
+  const noCamera = createAuthoredPresentationReader(THREE, null, f.scene);
+  assert.equal(noCamera.hasPresentedSurface(f.root), true);
+  assert.equal(noCamera.unknownCount(), 1);
+  f.camera.projectionMatrix.elements[0] = NaN;
+  const invalidCamera = f.reader();
+  assert.equal(invalidCamera.hasPresentedSurface(f.root), true);
+  assert.equal(invalidCamera.unknownReasons()[0].reason, 'unreadable-live-camera');
+});
+
+test('presentation reads cached aggregate bounds without populating geometry or instance caches', () => {
+  const f = presentationFixture();
+  const cached = f.mesh.geometry.boundingSphere;
+  const saved = cached.clone();
+  assert.equal(f.reader().hasPresentedSurface(f.root), true);
+  assert.strictEqual(f.mesh.geometry.boundingSphere, cached);
+  assert.deepEqual(cached, saved);
+  f.mesh.geometry.boundingSphere = null;
+  f.mesh.geometry.computeBoundingSphere = () => assert.fail('observer may not fill a live geometry cache');
+  const unknown = f.reader();
+  assert.equal(unknown.hasPresentedSurface(f.root), true);
+  assert.equal(unknown.unknownCount(), 1);
+  assert.equal(f.mesh.geometry.boundingSphere, null);
+
+  f.root.remove(f.mesh);
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const instanced = new THREE.InstancedMesh(geometry, new THREE.MeshStandardMaterial(), 1);
+  instanced.setMatrixAt(0, new THREE.Matrix4().makeTranslation(1000, 0, 0));
+  instanced.computeBoundingSphere();
+  f.root.add(instanced);
+  const aggregate = instanced.boundingSphere;
+  const aggregateSaved = aggregate.clone();
+  assert.equal(f.reader().hasPresentedSurface(f.root), false,
+    'the aggregate is outside camera even though the untransformed primitive sphere is centered on camera');
+  assert.strictEqual(instanced.boundingSphere, aggregate);
+  assert.deepEqual(aggregate, aggregateSaved);
+  instanced.boundingSphere = null;
+  instanced.computeBoundingSphere = () => assert.fail('observer may not fill the aggregate cache');
+  const missingAggregate = f.reader();
+  assert.equal(missingAggregate.hasPresentedSurface(f.root), true);
+  assert.equal(missingAggregate.unknownCount(), 1, 'missing aggregate bounds cannot use primitive bounds to claim off-camera');
+  assert.equal(instanced.boundingSphere, null);
+});
+
+test('the actual page collector excludes off-camera pending roots and rejects an empty authored body draw', async () => {
+  const f = presentationFixture();
+  const hullUrl = 'assets/ships/release/parts/wholeships/wasp_production_v1.glb';
+  f.root.userData = { authoredAssetState: 'authored', authoredAssetMode: 'release', authoredSlots: { hull: [hullUrl] } };
+  f.mesh.userData.spacefacePartUrl = hullUrl;
+  const markerRoot = new THREE.Group();
+  const marker = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), new THREE.MeshBasicMaterial());
+  marker.geometry.computeBoundingSphere();
+  markerRoot.userData.authoredAssetState = 'cancelled-before-load';
+  markerRoot.add(marker);
+  markerRoot.position.x = 1000;
+  f.scene.add(markerRoot);
+  const entities = [
+    { id: 1, type: 'ship', alive: true, radius: 2, mesh: f.root, data: { defId: 'ship_wasp' } },
+    { id: 361, type: 'ship', alive: true, radius: 2, mesh: markerRoot, data: { defId: 'ship_ironback' } },
+  ];
+  const window = { SF: { state: { mode: 'flight', playerId: 1, entityList: entities,
+    entities: new Map(entities.map(entity => [entity.id, entity])), render: { scene: f.scene, camera: f.camera } } } };
+  const cdp = { async send(_method, { expression }) {
+    const evaluate = new Function('window', 'loadProbeModule', `return ${expression.replaceAll('import(', 'loadProbeModule(')}`);
+    const value = await evaluate(window, async name => name === 'three'
+      ? THREE : name.includes('materialBatchKey') ? { instancePoolIdentity }
+        : { isRigidOpaqueBatchableSurface, rigidOpaqueMaterialProgramKey });
+    return { result: { value } };
+  } };
+  f.reader();
+  const report = await collectAuthoredReport(cdp);
+  assert.equal(report.presentedShipCount, 1);
+  assert.equal(report.ships.find(ship => ship.id === 361).presented, false);
+  assert.equal(report.player.authoredBodyProof.ok, true);
+  assert.equal(f.mesh.geometry.boundingBox, null, 'body extent observation uses a temporary box');
+  f.mesh.geometry.setDrawRange(0, 0);
+  f.root.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.5), new THREE.MeshBasicMaterial()));
+  const emptyBody = await collectAuthoredReport(cdp);
+  assert.equal(emptyBody.player.presented, true, 'the unresolved visible marker keeps the root owed');
+  assert.equal(emptyBody.player.authoredBodyProof.ok, false);
+  assert.ok(emptyBody.player.authoredBodyProof.failures.some(row => row.reason === 'missing-visible-authored-body-surface'));
+});
+
+test('actual shipped motion tags exclude legacy pooling with measured primitive reasons', () => {
+  for (const name of ['ashline-dart', 'helios-span']) {
+    const metadata = JSON.parse(readFileSync(new URL(
+      `../assets/ships/release/render-packages/${name}/render-package.json`, import.meta.url), 'utf8'));
+    const root = new THREE.Group();
+    const planEntries = metadata.runtime.primitives.map(primitive => {
+      const source = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+      source.userData.spacefaceTags = primitive.tags;
+      return { source };
+    });
+    root.userData.renderPackageInstance = { planEntries };
+    const census = inspectLegacyPackagePoolEligibility(root, isRigidOpaqueBatchableSurface, THREE.Object3D.prototype);
+    assert.equal(census.primitiveCount, metadata.runtime.primitives.length);
+    assert.equal(census.eligiblePrimitiveCount, 0);
+    assert.equal(census.unknownPrimitiveCount, 0);
+    assert.equal(census.exclusions['authored-motion'], census.primitiveCount);
+    const report = { ships: [101, 102].map(id => ({ id, defId: 'ship_wasp', presented: true,
+      state: 'authored', legacyPackagePoolEligibility: census })) };
+    const applicability = assessAuthoredPackagePoolApplicability(report);
+    assert.equal(applicability.status, 'not-applicable');
+    assert.equal(applicability.presentedFrequentRootCount, 2);
+    assert.equal(applicability.eligibleRootCount, 0);
+    assert.equal(applicability.pass, true);
+  }
+});
+
+test('two eligible actual package roots require the original exact two-root two-slot proof', () => {
+  const root = new THREE.Group();
+  const source = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  const live = source.clone();
+  live.userData.spacefaceInstancePoolKey = instancePoolIdentity(live.geometry, live.material);
+  root.userData.renderPackageInstance = { planEntries: [{ source }], planNodes: [live] };
+  const contracts = { instancePoolIdentity, rigidOpaqueMaterialProgramKey };
+  const census = inspectLegacyPackagePoolEligibility(root, isRigidOpaqueBatchableSurface, THREE.Object3D.prototype, contracts);
+  assert.equal(census.eligiblePrimitiveCount, 1);
+  assert.equal(census.unknownPrimitiveCount, 0);
+  const report = repeatedPoolReport();
+  const poolKey = census.candidates[0].poolKey;
+  report.instancePools[0].key = poolKey;
+  for (const ship of report.ships) {
+    ship.legacyPackagePoolEligibility = census;
+    for (const submission of ship.packagePoolSubmissions) {
+      submission.key = poolKey;
+      submission.token = `${poolKey}|${submission.chunk}|${submission.index}`;
+    }
+  }
+  const applicability = assessAuthoredPackagePoolApplicability(report);
+  assert.equal(applicability.status, 'required');
+  assert.equal(assessRepeatedAuthoredPackagePoolProof(report,
+    { compatibleCandidates: applicability.compatibleCandidates }).pass, true);
+  report.instancePools = [];
+  assert.equal(assessRepeatedAuthoredPackagePoolProof(report).pass, false,
+    'eligible pairs cannot take the not-applicable route when their actual slots are missing');
+  delete report.ships[0].legacyPackagePoolEligibility;
+  assert.equal(assessAuthoredPackagePoolApplicability(report).pass, false, 'missing eligibility is UNKNOWN');
+  root.userData.renderPackageInstance = {};
+  const unknown = inspectLegacyPackagePoolEligibility(root, isRigidOpaqueBatchableSurface, THREE.Object3D.prototype);
+  assert.equal(unknown.unknownPrimitiveCount, 1);
+  root.userData.renderPackageInstance = { planEntries: [{ source }], planNodes: [source.clone()] };
+  assert.equal(inspectLegacyPackagePoolEligibility(root, isRigidOpaqueBatchableSurface,
+    THREE.Object3D.prototype, contracts).unknownPrimitiveCount, 1, 'missing actual candidate key is UNKNOWN');
+});
+
+test('unrelated eligible package primitives or render lanes do not demand a shared pool', () => {
+  const inspect = (geometry, material, renderOrder = 0) => {
+    const root = new THREE.Group();
+    const source = new THREE.Mesh(geometry, material);
+    const live = source.clone();
+    live.renderOrder = renderOrder;
+    live.userData.spacefaceInstancePoolKey = instancePoolIdentity(geometry, material);
+    root.userData.renderPackageInstance = { planEntries: [{ source }], planNodes: [live] };
+    return inspectLegacyPackagePoolEligibility(root, isRigidOpaqueBatchableSurface, THREE.Object3D.prototype,
+      { instancePoolIdentity, rigidOpaqueMaterialProgramKey });
+  };
+  const geometry = new THREE.BoxGeometry(), material = new THREE.MeshStandardMaterial();
+  const first = inspect(geometry, material);
+  for (const unrelated of [inspect(new THREE.BoxGeometry(), material),
+    inspect(geometry, new THREE.MeshStandardMaterial({ color: 0xff0000 })), inspect(geometry, material, 2)]) {
+    const report = { ships: [first, unrelated].map((census, index) => ({ id: index + 1,
+      defId: 'ship_wasp', presented: true, state: 'authored', legacyPackagePoolEligibility: census })) };
+    const applicability = assessAuthoredPackagePoolApplicability(report);
+    assert.equal(applicability.eligibleRootCount, 2);
+    assert.equal(applicability.pass, true);
+    assert.equal(applicability.status, 'not-applicable');
+    assert.deepEqual(applicability.compatibleCandidates, []);
+  }
 });
 
 test('repeated package proof binds two authored roots to two exact submitted matrices', async () => {
