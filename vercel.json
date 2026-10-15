@@ -1,5 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "master": true,
+      "main": true,
+      "codex/iphone14-mobile": true,
+      "codex/oct15-maturity-checkpoint": true,
+      "devin/1791331347-gyre-snare": true,
+      "devin/1791416174-gyre-snare-polish": true
+    }
+  },
   "framework": null,
   "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
   "installCommand": "ELECTRON_SKIP_BINARY_DOWNLOAD=1 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci",
