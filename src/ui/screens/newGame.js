@@ -27,6 +27,7 @@ import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectNewGameLayouts } from '../orrery/newGameLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { armCallbackAfterPresent } from '../../render/compilePresentSlice.js';
 import { dpMark, injectDeckplate } from '../deckplate/index.js';
 import { capPins, platePins, channelPins }
   from '../kit/computedMaterial.js';
@@ -413,7 +414,8 @@ export const newGameScreen = {
   id: 'newGame',
 
   mount(rootEl, ctx) {
-
+    this._embarkSpecActive = false;
+    this._embarkSpecQueued = null;
     injectDeckplate();
     if (refs && refs.unsubStartFailed) {
       try { refs.unsubStartFailed(); } catch (e) {}
@@ -920,23 +922,26 @@ export const newGameScreen = {
   // this re-arms the renderer's embark warm: sector recipe + opening cast + starter hull,
   // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
   _emitEmbarkSpec() {
-    if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+    if (!this._embarkSpecActive || !refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
     // The arm enumerates the sector def + salted dressing streams and posts ~60–100 warm
     // requests — running it inside the gesture task drops a menu frame per keystroke.
-    // Coalesce to one deferred emit that reads the field at fire time (not queueMicrotask,
-    // which drains pre-paint): a typed burst arms once, after the gesture.
+    // Coalesce to one post-present emit that reads the fields at fire time. A plain
+    // timer leaves the gesture task but can still enumerate the cast before first paint.
     if (this._embarkSpecQueued) return;
-    this._embarkSpecQueued = true;
-    setTimeout(() => {
-      this._embarkSpecQueued = false;
-      if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+    const request = {};
+    const ownerRefs = refs;
+    this._embarkSpecQueued = request;
+    armCallbackAfterPresent(() => {
+      if (this._embarkSpecQueued !== request) return;
+      this._embarkSpecQueued = null;
+      if (!this._embarkSpecActive || refs !== ownerRefs || typeof refs?.ctx?.bus?.emit !== 'function') return;
       const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
       refs.ctx.bus.emit('game:embarkSpeculation', {
         sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
         seed: typed == null ? refs.specSeedRoll : typed,
         shipDefId: refs.starter && refs.starter.shipId,
       });
-    }, 0);
+    }, { idleBoundMs: 48 });
   },
 
   _setStarter(id, { silent = false } = {}) {
@@ -1019,6 +1024,7 @@ export const newGameScreen = {
 
   onShow(ctx) {
     if (!refs) return;
+    this._embarkSpecActive = true;
     cue('open');
     this._emitEmbarkSpec();
     refs.setLaunching(false);
@@ -1056,6 +1062,8 @@ export const newGameScreen = {
     }
   },
   onHide() {
+    this._embarkSpecActive = false;
+    this._embarkSpecQueued = null;
     this._nameFocus = null;
     cue('close');
     if (this._starterDial) this._starterDial.setActive(false);
@@ -1063,6 +1071,8 @@ export const newGameScreen = {
   },
   refresh() {},
   dispose() {
+    this._embarkSpecActive = false;
+    this._embarkSpecQueued = null;
     this._nameFocus = null;
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
     if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }

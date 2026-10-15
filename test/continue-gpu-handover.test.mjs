@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createRunTransitionGuard } from '../src/core/runTransitionGuard.js';
+import { GameStartReadinessError, describeGameStartFailure } from '../src/core/newGameStartTransition.js';
 
 // Execute the production orchestration without booting main.js's browser entrypoint.
 // Only its platform/readiness boundaries are substituted; the branching, awaits,
@@ -25,6 +26,9 @@ function harness({ awaitCook = true, cook = async () => true } = {}) {
   const events = [];
   const calls = { flights: 0, failures: [], pulses: 0, warmups: 0, cookOptions: [] };
   const deps = {
+    GameStartReadinessError,
+    describeGameStartFailure,
+    laneCommandSink: () => null,
     resetCombatInputMode() {},
     enterLoadingMode(s) { s.mode = 'loading'; },
     startLoadingGatePulse() {
