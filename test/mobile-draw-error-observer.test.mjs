@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
+import { readFileSync } from 'node:fs';
 import { installMobileDrawErrorObserver } from '../scripts/lib/mobileDrawErrorObserver.mjs';
 
 function fixture(options = {}) {
@@ -8,13 +9,13 @@ function fixture(options = {}) {
   const scope = { EventTarget, __THREE_DEVTOOLS__: target, performance: { now: () => 123 } };
   runInNewContext(`(${installMobileDrawErrorObserver.toString()})(${JSON.stringify(options)})`, scope);
   const queue = [], calls = [], program = {};
-  let fail = true, reads = 0;
+  let fail = true, reads = 0, contextReads = 0;
   const gl = { NO_ERROR: 0, INVALID_OPERATION: 1282, CURRENT_PROGRAM: 35725,
     getError() { reads++; return queue.shift() || 0; },
     getParameter(key) { assert.equal(key, this.CURRENT_PROGRAM); return program; },
     drawElements(...args) { calls.push({ receiver: this, args }); if (fail) queue.push(1282); return 'draw-result'; },
   };
-  const renderer = { isWebGLRenderer: true, domElement: { id: 'gl-canvas' }, getContext: () => gl,
+  const renderer = { isWebGLRenderer: true, domElement: { id: 'gl-canvas' }, getContext() { contextReads++; return gl; },
     renderBufferDirect(camera, scene, geometry, material, object, group) {
       assert.equal(this, renderer);
       return gl.drawElements(4, group?.count ?? 3, 5123, 0);
@@ -30,7 +31,7 @@ function fixture(options = {}) {
   const observe = value => target.dispatchEvent(new CustomEvent('observe', { detail: value }));
   const draw = (g = geometry) => renderer.renderBufferDirect(null, null, g, material, object, { start: 0, count: 3 });
   return { scope, target, gl, renderer, geometry, material, object, observe, draw, queue, calls,
-    reads: () => reads, setFail(value) { fail = value; }, api: scope.__SF_MOBILE_DRAW_ERRORS__ };
+    reads: () => reads, contextReads: () => contextReads, setFail(value) { fail = value; }, api: scope.__SF_MOBILE_DRAW_ERRORS__ };
 }
 
 test('a missing renderer or incompatible devtools target is reported unavailable', () => {
@@ -123,4 +124,82 @@ test('stop leaves later wrapper owners intact and disables observation through t
   assert.equal(f.draw(), 'draw-result');
   assert.equal(f.reads(), reads);
   assert.equal(f.api.snapshot().stopped, true);
+});
+
+test('cold on-error observation leaves render and GL methods untouched until one arm', () => {
+  const f = fixture({ startArmed: false });
+  const direct = f.renderer.renderBufferDirect, elements = f.gl.drawElements;
+  f.observe(f.renderer); f.observe(f.renderer);
+  assert.equal(f.renderer.renderBufferDirect, direct);
+  assert.equal(f.gl.drawElements, elements);
+  assert.equal(f.contextReads(), 0);
+  assert.equal(f.draw(), 'draw-result');
+  assert.equal(f.reads(), 0, 'startup draws make no GL query');
+  const cold = f.api.snapshot();
+  assert.equal(cold.armed, false);
+  assert.equal(cold.checkedDraws, 0);
+  assert.equal(cold.renderersRetained, 1);
+  assert.equal(cold.renderersInstrumented, 0);
+  assert.equal(cold.ownership, 'unknown');
+  const trigger = { route: 'new-game', actorStage: 'new-game-rotation', at: 'native-warning-time', text: 'native GL warning' };
+  assert.equal(f.api.arm(trigger), true);
+  assert.equal(f.api.snapshot().armPriorErrors, 1);
+  assert.equal(f.api.snapshot().priorErrors, 1);
+  assert.equal(f.api.snapshot().invalidDraws, 0, 'the warning already in GL is unowned');
+  assert.equal(f.api.snapshot().witnesses.length, 0);
+  assert.equal(f.api.snapshot().renderersRetained, 0);
+  const armReads = f.reads();
+  assert.equal(f.api.arm({ actorStage: 'later warning' }), false);
+  assert.equal(f.reads(), armReads, 'subsequent warnings never drain or rewrap');
+  assert.equal(f.api.snapshot().armTrigger.actorStage, trigger.actorStage);
+  f.setFail(false); f.draw();
+  assert.equal(f.api.snapshot().ownership, 'unknown', 'arming alone proves no owner');
+  f.setFail(true); f.draw();
+  assert.equal(f.api.snapshot().invalidDraws, 1);
+  assert.equal(f.api.snapshot().ownership, 'observed');
+  assert.equal(f.api.snapshot().witnesses[0].object.name, 'LOD0 hull');
+  f.api.stop();
+  assert.equal(f.renderer.renderBufferDirect, direct);
+  assert.equal(f.gl.drawElements, elements);
+});
+
+test('cold renderer retention is bounded and stop releases it without GL work', () => {
+  const f = fixture({ startArmed: false });
+  for (let i = 0; i < 12; i++) f.observe({ ...f.renderer });
+  assert.equal(f.api.snapshot().renderersRetained, 8);
+  assert.equal(f.contextReads(), 0);
+  f.api.stop();
+  assert.equal(f.api.snapshot().renderersRetained, 0);
+  assert.equal(f.api.arm(), false);
+  assert.equal(f.reads(), 0);
+  assert.equal(f.contextReads(), 0);
+  f.observe(f.renderer);
+  assert.equal(f.api.snapshot().renderersRetained, 0, 'stop removes the devtools listener');
+});
+
+test('only the first native indexed warning arms the probe and retains its phase', async () => {
+  const source = readFileSync(new URL('../scripts/probe-deployed-mobile.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf("    if (drawErrorMode === 'on-error'");
+  const end = source.indexOf('\n    if (/\\[render\\] GPU:', start);
+  assert.ok(start > 0 && end > start);
+  const report = {}, pendingDiagnosticReads = new Set(), triggers = [];
+  const scope = { report, pendingDiagnosticReads, drawErrorMode: 'on-error',
+    boundedBrowserRead: read => read(), page: { evaluate: async (fn, arg) => fn(arg) },
+    __SF_MOBILE_DRAW_ERRORS__: { arm: trigger => triggers.push(trigger),
+      snapshot: () => ({ armed: true, ownership: 'unknown', witnesses: [] }) } };
+  const handle = runInNewContext(`(message, text) => {
+    const route = 'new-game', stage = 'new-game-rotation', at = 'native-warning-time';
+    ${source.slice(start, end)}
+  }`, scope);
+  const native = 'WebGL: INVALID_OPERATION: glDrawElements: Vertex buffer is not big enough for the draw call.';
+  handle({ type: () => 'error' }, '[render] GPU ready');
+  handle({ type: () => 'log' }, native);
+  assert.equal(report.drawErrorArm, undefined);
+  handle({ type: () => 'error' }, native);
+  handle({ type: () => 'error' }, native);
+  await Promise.all([...pendingDiagnosticReads]);
+  assert.equal(triggers.length, 1);
+  assert.equal(report.drawErrorArm.actorStage, 'new-game-rotation');
+  assert.equal(report.drawErrorArm.at, 'native-warning-time');
+  assert.equal(report.drawErrorArm.observer.ownership, 'unknown');
 });

@@ -13,13 +13,14 @@ const engine = process.env.MOBILE_PROBE_ENGINE || 'webkit';
 if (!['webkit', 'chromium'].includes(engine)) throw new Error('Engine must be webkit or chromium');
 const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment/${engine}`);
 const checkContinue = process.env.MOBILE_PROBE_CONTINUE === '1';
-const drawErrorProbe = process.env.MOBILE_PROBE_DRAW_ERRORS === '1';
+const drawErrorMode = process.env.MOBILE_PROBE_DRAW_ERRORS || 'off';
+const drawErrorProbe = ['1', 'on-error'].includes(drawErrorMode);
 const headed = process.env.MOBILE_PROBE_HEADED === '1';
 const channel = process.env.MOBILE_PROBE_CHANNEL || null;
 if (channel && engine !== 'chromium') throw new Error('MOBILE_PROBE_CHANNEL is supported only for Chromium');
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
-  launch: { headless: !headed, channel }, drawErrorProbe,
+  launch: { headless: !headed, channel }, drawErrorProbe, drawErrorMode,
   acceptance: { startupAndControls: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
     rendererHealth: 'pending', worldVisibility: 'unverified' },
   responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
@@ -115,6 +116,8 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
     screens: [...document.querySelectorAll('[data-screen]')].filter(shown).map(e => e.dataset.screen),
     alerts: [...document.querySelectorAll('[role="alert"], .boot-error')].filter(shown).map(e => e.textContent),
     startupObserver: window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.() || null,
+    simLaneEvents: Array.isArray(window.__SF_LANE_APPLIED)
+      ? window.__SF_LANE_APPLIED.slice(-96).filter(type => typeof type === 'string').map(type => type.slice(0, 200)) : null,
     drawErrors: globalThis.__SF_MOBILE_DRAW_ERRORS__?.snapshot?.() || null,
     runtime: render || frame ? {
       gpu: render?.gpu,
@@ -158,7 +161,8 @@ try {
     // Official Vercel E2E header: exclude preview-only feedback UI, not game code
     // or deployment protection. Production visitors do not normally load this toolbar.
     extraHTTPHeaders: { 'x-vercel-skip-toolbar': '1' } });
-  if (drawErrorProbe) await context.addInitScript(installMobileDrawErrorObserver);
+  if (drawErrorProbe) await context.addInitScript(installMobileDrawErrorObserver,
+    { startArmed: drawErrorMode === '1' });
   const page = await context.newPage(); page.setDefaultTimeout(20000);
   const tapControl = async selector => {
     const control = typeof selector === 'string' ? page.locator(selector).first() : selector;
@@ -177,6 +181,23 @@ try {
     const route = activeRoute;
     const stage = actorStage, at = new Date().toISOString();
     if (rendererError(text)) noteRendererError(text);
+    if (drawErrorMode === 'on-error' && !report.drawErrorArm
+        && ['error', 'warning'].includes(message.type())
+        && /(?:WebGL|GL_INVALID_OPERATION)/i.test(text)
+        && /(?:gl)?draw(?:Range)?Elements(?:Instanced)?/i.test(text)
+        && /INVALID_OPERATION|Vertex buffer is not big enough|out of bounds/i.test(text)) {
+      const trigger = { route, actorStage: stage, at, text: text.slice(0, 3000) };
+      report.drawErrorArm = { ...trigger };
+      const read = boundedBrowserRead(() => page.evaluate(trigger => {
+        const observer = globalThis.__SF_MOBILE_DRAW_ERRORS__;
+        observer?.arm?.(trigger);
+        return observer?.snapshot?.() || { available: false, reason: 'draw-observer-unavailable', ownership: 'unknown' };
+      }, trigger)).then(observer => { report.drawErrorArm.observer = observer; }).catch(error => {
+        report.drawErrorArm.unavailable = String(error?.message || error);
+      });
+      pendingDiagnosticReads.add(read);
+      void read.finally(() => pendingDiagnosticReads.delete(read));
+    }
     if (/\[render\] GPU:|\[opening-cook\]|\[startup\]|startup failed|\[simLane\]|PRESENTATION STALLED|WebGL.*context/i.test(text)) {
       if (report.runtimeMessages.length >= 64) report.runtimeMessages.shift();
       report.runtimeMessages.push({ route, actorStage: stage, at, type: message.type(), text: text.slice(0, 4000) });

@@ -1,12 +1,15 @@
-// Serialized by addInitScript only for MOBILE_PROBE_DRAW_ERRORS=1. This is an
+// Serialized by addInitScript only for MOBILE_PROBE_DRAW_ERRORS=1 or on-error. This is an
 // attribution run, never a frame-time measurement. No production code is changed.
-export function installMobileDrawErrorObserver({ maxWitnesses = 8 } = {}) {
+export function installMobileDrawErrorObserver({ maxWitnesses = 8, startArmed = true } = {}) {
   if (globalThis.__SF_MOBILE_DRAW_ERRORS__) return;
   const limit = Math.max(1, Math.min(8, Math.floor(maxWitnesses) || 8));
   const rows = [], notes = [], wrappers = [], seen = new Set();
   const renderers = new WeakSet(), contexts = new WeakSet(), identities = new WeakMap();
+  const pendingRenderers = [];
   let nextId = 0, current = null, recording = true, stopped = false;
+  let armed = startArmed, armedAt = null, armTrigger = null;
   let renderersObserved = 0, checkedDraws = 0, invalidDraws = 0, priorErrors = 0;
+  let renderersInstrumented = 0, armPriorErrors = 0;
   const text = v => typeof v === 'string' ? v.slice(0, 240) : null;
   const number = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
   const scalar = v => text(v) ?? number(v);
@@ -73,9 +76,7 @@ export function installMobileDrawErrorObserver({ maxWitnesses = 8 } = {}) {
       material: { uuid: text(material?.uuid), name: text(material?.name), type: text(material?.type) },
       group: group ? { start: number(group.start), count: number(group.count), materialIndex: number(group.materialIndex) } : null });
   }
-  function observe(event) {
-    const renderer = event?.detail;
-    if (stopped || renderer?.isWebGLRenderer !== true || renderers.has(renderer)) return;
+  function instrument(renderer, drainInitial = false) {
     try {
       const gl = renderer.getContext();
       if (!gl || typeof gl.getError !== 'function' || typeof renderer.renderBufferDirect !== 'function') return;
@@ -86,10 +87,14 @@ export function installMobileDrawErrorObserver({ maxWitnesses = 8 } = {}) {
         try { return Reflect.apply(inner, this, arguments); }
         finally { current = previous; }
       })) return;
-      renderers.add(renderer);
-      renderersObserved++;
+      renderersInstrumented++;
       if (contexts.has(gl)) return;
       contexts.add(gl);
+      if (drainInitial) {
+        const prior = errors(gl);
+        armPriorErrors += prior.length;
+        priorErrors += prior.length;
+      }
       for (const method of ['drawElements', 'drawElementsInstanced', 'drawRangeElements']) {
         const draw = gl[method];
         if (typeof draw !== 'function') continue;
@@ -111,6 +116,15 @@ export function installMobileDrawErrorObserver({ maxWitnesses = 8 } = {}) {
       }
     } catch (error) { note(error); }
   }
+  function observe(event) {
+    const renderer = event?.detail;
+    if (stopped || renderer?.isWebGLRenderer !== true || renderers.has(renderer)) return;
+    renderers.add(renderer);
+    renderersObserved++;
+    if (armed) instrument(renderer);
+    else if (pendingRenderers.length < 8) pendingRenderers.push(renderer);
+    else note('renderer retention limit reached before arming');
+  }
   const target = globalThis.__THREE_DEVTOOLS__ || new EventTarget();
   if (!globalThis.__THREE_DEVTOOLS__) globalThis.__THREE_DEVTOOLS__ = target;
   const supported = typeof target.addEventListener === 'function';
@@ -119,13 +133,26 @@ export function installMobileDrawErrorObserver({ maxWitnesses = 8 } = {}) {
   globalThis.__SF_MOBILE_DRAW_ERRORS__ = {
     snapshot: () => ({ hook: 'three-devtools-observe', supported, available: renderersObserved > 0,
       reason: renderersObserved ? null : supported ? 'no-renderer-observed' : 'three-observer-unavailable',
-      renderersObserved, checkedDraws,
+      renderersObserved, renderersInstrumented, renderersRetained: pendingRenderers.length, checkedDraws,
+      armed, armedAt, armTrigger: armTrigger ? { ...armTrigger } : null, armPriorErrors,
+      ownership: rows.length ? 'observed' : 'unknown',
       invalidDraws, priorErrors, captureStopped: !recording, stopped, notes: notes.slice(),
       witnesses: JSON.parse(JSON.stringify(rows)) }),
+    arm(trigger = {}) {
+      if (armed || stopped) return false;
+      armed = true;
+      armedAt = typeof performance !== 'undefined' ? number(performance.now()) : null;
+      armTrigger = {};
+      for (const key of ['route', 'actorStage', 'at', 'text']) armTrigger[key] = text(trigger[key]);
+      for (const renderer of pendingRenderers) instrument(renderer, true);
+      pendingRenderers.length = 0;
+      return true;
+    },
     stop() {
       stopped = true;
       if (supported) target.removeEventListener('observe', observe);
       for (const row of wrappers) if (row.object[row.key] === row.wrapped) row.object[row.key] = row.original;
+      pendingRenderers.length = 0;
     },
   };
 }
