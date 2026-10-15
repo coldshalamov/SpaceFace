@@ -438,9 +438,45 @@ export const MOBILE_SCREEN_CSS = `
   /* Zoom strip: on phone --gm-foot clears the stacked inspector + foot; +28px sits the strip
      in the map stage just above OVERVIEW/ROUTE, fully clear of the foot rail and detail lines. */
   ${C} .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 28px) !important; left:calc(var(--gm-stage-x, 14px) + 8px) !important; }
+  /* Portrait: the strip stands at the window's bottom-right, clear of the canvas "per bar" ruler. */
+  ${C}[data-layout="narrow"] .gmh-tools { left:auto !important; right:14px; bottom:auto !important; top:calc(var(--gm-sky-bottom, 600px) - 64px); }
   ${C} .gm-navfoot { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px !important; }
   ${C} .gm-navfoot .gm-nav-row { flex-direction:column !important; align-items:flex-start !important; gap:4px !important; min-width:0; }
   ${C} .gm-navfoot .gm-nav-row-v { max-width:100%; white-space:normal !important; overflow-wrap:anywhere; }
+  /* Portrait phone: the sky is a real window between the lenses and the inspector, and the page
+     scrolls past it. Squeezed into one 844px frame, the inspector was a 64px box (ENGAGE ROUTE hid
+     inside it) printed over a dimmed map, and the foot rails crossed the readings. */
+  ${C}[data-layout="narrow"] { grid-template-rows:repeat(3, max-content) !important; align-content:start !important; }
+  ${C}[data-layout="narrow"] .gm-body-container { grid-template-rows:repeat(3, max-content) !important; row-gap:10px !important; }
+  ${C}[data-layout="narrow"] :is(.gm-left-rail, .gm-right-inspector) { position:relative; z-index:1; }
+  ${C}[data-layout="narrow"] .gm-left-rail { max-height:44px !important; }
+  ${C}[data-layout="narrow"] .gm-viewport { position:relative !important; inset:auto !important; z-index:0 !important;
+    grid-area:stage; height:clamp(260px, 44dvh, 420px); margin:0 -14px; }
+  ${C}[data-layout="narrow"] .gm-right-inspector { max-height:none !important; overflow:visible !important; }
+  ${C}[data-layout="narrow"] .gm-apron { max-height:none !important; }
+  /* All nine inspector tabs stand on the page (three rows on the instrument's per-row scales);
+     the one-row strip was 875px wide and ECONOMY…HISTORY sat past the edge, out of reach. */
+  ${C}[data-layout="narrow"] .gm-tabs.k-words { display:flex !important; flex-wrap:wrap !important; align-items:end;
+    grid-template-columns:none !important; width:100% !important; max-width:100% !important; min-width:0 !important; gap:6px 18px !important; }
+  ${C}[data-layout="narrow"] .gm-tab.k-word { flex:0 0 auto !important; }
+  /* The page owns the scroll, so its glass runs the full length instead of stopping at the first fold. */
+  ${C}[data-layout="narrow"] { background-attachment:local !important; }
+  /* The foot is two rows of two: each row carries its own run of the tape (the one-row tape sat over
+     POSITION/TRACKING only, and the lit leg's band ran off the left edge from DESTINATION). */
+  ${C}[data-layout="narrow"] .gm-navfoot { background:none !important; padding-top:0 !important; row-gap:14px !important; column-gap:16px !important; }
+  ${C}[data-layout="narrow"] .gm-navfoot .gm-nav-row { padding-top:24px !important;
+    background:linear-gradient(180deg, transparent 6px, rgb(236 230 216 / .56) 6px, rgb(236 230 216 / .56) 7.5px, transparent 7.5px) 0 0 / 100% 100% no-repeat,
+      linear-gradient(180deg, transparent 3px, rgb(236 230 216 / .34) 3px, rgb(236 230 216 / .34) 11px, transparent 11px) 0 0 / 100% 100% no-repeat,
+      repeating-linear-gradient(90deg, rgb(236 230 216 / .28) 0 1.5px, transparent 1.5px 10px) 0 12px / 100% 4px no-repeat !important; }
+  ${C}[data-layout="narrow"] .gm-navfoot .gm-nav-row:nth-child(odd) { margin-right:-16px; padding-right:16px !important; }
+  ${C}[data-layout="narrow"] .gm-navfoot .gm-nav-row::before { top:2px !important; }
+  ${C}[data-layout="narrow"] .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { top:1px !important; }
+  ${C}[data-layout="narrow"] .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { top:5px !important;
+    left:calc(-100% - 16px) !important; width:calc(100% + 16px) !important; }
+  ${C}[data-layout="narrow"] .gm-navfoot .gm-nav-row[data-tone="tracked"]:nth-child(odd)::after { left:0 !important; width:0 !important; display:none !important; }
+  /* The window's edges fade into the page instead of cutting the sky with a hard line. */
+  ${C}[data-layout="narrow"] .gm-viewport { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+    mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); }
 
   /* The reference screens are pages: neither their category rail nor their rig can sit off-right. */
   ${H} { display:flex !important; flex-direction:column; gap:16px !important; overflow-y:auto !important; }
@@ -503,6 +539,36 @@ export const MOBILE_SCREEN_CSS = `
   ${P} .aw-chip { white-space:normal; max-width:100%; }
   ${P} .aw-key { display:none; }
   ${P} .aw-guide { max-width:calc(100% - 20px) !important; }
+}
+/* Phone on its side (compact chart, <=540 tall): the four-row phone head took 188 of 390px, and the
+   lens band, sky and inspector shared the 41px left, so the map sat under every word and ENGAGE ROUTE
+   was out of reach. Head in two rows, then the sky as a real window, then the inspector, then the
+   foot: the page scrolls past the sky, as in portrait. */
+@media (max-height:540px) and (pointer:coarse) {
+  ${C}[data-layout="compact"] { grid-template-rows:repeat(3, max-content) !important; align-content:start !important;
+    row-gap:10px !important; background-attachment:local !important; }
+  ${C}[data-layout="compact"] .gm-head { grid-template-columns:auto minmax(max-content,1fr) auto auto !important; grid-template-rows:auto auto !important;
+    column-gap:24px !important; row-gap:4px !important; align-items:center; }
+  ${C}[data-layout="compact"] .gm-title-lockup { grid-column:1 !important; grid-row:1 !important; }
+  ${C}[data-layout="compact"] .gm-rail { grid-column:2 !important; grid-row:1 !important; justify-self:center; }
+  ${C}[data-layout="compact"] .gm-stamp { display:none !important; }
+  ${C}[data-layout="compact"] .gm-hint-btn { grid-column:3 !important; grid-row:1 !important; }
+  ${C}[data-layout="compact"] .gm-close { grid-column:4 !important; grid-row:1 !important; }
+  ${C}[data-layout="compact"] .gm-search-container { grid-column:1 / 3 !important; grid-row:2 !important; }
+  ${C}[data-layout="compact"] .gm-weather { grid-column:3 / -1 !important; grid-row:2 !important; justify-self:end; text-align:right; }
+  ${C}[data-layout="compact"] .gm-body-container { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:repeat(3, max-content) !important;
+    grid-template-areas:"hang" "stage" "inspector" !important; row-gap:10px !important; }
+  ${C}[data-layout="compact"] .gm-left-rail { max-height:44px !important; position:relative; z-index:1; }
+  ${C}[data-layout="compact"] .gm-viewport { position:relative !important; inset:auto !important; z-index:0 !important;
+    grid-area:stage; height:clamp(220px, 72dvh, 300px); margin:0 -14px;
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+    mask-image:linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%); }
+  ${C}[data-layout="compact"] .gm-right-inspector { grid-area:inspector; max-height:none !important; overflow:visible !important; position:relative; z-index:1; }
+  ${C}[data-layout="compact"] .gm-apron { max-height:none !important; }
+  /* 816px holds the four answers on one run of the tape, as on desktop; two-by-two sent the lit leg's
+     band off the left edge from DESTINATION. */
+  ${C}[data-layout="compact"] .gm-navfoot { grid-template-columns:repeat(4, minmax(0,1fr)) !important; column-gap:var(--k-gap, 18px) !important; }
+  ${C}[data-layout="compact"] .gmh-tools { left:auto !important; right:14px; bottom:auto !important; top:calc(var(--gm-sky-bottom, 320px) - 60px); }
 }
 `;
 
