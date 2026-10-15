@@ -8131,6 +8131,25 @@ function normalizePlayerSaveRecord(player, savedEntity) {
       }
     }
   }
+  // researchGrantDays is the per-row sim-day cap ledger for the repeatable RP faucets
+  // ({ [rowKey]: { dayKey, count } }). Keep only well-formed rows so a crafted or stale save
+  // cannot widen a cap; a dropped row simply restarts its day count, never mints RP by itself.
+  if (out.researchGrantDays != null) {
+    const days = out.researchGrantDays;
+    if (typeof days !== 'object' || Array.isArray(days)) {
+      delete out.researchGrantDays;
+    } else {
+      for (const key of Object.keys(days)) {
+        const row = days[key];
+        if (!row || typeof row !== 'object' || Array.isArray(row)
+          || typeof row.dayKey !== 'string' || !Number.isFinite(Number(row.count)) || Number(row.count) < 0) {
+          delete days[key];
+        } else {
+          row.count = Math.floor(Number(row.count));
+        }
+      }
+    }
+  }
   // salvageRights is the stunt-paid claim balance (stuntGrammar mints, economy redeems). A stale
   // or crafted value normalizes to a non-negative whole number, never a negative purse.
   out.salvageRights = Math.max(0, Math.floor(Number(out.salvageRights) || 0));
