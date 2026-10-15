@@ -1,3 +1,4 @@
+import { collectCameraWitness } from '../render/cameraWitness.js';
 // Presentation owner: requestAnimationFrame, interpolation, Browser/Electron lifecycle, and restore.
 // Each rAF advances simulation by the time that passed, then presents that newest moment. The
 // order never changes while the game runs: a loop that simulates first on some frames and draws
@@ -393,7 +394,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     suspended,
     into,
   }, nowMs());
-  const witness = createRuntimeWitness({ nowMs, readSample: readWitnessSample });
+  const witness = createRuntimeWitness({ nowMs, readSample: readWitnessSample,
+    readCamera: () => collectCameraWitness(state) });
   state.runtimeWitness = witness;
   if (typeof globalThis.window !== 'undefined') {
     globalThis.window.__SF_WITNESS__ = witness;
