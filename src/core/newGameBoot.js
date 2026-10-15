@@ -107,8 +107,15 @@ export function resetCombatInputMode(state, registry) {
       releasedTick: Number.isFinite(state.tick) ? state.tick : null,
     });
   }
-  const assist = registry && typeof registry.get === 'function' ? registry.get('autoTargetAssist') : null;
-  if (assist && assist._runtime) {
+  // The worker owns this system during the worker lane and its new-game boot already resets the
+  // native owner. Do not ask the presentation registry for a missing facade (which would emit a
+  // facade-miss warning); main-lane/test registries still use the real public seam when present.
+  const workerLane = !!(registry && registry.ctx && registry.ctx.simLane === 'worker');
+  const assist = workerLane || !registry || typeof registry.get !== 'function'
+    ? null : registry.get('autoTargetAssist');
+  if (assist && typeof assist.reset === 'function') {
+    assist.reset();
+  } else if (assist && assist._runtime) {
     assist._runtime.lastActive = false;
     assist._runtime.lastReason = 'runtime-reset';
   }

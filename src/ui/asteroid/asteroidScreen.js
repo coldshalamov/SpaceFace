@@ -60,6 +60,34 @@ function arcPoint(pct) {
   return { x: ARC_CX - ARC_R * Math.cos(a), y: ARC_CY - ARC_R * Math.sin(a) };
 }
 
+// Worker-backed controls can settle after a screen has been hidden.  Keep the lifecycle fence
+// tiny and local to this screen: a token is invalidated on teardown/re-entry, while a settled
+// value remains available to the caller without allowing stale UI feedback to run.
+export function createSessionMutationGate(isOpen = () => true) {
+  let epoch = 0;
+  const normalize = (result) => result === undefined
+    ? { ok: false, reason: 'worker-rpc-empty-result' }
+    : (result && typeof result === 'object' ? result : { ok: result === true, result });
+  const accepts = (token) => token === epoch && isOpen();
+  const settle = (value, onResult, token = epoch) => {
+    const apply = (result) => {
+      const normalized = normalize(result);
+      return accepts(token) ? onResult(normalized) : normalized;
+    };
+    if (value && typeof value.then === 'function') {
+      return Promise.resolve(value).then(apply, () => apply({ ok: false, reason: 'worker-rpc-failed' }));
+    }
+    return apply(value);
+  };
+  return {
+    begin() { epoch += 1; return epoch; },
+    invalidate() { epoch += 1; return epoch; },
+    current() { return epoch; },
+    accepts,
+    settle,
+  };
+}
+
 export function syncAsteroidConsoleModeButtons(driveButton, buildButton, mode) {
   const buildSelected = mode === MODES.BUILD;
   driveButton?.classList?.toggle?.('active', !buildSelected);
@@ -347,10 +375,26 @@ export const asteroidScreen = {
     injectOrreryMobileScreens();
     rootEl.innerHTML = '';
     this._ctx = ctx;
+    const screen = this;
     const state = ctx.state;
     const controlMap = resolveDrillControlMap(state);
     const drillSys = ctx.drill || (ctx.registry && ctx.registry.get('drill'));
     const siteSys = ctx.asteroidSites || (ctx.registry && ctx.registry.get('asteroidSites'));
+    const sessionGate = createSessionMutationGate(() => screen._active);
+
+    // The in-process owner answers immediately; the worker facade answers after its correlated
+    // RPC. Keep the screen's operator feedback on the settled native result in both lanes so a
+    // Promise cannot be mistaken for a successful `{ ok: true }` receipt.
+    function settleSiteMutation(value, onResult, token = sessionGate.current()) {
+      // A worker reply can arrive after the screen was hidden and a new session may already own
+      // the same DOM. The gate returns the normalized value to the caller but suppresses stale
+      // screen callbacks.
+      return sessionGate.settle(value, onResult, token);
+    }
+
+    function mutationSucceeded(result) {
+      return result === true || !!(result && result.ok === true);
+    }
 
     const wrap = document.createElement('div');
     wrap.className = 'ast-screen';
@@ -587,6 +631,9 @@ export const asteroidScreen = {
     let currentSiteId = null;
     let projection = null;
     let projDirty = true;
+    let workbenchPending = false;
+    let workbenchQueuedDt = 0;
+    let workbenchSiteId = null;
     // Cheap identity probe for the projection cache: overlay arrays are replaced on paint, and
     // deserialize replaces the site object. Comparing references is free; rebuilding is not.
     // lastMachineCount catches in-place splices (removeMachine mutates the array, identity does not).
@@ -609,6 +656,49 @@ export const asteroidScreen = {
 
     const asteroidId = () => (state.drill ? state.drill.asteroidId : null);
     const site = () => (currentSiteId && siteSys ? siteSys.getSite(currentSiteId) : null);
+
+    // The worker owns the paused workbench clock. Serialize its bounded local-dt RPCs and carry
+    // elapsed screen time forward while one reply is in flight; this preserves the old in-process
+    // cadence without posting one worker command per rendered frame.
+    function pumpWorkbench(dt = 0) {
+      if (!screen._active) {
+        workbenchQueuedDt = 0;
+        return;
+      }
+      if (Number.isFinite(dt) && dt > 0) workbenchQueuedDt = Math.min(0.25, workbenchQueuedDt + dt);
+      if (!siteSys?.tickWorkbench || !currentSiteId) {
+        workbenchQueuedDt = 0;
+        workbenchSiteId = currentSiteId;
+        return;
+      }
+      if (workbenchSiteId !== currentSiteId) {
+        workbenchSiteId = currentSiteId;
+        workbenchQueuedDt = 0;
+        return;
+      }
+      if (workbenchPending || workbenchQueuedDt <= 0) return;
+      const siteId = currentSiteId;
+      const localDt = workbenchQueuedDt;
+      workbenchQueuedDt = 0;
+      workbenchPending = true;
+      const token = sessionGate.current();
+      let request;
+      try {
+        request = siteSys.tickWorkbench(localDt, siteId);
+      } catch (_) {
+        // A synchronous facade failure is still a settled attempt. Leaving the pending bit set
+        // here would stall every later workbench tick in this session.
+        if (sessionGate.accepts(token)) workbenchPending = false;
+        return;
+      }
+      settleSiteMutation(request, (result) => {
+        workbenchPending = false;
+        if (mutationSucceeded(result)) projDirty = true;
+        if (sessionGate.accepts(token)
+            && currentSiteId === siteId && workbenchQueuedDt > 0) pumpWorkbench();
+        return result;
+      }, token);
+    }
 
     function refreshProjection() {
       if (!siteSys) {
@@ -961,16 +1051,17 @@ export const asteroidScreen = {
     function attemptOverlayChange(kind, cursor, on) {
       const idx = tileIndex(cursor.col, cursor.row);
       const confirmed = !on && armedSpill && armedSpill.kind === kind && armedSpill.idx === idx;
-      const res = siteSys.setOverlay(currentSiteId, kind, cursor.col, cursor.row, on,
-        confirmed ? { confirmSpill: true } : undefined);
-      if (!res.ok && res.reason === 'would-spill') {
-        armedSpill = { kind, idx };
-        const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
-        announce(`Clearing this lane would spill ${total}u of stored goods — clear it again to confirm the loss.`);
+      return settleSiteMutation(siteSys.setOverlay(currentSiteId, kind, cursor.col, cursor.row, on,
+        confirmed ? { confirmSpill: true } : undefined), (res) => {
+        if (!res.ok && res.reason === 'would-spill') {
+          armedSpill = { kind, idx };
+          const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
+          announce(`Clearing this lane would spill ${total}u of stored goods — clear it again to confirm the loss.`);
+          return res;
+        }
+        armedSpill = null;
         return res;
-      }
-      armedSpill = null;
-      return res;
+      });
     }
 
     function commitPlacement(cursor) {
@@ -985,37 +1076,43 @@ export const asteroidScreen = {
           return;
         }
         const on = !overlaySetFor(item.id).has(tileIndex(cursor.col, cursor.row));
-        const res = attemptOverlayChange(item.id, cursor, on);
-        if (res.ok) {
-          projDirty = true;
-          announce(`${item.name} ${on ? 'laid' : 'cleared'} at ${cursor.col},${cursor.row}.`
-            + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
-        } else if (res.reason !== 'would-spill') {
-          announce(placementReason({ reason: res.reason }));
-        }
-        return;
+        return settleSiteMutation(attemptOverlayChange(item.id, cursor, on), (res) => {
+          if (res.ok) {
+            projDirty = true;
+            announce(`${item.name} ${on ? 'laid' : 'cleared'} at ${cursor.col},${cursor.row}.`
+              + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
+          } else if (res.reason !== 'would-spill') {
+            announce(placementReason({ reason: res.reason }));
+          }
+          return res;
+        });
       }
       if (item.kind === 'remove') { commitRemoval(cursor); return; }
       if (!siteSys) return;
       armedSpill = null; // any non-overlay action disarms a pending spill confirmation
-      const res = siteSys.installMachine({ asteroidId: astId, defId: item.id, col: cursor.col, row: cursor.row });
-      if (res.ok) {
-        if (renderer3d) renderer3d.notify('install', { col: cursor.col, row: cursor.row });
-        projDirty = true;
-        announce(`${item.name} installed at ${cursor.col},${cursor.row}.`);
-        pushLedgerLine('good', `${item.name} installed at ${cursor.col},${cursor.row}.`);
-        // Law §9 first-Core beat: the palette grows on the frame the site grew, not 150ms later
-        // on the next HUD tick. A unique machine also drops its own key here.
-        refreshProjection();
-        syncPalette();
-      } else {
-        // Law §6.7: placement never fails silently. The key stays armed and the lens ghost card
-        // is already showing `Blocked` + the enumerated reason for this exact cell — forcing a
-        // rebuild keeps that card honest the instant the refusal happens.
-        announce(placementReason(res));
-        lensDirty = true;
-      }
-      inspElapsed = 10;
+      return settleSiteMutation(
+        siteSys.installMachine({ asteroidId: astId, defId: item.id, col: cursor.col, row: cursor.row }),
+        (res) => {
+          if (res.ok) {
+            if (renderer3d) renderer3d.notify('install', { col: cursor.col, row: cursor.row });
+            projDirty = true;
+            announce(`${item.name} installed at ${cursor.col},${cursor.row}.`);
+            pushLedgerLine('good', `${item.name} installed at ${cursor.col},${cursor.row}.`);
+            // Law §9 first-Core beat: the palette grows on the frame the site grew, not 150ms later
+            // on the next HUD tick. A unique machine also drops its own key here.
+            refreshProjection();
+            syncPalette();
+          } else {
+            // Law §6.7: placement never fails silently. The key stays armed and the lens ghost card
+            // is already showing `Blocked` + the enumerated reason for this exact cell — forcing a
+            // rebuild keeps that card honest the instant the refusal happens.
+            announce(placementReason(res));
+            lensDirty = true;
+          }
+          inspElapsed = 10;
+          return res;
+        },
+      );
     }
 
     function commitRemoval(cursor) {
@@ -1028,29 +1125,31 @@ export const asteroidScreen = {
         // can orphan a loaded store. kind 'machine' keeps the two confirmations distinct.
         const idx = tileIndex(cursor.col, cursor.row);
         const confirmed = armedSpill && armedSpill.kind === 'machine' && armedSpill.idx === idx;
-        const res = siteSys.removeMachine(currentSiteId, m.id,
-          confirmed ? { confirmSpill: true } : undefined);
-        if (!res.ok && res.reason === 'would-spill') {
-          armedSpill = { kind: 'machine', idx };
-          const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
-          announce(`Dismantling this machine would spill ${total}u of stored goods — dismantle it again to confirm the loss.`);
-          return;
-        }
-        armedSpill = null;
-        announce(res.ok ? `${machineName(m.defId)} dismantled.` : placementReason(res));
-        projDirty = true;
-        return;
+        return settleSiteMutation(siteSys.removeMachine(currentSiteId, m.id,
+          confirmed ? { confirmSpill: true } : undefined), (res) => {
+          if (!res.ok && res.reason === 'would-spill') {
+            armedSpill = { kind: 'machine', idx };
+            const total = res.spill ? Math.floor(res.spill.spilledTotal) : 0;
+            announce(`Dismantling this machine would spill ${total}u of stored goods — dismantle it again to confirm the loss.`);
+            return res;
+          }
+          armedSpill = null;
+          announce(res.ok ? `${machineName(m.defId)} dismantled.` : placementReason(res));
+          if (res.ok) projDirty = true;
+          return res;
+        });
       }
       // No machine: clear whichever overlay is present (lane first, then cable).
       for (const kind of ['lane', 'power']) {
         if (overlaySetFor(kind).has(tileIndex(cursor.col, cursor.row))) {
-          const res = attemptOverlayChange(kind, cursor, false);
-          if (res.ok) {
-            announce(`${kind === 'lane' ? 'Material lane' : 'Power cable'} cleared.`
-              + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
-            projDirty = true;
-          }
-          return;
+          return settleSiteMutation(attemptOverlayChange(kind, cursor, false), (res) => {
+            if (res.ok) {
+              announce(`${kind === 'lane' ? 'Material lane' : 'Power cable'} cleared.`
+                + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
+              projDirty = true;
+            }
+            return res;
+          });
         }
       }
       announce('Nothing to dismantle there.');
@@ -1087,8 +1186,14 @@ export const asteroidScreen = {
         controller.state.cursor.col = cell.col;
         controller.state.cursor.row = cell.row;
         if (controller.state.dragPaint && palette.selected.kind === 'overlay' && siteSys && currentSiteId) {
-          siteSys.setOverlay(currentSiteId, palette.selected.id, cell.col, cell.row, controller.state.dragPaint === 'on');
-          projDirty = true;
+          settleSiteMutation(
+            siteSys.setOverlay(currentSiteId, palette.selected.id, cell.col, cell.row,
+              controller.state.dragPaint === 'on'),
+            (res) => {
+              if (res.ok) projDirty = true;
+              return res;
+            },
+          );
         }
       }
     };
@@ -1517,13 +1622,15 @@ export const asteroidScreen = {
       if (!verb || verb.disabled) return;
       const next = Math.max(verb.min, Math.min(verb.max, verb.value + delta));
       if (next === verb.value) return;
-      const res = verb.apply(next);
-      if (res && res.ok) {
-        projDirty = true;
-        pushLedgerLine('info', `Courier fleet target set to ${next}.`);
-        announce(`Courier fleet target ${next}.`);
-      }
-      refreshDrawer();
+      settleSiteMutation(verb.apply(next), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          pushLedgerLine('info', `Courier fleet target set to ${next}.`);
+          announce(`Courier fleet target ${next}.`);
+        }
+        refreshDrawer();
+        return res;
+      });
     }
 
     function toggleExport(goodId) {
@@ -1531,25 +1638,29 @@ export const asteroidScreen = {
       if (!verb || verb.disabled) return;
       const row = verb.goods.find((g) => g.id === goodId);
       if (!row) return;
-      const res = verb.apply(goodId, !row.shipped);
-      if (res && res.ok) {
-        projDirty = true;
-        pushLedgerLine('info', `${row.name} set to ${row.shipped ? 'hold' : 'ship'}.`);
-        announce(`${row.name} ${row.shipped ? 'held on site' : 'cleared for export'}.`);
-      }
-      refreshDrawer();
+      settleSiteMutation(verb.apply(goodId, !row.shipped), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          pushLedgerLine('info', `${row.name} set to ${row.shipped ? 'hold' : 'ship'}.`);
+          announce(`${row.name} ${row.shipped ? 'held on site' : 'cleared for export'}.`);
+        }
+        refreshDrawer();
+        return res;
+      });
     }
 
     function applyMachineMode(machineId, mode) {
       const verb = siteUi.model && siteUi.model.verbs.machineMode;
       if (!verb || verb.disabled) return;
-      const res = verb.apply(machineId, mode);
-      if (res && res.ok && res.reason !== 'no-change') {
-        projDirty = true;
-        pushLedgerLine('info', `Retooled to ${machineModeLabel(mode)}.`);
-        announce(`Retooled to ${machineModeLabel(mode)}.`);
-      }
-      refreshDrawer();
+      settleSiteMutation(verb.apply(machineId, mode), (res) => {
+        if (res.ok && res.reason !== 'no-change') {
+          projDirty = true;
+          pushLedgerLine('info', `Retooled to ${machineModeLabel(mode)}.`);
+          announce(`Retooled to ${machineModeLabel(mode)}.`);
+        }
+        refreshDrawer();
+        return res;
+      });
     }
 
     function applyPodDestination(stationId) {
@@ -1557,13 +1668,15 @@ export const asteroidScreen = {
       if (!verb || verb.disabled) return;
       const row = verb.stations.find((s) => s.id === stationId);
       if (!row) return;
-      const res = verb.apply(stationId);
-      if (res && res.ok && res.reason !== 'no-change') {
-        projDirty = true;
-        pushLedgerLine('info', `Pods re-addressed to ${row.name}.`);
-        announce(`Pods re-addressed to ${row.name}.`);
-      }
-      refreshDrawer();
+      settleSiteMutation(verb.apply(stationId), (res) => {
+        if (res.ok && res.reason !== 'no-change') {
+          projDirty = true;
+          pushLedgerLine('info', `Pods re-addressed to ${row.name}.`);
+          announce(`Pods re-addressed to ${row.name}.`);
+        }
+        refreshDrawer();
+        return res;
+      });
     }
 
     function runTransfer(dir, quantity = transferQty) {
@@ -1572,16 +1685,18 @@ export const asteroidScreen = {
       const machineId = siteUi.xferMachine.value;
       const goodId = siteUi.xferGood.value;
       if (!machineId || !goodId) return;
-      const res = verb.apply(machineId, goodId, quantity, dir);
-      projDirty = true;
       const name = sentenceCase(commodityName(goodId));
-      if (res && res.ok) {
-        pushLedgerLine('info', `${dir === 'deposit' ? 'Loaded' : 'Recovered'} ${res.moved}u ${name}.`);
-        announce(`${res.moved} units of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`);
-      } else {
-        announce(transferRefusalText(res));
-      }
-      refreshDrawer();
+      settleSiteMutation(verb.apply(machineId, goodId, quantity, dir), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          pushLedgerLine('info', `${dir === 'deposit' ? 'Loaded' : 'Recovered'} ${res.moved}u ${name}.`);
+          announce(`${res.moved} units of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`);
+        } else {
+          announce(transferRefusalText(res));
+        }
+        refreshDrawer();
+        return res;
+      });
     }
 
     function renderSitePanel() {
@@ -2242,7 +2357,7 @@ export const asteroidScreen = {
           : 'Loading mining equipment…', readiness.failed ? 'bad' : 'warn');
       } else clearBanner('equipment');
       controller.tick(dt);
-      if (siteSys?.tickWorkbench?.(dt, currentSiteId)) projDirty = true;
+      pumpWorkbench(dt);
       refreshProjectionIfIdentityShifted();
       if (renderer3d) renderer3d.render(dt, now / 1000, buildUiFrame());
       hudElapsed += dt;
@@ -2288,6 +2403,15 @@ export const asteroidScreen = {
       const pendingId = (state.ui && state.ui.pendingDrillAsteroidId) || null;
       if (state.ui) state.ui.pendingDrillAsteroidId = null;
       if (!pendingId || !drillSys) return;
+
+      // Every visible session owns a token. Replies from a prior worker session must not be
+      // allowed to settle UI after this point, even when the same asteroid is reopened.
+      sessionGate.begin();
+      workbenchPending = false;
+      workbenchQueuedDt = 0;
+      workbenchSiteId = null;
+      currentSiteId = null;
+      screen._active = true;
 
       controller.cancel();
       controller.setMode(MODES.DRIVE);
@@ -2369,8 +2493,16 @@ export const asteroidScreen = {
     };
 
     const stopSession = () => {
-      if (!this._active) return;
-      this._active = false;
+      // Invalidate first so a reply racing this teardown cannot run its screen callback. Clear
+      // queued time as well: it belongs to the closed session and must never become a new-session
+      // workbench RPC. The active check only gates the DOM/listener teardown below.
+      sessionGate.invalidate();
+      workbenchPending = false;
+      workbenchQueuedDt = 0;
+      workbenchSiteId = null;
+      currentSiteId = null;
+      if (!screen._active) return;
+      screen._active = false;
       cancelAnimationFrame(rafId);
       controller.cancel();
       delete wrap.dataset.session;

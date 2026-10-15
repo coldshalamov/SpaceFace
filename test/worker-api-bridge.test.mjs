@@ -127,3 +127,74 @@ test('native result receipts and asteroid commits cross the bridge without expos
     lane.shutdown();
   }
 });
+
+test('presentation registry facades guard generations and unwrap native asteroid reads and actions', async () => {
+  const { createGameState } = await import('../src/core/gameState.js');
+  const { createRegistry } = await import('../src/core/registry.js');
+  const { makeSiteRecord } = await import('../src/systems/asteroidSites.js');
+  const { installSimCommandSink } = await import('../src/core/simLaneCommands.js');
+
+  const state = createGameState(8181);
+  state.sites = { schemaVersion: 1, nextSiteNum: 2, order: [], byId: {}, worldOrder: [], worldById: {}, meta: { rngSeed: 0 } };
+  let generation = 3;
+  const registry = createRegistry({
+    state,
+    bus: createBus(),
+    helpers: { workerReadGeneration: () => generation },
+    simLane: 'worker',
+  });
+
+  state.survivalResultsPublic = {
+    result: { outcome: 'victory', score: 900 },
+    revision: 12,
+    generation: 3,
+  };
+  const results = registry.get('survivalResults');
+  assert.deepEqual(results.lastResult(), { outcome: 'victory', score: 900 });
+  const detachedResult = results.lastResult();
+  detachedResult.score = 0;
+  assert.equal(state.survivalResultsPublic.result.score, 900, 'result reads are detached');
+  generation = 4;
+  assert.equal(results.lastResult(), null, 'an old worker epoch cannot feed the current plate');
+  assert.equal(results.resultRevision(), 0);
+  generation = 3;
+
+  const site = makeSiteRecord({ id: 'bridge_site', asteroidId: 17, sectorId: 'sec_core_alpha', fieldId: 'field_1', createdT: 1 });
+  state.sites.byId[site.id] = site;
+  state.sites.order.push(site.id);
+  state.entities.set(17, { id: 17, alive: true, data: { siteId: site.id } });
+  const sites = registry.get('asteroidSites');
+  const readSite = sites.getSite(site.id);
+  assert.equal(readSite, site, 'identity reads stay cheap for the screen dirty probe');
+  assert.equal(sites.siteForAsteroid(17), site, 'asteroid lookup remains an identity read');
+  const siteBeforeRead = JSON.stringify(site);
+  assert.ok(sites.projection(site.id), 'projection reads from the mirrored site');
+  assert.deepEqual(sites.previewMachineRemoval(site.id, 'missing-machine'), {
+    spilledTotal: 0, spilled: [], placed: [],
+  });
+  assert.equal(JSON.stringify(site), siteBeforeRead, 'projection and preview reads do not mutate the mirror');
+
+  const commands = [];
+  const restoreSink = installSimCommandSink((descriptor) => {
+    commands.push(descriptor);
+    if (descriptor.args && descriptor.args.method === 'setExportFlag') {
+      const native = descriptor.args.args[2] === false
+        ? { ok: true, result: { ok: true, reason: null } }
+        : { ok: true, result: { ok: false, reason: 'insufficient-stock' } };
+      return Promise.resolve({ ok: true, result: native });
+    }
+    return Promise.resolve({ ok: false, reason: 'unexpected-method' });
+  });
+  try {
+    const accepted = await sites.setExportFlag(site.id, 'cmdty_regocrete', false);
+    assert.deepEqual(accepted, { ok: true, reason: null }, 'native success is unwrapped for the caller');
+    assert.equal(commands[0].op, 'asteroidSitesCall');
+    assert.deepEqual(commands[0].args, {
+      method: 'setExportFlag', args: [site.id, 'cmdty_regocrete', false],
+    });
+    const denied = await sites.setExportFlag(site.id, 'cmdty_regocrete', true);
+    assert.deepEqual(denied, { ok: false, reason: 'insufficient-stock' }, 'native denial survives the bridge');
+  } finally {
+    restoreSink();
+  }
+});
