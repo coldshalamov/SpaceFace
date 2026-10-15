@@ -392,7 +392,15 @@ export const combatOutcome = {
       delete own.byEntity[id];
     } else if (prior) {
       // A later death marks this same body. A despawn does not set dead.
-      if (payload && payload.sourceEvent === 'entity:killed') prior.dead = true;
+      // The receipt stays one object, but this death is now the latest salvage.
+      if (payload && payload.sourceEvent === 'entity:killed') {
+        prior.dead = true;
+        const priorIndex = own.outcomes.indexOf(prior);
+        if (priorIndex >= 0 && priorIndex !== own.outcomes.length - 1) {
+          own.outcomes.splice(priorIndex, 1);
+          own.outcomes.push(prior);
+        }
+      }
       this._publishAftermath();
       return null;
     }

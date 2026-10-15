@@ -395,6 +395,69 @@ test('a later destroyed ship is the salvage, not the first hulk', () => {
   assert.equal(h.state.paused, undefined);
 });
 
+test('a ship disabled earlier is the salvage when it is destroyed later', () => {
+  const h = makeHarness();
+  const disabled = spawnHostile(h, 400);
+  const fresh = spawnHostile(h, 800);
+  h.bus.emit('combat:subsystemDisabled', { targetId: disabled.id, subsystemId: 'subsystem_drive' });
+  h.bus.emit('entity:killed', { id: fresh.id, killerId: h.state.playerId });
+  h.state.aftermathWrecks = {
+    bySector: {
+      [SECTOR]: [
+        { markerId: 'fresh-hulk', victimId: fresh.id, kind: 'battle-aftermath' },
+        { markerId: 'disabled-hulk', victimId: disabled.id, kind: 'battle-aftermath' },
+      ],
+    },
+  };
+  fresh.alive = false;
+  h.state.entities.delete(fresh.id);
+  h.bus.emit('entity:destroyed', { id: fresh.id, entity: fresh, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'fresh-hulk');
+  h.bus.emit('entity:killed', { id: disabled.id, killerId: h.state.playerId });
+  assert.equal(h.state.combatOutcome.byEntity[disabled.id].outcome, 'disabled');
+  assert.equal(h.state.combatOutcome.byEntity[disabled.id].dead, true);
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, disabled.id);
+  disabled.alive = false;
+  h.state.entities.delete(disabled.id);
+  h.bus.emit('entity:destroyed', { id: disabled.id, entity: disabled, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'disabled-hulk');
+  assert.notEqual(h.state.combatOutcome.aftermath.targets.salvage, 'fresh-hulk');
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'disabled-hulk');
+  assert.equal(h.state.paused, undefined);
+});
+
+test('a ship that fled earlier is the salvage when it is destroyed later', () => {
+  const h = makeHarness();
+  const runner = spawnHostile(h, 500);
+  const fresh = spawnHostile(h, 900);
+  h.bus.emit('ai:flee', { entityId: runner.id });
+  h.bus.emit('entity:killed', { id: fresh.id, killerId: h.state.playerId });
+  h.state.aftermathWrecks = {
+    bySector: {
+      [SECTOR]: [
+        { markerId: 'fresh-hulk', victimId: fresh.id, kind: 'battle-aftermath' },
+        { markerId: 'runner-hulk', victimId: runner.id, kind: 'battle-aftermath' },
+      ],
+    },
+  };
+  fresh.alive = false;
+  h.state.entities.delete(fresh.id);
+  h.bus.emit('entity:destroyed', { id: fresh.id, entity: fresh, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'fresh-hulk');
+  h.bus.emit('entity:killed', { id: runner.id, killerId: h.state.playerId });
+  assert.equal(h.state.combatOutcome.byEntity[runner.id].outcome, 'fled');
+  assert.equal(h.state.combatOutcome.byEntity[runner.id].dead, true);
+  runner.alive = false;
+  h.state.entities.delete(runner.id);
+  h.bus.emit('entity:destroyed', { id: runner.id, entity: runner, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'runner-hulk');
+  assert.notEqual(h.state.combatOutcome.aftermath.targets.salvage, 'fresh-hulk');
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'runner-hulk');
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {
