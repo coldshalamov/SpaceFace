@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CHASE_CAMERA_FOV_DEG, CHASE_CAMERA_VIEWPORT_HEIGHT, worldSizeForPixels } from './pixelFloor.js';
+import { CHASE_CAMERA_FOV_DEG, CHASE_CAMERA_VIEWPORT_HEIGHT, tanHalfFov } from './pixelFloor.js';
 import { RIBBON_PROFILE, ribbonProfileForWidth } from './recipes.js';
 import { weaponEffectSeed } from './energyBoltPool.js';
 
@@ -18,6 +18,17 @@ export const WAKE_VISIBLE_ARC_WU = 42;
 // Closed cross-sections make energy occupy depth at every view. The ninth vertex closes UVs.
 export const WEAPON_WAKE_SECTION_VERTICES = 9;
 const SECTION = WEAPON_WAKE_SECTION_VERTICES;
+// Unwound profiles share the same section at every history point. Retain doubles
+// here so the final Float32 writes match the original Math.sin/cos evaluation.
+const SECTION_ANGLES = new Float64Array(SECTION);
+const SECTION_SIN = new Float64Array(SECTION);
+const SECTION_COS = new Float64Array(SECTION);
+for (let k = 0; k < SECTION; k++) {
+  const angle = k / (SECTION - 1) * Math.PI * 2;
+  SECTION_ANGLES[k] = angle;
+  SECTION_SIN[k] = Math.sin(angle);
+  SECTION_COS[k] = Math.cos(angle);
+}
 
 const RIBBON_VERT = /* glsl */`
   attribute float aAlpha;
@@ -365,6 +376,19 @@ export class WeaponRibbonPool {
       const unravelEdge = releaseT * 1.25 - 0.25;
       const width = this.width[i];
       const profileId = this.profile[i];
+      const movingSection = profileId === RIBBON_PROFILE.BRAID || profileId === RIBBON_PROFILE.FORK;
+      // These inputs are constant across this wake's history. Keep the original
+      // floor expression's product order below; reassociation can change Float32 output.
+      const floorHeight = Math.max(1, Number(this._viewportHeight) || CHASE_CAMERA_VIEWPORT_HEIGHT);
+      const floorPixels = RIBBON_MIN_PIXELS / floorHeight;
+      const floorTan = tanHalfFov(this._fovDeg);
+      const volumeGain = profileId === RIBBON_PROFILE.BRAID ? 4.0
+        : profileId === RIBBON_PROFILE.FORK ? 3.2 : profileId === RIBBON_PROFILE.SHEET ? 2.4 : 1;
+      const volumeWidth = width * volumeGain;
+      const depthRatio = profileId === RIBBON_PROFILE.SHEET ? 0.32 : 0.7;
+      const age = this.age[i];
+      const phase = this.phase[i];
+      const transportAge = age * 5.0;
       const hb = i * seg * 3;
       const i3 = i * 3;
       const hr = this.colHead[i3]; const hg = this.colHead[i3 + 1]; const hbCol = this.colHead[i3 + 2];
@@ -384,9 +408,8 @@ export class WeaponRibbonPool {
         if (s === seg - 1) { tx = -tx; ty = -ty; tz = -tz; }
         const tm = Math.hypot(tx, ty, tz) || 1;
         tx /= tm; ty /= tm; tz /= tm;
-        let ex = camX - px; let ey = camY - py; let ez = camZ - pz;
+        const ex = camX - px; const ey = camY - py; const ez = camZ - pz;
         const dist = Math.hypot(ex, ey, ez) || 1;
-        ex /= dist; ey /= dist; ez /= dist;
 
         // World-anchored frame; a closed section needs no camera-facing roll guard.
         let sx = -tz, sy = 0, sz = tx;
@@ -402,12 +425,9 @@ export class WeaponRibbonPool {
         const u = s / (seg - 1);
         const hidden = s >= usable || arc > WAKE_VISIBLE_ARC_WU;
         const taper = hidden ? 0 : (1 - u) * (1 - u * 0.35);
-        const floorW = worldSizeForPixels(dist, RIBBON_MIN_PIXELS, this._fovDeg, this._viewportHeight);
+        const floorW = floorPixels * (2 * Math.max(0.01, dist) * floorTan);
         // Special energy has a body; ballistic and starter wakes keep their terse silhouettes.
-        const volumeGain = profileId === RIBBON_PROFILE.BRAID ? 4.0
-          : profileId === RIBBON_PROFILE.FORK ? 3.2 : profileId === RIBBON_PROFILE.SHEET ? 2.4 : 1;
-        const depthRatio = profileId === RIBBON_PROFILE.SHEET ? 0.32 : 0.7;
-        const hw = 0.5 * Math.max(width * volumeGain, floorW / depthRatio) * taper;
+        const hw = 0.5 * Math.max(volumeWidth, floorW / depthRatio) * taper;
         const unravel = releaseT > 0
           ? Math.max(0, Math.min(1, (u - unravelEdge) / 0.35))
           : 1;
@@ -415,12 +435,13 @@ export class WeaponRibbonPool {
         const cr = hr + (tr - hr) * u;
         const cg = hg + (tg - hg) * u;
         const cb = hbCol + (tb - hbCol) * u;
-        const transport = arc * 0.24 - this.age[i] * 5.0 + this.phase[i];
+        const transport = arc * 0.24 - transportAge + phase;
         const twist = profileId === RIBBON_PROFILE.BRAID ? transport
           : profileId === RIBBON_PROFILE.FORK ? Math.sin(transport) * 0.34 : 0;
         for (let k = 0; k < SECTION; k++) {
-          const angle = k / (SECTION - 1) * Math.PI * 2 + twist;
-          const sn = Math.sin(angle), cs = Math.cos(angle);
+          const angle = SECTION_ANGLES[k] + twist;
+          const sn = movingSection ? Math.sin(angle) : SECTION_SIN[k];
+          const cs = movingSection ? Math.cos(angle) : SECTION_COS[k];
           const lobe = profileId === RIBBON_PROFILE.BRAID ? 1 + 0.18 * Math.cos(angle * 3 + transport)
             : profileId === RIBBON_PROFILE.FORK ? 0.7 + 0.3 * Math.abs(sn) : 1;
           const lateral = sn * hw * lobe;
@@ -436,7 +457,7 @@ export class WeaponRibbonPool {
           nrm[vp + 2] = sz * sn + nz * cs / depthRatio;
           const sh = v * 4;
           shp[sh] = profileId; shp[sh + 1] = arc;
-          shp[sh + 2] = this.phase[i]; shp[sh + 3] = this.age[i];
+          shp[sh + 2] = phase; shp[sh + 3] = age;
           al[v] = a;
         }
       }
