@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 const source = readFileSync(new URL('../scripts/build-bundle.mjs', import.meta.url), 'utf8');
 const devHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const uiStyles = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../src/ui/bootEntry.js', import.meta.url), 'utf8');
 // Exercise the ACTUAL build rewrite without executing a full multi-GB release.
 const body = source.match(/async function buildBundledHtml\(\) \{([\s\S]*?)\r?\n\}\r?\n\r?\nasync function runLockedBuild/)[1];
@@ -17,7 +18,9 @@ test('retail preserves the media shell and rewrites the actual lightweight entry
   assert(html.includes('<script type="module" src="./main.js"></script>'));
   assert(!html.includes('./src/'));
   assert(!/<link\b[^>]*rel="modulepreload"/.test(html));
-  assert(html.includes('preload" as="style" href="./styles/hud.css'));
+  assert.match(html, /<link\b[^>]*rel="stylesheet"[^>]*href="\.\/styles\/ui\.css"/);
+  assert.match(uiStyles, /^\s*@import\s+["']\.\/hud\.css["'];/m,
+    'retail HUD styles must remain reachable through the render-blocking stylesheet');
   assert(!/importmap/i.test(html));
   assert(html.includes('styles/boot-visualizer.css'));
   assert(html.includes('data-boot-native="true"'));

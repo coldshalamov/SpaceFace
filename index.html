@@ -57,10 +57,9 @@
     }
   }
   </script>
-  <!-- Fetch-only early hints: preserve PR #188's transfer warmup without executing
-       the game graph before the native media proof in bootEntry. Retail strips
-       modulepreloads through buildBundledHtml; hud.css keeps its original cascade. -->
-  <link rel="preload" as="style" href="./styles/hud.css" />
+  <!-- Fetch-only early hints warm the game graph without executing it before the native
+       media proof in bootEntry. Retail strips modulepreloads through buildBundledHtml.
+       HUD styles are already fetched by ui.css's render-blocking @import above. -->
   <!-- bootEntry gates the gate itself (video kick, ring arm, gate arm) — its fetch must
        dominate the warming tide, not ride it (W140-B2). -->
   <link rel="modulepreload" fetchpriority="high" href="./src/ui/bootEntry.js" />

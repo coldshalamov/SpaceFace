@@ -49,7 +49,7 @@ test('heap snapshot capture writes each CDP chunk incrementally with byte fideli
   await withTempDir(async (dir) => {
     // Split a supplementary Unicode code point across events as well as the JSON text. The
     // writer must preserve the same UTF-8 bytes as one joined snapshot without retaining it.
-    const chunks = ['{"nodes":["alpha ', '\uD83D', '\uDE80', ' omega"]}'];
+    const chunks = ['{"nodes":["alpha ', '\uD83D', '', '\uDE80', ' omega"]}'];
     const cdp = new FakeCdp({ chunks });
     const filePath = path.join(dir, 'heap.heapsnapshot');
 

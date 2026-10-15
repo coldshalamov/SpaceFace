@@ -228,7 +228,7 @@ export function createSimLaneRuntime({
     ? pumpScheduler.clearTimeout
     : (handle) => clearTimeout(handle);
   for (const w of resolved.warnings) console.warn(`[simLane] ${w}`);
-  console.warn('[simLane] worker lane active — the sim realm runs the whole authoritative step');
+  console.info('[simLane] worker lane active — the sim realm runs the whole authoritative step');
 
   // Worker channel first: a host without Worker support (or a construction-
   // time throw) degrades to the in-process sim while state is still untouched

@@ -5238,6 +5238,9 @@ async function captureHeapSnapshot(page, filePath) {
     try {
       chunksReceived += 1;
       let chunk = typeof event?.chunk === 'string' ? event.chunk : '';
+      // Empty events do not end a split UTF-16 pair; retain its high surrogate until
+      // the next non-empty event or the final protocol completion.
+      if (!chunk) return;
       if (trailingHighSurrogate) {
         if (chunk && chunk.charCodeAt(0) >= 0xDC00 && chunk.charCodeAt(0) <= 0xDFFF) {
           writeText(trailingHighSurrogate + chunk[0]);
@@ -5778,14 +5781,37 @@ function buildQualityEvidence(routeResult, startSettings, endSettings) {
   };
 }
 
-function buildErrorEvidence(runtime, tracker) {
+function boundedErrorNetworkProvenance(value) {
+  if (!value || typeof value !== 'object') return null;
+  const copy = {};
+  for (const key of ['source', 'requestId', 'method', 'resourceType', 'url',
+    'startedAt', 'startedPhase', 'responseAt', 'responsePhase']) {
+    const field = value[key];
+    if (field === null) copy[key] = null;
+    else if (typeof field === 'string') {
+      const limit = key === 'url' ? 2048 : 256;
+      copy[key] = field.slice(0, limit);
+      if (field.length > limit) (copy.truncatedFields || (copy.truncatedFields = [])).push(key);
+    }
+  }
+  if (Number.isFinite(value.status)) copy.status = value.status;
+  return copy;
+}
+
+export function buildErrorEvidence(runtime, tracker) {
   const raw = runtime === 'electron' ? tracker?.all?.() || [] : tracker?.issues || [];
-  const normalized = raw.map((issue) => ({
-    type: issue.type || issue.level || 'unknown',
-    source: issue.source || 'console',
-    text: String(issue.text || ''),
-    at: issue.at || undefined,
-  }));
+  const normalized = raw.map((issue) => {
+    const networkProvenance = boundedErrorNetworkProvenance(issue.networkProvenance);
+    return {
+      type: issue.type || issue.level || 'unknown',
+      source: issue.source || 'console',
+      text: String(issue.text || ''),
+      at: issue.at || undefined,
+      // Retain the tracker's exact requestId/method join so an optional GET, a failed PUT,
+      // and a deferred observer duplicate remain distinguishable in the saved evidence.
+      ...(networkProvenance ? { networkProvenance } : {}),
+    };
+  });
   const expectedWarnings = normalized.filter((issue) => issue.type === 'warning' && /WebGL context (?:lost|restored)/i.test(issue.text));
   // These two ANGLE translator diagnostics are stable Chromium/vendor compiler noise on this
   // machine, not application shader or resource-lifecycle defects. Keep them visible in evidence,
