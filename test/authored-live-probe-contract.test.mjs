@@ -184,8 +184,20 @@ test('Electron normal route proves authored release identities without an artifi
     'Electron acceptance must exercise production demand rather than forcing distant assets resident');
   assert.match(electronSource, /ship\.authoredAssetState === 'authored'/);
   assert.match(electronSource,
-    /function hasAcceptableAuthoredPresentation\(ship\)[\s\S]*?if \(!ship \|\| ship\.authoredAssetMode !== 'release'\) return false;/,
+    /function hasAcceptableAuthoredPresentation\(ship\)[\s\S]*?ship\.authoredAssetMode !== 'release'\) return false;/,
     'the shared acceptance predicate must fail closed for every non-release ship');
+  assert.match(electronSource, /hasMesh: !!mesh/,
+    'the report must distinguish an intentionally absent mesh from a released mesh');
+  assert.match(electronSource, /required,/,
+    'the report must publish the finite first-picture/current-sector requirement');
+  assert.match(electronSource, /renderRelevance: required \|\| !!mesh/,
+    'meshless pending entities must carry the renderer-owned relevance decision');
+  assert.match(electronSource, /import\('\/src\/render\/partsLibrary\.js'\)/,
+    'the report must reuse the renderer-owned startup composition predicate');
+  assert.match(electronSource, /isInitialAuthoredCompositionEntity\(entity, state\)/,
+    'required membership must use the live startup owner predicate');
+  assert.match(electronSource, /ship\.hasMesh === false[\s\S]*?ship\.required !== true[\s\S]*?ship\.renderRelevance === false/,
+    'meshless pending admission must stay outside the required cohort');
   assert.match(electronSource, /report\.ships\.every\(hasAcceptableAuthoredPresentation\)/,
     'the written acceptance receipt must apply the shared release predicate to every live ship');
   assert.match(electronSource,
@@ -197,4 +209,112 @@ test('Electron normal route proves authored release identities without an artifi
     'the diagnostic must click the New Game control rather than the identically named heading');
   assert.match(electronSource, /getByRole\('button', \{ name: 'Launch', exact: true \}\)/,
     'the diagnostic must bind Launch to its exact button role');
+});
+
+test('Electron presentation acceptance permits only the observed off-camera pending boundary', async () => {
+  assert.match(electronSource, /export function hasAcceptableAuthoredPresentation/,
+    'the acceptance seam must be import-safe for focused behavior coverage');
+  const { hasAcceptableAuthoredPresentation } = await import('../scripts/check-electron-new-game-launch.mjs');
+  const authored = {
+    id: 1,
+    alive: true,
+    isPlayer: true,
+    hasMesh: true,
+    required: true,
+    renderRelevance: true,
+    presentationAdmission: 'ready',
+    authoredAssetState: 'authored',
+    authoredAssetMode: 'release',
+  };
+  assert.equal(hasAcceptableAuthoredPresentation(authored), true,
+    'the player with a released authored mesh remains accepted');
+  assert.equal(hasAcceptableAuthoredPresentation({
+    ...authored,
+    presentationAdmission: 'pending',
+    authoredAssetState: 'authored',
+  }), false,
+  'the player must also be ready once its authored mesh exists');
+
+  assert.equal(hasAcceptableAuthoredPresentation({
+    id: 333,
+    alive: true,
+    isPlayer: false,
+    hasMesh: false,
+    required: false,
+    renderRelevance: false,
+    presentationAdmission: 'pending',
+    authoredAssetState: null,
+    authoredAssetMode: null,
+  }), true,
+  'the native observed off-camera pending ship may remain meshless');
+
+  const requiredMeshlessPending = {
+    id: 334,
+    alive: true,
+    isPlayer: false,
+    hasMesh: false,
+    required: true,
+    renderRelevance: true,
+    presentationAdmission: 'pending',
+    authoredAssetState: null,
+    authoredAssetMode: null,
+  };
+  assert.equal(hasAcceptableAuthoredPresentation(requiredMeshlessPending), false,
+    'a required first-picture ship may not disappear behind the pending boundary');
+  assert.equal(hasAcceptableAuthoredPresentation({
+    ...requiredMeshlessPending,
+    isPlayer: true,
+    required: true,
+  }), false,
+  'the player may not pass while meshless and pending');
+
+  assert.equal(hasAcceptableAuthoredPresentation({
+    id: 335,
+    alive: true,
+    isPlayer: false,
+    hasMesh: true,
+    required: false,
+    renderRelevance: true,
+    presentationAdmission: 'pending',
+    authoredAssetState: 'loading',
+    authoredAssetMode: 'release',
+  }), true,
+  'an existing off-camera mesh may remain in an explicit release pending state');
+  assert.equal(hasAcceptableAuthoredPresentation({
+    id: 336,
+    alive: true,
+    isPlayer: false,
+    hasMesh: true,
+    required: false,
+    renderRelevance: true,
+    presentationAdmission: 'ready',
+    authoredAssetState: 'fallback-after-error',
+    authoredAssetMode: 'fallback',
+    presentationFallbackVisible: true,
+  }), false,
+  'fallback presentation must remain a hard failure');
+  assert.equal(hasAcceptableAuthoredPresentation({
+    id: 337,
+    alive: true,
+    isPlayer: false,
+    hasMesh: true,
+    required: false,
+    renderRelevance: true,
+    presentationAdmission: 'ready',
+    authoredAssetState: null,
+    authoredAssetMode: 'release',
+  }), false,
+  'a ready mesh without authored state must fail closed');
+  assert.equal(hasAcceptableAuthoredPresentation({
+    id: 338,
+    alive: false,
+    isPlayer: false,
+    hasMesh: true,
+    required: false,
+    renderRelevance: true,
+    presentationAdmission: 'ready',
+    authoredAssetState: 'authored',
+    authoredAssetMode: 'release',
+  }), false,
+  'dead proxy records must not satisfy the live launch gate');
 });
