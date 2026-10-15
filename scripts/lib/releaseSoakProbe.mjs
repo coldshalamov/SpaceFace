@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { closeSync, existsSync, openSync, unlinkSync, writeSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -502,7 +502,7 @@ export async function runReleaseSoakProbe({
     // heap sample taken at the load boundary.
     baselineMemory.restorePopulation = lastWarmupRestorePopulation;
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
-      await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot')).catch(() => {});
+      await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot'));
     }
 
     // The soak window opens after the public route lands docked on the market: every
@@ -654,7 +654,7 @@ export async function runReleaseSoakProbe({
       'release-soak final memory snapshot',
     );
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
-      await captureHeapSnapshot(page, path.join(outputDir, 'heap-end.heapsnapshot')).catch(() => {});
+      await captureHeapSnapshot(page, path.join(outputDir, 'heap-end.heapsnapshot'));
     }
 
     await setSoakTransition(page, 'undock');
@@ -5213,14 +5213,98 @@ async function readPlayerSnapshot(page) {
  */
 async function captureHeapSnapshot(page, filePath) {
   const cdp = await page.context().newCDPSession(page);
-  const chunks = [];
-  cdp.on('HeapProfiler.addHeapSnapshotChunk', (event) => { chunks.push(event.chunk || ''); });
+  const eventName = 'HeapProfiler.addHeapSnapshotChunk';
+  let fd = null;
+  let outputOpened = false;
+  let listenerAttached = false;
+  let captureError = null;
+  let trailingHighSurrogate = '';
+  let chunksReceived = 0;
+  let bytesWritten = 0;
+  let completed = false;
+  const cleanupErrors = [];
+  const writeText = (text) => {
+    if (!text) return;
+    const bytes = Buffer.from(text, 'utf8');
+    for (let offset = 0; offset < bytes.length;) {
+      const written = writeSync(fd, bytes, offset, bytes.length - offset);
+      if (!(written > 0)) throw new Error('heap snapshot write made no progress');
+      offset += written;
+      bytesWritten += written;
+    }
+  };
+  const onChunk = (event) => {
+    if (captureError || fd === null) return;
+    try {
+      chunksReceived += 1;
+      let chunk = typeof event?.chunk === 'string' ? event.chunk : '';
+      if (trailingHighSurrogate) {
+        if (chunk && chunk.charCodeAt(0) >= 0xDC00 && chunk.charCodeAt(0) <= 0xDFFF) {
+          writeText(trailingHighSurrogate + chunk[0]);
+          chunk = chunk.slice(1);
+        } else {
+          writeText(trailingHighSurrogate);
+        }
+        trailingHighSurrogate = '';
+      }
+      if (!chunk) return;
+      const last = chunk.charCodeAt(chunk.length - 1);
+      if (last >= 0xD800 && last <= 0xDBFF) {
+        trailingHighSurrogate = chunk.slice(-1);
+        chunk = chunk.slice(0, -1);
+      }
+      writeText(chunk);
+    } catch (error) {
+      // CDP keeps delivering events after a local disk error. Remember the first concrete
+      // failure, stop writing subsequent chunks, and surface it after the protocol call settles.
+      captureError = error;
+    }
+  };
   try {
+    fd = openSync(filePath, 'w');
+    outputOpened = true;
+    cdp.on(eventName, onChunk);
+    listenerAttached = true;
     await cdp.send('HeapProfiler.enable');
     await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false });
-    await writeFile(filePath, chunks.join(''));
+    if (captureError) throw captureError;
+    if (trailingHighSurrogate) {
+      writeText(trailingHighSurrogate);
+      trailingHighSurrogate = '';
+    }
+    if (chunksReceived === 0 || bytesWritten === 0) {
+      throw new Error(`HeapProfiler.takeHeapSnapshot returned no snapshot bytes (chunks=${chunksReceived}, bytes=${bytesWritten})`);
+    }
+    completed = true;
+  } catch (error) {
+    captureError ||= error;
   } finally {
-    await cdp.detach().catch(() => {});
+    if (listenerAttached) {
+      try {
+        if (typeof cdp.off === 'function') cdp.off(eventName, onChunk);
+        else if (typeof cdp.removeListener === 'function') cdp.removeListener(eventName, onChunk);
+      } catch (error) { cleanupErrors.push(error); }
+    }
+    if (fd !== null) {
+      try { closeSync(fd); } catch (error) { cleanupErrors.push(error); }
+      fd = null;
+    }
+    try { await cdp.detach(); } catch (error) { cleanupErrors.push(error); }
+    if (outputOpened && !completed) {
+      try { unlinkSync(filePath); } catch (error) {
+        if (error?.code !== 'ENOENT') cleanupErrors.push(error);
+      }
+    }
+  }
+  if (captureError) {
+    captureError.message = `Heap snapshot capture failed for ${filePath}: ${captureError.message}`;
+    if (cleanupErrors.length) captureError.cleanupErrors = cleanupErrors;
+    throw captureError;
+  }
+  if (cleanupErrors.length) {
+    throw new Error(`Heap snapshot cleanup failed for ${filePath}: ${cleanupErrors[0].message}`, {
+      cause: cleanupErrors[0],
+    });
   }
 }
 
@@ -7331,5 +7415,6 @@ export {
   inspectSystemLoad,
   readPerformanceRouteFailureState,
   probeWebGlContextLoss,
+  captureHeapSnapshot,
   runPerformanceAttributionProbe,
 };
