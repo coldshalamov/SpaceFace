@@ -317,7 +317,8 @@ test('flight reveal also waits for the opening first draw, bounded by a cap', (t
 test('the flight veil holds the sim: presentationRunner advances nothing while flightVeilHoldsSim', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/core/presentationRunner.js', import.meta.url), 'utf8');
-  assert.match(src, /const veilHeld = state\.render && state\.render\.flightVeilHoldsSim === true;\s*const stepResult = restoring \|\| veilHeld\s*\? simulationRunner\.prepareWithoutAdvance\(\)/);
+  assert.match(src, /const flightVeilHeld = \(\) => !!\(state\.render && state\.render\.flightVeilHoldsSim === true\);/);
+  assert.match(src, /const veilHeld = flightVeilHeld\(\);[\s\S]{0,200}const stepResult = restoring \|\| workerPumpOwnsClock \|\| veilHeld\s*\? simulationRunner\.prepareWithoutAdvance\(\)/);
 });
 
 test('Continue yields its destructive restore until the loading shell can paint', () => {

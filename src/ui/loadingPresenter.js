@@ -14,6 +14,15 @@ export const ADMISSION_QUIET_MS = 400;
 export const ADMISSION_DRAIN_CAP_MS = 5000;
 
 /** One presenter for browser/Electron, boot/New Game/Continue; rendering never authorizes flight. */
+// Sets the flight-veil sim hold and tells the presentation runner at once, so a worker-owned sim
+// clock stops when the veil arms instead of at the next (possibly seconds-late) rAF.
+function setFlightVeilHold(render, held) {
+  if (!render) return;
+  if (render.flightVeilHoldsSim === held) return;
+  render.flightVeilHoldsSim = held;
+  try { render.onFlightVeilHoldChanged?.(held); } catch (_) { /* the frame loop re-syncs */ }
+}
+
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
   if (!document || !bus || typeof bus.on !== 'function') return NOOP;
   const overlay = document.getElementById?.('boot-overlay');
@@ -143,7 +152,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   /** completed=false on error/timeout/menu cancellation: never celebrate a failed load as 100%. */
   function hide({ completed = true } = {}) {
-    if (state?.render) state.render.flightVeilHoldsSim = false;
+    setFlightVeilHold(state?.render, false);
     if (disposed) return;
     cancelRevealWait(); clearWork(); accumulator = null; session++;
     if (completed) ring?.finish();
@@ -212,7 +221,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       ring?.report({ id: 'rendering-sector', progress: .96, ceiling: .997, label: 'Rendering the sector…' });
     }, FIRST_DRAW_STAGE_LABEL_MS);
     // Hold the sim at spawn while the veil waits (presentationRunner reads this); every hide clears it.
-    if (render && tracksFirstDraw) render.flightVeilHoldsSim = true;
+    if (tracksFirstDraw) setFlightVeilHold(render, true);
     revealCapTimer = setTimeout(() => {
       revealCapTimer = null; capped = true;
       if (!firstDrawSubmitted()) console.info('[loading] veil lifted by the first-draw cap', { capMs: FIRST_DRAW_REVEAL_CAP_MS });
@@ -226,7 +235,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         // Debug flag: tells a capped lift apart from a first-draw lift.
         if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
         // Release the sim with the lift itself, not after the fade: the first visible frame plays.
-        if (render) render.flightVeilHoldsSim = false;
+        setFlightVeilHold(render, false);
         cancelRevealWait(); ring?.finish();
         // A small, bounded finish interval lets the needle settle before removing the shell.
         if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide(), 450);
@@ -260,7 +269,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     art.updateProgress({ id: 'boot-state', progress: ring?.snapshot().shown || .14 });
   }
   return { show, hide, destroy() {
-    if (state?.render) state.render.flightVeilHoldsSim = false;
+    setFlightVeilHold(state?.render, false);
     if (disposed) return;
     for (const unsub of unsubs) if (typeof unsub === 'function') unsub();
     unsubscribePaint(); unsubscribeWork(); cancelRevealWait(); clearWork();
