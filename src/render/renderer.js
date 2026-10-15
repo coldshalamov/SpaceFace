@@ -11396,7 +11396,28 @@ export const render = {
     state.render.spaceBg = spaceBg;
     // Generated backdrop producers publish their exact construction recipe in their constructors;
     // renderer only consumes those immutable boundaries.
-    const vf = createVisualFactory({ renderer });
+    const vf = createVisualFactory({
+      renderer,
+      planetDetailAdmission: {
+        generation: () => state.contextRestoreSeq,
+        prepare: async (texture, options = {}) => {
+          const world = state.world;
+          const render = state.render;
+          const context = state.contextRestoreSeq;
+          const active = () => this.state === state && state.world === world && state.render === render
+            && this.renderer === renderer && state.contextRestoreSeq === context
+            && this._rendererResourcesDisposed !== true && this._contextLost !== true
+            && (!options.isActive || options.isActive());
+          const admission = this._gpuResidencyAdmissions;
+          if (!admission || !active()) throw new Error('Planet detail residency owner is unavailable');
+          // Each binding keeps its own cancellation scope; the existing per-renderer
+          // residency stamps still dedupe uploads when planets request the same tile.
+          const result = await admission.prepare(texture, { isActive: active });
+          if (!active()) throw new Error('Planet detail residency owner became inactive');
+          return assertCompleteAppearanceAdmission(result);
+        },
+      },
+    });
     if (this._livingHullPresentation) this._livingHullPresentation.dispose();
     this._livingHullPresentation = createLivingHullPresentation();
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.dispose();

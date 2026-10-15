@@ -6379,7 +6379,7 @@ function stampBuiltVisual(root) {
   return root;
 }
 
-export function createVisualFactory({ renderer = null, readyPackagedBodies = null } = {}) {
+export function createVisualFactory({ renderer = null, readyPackagedBodies = null, planetDetailAdmission = null } = {}) {
   const readyBodies = readyPackagedBodies || (renderer
     ? createReadyPackagedBodyCache({ residency: getAssetResidency(renderer) }) : null);
   return {
@@ -6426,7 +6426,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
           // Verge-Layer: machine entities — kinematic procedural bodies (prism/custodian/auditor).
           case 'machine': return stampBuiltVisual(buildMachineMesh(e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
-          case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
+          case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e, { detailAdmission: planetDetailAdmission })));
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);
           // traffic haulers are closed-form route visuals that must render as haulers, not as
           // player-cyan default kestrels — hence the neutral-team mule wrap.
