@@ -93,6 +93,35 @@ test('source overlay fails closed on a tampered entry', () => {
   }), /allowlist/i);
 });
 
+test('source overlay accepts the complete runtime budget and rejects totals above 128 MiB', () => {
+  const payload = Buffer.alloc(8 * 1024 * 1024, 0x5a);
+  const makeLargeManifest = (fileCount, byteLength) => {
+    const bytes = payload.subarray(0, byteLength);
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const contentBase64 = bytes.toString('base64');
+    const files = Array.from({ length: fileCount }, (_, index) => ({
+      path: `src/overlay-budget-${index}.js`,
+      bytes: byteLength,
+      sha256,
+      contentBase64,
+    }));
+    return {
+      schema: 'spaceface.sourceBaseline.v1',
+      sourceCommit: 'a'.repeat(40),
+      sourceOverlayDigest: sourceOverlayDigest(files),
+      files,
+    };
+  };
+
+  const accepted = loadSourceOverlayManifest(makeLargeManifest(9, payload.length));
+  assert.equal(accepted.identity.totalBytes, 9 * payload.length);
+  assert.ok(accepted.identity.totalBytes > 64 * 1024 * 1024);
+  assert.throws(
+    () => loadSourceOverlayManifest(makeLargeManifest(17, 7_900_000)),
+    /exceeds the total byte limit/i,
+  );
+});
+
 test('frozen stylesheet bytes are served with the same immutable overlay identity', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-style-overlay-'));
   await mkdir(path.join(root, 'styles'), { recursive: true });
