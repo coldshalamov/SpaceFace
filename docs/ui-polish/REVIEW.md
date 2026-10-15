@@ -51,7 +51,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
 | **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
-| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** (+ phone / narrow / short desktop, ui-polish-40) | See § Tech Tree below, and § Research on a phone, a narrow window and a short desktop (ui-polish-40) |
+| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** (+ phone / narrow / short desktop, ui-polish-40; Industrial Mining label @960, ui-polish-44) | See § Tech Tree below, § Research on a phone… (ui-polish-40), and § Research Industrial Mining label (ui-polish-44) |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
@@ -1202,7 +1202,7 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Sizes checked:** 390×844 (`--phone`, top and scrolled), 700×800, 800×600, 844×390 (`--phone`), 960×540 (top, reading scrolled, node picked), 1024×768, 1280×720, 1920×1080.
 
-**Still open:** the dial itself is crowded when its stage is under ~500px (800×600, phone landscape 844×390), the same as on master. That needs instrument geometry, not layout. At 960 the "Industrial Mining" label's last letter is clipped by the dial's own sky (`labelOut` under-measures by a few px). Shots: `ui-shots/polish40/{before,after}/` plus `compare-*.png`.
+**Still open after ui-polish-40:** the dial itself is crowded when its stage is under ~500px (800×600, phone landscape 844×390), the same as on master. That needs instrument geometry, not layout. ~~At 960 the "Industrial Mining" label's last letter is clipped by the dial's own sky (`labelOut` under-measures by a few px).~~ **Fixed in ui-polish-44.** Shots: `ui-shots/polish40/{before,after}/` plus `compare-*.png`.
 
 ## Help on a short desktop — EVERY KEY clears the frame (ui-polish-42)
 
@@ -1229,6 +1229,16 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Bench:** 0 findings at 700×900, 800×600, 960×540, 1280×720, 1920×1080, 390×844 (+ `--phone`). `--walk` exercised SHOW / Track / Local map / Abandon / Close at each size.
 
-**Leftovers (not this pass):** Research dial crowded under ~500px of stage and "Industrial Mining" last letter clipped at 960 (`labelOut` under-measure in constellation.js); Shipworks second Cargo callout line at 1024×440 under rail fade; Station Ledger right column can still feel tight at 800×600 with receipts.
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~"Industrial Mining" last letter clipped at 960~~ (fixed ui-polish-44); Shipworks second Cargo callout line at 1024×440 under rail fade; Station Ledger right column can still feel tight at 800×600 with receipts.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compare-700x900.png`, `compare-800x600.png`, `compare-960x540.png`.
+
+## Research Industrial Mining label clears the sky @960 (ui-polish-44)
+
+**Before (master c39004bef0):** at 960×540 the constellation sky (`overflow:hidden`) clipped the last letters of "Industrial Mining" on the right of the dial. `labelOut` was `min(200, widest + 26)`, and label boxes / placement bounds sat only 2px inside the host, so a slightly under-measured name ran into the clip.
+
+**After (`src/ui/orrery/constellation.js` only):** `labelOut` is `min(220, widest + 38)` so the dial leaves a few more px for side names; each label box pads +8 instead of +2; placement bounds inset to 6/4 so the solver keeps ink inside the sky. At 960 the full "Industrial Mining" reads clear of the sky edge (and clear of the INDUSTRY rim word). 390×844 phone is pixel-identical. 1280×720 is effectively unchanged (~0.4% pixel churn). 1920×1080 gains a little more air between beads and side names (same rules, larger type). Selectors and IDs are unchanged.
+
+**Checked:** bench `tech-tree` clean at 960×540 and 1920×1080; 1280×720 keeps its pre-existing hour-verb vs Deflector Theory ON TOP OF; 800×600 keeps master's crowded-dial overlaps (still open). Shots: `/workspace/spaceface-scratch/ui-shots/polish44/{before,after}/`, `compare-960x540.png`, `compare-960x540-crop.png`.
+
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; Shipworks second Cargo callout line at 1024×440 under rail fade; Station Ledger right column can still feel tight at 800×600 with receipts.
