@@ -343,6 +343,29 @@ test('a destroyed reuse does not put salvage back on the old id', () => {
   assert.equal(h.state.paused, undefined);
 });
 
+test('salvage names the destroyed ship\'s own wreck, not the newest hulk', () => {
+  const h = makeHarness();
+  const victim = spawnHostile(h, 400);
+  const oldId = victim.id;
+  h.bus.emit('entity:killed', { id: oldId, killerId: h.state.playerId });
+  h.state.aftermathWrecks = {
+    bySector: {
+      [SECTOR]: [
+        { markerId: 'newer-hulk', victimId: 99, kind: 'battle-aftermath' },
+        { markerId: 'bandit-hull', victimId: oldId, kind: 'battle-aftermath' },
+      ],
+    },
+  };
+  victim.alive = false;
+  h.state.entities.delete(oldId);
+  h.bus.emit('entity:destroyed', { id: oldId, entity: victim, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'bandit-hull');
+  assert.notEqual(h.state.combatOutcome.aftermath.targets.salvage, 'newer-hulk');
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'bandit-hull');
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {

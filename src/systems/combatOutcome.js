@@ -144,6 +144,20 @@ function sectorWreckIds(state, sectorId) {
   return ids;
 }
 
+function wreckMarkerForVictim(state, sectorId, victimId) {
+  if (victimId == null) return null;
+  const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  const list = bag && sectorId ? bag[sectorId] : null;
+  if (!Array.isArray(list)) return null;
+  for (const marker of list) {
+    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
+    if (marker.victimId !== victimId) continue;
+    const id = marker.markerId != null ? marker.markerId : marker.id;
+    if (id != null) return id;
+  }
+  return null;
+}
+
 function compactRecord(state, entity, payload, outcome, reason) {
   const data = entity && entity.data || {};
   const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
@@ -417,9 +431,10 @@ export const combatOutcome = {
       const livingOther = !!(entity && entity.alive !== false && !same);
       const killReceipt = record.outcome === 'killed' || record.dead === true;
       // The number is not this body. A living reuse is never the focus. Once a wreck is
-      // here, destroying that reuse must not snap salvage back onto the old id.
+      // here, destroying that body keeps salvage on that ship's own hulk, not the newest one.
       const notThisBody = killReceipt && !same && (livingOther || wreckIds.length > 0);
-      const entityId = notThisBody ? null : record.entityId;
+      const ownWreck = notThisBody ? wreckMarkerForVictim(state, sectorId, record.entityId) : null;
+      const entityId = notThisBody ? ownWreck : record.entityId;
       outcomes.push({
         outcome: record.outcome,
         entityId,
