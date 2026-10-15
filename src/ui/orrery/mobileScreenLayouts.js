@@ -436,13 +436,33 @@ export const MOBILE_SCREEN_CSS = `
   ${C} .gm-close { grid-column:3 !important; grid-row:1 !important; }
   ${C} .gm-title { white-space:normal !important; overflow:visible !important; font-size:20px !important; }
   ${C} .gm-search-container { grid-column:1 / -1 !important; grid-row:2 !important; width:100% !important; }
+  /* The hub gives the palette a 440px desktop reading width and right-anchors it. On a portrait
+     chart that puts the panel's left edge outside the viewport, cutting the first glyph of every
+     result. The search field is already the full phone column, so the palette follows that box. */
+  ${C}[data-layout="narrow"] .gm-search-results,
+  ${C}[data-layout="narrow"] .gm-search-results[data-palette="1"] {
+    left:0 !important; right:auto !important; width:100% !important; max-width:100% !important; box-sizing:border-box !important;
+  }
   ${C} .gm-weather { grid-column:1 / -1 !important; grid-row:3 !important; justify-self:start; text-align:left; }
   ${C} .gm-rail { grid-column:1 / -1 !important; grid-row:4 !important; }
   /* Zoom strip: on phone --gm-foot clears the stacked inspector + foot; +28px sits the strip
      in the map stage just above OVERVIEW/ROUTE, fully clear of the foot rail and detail lines. */
   ${C} .gmh-tools { bottom:calc(var(--gm-foot, 220px) + 28px) !important; left:calc(var(--gm-stage-x, 14px) + 8px) !important; }
-  /* Portrait: the strip stands at the window's bottom-right, clear of the canvas "per bar" ruler. */
-  ${C}[data-layout="narrow"] .gmh-tools { left:auto !important; right:14px; bottom:auto !important; top:calc(var(--gm-sky-bottom, 600px) - 64px); }
+  /* Portrait: use the measured foot clearance instead of the sky's page coordinate. The latter put
+     the toolbar below POSITION/TRACKING after the inspector stacked under the sky. */
+  ${C}[data-layout="narrow"] .gmh-tools {
+    left:auto !important; right:14px; top:auto !important; bottom:calc(var(--gm-foot, 220px) + 40px) !important;
+  }
+  /* Keep long tips inside the portrait chart. Right-aligning to each 44px key avoids the right-edge
+     clip of the centered fit tip; wrapping preserves the complete label for touch and focus. */
+  ${C}[data-layout="narrow"] .gmh-tool[data-tip]::after {
+    left:auto !important; right:0 !important; bottom:calc(100% + 8px) !important;
+    width:max-content !important; max-width:calc(100vw - 28px) !important; white-space:normal !important; text-align:center !important;
+    transform:translate(0, 6px) !important;
+  }
+  ${C}[data-layout="narrow"] .gmh-tool[data-tip]:is(:hover, :focus-visible)::after {
+    transform:translate(0, 0) !important;
+  }
   ${C} .gm-navfoot { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px !important; }
   ${C} .gm-navfoot .gm-nav-row { flex-direction:column !important; align-items:flex-start !important; gap:4px !important; min-width:0; }
   ${C} .gm-navfoot .gm-nav-row-v { max-width:100%; white-space:normal !important; overflow-wrap:anywhere; }
@@ -456,6 +476,13 @@ export const MOBILE_SCREEN_CSS = `
   ${C}[data-layout="narrow"] .gm-viewport { position:relative !important; inset:auto !important; z-index:0 !important;
     grid-area:stage; height:clamp(260px, 44dvh, 420px); margin:0 -14px; }
   ${C}[data-layout="narrow"] .gm-right-inspector { max-height:none !important; overflow:visible !important; }
+  ${C}[data-layout="narrow"] .gm-inspector-content,
+  ${C}[data-layout="narrow"] .gm-frame-group { width:100% !important; max-width:100% !important; min-width:0 !important; }
+  ${C}[data-layout="narrow"] .gm-frame-group { flex-wrap:wrap !important; }
+  ${C}[data-layout="narrow"] .gm-frame-group .gm-frame-btn {
+    flex:1 1 100% !important; width:100% !important; max-width:100% !important; min-width:0 !important;
+    min-height:44px !important; white-space:normal !important; overflow-wrap:break-word !important; line-height:1.3 !important;
+  }
   ${C}[data-layout="narrow"] .gm-apron { max-height:none !important; }
   /* All nine inspector tabs stand on the page (three rows on the instrument's per-row scales);
      the one-row strip was 875px wide and ECONOMY…HISTORY sat past the edge, out of reach. */

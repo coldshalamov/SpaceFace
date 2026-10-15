@@ -1061,6 +1061,12 @@ function failGameStart(state, bus, error, text, runTransitionGuard = null, trans
     error: error && error.message ? error.message : String(error),
     ...(failure || {}),
   });
+  if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  // F9 can fail from flight with no screen mounted. Keep New Game/Save Load's own
+  // retry handlers in place, but give an empty failed route the existing Continue menu.
+  if (!state.ui?.screenStack?.length) {
+    bus.emit('ui:pushScreen', { id: 'mainMenu', source: 'game-start-failed' });
+  }
   bus.emit('toast', { text, kind: 'error', ttl: 8 });
   return true;
 }

@@ -8,7 +8,7 @@
 //      settles, or a starved rAF, cannot hold the restore freeze open forever. The load
 //      finalizer therefore always settles, saveSystem's deferred release always clears the
 //      save:restore freeze, and a thrown gate lands in the existing recoverable state
-//      (mode:'menu' + runtime:start-failed + error toast — where F9/Continue work again).
+//      (mode:'menu' + runtime:start-failed + existing retry controls).
 //      The saveSystem half of that landing is already covered behaviorally by
 //      test/time-effects.test.mjs ("current finalizer failure must surface exactly once").
 //
@@ -212,11 +212,15 @@ test('a failed restore lands in the recoverable start-failed menu with a visible
   assert(start > 0 && end > start, 'the failure owner exists');
   const fail = new Function('createTimeEffects', 'laneSetMode',
     `${main.slice(start, end)}; return failGameStart;`)(createTimeEffects, laneSetMode);
-  const state = { mode: 'loading', timeScale: 0, render: {} };
+  const state = { mode: 'loading', timeScale: 0, render: {}, ui: { screenStack: [] } };
   const bus = createBus();
   const events = [];
   bus.on('game:startFailed', (payload) => events.push(['failure', payload]));
   bus.on('toast', (payload) => events.push(['toast', payload]));
+  bus.on('ui:pushScreen', (payload) => {
+    events.push(['screen', payload]);
+    state.ui.screenStack.push(payload.id);
+  });
   const effects = createTimeEffects(state);
   effects.set('runtime:loading', { scale: 0 });
   assert.equal(fail(state, bus, new Error('required ship.glb missing'), 'Retry Continue'), true);
@@ -224,7 +228,48 @@ test('a failed restore lands in the recoverable start-failed menu with a visible
   assert.equal(effects.describeRequests()['runtime:loading'], undefined);
   assert.equal(effects.describeRequests()['runtime:start-failed'].scale, 0);
   assert.match(events.find(([name]) => name === 'failure')[1].error, /ship.glb missing/);
+  assert.deepEqual(state.ui.screenStack, ['mainMenu'],
+    'a quick-load from flight must expose Continue/New Game instead of only a paused HUD');
+  assert.equal(events.find(([name]) => name === 'screen')[1].source, 'game-start-failed');
   assert.deepEqual(events.find(([name]) => name === 'toast')[1], { text: 'Retry Continue', kind: 'error', ttl: 8 });
+});
+
+test('failed startup preserves a mounted retry screen and its error listener', () => {
+  const main = readFileSync(MAIN_PATH, 'utf8');
+  const start = main.indexOf('function failGameStart');
+  const end = main.indexOf('async function waitForAuthoredPartLibrary', start);
+  const fail = new Function('createTimeEffects', 'laneSetMode',
+    `${main.slice(start, end)}; return failGameStart;`)(createTimeEffects, laneSetMode);
+  for (const screen of ['newGame', 'saveLoad']) {
+    const state = { mode: 'loading', timeScale: 0, render: {}, ui: { screenStack: ['mainMenu', screen] } };
+    const bus = createBus();
+    let handled = 0;
+    const pushes = [];
+    bus.on('game:startFailed', () => { handled += 1; });
+    bus.on('ui:pushScreen', payload => pushes.push(payload));
+    assert.equal(fail(state, bus, new Error('admission failed'), 'Retry'), true);
+    assert.equal(handled, 1);
+    assert.deepEqual(state.ui.screenStack, ['mainMenu', screen]);
+    assert.deepEqual(pushes, [], 'the mounted screen retains its own retry controls');
+  }
+});
+
+test('a failure listener starting a replacement route prevents stale recovery navigation', () => {
+  const main = readFileSync(MAIN_PATH, 'utf8');
+  const start = main.indexOf('function failGameStart');
+  const end = main.indexOf('async function waitForAuthoredPartLibrary', start);
+  const fail = new Function('createTimeEffects', 'laneSetMode',
+    `${main.slice(start, end)}; return failGameStart;`)(createTimeEffects, laneSetMode);
+  const state = { mode: 'loading', timeScale: 0, render: {}, ui: { screenStack: [] } };
+  const bus = createBus();
+  const token = {};
+  let current = token;
+  const guard = { isCurrent: candidate => candidate === current };
+  const pushes = [];
+  bus.on('game:startFailed', () => { current = {}; });
+  bus.on('ui:pushScreen', payload => pushes.push(payload));
+  assert.equal(fail(state, bus, new Error('old admission failed'), 'Retry', guard, token), false);
+  assert.deepEqual(pushes, [], 'stale failure cannot open a menu over the replacement route');
 });
 
 test('the soak checker waits for the failed-restore landing before retrying F9', () => {
