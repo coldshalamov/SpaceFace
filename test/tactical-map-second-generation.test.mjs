@@ -14,7 +14,10 @@ import {
   symbolDescriptor,
   tacticalRadarMetrics,
 } from '../src/ui/map/tacticalMapGrammar.js';
-import { mapParityLegendModel } from '../src/ui/map/mapParityBridge.js';
+import {
+  mapParityLegendModel,
+  resolveMapObjectiveTarget,
+} from '../src/ui/map/mapParityBridge.js';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -123,6 +126,35 @@ test('the full chart teaches the exact vocabulary and brackets the actual live o
     'the overlay loop must sleep with the cached chart screen');
   assert.doesNotMatch(bridge, /if \(!root \|\| rootStates\.has\(root\)\)/,
     'same-root innerHTML remounts must be able to reinstall a removed key/overlay');
+});
+
+test('chart objective resolution scans once and preserves canonical and fallback priority', () => {
+  const canonical = { id: 'active-waypoint', sx: 9, sy: 4 };
+  const fallback = { markerKind: 'mission-objective', sx: 2, sy: 3 };
+  let visited = 0;
+  const targets = {
+    *[Symbol.iterator]() {
+      visited += 1;
+      yield { objective: true, sx: 1, sy: 1 };
+      visited += 1;
+      yield fallback;
+      visited += 1;
+      yield canonical;
+      visited += 1;
+      yield { id: 'later-waypoint' };
+    },
+  };
+
+  assert.equal(resolveMapObjectiveTarget(targets), canonical,
+    'the canonical waypoint wins even when a legacy objective appears first');
+  assert.equal(visited, 3, 'the scan stops as soon as the canonical target is found');
+  assert.equal(resolveMapObjectiveTarget([
+    { objective: true }, fallback, { markerKind: 'mission-objective', sx: 8, sy: 8 },
+  ]), fallback, 'the first mission objective retains priority over generic objective markers');
+  const generic = { objective: true };
+  assert.equal(resolveMapObjectiveTarget([null, generic]), generic,
+    'generic objective remains the final compatibility fallback');
+  assert.equal(resolveMapObjectiveTarget([]), null);
 });
 
 test('the public radar is a native crisp renderer, not a blurred legacy canvas copy', () => {

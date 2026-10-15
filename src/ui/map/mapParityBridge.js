@@ -33,6 +33,21 @@ export function mapParityLegendModel() {
   }));
 }
 
+/** Resolve a chart objective in one pass while retaining the legacy fallback priority. */
+export function resolveMapObjectiveTarget(targets) {
+  let missionObjective = null;
+  let genericObjective = null;
+  for (const target of targets) {
+    if (!target) continue;
+    if (target.id === 'active-waypoint') return target;
+    if (!missionObjective && target.markerKind === 'mission-objective') {
+      missionObjective = target;
+    }
+    if (!genericObjective && target.objective === true) genericObjective = target;
+  }
+  return missionObjective || genericObjective;
+}
+
 /** The key's two groups: the five flight identities, then the chart-only marks. */
 export function mapKeyGroups() {
   return Object.freeze([
@@ -149,6 +164,7 @@ function createRootState(root, key, overlay, viewport, canvas) {
   let disposed = false;
   let screenModule = null;
   let modulePending = false;
+  let viewBox = '';
 
   const isVisible = () => {
     if (!root.isConnected || !overlay.isConnected) return false;
@@ -180,17 +196,17 @@ function createRootState(root, key, overlay, viewport, canvas) {
     ensureModule();
     const width = Math.max(1, Number(canvas.clientWidth) || Number(viewport.clientWidth) || 1);
     const height = Math.max(1, Number(canvas.clientHeight) || Number(viewport.clientHeight) || 1);
-    overlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const nextViewBox = `0 0 ${width} ${height}`;
+    if (nextViewBox !== viewBox) {
+      overlay.setAttribute('viewBox', nextViewBox);
+      viewBox = nextViewBox;
+    }
 
     const targets = screenModule && Array.isArray(screenModule._clickTargets)
       ? screenModule._clickTargets
       : [];
-    // `active-waypoint` is the chart's canonical target. The fallbacks retain compatibility with
-    // older map payloads without allowing an unrelated objective-like marker earlier in the target
-    // array to steal the bracket.
-    const active = targets.find((target) => target && target.id === 'active-waypoint')
-      || targets.find((target) => target && target.markerKind === 'mission-objective')
-      || targets.find((target) => target && target.objective === true);
+    // `active-waypoint` is canonical; the resolver retains legacy fallback priority in one scan.
+    const active = resolveMapObjectiveTarget(targets);
     const x = active && Number(active.sx);
     const y = active && Number(active.sy);
     const onCanvas = Number.isFinite(x) && Number.isFinite(y)
