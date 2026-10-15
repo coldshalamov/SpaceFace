@@ -1278,6 +1278,20 @@ function installUnreadyDrawGuard(renderer) {
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
   renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
+    // Three already ran object/material before-hooks. Its instance renderer skips
+    // zero counts only after program/uniform/binding work; avoid that work here.
+    // Match Three's dispatch precedence: BatchedMesh owns its draw list, and an
+    // InstancedMesh uses object.count even with an InstancedBufferGeometry.
+    if (object && geometry && object.isBatchedMesh !== true) {
+      if (object.isInstancedMesh === true) {
+        if (object.count === 0) return undefined;
+      } else if (geometry.isInstancedBufferGeometry === true && geometry.instanceCount === 0) {
+        const maxInstances = geometry._maxInstanceCount;
+        if (maxInstances === undefined || (typeof maxInstances === 'number' && maxInstances >= 0)) {
+          return undefined;
+        }
+      }
+    }
     // Recover available mip donors and check live upload safety in one allocation-free
     // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
     // fresh upload or orientation hold waits for real bytes before three binds them.
