@@ -340,6 +340,16 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
   }
 #else
   float spaceContrastShapedSquared(float value) {
+    // Factor the two powers by the larger base. The ratio stays in [0,1], including exact
+    // black/white, so one power gives the same sigmoid without an overflowing endpoint.
+    // All authored moods/transitions are inside this range; their denominator is >=0.5,
+    // safely above the original floor. Unusual live tuning keeps that floor below.
+    if (uLookContrast >= 0.5 && uLookContrast <= 2.0) {
+      float complement = 1.0 - value;
+      float ratio = pow(min(value, complement) / max(value, complement), uLookContrast);
+      float shaped = (value < 0.5 ? ratio : 1.0) / (1.0 + ratio);
+      return shaped * shaped;
+    }
     float rise = pow(value, uLookContrast);
     float fall = pow(1.0 - value, uLookContrast);
     float shaped = rise / max(rise + fall, 0.00001);
