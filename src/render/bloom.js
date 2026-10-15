@@ -384,7 +384,9 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     if (vignetteAmount > 0.001) {
       vec2 d = uv - vec2(0.5);
       float dist = dot(d, d) * 2.2;
-      float vig = 1.0 - smoothstep(0.25, 0.85, dist);
+      // Falloff stays out of the mid-frame (playable space reads clean) and spends the mood
+      // only in the outer corners: darkening begins ~85% of the way to the edge.
+      float vig = 1.0 - smoothstep(0.40, 0.95, dist);
       c *= mix(vec3(1.0), mix(uLookVignetteTint, vec3(1.0), vig), vignetteAmount);
     }
     return c;
