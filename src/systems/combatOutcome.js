@@ -185,7 +185,7 @@ export const combatOutcome = {
       this.bus.on('combat:surrendered', this._onSurrendered);
       this._unsubs = [
         this.bus.on('entity:spawned', () => this._wakeCombatOutcomeQuiet()),
-        this.bus.on('entity:destroyed', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('entity:destroyed', (payload) => this._onEntityDestroyed(payload)),
         this.bus.on('save:loaded', () => this._wakeCombatOutcomeQuiet()),
         // Run boundary: byEntity dedup must not leak into the next game — entity ids recycle
         // (nextEntityId resets to 1), so stale dedup rows would silently drop new records.
@@ -285,6 +285,16 @@ export const combatOutcome = {
     this._combatOutcomeQuiet = null;
   },
 
+  _onEntityDestroyed(payload) {
+    this._wakeCombatOutcomeQuiet();
+    const id = payload && payload.id != null ? payload.id : null;
+    const own = this.state && this.state.combatOutcome;
+    if (id == null || !own || !own.byEntity || !own.byEntity[id]) return;
+    // The remover already dropped the entity and set alive false. Republish so a chase
+    // or a rescue does not stay up for a ship that has left. Do not mark the body dead.
+    this._publishAftermath();
+  },
+
   _killed(payload) {
     const entity = entityFor(this.state, payload.id);
     if (!isCandidate(entity, this.state, payload)) return;
@@ -326,6 +336,9 @@ export const combatOutcome = {
     // One receipt per ship stays the rule. A later death still refreshes the field verbs,
     // so a disabled hull that is now a corpse stops being offered as a rescue.
     if (own.byEntity[id]) {
+      // A later death marks the body. A despawn does not: entity:destroyed republishes
+      // without this flag, so a ship that merely left is not offered as salvage.
+      if (payload && payload.sourceEvent === 'entity:killed') own.byEntity[id].dead = true;
       this._publishAftermath();
       return null;
     }
@@ -364,6 +377,7 @@ export const combatOutcome = {
         entityId: record.entityId,
         sectorId: record.sectorId,
         alive: !!(entity && entity.alive !== false),
+        dead: record.dead === true,
       });
     }
     const offer = aftermathChoices({

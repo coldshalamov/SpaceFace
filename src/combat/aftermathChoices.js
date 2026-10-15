@@ -41,15 +41,17 @@ export function aftermathChoices(facts) {
   const wreckIds = list(facts && facts.wreckIds).filter((id) => id != null);
 
   const rescueId = firstId(outcomes, (outcome) => (
-    (outcome.outcome === 'disabled' || outcome.outcome === 'surrendered') && outcome.alive === true
+    (outcome.outcome === 'disabled' || outcome.outcome === 'surrendered')
+    && outcome.alive === true
+    && outcome.dead !== true
   ));
-  const killedId = firstId(outcomes, (outcome) => outcome.outcome === 'killed');
-  const deadBodyId = firstId(outcomes, (outcome) => (
-    outcome.alive !== true
-    && (outcome.outcome === 'disabled' || outcome.outcome === 'surrendered' || outcome.outcome === 'fled')
+  // Salvage is a kill, a body a death event already marked dead, or a wreck marker.
+  // A ship that only despawned (fled off the field, removed without a death) is not a wreck.
+  const killedId = firstId(outcomes, (outcome) => outcome.outcome === 'killed' || outcome.dead === true);
+  const salvageId = killedId != null ? killedId : (wreckIds[0] ?? null);
+  const pursuitId = firstId(outcomes, (outcome) => (
+    outcome.outcome === 'fled' && outcome.alive === true && outcome.dead !== true
   ));
-  const salvageId = killedId != null ? killedId : (deadBodyId != null ? deadBodyId : (wreckIds[0] ?? null));
-  const pursuitId = firstId(outcomes, (outcome) => outcome.outcome === 'fled' && outcome.alive === true);
 
   const open = {
     rescue: rescueId != null,

@@ -90,7 +90,7 @@ test('a dead surrender is salvage, and a gone fleer is not a chase', () => {
   const offer = aftermathChoices({
     sectorId: SECTOR,
     outcomes: [
-      { outcome: 'surrendered', entityId: 8, sectorId: SECTOR, alive: false },
+      { outcome: 'surrendered', entityId: 8, sectorId: SECTOR, alive: false, dead: true },
       { outcome: 'fled', entityId: 9, sectorId: SECTOR, alive: false },
     ],
     wreckIds: [],
@@ -145,6 +145,21 @@ test('a disabled ship that dies becomes salvage, not a rescue of a corpse', () =
   assert.equal(h.state.combatOutcome.byEntity[ship.id].outcome, 'disabled');
   assert.deepEqual(idsOf(h.state.combatOutcome.aftermath), ['salvage', 'escape']);
   assert.equal(h.state.combatOutcome.aftermath.targets.salvage, ship.id);
+  assert.equal(h.state.paused, undefined);
+});
+
+test('a fled ship that despawns is not a chase and not a wreck', () => {
+  const h = makeHarness();
+  const runner = spawnHostile(h, 800);
+  h.bus.emit('ai:flee', { entityId: runner.id });
+  assert.deepEqual(idsOf(h.state.combatOutcome.aftermath), ['pursuit', 'escape']);
+  runner.alive = false;
+  h.state.entities.delete(runner.id);
+  h.bus.emit('entity:destroyed', { id: runner.id, reason: 'egress' });
+  assert.deepEqual(idsOf(h.state.combatOutcome.aftermath), ['escape']);
+  assert.equal(h.state.combatOutcome.byEntity[runner.id].dead, undefined);
+  assert.equal(applyAftermathChoice(h.state, 'pursuit'), null);
+  assert.equal(applyAftermathChoice(h.state, 'salvage'), null);
   assert.equal(h.state.paused, undefined);
 });
 
