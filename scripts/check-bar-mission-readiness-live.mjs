@@ -58,10 +58,44 @@ try {
   await waitForVisible(page, '[data-screen="mainMenu"]', HEAVY_TIMEOUT_MS, 'main menu');
   await clickButton(page, 'New Game');
   await waitForVisible(page, '[data-screen="newGame"]', UI_TIMEOUT_MS, 'new game');
+  await page.evaluate(() => {
+    window.__sfBarLaunch = { started: false, failure: null };
+    window.SF.bus.on('game:started', () => { window.__sfBarLaunch.started = true; });
+    window.SF.bus.on('game:startFailed', (payload) => {
+      window.__sfBarLaunch.failure = {
+        reason: String(payload?.reason || '').slice(0, 400),
+        message: String(payload?.message || '').slice(0, 400),
+      };
+    });
+  });
   await clickButton(page, 'Launch');
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.state.mode === 'flight', null, {
+  await page.waitForFunction(() => {
+    if (window.__sfBarLaunch?.failure) {
+      throw new Error(`game:startFailed ${JSON.stringify(window.__sfBarLaunch.failure)}`);
+    }
+    const state = window.SF?.state;
+    return state?.mode === 'flight' && window.__sfBarLaunch?.started === true
+      && state.render?.flightVeilHoldsSim !== true
+      && Number.isFinite(state.render?.firstPlayableFrameAt);
+  }, null, {
     timeout: START_TIMEOUT_MS,
     polling: 250,
+  }).catch(async (error) => {
+    const detail = await page.evaluate(() => {
+      const state = window.SF?.state;
+      const render = state?.render;
+      return {
+        launch: window.__sfBarLaunch,
+        mode: state?.mode, tick: state?.tick, simTime: state?.simTime,
+        flightVeilHoldsSim: render?.flightVeilHoldsSim,
+        firstPlayableFrameAt: render?.firstPlayableFrameAt ?? null,
+        cook: Array.isArray(render?.openingCookLedger)
+          ? render.openingCookLedger.slice(-12).map(({ step, ms, outcome, t }) => ({ step, ms, outcome, t }))
+          : null,
+        visibleText: document.body.innerText.slice(0, 1000),
+      };
+    }).catch(() => null);
+    throw new Error(`${error.message} :: Bar launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
   });
 
   await page.evaluate(() => {

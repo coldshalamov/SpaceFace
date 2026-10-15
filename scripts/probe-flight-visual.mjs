@@ -946,6 +946,10 @@ async function reachable(url) {
 function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
+  // This controlled mechanics probe resets bodies, isolates actors and reads native physics
+  // diagnostics. Those fixture writes must reach the authoritative realm, not the worker mirror.
+  // Default worker-route acceptance remains the separate player-truth/native campaign.
+  u.searchParams.set('simLane', 'main');
   return String(u);
 }
 
