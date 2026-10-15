@@ -1,6 +1,8 @@
 import { collectMobileCameraWitness } from './lib/mobileCameraWitness.mjs';
+import { installMobileDrawErrorObserver } from './lib/mobileDrawErrorObserver.mjs';
 // Real-route startup/control acceptance (world visibility requires separate evidence): fresh profile, real menu taps, no debug/state/storage injection.
 // MOBILE_PROBE_URL=https://... MOBILE_PROBE_ENGINE=webkit node scripts/probe-deployed-mobile.mjs
+// MOBILE_PROBE_CONTINUE=1 also reloads the same browser context and taps the public Continue route.
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { chromium, webkit, devices } from 'playwright';
@@ -10,12 +12,29 @@ if (!['https:', 'http:'].includes(url.protocol)) throw new Error('HTTP(S) deploy
 const engine = process.env.MOBILE_PROBE_ENGINE || 'webkit';
 if (!['webkit', 'chromium'].includes(engine)) throw new Error('Engine must be webkit or chromium');
 const out = resolve(process.env.MOBILE_PROBE_OUT || `.devshots/mobile-deployment/${engine}`);
+const checkContinue = process.env.MOBILE_PROBE_CONTINUE === '1';
+const drawErrorProbe = process.env.MOBILE_PROBE_DRAW_ERRORS === '1';
+const headed = process.env.MOBILE_PROBE_HEADED === '1';
+const channel = process.env.MOBILE_PROBE_CHANNEL || null;
+if (channel && engine !== 'chromium') throw new Error('MOBILE_PROBE_CHANNEL is supported only for Chromium');
 await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
-  acceptance: { startupAndControls: 'pending', worldVisibility: 'unverified' },
+  launch: { headless: !headed, channel }, drawErrorProbe,
+  acceptance: { startupAndControls: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
+    rendererHealth: 'pending', worldVisibility: 'unverified' },
   responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
-  startupErrors: [], runtimeMessages: [] };
+  startupErrors: [], runtimeMessages: [], rendererErrors: [], rendererErrorCount: 0 };
 const pendingDiagnosticReads = new Set();
+let activeRoute = 'new-game';
+let actorStage = 'boot-menu';
+// Concrete GL failures only: ordinary warnings and intentional preview-context disposal are not gates.
+const rendererError = text => /(?:WebGL|GL_INVALID|CONTEXT_LOST_WEBGL)/i.test(text)
+  && /(?:drawElements.*(?:Vertex buffer is not big enough|out of bounds)|INVALID_.*(?:generateMipmap|mipmap|texture|framebuffer)|(?:generateMipmap|mipmap|texture|framebuffer).*(?:INVALID_|incomplete|not (?:valid|renderable)|unsupported)|OUT_OF_MEMORY)/i.test(text);
+const noteRendererError = (text, source = 'console') => {
+  report.rendererErrorCount++;
+  if (report.rendererErrors.length < 32) report.rendererErrors.push({ route: activeRoute,
+    actorStage, at: new Date().toISOString(), source, text: text.slice(0, 3000) });
+};
 let browser;
 async function boundedBrowserRead(read, timeoutMs = 20000) {
   let timer;
@@ -30,6 +49,7 @@ function installStartupObserver() {
   window.__SF_MOBILE_STARTUP_OBSERVER__?.stop?.();
   const bus = window.SF?.bus;
   const events = [], unsubs = [];
+  let lastPublicClick = null;
   const record = (type, payload = {}) => {
     if (events.length >= 64) events.shift();
     events.push({ type, at: performance.now(), ...payload });
@@ -56,8 +76,21 @@ function installStartupObserver() {
     document.addEventListener(type, contextEvent, true);
     unsubs.push(() => document.removeEventListener(type, contextEvent, true));
   }
+  const publicClick = event => {
+    const control = event.target?.closest?.('button[data-action], .sf-ng-launch');
+    if (!control) return;
+    lastPublicClick = { at: performance.now(), action: control.getAttribute('data-action')
+      || (control.classList.contains('sf-ng-launch') ? 'launch' : null),
+      text: String(control.textContent || '').slice(0, 200), disabled: control.disabled === true,
+      ariaDisabled: control.getAttribute('aria-disabled'), isTrusted: event.isTrusted,
+      clientX: event.clientX, clientY: event.clientY,
+      mode: window.__SF_WITNESS__?.snapshot?.()?.mode ?? window.SF?.state?.mode ?? null };
+  };
+  document.addEventListener('click', publicClick, true);
+  unsubs.push(() => document.removeEventListener('click', publicClick, true));
   window.__SF_MOBILE_STARTUP_OBSERVER__ = {
-    snapshot: () => ({ busAvailable: typeof bus?.on === 'function', events: events.slice() }),
+    snapshot: () => ({ busAvailable: typeof bus?.on === 'function', events: events.slice(),
+      lastPublicClick: lastPublicClick ? { ...lastPublicClick } : null }),
     stop() { for (const off of unsubs) if (typeof off === 'function') off(); },
   };
 }
@@ -71,6 +104,8 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
   const lane = window.SF?.simLaneDiag?.();
   return {
     launchButton: (() => { const e = document.querySelector('.sf-ng-launch'); return e ? { text: e.textContent, disabled: e.disabled, ariaDisabled: e.getAttribute('aria-disabled') } : null; })(),
+    continueButton: (() => { const e = document.querySelector('[data-screen="mainMenu"] button[data-action="continue"]'); return e ? { text: e.textContent, disabled: e.disabled, ariaDisabled: e.getAttribute('aria-disabled'), visible: shown(e) } : null; })(),
+    continueVeil: (() => { const e = document.querySelector('.sf-continue-fade'); return e ? { open: e.classList.contains('open'), visible: shown(e) && Number(getComputedStyle(e).opacity) > 0 } : null; })(),
     title: document.title, mobile: document.documentElement.dataset.sfMobile || null,
     flight: document.documentElement.dataset.sfMobileFlight || null,
     capabilities: { coarse: matchMedia('(pointer: coarse)').matches, anyCoarse: matchMedia('(any-pointer: coarse)').matches,
@@ -80,6 +115,7 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
     screens: [...document.querySelectorAll('[data-screen]')].filter(shown).map(e => e.dataset.screen),
     alerts: [...document.querySelectorAll('[role="alert"], .boot-error')].filter(shown).map(e => e.textContent),
     startupObserver: window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.() || null,
+    drawErrors: globalThis.__SF_MOBILE_DRAW_ERRORS__?.snapshot?.() || null,
     runtime: render || frame ? {
       gpu: render?.gpu,
       parallelCompile: render ? !!render.renderer?.extensions?.get('KHR_parallel_shader_compile') : undefined,
@@ -115,12 +151,14 @@ const visible = async (page, selector) => boundedBrowserRead(() => page.locator(
 const critical = response => response.status >= 400 && (
   /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
 try {
-  browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true,
+  browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: !headed,
+    ...(channel ? { channel } : {}),
     ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio'] } : {}) });
   const context = await browser.newContext({ ...devices['iPhone 14'], serviceWorkers: 'block',
     // Official Vercel E2E header: exclude preview-only feedback UI, not game code
     // or deployment protection. Production visitors do not normally load this toolbar.
     extraHTTPHeaders: { 'x-vercel-skip-toolbar': '1' } });
+  if (drawErrorProbe) await context.addInitScript(installMobileDrawErrorObserver);
   const page = await context.newPage(); page.setDefaultTimeout(20000);
   const tapControl = async selector => {
     const control = typeof selector === 'string' ? page.locator(selector).first() : selector;
@@ -136,11 +174,14 @@ try {
   page.on('pageerror', error => report.pageErrors.push(String(error?.stack || error)));
   page.on('console', message => {
     const text = message.text();
-    if (/\[render\] GPU:|\[opening-cook\]|startup failed|\[simLane\]|PRESENTATION STALLED|WebGL.*context/i.test(text)) {
+    const route = activeRoute;
+    const stage = actorStage, at = new Date().toISOString();
+    if (rendererError(text)) noteRendererError(text);
+    if (/\[render\] GPU:|\[opening-cook\]|\[startup\]|startup failed|\[simLane\]|PRESENTATION STALLED|WebGL.*context/i.test(text)) {
       if (report.runtimeMessages.length >= 64) report.runtimeMessages.shift();
-      report.runtimeMessages.push({ type: message.type(), text: text.slice(0, 4000) });
+      report.runtimeMessages.push({ route, actorStage: stage, at, type: message.type(), text: text.slice(0, 4000) });
     }
-    if (/\[SpaceFace\].*(?:startup failed|save restore failed)|SimulationRunner is closed|PRESENTATION STALLED/.test(text)) {
+    if (/\[SpaceFace\].*(?:startup failed|save restore failed)|\[startup\].*(?:cook failed|warmup failed|preparation failed)|SimulationRunner is closed|PRESENTATION STALLED/.test(text)) {
       // Error.message text drops custom readiness code/stage in production. Read the original
       // console arguments; this observes the release route without enabling its mutable debug API.
       const read = boundedBrowserRead(() => Promise.all(message.args().slice(0, 5).map(arg => arg.evaluate(value => {
@@ -158,10 +199,10 @@ try {
         };
         return error(value, 2);
       })))).then(args => {
-        if (report.startupErrors.length < 16) report.startupErrors.push({ source: 'console-error-arguments',
+        if (report.startupErrors.length < 16) report.startupErrors.push({ route, actorStage: stage, at, source: 'console-error-arguments',
           text: text.slice(0, 3000), errors: args.filter(value => value && Object.keys(value).length) });
       }).catch(error => {
-        if (report.startupErrors.length < 16) report.startupErrors.push({ source: 'console-error-arguments',
+        if (report.startupErrors.length < 16) report.startupErrors.push({ route, actorStage: stage, at, source: 'console-error-arguments',
           text: text.slice(0, 3000), unavailable: String(error?.message || error) });
       });
       pendingDiagnosticReads.add(read);
@@ -171,7 +212,7 @@ try {
       console.log(`[mobile:${engine}] ${message.text()}`);
     if (['error', 'warning'].includes(message.type()) && !/was preloaded using link preload/.test(message.text())) {
       if (report.console.length >= 250) report.console.shift();
-      report.console.push({ type: message.type(), text: message.text().slice(0, 3000) });
+      report.console.push({ route, actorStage: stage, at, type: message.type(), text: message.text().slice(0, 3000) });
       console.log(`[mobile:${engine}:${message.type()}] ${message.text().slice(0, 2000)}`);
     }
   });
@@ -189,70 +230,89 @@ try {
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
   report.navigation = { status: navigation?.status(), url: page.url() }; report.html = await boundedBrowserRead(() => page.content());
   const menu = '[data-screen="mainMenu"] button[data-action="newGame"]';
-  const beforeMenu = Date.now();
-  while (!(await visible(page, menu)) && Date.now() - beforeMenu < 180000) {
-    if (await visible(page, '#cinematic-splash .cine-begin'))
-      await tapControl('#cinematic-splash .cine-begin').catch(() => {});
-    const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
-    if (await boundedBrowserRead(() => motion.isVisible()).catch(() => false)) await tapControl(motion);
-    await page.waitForTimeout(1000);
-  }
+  const waitForMenu = async () => {
+    const beforeMenu = Date.now();
+    while (!(await visible(page, menu)) && Date.now() - beforeMenu < 180000) {
+      if (await visible(page, '#cinematic-splash .cine-begin'))
+        await tapControl('#cinematic-splash .cine-begin').catch(() => {});
+      const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
+      if (await boundedBrowserRead(() => motion.isVisible()).catch(() => false)) await tapControl(motion);
+      await page.waitForTimeout(1000);
+    }
+    if (!(await visible(page, menu))) throw new Error('Main menu never became playable');
+  };
+  const waitForFlight = async (route, launchAt) => {
+    const label = route === 'continue' ? 'Continue' : 'New Game';
+    let observations = 0;
+    let leftMenu = false;
+    while (Date.now() - launchAt < 300000) {
+      await page.waitForTimeout(2000);
+      const state = await snapshot(page);
+      const mode = state.runtime?.frame?.mode;
+      if (mode && mode !== 'menu') leftMenu = true;
+      report.observations.push({ route, elapsedMs: Date.now() - launchAt, ...state });
+      if (observations++ % 5 === 0) {
+        console.log(JSON.stringify({ engine, route, elapsedMs: Date.now() - launchAt,
+          loading: state.loading, flight: state.flight,
+          gpu: state.runtime?.gpu, parallelCompile: state.runtime?.parallelCompile,
+          admission: state.runtime?.admission, lastCookStep: state.runtime?.cook?.at(-1) }));
+        await writeFile(join(out, 'progress.json'), JSON.stringify(report, null, 2));
+      }
+      const consoleRows = report.console.filter(entry => entry.route === route);
+      if (consoleRows.some(entry => /\[SpaceFace\].*(?:startup failed|save restore failed)/.test(entry.text))
+          || state.startupObserver?.events?.some(event => event.type === 'game:startFailed'
+            || (event.type === 'save:error' && event.reason === 'load_failed')))
+        throw new Error(`${label} reported a startup-readiness failure; see structured errors and failed asset URLs`);
+      if (/SimulationRunner is closed/.test(state.runtime?.frame?.lastFrameError || '')
+          || consoleRows.some(entry => /SimulationRunner is closed|PRESENTATION STALLED/.test(entry.text)))
+        throw new Error('Game reported a terminal simulation or presentation failure; see runtime and console');
+      if (!state.loading.length && state.launchButton && !state.launchButton.disabled
+          && state.alerts.some(text => /could not finish loading|did not finish preparing|could not start/i.test(text)))
+        throw new Error(`Game refused mobile startup: ${state.alerts.filter(Boolean).join(' ')}`);
+      if (state.flight === '1' && !state.loading.length
+          && Number.isFinite(state.runtime?.post?.firstPlayableFrameAt)) return Date.now() - launchAt;
+      if (leftMenu && mode === 'menu' && !state.loading.length
+          && Date.now() - launchAt > 5000 && await visible(page, menu))
+        throw new Error(`${label} returned to the main menu without entering flight`);
+    }
+    throw new Error(`${label} did not reach mobile flight UI with the loading shell cleared within five minutes`);
+  };
+  await waitForMenu();
   await page.screenshot({ path: join(out, '01-menu.png') });
-  if (!(await visible(page, menu))) throw new Error('Main menu never became playable');
   await boundedBrowserRead(() => page.evaluate(installStartupObserver));
   report.stages.push({ stage: 'menu', ...await snapshot(page) });
   console.log(`[mobile:${engine}] menu ready`);
+  actorStage = 'new-game-menu';
   await tapControl(menu);
   await page.locator('.sf-ng-launch').waitFor({ state: 'visible', timeout: 30000 });
   report.stages.push({ stage: 'new-game', ...await snapshot(page) });
   console.log(`[mobile:${engine}] launching`);
   await page.screenshot({ path: join(out, '02-new-game.png') });
+  actorStage = 'new-game-launch';
   await tapControl('.sf-ng-launch');
-  const launchAt = Date.now(); let reachedFlight = false;
-  while (Date.now() - launchAt < 300000) {
-    await page.waitForTimeout(2000);
-    const state = await snapshot(page); report.observations.push({ elapsedMs: Date.now() - launchAt, ...state });
-    if (report.observations.length % 5 === 1) {
-      console.log(JSON.stringify({ engine, elapsedMs: Date.now() - launchAt,
-        loading: state.loading, flight: state.flight,
-        gpu: state.runtime?.gpu, parallelCompile: state.runtime?.parallelCompile,
-        admission: state.runtime?.admission, lastCookStep: state.runtime?.cook?.at(-1) }));
-      await writeFile(join(out, 'progress.json'), JSON.stringify(report, null, 2));
-    }
-    if (report.console.some(entry => /\[SpaceFace\] new game startup failed/.test(entry.text)))
-      throw new Error('Game reported a startup-readiness failure; see console and failed asset URLs');
-    if (/SimulationRunner is closed/.test(state.runtime?.frame?.lastFrameError || '')
-        || report.console.some(entry => /SimulationRunner is closed|PRESENTATION STALLED/.test(entry.text)))
-      throw new Error('Game reported a terminal simulation or presentation failure; see runtime and console');
-    if (!state.loading.length && state.launchButton && !state.launchButton.disabled
-        && state.alerts.some(text => /could not finish loading|did not finish preparing|could not start/i.test(text)))
-      throw new Error(`Game refused mobile startup: ${state.alerts.filter(Boolean).join(' ')}`);
-    if (state.flight === '1' && !state.loading.length
-        && Number.isFinite(state.runtime?.post?.firstPlayableFrameAt)) {
-      reachedFlight = true; break;
-    }
-    if (Date.now() - launchAt > 5000 && await visible(page, menu))
-      throw new Error('New Game returned to the main menu without entering flight');
-  }
-  report.launchMs = Date.now() - launchAt;
+  report.launchMs = await waitForFlight('new-game', Date.now());
+  actorStage = 'new-game-flight-controls';
   report.stages.push({ stage: 'flight', ...await snapshot(page, true) });
   await page.screenshot({ path: join(out, '03-flight.png') });
-  if (!reachedFlight) throw new Error('New Game did not reach mobile flight UI with the loading shell cleared within five minutes');
   // Only the player-facing DOM is read. Keyboard labels alone are not mobile acceptance.
   for (const selector of ['.mf-gun', '.mf-tether', '.mf-edge', '.mf-pause']) {
     if (!(await visible(page, selector))) throw new Error(`Missing visible touch control: ${selector}`);
   }
+  actorStage = 'new-game-powers';
   await page.locator('.mf-edge').tap();
   await page.locator('.mf-wheel').waitFor({ state: 'visible' });
   await page.screenshot({ path: join(out, '04-powers.png') });
   await page.touchscreen.tap(100, 320);
   await page.locator('.mf-wheel').waitFor({ state: 'hidden' });
+  actorStage = 'new-game-pause';
   await page.locator('.mf-pause').tap();
   await page.locator('[data-screen="pause"]').waitFor({ state: 'visible' });
   report.stages.push({ stage: 'pause', ...await snapshot(page) });
   await page.screenshot({ path: join(out, '05-pause.png') });
+  actorStage = 'new-game-resume';
   await page.locator('[data-screen="pause"] button').filter({ hasText: /^Resume/i }).first().tap();
   await page.locator('[data-screen="pause"]').waitFor({ state: 'hidden' });
+  actorStage = 'new-game-rotation';
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(1500);
   const landscape = await snapshot(page, true); report.stages.push({ stage: 'landscape', ...landscape });
@@ -265,6 +325,7 @@ try {
   }
   if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
   if (report.responses.some(critical)) throw new Error('Runtime script, model or decoder returned an HTTP error');
+  actorStage = 'new-game-post-rotation';
   for (const name of ['renderPackageDigestWorker.js', 'glbPrepassWorker.js']) {
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
     const worker = report.responses.find(r => {
@@ -275,10 +336,46 @@ try {
     if (!worker || !/(javascript|ecmascript)/i.test(worker.mime || ''))
       throw new Error(`Worker not loaded with JavaScript MIME: ${name}`);
   }
-  report.passed = true; // Startup/control contract only; no world-visibility assertion.
-  report.acceptance = { startupAndControls: 'passed', worldVisibility: 'unverified' };
+  report.acceptance.startupAndControls = 'passed';
+  if (checkContinue) {
+    activeRoute = 'continue';
+    actorStage = 'continue-reload';
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await waitForMenu();
+    actorStage = 'continue-menu';
+    await boundedBrowserRead(() => page.evaluate(installStartupObserver));
+    report.stages.push({ stage: 'continue-menu', ...await snapshot(page) });
+    await page.screenshot({ path: join(out, '07-continue-menu.png') });
+    actorStage = 'continue-launch';
+    await boundedBrowserRead(() => page.waitForFunction(() => {
+      const control = document.querySelector('[data-screen="mainMenu"] button[data-action="continue"]');
+      return !!control && !control.disabled && control.getAttribute('aria-disabled') !== 'true';
+    }, null, { timeout: 20000 }));
+    await tapControl('[data-screen="mainMenu"] button[data-action="continue"]');
+    const continueClick = await boundedBrowserRead(() => page.evaluate(() =>
+      window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.()?.lastPublicClick || null));
+    report.continueClick = continueClick;
+    if (continueClick?.action !== 'continue' || continueClick.disabled || continueClick.ariaDisabled === 'true')
+      throw new Error('Continue public tap was not delivered to an enabled Continue control');
+    report.continueLaunchMs = await waitForFlight('continue', Date.now());
+    actorStage = 'continue-flight-controls';
+    report.stages.push({ stage: 'continue-flight', ...await snapshot(page, true) });
+    await page.screenshot({ path: join(out, '08-continue-flight.png') });
+    for (const selector of ['.mf-gun', '.mf-tether', '.mf-pause']) {
+      if (!(await visible(page, selector))) throw new Error(`Continue is missing a visible touch control: ${selector}`);
+    }
+    if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
+    if (report.responses.some(critical)) throw new Error('Runtime script, model or decoder returned an HTTP error');
+    report.acceptance.continue = 'passed';
+  }
+  report.passed = true; // Renderer health is applied below; world visibility remains unverified.
 } catch (error) {
-  report.acceptance.startupAndControls = 'failed';
+  report.failedStage = actorStage;
+  if (activeRoute === 'continue') report.acceptance.continue = 'failed';
+  else {
+    report.acceptance.startupAndControls = 'failed';
+    if (checkContinue) report.acceptance.continue = 'not-run-new-game-failed';
+  }
   report.failure = String(error?.stack || error);
   const page = browser?.contexts()[0]?.pages()[0];
   if (page && !page.isClosed()) {
@@ -288,12 +385,36 @@ try {
   process.exitCode = 1;
 } finally {
   await Promise.allSettled([...pendingDiagnosticReads]);
+  const contextFailures = new Set();
+  let observedInvalidDraws = 0;
+  // Preview contexts are deliberately retired; only loss of the main game canvas fails health.
+  for (const state of [...report.stages, ...report.observations, report.final].filter(Boolean)) {
+    if (drawErrorProbe) observedInvalidDraws = Math.max(observedInvalidDraws,
+      state.drawErrors?.invalidDraws || (state.drawErrors?.witnesses?.length ? 1 : 0));
+    if (state.runtime?.context?.lost === true) contextFailures.add('main WebGL context reported lost');
+    for (const event of state.startupObserver?.events || []) {
+      if (event.canvasId === 'gl-canvas' && ['webglcontextlost', 'webglcontextcreationerror'].includes(event.type))
+        contextFailures.add(`main canvas ${event.type}: ${event.statusMessage || 'no driver message'}`);
+    }
+  }
+  for (const text of contextFailures) noteRendererError(text, 'runtime-context');
+  if (observedInvalidDraws) noteRendererError(
+    `Indexed draw observer recorded INVALID_OPERATION (${observedInvalidDraws} invalid draw(s)); see drawErrors witnesses`,
+    'draw-observer');
+  report.acceptance.rendererHealth = report.rendererErrorCount ? 'failed'
+    : report.acceptance.startupAndControls === 'passed' ? 'passed' : 'unverified';
+  if (report.rendererErrorCount) {
+    report.passed = false;
+    report.failure ||= `Renderer health failed: ${report.rendererErrorCount} concrete WebGL error(s); see rendererErrors`;
+    process.exitCode = 1;
+  }
   // Persist diagnostics before a crashed renderer can stall browser shutdown.
   await writeFile(join(out, 'report.json'), JSON.stringify(report, null, 2));
   await Promise.race([browser?.close(), new Promise(resolve => {
     const timer = setTimeout(resolve, 5000); timer.unref();
   })]);
-  console.log(JSON.stringify({ engine, passed: report.passed, launchMs: report.launchMs,
+  console.log(JSON.stringify({ engine, passed: report.passed, acceptance: report.acceptance,
+    launchMs: report.launchMs, continueLaunchMs: report.continueLaunchMs, rendererErrorCount: report.rendererErrorCount,
     failure: report.failure, final: report.final, pageErrors: report.pageErrors,
     failedHttp: report.responses.filter(r => r.status >= 400) }, null, 2));
 }
