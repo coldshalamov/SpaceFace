@@ -188,3 +188,60 @@ test('a frame returning to full resolution drops the CAS pass without losing rtP
     bloom.dispose();
   }
 });
+
+test('opening preparation links every composite output variant before full-res and CAS presentation', async () => {
+  for (const belowDisplayResolution of [false, true]) {
+    const { renderer } = rendererHarness();
+    const programs = new Map();
+    let links = 0;
+    const link = (scene) => {
+      const material = scene.children?.[0]?.material;
+      if (!material) return;
+      // Three's program key includes the target output color space: ordinary offscreen targets
+      // use working space, while the default framebuffer uses renderer.outputColorSpace.
+      const space = renderer.getRenderTarget() ? 'working' : 'canvas';
+      let variants = programs.get(material);
+      if (!variants) programs.set(material, variants = new Set());
+      if (!variants.has(space)) { variants.add(space); links += 1; }
+    };
+    renderer.initRenderTarget = () => {};
+    renderer.compile = link;
+    const render = renderer.render;
+    renderer.render = (scene, camera) => { link(scene); render(scene, camera); };
+    const bloom = createBloom(renderer, 640, 360);
+    try {
+      bloom.setSize(640, 360, belowDisplayResolution ? 1280 : 640, belowDisplayResolution ? 720 : 360);
+      await bloom.prepareResources();
+      const composite = bloom.openingProgramMaterials()[1];
+      assert.equal(programs.get(composite).has('canvas'), true);
+      assert.equal(programs.get(composite).has('working'), belowDisplayResolution,
+        'only an existing CAS intermediate target requires the offscreen composite variant');
+      const warmedLinks = links;
+      bloom.render({ kind: 'scene' }, { kind: 'camera' });
+      assert.equal(links, warmedLinks, 'the first real composite/CAS pass must not link another program');
+    } finally {
+      bloom.dispose();
+    }
+  }
+});
+
+test('a failed CAS composite warm restores the exact prior renderer target', async () => {
+  const { renderer } = rendererHarness();
+  renderer.initRenderTarget = () => {};
+  const bloom = createBloom(renderer, 640, 360);
+  try {
+    bloom.setSize(640, 360, 1280, 720);
+    const composite = bloom.openingProgramMaterials()[1];
+    renderer.compile = (scene) => {
+      if (scene.children[0].material === composite && renderer.getRenderTarget()) {
+        throw new Error('CAS intermediate compile failed');
+      }
+    };
+    const priorTarget = { name: 'pre-existing-render-target' };
+    renderer.setRenderTarget(priorTarget);
+    await assert.rejects(bloom.prepareResources(), /CAS intermediate compile failed/);
+    assert.strictEqual(renderer.getRenderTarget(), priorTarget);
+  } finally {
+    bloom.dispose();
+  }
+});

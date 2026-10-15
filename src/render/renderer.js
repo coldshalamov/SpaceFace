@@ -15299,16 +15299,6 @@ export const render = {
       // still ran the unguarded window below (player re-derive, rockHit query,
       // promote loop) under dead authority before the :10353-era guard.
       if (cookStale()) return cookSuperseded;
-      if (opening && opening.settled !== true) {
-        console.warn('[render] opening composition still pending at live-sector cook', {
-          pending: opening.pending,
-          ids: opening.ids,
-          statuses: opening.statuses,
-          reason: opening.reason,
-          queue: opening.queue,
-          upgrades,
-        });
-      }
       state.render.openingCompositionSettle = opening;
       // Opening composition is ships/places. Nearby 47-A payloads sit on the
       // table and first-draw in flight unless they are built here.
@@ -17020,6 +17010,21 @@ export const render = {
             statuses: finalOpening?.statuses?.slice(0, 6).join('/'),
           });
         state.render.openingCompositionSettle = finalOpening;
+      }
+      if (opening?.settled !== true || finalOpening?.settled !== true) {
+        const recovered = finalOpening?.settled === true;
+        const report = recovered ? console.info : console.warn;
+        report.call(console, recovered
+          ? '[render] opening composition recovered after initial live-sector wait'
+          : '[render] opening composition still pending at final live-sector cook', {
+          pending: opening?.pending,
+          ids: opening?.ids,
+          statuses: opening?.statuses,
+          reason: opening?.reason,
+          queue: opening?.queue,
+          upgrades,
+          final: { settled: recovered, pending: finalOpening?.pending, reason: finalOpening?.reason },
+        });
       }
       if (finalOpening?.settled === true) {
         this._sessionLiveSectorCookedId = sectorId;
@@ -30805,6 +30810,7 @@ export const render = {
             reason: 'missing-opening-submission-receipt',
             uncaptured: ['plan'],
           };
+        const priorPreSubmitValidation = this.state.render.openingSubmissionPreSubmitValidation;
         this.state.render.openingSubmissionPreSubmitValidation = preSubmitValidation;
         if (!preSubmitValidation.ok) {
           // Only program identities can be missing-and-needed: a required program key absent
@@ -30823,9 +30829,9 @@ export const render = {
           if (missingCount > 0) {
             this.state.render.openingSubmissionValidation = preSubmitValidation;
             // The gate re-probes the same bindings against the live renderer on every refused
-            // frame and reopens the moment deferred compiles land. A first refusal is the designed
-            // recovery path (drain below) and resolves within a frame or two, so it warns rather
-            // than errors; a persistent refusal still errors via the compact heartbeat — a 10KB
+            // frame and reopens the moment deferred compiles land. A first refusal is expected
+            // recovery progress (drain below), so report it informationally while the picture is
+            // held closed; a persistent refusal still errors via the compact heartbeat — a 10KB
             // console.error per frame is its own stall.
             const refusals = (this._openingPreSubmitRefusals || 0) + 1;
             this._openingPreSubmitRefusals = refusals;
@@ -30844,7 +30850,7 @@ export const render = {
                 missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
                 refusedFrames: refusals,
               };
-              (refusals === 1 ? console.warn : console.error)(
+              (refusals === 1 ? console.info : console.error)(
                 `[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`,
               );
             }
@@ -30949,6 +30955,14 @@ export const render = {
               extrasOnly: true,
             };
           }
+        }
+        // A refused frame stores its pre-submit failure in the final slot. Once that exact
+        // failure recovers, allow the real submitted-picture validation to replace it. A
+        // separately produced post-submit failure has different identity and stays intact.
+        if (priorPreSubmitValidation?.ok === false
+            && this.state.render.openingSubmissionValidation === priorPreSubmitValidation
+            && this.state.render.openingSubmissionPreSubmitValidation?.ok === true) {
+          this.state.render.openingSubmissionValidation = null;
         }
       }
       // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so

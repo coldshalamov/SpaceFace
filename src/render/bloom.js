@@ -2662,6 +2662,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);
       if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+      if (rtPost) {
+        // CAS presents the composite through this target. Its output-color-space key differs
+        // from the canvas variant, so link it here before the first sharpened frame.
+        renderer.setRenderTarget(rtPost);
+        if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+        renderer.setRenderTarget(null);
+      }
       // Every openingProgramMaterials() entry must be linked here: the opening submission gate
       // refuses the first picture until each one holds a program. casMat was listed but never
       // compiled, so every New Game sat on the gate's 15 s failsafe
