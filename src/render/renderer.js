@@ -13601,7 +13601,12 @@ export const render = {
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
-      if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+      // No-KHR route (path b): upload each root's textures/geometry as it commits, the way the
+      // KHR route does, so the opening residency pass at flight finds them resident instead of
+      // uploading the whole first picture in the first flight seconds. Uploads are per-texture
+      // idempotent, so the plan's own walk later only re-checks.
+      if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+          && state.render.loadingRootAdmissionFlush === false) {
         return Promise.resolve({
           skipped: true,
           reason: 'opening-submission-plan-owns-first-picture',
