@@ -7,9 +7,10 @@ const source = readFileSync(new URL('../scripts/probe-deployed-mobile.mjs', impo
 const flightSource = source.slice(source.indexOf('  const waitForFlight = '), source.indexOf('\n  await waitForMenu();'));
 const state = (mode, loading = []) => ({ loading, alerts: [], runtime: { frame: { mode } } });
 
-async function replay(states, { errors = [], menuVisible = true } = {}) {
+async function replay(states, { errors = [], menuVisible = true, click = null, baseline = [] } = {}) {
   let now = 0, index = 0;
-  const report = { observations: [], console: errors };
+  const report = { observations: [], console: errors, continueClick: click,
+    stages: [{ stage: 'continue-menu', simLaneEvents: baseline }] };
   const scope = { Date: { now: () => now }, report, engine: 'fixture', out: '', menu: 'menu',
     console: { log() {} }, join: () => '', writeFile: async () => {},
     page: { waitForTimeout: async ms => { now += ms; } },
@@ -51,6 +52,38 @@ test('playable flight and explicit startup failures retain their existing verdic
   assert.equal(failed.now, 2000);
 });
 
+test('a new post-click save rejection fails promptly with the existing hidden feedback', async () => {
+  const baseline = ['save:store-synced'];
+  const click = { action: 'continue', isTrusted: true, disabled: false, ariaDisabled: null,
+    at: 100, simLaneEventsBeforeClick: baseline };
+  const rejected = { ...state('menu'), simLaneEvents: [...baseline, 'save:error'],
+    toastLive: 'Autosave is corrupt or not a SpaceFace save',
+    toasts: ['Autosave is corrupt or not a SpaceFace save'] };
+  const result = await replay([rejected], { click, baseline });
+  assert.match(result.error.message, /new save:error after its accepted click: Autosave is corrupt/);
+  assert.equal(result.now, 2000);
+  assert.deepEqual([...result.report.continueRejection.feedback], [rejected.toastLive]);
+  assert.deepEqual([...result.report.continueRejection.appendedEvents], ['save:error']);
+});
+
+test('historical save errors and unaccepted clicks cannot become a new Continue rejection', async () => {
+  const baseline = ['save:store-synced', 'save:error'];
+  const click = { action: 'continue', isTrusted: true, disabled: false, ariaDisabled: null,
+    at: 100, simLaneEventsBeforeClick: baseline };
+  const historical = { ...state('menu'), simLaneEvents: [...baseline, 'contactHail:availability'],
+    startupObserver: { events: [{ type: 'save:error', reason: 'load_failed', at: 50 }] } };
+  const pending = await replay([historical], { click, baseline });
+  assert.equal(pending.now, 300000);
+  assert.match(pending.error.message, /within five minutes/);
+  assert.equal(pending.report.continueRejection, undefined);
+  const unaccepted = await replay([{ ...state('menu'), simLaneEvents: [...baseline, 'save:error'] }],
+    { click: { ...click, isTrusted: false }, baseline });
+  assert.equal(unaccepted.now, 300000);
+  assert.equal(unaccepted.report.continueRejection, undefined);
+  const repeated = await replay([{ ...state('menu'), simLaneEvents: [...baseline, 'save:error'] }], { click, baseline });
+  assert.equal(repeated.now, 2000, 'a second save:error is new even when the baseline already contained one');
+});
+
 test('public click receipt survives heartbeat eviction and is removed with observer cleanup', () => {
   const listeners = new Map(), bus = new Map();
   const document = {
@@ -59,6 +92,7 @@ test('public click receipt survives heartbeat eviction and is removed with obser
   };
   const scope = { document, performance: { now: () => 100 }, window: {
     __SF_WITNESS__: { snapshot: () => ({ mode: 'menu' }) },
+    __SF_LANE_APPLIED: ['save:store-synced', 'save:error'],
     SF: { bus: { on(type, listener) { bus.set(type, listener); return () => bus.delete(type); } } },
   } };
   const observerSource = source.slice(source.indexOf('function installStartupObserver()'), source.indexOf('\nconst snapshotBase'));
@@ -74,6 +108,9 @@ test('public click receipt survives heartbeat eviction and is removed with obser
   assert.equal(snapshot.lastPublicClick.isTrusted, true);
   assert.equal(snapshot.lastPublicClick.disabled, false);
   assert.equal(snapshot.lastPublicClick.mode, 'menu');
+  assert.deepEqual([...snapshot.lastPublicClick.simLaneEventsBeforeClick], ['save:store-synced', 'save:error']);
+  snapshot.lastPublicClick.simLaneEventsBeforeClick.push('mutated');
+  assert.equal(api.snapshot().lastPublicClick.simLaneEventsBeforeClick.length, 2);
   snapshot.lastPublicClick.action = 'mutated';
   assert.equal(api.snapshot().lastPublicClick.action, 'continue');
   api.stop();

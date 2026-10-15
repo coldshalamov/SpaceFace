@@ -85,13 +85,17 @@ function installStartupObserver() {
       text: String(control.textContent || '').slice(0, 200), disabled: control.disabled === true,
       ariaDisabled: control.getAttribute('aria-disabled'), isTrusted: event.isTrusted,
       clientX: event.clientX, clientY: event.clientY,
-      mode: window.__SF_WITNESS__?.snapshot?.()?.mode ?? window.SF?.state?.mode ?? null };
+      mode: window.__SF_WITNESS__?.snapshot?.()?.mode ?? window.SF?.state?.mode ?? null,
+      // Capture before the target action runs, so old errors cannot become new rejections.
+      simLaneEventsBeforeClick: Array.isArray(window.__SF_LANE_APPLIED)
+        ? window.__SF_LANE_APPLIED.slice(-96).filter(type => typeof type === 'string').map(type => type.slice(0, 200)) : [] };
   };
   document.addEventListener('click', publicClick, true);
   unsubs.push(() => document.removeEventListener('click', publicClick, true));
   window.__SF_MOBILE_STARTUP_OBSERVER__ = {
     snapshot: () => ({ busAvailable: typeof bus?.on === 'function', events: events.slice(),
-      lastPublicClick: lastPublicClick ? { ...lastPublicClick } : null }),
+      lastPublicClick: lastPublicClick ? { ...lastPublicClick,
+        simLaneEventsBeforeClick: lastPublicClick.simLaneEventsBeforeClick.slice() } : null }),
     stop() { for (const off of unsubs) if (typeof off === 'function') off(); },
   };
 }
@@ -115,6 +119,8 @@ const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
     loading: [...document.querySelectorAll('[data-loading-label], [data-loading-detail]')].filter(shown).map(e => e.textContent),
     screens: [...document.querySelectorAll('[data-screen]')].filter(shown).map(e => e.dataset.screen),
     alerts: [...document.querySelectorAll('[role="alert"], .boot-error')].filter(shown).map(e => e.textContent),
+    toastLive: (document.getElementById('toast-live')?.textContent || '').slice(0, 3000),
+    toasts: [...document.querySelectorAll('.sf-toast__text')].slice(-4).map(e => (e.textContent || '').slice(0, 3000)),
     startupObserver: window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.() || null,
     simLaneEvents: Array.isArray(window.__SF_LANE_APPLIED)
       ? window.__SF_LANE_APPLIED.slice(-96).filter(type => typeof type === 'string').map(type => type.slice(0, 200)) : null,
@@ -266,6 +272,11 @@ try {
     const label = route === 'continue' ? 'Continue' : 'New Game';
     let observations = 0;
     let leftMenu = false;
+    const click = report.continueClick;
+    const acceptedContinue = route === 'continue' && click?.action === 'continue'
+      && click.isTrusted === true && !click.disabled && click.ariaDisabled !== 'true';
+    let previousEvents = acceptedContinue ? click.simLaneEventsBeforeClick
+      ?? report.stages?.findLast(stage => stage.stage === 'continue-menu')?.simLaneEvents ?? [] : [];
     while (Date.now() - launchAt < 300000) {
       await page.waitForTimeout(2000);
       const state = await snapshot(page);
@@ -279,10 +290,31 @@ try {
           admission: state.runtime?.admission, lastCookStep: state.runtime?.cook?.at(-1) }));
         await writeFile(join(out, 'progress.json'), JSON.stringify(report, null, 2));
       }
+      let appendedEvents = [];
+      if (acceptedContinue && Array.isArray(state.simLaneEvents)) {
+        // This buffer is a bounded suffix: match its overlap so old errors stay historical.
+        let overlap = Math.min(previousEvents.length, state.simLaneEvents.length);
+        for (; overlap > 0; overlap--) {
+          let matches = true;
+          for (let i = 0; i < overlap; i++) {
+            if (previousEvents[previousEvents.length - overlap + i] !== state.simLaneEvents[i]) { matches = false; break; }
+          }
+          if (matches) break;
+        }
+        appendedEvents = state.simLaneEvents.slice(overlap);
+        previousEvents = state.simLaneEvents;
+      }
+      if (acceptedContinue && (appendedEvents.includes('save:error')
+          || state.startupObserver?.events?.some(event => event.type === 'save:error' && event.at > click.at))) {
+        const feedback = [...new Set([state.toastLive, ...(state.toasts || [])].filter(Boolean))];
+        report.continueRejection = { elapsedMs: Date.now() - launchAt, feedback, appendedEvents };
+        throw new Error(`Continue received a new save:error after its accepted click${feedback.length
+          ? ': ' + feedback.join(' | ') : '; save feedback unavailable'}`);
+      }
       const consoleRows = report.console.filter(entry => entry.route === route);
       if (consoleRows.some(entry => /\[SpaceFace\].*(?:startup failed|save restore failed)/.test(entry.text))
           || state.startupObserver?.events?.some(event => event.type === 'game:startFailed'
-            || (event.type === 'save:error' && event.reason === 'load_failed')))
+            || (route !== 'continue' && event.type === 'save:error' && event.reason === 'load_failed')))
         throw new Error(`${label} reported a startup-readiness failure; see structured errors and failed asset URLs`);
       if (/SimulationRunner is closed/.test(state.runtime?.frame?.lastFrameError || '')
           || consoleRows.some(entry => /SimulationRunner is closed|PRESENTATION STALLED/.test(entry.text)))
