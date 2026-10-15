@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +18,7 @@ import {
   UI_KNOWN_RAF_SCOPE,
   aggregateBudgetRows,
   uiSourceDigest,
+  uiSourceDigestFromOverlay,
 } from './lib/uiBudgets.mjs';
 // The pseudo-locale is the game's OWN (src/localization/runtime.js), not a string the harness
 // invents: a capture that boots a locale the game does not implement would photograph the English
@@ -25,7 +27,23 @@ import {
 import { PSEUDO_LOCALE, pseudoLocalize } from '../src/localization/runtime.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
 const DEFAULT_OUTPUT_DIR = path.join(ROOT, '.devshots', 'ui-matrix');
+
+export function assertCaptureSourceOverlayIdentity(expected, observed) {
+  const identity = {};
+  for (const field of ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']) {
+    if (observed?.[field] !== expected?.[field]) throw new Error(`UI capture served source overlay ${field} differs from the requested manifest`);
+    identity[field] = observed[field];
+  }
+  return identity;
+}
+
+async function readCaptureSourceOverlayIdentity(baseUrl, expected) {
+  const response = await fetch(new URL('/__source_overlay_identity', baseUrl), { signal: AbortSignal.timeout(5000) });
+  if (!response.ok) throw new Error(`UI capture source overlay identity unavailable: HTTP ${response.status}`);
+  return assertCaptureSourceOverlayIdentity(expected, await response.json());
+}
 
 // PQ-184.00 budget columns: the probe reads cost nothing unless the run asks for budgets, so the
 // 408-frame reference matrix keeps its exact cost. A budgets run samples BUDGET_SAMPLE_MS of real
@@ -357,6 +375,21 @@ export function frameFileName({ surface, mode, width, height }) {
 }
 
 export async function captureUiMatrix(options = {}) {
+  // --baseline-source freezes served bytes, not just the digest label. The ordinary capture
+  // continues to serve and hash the filesystem, including its ignored stray-file inputs.
+  const sourceManifest = options.baselineSource ? path.resolve(ROOT, options.baselineSource) : null;
+  let sourceOverlay = null, frozenUiDigest = null;
+  if (sourceManifest) {
+    if (!path.relative(ROOT, sourceManifest).replaceAll('\\', '/').startsWith('.devshots/')) {
+      throw new Error('--baseline-source must name an ignored manifest under .devshots/');
+    }
+    const raw = JSON.parse(readFileSync(sourceManifest, 'utf8'));
+    if (raw.workingTree !== false || !String(raw.sourceMode || '').startsWith('git-commit')) {
+      throw new Error('UI capture --baseline-source requires frozen Git-commit bytes');
+    }
+    sourceOverlay = loadSourceOverlayManifest(raw);
+    frozenUiDigest = uiSourceDigestFromOverlay(ROOT, sourceOverlay);
+  }
   const outputDir = path.resolve(options.outputDir || DEFAULT_OUTPUT_DIR);
   const budgetsOut = options.budgetsOut
     ? path.resolve(options.budgetsOut)
@@ -407,7 +440,12 @@ export async function captureUiMatrix(options = {}) {
   const { chromium } = await loadPlaywright();
   // Server first, browser second, and the server is torn down if the browser never starts — a
   // stranded node server would hold its port for every later run.
-  const server = await startFreshServer();
+  const server = await startFreshServer({ sourceOverlayManifest: sourceManifest });
+  let servedAtStart = null, servedAtEnd = null;
+  if (sourceOverlay) {
+    try { servedAtStart = await readCaptureSourceOverlayIdentity(server.baseUrl, sourceOverlay.identity); }
+    catch (error) { server.kill(); throw error; }
+  }
   let browser = null;
   try {
     browser = await chromium.launch({
@@ -609,6 +647,7 @@ export async function captureUiMatrix(options = {}) {
         }
       }
     }
+    if (sourceOverlay) servedAtEnd = await readCaptureSourceOverlayIdentity(server.baseUrl, sourceOverlay.identity);
   } finally {
     await browser.close().catch(() => {});
     server.kill();
@@ -688,6 +727,11 @@ export async function captureUiMatrix(options = {}) {
     referencesKept: uniqueCaptures.filter((c) => c.reference === 'kept').length,
     referenceDir: UI_FRAME_REFERENCE_DIR,
     frames: plan.length,
+    ...(sourceOverlay ? { sourceOverlay: {
+      manifest: path.relative(ROOT, sourceManifest).replaceAll('\\', '/'),
+      requested: assertCaptureSourceOverlayIdentity(sourceOverlay.identity, sourceOverlay.identity),
+      servedAtStart, servedAtEnd,
+    } } : {}),
     renderer: options.headed === true
       ? 'headed Chromium (host GPU)'
       : 'headless Chromium (SwiftShader software rendering — not performance acceptance evidence)',
@@ -740,7 +784,8 @@ export async function captureUiMatrix(options = {}) {
       excluded: 'browser layout/paint deferred after the owner callback is outside this CPU window; '
         + 'unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics',
       seed: UI_MATRIX_SEED,
-      uiSourceDigest: uiSourceDigest(ROOT),
+      uiSourceDigest: frozenUiDigest || uiSourceDigest(ROOT),
+      ...(sourceOverlay ? { sourceOverlay: result.sourceOverlay } : {}),
       surfaces,
       missing,
     };
@@ -2463,12 +2508,16 @@ async function findFreePort(start) {
   throw new Error('no free probe port');
 }
 
-export async function startFreshServer() {
+export async function startFreshServer({ sourceOverlayManifest = null } = {}) {
   for (let attempt = 1; attempt <= 6; attempt += 1) {
     const seedPort = 16000 + Math.floor(Math.random() * 32000);
     const port = await findFreePort(seedPort);
     const baseUrl = `http://127.0.0.1:${port}/`;
-    const child = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
+    const child = spawn(process.execPath, ['server.js', String(port)], {env: {
+      ...process.env, SPACEFACE_PLAYER_STORE_DIR: '',
+      SPACEFACE_PROBE_SOURCE_OVERLAY: sourceOverlayManifest ? '1' : '',
+      SPACEFACE_BASELINE_SOURCE_MANIFEST: sourceOverlayManifest || '',
+    },
       cwd: ROOT,
       stdio: ['ignore', 'ignore', 'ignore'],
       windowsHide: true,
@@ -2517,6 +2566,7 @@ export function parseArgs(argv) {
     restTwinDir: (argv.find((a) => a.startsWith('--rest-twin=')) || '').slice('--rest-twin='.length) || null,
     outputDir: (argv.find((a) => a.startsWith('--out=')) || '').slice('--out='.length) || null,
     budgetsOut: (argv.find((a) => a.startsWith('--budgets-out=')) || '').slice('--budgets-out='.length) || null,
+    baselineSource: (argv.find((a) => a.startsWith('--baseline-source=')) || '').slice('--baseline-source='.length) || null,
     filter: {
       surfaces: list('--only='),
       modes: list('--mode='),
@@ -2538,6 +2588,7 @@ async function runCli() {
     restTwinDir: args.restTwinDir,
     filter: args.filter,
     budgetsOut: args.budgetsOut,
+    baselineSource: args.baselineSource,
   });
   console.log(`capture:ui-matrix complete — ${result.frames} frames planned, ${result.captures.length} produced`);
   if (args.updateReferences || args.fillMissingOnly) {

@@ -8,6 +8,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -43,11 +44,14 @@ import {
   UI_FRAME_REFERENCE_DIR,
   UI_MATRIX_GROUND,
   UI_MATRIX_SEED,
+  assertCaptureSourceOverlayIdentity,
   buildFramePlan,
   frameFileName,
   isFrameCurrent,
   labelCandidates,
   normalizeFrameFilter,
+  parseArgs,
+  startFreshServer,
 } from '../scripts/capture-ui-matrix.mjs';
 import { PSEUDO_LOCALE, pseudoLocalize } from '../src/localization/runtime.js';
 import {
@@ -65,6 +69,45 @@ import {
   loadFloors,
   remedyForSurface,
 } from '../scripts/lib/ui-frame-regression.mjs';
+
+test('UI capture baseline-source parsing is opt-in and served identity mismatches fail closed', () => {
+  assert.equal(parseArgs([]).baselineSource, null);
+  assert.equal(parseArgs(['--baseline-source=.devshots/source-baselines/ui.json']).baselineSource,
+    '.devshots/source-baselines/ui.json');
+  const expected = { schema: 'spaceface.sourceBaseline.v1', sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: 'b'.repeat(64), fileCount: 2, totalBytes: 20 };
+  assert.deepEqual(assertCaptureSourceOverlayIdentity(expected, { ...expected, files: [] }), expected);
+  for (const field of Object.keys(expected)) {
+    assert.throws(() => assertCaptureSourceOverlayIdentity(expected, { ...expected, [field]: 'changed' }), /differs/);
+  }
+  assert.throws(() => assertCaptureSourceOverlayIdentity(expected, null), /differs/);
+});
+
+test('UI capture server serves selected immutable bytes with the asserted overlay identity', async (t) => {
+  const folder = mkdtempSync(path.join(tmpdir(), 'spaceface-ui-capture-overlay-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const { sourceOverlayDigest } = createRequire(import.meta.url)('../scripts/lib/gameServer.cjs');
+  const body = Buffer.from('<html>frozen UI capture source</html>');
+  const files = [{ path: 'index.html', bytes: body.length,
+    sha256: createHash('sha256').update(body).digest('hex'), contentBase64: body.toString('base64') }];
+  const manifest = { schema: 'spaceface.sourceBaseline.v1', sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: sourceOverlayDigest(files), files };
+  const file = path.join(folder, 'source.json');
+  writeFileSync(file, JSON.stringify(manifest));
+  const server = await startFreshServer({ sourceOverlayManifest: file });
+  t.after(() => server.kill());
+  const response = await fetch(server.baseUrl);
+  assert.equal(await response.text(), body.toString());
+  assert.equal(response.headers.get('x-spaceface-source-file-sha256'), files[0].sha256);
+  const identity = await (await fetch(new URL('/__source_overlay_identity', server.baseUrl))).json();
+  assert.deepEqual(assertCaptureSourceOverlayIdentity({
+    schema: manifest.schema, sourceCommit: manifest.sourceCommit,
+    sourceOverlayDigest: manifest.sourceOverlayDigest, fileCount: 1, totalBytes: body.length,
+  }, identity), {
+    schema: manifest.schema, sourceCommit: manifest.sourceCommit,
+    sourceOverlayDigest: manifest.sourceOverlayDigest, fileCount: 1, totalBytes: body.length,
+  });
+});
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
