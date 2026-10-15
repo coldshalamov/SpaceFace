@@ -1051,7 +1051,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         const touch = () => touchMany(group);
         touched = submitSerial
           ? await submitSerial(touch, submitAdmission)
-          : (strict ? await touch() : touch());
+          : await touch();
         reportTouchResult(touched, `touch group ${index}`);
       } catch (error) {
         touchError = error;
@@ -1072,7 +1072,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         const touch = () => (touchOne ? touchOne(ordered[index]) : null);
         touched = submitSerial
           ? await submitSerial(touch, submitAdmission)
-          : (strict ? await touch() : touch());
+          : await touch();
         reportTouchResult(touched, `touch ${index}`);
       } catch (error) {
         touchError = error;

@@ -5,13 +5,16 @@ import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import * as THREE from 'three';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
+import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { createPhaseBlinkPresentation } from '../src/render/phaseBlinkPresentation.js';
+import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, touchSubmitNode, touchFacadeNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
 function walk(node) {
   if (!node || typeof node !== 'object') return;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorAfterJump') cookNode = node.right;
@@ -24,6 +27,9 @@ function walk(node) {
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'beginOpeningLoadingAdmission') loadingNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareOpeningFirstPicture') pictureNode = node.right;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'submitExactSubjectTouch') touchSubmitNode = node.init;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'touchExactTargetSubjects') groupTouchNode = node.init;
+  if (node.type === 'ObjectProperty' && node.key?.name === 'touchMany'
+      && source.slice(node.value.start, node.value.end).includes('settleDrawableSession')) settleTouchManyNode = node.value;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'touchSubjectExactTarget') touchFacadeNode = node.right;
   if (node.type === 'CallExpression' && node.callee?.name === 'onBus' && node.arguments?.[0]?.value === 'sector:enter') enterNode = node.arguments[1];
   for (const value of Object.values(node)) {
@@ -45,6 +51,8 @@ const loadingCode = source.slice(loadingNode.start, loadingNode.end);
 const pictureCode = source.slice(pictureNode.start, pictureNode.end);
 const touchSubmitCode = source.slice(touchSubmitNode.start, touchSubmitNode.end);
 const touchFacadeCode = source.slice(touchFacadeNode.start, touchFacadeNode.end);
+const groupTouchCode = source.slice(groupTouchNode.start, groupTouchNode.end);
+const settleTouchManyCode = source.slice(settleTouchManyNode.start, settleTouchManyNode.end);
 function evaluate(code, owner, values) {
   const env = new Proxy(values, {
     has: (target, key) => key in target || key in globalThis,
@@ -119,6 +127,62 @@ test('the actual submit callback restores visibility/count/range before a touch 
   const rejected = assert.rejects(touch, /injected-native-touch-failure/);
   f.assertRestored(); await f.runNext(); await rejected; f.assertRestored();
 });
+
+for (const failDraw of [false, true]) {
+  test('actual grouped touches keep real idle Phase Blink and beam roots hidden across async preparation; rejection=' + failDraw, async () => {
+    const scene = new THREE.Scene();
+    let blinkEvent;
+    const blink = createPhaseBlinkPresentation();
+    blink.attach(scene, { on(_event, handler) { blinkEvent = handler; }, off() {} });
+    const rifts = scene.children.filter(root => root.children.length === 3 && root.children[2].children.length === 6);
+    assert.equal(rifts.length, 6, 'the production owner creates six idle rifts');
+    const beams = new PersistentCombatBeamPool(THREE, { maxBeams: 2 });
+    scene.add(beams.group);
+    const roots = [...rifts, beams.group];
+    const initial = [];
+    scene.traverse(node => initial.push({ node, visible: node.visible, frustumCulled: node.frustumCulled,
+      count: node.count, range: node.geometry?.drawRange ? { ...node.geometry.drawRange } : null }));
+    const restored = () => {
+      for (const prior of initial) {
+        assert.equal(prior.node.visible, prior.visible, 'warm does not publish a temporary visibility bit');
+        assert.equal(prior.node.frustumCulled, prior.frustumCulled);
+        assert.equal(prior.node.count, prior.count);
+        if (prior.range) assert.deepEqual(prior.node.geometry.drawRange, prior.range);
+      }
+    };
+    const stamp = deferred(), draws = [];
+    const renderer = { autoClear: true, getRenderTarget: () => null, setRenderTarget() {},
+      render() { draws.push(roots.filter(root => root.visible)); if (failDraw) throw new Error('injected grouped draw failure'); } };
+    const owner = {};
+    const values = { renderer, scene, cam: { obj: new THREE.PerspectiveCamera() }, revealSubjectWithAncestors,
+      stampSubjectEnvAsync: async () => stamp.promise, touchSubjectOnExactTarget, settleDrawableSession: null };
+    values.touchExactTargetSubjects = evaluate(groupTouchCode, owner, values);
+    const touchMany = evaluate(settleTouchManyCode, owner, values);
+    try {
+      const first = touchMany([...rifts.map(root => root.children[0]), beams.core]);
+      const second = touchMany([...rifts.map(root => root.children[2].children[0]), beams.halo]);
+      const waitingVisibility = roots.map(root => root.visible);
+      stamp.resolve();
+      const results = await Promise.allSettled([first, second]);
+      assert.deepEqual(waitingVisibility, roots.map(() => false), 'environment stamping never holds an idle ancestor revealed');
+      assert.equal(draws.length, 2, 'each prepared group submits exactly once');
+      assert.ok(draws.every(drawnRoots => drawnRoots.length === 7), 'each synchronous native draw sees all of its exact subjects');
+      assert.ok(results.every(result => result.status === (failDraw ? 'rejected' : 'fulfilled')));
+      if (failDraw) assert.ok(results.every(result => /injected grouped draw failure/.test(result.reason.message)));
+      restored();
+      // The repair owns warm state only: the real effect owners can still activate after loading.
+      const liveState = { simTime: 0, entities: new Map(), settings: {} };
+      blinkEvent({ from: { x: 0, z: 0 }, to: { x: 50, z: 0 }, rot: 0 });
+      blink.sync(liveState, null, null, 0);
+      assert.equal(rifts.filter(root => root.visible).length, 2, 'departure and arrival remain reachable');
+      beams.upsert({ beamKey: 'ship:beam', ownerId: 'ship', weaponId: 'beam', phase: 'begin',
+        from: { x: 0, z: 0 }, to: { x: 10, z: 0 } }, 1);
+      beams.update(1, (x, z, out) => { out.x = x; out.z = z; return out; });
+      assert.equal(beams.group.visible, true, 'a real beam still activates its pool');
+      assert.equal(beams.activeCount, 1);
+    } finally { blink.dispose(); beams.dispose(); }
+  });
+}
 
 test('the actual first-picture facade forwards the readiness cancellation guard to its renderer owner', async () => {
   let active = true;

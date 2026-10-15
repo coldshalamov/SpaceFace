@@ -12272,14 +12272,11 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening admission');
             const restore = revealSubjectForCompile(subject);
             try {
-              // The cohort may yield before awaiting this compile. Observe the cleanup child
-              // immediately too; observing only the parent's promise leaves this one exposed.
-              return observePipelineAdmission(
-                Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)).finally(restore),
-              );
-            } catch (error) {
+              // Three traverses and issues the compile synchronously; the returned Promise
+              // only waits for driver readiness. Never hold the reveal during that wait.
+              return observePipelineAdmission(this._compilePostRoute(route, subject, cam.obj, scene));
+            } finally {
               restore();
-              throw error;
             }
           },
           touchOne: (subject) => {
@@ -12921,10 +12918,19 @@ export const render = {
       const list = (Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean);
       if (list.length === 0) return { skipped: true, reason: 'empty touch group' };
       for (const subject of list) await stampSubjectEnvAsync(subject);
-      if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
-        return this.bloom.touchScenePipelines(list, cam.obj, scene, { drawableSession });
+      // Environment preparation can suspend behind other admission producers. Reveal only
+      // around the synchronous submitted draw: another group must never capture these
+      // ancestors' temporary warm visibility as their live state (idle rifts/beam pools).
+      const restores = [];
+      try {
+        for (const subject of list) restores.push(revealSubjectWithAncestors(subject));
+        if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
+          return this.bloom.touchScenePipelines(list, cam.obj, scene, { drawableSession });
+        }
+        return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
+      } finally {
+        for (let index = restores.length - 1; index >= 0; index--) restores[index]();
       }
-      return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
     // The session mint is an O(scene) drawable enumeration — pace its Steps twin
@@ -15758,14 +15764,7 @@ export const render = {
                   restore();
                 }
               },
-              touchMany: async (subjects) => {
-                const restores = subjects.map((subject) => revealSubjectWithAncestors(subject));
-                try {
-                  return await touchExactTargetSubjects(subjects, settleDrawableSession);
-                } finally {
-                  for (let index = restores.length - 1; index >= 0; index--) restores[index]();
-                }
-              },
+              touchMany: (subjects) => touchExactTargetSubjects(subjects, settleDrawableSession),
               touchBatchSize: state.mode === 'loading' ? 4 : 1,
               // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
@@ -16208,20 +16207,10 @@ export const render = {
                   ? async (subjects) => {
                     const drawable = subjects.filter(sealTouchCanDraw);
                     if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
-                    // The reveal must stay held until the async touch settles:
-                    // the pacing driver resumes a suspended touch while the
-                    // live scene keeps presenting, so an early restore re-hides
-                    // the subjects mid-draw and the whole batch no-ops.
-                    // Mint the session before the reveal: the paced mint suspends,
-                    // and reveals must not be held across presented frames.
+                    // Both the session mint and environment stamping suspend; the grouped
+                    // touch owns its reveal only once its synchronous draw can run.
                     poolSealTouchSession = poolSealTouchSession || (await mintTouchDrawableSession(scene));
-                    const restores = [];
-                    try {
-                      for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                      return await touchExactTargetSubjects(drawable, poolSealTouchSession);
-                    } finally {
-                      for (let i = restores.length - 1; i >= 0; i--) restores[i]();
-                    }
+                    return touchExactTargetSubjects(drawable, poolSealTouchSession);
                   }
                   : null,
                 touchBatchSize: 24,
@@ -18142,13 +18131,7 @@ export const render = {
                   if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
                   // Mint the session before the reveal (paced mint suspends).
                   rockTouchSession = rockTouchSession || (await mintTouchDrawableSession(scene));
-                  const restores = [];
-                  try {
-                    for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                    return await touchExactTargetSubjects(drawable, rockTouchSession);
-                  } finally {
-                    for (let i = restores.length - 1; i >= 0; i--) restores[i]();
-                  }
+                  return touchExactTargetSubjects(drawable, rockTouchSession);
                 }
                 : null,
               touchBatchSize: 24,
@@ -19217,31 +19200,6 @@ export const render = {
           restoreSubject();
         }
       };
-      // Group form of whileRevealed: reveal every subject (and its hidden ancestors) of a
-      // touch group, run once, restore last-in-first-out so shared ancestors and nested
-      // subjects return exactly to where they started.
-      const whileRevealedGroup = async (subjects, run) => {
-        const restores = [];
-        try {
-          for (const subject of subjects) {
-            const restoreSubject = revealSubjectForCompile(subject);
-            const savedAncestors = [];
-            for (let p = subject && subject.parent; p; p = p.parent) {
-              if (p.visible === false) { savedAncestors.push(p); p.visible = true; }
-            }
-            restores.push(() => {
-              for (const p of savedAncestors) p.visible = false;
-              restoreSubject();
-            });
-          }
-          // Await inside the try: the pacing driver resumes a suspended touch
-          // while the live scene keeps presenting — restoring at first suspend
-          // re-hides the subjects and the rest of the touch no-ops.
-          return await run();
-        } finally {
-          for (let i = restores.length - 1; i >= 0; i--) restores[i]();
-        }
-      };
       if (lateCompileRoots.length > 0) {
         const lateSubjectSet = await subjectsForCompileRoots(lateCompileRoots, postCensus.subjects);
         if (lateSubjectSet.superseded === true) return postSupersededResult();
@@ -19268,7 +19226,7 @@ export const render = {
               ? async (subjects) => {
                 // Mint the session before the reveal (paced mint suspends).
                 lateTouchSession = lateTouchSession || (await mintTouchDrawableSession(scene));
-                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, lateTouchSession));
+                return touchExactTargetSubjects(subjects, lateTouchSession);
               }
               : null,
             touchBatchSize: 24,
@@ -19475,7 +19433,7 @@ export const render = {
               ? async (subjects) => {
                 // Mint the session before the reveal (paced mint suspends).
                 rescanTouchSession = rescanTouchSession || (await mintTouchDrawableSession(scene));
-                return whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects, rescanTouchSession));
+                return touchExactTargetSubjects(subjects, rescanTouchSession);
               }
               : null,
             touchBatchSize: 24,

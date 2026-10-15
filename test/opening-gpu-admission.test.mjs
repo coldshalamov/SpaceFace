@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 import * as THREE from 'three';
 
 import { openingProgramSubjectKey } from '../src/render/openingSubmissionPlan.js';
@@ -426,6 +427,56 @@ test('a throwing touch reports the row and still draws the rest of the cohort', 
   assert.match(String(result.results[1].touchError), /touch b failed/);
   assert.equal(result.results[2].touchError, null);
 });
+
+for (const grouped of [false, true]) {
+  test('non-strict async ' + (grouped ? 'grouped' : 'single') + ' touches finish before advancing and report one rejection', async () => {
+    let release;
+    const pending = new Promise(resolve => { release = resolve; });
+    const subjects = ['a', 'b', 'c'].map(id => ({ id, material: { uuid: `m${id}` }, geometry: { uuid: `g${id}` } }));
+    const order = [];
+    const touch = (list) => {
+      const id = list.map(subject => subject.id).join('');
+      order.push('begin:' + id);
+      const result = (async () => {
+        if (id.startsWith('a')) await pending;
+        order.push('end:' + id);
+        if (id.startsWith(grouped ? 'c' : 'b')) throw new Error('injected async touch failure');
+        return { skipped: false, id };
+      })();
+      // Keep the old broken driver from producing an unhandled rejection during the red run;
+      // it must still await this original promise and record its rejection exactly once.
+      result.catch(() => {});
+      return result;
+    };
+    let settled = false;
+    const running = admitOpeningUnitsAcrossSlices({
+      subjects,
+      beginReadinessBatch: () => ({ async drain() { return { contextLost: false }; }, close() {} }),
+      compileOne: async subject => ({ id: subject.id }),
+      ...(grouped ? { touchMany: touch, touchBatchSize: 2 } : { touchOne: subject => touch([subject]) }),
+      yieldToMain: async () => { order.push('yield'); },
+    });
+    running.then(() => { settled = true; });
+    await nextTurn();
+    const touchStart = order.findIndex(step => step.startsWith('begin:'));
+    const pendingOrder = order.slice(touchStart);
+    const settledBeforeRelease = settled;
+    release();
+    const result = await running;
+    assert.deepEqual(pendingOrder, [grouped ? 'begin:ab' : 'begin:a'],
+      'no next touch or phase yield may race a still-pending native touch');
+    assert.equal(settledBeforeRelease, false, 'a pending Promise is not a completed admission');
+    assert.deepEqual(order.slice(touchStart), grouped
+      ? ['begin:ab', 'end:ab', 'yield', 'begin:c', 'end:c']
+      : ['begin:a', 'end:a', 'yield', 'begin:b', 'end:b', 'yield', 'begin:c', 'end:c']);
+    assert.equal(result.touched, 3);
+    const errors = result.results.filter(row => row.touchError);
+    assert.equal(errors.length, 1, 'the async failure belongs to one result row');
+    assert.match(errors[0].touchError.message, /injected async touch failure/);
+    assert.ok(result.results.filter(row => !row.touchError).every(row => row.touched?.skipped === false),
+      'successful rows contain actual resolved receipts');
+  });
+}
 
 test('a grouped touch never straddles the issued boundary', async () => {
   const order = [];
