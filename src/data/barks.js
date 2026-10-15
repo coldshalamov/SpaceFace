@@ -2397,6 +2397,17 @@ export function lawStepBarkFor(eventName) {
   return typeof line === 'string' && line.length ? line : null;
 }
 
+// law:response rows speak per action, not per event: today the weir gate's bolt filing, in
+// the booth's own customs register. The read bolt names what the gate kept — the manifest it
+// held before the hull ran; the speed run files the silhouette. These are the lawful channel
+// confirming the paperwork the immediate alert only shouted about.
+export function lawResponseBarkFor(payload) {
+  if (!payload || payload.action !== 'weir_bolt') return null;
+  return payload.kind === 'read_bolt'
+    ? 'Gate control: the read held half your manifest — report to the booth or wear the flag.'
+    : 'Gate control: unread transit filed. The lane checkpoints have your silhouette.';
+}
+
 // ── Passengers are people — the person a contract is about ───────────────────────────────────
 //
 // A passenger job used to be one sentence: a seat count with a fee. These corpora make the fare a
