@@ -404,6 +404,11 @@ export function createSimLaneRuntime({
   const pendingRpcs = new Map();        // rpc id -> { resolve, reject }
   let inFlight = null;                  // { seq, sentMs, steps, mainThreadDelayedMs }
   let stallWatchdogTimer = null;
+  // Worker-local clock commands are not stored in `inFlight`: their replies
+  // are unsolicited clockTick messages rather than seq-keyed tickDone
+  // replies. Keep a separate identity so a delayed confirmation for an old
+  // command cannot close or invalidate its replacement.
+  let workerClockCommandFlight = null;
   let sabEnv = null;                    // armed SAB envelope channel (layout v2)
   let laneClosed = false;
   let laneClosedComplete = false;
@@ -462,15 +467,19 @@ export function createSimLaneRuntime({
             journalEnd: Number.isSafeInteger(msg.journalEnd) ? msg.journalEnd : 0,
           };
         }
-        if (Number.isSafeInteger(msg.commandSequence)
-          && msg.commandSequence > workerClockLastAppliedCommandSequence) {
-          workerClockLastAppliedCommandSequence = msg.commandSequence;
+        // A local-clock reply carries the worker's cumulative completion
+        // watermark. Prefer the diagnostic copy because it is explicitly
+        // named as the applied watermark; retain the top-level field as the
+        // wire-compatible fallback for older replies and focused fixtures.
+        const appliedCommandSequence = Number.isSafeInteger(
+          msg.clockDiagnostics?.appliedCommandSequence,
+        )
+          ? msg.clockDiagnostics.appliedCommandSequence
+          : (Number.isSafeInteger(msg.commandSequence) ? msg.commandSequence : 0);
+        if (appliedCommandSequence > workerClockLastAppliedCommandSequence) {
+          workerClockLastAppliedCommandSequence = appliedCommandSequence;
         }
-        if (Number.isSafeInteger(msg.commandSequence)
-          && msg.commandSequence >= workerClockCommandInFlightSequence) {
-          workerClockCommandInFlight = false;
-          workerClockCommandInFlightSequence = 0;
-        }
+        releaseWorkerClockCommand(appliedCommandSequence);
         flushDirectives();
       } catch (error) {
         failLane(`sim worker clock reply apply failed: ${(error && error.message) || error}`,
@@ -517,6 +526,20 @@ export function createSimLaneRuntime({
     }
     inFlightSteps = Math.max(0, inFlightSteps - (flight ? flight.steps : 0));
     inFlight = null;
+  }
+
+  function releaseWorkerClockCommand(appliedCommandSequence) {
+    const flight = workerClockCommandFlight;
+    if (!flight || !Number.isSafeInteger(appliedCommandSequence)
+      || appliedCommandSequence < flight.commandSequence) return false;
+    if (stallWatchdogTimer !== null) {
+      clearTimeout(stallWatchdogTimer);
+      stallWatchdogTimer = null;
+    }
+    workerClockCommandFlight = null;
+    workerClockCommandInFlight = false;
+    workerClockCommandInFlightSequence = 0;
+    return true;
   }
 
   // ---- SAB envelope reply pump (arena layout v2) ----------------------------------
@@ -1050,22 +1073,36 @@ export function createSimLaneRuntime({
     workerPumpAnchorMs = 0;
   }
 
+  function isCurrentFlight(flight) {
+    if (!flight) return false;
+    return flight.kind === 'clockCommand'
+      ? workerClockCommandFlight === flight
+      : inFlight === flight;
+  }
+
   function watchFlight(flight, delayMs = LANE_WATCHDOG_SAMPLE_MS, confirm = false) {
     const dueMs = nowMs() + delayMs;
-    stallWatchdogTimer = setTimeout(() => {
-      stallWatchdogTimer = null;
-      if (laneClosed || inFlight !== flight) return;
+    const timer = setTimeout(() => {
+      // A stale confirmation can run after an ACK has already admitted a new
+      // command. Only the timer that is still current may clear the shared
+      // handle; otherwise teardown would lose the replacement's watchdog.
+      if (stallWatchdogTimer === timer) stallWatchdogTimer = null;
+      if (laneClosed || !isCurrentFlight(flight)) return;
       const observedMs = nowMs();
       // A delayed watchdog callback documents unavailable dispatch time. Neither it nor a
       // worker message can run during that interval; do not charge it to worker silence.
       flight.mainThreadDelayedMs += Math.max(0, observedMs - dueMs);
       drainSabRepliesNow();
-      if (laneClosed || inFlight !== flight) return;
+      if (laneClosed || !isCurrentFlight(flight)) return;
       const responsiveMs = observedMs - flight.sentMs - flight.mainThreadDelayedMs;
       const remainingMs = LANE_STALL_MS - responsiveMs;
       if (remainingMs <= 0) {
         if (confirm) {
-          failLane(`sim worker tick directive stalled >${LANE_STALL_MS}ms (seq ${flight.seq})`);
+          const kind = flight.kind === 'clockCommand' ? 'clock command' : 'tick directive';
+          const sequence = flight.kind === 'clockCommand'
+            ? `commandSequence ${flight.commandSequence}, seq ${flight.seq}`
+            : `seq ${flight.seq}`;
+          failLane(`sim worker ${kind} stalled >${LANE_STALL_MS}ms (${sequence})`);
         } else {
           watchFlight(flight, 0, true);
         }
@@ -1073,6 +1110,7 @@ export function createSimLaneRuntime({
         watchFlight(flight, Math.min(LANE_WATCHDOG_SAMPLE_MS, remainingMs));
       }
     }, delayMs);
+    stallWatchdogTimer = timer;
   }
 
   function appendCursorProjection(commands) {
@@ -1155,7 +1193,19 @@ export function createSimLaneRuntime({
     workerClockCommandInFlight = true;
     workerClockCommandInFlightSequence = commandSequence;
     workerClockLastCommandScale = msg.timeScale;
+    const commandFlight = {
+      kind: 'clockCommand',
+      seq: msg.seq,
+      commandSequence,
+      sentMs: nowMs(),
+      mainThreadDelayedMs: 0,
+    };
+    workerClockCommandFlight = commandFlight;
     postedDirectives++;
+    // Local-clock commands are RPC-like transport boundaries even though the
+    // worker reply is unsolicited. Watch them with the same responsive-dispatch
+    // budget as directive-driven tick replies.
+    watchFlight(commandFlight);
     postLaneDirective(msg);
   }
 
@@ -1623,6 +1673,13 @@ export function createSimLaneRuntime({
         workerClockLastAppliedCommandSequence,
         workerClockLastCommandScale,
         workerClockLastDiagnostics,
+        workerClockCommandWallMs: workerClockCommandFlight
+          ? Math.max(0, nowMs() - workerClockCommandFlight.sentMs) : null,
+        workerClockCommandMainThreadDelayedMs: workerClockCommandFlight
+          ? workerClockCommandFlight.mainThreadDelayedMs : null,
+        workerClockCommandResponsiveMs: workerClockCommandFlight
+          ? Math.max(0, nowMs() - workerClockCommandFlight.sentMs
+            - workerClockCommandFlight.mainThreadDelayedMs) : null,
         workerPumpRequested,
         workerPumpTimerPending: workerPumpTimer !== null,
         workerPumpAckWakePending: workerPumpAckWake !== null,
@@ -1663,6 +1720,11 @@ export function createSimLaneRuntime({
         readModelEntities: readModel.entities.size,
         error: laneError,
         errorSite: laneErrorSite,
+        // PresentationRunner consumes the same close-cause contract as the
+        // in-process SimulationRunner. Preserve the transport names above
+        // and expose aliases for the shared simulation-recovery surface.
+        closeCauseMessage: laneError,
+        closeCauseSite: laneErrorSite,
       };
     },
   };
@@ -1721,6 +1783,9 @@ export function createSimLaneRuntime({
       clearTimeout(stallWatchdogTimer);
       stallWatchdogTimer = null;
     }
+    workerClockCommandFlight = null;
+    workerClockCommandInFlight = false;
+    workerClockCommandInFlightSequence = 0;
     try { uninstallSink(); } catch (_) {}
     try { if (busForward && typeof busForward.restore === 'function') busForward.restore(); } catch (_) {}
     try { domSurface.dispose(); } catch (_) {}

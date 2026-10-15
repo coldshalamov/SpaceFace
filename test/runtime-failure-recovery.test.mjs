@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { LOOP_FIXED_DT, startLoop, createSimulationRunner } from '../src/core/loop.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createRuntimeFailurePresenter } from '../src/ui/runtimeFailurePresenter.js';
 import { fakeDom, findAll } from './helpers/fake-dom.mjs';
 
@@ -97,6 +99,74 @@ test('a quarantined simulation step notifies once, stops scheduling, and keeps t
     'the recorded cause is the original step error, not "SimulationRunner is closed"');
   assert.equal(diagnostics.simulation.closed, true);
   assert.equal(diagnostics.simulation.closeCauseMessage, 'fault-injection: broken component');
+});
+
+test('a real worker-lane error recovers through simulation failure on the first frame', async (t) => {
+  const posts = [];
+  let receive = null;
+  const bus = createBus();
+  const state = createFlightState();
+  state.entities = new Map();
+  state.entityList = [];
+  state.ui = { screenStack: [] };
+  state.meta = { seed: 1 };
+  const registry = { renderUpdate() {}, get() { return null; } };
+  const lane = createSimLaneRuntime({
+    state,
+    registry,
+    bus,
+    flags: { lane: 'worker', warnings: [], sab: false },
+    channelFactory: () => ({
+      post(message) { posts.push(message); },
+      onMessage(handler) { receive = handler; },
+      terminate() {},
+    }),
+  });
+  assert.ok(lane);
+  t.after(() => lane.close());
+  receive({ kind: 'ready', seq: posts[0].seq });
+  await lane.readyPromise;
+
+  const raf = createRaf();
+  const simulationFailures = [];
+  const graphicsFailures = [];
+  const controller = startLoop(state, registry, {
+    simulationRunner: lane.runner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+    onSimulationFailure(failure) { simulationFailures.push(failure); },
+    onPresentationFailure(failure) { graphicsFailures.push(failure); },
+  });
+  t.after(() => controller.destroy());
+
+  // The injected lane is the actual worker transport runner, not a stub. A
+  // directive failure closes it before the next presentation callback; that
+  // callback must surface the original worker cause through the established
+  // simulation recovery path.
+  lane.runner.stepOnce();
+  const flight = posts.at(-1);
+  assert.equal(flight.kind, 'tick');
+  receive({
+    kind: 'error',
+    seq: flight.seq,
+    message: 'fault-injection: real worker failure',
+    stack: 'Error: fault-injection: real worker failure\n    at worker.tick (worker.js:1:1)',
+  });
+
+  silenceConsoleError(() => raf.flushOne(1040));
+  assert.equal(simulationFailures.length, 1, 'worker failure is recovered once on the next frame');
+  assert.equal(simulationFailures[0].message, 'sim worker directive failed: fault-injection: real worker failure');
+  assert.equal(graphicsFailures.length, 0, 'a simulation failure must not be misreported as graphics failure');
+  assert.equal(raf.count(), 0, 'simulation recovery stops rAF immediately');
+
+  // There is no live callback to feed a 30-frame presentation-stall counter;
+  // explicitly preserve that invariant for a closed real lane.
+  assert.equal(controller.getDiagnostics().presentationFailureNotified, false);
+  assert.equal(controller.getDiagnostics().simulation.closeCauseMessage,
+    simulationFailures[0].message);
 });
 
 test('a throwing failure hook cannot resurrect the loop or replace the recorded cause', () => {
