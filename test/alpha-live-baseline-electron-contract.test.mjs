@@ -428,6 +428,50 @@ async function testStorelessResponseMethodFallback() {
   assert.equal(tracker.ignored().filter((issue) => issue.absentPlayerStore || issue.absentPlayerStoreConsole).length, 2);
   tracker.stop();
 
+  const finishedContext = new EventEmitter();
+  const finishedApp = new EventEmitter();
+  finishedApp.context = () => finishedContext;
+  const finishedTracker = createStrictElectronApplicationIssueTracker(finishedApp, {
+    playerStoreMounted: false,
+  });
+  const finishedGet = { method: () => 'GET', url: () => exactUrl };
+  // Electron may report requestfinished before the response wrapper reaches the
+  // application-wide response listener. The completed request still proves this was
+  // the optional bootstrap GET; a methodless response must not become a false failure.
+  finishedContext.emit('request', finishedGet);
+  finishedContext.emit('requestfinished', finishedGet);
+  finishedContext.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({}),
+  });
+  finishedContext.emit('console', fakeConsoleMessage('error', genericNotFound));
+  assert.equal(finishedTracker.errors().length, 0,
+    'a methodless store response remains diagnostic after requestfinished metadata handoff');
+  finishedTracker.stop();
+
+  const replayContext = new EventEmitter();
+  const replayApp = new EventEmitter();
+  replayApp.context = () => replayContext;
+  const replayTracker = createStrictElectronApplicationIssueTracker(replayApp, {
+    playerStoreMounted: false,
+  });
+  const replayGet = { method: () => 'GET', url: () => exactUrl };
+  replayContext.emit('request', replayGet);
+  replayContext.emit('requestfinished', replayGet);
+  // Backfill may replay the same request object after the live lifecycle; it must
+  // replace, rather than duplicate, the retained metadata.
+  replayContext.emit('request', replayGet);
+  replayContext.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({}),
+  });
+  replayContext.emit('console', fakeConsoleMessage('error', genericNotFound));
+  assert.equal(replayTracker.errors().length, 0,
+    'backfill replay must not duplicate retained store-request metadata');
+  replayTracker.stop();
+
   const negativeContext = new EventEmitter();
   const negativeApp = new EventEmitter();
   negativeApp.context = () => negativeContext;
@@ -443,6 +487,24 @@ async function testStorelessResponseMethodFallback() {
   assert.equal(negativeTracker.errors().length, 1,
     'a store-less write remains fatal when the response wrapper omits its method');
   negativeTracker.stop();
+
+  const finishedPutContext = new EventEmitter();
+  const finishedPutApp = new EventEmitter();
+  finishedPutApp.context = () => finishedPutContext;
+  const finishedPutTracker = createStrictElectronApplicationIssueTracker(finishedPutApp, {
+    playerStoreMounted: false,
+  });
+  const finishedPut = { method: () => 'PUT', url: () => exactUrl };
+  finishedPutContext.emit('request', finishedPut);
+  finishedPutContext.emit('requestfinished', finishedPut);
+  finishedPutContext.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({}),
+  });
+  assert.equal(finishedPutTracker.errors().length, 1,
+    'a completed store write remains fatal when the response wrapper omits its method');
+  finishedPutTracker.stop();
 
   const knownResponseMethodContext = new EventEmitter();
   const knownResponseMethodApp = new EventEmitter();
