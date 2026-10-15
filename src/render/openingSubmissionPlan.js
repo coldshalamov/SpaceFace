@@ -355,6 +355,24 @@ function materialList(object) {
     : object && object.material ? [object.material] : [];
 }
 
+// Three submits array materials only through geometry groups, and skips hidden materials.
+// Retain the actual array index in binding labels rather than compacting sparse material lists.
+function* submittedMaterialEntries(object) {
+  const materials = object && object.material;
+  if (Array.isArray(materials)) {
+    const groups = object.geometry && object.geometry.groups;
+    const indices = Array.isArray(groups)
+      ? new Set(groups.map((group) => group.materialIndex))
+      : materials.keys();
+    for (const index of indices) {
+      const material = materials[index];
+      if (material && material.visible !== false) yield [index, material];
+    }
+  } else if (materials && materials.visible !== false) {
+    yield [0, materials];
+  }
+}
+
 function texturesForMaterial(material, output) {
   if (!material || typeof material !== 'object') return;
   for (const value of Object.values(material)) {
@@ -428,7 +446,7 @@ function receiptProgramMaterials(plan, options = {}) {
     entries.push({ material, label });
   };
   for (const [index, subject] of (plan && plan.compileSubjects || []).entries()) {
-    for (const [materialIndex, material] of materialList(subject).entries()) {
+    for (const [materialIndex, material] of submittedMaterialEntries(subject)) {
       add(material, `plan:${index}:material:${materialIndex}`);
     }
   }
@@ -1333,7 +1351,7 @@ function revalidateProgramBindings(renderer, receipt) {
   };
   for (const [index, subject] of (plan.compileSubjects || []).entries()) {
     if (scene && !objectReachesScene(subject, scene)) continue;
-    for (const [materialIndex, material] of materialList(subject).entries()) {
+    for (const [materialIndex, material] of submittedMaterialEntries(subject)) {
       probe(material, `plan:${index}:material:${materialIndex}`);
     }
   }

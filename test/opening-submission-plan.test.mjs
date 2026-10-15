@@ -750,6 +750,60 @@ test('opening submission receipt fails closed when an exact material has no live
   assert.deepEqual(validation.missingProgramBindings, ['plan:0:material:0:unprepared-material']);
 });
 
+for (const inactive of ['unreferenced', 'hidden']) {
+  test(`opening bindings ignore ${inactive} materials but recheck them when the draw activates them`, () => {
+    const root = new THREE.Group();
+    productionMetadata(root);
+    const unprepared = new THREE.MeshBasicMaterial();
+    const prepared = new THREE.MeshBasicMaterial();
+    const leaf = mesh('grouped-opening-leaf', [unprepared, prepared]);
+    leaf.geometry.clearGroups();
+    leaf.geometry.addGroup(0, leaf.geometry.index.count, 1);
+    if (inactive === 'hidden') {
+      leaf.geometry.addGroup(0, leaf.geometry.index.count, 0);
+      unprepared.visible = false;
+    }
+    root.add(leaf);
+    const plan = createOpeningSubmissionPlan(planOptions(root));
+    const bindings = new Map([[prepared, { programs: new Map([['prepared', {}]]) }]]);
+    const renderer = {
+      info: { programs: [{ cacheKey: 'prepared' }], memory: {} },
+      properties: { get: material => bindings.get(material) || {} },
+    };
+    const receipt = createOpeningSubmissionReceipt(renderer, plan);
+    assert.equal(plan.complete, true);
+    assert.deepEqual(receipt.required.programBindingFailures, []);
+    assert.equal(validateOpeningSubmissionReceipt(receipt, renderer).ok, true);
+
+    // The same receipt must notice live visibility/group changes before the first submission.
+    if (inactive === 'hidden') unprepared.visible = true;
+    else leaf.geometry.addGroup(0, leaf.geometry.index.count, 0);
+    const activated = validateOpeningSubmissionReceipt(receipt, renderer);
+    assert.equal(activated.ok, false);
+    assert.equal(activated.reason, 'unprepared-opening-program-binding');
+    assert.deepEqual(activated.missingProgramBindings, ['plan:0:material:0:unprepared-material']);
+
+    bindings.set(unprepared, { programs: new Map([['newly-prepared', {}]]) });
+    renderer.info.programs.push({ cacheKey: 'newly-prepared' });
+    assert.equal(validateOpeningSubmissionReceipt(receipt, renderer).ok, true);
+  });
+}
+
+test('opening bindings keep the original index of a visible referenced sparse-array material', () => {
+  const root = new THREE.Group();
+  productionMetadata(root);
+  const leaf = mesh('sparse-opening-leaf', [null, new THREE.MeshBasicMaterial()]);
+  leaf.geometry.clearGroups();
+  leaf.geometry.addGroup(0, leaf.geometry.index.count, 1);
+  root.add(leaf);
+  const plan = createOpeningSubmissionPlan(planOptions(root));
+  const renderer = { info: { programs: [], memory: {} }, properties: { get: () => ({}) } };
+  const receipt = createOpeningSubmissionReceipt(renderer, plan);
+  assert.deepEqual(receipt.required.programBindingFailures, ['plan:0:material:1:unprepared-material']);
+  assert.deepEqual(validateOpeningSubmissionReceipt(receipt, renderer).missingProgramBindings,
+    ['plan:0:material:1:unprepared-material']);
+});
+
 test('production startup no longer invokes a hidden opening discovery render or global loading compile', async () => {
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const readiness = await readFile(new URL('../src/render/pipelineReadiness.js', import.meta.url), 'utf8');
