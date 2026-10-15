@@ -681,7 +681,9 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const getTags = typeof options.getTags === 'function' ? options.getTags : undefined;
   const isTransformOnlySource = typeof options.isTransformOnlySource === 'function'
     ? options.isTransformOnlySource : undefined;
-  const motionOptions = { getTags, isTransformOnlySource };
+  const isAttestedRigidMotionOwner = typeof options.isAttestedRigidMotionOwner === 'function'
+    ? options.isAttestedRigidMotionOwner : undefined;
+  const motionOptions = { getTags, isTransformOnlySource, isAttestedRigidMotionOwner };
   // Selection only narrows the admitted cohort. It cannot override the policy's shader,
   // material, motion or geometry guards, and remains binding until the candidate retires.
   const selectSource = typeof options.selectSource === 'function' ? options.selectSource : null;
@@ -999,6 +1001,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const makePlan = (roots) => planRigidOpaqueBatchGroups(roots, {
     getTags,
     isTransformOnlySource,
+    isAttestedRigidMotionOwner,
     isRenderHookSafe,
     materialProgramKey: rigidOpaqueMaterialProgramKey,
     shadowLane: (source) => `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,

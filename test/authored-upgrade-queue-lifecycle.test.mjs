@@ -4,8 +4,11 @@ import * as THREE from 'three';
 import {
   buildAuthoredStationArchetype,
   cancelAuthoredUpgradeQueue,
+  describeAuthoredUpgradeQueue,
+  enqueueBoundaryUpgrade,
   inspectAuthoredBoundaryRegistrations,
 } from '../src/render/partsLibrary.js';
+import { AUTHORED_UPGRADE_OPENING_LIMIT } from '../src/render/authoredUpgradePolicy.js';
 
 function deferred() {
   let resolve;
@@ -124,3 +127,76 @@ test('a station parked at opening publication cancels and releases its detached 
     else globalThis.window = previousWindow;
   }
 });
+
+for (const cancel of [false, true]) {
+  test(`overlapping GPU tails keep phase-correct slot counts through ${cancel ? 'cancellation' : 'completion'}`, async () => {
+    const pump = framePump();
+    const previousWindow = globalThis.window;
+    const scene = new THREE.Scene();
+    const state = { mode: 'loading', render: { scene }, entities: new Map(), world: {}, camera: {} };
+    globalThis.window = { SF: { state } };
+    const stages = [], gates = [], completions = [];
+    try {
+      for (let index = 0; index < 8; index++) {
+        const boundary = new THREE.Group();
+        scene.add(boundary);
+        const entity = { id: index + 1, type: 'ship', alive: true, mesh: boundary };
+        state.entities.set(entity.id, entity);
+        const gate = deferred();
+        gates.push(gate);
+        completions.push(enqueueBoundaryUpgrade(scene, {
+          key: `phase-slot:${index}`, boundary, entity, renderer: {},
+          options: { overlapAuthoredPipelineCompile: true },
+          run({ options }) {
+            stages.push(options.onAuthoredPipelineStaged);
+            return gate.promise.then(() => true);
+          },
+        }));
+      }
+      for (let index = 0; index < AUTHORED_UPGRADE_OPENING_LIMIT; index++) {
+        pump.frame();
+        await flush();
+      }
+      const diagnostics = scene.userData.authoredUpgradeDiagnostics;
+      assert.equal(stages.length, AUTHORED_UPGRADE_OPENING_LIMIT);
+      assert.equal(diagnostics.activeAdmissionSlots, AUTHORED_UPGRADE_OPENING_LIMIT);
+      pump.frame();
+      await flush();
+      assert.equal(stages.length, AUTHORED_UPGRADE_OPENING_LIMIT, 'the next job waits for a real slot release');
+      for (let index = 0; stages.length < gates.length; index++) {
+        assert.equal(stages[index](), true);
+        assert.equal(stages[index](), false, 'staging releases its semaphore slot only once');
+        pump.frame();
+        await flush();
+        assert.equal(diagnostics.activeAdmissionSlots, describeAuthoredUpgradeQueue(scene).inFlight);
+        assert.ok(diagnostics.activeAdmissionSlots <= AUTHORED_UPGRADE_OPENING_LIMIT);
+      }
+      assert.equal(diagnostics.activeJobs, 8, 'all eight whole lifetimes still await their GPU tail');
+      assert.equal(diagnostics.maxConcurrentJobs, 8, 'raw lifecycle concurrency remains truthful');
+      assert.equal(diagnostics.maxConcurrentAdmissionSlots, AUTHORED_UPGRADE_OPENING_LIMIT);
+      if (cancel) {
+        assert.equal(cancelAuthoredUpgradeQueue(scene), true);
+        assert.equal(cancelAuthoredUpgradeQueue(scene), false);
+      } else {
+        for (const gate of gates) gate.resolve();
+      }
+      await Promise.all(completions);
+      await flush();
+      assert.equal(diagnostics.activeJobs, 0);
+      assert.equal(diagnostics.activeAdmissionSlots, 0);
+      assert.equal(diagnostics.maxConcurrentAdmissionSlots, AUTHORED_UPGRADE_OPENING_LIMIT);
+      for (const release of stages) assert.equal(release(), false, 'late callbacks cannot decrement settled slots');
+      for (const gate of gates) gate.resolve();
+      await flush();
+      assert.equal(diagnostics.activeJobs, 0, 'late GPU settlement cannot close the lifetime twice');
+      assert.equal(diagnostics.activeAdmissionSlots, 0, 'late GPU settlement cannot make slots negative');
+    } finally {
+      for (const gate of gates) gate.resolve();
+      cancelAuthoredUpgradeQueue(scene);
+      await flush();
+      pump.restore();
+      if (previousWindow === undefined) delete globalThis.window;
+      else globalThis.window = previousWindow;
+    }
+  });
+}

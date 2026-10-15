@@ -9,6 +9,7 @@ import { instancePoolIdentity } from '../src/render/materialBatchKey.js';
 import {
   assessAuthoredPackagePoolApplicability,
   assessRepeatedAuthoredPackagePoolProof,
+  assertAuthoredAdmissionSlotBound,
   collectAuthoredReport,
   createAuthoredPresentationReader,
   inspectLegacyPackagePoolEligibility,
@@ -107,6 +108,23 @@ test('live asset proof respects spatial streaming while forbidding visible subst
     'forced presentation must use the production-owned renderer epoch so dynamic buffers publish before upload');
   assert.doesNotMatch(source, /render\.renderer\.render\(render\.scene, render\.camera\)/,
     'the live probe must not bypass dynamic-buffer publication through the exposed raw renderer');
+});
+
+test('the probe bounds actual admission slots while retaining whole GPU-tail lifetime counts', () => {
+  const diagnostic = { maxConcurrentJobs: 14, activeJobs: 0,
+    maxConcurrentAdmissionSlots: 2, activeAdmissionSlots: 0 };
+  assert.doesNotThrow(() => assertAuthoredAdmissionSlotBound(diagnostic));
+  assert.equal(diagnostic.maxConcurrentJobs, 14);
+  assert.throws(() => assertAuthoredAdmissionSlotBound({ ...diagnostic, maxConcurrentAdmissionSlots: 5 }),
+    /admission slots must stay bounded/, 'a real semaphore peak above the unchanged four-slot bar fails');
+  assert.throws(() => assertAuthoredAdmissionSlotBound({ maxConcurrentJobs: 2 }),
+    /admission slots must stay bounded/, 'whole-lifetime concurrency cannot substitute for missing phase evidence');
+  assert.throws(() => assertAuthoredAdmissionSlotBound({ ...diagnostic, activeAdmissionSlots: -1 }),
+    /admission slots must stay bounded/);
+  assert.throws(() => assertAuthoredAdmissionSlotBound({ ...diagnostic, activeAdmissionSlots: 5 }),
+    /admission slots must stay bounded/);
+  assert.match(source, /maxConcurrentAdmissionSlots <= 4/);
+  assert.doesNotMatch(source, /maxConcurrentJobs <= 4/);
 });
 
 function presentationFixture() {

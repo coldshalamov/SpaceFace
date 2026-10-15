@@ -282,7 +282,8 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
-import { installAuthoredMotionBus, createAuthoredClock } from './authoredMotion.js';
+import { installAuthoredMotionBus, createAuthoredClock, isAttestedRigidMotionOwner } from './authoredMotion.js';
+import { hasBoundRigidMotionNode } from '../contracts/motionBank.js';
 import { globalForgeCrown } from './forgeRegentCrown.js';
 import { globalLawArenaDressing } from './lawArenaDressing.js';
 import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
@@ -11099,6 +11100,15 @@ const RIGID_ASHLINE_RETRO_SOURCE_NAMES = new Set([
   'Retro_Body_Port', 'Retro_Body_Starboard',
   'Retro_Trim_Port', 'Retro_Trim_Starboard',
 ]);
+const RIGID_ASHLINE_BODY_SOURCE_NAMES = new Set([0, 1, 2].flatMap((level) => [
+  'Armor', 'BrushedMetal', 'Hull', 'Livery', 'Mechanical', 'MechanicalDark', 'Warning',
+].map((surface) => `LOD${level}_MOTION_HULL_CORE_${surface}`)));
+const RIGID_ASHLINE_MOTION_IDENTITY = Object.freeze({
+  packageAssetId: 'sf.render.ashline-dart',
+  packageContentHash: '091d9605495948305754979e1cce24eb3e475500788375575ea7dcc1f87ef4ac',
+  bankSha256: '89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e',
+  sourceAssetId: 'SF_WHOLESHIP_ASHLINE_DART', rigId: 'hull', bindingId: 'hull_core',
+});
 
 export function isRigidOpaqueAshlineCohortRoot(owner, root) {
   const data = root?.userData, id = data?.presentationEntityId;
@@ -11118,12 +11128,42 @@ export function isRigidOpaqueAshlineCohortRoot(owner, root) {
 }
 
 function rigidOpaqueAshlineSourceRoot(owner, source) {
-  if (!RIGID_ASHLINE_RETRO_SOURCE_NAMES.has(source?.name) || source.isMesh !== true
+  const retro = RIGID_ASHLINE_RETRO_SOURCE_NAMES.has(source?.name);
+  const body = RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name);
+  if ((!retro && !body) || source.isMesh !== true
       || source.userData?.spacefaceInstanceProxy || source.userData?.spacefaceRenderPackagePooled) return null;
+  if (body && source.userData?.spacefacePartUrl !== RIGID_ASHLINE_HULL_URL) return null;
+  let packageMatched = retro;
   for (let node = source; node; node = node.parent) {
-    if (isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
+    const identity = node.userData?.spacefaceRenderPackage;
+    if (body && !packageMatched && identity) {
+      if (identity.assetId !== RIGID_ASHLINE_MOTION_IDENTITY.packageAssetId
+          || identity.contentHash !== RIGID_ASHLINE_MOTION_IDENTITY.packageContentHash) return null;
+      packageMatched = true;
+    }
+    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
   }
   return null;
+}
+
+function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
+  if (!RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name)) return false;
+  const root = rigidOpaqueAshlineSourceRoot(owner, source);
+  if (!root) return false;
+  let matched = null;
+  for (let node = source; node; node = node.parent) {
+    const controllers = node.userData?.authoredMotionControllers;
+    if (Array.isArray(controllers)) {
+      for (const controller of controllers) {
+        if (!hasBoundRigidMotionNode(controller, object, RIGID_ASHLINE_MOTION_IDENTITY.bindingId)) continue;
+        // A second transform writer is not the attested single-owner contract.
+        if (matched && matched !== controller) return false;
+        matched = controller;
+      }
+    }
+    if (node === root) break;
+  }
+  return !!matched && isAttestedRigidMotionOwner(matched, object, RIGID_ASHLINE_MOTION_IDENTITY);
 }
 
 function isRigidOpaqueKestrelPlayerRoot(owner, root) {
@@ -11174,6 +11214,9 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
     assumeUniqueRoots: true,
     selectSource,
     isTransformOnlySource,
+    isAttestedRigidMotionOwner: defaultCohort
+      ? (object, source) => isRigidOpaqueAshlineMotionOwner(owner, object, source)
+      : undefined,
     prepare: async (batches, context = {}) => {
       const renderState = state?.render;
       const compile = renderState?.compileObjectPipelines;

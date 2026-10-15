@@ -384,8 +384,7 @@ try {
   'package pool proxies must retain the exact materials whose textures completed GPU residency');
   assert.equal(report.loaderDiagnostics.failureCount, 0,
     `all declared authored GLB parts should pass the live runtime loader: ${JSON.stringify(report.loaderDiagnostics.failures || [])}`);
-  assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentJobs <= 4,
-    `authored composition admission must stay bounded: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
+  assertAuthoredAdmissionSlotBound(report.authoredUpgradeDiagnostics);
   assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.maxConcurrentDecode <= 1,
     `authored asset decode admission must remain serial: ${JSON.stringify(report.authoredUpgradeDiagnostics)}`);
   assert.ok(report.authoredUpgradeDiagnostics && report.authoredUpgradeDiagnostics.peakActivePlannedBytes < 3 * 1024 * 1024 * 1024,
@@ -594,6 +593,14 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
   proofs.sort((a, b) => exactPoolIdentity(a.key, a.chunk).localeCompare(exactPoolIdentity(b.key, b.chunk)));
   if (!proofs.length) failures.push({ reason: 'no-two-root-two-slot-exact-package-pool-proof' });
   return { pass: proofs.length > 0, matrixEpsilon, proofs, failures };
+}
+
+export function assertAuthoredAdmissionSlotBound(diagnostics) {
+  assert.ok(diagnostics && Number.isSafeInteger(diagnostics.maxConcurrentAdmissionSlots)
+    && diagnostics.maxConcurrentAdmissionSlots >= 0 && diagnostics.maxConcurrentAdmissionSlots <= 4
+    && Number.isSafeInteger(diagnostics.activeAdmissionSlots) && diagnostics.activeAdmissionSlots >= 0
+    && diagnostics.activeAdmissionSlots <= diagnostics.maxConcurrentAdmissionSlots,
+  `authored decode/compose admission slots must stay bounded: ${JSON.stringify(diagnostics)}`);
 }
 
 // Serialized into the page so every snapshot reads the same live camera contract. An

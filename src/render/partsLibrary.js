@@ -6473,6 +6473,8 @@ function upgradeQueueState(scene) {
         jobs: [],
         activeJobs: 0,
         maxConcurrentJobs: 0,
+        activeAdmissionSlots: 0,
+        maxConcurrentAdmissionSlots: 0,
         maxConcurrentDecode: 0,
         activePlannedBytes: 0,
         peakActivePlannedBytes: 0,
@@ -6931,6 +6933,7 @@ function abortStalledUpgradeJob(state, job) {
   // when their boundary never committed).
   if (job.serialSlotReleased !== true) state.inFlight = Math.max(0, state.inFlight - 1);
   job.serialSlotReleased = true;
+  state.diagnostics.activeAdmissionSlots = state.inFlight;
   cleanupQueuedJob(state, job);
   // The abandoned run may sit on a decoder task that will never settle — every later request
   // deduping onto it wedges identically. Drop the unfinished task entries (and the boundary's
@@ -8088,6 +8091,7 @@ function admitNextUpgradeJob(state) {
     if (job.serialSlotReleased || job.lifecycle !== 'in-flight') return false;
     job.serialSlotReleased = true;
     state.inFlight = Math.max(0, state.inFlight - 1);
+    state.diagnostics.activeAdmissionSlots = state.inFlight;
     scheduleNextUpgradeFrame(state);
     return true;
   };
@@ -8550,6 +8554,13 @@ function resourceBytesForUrls(urls) {
 }
 
 function publishUpgradeDiagnostics(state, renderer = null) {
+  // This semaphore covers decode/compose until exact GPU preparation is staged. Whole
+  // admission lifetimes above remain active through the overlapping GPU/commit tail.
+  state.diagnostics.activeAdmissionSlots = state.inFlight;
+  state.diagnostics.maxConcurrentAdmissionSlots = Math.max(
+    state.diagnostics.maxConcurrentAdmissionSlots,
+    state.inFlight,
+  );
   const decode = renderer && decodeAdmissionDiagnosticsByRenderer.get(renderer);
   if (decode) {
     state.diagnostics.maxConcurrentDecode = Math.max(state.diagnostics.maxConcurrentDecode, decode.maxConcurrent);
@@ -14438,7 +14449,10 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
   // ANI-00: the package's verified motion bank binds every same-named MOTION_* pivot in this
   // instance (one per mounted LOD file), so LOD switches never pop a transform. The template
   // path recreates packages through this same call, so cached roots rebind identically.
-  const motionController = bindInstanceMotion(packageRoot, record.motionBank);
+  const motionController = bindInstanceMotion(packageRoot, record.motionBank, {
+    sourceAssetId: record.assetId, packageIdentity: packageRoot.userData.spacefaceRenderPackage,
+    residencyOwner: owner,
+  });
   if (motionController) bindings.authoredMotions.push(motionController);
   return partRoot;
 }
@@ -14586,7 +14600,10 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
   const tier1 = tier1CausalCounters();
   if (tier1) tier1.countPlanInstantiation(planNodes.length - 1, 'package-instance-specialize');
 
-  const motionController = yield* bindInstanceMotionSteps(packageRoot, record.motionBank);
+  const motionController = yield* bindInstanceMotionSteps(packageRoot, record.motionBank, {
+    sourceAssetId: record.assetId, packageIdentity: packageRoot.userData.spacefaceRenderPackage,
+    residencyOwner: owner,
+  });
   if (motionController) bindings.authoredMotions.push(motionController);
   return partRoot;
 }

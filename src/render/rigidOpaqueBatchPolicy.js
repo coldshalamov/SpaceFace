@@ -230,7 +230,11 @@ function isDescendantOrSelf(object, ancestor) {
 function hasAnimatedAdmissionMarker(object, source, options, transformOnly) {
   const data = object && object.userData;
   const tags = tagsForAdmissionObject(object, options);
-  if (data && (data.animated === true || data.isTurret === true)) return true;
+  if (data?.isTurret === true) return true;
+  if (data?.animated === true) {
+    if (!transformOnly || typeof options.isAttestedRigidMotionOwner !== 'function'
+        || options.isAttestedRigidMotionOwner(object, source) !== true) return true;
+  }
   if (tags.animated === true || tags.fan || tags.turret || tags.drive) return true;
   if (tags.motionGroup && !transformOnly) return true;
 
