@@ -9,11 +9,14 @@
 
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { fittedModuleDefs, hasFittedModule } from '../core/fittedModules.js';
+import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { isUnstableReactorWreck } from '../data/entityInteractionProfiles.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
+import { isMasslineLatchedPickup } from './mining.js';
 
 export const UNIQUE_LOOT_ABILITY_STATE_VERSION = 1;
 export const PALE_COIL_BLINK_DISTANCE = 240;
@@ -124,10 +127,13 @@ export function fittedWholeWreckTractor(state) {
 export function isTidelineWholeWreckEligible(entity) {
   if (!entity || entity.alive === false || entity.type !== 'wreck') return false;
   if (!(finite(entity.radius) > 0 && entity.radius <= TIDELINE_SMALL_WRECK_MAX_RADIUS)) return false;
+  if (isUnstableReactorWreck(entity)) return false;
   const data = entity.data;
   if (!data || typeof data !== 'object') return false;
   if (!data.salvagePool || typeof data.salvagePool !== 'object') return false;
+  if (!Object.values(data.salvagePool).some((qty) => finiteWholePickupAmount(qty) > 0)) return false;
   if (data.uniqueWreckId || data.authoredWreckId || data.wreckMissionId || data.recoveryEncounterId) return false;
+  if (data.berthConsign || data.berthId) return false;
   if (data.unique || data.onboarding || data.isCommunicator || data.kind === 'derelict') return false;
   return true;
 }
@@ -402,6 +408,7 @@ export const uniqueLootAbilities = {
       if (!entity || entity.alive === false || entity.id === player.id) continue;
       if (entity.type === 'pickup') continue;
       if (!isTidelineWholeWreckEligible(entity)) continue;
+      if (isMasslineLatchedPickup(state, player, entity)) continue;
       const dx = finite(player.pos?.x) - finite(entity.pos?.x);
       const dz = finite(player.pos?.z) - finite(entity.pos?.z);
       const distance = Math.hypot(dx, dz);
