@@ -1069,6 +1069,20 @@ Focused tests: `claim-specializations`, `wave-c4-base-kit` pass.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish29a/{before,after}/`, `after/compare-{960x540,800x600}.png`.
 
+## Codex — very short desktop window (844×390): the section list clears CLOSE (ui-polish-32, polish32)
+
+**Before (master 50c8806f39):** a desktop window 844×390 (not the phone layout) got the 801–1100 narrow-desktop Codex plus the 960×540 short rules, which still assume ~540px of height. The kit's 42px top/bottom frame, the 58px→44px unlock dials and nine 22px section rungs needed more than 390px. The hang track came out 162px for a 198px list, so SHIP / ARCHIVE / LEDGER ran down through ‹ CLOSE (bench: "Ship" printed on top of "Close", ×4 on `codex` and `codex-record`), and LEDGER was cut at the bottom edge. The entry title (B0 — COLD START) was half lost in the reader fade.
+
+**After (`src/ui/orrery/archiveLayouts.js`, one new block `@media (max-width:1100px) and (min-width:801px) and (max-height:460px)`, placed after the zoom bands so it doesn't touch the lines #390 edits):** a 14px / 8px frame, a 30px CODEX, 34px dials, 24px search, 18px section rungs, a 150px plate, a slightly smaller reader, and a 32px foot. All nine sections, the whole STORY ladder (B0–B7) and CLOSE now fit with room between them, and the reader shows the number, the filed line, the title, the phase and the first sentence above PREVIOUS / NEXT.
+
+**Bench:** `codex` and `codex-record` at 844×390: 4 → 0 overlaps on CLOSE. On `codex` one geometry note remains, "Contract 47-A…" on top of Previous. That's the reader's own scroll content clipped under its fade mask; the crop shows a clear gap. Checked 1024×440, 900×460 and 820×380 too: 0, 0, and the same clipped-scroll note. 960×540 and 1024×768 match master up to run-to-run plate and wedge noise (0 pixels over threshold after vs master, against 75–130 between two master runs). 800×600 and phones aren't in the range. Selectors and IDs are unchanged.
+
+**Still open:** desktop Shipworks at 844×390. The station header and the dials take the whole height, so the Shipworks body is below the fold and the tab row is cut at "1 MI" (17 findings). Phone Shipworks (390×844 and 844×390) is fine apart from an ellipsized hold hint flagged against DISMISS.
+
+Focused tests: `fb-codex-world-tab`, `packet-codex-b-contracts`, `world-remembers-codex`, `infer-ending-archive-entry` pass.
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish32/{before,after}/844x390/`, `compare-codex-844x390.png`, `compare-codex-record-844x390.png`, `range/`.
+
 ## Credits — phone and narrow windows: the ladder clears the reel (ui-polish-30, polish30a)
 
 **Before (master 058a460a29):** at ≤900 wide the Credits grid stacks four areas (`title / hang / stage / foot`) but kept the desktop's three row tracks (`auto minmax(0,1fr) auto`). The section ladder landed in a 0px track, and its five 48px rungs and the reel dial (342px) printed over the reel. On a 390×844 phone, `02 TYPE` / `03 LIBRARIES` / `04 FONTS…` / `05 THIRD-PARTY…` ran through MADE BY, the SPACEFACE name and the blurb, and the dial sat on the TYPE head. At 800×600 FONTS AND LICENCES ran through the blurb (6 findings). The phone name was also cut at the right edge, and a long maker (EBEN SORKIN, MIRKO VELIMIROVIĆ) printed over its font's name.
@@ -1083,6 +1097,13 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish29a/{before,after}/`, `after
 Focused test: `pq-033-00-credits` 2/3, with the NOTICE `@elemaudio/web-renderer` check failing identically on master.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,desk}/`, `compare-{phone-390x844,800x600,960x540,1280x720,1920x1080}.png`.
+
+## Codex — 800×600 and narrow windows: reader clears the plate (ui-polish-31, polish31)
+- **Before (800×600):** the 801–1100 narrow-desktop band stopped at 801, so an 800 window fell back to the wide layout. The 640px plate overran the reader, the entry title and PREVIOUS/NEXT printed into the plate, and the subtitle ran under the STORY dial.
+- **Fix (`src/ui/orrery/archiveLayouts.js`, CSS only):** the narrow-desktop band and its short variant now start at 640px instead of 801px. A new ≤900 block wraps the subtitle under CODEX (max-width 250px), shrinks the plate to `min(200px, 40vh, 25vw)` and the entry title to 19px, and keeps PREVIOUS / NEXT on one row with an 18px gap.
+- **Unchanged:** phones (`data-sf-mobile`) keep their own Codex layout. At 960×540 and 1280×720 the output is pixel-identical apart from the animated needle.
+- **Also (Code Work review):** at 640–760 the hang was still 316px wide, so the stage could not clear plate + PREVIOUS/NEXT; hang/dials/plate shrink further in that band.
+- **Leftover:** a desktop window as short as 844×390 is still cramped, with the ladder running into CLOSE. Real phones in landscape use the mobile layout, which is clean.
 
 ## Station berth at a very short desktop window, 844×390 (ui-polish-33)
 
@@ -1132,3 +1153,11 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,de
 **After (`src/ui/orrery/ledgerTape.js`, plus one option passed from `src/ui/station/screens/ledger.js`):** the now cursor always keeps its name, and boundary names are planned right to left from it: a name that would run into the next prints only its number ("0007"), and yields when even that does not clear; a boundary in the now cursor's cycle is not named twice. Each figure takes the first clear slot (over or under its tip, one or two lanes out, then beside the tip), clear of other figures, the names, the axis numerals, the beads and the Hand's ring, and above the reading where a layout lifts it into the tape's foot. A figure with no clear slot yields; the list and the reading still carry it. Selectors and IDs are unchanged; the empty ledger draws as before.
 
 Overlap probe (text boxes in the tape) on two seeded ledgers, 6 receipts over three cycles and 9 receipts in one cycle: 960×540 3+3 → 0, 1024×768 / 1280×720 / 1920×1080 1 → 0. Shots: `ui-shots/polish35/{before,after}/` (seeded with `_tools/ledger-seed.mjs`).
+
+## Ledger tape — figures clear the axis numerals (ui-polish-37)
+
+**Before:** the tape kept figures out of a fixed 64px axis column, but the top numeral ("3,000 CR", 12px tracked caps from x0 + 9) prints wider than that. A big credit near the origin slid just past the column and printed on it: in a 12-receipt ledger with a 3,000 cr ceiling, `+1,806` sat on "3,000 CR" at 844×390, 960×540 and 1280×720, and `+2,950` did at 1920×1080. Same on master since #395 (Code Work's follow-up note there).
+
+**After (`src/ui/orrery/ledgerTape.js`):** each axis numeral adds its own box to the clear set at its measured printed width (the same cached `measure()` the names and figures use), and a figure near the origin slides right past whichever numeral shares its row, not just past the fixed column. Nothing else moves: the column, the tick spacing and the empty ledger are unchanged. Where the slide takes a neighbour's slot, that neighbour yields as before (at 960 `+1,500` now yields; the list and the reading carry it).
+
+Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×390 / 960×540 / 1280×720 / 1920×1080: master 3 + 1 → 0. `test/ledger-tape-yield.test.mjs` gains a case that fails on master ("+1,806 prints on the 3,000 cr numeral") and passes here. Shots: `ui-shots/polish37/{before,after}/`, compares in `ui-shots/polish37/compare/` (seeded with `_tools/ledger-seed.mjs` sets c and d).

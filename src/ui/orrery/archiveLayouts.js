@@ -408,7 +408,7 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 }
 /* a narrow desktop (960 and 1024 wide): smaller dials beside the title and a smaller plate, so the
    reading between the ladder and the plate keeps a column wide enough for its words */
-@media (max-width:1100px) and (min-width:801px) {
+@media (max-width:1100px) and (min-width:640px) {
   ${CX} { --cx-sections:108px; --cx-gap:20px; --cx-plate:min(300px, 48vh, 29vw); grid-template-columns:316px minmax(0, 1fr) !important; }
   ${CX} > .k-title { column-gap:28px; }
   ${CX} > .k-title > p { margin-top:6px !important; font-size:14px !important; }
@@ -434,8 +434,32 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .sf-codex-entry .k-measure .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:2px; padding:5px 0 !important; }
   ${CX} .cx-reader__turn { margin-top:14px !important; }
 }
+/* an 800-wide window: the subtitle wraps under CODEX instead of running into the STORY dial, and
+   PREVIOUS / NEXT keep a real gap between them */
+@media (max-width:900px) and (min-width:640px) {
+  ${CX} > .k-title > p { max-width:250px !important; line-height:1.35 !important; }
+  ${CX} { --cx-plate:min(200px, 40vh, 25vw); }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:19px !important; }
+  ${CX} .cx-reader__turn { column-gap:18px !important; flex-wrap:nowrap; white-space:nowrap; }
+}
+/* 640–760: the 316px hang left too little stage for plate + PREVIOUS/NEXT; shrink hang, dials and
+   plate so the reader column stays clear (800×600 already clears with the ≤900 rules above) */
+@media (max-width:760px) and (min-width:640px) {
+  ${CX} { --cx-sections:96px; --cx-gap:12px; --cx-plate:min(132px, 32vh, 18vw); grid-template-columns:minmax(220px, 38vw) minmax(0, 1fr) !important; }
+  ${CX} > .k-title { column-gap:16px; }
+  ${CX} > .k-title > p { max-width:160px !important; font-size:12px !important; }
+  ${CX} .cx-index__item { grid-template-rows:36px auto; width:48px; }
+  ${CX} .cx-index__dial { width:34px; height:34px; }
+  ${CX} .cx-index__n { font-size:11px !important; }
+  ${CX} .cx-index__of { font-size:9px; }
+  ${CX} .cx-index__w { margin-top:2px !important; font-size:9px !important; letter-spacing:.02em !important; }
+  ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 14px) !important; }
+  ${CX} .cx-reader__num-n { font-size:34px; }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:16px !important; }
+  ${CX} .cx-reader__turn { column-gap:12px !important; }
+}
 /* ...and a short one (960×540): the scale's rungs and the foot close up so LEDGER clears CLOSE */
-@media (max-width:1100px) and (min-width:801px) and (max-height:640px) {
+@media (max-width:1100px) and (min-width:640px) and (max-height:640px) {
   ${CX} { row-gap:14px !important; }
   ${CX} > .k-hang { row-gap:10px; }
   ${CX} .cx-search .sf-codex-search { height:28px !important; }
@@ -456,6 +480,39 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 }
 @media (min-width:3400px) and (min-height:1900px) {
   ${CX}, ${ML} { zoom:1.85; --k-s:1; }
+}
+/* a very short desktop window (844×390): the kit's 42px frame, the 58px dials and nine 22px section
+   rungs need more than 390px, so STORY…LEDGER ran down through ‹ CLOSE. Thin the frame, shrink the
+   dials and rungs and the plate, so the whole section list and the foot both fit above the fold */
+@media (max-width:1100px) and (min-width:801px) and (max-height:460px) {
+  ${CX} { padding-top:14px !important; padding-bottom:8px !important; row-gap:8px !important; --cx-plate:min(150px, 40vh, 18vw); --cx-foot-gap:0px; }
+  ${CX} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:30px !important; line-height:1 !important; }
+  ${CX} > .k-title > p { margin-top:4px !important; font-size:12.5px !important; line-height:1.3 !important; }
+  ${CX} .cx-index { row-gap:2px; }
+  ${CX} .cx-index__cap { font-size:10px !important; }
+  ${CX} .cx-index__item { grid-template-rows:34px auto; width:58px; }
+  ${CX} .cx-index__dial { width:34px; height:34px; }
+  ${CX} .cx-index__n { font-size:11px !important; }
+  ${CX} .cx-index__of { font-size:9px; }
+  ${CX} .cx-index__w { margin-top:1px !important; font-size:9.5px !important; }
+  ${CX} > .k-hang { row-gap:6px; }
+  ${CX} .cx-search .sf-codex-search { height:24px !important; }
+  ${CX} .cx-search::before { top:3px; }
+  ${CX} .cx-search::after { top:13px; }
+  ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
+  ${CX} .sf-tabbar .sf-tab { height:18px !important; font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
+  ${CX} .cx-ladder .k-row::before { top:10px !important; }
+  ${CX} > .k-hang > .cx-ladder { padding-bottom:10px !important; }
+  ${CX} > .cx-plate-host { top:calc(50% + 10px - var(--cx-plate) / 2); }
+  ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 20px) !important; }
+  ${CX} .cx-reader__num-n { font-size:32px; }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:17px !important; }
+  ${CX} .sf-codex-entry > h2 { margin-top:4px !important; }
+  ${CX} .sf-codex-entry .k-measure { margin-top:8px !important; padding-top:8px !important; }
+  ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.4 !important; }
+  ${CX} .cx-reader__turn { margin-top:8px !important; column-gap:18px !important; white-space:nowrap; }
+  ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
 }
 @media (forced-colors:active) {
   ${CX} .cx-ladder .k-row[aria-selected="true"] { outline:2px solid Highlight !important; }
