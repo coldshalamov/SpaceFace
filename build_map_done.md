@@ -752,3 +752,7 @@ by the integrator; nothing below is an owner ruling until the owner says so.
 - Cost: SP-07 spindle + capture fork authored through material-truth preflight and wired on the
   ordinary route; Wave 1b + Wave 2b PARTIAL + inline R1-R4 close + Wave 3 fixed-and-verified.
 
+
+### Polish pass 2026-10-03 (closed)
+
+Every row resolved in its sitting; the pass record was retired to git history in the 2026-10-15 token-reduction pass.
