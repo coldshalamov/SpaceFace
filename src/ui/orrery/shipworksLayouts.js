@@ -1126,11 +1126,25 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
 
 /* a very short desktop (844×390): the berth scrolls and gives this tab a 230px cell; LEFT · CENTER ·
    RIGHT get their own line at the stage's foot instead of sharing the verb row with PAINT */
-@media (min-width:801px) and (max-width:1100px) and (max-height:460px) and (hover:hover) {
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px) and (hover:hover) {
   ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { inset:0 0 50px 0 !important; }
   ${W} .sx-sw__stage.is-live > .sx-sw__camera { top:calc(100% + 2px) !important; bottom:auto !important; right:0 !important; left:auto !important; }
   /* the main column is ~110px narrower than at 960: the identity wraps before the right callouts */
   ${W}.orr-sw--jig > .sx-sw__side { max-width:170px !important; }
+}
+/* …and at 651-800 wide the identity (STARTER · 1/7 systems fitted) ran into the right callouts: it
+   rides one line over the nameplate as a kicker and the stage starts under it. The verbs (in flow
+   under the stage here) always break after TAKE THE HITCH, so LEFT · CENTER · RIGHT stand on the
+   second line beside RECORD · PAINT instead of across them */
+@media (min-width:651px) and (max-width:800px) and (max-height:460px) and (hover:hover) {
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { inset:22px 0 50px 0 !important; }
+  ${W}.orr-sw--jig > .sx-sw__side { left:calc(190px + 52px) !important; top:4px !important; max-width:calc(100% - 250px) !important; }
+  ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
+  ${W} .sx-sw-verbs.sx-sw-verbs--unseated { right:auto !important; width:max-content !important; max-width:260px !important; }
+  ${W} .sx-sw__main:has(> .sx-sw-verbs--unseated) > .sx-sw__stage.is-live > .sx-sw__camera { top:calc(100% + 24px) !important; }
+}
+@media (min-width:651px) and (max-width:699px) and (max-height:460px) and (hover:hover) {
+  ${W} .sx-sw__stage.is-live > .sx-sw__camera { column-gap:10px !important; }
 }
 `;
 
