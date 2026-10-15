@@ -625,8 +625,20 @@ export function createSimLaneRuntime({
       cursorScreen.y = pointer.clientY;
     }
     if (d.kind === 'rpc') {
+      let resolveRpc;
+      let rejectRpc;
       const rpcPromise = new Promise((resolve, reject) => {
-        pendingRpcs.set(d.id, { resolve, reject });
+        resolveRpc = resolve;
+        rejectRpc = reject;
+      });
+      // Keep the promise itself so ordinary runtime teardown can observe the
+      // cancellation rejection before it reaches the host's unhandled-
+      // rejection hook.  A worker failure takes a different close path and
+      // deliberately remains observable as a rejected RPC.
+      pendingRpcs.set(d.id, {
+        resolve: resolveRpc,
+        reject: rejectRpc,
+        promise: rpcPromise,
       });
       pushLaneCommand(envelopeRing, d);
       flushDirectives();
@@ -1714,7 +1726,16 @@ export function createSimLaneRuntime({
     try { domSurface.dispose(); } catch (_) {}
     try { journal.close(); } catch (_) {}
 
+    const closingForLaneFailure = laneError !== null;
     for (const [, tracked] of pendingRpcs) {
+      // close() is also the normal presentation teardown path.  Fire-and-
+      // forget RPCs can still be in flight there; observe only that expected
+      // cancellation so their rejection cannot become a page-level error.
+      // failLane() sets laneError first, so real worker failures retain their
+      // original unhandled-rejection behavior for callers that ignore them.
+      if (!closingForLaneFailure && tracked.promise && typeof tracked.promise.catch === 'function') {
+        tracked.promise.catch(() => {});
+      }
       try { tracked.reject(new Error(laneError || 'sim lane closed')); } catch (_) {}
     }
     pendingRpcs.clear();
