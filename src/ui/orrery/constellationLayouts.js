@@ -182,6 +182,16 @@ ${T} .con-cost dt { align-self:end; }
   ${T} .con-rows:has(.con-row__img) .con-row__art { width:48px; height:32px; }
   ${T} .con-row__art .con-row__img { width:30px; height:44px; }
   ${T} .con-row { padding:2px 0; }
+  /* the scrolling column's own gutter takes the width a cost word had: let "Research points" lift too */
+  ${T} .con-cost dt { white-space:normal; }
+}
+/* a short frame (a laptop strip, a phone on its side): the foot steps under the reading, so the dial
+   takes the whole height of its column instead of standing over an empty band beside Back */
+@media (min-width:761px) and (max-height:500px) {
+  ${T}.k-screen { grid-template-areas:"title corner" "stage side" ". foot" !important; }
+  ${T} > .k-stage.con-stage { grid-row:1 / 4; }
+  ${T} > .k-foot.con-foot { grid-column:2; grid-row:3; flex-wrap:wrap; column-gap:18px; row-gap:0; }
+  ${T} .con-legend { display:none; }
 }
 /* a narrow window or a phone: one column that scrolls — title, the three readings, the dial,
    the reading — with Back (and on a phone the node list) held at the foot */
