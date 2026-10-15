@@ -1378,6 +1378,10 @@ export class Sg02DynamicBodyOwner {
     }
     if (requested < attachment.restLength && attachment.springState) attachment.springState.reelSlip = true;
     attachment.restLength = safeReelRestLength(attachment, requested, this.fixedDt);
+    attachment.reelRevision = Math.max(
+      Math.max(0, Math.trunc(finite(attachment.reelRevision))) + 1,
+      Math.max(0, Math.trunc(finite(input.reelRevision))),
+    );
     return { restLength: attachment.restLength };
   }
 
