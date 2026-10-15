@@ -350,7 +350,10 @@ async function boot() {
     bus.on('save:loaded', (payload) => {
       if (!(laneCommandSink && laneCommandSink())) return;
       try {
-        helpers.finalizeLoadedGame(payload || {});
+        // The shared finalizer owns menu recovery and failure receipts. Observe its
+        // rejection here as the save generator does on the main simulation lane.
+        Promise.resolve(helpers.finalizeLoadedGame(payload || {}))
+          .catch((err) => console.error('[SpaceFace] lane finalizeLoadedGame failed', err));
       } catch (err) { console.error('[SpaceFace] lane finalizeLoadedGame failed', err); }
     });
     // Ledger D15: the station sheet set used to arrive at first dock, so every screen rendered
@@ -870,7 +873,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
-      throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
+      throw new GameStartReadinessError('AUTHORED_LIBRARY_UNAVAILABLE', 'authored-library',
+        'Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
     }
     bus.emit('game:loadingProgress', {
       id: 'authored-visuals',
@@ -903,7 +907,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
-      throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
+      throw new GameStartReadinessError('AUTHORED_VISUALS_UNAVAILABLE', 'authored-visuals',
+        'Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
     }
     bus.emit('game:loadingProgress', {
       id: 'render-pipelines',
@@ -996,10 +1001,21 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   } catch (error) {
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     console.error('[SpaceFace] loaded game startup failed', error);
+    const failure = describeGameStartFailure(error);
     failGameStart(
-      state, bus, error, 'Loaded game assets failed to load. See console.',
-      runTransitionGuard, transitionToken,
+      state, bus, error, failure.text,
+      runTransitionGuard, transitionToken, failure,
     );
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+    // The worker restore cannot invoke the main realm's save-generator finalizer
+    // observer. Give its title route the same durable failure receipt, with the
+    // actual cause; the main lane keeps its existing single save-owner receipt.
+    if (laneCommandSink()) {
+      bus.emit('save:error', {
+        slot: payload.slot || 'latest', reason: 'load_failed',
+        error: error?.message || String(error), ...failure,
+      });
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     throw error;
   }
