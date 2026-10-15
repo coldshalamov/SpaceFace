@@ -138,6 +138,8 @@ const LABEL = safeName(argValue('--label'), 48);
 const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
 const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile', ...(LABEL ? [LABEL] : []));
+// Analyze large timeline captures only after the owned native runtime has closed.
+const deferredTraceAnalyses = [];
 const FIXED_SEED = 47;
 const requestedFootageSource = argValue('--footage-source') || 'default';
 if (!['default', 'presented', 'video', 'video-frame'].includes(requestedFootageSource)) {
@@ -1012,15 +1014,17 @@ async function runSteadyFlightProfile(page, cdp) {
   if (TRACE) {
     const traceFile = path.join(OUT_DIR, 'trace.json');
     await stopTraceToFile(cdp, traceFile);
-    const events = traceEventsOf(JSON.parse(fs.readFileSync(traceFile, 'utf8')));
-    let fromUs = Infinity, toUs = -Infinity;
-    for (const event of events) if (event.ph !== 'M' && Number.isFinite(event.ts) && event.ts > 0) {
-      fromUs = Math.min(fromUs, event.ts);
-      toUs = Math.max(toUs, event.ts + (event.dur || 0));
-    }
-    const summary = summarizeMainThread(events, { windows: [{ id: 'steady flight', fromUs, toUs }] });
-    fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.json'), JSON.stringify(summary, null, 1));
-    fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.md'), renderTraceSummaryMarkdown(summary));
+    deferredTraceAnalyses.push(() => {
+      const events = traceEventsOf(JSON.parse(fs.readFileSync(traceFile, 'utf8')));
+      let fromUs = Infinity, toUs = -Infinity;
+      for (const event of events) if (event.ph !== 'M' && Number.isFinite(event.ts) && event.ts > 0) {
+        fromUs = Math.min(fromUs, event.ts);
+        toUs = Math.max(toUs, event.ts + (event.dur || 0));
+      }
+      const summary = summarizeMainThread(events, { windows: [{ id: 'steady flight', fromUs, toUs }] });
+      fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.json'), JSON.stringify(summary, null, 1));
+      fs.writeFileSync(path.join(OUT_DIR, 'trace-summary.md'), renderTraceSummaryMarkdown(summary));
+    });
   }
   if (process.argv.includes('--worker-cost')) {
     const workerCost = await page.evaluate(async () => {
@@ -1303,3 +1307,5 @@ try {
     console.warn('[main-thread-profile] isolated profile cleanup failed:', error?.message);
   }
 }
+
+for (const analyze of deferredTraceAnalyses) analyze();
