@@ -195,3 +195,58 @@ test('gate script writes campaign + fixture reports and exits 0', () => {
   assert.deepEqual(json.multiSeedDistinct, { hauler: 3, hunter: 3, prospector: 3 });
   assert.equal('elapsedMs' in json, false, 'tracked fixture must not churn on wall-clock runtime');
 });
+
+test('research faucet: fighters and miners earn RP once they own their path entry node', () => {
+  const report = runGateOnce().json;
+  const rpOf = (id) => (TECH_NODES.find((n) => n.id === id).cost || {}).rp || 0;
+  const hunter90 = report.cells.hunter[90];
+  const prospector90 = report.cells.prospector[90];
+
+  // A 90-minute bounty hunter can open Warship License (the scouts' bar: strike craft 8 RP and
+  // the 16 RP license behind it); a miner clears Focused Extraction's 6 RP.
+  assert.ok(hunter90.researchPoints >= rpOf('tech_warship_license'),
+    `hunter RP at 90m ${hunter90.researchPoints} < ${rpOf('tech_warship_license')}`);
+  assert.ok(prospector90.researchPoints >= rpOf('tech_focused_extraction'),
+    `prospector RP at 90m ${prospector90.researchPoints} < ${rpOf('tech_focused_extraction')}`);
+
+  // The stranding guard: neither faucet is open without the entry node. Any horizon that banked
+  // RP from these careers owns its path's first node.
+  for (const m of [30, 60, 90]) {
+    const hunter = report.cells.hunter[m];
+    if (hunter.researchPoints > 0) assert.ok(hunter.researchedNodes.includes('tech_combat_basics'), `hunter@${m}`);
+    const prospector = report.cells.prospector[m];
+    if (prospector.researchPoints > 0) {
+      assert.ok(prospector.researchedNodes.includes('tech_industrial_mining'), `prospector@${m}`);
+    }
+  }
+
+  // The hauler is untouched by this faucet and stays inside its declared bands.
+  for (const m of [30, 60, 90]) {
+    const hauler = report.cells.hauler[m];
+    assert.deepEqual(hauler.assertionFails, [], `hauler@${m}`);
+    assert.ok(hauler.creditsPerMin >= CAREER_BANDS.hauler.lo && hauler.creditsPerMin <= CAREER_BANDS.hauler.hi,
+      `hauler@${m} ${hauler.creditsPerMin} outside ${CAREER_BANDS.hauler.lo}..${CAREER_BANDS.hauler.hi}`);
+  }
+});
+
+test('research faucet: the prospector buys the entry node first, then a settled quota pays RP', () => {
+  blockNondeterminism();
+  try {
+    const receipt = runCareerStrategy('prospector', {
+      horizonMin: 30, seed: SEED_SETS.prospector[0], forceDeathAtLoop: 10,
+    });
+    const unlock = receipt.authorityReceipts.find((a) => a.kind === 'tech_unlock');
+    const accept = receipt.authorityReceipts.find((a) => a.kind === 'mission_accept');
+    const done = receipt.authorityReceipts.find((a) => a.kind === 'mission_complete');
+    assert.equal(unlock && unlock.techId, 'tech_industrial_mining');
+    assert.ok(accept && accept.type === 'mining_quota', 'a mining quota is taken through the board');
+    assert.ok(done && done.type === 'mining_quota', 'the quota settles through missions');
+    assert.ok(unlock.atS <= accept.atS, 'the entry node is owned before the first quota is taken');
+    assert.ok(receipt.researchedNodes.includes('tech_industrial_mining'));
+    assert.ok(receipt.researchPoints >= 2, 'the settled quota paid at least the tier-0 base');
+    assert.ok(receipt.creditsPerMin >= CAREER_BANDS.prospector.lo && receipt.creditsPerMin <= CAREER_BANDS.prospector.hi);
+    assert.equal(receipt.equipment.beamM.acquired, false, 'Beam M stays research-gated');
+  } finally {
+    restoreNondeterminism();
+  }
+});
