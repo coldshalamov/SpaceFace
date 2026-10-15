@@ -767,9 +767,10 @@ async function installLaunchObservers(page) {
 // can be armed before its public control is clicked and disposed when the route reaches flight.
 // Passing the self-contained installer directly avoids adding a diagnostic module request to the
 // measured page, including when a historical source overlay predates this helper.
-async function installFlightFailureObserver(page) {
+async function installFlightFailureObserver(page, { timeoutMs = 60_000 } = {}) {
+  await page.waitForFunction(() => typeof window.SF?.bus?.on === 'function', null, { timeout: timeoutMs });
   const result = await page.evaluate(installFlightStartFailureObserver).catch(() => ({ installed: false }));
-  if (!result.installed) log('game:startFailed observer unavailable; preserving the normal flight deadline');
+  if (!result.installed) throw new Error('game:startFailed observer could not arm after window.SF.bus became available');
   return result;
 }
 
@@ -926,7 +927,7 @@ async function installProfileFootageSource(page) {
 }
 
 async function runSteadyFlightProfile(page, cdp) {
-  await installFlightFailureObserver(page);
+  await installFlightFailureObserver(page, { timeoutMs: 150_000 });
   try {
     // racingToFlight owns a six-minute readiness deadline. Race it against the same event-aware
     // reader so a real start failure exits immediately without shortening the genuine route wait.
@@ -1243,11 +1244,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
   if (!(await waitForButton(page, /^New Game$/, 120_000))) throw new Error('the title menu never showed New Game');
-  await page.waitForFunction(() => typeof window.SF?.bus?.on === 'function', null, { timeout: 60_000 })
-    .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
   if (MENU_DWELL_MS > 0) { log(`reading the title menu for ${MENU_DWELL_MS} ms first`); await page.waitForTimeout(MENU_DWELL_MS); }
   await installLaunchObservers(page);
-  await installFlightFailureObserver(page);
+  await installFlightFailureObserver(page, { timeoutMs: 60_000 });
   try {
   const heapMarks = [];
   const markHeap = async (label) => {
@@ -1390,12 +1389,79 @@ try {
   // the next investigation can distinguish missing controls from a failed module boot.
   let route = null;
   try {
-    route = await diagnosticPage?.evaluate(() => ({
-      url: location.href,
-      text: document.body?.innerText?.slice(0, 12000),
-      buttons: [...document.querySelectorAll('button')].map(button => button.textContent),
-      mode: window.SF?.state?.mode,
-    }));
+    route = await diagnosticPage?.evaluate(() => {
+      const state = window.SF?.state || null;
+      const render = state?.render || window.SF?.registry?.get?.('render')?.state?.render || null;
+      const isScalar = (value) => value == null
+        || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+      const scalarFields = (value, limit = 24) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const out = {};
+        for (const key of Object.keys(value).slice(0, limit)) {
+          try {
+            if (isScalar(value[key])) out[key] = value[key];
+          } catch { /* diagnostics must not invoke a throwing getter twice */ }
+        }
+        return out;
+      };
+      const ledger = Array.isArray(render?.openingCookLedger)
+        ? render.openingCookLedger.slice(-50).map((row) => scalarFields(row, 32))
+        : null;
+      const requiredPackageAdmission = scalarFields(render?.requiredPackageAdmission, 24);
+      const firstPictureState = render?.openingFirstPictureState || render?.openingFirstPicture || null;
+      const openingFirstPicture = {
+        ready: typeof render?.openingFirstPictureReady === 'boolean'
+          ? render.openingFirstPictureReady
+          : (typeof firstPictureState?.ready === 'boolean' ? firstPictureState.ready : null),
+        phase: typeof render?.openingFirstPicturePhase === 'string'
+          ? render.openingFirstPicturePhase
+          : (typeof render?.openingFirstPicturePhase?.stage === 'string'
+            ? render.openingFirstPicturePhase.stage
+            : (typeof firstPictureState?.phase === 'string' ? firstPictureState.phase : null)),
+      };
+      const capturedPlan = render?.capturedPlan || render?.capturedplan || render?.openingSubmissionPlan || null;
+      let counts = scalarFields(capturedPlan?.counts, 24);
+      if (counts == null && capturedPlan && typeof capturedPlan === 'object') {
+        counts = {};
+        for (const [key, value] of [
+          ['roots', capturedPlan.roots],
+          ['drawLeaves', capturedPlan.drawLeaves],
+          ['geometryBuffers', capturedPlan.geometryBuffers],
+          ['materials', capturedPlan.materials],
+          ['textures', capturedPlan.textures],
+          ['programCompileSubjects', capturedPlan.programCompileSubjects],
+          ['compileSubjects', capturedPlan.compileSubjects],
+        ]) {
+          if (Array.isArray(value)) counts[key] = value.length;
+        }
+      }
+      const blockingReasons = Array.isArray(capturedPlan?.blockingReasons)
+        ? capturedPlan.blockingReasons.slice(0, 50).map((reason) => scalarFields(reason, 16))
+        : null;
+      let pendingPipelineAdmissions = null;
+      try {
+        const pending = typeof render?.pendingPipelineAdmissions === 'function'
+          ? render.pendingPipelineAdmissions() : render?.pendingPipelineAdmissions;
+        pendingPipelineAdmissions = Number.isFinite(Number(pending)) ? Number(pending) : null;
+      } catch { /* diagnostics must not change the failure route */ }
+      return {
+        url: location.href,
+        text: document.body?.innerText?.slice(0, 12000),
+        buttons: [...document.querySelectorAll('button')].map(button => button.textContent),
+        mode: state?.mode,
+        render: {
+          openingCookLedger: ledger,
+          requiredPackageAdmission,
+          openingFirstPicture,
+          capturedPlan: {
+            complete: typeof capturedPlan?.complete === 'boolean' ? capturedPlan.complete : null,
+            blockingReasons,
+            counts,
+          },
+          pendingPipelineAdmissions,
+        },
+      };
+    });
   } catch (_) { /* the failed runtime may have closed its page */ }
   let flightFailure = error?.flightFailure || null;
   if (!flightFailure) {

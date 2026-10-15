@@ -156,6 +156,12 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
   return cancel;
 }
 
+function openingPresentBudgetMs(state, timeoutMs, options = {}) {
+  return Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
+    ? options.presentBudgetMs
+    : state?.run?.kind === 'survival' ? Math.max(timeoutMs, 360000) : Math.max(timeoutMs, 120000);
+}
+
 /** Both launch routes join one exact-picture preparation owned by this renderer/run/context. */
 export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {}) {
   const render = state?.render;
@@ -170,7 +176,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {
   if (prior && prior.world === world && prior.generation === generation && prior.serial === serial && prior.sector === sector
       && prior.renderer === nativeRenderer && prior.context === context && !gpuContextIsLost(state)) return prior.promise;
   let active = true;
-  const isActive = () => active && state.render === render && state.world === world
+  const isActive = () => active && state.mode === 'loading' && state.render === render && state.world === world
     && render.admissionRunGeneration === generation && world?.enterSerial === serial && world?.currentSectorId === sector
     && render.renderer === nativeRenderer && state.contextRestoreSeq === context
     && (typeof options.isActive !== 'function' || options.isActive());
@@ -182,15 +188,46 @@ export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {
     }
     if (gpuContextIsLost(state)) throw new Error('WebGL context was lost while preparing the first picture');
   };
+  let phase = null;
+  let phaseBudgetMs = timeoutMs;
+  const finishPhase = (outcome) => {
+    if (!phase || phase.outcome !== 'pending' || !isActive() || render.openingFirstPicturePhase !== phase) return;
+    phase.outcome = outcome;
+    phase.ms = Math.round(ledgerNow() - phase.startedAt);
+    recordOpeningCookStep(render, `exact.${phase.stage}`, phase.startedAt, outcome, { budgetMs: phase.budgetMs });
+  };
+  const startPhase = (stage) => {
+    assertActive();
+    finishPhase('resolved');
+    phase = { stage, startedAt: ledgerNow(), budgetMs: phaseBudgetMs, outcome: 'pending' };
+    render.openingFirstPicturePhase = phase;
+  };
+  const bounded = async (work, budgetMs) => {
+    const settled = await settleWithin(work, budgetMs);
+    if (settled.ok) return settled.value;
+    if (settled.error) throw settled.error;
+    const error = new Error(`opening first-picture admission timed out at ${phase?.stage || 'unknown'} `
+      + `after ${Math.round(ledgerNow() - (phase?.startedAt ?? ledgerNow()))}ms (budget ${budgetMs}ms)`);
+    error.stage = phase?.stage;
+    error.timeout = true;
+    finishPhase('timeout');
+    active = false;
+    throw error;
+  };
   const work = (async () => {
+    startPhase('mesh-staging');
+    await bounded(Promise.resolve().then(() => render.beginOpeningLoadingAdmission?.()), timeoutMs);
     assertActive();
-    await render.beginOpeningLoadingAdmission?.();
-    assertActive();
-    // The current-sector owner starts during loading and covers imminent real content as
-    // well as today's camera leaves. Join its finite work before sealing the picture;
-    // otherwise a correct first frame can still inherit a cold opening-flight backlog.
-    if (render.openingLiveSectorReady) {
-      const cooked = await render.openingLiveSectorReady;
+    // Main calls this gate after its library and visual prerequisites. Per-subject work
+    // starts earlier, but the broad cook must census/freeze their committed composition.
+    // Preserve that owner's existing ceiling; it must not spend the exact picture's 20s.
+    if (render.openingLiveSectorReady || typeof render.prepareLiveSectorBeforeFlight === 'function') {
+      phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
+      startPhase('current-sector');
+      const sectorCook = render.openingLiveSectorReady || observePipelineAdmission(Promise.resolve()
+        .then(() => render.prepareLiveSectorBeforeFlight({ isActive })));
+      render.openingLiveSectorReady = sectorCook;
+      const cooked = await bounded(sectorCook, phaseBudgetMs);
       assertActive();
       if (cooked === false || cooked?.partial === true || cooked?.superseded === true
           || cooked?.cancelled === true || cooked?.reason === 'sector-superseded'
@@ -199,64 +236,73 @@ export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {
         throw new Error('opening current-sector preparation did not complete');
       }
     } else if (state.run?.kind === 'survival') {
-      const cooked = await waitForOpeningGpuResources(state, timeoutMs, { settleTail: true });
+      phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
+      startPhase('current-sector');
+      const cooked = await bounded(waitForOpeningGpuResources(state, timeoutMs, { settleTail: true }), phaseBudgetMs);
       assertActive();
       if (cooked !== true) throw new Error(render.requiredPackageAdmission?.reason || 'arena GPU admission did not complete');
     }
-    if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
-      throw new Error('opening first-picture preparation failed');
-    }
-    assertActive();
-    let plan;
-    if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
-      const steps = render.captureOpeningSubmissionPlanSteps();
-      try {
-        for (;;) {
-          assertActive();
-          const step = steps.next();
-          if (step.done) { plan = step.value; break; }
-          await yieldToBrowser();
-        }
-      } finally { steps.return?.(); }
-    } else plan = render.captureOpeningSubmissionPlan();
-    assertActive();
-    if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
-      throw new Error('opening submission plan is incomplete');
-    }
-    const submission = Promise.resolve(render.drainOpeningSubmissionPlan(plan, { strict: true, isActive }));
-    render.openingSubmissionReady = submission;
-    render.exactPipelineWarmupReady = submission;
-    const admitted = await submission;
-    assertActive();
-    if (admitted === false || admitted?.ok === false) throw new Error('opening submission admission failed');
-    const residency = Promise.resolve(render.prepareOpeningGpuResources({ required: true, isActive }));
-    render.openingGpuResidencyReady = residency;
-    const resources = await residency;
-    assertActive();
-    if (resources?.partial === true || resources?.contextLost === true
-        || resources?.geometryResidency?.partial === true || resources?.geometryResidency?.contextLost === true
-        || (resources?.geometryResidency?.skipped === true
-          && resources.geometryResidency.reason !== 'no drawable geometry')) {
-      throw new Error('Required opening GPU residency did not complete');
-    }
-    const classification = classifyRequiredPackageAdmission({
-      capturedGeneration: generation, currentGeneration: render.admissionRunGeneration,
-      settled: { ok: true, value: resources },
-    });
-    if (!classification.ready) throw new Error(classification.reason || 'opening GPU resources are not ready');
-    rememberRequiredPackageAdmission(render, generation, classification);
-    render.openingFirstPictureOwner = { world, generation, serial, sector, renderer: nativeRenderer, context };
-    render.openingFirstPictureReady = true;
-    return true;
+    phaseBudgetMs = timeoutMs;
+    const exactWork = (async () => {
+      startPhase('seal');
+      if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
+        throw new Error('opening first-picture preparation failed');
+      }
+      assertActive();
+      startPhase('capture');
+      let plan;
+      if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
+        const steps = render.captureOpeningSubmissionPlanSteps();
+        try {
+          for (;;) {
+            assertActive();
+            const step = steps.next();
+            if (step.done) { plan = step.value; break; }
+            await yieldToBrowser();
+          }
+        } finally { steps.return?.(); }
+      } else plan = render.captureOpeningSubmissionPlan();
+      assertActive();
+      if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        throw new Error('opening submission plan is incomplete');
+      }
+      startPhase('submission');
+      const submission = Promise.resolve(render.drainOpeningSubmissionPlan(plan, { strict: true, isActive }));
+      render.openingSubmissionReady = submission;
+      render.exactPipelineWarmupReady = submission;
+      const admitted = await submission;
+      assertActive();
+      if (admitted === false || admitted?.ok === false) throw new Error('opening submission admission failed');
+      startPhase('residency');
+      const residency = Promise.resolve(render.prepareOpeningGpuResources({ required: true, isActive }));
+      render.openingGpuResidencyReady = residency;
+      const resources = await residency;
+      assertActive();
+      if (resources?.partial === true || resources?.contextLost === true
+          || resources?.geometryResidency?.partial === true || resources?.geometryResidency?.contextLost === true
+          || (resources?.geometryResidency?.skipped === true
+            && resources.geometryResidency.reason !== 'no drawable geometry')) {
+        throw new Error('Required opening GPU residency did not complete');
+      }
+      const classification = classifyRequiredPackageAdmission({
+        capturedGeneration: generation, currentGeneration: render.admissionRunGeneration,
+        settled: { ok: true, value: resources },
+      });
+      if (!classification.ready) throw new Error(classification.reason || 'opening GPU resources are not ready');
+      rememberRequiredPackageAdmission(render, generation, classification);
+      render.openingFirstPictureOwner = { world, generation, serial, sector, renderer: nativeRenderer, context };
+      render.openingFirstPictureReady = true;
+      finishPhase('resolved');
+      return true;
+    })();
+    return bounded(exactWork, timeoutMs);
   })();
   // Cancellation stops future submissions; raw work retains its existing resource owners until it retires.
   work.catch(() => {});
-  const promise = settleWithin(work, timeoutMs).then((settled) => {
-    if (!settled.ok) {
-      active = false;
-      throw settled.error || new Error('opening first-picture admission timed out');
-    }
-    return settled.value;
+  const promise = work.catch((error) => {
+    finishPhase(error?.timeout ? 'timeout' : 'error');
+    active = false;
+    throw error;
   });
   openingFirstPictureRuns.set(render, { world, generation, serial, sector, renderer: nativeRenderer, context, promise });
   return promise;
@@ -1644,11 +1690,7 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000, optio
   // host finishes early, a wedged cook still fails open.
   // options.presentBudgetMs overrides the ceiling for a caller (a test) that wants the timeout path in
   // milliseconds instead of two minutes.
-  const presentBudgetMs = Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
-    ? options.presentBudgetMs
-    : state && state.run && state.run.kind === 'survival'
-      ? Math.max(timeoutMs, 360000)
-      : Math.max(timeoutMs, 120000);
+  const presentBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
   const presentResult = await settleWithin(presentCook, presentBudgetMs);
   const presentOutcome = settleOutcome(presentResult);
   recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);

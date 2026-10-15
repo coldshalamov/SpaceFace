@@ -93,3 +93,25 @@ test('the browser installer captures the raw event on the page global and unsubs
     else globalThis.SF = priorSf;
   }
 });
+
+test('the installer stays unarmed until a delayed SF bus is present', () => {
+  const priorSf = globalThis.SF;
+  const priorWatch = globalThis[WATCH_KEY];
+  const bus = createBus();
+  const payload = { error: 'delayed bus launch failure', code: 'GAME_START_FAILED', stage: 'startup' };
+  try {
+    delete globalThis.SF;
+    assert.deepEqual(installFlightStartFailureObserver(), { installed: false });
+    assert.equal(globalThis[WATCH_KEY].read(), null);
+
+    globalThis.SF = { bus };
+    assert.deepEqual(installFlightStartFailureObserver(), { installed: true });
+    bus.emit('game:startFailed', payload);
+    assert.equal(globalThis[WATCH_KEY].read(), payload);
+  } finally {
+    if (priorWatch === undefined) delete globalThis[WATCH_KEY];
+    else globalThis[WATCH_KEY] = priorWatch;
+    if (priorSf === undefined) delete globalThis.SF;
+    else globalThis.SF = priorSf;
+  }
+});

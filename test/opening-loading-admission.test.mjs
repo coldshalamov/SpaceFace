@@ -146,7 +146,7 @@ test('New Game and Continue callers join one exact sequence and acceptance follo
   assert.equal(openingFirstPictureIsReady(state), true);
 });
 
-test('launch joins the early current-sector cook before sealing the exact picture', async () => {
+test('launch joins the current-sector cook before sealing the exact picture', async () => {
   const cook = deferred();
   const { state, calls } = fixture({ openingLiveSectorReady: cook.promise });
   const first = waitForOpeningFirstPicture(state, 1000);
@@ -172,11 +172,50 @@ test('the current-sector wait remains bounded and cannot submit after its deadli
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const cook = deferred();
   const { state, calls } = fixture({ openingLiveSectorReady: cook.promise });
-  const first = waitForOpeningFirstPicture(state, 20);
-  const rejected = assert.rejects(first, /timed out/);
+  const first = waitForOpeningFirstPicture(state, 20, { presentBudgetMs: 20 });
+  const rejected = assert.rejects(first, /timed out at current-sector/);
   await flush(); t.mock.timers.tick(20); await rejected;
   cook.resolve({ skipped: false }); await flush();
   assert.deepEqual(calls, ['begin']);
+  assert.notEqual(state.render.openingFirstPictureReady, true);
+  assert.equal(state.render.openingFirstPicturePhase.stage, 'current-sector');
+  assert.equal(state.render.openingFirstPicturePhase.outcome, 'timeout');
+  assert.ok(state.render.openingCookLedger.some(row => row.step === 'exact.current-sector' && row.outcome === 'timeout'));
+});
+
+test('sector preparation keeps its existing bounded envelope and cannot consume the exact-picture window', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const cook = deferred(), seal = deferred();
+  const { state, calls } = fixture({ prepareLiveSectorBeforeFlight: () => cook.promise,
+    prepareOpeningFirstPicture: () => seal.promise });
+  const ready = waitForOpeningFirstPicture(state, 20);
+  const rejected = assert.rejects(ready, /timed out at seal/);
+  await flush();
+  assert.equal(state.render.openingFirstPicturePhase.budgetMs, 120000,
+    'the sector owner retains its established ordinary-route ceiling');
+  t.mock.timers.tick(30); await flush();
+  assert.equal(state.render.openingFirstPicturePhase.outcome, 'pending');
+  cook.resolve({ skipped: false }); await flush();
+  assert.equal(state.render.openingFirstPicturePhase.stage, 'seal');
+  assert.equal(state.render.openingFirstPicturePhase.budgetMs, 20, 'the exact window starts after the sector settles');
+  t.mock.timers.tick(20); await rejected;
+  seal.resolve(true); await flush();
+  assert.deepEqual(calls, ['begin'], 'a late seal cannot capture or submit');
+});
+
+test('an exact-picture timeout names the active resource phase and retains earlier timings', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const residency = deferred();
+  const { state } = fixture({ prepareOpeningGpuResources: () => residency.promise });
+  const ready = waitForOpeningFirstPicture(state, 20);
+  const rejected = assert.rejects(ready, /timed out at residency/);
+  await flush(); t.mock.timers.tick(20); await rejected;
+  assert.deepEqual(state.render.openingCookLedger.filter(row => row.step.startsWith('exact.'))
+    .map(row => [row.step, row.outcome]), [
+    ['exact.mesh-staging', 'resolved'], ['exact.seal', 'resolved'], ['exact.capture', 'resolved'],
+    ['exact.submission', 'resolved'], ['exact.residency', 'timeout'],
+  ]);
+  residency.resolve({ skipped: false }); await flush();
   assert.notEqual(state.render.openingFirstPictureReady, true);
 });
 

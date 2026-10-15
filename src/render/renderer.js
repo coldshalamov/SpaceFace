@@ -10296,7 +10296,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
   'touchSubjectExactTarget',
   'beginOpeningLoadingAdmission', 'isRequiredOpeningEntity', 'trackOpeningLoadingWork',
-  'openingLiveSectorReady',
+  'openingLiveSectorReady', 'openingFirstPicturePhase',
   'openingFirstPictureOwner', 'releaseOpeningPresentationHold', 'cancelOpeningPresentationHold',
   'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
@@ -13378,15 +13378,8 @@ export const render = {
         return true;
       })();
       this._openingLoadingMeshesReady = observePipelineAdmission(ready);
-      // Begin the existing current-sector/imminent cook as soon as the finite mesh cohort
-      // exists. Library/visual waits can then overlap its compose/link/upload work; starting
-      // it at flight reveal merely transfers that debt into the player's opening seconds.
-      renderState.openingLiveSectorReady = observePipelineAdmission(ready.then(async () => {
-        if (!active()) throw new Error('opening live-sector cook was superseded');
-        const result = await renderState.prepareLiveSectorBeforeFlight({ isActive: active });
-        if (!active()) throw new Error('opening live-sector cook was superseded');
-        return result;
-      }));
+      // Subject compiles/uploads overlap library loading. The post-visual readiness gate
+      // starts the broad sector cook once its composition prerequisites have committed.
       return ready;
     };
     const openingCohort = createOpeningAdmissionCohort();
@@ -14255,8 +14248,8 @@ export const render = {
       state.render.firstPlayableOpeningProgramKeys = producerCensus.openingProgramKeys;
       state.render.firstPlayableResourceIdentitySets = producerCensus.resourceIdentitySets;
     };
-    state.render.prepareOpeningFirstPicture = (timeoutMs) => (
-      this.prepareOpeningFirstPicture(timeoutMs)
+    state.render.prepareOpeningFirstPicture = (timeoutMs, options) => (
+      this.prepareOpeningFirstPicture(timeoutMs, options)
     );
     const warmOpeningShadowPipelines = (subjects) => driveCompileShadowDepthPipelines({
       renderer,
@@ -14383,6 +14376,10 @@ export const render = {
         materialCount: unitSeenMaterials.size,
         geometryCount: unitSeenGeometries.size,
       };
+      recordOpeningCookStep(state.render, 'exact.units', performance.now(), 'resolved', {
+        requiredLeaves: subjects.length, pooledLeaves: pooledSubjects.length,
+        deltaLeaves: deltaSubjects.length, materials: units.materialCount, geometries: units.geometryCount,
+      });
       const whileRevealed = (subject, run) => {
         const restoreSubject = revealSubjectWithAncestors(subject);
         try { return run(); } finally { restoreSubject(); }
@@ -21440,6 +21437,7 @@ export const render = {
         state.render.openingFirstPictureReady = false;
         state.render.openingFirstPictureOwner = null;
         state.render.openingLiveSectorReady = null;
+        state.render.openingFirstPicturePhase = null;
         this._openingLoadingAdmission = null;
         this._openingLoadingMeshesReady = null;
         const recook = this._sessionLiveSectorCookedId != null
