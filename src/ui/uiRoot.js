@@ -273,6 +273,7 @@ export function invalidateDockedStationPresentation(owner) {
   if (pending && pending.timerId != null) clearTimeout(pending.timerId);
   pending?.finish?.();
   owner._pendingDockedStationPresentation = null;
+  owner._dockPresentationIntent = null;
   if (owner._pendingScreenRetry && owner._pendingScreenRetry.id === 'station') {
     owner._cancelPendingScreenRetry?.();
   }
@@ -292,6 +293,22 @@ export function isCurrentDockedStationPresentation(owner, token, stationId) {
     && uiState.docked === true
     && uiState.dockedStationId === stationId
     && hasStationId(stationId));
+}
+
+function isWorkerDockPresentationWaitingForMirror(owner, token, stationId) {
+  const uiState = owner && owner.state && owner.state.ui;
+  return !!(owner
+    && owner.ctx
+    && owner.ctx.simLane === 'worker'
+    && hasStationId(stationId)
+    && owner._dockPresentationIntent
+    && owner._dockPresentationIntent.token === token
+    && owner._dockPresentationIntent.stationId === stationId
+    && owner.state
+    && owner.state.mode !== 'menu'
+    && owner.state.mode !== 'loading'
+    && uiState
+    && (uiState.docked !== true || uiState.dockedStationId !== stationId));
 }
 
 export function scheduleDockedStationPresentation(owner, stationId, present, releaseFade) {
@@ -318,6 +335,11 @@ export function scheduleDockedStationPresentation(owner, stationId, present, rel
   pending.timerId = setTimeout(() => {
     pending.timerId = null;
     if (!isCurrentDockedStationPresentation(owner, token, stationId)) {
+      if (isWorkerDockPresentationWaitingForMirror(owner, token, stationId)) {
+        owner._dockPresentationIntent.ready = true;
+        setTimeout(() => pending.finish(), 50);
+        return;
+      }
       pending.finish();
       return;
     }
@@ -330,7 +352,30 @@ export function scheduleDockedStationPresentation(owner, stationId, present, rel
     }
   }, 400);
   owner._pendingDockedStationPresentation = pending;
+  // The worker command that commits ui.docked may reach the main mirror after this presentation
+  // timer. Keep the accepted dock intent live for the deferred screen retry until an explicit
+  // undock/menu/load invalidates it.
+  owner._dockPresentationIntent = { token, stationId, ready: false };
   return token;
+}
+
+export function reconcileDockedStationPresentation(owner) {
+  const intent = owner && owner._dockPresentationIntent;
+  const state = owner && owner.state;
+  const uiState = state && state.ui;
+  if (!owner || !intent || intent.ready !== true
+    || intent.token !== owner._dockedStationPresentationToken
+    || !state || state.mode === 'menu' || state.mode === 'loading'
+    || !hasStationId(intent.stationId)
+    || !uiState || uiState.docked !== true
+    || uiState.dockedStationId !== intent.stationId) return false;
+  owner._dockPresentationIntent = null;
+  if (owner.screenManager?.top?.() === 'station') {
+    owner.screenManager.syncVisibility?.();
+    return true;
+  }
+  owner._pushScreenWhenRegistered?.('station', 200);
+  return true;
 }
 
 export function reconcileGameStartedScreens(owner) {
@@ -1668,6 +1713,7 @@ export const ui = {
       invalidateDockedStationPresentation(this);
       this._cancelPendingScreenRetry();
     });
+    this.bus.on('game:new', () => { invalidateDockedStationPresentation(this); });
     this.bus.on('game:started', () => { this._gameOverShown = false; });
     this.bus.on('save:restoring', () => { invalidateDockedStationPresentation(this); });
     this.bus.on('save:loaded', () => {
@@ -1745,7 +1791,9 @@ export const ui = {
           catch (e) { console.error(e); }
         }
         // if docked already but the station hub registered late, open it
-        if (def.id === 'station' && this.state.ui.docked && this.screenManager.top() !== 'station') {
+        if (def.id === 'station' && isDockedStationState(this.state)
+          && this.state.mode !== 'menu' && this.state.mode !== 'loading'
+          && this.screenManager.top() !== 'station') {
           try { this.screenManager.pushScreen('station'); } catch (e) { console.error(e); }
         }
       })
@@ -1894,6 +1942,7 @@ export const ui = {
       if (this.worldObject && this.worldObject.tick) this.worldObject.tick(dt);
 
       const st = state || this.state;
+      reconcileDockedStationPresentation(this);
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
       const externalModalOpen = !!this._fulfillmentBlackoutActive || isConfirmOpen()
         || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());

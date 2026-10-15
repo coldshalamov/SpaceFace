@@ -12,6 +12,7 @@ import {
   replaceMarketNewsOwner,
   replaceCommsOwner,
   invalidateDockedStationPresentation,
+  reconcileDockedStationPresentation,
   reconcileGameStartedScreens,
   scheduleDockedStationPresentation,
   ui,
@@ -288,6 +289,40 @@ test('replacing a dock transition releases only the old transition lease', () =>
     invalidateDockedStationPresentation(owner);
     assert.deepEqual(released, ['old', 'new']);
     assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('worker-lane dock presentation waits for the authoritative main-state mirror', () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('station');
+    owner.ctx = { simLane: 'worker' };
+    owner.state.mode = 'flight';
+    // The two lane input folds can land in separate worker replies. Neither partial mirror
+    // (docked=true with an old/missing berth, or docked=false) is presentation authority.
+    owner.state.ui.docked = true;
+    owner.state.ui.dockedStationId = 'old-station';
+    owner._registeredScreens.add('station');
+    const releases = [];
+
+    scheduleDockedStationPresentation(owner, 'station-test', (finish) => {
+      owner._pushScreenWhenRegistered('station');
+      setTimeout(finish, 50);
+    }, () => releases.push('dock'));
+
+    assert.equal(clock.runNext(), true, 'the dock presentation reaches its 400ms swap');
+    assert.deepEqual(pushes, [], 'the presentation does not open before authoritative state arrives');
+    assert.deepEqual(releases, [], 'the dock fade stays owned through the mirror wait');
+    assert.equal(clock.runNext(), true, 'the mirror-wait path still releases the dock fade');
+    assert.deepEqual(releases, ['dock']);
+
+    owner.state.ui.docked = true;
+    owner.state.ui.dockedStationId = 'station-test';
+    assert.equal(reconcileDockedStationPresentation(owner), true);
+    assert.deepEqual(pushes, ['station'], 'the station opens once the main mirror confirms the dock');
+    assert.equal(owner._pendingDockedStationPresentation, null);
   } finally {
     clock.restore();
   }
