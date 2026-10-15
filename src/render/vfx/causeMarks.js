@@ -20,6 +20,30 @@ const CUTS = 4;
 const SHAPES = 24;
 const SEGMENTS = SCARS + RING + HANDOFF + CUTS + SHAPES;
 
+// One construction for the live layer and its precompile probe, so their program keys cannot drift.
+function createCauseMarkMaterial() {
+  return new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
+  });
+}
+
+// The live layer starts at drawRange 0 and first draws on the first hull scar or kill, which
+// linked its program inside a combat frame (1.8 s on SwiftShader, v28 run 7). This probe draws
+// one segment of the same material in the VFX precompile salvo so the link lands before lift.
+export function createCauseMarkPrecompileMesh() {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, 0.2, -7, 1, 0.2, -7]), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.6, 0.3, 1, 0.6, 0.3]), 3));
+  const mesh = new THREE.LineSegments(geo, createCauseMarkMaterial());
+  mesh.name = 'SF_Precompile_CauseMarks';
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 6;
+  return mesh;
+}
+
 export class CauseMarkLayer {
   constructor(scene, toLocal) {
     this.scene = scene;
@@ -43,12 +67,7 @@ export class CauseMarkLayer {
     geo.setAttribute('position', this.posAttr);
     geo.setAttribute('color', this.colAttr);
     geo.setDrawRange(0, 0);
-    this.mesh = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      toneMapped: false,
-    }));
+    this.mesh = new THREE.LineSegments(geo, createCauseMarkMaterial());
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 6;
     this.mesh.name = 'sf-cause-marks';

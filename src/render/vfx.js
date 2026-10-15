@@ -312,7 +312,7 @@ import {
   STRUCTURAL_FX_CUE_KIND,
 } from '../presentation/cueArbitration.js';
 import { resolveCausalVfxPresentation } from '../presentation/causalVfxGrammar.js';
-import { CauseMarkLayer } from './vfx/causeMarks.js';
+import { CauseMarkLayer, createCauseMarkPrecompileMesh } from './vfx/causeMarks.js';
 import {
   plumeAchievedPicture,
   collisionEventClass,
@@ -16917,6 +16917,8 @@ export function createVfxPrecompileSalvo() {
     x: 0, z: -8, radius: 3, dirX: 1, dirZ: 0,
   });
   ruptureWarm.update(0.16);
+
+  group.add(createCauseMarkPrecompileMesh());
 
   const weaponBolts = createEnergyBoltPrecompileMesh();
   weaponBolts.name = 'SF_Precompile_WeaponEnergyBolts';
