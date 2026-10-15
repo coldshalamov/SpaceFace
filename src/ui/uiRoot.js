@@ -258,6 +258,39 @@ export function isScreenRegistrationCycleSettled(owner) {
     && owner._screenRegistrationSettledGeneration === owner._screenRegistrationGeneration);
 }
 
+function screenPushRequestIsLive(owner, id) {
+  switch (id) {
+    case 'station':
+      return !!(owner && owner.state && owner.state.ui && owner.state.ui.docked === true);
+    case 'drill':
+      return !!(owner && owner.state && owner.state.ui
+        && owner.state.ui.pendingDrillAsteroidId != null);
+    case 'gameOver':
+      return !!(owner && owner._gameOverShown === true
+        && !(typeof owner._survivalRunLive === 'function' && owner._survivalRunLive()));
+    case 'crucibleResults':
+      return !!(owner && owner._crucibleResultsShown === true);
+    default:
+      return true;
+  }
+}
+
+function isCurrentScreenPushRequest(owner, request) {
+  if (!owner || !request || request.cancelled
+    || owner._pendingScreenRetry !== request
+    || owner._screenRetryToken !== request.token
+    || owner._screenRegistrationCycle !== request.registrationCycle
+    || owner.screenManager !== request.screenManager
+    || !isScreenRegistrationCycleCurrent(request.registrationCycle)) {
+    return false;
+  }
+  try {
+    return request.isLive(owner);
+  } catch (_) {
+    return false;
+  }
+}
+
 export function destroyMarketNewsOwner(owner) {
   if (!owner) return;
   const current = owner.marketNews;
@@ -531,6 +564,7 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
@@ -1281,7 +1315,10 @@ export const ui = {
       if (this.screenManager.top() === id) this.screenManager.popScreen();
     });
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
-    this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
+    this.bus.on('ui:closeAll', () => {
+      this._cancelPendingScreenRetry();
+      this.screenManager.closeAll();
+    });
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));
     this.bus.on('ui:clearTarget', () => clearCombatTarget(this.state, this.bus));
     // PQ-015 component sub-selection: cycle a component (subsystem / salvage weak-point) on the
@@ -1490,6 +1527,7 @@ export const ui = {
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
     this.bus.on('game:started', () => {
+      this._cancelPendingScreenRetry();
       this.screenManager.closeAll();
       // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
       // with every WebGL context their mount() built. The New Game / Load stage hulls each hold a
@@ -1529,11 +1567,19 @@ export const ui = {
       this._crucibleResultsShown = true;
       this._pushScreenWhenRegistered('crucibleResults', 60);
     });
-    this.bus.on('run:started', () => { this._crucibleResultsShown = false; });
+    this.bus.on('run:started', () => {
+      this._cancelPendingScreenRetry();
+      this._crucibleResultsShown = false;
+    });
     this.bus.on('game:started', () => { this._crucibleResultsShown = false; });
-    this.bus.on('game:over:dismissed', () => { this._gameOverShown = false; });
+    this.bus.on('game:over:dismissed', () => {
+      this._cancelPendingScreenRetry();
+      this._gameOverShown = false;
+    });
+    this.bus.on('game:exitToMenu', () => { this._cancelPendingScreenRetry(); });
     this.bus.on('game:started', () => { this._gameOverShown = false; });
     this.bus.on('save:loaded', () => {
+      this._cancelPendingScreenRetry();
       // clear any stale modal restored from a save; HUD returns
       laneInputWrite(this.state, 'ui.docked', false);
       laneInputWrite(this.state, 'ui.dockedStationId', null);
@@ -1692,16 +1738,57 @@ export const ui = {
   // Push a screen that may still be in a deferred registration wave: retry until it registers or
   // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
   // game-over) so an early lifecycle event never becomes a dead press.
+  _cancelPendingScreenRetry() {
+    const pending = this._pendingScreenRetry;
+    this._screenRetryToken = (Number(this._screenRetryToken) || 0) + 1;
+    if (!pending) return false;
+    pending.cancelled = true;
+    if (pending.timerId != null) clearTimeout(pending.timerId);
+    pending.timerId = null;
+    if (this._pendingScreenRetry === pending) this._pendingScreenRetry = null;
+    return true;
+  },
+
   _pushScreenWhenRegistered(id, maxAttempts = 60) {
+    this._cancelPendingScreenRetry();
+    const registrationCycle = this._screenRegistrationCycle;
+    const screenManager = this.screenManager;
+    const request = {
+      id,
+      maxAttempts,
+      registrationCycle,
+      screenManager,
+      token: (Number(this._screenRetryToken) || 0) + 1,
+      isLive: (owner) => screenPushRequestIsLive(owner, id),
+      timerId: null,
+      cancelled: false,
+    };
+    this._screenRetryToken = request.token;
+    this._pendingScreenRetry = request;
+    const finish = () => {
+      request.timerId = null;
+      if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+    };
     const tryOpen = (attempts) => {
-      if (this._registeredScreens && this._registeredScreens.has(id)) {
-        try { this.screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
+      if (!isCurrentScreenPushRequest(this, request)) {
+        request.cancelled = true;
+        if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
         return;
       }
-      if (attempts > maxAttempts) { console.warn(`[ui] ${id} screen never registered`); return; }
-      setTimeout(() => tryOpen(attempts + 1), 50);
+      if (this._registeredScreens && this._registeredScreens.has(id)) {
+        finish();
+        if (screenManager && typeof screenManager.top === 'function' && screenManager.top() === id) return;
+        try { screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
+        return;
+      }
+      if (attempts > maxAttempts) { finish(); console.warn(`[ui] ${id} screen never registered`); return; }
+      request.timerId = setTimeout(() => {
+        request.timerId = null;
+        tryOpen(attempts + 1);
+      }, 50);
     };
     tryOpen(0);
+    return request.token;
   },
 
   // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when
@@ -1774,6 +1861,7 @@ export const ui = {
   },
 
   destroy() {
+    this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary
     // global capture listeners and timers. Re-init/destroy must remove them without marking the

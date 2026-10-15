@@ -14,6 +14,59 @@ import {
   ui,
 } from '../src/ui/uiRoot.js';
 
+function installFakeTimers() {
+  const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
+  const jobs = new Map();
+  let nextId = 0;
+  globalThis.setTimeout = (callback, delay = 0) => {
+    const id = ++nextId;
+    jobs.set(id, { callback, delay });
+    return id;
+  };
+  globalThis.clearTimeout = (id) => { jobs.delete(id); };
+  return {
+    pending() {
+      return jobs.size;
+    },
+    runNext() {
+      const next = jobs.entries().next();
+      if (next.done) return false;
+      jobs.delete(next.value[0]);
+      next.value[1].callback();
+      return true;
+    },
+    restore() {
+      globalThis.setTimeout = realSetTimeout;
+      globalThis.clearTimeout = realClearTimeout;
+    },
+  };
+}
+
+function makeRetryOwner(id) {
+  const pushes = [];
+  const manager = {
+    pushScreen(screenId) {
+      pushes.push(screenId);
+    },
+    destroy() {},
+  };
+  const owner = Object.create(ui);
+  owner.screenManager = manager;
+  owner._registeredScreens = new Set();
+  owner._gameOverShown = id === 'gameOver';
+  owner._crucibleResultsShown = id === 'crucibleResults';
+  owner._survivalRunLive = () => false;
+  owner.state = {
+    ui: {
+      docked: id === 'station',
+      pendingDrillAsteroidId: id === 'drill' ? 'asteroid-1' : null,
+    },
+  };
+  owner._screenRegistrationCycle = beginScreenRegistrationCycle(owner, manager);
+  return { owner, manager, pushes };
+}
+
 test('a destroyed or reinitialized uiRoot cannot complete stale screen registrations', () => {
   const firstManager = { id: 'first' };
   const owner = { screenManager: firstManager };
@@ -40,6 +93,106 @@ test('a destroyed or reinitialized uiRoot cannot complete stale screen registrat
   assert.equal(isScreenRegistrationCycleCurrent(firstCycle), false);
   assert.equal(isScreenRegistrationCycleCurrent(secondCycle), true);
   assert.equal(isScreenRegistrationCycleSettled(owner), false);
+});
+
+test('a stale game-over retry is canceled when a new game or dismissal clears its request', () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('gameOver');
+    owner._pushScreenWhenRegistered('gameOver');
+    assert.equal(clock.pending(), 1);
+
+    owner._gameOverShown = false;
+    owner._cancelPendingScreenRetry();
+    owner._registeredScreens.add('gameOver');
+    assert.equal(clock.pending(), 0);
+    assert.equal(clock.runNext(), false);
+    assert.deepEqual(pushes, []);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a restored defeat can replace a canceled game-over retry after save closeAll', () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('gameOver');
+    owner._pushScreenWhenRegistered('gameOver');
+    owner._gameOverShown = false;
+    owner._cancelPendingScreenRetry();
+
+    // save:loaded closes the old stack, then deliberately re-issues the durable defeat surface.
+    owner._gameOverShown = true;
+    owner._pushScreenWhenRegistered('gameOver');
+    owner._registeredScreens.add('gameOver');
+    assert.equal(clock.pending(), 1);
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, ['gameOver']);
+    assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a crucible-results retry cannot open through a replacement registration manager', () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes: oldPushes } = makeRetryOwner('crucibleResults');
+    owner._pushScreenWhenRegistered('crucibleResults');
+    const replacementPushes = [];
+    const replacementManager = {
+      pushScreen(screenId) {
+        replacementPushes.push(screenId);
+      },
+      destroy() {},
+    };
+    owner.screenManager = replacementManager;
+    owner._screenRegistrationCycle = beginScreenRegistrationCycle(owner, replacementManager);
+    owner._registeredScreens = new Set(['crucibleResults']);
+
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(oldPushes, []);
+    assert.deepEqual(replacementPushes, []);
+    assert.equal(owner._pendingScreenRetry, null);
+
+    owner._pushScreenWhenRegistered('crucibleResults');
+    assert.deepEqual(replacementPushes, ['crucibleResults']);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('destroy cancels pending screen retries and leaves no timer job', () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('gameOver');
+    owner._pushScreenWhenRegistered('gameOver');
+    assert.equal(clock.pending(), 1);
+    owner.destroy();
+    assert.equal(clock.pending(), 0);
+    assert.equal(clock.runNext(), false);
+    assert.deepEqual(pushes, []);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a valid late initial registration opens exactly once after a retry delay', () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('gameOver');
+    owner._pushScreenWhenRegistered('gameOver');
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, []);
+    assert.equal(clock.pending(), 1);
+
+    owner._registeredScreens.add('gameOver');
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, ['gameOver']);
+    assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
 });
 
 test('uiRoot replacement and destroy leave one then zero marketNews subscribers', () => {

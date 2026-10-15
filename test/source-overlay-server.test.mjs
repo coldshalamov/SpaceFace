@@ -93,6 +93,19 @@ test('source overlay fails closed on a tampered entry', () => {
   }), /allowlist/i);
 });
 
+test('frozen stylesheet bytes are served with the same immutable overlay identity', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-style-overlay-'));
+  await mkdir(path.join(root, 'styles'), { recursive: true });
+  await writeFile(path.join(root, 'styles', 'kit.css'), 'body { color: red }');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const pinned = manifest([['styles/kit.css', 'body { color: blue }']]);
+  const baseUrl = await listen(t, root, pinned);
+  const response = await fetch(`${baseUrl}/styles/kit.css`);
+  assert.equal(await response.text(), 'body { color: blue }');
+  assert.equal(response.headers.get('x-spaceface-source-overlay-digest'), pinned.sourceOverlayDigest);
+  assert.throws(() => loadSourceOverlayManifest(manifest([['styles/../../outside.css', 'bad']])), /allowlist/i);
+});
+
 test('ordinary server launches remain canonical and expose no overlay identity', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'spaceface-source-overlay-default-'));
   await writeFile(path.join(root, 'index.html'), 'current-index');

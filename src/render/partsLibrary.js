@@ -3397,7 +3397,9 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   const capsuleBuildTrace = { root: null };
   try {
     authored = await driveAuthoredBuildStepsAsync(
-      buildAuthoredCargoCapsuleRootSteps(entity, record, scene, boundary, capsuleBuildTrace),
+      buildAuthoredCargoCapsuleRootSteps(entity, record, scene, boundary, capsuleBuildTrace, {
+        isolatePreparedBatchGeometry: options.deferBoundaryPublication === true,
+      }),
       capsuleBuildTrace, entity, boundary, options,
     );
   } catch (error) {
@@ -3427,10 +3429,14 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   }
   registerPreparedAuthoredAdmission(scene, boundary, authored);
   let authoredDisposed = false;
-  const disposePreparedCargoCapsule = () => {
+  const disposePreparedCargoCapsule = async () => {
     if (authoredDisposed) return false;
     try {
-      disposeDetachedAuthoredCargoCapsule(authored.root, options.state);
+      // Preparation owns a settlement verdict, not a fire-and-forget reclaim. Build the same
+      // owner-local journal used by place admissions, then await every paced resource release
+      // before the boundary's generic Object3D teardown can inspect the authored root.
+      await collectPreparedPlaceCleanupResources(authored, options.state);
+      await disposePreparedShipBoundaryResources(boundary, authored, options.admissionEpoch);
       authoredDisposed = true;
     } finally {
       // A disposal throw must not strand the registry entry — it pins the boundary and the
@@ -3669,7 +3675,14 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
 // let the async driver pace the build across frames exactly like
 // composedShipSteps; the sync twin above keeps single-pass semantics.
 // `buildTrace.root` carries the partial out so an aborted run can dispose it.
-function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundary, buildTrace = null) {
+function* buildAuthoredCargoCapsuleRootSteps(
+  entity,
+  record,
+  scene,
+  ownerBoundary,
+  buildTrace = null,
+  buildOptions = {},
+) {
   const palette = paletteFor(entity);
   const root = new THREE.Group();
   root.name = `GLTFKit_${entity.data.payloadStableId || 'cargo_capsule'}`;
@@ -3698,6 +3711,13 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
   yield;
   yield* staticBatches.flushSteps();
+  // The static-batch cache deliberately aliases immutable geometry between live consumers. A
+  // deferred cargo admission, however, has a private cleanup journal that must be able to retire
+  // its staged drawables without disposing the cache entry still available to another capsule.
+  // Keep the cache alias for normal committed cargo, but give prepared cargo a private clone.
+  const ownerLocalPreparedBatchGeometries = buildOptions.isolatePreparedBatchGeometry === true
+    ? isolatePreparedCargoBatchGeometries(root)
+    : EMPTY_ARRAY;
   yield;
   reconcileMaplessHullMaterialAliases(palette);
   yield* canonicalizeMaplessHullMaterials(root, palette);
@@ -3746,7 +3766,24 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
     root,
     authoredParts: [record.url],
     authoredSlots: authoredSlotMap,
+    ownerLocalGeometries: ownerLocalPreparedBatchGeometries,
   };
+}
+
+function isolatePreparedCargoBatchGeometries(root) {
+  const ownerLocalGeometries = [];
+  root?.traverse?.((object) => {
+    if (!object?.isMesh || object.userData?.spacefaceStaticBatch !== true) return;
+    const sharedGeometry = object.geometry;
+    if (!sharedGeometry || sharedGeometry.userData?.spacefaceSharedAsset !== true
+        || typeof sharedGeometry.clone !== 'function') return;
+    const ownerGeometry = sharedGeometry.clone();
+    ownerGeometry.userData = { ...(ownerGeometry.userData || {}) };
+    delete ownerGeometry.userData.spacefaceSharedAsset;
+    object.geometry = ownerGeometry;
+    ownerLocalGeometries.push(ownerGeometry);
+  });
+  return ownerLocalGeometries;
 }
 
 export function buildAuthoredStationArchetype(entity, options = {}) {
