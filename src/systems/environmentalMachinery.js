@@ -331,7 +331,7 @@ export const environmentalMachinery = {
     let stage,prepared;
     try {
       stage=helpers.stageEntitySpawn({type:'payload',pos:{x:frame.pos.x+c*source.pos.x-s*source.pos.z,z:frame.pos.z+s*source.pos.x+c*source.pos.z},rot:frame.rot+source.yaw,
-        radius:ORCHARD_G.pod.radius,hull:100,flags:{persistent:true},physicsBody:orchardPodBodySpec(),data:{orchardId:ANVIL_ORCHARD.id,orchardKind:'pod',masslineTetherable:false,
+        radius:ORCHARD_G.pod.radius,hull:100,hullMax:100,flags:{persistent:true},physicsBody:orchardPodBodySpec(),data:{orchardId:ANVIL_ORCHARD.id,orchardKind:'pod',masslineTetherable:false,
         worldRecordId:lotId,identityKey:lotId,authoredAssetId:ORCHARD_G.pod.assetId,authoredPayloadAssetId:ORCHARD_G.pod.assetId,commodityId,amount:accepted}});
       if(!current() || !facadeCells.current()){stage.abort();return 0;}
       prepared=owner.prepareOrchardPodInsertion(frame,stage.entity,socket,state);

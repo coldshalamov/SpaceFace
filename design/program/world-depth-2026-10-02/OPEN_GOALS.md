@@ -13,15 +13,15 @@ Updated2026-10-15. This register preserves the original twenty-concept map and I
 
 ## SF-ORCHARD
 - Outcome: authored finite three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: focused player route and three production repairs tested; normal browser/camera, thermal/shock completeness, authored max-tow route and target-device gates remain open.
+- State: focused player route, thermal persistence and reachable maximal tow tested; explicit shock, normal browser/camera and target-device gates remain open.
 - Owner: Orchard implementation owner and independent reviewer; integration owner publishes coherent increments.
 - Evidence: current-e3 player-route receipt;579Orchard,94activity and93neighbor checks passed. Natural4-unit harvest, mid-opening Continue, physical collection and postcollection Continue preserve finite custody.
-- Next action: complete released-pod thermal behavior and persistence, retain explicit fragile-shock requirement, verify authored large-hull/max-tow escape with normal planetary forces, then live-camera review.
+- Next action: complete explicit fragile-shock behavior, review the integrated ordinary experience in the live camera and measure target-device performance.
 - Awaiting user: no engineering choice; final visual/experience acceptance remains open.
 
 ## SF-PUBLISH
 - Outcome: coherent tested increments delivered as verified GitHub commits and draft PRs without overwriting newer work.
-- State: open; prior frozen Orchard recovery is on recovery/orchard-reconcile-frozen-f564. Current player-route feature delivery is separate. GPU PR383 remains draft under reviewer HOLD.
+- State: open; prior frozen Orchard recovery is on recovery/orchard-reconcile-frozen-f564. Current player-route feature is published in draft PR391 at013fd560793fe16ebfa3a15416950af5b545268a. Thermal/tow successor is separately tested. GPU PR383 remains draft under reviewer HOLD.
 - Owner: publication owner, one writer per branch.
 - Evidence: recovery commit56ab4abb59d80694b452e2396fe86976d2ada5eb; GPU PR383 headb9bfe3f7941191b7d49f84a3dfdcda9de6551a21; player-route receipt records tested source baseline.
 - Next action: verify new feature branch commit and draft PR, inspect CI, fix attributable failures, preserve review gates.

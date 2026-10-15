@@ -30,7 +30,8 @@
 // SAVE POLICY: transient (the fields.js precedent — "deliberately sidesteps the save-schema
 // mutex"). state.planet normalizes away on save:loaded/game:new and the adapter re-registers from
 // authored data on the next tick, so the IDENTITY (the Atlas zone id), the player's position, and
-// all harvested cargo persist through their existing owners while heat/stage — seconds-lived,
+// all harvested cargo persist through their existing owners. Finite released Orchard pods retain
+// heat/stage in their existing persistent entity envelope; ordinary ship heat/stage — seconds-lived,
 // escape-window-forgiving scalars — reset. No save version bump, no golden hash movement.
 
 import { PLANET_SITE, planetSitesForSector, planetFlag, classifyPlanetRegion, PLANET_REGION_RANK, ANVIL_SLING_WITNESS, anvilSlingWitnessPose } from '../data/planets.js';
@@ -42,7 +43,7 @@ import { occupantGenerationOf } from '../core/entity.js';
 import { ANVIL_ORCHARD, createOrchardRecord, normalizeOrchardRecord, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 import { ORCHARD_GEOMETRY, orchardFrameBodySpec } from '../data/anvilOrchardBody.js';
 import { createOrchardMotorState } from '../core/anvilOrchardNative.js';
-import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
+import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 
 const MAX_TRACKED_SHIPS = 8;   // bounded per-tick work: player + the nearest 7 ships in the bands
 const MAX_AFTERMATH = 4;       // bounded presentation memory of recent plunge terminations
@@ -76,7 +77,7 @@ function defaultRuntime() {
       collectorOn: false, pendingShallow: 0, pendingRich: 0, harvestedUnits: 0,
       recoveryBurn: false, commitCueAt: -Infinity,
     },
-    ships: {},             // entityId -> tracked non-player record (bounded MAX_TRACKED_SHIPS-1)
+    ships: {},             // non-player exposure: nearest ships + at most three released Orchard pods
     aftermath: [],         // [{x,z,at,until}] recent plunge terminations (presentation memory)
     telemetry: { tracked: 0, inBands: 0, burnsRouted: 0, harvestUnits: 0, dragImpulses: 0 },
   };
@@ -89,8 +90,45 @@ function ensureRuntime(state) {
   return state.planet;
 }
 
-function newShipRecord() {
-  return { region: 'outside', regionRank: 0, r: Infinity, heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0, bandFirsts: null };
+function newShipRecord(entity) {
+  return { occupantGeneration: occupantGenerationOf(entity), region: 'outside', regionRank: 0, r: Infinity, heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0, bandFirsts: null };
+}
+
+// Only finite Orchard cargo persists its thermal history. The existing entity save owner
+// carries this enumerable top-level field; the strict native source data tree is untouched.
+// A restore may remap numeric ids/lifetimes, so persistent binding is site + finite lot;
+// native-ready admission is still required before this history can affect any current body.
+const ORCHARD_THERMAL_KEYS = ['schemaVersion', 'siteId', 'lotId', 'savedAt', 'region',
+  'heat', 'stage', 'stageAt', 'outwardS', 'burnNextAt'];
+function orchardThermalRecord(entity, site, now) {
+  const rec = newShipRecord(entity);
+  const saved = Object.getOwnPropertyDescriptor(entity, 'orchardThermalExposure')?.value;
+  if (!saved || Object.getPrototypeOf(saved) !== Object.prototype
+    || Object.keys(saved).length !== ORCHARD_THERMAL_KEYS.length
+    || !ORCHARD_THERMAL_KEYS.every(key => {
+      const d = Object.getOwnPropertyDescriptor(saved, key);
+      return d && 'value' in d;
+    }) || saved.schemaVersion !== 1 || saved.siteId !== site.id
+    || saved.lotId !== entity.data.worldRecordId
+    || !Number.isFinite(saved.savedAt) || saved.savedAt < 0 || saved.savedAt > now
+    || !REGION_ORDER.includes(saved.region)
+    || !Number.isFinite(saved.heat) || saved.heat < 0 || saved.heat > 1
+    || ![null, 'skim', 'commit', 'breakup', 'descent'].includes(saved.stage)
+    || !Number.isFinite(saved.stageAt) || saved.stageAt < 0 || saved.stageAt > saved.savedAt
+    || !Number.isFinite(saved.outwardS) || saved.outwardS < 0 || saved.outwardS > 60
+    || !Number.isFinite(saved.burnNextAt) || saved.burnNextAt < 0
+    || saved.burnNextAt > saved.savedAt + 0.500001) return rec;
+  for (const key of ['region', 'heat', 'stage', 'stageAt', 'outwardS', 'burnNextAt']) rec[key] = saved[key];
+  rec.regionRank = PLANET_REGION_RANK[rec.region];
+  rec.lastThermalAt = saved.savedAt;
+  return rec;
+}
+function retainOrchardThermal(entity, site, rec, now) {
+  entity.orchardThermalExposure = {
+    schemaVersion: 1, siteId: site.id, lotId: entity.data.worldRecordId, savedAt: now,
+    region: rec.region, heat: rec.heat, stage: rec.stage, stageAt: rec.stageAt,
+    outwardS: rec.outwardS, burnNextAt: rec.burnNextAt,
+  };
 }
 
 // Bands that speak the first time a body reaches them (U5): the sling law, the working
@@ -436,13 +474,48 @@ export const planetRuntime = {
       this._tickOneShip(dt, state, rt, site, player, rt.player, now, /*isPlayer*/ true);
       seen.push(player.id);
     }
+    // Released finite cargo receives the same band/drag/burn law at its own position.
+    // Reserve the three authored sockets independently of traffic's nearest-ship budget:
+    // a long tether or a crowded band must not shelter the payload. Native ready custody,
+    // not copied authored labels, admits the current released life. Keep exposure outside
+    // pod.data, whose exact source tree remains owned by the release/collection authority.
+    const physics = this.registry?.get?.('physics');
+    let pods = 0;
+    if (site.id === ANVIL_ORCHARD.planetId
+      && state.world?.currentSectorId === ANVIL_ORCHARD.sectorId) {
+      for (const e of candidates) {
+        if (pods >= ANVIL_ORCHARD.socketCount) break;
+        if (!e || seen.includes(e.id) || state.entities.get(e.id) !== e
+          || !isOrchardPod(e) || !isDynamicPhysicsBodyEntity(e)) continue;
+        const life = occupantGenerationOf(e);
+        // A ready read observes the native world. Untouched cold cargo outside every
+        // heating/drag band has nothing to advance; reject it cheaply before that read.
+        // Any retained history, including zero heat, still takes the authoritative path.
+        const hasHistory = rt.ships[e.id]?.occupantGeneration === life
+          || Object.getOwnPropertyDescriptor(e, 'orchardThermalExposure') !== undefined;
+        if (!hasHistory && PLANET_REGION_RANK[classifyPlanetRegion(site,
+          Math.hypot(e.pos.x - rt.center.x, e.pos.z - rt.center.z))] < PLANET_REGION_RANK.skim) continue;
+        if (!physics?.readOrchardPodReady?.(e)) continue;
+        const rec = rt.ships[e.id]?.occupantGeneration === life
+          ? rt.ships[e.id] : (rt.ships[e.id] = orchardThermalRecord(e, site, now));
+        if (rec.lastThermalAt !== now) {
+          this._tickOneShip(dt, state, rt, site, e, rec, now, false);
+          rec.lastThermalAt = now;
+          retainOrchardThermal(e, site, rec, now);
+        }
+        seen.push(e.id);
+        pods++;
+      }
+    }
     let tracked = 0;
     for (let i = 0; i < candidates.length && tracked < MAX_TRACKED_SHIPS - 1; i++) {
       const e = candidates[i];
       if (!e || e.alive === false || e === player || state.entities.get(e.id) !== e) continue;
       if (e.type !== 'ship' && e.type !== 'drone') continue;
       if (!isDynamicPhysicsBodyEntity(e)) continue;
-      const rec = rt.ships[e.id] || (rt.ships[e.id] = newShipRecord());
+      const life = occupantGenerationOf(e);
+      const rec = rt.ships[e.id]?.occupantGeneration === life
+        ? rt.ships[e.id] : (rt.ships[e.id] = newShipRecord(e));
       this._tickOneShip(dt, state, rt, site, e, rec, now, false);
       seen.push(e.id);
       tracked++;
@@ -855,7 +928,7 @@ export const planetRuntime = {
       siteId: rt && rt.siteId,
       zoneId: rt && rt.zoneId,
       trackedShips: rt ? Object.keys(rt.ships).length : 0,
-      maxTracked: MAX_TRACKED_SHIPS,
+      maxTracked: MAX_TRACKED_SHIPS + ANVIL_ORCHARD.socketCount,
       playerRegion: rt && rt.player.region,
       playerHeat: rt && rt.player.heat,
       playerStage: rt && rt.player.stage,
