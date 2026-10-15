@@ -158,7 +158,12 @@ test('a direct Ram-Plate kill propagates exact physical causality into outcomes 
       targetVelocity: { x: 0, z: 0 },
       playerCaused: true,
       impact: kills[0].presentation.impact,
+      impactLink: kills[0].presentation.impactLink,
     });
+    assert.equal(kills[0].presentation.impactLink.tag, 'ram_plate');
+    assert.equal(kills[0].presentation.impactLink.actorId, player.id);
+    assert.equal(kills[0].presentation.impactLink.appliedTick, state.tick);
+    assert.equal(kills[0].presentation.impactLink.holdUntilTick, null);
     assert.ok(kills[0].presentation.impact.impactDamage > 0);
 
     assert.equal(outcomes.length, 2,
