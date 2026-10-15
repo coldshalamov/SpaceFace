@@ -10,6 +10,8 @@ import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
 import { createGasSystem } from '../src/render/combat/gas/gasVolumeField.js';
+import { ExplosionRupture } from '../src/render/combat/explosionRupture.js';
+import { SelectionSigil } from '../src/render/selectionSigil.js';
 import {
   createOpeningLoadingAdmission, waitForOpeningFirstPicture, holdOpeningPresentationUntilPaint,
   openingFirstPictureIsReady,
@@ -172,30 +174,40 @@ test('filtering optional pooled extras cannot forgive a required leaf that loses
   await assert.rejects(strictTouchFixture(scene, [])(subjects), /null-geometry/);
 });
 
-test('mobile opening admits only the actual dormant gas pool alongside required picture leaves', t => {
+const immediateFirstUseOwners = {
+  gas: scene => createGasSystem(scene),
+  rupture: scene => new ExplosionRupture(scene),
+  sigil: scene => new SelectionSigil(scene),
+};
+
+test('mobile opening admits live immediate-first-use owners without the dormant effect catalog', t => {
   const scene = new THREE.Scene();
-  const gas = createGasSystem(scene);
-  t.after(() => gas.dispose());
+  const owners = Object.values(immediateFirstUseOwners).map(create => create(scene));
+  t.after(() => owners.forEach(owner => owner.dispose()));
+  const meshes = owners.map(owner => owner.mesh);
   const hull = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
   scene.add(hull);
   const otherPool = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 4);
   otherPool.count = 0; otherPool.visible = false; scene.add(otherPool);
-  const subjects = collectFirstFlightLayerDrawables([gas.mesh, otherPool]);
+  const subjects = collectFirstFlightLayerDrawables([...meshes, otherPool]);
   const mobile = { mobileFirstPicture: true };
-  assert.deepEqual(openingAdmissionSubjects([hull], subjects, scene, mobile), [hull, gas.mesh]);
-  assert.deepEqual(openingAdmissionSubjects([hull], subjects, scene), [hull, gas.mesh, otherPool],
+  const ids = objects => objects.map(object => object.uuid);
+  assert.deepEqual(ids(openingAdmissionSubjects([hull], subjects, scene, mobile)), ids([hull, ...meshes]));
+  assert.deepEqual(ids(openingAdmissionSubjects([hull], subjects, scene)), ids([hull, ...meshes, otherPool]),
     'desktop/arena cohort semantics remain unchanged');
-  assert.equal(gas.mesh.count, 0);
-  assert.equal(gas.mesh.visible, false, 'selecting the pool never emits or reveals gas');
-  gas.mesh.removeFromParent();
-  assert.deepEqual(openingAdmissionSubjects([hull], subjects, scene, mobile), [hull],
-    'a detached gas owner cannot become an opening draw');
+  for (const mesh of meshes) assert.equal(mesh.visible, false, 'selection never emits or reveals an owner');
+  assert.equal(owners[0].mesh.count, 0);
+  assert.equal(owners[1].mesh.geometry.instanceCount, 0);
+  for (const mesh of meshes) mesh.removeFromParent();
+  assert.deepEqual(ids(openingAdmissionSubjects([hull], subjects, scene, mobile)), ids([hull]),
+    'detached owners cannot become opening draws');
 });
 
-function gasOpeningFixture(t) {
+function immediateFirstUseOpeningFixture(t, kind) {
   const scene = new THREE.Scene();
-  const gas = createGasSystem(scene);
-  t.after(() => gas.dispose());
+  const owner = immediateFirstUseOwners[kind](scene);
+  t.after(() => owner.dispose());
+  const mesh = owner.mesh;
   const camera = new THREE.PerspectiveCamera();
   const hdrTarget = { name: 'gameplay-bloom-scene-target' };
   const priorTarget = { name: 'prior-target' };
@@ -203,13 +215,13 @@ function gasOpeningFixture(t) {
   let active = true;
   let cancelDuringDrain = false;
   let rejectCompile = false;
+  let rejectTouch = false;
   let ready = false;
   let closed = false;
   const bindings = new Map();
   const events = [];
-  const material = gas.mesh.material;
-  const density = material.uniforms.uDensityFilm.value;
-  const motion = material.uniforms.uMotionField.value;
+  const material = mesh.material;
+  const uniforms = Object.entries(material.uniforms).map(([key, uniform]) => [key, uniform.value]);
   const renderer = {
     autoClear: true,
     getRenderTarget: () => target,
@@ -221,23 +233,27 @@ function gasOpeningFixture(t) {
       assert.equal(drawCamera, camera);
       drawScene.traverseVisible(object => {
         if (!object.isMesh) return;
-        assert.equal(object, gas.mesh);
+        assert.equal(object, mesh);
         assert.equal(object.material, material, 'compile and touch use the current live material');
         assert.equal(renderer.properties.get(material).currentProgram?.isReady(), true,
           'the binding must finish its readiness drain before drawing');
-        assert.equal(object.material.uniforms.uDensityFilm.value, density);
-        assert.equal(object.material.uniforms.uMotionField.value, motion);
-        assert.ok(object.count > 0, 'the hidden count-zero pool issues an actual warm draw');
+        for (const [key, value] of uniforms) assert.equal(material.uniforms[key].value, value);
+        if (object.isInstancedMesh) assert.ok(object.count > 0, 'the gas warm draw has a live instance');
+        if (object.geometry.isInstancedBufferGeometry) {
+          assert.ok(object.geometry.instanceCount > 0, 'the rupture warm draw has a live instance');
+        }
+        assert.ok(object.geometry.drawRange.count > 0, 'the warm draw has vertices');
+        if (rejectTouch) throw new Error('warm draw rejected');
         events.push('draw');
       });
     },
   };
   const revealed = run => {
-    const restore = revealSubjectWithAncestors(gas.mesh);
+    const restore = revealSubjectWithAncestors(mesh);
     try { return run(); } finally { restore(); }
   };
   const admit = () => admitOpeningUnitsAcrossSlices({
-    subjects: openingAdmissionSubjects([], [gas.mesh], scene, { mobileFirstPicture: true }),
+    subjects: openingAdmissionSubjects([], [mesh], scene, { mobileFirstPicture: true }),
     strict: true,
     isActive: () => active,
     beginReadinessBatch: () => ({
@@ -251,48 +267,59 @@ function gasOpeningFixture(t) {
       close() { closed = true; },
     }),
     compileOne(subject) {
-      assert.equal(subject, gas.mesh);
-      if (rejectCompile) return Promise.reject(new Error('gas compile failed'));
+      assert.equal(subject, mesh);
       return revealed(() => {
         events.push('compile');
+        if (rejectCompile) throw new Error('first-use compile failed');
         bindings.set(material, { currentProgram: { isReady: () => ready } });
         return { compiled: true };
       });
     },
-    touchOne: () => revealed(() => touchSubjectOnExactTarget(renderer, hdrTarget, gas.mesh, camera, scene)),
+    touchOne: () => revealed(() => touchSubjectOnExactTarget(renderer, hdrTarget, mesh, camera, scene)),
   });
-  return { gas, renderer, admit, events, priorTarget, bindings,
+  const assertEmpty = () => {
+    assert.equal(mesh.visible, false);
+    if (mesh.isInstancedMesh) assert.equal(mesh.count, 0);
+    if (mesh.geometry.isInstancedBufferGeometry) assert.equal(mesh.geometry.instanceCount, 0);
+    if (kind === 'gas') assert.equal(owner.liveCount, 0, 'warming never emits gas');
+    if (kind === 'rupture') assert.equal(owner.activeCount, 0, 'warming never schedules a rupture');
+    if (kind === 'sigil') assert.equal(owner._id, null, 'warming never selects a target');
+    for (const [key, value] of uniforms) assert.equal(material.uniforms[key].value, value);
+    assert.equal(renderer.getRenderTarget(), priorTarget);
+  };
+  return { owner, renderer, admit, events, priorTarget, bindings, assertEmpty,
     cancel: () => { active = false; }, rejectCompile: () => { rejectCompile = true; },
+    rejectTouch: () => { rejectTouch = true; },
     cancelDuringDrain: () => { cancelDuringDrain = true; },
     isClosed: () => closed };
 }
 
-test('live gas opening compile drains before exact-target draw and restores its empty state', async t => {
-  const f = gasOpeningFixture(t);
-  const result = await f.admit();
-  assert.equal(result.materials, 1);
-  assert.equal(result.geometries, 1);
-  assert.deepEqual(f.events, ['compile', 'drain', 'draw']);
-  assert.equal(f.isClosed(), true);
-  assert.equal(f.gas.mesh.visible, false);
-  assert.equal(f.gas.mesh.count, 0);
-  assert.equal(f.gas.liveCount, 0, 'warming never creates a cosmetic body');
-  assert.equal(f.renderer.getRenderTarget(), f.priorTarget);
+test('live first-use owners drain before exact-target draw and restore their empty state', async t => {
+  for (const kind of Object.keys(immediateFirstUseOwners)) {
+    const f = immediateFirstUseOpeningFixture(t, kind);
+    const result = await f.admit();
+    assert.equal(result.materials, 1, kind);
+    assert.equal(result.geometries, 1, kind);
+    assert.deepEqual(f.events, ['compile', 'drain', 'draw'], kind);
+    assert.equal(f.isClosed(), true);
+    f.assertEmpty();
+  }
 });
 
-test('stale or rejected gas admission cannot draw or claim a prepared material', async t => {
-  for (const failure of ['stale', 'late-stale', 'compile']) {
-    const f = gasOpeningFixture(t);
+test('stale or rejected first-use admission restores dormant state without authorizing a draw', async t => {
+  for (const kind of Object.keys(immediateFirstUseOwners)) for (const failure of ['stale', 'late-stale', 'compile', 'touch']) {
+    const f = immediateFirstUseOpeningFixture(t, kind);
     if (failure === 'stale') f.cancel();
     else if (failure === 'late-stale') f.cancelDuringDrain();
-    else f.rejectCompile();
-    await assert.rejects(f.admit(), failure === 'compile' ? /gas compile failed/ : /owner-inactive/);
+    else if (failure === 'compile') f.rejectCompile();
+    else f.rejectTouch();
+    await assert.rejects(f.admit(), failure === 'compile' ? /first-use compile failed/
+      : failure === 'touch' ? /warm draw rejected/ : /owner-inactive/);
     assert.equal(f.events.includes('draw'), false);
-    assert.equal(f.bindings.size, failure === 'late-stale' ? 1 : 0,
+    assert.equal(f.bindings.size, ['late-stale', 'touch'].includes(failure) ? 1 : 0,
       'cancelled compiles may finish, but cannot authorize a warm draw');
     assert.equal(f.isClosed(), true);
-    assert.equal(f.gas.mesh.visible, false);
-    assert.equal(f.gas.mesh.count, 0);
+    f.assertEmpty();
   }
 });
 

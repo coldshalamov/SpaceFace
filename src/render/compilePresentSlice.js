@@ -117,8 +117,8 @@ export function shouldSliceFlightAdmission({ mode, firstPlayable, urgent, rootCo
 }
 
 /**
- * Three's shadowMap.render skips object.visible === false, and InstancedMesh at count 0 is kept
- * hidden until publication. Color compile() still visits those objects; the depth pass does not.
+ * Three's shadowMap.render skips object.visible === false, and zero-count instanced drawables
+ * stay dormant until publication. Color compile() still visits those objects; a draw does not.
  * Force a drawable pose for admission, then restore.
  */
 function drawableRangeCount(geometry) {
@@ -138,7 +138,7 @@ export function revealSubjectForCompile(subject) {
   if (!subject) return () => {};
   const objectState = [];
   const seen = new Set();
-  const drawRangeGeometries = new Set();
+  const revealedGeometries = new Set();
   const visit = (object) => {
     if (!object || seen.has(object)) return;
     seen.add(object);
@@ -165,14 +165,21 @@ export function revealSubjectForCompile(subject) {
     };
     if (object.isInstancedMesh === true) entry.count = object.count;
     const geometry = object.geometry;
-    if (geometry && geometry.drawRange && !drawRangeGeometries.has(geometry)) {
-      drawRangeGeometries.add(geometry);
-      entry.drawRange = geometry.drawRange;
-      entry.drawRangeStart = geometry.drawRange.start;
-      entry.drawRangeCount = geometry.drawRange.count;
-      if (!(Number(geometry.drawRange.count) > 0)) {
-        geometry.drawRange.start = 0;
-        geometry.drawRange.count = drawableRangeCount(geometry);
+    if (geometry && !revealedGeometries.has(geometry)) {
+      revealedGeometries.add(geometry);
+      if (geometry.drawRange) {
+        entry.drawRange = geometry.drawRange;
+        entry.drawRangeStart = geometry.drawRange.start;
+        entry.drawRangeCount = geometry.drawRange.count;
+        if (!(Number(geometry.drawRange.count) > 0)) {
+          geometry.drawRange.start = 0;
+          geometry.drawRange.count = drawableRangeCount(geometry);
+        }
+      }
+      if (geometry.isInstancedBufferGeometry === true) {
+        entry.instancedGeometry = geometry;
+        entry.instanceCount = geometry.instanceCount;
+        if (!(Number(geometry.instanceCount) > 0)) geometry.instanceCount = 1;
       }
     }
     objectState.push(entry);
@@ -185,6 +192,7 @@ export function revealSubjectForCompile(subject) {
       entry.object.visible = entry.visible;
       if ('frustumCulled' in entry.object) entry.object.frustumCulled = entry.frustumCulled;
       if (entry.count !== undefined) entry.object.count = entry.count;
+      if (entry.instancedGeometry) entry.instancedGeometry.instanceCount = entry.instanceCount;
       if (entry.drawRange) {
         entry.drawRange.start = entry.drawRangeStart;
         entry.drawRange.count = entry.drawRangeCount;
@@ -217,7 +225,7 @@ export function* revealSubjectForCompileSteps(subject, sliceEvery = 256) {
   if (!subject) return { restore: () => {}, restoreSteps: null };
   const objectState = [];
   const seen = new Set();
-  const drawRangeGeometries = new Set();
+  const revealedGeometries = new Set();
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   const visit = (object) => {
     if (!object || seen.has(object)) return;
@@ -238,14 +246,21 @@ export function* revealSubjectForCompileSteps(subject, sliceEvery = 256) {
     };
     if (object.isInstancedMesh === true) entry.count = object.count;
     const geometry = object.geometry;
-    if (geometry && geometry.drawRange && !drawRangeGeometries.has(geometry)) {
-      drawRangeGeometries.add(geometry);
-      entry.drawRange = geometry.drawRange;
-      entry.drawRangeStart = geometry.drawRange.start;
-      entry.drawRangeCount = geometry.drawRange.count;
-      if (!(Number(geometry.drawRange.count) > 0)) {
-        geometry.drawRange.start = 0;
-        geometry.drawRange.count = drawableRangeCount(geometry);
+    if (geometry && !revealedGeometries.has(geometry)) {
+      revealedGeometries.add(geometry);
+      if (geometry.drawRange) {
+        entry.drawRange = geometry.drawRange;
+        entry.drawRangeStart = geometry.drawRange.start;
+        entry.drawRangeCount = geometry.drawRange.count;
+        if (!(Number(geometry.drawRange.count) > 0)) {
+          geometry.drawRange.start = 0;
+          geometry.drawRange.count = drawableRangeCount(geometry);
+        }
+      }
+      if (geometry.isInstancedBufferGeometry === true) {
+        entry.instancedGeometry = geometry;
+        entry.instanceCount = geometry.instanceCount;
+        if (!(Number(geometry.instanceCount) > 0)) geometry.instanceCount = 1;
       }
     }
     objectState.push(entry);
@@ -253,17 +268,26 @@ export function* revealSubjectForCompileSteps(subject, sliceEvery = 256) {
     if ('frustumCulled' in object) object.frustumCulled = false;
     if (object.isInstancedMesh === true && !(Number(object.count) > 0)) object.count = 1;
   };
+  const restoreEntry = (entry) => {
+    entry.object.visible = entry.visible;
+    if ('frustumCulled' in entry.object) entry.object.frustumCulled = entry.frustumCulled;
+    if (entry.count !== undefined) entry.object.count = entry.count;
+    if (entry.instancedGeometry) entry.instancedGeometry.instanceCount = entry.instanceCount;
+    if (entry.drawRange) {
+      entry.drawRange.start = entry.drawRangeStart;
+      entry.drawRange.count = entry.drawRangeCount;
+    }
+  };
   const applyRestore = function* () {
-    for (let i = 0; i < objectState.length; i++) {
-      if ((i % every) === 0 && i > 0) yield;
-      const entry = objectState[i];
-      entry.object.visible = entry.visible;
-      if ('frustumCulled' in entry.object) entry.object.frustumCulled = entry.frustumCulled;
-      if (entry.count !== undefined) entry.object.count = entry.count;
-      if (entry.drawRange) {
-        entry.drawRange.start = entry.drawRangeStart;
-        entry.drawRange.count = entry.drawRangeCount;
+    let i = 0;
+    try {
+      for (; i < objectState.length; i++) {
+        if ((i % every) === 0 && i > 0) yield;
+        restoreEntry(objectState[i]);
       }
+    } finally {
+      // A cancelled paced restore must not leave the remaining live pool revealed.
+      for (; i < objectState.length; i++) restoreEntry(objectState[i]);
     }
   };
   const restore = () => {
@@ -273,6 +297,7 @@ export function* revealSubjectForCompileSteps(subject, sliceEvery = 256) {
   };
   let visited = 0;
   const stack = [subject];
+  let complete = false;
   try {
     while (stack.length > 0) {
       const object = stack.pop();
@@ -281,9 +306,13 @@ export function* revealSubjectForCompileSteps(subject, sliceEvery = 256) {
       const children = object && object.children;
       if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
     }
-  } catch (err) {
-    try { restore(); } catch (_) { /* rethrow below */ }
-    throw err;
+    complete = true;
+  } finally {
+    // Generator return()/throw() can interrupt the reveal at a yield before it hands back
+    // the restore closure. Restore its revealed prefix on both cancellation and rejection.
+    if (!complete) {
+      try { restore(); } catch (_) { /* preserve the original interruption */ }
+    }
   }
   return { restore, restoreSteps: applyRestore() };
 }

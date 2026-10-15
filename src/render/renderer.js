@@ -1777,10 +1777,10 @@ export function openingAdmissionSubjects(required, pooled, scene, { mobileFirstP
   const requiredLeaves = new Set(required);
   return required.concat(pooled.filter((subject) => {
     if (!subject || requiredLeaves.has(subject) || subject.geometry?.id == null || !subject.material) return false;
-    // Gas wakes on ordinary opening traffic/contact events without a separate admission owner.
-    // Warm its one live raymarch material while mobile loading owns the picture; other dormant
-    // effects keep their bounded on-use path rather than widening the phone's opening cohort.
-    if (mobileFirstPicture && subject.userData?.spacefaceVfxGasBatch !== true) return false;
+    // Immediate first-use producers publish on ordinary events/input without an async admission
+    // owner. They owe their live material's first draw while mobile loading owns the picture;
+    // other dormant effects keep their bounded on-use path outside the opening cohort.
+    if (mobileFirstPicture && subject.userData?.spacefaceOpeningImmediateFirstUse !== true) return false;
     for (let owner = subject; owner; owner = owner.parent) {
       const data = owner.userData;
       // Warm exemplars have their own cook. Hidden authored fallbacks never present, while
