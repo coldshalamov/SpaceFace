@@ -138,7 +138,9 @@ export const swarmChain = {
     if (this._pendingMilestone > 0) {
       const mark = this._pendingMilestone;
       this._pendingMilestone = 0;
-      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8 });
+      // `audio: false`: the mark already has its own voice (swarmJuice's chain-tier chord); the
+      // toast's generic click would sit under it as a second sound for one moment.
+      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8, audio: false });
     }
     if (this._chain <= 0) return;
     const run = liveSwarmRun(st);

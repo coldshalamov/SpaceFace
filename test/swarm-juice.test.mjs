@@ -15,7 +15,7 @@ import {
   swarmClimbRate,
   swarmJuice,
 } from '../src/systems/swarmJuice.js';
-import { SWARM_CHAIN_WARN_CUE } from '../src/systems/swarmChain.js';
+import { SWARM_CHAIN_WARN_CUE, swarmChain } from '../src/systems/swarmChain.js';
 import {
   AUDIO_RECIPE_BY_ID,
   MOMENT_CUE_GATES,
@@ -666,4 +666,24 @@ test('moment gates: rank decides who yields, cooldowns floor repeats, ticks are 
     momentCueRecord(mem, SWARM_MOMENT_CUES.tallyTick, 0, 9 + i * 0.16);
   }
   assert.ok(momentCueAllowed(mem, 'moment.stinger', 3, 5.2), 'the shared stinger joins the family but is never dropped by it');
+});
+
+test('end to end with the live chain: a milestone is one voice, the tier chord, not a chord plus a toast click', () => {
+  const h = boot();
+  swarmChain.init(h.ctx);
+  const { ear, plays } = listen(h);
+  for (let i = 0; i < 8; i++) kill(h, { cause: i % 2 ? 'explosive' : 'direct' });
+  const clicks = () => plays.filter((p) => p.recipeId === 'sfx_ui_click').length;
+  const clicksBefore = clicks(); // the one-time chain-lesson toast clicks like any other toast
+  swarmChain.update(DT, h.state); // flushes the queued CHAIN 10 toast
+  const toasts = named(h, 'toast').filter((e) => e.payload.text === 'CHAIN 10');
+  assert.equal(toasts.length, 1, 'the milestone still says its line on screen');
+  assert.equal(toasts[0].payload.audio, false, 'the toast leaves the sound to the tier cue');
+  const tierPlays = plays.filter((p) => p.recipeId === 'sfx_promotion_chord');
+  assert.equal(tierPlays.length, 1, 'IGNITION chords once');
+  assert.equal(clicks(), clicksBefore, 'the milestone toast adds no click under the chord');
+  assert.equal(plays.filter((p) => p.recipeId === 'sfx_ui_alert').length, 0, 'and no alert beep');
+  ear.destroy();
+  swarmChain.destroy();
+  swarmJuice.destroy();
 });
