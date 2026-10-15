@@ -485,6 +485,7 @@ import {
 } from './openingSubmissionPlan.js';
 import {
   admitOpeningUnitsAcrossSlices,
+  beginOpeningFirstDrawObservation,
   captureOpeningAdmissionIdentity,
   captureOpeningAdmissionIdentitySteps,
   describeOpeningAdmissionIdentityDelta,
@@ -21602,6 +21603,7 @@ export const render = {
           this._openingPreSubmitRefusals = 0;
           state.render.openingFirstVisibleGpuCounts = null;
           state.render.openingFirstDrawIdentityCensus = null;
+          state.render.openingFirstDrawObservation = null;
           state.render.openingSubmissionPreSubmitValidation = null;
           state.render.openingSubmissionValidation = null;
           this._openingFirstDrawIdentityIter = null;
@@ -30370,6 +30372,9 @@ export const render = {
     let openingFirstDraw = false;
     let openingFirstDrawCountsBefore = null;
     let openingFirstDrawIdentityBefore = null;
+    let openingFirstDrawObservation = null;
+    let openingFirstDrawObserver = null;
+    let openingFirstDrawSubmissionFailed = false;
     try {
       dynamicBufferEpoch = this._dynamicBuffers.arm();
       disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(
@@ -30794,20 +30799,25 @@ export const render = {
           // timer gaps must not stamp the pre-recook identity map — mirrors the
           // generator's own armed-plan bail and leaves the deferred flag clear so
           // the new plan can arm its own diagnostics.
-          if (this.state.render.openingSubmissionPlan !== armedPlan) {
+          if (openingFirstDrawSubmissionFailed || this.state.render.openingSubmissionPlan !== armedPlan) {
             this._openingFirstDrawDiagnosticsDeferred = false;
             return;
           }
           this.state.render.openingFirstDrawIdentityCensus = identityBefore;
-          // The delta attribution and post-submit receipt validation are diagnostic-only
-          // passes (another whole-scene traverse plus per-material program reads). They
-          // used to ride inside this presented frame — the persisted-census design
-          // already anticipates the deferral, so finish them after the paint, sliced
-          // across timer gaps so frame N+2 doesn't eat them whole either.
+          // Defer attribution/validation formatting, but not its observation window. The
+          // synchronous draw below freezes its submitted IDs/counts; later timer gaps must
+          // never sample a newer scene and relabel it as first-draw work.
           this._openingFirstDrawDiagnosticsDeferred = true;
-          const diagIter = this._finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan);
+          let diagIter = null;
           const scheduleGap = schedule || ((next) => setTimeout(next, 0));
           const driveDiagnostics = () => {
+            if (!openingFirstDrawObservation || openingFirstDrawSubmissionFailed) {
+              this._openingFirstDrawDiagnosticsDeferred = false;
+              return;
+            }
+            diagIter = diagIter || this._finishOpeningFirstDrawDiagnosticsSteps(
+              countsBefore, identityBefore, armedPlan, openingFirstDrawObservation,
+            );
             let step = null;
             try { step = diagIter.next(); }
             catch (_) { step = { done: true, value: undefined }; }
@@ -30854,13 +30864,28 @@ export const render = {
           scheduleGap(guardedDrain);
         }
       }
+      if (openingFirstDraw) {
+        openingFirstDrawObserver = beginOpeningFirstDrawObservation(this.renderer, {
+          plan: this.state.render.openingSubmissionPlan,
+          receipt: this.state.render.openingSubmissionReceipt,
+          preSubmitValidation: this.state.render.openingSubmissionPreSubmitValidation,
+        });
+      }
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
+        if (openingFirstDrawObserver) {
+          openingFirstDrawObservation = openingFirstDrawObserver.finish();
+          this.state.render.openingFirstDrawObservation = openingFirstDrawObservation;
+        }
         if (this._shadowRefreshScheduled === true) {
           this._shadowMapDirty = false;
           this._shadowRefreshScheduled = false;
         }
+      } catch (error) {
+        openingFirstDrawSubmissionFailed = true;
+        throw error;
       } finally {
+        if (openingFirstDrawObserver) openingFirstDrawObserver.cancel();
         if (gpuQueryBegan) gpu.end();
       }
     } finally {
@@ -30877,11 +30902,12 @@ export const render = {
         this.state.render.openingSubmissionReceipt,
         this.renderer,
         this.state.render.openingFirstDrawIdentityCensus,
+        this.state.render.openingFirstDrawObservation,
       );
       const firstVisibleGpuCounts = this.state.render.openingFirstVisibleGpuCounts;
       const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (
-        firstVisibleGpuCounts.delta.geometries !== 0
-        || firstVisibleGpuCounts.delta.programs !== 0
+        firstVisibleGpuCounts.delta.geometries > 0
+        || firstVisibleGpuCounts.delta.programs > 0
       );
       const lateAdmissionIdentity = firstVisibleGpuCounts
         && firstVisibleGpuCounts.lateAdmissions;
@@ -30892,11 +30918,11 @@ export const render = {
       const unexplainedFirstVisibleAdmission = firstVisibleAdmissionDelta && (
         !lateAdmissionIdentity
         || lateAdmissionIdentity.unexplained === true
-        || (firstVisibleGpuCounts.delta.geometries !== 0 && !namedGeometryAdmission)
-        || (firstVisibleGpuCounts.delta.programs !== 0 && !namedProgramAdmission)
+        || (firstVisibleGpuCounts.delta.geometries > 0 && !namedGeometryAdmission)
+        || (firstVisibleGpuCounts.delta.programs > 0 && !namedProgramAdmission)
       );
       const firstVisibleAdmissionFailure = firstVisibleGpuCounts
-        && firstVisibleGpuCounts.delta.geometries !== 0
+        && firstVisibleGpuCounts.delta.geometries > 0
         ? { reason: 'first-visible-geometry-delta' }
         : { reason: 'first-visible-program-delta' };
       const validation = unexplainedFirstVisibleAdmission
@@ -31006,34 +31032,28 @@ export const render = {
     return true;
   },
 
-  // Post-paint tail of the first presented draw: attributes the submit's renderer.info
-  // delta back to production objects, then runs the receipt validation. Both are
-  // diagnostic-only whole-scene passes the opening arm defers past the paint (D25).
-  // Steps twin: the deferred driver slices it across timer gaps so frame N+2
-  // doesn't pay the O(scene)+O(drawables) cluster in one callback.
-  *_finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan) {
+  // Post-paint attribution/validation consumes the immutable submit observation. Sorting and
+  // row formatting remain sliced across timer gaps; none of those gaps expands the measured
+  // frame to include a later scene, material mutation or unrelated resource retirement.
+  *_finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan, observation) {
     try {
       // A recook since the arm reset the slate and cleared the plan — writing the
       // stale census/validation into it would occupy the fresh sector's slot and
       // suppress its real receipt validation.
-      if (this.state.render.openingSubmissionPlan !== armedPlan) return;
-      const info = this.renderer && this.renderer.info || {};
-      const memory = info.memory || {};
-      const after = {
-        programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
-        geometries: Number(memory.geometries) || 0,
-      };
+      if (!observation || this.state.render.openingSubmissionPlan !== armedPlan) return;
+      countsBefore = observation.before.currentCounts;
+      const after = observation.currentCounts;
       const delta = {
         programs: after.programs - countsBefore.programs,
         geometries: after.geometries - countsBefore.geometries,
       };
-      const geometryOnlyBrick = delta.programs === 0 && delta.geometries !== 0;
+      const geometryOnlyBrick = delta.programs === 0 && delta.geometries > 0;
       const lateAdmissions = yield* describeOpeningAdmissionIdentityDeltaSteps(
         identityBefore,
         this.renderer,
         this.scene,
         this.state.render.openingSubmissionPlan,
-        { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS },
+        { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS, observation },
       );
       yield;
       // Computed into a local and persisted beside the validation write below — a throw
@@ -31057,10 +31077,11 @@ export const render = {
           this.state.render.openingSubmissionReceipt,
           this.renderer,
           this.state.render.openingFirstDrawIdentityCensus,
+          observation,
         );
         const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (
-          firstVisibleGpuCounts.delta.geometries !== 0
-          || firstVisibleGpuCounts.delta.programs !== 0
+          firstVisibleGpuCounts.delta.geometries > 0
+          || firstVisibleGpuCounts.delta.programs > 0
         );
         const lateAdmissionIdentity = firstVisibleGpuCounts
           && firstVisibleGpuCounts.lateAdmissions;
@@ -31071,11 +31092,11 @@ export const render = {
         const unexplainedFirstVisibleAdmission = firstVisibleAdmissionDelta && (
           !lateAdmissionIdentity
           || lateAdmissionIdentity.unexplained === true
-          || (firstVisibleGpuCounts.delta.geometries !== 0 && !namedGeometryAdmission)
-          || (firstVisibleGpuCounts.delta.programs !== 0 && !namedProgramAdmission)
+          || (firstVisibleGpuCounts.delta.geometries > 0 && !namedGeometryAdmission)
+          || (firstVisibleGpuCounts.delta.programs > 0 && !namedProgramAdmission)
         );
         const firstVisibleAdmissionFailure = firstVisibleGpuCounts
-          && firstVisibleGpuCounts.delta.geometries !== 0
+          && firstVisibleGpuCounts.delta.geometries > 0
           ? { reason: 'first-visible-geometry-delta' }
           : { reason: 'first-visible-program-delta' };
         pendingValidation = unexplainedFirstVisibleAdmission

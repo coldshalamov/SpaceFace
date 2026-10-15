@@ -586,6 +586,14 @@ function collectResourceIdentitySets(leaves, route, explicitTextures = []) {
   };
 }
 
+// Freeze identifiers while the caller already owns the census/draw. Retaining a geometry or
+// material reference and deriving its identities in a later task samples a different frame.
+export function captureOpeningResourceIdentitySets(leaves, route = {}, explicitTextures = []) {
+  const identities = collectResourceIdentitySets(leaves, route, explicitTextures);
+  for (const values of Object.values(identities)) Object.freeze(values);
+  return Object.freeze(identities);
+}
+
 /**
  * Read the exact first-picture producer census from one live root. Geometry and texture identities
  * come from the actual leaves, never renderer memory totals. Program entries are producer subject
@@ -1361,10 +1369,34 @@ export function openingSubmissionUnboundSubjects(receipt, validation) {
   return Object.freeze(subjects);
 }
 
-export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCensus = null) {
+export function captureOpeningSubmissionValidationState(receipt, renderer, currentResources) {
   const info = renderer && renderer.info || {};
   const memory = info.memory || {};
-  const currentCounts = {
+  const currentCounts = Object.freeze({
+    programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
+    geometries: Number(memory.geometries) || 0,
+    textures: Number(memory.textures) || 0,
+  });
+  const resources = {};
+  for (const key of ['geometryBufferIds', 'blockingTextureIds', 'shadowResourceIds']) {
+    resources[key] = Object.freeze([...(currentResources && currentResources[key] || [])]);
+  }
+  const bindings = revalidateProgramBindings(renderer, receipt);
+  return Object.freeze({
+    currentCounts,
+    currentResources: Object.freeze(resources),
+    programKeys: Object.freeze(rendererProgramKeys(renderer)),
+    bindingRevalidation: Object.freeze({
+      failures: Object.freeze([...bindings.failures]),
+      keys: Object.freeze([...bindings.keys]),
+    }),
+  });
+}
+
+export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCensus = null, observation = null) {
+  const info = renderer && renderer.info || {};
+  const memory = info.memory || {};
+  const currentCounts = observation ? observation.currentCounts : {
     programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
     geometries: Number(memory.geometries) || 0,
     textures: Number(memory.textures) || 0,
@@ -1372,8 +1404,9 @@ export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCen
   const baseline = receipt && receipt.baseline || { programs: 0, geometries: 0, textures: 0 };
   const before = receipt && receipt.before || {};
   const required = receipt && receipt.required || {};
-  const currentResources = currentPlanResourceIdentitySets(receipt && receipt.plan);
-  const currentProgramKeys = rendererProgramKeys(renderer);
+  const currentResources = observation
+    ? observation.currentResources : currentPlanResourceIdentitySets(receipt && receipt.plan);
+  const currentProgramKeys = observation ? observation.programKeys : rendererProgramKeys(renderer);
   const allowedProgramKeys = unionSet(before.programCacheKeys, required.programCacheKeys);
   const allowedGeometryIds = unionSet(before.geometryBufferIds, required.geometryBufferIds);
   const allowedTextureIds = unionSet(before.blockingTextureIds, required.blockingTextureIds);
@@ -1384,21 +1417,31 @@ export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCen
   // that settled set, and the live plan-material bindings name the programs the plan's own
   // materials produced inside the draw; both are captured work, and only a resource no
   // recorded path explains stays flagged.
-  if (firstDrawCensus) {
+  if (observation) {
+    // The pre-submit validation already collected this exact prepared graph. Only submitted
+    // identities may enlarge the observed set; later scene mounts and mutable census references
+    // cannot rewrite either side of the first-draw comparison.
+    for (const id of observation.before.currentResources.geometryBufferIds) allowedGeometryIds.add(id);
+    for (const id of observation.before.currentResources.blockingTextureIds) allowedTextureIds.add(id);
+    for (const id of observation.before.currentResources.shadowResourceIds) allowedShadowIds.add(id);
+    for (const key of observation.before.programKeys) allowedProgramKeys.add(key);
+  } else if (firstDrawCensus) {
     const censusObjects = firstDrawCensus.objects instanceof Map
       ? [...firstDrawCensus.objects.keys()]
       : [];
-    if (censusObjects.length) {
+    if (firstDrawCensus.resourceIdentitySets || censusObjects.length) {
       const planRoute = receipt && receipt.plan && receipt.plan.route || {};
-      const settled = collectResourceIdentitySets(censusObjects, planRoute);
+      const settled = firstDrawCensus.resourceIdentitySets
+        || collectResourceIdentitySets(censusObjects, planRoute);
       for (const id of settled.geometryBufferIds) allowedGeometryIds.add(id);
       for (const id of settled.blockingTextureIds) allowedTextureIds.add(id);
       for (const id of settled.shadowResourceIds) allowedShadowIds.add(id);
     }
     for (const key of firstDrawCensus.programKeys || []) allowedProgramKeys.add(key);
   }
-  const bindingRevalidation = revalidateProgramBindings(renderer, receipt);
-  for (const key of bindingRevalidation.keys) allowedProgramKeys.add(key);
+  const bindingRevalidation = observation
+    ? observation.bindingRevalidation : revalidateProgramBindings(renderer, receipt);
+  if (!observation) for (const key of bindingRevalidation.keys) allowedProgramKeys.add(key);
   const uncapturedProgramKeys = difference(new Set(currentProgramKeys), allowedProgramKeys);
   const uncapturedGeometryBufferIds = difference(
     new Set(currentResources.geometryBufferIds), allowedGeometryIds,
@@ -1445,7 +1488,8 @@ export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCen
   ].every((value) => Array.isArray(value));
   const missingProgramBindings = bindingRevalidation.failures;
   return freeze({
-    ok: !!(planComplete && exactReceipt && receipt.planSchema === OPENING_SUBMISSION_PLAN_SCHEMA
+    ok: !!(planComplete && exactReceipt && (!observation || observation.complete === true)
+      && receipt.planSchema === OPENING_SUBMISSION_PLAN_SCHEMA
       && missingProgramBindings.length === 0 && uncaptured.length === 0),
     baseline,
     current: currentCounts,
@@ -1461,7 +1505,9 @@ export function validateOpeningSubmissionReceipt(receipt, renderer, firstDrawCen
     missingTextureIds,
     missingShadowResourceIds,
     missingProgramBindings,
-    reason: !planComplete
+    reason: observation && observation.complete !== true
+      ? 'incomplete-first-draw-observation'
+      : !planComplete
       ? 'incomplete-opening-submission-plan'
       : !exactReceipt
         ? 'incomplete-opening-submission-receipt'

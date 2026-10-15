@@ -32,6 +32,10 @@ import {
   collectStartupTexturesSteps,
 } from './startupGpuResidency.js';
 import { dedupWarn } from '../core/warnDedup.js';
+import {
+  captureOpeningResourceIdentitySets,
+  captureOpeningSubmissionValidationState,
+} from './openingSubmissionPlan.js';
 
 /**
  * A package texture whose CPU mirror was released after its proven upload still reaches three's
@@ -172,6 +176,94 @@ function materialLabel(material) {
   return String(material && (material.name || material.type || material.uuid) || 'no-material');
 }
 
+function combineResourceIdentities(values) {
+  const result = {};
+  for (const key of ['geometryBufferIds', 'blockingTextureIds', 'shadowResourceIds']) {
+    result[key] = Object.freeze([...new Set(values.flatMap((value) => value && value[key] || []))].sort());
+  }
+  return Object.freeze(result);
+}
+
+// One synchronous submission only. Preserve any guard/instrumentation already installed and
+// restore it even when the render throws. Three returns undefined for both a successful draw
+// and a guard refusal, so only an increased renderer.info.render.calls proves submission.
+export function beginOpeningFirstDrawObservation(renderer, { plan = null, receipt = null, preSubmitValidation = null } = {}) {
+  const scene = plan && plan.scene;
+  const before = captureOpeningSubmissionValidationState(null, renderer,
+    preSubmitValidation && preSubmitValidation.currentResources);
+  const previous = renderer && renderer.renderBufferDirect;
+  const records = [];
+  let active = true;
+  let finished = null;
+  let complete = typeof previous === 'function'
+    && Number.isFinite(renderer && renderer.info && renderer.info.render && renderer.info.render.calls);
+  const wrapper = function openingFirstDrawObserver(camera, drawScene, geometry, material, object, group) {
+    const callsBefore = renderer.info && renderer.info.render && renderer.info.render.calls;
+    let result;
+    try { result = previous.call(this, camera, drawScene, geometry, material, object, group); }
+    catch (error) { close(); throw error; }
+    const callsAfter = renderer.info && renderer.info.render && renderer.info.render.calls;
+    if (!Number.isFinite(callsBefore) || !Number.isFinite(callsAfter)) complete = false;
+    if (!(callsAfter > callsBefore)) return result;
+    if (scene) {
+      let ancestor = object;
+      while (ancestor && ancestor !== scene) ancestor = ancestor.parent;
+      if (ancestor !== scene) return result;
+    }
+    try {
+      const resources = captureOpeningResourceIdentitySets([{
+        geometry, material, castShadow: object && object.castShadow,
+        customDepthMaterial: object && object.customDepthMaterial,
+        customDistanceMaterial: object && object.customDistanceMaterial,
+      }], plan && plan.route || {});
+      records.push(Object.freeze({
+        object,
+        root: objectLabel(admissionRoot(object, scene)),
+        objectName: objectLabel(object),
+        materialName: materialLabel(material),
+        materialType: String(material && material.type || 'Material'),
+        geometryId: resources.geometryBufferIds[0] || null,
+        geometryDisposeListeners: geometryDisposeListenerCount(geometry),
+        programKeys: Object.freeze([...materialProgramKeys(renderer, material)]),
+        resourceIdentitySets: resources,
+      }));
+    } catch (_) {
+      // Diagnostic capture cannot turn a successfully submitted draw into an application throw.
+      // An incomplete observation still refuses to certify the first-draw receipt.
+      complete = false;
+    }
+    return result;
+  };
+  if (typeof previous === 'function') renderer.renderBufferDirect = wrapper;
+  const close = () => {
+    if (!active) return;
+    active = false;
+    if (renderer && renderer.renderBufferDirect === wrapper) renderer.renderBufferDirect = previous;
+  };
+  return {
+    before,
+    cancel: close,
+    finish() {
+      if (finished) return finished;
+      close();
+      const explicitTextures = scene ? [scene.background, scene.environment]
+        .filter((texture) => texture && texture.isTexture === true) : [];
+      const resources = combineResourceIdentities([
+        before.currentResources,
+        ...records.map((record) => record.resourceIdentitySets),
+        captureOpeningResourceIdentitySets([], {}, explicitTextures),
+      ]);
+      finished = Object.freeze({
+        ...captureOpeningSubmissionValidationState(receipt, renderer, resources),
+        before,
+        complete,
+        draws: Object.freeze(records.slice()),
+      });
+      return finished;
+    },
+  };
+}
+
 export function openingProgramFamilyKey(key) {
   const value = String(key || 'unknown').trim();
   if (!value) return 'unknown';
@@ -183,8 +275,8 @@ export function openingProgramFamilyKey(key) {
 /**
  * Capture the one-frame identity baseline used to attribute a renderer.info count delta back to
  * production objects. Three does not expose WebGLGeometries, so the geometry marker observes the
- * dispose listener installed by WebGLGeometries.get() on first admission. This is diagnostic only;
- * the aggregate renderer.info delta remains the gate authority.
+ * dispose listener installed by WebGLGeometries.get() on first admission. Resource IDs are frozen
+ * during this existing walk, so a later mutation of a retained Object3D cannot rewrite the census.
  */
 export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
   const planned = new Set(Array.isArray(plan && plan.compileSubjects)
@@ -202,12 +294,14 @@ export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
         geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
         materials,
         planned: planned.has(object),
+        resourceIdentitySets: captureOpeningResourceIdentitySets([object], plan && plan.route || {}),
       });
     });
   }
   return {
     programKeys: rendererProgramKeys(renderer),
     objects,
+    resourceIdentitySets: combineResourceIdentities([...objects.values()].map((value) => value.resourceIdentitySets)),
   };
 }
 
@@ -233,6 +327,7 @@ export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = nu
           geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
           materials,
           planned: planned.has(object),
+          resourceIdentitySets: captureOpeningResourceIdentitySets([object], plan && plan.route || {}),
         });
       }
       const children = object && object.children;
@@ -245,6 +340,7 @@ export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = nu
   return {
     programKeys: rendererProgramKeys(renderer),
     objects,
+    resourceIdentitySets: combineResourceIdentities([...objects.values()].map((value) => value.resourceIdentitySets)),
   };
 }
 
@@ -357,6 +453,9 @@ export function describeOpeningAdmissionIdentityDelta(
 export function* describeOpeningAdmissionIdentityDeltaSteps(
   before, renderer, scene, plan = null, options = {},
 ) {
+  if (options.observation) {
+    return yield* describeObservedOpeningAdmissionDeltaSteps(before, options.observation, plan, options);
+  }
   const baseline = before || { programKeys: new Set(), objects: new Map() };
   const afterProgramKeys = rendererProgramKeys(renderer);
   const newProgramKeys = [...afterProgramKeys]
@@ -446,6 +545,58 @@ export function* describeOpeningAdmissionIdentityDeltaSteps(
     exemptedProgramFamilyKeys,
     unexplained: lateAdmissions.some((row) => row.exempted !== true)
       || unexplainedProgramFamilies.length > 0,
+  };
+}
+
+function* describeObservedOpeningAdmissionDeltaSteps(before, observation, plan, options) {
+  const newProgramKeys = observation.programKeys
+    .filter((key) => !observation.before.programKeys.includes(key)).sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const knownGeometry = new Set(observation.before.currentResources.geometryBufferIds);
+  const planned = new Set(plan && plan.compileSubjects || []);
+  const attributed = new Set();
+  const lateAdmissions = [];
+  const seen = new Set();
+  let visited = 0;
+  for (const draw of observation.draws) {
+    if (++visited % 128 === 0) yield;
+    const prior = before && before.objects && before.objects.get(draw.object);
+    const geometryAdmitted = !!draw.geometryId && (!knownGeometry.has(draw.geometryId)
+      || (prior && draw.geometryDisposeListeners > prior.geometryDisposeListeners));
+    const programKeys = draw.programKeys.filter((key) => newProgramSet.has(key)).sort();
+    if (!geometryAdmitted && programKeys.length === 0) continue;
+    const row = {
+      root: draw.root, object: draw.objectName, material: draw.materialName,
+      materialType: draw.materialType, geometryAdmitted,
+      programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+      programKeys, planned: planned.has(draw.object) || !!(prior && prior.planned),
+      exempted: false, exemptionReason: null,
+    };
+    const identity = JSON.stringify(row);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    for (const key of programKeys) attributed.add(key);
+    const reason = exemptionFor(row, options.exemptions);
+    if (reason) { row.exempted = true; row.exemptionReason = reason; }
+    lateAdmissions.push(row);
+  }
+  lateAdmissions.sort((a, b) => a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object) || a.material.localeCompare(b.material));
+  const unattributedProgramKeys = newProgramKeys.filter((key) => !attributed.has(key));
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of [...new Set(unattributedProgramKeys.map(openingProgramFamilyKey))].sort()) {
+    const exemption = exemptionFor({ root: '', object: '', material: '', programFamilyKeys: [family] }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys: [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort(),
+    lateAdmissions, unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => !row.exempted) || unexplainedProgramFamilies.length > 0,
   };
 }
 
