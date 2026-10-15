@@ -1842,14 +1842,14 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read-hand { display:none !important; }
 }
 
-/* Ledger at 800×600-class (761–900 wide, ≤640 tall): the compact 761–1100 rule seats a 220px
-   purse beside a ~200px reading, so the figure leaves the title/line only ~47px ("20u …" /
-   "56 cr …"), and the list's CYCLE|line row leaves the item ~90px ("S…", "Bo…"). Here the purse
-   yields width, the figure trims so title+cargo sit beside it in full, and each list entry puts
-   CYCLE above the line so the item shares the row with its figure. 960+ unchanged. */
+/* Ledger at 800×600-class (761–900 wide, ≤640 tall): the prior 140px purse starved the ring so
+   BOUGHT / SOLD / NET · CR clipped. Restore ~200px for the purse and narrow the list to ~34%
+   so the reading column still holds title+cargo beside a trimmed figure; CYCLE stays above the
+   line so list items share the row. Parent 761–1100 (40% / 220px) and 960+ stay unchanged. */
 @media (min-width:761px) and (max-width:900px) and (max-height:640px) {
-  /* purse shrinks so the reading column can hold the cargo line beside the figure */
-  ${D} .sx-ledger > .sx-ledger__right { grid-template-columns:minmax(0, 1fr) 140px !important; column-gap:6px !important; }
+  /* list yields ~6% so reading + ~200px purse clear BOUGHT/SOLD/NET without crushing cargo */
+  ${D} .sx-ledger > .st-ledger { max-width:34%; }
+  ${D} .sx-ledger > .sx-ledger__right { left:calc(34% + 22px) !important; grid-template-columns:minmax(0, 1fr) 200px !important; column-gap:6px !important; }
   ${D} .sx-ledger__row > .orr-ledger-purse { min-height:0 !important; }
   /* reading stays one band under the tape: figure | title+line */
   ${D} .sx-ledger__row > .sx-ledger__read:not([hidden]) { grid-template-columns:auto minmax(0, 1fr) !important;
