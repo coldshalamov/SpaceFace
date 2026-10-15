@@ -51,7 +51,19 @@ export function createScreenManager(ctx) {
   const stack = state.ui.screenStack;
 
   let pauseEmitted = false;
+  // A worker-lane mode write is asynchronous: opening Pause can leave the main
+  // mirror in `flight` while the queued `paused` write is still in flight. Keep
+  // the aggregate boundary's resume eligibility separately from that mirror so
+  // releasing the last modal can queue the matching `flight` write as well.
+  let pauseResumeEligible = false;
+  // Worker mode edges are authoritative for presentation before the main mirror
+  // catches up. Keep the latest published edge for lock and pause decisions.
+  let latestPublishedMode = null;
   let destroyed = false;
+
+  function effectiveMode() {
+    return latestPublishedMode || state.mode;
+  }
 
   // J4 screen state memory (build map §11.12). A per-screen bag persisted per save, so the map, the
   // ship and the station open where the player left them. Published on ctx so screens read/write it
@@ -345,7 +357,7 @@ export function createScreenManager(ctx) {
     document.body.dataset.kScreen = topEl ? (topEl.dataset.screen || '') : '';
     // The shell ground (deckplate SHELL): in the menu, with no run in progress, a shell screen stands
     // on the title's world out of focus; in a run it keeps the held world. CSS reads the mode here.
-    document.body.dataset.gameMode = String((state && state.mode) || '');
+    document.body.dataset.gameMode = String(effectiveMode() || '');
     if (bus && typeof bus.emit === 'function') bus.emit('ui:screenTop', { id: document.body.dataset.kScreen || null });
     // When no modal is open, hide the #screens container ENTIRELY — it carries a full-screen
     // background image (the menu art) at z-index 100, which would otherwise sit on top of the
@@ -369,7 +381,7 @@ export function createScreenManager(ctx) {
     const externalModal = state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true;
     document.body.classList.toggle('ui-modal-open', modalOpen);
     document.body.classList.remove('ui-live-screen');
-    syncHudAccessibility(open || externalModal || state.mode !== 'flight');
+    syncHudAccessibility(open || externalModal || effectiveMode() !== 'flight');
     if (backdrop) {
       backdrop.hidden = !open;
       // The dimmer is visual chrome; the active screen owns the dialog semantics.
@@ -492,19 +504,31 @@ export function createScreenManager(ctx) {
   // Reconcile the request unconditionally. A new game/load resets transient effects, so a visible
   // stack must repair its request even while pauseEmitted still reflects the same boundary.
   // pauseEmitted gates only the aggregate event pair.
-  function syncPause() {
+  function syncPause(modeEvent) {
+    // In worker mode the local mirror can still say `flight` when the worker
+    // has already accepted a transition to the menu.  Consume that published
+    // mode before a later closeAll/pop release can decide whether to resume.
+    if (modeEvent && typeof modeEvent.mode === 'string') {
+      latestPublishedMode = modeEvent.mode;
+      if (modeEvent.mode !== 'flight' && modeEvent.mode !== 'paused') {
+        pauseResumeEligible = false;
+      }
+    }
+    const mode = effectiveMode();
     const wantPause = state.ui.docked === true || stack.length > 0;
     if (wantPause) timeEffects.set('ui:pausing-screen', PAUSE_REQUEST);
     else timeEffects.clear('ui:pausing-screen');
     if (wantPause && !pauseEmitted) {
       pauseEmitted = true;
+      pauseResumeEligible = mode === 'flight' || mode === 'paused';
       bus.emit('sim:pause', {});
     } else if (!wantPause && pauseEmitted) {
       pauseEmitted = false;
+      const shouldResume = pauseResumeEligible
+        && (mode === 'flight' || mode === 'paused');
+      pauseResumeEligible = false;
       // only resume if the sim is in flight (not at the main menu)
-      if (state.mode === 'flight' || state.mode === 'paused') {
-        if (state.mode === 'paused') laneSetMode(state, bus, 'flight');
-      }
+      if (shouldResume) laneSetMode(state, bus, 'flight');
       bus.emit('sim:resume', {});
     }
   }
@@ -633,7 +657,7 @@ export function createScreenManager(ctx) {
   function locked() {
     const d = activeDef();
     if (d && d.data && d.data.locked) return true;
-    return state.mode === 'menu' && stack.length === 1 && top() === 'mainMenu';
+    return effectiveMode() === 'menu' && stack.length === 1 && top() === 'mainMenu';
   }
 
   function dismissTopFromBackdrop() {
@@ -756,7 +780,7 @@ export function createScreenManager(ctx) {
       || state.ui.fulfillmentBlackoutActive === true;
     document.body.classList.toggle('ui-modal-open', externalModal);
     document.body.classList.remove('ui-live-screen');
-    syncHudAccessibility(externalModal || state.mode !== 'flight');
+    syncHudAccessibility(externalModal || effectiveMode() !== 'flight');
   }
 
   // Retained for callers that branch on the old API. Universal interruption semantics mean the

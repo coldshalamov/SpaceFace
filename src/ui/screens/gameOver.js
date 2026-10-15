@@ -33,7 +33,6 @@ import { NEW_GAME, DEFAULT_STARTER_ID, starterById } from '../../data/newGameDef
 import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
-import { laneSetMode } from '../../core/simLaneCommands.js';
 import { confirm } from '../confirm.js';
 import { loadConfirmBody } from './saveLoad.js';
 import { rangeRungIndex } from './range.js';
@@ -544,7 +543,9 @@ export const gameOverScreen = {
     bMenu.setAttribute('aria-label', 'Return to title screen to continue or load another save');
     bMenu.addEventListener('click', () => {
       cue('confirm');
-      if (ctx.state) laneSetMode(ctx.state, ctx.bus, 'menu');
+      // Let main.js publish the authoritative mode edge before this modal stack
+      // is closed; a worker mirror may still read `flight` at this click.
+      ctx.bus.emit('game:exitToMenu', { source: 'game-over' });
       ctx.bus.emit('game:over:dismissed', {});
       const mgr = getManager(ctx);
       if (mgr) {

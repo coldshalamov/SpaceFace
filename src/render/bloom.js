@@ -2497,7 +2497,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function renderCompositePass(tier1, bloomActive) {
     // Mood transitions update the shared contrast uniform outside this module. The experiment
     // table follows that value lazily and reuses its DataTexture between changes.
-    syncContrastLut();
+    if (contrastLutEnabled) syncContrastLut();
     // Bind initialized scene color when bloom is inactive. Zero weights would normally be enough,
     // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
     // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
