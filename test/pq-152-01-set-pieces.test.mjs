@@ -1,4 +1,4 @@
-// PQ-152.01 — eleven authored set pieces on the route. Seed 15210.
+// PQ-152.01 — the authored set pieces on the route (eleven, plus six far-out pieces). Seed 15210.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -26,6 +26,13 @@ const ROUTE_STATIONS = Object.freeze([
   'station_smuggler',
   'station_coalition',
   'station_tethys',
+  // The far-out pieces: Io Reach, Charon Expanse, Sker Haven, Ashfall Reach and Pallas Drift.
+  'station_reach',
+  'station_io_merc',
+  'station_expanse',
+  'station_sker',
+  'station_ashcache',
+  'station_drift',
 ]);
 
 function stationInfo(id) {
@@ -271,6 +278,89 @@ const DRIVES = Object.freeze({
       });
     },
   },
+  ore_barge_tow: {
+    tow_the_barge(h, mission) {
+      const barge = targetsByRole(h, mission, 'slag_core')[0];
+      h.sim.bus.emit('tether:latched', { targetId: barge.id });
+      h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+    },
+    sling_the_barge(h, mission) {
+      const barge = targetsByRole(h, mission, 'slag_core')[0];
+      barge.pos = { x: 80, z: 40 };
+      h.sim.bus.emit('massline:throw', { payloadId: barge.id, aimTargetId: null });
+    },
+  },
+  skiff_tether_rescue: {
+    tow_it_home(h, mission) {
+      const skiff = targetsByRole(h, mission, 'life_pod')[0];
+      h.sim.bus.emit('tether:latched', { targetId: skiff.id });
+      h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+    },
+    reel_it_free(h, mission) {
+      const skiff = targetsByRole(h, mission, 'life_pod')[0];
+      for (const scavenger of targetsByRole(h, mission, 'skiff_scavenger')) {
+        scavenger.alive = false;
+        h.sim.bus.emit('entity:killed', {
+          id: scavenger.id, killerId: h.state.playerId, type: 'ship',
+        });
+      }
+      h.sim.bus.emit('tether:reel', {
+        actorId: h.state.playerId, targetId: skiff.id, after: 40,
+      });
+    },
+  },
+  deserter_throw: {
+    throw_the_deserter(h, mission) {
+      const deserter = targetsByRole(h, mission, 'range_deserter')[0];
+      h.sim.bus.emit('massline:throw', { payloadId: deserter.id, aimTargetId: deserter.id });
+    },
+    outgun_the_deserter(h, mission) {
+      const deserter = targetsByRole(h, mission, 'range_deserter')[0];
+      h.sim.bus.emit('entity:killed', {
+        id: deserter.id, killerId: h.state.playerId, type: 'ship',
+      });
+    },
+  },
+  refinery_hopper: {
+    feed_the_hopper(h, mission) {
+      const jaws = targetsByRole(h, mission, 'hopper_jaws')[0];
+      h.sim.bus.emit('massline:throw', { payloadId: jaws.id, aimTargetId: jaws.id });
+    },
+    cut_the_slurry(h, mission) {
+      const feed = targetsByRole(h, mission, 'slurry_feed')[0];
+      h.sim.bus.emit('tether:whipImpact', {
+        victimId: feed.id, targetId: h.player.id, rating: 'solid', relSpeed: 60,
+      });
+    },
+  },
+  toll_gate_ram: {
+    ram_the_gate(h, mission) {
+      const gate = targetsByRole(h, mission, 'toll_gate')[0];
+      h.sim.bus.emit('tether:whipImpact', {
+        victimId: gate.id, targetId: h.player.id, rating: 'solid', relSpeed: 80,
+      });
+    },
+    cut_the_gate(h, mission) {
+      const gate = targetsByRole(h, mission, 'toll_gate')[0];
+      h.sim.bus.emit('entity:killed', {
+        id: gate.id, killerId: h.state.playerId, type: 'wreck',
+      });
+    },
+  },
+  liner_locker: {
+    slip_the_locker(h, mission) {
+      const locker = targetsByRole(h, mission, 'liner_locker')[0];
+      h.sim.bus.emit('tether:reel', {
+        actorId: h.state.playerId, targetId: locker.id, after: 30,
+      });
+    },
+    breach_the_seal(h, mission) {
+      const locker = targetsByRole(h, mission, 'liner_locker')[0];
+      h.sim.bus.emit('tether:whipImpact', {
+        victimId: locker.id, targetId: h.player.id, rating: 'crushing', relSpeed: 90,
+      });
+    },
+  },
   ore_crusher: {
     feed_the_jaws(h, mission) {
       const jaws = targetsByRole(h, mission, 'crusher_jaws')[0];
@@ -285,10 +375,11 @@ const DRIVES = Object.freeze({
   },
 });
 
-test('PQ-152.01 catalog is eleven physical headlines with two solutions', () => {
+test('PQ-152.01 catalog is seventeen physical headlines with two solutions', () => {
   const validation = validateAuthoredSetPieceCatalog();
   assert.equal(validation.ok, true, validation.errors.join('; '));
-  assert.equal(AUTHORED_SET_PIECES.length, 11);
+  // Eleven near the core, plus six that give the outer sectors a physical job of their own.
+  assert.equal(AUTHORED_SET_PIECES.length, 17);
   // The seventh chain (choir_vigil, 9487e2390) landed without re-pinning this row.
   assert.equal(SET_PIECE_MISSIONS.length, 7, 'SP1 chains stay seven');
   for (const row of AUTHORED_SET_PIECES) {
@@ -310,7 +401,7 @@ test('PQ-152.01 catalog is eleven physical headlines with two solutions', () => 
   assert.equal(OFFER_MIX.contracts_hub.demolition, 0);
 });
 
-test('PQ-152.01 seed 15210 posts all eleven authored set pieces on the route', () => {
+test('PQ-152.01 seed 15210 posts all seventeen authored set pieces on the route', () => {
   const found = scanBoards(SEED);
   const helios = boot(SEED);
   const heliosBoard = helios.missionsSys.ensureBoard('station_helios');
