@@ -20982,7 +20982,7 @@ export const render = {
     // patrol) spawns during 'flight' with no wavePlanned lead — the default-route
     // prepareStartingScene publishes its specs during 'loading' so the same exemplar
     // machinery warms the hulls before first presentation.
-    onBus('onboarding:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p));
+    onBus('onboarding:rosterPrewarm', (p) => this._admitSurvivalRosterPrewarm(p, { scope: 'onboarding' }));
     // PQ-133.08: law-arena machinery is render-owned dressing installed/released on the arena's
     // own events (field anchors, shutter bars, crusher presses, current mouths). The tracker
     // self-gates on arenaId, so non-law rooms pass through untouched.
@@ -21834,8 +21834,11 @@ export const render = {
   // The roots stay mounted-but-invisible until run:ended: retention keeps the programs resident
   // so the live spawn's first draw is a cache hit, not a link. Event-driven only — no per-frame
   // work, no sim-state writes.
-  _admitSurvivalRosterPrewarm(payload) {
+  _admitSurvivalRosterPrewarm(payload, options = {}) {
     const specs = payload && payload.specs;
+    // The ordinary opening cook owns generic intro families. This event requests only
+    // its two scripted hulls and weapons, not the survival catalog or another generic warm.
+    const includeGenericWarm = options.scope !== 'onboarding';
     const state = this.state;
     if (!Array.isArray(specs) || !this.vf || !this.scene || !this.renderer) return;
     const compilePipelines = (subject) => (
@@ -21846,18 +21849,19 @@ export const render = {
     // The ruleset also spawns wrecks: every kill lands one, and the packaged body is picked by
     // hashId(id) across the whole variant table. The renderer owns that family (there is no
     // enemyId), so the wreck exemplars are minted here through the same production build.
-    const exemplarSpecs = specs.concat(
+    const exemplarSpecs = includeGenericWarm ? specs.concat(
       wreckVisualExemplarSpecs(),
       combatSpawnableExemplarSpecs(),
       // Asteroid field records promote into entities on approach; one real build per canonical
       // type warms the leaf + detail material family the promotion can ever draw.
       asteroidVisualExemplarSpecs(),
-    );
+    ) : [...specs];
     // A re-emit with nothing new must queue zero census-hold work — the same
     // dedupe the per-spec ledger gives inside the drain, applied at mint time:
     // every exemplar/weapon already ledgered and the leaf + catalog legs already
     // attempted means there is genuinely nothing for a drain to do.
-    let needsWork = !this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted;
+    let needsWork = includeGenericWarm
+      && (!this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted);
     if (!needsWork) {
       for (const spec of exemplarSpecs) {
         if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
@@ -21894,6 +21898,9 @@ export const render = {
       // re-emit costs a few map writes, never another full-universe walk.
       const specQueue = this._rosterPrewarmSpecQueue
         || (this._rosterPrewarmSpecQueue = new Map());
+      // null cannot be a spec id. Retain the full-scope tail independently: a caller
+      // can need its catalog even when every hull is covered, or its spec list is empty.
+      if (includeGenericWarm) specQueue.set(null, { compilePipelines, exemplarSpecs, includeGenericWarm: true });
       for (const spec of specs) {
         if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
         if (specQueue.has(spec.id)) continue;
@@ -21909,7 +21916,7 @@ export const render = {
           });
           if (!newWeapon) continue;
         }
-        specQueue.set(spec.id, { spec, compilePipelines, exemplarSpecs });
+        specQueue.set(spec.id, { spec, compilePipelines, exemplarSpecs, includeGenericWarm });
       }
       return;
     }
@@ -21920,14 +21927,10 @@ export const render = {
     // ledgers.
     const runSeq = this._rosterPrewarmRunSeq | 0;
     const drive = (async () => {
-      for (let emit = { specs, compilePipelines, exemplarSpecs }; emit;) {
-        const list = emit.exemplarSpecs || emit.specs.concat(
-          wreckVisualExemplarSpecs(),
-          combatSpawnableExemplarSpecs(),
-          asteroidVisualExemplarSpecs(),
-        );
+      for (let emit = { specs, compilePipelines, exemplarSpecs, includeGenericWarm }; emit;) {
+        const list = emit.exemplarSpecs || emit.specs;
         try {
-          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines, runSeq);
+          await this._drainRosterPrewarmCohort(list, emit.specs, emit.compilePipelines, runSeq, emit.includeGenericWarm);
         } catch (error) {
           stormWarn('survival-roster-prewarm-drain-failed', '[render] survival roster prewarm drain failed', error);
         }
@@ -21942,10 +21945,12 @@ export const render = {
         const mergedExemplars = [];
         const seenExemplarIds = new Set();
         let mergedCompile = compilePipelines;
+        let mergedGenericWarm = false;
         for (const [id, row] of specQueue) {
           specQueue.delete(id);
-          if (!row || !row.spec) continue;
-          mergedSpecs.push(row.spec);
+          if (!row) continue;
+          if (row.spec) mergedSpecs.push(row.spec);
+          mergedGenericWarm ||= row.includeGenericWarm === true;
           mergedCompile = row.compilePipelines || mergedCompile;
           for (const exemplar of row.exemplarSpecs || []) {
             const key = exemplar && exemplar.id;
@@ -21956,7 +21961,8 @@ export const render = {
             mergedExemplars.push(exemplar);
           }
         }
-        if (mergedSpecs.length === 0 && mergedExemplars.length === 0) break;
+        if (mergedSpecs.length === 0 && mergedExemplars.length === 0
+            && !(mergedGenericWarm && (!this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted))) break;
         // Payload hulls warm ahead of the deduped family tail — a late
         // emit's front-row wave no longer waits behind the first emit's
         // exemplar concat. Coverage/order semantics otherwise unchanged.
@@ -21965,6 +21971,7 @@ export const render = {
         emit = {
           specs: mergedSpecs,
           compilePipelines: mergedCompile,
+          includeGenericWarm: mergedGenericWarm,
           exemplarSpecs: mergedSpecs.concat(
             mergedExemplars.filter((e) => !(e && mergedIds.has(e.id))),
           ),
@@ -21998,7 +22005,7 @@ export const render = {
     }
   },
 
-  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq) {
+  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines, runSeq, includeGenericWarm = true) {
     // Yield the browser only once a slice of cohort work actually cost ~8ms —
     // big rosters pace across gaps while a small emit (or a CLI driver) still
     // mints the whole cohort inside its own task.
@@ -22115,6 +22122,8 @@ export const render = {
         if (specQueue && specQueue.size) {
           const splice = [];
           for (const [qid, row] of specQueue) {
+            // The outer drain owns the generic tail; this splice only consumes hulls.
+            if (qid === null) continue;
             specQueue.delete(qid);
             const qspec = row && row.spec;
             if (!qspec || qspec.id == null) continue;
@@ -22188,7 +22197,7 @@ export const render = {
     // per (type, variant) puts every shared geometry buffer + non-instanced program on the GPU
     // before flight — a late build then costs object creation only.
     // Flag-guarded: a merged re-drain must not build a second leaf group.
-    if (!this._rosterPrewarmLeafWarmed) {
+    if (includeGenericWarm && !this._rosterPrewarmLeafWarmed) {
       this._rosterPrewarmLeafWarmed = true;
       try {
         const leafWarm = buildAsteroidLeafWarmGroup();
@@ -22220,8 +22229,10 @@ export const render = {
         if (cohortOwed()) await yieldToBrowser();
       }
     } catch (_) { /* upgrade pass is best-effort */ }
-    this._rosterPrewarmCatalogAttempted = true;
-    this._admitRosterPartCatalog(compilePipelines, specs);
+    if (includeGenericWarm) {
+      this._rosterPrewarmCatalogAttempted = true;
+      this._admitRosterPartCatalog(compilePipelines, specs);
+    }
   },
 
   /**
