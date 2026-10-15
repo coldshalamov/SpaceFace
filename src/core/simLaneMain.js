@@ -1363,7 +1363,7 @@ export function createSimLaneRuntime({
     });
     listen(window, 'keyup', (e) => {
       laneDomEvent({ type: 'keyup', code: eventCode(e), pressed: false });
-    });
+    }, { capture: true });
     listen(window, 'blur', () => laneDomEvent({ type: 'blur' }));
 
     const pointerDescriptor = (e) => ({
@@ -1387,7 +1387,14 @@ export function createSimLaneRuntime({
       laneDomEvent(d);
       if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault();
     });
-    listen(window, 'mouseup', (e) => laneDomEvent({ type: 'mouseup', button: e.button }));
+    listen(window, 'mouseup', (e) => laneDomEvent({ type: 'mouseup', button: e.button }), { capture: true });
+    listen(window, 'pointercancel', () => laneDomEvent({ type: 'blur' }));
+    const pointerLockTarget = typeof document !== 'undefined' ? document : null;
+    listen(pointerLockTarget, 'pointerlockchange', () => {
+      if (!pointerLockTarget || !pointerLockTarget.pointerLockElement) {
+        laneDomEvent({ type: 'blur' });
+      }
+    });
 
     // The mobile touch deck is DOM — it runs here and ships resolved gesture
     // frames as touchFrame descriptors to the worker's input reducer.
