@@ -159,6 +159,63 @@ ${T} select.k-select.con-select option { background:#0c0f13; color:rgb(${WARM});
 @media (max-width:1400px) {
   ${T} .con-view__word { display:none; }
 }
+/* the cost words never cross the frame: the two cells share one row grid (subgrid), so where the
+   reading is too narrow for them a word that wraps ("Research / points") lifts its own column
+   without knocking the numerals out of line (the dl only: a researched node's "Paid …" line is a
+   <p> with the same class and would gain two empty rows and their gaps) */
+${T} dl.con-dossier__cost { grid-template-rows:repeat(3, auto); }
+${T} .con-cost { grid-row:span 3; grid-template-rows:subgrid; row-gap:0; }
+${T} .con-cost dt { align-self:end; }
+@media (max-width:1100px) {
+  ${T} .con-cost dt { white-space:normal; }
+  ${T} .con-cost__sub { white-space:normal; text-wrap:balance; }
+}
+/* a short desktop frame: the reading tightens and, if it still runs long, scrolls inside its
+   own column instead of printing under the frame's foot */
+@media (min-width:761px) and (max-height:640px) {
+  ${T} > .con-side { padding:clamp(4px, 1.2vh, 10px) 0 28px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgb(${BONE} / .3) transparent;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 26px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 26px), transparent); }
+  ${T} > .con-side::before { inset:0 -12px 0 -18px; }
+  ${T} .con-dossier { gap:6px; }
+  ${T} .con-actions { margin:2px 0 4px; }
+  ${T} .con-rows:has(.con-row__img) .con-row.has-art { grid-template-columns:48px minmax(0, 1fr) auto; }
+  ${T} .con-rows:has(.con-row__img) .con-row__art { width:48px; height:32px; }
+  ${T} .con-row__art .con-row__img { width:30px; height:44px; }
+  ${T} .con-row { padding:2px 0; }
+}
+/* a narrow window or a phone: one column that scrolls — title, the three readings, the dial,
+   the reading — with Back (and on a phone the node list) held at the foot */
+@media (max-width:760px) {
+  ${T}.k-screen { display:grid !important; overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain;
+    padding:max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 0 max(18px, env(safe-area-inset-left)) !important;
+    grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:repeat(5, max-content) !important; align-content:start !important;
+    grid-template-areas:"title" "corner" "stage" "side" "foot" !important; row-gap:14px !important; }
+  ${T} > .k-title .con-title { font-size:clamp(30px, 9vw, 46px) !important; }
+  ${T} > .k-title .con-sub { max-width:none; }
+  ${T} > .k-title .con-curve { max-width:100%; }
+  ${T} > .k-corner.con-corner { justify-content:flex-start; gap:0; padding:12px 0 0; text-align:left;
+    border-top:1px solid rgb(${BONE} / .18) !important; }
+  ${T} > .k-corner.con-corner .con-read { flex:1 1 0; align-items:flex-start; }
+  ${T} .con-read__n { font-size:clamp(26px, 7.4vw, 34px); }
+  ${T} .con-read__w { max-width:none; text-align:left; letter-spacing:.16em; }
+  ${T} > .k-stage.con-stage { grid-area:stage; height:clamp(380px, 86vw, 620px); margin:0 -18px; }
+  /* the dial stands in a column that scrolls: a vertical swipe on it scrolls the column (a sideways
+     drag still pans the sky); the wheel yields the same way in constellation.js */
+  ${T} .con-sky { touch-action:pan-y; }
+  ${T} > .con-side { grid-area:side; min-height:auto; padding:4px 0 18px; overflow:visible; }
+  ${T} > .con-side::before { inset:-12px -18px; }
+  ${T} .con-dossier__name { font-size:clamp(24px, 7vw, 32px); }
+  ${T} > .k-foot.con-foot { position:sticky; bottom:0; flex-wrap:wrap; align-items:flex-end; row-gap:4px; column-gap:18px; margin:0 -18px; padding:10px 18px max(10px, env(safe-area-inset-bottom));
+    background:rgb(4 6 9 / .97) !important; box-shadow:0 -22px 22px -6px rgb(4 6 9 / .92); }
+}
+/* too narrow for the dial to stand (it needs 360px of sky): the node list takes its place, as a
+   field beside Back in the docked foot, and the zoom reading it would report sleeps with it */
+@media (max-width:560px) {
+  ${T} > .k-stage.con-stage { display:none; }
+  ${T} .con-view { display:none; }
+  ${T} .con-picker, ${T} .con-picker:not(:focus-within) { position:static; transform:none; flex:1 1 150px; flex-direction:column; align-items:stretch; margin:0; gap:2px; }
+  ${T} select.k-select.con-select { flex:1 1 auto; min-width:0; min-height:44px; }
+}
 /* 1080p band + achievements-matched 1440p/4K zoom */
 @media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
   ${T}.k-screen { zoom:1.12; }

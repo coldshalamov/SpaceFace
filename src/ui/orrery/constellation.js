@@ -920,8 +920,20 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
   host.addEventListener('pointerleave', () => { if (!drag) showLens(false); });
   // a drag is not a click: the star under a released drag stays unchosen
   host.addEventListener('click', (e) => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
+  // A dial standing in a column that scrolls (Research in a narrow window) lets a plain wheel
+  // scroll that column instead of trapping it; ctrl+wheel (and a trackpad pinch) still zooms.
+  const inScrollingColumn = () => {
+    const view = doc.defaultView;
+    if (!view || typeof view.getComputedStyle !== 'function') return false;
+    for (let n = host.parentElement; n && n !== doc.body; n = n.parentElement) {
+      const oy = view.getComputedStyle(n).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return true;
+    }
+    return false;
+  };
   host.addEventListener('wheel', (e) => {
     if (!geo) return;
+    if (!e.ctrlKey && inScrollingColumn()) return;
     e.preventDefault();
     stopGlide();
     const m = hostPoint(e);
