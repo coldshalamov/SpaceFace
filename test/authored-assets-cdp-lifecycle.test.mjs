@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
-import { collectAuthoredReport, createAuthoredProbeCdpSession } from '../scripts/probe-authored-assets-live.mjs';
+import {
+  collectAuthoredLoaderDiagnostics,
+  collectAuthoredReport,
+  createAuthoredProbeCdpSession,
+} from '../scripts/probe-authored-assets-live.mjs';
 
 function fixture() {
   let now = 0, nextTimer = 0;
@@ -98,6 +102,24 @@ test('unphased requests use a finite 45s maximum and synchronous send failures c
   f.cdp.dispose();
 });
 
+test('asset-specific CDP labels retain one absolute report deadline and stop later sends', async () => {
+  const f = fixture();
+  const asset = 'assets/ships/release/parts/places/slow-authored-body.glb';
+  f.cdp.setStage('authored ship report', 500);
+  f.cdp.setStageLabel(`authored asset ${asset}`);
+  const pending = assert.rejects(f.cdp.send('Runtime.evaluate'), new RegExp(
+    `authored asset ${asset.replaceAll('/', '\\/')} \/ Runtime.evaluate: no CDP reply within 500 ms`,
+  ));
+  f.advance(499);
+  assert.equal(f.timers.size, 1);
+  f.advance(1);
+  await pending;
+  f.cdp.setStageLabel(`authored asset ${asset}`);
+  await assert.rejects(f.cdp.send('Runtime.evaluate'), /authored asset .*stage deadline expired/);
+  assert.equal(f.socket.sent.length, 1, 'an expired report budget cannot issue the next asset request');
+  f.cdp.dispose();
+});
+
 test('startup failure reporting does not import loaders or request any new assets', async () => {
   let imports = 0;
   const cdp = { async send(method, params) {
@@ -108,9 +130,60 @@ test('startup failure reporting does not import loaders or request any new asset
     });
     return { result: { value } };
   } };
-  const report = await collectAuthoredReport(cdp, { loadAssets: false });
+  const report = await collectAuthoredReport(cdp);
   assert.equal(imports, 0);
   assert.equal(report.loaderDiagnostics.skipped, true);
   assert.equal(report.loaderDiagnostics.available, false);
   assert.equal(report.shipCount, 0);
+});
+
+test('authored catalog diagnostics issue one labeled Runtime.evaluate per declared asset', async () => {
+  const entries = [
+    { slot: 'hull', url: 'assets/ships/release/parts/hulls/first.glb', wholeShip: false },
+    { slot: 'cockpit', url: 'assets/ships/release/parts/cockpits/missing.glb', wholeShip: false },
+    { slot: 'hull', url: 'assets/ships/release/parts/wholeships/second.glb', wholeShip: true },
+  ];
+  const replies = [
+    { available: true, runtime: { ready: true }, release: true,
+      partRoot: 'assets/ships/release/parts/', entries },
+    { loaded: true, assetId: 'first', primitiveCount: 3, markerCount: 2 },
+    { loaded: false, name: 'MissingAsset', message: 'not found' },
+    { loaded: true, assetId: 'second', primitiveCount: 5, markerCount: 1 },
+  ];
+  const labels = [];
+  const expressions = [];
+  const cdp = {
+    setStageLabel(label) { labels.push(label); },
+    async send(method, params) {
+      assert.equal(method, 'Runtime.evaluate');
+      expressions.push(params.expression);
+      const reply = replies.shift();
+      return { result: { value: JSON.stringify(reply) } };
+    },
+  };
+
+  const report = await collectAuthoredLoaderDiagnostics(cdp);
+  assert.equal(replies.length, 0);
+  assert.equal(expressions.length, 1 + entries.length);
+  assert.deepEqual(labels, [
+    'authored asset catalog',
+    ...entries.map((entry) => `authored asset ${entry.url}`),
+  ]);
+  for (let i = 0; i < entries.length; i++) {
+    assert.ok(expressions[i + 1].includes(entries[i].url));
+  }
+  assert.equal(report.available, true);
+  assert.equal(report.declaredCount, 3);
+  assert.equal(report.declaredPartCount, 2);
+  assert.equal(report.loadedCount, 2);
+  assert.equal(report.loadedSlots.hull, 1);
+  assert.equal(report.wholeShipDeclaredCount, 1);
+  assert.equal(report.wholeShipLoadedCount, 1);
+  assert.equal(report.failureCount, 1);
+  assert.deepEqual(report.failures, [{
+    slot: 'cockpit',
+    url: entries[1].url,
+    name: 'MissingAsset',
+    message: 'not found',
+  }]);
 });

@@ -164,7 +164,7 @@ try {
     playable = await waitFor(cdp, isPlayable, PLAYABLE_TIMEOUT_MS, 'seeded flight session');
   } catch (error) {
     enterStage('startup failure diagnostics', FAILURE_DIAGNOSTICS_TIMEOUT_MS);
-    const startupReport = await collectAuthoredReport(cdp, { loadAssets: false }).catch((reportError) => ({
+    const startupReport = await collectAuthoredReport(cdp).catch((reportError) => ({
       error: reportError && reportError.message ? reportError.message : String(reportError),
     }));
     const startupTrace = await getStartupTrace(cdp).catch(() => []);
@@ -745,7 +745,9 @@ async function waitForAuthoredShips(cdp) {
   const diagnosticsStartedAtMs = performance.now();
   console.log('[authored-assets] authored ship report');
   cdp.setStage('authored ship report', CDP_REQUEST_TIMEOUT_MS);
-  let report = await collectAuthoredReport(cdp, { loadAssets: deadline.passed });
+  const loaderDiagnostics = deadline.passed ? await collectAuthoredLoaderDiagnostics(cdp) : null;
+  let report = await collectAuthoredReport(cdp);
+  if (loaderDiagnostics) report.loaderDiagnostics = loaderDiagnostics;
   for (let attempt = 0; attempt < 50; attempt++) {
     if (!deadline.passed) break;
     if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
@@ -753,7 +755,9 @@ async function waitForAuthoredShips(cdp) {
       && report.repeatedPackageShipPoolKeys.length > 0) break;
     await sleep(200);
     await forceShipRender(cdp);
-    report = await collectAuthoredReport(cdp);
+    const latest = await collectAuthoredReport(cdp);
+    latest.loaderDiagnostics = report.loaderDiagnostics;
+    report = latest;
   }
   const diagnosticsCompletedAtMs = performance.now();
   report.authoredDeadline = {
@@ -919,7 +923,7 @@ function collectAuthoredGateSnapshot(cdp) {
   })()`);
 }
 
-export async function collectAuthoredReport(cdp, { loadAssets = true } = {}) {
+export async function collectAuthoredReport(cdp) {
   return evalJson(cdp, `(async () => {
     const requiredPlayerModularSlots = ${JSON.stringify(REQUIRED_PLAYER_MODULAR_SLOTS)};
     const requiredPlayerWholeShipSlots = ${JSON.stringify(REQUIRED_PLAYER_WHOLE_SHIP_SLOTS)};
@@ -927,11 +931,7 @@ export async function collectAuthoredReport(cdp, { loadAssets = true } = {}) {
     const sf = window.SF || null;
     const state = sf && sf.state || null;
     const scene = state && state.render && state.render.scene || null;
-    // Loader diagnostics can yield while expensive first-use GLBs finish. Sample entities only
-    // afterward so authoredShipCount and per-job diagnostics describe the same moment in time.
-    const loaderDiagnostics = ${loadAssets ? 'true' : 'false'}
-      ? await collectLoaderDiagnostics(state)
-      : { available: false, skipped: true, error: 'asset loading omitted from failure diagnostics' };
+    const loaderDiagnostics = { available: false, skipped: true, error: 'collected in the explicit authored asset catalog step' };
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
@@ -1446,107 +1446,104 @@ export async function collectAuthoredReport(cdp, { loadAssets = true } = {}) {
       return String(url || '').includes('/wholeships/');
     }
 
-    function liveWholeShipFiles(partsLibrary) {
-      if (!partsLibrary || typeof partsLibrary.shipArchetypesForPrecompile !== 'function') return [];
-      try {
-        return [...new Set(partsLibrary.shipArchetypesForPrecompile()
-          .map((entry) => entry && entry.wholeShipFile)
-          .filter((file) => file && (typeof partsLibrary.isPackagedLiveWholeShipFile !== 'function' || partsLibrary.isPackagedLiveWholeShipFile(file))))];
-      } catch (_) {
-        return [];
-      }
-    }
-
-    async function collectLoaderDiagnostics(state) {
-      try {
-        const renderer = state && state.render && state.render.renderer || null;
-        if (!renderer) return { available: false, error: 'renderer unavailable' };
-        const [assetLoader, partsLibrary] = await Promise.all([
-          import('./src/render/assetLoader.js'),
-          import('./src/render/partsLibrary.js'),
-        ]);
-        const runtime = await assetLoader.getAuthoredAssetRuntimeInfo(renderer);
-        const failures = [];
-        const loaded = [];
-        const wholeShipFailures = [];
-        const wholeShipLoaded = [];
-        const contract = partsLibrary.PART_LIBRARY_CONTRACT || {};
-        const { isReleaseAssetMode } = await import('./src/render/releaseMode.js');
-        const release = isReleaseAssetMode();
-        const partRoot = release ? contract.releaseRoot : contract.root;
-        const slots = contract.slots || {};
-        const requiredWholeShipFiles = liveWholeShipFiles(partsLibrary);
-        for (const [slot, files] of Object.entries(slots)) {
-          for (const file of files || []) {
-            const url = String(partRoot || 'assets/ships/parts/') + file;
-            const record = await assetLoader.loadAuthoredPart(url, { renderer, slot, optional: true });
-            if (record) {
-              loaded.push({
-                slot,
-                url,
-                assetId: record.assetId || null,
-                primitiveCount: record.primitives ? record.primitives.length : 0,
-                markerCount: record.markers ? record.markers.length : 0,
-              });
-            } else {
-              const error = await assetLoader.getAuthoredAssetDiagnostic(renderer, url, slot);
-              failures.push({
-                slot,
-                url,
-                name: error && error.name || 'LoadFailure',
-                message: error && error.message || 'asset returned no authored blueprint',
-              });
-            }
-          }
-        }
-        for (const file of requiredWholeShipFiles) {
-          const url = String(partRoot || 'assets/ships/parts/') + file;
-          const record = await assetLoader.loadAuthoredPart(url, { renderer, slot: 'hull', optional: true });
-          if (record) {
-            wholeShipLoaded.push({
-              slot: 'wholeShip',
-              url,
-              assetId: record.assetId || null,
-              primitiveCount: record.primitives ? record.primitives.length : 0,
-              markerCount: record.markers ? record.markers.length : 0,
-            });
-          } else {
-            const error = await assetLoader.getAuthoredAssetDiagnostic(renderer, url, 'hull');
-            wholeShipFailures.push({
-              slot: 'wholeShip',
-              url,
-              name: error && error.name || 'LoadFailure',
-              message: error && error.message || 'whole-ship asset returned no authored hull/body blueprint',
-            });
-          }
-        }
-        const declaredPartCount = Object.values(slots).reduce((sum, files) => sum + ((files || []).length), 0);
-        return {
-          available: true,
-          runtime,
-          release,
-          partRoot,
-          declaredCount: declaredPartCount + requiredWholeShipFiles.length,
-          declaredPartCount,
-          loadedCount: loaded.length + wholeShipLoaded.length,
-          loadedSlots: loaded.reduce((slots, entry) => {
-            slots[entry.slot] = (slots[entry.slot] || 0) + 1;
-            return slots;
-          }, {}),
-          wholeShipDeclaredCount: requiredWholeShipFiles.length,
-          wholeShipLoadedCount: wholeShipLoaded.length,
-          wholeShipFailureCount: wholeShipFailures.length,
-          failureCount: failures.length + wholeShipFailures.length,
-          failures: [...failures, ...wholeShipFailures].slice(0, 12),
-        };
-      } catch (error) {
-        return {
-          available: false,
-          error: error && error.message ? error.message : String(error),
-        };
-      }
-    }
   })()`);
+}
+
+export async function collectAuthoredLoaderDiagnostics(cdp) {
+  try {
+    cdp.setStageLabel('authored asset catalog');
+    const catalog = await evalJson(cdp, `(async () => {
+      const state = window.SF && window.SF.state || null;
+      const renderer = state && state.render && state.render.renderer || null;
+      if (!renderer) return { available: false, error: 'renderer unavailable' };
+      const [assetLoader, partsLibrary, releaseMode] = await Promise.all([
+        import('./src/render/assetLoader.js'),
+        import('./src/render/partsLibrary.js'),
+        import('./src/render/releaseMode.js'),
+      ]);
+      const runtime = await assetLoader.getAuthoredAssetRuntimeInfo(renderer);
+      const contract = partsLibrary.PART_LIBRARY_CONTRACT || {};
+      const release = releaseMode.isReleaseAssetMode();
+      const partRoot = release ? contract.releaseRoot : contract.root;
+      const slots = contract.slots || {};
+      const wholeShipFiles = [...new Set((typeof partsLibrary.shipArchetypesForPrecompile === 'function'
+        ? partsLibrary.shipArchetypesForPrecompile() : [])
+        .map((entry) => entry && entry.wholeShipFile)
+        .filter((file) => file && (typeof partsLibrary.isPackagedLiveWholeShipFile !== 'function'
+          || partsLibrary.isPackagedLiveWholeShipFile(file))))];
+      const entries = Object.entries(slots).flatMap(([slot, files]) => (files || []).map((file) => ({
+        slot, file, url: String(partRoot || 'assets/ships/parts/') + file, wholeShip: false,
+      })));
+      for (const file of wholeShipFiles) entries.push({
+        slot: 'hull', file, url: String(partRoot || 'assets/ships/parts/') + file, wholeShip: true,
+      });
+      return { available: true, runtime, release, partRoot, entries };
+    })()`);
+    if (!catalog || !catalog.available) return catalog || { available: false, error: 'asset catalog unavailable' };
+
+    const loaded = [];
+    const wholeShipLoaded = [];
+    const failures = [];
+    const wholeShipFailures = [];
+    for (const entry of catalog.entries) {
+      cdp.setStageLabel(`authored asset ${entry.url}`);
+      const result = await evalJson(cdp, `(async () => {
+        const state = window.SF && window.SF.state || null;
+        const renderer = state && state.render && state.render.renderer || null;
+        if (!renderer) return { loaded: false, unavailable: 'renderer unavailable' };
+        const assetLoader = await import('./src/render/assetLoader.js');
+        const record = await assetLoader.loadAuthoredPart(${JSON.stringify(entry.url)}, {
+          renderer, slot: ${JSON.stringify(entry.slot)}, optional: true,
+        });
+        if (record) return { loaded: true, assetId: record.assetId || null,
+          primitiveCount: record.primitives ? record.primitives.length : 0,
+          markerCount: record.markers ? record.markers.length : 0 };
+        const diagnostic = await assetLoader.getAuthoredAssetDiagnostic(renderer,
+          ${JSON.stringify(entry.url)}, ${JSON.stringify(entry.slot)});
+        return { loaded: false, name: diagnostic && diagnostic.name || 'LoadFailure',
+          message: diagnostic && diagnostic.message || 'asset returned no authored blueprint' };
+      })()`);
+      if (result.loaded) {
+        (entry.wholeShip ? wholeShipLoaded : loaded).push({
+          slot: entry.wholeShip ? 'wholeShip' : entry.slot,
+          url: entry.url,
+          assetId: result.assetId,
+          primitiveCount: result.primitiveCount,
+          markerCount: result.markerCount,
+        });
+      } else {
+        const failure = {
+          slot: entry.wholeShip ? 'wholeShip' : entry.slot,
+          url: entry.url,
+          name: result.name || 'LoadFailure',
+          message: result.message || result.unavailable || 'asset returned no authored blueprint',
+        };
+        (entry.wholeShip ? wholeShipFailures : failures).push(failure);
+      }
+    }
+    const declaredPartCount = catalog.entries.filter((entry) => !entry.wholeShip).length;
+    const wholeShipDeclaredCount = catalog.entries.length - declaredPartCount;
+    return {
+      available: true,
+      runtime: catalog.runtime,
+      release: catalog.release,
+      partRoot: catalog.partRoot,
+      declaredCount: catalog.entries.length,
+      declaredPartCount,
+      loadedCount: loaded.length + wholeShipLoaded.length,
+      loadedSlots: loaded.reduce((slots, entry) => {
+        slots[entry.slot] = (slots[entry.slot] || 0) + 1;
+        return slots;
+      }, {}),
+      wholeShipDeclaredCount,
+      wholeShipLoadedCount: wholeShipLoaded.length,
+      wholeShipFailureCount: wholeShipFailures.length,
+      failureCount: failures.length + wholeShipFailures.length,
+      failures: [...failures, ...wholeShipFailures].slice(0, 12),
+    };
+  } catch (error) {
+    return { available: false, error: error && error.message ? error.message : String(error) };
+  }
 }
 
 async function forceShipRender(cdp) {
@@ -2072,6 +2069,9 @@ export function createAuthoredProbeCdpSession(socket, {
     setStage(label, timeoutMs) {
       stage = label;
       stageDeadline = Number.isFinite(timeoutMs) ? now() + timeoutMs : null;
+    },
+    setStageLabel(label) {
+      stage = label;
     },
     dispose,
     onMessage(listener) {
