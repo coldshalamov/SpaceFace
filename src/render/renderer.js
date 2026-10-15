@@ -1770,6 +1770,23 @@ export function openingPreparedLeafKey(subject, context = '') {
     + `;${openingResourceVersion(subject.instanceMatrix)}:${openingResourceVersion(subject.instanceColor)}:${subject.count ?? ''}`;
 }
 
+/** Required leaves stay strict; extra pool coverage only admits live, potentially drawn resources. */
+export function openingAdmissionSubjects(required, pooled, scene) {
+  const requiredLeaves = new Set(required);
+  return required.concat(pooled.filter((subject) => {
+    if (!subject || requiredLeaves.has(subject) || subject.geometry?.id == null || !subject.material) return false;
+    for (let owner = subject; owner; owner = owner.parent) {
+      const data = owner.userData;
+      // Warm exemplars have their own cook. Hidden authored fallbacks never present, while
+      // dormant real pools (count/range 0, hidden emitter parents) still owe their first draw.
+      if (data?.rosterPrewarm != null
+          || (data?.authoredReadableFallbackLayer === true && owner.visible === false)) return false;
+      if (owner === scene) return true;
+    }
+    return false; // A retired/detached pool is not a producer in this scene.
+  }));
+}
+
 // Long material signature -> compact id. Equal signatures share an id, so the key still dedupes
 // exactly the subjects whose full signatures were equal; the table holds one string per distinct
 // signature instead of one composite per subject.
@@ -14339,7 +14356,7 @@ export const render = {
       // identities in the plan and admit through their normal effect/streaming owner on use.
       const allSubjects = isMobileRenderContext() && !survivalRunHoldsArena(state)
         ? subjects
-        : subjects.concat(pooledSubjects);
+        : openingAdmissionSubjects(subjects, pooledSubjects, scene);
       const deltaSubjects = options.strict === true ? allSubjects.filter((subject) => {
         const key = openingPreparedLeafKey(subject, openingStampContext());
         return !key || this._openingPreparedLeaves?.get(subject) !== key;
@@ -14367,7 +14384,7 @@ export const render = {
         geometryCount: unitSeenGeometries.size,
       };
       const whileRevealed = (subject, run) => {
-        const restoreSubject = revealSubjectForCompile(subject);
+        const restoreSubject = revealSubjectWithAncestors(subject);
         try { return run(); } finally { restoreSubject(); }
       };
       const result = deltaSubjects.length > 0
@@ -14391,7 +14408,14 @@ export const render = {
               ...compileOptions, isActive: () => { assertActive(); return true; },
             }));
           },
-          touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
+          touchOne: (subject) => whileRevealed(subject, () => {
+            const touched = touchExactTargetSubject(subject);
+            if (options.strict === true && touched?.skipped === true) {
+              throw new Error(`Opening exact drawable ${subject.name || subject.uuid || subject.type || 'unnamed'} skipped: `
+                + `${touched.reason || 'not drawn'} (geometry=${subject.geometry?.id ?? 'missing'}, visible=${subject.visible})`);
+            }
+            return touched;
+          }),
           yieldToMain: yieldToBrowser,
         })
         : { skipped: true, reason: 'empty opening draw set' };

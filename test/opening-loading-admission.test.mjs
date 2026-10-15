@@ -3,7 +3,10 @@ import test from 'node:test';
 import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { prepareAuthoredVisualPipelines } from '../src/render/partsLibrary.js';
-import { openingPreparedLeafKey, applyFirstPlayablePaintRelease } from '../src/render/renderer.js';
+import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease } from '../src/render/renderer.js';
+import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
+import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
 import {
   createOpeningLoadingAdmission, waitForOpeningFirstPicture, holdOpeningPresentationUntilPaint,
   openingFirstPictureIsReady,
@@ -15,6 +18,65 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+
+function strictTouchFixture(scene, drawn, reveal = revealSubjectWithAncestors) {
+  const camera = new THREE.PerspectiveCamera();
+  const renderer = { autoClear: true, getRenderTarget: () => null, setRenderTarget() {},
+    render() {
+      scene.traverseVisible((object) => {
+        if (!object.isMesh) return;
+        assert.ok(object.geometry, `the native geometry read must be safe for ${object.name}`);
+        drawn.push(object.name);
+      });
+    },
+  };
+  return (subjects) => admitOpeningUnitsAcrossSlices({
+    subjects, strict: true,
+    beginReadinessBatch: () => ({ drain: async () => ({ contextLost: false }), close() {} }),
+    compileOne: async () => ({ compiled: true }),
+    touchOne(subject) {
+      const restore = reveal(subject);
+      try { return touchSubjectOnExactTarget(renderer, null, subject, camera, scene); }
+      finally { restore(); }
+    },
+  });
+}
+
+test('strict extra-pool admission excludes hidden fallbacks and retired warms while drawing dormant real pools', async () => {
+  const scene = new THREE.Scene();
+  const pool = new THREE.Group(); pool.visible = false; scene.add(pool);
+  const dormant = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 2);
+  dormant.name = 'dormant-live-pool'; dormant.count = 0; pool.add(dormant);
+  const fallback = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  fallback.name = 'never-drawn-fallback'; fallback.visible = false;
+  fallback.userData.authoredReadableFallbackLayer = true; pool.add(fallback);
+  const warmRoot = new THREE.Group(); warmRoot.userData.rosterPrewarm = 'bounded'; scene.add(warmRoot);
+  const warm = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()); warmRoot.add(warm);
+  const retired = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  retired.geometry = null; scene.add(retired);
+  const detached = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const extras = collectFirstFlightLayerDrawables([pool, warmRoot]).concat(retired, detached);
+  assert.ok(extras.includes(fallback), 'the broad layer census includes the never-drawn fallback');
+  assert.ok(fallback.geometry, 'the overloaded error can report null-geometry with a real geometry');
+  await assert.rejects(strictTouchFixture(scene, [], revealSubjectForCompile)([fallback]), /null-geometry/,
+    'this reproduces the native strict admission failure with the production reveal and touch helpers');
+  const admitted = openingAdmissionSubjects([], extras, scene);
+  assert.deepEqual(admitted, [dormant]);
+  const drawn = [];
+  await strictTouchFixture(scene, drawn)(admitted);
+  assert.deepEqual(drawn, ['dormant-live-pool'], 'the hidden emitter ancestor is revealed for a real draw');
+  assert.equal(pool.visible, false);
+  assert.equal(dormant.count, 0, 'warm count and graph visibility are restored');
+});
+
+test('filtering optional pooled extras cannot forgive a required leaf that loses its geometry', async () => {
+  const scene = new THREE.Scene();
+  const required = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  required.name = 'required-visible-hull'; scene.add(required); required.geometry = null;
+  const subjects = openingAdmissionSubjects([required], [required], scene);
+  assert.deepEqual(subjects, [required], 'required identity is retained even when invalid');
+  await assert.rejects(strictTouchFixture(scene, [])(subjects), /null-geometry/);
+});
 
 function fixture(overrides = {}) {
   const calls = [];
