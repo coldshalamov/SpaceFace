@@ -454,6 +454,16 @@ export function pushSharedPlayerStore(keys, { keepalive = false, timeoutMs = SHA
         keepalive: carriesKeepalive,
       });
       if (response.status === 404) storeRouteAbsent = true;
+      // fetch resolves at headers, while the store's acknowledgement includes its full key bag.
+      // Drain without retaining/parsing that unused payload before releasing this write's queue
+      // ownership. An unread body otherwise keeps network work and its deadline alive after a
+      // reported success, so a later timeout can abort an apparently completed mirror.
+      if (response.body) {
+        const reader = response.body.getReader();
+        try {
+          while (!(await reader.read()).done) { /* Discard each bounded transport chunk. */ }
+        } finally { reader.releaseLock(); }
+      }
       if (response.ok) noteAcceptedStoreWrite(patch);
       return response.ok;
     } catch {
