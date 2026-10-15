@@ -7,15 +7,17 @@
   object-fit: cover;
 }
 /* A buffered/still frame gets restrained compositor-only camera drift. The
-   state remains explicitly poster/buffering; this is not a readiness claim. */
+   state remains explicitly poster/buffering; this is not a readiness claim.
+   9s is a liveness floor: while the 12MB movie buffers (up to the 9s playback
+   hold) this drift plus the emblem turn are the whole picture — 12s read as frozen. */
 #boot-overlay[data-boot-visual-state="probing"] .boot-video[data-boot-native],
 #boot-overlay[data-boot-visual-state="buffering"] .boot-video[data-boot-native],
 #boot-overlay[data-boot-visual-state="poster"] .boot-video[data-boot-native] {
-  animation: boot-media-drift 12s ease-in-out infinite alternate;
+  animation: boot-media-drift 9s ease-in-out infinite alternate;
 }
 @keyframes boot-media-drift {
-  from { transform: translate3d(-.7%, -.3%, 0) scale(1.025); }
-  to { transform: translate3d(.7%, .3%, 0) scale(1.055); }
+  from { transform: translate3d(-.9%, -.4%, 0) scale(1.03); }
+  to { transform: translate3d(.9%, .4%, 0) scale(1.06); }
 }
 #boot-overlay.hidden .boot-video[data-boot-native] { animation-play-state: paused; }
 html.sf-reduce-motion #boot-overlay[data-boot-visual-state] .boot-video[data-boot-native] { animation: none; transform: none; }
