@@ -224,7 +224,20 @@ export function prepareOrchardNativeObservation(owner, lane, sourceRecord = null
       if (!entry || value(entry, 'rec') !== rec || value(entry, 'collider') !== collider || colliderHandles.has(h)) fail('collider_identity');
       colliderHandles.add(h); return { collider, handle: h, entry };
     });
-    rows.push({ id, rec, body, entity, spec, array, handle, cols, life:value(entity,'occupantGeneration'),data:value(entity,'data'),authored:optionalOwnData(entity,'physicsBody'),prototype:Object.getPrototypeOf(entity) });
+    const data=value(entity,'data'),authored=optionalOwnData(entity,'physicsBody');
+    // Auxiliary solid dressing has no combat-entity generation. Retain its exact
+    // classification and absence instead; every source and dynamic entity still
+    // requires its ordinary lifetime. Native fixed-body identity is checked below.
+    const dressing=!sourceRecord && own(entity,'dressingResident')?.value===true
+      && own(entity,'type')?.value==='fx' && own(entity,'collides')?.value===true
+      && own(spec,'dynamic')?.value===false && authored && own(authored.value,'dynamic')?.value===false
+      && !('orchardKind' in data);
+    const identity=dressing ? [[entity,'dressingResident'],[entity,'type'],[entity,'collides'],
+      [spec,'dynamic'],[authored.value,'dynamic'],[data,'orchardKind']]
+      .map(([object,key])=>({object,key,descriptor:optionalOwnData(object,key),prototype:Object.getPrototypeOf(object)})) : null;
+    rows.push({ id, rec, body, entity, spec, array, handle, cols, dressing, identity,
+      life:dressing?optionalOwnData(entity,'occupantGeneration'):value(entity,'occupantGeneration'),
+      data,authored,prototype:Object.getPrototypeOf(entity) });
   }
   // The ordinary owner keeps disabled projectile allocations for reuse. They remain in
   // native inventory and must remain disabled; an arbitrary extra body is never omitted.
@@ -244,7 +257,9 @@ export function prepareOrchardNativeObservation(owner, lane, sourceRecord = null
   const current = () => value(owner,'world') === world && value(owner,'records') === records && value(owner,'_colliderOwners') === owners
     && value(owner,'_eventQueue') === queue && (sourceRecord || Object.getOwnPropertyDescriptor(Map.prototype,'size').get.call(records) === rows.length) && rows.every(r => Map.prototype.get.call(records,r.id) === r.rec
       && value(r.rec, 'body') === r.body && value(r.rec, 'entity') === r.entity && value(r.rec, 'spec') === r.spec
-      && value(r.entity,'occupantGeneration')===r.life && value(r.entity,'data')===r.data && optionalOwnDataCurrent(r.entity,'physicsBody',r.authored,r.prototype)
+      && (r.dressing ? optionalOwnDataCurrent(r.entity,'occupantGeneration',r.life,r.prototype)
+        && r.identity.every(d=>optionalOwnDataCurrent(d.object,d.key,d.descriptor,d.prototype))
+        : value(r.entity,'occupantGeneration')===r.life) && value(r.entity,'data')===r.data && optionalOwnDataCurrent(r.entity,'physicsBody',r.authored,r.prototype)
       && value(r.rec, 'colliders') === r.array && value(r.array,'length') === r.cols.length
       && r.cols.every((c, i) => value(r.array,String(i)) === c.collider && Map.prototype.get.call(owners,c.handle) === c.entry
         && value(c.entry, 'rec') === r.rec && value(c.entry, 'collider') === c.collider));
@@ -267,6 +282,7 @@ export function prepareOrchardNativeObservation(owner, lane, sourceRecord = null
         principalInertia:lane.converted('bodies','rbPrincipalInertia',row.handle),principalFrame:lane.converted('bodies','rbPrincipalInertiaLocalFrame',row.handle,true),
         effectiveInvMass:lane.converted('bodies','rbEffectiveInvMass',row.handle),effectiveInvInertia:lane.convertedMatrix(row.handle),
         linearDamping:lane.rawRead('bodies','rbLinearDamping',row.handle),angularDamping:lane.rawRead('bodies','rbAngularDamping',row.handle),colliders: [] };
+      if (row.dressing && body.type !== lane.constants.RigidBodyType.Fixed) fail('dressing_body_type');
       if (row.pooled && body.enabled) fail('active_pooled_body');
       if (lane.rawRead('bodies', 'rbNumColliders', row.handle) !== row.cols.length) fail('body_colliders_changed');
       for (let i = 0; i < row.cols.length; i++) {

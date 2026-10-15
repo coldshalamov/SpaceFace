@@ -272,8 +272,18 @@ assert.match(
 );
 assert.match(
   saveSystem,
-  /state\.mode\s*=\s*finalizeLoadedGame\s*\?\s*'loading'\s*:\s*'flight';/s,
-  'Save restore must stay in loading when the runtime has an authored visual finalizer'
+  /flightAdmissionPending:\s*!!finalizeLoadedGame\s*\|\|\s*this\.helpers\?\.deferFlightAdmission\s*===\s*true/s,
+  'Save restore must derive flight admission from the authored visual finalizer'
+);
+assert.match(
+  saveSystem,
+  /state\.mode\s*=\s*flightAdmissionPending\s*\?\s*'loading'\s*:\s*'flight';/s,
+  'Save restore must stay in loading while authored visual admission is pending'
+);
+assert.match(
+  saveSystem,
+  /finalizerResult\s*=\s*finalizeLoadedGame\(finalizerPayload\)/s,
+  'Save restore must invoke the authored visual finalizer before releasing its loading gate'
 );
 assert.match(saveSystem, /save:restore:\$\{this\._restoreSequence\}/,
   'Each save restore must own a unique time-effects source');
@@ -302,7 +312,7 @@ assert.match(
 );
 assert.match(
   saveSystem,
-  /this\.bus\.emit\('save:loaded',\s*\{\s*slot,\s*visualGatePending:\s*!!finalizeLoadedGame,/s,
+  /this\.bus\.emit\('save:loaded',\s*\{\s*slot,\s*visualGatePending:\s*flightAdmissionPending,/s,
   'save:loaded must expose whether playable flight is waiting on authored visual readiness'
 );
 

@@ -17,10 +17,14 @@
 //     fails when any count (blinks, root swaps, regressions, stuck frames, in-flight shader
 //     links, bodies that left the frame undrawn) rises. Timing regressions warn; add
 //     --strict-timing to fail on them (only meaningful on a quiet machine).
+//   node scripts/probe-frame-solid.mjs --baseline-source=.devshots/source-baselines/<manifest>.json
+//     serves a validated frozen source overlay while keeping assets and unlisted files canonical.
 import { spawn, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus, loadavg } from 'node:os';
 import { createServer as createNetServer } from 'node:net';
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
@@ -44,6 +48,17 @@ import {
 } from './lib/frameSolidDelayedReadiness.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
+function sourceOverlayIdentitySummary(identity) {
+  if (!identity) return null;
+  return Object.freeze({
+    schema: identity.schema,
+    sourceCommit: identity.sourceCommit,
+    sourceOverlayDigest: identity.sourceOverlayDigest,
+    fileCount: identity.fileCount,
+    totalBytes: identity.totalBytes,
+  });
+}
 const HEADLESS = process.argv.includes('--headless');
 // No bundled playwright chromium on this box — fall back to an installed browser.
 const browserPath = process.env.SF_PROBE_BROWSER
@@ -58,6 +73,18 @@ const NO_CANON = process.argv.includes('--no-program-canon');
 const CPU_PROFILE = process.argv.includes('--cpu-profile');
 const STRICT_TIMING = process.argv.includes('--strict-timing');
 const COMPARE_PATH = (process.argv.find((arg) => arg.startsWith('--compare=')) || '').slice('--compare='.length) || null;
+const BASELINE_SOURCE_ARG = (process.argv.find((arg) => arg.startsWith('--baseline-source=')) || '')
+  .slice('--baseline-source='.length) || null;
+const BASELINE_SOURCE_PATH = BASELINE_SOURCE_ARG ? path.resolve(ROOT, BASELINE_SOURCE_ARG) : null;
+if (BASELINE_SOURCE_PATH) {
+  const relative = path.relative(ROOT, BASELINE_SOURCE_PATH).replace(/\\/g, '/');
+  if (!relative || relative.startsWith('../') || !relative.startsWith('.devshots/')) {
+    throw new Error('--baseline-source must point to an ignored manifest under .devshots/');
+  }
+}
+const BASELINE_SOURCE_IDENTITY = BASELINE_SOURCE_PATH
+  ? sourceOverlayIdentitySummary(loadSourceOverlayManifest(BASELINE_SOURCE_PATH).identity)
+  : null;
 // Probe-side only: extra V8 flags to A/B heap/GC pacing (e.g. SF_PROBE_V8_FLAGS=
 // "--max-semi-space-size=64"). Merged into the same --js-flags switch the shell sets.
 const EXTRA_V8_FLAGS = (process.env.SF_PROBE_V8_FLAGS || '').trim();
@@ -103,7 +130,13 @@ const port = await freePort();
 const server = spawn(process.execPath, ['server.js', String(port)], {
   cwd: ROOT,
   stdio: 'ignore',
-  env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
+  env: {
+    ...process.env,
+    SPACEFACE_PLAYER_STORE_DIR: '',
+    SPACEFACE_USER_CONTENT_DIR: '',
+    SPACEFACE_PROBE_SOURCE_OVERLAY: BASELINE_SOURCE_PATH ? '1' : '0',
+    SPACEFACE_BASELINE_SOURCE_MANIFEST: BASELINE_SOURCE_PATH || '',
+  },
 });
 let browser = null;
 let restoreDelayedReadiness = null;
@@ -116,6 +149,23 @@ const dumpErrors = () => {
 try {
   const baseUrl = `http://127.0.0.1:${port}/`;
   await waitForServer(baseUrl);
+  let servedSourceOverlayIdentity = null;
+  const sourceIdentityResponse = await fetch(`${baseUrl}__source_overlay_identity`, { cache: 'no-store' });
+  if (BASELINE_SOURCE_IDENTITY) {
+    if (!sourceIdentityResponse.ok) {
+      throw new Error(`source overlay identity unavailable (HTTP ${sourceIdentityResponse.status})`);
+    }
+    servedSourceOverlayIdentity = sourceOverlayIdentitySummary(await sourceIdentityResponse.json());
+    const requested = BASELINE_SOURCE_IDENTITY;
+    const served = servedSourceOverlayIdentity || {};
+    for (const key of ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']) {
+      if (served[key] !== requested[key]) {
+        throw new Error(`served source overlay identity mismatch for ${key}`);
+      }
+    }
+  } else if (sourceIdentityResponse.status !== 404) {
+    throw new Error(`ordinary server unexpectedly exposed source overlay identity (HTTP ${sourceIdentityResponse.status})`);
+  }
   browser = await chromium.launch({
     headless: HEADLESS,
     executablePath: browserPath || undefined,
@@ -751,6 +801,11 @@ try {
     head,
     headless: HEADLESS,
     programCanon: !NO_CANON,
+    sourceOverlay: BASELINE_SOURCE_IDENTITY ? {
+      manifest: path.relative(ROOT, BASELINE_SOURCE_PATH).replace(/\\/g, '/'),
+      requested: BASELINE_SOURCE_IDENTITY,
+      served: servedSourceOverlayIdentity || null,
+    } : null,
     contextLosses,
     submission,
     drawCensus,

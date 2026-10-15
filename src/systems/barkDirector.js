@@ -12,6 +12,7 @@ import {
   freightRaiderEscapeBarkFor,
   historyBarkFor,
   hullRecognitionBarkFor,
+  lawResponseBarkFor,
   lawStepBarkFor,
   oreFloodBarkFor,
   pursuitBarkFor,
@@ -602,6 +603,9 @@ export const barkDirector = {
     this._onLawFineAssessed = (payload) => this._speakLawStep('law:fineAssessed', payload || {});
     this._onLawSanctuaryWithdrawal = (payload) => this._speakLawStep('law:sanctuaryWithdrawal', payload || {});
     this._onLawResponseDeferred = (payload) => this._speakLawStep('law:responseDeferred', payload || {});
+    // The canonical law:response row gets its designed bark leg: the weir gate's bolt filing
+    // reads back in the lawful register, the same slot every other law voice spends.
+    this._onLawResponse = (payload) => this._speakLawStep('law:response', payload || {});
     this._onLawIncidentResolved = (payload) => this._speakLawStep('law:incidentResolved', payload || {});
     this._onLawWarrantReleased = (payload) => this._speakLawStep('law:wantedWarrantReleased', payload || {});
     this._onLawDistressRaised = (payload) => this._speakLawStep('law:distressRaised', payload || {});
@@ -663,6 +667,7 @@ export const barkDirector = {
       this.bus.on('law:fineAssessed', this._onLawFineAssessed);
       this.bus.on('law:sanctuaryWithdrawal', this._onLawSanctuaryWithdrawal);
       this.bus.on('law:responseDeferred', this._onLawResponseDeferred);
+      this.bus.on('law:response', this._onLawResponse);
       this.bus.on('law:incidentResolved', this._onLawIncidentResolved);
       this.bus.on('law:wantedWarrantReleased', this._onLawWarrantReleased);
       this.bus.on('law:distressRaised', this._onLawDistressRaised);
@@ -969,7 +974,9 @@ export const barkDirector = {
   _speakLawStep(eventName, payload) {
     const state = this.state;
     if (!state || !payload) return false;
-    const text = lawStepBarkFor(eventName);
+    const text = eventName === 'law:response'
+      ? lawResponseBarkFor(payload)
+      : lawStepBarkFor(eventName);
     if (!text) return false;
     const step = lawStepRead(state, eventName, payload);
     if (!step || !step.witnessed) return false;
@@ -2722,6 +2729,19 @@ function lawStepRead(state, eventName, payload) {
     return dx * dx + dz * dz <= LAW_BARK_RADIUS_WU * LAW_BARK_RADIUS_WU;
   };
   switch (eventName) {
+    // The canonical law-response loop finally speaks: the weir gate's bolt filing, in the
+    // booth's customs register. The row is the gate's own record of the player's crossing —
+    // only the player's hull crosses this weir — so it is always the runner's deed. A
+    // 10-minute bucket per gate per kind keeps repeat runs at one filing each.
+    case 'law:response': {
+      if (payload.action !== 'weir_bolt') return null;
+      const bucket = Math.floor((Number(payload.t) || 0) / 600);
+      return {
+        witnessed: true,
+        anchor: stationPosFor(state, payload.stationId) || playerPos,
+        key: `weirBolt:${payload.weirId}:${payload.kind}:${bucket}`,
+      };
+    }
     // The assessment lands on the player's own dock receipt — docked at the berth is always
     // witnessed. The settled echo on a later re-dock is not new information.
     case 'law:fineAssessed': {

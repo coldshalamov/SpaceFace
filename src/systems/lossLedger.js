@@ -589,8 +589,23 @@ export const lossLedger = {
     // fall back to the player's current sector (wrecks spawn in the active sector).
     const sectorId = e.data.sectorId || (state.world && state.world.currentSectorId);
     if (!sectorId) return;
+    const isComms = e.data.isCommunicator || e.data.parentType === 'communicator';
+    const hasAuthoredScanLabel = typeof e.data.scanLabel === 'string'
+      && e.data.scanLabel.trim().length > 0
+      && e.data.scanLabel !== 'Wreck Debris';
+    const authoredClass = e.data.berthConsign ? wreckClassById(e.data.wreckClass) : null;
     const loss = latestLossFor(state, sectorId);
-    if (!loss) return; // no recorded loss ⇒ generic wreck (unchanged) — golden-sim safe
+    if (!loss) {
+      if (authoredClass && e.data.playerWreck !== true) {
+        e.data.wreckClass = authoredClass.id;
+        if (!isComms) {
+          if (!hasAuthoredScanLabel) e.data.scanLabel = authoredClass.scanLabel;
+          e.data.wreckClassBlurb = authoredClass.blurb;
+        }
+        e.data.wreckClassLabel = authoredClass.label;
+      }
+      return; // no recorded loss ⇒ generic wreck (unchanged) — golden-sim safe
+    }
     // A marker-owned wreck already carries its authoritative aftermath provenance (victimLabel,
     // killerLabel, markerId — the binding isBoundWreck matches on). Replacing it would sever the
     // marker binding, drop the victim's name, and aim the ledger's lossId at whichever loss the
@@ -605,12 +620,11 @@ export const lossLedger = {
       }
       return;
     }
-    // Don't clobber a communicator's mission-bearing label — only enrich non-communicator wrecks.
-    const isComms = e.data.isCommunicator || e.data.parentType === 'communicator';
     const classId = pickWreckClass({ seed: ensureState(state).seed, lossId: loss.lossId, sectorId });
     const cls = wreckClassById(classId) || wreckClassById('debris');
     // Additive metadata (these fields are new; producers don't read them, so no behavior change).
     e.data.provenance = {
+      ...(existing && typeof existing === 'object' ? existing : {}),
       lossId: loss.lossId,
       kind: loss.kind,
       factionId: loss.factionId,
@@ -622,14 +636,13 @@ export const lossLedger = {
     // own recorded loss instead of whatever hull the sector ring happened to lose last.
     if (e.data.playerWreck === true) return;
     // A berth-consigned hulk carries its class by authorship — the berth data picked the body
-    // ('consigned_hulk', 'fresh') on purpose, and a seeded roll over it would silently void the
-    // authored value. Provenance still names the real recorded loss; only the class and its
-    // scan labels come from the authored field.
-    const authoredClass = e.data.berthConsign ? wreckClassById(e.data.wreckClass) : null;
+    // ('consigned_hulk', 'fresh', 'archive_folio', 'filed_copy') on purpose, and a seeded roll
+    // over it would silently void the authored value. Provenance still names the real recorded
+    // loss; only the class and its scan labels come from the authored field.
     const labelClass = authoredClass || cls;
     e.data.wreckClass = authoredClass ? authoredClass.id : classId;
     if (!isComms) {
-      e.data.scanLabel = labelClass.scanLabel;
+      if (!hasAuthoredScanLabel) e.data.scanLabel = labelClass.scanLabel;
       e.data.wreckClassLabel = labelClass.label;
       e.data.wreckClassBlurb = labelClass.blurb;
     } else {

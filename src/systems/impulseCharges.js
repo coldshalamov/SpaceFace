@@ -198,18 +198,26 @@ function activeCharges(state, ownerId) {
   return out;
 }
 
+function activePlayerFittings(state) {
+  const player = state && state.player;
+  const activeShipIndex = Number.isInteger(player && player.activeShipIndex) && player.activeShipIndex >= 0
+    ? player.activeShipIndex : 0;
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips[activeShipIndex] : null;
+  if (owned && Array.isArray(owned.fittings)) return owned.fittings;
+  const playerEntity = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  return Array.isArray(playerEntity?.data?.fittings) ? playerEntity.data.fittings : [];
+}
+
 export function repulsionTrapFitted(state) {
-  const p = state?.player;
-  const ship = p?.ownedShips?.[p.activeShipIndex || 0];
-  return !!ship?.fittings?.some(id => MODULE_BY_ID.get(id)?.mods?.repulsionTrap);
+  return activePlayerFittings(state).some(id => MODULE_BY_ID.get(id)?.mods?.repulsionTrap);
 }
 
 // AE-124 (G10) — a fitted Heat Lure Beacon turns the same charge throw into bait: the
 // ecology layer registers a burn-flag at the throw point that predators prefer.
 export function heatLureFitted(state) {
-  const p = state?.player;
-  const ship = p?.ownedShips?.[p.activeShipIndex || 0];
-  return !!ship?.fittings?.some(id => MODULE_BY_ID.get(id)?.mods?.heatLure);
+  return activePlayerFittings(state).some(id => MODULE_BY_ID.get(id)?.mods?.heatLure);
 }
 
 /** Maximum simultaneously deployed charges for the active player fit.
@@ -221,12 +229,7 @@ export function heatLureFitted(state) {
  */
 export function resolveImpulseChargeCapacity(state) {
   const base = Math.max(1, Math.floor(Number(chargeDef('charge_standard').maxActive) || 1));
-  const player = state && state.player;
-  const activeShipIndex = Number.isInteger(player && player.activeShipIndex)
-    ? player.activeShipIndex : 0;
-  const owned = player && Array.isArray(player.ownedShips)
-    ? player.ownedShips[activeShipIndex] : null;
-  const fittings = owned && Array.isArray(owned.fittings) ? owned.fittings : [];
+  const fittings = activePlayerFittings(state);
   let capacity = base;
   for (const id of fittings) {
     const declared = Number(MODULE_BY_ID.get(id)?.mods?.impulseChargeCapacity);
@@ -239,8 +242,7 @@ export function resolveImpulseChargeCapacity(state) {
 export function bombPropulsionAvailable(state) {
   if (!massline2Flag('bombPropulsion')) return false;
   const p = state && state.player;
-  const ship = p && Array.isArray(p.ownedShips) ? p.ownedShips[p.activeShipIndex] : null;
-  const fittings = ship && Array.isArray(ship.fittings) ? ship.fittings : [];
+  const fittings = activePlayerFittings(state);
   const researched = new Set(p && p.researchedNodes || []);
   return fittings.some((id) => {
     const def = MODULE_BY_ID.get(id);

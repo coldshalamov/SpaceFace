@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceLedger.v1",
-  "updated": "2026-09-29",
+  "updated": "2026-10-15",
   "domains": {
     "WF-01": {
       "grade": "A",
@@ -19,11 +19,21 @@
       "next": "examine non-Ceres yard tender and salvage cutter interaction in dense mining sectors"
     },
     "WF-02": {
-      "grade": "U",
-      "updated": "2026-09-17",
-      "inspections": [],
+      "grade": "A",
+      "updated": "2026-10-15",
+      "inspections": [
+        {
+          "date": "2026-10-15",
+          "atCommit": "5d855facaa11fb7a55674b183df428ca28bb5431",
+          "paths": [
+            "src/ai/specialistCounterplay.js",
+            "src/ai/specialistPlans.js"
+          ],
+          "finding": "Audited specialist counterplay verbs (tether_control_raider, quiet_ghost, field_anchor_controller, warden_escort): previously only scissorwake checked disabled/stunned/subsystem capabilities and missCutterPass leaked the SF-052 commitLock. All four now drop/abort their verbs when stunned/disabled/subsystem-disabled, missCutterPass releases the lock, and late-window cuts keep their breather. 41/41 specialist tests green."
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "Audit encounter pack morale/disengage transitions when an anchor or warden is disabled rather than killed."
     },
     "WF-03": {
       "grade": "U",
@@ -33,8 +43,8 @@
       "next": ""
     },
     "WF-04": {
-      "grade": "B",
-      "updated": "2026-09-29",
+      "grade": "A",
+      "updated": "2026-10-15",
       "inspections": [
         {
           "date": "2026-09-29",
@@ -44,14 +54,24 @@
             "src/data/frontierRegions/east.js"
           ],
           "finding": "Two frontier mission boards (Research Station Veil, Triton Wake Lab) handed out contracts in sectors with no refuel anywhere - a contract was a trap. The two charted fuel-less outposts (Eunomia Fence, Sedna Survey Post) name the rule on the chart and are authored fiction, not holes."
+        },
+        {
+          "date": "2026-10-15",
+          "atCommit": "b7a2a434353347f0e78951b1cae0d26f3a1d00af",
+          "paths": [
+            "src/systems/factionPresence.js",
+            "src/ui/dockArrival.js",
+            "src/ui/galaxyMap.js"
+          ],
+          "finding": "Audited station berths and arrival surfaces: _watchBerths now tracks displaced hulk ids per berth so multi-berth displacement never breaks restitution; dockArrival and galaxyMap share factionBerthStatusLine for moored/displaced exterior berth state; paperworkFor distinguishes outlaw black-market fences from customs ports for contraband and restricted cargo. 22/22 tests green."
         }
       ],
       "gaps": [],
-      "next": "Station services are still read as a flat token list: nothing tells the player at the chart what a station will NOT do until they dock - the fuel-less outposts warn in prose, every other limit is discovered at the counter."
+      "next": "Audit planetary skim and atmospheric harvest sockets on outer-system world sites."
     },
     "WF-05": {
       "grade": "A",
-      "updated": "2026-09-23",
+      "updated": "2026-10-15",
       "inspections": [
         {
           "date": "2026-09-23",
@@ -61,10 +81,20 @@
             "src/data/tech.js"
           ],
           "finding": "added wpn_concussion_cannon_s for light hardpoints: 520 impulse / 35 tumble trades damage for momentum on S slots, proven 6/6"
+        },
+        {
+          "date": "2026-10-15",
+          "atCommit": "13e173cf5865cfc66859aa8ae92e3d0789778d42",
+          "paths": [
+            "src/systems/uniqueLootAbilities.js",
+            "src/systems/impulseCharges.js",
+            "src/data/modules.js"
+          ],
+          "finding": "Audited medium-slot tractor and repulsor/charge utility heads: Tideline tractor previously pulled picked-clean husks, unstable reactor wrecks, berth-consigned hulks, and wrecks latched on the player's Massline; impulseCharges utility resolvers ignored entity-fitted draft hulls when ownedShips was empty. Repaired and pinned across 34/34 focused tests."
         }
       ],
       "gaps": [],
-      "next": "audit medium-slot tractor/repulsor utility heads"
+      "next": "Audit monofilament sweep and transverse snare interaction when cutting or snaring NPC occupational tow lines."
     },
     "WF-06": {
       "grade": "A",
@@ -98,8 +128,8 @@
       "next": ""
     },
     "WF-09": {
-      "grade": "B",
-      "updated": "2026-09-23",
+      "grade": "A",
+      "updated": "2026-10-15",
       "inspections": [
         {
           "date": "2026-09-17",
@@ -120,16 +150,20 @@
             "src/systems/combat.js"
           ],
           "finding": "Choir attack, warn, and tithe lines already existed. No contact grammar meant a zealot spawn carried no Pattern word and no opening situation. The grammar now stamps contactWord PATTERN, demand tithe, and the attack line. Focused proof: spawn spec plus live profile on seed 4242. Revenge-thread gap still open."
-        }
-      ],
-      "gaps": [
+        },
         {
-          "id": "revenge-thread",
-          "note": "dead captains pool does not react (no reinforced revenge hunter); consider blood-debt escalation as its own unit",
-          "status": "open"
+          "date": "2026-10-15",
+          "atCommit": "575f70d5cde652ffb2d113628f580ca2a530cb19",
+          "paths": [
+            "src/systems/encounterDirector.js",
+            "src/systems/encounterScripts.js",
+            "src/systems/lossLedger.js"
+          ],
+          "finding": "Audited named hunter aftermath and revenge thread: lossLedger._tagWreck now preserves authored hulk scanLabels ('<Captain>''s Hulk') while merging sector loss provenance with killerLabel, and externalNamed captain kills record killedBy/deathTick and escalate surviving NAMED_CAPTAINS for the revenge vow. 10/10 tests green."
         }
       ],
-      "next": "Audit other narrative threads (depth-h series, ledger synthesis coverage)."
+      "gaps": [],
+      "next": "Audit depth-h encounter series and story ledger synthesis coverage across multi-sector arcs."
     },
     "WF-10": {
       "grade": "A",
@@ -225,29 +259,9 @@
       "next": "The sector bed is still the remaining place layer: rock groan and station machinery are event sounds, and nothing sounds like the place you are flying through."
     },
     "WF-14": {
-      "grade": "B",
-      "updated": "2026-09-29",
+      "grade": "A",
+      "updated": "2026-10-15",
       "inspections": [
-        {
-          "date": "2026-09-17",
-          "atCommit": "f422120d4e7c232131aca02837bddaff43266a2b",
-          "paths": [
-            "src/ui/floatingText.js"
-          ],
-          "finding": "comms:log was emit-only (0 consumers); now one callsign toast per line, salvage skipped (self-toasts). Completes U1/U2 line readability. 5/5."
-        },
-        {
-          "date": "2026-09-23",
-          "atCommit": "918a19f1d381d1a9038ffda44ad57ca9f976f2a5",
-          "paths": [
-            "src/data/mining.js",
-            "src/systems/scanner.js",
-            "src/ui/galaxyMap.js",
-            "src/ui/screens/localmap.js",
-            "src/careers/origins/prospectorOriginAppraisal.js"
-          ],
-          "finding": "Lock names already said Silicate or Exotic. The pulse stamped common rock Ore and platinoid Fe, and the appraisal called silicate iron. One glyph table now feeds the pulse, both charts, and the appraisal. Focused proof 3/3 on seed 4242."
-        },
         {
           "date": "2026-09-29",
           "atCommit": "6fc903a0920bb8e6d299d64a109ac50900e48b63",
@@ -256,10 +270,32 @@
             "src/data/mining.js"
           ],
           "finding": "The lock class line reported the verb ('Mineable Asteroid') beside a name that already said what the body is. A stranger had to cut a rock to learn whether it was worth cutting - the type's own oreTable always held the answer."
+        },
+        {
+          "date": "2026-10-15",
+          "atCommit": "7d75cbd60ee278749326de1766dd5abb3f0b83fb",
+          "paths": [
+            "src/ui/targetPanel.js",
+            "src/data/entityInteractionProfiles.js",
+            "src/data/wreckClasses.js",
+            "src/systems/lossLedger.js"
+          ],
+          "finding": "Target panel and hover class lines now resolve rematerialized/berth wreck classes off data.wreckClass (including archive_folio and filed_copy), mark volatile pickups, and report Restricted salvage, Contraband, Restricted cargo, or Papers washed on objectInfoLine. 54/54 focused tests green."
+        },
+        {
+          "date": "2026-10-15",
+          "atCommit": "dba1439df7ca67de4927914609db5a8c37c3312c",
+          "paths": [
+            "src/ui/targetPanel.js",
+            "src/data/entityInteractionProfiles.js",
+            "src/data/wreckClasses.js",
+            "src/systems/lossLedger.js"
+          ],
+          "finding": "Target panel and hover class lines resolve rematerialized/berth wreck classes off data.wreckClass (including archive_folio and filed_copy), mark volatile pickups, and report Restricted salvage, Contraband, Restricted cargo, or Papers washed on objectInfoLine. 54/54 focused tests green."
         }
       ],
       "gaps": [],
-      "next": "Next information hole is a different surface: the wreck class line is still the bare word 'Salvage' with no wreck class, and the pickup/payload line has no composition at all."
+      "next": "Audit world-site receiver and machine target panel readouts when a site is mid-cycle vs jammed."
     },
     "WF-15": {
       "grade": "U",

@@ -37,3 +37,43 @@ The four paths were checked against PR391's current branch before publication; n
 At 2026-10-15 02:05:53 UTC, combined status for PR391 head `92b9192a2578700f7b228c4413024904476bf9ad` returned context `Vercel`, state `failure`, and exact target_url `https://vercel.com/robin-gattis-projects?upgradeTo=build-rate-limit`. The status response had no description field. Separately, supported GitHub reads exposed no Actions run or check record for that head. The Vercel failure and the absence of GitHub Actions records are distinct observations; neither explains the other. The prior Chromium artifact 11940712819 predates the production camera bridge and is not current-head evidence.
 
 PR391 remains open, draft, and unmerged. This receipt is scoped source/test evidence, not gameplay acceptance.
+
+
+## Follow-on coherent Orchard service, Query, and current-support delivery (2026-10-15)
+
+This source update preserves the remote PR head `dac0b6685bb8b6cb9e3593d9105da5e1839263a9` as first parent and uses the tested current-support baseline `cee77b4f954c84dc18801a3e755ff80bb597a4c5` as second parent. The tree is built from the exact cee Git tree, with all 157 existing PR file deltas (42 modified, 115 added, no deletions/renames), the reviewed three-way overlap resolutions, and the sealed source packets below. The reviewed results retain the PR versions of simReadModel and targetPanel; barkDirector uses reviewed merged blob `2343eb4cc2734d50dfc99464fe623c3d21253a12`. The final tree is not sourced from private local ancestry or broad scratch files.
+
+### Sealed additions
+
+Optional Orchard tow-assistance service, seven exact paths:
+- `src/systems/anvilWork.js` SHA-256 `ef0dfc5d8752bee602e89318cc15a1542dad324bc6dfa34e68a07e8fc022856f`, Git blob `103c51af9de58fcb16590cf7a2faa0a00547fcde`
+- `src/data/contactHail.js` SHA-256 `6815dd0aa8d05c4156269aa328efd4b8485acebcdee59c4256577df0b0dac104`, Git blob `ceebec8d99c1ab98c78327b3fa0d8d268f8fb7ca`
+- `src/systems/scanner.js` SHA-256 `a81b89a975180b55409b211a87cff3f656450a4adb2656f7d1b07d5b86421c5a`, Git blob `79716a1e6ecab3d0f48ed22a8dacc58300065885`
+- `src/systems/npcJobsRuntime.js` SHA-256 `cf7cb8434fb28b1fea937c9eb384d6fe02a66fe56db696e3aab0202890000c1f`, Git blob `fc7d691cc78783a23027aae5fb5204ff0815228a`
+- `src/combat/attachments.js` SHA-256 `c3d3fe847d034671bdb8db625083d5454cf81f57caf20d4fbb98f94bf43c0ee1`, Git blob `7524b230c51625d1b5f39d7fdee820b6eb8cca17`
+- `src/world/anvilOrchardTowAssist.js` SHA-256 `9bcf3e2d9c8c2f1d3356c9777c3ad540cebe2f318f2dfd907c36730b88281297`, Git blob `e12dfbdac89fa6994da3ee6572dda06a56213b40`
+- `test/anvil-orchard-npc-assist.test.mjs` SHA-256 `32f8235affd1eaf0a7a8b95898878a7326898468ce0957782eef6911e6b76652`, Git blob `ef908ebf1630e611009539f7f813fc4c37023e38`
+
+Service proof: 40/40 owner tests; 40/40 independent service tests; 54/54 independent neighbors. Scoped physical tow, one player pickup and populated-world Continue passed, including custody, conservation, fees and attachment exclusivity. A pre-attachment frame contact caused the recorded damage; no tow/reel damage is claimed. Full rendered gameplay and organic/ordinary-flight/browser acceptance remain open. Recovery: Library `libfile_c8a346ad25288191ba950f5dae98beb7`, archive SHA-256 `4f67b385af090c394685561a86d48550ef0b6a136966eee64bc605bdc2d73736`; manifest SHA-256 `5fd9fa3f78f47d29a3808cc75573f29bc48b0380f3b9f4aeaca8f35b60c01d25`. The delivery manifest was independently rechecked against all seven frozen paths and Git blob IDs.
+
+Static-dressing world observation, two exact updated paths:
+- `src/core/anvilOrchardCollarQuery.js` SHA-256 `72218deead4f0ee1ae69dd4ea806ab9c9178752d30e33e6e44f983157497b79d`, Git blob `2c559db6c8eb16217ea4049ee22d81ec085c5505`
+- `test/anvil-orchard-world-observation.test.mjs` SHA-256 `fcfd6e88686753a376baf1f5a79df391d42d83311f04c9a314204edb621aeecb`, Git blob `1196df66aff2eacc84b378c6f3713fbce45acc5f`
+
+Query proof: final broad 467/467 and independent final 34/34 on support 45ee; pre-refresh boundary 114/114. The bounded observation keeps required Orchard source/pod, worker and dynamic-body identity/lifetime rules strict while allowing only the authored/resolved-false, non-Orchard, native fixed auxiliary dressing with its exact optional descriptor/absence/prototype. Full ordinary-flight/browser acceptance remains open. Recovery: Library `libfile_369552e3f52c81918bcacb38f9085335`; archive SHA-256 `5b59e86c54a554e25c1b8d72c2d898e21f9494f089fdde31635755c002037626`.
+
+The earlier four-path Native collection/residency/observation increment remains separately tested: 445/445 broad serial, 37/37 focused, 29/29 independent. The subsequent two-path Query update is its own narrow scope; rosters are not additive.
+
+### Current support refresh and generated preload index
+
+The cee77 support tree includes the exact master-only current-support changes. The five-path increment after 45ee was verified byte-for-byte against cee Git blobs: `SAVE_SCHEMA.md` (blob `612d33f3cb1e07a8c9af81931305952cfaa52222`), `design/program/PERF_2026_10_14.md` (blob `be2166da959d0621ec0a7da5776c9ae6d0e1c139`), `scripts/check-launch-policy.mjs` (blob `2df46c8a7a8b97b7e1b5be6a921b88e2d1c51b81`), `scripts/probe-frame-solid.mjs` (blob `f7636bf6aa0a2f69d68f602da43901b80a77e7df`), and `server.js` (blob `dd550ef0a7b276f43591def00f55fa4abc83ee48`). All before-guards passed; three JS/MJS syntax checks and complete-root read-only launch-policy check passed; 24 overlay/frame tests passed. One Git-baseline creator test was unavailable in the deliberately non-Git projection and is explicitly not a pass. These scoped results are separate from the 45ee Orchard 467/40/54 rosters; no 467/40/54 rerun on cee is claimed.
+
+A further master commit `485ec81e8902152ce110d38f68fdd3424dd2cd46` added `scripts/player-truth/driver.mjs`, `test/player-truth-fresh-target-chain.test.mjs`, and `test/player-truth-radar-pursuit.test.mjs` after the pinned cee baseline. These three paths are disjoint from the Orchard PR delta and remain on master for its eventual merge; they are not silently overwritten by this frozen tested tree.
+
+Root index `index.html`: SHA-256 `496d174537314a331f2c171085cd6349102bbd81e011f7f857ff00443a80497b`, Git blob `d0a94fc5e43d58434840ce994cc676970380d668`. The check covers 36 main imports and 2,034 registry imports; it adds only the Orchard tow helper and known generator indentation.
+
+### CI observation and remaining gates
+
+At 2026-10-15 02:52:09 UTC, exact predecessor `dac0b6685bb8b6cb9e3593d9105da5e1839263a9` had an empty supported Actions workflow-run list. Its combined status returned only Vercel context/state `failure`, with exact target_url `https://vercel.com/robin-gattis-projects?upgradeToPro=build-rate-limit`; no status description field was present. This Vercel result does not explain the absent Actions record. The current source commit requires fresh exact-head Actions verification; no current camera artifact is claimed. The earlier Chromium artifact 11940712819 predates the production witness and remains diagnostic only.
+
+PR391 remains open, draft and unmerged. The one pending user action is the already-requested manual `mobile-readiness` dispatch for `feature/orchard-player-route-20261015`; no repeat request is made. Whole-game, live camera, ordinary rendered route, target-device performance and final visual acceptance remain open.

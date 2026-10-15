@@ -1,3 +1,4 @@
+import { isOrchardReceiver, orchardTowQuote } from '../world/anvilOrchardTowAssist.js';
 // Deterministic contact-hail classification and copy.
 //
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
@@ -195,6 +196,7 @@ function activeTollRecord(state, targetId) {
 }
 
 function contactKind(state, entity) {
+  if (isOrchardReceiver(state, entity)) return { kind: 'worker', parley: null };
   const data = entity && entity.data || {};
   const ai = data.ai || {};
   const role = String(data.trafficRole || data.role || entity && entity.role || '').toLowerCase();
@@ -961,6 +963,18 @@ function patrolGrievanceHail(state, entity) {
 }
 
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
+  if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  if (isOrchardReceiver(state, availability?.entity)) {
+    const quote=orchardTowQuote(state,availability.entity);
+    return {requestId,targetId:availability.targetId,kind:'worker',expiresAt,
+      lines:quote
+        ? [`ORCHARD RETRIEVAL · ${quote.amount}u · ${quote.feeCr}CR on dispatch. Fee kept on cancellation or loss.`,
+          'Risk of damage or loss; delivery not guaranteed. Follow the pickup marker and fly close to collect. Continue cancels and refunds.']
+        : ['STORMSHIFT RECEIVING TENDER · ORCHARD RETRIEVAL','NO FREE RELEASED POD IN SAFE REACH · RELEASE A POD FIRST.'],
+      actions:quote?[{id:CONTACT_HAIL_ACTION_TOW_ASSIST,label:`HIRE TOW · ${quote.feeCr}CR`},{id:'status',label:'STATUS'}]:[{id:'status',label:'STATUS'}],
+      ...(quote?{orchardQuote:quote}:{})};
+  }
+
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   const name = callsign(availability.entity);
   const voice = hailVoiceLine(state, availability.entity);

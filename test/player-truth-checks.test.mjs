@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import {
   CLS, VIS, E, checkLodChurn, regradeLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
-  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
+  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide, probeDead,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS, classifyPreparationScreen, notePreparationWait, waitForPreparationLaunch, PREPARATION_UNEXPECTED_MS } from '../scripts/player-truth/routes.mjs';
@@ -177,6 +177,24 @@ test('player_control fails a ship that does not answer thrust', () => {
   const moving = trace({ probes, player: (i) => goodPlayer({ vx: i, x: i * i }) });
   assert.equal(checkPlayerControl(moving).status, 'PASS');
   assert.equal(checkPlayerControl(trace()).status, 'UNKNOWN');
+});
+
+test('thrust pin detection counts travelled path across a reversal, while a stationary ship still fails', () => {
+  const samples = [
+    { sim: 0, p: { x: 0, z: 0, vx: 100, vz: 0 } },
+    { sim: 0.5, p: { x: 50, z: 0, vx: 100, vz: 0 } },
+    { sim: 1, p: { x: 0, z: 0, vx: -100, vz: 0 } },
+  ];
+  const reversal = { kind: 'thrust', startSim: 0, endSim: 1 };
+  const moving = probeDead({ samples }, reversal);
+  assert.equal(moving.dead, false);
+  assert.equal(reversal.moved, 100, 'endpoint displacement must not erase a travelled reversal path');
+  assert.equal(reversal.expect, 100);
+
+  const pinned = { kind: 'thrust', startSim: 0, endSim: 1 };
+  const dead = probeDead({ samples: samples.map((s) => ({ ...s, p: { ...s.p, x: 0, z: 0 } })) }, pinned);
+  assert.equal(dead.dead, true);
+  assert.match(dead.why, /pinned|moved/);
 });
 
 test('tumble flags sustained pitch out of the play plane', () => {

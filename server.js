@@ -18,6 +18,11 @@ const { resolveMountedUserContentDir } = require('./scripts/lib/userContentStore
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
+// Historical source overlays are probe-only. The explicit flag keeps an inherited manifest
+// environment variable from changing an ordinary browser/dev launch.
+const sourceOverlay = process.env.SPACEFACE_PROBE_SOURCE_OVERLAY === '1'
+  ? String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim() || null
+  : null;
 
 // Per-user mods home by platform (matching where Electron's userData lands).
 function defaultUserContentPlatformDir() {
@@ -74,6 +79,7 @@ const server = createGameServer({
     devDir: join(ROOT, 'user-content'),
     platformDir: defaultUserContentPlatformDir(),
   }) || undefined,
+  ...(sourceOverlay ? { sourceOverlay } : {}),
   extraRoutes: [
     {
       test: (method, url) => method === 'POST' && url.startsWith('/__shot'),

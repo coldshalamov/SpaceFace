@@ -493,7 +493,9 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
 #boot-overlay.boot-overlay--orrery .boot-label { margin-top:16px; font-size: 12px; font-weight:650; letter-spacing:.24em; text-transform:uppercase; color:rgb(232 226 212 / .85); }
 #boot-overlay.boot-overlay--orrery .boot-detail { font-size:13px; color:rgb(232 226 212 / .6); }
 .boot-ring { width:172px; height:172px; overflow:visible; }
-.boot-ring__emblem { opacity:.5; transform-box:fill-box; transform-origin:center; animation:boot-ring-turn 60s linear infinite; }
+.boot-ring__emblem { opacity:.5; transform-box:fill-box; transform-origin:center; animation:boot-ring-turn 28s linear infinite; }
+/* 28s is a liveness floor, not decoration: the emblem is compositor-owned, so it is the one
+   motion source that survives a main-thread stall on every host. 60s read as a frozen frame. */
 .boot-ring__grad { fill:none; stroke:rgb(232 226 212 / .28); stroke-width:1; }
 .boot-ring__track { fill:none; stroke:rgb(232 226 212 / .14); stroke-width:1.5; }
 .boot-ring__bloom { fill:none; stroke:rgb(143 203 255 / .28); stroke-width:6; stroke-linecap:round; }
