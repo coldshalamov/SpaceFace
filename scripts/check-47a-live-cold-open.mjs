@@ -314,5 +314,8 @@ async function reachable(url) {
 function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
+  // This probe reads authoritative scenario state and clears onboarding/nav fields directly.
+  // Those reads/writes require the main lane; scenario is deliberately not a worker mirror.
+  u.searchParams.set('simLane', 'main');
   return String(u);
 }

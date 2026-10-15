@@ -16,6 +16,16 @@ if (!OUT_DIR.startsWith(path.join(ROOT, '.devshots') + path.sep)) throw new Erro
 const HEADFUL = process.argv.includes('--headful');
 const ROUTE = process.argv.find((a) => a.startsWith('--route='))?.split('=')[1] || 'flight';
 if (!['flight', 'menu'].includes(ROUTE)) throw new Error('--route must be flight or menu');
+const numberOption = (name, fallback) => {
+  const raw = process.argv.find((arg) => arg.startsWith(name + '='))?.slice(name.length + 1);
+  return raw == null ? fallback : Number(raw);
+};
+const WIDTH = numberOption('--width', 1280), HEIGHT = numberOption('--height', 720);
+const DPR = numberOption('--dpr', 1), TRAVEL_MS = numberOption('--travel-ms', 0);
+if (!Number.isInteger(WIDTH) || WIDTH <= 0 || !Number.isInteger(HEIGHT) || HEIGHT <= 0
+  || !Number.isFinite(DPR) || DPR <= 0 || !Number.isFinite(TRAVEL_MS) || TRAVEL_MS < 0) {
+  throw new Error('Expected positive integer width/height, positive dpr and nonnegative travel-ms');
+}
 
 function analyzeSpectorCapture(capture) {
   const commands = capture.commands || [];
@@ -76,8 +86,8 @@ async function main() {
     });
 
     const context = await browser.newContext({
-      viewport: { width: 1280, height: 720 },
-      deviceScaleFactor: 1,
+      viewport: { width: WIDTH, height: HEIGHT },
+      deviceScaleFactor: DPR,
     });
     const page = await context.newPage();
 
@@ -98,7 +108,16 @@ async function main() {
       console.log('[perf:spector] Starting flight scene...');
       await adventureToFlight(page, (name, _ok, detail) => console.log(`[perf:spector] ${name}: ${detail}`), { seed: 47 });
       // Wait for flight mode — authored-visual readiness can take a while on software WebGL.
-      await page.waitForFunction(() => window.SF.state && window.SF.state.mode === 'flight', { timeout: 180_000, polling: 500 });
+      await page.waitForFunction(() => {
+        const state = window.SF?.state;
+        return state?.mode === 'flight' && state.render?.flightVeilHoldsSim !== true
+          && Number.isFinite(state.render?.firstPlayableFrameAt);
+      }, null, { timeout: 180_000, polling: 500 });
+      if (TRAVEL_MS > 0) {
+        await page.keyboard.down('w');
+        try { await page.waitForTimeout(TRAVEL_MS); }
+        finally { await page.keyboard.up('w'); }
+      }
       // Let flight run for 3 seconds so models and particles are populated
       await page.waitForTimeout(3000);
     } else {
@@ -113,6 +132,8 @@ async function main() {
         userAgent: navigator.userAgent, settings: st.settings, viewport: [innerWidth, innerHeight],
         buffer: [gl.drawingBufferWidth, gl.drawingBufferHeight], authority: 'single-frame GL diagnostic; capture disturbs timing' };
     });
+    metadata.captureProfile = { route: ROUTE, width: WIDTH, height: HEIGHT, dpr: DPR,
+      travelMs: TRAVEL_MS, settleMs: ROUTE === 'flight' ? 3000 : 2000 };
     await writeFile(path.join(OUT_DIR, 'metadata.json'), JSON.stringify(metadata, null, 2));
     const capture = await page.evaluate(async () => {
       if (!window.SF || !window.SF.perf || !window.SF.perf.spector) {
@@ -153,14 +174,11 @@ async function main() {
         return `| \`${prog}\` | ${count} | ${pct}% |`;
       }),
       '',
-      '## Performance Diagnosis & Budget Check',
+      '## Interpretation',
       '',
-      !completeFrame ? 'INCOMPLETE: bounded commands cannot establish whole-frame draw totals.' : analysis.drawCalls > 200
-        ? `⚠️ **WARNING**: Frame draw calls (${analysis.drawCalls}) exceed the 200 budget ceiling. Check for unbatched meshes or missing instancing.`
-        : `✅ **PASS**: Frame draw calls (${analysis.drawCalls}) are within the 200 call budget.`,
-      !completeFrame ? 'INCOMPLETE: shader-switch totals are partial.' : analysis.useProgramCalls > 30
-        ? `⚠️ **WARNING**: High shader program switches (${analysis.useProgramCalls}). Group draws by material/program to reduce driver overhead.`
-        : `✅ **PASS**: Program switches (${analysis.useProgramCalls}) are healthy.`,
+      !completeFrame ? 'INCOMPLETE: bounded commands cannot establish whole-frame totals.'
+        : 'Complete-frame counts identify batching, material ordering and texture traffic; they do not establish frame cost.',
+      'Use the captured shaders, targets and uniforms with CPU/GPU timings. This instrument does not certify FPS, hitch reduction or picture quality.',
       '',
     ].join('\n');
 
