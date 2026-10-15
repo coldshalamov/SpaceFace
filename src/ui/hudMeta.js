@@ -45,6 +45,13 @@ export function seatStableLoadClearOfSpeedDial(line, doc) {
 
 export function createHudMeta(ctx) {
   const { bus, state } = ctx;
+  const unsubscribers = [];
+  const on = (event, listener, options = undefined) => {
+    if (!bus || typeof bus.on !== 'function') return null;
+    const unsubscribe = bus.on(event, listener, options);
+    if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    return unsubscribe;
+  };
 
   // ── the STABLE LOAD line (the Chapter-01 prototype that stays on after cargo is gone) ─────
   // Mounted into #hud. Hidden until Phase 1 begins (B0). Once shown, it PERSISTS — toggling it
@@ -63,10 +70,11 @@ export function createHudMeta(ctx) {
     stableLoad.classList.add('sf-stableload--visible');
     seatStableLoadClearOfSpeedDial(stableLoad, document);
   };
+  const onResize = () => {
+    if (stableLoad.classList.contains('sf-stableload--visible')) seatStableLoadClearOfSpeedDial(stableLoad, document);
+  };
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-    window.addEventListener('resize', () => {
-      if (stableLoad.classList.contains('sf-stableload--visible')) seatStableLoadClearOfSpeedDial(stableLoad, document);
-    });
+    window.addEventListener('resize', onResize);
   }
 
   // ── the civilian-tag flicker (B2 / Elroy) ─────────────────────────────────────────────────
@@ -126,7 +134,7 @@ export function createHudMeta(ctx) {
     legacyReadout.textContent = legacyFlightLine(legacy);
     legacyReadout.style.display = metaVisible ? '' : 'none';
   }
-  bus.on('story:newGamePlusStarted', syncLegacyReadout);
+  on('story:newGamePlusStarted', syncLegacyReadout);
 
   // ── the manifest self-correction log (Phase 2+) ───────────────────────────────────────────
   // When the cargo manifest "silently corrects", we surface a one-line ghost of the old value that
@@ -164,7 +172,7 @@ export function createHudMeta(ctx) {
   }
 
   // ── hud:phase handler ─────────────────────────────────────────────────────────────────────
-  bus.on('hud:phase', ({ phase, beat, lie }) => {
+  on('hud:phase', ({ phase, beat, lie }) => {
     // Phase readout: Phase 1 = "NOMINAL" (the lie), Phase 2 = "OPTIMIZED", Phase 3 = "STABLE".
     const phaseLabel = phase >= 3 ? 'STABLE' : (phase === 2 ? 'OPTIMIZED' : 'NOMINAL');
     phaseValue.textContent = phaseLabel;
@@ -198,7 +206,7 @@ export function createHudMeta(ctx) {
   });
 
   // ── hud:tagFlicker handler (B2 kill) ──────────────────────────────────────────────────────
-  bus.on('hud:tagFlicker', ({ tag, durationMs, note }) => {
+  on('hud:tagFlicker', ({ tag, durationMs, note }) => {
     tagFlickerLabel.textContent = tag || 'CIVILIAN VESSEL \u2014 REGISTERED';
     tagFlicker.classList.add('sf-tagflicker--show');
     tagFlickerTimer = durationMs || 500;
@@ -207,16 +215,18 @@ export function createHudMeta(ctx) {
   });
 
   // ── player can toggle the STABLE LOAD line off (it returns) ───────────────────────────────
-  stableLoad.addEventListener('click', () => {
+  const onStableLoadClick = () => {
     if (!stableLoadArmed) return;
     stableLoadHidden = true;
     stableLoad.classList.remove('sf-stableload--visible');
     // per the doc: "The player can toggle it off. The line stays." It returns on next cargo change.
-  });
+  };
+  stableLoad.addEventListener('click', onStableLoadClick);
 
-  bus.on('cargo:changed', maybeShowManifestGhost);
+  on('cargo:changed', maybeShowManifestGhost);
 
   // ── per-frame tick (called from hud.frame via the returned api) ───────────────────────────
+  let tagFlickerOverwriteTimer = 0;
   function tick(dt) {
     syncLegacyReadout();
     // tag flicker countdown
@@ -227,7 +237,11 @@ export function createHudMeta(ctx) {
         tagFlickerLabel.textContent = 'THREAT NEUTRALIZED';
         tagFlicker.classList.remove('sf-tagflicker--show');
         tagFlicker.classList.add('sf-tagflicker--overwrite');
-        setTimeout(() => tagFlicker.classList.remove('sf-tagflicker--overwrite'), 600);
+        if (tagFlickerOverwriteTimer) clearTimeout(tagFlickerOverwriteTimer);
+        tagFlickerOverwriteTimer = setTimeout(() => {
+          tagFlicker.classList.remove('sf-tagflicker--overwrite');
+          tagFlickerOverwriteTimer = 0;
+        }, 600);
       }
     }
 
@@ -261,7 +275,27 @@ export function createHudMeta(ctx) {
     legacyReadout.style.display = v && legacyPresent ? '' : 'none';
   }
 
-  return { tick, setVisible };
+  return {
+    tick,
+    setVisible,
+    destroy() {
+      for (const unsubscribe of unsubscribers.splice(0)) {
+        try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
+      }
+      tagFlickerTimer = 0;
+      if (tagFlickerOverwriteTimer) {
+        clearTimeout(tagFlickerOverwriteTimer);
+        tagFlickerOverwriteTimer = 0;
+      }
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('resize', onResize);
+      }
+      stableLoad.removeEventListener('click', onStableLoadClick);
+      for (const node of [stableLoad, tagFlicker, phaseReadout, legacyReadout, manifestGhost]) {
+        if (node && node.parentNode) node.parentNode.removeChild(node);
+      }
+    },
+  };
 }
 
 // CSS is injected by uiRoot's HUD stylesheet block (added there to keep all HUD CSS in one place).

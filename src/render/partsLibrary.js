@@ -4082,6 +4082,11 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.placeTargetRadius = geologySkin ? entity.radius
     : (Number.isFinite(poiTargetRadius) && poiTargetRadius > 0 ? poiTargetRadius : null);
   boundary.userData.authoredGeologySkin = geologySkin;
+  // A geology boundary can be re-admitted while its authored replacement is compiling. Keep the
+  // readiness proof on the boundary so the renderer can continue drawing the same semantic rock
+  // only after this fallback itself has completed compile + residency admission in this context.
+  boundary.userData.authoredFallbackActive = geologySkin;
+  boundary.userData.authoredFallbackAdmittedOnce = false;
   stampPendingPlaceVisualBounds(boundary, entity, placeFile);
   // An empty substrate is no stand-in: while the authored body queues/decodes/compiles the
   // boundary would draw nothing and pop in at commit. Arm the same resolving marker pending
@@ -4544,6 +4549,7 @@ function failAuthoredPlaceAdmission(
     if (error?.message) fallbackRoot.userData.authoredFallbackReason = error.message;
     setActive(fallbackRoot);
     boundary.userData.authoredReadableFallbackRetained = true;
+    boundary.userData.authoredFallbackActive = true;
     boundary.userData.authoredVisualRoot = 'procedural-geology-fallback';
     boundary.userData.authoredFallbackReason = reason;
     if (error?.message) boundary.userData.authoredFallbackMessage = error.message;
@@ -4634,6 +4640,8 @@ export async function commitAuthoredPlaceBoundary(
   setActive(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
   boundary.userData.authoredReadableFallbackRetained = false;
+  boundary.userData.authoredFallbackActive = false;
+  boundary.userData.authoredFallbackAdmittedOnce = false;
   boundary.userData.authoredVisualRoot = 'authored-root';
   boundary.userData.authoredParts = authored.authoredParts;
   boundary.userData.authoredSlots = authored.authoredSlots;
@@ -15438,6 +15446,10 @@ function allocateInstance(scene, owner, proxy, geometry, material, label, option
     activateProxy: typeof options.activateProxy === 'function' ? options.activateProxy : null,
     packageCandidate: options.packageCandidate || null,
     ownerState: null,
+    // The authored proxy is usually two or three nodes below its moving owner. Keep that
+    // narrow branch so camera-cull sync can refresh the matrices it submits without walking
+    // every dedicated mesh, marker, and VFX child under the ship root.
+    instanceWorldPath: null,
   };
   try {
     chunk.slots.set(index, slot);
@@ -15858,7 +15870,7 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
   if (chunk.packageAdmission && !chunk.packageAdmission.activated) return false;
   const index = slot.index;
   const record = context.recordsByOwner && context.recordsByOwner.get(slot.owner);
-  const visible = !forceHidden && isVisibleToOwner(slot.proxy, slot.owner, context, stats, record);
+  const visible = !forceHidden && isVisibleToOwner(slot.proxy, slot.owner, context, stats, record, slot);
   if (!visible) {
     if (!slot.lastSubmitted) return false;
     writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
@@ -15945,12 +15957,17 @@ function highestSubmittedIndex(chunk) {
   return highest;
 }
 
-function isVisibleToOwner(object, owner, context, stats, record = null) {
+function isVisibleToOwner(object, owner, context, stats, record = null, slot = null) {
   const ownerFrame = syncOwnerForInstanceFrame(owner, context, record);
   if (!ownerFrame.visible) {
     if (stats) stats.culledInstanceSlots++;
     return false;
   }
+  // syncOwnerForInstanceFrame updates the owner and its ancestors, but deliberately does not
+  // force the whole descendant tree. Instance proxies are the only descendants read by this
+  // path; refresh each proxy's retained owner-to-leaf branch below instead of paying an
+  // O(all-authored-children) updateWorldMatrix(false, true) traversal.
+  if (slot) updateInstanceProxyWorldPath(slot, owner);
   for (let current = object; current; current = current.parent) {
     if (!current.visible) {
       if (stats) stats.hiddenInstanceSlots++;
@@ -15972,7 +15989,6 @@ function syncOwnerForInstanceFrame(owner, context, record = null) {
 
   owner.updateWorldMatrix(true, false);
   const visible = isOwnerInCullContext(owner, context);
-  if (visible) owner.updateWorldMatrix(false, true);
   if (!cached) {
     cached = { frame: 0, visible: false };
     context.state.ownerVisibility.set(owner, cached);
@@ -15980,6 +15996,39 @@ function syncOwnerForInstanceFrame(owner, context, record = null) {
   cached.frame = context.frame;
   cached.visible = visible;
   return cached;
+}
+
+function updateInstanceProxyWorldPath(slot, owner) {
+  if (!slot || !owner || !slot.proxy) return false;
+  let path = slot.instanceWorldPath;
+  let valid = Array.isArray(path) && path.length > 0 && path[path.length - 1] === slot.proxy;
+  if (valid) {
+    let parent = owner;
+    for (const node of path) {
+      if (!node || node.parent !== parent) {
+        valid = false;
+        break;
+      }
+      parent = node;
+    }
+  }
+  if (!valid) {
+    const reverse = [];
+    let node = slot.proxy;
+    while (node && node !== owner) {
+      reverse.push(node);
+      node = node.parent;
+    }
+    if (node !== owner) {
+      slot.instanceWorldPath = null;
+      return false;
+    }
+    reverse.reverse();
+    path = reverse;
+    slot.instanceWorldPath = path;
+  }
+  for (const node of path) node.updateWorldMatrix(false, false);
+  return true;
 }
 
 function setInstanceMatrixIfChanged(chunk, index, slot, matrix) {

@@ -130,7 +130,13 @@ test('on-glass pending roots drain as one deadline batch, not one present each',
   const prepareBatchCalls = [];
   const readied = [];
   const queue = createLiveGeometryAdmissionQueue({
-    compile: async (root) => { compileCalls.push(root.id); },
+    compile: async (root, options) => {
+      compileCalls.push({
+        id: root.id,
+        urgent: options && options.urgent === true,
+        explicit: options && options.explicit === true,
+      });
+    },
     prepare: async (root, options) => {
       prepareCalls.push({ id: root.id, unSliced: options && options.unSliced === true });
       return { skipped: false };
@@ -157,9 +163,16 @@ test('on-glass pending roots drain as one deadline batch, not one present each',
     queue.enqueue(ambient.entity, ambient.root),
     ...urgent.map((item) => queue.enqueue(item.entity, item.root)),
   ]);
-  assert.deepEqual([...compileCalls].sort((a, b) => a - b), [1, 2, 3, 9],
+  assert.deepEqual(compileCalls.map((call) => call.id).sort((a, b) => a - b), [1, 2, 3, 9],
     'every urgent root gets its own floated deadline compile — a merged compile '
     + 'would hold all latches for the slowest link and detach roots into staging');
+  assert.deepEqual(
+    compileCalls.filter((call) => call.id !== 9).map((call) => call.urgent),
+    [true, true, true],
+    'the urgent lane must carry its deadline classification into the compile port',
+  );
+  assert.notEqual(compileCalls.find((call) => call.id === 9).urgent, true,
+    'ambient roots must not be promoted by the urgent batch handoff');
   assert.deepEqual(prepareBatchCalls, [{ ids: [1, 2, 3], unSliced: true }],
     'the urgent burst pays one merged residency pass — un-sliced, one chain link');
   assert.deepEqual(prepareCalls.filter((p) => !p.unSliced).map((p) => p.id), [9]);

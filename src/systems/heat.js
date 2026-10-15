@@ -385,6 +385,19 @@ export const heat = {
       this._raise(BUST_CONTRABAND, 'smuggling bust');
     });
 
+    // The customs weir's own first-party observation: a hull crossed the gate without
+    // finishing the manifest read. The booth is the witness, so this is the same class as a
+    // smuggling bust — priced so one unread transit stays suspicion (below WANTED) while
+    // breaking a live read is the stronger evidence. Repeat runners tip over the line, and
+    // past it the existing high-sec coverage clock answers — the gate never attacks a clean
+    // hull, the hunt starts only when heat says WANTED.
+    const WEIR_BOLT_READ = 0.10;   // broke a live read — the gate kept part of the manifest
+    const WEIR_BOLT_UNREAD = 0.05; // crossed unread — the booth saw a hull flee the beam
+    bus.on('customs:weirBolt', (p) => {
+      if (!p) return;
+      this._raise(p.kind === 'read_bolt' ? WEIR_BOLT_READ : WEIR_BOLT_UNREAD, 'customs weir bolt');
+    });
+
     // A faction going hostile is the strongest "the law noticed" signal short of a kill. The same
     // event also announces de-escalation, which must not itself create a fresh WANTED incident.
     bus.on('faction:aggro', (p) => {

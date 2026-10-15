@@ -70,3 +70,49 @@ test('selected profile reaches facade config and worker init before first tick',
   const result = differ.diff({ economy: { markets: {}, cycles: {} } }, 0);
   assert.ok(Array.isArray(result.updates));
 });
+
+test('worker lane preserves domain root and nested identities across consecutive snapshots', async (t) => {
+  const flags = resolveSimLaneFlags('?simLane=worker');
+  const state = {
+    entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
+    tick: 0, simTime: 0, accumulator: 0, timeScale: 0, ui: { screenStack: [] },
+  };
+  const posts = [];
+  let receive;
+  const lane = createSimLaneRuntime({
+    state, registry: {}, bus: createBus(), flags,
+    clockMode: 'worker-local',
+    channelFactory: () => ({
+      post(message) { posts.push(message); },
+      onMessage(handler) { receive = handler; },
+      terminate() {},
+    }),
+  });
+  t.after(() => lane.close());
+
+  const first = {
+    active: [{ id: 'm1', status: 'active' }],
+    progress: { activeId: 'm1', amount: 1 },
+  };
+  const second = {
+    active: [{ id: 'm2', status: 'accepted' }],
+    progress: { activeId: 'm2', amount: 2 },
+  };
+  const init = posts[0];
+  receive({ kind: 'ready', seq: init.seq, stateTick: 0, simTime: 0,
+    domainUpdates: [{ segs: ['missions'], v: first }] });
+  await lane.readyPromise;
+
+  const root = state.missions;
+  const nested = root.progress;
+  const active = root.active;
+  receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60,
+    domainUpdates: [{ segs: ['missions'], v: second }] });
+
+  assert.strictEqual(state.missions, root, 'a later root snapshot must mutate the existing facade root');
+  assert.strictEqual(state.missions.progress, nested, 'a later nested snapshot must mutate the existing nested object');
+  assert.strictEqual(state.missions.active, active, 'same-kind arrays must retain their facade identity');
+  assert.equal(state.missions.active[0].id, 'm2');
+  assert.equal(state.missions.progress.activeId, 'm2');
+  assert.equal(state.missions.progress.amount, 2);
+});

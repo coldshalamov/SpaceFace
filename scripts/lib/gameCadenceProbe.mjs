@@ -19,21 +19,103 @@ export function installGameCadenceProbe() {
   const rows = [];
   const submissionGaps = [];
   const started = performance.now();
+  const actualMesh = {
+    eligibleSamples: 0,
+    poseChanges: 0,
+    identicalPoses: 0,
+    missingSamples: 0,
+    identityBoundaryResets: 0,
+    poseChangeGaps: [],
+    staleMs: [],
+    identity: null,
+    lastPose: null,
+    lastPoseChangedAt: null,
+  };
+  const resetActualMeshPose = () => {
+    actualMesh.identity = null;
+    actualMesh.lastPose = null;
+    actualMesh.lastPoseChangedAt = null;
+  };
+  const observeActualMesh = (now, st) => {
+    if (st?.mode !== 'flight' || !(st.timeScale > 0)) {
+      resetActualMeshPose();
+      return;
+    }
+    const playerId = st.playerId;
+    const player = st.entities?.get?.(playerId) || null;
+    const velocity = player?.vel || player?.velocity || null;
+    const speed = velocity
+      ? Math.hypot(Number(velocity.x) || 0, Number(velocity.z) || 0)
+      : 0;
+    if (!(speed >= 20)) {
+      actualMesh.lastPose = null;
+      actualMesh.lastPoseChangedAt = null;
+      return;
+    }
+    const origin = st.world?.frameOriginSeq;
+    const generation = player?.occupantGeneration;
+    if (playerId == null || origin == null || generation == null) {
+      resetActualMeshPose();
+      return;
+    }
+    const identity = `${playerId}:${origin}:${generation}`;
+    if (actualMesh.identity !== null && actualMesh.identity !== identity) {
+      actualMesh.identityBoundaryResets++;
+      actualMesh.lastPose = null;
+      actualMesh.lastPoseChangedAt = null;
+    }
+    actualMesh.identity = identity;
+    const mesh = st.render?.meshes?.get?.(playerId) || null;
+    const elements = mesh?.matrixWorld?.elements;
+    const finitePose = elements && [elements[12], elements[13], elements[14]].every(Number.isFinite);
+    if (!mesh?.visible || !mesh?.parent || !finitePose) {
+      actualMesh.missingSamples++;
+      actualMesh.lastPose = null;
+      actualMesh.lastPoseChangedAt = null;
+      return;
+    }
+    const pose = { x: elements[12], y: elements[13], z: elements[14] };
+    actualMesh.eligibleSamples++;
+    if (!actualMesh.lastPose) {
+      actualMesh.lastPose = pose;
+      actualMesh.lastPoseChangedAt = now;
+      actualMesh.staleMs.push(0);
+      return;
+    }
+    const stale = actualMesh.lastPoseChangedAt == null
+      ? 0
+      : Math.max(0, now - actualMesh.lastPoseChangedAt);
+    actualMesh.staleMs.push(stale);
+    const moved = Math.abs(pose.x - actualMesh.lastPose.x) > 1e-4
+      || Math.abs(pose.y - actualMesh.lastPose.y) > 1e-4
+      || Math.abs(pose.z - actualMesh.lastPose.z) > 1e-4;
+    if (moved) {
+      actualMesh.poseChanges++;
+      if (actualMesh.lastPoseChangedAt != null) actualMesh.poseChangeGaps.push(stale);
+      actualMesh.lastPoseChangedAt = now;
+    } else {
+      actualMesh.identicalPoses++;
+    }
+    actualMesh.lastPose = pose;
+  };
   const wrapped = function (...args) {
     const result = original.apply(this, args);
-    if (result === true && sf.state.mode === 'flight') {
+    if (result === true) {
       const now = performance.now();
-      if (lastSubmit !== null) submissionGaps.push(now - lastSubmit);
-      lastSubmit = now;
-      submissions++;
-      if (sf.state.timeScale > 0
-          && (sf.state.tick !== lastMotionTick || sf.state.simTime !== lastMotionSim)) {
-        if (lastMotionSubmit !== null) motionSubmissionGaps.push(now - lastMotionSubmit);
-        lastMotionSubmit = now;
-        lastMotionTick = sf.state.tick;
-        lastMotionSim = sf.state.simTime;
-        motionSubmissions++;
+      if (sf.state.mode === 'flight') {
+        if (lastSubmit !== null) submissionGaps.push(now - lastSubmit);
+        lastSubmit = now;
+        submissions++;
+        if (sf.state.timeScale > 0
+            && (sf.state.tick !== lastMotionTick || sf.state.simTime !== lastMotionSim)) {
+          if (lastMotionSubmit !== null) motionSubmissionGaps.push(now - lastMotionSubmit);
+          lastMotionSubmit = now;
+          lastMotionTick = sf.state.tick;
+          lastMotionSim = sf.state.simTime;
+          motionSubmissions++;
+        }
       }
+      observeActualMesh(now, sf.state);
     }
     return result;
   };
@@ -60,7 +142,18 @@ export function installGameCadenceProbe() {
       cancelAnimationFrame(frameId);
       if (owner && owner.drawPreparedFrame === wrapped) owner.drawPreparedFrame = original;
       return { started, ended: performance.now(), submissionObserved: !!owner, rows,
-        submissionGaps, motionSubmissionGaps };
+        submissionGaps, motionSubmissionGaps,
+        actualMesh: {
+          observed: actualMesh.eligibleSamples > 0,
+          eligibleSamples: actualMesh.eligibleSamples,
+          poseChanges: actualMesh.poseChanges,
+          identicalPoses: actualMesh.identicalPoses,
+          missingSamples: actualMesh.missingSamples,
+          identityBoundaryResets: actualMesh.identityBoundaryResets,
+          poseChangeGaps: actualMesh.poseChangeGaps,
+          staleMs: actualMesh.staleMs,
+          condition: 'successful game draw; flight; timeScale > 0; speed >= 20; finite visible attached player mesh',
+        } };
     },
   };
 }
@@ -89,13 +182,17 @@ export function summarizeGameCadence(record) {
   const motionObserved = record.submissionObserved
     && Number.isFinite(first?.motionSubmissions) && Number.isFinite(last?.motionSubmissions);
   const motionSubmits = motionObserved ? last.motionSubmissions - first.motionSubmissions : null;
+  const actualMeshObserved = record.actualMesh?.observed === true;
+  const actualMeshMissingSamples = record.actualMesh
+    && (actualMeshObserved || record.actualMesh.missingSamples > 0)
+    ? record.actualMesh.missingSamples : null;
   return {
     schema: 'spaceface.gameCadence.v1', wallMs, activeMs, simDelta,
     simWallRatio: wallMs > 0 ? simDelta * 1000 / wallMs : null,
     submissionObserved: record.submissionObserved,
     browserFps: activeMs > 0 ? frames.length * 1000 / activeMs : null,
     worldSubmitFps: record.submissionObserved && wallMs > 0 ? submits * 1000 / wallMs : null,
-    // Counts distinct simulation snapshots actually submitted, not repeated draws of one pose.
+    // Counts distinct simulation snapshots submitted; actual mesh motion is summarized separately when observed.
     worldMotionFps: motionObserved && activeMs > 0 ? motionSubmits * 1000 / activeMs : null,
     motionSubmissionGaps: motionObserved ? distribution(record.motionSubmissionGaps || []) : null,
     callbackGaps: distribution(frames.map(r => r.gapMs)),
@@ -105,6 +202,19 @@ export function summarizeGameCadence(record) {
     maxSimStaleMs: frames.reduce((max, r) => Math.max(max, r.simStaleMs || 0), 0),
     maxWorldStaleMs: frames.length ? Math.max(...frames.map(r => r.worldStaleMs)) : null,
     minDrawCalls: frames.some(r => Number.isFinite(r.calls)) ? Math.min(...frames.map(r => r.calls).filter(Number.isFinite)) : null,
+    actualMeshObserved,
+    actualMeshStatus: actualMeshObserved ? 'observed' : 'unavailable-no-eligible-samples',
+    actualMeshEligibleSamples: actualMeshObserved ? record.actualMesh.eligibleSamples : null,
+    actualMeshPoseChanges: actualMeshObserved ? record.actualMesh.poseChanges : null,
+    actualMeshIdenticalPoses: actualMeshObserved ? record.actualMesh.identicalPoses : null,
+    actualMeshMissingSamples,
+    actualMeshIdentityBoundaryResets: record.actualMesh?.identityBoundaryResets ?? null,
+    actualMeshPoseChangeGaps: actualMeshObserved
+      ? distribution(record.actualMesh.poseChangeGaps || []) : null,
+    actualMeshStaleMs: actualMeshObserved
+      ? distribution(record.actualMesh.staleMs || []) : null,
+    actualMeshCondition: record.actualMesh?.condition ?? null,
+    actualMeshEvidenceLayer: 'successful draw CPU mesh pose; display scanout unmeasured',
     // Submission is a CPU-side success, not proof that the display scanned out new pixels.
     evidenceLayer: 'successful-game-submit; display scanout unmeasured',
   };

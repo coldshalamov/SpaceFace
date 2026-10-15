@@ -674,7 +674,7 @@ for (const route of ['pushScreen', 'popScreen', 'replaceScreen', 'closeAll', 're
   else mgr[route]();
   assert.equal(hiddenContext === ctx, true, route + ' forwards the screen lifecycle context');
   assert.equal(state.render.photoMode.active, false, route + ' restores photo presentation');
-  assert.equal(state.settings.video.exposure, exposure, route + ' restores the prior exposure');
+  assert.equal(state.settings.video.exposure, exposure ?? null, route + ' restores the prior exposure');
   mgr.destroy();
 }
 

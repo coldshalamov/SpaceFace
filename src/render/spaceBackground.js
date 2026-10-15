@@ -1786,7 +1786,7 @@ export class SpaceBackground {
   // listeners were registered by the previous GL generation and deleting through the restored
   // context produces wrong-context errors.
   contextLossResources() {
-    return [
+    const resources = [
       this.l0Target,
       this.l1Target,
       this.l2Target,
@@ -1796,7 +1796,14 @@ export class SpaceBackground {
       this._planetBakeMaterial,
       this._l0BakeMaterial,
       this.bakePlane?.geometry,
+      // These owners retain resources outside the visible layer graph: one active and one pending
+      // deep-sky plate per channel, painted-planet atlas views, and the flare atlas.
+      ...(this.deepSkyPlates?.contextLossResources?.() || []),
+      ...(this.deepSkyBases?.contextLossResources?.() || []),
+      ...(this.paintedPlanets?.contextLossResources?.() || []),
+      this.flareAtlas,
     ].filter(Boolean);
+    return [...new Set(resources)];
   }
 
   onContextRestore() {

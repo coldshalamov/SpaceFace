@@ -628,17 +628,19 @@ test('the first-frame census seals on a sliced yield, not one hop per item', () 
     'the opening-plan residency pass slices the same way');
 });
 
-// A latched root is invisible until admitted, so it is deadline work — yet it used to ride the
-// ambient compile lane's quiet window and first-flight auto-flush hold, adding ~50-250 ms of pure
-// waiting to its time-to-visible. The explicit lane flushes the ambient queue and serializes the
-// subject on the shared compile tail; in flight the compile is still present-sliced, so the link
-// lands on its own beats.
-test('latched geometry roots compile on the explicit lane, not the ambient quiet window', () => {
+// A latched root is invisible until admitted, so it is deadline work. Ambient roots retain the
+// explicit lane, while the urgent queue carries its classification into the renderer port instead
+// of silently joining that ambient cohort.
+test('latched geometry roots preserve urgent versus ambient compile lanes', () => {
   const queueStart = RENDERER_SOURCE.indexOf('this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({');
   assert.ok(queueStart >= 0, 'the live geometry admission queue must exist');
   const queueBlock = RENDERER_SOURCE.slice(queueStart, queueStart + 2600);
-  assert.match(queueBlock, /compile:\s*\(root\)\s*=>\s*state\.render\.compileObjectPipelines\(\s*root,\s*\{[^}]*explicit:\s*true[^}]*\}\s*,?\s*\)/,
-    'latched roots must bypass the ambient compile queue');
+  assert.match(queueBlock, /compile:\s*\(root,\s*options\s*=\s*\{\}\)\s*=>\s*\{[\s\S]*?state\.render\.compileObjectPipelines\(/,
+    'live geometry must pass lane options into the renderer compile port');
+  assert.match(queueBlock, /options\.urgent\s*===\s*true/,
+    'the urgent lane must select the urgent renderer admission');
+  assert.match(queueBlock, /explicit:\s*true/,
+    'ambient roots must retain the explicit sliced admission lane');
   const admitStart = RENDERER_SOURCE.indexOf('const admitSubjectPipelines = (subject');
   assert.ok(admitStart >= 0, 'the subject admission must exist');
   const admitBlock = RENDERER_SOURCE.slice(admitStart, admitStart + 3600);

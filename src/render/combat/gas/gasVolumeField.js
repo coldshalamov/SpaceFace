@@ -493,6 +493,15 @@ class GasVolumeField {
     };
   }
 
+  /** The shared 3D films outlive the proxy mesh graph until the last gas owner releases them. */
+  contextLossResources() {
+    const resources = [this.mesh, this.geometry, this.material];
+    for (const texture of Object.values(this._textures || {})) {
+      if (texture?.isTexture) resources.push(texture);
+    }
+    return resources.filter(Boolean);
+  }
+
   dispose() {
     try { unregisterDynamicBufferOwner(this.dynamicBufferOwner); } catch (_) { /* teardown race */ }
     if (this.mesh && this.mesh.parent) this.mesh.parent.remove(this.mesh);

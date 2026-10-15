@@ -323,6 +323,33 @@ export class PlasmaStreamSystem {
     if (this.group) this.group.visible = false;
   }
 
+  /** Publish detached ribbon/contrail resources as well as the live throat and center field. */
+  contextLossResources() {
+    const resources = [];
+    const seen = new Set();
+    const add = (resource) => {
+      if (!resource || typeof resource !== 'object' || seen.has(resource)) return;
+      seen.add(resource);
+      resources.push(resource);
+    };
+    const addProvider = (provider) => {
+      if (!provider || typeof provider.contextLossResources !== 'function') return;
+      const owned = provider.contextLossResources();
+      if (Array.isArray(owned)) for (const resource of owned) add(resource);
+    };
+    add(this.group);
+    add(this._centerTex);
+    addProvider(this._ribbons);
+    for (const trail of this._trails || []) addProvider(trail);
+    for (const forge of this._forges || []) addProvider(forge);
+    for (const throat of this._throats || []) {
+      add(throat);
+      add(throat.geometry);
+      add(throat.material);
+    }
+    return resources;
+  }
+
   dispose() {
     if (this._disposed) return;
     this._disposed = true;

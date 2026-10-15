@@ -26,6 +26,7 @@ import {
   ATTRIBUTION_ROUTE_TAGS,
   ATTRIBUTION_DIAGNOSTIC_VARIANTS,
   strictWorktreeFingerprint,
+  normalizeFingerprintPath,
   summarizeSamples,
   validateArtifactFiles,
   validateCleanupEvidence,
@@ -81,6 +82,13 @@ import {
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
+// Optional lifecycle diagnostic bound. The ordinary soak never enables this mode; when
+// requested, its measured cycle loop performs one public save followed by a small number of
+// public quick-load round-trips against that same untouched slot.
+export const MAX_IMMUTABLE_SAVE_CYCLES = 4;
+// Owner rows are forensic checkpoint detail, not the hot-path state snapshot. Keep the
+// persisted receipt bounded even if a restore leaves an unexpectedly large owner graph.
+export const POST_GC_OWNER_ROW_LIMIT = 256;
 // Six hours — the acceptance soak is two hours; the bound catches a dropped
 // or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
 export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
@@ -196,6 +204,8 @@ export async function runReleaseSoakProbe({
   cycleTimeoutMs = 300_000,
   minDurationMs = 0,
   cycleScreenshots = true,
+  immutableSaveCycles = 0,
+  baselineSource = null,
   log = () => {},
 } = {}) {
   assert(['browser', 'electron'].includes(runtime), 'runtime must be browser or electron');
@@ -203,6 +213,12 @@ export async function runReleaseSoakProbe({
   assert(
     Number.isInteger(minDurationMs) && minDurationMs >= 0 && minDurationMs <= MAX_MIN_DURATION_MS,
     `minDurationMs must be an integer in [0, ${MAX_MIN_DURATION_MS}]`,
+  );
+  assert(
+    Number.isInteger(immutableSaveCycles)
+      && (immutableSaveCycles === 0
+        || (immutableSaveCycles >= 2 && immutableSaveCycles <= MAX_IMMUTABLE_SAVE_CYCLES)),
+    `immutableSaveCycles must be 0 or an integer in [2, ${MAX_IMMUTABLE_SAVE_CYCLES}]`,
   );
   // Direct callers may pass 0/'0'/'false'; normalize so only an explicit
   // off-value suppresses per-cycle screenshots.
@@ -235,6 +251,12 @@ export async function runReleaseSoakProbe({
   let pageIssueTracker = null;
   let canonicalUrlTracker = null;
   let rootUrl = null;
+  let servedSourceOverlay = null;
+  let servedSourceOverlayAtEnd = null;
+  let sourceOverlayCoverage = null;
+  let startUncoveredFingerprint = null;
+  let endUncoveredFingerprint = null;
+  let immutableSaveDiagnostic = null;
   let cleanupReport = null;
   let isolatedLaunch = null;
   let packagedStartup = null;
@@ -273,6 +295,12 @@ export async function runReleaseSoakProbe({
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
+    sourceOverlayCoverage = await readSourceOverlayCoverage(baselineSource);
+    if (sourceOverlayCoverage?.fullRuntime) {
+      startUncoveredFingerprint = await strictWorktreeFingerprint(root, {
+        excludePaths: sourceOverlayCoverage.pinnedPaths,
+      });
+    }
 
     if (runtime === 'electron' && authority.primaryAcceptance) {
       assert.equal(
@@ -297,7 +325,10 @@ export async function runReleaseSoakProbe({
     let navigationStartedAt = null;
 
     if (runtime === 'browser') {
-      ownedServer = await acquireVisualProbeServer({ root });
+      ownedServer = await acquireVisualProbeServer({
+        root,
+        sourceOverlay: baselineSource?.path || null,
+      });
       assert.equal(ownedServer.ownsServer, true, 'browser soak must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
       ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
@@ -333,7 +364,7 @@ export async function runReleaseSoakProbe({
         page = owned.page || page;
         canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
         rootUrl = owned.rootUrl || rootUrl;
-      });
+      }, taskId, { baselineSourcePath: baselineSource?.path || null });
       ({
         page,
         electronApp,
@@ -350,6 +381,10 @@ export async function runReleaseSoakProbe({
     page.setDefaultNavigationTimeout(60_000);
     await page.bringToFront();
     doLog(`${runtime} canonical root ${rootUrl}`);
+    servedSourceOverlay = await readServedSourceOverlayIdentity(page, baselineSource);
+    if (baselineSource) {
+      doLog(`source overlay ${baselineSource.relative} ${baselineSource.identity.sourceOverlayDigest}`);
+    }
     // Arm before the public route so an early route/load failure still leaves a
     // one-shot caller snapshot for the ordinary teardown in the failure path.
     // The helper is idempotent and never initiates a second teardown.
@@ -401,9 +436,11 @@ export async function runReleaseSoakProbe({
       } catch (_) { /* instrumentation hooks are optional */ }
     }).catch(() => {});
     let prevWarmupSnapshot = null;
+    let lastWarmupRestorePopulation = null;
     for (let warmupIndex = 0; warmupIndex < WARMUP_MAX_CYCLES; warmupIndex++) {
+      let warmupCycle = null;
       try {
-        await withTimeout(
+        warmupCycle = await withTimeout(
           runSoakCycle(page, { index: `warmup-${warmupIndex}`, outputDir, log: doLog, screenshots: false }),
           cycleTimeoutMs,
           `release-soak warmup cycle ${warmupIndex}`,
@@ -431,6 +468,8 @@ export async function runReleaseSoakProbe({
         30_000,
         `release-soak warmup ${warmupIndex} memory snapshot`,
       );
+      snap.restorePopulation = warmupCycle?.restorePopulation || null;
+      lastWarmupRestorePopulation = snap.restorePopulation;
       const snapDelta = (key) => prevWarmupSnapshot && Number.isFinite(snap[key])
         && Number.isFinite(prevWarmupSnapshot[key])
         ? snap[key] - prevWarmupSnapshot[key] : null;
@@ -457,6 +496,10 @@ export async function runReleaseSoakProbe({
       30_000,
       'release-soak baseline memory snapshot',
     );
+    // The baseline follows the final warmup cycle. Keep that cycle's restore scalar beside the
+    // baseline for population-growth interpretation; it is diagnostic context, not a second
+    // heap sample taken at the load boundary.
+    baselineMemory.restorePopulation = lastWarmupRestorePopulation;
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
       await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot')).catch(() => {});
     }
@@ -468,12 +511,16 @@ export async function runReleaseSoakProbe({
     const soakStartedAt = Date.now();
     const soakThreshold = readMinSpecHitchThreshold(root);
     await installSoakRecorder(page, { hitchThresholdMs: soakThreshold });
-    doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${cycles}${minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
+    const immutableMeasured = immutableSaveCycles > 0;
+    const measuredCycleCount = immutableMeasured ? immutableSaveCycles : cycles;
+    let immutableSaveReference = null;
+    const immutableSaveRows = [];
+    doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${measuredCycleCount}${immutableMeasured ? ', fixed quick-save' : minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
 
     const cycleResults = [];
     const memoryCheckpoints = [];
     let index = 0;
-    while (index < cycles || Date.now() - soakStartedAt < minDurationMs) {
+    while (index < measuredCycleCount || (!immutableMeasured && Date.now() - soakStartedAt < minDurationMs)) {
       let cycle = null;
       let cycleError = null;
       // One retry per cycle. A cycle that fails mid-market dies docked at the
@@ -484,7 +531,13 @@ export async function runReleaseSoakProbe({
       for (let attempt = 0; attempt < 2 && !cycle && !cycleError; attempt++) {
         try {
           cycle = await withTimeout(
-            runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
+            runSoakCycle(page, {
+              index,
+              outputDir,
+              log: doLog,
+              screenshots: takeCycleScreenshots,
+              fixedSave: immutableSaveReference,
+            }),
             cycleTimeoutMs,
             `release-soak cycle ${index}`,
           );
@@ -531,13 +584,64 @@ export async function runReleaseSoakProbe({
         } catch { /* trail dump is best-effort over the primary diag */ }
         throw cycleError;
       }
+      if (immutableMeasured && !immutableSaveReference) {
+        assert(cycle.saveEnvelope?.available === true, 'immutable diagnostic could not establish a fixed save envelope');
+        immutableSaveReference = {
+          slot: cycle.saveEnvelope.slot || 'quick',
+          saved: cycle.saved,
+          envelope: cycle.saveEnvelope,
+        };
+      }
       cycleResults.push(cycle);
-      memoryCheckpoints.push(await withTimeout(
+      const checkpoint = await withTimeout(
         readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
         30_000,
         `release-soak memory checkpoint ${index + 1}`,
-      ));
+      );
+      checkpoint.restorePopulation = cycle.restorePopulation || null;
+      memoryCheckpoints.push(checkpoint);
+      if (immutableMeasured) {
+        const population = summarizeImmutableSavePopulation({
+          savedEnvelopeEntities: immutableSaveReference?.envelope?.envelopeEntities || [],
+          postLoadEntities: cycle.loadedEnvelope?.postLoadEntities || [],
+        });
+        const expectedHash = immutableSaveReference?.envelope?.serializedIdentity?.sha256 || null;
+        const observedHash = cycle.loadedEnvelope?.serializedIdentity?.sha256 || null;
+        const unchanged = cycle.fixedSaveUnchanged === true
+          && expectedHash !== null
+          && observedHash === expectedHash;
+        immutableSaveRows.push({
+          index,
+          pass: unchanged,
+          loadedSlot: cycle.loadedEnvelope?.slot || null,
+          fixedSaveUnchanged: unchanged,
+          saveSerializedIdentity: immutableSaveReference?.envelope?.serializedIdentity || null,
+          loadedSerializedIdentity: cycle.loadedEnvelope?.serializedIdentity || null,
+          population,
+          postGcMemory: checkpoint,
+          marks: cycle.marks.map((entry) => entry.name),
+        });
+        doLog(`[immutable-save] cycle ${index + 1}/${immutableSaveCycles}: ${unchanged ? 'unchanged' : 'MUTATED'} `
+          + `slot=${immutableSaveReference?.slot || 'missing'} base=${expectedHash || 'missing'} `
+          + `postLoad=${population.postLoadEntityCount} extra=${population.newlyMaterialized.count}`);
+      }
       index += 1;
+    }
+    if (immutableMeasured) {
+      immutableSaveDiagnostic = {
+        requestedCycles: immutableSaveCycles,
+        pass: immutableSaveRows.length === immutableSaveCycles
+          && immutableSaveRows.every((row) => row.pass === true),
+        fixedSave: {
+          slot: immutableSaveReference?.slot || null,
+          serializedIdentity: immutableSaveReference?.envelope?.serializedIdentity || null,
+          envelopeIdentity: immutableSaveReference?.envelope?.envelopeIdentity || null,
+          envelopeEntityCount: immutableSaveReference?.envelope?.envelopeEntities?.length || 0,
+          envelopeEntities: immutableSaveReference?.envelope?.envelopeEntities || [],
+        },
+        cycles: immutableSaveRows,
+      };
+      doLog(`immutable save diagnostic ${immutableSaveDiagnostic.pass ? 'passed' : 'found slot mutation'}`);
     }
     doLog(`soak cycles complete: ${cycleResults.length} cycles in ${((Date.now() - soakStartedAt) / 60_000).toFixed(1)} min`);
 
@@ -620,13 +724,42 @@ export async function runReleaseSoakProbe({
     // this still wraps the same ordinary teardown exactly once.
     await armPostTeardownGlDeleteTrap();
 
+    if (baselineSource) {
+      try {
+        servedSourceOverlayAtEnd = await readServedSourceOverlayIdentity(page, baselineSource);
+      } catch (error) {
+        doLog(`served source overlay identity unavailable at capture end: ${error?.message || error}`);
+      }
+    }
     const endFingerprint = await strictWorktreeFingerprint(root);
+    if (sourceOverlayCoverage?.fullRuntime) {
+      endUncoveredFingerprint = await strictWorktreeFingerprint(root, {
+        excludePaths: sourceOverlayCoverage.pinnedPaths,
+      });
+    }
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
+    const sourceStability = evaluateSourceStability({
+      baselineSource,
+      coverage: sourceOverlayCoverage,
+      servedAtStart: servedSourceOverlay,
+      servedAtEnd: servedSourceOverlayAtEnd,
+      worktreeStable,
+      uncoveredWorktreeStable: startUncoveredFingerprint && endUncoveredFingerprint
+        ? endUncoveredFingerprint.digest === startUncoveredFingerprint.digest
+        : null,
+      uncoveredHeadStable: startUncoveredFingerprint && endUncoveredFingerprint
+        ? endUncoveredFingerprint.head === startUncoveredFingerprint.head
+        : null,
+    });
     if (!worktreeStable) {
-      // Reject primary acceptance below, but preserve the expensive runtime telemetry. Throwing at
-      // this boundary used to discard post-GC heap, rAF/GPU attribution, and context-recovery data
-      // after a long valid browser session whenever an unrelated parallel lane touched the tree.
-      doLog(`worktree changed during capture: ${startFingerprint.digest} -> ${endFingerprint.digest}`);
+      if (sourceStability.mode === 'served-overlay' && sourceStability.pass) {
+        doLog(`worktree changed during capture, but the full pinned source overlay remained stable: ${startFingerprint.digest} -> ${endFingerprint.digest}`);
+      } else {
+        // Reject primary acceptance below, but preserve the expensive runtime telemetry. Throwing at
+        // this boundary used to discard post-GC heap, rAF/GPU attribution, and context-recovery data
+        // after a long valid browser session whenever an unrelated parallel lane touched the tree.
+        doLog(`worktree changed during capture: ${startFingerprint.digest} -> ${endFingerprint.digest}`);
+      }
     }
     if (runtime === 'electron') {
       const liveUrl = canonicalUrlTracker.observeNow('post-worktree-fingerprint-live');
@@ -701,14 +834,20 @@ export async function runReleaseSoakProbe({
       { name: 'WebGL mesh and frame recovery', status: contextLoss.recovered ? 'pass' : 'fail' },
       { name: 'heap and renderer resources stable', status: validateMemoryEvidence(memory).pass ? 'pass' : 'fail' },
       { name: 'owned runtime cleanup', status: cleanupValidation.pass ? 'pass' : 'fail' },
-      { name: 'worktree stable', status: worktreeStable ? 'pass' : 'fail' },
+      { name: 'source stable', status: sourceStability.pass ? 'pass' : 'fail' },
       { name: authority.primaryAcceptance ? 'broker claim consumed' : 'diagnostic evidence is non-promoting', status: 'pass' },
     ];
+    if (immutableSaveDiagnostic) {
+      checks.push({
+        name: 'immutable save slot stayed unchanged',
+        status: immutableSaveDiagnostic.pass ? 'pass' : 'fail',
+      });
+    }
     if (runtime === 'electron' && authority.primaryAcceptance) {
       checks.push({ name: 'exact packaged startup subroute', status: packagedStartup?.pass === true ? 'pass' : 'fail' });
     }
 
-    const telemetry = { performance, memory, errors, contextLoss };
+    const telemetry = { performance, memory, errors, contextLoss, immutableSaveDiagnostic };
     await writeTelemetry(outputDir, telemetry, `${logLines.join('\n')}\n`);
     const artifactDescriptors = buildArtifactDescriptors(
       root,
@@ -757,6 +896,7 @@ export async function runReleaseSoakProbe({
       runtimeKind: runtime,
       mode,
       cycles: { count: cycleResults.length, results: cycleResults.map((cycle) => cycle.summary) },
+      immutableSaveDiagnostic,
       boot,
       hardware,
       soakWindow,
@@ -767,6 +907,14 @@ export async function runReleaseSoakProbe({
       sourceCandidateDigest: authority.digests?.sourceCandidateDigest ?? null,
       candidateDigest: authority.digests?.candidateDigest ?? null,
       digests: authority.digests,
+      sourceOverlay: baselineSource ? {
+        manifest: baselineSource.relative,
+        requested: baselineSource.identity,
+        served: servedSourceOverlay,
+        servedAtEnd: servedSourceOverlayAtEnd,
+        coverage: compactSourceOverlayCoverage(sourceOverlayCoverage),
+      } : null,
+      sourceStability,
       consumedClaim: authority.consumedClaim,
       fixedSeed: authority.fixedSeed,
       inputSource: 'keyboard-mouse',
@@ -882,18 +1030,145 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
   }
 }
 
+function compactSourceOverlayIdentity(identity) {
+  return identity ? {
+    schema: identity.schema || null,
+    sourceCommit: identity.sourceCommit || null,
+    sourceOverlayDigest: identity.sourceOverlayDigest || null,
+    fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
+    totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+  } : null;
+}
+
+function isFullRuntimeCaptureScope(captureScope) {
+  return /^all-runtime(?:-|$)/i.test(String(captureScope || '').trim());
+}
+
+async function readSourceOverlayCoverage(baselineSource) {
+  if (!baselineSource?.path) return null;
+  try {
+    const manifest = JSON.parse(await readFile(baselineSource.path, 'utf8'));
+    const captureScope = String(manifest.captureScope || '').trim() || null;
+    const rawPinnedPaths = Array.isArray(manifest.files)
+      ? manifest.files.map((entry) => entry?.path)
+      : [];
+    const pinnedPaths = rawPinnedPaths.map(normalizeFingerprintPath);
+    const validPinnedPaths = rawPinnedPaths.length > 0
+      && pinnedPaths.every(Boolean)
+      && new Set(pinnedPaths).size === pinnedPaths.length;
+    return {
+      sourceMode: String(manifest.sourceMode || '').trim() || null,
+      captureScope,
+      runtimePathPolicy: String(manifest.runtimePathPolicy || '').trim() || null,
+      fullRuntime: isFullRuntimeCaptureScope(captureScope) && validPinnedPaths,
+      pinnedPaths: validPinnedPaths ? pinnedPaths : [],
+      pinnedPathCount: validPinnedPaths ? pinnedPaths.length : 0,
+    };
+  } catch (error) {
+    return {
+      sourceMode: null,
+      captureScope: null,
+      runtimePathPolicy: null,
+      fullRuntime: false,
+      pinnedPaths: [],
+      pinnedPathCount: 0,
+      readError: error?.message || String(error),
+    };
+  }
+}
+
+function compactSourceOverlayCoverage(coverage) {
+  if (!coverage) return null;
+  return {
+    sourceMode: coverage.sourceMode || null,
+    captureScope: coverage.captureScope || null,
+    runtimePathPolicy: coverage.runtimePathPolicy || null,
+    fullRuntime: coverage.fullRuntime === true,
+    pinnedPathCount: Number.isSafeInteger(coverage.pinnedPathCount) ? coverage.pinnedPathCount : 0,
+    ...(coverage.readError ? { readError: coverage.readError } : {}),
+  };
+}
+
+function sourceOverlayIdentityMatches(expected, observed) {
+  if (!expected || !observed) return false;
+  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
+    .every((field) => expected[field] === observed[field]);
+}
+
+export function evaluateSourceStability({
+  baselineSource = null,
+  coverage = null,
+  servedAtStart = null,
+  servedAtEnd = null,
+  worktreeStable = false,
+  uncoveredWorktreeStable = null,
+  uncoveredHeadStable = null,
+} = {}) {
+  if (!baselineSource) {
+    return {
+      mode: 'worktree',
+      overlayCoversRuntime: false,
+      worktreeStable: worktreeStable === true,
+      servedSourceStable: null,
+      uncoveredWorktreeStable: null,
+      uncoveredHeadStable: null,
+      pass: worktreeStable === true,
+    };
+  }
+  const overlayCoversRuntime = coverage?.fullRuntime === true;
+  const servedSourceStable = sourceOverlayIdentityMatches(baselineSource.identity, servedAtStart)
+    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd);
+  const uncoveredStable = uncoveredWorktreeStable === true;
+  const headStable = uncoveredHeadStable === true;
+  return {
+    mode: overlayCoversRuntime ? 'served-overlay' : 'worktree',
+    overlayCoversRuntime,
+    worktreeStable: worktreeStable === true,
+    servedSourceStable,
+    uncoveredWorktreeStable: overlayCoversRuntime ? uncoveredStable : null,
+    uncoveredHeadStable: overlayCoversRuntime ? headStable : null,
+    pass: overlayCoversRuntime
+      ? (servedSourceStable && uncoveredStable && headStable)
+      : (worktreeStable === true && servedSourceStable),
+  };
+}
+
+async function readServedSourceOverlayIdentity(page, expected) {
+  if (!expected) return null;
+  const observed = await page.evaluate(async () => {
+    const response = await fetch('/__source_overlay_identity', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`source overlay identity endpoint returned ${response.status}`);
+    return response.json();
+  });
+  const compact = compactSourceOverlayIdentity(observed);
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  const mismatch = fields.find((field) => compact?.[field] !== expected.identity?.[field]);
+  if (mismatch) {
+    throw new Error(`served source overlay identity mismatch at ${mismatch}: expected ${JSON.stringify(expected.identity)} got ${JSON.stringify(compact)}`);
+  }
+  return compact;
+}
+
 async function launchElectron(
   root,
   onOwnership = () => {},
   taskId = 'release-soak-electron',
-  { enableTier1Counters = false } = {},
+  { enableTier1Counters = false, baselineSourcePath = null } = {},
 ) {
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
   // 240 s launch bound: on a host running other lanes' headed checks, the Electron driver
   // handshake (ws connect -> app ready) can starve past the 90 s default before the first
   // window even exists — the third busy-host boot seam tonight (goto, load-state, launch).
-  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId, timeout: 240_000 });
+  const baseEnv = { ...process.env };
+  if (baselineSourcePath) baseEnv.SPACEFACE_BASELINE_SOURCE_MANIFEST = baselineSourcePath;
+  else delete baseEnv.SPACEFACE_BASELINE_SOURCE_MANIFEST;
+  const isolatedLaunch = createIsolatedElectronLaunch({
+    root,
+    taskId,
+    timeout: 240_000,
+    baseEnv,
+  });
   // Omit executablePath intentionally. Playwright resolves this already-verified package and,
   // only on that package-resolution path, installs its Electron readiness loader before app
   // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
@@ -1615,7 +1890,195 @@ async function captureCycleStateDiag(page) {
   });
 }
 
-async function runSoakCycle(page, { index, outputDir, log, screenshots = true }) {
+const RESTORE_POPULATION_SAMPLE_LIMIT = 16;
+const RESTORE_POPULATION_TYPE_LIMIT = 32;
+
+function restorePopulationIdentity(row) {
+  if (!row || typeof row !== 'object') return null;
+  const worldRecordId = row.worldRecordId ?? row.data?.worldRecordId;
+  if (worldRecordId != null && (typeof worldRecordId === 'string' || typeof worldRecordId === 'number')) {
+    return `record:${String(worldRecordId)}`;
+  }
+  if (row.id != null && (typeof row.id === 'string' || typeof row.id === 'number')) {
+    return `id:${String(row.id)}`;
+  }
+  return null;
+}
+
+function compactRestorePopulationEntity(row) {
+  if (!row || typeof row !== 'object') return { id: null, type: null, worldRecordId: null, occupantGeneration: null };
+  return {
+    id: row.id ?? null,
+    type: row.type || null,
+    worldRecordId: row.worldRecordId ?? row.data?.worldRecordId ?? null,
+    occupantGeneration: row.occupantGeneration ?? row.data?.occupantGeneration ?? null,
+  };
+}
+
+/**
+ * Compare the durable entity rows in the slot envelope with the live list immediately after
+ * restore. The saved envelope intentionally contains only the player and persistent rows;
+ * regenerated sector bodies therefore remain visible in the bounded diagnostic as expected
+ * materialization rather than being mistaken for a save leak. This helper owns no game state.
+ */
+function summarizeRestorePopulation({
+  loadedSlot = null,
+  envelopeAvailable = true,
+  envelopeEntities = [],
+  postLoadEntities = [],
+} = {}) {
+  const savedRows = Array.isArray(envelopeEntities) ? envelopeEntities.filter(Boolean) : [];
+  const postRows = Array.isArray(postLoadEntities) ? postLoadEntities.filter(Boolean) : [];
+  const base = {
+    loadedSlot: loadedSlot || null,
+    envelopeAvailable: envelopeAvailable === true,
+    envelopeEntityCount: envelopeAvailable === true ? savedRows.length : null,
+    postLoadEntityCount: postRows.length,
+    delta: envelopeAvailable === true ? postRows.length - savedRows.length : null,
+    newlyMaterialized: null,
+  };
+  if (envelopeAvailable !== true || postRows.length <= savedRows.length) return base;
+
+  const savedKeys = new Set(savedRows.map(restorePopulationIdentity).filter(Boolean));
+  const extras = [];
+  for (const row of postRows) {
+    const key = restorePopulationIdentity(row);
+    if (key && savedKeys.has(key)) continue;
+    extras.push(row);
+  }
+  const byType = Object.create(null);
+  for (const row of extras) {
+    const type = String(row?.type || 'unknown');
+    byType[type] = (byType[type] || 0) + 1;
+  }
+  const typeEntries = Object.entries(byType).sort(([a], [b]) => a.localeCompare(b));
+  base.newlyMaterialized = {
+    count: extras.length,
+    byType: Object.fromEntries(typeEntries.slice(0, RESTORE_POPULATION_TYPE_LIMIT)),
+    omittedTypeCount: Math.max(0, typeEntries.length - RESTORE_POPULATION_TYPE_LIMIT),
+    samples: extras.slice(0, RESTORE_POPULATION_SAMPLE_LIMIT).map(compactRestorePopulationEntity),
+  };
+  return base;
+}
+
+const IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT = 2_048;
+
+/**
+ * Return a bounded identity for one serialized save envelope. The raw payload is deliberately
+ * not retained in evidence: its digest proves the exact bytes while the compact envelope rows
+ * make a repeated-load population mismatch actionable.
+ */
+export function summarizeSaveEnvelope(raw, { slot = 'quick' } = {}) {
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return {
+      available: false,
+      slot: slot || null,
+      serializedIdentity: null,
+      envelopeIdentity: null,
+      envelopeEntities: [],
+    };
+  }
+  const serializedIdentity = {
+    sha256: createHash('sha256').update(raw, 'utf8').digest('hex'),
+    bytes: Buffer.byteLength(raw, 'utf8'),
+  };
+  try {
+    const envelope = JSON.parse(raw);
+    const player = envelope?.data?.entities?.player;
+    const persistent = Array.isArray(envelope?.data?.entities?.persistent)
+      ? envelope.data.entities.persistent : [];
+    const envelopeEntities = [player, ...persistent]
+      .map(compactRestorePopulationEntity)
+      .filter((row) => row.id != null || row.worldRecordId != null);
+    return {
+      available: true,
+      slot: slot || null,
+      serializedIdentity,
+      envelopeIdentity: {
+        fmt: envelope?.fmt ?? null,
+        version: envelope?.version ?? envelope?.data?.version ?? null,
+        savedAt: envelope?.data?.meta?.savedAt ?? envelope?.savedAt ?? null,
+        tick: envelope?.data?.meta?.tick ?? envelope?.data?.tick ?? envelope?.tick ?? null,
+        simTime: envelope?.data?.meta?.simTime ?? envelope?.data?.simTime ?? envelope?.simTime ?? null,
+        checksum: envelope?.checksum ?? null,
+      },
+      envelopeEntities: envelopeEntities.slice(0, IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+      omittedEntityCount: Math.max(0, envelopeEntities.length - IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+    };
+  } catch (_) {
+    return {
+      available: false,
+      slot: slot || null,
+      serializedIdentity,
+      envelopeIdentity: null,
+      envelopeEntities: [],
+      parseError: true,
+    };
+  }
+}
+
+async function readSaveEnvelopeSnapshot(page, slot = 'quick') {
+  const raw = await page.evaluate((saveSlot) => {
+    try { return localStorage.getItem(`sf.save.${saveSlot}`); } catch (_) { return null; }
+  }, slot).catch(() => null);
+  return summarizeSaveEnvelope(raw, { slot });
+}
+
+function populationIdentityRows(rows) {
+  const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  return list.slice(0, IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT).map((row) => ({
+    key: restorePopulationIdentity(row),
+    ...compactRestorePopulationEntity(row),
+  }));
+}
+
+/**
+ * Compare the same fixed save envelope with each post-load materialized entity list. This is a
+ * diagnostic witness only: it does not decide whether regenerated sector bodies are a leak.
+ */
+export function summarizeImmutableSavePopulation({
+  savedEnvelopeEntities = [],
+  postLoadEntities = [],
+} = {}) {
+  const baseRows = Array.isArray(savedEnvelopeEntities) ? savedEnvelopeEntities.filter(Boolean) : [];
+  const postRows = Array.isArray(postLoadEntities) ? postLoadEntities.filter(Boolean) : [];
+  const baseKeys = new Set(baseRows.map(restorePopulationIdentity).filter(Boolean));
+  const postKeys = new Set(postRows.map(restorePopulationIdentity).filter(Boolean));
+  const extras = postRows.filter((row) => {
+    const key = restorePopulationIdentity(row);
+    return !key || !baseKeys.has(key);
+  });
+  const byType = Object.create(null);
+  for (const row of extras) {
+    const type = String(row?.type || 'unknown');
+    byType[type] = (byType[type] || 0) + 1;
+  }
+  const typeEntries = Object.entries(byType).sort(([a], [b]) => a.localeCompare(b));
+  return {
+    baseEntityCount: baseRows.length,
+    postLoadEntityCount: postRows.length,
+    delta: postRows.length - baseRows.length,
+    baseIdentities: populationIdentityRows(baseRows),
+    postLoadIdentities: populationIdentityRows(postRows),
+    omittedBaseIdentityCount: Math.max(0, baseRows.length - IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+    omittedPostLoadIdentityCount: Math.max(0, postRows.length - IMMUTABLE_SAVE_ENTITY_REPORT_LIMIT),
+    newlyMaterialized: {
+      count: extras.length,
+      byType: Object.fromEntries(typeEntries),
+      samples: populationIdentityRows(extras).slice(0, RESTORE_POPULATION_SAMPLE_LIMIT),
+    },
+    stableBaseIdentitySet: baseRows.length <= postRows.length
+      && [...baseKeys].every((key) => postKeys.has(key)),
+  };
+}
+
+async function runSoakCycle(page, {
+  index,
+  outputDir,
+  log,
+  screenshots = true,
+  fixedSave = null,
+}) {
   const marks = [];
   const samples = [];
   const mark = (name, detail = {}) => {
@@ -1672,36 +2135,69 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   await sampleDiagnostics(page, samples);
 
   await armSaveLoadObservers(page);
-  await transition('save-write');
-  await page.keyboard.press('F5');
-  try {
-    await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.saved === true && !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
-  } catch (saveWaitError) {
-    const diag = await page.evaluate(() => {
-      let storageBytes = 0;
-      try { for (let i = 0; i < localStorage.length; i += 1) storageBytes += (localStorage.getItem(localStorage.key(i)) || '').length; } catch { /* ignore */ }
-      const state = window.SF?.state;
-      return {
-        errors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
-        startedSnapshotCaptured: !!window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot,
-        storageBytes,
-        mode: state?.mode || null,
-        run: state?.run ? { kind: state.run.kind, phase: state.run.phase } : null,
-        docked: state?.ui?.docked ?? null,
-        playerId: state?.playerId || null,
-        hasPlayerEntity: !!(state?.entities?.get?.(state.playerId)),
-      };
-    }).catch(() => null);
-    throw new Error(`quick-save wait timed out: ${JSON.stringify(diag)} (cause: ${saveWaitError?.message || saveWaitError})`);
+  let saved;
+  let savedStorage;
+  let saveEnvelope;
+  if (fixedSave) {
+    // The immutable diagnostic deliberately skips F5 after its first cycle. F9 is still the
+    // public quick-load binding, so every iteration reads the same slot without private state
+    // writes. Verify the bytes before the load as well as after it to catch autosave overlap.
+    const observed = await readSaveEnvelopeSnapshot(page, fixedSave.slot || 'quick');
+    assert(observed.available === true, 'fixed quick-save envelope disappeared before reload');
+    saved = fixedSave.saved;
+    savedStorage = {
+      bytes: observed.serializedIdentity?.bytes || 0,
+      slot: observed.slot,
+    };
+    saveEnvelope = observed;
+    mark('save-reused', {
+      ...savedStorage,
+      serializedIdentity: observed.serializedIdentity,
+      unchangedBeforeLoad: observed.serializedIdentity?.sha256 === fixedSave.envelope?.serializedIdentity?.sha256,
+    });
+  } else {
+    await transition('save-write');
+    await page.keyboard.press('F5');
+    try {
+      await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.saved === true && !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
+    } catch (saveWaitError) {
+      const diag = await page.evaluate(() => {
+        let storageBytes = 0;
+        try { for (let i = 0; i < localStorage.length; i += 1) storageBytes += (localStorage.getItem(localStorage.key(i)) || '').length; } catch { /* ignore */ }
+        const state = window.SF?.state;
+        return {
+          errors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
+          startedSnapshotCaptured: !!window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot,
+          storageBytes,
+          mode: state?.mode || null,
+          run: state?.run ? { kind: state.run.kind, phase: state.run.phase } : null,
+          docked: state?.ui?.docked ?? null,
+          playerId: state?.playerId || null,
+          hasPlayerEntity: !!(state?.entities?.get?.(state.playerId)),
+        };
+      }).catch(() => null);
+      throw new Error(`quick-save wait timed out: ${JSON.stringify(diag)} (cause: ${saveWaitError?.message || saveWaitError})`);
+    }
+    await transition(null);
+    saved = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null);
+    assert(saved?.pos, 'save:started observer must capture the exact serialized player pose');
+    assert(saved?.economy, 'save:started observer must capture the serialized economy state');
+    const saveCompletedPose = await readPlayerSnapshot(page);
+    saveEnvelope = await readSaveEnvelopeSnapshot(page, 'quick');
+    savedStorage = {
+      bytes: saveEnvelope.serializedIdentity?.bytes || 0,
+      slot: saveEnvelope.slot,
+    };
+    assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
+    assert(saveEnvelope.available === true, 'quick-save envelope could not be parsed');
+    mark('save-written', {
+      ...savedStorage,
+      saved,
+      saveCompletedPose,
+      serializedIdentity: saveEnvelope.serializedIdentity,
+      completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos),
+    });
   }
-  await transition(null);
-  const saved = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null);
-  assert(saved?.pos, 'save:started observer must capture the exact serialized player pose');
-  assert(saved?.economy, 'save:started observer must capture the serialized economy state');
-  const saveCompletedPose = await readPlayerSnapshot(page);
-  const savedStorage = await page.evaluate(() => ({ bytes: localStorage.getItem('sf.save.quick')?.length || 0, slot: window.SF?.state?.save?.currentSlot || null }));
-  assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
-  mark('save-written', { ...savedStorage, saved, saveCompletedPose, completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos) });
 
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(650);
@@ -1764,35 +2260,82 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   // the envelope for the slot actually loaded is the authoritative restore reference. Keep the
   // event snapshots as diagnostics, but never compare them as if they were worker-owned bytes.
   const loadedEnvelope = await page.evaluate((slot) => {
+    const compactEntity = (entity) => entity ? {
+      id: entity.id ?? null,
+      type: entity.type || null,
+      worldRecordId: entity.data?.worldRecordId ?? entity.worldRecordId ?? null,
+      occupantGeneration: entity.occupantGeneration ?? entity.data?.occupantGeneration ?? null,
+    } : null;
+    const postLoadEntities = Array.isArray(window.SF?.state?.entityList)
+      ? window.SF.state.entityList.map(compactEntity).filter(Boolean)
+      : [];
     const raw = slot ? localStorage.getItem('sf.save.' + slot) : null;
-    if (!raw) return null;
+    if (!raw) return { available: false, postLoadEntities };
     try {
       const env = JSON.parse(raw);
       const player = env?.data?.entities?.player;
+      const persistent = Array.isArray(env?.data?.entities?.persistent)
+        ? env.data.entities.persistent : [];
       const items = env?.data?.cargo?.items || {};
       return {
+        available: true,
         pos: player?.pos ? { x: Number(player.pos.x), z: Number(player.pos.z) } : null,
         speed: Math.hypot(Number(player?.vel?.x || 0), Number(player?.vel?.z || 0)),
         economy: {
           credits: Number(env?.data?.player?.credits),
           cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
         },
+        envelopeEntities: [player, ...persistent].map(compactEntity).filter(Boolean),
+        postLoadEntities,
       };
-    } catch { return null; }
+    } catch { return { available: false, postLoadEntities };
+    }
   }, loadedSlot);
-  const restoreReference = loadedEnvelope || saved;
+  const loadedEnvelopeSnapshot = await readSaveEnvelopeSnapshot(page, fixedSave?.slot || loadedSlot || 'quick');
+  const fixedSaveUnchanged = fixedSave
+    ? loadedEnvelopeSnapshot.available === true
+      && loadedEnvelopeSnapshot.serializedIdentity?.sha256 === fixedSave.envelope?.serializedIdentity?.sha256
+    : true;
+  if (fixedSave && !fixedSaveUnchanged) {
+    mark('fixed-save-mutated', {
+      expected: fixedSave.envelope?.serializedIdentity || null,
+      observed: loadedEnvelopeSnapshot.serializedIdentity || null,
+    });
+  }
+  loadedEnvelope.serializedIdentity = loadedEnvelopeSnapshot.serializedIdentity || null;
+  loadedEnvelope.envelopeIdentity = loadedEnvelopeSnapshot.envelopeIdentity || null;
+  loadedEnvelope.slot = loadedSlot || loadedEnvelopeSnapshot.slot || null;
+  const restoreReference = loadedEnvelope?.available === true ? loadedEnvelope : saved;
   assert(restoreReference?.pos, `loaded slot envelope must carry the restored pose (slot ${loadedSlot || 'unknown'})`);
+  const restorePopulation = summarizeRestorePopulation({
+    loadedSlot,
+    envelopeAvailable: loadedEnvelope?.available === true,
+    envelopeEntities: loadedEnvelope?.envelopeEntities || [],
+    postLoadEntities: loadedEnvelope?.postLoadEntities || [],
+  });
   const loadedEconomy = await readEconomySnapshot(page);
   const divergedDistance = distance(saved.pos, diverged.pos);
   const restoredDistance = distance(restoreReference.pos, loadedAtEvent.pos);
   const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
-  mark('load-observed', { saved, loadedSlot, diverged, loadedAtEvent, loaded, divergedDistance, restoredDistance, postLoadAdvanceDistance });
+  mark('load-observed', {
+    saved,
+    loadedSlot,
+    diverged,
+    loadedAtEvent,
+    loaded,
+    divergedDistance,
+    restoredDistance,
+    postLoadAdvanceDistance,
+    fixedSaveUnchanged,
+    serializedIdentity: loadedEnvelope.serializedIdentity,
+    restorePopulation,
+  });
   assert(
     restoredDistance <= (loadedSlot === 'quick' ? Math.max(1, divergedDistance * 0.25) : 1),
     `load position restore exceeded tolerance: ${JSON.stringify({ loadedSlot, restoredDistance, divergedDistance, saved, diverged, loaded })}`,
   );
   assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
-  mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance });
+  mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance, restorePopulation });
   // The honest roundtrip check: live economy at the save:loaded event instant must equal
   // the envelope that was loaded. The later readEconomySnapshot stays diagnostic-only —
   // gameplay keeps running after restore and can legitimately grant cargo before it.
@@ -2085,7 +2628,24 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
 
   const markNames = marks.map((entry) => entry.name);
   return {
-    summary: { index, pass: true, docked: true, marks: markNames, sampleCount: samples.length, saveBytes: savedStorage.bytes, screenshot },
+    summary: {
+      index,
+      pass: true,
+      docked: true,
+      marks: markNames,
+      sampleCount: samples.length,
+      saveBytes: savedStorage.bytes,
+      restorePopulation,
+      fixedSaveUnchanged,
+      saveSerializedIdentity: saveEnvelope.serializedIdentity,
+      loadedSerializedIdentity: loadedEnvelope.serializedIdentity,
+      screenshot,
+    },
+    saved,
+    saveEnvelope,
+    loadedEnvelope,
+    fixedSaveUnchanged,
+    restorePopulation,
     marks,
     samples,
     screenshot,
@@ -4642,6 +5202,61 @@ async function captureHeapSnapshot(page, filePath) {
   }
 }
 
+export function canonicalPostGcOwnerRows(diagnostics, limit = POST_GC_OWNER_ROW_LIMIT) {
+  const sourceRows = Array.isArray(diagnostics?.owners) ? diagnostics.owners : null;
+  if (!sourceRows) return null;
+  const requestedLimit = Number(limit);
+  const rowLimit = Number.isFinite(requestedLimit)
+    ? Math.max(0, Math.floor(requestedLimit))
+    : POST_GC_OWNER_ROW_LIMIT;
+  const reportedOwnerCount = diagnostics?.ownerCount;
+  const numericOwnerCount = reportedOwnerCount !== null
+    && reportedOwnerCount !== undefined
+    && reportedOwnerCount !== ''
+    && Number.isFinite(Number(reportedOwnerCount))
+    ? Number(reportedOwnerCount)
+    : sourceRows.length;
+  const rows = sourceRows.slice(0, rowLimit).map((row) => {
+    const owner = typeof row?.owner === 'string' ? row.owner : null;
+    const ownerName = typeof row?.ownerName === 'string' ? row.ownerName : null;
+    const contentHash = typeof row?.contentHash === 'string' ? row.contentHash : null;
+    const ownerId = row?.ownerId !== null && row?.ownerId !== undefined && String(row.ownerId) !== ''
+      ? String(row.ownerId)
+      : null;
+    const apiIdentity = typeof row?.identity === 'string' && row.identity ? row.identity : null;
+    const identity = ownerId || apiIdentity;
+    const identityLabel = [owner, ownerName, contentHash].filter(Boolean).join('|') || null;
+    const role = Array.isArray(row?.roles)
+      ? [...new Set(row.roles.filter((value) => typeof value === 'string' && value))].sort()
+      : [];
+    const assets = Number(row?.assets);
+    const bytes = Number(row?.bytes);
+    return {
+      identity,
+      identityLabel,
+      identityAmbiguous: identity === null && identityLabel !== null,
+      role,
+      contentHash,
+      released: row?.released === true,
+      assets: Number.isFinite(assets) ? assets : null,
+      bytes: Number.isFinite(bytes) ? bytes : null,
+    };
+  }).sort((a, b) => (
+    (b.bytes ?? -1) - (a.bytes ?? -1)
+      || String(a.identity || a.identityLabel || '').localeCompare(String(b.identity || b.identityLabel || ''))
+      || JSON.stringify(a.role).localeCompare(JSON.stringify(b.role))
+  ));
+  return {
+    ownerCount: numericOwnerCount,
+    truncated: numericOwnerCount > rows.length,
+    rows,
+  };
+}
+
+export function postGcOwnerEvaluateArgument(phaseTag, ownerRowLimit = POST_GC_OWNER_ROW_LIMIT) {
+  return { phaseTag, ownerRowLimit };
+}
+
 async function readPostGcMemorySnapshot(page, phaseTag) {
   // The forced GC is measurement apparatus: pause the soak-window hitch register so a
   // stop-the-world collect is not billed to the game as a gameplay hitch.
@@ -4658,10 +5273,15 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
     await cdp?.detach().catch(() => {});
     await setSoakPaused(page, false);
   }
-  return page.evaluate((tag) => {
+  const snapshot = await page.evaluate(({ phaseTag: tag, ownerRowLimit }) => {
     const report = window.__THREE_GAME_DIAGNOSTICS__?.getReport?.();
     const heap = performance?.memory;
     const state = window.SF?.state;
+    const renderSystem = window.SF?.registry?.get?.('render');
+    const residency = renderSystem?._assetResidency;
+    const ownerDiagnostics = residency && typeof residency.diagnostics === 'function'
+      ? residency.diagnostics({ canonical: true, includeEvents: false, includeOwners: true })
+      : null;
     return {
       phaseTag: tag,
       at: new Date().toISOString(),
@@ -4685,9 +5305,23 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
         : null,
       entities: finiteOrNull(state?.entityList?.length),
       assetResidency: state?.render?.assetResidency || null,
+      assetResidencyOwnerDiagnostics: ownerDiagnostics
+        ? {
+            ownerCount: finiteOrNull(ownerDiagnostics.ownerCount),
+            owners: Array.isArray(ownerDiagnostics.owners)
+              ? ownerDiagnostics.owners.slice(0, ownerRowLimit)
+              : null,
+          }
+        : null,
     };
     function finiteOrNull(value) { const number = Number(value); return Number.isFinite(number) ? number : null; }
-  }, phaseTag);
+  }, postGcOwnerEvaluateArgument(phaseTag));
+  const ownerDiagnostics = snapshot.assetResidencyOwnerDiagnostics;
+  delete snapshot.assetResidencyOwnerDiagnostics;
+  return {
+    ...snapshot,
+    assetResidencyOwners: canonicalPostGcOwnerRows(ownerDiagnostics),
+  };
 }
 
 async function readSettingsTruth(page) {
@@ -6658,6 +7292,7 @@ export {
   // release soak. Keep this export harness-only; it does not create a second game path.
   launchElectron,
   allocateOutputDir,
+  summarizeRestorePopulation,
   sampleRafWindow,
   samplePerformanceAttribution,
   performanceAttributionExecutionPlan,

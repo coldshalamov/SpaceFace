@@ -76,6 +76,13 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const pageEvents = new Set();
   const activeRequests = new Set();
   const requestProvenance = new WeakMap();
+  const pendingStoreRequests = new Map();
+  // Electron can deliver requestfinished before a response wrapper is handed to the
+  // application-wide listener. Keep the exact store request metadata through that
+  // boundary so a methodless response can still be classified from its own request.
+  // Entries are retired when their response (or failure) is observed; an unknown or
+  // ambiguous method remains fatal rather than falling back to GET.
+  const completedStoreRequests = new Map();
   const expectedNavigationAborts = new Map();
   const expectedNavigationTokens = new Map();
   let nextExpectedNavigationToken = 1;
@@ -151,15 +158,33 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       });
     }
     activeRequests.add(request);
+    if (allowAbsentPlayerStore) {
+      const url = String(readMaybeFunction(request, 'url') || '');
+      if (isPlayerStorePath(url)) {
+        const rawMethod = readMaybeFunction(request, 'method');
+        const method = rawMethod == null ? null : String(rawMethod).toUpperCase();
+        // Backfill can replay the same request object after its live lifecycle has
+        // already moved it to the completed map. Keep one authoritative entry.
+        completedStoreRequests.delete(request);
+        pendingStoreRequests.set(request, { url, method: method || null });
+      }
+    }
     if (expectedNavigationTokens.size > 0) {
       const labels = expectedNavigationAborts.get(request) || new Set();
       for (const label of expectedNavigationTokens.values()) labels.add(label);
       expectedNavigationAborts.set(request, labels);
     }
   };
-  const completeRequest = (request) => {
+  const completeRequest = (request, { retainStoreResponse = true } = {}) => {
     activeRequests.delete(request);
     expectedNavigationAborts.delete(request);
+    const storeEntry = pendingStoreRequests.get(request);
+    pendingStoreRequests.delete(request);
+    if (retainStoreResponse && storeEntry) {
+      completedStoreRequests.set(request, storeEntry);
+    } else {
+      completedStoreRequests.delete(request);
+    }
   };
   const recordFailedRequest = (request, failedEventObserved = false) => {
     const failure = readMaybeFunction(request, 'failure');
@@ -172,7 +197,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       resourceType: readMaybeFunction(request, 'resourceType') || 'unknown',
       url: readMaybeFunction(request, 'url') || '',
     };
-    completeRequest(request);
+    completeRequest(request, { retainStoreResponse: false });
     if (!markOnce(seenFailedRequests, request)) return;
     const issue = {
       source: 'request',
@@ -204,19 +229,25 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       // than a loose count of all 404s in the application.
       flushPendingGenericNotFoundConsoles();
       const issue = { source: 'response', level: 'error', text: `HTTP ${status} ${url}` };
-      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url)) {
+      const fallbackStoreMethod = allowAbsentPlayerStore
+        ? resolvePendingStoreRequestMethod(response, url, pendingStoreRequests, completedStoreRequests)
+        : null;
+      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url, fallbackStoreMethod)) {
         expectedAbsentStoreConsoleTokens += 1;
         pushIgnored(issue, { absentPlayerStore: true });
+        retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests);
         return;
       }
       // A different response between the exact store response and its console twin makes
       // the generic message ambiguous; leave the next one strict as well.
       expectedAbsentStoreConsoleTokens = 0;
       push(issue);
+      retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests);
     } else {
       // A successful/intermediate response between the exact store response and its
       // console twin makes the next generic 404 ambiguous, so fail closed.
       expectedAbsentStoreConsoleTokens = 0;
+      retireStoreResponse(response, readMaybeFunction(response, 'url') || '', pendingStoreRequests, completedStoreRequests);
     }
   };
   const bindPage = (page) => {
@@ -349,6 +380,8 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       flushPendingGenericNotFoundConsoles();
       if (!stopped) {
         for (const remove of removers.splice(0)) remove();
+        pendingStoreRequests.clear();
+        completedStoreRequests.clear();
         stopped = true;
       }
       return issues.slice();
@@ -365,20 +398,55 @@ function isGenericNotFoundConsole(text) {
     .test(String(text || '').trim());
 }
 
-function isAbsentPlayerStoreGetResponse(response, status, url) {
+function isAbsentPlayerStoreGetResponse(response, status, url, fallbackMethod = null) {
   if (status !== 404) return false;
-  let pathname = '';
-  try {
-    pathname = new URL(String(url || '')).pathname;
-  } catch (_) {
-    return false;
-  }
-  if (pathname !== '/__spaceface_player_store') return false;
+  if (!isPlayerStorePath(url)) return false;
   const request = readMaybeFunction(response, 'request');
-  const method = String(readMaybeFunction(request, 'method') || '').toUpperCase();
+  const responseMethod = readMaybeFunction(request, 'method');
+  const method = String(responseMethod || fallbackMethod || '').toUpperCase();
   // Playwright responses expose request(); without a method there is no safe way to
   // distinguish the optional bootstrap GET from a failed write, so keep it fatal.
   return method === 'GET';
+}
+
+function isPlayerStorePath(url) {
+  try {
+    return new URL(String(url || '')).pathname === '/__spaceface_player_store';
+  } catch (_) {
+    return false;
+  }
+}
+
+function resolvePendingStoreRequestMethod(response, url, pendingRequests, completedRequests = null) {
+  if (!isPlayerStorePath(url)) return null;
+  const responseRequest = readMaybeFunction(response, 'request');
+  const maps = [pendingRequests, completedRequests].filter(Boolean);
+  const direct = maps.map((requests) => requests.get(responseRequest)).find(Boolean);
+  if (direct?.method) return direct.method;
+  const matching = maps.flatMap((requests) => [...requests.values()]).filter((entry) => entry.url === url);
+  // Any unknown or multiple same-URL requests make the fallback ambiguous. Keep the
+  // response fatal rather than allowing a GET to hide a write or another failure.
+  return matching.length === 1 && matching[0].method ? matching[0].method : null;
+}
+
+function retireStoreResponse(response, url, pendingRequests, completedRequests) {
+  if (!isPlayerStorePath(url)) return;
+  const responseRequest = readMaybeFunction(response, 'request');
+  for (const requests of [pendingRequests, completedRequests]) {
+    if (requests?.has(responseRequest)) {
+      requests.delete(responseRequest);
+      return;
+    }
+  }
+  const matches = [pendingRequests, completedRequests]
+    .filter(Boolean)
+    .flatMap((requests) => [...requests.entries()])
+    .filter(([, entry]) => entry.url === url);
+  if (matches.length === 1) {
+    const [request] = matches[0];
+    pendingRequests.delete(request);
+    completedRequests?.delete(request);
+  }
 }
 
 function isCancelledCinematicMediaRequest(request, failure) {

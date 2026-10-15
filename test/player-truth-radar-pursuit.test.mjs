@@ -138,10 +138,10 @@ test('the actor pursues the actual public radar bearing, then reacquires a canva
       courseText: radarHostileCourseText([{ x: 50, y: 10 }], 50), mode: 'flight', simTime: 10 });
     assert.equal((await readTarget()).radarRel, Math.PI / 2, 'the visible 12 oclock bearing maps to +Z');
     await fightBeat(page, 0);
-    assert.deepEqual(keys, ['KeyD', 'KeyW', 'ShiftLeft']); assert.equal(fireDown, 0);
+    assert.deepEqual(keys, ['KeyW', 'KeyD', 'ShiftLeft']); assert.equal(fireDown, 0);
     assert.ok(state.simTime >= 12.4 && state.simTime <= 12.8, 'the fresh public course gets a sustained bounded chase');
-    assert.ok(history.some(sample => sample.held.includes('KeyD') && !sample.held.includes('KeyW')),
-      'the actor turns onto a large radar error before adding more translation');
+    assert.ok(history.some(sample => sample.held.includes('KeyD') && sample.held.includes('KeyW')),
+      'the actor keeps public forward thrust while turning onto a large radar error');
     assert.ok(history.some(sample => sample.held.includes('KeyW')),
       'forward resumes after the nose reaches the public course');
     const boostSamples = history.filter(sample => sample.held.includes('ShiftLeft')).length;
@@ -185,7 +185,8 @@ for (const interruption of ['stale', 'visible', 'error']) test(`sustained radar 
       state.entityList.push({ id: 2, alive: true, type: 'ship', team: 3, pos: { x: 10, z: 0 }, data: { runRole: 'enemy' } });
       state.render.meshes.set(2, { visible: true, matrixWorld: { x: 10, z: 0 } });
     }
-  }, keyboard: { down: async key => held.add(key), up: async key => held.delete(key) } };
+  }, keyboard: { down: async key => held.add(key), up: async key => held.delete(key), press: async () => {} },
+    mouse: { move: async () => {}, click: async () => {}, down: async () => {}, up: async () => {} } };
   try {
     globalThis.window = { SF: { THREE: { Vector3 }, state } };
     globalThis.document = { elementFromPoint: () => canvas,
