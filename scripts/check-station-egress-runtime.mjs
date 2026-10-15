@@ -152,6 +152,16 @@ try {
 
   // ---- committed undock via the fascia launch control returns to flight ----
   await domClick(page, '[data-screen="station"] .sxb-launch[data-act="undock"]');
+  // Check/Risk opens the same public departure confirmation exercised above. A tracked
+  // first-session contract can make this berth non-ready; confirm it before expecting exit.
+  const departureLaunch = '.sx-pop--dep:not([hidden]) [data-pop-launch]';
+  await page.waitForFunction((selector) => !!document.querySelector(selector)
+    || window.SF.state.ui.docked === false, departureLaunch, { timeout: DOCK_TIMEOUT_MS });
+  if (await page.locator(departureLaunch).count()) {
+    assert.match(await page.locator(departureLaunch).getAttribute('data-control-label'), /^(Launch anyway|Undock)$/i,
+      'departure confirmation must offer an explicit launch');
+    await domClick(page, departureLaunch);
+  }
   await page.waitForFunction(() => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
