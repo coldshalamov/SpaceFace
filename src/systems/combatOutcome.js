@@ -266,7 +266,10 @@ export const combatOutcome = {
     const list = indexedShipLikeScan(state);
     let recorded = 0;
     for (const entity of list) {
-      if (!entity || !entity.alive || own.byEntity[entity.id]) continue;
+      if (!entity || !entity.alive) continue;
+      // A recycled id still has the previous ship's receipt. Only that same occupant is settled.
+      const prior = own.byEntity[entity.id];
+      if (prior && sameOccupant(prior, entity)) continue;
       const ai = entity.data && entity.data.ai;
       if (ai && (ai.forceFlee || ai.fsm === 'flee') && isCandidate(entity, state)) {
         this._record(entity, { entityId: entity.id, sourceEvent: 'forceFlee' }, 'fled', ai.forceFlee ? 'forceFlee' : 'fsm:flee');

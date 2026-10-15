@@ -5,7 +5,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { aftermathChoices, applyAftermathChoice } from '../src/combat/aftermathChoices.js';
-import { combatOutcome } from '../src/systems/combatOutcome.js';
+import { combatOutcome, setCombatOutcomeQuietLatchForBench } from '../src/systems/combatOutcome.js';
 import { createAftermathChoicePrompt } from '../src/ui/aftermathChoicePrompt.js';
 
 const SECTOR = 'sector_tethys_junction';
@@ -204,6 +204,42 @@ test('a recycled id does not revive the chase', () => {
   assert.equal(replaced.outcome, 'fled');
   assert.equal(h.state.combatOutcome.aftermath.targets.pursuit, next.id);
   assert.equal(h.state.paused, undefined);
+});
+
+test('a recycled id that bolts without a flee event becomes the chase', () => {
+  setCombatOutcomeQuietLatchForBench(false);
+  try {
+    const h = makeHarness();
+    const runner = spawnHostile(h, 800);
+    const oldId = runner.id;
+    const oldGeneration = runner.occupantGeneration;
+    h.bus.emit('ai:flee', { entityId: oldId });
+    runner.alive = false;
+    h.state.entities.delete(oldId);
+    h.bus.emit('entity:destroyed', { id: oldId, entity: runner, reason: 'egress' });
+    const next = h.helpers.spawnEntity({
+      id: oldId,
+      type: 'ship', pos: { x: 960, z: 20 }, vel: { x: 0, z: 0 }, team: 1,
+      hull: 80, hullMax: 80,
+      data: { ai: { passive: true, hostileTeams: [0], forceFlee: true }, name: 'Next' },
+    });
+    h.ships.push(next);
+    h.state.entityIndex.ships = h.ships;
+    h.state.entityIndex.shipLike = h.ships;
+    for (let i = 0; i < 4; i++) {
+      h.state.tick += 1;
+      h.state.simTime += 1 / 60;
+      h.sys.update(1 / 60, h.state);
+    }
+    const receipt = h.state.combatOutcome.byEntity[oldId];
+    assert.equal(receipt.occupantGeneration, next.occupantGeneration);
+    assert.notEqual(receipt.occupantGeneration, oldGeneration);
+    assert.equal(receipt.outcome, 'fled');
+    assert.equal(h.state.combatOutcome.aftermath.targets.pursuit, next.id);
+    assert.equal(h.state.paused, undefined);
+  } finally {
+    setCombatOutcomeQuietLatchForBench(true);
+  }
 });
 
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
