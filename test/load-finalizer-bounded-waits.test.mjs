@@ -12,11 +12,11 @@
 //      The saveSystem half of that landing is already covered behaviorally by
 //      test/time-effects.test.mjs ("current finalizer failure must surface exactly once").
 //
-//   2. The one owner-side await with no internal bound — physics.prepareBackend's pending
-//      SG-02 authority init (Rapier module import + WASM compile) — resolves `false` inside
-//      its own deadline, so the finalizer takes the ordinary start-failed path instead of
-//      hanging. The init itself is never cancelled: a late bring-up still installs the owner
-//      and is adopted by the next prepareBackend, so an F9 retry can reach flight.
+//   2. A join of physics.prepareBackend's pending SG-02 initialization honors the
+//      remaining caller deadline and resolves `false` on expiry. A new initialization
+//      retains its finite authored bring-up budget. Both failures take the ordinary
+//      recoverable path instead of hanging. The init itself is never cancelled: a late
+//      bring-up still installs the owner and an F9 retry can reach flight.
 //
 // Commands: `node --test test/load-finalizer-bounded-waits.test.mjs`
 
@@ -27,6 +27,8 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
+import { createTimeEffects } from '../src/core/timeEffects.js';
+import { laneSetMode } from '../src/core/simLaneCommands.js';
 
 const MAIN_PATH = new URL('../src/main.js', import.meta.url);
 const SOAK_PROBE_PATH = new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url);
@@ -45,10 +47,6 @@ function deferred() {
   let reject;
   const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
   return { promise, resolve, reject };
-}
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function settlePromises(rounds = 8) {
@@ -72,30 +70,40 @@ function fakeSg02Owner() {
   };
 }
 
-test('a never-settling SG-02 init fails the backend gate instead of hanging prepareBackend', async () => {
+test('a never-settling SG-02 init fails the backend gate instead of hanging prepareBackend', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const { state, phys } = bootPhysics();
   phys._sg02Init = new Promise(() => {}); // the hang being guarded: pending forever
-  const outcome = await Promise.race([
-    phys.prepareBackend(state, { initTimeoutMs: 40 }),
-    delay(3000).then(() => 'still-pending'),
-  ]);
+  let outcome = 'still-pending';
+  const preparation = phys.prepareBackend(state, { initTimeoutMs: 40 }).then((value) => { outcome = value; });
+  t.mock.timers.tick(39);
+  await settlePromises();
+  assert.equal(outcome, 'still-pending', 'the join retains its requested envelope');
+  t.mock.timers.tick(1);
+  await settlePromises();
   assert.equal(outcome, false,
     'prepareBackend must resolve false inside its deadline so the load finalizer can fail closed');
+  await preparation;
   assert.equal(phys._diag.sg02Ready, false);
   assert.equal(phys._diag.sg02InitTimedOut, true,
     'the timeout must be recorded on diagnostics so probes can name the wedge');
   assert.equal(state.physicsRuntime.diagnostics.sg02InitTimedOut, true);
 });
 
-test('a late SG-02 init is adopted by the next prepareBackend — retry reaches ready', async () => {
+test('a late SG-02 init is adopted by the next prepareBackend — retry reaches ready', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const { state, phys } = bootPhysics();
   const owner = fakeSg02Owner();
   const gate = deferred();
   // Mirror the real init contract: the pending promise installs this._sg02 when it lands.
   phys._sg02Init = gate.promise.then((resolved) => { phys._sg02 = resolved; return resolved; });
 
-  assert.equal(await phys.prepareBackend(state, { initTimeoutMs: 30 }), false,
-    'the interrupted wait fails closed');
+  let outcome = 'still-pending';
+  const preparation = phys.prepareBackend(state, { initTimeoutMs: 30 }).then((value) => { outcome = value; });
+  t.mock.timers.tick(30);
+  await settlePromises();
+  assert.equal(outcome, false, 'the interrupted wait fails closed');
+  await preparation;
   assert.ok(phys._sg02Init, 'the timed-out init must keep its slot — it is adopted, not rebuilt');
 
   gate.resolve(owner);
@@ -107,6 +115,37 @@ test('a late SG-02 init is adopted by the next prepareBackend — retry reaches 
   assert.equal(phys._diag.sg02InitTimedOut, false);
 });
 
+test('joining an aged initialization receives only its remaining deadline', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { state, phys } = bootPhysics();
+  phys._sg02Init = new Promise(() => {});
+  t.mock.method(globalThis.performance, 'now', () => 1000);
+  phys._sg02InitArmedAt = 950;
+  let outcome = 'still-pending';
+  const preparation = phys.prepareBackend(state, { initTimeoutMs: 40 }).then((value) => { outcome = value; });
+  t.mock.timers.tick(0);
+  await settlePromises();
+  assert.equal(outcome, false, 'an expired existing init cannot receive a fresh sixty-second wait');
+  await preparation;
+});
+
+test('a newly minted initialization preserves its full authored bring-up budget', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { state, phys } = bootPhysics();
+  // Isolate owner creation: the public prepare still owns the real wait and timeout diagnostics.
+  // No Rapier module or WASM bring-up is needed to verify the deadline selection.
+  t.mock.method(phys, '_updateSg02DynamicAuthority', () => { phys._sg02Init = new Promise(() => {}); });
+  let outcome = 'still-pending';
+  const preparation = phys.prepareBackend(state, { initTimeoutMs: 40 }).then((value) => { outcome = value; });
+  t.mock.timers.tick(59999);
+  await settlePromises();
+  assert.equal(outcome, 'still-pending', 'a fresh mint retains the authored sixty-second envelope');
+  t.mock.timers.tick(1);
+  await settlePromises();
+  assert.equal(outcome, false, 'a fresh mint still fails closed at its own finite deadline');
+  await preparation;
+});
+
 test('prepareBackend with an already-live authority stays ready', async () => {
   const { state, phys } = bootPhysics();
   phys._sg02 = fakeSg02Owner();
@@ -116,48 +155,76 @@ test('prepareBackend with an already-live authority stays ready', async () => {
 test('every await in finalizeLoadedGame is a bounded wait', () => {
   const main = readFileSync(MAIN_PATH, 'utf8');
   const start = main.indexOf('async function finalizeLoadedGame');
-  const end = main.indexOf('function resetCombatInputMode', start);
+  const end = main.indexOf('const _loadingClearColor', start);
   assert(start > 0 && end > start, 'finalizeLoadedGame must exist in src/main.js');
-  const body = main.slice(start, end);
+  const body = main.slice(start, end).replace(/\/\/[^\n]*/g, '');
   const awaited = [...body.matchAll(/await\s+([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
   assert(awaited.length > 0, 'the finalizer must await its readiness stages');
-  // Each allowed callee carries its own deadline: nextPaint pairs rAF with a timer, the
-  // readiness helpers race a wall-clock timeout, `cook` is waitForOpeningGpuResources'
-  // settleWithin-bounded promise, and prepareBackend bounds its init wait (this file).
+  // Frame waits pair rAF with a timer. Library/visual and exact-opening owners carry
+  // deadlines. The explicit physics Promise.race is finite even during fresh WASM bring-up.
   const allowed = new Set([
-    'nextPaint',
+    'nextPaintSliced',
+    'nextFrame',
     'waitForAuthoredPartLibrary',
     'waitForInitialAuthoredVisualsWithRetry',
-    'cook',
-    'physicsSystem',
+    'waitForRequiredOpeningPicture',
+    'Promise',
   ]);
   for (const callee of awaited) {
     assert(allowed.has(callee),
       `finalizeLoadedGame awaits "${callee}" with no declared bound — every load-finalizer wait`
       + ' must carry its own deadline so a never-settling promise cannot freeze mode:loading (D35)');
   }
+  assert.match(body, /const physicsReady = await Promise\.race\([\s\S]*?setTimeout\(\(\) => resolve\(false\), 20000\)/,
+    'the explicit Promise.race must retain the physics failure deadline');
 });
 
-test('frame waits carry a timer fallback so starved rAF cannot hang the load chain', () => {
+test('frame waits carry a timer fallback so starved rAF cannot hang the load chain', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const main = readFileSync(MAIN_PATH, 'utf8');
-  assert.match(main, /function nextFrame\(\)[\s\S]{0,500}?setTimeout/,
-    'nextFrame must pair requestAnimationFrame with a setTimeout fallback (rAF starvation)');
-  assert.match(main, /function nextPaint\(\)[\s\S]{0,500}?setTimeout/,
-    'nextPaint must pair requestAnimationFrame with a setTimeout fallback (rAF starvation)');
+  const start = main.indexOf('function nextFrame()');
+  const end = main.indexOf('// A gate that resolves', start);
+  assert(start > 0 && end > start, 'the production frame-wait owners exist');
+  const frameWaits = new Function('requestAnimationFrame', 'postTaskAtBackgroundPriorityBounded',
+    'setTimeout', 'nowMs', 'delay',
+    `let frameWaitStarved = 0; const armFrameWaitProbe = () => {};
+${main.slice(start, end)}
+return { nextFrame, nextPaint };`)(
+    () => {}, (callback) => callback(), setTimeout, () => 0, () => Promise.resolve());
+  let frame = false;
+  frameWaits.nextFrame().then(() => { frame = true; });
+  t.mock.timers.tick(47); await settlePromises(); assert.equal(frame, false);
+  t.mock.timers.tick(1); await settlePromises(); assert.equal(frame, true);
+  let paint = false;
+  frameWaits.nextPaint().then(() => { paint = true; });
+  t.mock.timers.tick(249); await settlePromises(); assert.equal(paint, false);
+  t.mock.timers.tick(1); await settlePromises(); assert.equal(paint, true);
+  frame = false;
+  frameWaits.nextFrame().then(() => { frame = true; });
+  t.mock.timers.tick(0); await settlePromises();
+  assert.equal(frame, true, 'repeated compositor starvation takes the bounded task fallback');
 });
 
 test('a failed restore lands in the recoverable start-failed menu with a visible affordance', () => {
   const main = readFileSync(MAIN_PATH, 'utf8');
   const start = main.indexOf('function failGameStart');
-  assert(start > 0, 'failGameStart must exist');
-  const body = main.slice(start, start + 1500);
-  assert.match(body, /state\.mode = 'menu'/,
-    'the failure landing must move the session out of mode:loading to the menu');
-  assert.match(body, /emit\('game:startFailed'/);
-  assert.match(body, /emit\('toast', \{ text, kind: 'error'/,
-    'the failure must surface a visible toast affordance');
-  assert.match(body, /set\('runtime:start-failed'/,
-    'the landed state must carry the start-failed marker the F9 retry checks for');
+  const end = main.indexOf('async function waitForAuthoredPartLibrary', start);
+  assert(start > 0 && end > start, 'the failure owner exists');
+  const fail = new Function('createTimeEffects', 'laneSetMode',
+    `${main.slice(start, end)}; return failGameStart;`)(createTimeEffects, laneSetMode);
+  const state = { mode: 'loading', timeScale: 0, render: {} };
+  const bus = createBus();
+  const events = [];
+  bus.on('game:startFailed', (payload) => events.push(['failure', payload]));
+  bus.on('toast', (payload) => events.push(['toast', payload]));
+  const effects = createTimeEffects(state);
+  effects.set('runtime:loading', { scale: 0 });
+  assert.equal(fail(state, bus, new Error('required ship.glb missing'), 'Retry Continue'), true);
+  assert.equal(state.mode, 'menu');
+  assert.equal(effects.describeRequests()['runtime:loading'], undefined);
+  assert.equal(effects.describeRequests()['runtime:start-failed'].scale, 0);
+  assert.match(events.find(([name]) => name === 'failure')[1].error, /ship.glb missing/);
+  assert.deepEqual(events.find(([name]) => name === 'toast')[1], { text: 'Retry Continue', kind: 'error', ttl: 8 });
 });
 
 test('the soak checker waits for the failed-restore landing before retrying F9', () => {

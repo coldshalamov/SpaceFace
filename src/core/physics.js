@@ -585,15 +585,19 @@ export const physics = {
       }
       this._disableSg02DynamicAuthority();
     }
+    const initBeforePrepare = this._sg02Init;
     this._updateSg02DynamicAuthority(0, state);
     if (this._sg02Init) {
       let timer = null;
       const sg02TokenAtPrepare = this._sg02Token;
       const settled = await Promise.race([
         Promise.resolve(this._sg02Init).then(() => true, () => true),
-        // A mint issued by this call keeps the full bring-up envelope even when
-        // the caller plumbed a shorter budget for the joins above.
-        new Promise((resolve) => { timer = setTimeout(() => resolve(false), SG02_INIT_PREPARE_TIMEOUT_MS); }),
+        // Only a mint issued by this call owns a fresh bring-up envelope. Joining an
+        // existing promise must honor the caller's remaining budget, just like reset/adopt.
+        new Promise((resolve) => {
+          timer = setTimeout(() => resolve(false), this._sg02Init === initBeforePrepare
+            ? sg02InitJoinMs() : SG02_INIT_PREPARE_TIMEOUT_MS);
+        }),
       ]);
       if (timer !== null) clearTimeout(timer);
       // A retry/reset that landed during the wait owns the authority now: this stale
