@@ -33,6 +33,7 @@
 //   --domain-profile=station|commodity
 //                         choose the diagnostic domain mirror shape before the worker initializes;
 //                         the default empty profile remains unchanged.
+//   --trace-stacks        with --trace, include source stacks for style/layout invalidations.
 //   --drop-profile=NAME   delete that kept profile and exit
 //   --baseline-source=PATH serve the validated ignored source manifest for an immutable
 //                         historical comparison; assets and unlisted files remain canonical.
@@ -164,6 +165,7 @@ const EXTRA_CHROMIUM_ARGS = process.argv
 // --trace records a Chrome timeline alongside the CPU profile and writes trace-summary.md: the
 // main-thread self time per event inside each loading stage, which names the non-JS "(program)" work.
 const TRACE = process.argv.includes('--trace');
+const TRACE_STACKS = TRACE && process.argv.includes('--trace-stacks');
 // --crucible profiles the swarm mode (seed 4242, default kit, drafts auto-answered) instead of open flight;
 // --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
 const CRUCIBLE = process.argv.includes('--crucible');
@@ -192,6 +194,7 @@ const SAMPLING_US = Math.max(100, Number(argValue('--sampling-us')) || 0);
 const EFFECTIVE_SAMPLING_US = SAMPLING_US > 100 ? SAMPLING_US : FROM_LAUNCH ? 500 : 200;
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
+  ...(TRACE_STACKS ? ['disabled-by-default-devtools.timeline.stack'] : []),
 ];
 
 async function startTrace(cdp) {
@@ -1074,7 +1077,8 @@ async function runSteadyFlightProfile(page, cdp) {
     sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
     clockStart, clockEnd,
     observer: (CADENCE_ONLY ? 'cadence-only' : `cpu-profile-${EFFECTIVE_SAMPLING_US}us`)
-      + (TRACE ? '+trace' : '') + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
+      + (TRACE ? '+trace' : '') + (TRACE_STACKS ? '+trace-stacks' : '')
+      + (GPU_TIMERS ? '+gpu-timers' : '') + (WORKER_PROFILE ? '+worker-profile' : ''),
   };
   fs.writeFileSync(path.join(OUT_DIR, 'cadence.json'), JSON.stringify({ metadata, summary: summaryCadence, raw: cadence }, null, 1));
   log(`game cadence: ${JSON.stringify(summaryCadence)}`);
