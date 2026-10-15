@@ -30,6 +30,22 @@ const value = (object, key) => {
 };
 const sameDescriptor = (a, b) => a && b && a.value === b.value && a.get === b.get && a.set === b.set
   && a.writable === b.writable && a.enumerable === b.enumerable && a.configurable === b.configurable;
+// Ordinary stations and other default-shaped bodies may have no authored override:
+// A staged rebuild normalizes scratch entities before rebinding records to the
+// originals. Observe that exact absence rather than inventing authoring, and
+// never invoke an inherited getter.
+const optionalOwnData = (object, key) => {
+  const descriptor = object && own(object, key);
+  if (descriptor ? !('value' in descriptor) : !object || key in object) {
+    throw new Error(`orchard_native_storage:${key}`);
+  }
+  return descriptor || null;
+};
+const optionalOwnDataCurrent = (object, key, descriptor, prototype) => {
+  if (Object.getPrototypeOf(object) !== prototype) return false;
+  const current = optionalOwnData(object, key);
+  return descriptor === null ? current === null : sameDescriptor(current, descriptor);
+};
 const signatures = objects => Object.freeze([...new Set(objects)].map(object => {
   const descriptors = Object.getOwnPropertyDescriptors(object);
   for (const key of Reflect.ownKeys(descriptors)) Object.freeze(descriptors[key]);
@@ -208,7 +224,7 @@ export function prepareOrchardNativeObservation(owner, lane, sourceRecord = null
       if (!entry || value(entry, 'rec') !== rec || value(entry, 'collider') !== collider || colliderHandles.has(h)) fail('collider_identity');
       colliderHandles.add(h); return { collider, handle: h, entry };
     });
-    rows.push({ id, rec, body, entity, spec, array, handle, cols, life:value(entity,'occupantGeneration'),data:value(entity,'data'),authored:value(entity,'physicsBody') });
+    rows.push({ id, rec, body, entity, spec, array, handle, cols, life:value(entity,'occupantGeneration'),data:value(entity,'data'),authored:optionalOwnData(entity,'physicsBody'),prototype:Object.getPrototypeOf(entity) });
   }
   // The ordinary owner keeps disabled projectile allocations for reuse. They remain in
   // native inventory and must remain disabled; an arbitrary extra body is never omitted.
@@ -228,7 +244,7 @@ export function prepareOrchardNativeObservation(owner, lane, sourceRecord = null
   const current = () => value(owner,'world') === world && value(owner,'records') === records && value(owner,'_colliderOwners') === owners
     && value(owner,'_eventQueue') === queue && (sourceRecord || Object.getOwnPropertyDescriptor(Map.prototype,'size').get.call(records) === rows.length) && rows.every(r => Map.prototype.get.call(records,r.id) === r.rec
       && value(r.rec, 'body') === r.body && value(r.rec, 'entity') === r.entity && value(r.rec, 'spec') === r.spec
-      && value(r.entity,'occupantGeneration')===r.life && value(r.entity,'data')===r.data && value(r.entity,'physicsBody')===r.authored
+      && value(r.entity,'occupantGeneration')===r.life && value(r.entity,'data')===r.data && optionalOwnDataCurrent(r.entity,'physicsBody',r.authored,r.prototype)
       && value(r.rec, 'colliders') === r.array && value(r.array,'length') === r.cols.length
       && r.cols.every((c, i) => value(r.array,String(i)) === c.collider && Map.prototype.get.call(owners,c.handle) === c.entry
         && value(c.entry, 'rec') === r.rec && value(c.entry, 'collider') === c.collider));

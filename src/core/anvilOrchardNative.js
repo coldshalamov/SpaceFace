@@ -754,9 +754,22 @@ export function prepareOrchardPodCollection(owner,capability,entity,state){
  const ctx=ownerContexts.get(owner),q=podHandoffs.get(entity);
  if(!ctx || ctx.capability!==capability || !ctx.lane?.observationEnabled || !q || q.owner!==owner || q.ctx!==ctx
   || !q.resident || q.entity!==entity || q.state!==state || !orchardOwnerAvailable(owner))return null;
- const p=q.p,rec=Map.prototype.get.call(owner.records,p.id),f=p?.finite;
- if(!p || !rec || leases.get(rec)!==p || !f || f.state!==state || !finiteCurrent(f,p,state.tick)
-  || !sourceRecordCurrent(ctx,rec,p) || !motorStorageCurrent(p))return null;
+ const predecessor=q.p,rec=Map.prototype.get.call(owner.records,predecessor.id);
+ const p=rec ? leases.get(rec) : ctx.dormantFrames.get(predecessor.entity),f=q.f;
+ // Residency re-admission and intake on another socket may renew the source lease.
+ // Only its private, exact same-life successor with the shared finite context can
+ // authorize collection; matching public IDs or copied records cannot acquire it.
+ if(!p || p.entity!==predecessor.entity || p.id!==predecessor.id || p.life!==predecessor.life
+  || p.finite!==f)return null;
+ // A released lot can travel beyond its fixed source's native residency. Keep the
+ // exact retained source and finite history, but do not require its retired body
+ // to collect an independently validated, resident dynamic pod. Pin this source
+ // residency boundary for the whole transaction; a retire/re-admit needs a retry.
+ const sourceCurrent=()=>p && (rec
+  ? Map.prototype.get.call(owner.records,p.id)===rec && leases.get(rec)===p
+    && sourceRecordCurrent(ctx,rec,p) && motorStorageCurrent(p)
+  : dormantFrameCurrent(ctx,p));
+ if(!p || !f || f.state!==state || !finiteCurrent(f,p,state.tick) || !sourceCurrent())return null;
  const slot=f.row.sockets[q.socket],lot=slot && f.row.lots.find(l=>l.id===slot.lotId);
  if(!slot || slot.status!=='drifting' || slot.operation!=='open' || slot.handoff!=='ready'
   || !lot || lot.outcome!=='retained' || lot.units!==q.data.amount || q.data.commodityId!==ANVIL_ORCHARD.commodityId
@@ -765,12 +778,11 @@ export function prepareOrchardPodCollection(owner,capability,entity,state){
  const next=normalizeOrchardRecord(before),nextSlot=next.sockets[q.socket],nextLot=next.lots.find(l=>l.id===nextSlot.lotId);
  nextLot.outcome='delivered';nextSlot.status='delivered';
  const publication=finitePublication(f,next);if(!publication)return null;
- const tick=state.tick;
+ const tick=state.tick,preparedRow=f.row;
  let status='pending';
  const current=()=>status==='pending' && ownerContexts.get(owner)===ctx && contextCurrent(ctx) && orchardOwnerAvailable(owner)
   && podHandoffs.get(entity)===q && q.owner===owner && q.ctx===ctx && q.entity===entity && q.state===state
-  && Map.prototype.get.call(owner.records,p.id)===rec && leases.get(rec)===p && finiteCurrent(f,p,tick)
-  && sourceRecordCurrent(ctx,rec,p) && motorStorageCurrent(p) && f.row.sockets[q.socket].status==='drifting'
+  && q.p===predecessor && q.f===f && p.finite===f && f.row===preparedRow && sourceCurrent() && finiteCurrent(f,p,tick) && f.row.sockets[q.socket].status==='drifting'
   && f.row.sockets[q.socket].lotId===lot.id && f.row.lots.find(l=>l.id===lot.id)?.outcome==='retained'
   && readOrchardPodReady(owner,entity,state);
  return {preflight:current,commit(){if(!current())return false;publication.publish(p);status='committed';
