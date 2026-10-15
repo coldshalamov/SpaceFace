@@ -24,7 +24,8 @@ const report = { url: url.href, engine, startedAt: new Date().toISOString(), pas
   acceptance: { startupAndControls: 'pending', continue: checkContinue ? 'pending' : 'not-requested',
     rendererHealth: 'pending', worldVisibility: 'unverified' },
   responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [],
-  startupErrors: [], runtimeMessages: [], rendererErrors: [], rendererErrorCount: 0 };
+  startupErrors: [], runtimeMessages: [], rendererErrors: [], rendererErrorCount: 0,
+  menuWaitObservations: [], finalDiagnosticErrors: [] };
 const pendingDiagnosticReads = new Set();
 let activeRoute = 'new-game';
 let actorStage = 'boot-menu';
@@ -198,6 +199,19 @@ const snapshot = async (page, includeCamera = false) => {
   }
   return result;
 };
+async function captureFailureDiagnostics(page, { report, snapshot, screenshotPath }) {
+  try { report.final = await snapshot(page, true); }
+  catch (diagnosticError) {
+    report.final = null;
+    report.finalDiagnosticErrors.push({ kind: 'final-snapshot', at: new Date().toISOString(),
+      error: String(diagnosticError?.stack || diagnosticError) });
+  }
+  try { await page.screenshot({ path: screenshotPath, timeout: 15000 }); }
+  catch (diagnosticError) {
+    report.finalDiagnosticErrors.push({ kind: 'failure-screenshot', at: new Date().toISOString(),
+      error: String(diagnosticError?.stack || diagnosticError) });
+  }
+}
 const visible = async (page, selector) => boundedBrowserRead(() => page.locator(selector).first().isVisible()).catch(() => false);
 const critical = response => response.status >= 400 && (
   /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
@@ -299,16 +313,79 @@ try {
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
   report.navigation = { status: navigation?.status(), url: page.url() }; report.html = await boundedBrowserRead(() => page.content());
   const menu = '[data-screen="mainMenu"] button[data-action="newGame"]';
+  const inspectMenuState = async (page, timeoutMs = 5000) => boundedBrowserRead(() => page.evaluate(() => {
+    const visible = element => {
+      if (!element || element.hidden) return false;
+      const style = getComputedStyle(element), rect = element.getBoundingClientRect();
+      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const mainMenu = document.querySelector('[data-screen="mainMenu"]');
+    const newGameButtons = [...document.querySelectorAll('[data-screen="mainMenu"] button[data-action="newGame"]')];
+    const motionAsk = document.querySelector('[data-screen="motionAsk"]');
+    const cinematic = document.querySelector('#cinematic-splash');
+    const cinematicBegin = document.querySelector('#cinematic-splash .cine-begin');
+    const motionFull = [...document.querySelectorAll('[data-screen="motionAsk"] button')]
+      .find(element => /^Full/i.test(element.textContent || '')) || null;
+    let frame = null, witnessReadError = null;
+    try { frame = window.__SF_WITNESS__?.snapshot?.() || null; }
+    catch (error) { witnessReadError = String(error?.stack || error); }
+    return {
+      available: true,
+      timeOrigin: performance.timeOrigin,
+      readyState: document.readyState,
+      newGameButtonCount: newGameButtons.length,
+      newGameButtonVisible: newGameButtons.some(visible),
+      mainMenuVisible: visible(mainMenu),
+      motionAskVisible: visible(motionAsk),
+      motionFullVisible: visible(motionFull),
+      cinematicVisible: visible(cinematic),
+      cinematicBeginVisible: visible(cinematicBegin),
+      witnessReadError,
+      witnessFrame: frame ? { mode: frame.mode ?? null, tick: frame.tick ?? null,
+        playerId: frame.playerId ?? null, loading: frame.loading ?? null } : null,
+    };
+  }), timeoutMs);
   const waitForMenu = async () => {
     const beforeMenu = Date.now();
-    while (!(await visible(page, menu)) && Date.now() - beforeMenu < 180000) {
-      if (await visible(page, '#cinematic-splash .cine-begin'))
-        await tapControl('#cinematic-splash .cine-begin').catch(() => {});
-      const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
-      if (await boundedBrowserRead(() => motion.isVisible()).catch(() => false)) await tapControl(motion);
-      await page.waitForTimeout(1000);
+    const deadline = beforeMenu + 180000;
+    let nextObservationAt = beforeMenu;
+    let lastState = null;
+    while (Date.now() < deadline) {
+      const remainingMs = deadline - Date.now();
+      let state;
+      try {
+        state = await inspectMenuState(page, Math.min(5000, remainingMs));
+        lastState = state;
+        if (state.witnessReadError) report.menuWitnessReadError = state.witnessReadError;
+      } catch (error) {
+        state = { available: false, error: String(error?.stack || error) };
+        lastState = state;
+      }
+      if (state.available !== false && state.mainMenuVisible && state.newGameButtonVisible) return;
+      if (Date.now() >= nextObservationAt) {
+        const observation = { route: activeRoute, actorStage, elapsedMs: Date.now() - beforeMenu,
+          at: new Date().toISOString(), ...state };
+        report.menuWaitObservations.push(observation);
+        if (report.menuWaitObservations.length > 24) report.menuWaitObservations.shift();
+        console.log(`[mobile:${engine}] menu wait ${JSON.stringify(observation)}`);
+        await writeFile(join(out, 'progress.json'), JSON.stringify(report, null, 2));
+        nextObservationAt = Date.now() + 10000;
+      }
+      if (state.available !== false && state.cinematicBeginVisible) {
+        try { await tapControl('#cinematic-splash .cine-begin'); }
+        catch (error) { state.cinematicTapError = String(error?.message || error); }
+      }
+      if (state.available !== false && state.motionFullVisible) {
+        const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
+        try { await tapControl(motion); }
+        catch (error) { state.motionAskTapError = String(error?.message || error); }
+      }
+      await page.waitForTimeout(Math.min(1000, Math.max(1, deadline - Date.now())));
     }
-    if (!(await visible(page, menu))) throw new Error('Main menu never became playable');
+    const detail = lastState
+      ? `; last DOM/frame observation: ${JSON.stringify(lastState)}`
+      : '; no DOM/frame observation completed';
+    throw new Error(`Main menu never became playable within 180 seconds${detail}`);
   };
   const waitForFlight = async (route, launchAt) => {
     const label = route === 'continue' ? 'Continue' : 'New Game';
@@ -503,8 +580,7 @@ try {
   report.failure = String(error?.stack || error);
   const page = browser?.contexts()[0]?.pages()[0];
   if (page && !page.isClosed()) {
-    report.final = await snapshot(page, true).catch(() => null);
-    await page.screenshot({ path: join(out, 'failure.png'), timeout: 15000 }).catch(() => {});
+    await captureFailureDiagnostics(page, { report, snapshot, screenshotPath: join(out, 'failure.png') });
   }
   process.exitCode = 1;
 } finally {

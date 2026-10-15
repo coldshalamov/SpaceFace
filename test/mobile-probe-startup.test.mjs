@@ -181,6 +181,129 @@ test('Continue enabled wait reports a disabled-control timeout instead of render
   assert.doesNotMatch(source.slice(start, end), /boundedBrowserRead/);
 });
 
+function menuWaitFixture(stateOrError) {
+  let now = 0;
+  const DateFixture = class extends Date { static now() { return now; } };
+  const report = { menuWaitObservations: [] };
+  const start = source.indexOf('  const inspectMenuState = async ');
+  const end = source.indexOf('\n  const waitForFlight = ', start);
+  const fragment = source.slice(start, end);
+  const scope = { Date: DateFixture, report, activeRoute: 'continue', actorStage: 'continue-reload',
+    engine: 'webkit', out: 'out', page: {
+      async evaluate() {
+        if (stateOrError instanceof Error) throw stateOrError;
+        return stateOrError;
+      },
+      async waitForTimeout(ms) { now += ms; },
+      locator() { return { filter() { return this; }, first() { return this; }, isVisible: async () => false }; },
+    },
+    boundedBrowserRead: read => read(), visible: async () => false, tapControl: async () => {},
+    join: (...parts) => parts.join('/'), writeFile: async () => {}, console: { log() {} } };
+  const run = runInNewContext(`${fragment}\nwaitForMenu`, scope);
+  return { run, report, get now() { return now; } };
+}
+
+test('reload menu wait records cinematic/hidden-screen observations through its unchanged deadline', async () => {
+  const fixture = menuWaitFixture({ timeOrigin: 123, readyState: 'complete', newGameButtonCount: 1,
+    newGameButtonVisible: false, mainMenuVisible: false, motionAskVisible: false, cinematicVisible: true,
+    witnessFrame: { mode: 'menu', tick: 18, playerId: null } });
+  await assert.rejects(fixture.run(), error => {
+    assert.match(error.message, /Main menu never became playable within 180 seconds/);
+    assert.match(error.message, /cinematicVisible\\?":true/);
+    return true;
+  });
+  assert.equal(fixture.now, 180000, 'the diagnostic loop retains the original menu deadline');
+  assert.equal(fixture.report.menuWaitObservations.length, 18, 'recent observations are written every ten seconds');
+  assert.equal(fixture.report.menuWaitObservations.at(-1).elapsedMs, 170000);
+  assert.equal(fixture.report.menuWaitObservations.at(-1).witnessFrame.mode, 'menu');
+});
+
+test('reload menu wait retains explicit unresponsive-read errors instead of reporting hidden UI', async () => {
+  const fixture = menuWaitFixture(new Error('WebKit evaluate timed out'));
+  await assert.rejects(fixture.run(), error => {
+    assert.match(error.message, /available\\?":false/);
+    assert.match(error.message, /WebKit evaluate timed out/);
+    return true;
+  });
+  assert.equal(fixture.now, 180000);
+  assert.equal(fixture.report.menuWaitObservations.length, 18);
+  assert.equal(fixture.report.menuWaitObservations[0].available, false);
+  assert.match(fixture.report.menuWaitObservations[0].error, /WebKit evaluate timed out/);
+});
+
+test('menu diagnostic reader captures document, visibility, and witness-frame state', async () => {
+  const start = source.indexOf('  const inspectMenuState = async ');
+  const end = source.indexOf('\n  const waitForMenu = ', start);
+  const nodes = {
+    mainMenu: { id: 'menu', getBoundingClientRect: () => ({ width: 50, height: 20 }) },
+    motionAsk: { id: 'motion', getBoundingClientRect: () => ({ width: 0, height: 0 }) },
+    cinematic: { id: 'cinematic', getBoundingClientRect: () => ({ width: 0, height: 0 }) },
+    newGame: { id: 'new-game', textContent: '', getBoundingClientRect: () => ({ width: 50, height: 20 }) },
+    full: { id: 'full', textContent: 'Full motion', getBoundingClientRect: () => ({ width: 0, height: 0 }) },
+    cineBegin: { id: 'begin', getBoundingClientRect: () => ({ width: 0, height: 0 }) },
+  };
+  const scope = { boundedBrowserRead: read => read(), performance: { timeOrigin: 123 },
+    document: { readyState: 'interactive',
+      querySelector(selector) { return selector === '[data-screen="mainMenu"]' ? nodes.mainMenu
+        : selector === '[data-screen="motionAsk"]' ? nodes.motionAsk
+          : selector === '#cinematic-splash .cine-begin' ? nodes.cineBegin : nodes.cinematic; },
+      querySelectorAll(selector) { return selector.includes('newGame') ? [nodes.newGame] : [nodes.full]; } },
+    getComputedStyle(element) { return { visibility: ['menu', 'new-game'].includes(element.id) ? 'visible' : 'hidden',
+      display: 'block' }; },
+    window: { __SF_WITNESS__: { snapshot: () => ({ mode: 'menu', tick: 42, playerId: null, loading: false }) } },
+  };
+  const run = runInNewContext(`${source.slice(start, end)}\ninspectMenuState`, scope);
+  const state = await run({ evaluate: async callback => callback() });
+  assert.deepEqual(JSON.parse(JSON.stringify(state)), { available: true, timeOrigin: 123, readyState: 'interactive', newGameButtonCount: 1,
+    newGameButtonVisible: true, mainMenuVisible: true, motionAskVisible: false, motionFullVisible: false,
+    cinematicVisible: false, cinematicBeginVisible: false,
+    witnessReadError: null,
+    witnessFrame: { mode: 'menu', tick: 42, playerId: null, loading: false } });
+});
+
+test('a visible reload menu remains playable when the optional witness throws', async () => {
+  const start = source.indexOf('  const inspectMenuState = async ');
+  const end = source.indexOf('\n  const waitForFlight = ', start);
+  const element = (id, visible) => ({ id, hidden: false, textContent: '',
+    getBoundingClientRect: () => ({ width: visible ? 50 : 0, height: visible ? 20 : 0 }) });
+  const nodes = { mainMenu: element('menu', true), newGame: element('new-game', true),
+    motionAsk: element('motion', false), full: element('full', false),
+    cinematic: element('cinematic', false), cineBegin: element('begin', false) };
+  let now = 0;
+  const DateFixture = class extends Date { static now() { return now; } };
+  const report = { menuWaitObservations: [] };
+  const scope = { Date: DateFixture, report, activeRoute: 'continue', actorStage: 'continue-reload',
+    engine: 'webkit', out: 'out', boundedBrowserRead: read => read(),
+    page: { evaluate: async callback => callback(), waitForTimeout: async ms => { now += ms; },
+      locator() { throw new Error('visible menu should return before acting'); } },
+    document: { readyState: 'complete',
+      querySelector(selector) { return selector === '[data-screen="mainMenu"]' ? nodes.mainMenu
+        : selector === '[data-screen="motionAsk"]' ? nodes.motionAsk
+          : selector === '#cinematic-splash .cine-begin' ? nodes.cineBegin : nodes.cinematic; },
+      querySelectorAll(selector) { return selector.includes('newGame') ? [nodes.newGame] : [nodes.full]; } },
+    getComputedStyle: () => ({ visibility: 'visible', display: 'block' }), performance: { timeOrigin: 456 },
+    window: { __SF_WITNESS__: { snapshot() { throw new Error('witness snapshot unavailable'); } } },
+    tapControl: async () => {}, join: (...parts) => parts.join('/'), writeFile: async () => {},
+    console: { log() {} } };
+  const run = runInNewContext(`${source.slice(start, end)}\nwaitForMenu`, scope);
+  await run();
+  assert.equal(now, 0, 'the visible menu is accepted without waiting for the optional witness');
+  assert.match(report.menuWitnessReadError, /witness snapshot unavailable/);
+});
+
+test('failure snapshot and screenshot errors remain in the report', async () => {
+  const start = source.indexOf('async function captureFailureDiagnostics(');
+  const end = source.indexOf('\nconst visible = ', start);
+  const report = { final: null, finalDiagnosticErrors: [] };
+  const run = runInNewContext(`${source.slice(start, end)}\ncaptureFailureDiagnostics`, {});
+  await run({ screenshot: async () => { throw new Error('screenshot unavailable'); } }, {
+    report, snapshot: async () => { throw new Error('page evaluate unavailable'); }, screenshotPath: 'failure.png' });
+  assert.equal(report.final, null);
+  assert.deepEqual(report.finalDiagnosticErrors.map(row => row.kind), ['final-snapshot', 'failure-screenshot']);
+  assert.match(report.finalDiagnosticErrors[0].error, /page evaluate unavailable/);
+  assert.match(report.finalDiagnosticErrors[1].error, /screenshot unavailable/);
+});
+
 test('Continue requires a delivered enabled public click before waiting for flight', async () => {
   const start = source.indexOf('    const continueClick = ');
   const end = source.indexOf('    report.continueLaunchMs = ', start);
