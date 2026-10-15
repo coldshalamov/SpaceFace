@@ -1075,3 +1075,14 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish29a/{before,after}/`, `after
 Focused test: `pq-033-00-credits` 2/3, with the NOTICE `@elemaudio/web-renderer` check failing identically on master.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,desk}/`, `compare-{phone-390x844,800x600,960x540,1280x720,1920x1080}.png`.
+
+## Station berth at a very short desktop window, 844×390 (ui-polish-33)
+
+`stationLayouts.js` + `shipworksLayouts.js`, CSS only, scoped to `max-height:460px` on non-phone desktops. Phones (`data-sf-mobile`) and every height above 460 are untouched.
+
+- **Before:** the three-band head (name, five dials, mechanic's note, next step) took ~260px of a 390px window and the foot ~78px, so every tab got a 16px sliver. Shipworks showed no hull at all (17 bench findings).
+- **651–1100 wide:** the berth scrolls. Each tab keeps a 230px cell (960×540 has ~210), and the destination rail is a solid pinned foot with a short fade above it. Rail words close up so MARKET through LEDGER, COMMS, HELP and UNDOCK fit on one line at 844.
+- **801–1100 wide:** the head is two columns, about 160px tall. The left column holds the name, the mechanic's note (two lines at most) and the next step (title, count and DISMISS on one line, with the sentence ellipsized; the full sentence stays in `data-why` and the aria label). The right column holds the purse and five dials, and CREDIT LINE OPEN wraps to two lines so Munitions stays on screen.
+- **Shipworks, 801+:** LEFT · CENTER · RIGHT get their own line under the stage instead of sharing the verb row with PAINT, and the STARTER identity wraps before the right callouts.
+- **Bench, 844×390:** the 14 findings left are the expected below-the-fold content under the pinned foot, the clamped mechanic's sentence, and the ellipsized next-step sentence, whose full text width the probe measures. 960×540, 1280×720 (11 pre-existing), 1920×1080 and 390×844 counts are unchanged.
+- **Leftover:** at 651–800 × ≤460, the head is still three bands (it scrolls now), the rail clips after FACTIONS, and Shipworks verbs wrap under the camera words.
