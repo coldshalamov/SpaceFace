@@ -195,7 +195,7 @@ export const combatOutcome = {
       this.bus.on('combat:subsystemDisabled', this._onDisabled);
       this.bus.on('combat:surrendered', this._onSurrendered);
       this._unsubs = [
-        this.bus.on('entity:spawned', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
         this.bus.on('entity:destroyed', (payload) => this._onEntityDestroyed(payload)),
         this.bus.on('save:loaded', () => this._wakeCombatOutcomeQuiet()),
         // Run boundary: byEntity dedup must not leak into the next game — entity ids recycle
@@ -299,6 +299,16 @@ export const combatOutcome = {
     this._combatOutcomeQuiet = null;
   },
 
+  _onEntitySpawned(payload) {
+    this._wakeCombatOutcomeQuiet();
+    const id = payload && payload.id != null ? payload.id : null;
+    const own = this.state && this.state.combatOutcome;
+    const prior = id != null && own && own.byEntity ? own.byEntity[id] : null;
+    if (!prior) return;
+    const entity = payload && payload.entity ? payload.entity : entityFor(this.state, id);
+    if (entity && !sameOccupant(prior, entity)) this._publishAftermath();
+  },
+
   _onEntityDestroyed(payload) {
     this._wakeCombatOutcomeQuiet();
     const id = payload && payload.id != null ? payload.id : null;
@@ -390,9 +400,14 @@ export const combatOutcome = {
       if (!record || record.sectorId !== sectorId) continue;
       const entity = entityFor(state, record.entityId);
       const same = sameOccupant(record, entity);
+      const livingOther = !!(entity && entity.alive !== false && !same);
+      // A kill's number now belongs to a living ship. Salvage must not focus that hull.
+      const entityId = livingOther && (record.outcome === 'killed' || record.dead === true)
+        ? null
+        : record.entityId;
       outcomes.push({
         outcome: record.outcome,
-        entityId: record.entityId,
+        entityId,
         sectorId: record.sectorId,
         alive: !!(same && entity.alive !== false),
         dead: record.dead === true,

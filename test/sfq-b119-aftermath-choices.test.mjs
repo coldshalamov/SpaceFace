@@ -242,6 +242,32 @@ test('a recycled id that bolts without a flee event becomes the chase', () => {
   }
 });
 
+test('a recycled kill id is not salvage on the living hull', () => {
+  const h = makeHarness();
+  const victim = spawnHostile(h, 400);
+  const oldId = victim.id;
+  h.bus.emit('entity:killed', { id: oldId, killerId: h.state.playerId });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, oldId);
+  victim.alive = false;
+  h.state.entities.delete(oldId);
+  h.bus.emit('entity:destroyed', { id: oldId, entity: victim, reason: 'killed' });
+  h.state.aftermathWrecks = {
+    bySector: { [SECTOR]: [{ markerId: 'bandit-hull', kind: 'battle-aftermath' }] },
+  };
+  const next = h.helpers.spawnEntity({
+    id: oldId,
+    type: 'ship', pos: { x: 420, z: 20 }, vel: { x: 0, z: 0 }, team: 1,
+    hull: 80, hullMax: 80,
+    data: { ai: { passive: true, hostileTeams: [0] }, name: 'Next' },
+  });
+  h.ships.push(next);
+  assert.equal(next.id, oldId);
+  assert.equal(next.alive !== false, true);
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'bandit-hull');
+  assert.notEqual(h.state.combatOutcome.aftermath.targets.salvage, next.id);
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {
