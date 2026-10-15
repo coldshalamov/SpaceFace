@@ -312,6 +312,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
     const niceCeil = (v) => { const p10 = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p10 >= v) return m * p10; return 10 * p10; };
     const ceilCr = niceCeil(maxAbs);
     const stemLen = (amt) => (Math.abs(amt) / ceilCr) * maxUp;
+    // each axis numeral's printed box ("3,000 cr" runs past AXIS_COL): figures keep clear of the real text
+    const axisBoxes = [];
     if (sorted.some((e) => Number.isFinite(e.amount) && e.amount !== 0)) {
       const rg = svg('g', { class: 'orr-ltape__axis' });
       let majors = ''; let minors = '';
@@ -326,6 +328,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
             const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' });
             t.textContent = `${sign < 0 ? '\u2212' : ''}${fmt(v)}${k === 4 && sign > 0 ? ' cr' : ''}`;
             rg.appendChild(t);
+            const nw = measure('orr-ltape__key orr-ltape__axis-n', t.textContent);
+            axisBoxes.push({ l: x0, r: x0 + 9 + nw + 3, t: yy + 3.5 - 12, b: yy + 3.5 + 3 });
           }
         }
       }
@@ -387,6 +391,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
       const FIG_H = 11;
       const boxes = underBoxes.slice();
       boxes.push({ l: x0, r: x0 + AXIS_COL, t: -1e4, b: 1e4 });
+      boxes.push(...axisBoxes);
       if (chosen) boxes.push({ l: chosen.x - 14, r: chosen.x + 14, t: chosen.tipY - 14, b: chosen.tipY + 14 });
       // every tip is a bead the figures should not print over
       sorted.forEach((e, k) => {
@@ -410,7 +415,10 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
           if (!inside(sl.yy)) continue;
           let l = sl.anchor === 'start' ? sl.x : sl.anchor === 'end' ? sl.x - w : sl.x - w / 2;
           // a figure near the origin slides right to clear the axis numerals instead of yielding
-          if (sl.anchor === 'middle' && l < x0 + AXIS_COL + 4) { l = x0 + AXIS_COL + 4; sl.x = l; sl.anchor = 'start'; }
+          if (sl.anchor === 'middle') {
+            const clearR = axisBoxes.reduce((r, b) => (sl.yy - FIG_H < b.b && b.t < sl.yy + 2 ? Math.max(r, b.r + 4) : r), x0 + AXIS_COL + 4);
+            if (l < clearR) { l = clearR; sl.x = l; sl.anchor = 'start'; }
+          }
           const box = { l: l - 3, r: l + w + 3, t: sl.yy - FIG_H, b: sl.yy + 2 };
           if (hit(box)) continue;
           pick = { ...sl, box };

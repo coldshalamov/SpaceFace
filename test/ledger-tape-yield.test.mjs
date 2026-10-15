@@ -15,6 +15,8 @@ import { readingOf } from '../src/ui/station/screens/ledger.js';
 import { createLedgerTape } from '../src/ui/orrery/ledgerTape.js';
 
 const CHAR_W = 7;
+// the axis numerals print wider than the column the tape reserves for them; a test can widen them
+let AXIS_CHAR_W = CHAR_W;
 let textMeasures = 0;
 
 class FakeNode {
@@ -45,7 +47,7 @@ class FakeNode {
   addEventListener(t, fn) { this.listeners.set(t, fn); }
   removeEventListener(t) { this.listeners.delete(t); }
   closest(sel) { const c = sel.replace(/^\./, ''); for (let n = this; n; n = n.parentNode) if (n.classList.contains(c)) return n; return null; }
-  getComputedTextLength() { textMeasures += 1; return this._text.length * CHAR_W; }
+  getComputedTextLength() { textMeasures += 1; return this._text.length * (this.classList.contains('orr-ltape__axis-n') ? AXIS_CHAR_W : CHAR_W); }
   all(pred, out = []) { for (const c of this.children) { if (pred(c)) out.push(c); c.all(pred, out); } return out; }
 }
 
@@ -175,4 +177,36 @@ test('label widths are measured once per size and the reading is read once per r
 
   assert.equal(entries.map((e) => e.id).join(','), before, 'the entries handed to the tape keep their order');
   tape.dispose();
+});
+
+// ui-polish-37: the axis numerals are in the clear set at their printed width. "3,000 cr" runs past the
+// fixed axis column, so a big credit near the origin used to slide just past the column and print on it
+test('no figure prints on an axis numeral, whatever its width', () => {
+  const doc = installDoc();
+  AXIS_CHAR_W = 9; // "3,000 cr" 72px from x0 + 9: past the 64px column, as the live 12px face prints it
+  const amounts = [1806, -420, -1210, 2950, -640, 980, -2200, 1500, -300, 2600, -760, 1806];
+  const entries = amounts.map((amount, i) => ({ id: `e${i}`, type: 'trade', at: 3000 + i * 25, cycleLabel: 'CYCLE 0007', amount }));
+  const boxOf = (n, pad) => {
+    const x = Number(n.getAttribute('x'));
+    const yy = Number(n.getAttribute('y'));
+    const w = n.textContent.length * (n.classList.contains('orr-ltape__axis-n') ? AXIS_CHAR_W : CHAR_W);
+    const anchor = n.getAttribute('text-anchor');
+    const l = anchor === 'end' ? x - w : anchor === 'middle' ? x - w / 2 : x;
+    return { s: n.textContent, l, r: l + w, t: yy - pad, b: yy + 2 };
+  };
+  for (const [w, h] of [[480, 120], [640, 120], [640, 160], [960, 140]]) {
+    const host = fakeHost(doc, w, h);
+    const tape = createLedgerTape(host, {});
+    tape.set({ entries, selectedId: null, nowCycle: 'CYCLE 0007' });
+    const numerals = host.all((n) => n.tagName === 'text' && n.classList.contains('orr-ltape__axis-n')).map((n) => boxOf(n, 9));
+    assert.ok(numerals.some((b) => b.s === '3,000 cr'), 'the fixture tops out at a 3,000 cr ceiling');
+    const figures = host.all((n) => n.tagName === 'text' && n.classList.contains('orr-ltape__figure')).map((n) => boxOf(n, 11));
+    assert.ok(figures.length > 0, 'figures print');
+    for (const f of figures) for (const a of numerals) {
+      const over = f.l < a.r && a.l < f.r && f.t < a.b && a.t < f.b;
+      assert.ok(!over, `${f.s} prints on the ${a.s} numeral at ${w}x${h}`);
+    }
+    tape.dispose();
+  }
+  AXIS_CHAR_W = CHAR_W;
 });
