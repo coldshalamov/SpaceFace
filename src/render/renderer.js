@@ -1773,10 +1773,14 @@ export function openingPreparedLeafKey(subject, context = '') {
 }
 
 /** Required leaves stay strict; extra pool coverage only admits live, potentially drawn resources. */
-export function openingAdmissionSubjects(required, pooled, scene) {
+export function openingAdmissionSubjects(required, pooled, scene, { mobileFirstPicture = false } = {}) {
   const requiredLeaves = new Set(required);
   return required.concat(pooled.filter((subject) => {
     if (!subject || requiredLeaves.has(subject) || subject.geometry?.id == null || !subject.material) return false;
+    // Gas wakes on ordinary opening traffic/contact events without a separate admission owner.
+    // Warm its one live raymarch material while mobile loading owns the picture; other dormant
+    // effects keep their bounded on-use path rather than widening the phone's opening cohort.
+    if (mobileFirstPicture && subject.userData?.spacefaceVfxGasBatch !== true) return false;
     for (let owner = subject; owner; owner = owner.parent) {
       const data = owner.userData;
       // Warm exemplars have their own cook. Hidden authored fallbacks never present, while
@@ -14469,11 +14473,11 @@ export const render = {
       const pooledSubjects = Array.isArray(plan.pooledResourceSubjects)
         ? plan.pooledResourceSubjects.filter((subject) => subject && !leafSubjectSet.has(subject))
         : [];
-      // The phone's required gate is the real first picture. Empty pools retain their resource
-      // identities in the plan and admit through their normal effect/streaming owner on use.
-      const allSubjects = isMobileRenderContext() && !survivalRunHoldsArena(state)
-        ? subjects
-        : openingAdmissionSubjects(subjects, pooledSubjects, scene);
+      // The phone keeps only its first picture plus the one live gas pool whose first emission
+      // otherwise links the density-march shader directly inside exposed bloomScene.
+      const allSubjects = openingAdmissionSubjects(subjects, pooledSubjects, scene, {
+        mobileFirstPicture: isMobileRenderContext() && !survivalRunHoldsArena(state),
+      });
       const deltaSubjects = options.strict === true ? allSubjects.filter((subject) => {
         const key = openingPreparedLeafKey(subject, openingStampContext());
         return !key || this._openingPreparedLeaves?.get(subject) !== key;
