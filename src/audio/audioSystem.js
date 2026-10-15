@@ -1573,6 +1573,15 @@ export const PLANET_PLUNGE_VOICE = Object.freeze({
 export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'mines:capReached': MINE_CAP_REFUSAL_RECIPE,
   'moment.stinger': 'sfx_moment_stinger',
+  // Swarm moments (swarmJuice.js SWARM_MOMENT_CUES, swarmChain.js SWARM_CHAIN_WARN_CUE). Each
+  // beat has its own id so the reward cues and the one warning never resolve to the same recipe.
+  'swarm.slamThud': 'sfx_swarm_slam_thud',
+  'swarm.slamStinger': 'sfx_moment_stinger',
+  'swarm.tallyTick': 'sfx_ui_confirm',
+  'swarm.clearResolve': 'sfx_promotion_chord',
+  'swarm.chainTier': 'sfx_promotion_chord',
+  'swarm.chainShatter': 'sfx_swarm_chain_shatter',
+  'swarm.chainWarn': 'sfx_swarm_alert_tick',
   click: 'sfx_ui_click', ui_click: 'sfx_ui_click', uiClick: 'sfx_ui_click',
   hover: 'sfx_ui_hover', ui_hover: 'sfx_ui_hover', uiHover: 'sfx_ui_hover',
   confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
@@ -1787,6 +1796,54 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'bombs:cycle': 'sfx_bomb_rack_cycle',
   'bombs:rackChanged': 'sfx_bomb_rack_change',
 });
+
+// Moment gates. The stinger swell rings about half a second, so two stinger-class cues inside
+// that window would smear into one muddy chord: the boss-down stinger, a round-slam stinger, a
+// chain-tier chord and the clear resolve share the 'stinger' family. A cue is dropped while a
+// same-or-higher-ranked family member is still ringing; a higher-ranked cue always plays (the
+// boss-down stinger and anything carrying `duck` rank 3 and win). `recordOnly` rows join the
+// family without ever being dropped, so the shared stinger other systems fire keeps its rule.
+// `cooldownS` is a per-id floor. The tally tick has no row on purpose: it repeats every 0.16 s
+// by design and must never be thinned.
+export const MOMENT_CUE_GATES = Object.freeze({
+  'moment.stinger': Object.freeze({ family: 'stinger', rank: 3, recordOnly: true }),
+  'swarm.slamStinger': Object.freeze({ family: 'stinger', rank: 1, cooldownS: 0.5 }),
+  'swarm.clearResolve': Object.freeze({ family: 'stinger', rank: 2, cooldownS: 0.5 }),
+  'swarm.chainTier': Object.freeze({ family: 'stinger', rank: 1, cooldownS: 0.25 }),
+  'swarm.slamThud': Object.freeze({ cooldownS: 0.5 }),
+  'swarm.chainShatter': Object.freeze({ cooldownS: 0.4 }),
+});
+export const MOMENT_FAMILY_WINDOW_S = 0.6;
+
+export function momentCueMemory() {
+  return { at: Object.create(null), familyAt: Object.create(null), familyRank: Object.create(null) };
+}
+
+/** Pure: may this cue play now? A clock that ran backwards (new run, headless reset) is stale, not "recent". */
+export function momentCueAllowed(mem, id, rank, nowS) {
+  if (!Object.hasOwn(MOMENT_CUE_GATES, id)) return true;
+  const gate = MOMENT_CUE_GATES[id];
+  if (gate.recordOnly) return true;
+  if (gate.cooldownS > 0 && Number.isFinite(mem.at[id])) {
+    const since = nowS - mem.at[id];
+    if (since >= 0 && since < gate.cooldownS) return false;
+  }
+  if (gate.family && Number.isFinite(mem.familyAt[gate.family])) {
+    const since = nowS - mem.familyAt[gate.family];
+    if (since >= 0 && since < MOMENT_FAMILY_WINDOW_S && (mem.familyRank[gate.family] || 0) >= rank) return false;
+  }
+  return true;
+}
+
+export function momentCueRecord(mem, id, rank, nowS) {
+  if (!Object.hasOwn(MOMENT_CUE_GATES, id)) return;
+  const gate = MOMENT_CUE_GATES[id];
+  mem.at[id] = nowS;
+  if (gate.family) {
+    mem.familyAt[gate.family] = nowS;
+    mem.familyRank[gate.family] = rank;
+  }
+}
 
 export function resolveAudioCueRecipeId(cueId) {
   // Own-property lookups only (see AUDIO_RECIPE_BY_ID): a plain `AUDIO_CUE_TO_RECIPE[cueId]` read
@@ -6475,6 +6532,16 @@ export const audio = {
     // recipe, so drop it; a cue on any other tick is a real voice and still plays.
     if (id === 'ui_dock' && this.rt && this.rt._dockClunkTick
         === (this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1)) return;
+    // Moment gates (MOMENT_CUE_GATES): cooldowns and one-stinger-at-a-time. A cue dropped here
+    // does not duck the music or the loops either — it never happened.
+    const momentGated = Object.hasOwn(MOMENT_CUE_GATES, id) && !!this.rt;
+    const momentRank = momentGated
+      ? Math.max(MOMENT_CUE_GATES[id].rank || 0, opts.duck ? 3 : 0)
+      : 0;
+    if (momentGated) {
+      const mem = this.rt._momentCues || (this.rt._momentCues = momentCueMemory());
+      if (!momentCueAllowed(mem, id, momentRank, nowS)) return null;
+    }
     // PQ-158.02 owns attach/strain/release/break on the instrument. Juice still emits the
     // semantic cue; do not play the same latch/creak/snap/release a second time. The cue keeps
     // its priority duck — a near_break warning must still cut through the mix — so the early
@@ -6524,6 +6591,7 @@ export const audio = {
     if (voice && signature && signature.cooldownS > 0) {
       this.rt._signatureLastAt[id] = nowS;
     }
+    if (voice && momentGated) momentCueRecord(this.rt._momentCues, id, momentRank, nowS);
     return voice;
   },
 
