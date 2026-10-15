@@ -1143,6 +1143,13 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W}.orr-sw--jig .sx-sw-verbs.sx-sw-verbs,
   ${W} .sx-sw-verbs.sx-sw-verbs--unseated { left:8px !important; right:8px !important; width:auto !important; max-width:none !important;
     flex-wrap:wrap !important; justify-content:flex-end !important; gap:2px 12px !important; }
+  /* the hull's callouts: a two-line card (name over OPEN / S) is ~29px, so the left column
+     (Utility · Drive · Cargo) needed ~90px under the nameplate and Cargo's second line ran past the
+     stage into the pinned foot's fade at 1024×440. Name and state share one line here (the solver
+     measures the cards live), so each column stands in about half the height. */
+  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:flex !important; align-items:baseline !important; gap:0 8px !important;
+    line-height:15px !important; padding-block:1px !important; }
+  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { display:inline !important; line-height:15px !important; }
 }
 /* …and at 651-800 wide (the identity rides over the nameplate as above). The verbs (in flow
    under the stage here) always break after TAKE THE HITCH, so LEFT · CENTER · RIGHT stand on the

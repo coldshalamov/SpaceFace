@@ -46,12 +46,12 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
 | **`codex`** / **`codex-record`** | **DONE** + **phone** (ui-polish-22) | Desktop DONE; phone portrait stack + landscape hang\|reader; review1+review2 fixes in § Phone Codex |
-| **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
+| **`mission-log`** / `missionLog` | **DONE** (+ narrow desktop, ui-polish-43) | See § Mission Log; § Missions on a narrow desktop (ui-polish-43) |
 | **`credits`** | **DONE** | See § Credits below; phone / ≤900 ladder fixed in ui-polish-30 |
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
 | **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
-| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** (+ phone / narrow / short desktop, ui-polish-40) | See § Tech Tree below, and § Research on a phone, a narrow window and a short desktop (ui-polish-40) |
+| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** (+ phone / narrow / short desktop, ui-polish-40; Industrial Mining label @960, ui-polish-44) | See § Tech Tree below, § Research on a phone… (ui-polish-40), and § Research Industrial Mining label (ui-polish-44) |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | **`chart`** / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | **DONE** (desktop shell + phone sheet, ui-polish-34) | See § Chart on a phone below |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15); Ledger purse @800 DONE (ui-polish-45); one-line callouts @801–1100 × ≤460 (ui-polish-46) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -1202,7 +1202,7 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Sizes checked:** 390×844 (`--phone`, top and scrolled), 700×800, 800×600, 844×390 (`--phone`), 960×540 (top, reading scrolled, node picked), 1024×768, 1280×720, 1920×1080.
 
-**Still open:** the dial itself is crowded when its stage is under ~500px (800×600, phone landscape 844×390), the same as on master. That needs instrument geometry, not layout. At 960 the "Industrial Mining" label's last letter is clipped by the dial's own sky (`labelOut` under-measures by a few px). Shots: `ui-shots/polish40/{before,after}/` plus `compare-*.png`.
+**Still open after ui-polish-40:** the dial itself is crowded when its stage is under ~500px (800×600, phone landscape 844×390), the same as on master. That needs instrument geometry, not layout. ~~At 960 the "Industrial Mining" label's last letter is clipped by the dial's own sky (`labelOut` under-measures by a few px).~~ **Fixed in ui-polish-44.** Shots: `ui-shots/polish40/{before,after}/` plus `compare-*.png`.
 
 ## Help on a short desktop — EVERY KEY clears the frame (ui-polish-42)
 
@@ -1216,4 +1216,54 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 - Ships / Commodities / Ores / Factions keep a side ladder + scrolling reading. Selectors and IDs unchanged.
 
 **Checked:** bench clean (0 findings) at 700×400, 801×440, 844×390, 900×420. 960×540 and 1280×720 keep the prior 761–1200 / wide layouts (Controls still shows the rig). Phone (`data-sf-mobile`) untouched. `--walk` at 844×390 through CONTROLS → FACTIONS. Shots: `/workspace/spaceface-scratch/ui-shots/polish42/{before,after}/`, `compare-help-844x390.png`, `compare-help-700x400.png`, `compare-help-801x440.png`.
+
+
+## Missions on a narrow desktop — dial clears the reading; route ends unstack (ui-polish-43)
+
+**Before (master d49ec7c93b):** below 761px wide a desktop window kept hang|stage as two equal columns, so at 700×900 the dial sat on CONTRACT 47-A, LOCAL MAP printed through PAYS, and the route band was crushed. At 800×600 (and the 761–1100 × ≤640 band) FROM / ROUTE PENDING / TO shared ~200px and From sat on the mid word; the destination disc's ring clipped the stage edge at 960×540.
+
+**After (`src/ui/orrery/archiveLayouts.js` only, desktop `html:root:not([data-sf-mobile="1"])`):**
+- **640–760 wide:** hang is 248px, the card stacks (dial + verbs on one row, then the reading), route discs 44px with host padding so TO clears the edge.
+- **761–1100 × ≤640:** mid (ROUTE PENDING + clock) takes its own row above FROM / TO; dial column 176px with tighter verb tracking so OPEN ON THE CHART fits; route host padded, discs 40px.
+- 1280×720 / 1920×1080 / phone (`data-sf-mobile` and sub-640) unchanged. Selectors and IDs unchanged.
+
+**Bench:** 0 findings at 700×900, 800×600, 960×540, 1280×720, 1920×1080, 390×844 (+ `--phone`). `--walk` exercised SHOW / Track / Local map / Abandon / Close at each size.
+
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~"Industrial Mining" last letter clipped at 960~~ (fixed ui-polish-44); ~~Shipworks second Cargo callout line at 1024×440 under rail fade~~ (fixed ui-polish-46); ~~Station Ledger right column tight at 800×600 with receipts~~ (fixed ui-polish-45).
+
+Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compare-700x900.png`, `compare-800x600.png`, `compare-960x540.png`.
+
+## Research Industrial Mining label clears the sky @960 (ui-polish-44)
+
+**Before (master c39004bef0):** at 960×540 the constellation sky (`overflow:hidden`) clipped the last letters of "Industrial Mining" on the right of the dial. `labelOut` was `min(200, widest + 26)`, and label boxes / placement bounds sat only 2px inside the host, so a slightly under-measured name ran into the clip.
+
+**After (`src/ui/orrery/constellation.js` only):** `labelOut` is `min(220, widest + 38)` so the dial leaves a few more px for side names; each label box pads +8 instead of +2; placement bounds inset to 6/4 so the solver keeps ink inside the sky. At 960 the full "Industrial Mining" reads clear of the sky edge (and clear of the INDUSTRY rim word). 390×844 phone is pixel-identical. 1280×720 is effectively unchanged (~0.4% pixel churn). 1920×1080 gains a little more air between beads and side names (same rules, larger type). Selectors and IDs are unchanged.
+
+**Checked:** bench `tech-tree` clean at 960×540 and 1920×1080; 1280×720 keeps its pre-existing hour-verb vs Deflector Theory ON TOP OF; 800×600 keeps master's crowded-dial overlaps (still open). Shots: `/workspace/spaceface-scratch/ui-shots/polish44/{before,after}/`, `compare-960x540.png`, `compare-960x540-crop.png`.
+
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~Shipworks second Cargo callout line at 1024×440 under rail fade~~ (fixed ui-polish-46); ~~Station Ledger right column tight at 800×600 with receipts~~ (fixed ui-polish-45).
+
+## Station Ledger purse at 800×600 (ui-polish-45)
+
+**Before:** under the 761–900 × ≤640 compact rule the purse column was **140px**, so the ring starved and BOUGHT / SOLD / NET · CR clipped against the right edge (and inward into the reading). The list still took the parent 40%, leaving the reading column thin beside that narrow purse.
+
+**After (`src/ui/orrery/stationTabsLayouts.js` only, `761–900 × ≤640`):**
+- List `max-width` **34%** (overrides the parent 40%).
+- Right column `left: calc(34% + 22px)` with `grid-template-columns: minmax(0, 1fr) 200px` so the purse is ~200px again.
+- Keeps the existing CYCLE-above-line list stack and the trimmed reading figure from this band.
+- Parent **761–1100 × ≤640** (40% / 220px) and every size outside 761–900 × ≤640 are unchanged (960×540 / 1280×720 / 390×844 pixel-identical; 1920×1080 noise only).
+
+**Checked:** seeded ledger (set `a`, 6 receipts) at 800×600, 960×540, 1280×720, 1920×1080, 390×844. DOM at 800×600: list 250px (34%), purse 200px, reading ~258px; purse text shows full BOUGHT / SOLD / NET · CR. Shots: `/workspace/spaceface-scratch/ui-shots/polish45/{before,after}/`, `compare-800x600.png`, `compare-purse-800x600.png` (not committed).
+
+**Leftovers remaining:** Research dial crowded under ~500px of stage; ~~Shipworks second Cargo callout line at 1024×440 under rail fade~~ (fixed ui-polish-46); at 844×390 the lower Shipworks callouts start below the fold.
+
+## Shipworks callouts on a short desktop: Cargo clears the foot (ui-polish-46)
+
+**Before (master 559a5d0116):** at 801–1100 wide and ≤460 tall each hull callout was a two-line card (name over OPEN / S, ~29px). Under the nameplate the left column (Utility · Drive · Cargo) needed ~90px, so at 1024×440 Cargo's card ran to y≈371, past the stage (356) into the pinned foot's fade and the foot itself. The right column (Shield … Mining) was a tight 4×29px stack too.
+
+**After (`src/ui/orrery/shipworksLayouts.js`, CSS only, the existing `801–1100 × ≤460` hover block):** in that band the name and its state share one line (~18px card). The solver measures the cards live, so at 1024×440 the left column ends at y≈336 (Cargo), clear of the fade, and the right column has air between rows. Selected and dimmed states are unchanged. Selectors and IDs are unchanged.
+
+**Checked:** 1024×440, 900×420 and 1100×460 (whole column on-frame at first view), and 844×390 (better, but Mining, Drive and Cargo are still below the fold there; the berth scrolls by design). 960×540, 1280×720 and 1920×1080 are pixel-identical to master (the rule needs ≤460 tall). 390×844 is out of the band (≥801 wide only), and the bench reads it clean. Bench findings at 1024×440 stay 6 → 6 and at 844×390 14 → 14 (the head's next-step and mechanic notes, plus the below-fold remainder). Shots: `/workspace/spaceface-scratch/ui-shots/polish46/{before,after}/`, `compare-1024x440.png`, `compare-1024x440-crop.png`, `compare-900x420.png`, `compare-1100x460.png`, `compare-844x390.png`.
+
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~Station Ledger right column at 800×600~~ (fixed ui-polish-45); at 844×390 the lower Shipworks callouts start below the fold; with a slot chosen at 1024×440 the chooser's CARGO · S / COMPATIBLE MODULES 1 heading stacks tight.
 
