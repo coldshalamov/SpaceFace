@@ -1463,6 +1463,7 @@ export const mining = {
         player.id,
         state.playerId,
         state.simTime,
+        { state, pickup: e, collector: player },
       )) continue;
       // The embargo spawned this pod collides:false and no append ever re-runs — re-key the
       // collision buckets alongside the epoch bump or broadphase/splinter lanes ignore it.
@@ -2544,6 +2545,7 @@ export const mining = {
       player && player.id,
       this.state && this.state.playerId,
       this.state && this.state.simTime,
+      { state: this.state, pickup, collector: player },
     )) {
       return {
         accepted: 0,
@@ -2608,6 +2610,7 @@ export const mining = {
         Number.isFinite(ownerRetryAt)
           ? ownerRetryAt
           : (this.state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S,
+        { state: this.state, pickup, collector: player },
       );
     }
     return acceptance;

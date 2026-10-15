@@ -774,6 +774,7 @@ export const physics = {
       col && col.id,
       state && state.playerId,
       state && state.simTime,
+      { state, pickup: pk, collector: col },
     )) return false;
     const requested = finiteWholePickupAmount(pk && pk.data && pk.data.amount);
     if (requested <= 0) {
@@ -800,6 +801,7 @@ export const physics = {
         Number.isFinite(ownerRetryAt)
           ? ownerRetryAt
           : (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S,
+        { state, pickup: pk, collector: col },
       );
     } else if (pk.data) {
       clearPickupAcceptanceRetry(pk.data);
