@@ -13072,6 +13072,7 @@ export const render = {
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
         urgent: compileOptions && compileOptions.urgent === true,
         rootCount: batch.length,
+        serialDriver: makeGpuQueuePacer(renderer) !== null,
       })) {
         const sliced = batch.flatMap((root) => collectUniqueCompileSubjects(root, openingCompileIssueKey)
           .map((subject) => ({ subject, root })));
@@ -13082,8 +13083,11 @@ export const render = {
           // the slowest drawable instead of the sum (the opening cook's
           // issue-all / drain-once pattern, compilePresentSlice comment).
           const linkBatch = beginScenePipelineReadinessBatch(renderer);
-          const paceQueue = linkBatch && typeof linkBatch.paceQueue === 'function'
-            ? linkBatch.paceQueue : null;
+          // Readiness batches can nest across renderer lifetimes. Submission ownership and
+          // its drain must belong to this native renderer, never a global batch's creator.
+          const paceQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+          const submitSerial = paceQueue && typeof paceQueue.submit === 'function'
+            ? paceQueue.submit : null;
           const issued = [];
           try {
             await compileSubjectsAcrossPresents(
@@ -13093,16 +13097,29 @@ export const render = {
                   issued.push(Promise.resolve({ skipped: true, reason: 'owner-inactive' }));
                   return Promise.resolve({ skipped: true });
                 }
+                const submit = () => compileSubjectColorAndDepth(entry.subject, route, {
+                  ...compileOptions,
+                  // A serial reservation cannot wait on the enclosing batch it prevents
+                  // from draining, even if capabilities change while environment stamping yields.
+                  ...(submitSerial ? { skipSharedBatch: true } : {}),
+                  // The sliced subject is a child, but cancellation belongs to its root.
+                  // _compilePostRoute checks this again after asynchronous environment stamping.
+                  isActive: () => isRootActive(entry.root),
+                });
+                let admission;
                 try {
-                  issued.push(Promise.resolve(
-                    compileSubjectColorAndDepth(entry.subject, route, compileOptions),
-                  ));
+                  admission = observePipelineAdmission(Promise.resolve(submitSerial
+                    ? submitSerial(submit, {
+                      urgent: compileOptions && compileOptions.urgent === true,
+                      isActive: () => isRootActive(entry.root),
+                    }) : submit()));
                 } catch (error) {
-                  issued.push(observePipelineAdmission(Promise.reject(error)));
+                  admission = observePipelineAdmission(Promise.reject(error));
                 }
-                // Serial-route queues (no KHR_parallel_shader_compile) keep each forced
-                // GL drain bounded to one unit — same pacing the opening cohort runs.
-                return paceQueue ? paceQueue() : Promise.resolve({ issued: true });
+                issued.push(admission);
+                // Serial units reserve submission through drain across all enrolled producers.
+                // KHR still issues without awaiting its per-unit pooled readiness.
+                return submitSerial ? admission : Promise.resolve({ issued: true });
               },
               admissionPaceYield,
               {
@@ -13164,6 +13181,11 @@ export const render = {
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       getLastPresentDtMs: () => state.render && state.render.lastPresentDtMs,
     });
+    const assertResidencyOwnerActive = (subject, admissionOptions) => {
+      if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive(subject) !== true) {
+        throw new Error('Authored GPU residency owner became inactive before texture upload');
+      }
+    };
     const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => {
       // A per-item yield to the next present cost one frame per texture and per geometry batch:
       // a 20-map hull waited ~20 presents (~0.4 s) hidden behind the pending latch before it
@@ -13203,11 +13225,10 @@ export const render = {
         // unSliced is the on-glass deadline lane: its residency batches ride the
         // urgent chain instead of queueing behind ambient uploads.
         urgent: unSliced,
+        beforeSubmit: () => assertResidencyOwnerActive(subject, admissionOptions),
         yieldToMain: async () => {
           if (yieldSlice) await yieldSlice();
-          if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive(subject) !== true) {
-            throw new Error('Authored GPU residency owner became inactive before texture upload');
-          }
+          assertResidencyOwnerActive(subject, admissionOptions);
         },
         onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       });
