@@ -144,10 +144,10 @@
       "career": "hunter",
       "minutes": 30,
       "seed": 3232804866,
-      "credits": 5332,
-      "netWorth": 13332,
-      "earnedValue": 1532,
-      "creditsPerMin": 51.07,
+      "credits": 7889,
+      "netWorth": 15889,
+      "earnedValue": 4089,
+      "creditsPerMin": 136.3,
       "completedLoops": 12,
       "completedContracts": 12,
       "failedContracts": 5,
@@ -175,18 +175,16 @@
       "authorityReceipts": 31,
       "ok": true,
       "assertionFails": [],
-      "assertionWarns": [
-        "below_healthy_band 51.07 < 62.5"
-      ]
+      "assertionWarns": []
     },
     {
       "career": "hunter",
       "minutes": 60,
       "seed": 3232804866,
-      "credits": 10941,
-      "netWorth": 18941,
-      "earnedValue": 7141,
-      "creditsPerMin": 119.02,
+      "credits": 16935,
+      "netWorth": 24935,
+      "earnedValue": 13135,
+      "creditsPerMin": 218.92,
       "completedLoops": 27,
       "completedContracts": 27,
       "failedContracts": 7,
@@ -224,10 +222,10 @@
       "career": "hunter",
       "minutes": 90,
       "seed": 3232804866,
-      "credits": 15518,
-      "netWorth": 23518,
-      "earnedValue": 11718,
-      "creditsPerMin": 130.2,
+      "credits": 24347,
+      "netWorth": 32347,
+      "earnedValue": 20547,
+      "creditsPerMin": 228.3,
       "completedLoops": 38,
       "completedContracts": 38,
       "failedContracts": 11,
@@ -551,10 +549,10 @@
       "30": {
         "ok": true,
         "horizonMin": 30,
-        "endingCapital": 5332,
-        "earnedValue": 1532,
-        "creditsPerMin": 51.07,
-        "netWorth": 13332,
+        "endingCapital": 7889,
+        "earnedValue": 4089,
+        "creditsPerMin": 136.3,
+        "netWorth": 15889,
         "completedLoops": 12,
         "completedContracts": 12,
         "failedContracts": 5,
@@ -587,9 +585,7 @@
           }
         ],
         "assertionFails": [],
-        "assertionWarns": [
-          "below_healthy_band 51.07 < 62.5"
-        ],
+        "assertionWarns": [],
         "hullDamageHp": 0,
         "readiness": 1,
         "ownedWeapons": [
@@ -612,10 +608,10 @@
       "60": {
         "ok": true,
         "horizonMin": 60,
-        "endingCapital": 10941,
-        "earnedValue": 7141,
-        "creditsPerMin": 119.02,
-        "netWorth": 18941,
+        "endingCapital": 16935,
+        "earnedValue": 13135,
+        "creditsPerMin": 218.92,
+        "netWorth": 24935,
         "completedLoops": 27,
         "completedContracts": 27,
         "failedContracts": 7,
@@ -675,10 +671,10 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 15518,
-        "earnedValue": 11718,
-        "creditsPerMin": 130.2,
-        "netWorth": 23518,
+        "endingCapital": 24347,
+        "earnedValue": 20547,
+        "creditsPerMin": 228.3,
+        "netWorth": 32347,
         "completedLoops": 38,
         "completedContracts": 38,
         "failedContracts": 11,
@@ -924,23 +920,23 @@
     "ok": true,
     "fails": [],
     "warns": [
-      "extreme_cross_disparity_90m ratio=8.47"
+      "extreme_cross_disparity_90m ratio=7.83"
     ],
     "disparity": {
       "30": {
-        "min": 51.07,
+        "min": 131.33,
         "max": 288.63,
-        "ratio": 5.65
+        "ratio": 2.2
       },
       "60": {
-        "min": 119.02,
+        "min": 156.58,
         "max": 550.45,
-        "ratio": 4.62
+        "ratio": 3.52
       },
       "90": {
-        "min": 130.2,
+        "min": 140.72,
         "max": 1102.36,
-        "ratio": 8.47
+        "ratio": 7.83
       }
     }
   },
@@ -995,9 +991,9 @@
       {
         "seed": 3232804866,
         "ok": true,
-        "endingCapital": 7617,
-        "earnedValue": 3817,
-        "creditsPerMin": 127.23,
+        "endingCapital": 10890,
+        "earnedValue": 7090,
+        "creditsPerMin": 236.33,
         "completedLoops": 16,
         "completedContracts": 16,
         "assertionFails": []
@@ -1005,9 +1001,9 @@
       {
         "seed": 3232804882,
         "ok": true,
-        "endingCapital": 11271,
-        "earnedValue": 7471,
-        "creditsPerMin": 249.03,
+        "endingCapital": 14796,
+        "earnedValue": 10996,
+        "creditsPerMin": 366.53,
         "completedLoops": 16,
         "completedContracts": 16,
         "assertionFails": []
@@ -1015,9 +1011,9 @@
       {
         "seed": 3232804898,
         "ok": true,
-        "endingCapital": 5557,
-        "earnedValue": 1757,
-        "creditsPerMin": 58.57,
+        "endingCapital": 7755,
+        "earnedValue": 3955,
+        "creditsPerMin": 131.83,
         "completedLoops": 10,
         "completedContracts": 10,
         "assertionFails": []

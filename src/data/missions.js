@@ -49,6 +49,61 @@ export const MISSION_TUNING = {
   featured: { rewardMult: 1.75, repBonus: 3 },
 };
 
+/**
+ * Head money: what an ordinary board bounty writ pays on top of the wage-derived quote.
+ *
+ * The board prices a writ at its boarding board's local rate (D59), which is the right place to
+ * stop standing and destination danger from re-paying the same loop. What that quote cannot see is
+ * the hunter's own overhead: a mark is a round trip through the gates (the 90-minute cohort hunter
+ * spent half of its gross on gate tolls and another sixth on repairs), return fire is repaired at a
+ * dock, and a countered writ pays nothing. Measured before this premium, a starter hunter netted
+ * 51 / 119 / 130 cr/min at 30 / 60 / 90 minutes while the hauler netted 289 / 550 / 1102.
+ * At the foothold and specialist rates those fixed costs are most of the wage, so the premium is
+ * largest there and tapers to nothing at the top rate, where the wage itself dwarfs the overhead
+ * and D59's runaway lived. Indexed by the writ's pay tier (the same index as
+ * ECONOMY_BALANCE.phases).
+ *
+ * The size is bounded by the declared hunter band, not by taste: 1.4 bought the Wasp inside 90
+ * minutes but pushed the luckiest held-out seed to 437 cr/min, past CAREER_BANDS.hunter.hi (400);
+ * 1.25 keeps that seed at 367. The cohort check pins the resulting income inside the band.
+ *
+ * Applies to rolled board writs (the board roller, first-hour choice, story-branch intros and
+ * chained follow-ups). Authored set pieces, origin writs, ghost-convoy rumors and field-contract
+ * posters price themselves and keep their own pay.
+ */
+export const BOUNTY_HEAD_MONEY = Object.freeze({
+  payMultByTier: Object.freeze([1.25, 1.25, 1.15, 1.05, 1.0]),
+});
+
+/** Head-money multiplier for a bounty writ priced at `payTier`; 1 when the tier carries none. */
+export function bountyHeadMoneyMult(payTier) {
+  const table = BOUNTY_HEAD_MONEY.payMultByTier;
+  const i = Math.max(0, Math.min(table.length - 1, Math.floor(Number(payTier) || 0)));
+  const mult = Number(table[i]);
+  return Number.isFinite(mult) && mult > 0 ? mult : 1;
+}
+
+/**
+ * Re-quote a bounty writ's economy terms with head money. Pure: returns the input object when the
+ * tier carries no premium, otherwise a copy whose rewardCr and expected-net figures agree with the
+ * paid number, plus the multiplier so the dossier can name it.
+ */
+export function withBountyHeadMoney(terms, payTier) {
+  const mult = bountyHeadMoneyMult(payTier);
+  if (!terms || mult === 1) return terms;
+  const rewardCr = Math.ceil(terms.rewardCr * mult);
+  const extraNet = (Number(terms.successProbability) || 0) * (rewardCr - terms.rewardCr);
+  const expectedNetCr = (Number(terms.expectedNetCr) || 0) + extraNet;
+  const durationS = Number(terms.expectedDurationS) || 0;
+  return {
+    ...terms,
+    rewardCr,
+    expectedNetCr,
+    expectedNetCrPerHour: durationS > 0 ? expectedNetCr * 3600 / durationS : terms.expectedNetCrPerHour,
+    headMoneyMult: mult,
+  };
+}
+
 // Mission families whose generated payload must fit in free hold at accept time. The simulation
 // and station preflight import this same set so a contract cannot look ready and then fail after
 // its collateral has been charged.

@@ -229,6 +229,46 @@ test('research faucet: fighters and miners earn RP once they own their path entr
   }
 });
 
+test('hunter income: bounty head money lifts the career inside its declared band, hauler and prospector stay put', () => {
+  const report = runGateOnce().json;
+  const band = CAREER_BANDS.hunter;
+  const hunter = (m) => report.cells.hunter[m];
+
+  // Every horizon sits inside the declared hunter band: no cell below the healthy floor (the old
+  // 30m cell read 51 against 62.5) and none past the ceiling.
+  for (const m of [30, 60, 90]) {
+    const rate = hunter(m).creditsPerMin;
+    assert.ok(rate >= band.lo && rate <= band.hi, `hunter@${m} ${rate} outside ${band.lo}..${band.hi}`);
+    assert.deepEqual(hunter(m).assertionFails, [], `hunter@${m}`);
+    assert.ok(!(hunter(m).assertionWarns || []).some((w) => /below_healthy_band/.test(w)),
+      `hunter@${m} warns below the healthy band`);
+  }
+
+  // The career pays like a career: the old fixture read 51 / 119 / 130 cr/min. Floors are band
+  // relative so a regression back to that range fails while the lift stays well under the ceiling.
+  assert.ok(hunter(30).creditsPerMin >= band.lo * 1.5, `hunter@30 ${hunter(30).creditsPerMin}`);
+  assert.ok(hunter(60).creditsPerMin >= band.lo * 3, `hunter@60 ${hunter(60).creditsPerMin}`);
+  assert.ok(hunter(90).creditsPerMin >= band.lo * 3, `hunter@90 ${hunter(90).creditsPerMin}`);
+  assert.ok(hunter(90).creditsPerMin > report.cells.prospector[90].creditsPerMin,
+    'a bounty hunter out-earns a prospector at 90 minutes');
+  assert.ok(hunter(90).creditsPerMin < report.cells.hauler[90].creditsPerMin,
+    'the hauler stays the high-throughput career');
+
+  // The luckiest held-out seed is the binding constraint on how large the premium can be: every
+  // held-out hunter seed must also live inside the declared band.
+  for (const row of report.multiSeed.hunter) {
+    assert.ok(row.creditsPerMin >= band.lo && row.creditsPerMin <= band.hi,
+      `hunter seed ${row.seed.toString(16)} ${row.creditsPerMin} outside ${band.lo}..${band.hi}`);
+  }
+
+  // Head money is bounty-only: the other two careers keep their own cells inside their own bands.
+  for (const m of [30, 60, 90]) {
+    const prospector = report.cells.prospector[m];
+    assert.ok(prospector.creditsPerMin >= CAREER_BANDS.prospector.lo
+      && prospector.creditsPerMin <= CAREER_BANDS.prospector.hi, `prospector@${m} ${prospector.creditsPerMin}`);
+  }
+});
+
 test('research faucet: the prospector buys the entry node first, then a settled quota pays RP', () => {
   blockNondeterminism();
   try {

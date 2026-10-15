@@ -76,6 +76,7 @@ import {
   offerMixWeight,
   offerHistoryTierFor,
   offerHistoryMultiplier,
+  withBountyHeadMoney,
 } from '../data/missions.js';
 import {
   SET_PIECE_FOLLOW_ON_SOURCE,
@@ -3265,9 +3266,13 @@ export const missions = {
     }
 
     // Economy Pulse: pay the net work budget, not a product of unbounded multipliers.
-    const economyTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
+    const quotedTerms = priceProceduralOffer({type:typeId,info,dest,riskTier:payRiskTier,tier:payTier,distance,params,
       loyaltyMultiplier:this._repOf(info.factionId) >= (cfg.faction.friendlyThreshold || 25)
         ? (cfg.faction.loyaltyBonus || 1.15) : 1});
+    // Head money: an ordinary board writ pays the hunter's overhead (gate tolls, return-fire repair,
+    // countered writs) on top of the wage quote. Bounty-only; the quote's own tier/risk are untouched.
+    const economyTerms = bountyPay && !(params && params.ghostConvoy)
+      ? withBountyHeadMoney(quotedTerms, quotedTerms.tier) : quotedTerms;
     const reward_cr = economyTerms.rewardCr;
     const time_limit_s = economyTerms.deadlineS;
     const collateral_cr = def.collateral ? economyTerms.collateralCr : 0;
