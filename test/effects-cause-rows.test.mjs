@@ -331,6 +331,36 @@ test('three verbs in one moment keep a shape and a duplicate flash is dropped', 
   assert.equal(elsewhere.drawSprites, true);
 });
 
+test('spectacle history recycles expired events without changing crowd semantics', () => {
+  const book = createSpectacleBook();
+  for (let i = 0; i < 512; i++) {
+    const kind = i % 3 === 0 ? 'release' : i % 3 === 1 ? 'field' : 'impact';
+    spectacleFor(book, kind, i * 0.05, i, -i, false);
+  }
+  assert.ok(book.events.length <= 128, 'expired event history stays bounded');
+  const quiet = spectacleFor(book, 'release', 40, 0, 0, false);
+  assert.equal(quiet.crowded, false, 'expired verbs do not keep the crowded gate armed');
+  const field = spectacleFor(book, 'field', 40.05, 0, 0, false);
+  const impact = spectacleFor(book, 'impact', 40.1, 0, 0, false);
+  assert.equal(impact.crowded, true, 'active verbs still produce the crowded gate');
+  assert.equal(duplicateBombDropsFlash(field), false);
+});
+
+test('spectacle history resets when a surviving presentation book sees a new clock epoch', () => {
+  const book = createSpectacleBook();
+  spectacleFor(book, 'release', 12, 0, 0, false);
+  spectacleFor(book, 'field', 12.05, 0, 0, false);
+  const oldCrowd = spectacleFor(book, 'impact', 12.1, 0, 0, false);
+  assert.equal(oldCrowd.crowded, true);
+
+  const fresh = spectacleFor(book, 'release', 0.05, 0, 0, false);
+  assert.equal(fresh.crowded, false, 'a reset clock does not inherit the old crowd gate');
+  const field = spectacleFor(book, 'field', 0.1, 0, 0, false);
+  const impact = spectacleFor(book, 'impact', 0.15, 0, 0, false);
+  assert.equal(impact.crowded, true, 'the new epoch still arms the crowd gate normally');
+  assert.equal(duplicateBombDropsFlash(field), false);
+});
+
 test('weapon pictures follow provenance and stay off the collapsed families', () => {
   const families = new Set();
   for (const [id, family, variant, collapsed] of NINE) {

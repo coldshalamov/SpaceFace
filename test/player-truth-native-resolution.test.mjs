@@ -78,14 +78,14 @@ function fixture({ width = 200, height = 120, cssWidth = 200, cssHeight = 120,
   };
 }
 
-test('preparation records opening state without staging-model draws or GPU readbacks', () => {
+test('preparation keeps scalar state without staging-model draws, census scans or GPU readbacks', () => {
   const f = fixture();
   try {
     for (const mode of ['menu', 'loading']) {
       f.state.mode = mode;
       const sample = f.frame();
       assert.equal(sample.mode, mode);
-      assert.equal(sample.e.length, 1, 'cheap entity history remains available');
+      assert.deepEqual(sample.e, [], 'known preparation modes do not retain an entity census');
       assert.equal(sample.px, undefined);
       assert.equal(sample.vfx, null);
       assert.equal(f.draws.length, 0);

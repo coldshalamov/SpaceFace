@@ -292,7 +292,43 @@ export function wreckStreakOn(book, entities, now, out) {
 }
 
 export function createSpectacleBook() {
-  return { events: [] };
+  // Keep the short lived event history in a recyclable queue.  `spectacleFor`
+  // is called from the presentation path for every combat picture; allocating
+  // a Set and rescanning the same 450 ms window on every call showed up as a
+  // measurable self-time/GC source in the native race profile.  The counters
+  // below preserve the event-window behavior while making the crowd verdict an
+  // O(1) lookup.
+  return {
+    events: [],
+    eventStart: 0,
+    freeEvents: [],
+    releaseCount: 0,
+    fieldCount: 0,
+    impactCount: 0,
+    lastTime: null,
+    __sfSpectacleCountersReady: true,
+  };
+}
+
+function resetSpectacleWindow(book, now) {
+  const events = book.events;
+  const start = Math.min(
+    events.length,
+    Number.isInteger(book.eventStart) && book.eventStart >= 0 ? book.eventStart : 0,
+  );
+  // Entries before eventStart are already in freeEvents. Recycle the active
+  // suffix as well so a new game/load epoch starts with the same allocation
+  // profile and no stale crowd verdict.
+  for (let i = start; i < events.length; i++) {
+    const event = events[i];
+    if (event) book.freeEvents.push(event);
+  }
+  events.length = 0;
+  book.eventStart = 0;
+  book.releaseCount = 0;
+  book.fieldCount = 0;
+  book.impactCount = 0;
+  book.lastTime = now;
 }
 
 export function spectacleFor(book, kind, now, x, z, reduced) {
@@ -301,20 +337,92 @@ export function spectacleFor(book, kind, now, x, z, reduced) {
   const t = num(now);
   let dup = false;
   if (!book.events) book.events = [];
-  for (let i = book.events.length - 1; i >= 0; i--) {
-    const ev = book.events[i];
-    if (t - ev.t > 0.45) {
-      book.events.splice(i, 1);
-      continue;
+
+  // Accept books created before the counters were introduced.  This keeps the
+  // helper safe for a restored presentation object while the normal constructor
+  // stays allocation-free after warm-up.
+  if (!Number.isInteger(book.eventStart) || book.eventStart < 0) book.eventStart = 0;
+  if (!Array.isArray(book.freeEvents)) book.freeEvents = [];
+
+  // The VFX instance survives the game:new/save:loaded boundary, while the
+  // simulation clock is reset by those routes. A recycled-prefix queue is only
+  // valid within one monotonic clock epoch; drop the active suffix on regression
+  // so a prior run cannot arm the new run's crowd gate or duplicate suppression.
+  if (!Number.isFinite(book.lastTime)) {
+    let latestEventTime = -Infinity;
+    for (let i = book.eventStart; i < book.events.length; i++) {
+      const eventTime = Number(book.events[i] && book.events[i].t);
+      if (Number.isFinite(eventTime) && eventTime > latestEventTime) latestEventTime = eventTime;
     }
-    if (ev.kind === kind && t - ev.t < 0.12 && Math.hypot(ev.x - px, ev.z - pz) < 8) dup = true;
+    book.lastTime = latestEventTime === -Infinity ? null : latestEventTime;
   }
-  book.events.push({ kind, t, x: px, z: pz });
-  const kinds = new Set();
-  for (let i = 0; i < book.events.length; i++) {
-    if (t - book.events[i].t <= 0.45) kinds.add(book.events[i].kind);
+  if (Number.isFinite(book.lastTime) && t < book.lastTime) {
+    resetSpectacleWindow(book, t);
+  } else {
+    book.lastTime = t;
   }
-  const crowded = kinds.has('release') && kinds.has('field') && kinds.has('impact');
+
+  if (book.__sfSpectacleCountersReady !== true) {
+    let releaseCount = 0;
+    let fieldCount = 0;
+    let impactCount = 0;
+    while (book.eventStart < book.events.length && t - book.events[book.eventStart].t > 0.45) {
+      book.freeEvents.push(book.events[book.eventStart++]);
+    }
+    for (let i = book.eventStart; i < book.events.length; i++) {
+      const eventKind = book.events[i].kind;
+      if (eventKind === 'release') releaseCount++;
+      else if (eventKind === 'field') fieldCount++;
+      else if (eventKind === 'impact') impactCount++;
+    }
+    book.releaseCount = releaseCount;
+    book.fieldCount = fieldCount;
+    book.impactCount = impactCount;
+    book.__sfSpectacleCountersReady = true;
+  }
+  if (!Number.isFinite(book.releaseCount)) book.releaseCount = 0;
+  if (!Number.isFinite(book.fieldCount)) book.fieldCount = 0;
+  if (!Number.isFinite(book.impactCount)) book.impactCount = 0;
+
+  const events = book.events;
+  let start = book.eventStart;
+  // Calls advance with the simulation clock, so expired entries form a prefix.
+  // Retain the same event objects for the next burst and compact occasionally
+  // to keep the externally visible history bounded.
+  while (start < events.length && t - events[start].t > 0.45) {
+    const expired = events[start++];
+    book.freeEvents.push(expired);
+    if (expired.kind === 'release') book.releaseCount = Math.max(0, book.releaseCount - 1);
+    else if (expired.kind === 'field') book.fieldCount = Math.max(0, book.fieldCount - 1);
+    else if (expired.kind === 'impact') book.impactCount = Math.max(0, book.impactCount - 1);
+  }
+  book.eventStart = start;
+
+  for (let i = events.length - 1; i >= start; i--) {
+    const ev = events[i];
+    if (ev.kind === kind && t - ev.t < 0.12 && Math.hypot(ev.x - px, ev.z - pz) < 8) {
+      dup = true;
+      break;
+    }
+  }
+
+  const event = book.freeEvents.pop() || {};
+  event.kind = kind;
+  event.t = t;
+  event.x = px;
+  event.z = pz;
+  events.push(event);
+  if (kind === 'release') book.releaseCount += 1;
+  else if (kind === 'field') book.fieldCount += 1;
+  else if (kind === 'impact') book.impactCount += 1;
+
+  // Avoid retaining a long expired prefix after a burst.  This is deliberately
+  // amortized; normal combat never pays an O(history) splice on every event.
+  if (start >= 64 && start * 2 >= events.length) {
+    events.splice(0, start);
+    book.eventStart = 0;
+  }
+  const crowded = book.releaseCount > 0 && book.fieldCount > 0 && book.impactCount > 0;
   if (dup) {
     return {
       drawSprites: false,

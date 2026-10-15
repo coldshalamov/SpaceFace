@@ -44,6 +44,9 @@ function migrationBaselineCatalog() {
   // The named-kill aftermath (INFERENCE U2) later marked the captain's hulk
   // with a signature salvage pool. Strip it for the migration baseline.
   delete catalog.named_hunter.killCachePool;
+  // The peel-the-screen toll (WF-02, aed4777736) later let the opening toll's third slot
+  // deal a point-defense screen priority target. Restore the migration-era pair.
+  catalog.pirate_toll.squad.archetypes = ['reaver_pirate', 'corsair_raider'];
   // The first-hour difficulty pass later kept elite and multi-squad ambient encounters out of the
   // tier-1 Helios neighborhood. Remove those live admission gates when reconstructing the earlier
   // module-split baseline; this test proves that migration, not that gameplay can never evolve.

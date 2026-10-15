@@ -338,6 +338,7 @@ import {
   survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
+import { createRetainedRigidOpaqueBatchController } from './rigidOpaqueBatch.js';
 import {
   scheduleRealtimeShadowRefresh,
   shouldRefreshRealtimeShadowMap,
@@ -498,12 +499,16 @@ import {
 } from './rendererPoolProducer.js';
 import {
   collectContextLossRoots,
+  captureWebGlDisposeListenerDelta,
+  createWebGlDisposeListenerProvenance,
   deferWebGlContextRestore,
   detachStaleWebGlDisposeListeners,
   detachStashedStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
+  mergeWebGlDisposeListenerProvenance,
   pauseSimForContextLoss,
   resumeSimAfterContextRestore,
+  snapshotWebGlDisposeListeners,
   stashStaleWebGlDisposeProvenance,
 } from './contextResourceLifecycle.js';
 import {
@@ -1203,6 +1208,7 @@ function clearRendererMeshLatches(state) {
       e._noMeshByRenderer = false;
       e._meshBuildFailures = 0;
       e._meshBuildRetryAtSim = null;
+      e._meshBuildRetryAtWallMs = null;
       e._meshBuildLastError = null;
     }
   }
@@ -1973,6 +1979,67 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
     return seconds <= TABLE_COLLECT_HORIZON_SECONDS;
   }
   return false;
+}
+
+/**
+ * A residency poll may run between two presentation visibility publishes. If that poll's
+ * activity-frame/glass snapshot misses a live hull which is still mounted and visible, evicting
+ * its root turns one transient classification miss into a visible authored re-admission (fallback
+ * -> loading -> compile -> authored). The next presentation pass owns the real camera verdict and
+ * hides off-frustum roots, so retain only a currently visible ship/wreck boundary that is still
+ * attached to this scene. Hidden, detached, dead, and all other entity classes keep the ordinary
+ * distance eviction path.
+ */
+export function shouldRetainVisibleEntityMesh(entity, mesh, scene = null) {
+  if (!entity || entity.alive === false || !mesh || mesh.visible === false) return false;
+  if (entity.type !== 'ship' && entity.type !== 'wreck') return false;
+  if (scene && mesh.parent !== scene) return false;
+  return true;
+}
+
+/**
+ * A newly mounted authored contact can be hidden while its live geometry upload is in flight.
+ * The ordinary residency poll must not evict that boundary after the contact reaches the readable
+ * glass: eviction would cancel the admission, rebuild the root, and leave the same picture-owned
+ * body hidden behind a fresh pending latch. Keep only this narrow authored/pending/on-glass class;
+ * ambient hidden roots and terminal fallback/loading boundaries keep the normal eviction policy.
+ */
+export function shouldRetainPendingReadableMesh(entity, mesh, scene = null, state = null, scan = null) {
+  if (!entity || entity.alive === false || !mesh || !mesh.userData
+      || mesh.userData.geometryPending !== true
+      || mesh.userData.authoredAssetState !== 'authored') return false;
+  if (scene && mesh.parent !== scene) return false;
+  if (!state || state.mode !== 'flight'
+      || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)) return false;
+  const frame = state.render && state.render.activityFrame;
+  const glassIds = frame && frame.renderGlassIds;
+  if (glassIds && typeof glassIds.has === 'function' && glassIds.has(entity.id)) return true;
+  if (Array.isArray(glassIds) && glassIds.includes(entity.id)) return true;
+  return scan
+    ? entityIsOnReadableGlassScan(entity, state, scan)
+    : entityIsOnReadableGlass(entity, state);
+}
+
+/**
+ * Loading intentionally freezes the simulation clock while the authored opening is staged.
+ * Mesh-build retries still need a progressing clock there; flight keeps the deterministic
+ * simulation-time deadline used by the normal residency lane.
+ */
+export function meshBuildRetryDue(entity, state, wallNowMs = null) {
+  if (!entity) return true;
+  if (state && state.mode === 'loading') {
+    const retryAtWallMs = Number(entity._meshBuildRetryAtWallMs);
+    if (!Number.isFinite(retryAtWallMs)) return true;
+    const nowMs = Number.isFinite(Number(wallNowMs))
+      ? Number(wallNowMs)
+      : (typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now());
+    return nowMs >= retryAtWallMs;
+  }
+  const retryAtSim = Number(entity._meshBuildRetryAtSim);
+  return !Number.isFinite(retryAtSim)
+    || (Number(state && state.simTime) || 0) >= retryAtSim;
 }
 
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
@@ -4475,6 +4542,32 @@ export function entityIsOnReadableGlass(entity, state) {
 }
 
 /**
+ * A spawned contact that is already in the readable runway must get a mesh-build queue slot in
+ * the same event turn.  The normal residency poll is intentionally paced at 250 ms for ambient
+ * work, but that cadence is long enough for a just-spawned on-screen hull to be sampled meshless
+ * for many presented frames.  Keep the event fast path narrow: protected/focused contacts and
+ * the live readable runway are already owed by the picture; ambient spawns remain poll-driven.
+ */
+export function spawnedEntityNeedsImmediateMesh(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  return isFirstFlightProtectedEntity(entity)
+    || entityIsExplicitRenderFocus(entity, state)
+    || entityIsOnReadableGlass(entity, state);
+}
+
+/** Queue the bounded mesh-build work for an urgent spawn, if the renderer owns its queues. */
+export function enqueueSpawnedEntityMesh(owner, entity, state = owner && owner.state) {
+  if (!owner || !spawnedEntityNeedsImmediateMesh(entity, state)
+      || !owner._meshes || !owner._meshBuildQueue || !owner._meshBuildQueuedIds) return false;
+  return enqueueMeshBuildCandidate(
+    entity,
+    owner._meshes,
+    owner._meshBuildQueuedIds,
+    owner._meshBuildQueue,
+  );
+}
+
+/**
  * The strict "on the readable glass right now" test used to ORDER deadline work.
  * entityIsOnReadableGlass deliberately includes the runway — residency, disposal
  * and overflow pacing all want the safe side — but an on-glass root can only
@@ -4893,6 +4986,264 @@ function clearanceBoundUnsettled(data) {
     || isAuthoredPendingStatus(status);
 }
 
+// A committed structural body can briefly carry a residency/pipeline latch while its last
+// authored geometry is still the picture on the glass. Do not erase the only known camera roof
+// during that transient: the glide has no way to anticipate a one-frame `geometryPending` or
+// `compiling-pipelines` state and would otherwise let the camera enter until the latch clears.
+// First-admission substrates have no stable record and still return no roof; a changed
+// composition, pose, matrix or descendant guard also fails closed.
+function canRetainCommittedClearanceWhilePending(mesh, data, cached) {
+  if (!mesh || !data || !cached || cached.stableAuthored !== true || !cached.box) return false;
+  if (cached.stableCompositionId !== (data.authoredCompositionId || '')) return false;
+  if (cached.stableRawX !== mesh.position.x
+      || cached.stableRawY !== mesh.position.y
+      || cached.stableRawZ !== mesh.position.z) return false;
+  if (cached.translationGuard && !cameraClearanceTranslationGuardStable(mesh, cached.translationGuard)) {
+    return false;
+  }
+  return true;
+}
+
+// A position-only clearance re-key is valid only while the root's linear pose and every
+// descendant that can contribute authored geometry remain unchanged.  The old memo accepted
+// that contract implicitly, which meant a turret rotation or an in-place BufferGeometry edit
+// could carry stale BVH cells.  Keep a small, allocation-free-at-query-time guard on the record:
+// snapshots are built when the box is measured, then scalar fields and object identities are
+// compared before a translated record is allowed to retain its relative cell answers.
+function cameraClearanceGuardEntry(object, isRoot) {
+  const geometry = object && object.geometry;
+  const attributes = geometry && geometry.attributes;
+  const position = attributes && attributes.position;
+  const index = geometry && geometry.index;
+  const drawRange = geometry && geometry.drawRange;
+  const material = object && object.material;
+  const materialArray = Array.isArray(material);
+  const materials = materialArray ? material.slice() : null;
+  const materialRef = materialArray ? null : material;
+  const materialTransparent = materialArray
+    ? materials.map((item) => !!(item && item.transparent))
+    : !!(material && material.transparent);
+  const materialBlending = materialArray
+    ? materials.map((item) => item && item.blending)
+    : material && material.blending;
+  const materialDepthWrite = materialArray
+    ? materials.map((item) => item == null || item.depthWrite !== false)
+    : !(material && material.depthWrite === false);
+  const morphAttributes = geometry && geometry.morphAttributes;
+  const hasMorphAttributes = !!(morphAttributes && Object.keys(morphAttributes).length);
+  const userData = object && object.userData;
+  const unsupported = !!(object && (
+    object.isInstancedMesh === true
+    || object.isSkinnedMesh === true
+    || object.skeleton
+    || object.morphTargetInfluences
+    || hasMorphAttributes
+    || (!isRoot && object.matrixAutoUpdate === false)
+  ));
+  const positionState = object && object.position;
+  const quaternion = object && object.quaternion;
+  const scale = object && object.scale;
+  return {
+    object,
+    children: object && object.children ? object.children.slice() : [],
+    visible: object ? object.visible !== false : false,
+    clearanceExempt: !!(userData && userData.clearanceExempt),
+    worldSitePresentationOwned: !!(userData && userData.worldSitePresentationOwned),
+    geometry,
+    position,
+    positionVersion: position && position.version,
+    positionCount: position && position.count,
+    index,
+    indexVersion: index && index.version,
+    indexCount: index && index.count,
+    groupsLength: geometry && geometry.groups ? geometry.groups.length : 0,
+    drawStart: drawRange && drawRange.start,
+    drawCount: drawRange && drawRange.count,
+    materialArray,
+    materials,
+    materialRef,
+    materialTransparent,
+    materialBlending,
+    materialDepthWrite,
+    unsupported,
+    isRoot,
+    px: isRoot ? 0 : positionState && positionState.x,
+    py: isRoot ? 0 : positionState && positionState.y,
+    pz: isRoot ? 0 : positionState && positionState.z,
+    qx: isRoot ? 0 : quaternion && quaternion.x,
+    qy: isRoot ? 0 : quaternion && quaternion.y,
+    qz: isRoot ? 0 : quaternion && quaternion.z,
+    qw: isRoot ? 1 : quaternion && quaternion.w,
+    sx: isRoot ? 1 : scale && scale.x,
+    sy: isRoot ? 1 : scale && scale.y,
+    sz: isRoot ? 1 : scale && scale.z,
+  };
+}
+
+function cameraClearanceTranslationGuardFor(mesh) {
+  const elements = mesh && mesh.matrixWorld && mesh.matrixWorld.elements;
+  if (!elements || elements.length < 11) return null;
+  const rootLinear = new Float64Array(9);
+  rootLinear[0] = elements[0];
+  rootLinear[1] = elements[1];
+  rootLinear[2] = elements[2];
+  rootLinear[3] = elements[4];
+  rootLinear[4] = elements[5];
+  rootLinear[5] = elements[6];
+  rootLinear[6] = elements[8];
+  rootLinear[7] = elements[9];
+  rootLinear[8] = elements[10];
+  const guard = {
+    rootLinear,
+    rootQuaternion: mesh.quaternion
+      ? {
+        x: mesh.quaternion.x,
+        y: mesh.quaternion.y,
+        z: mesh.quaternion.z,
+        w: mesh.quaternion.w,
+      }
+      : null,
+    rootScale: mesh.scale
+      ? {
+        x: mesh.scale.x,
+        y: mesh.scale.y,
+        z: mesh.scale.z,
+      }
+      : null,
+    entries: [],
+    reuseEligible: true,
+  };
+  if (!rootLinear.every(Number.isFinite)) {
+    guard.reuseEligible = false;
+  }
+  if (!mesh || typeof mesh.traverse !== 'function') {
+    guard.reuseEligible = false;
+    return guard;
+  }
+  mesh.traverse((object) => {
+    const entry = cameraClearanceGuardEntry(object, object === mesh);
+    guard.entries.push(entry);
+    if (entry.unsupported) guard.reuseEligible = false;
+  });
+  return guard;
+}
+
+function cameraClearanceGuardMaterialStable(entry, object) {
+  const material = object && object.material;
+  if (Array.isArray(material) !== entry.materialArray) return false;
+  if (entry.materialArray) {
+    if (material.length !== entry.materials.length) return false;
+    for (let i = 0; i < material.length; i++) {
+      const current = material[i];
+      if (current !== entry.materials[i]
+          || !!(current && current.transparent) !== entry.materialTransparent[i]
+          || (current && current.blending) !== entry.materialBlending[i]
+          || (current == null || current.depthWrite !== false) !== entry.materialDepthWrite[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return material === entry.materialRef
+    && !!(material && material.transparent) === entry.materialTransparent
+    && (material && material.blending) === entry.materialBlending
+    && (material == null || material.depthWrite !== false) === entry.materialDepthWrite;
+}
+
+function cameraClearanceTranslationGuardStable(mesh, guard) {
+  if (!guard || guard.reuseEligible !== true) return false;
+  const elements = mesh && mesh.matrixWorld && mesh.matrixWorld.elements;
+  if (!elements || elements.length < 11 || mesh.matrixWorldNeedsUpdate === true) return false;
+  const rootQuaternion = mesh.quaternion;
+  const rootScale = mesh.scale;
+  if (!rootQuaternion || !rootScale || !guard.rootQuaternion || !guard.rootScale
+      || rootQuaternion.x !== guard.rootQuaternion.x
+      || rootQuaternion.y !== guard.rootQuaternion.y
+      || rootQuaternion.z !== guard.rootQuaternion.z
+      || rootQuaternion.w !== guard.rootQuaternion.w
+      || rootScale.x !== guard.rootScale.x
+      || rootScale.y !== guard.rootScale.y
+      || rootScale.z !== guard.rootScale.z) {
+    return false;
+  }
+  const rootLinear = guard.rootLinear;
+  if (elements[0] !== rootLinear[0] || elements[1] !== rootLinear[1] || elements[2] !== rootLinear[2]
+      || elements[4] !== rootLinear[3] || elements[5] !== rootLinear[4] || elements[6] !== rootLinear[5]
+      || elements[8] !== rootLinear[6] || elements[9] !== rootLinear[7] || elements[10] !== rootLinear[8]) {
+    return false;
+  }
+  const entries = guard.entries;
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    const object = entry.object;
+    if (!object || object.matrixWorldNeedsUpdate === true
+        || object.visible !== entry.visible
+        || !!(object.userData && object.userData.clearanceExempt) !== entry.clearanceExempt
+        || !!(object.userData && object.userData.worldSitePresentationOwned) !== entry.worldSitePresentationOwned) {
+      return false;
+    }
+    const children = object.children || [];
+    if (children.length !== entry.children.length) return false;
+    for (let j = 0; j < children.length; j++) {
+      if (children[j] !== entry.children[j]) return false;
+    }
+    if (!cameraClearanceGuardMaterialStable(entry, object)) return false;
+    const geometry = object.geometry;
+    const attributes = geometry && geometry.attributes;
+    const position = attributes && attributes.position;
+    const index = geometry && geometry.index;
+    const drawRange = geometry && geometry.drawRange;
+    if (geometry !== entry.geometry
+        || position !== entry.position
+        || (position && position.version) !== entry.positionVersion
+        || (position && position.count) !== entry.positionCount
+        || index !== entry.index
+        || (index && index.version) !== entry.indexVersion
+        || (index && index.count) !== entry.indexCount
+        || (geometry && geometry.groups ? geometry.groups.length : 0) !== entry.groupsLength
+        || (drawRange && drawRange.start) !== entry.drawStart
+        || (drawRange && drawRange.count) !== entry.drawCount) {
+      return false;
+    }
+    if (entry.isRoot) continue;
+    const positionState = object.position;
+    const quaternion = object.quaternion;
+    const scale = object.scale;
+    if (!positionState || !quaternion || !scale
+        || positionState.x !== entry.px || positionState.y !== entry.py || positionState.z !== entry.pz
+        || quaternion.x !== entry.qx || quaternion.y !== entry.qy
+        || quaternion.z !== entry.qz || quaternion.w !== entry.qw
+        || scale.x !== entry.sx || scale.y !== entry.sy || scale.z !== entry.sz) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function cameraClearanceRefreshChangedGeometryBounds(mesh, guard) {
+  if (!guard || !guard.entries || typeof mesh?.traverse !== 'function') return;
+  const entries = guard.entries;
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    const object = entry.object;
+    const geometry = object && object.geometry;
+    const attributes = geometry && geometry.attributes;
+    const position = attributes && attributes.position;
+    const index = geometry && geometry.index;
+    if (geometry !== entry.geometry
+        || position !== entry.position
+        || (position && position.version) !== entry.positionVersion
+        || (position && position.count) !== entry.positionCount
+        || index !== entry.index
+        || (index && index.version) !== entry.indexVersion
+        || (index && index.count) !== entry.indexCount) {
+      if (geometry && typeof geometry.computeBoundingBox === 'function') {
+        geometry.computeBoundingBox();
+      }
+    }
+  }
+}
+
 function cameraClearanceBoxForMesh(mesh) {
   const data = mesh && mesh.userData;
   if (!data || !CAMERA_CLEARANCE_KINDS.has(data.kind)) return null;
@@ -4905,9 +5256,14 @@ function cameraClearanceBoxForMesh(mesh) {
     if (data.cameraClearanceNeverRoofScale === scaleX) return null;
     data.cameraClearanceNeverRoof = false;
   }
+  const cached = data.cameraClearanceBox;
   // A model that is still arriving does not have a roof. Measuring the stand-in, or the
-  // half-built body, is what yanked the camera up and down while stations loaded.
-  if (clearanceBoundUnsettled(data)) return null;
+  // half-built body, is what yanked the camera up and down while stations loaded. Once a
+  // committed body has supplied a stable opaque box, however, retain that exact box through a
+  // transient pipeline/residency latch so the camera does not lose a known roof mid-flight.
+  if (clearanceBoundUnsettled(data)) {
+    return canRetainCommittedClearanceWhilePending(mesh, data, cached) ? cached : null;
+  }
   // Numeric cache stamp — a per-frame string key here meant an allocation per structural mesh
   // per camera query. Field equality covers the same invalidation inputs.
   const assetState = data.authoredAssetState || '';
@@ -4915,38 +5271,80 @@ function cameraClearanceBoxForMesh(mesh) {
   const posX = Math.round(mesh.position.x);
   const posY = Math.round(mesh.position.y);
   const posZ = Math.round(mesh.position.z);
-  const cached = data.cameraClearanceBox;
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
       && cached.posX === posX && cached.posY === posY && cached.posZ === posZ) {
-    return cached;
+    // An eligible guard changing at the same rounded root position means authored content
+    // changed in place (child pose/visibility, geometry/index, or material admission). Rebuild
+    // before returning; unsupported content keeps the historical memo behavior and never enters
+    // the translation-retain path below.
+    if (!cached.translationGuard || cached.translationGuard.reuseEligible !== true
+        || cameraClearanceTranslationGuardStable(mesh, cached.translationGuard)) {
+      return cached;
+    }
   }
-  // Position-only re-key (same authored content, crossed a 1-WU cell): a world
-  // box translates exactly — a drifting capital paying a full setFromObject
-  // re-walk every couple of frames is what made the memo miss hot. Rotation
-  // staleness is already the memo's accepted contract.
+  // Position-only re-key (same authored content, crossed a 1-WU cell): a world box translates
+  // exactly. Retain relative BVH cells only for a pure root translation with an unchanged guard;
+  // a changed eligible guard falls through to a fresh measurement. Unsupported geometry keeps
+  // the previous conservative box/grid invalidation behavior and never carries cell answers.
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
       && cached.box
       && (cached.posX !== posX || cached.posY !== posY || cached.posZ !== posZ)) {
-    const dx = mesh.position.x - (Number(cached.rawX) || 0);
-    const dy = mesh.position.y - (Number(cached.rawY) || 0);
-    const dz = mesh.position.z - (Number(cached.rawZ) || 0);
-    if (dx !== 0 || dy !== 0 || dz !== 0) {
-      cached.box.minX += dx; cached.box.maxX += dx;
-      cached.box.minY += dy; cached.box.maxY += dy;
-      cached.box.minZ += dz; cached.box.maxZ += dz;
-      cached.layout = cached.bvhQuery ? clearanceLayoutFromBox(cached.box) : null;
-      cached.grid = null;
-      cached.bvhCache = null;
-      cached.cellRoofs = null;
-      _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+    const guard = cached.translationGuard;
+    const guardEligible = !!(guard && guard.reuseEligible === true);
+    const guardStable = guardEligible && cameraClearanceTranslationGuardStable(mesh, guard);
+    // If an eligible guard changed, do not translate stale geometry. The normal path below
+    // updates matrices and takes a fresh bounds measurement, then replaces the guard snapshot.
+    if (!guardEligible || guardStable) {
+      const rawX = Number(cached.rawX);
+      const rawY = Number(cached.rawY);
+      const rawZ = Number(cached.rawZ);
+      const dx = mesh.position.x - rawX;
+      const dy = mesh.position.y - rawY;
+      const dz = mesh.position.z - rawZ;
+      if (Number.isFinite(dx) && Number.isFinite(dy) && Number.isFinite(dz)) {
+        cached.box.minX += dx; cached.box.maxX += dx;
+        cached.box.minY += dy; cached.box.maxY += dy;
+        cached.box.minZ += dz; cached.box.maxZ += dz;
+        let canRetainCells = false;
+        if (cached.bvhQuery && cached.layout) {
+          // A pure translation preserves the cell dimensions exactly. Move only the layout
+          // origin in place so the hot crossing allocates neither a replacement layout nor a
+          // matrix; relative cell keys remain valid for the retained answers.
+          cached.layout.minX += dx;
+          cached.layout.minZ += dz;
+          canRetainCells = guardStable;
+        } else {
+          cached.layout = cached.bvhQuery ? clearanceLayoutFromBox(cached.box) : null;
+        }
+        cached.grid = null;
+        if (canRetainCells) {
+          // cellRoofs/bvhCache are relative to the box. Keep those answers and lazily apply
+          // the root's Y translation when reading them; newly measured cells store baseline raw Y.
+          const previousOffset = Number.isFinite(cached.roofOffsetY) ? cached.roofOffsetY : 0;
+          cached.roofOffsetY = previousOffset + dy;
+        } else {
+          cached.bvhCache = null;
+          cached.cellRoofs = null;
+          cached.roofOffsetY = 0;
+        }
+        _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
+        cached.posX = posX;
+        cached.posY = posY;
+        cached.posZ = posZ;
+        cached.rawX = mesh.position.x;
+        cached.rawY = mesh.position.y;
+        cached.rawZ = mesh.position.z;
+        if (cached.stableAuthored === true) {
+          cached.stableCompositionId = compositionId;
+          cached.stableRawX = mesh.position.x;
+          cached.stableRawY = mesh.position.y;
+          cached.stableRawZ = mesh.position.z;
+        }
+        return cached;
+      }
+      // A malformed prior record is safer to rebuild than to let NaN poison the shared box.
+      // The ordinary path below re-measures and replaces the record in one pass.
     }
-    cached.posX = posX;
-    cached.posY = posY;
-    cached.posZ = posZ;
-    cached.rawX = mesh.position.x;
-    cached.rawY = mesh.position.y;
-    cached.rawZ = mesh.position.z;
-    return cached;
   }
   if (CAMERA_CLEARANCE_ASTEROID_SPAN_REJECT && data.kind === 'asteroid') {
     const hint = asteroidClearanceSpanHint(data);
@@ -4970,6 +5368,10 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.layout = null;
       rec.bvhCache = null;
       rec.cellRoofs = null;
+      rec.roofOffsetY = 0;
+      rec.translationGuard = null;
+      rec.stableAuthored = false;
+      rec.stableCompositionId = '';
       _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
       return rec;
     }
@@ -4997,9 +5399,22 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.layout = null;
       rec.bvhCache = null;
       rec.cellRoofs = null;
+      rec.roofOffsetY = 0;
+      rec.translationGuard = null;
+      rec.stableAuthored = assetState.startsWith('authored');
+      rec.stableCompositionId = rec.stableAuthored ? compositionId : '';
+      rec.stableRawX = mesh.position.x;
+      rec.stableRawY = mesh.position.y;
+      rec.stableRawZ = mesh.position.z;
       _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
       return rec;
     }
+  }
+  if (cached && cached.translationGuard && cached.translationGuard.reuseEligible === true) {
+    // Box3.setFromObject may reuse a geometry's cached bounds. Refresh only geometries whose
+    // position/index revision changed before the guarded full rebuild; the steady-state path
+    // never pays this traversal or mutates authored bounds.
+    cameraClearanceRefreshChangedGeometryBounds(mesh, cached.translationGuard);
   }
   _clearanceBoxScratch.setFromObject(mesh);
   let box = null;
@@ -5038,6 +5453,13 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.layout = rec.bvhQuery ? clearanceLayoutFromBox(box) : null;
   rec.bvhCache = null;
   rec.cellRoofs = null;
+  rec.roofOffsetY = 0;
+  rec.translationGuard = rec.bvhQuery ? cameraClearanceTranslationGuardFor(mesh) : null;
+  rec.stableAuthored = !!(box && assetState.startsWith('authored'));
+  rec.stableCompositionId = rec.stableAuthored ? compositionId : '';
+  rec.stableRawX = mesh.position.x;
+  rec.stableRawY = mesh.position.y;
+  rec.stableRawZ = mesh.position.z;
   _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
   return rec;
 }
@@ -5212,17 +5634,20 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
       const gz = sample.gz;
       let raw = -Infinity;
       let useBvh = true;
+      const roofOffsetY = Number.isFinite(rec.roofOffsetY) ? rec.roofOffsetY : 0;
       // Cell answers persist on the record until the box is rebuilt (position/asset change), so
       // a path sweep that revisits cells never repeats a BVH window query.
       const cellKey = (gz + 2) * 1024 + (gx + 2);
       const cellRaw = rec.cellRoofs ? rec.cellRoofs.get(cellKey) : undefined;
       if (cellRaw !== undefined) {
-        raw = cellRaw;
+        raw = cellRaw + roofOffsetY;
       } else if (rec.bvhCache && rec.bvhCache.gx === gx && rec.bvhCache.gz === gz) {
-        raw = rec.bvhCache.raw;
+        raw = rec.bvhCache.raw + roofOffsetY;
       } else if (!clearanceCellInRange(rec.layout, gx, gz)) {
         raw = -Infinity;
-        rec.bvhCache = { gx, gz, raw };
+        // Store the baseline value so a later pure translation can keep this out-of-range
+        // answer without baking the current lazy offset into the record.
+        rec.bvhCache = { gx, gz, raw: -Infinity };
       } else {
         try {
           const hit = clearanceNeighborhoodRaw(structural[i], rec.box, camX, camZ);
@@ -5230,23 +5655,32 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
             useBvh = false;
             rec.bvhQuery = false;
             rec.bvhCache = null;
+            rec.cellRoofs = null;
+            rec.roofOffsetY = 0;
+            rec.translationGuard = null;
             rec.grid = rasterClearanceGrid(structural[i], rec.box);
           } else if (hit.empty) {
             useBvh = false;
             rec.bvhQuery = false;
             rec.bvhCache = null;
+            rec.cellRoofs = null;
+            rec.roofOffsetY = 0;
+            rec.translationGuard = null;
             rec.grid = null;
           } else {
             raw = hit.raw;
-            rec.bvhCache = { gx, gz, raw };
+            rec.bvhCache = { gx, gz, raw: raw - roofOffsetY };
             const cells = rec.cellRoofs || (rec.cellRoofs = new Map());
             if (cells.size >= 512) cells.clear();
-            cells.set(cellKey, raw);
+            cells.set(cellKey, raw - roofOffsetY);
           }
         } catch {
           useBvh = false;
           rec.bvhQuery = false;
           rec.bvhCache = null;
+          rec.cellRoofs = null;
+          rec.roofOffsetY = 0;
+          rec.translationGuard = null;
           rec.grid = rasterClearanceGrid(structural[i], rec.box);
         }
       }
@@ -5404,15 +5838,41 @@ export function syncResolvingMarker(mesh, state) {
  * seat: submitting it would flip root visibility for zero drawables and falsify the
  * on-screen/missing-frame accounting.
  */
-function authoredPendingBoundarySubmitsStandIn(mesh) {
+export function authoredPendingBoundarySubmitsStandIn(mesh) {
   const userData = mesh && mesh.userData;
   if (!userData) return false;
+  // Explicit geology is the one authored boundary whose procedural body has the same semantic
+  // envelope as the incoming asset. It may remain on the glass during a later authored
+  // re-admission, but only after this exact fallback root has already completed its own compile,
+  // residency, and target-touch admission. The marker is deliberately boundary-local: a generic
+  // pending root, an uncompiled fallback, or a live authored root cannot opt into this path.
+  const fallback = userData.hull;
+  const confirmedGeologyFallback = userData.authoredGeologySkin === true
+    && userData.authoredFallbackActive === true
+    && userData.authoredFallbackAdmittedOnce === true
+    && userData.sfAdmittedOnce === true
+    && userData.geometryPending !== true
+    && fallback && fallback.parent === mesh && fallback.visible !== false;
+  if (confirmedGeologyFallback) return true;
   if (userData.pipelinesPending === true || userData.geometryPending === true) return false;
   if (userData.authoredResolvingMarker === true || userData.resolvingMarker) return true;
   // Wreck / packaged-prop boundaries keep a same-envelope procedural fallback drawn
   // through admission — it is the visible stand-in until the authored commit.
   if (userData.authoredPendingFallbackDrawn === true) return true;
   return userData.authoredGeologySkin === true;
+}
+
+function markAuthoredGeologyFallbackAdmitted(subject) {
+  const userData = subject && subject.userData;
+  if (!userData
+      || userData.authoredGeologySkin !== true
+      || userData.authoredFallbackActive !== true
+      || userData.sfAdmittedOnce !== true
+      || userData.geometryPending === true) return false;
+  const fallback = userData.hull;
+  if (!fallback || fallback.parent !== subject || fallback.visible === false) return false;
+  userData.authoredFallbackAdmittedOnce = true;
+  return true;
 }
 
 /**
@@ -9797,6 +10257,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'openingFirstVisibleGpuCounts', 'openingSubmissionFirstDrawSubmittedAt',
   'openingSubmissionLateInstancedPbr', 'openingSubmissionPreSubmitValidation',
   'openingSubmissionReady', 'openingSubmissionValidation', 'pipelinePrecompileReady',
+  'rigidOpaqueBatch', 'setRigidOpaqueBatchForBench', 'getRigidOpaqueBatchDiagnosticsForBench',
   'firstPlayableContentHashes', 'firstPlayableContentHashesVerified',
   'firstPlayableGlobalProgramKeys', 'firstPlayableOpeningProgramKeys',
   'firstPlayableResourceIdentitySets', 'openingGraphPublicationFrozen', 'openingVfxFrozen',
@@ -9813,6 +10274,21 @@ function invokeRendererDisposer(resource, label, allow = true) {
     stormWarn('render:resource-dispose', `[render] ${label} dispose failed`, error);
   }
   return true;
+}
+
+/**
+ * Retire the PMREM generator that belongs to this renderer generation. A lost WebGL context
+ * invalidates the generator's private render targets, materials, and geometries; calling dispose
+ * after restore routes those dead handles through the fresh context. Live teardown may dispose
+ * normally, while loss teardown only abandons the stale JS reference.
+ */
+export function retirePmremGenerator(owner, { contextLost = owner?._contextLost === true } = {}) {
+  if (!owner) return false;
+  const generator = owner._pmremGenerator;
+  owner._pmremGenerator = null;
+  owner._pmremContextSeq = null;
+  if (!generator || contextLost === true) return false;
+  return invokeRendererDisposer(generator, 'PMREM generator', true);
 }
 
 function disposeRendererObject(object, label, allow = true, state = null) {
@@ -9994,8 +10470,10 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
-  invalidateMachineryPresentation(owner.state);
   const contextLost = options.contextLost === true || owner._contextLost === true;
+  disableRigidOpaqueBatchProbe(owner, contextLost ? 'context-lost' : 'renderer-destroyed');
+  owner._rigidOpaqueBatchScene = null;
+  invalidateMachineryPresentation(owner.state);
   const disposeGpu = !contextLost;
   const scene = owner.scene || null;
   const state = owner.state || null;
@@ -10105,6 +10583,9 @@ export function disposeRendererOwnedResources(owner, options = {}) {
     invokeRendererDisposer(owner._foundryEnvTexture, 'foundry IBL source', true);
     invokeRendererDisposer(owner._gpuTimers, 'GPU timers', true);
   }
+  // A live renderer can release its PMREM manager normally. A lost generation cannot: its private
+  // framebuffers/materials/geometries belong to the dead context and must be abandoned.
+  retirePmremGenerator(owner, { contextLost });
   // The coordinator's scene hook and owner registry are shared by renderer-created pools and
   // dependent scene producers. Retire it after those producers have released their own roots.
   try { owner._dynamicBuffers?.dispose?.(); } catch (_) { /* best effort */ }
@@ -10136,6 +10617,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._rebuildRestoredGpuResources = null;
   owner._envMap = null;
   owner._envMapTarget = null;
+  owner._environmentDisposeListenerProvenance = null;
   owner._foundryEnvTexture = null;
   owner._envMapSource = null;
   owner._envBakeScene = null;
@@ -10369,6 +10851,113 @@ function releasePooledPresentationTextures(mesh, entityId, owner) {
   mesh.userData.sfSharedTexturesNoted = false;
 }
 
+function emptyRigidOpaqueBatchDiagnostics(owner, status = 'disabled', lastReason = null) {
+  return {
+    enabled: false,
+    supported: owner?._opaqueBatchSupported === true,
+    status,
+    roots: 0,
+    totalMeshes: 0,
+    eligibleMeshes: 0,
+    directFallbackMeshes: 0,
+    groups: 0,
+    batches: 0,
+    instances: 0,
+    potentialDrawReduction: 0,
+    hiddenSources: 0,
+    visibleInstances: 0,
+    matrixUpdates: 0,
+    colorUpdates: 0,
+    rollbacks: 0,
+    activations: 0,
+    lastReason,
+    lastError: null,
+  };
+}
+
+function publishRigidOpaqueBatchDiagnostics(owner) {
+  if (!owner) return null;
+  const diagnostics = owner._rigidOpaqueBatchController?.getDiagnostics?.()
+    || owner._rigidOpaqueBatchLastDiagnostics
+    || emptyRigidOpaqueBatchDiagnostics(owner);
+  owner._rigidOpaqueBatchLastDiagnostics = diagnostics;
+  if (owner.state?.render) owner.state.render.rigidOpaqueBatch = diagnostics;
+  return diagnostics;
+}
+
+function disableRigidOpaqueBatchProbe(owner, reason = 'bench-disabled') {
+  if (!owner) return emptyRigidOpaqueBatchDiagnostics(owner, 'disabled', reason);
+  const controller = owner._rigidOpaqueBatchController;
+  if (controller) {
+    try { controller.dispose?.(); } catch (error) {
+      owner._rigidOpaqueBatchLastDiagnostics = {
+        ...(controller.getDiagnostics?.() || {}),
+        enabled: false,
+        supported: owner._opaqueBatchSupported === true,
+        status: 'disabled',
+        lastReason: reason,
+        lastError: String(error?.message || error),
+        batches: 0,
+        instances: 0,
+        hiddenSources: 0,
+        visibleInstances: 0,
+      };
+    }
+    owner._rigidOpaqueBatchController = null;
+  }
+  owner._rigidOpaqueBatchProbeEnabled = false;
+  if (owner._rigidOpaqueBatchRootsScratch) owner._rigidOpaqueBatchRootsScratch.length = 0;
+  const previous = owner._rigidOpaqueBatchLastDiagnostics
+    || controller?.getDiagnostics?.()
+    || emptyRigidOpaqueBatchDiagnostics(owner);
+  const diagnostics = {
+    ...previous,
+    enabled: false,
+    supported: owner._opaqueBatchSupported === true,
+    status: 'disabled',
+    lastReason: reason,
+    batches: 0,
+    instances: 0,
+    hiddenSources: 0,
+    visibleInstances: 0,
+  };
+  owner._rigidOpaqueBatchLastDiagnostics = diagnostics;
+  if (owner.state?.render) owner.state.render.rigidOpaqueBatch = diagnostics;
+  return diagnostics;
+}
+
+function createRigidOpaqueBatchProbe(owner, scene) {
+  const state = owner?.state;
+  return createRetainedRigidOpaqueBatchController({
+    scene,
+    supported: owner?._opaqueBatchSupported === true,
+    assumeUniqueRoots: true,
+    prepare: async (batches, context = {}) => {
+      const compile = state?.render?.compileObjectPipelines;
+      if (typeof compile !== 'function') return { skipped: true, reason: 'compile-unavailable' };
+      for (const batch of batches || []) {
+        if (owner?._contextLost === true || owner?._rendererResourcesDisposed === true
+            || (typeof context.isActive === 'function' && context.isActive() !== true)) {
+          return { skipped: true, reason: 'candidate-superseded' };
+        }
+        const result = await Promise.resolve(compile(batch, {
+          explicit: true,
+          strict: true,
+          joinOutstanding: true,
+          debugBy: 'rigid-opaque-batch',
+          isActive: () => owner?._contextLost !== true
+            && owner?._rendererResourcesDisposed !== true
+            && (typeof context.isActive !== 'function' || context.isActive() === true),
+        }));
+        if (!result || result.skipped === true) {
+          return { skipped: true, reason: result && result.reason || 'compile-incomplete' };
+        }
+      }
+      return { ready: true };
+    },
+  });
+}
+
 export const render = {
   name: 'render',
   init(ctx) {
@@ -10525,6 +11114,23 @@ export const render = {
     // write skip. With the compose off, the per-frame walk only rewrites subtrees whose nodes
     // actually re-posed this frame.
     scene.matrixAutoUpdate = false;
+    // Controlled A/B only: the retained rigid candidate is opt-in and requires the same
+    // WEBGL_multi_draw capability as the existing opaque bridge. Its source leaves remain in the
+    // ordinary path until the exact pipeline + residency callback below resolves successfully.
+    this._rigidOpaqueBatchProbeEnabled = !!(
+      query && query.get('rigidOpaqueBatch') === '1' && this._opaqueBatchSupported
+    );
+    this._rigidOpaqueBatchScene = scene;
+    this._rigidOpaqueBatchRootsScratch = [];
+    this._rigidOpaqueBatchController = null;
+    this._rigidOpaqueBatchLastDiagnostics = emptyRigidOpaqueBatchDiagnostics(
+      this,
+      this._rigidOpaqueBatchProbeEnabled ? 'idle' : 'disabled',
+    );
+    state.render.rigidOpaqueBatch = this._rigidOpaqueBatchLastDiagnostics;
+    state.render.setRigidOpaqueBatchForBench = (enabled) => this.setRigidOpaqueBatchForBench(enabled);
+    state.render.getRigidOpaqueBatchDiagnosticsForBench = () => this.getRigidOpaqueBatchDiagnosticsForBench();
+    if (this._rigidOpaqueBatchProbeEnabled) this.setRigidOpaqueBatchForBench(true);
     const dynamicBuffers = createDynamicBufferCoordinator(scene);
     this._dynamicBuffers = dynamicBuffers;
     state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
@@ -10650,6 +11256,10 @@ export const render = {
     // a driver/GPU hiccup.
     this._envMap = null;
     this._envMapTarget = null;
+    // Three registers WebGLEnvironments.onCubemapDispose lazily when an equirectangular
+    // environment source is first rendered. Keep only callbacks added by this renderer's bake
+    // delta; the loss handler merges these exact identities with the normal generation probe.
+    this._environmentDisposeListenerProvenance = createWebGlDisposeListenerProvenance();
     // AQ-LIGHT: fetch the foundry HDRI once; when it lands, _bakeEnv promotes it as the PMREM
     // source (foundryEnvironment.js). The visible sky stays the sector plate either way.
     this._foundryEnvTexture = null;
@@ -10704,6 +11314,25 @@ export const render = {
         clearCanonicalProgramSpecimens();
         this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
         dynamicBuffers.handleContextLost();
+        let vfxRoots = [];
+        let vfxResources = [];
+        try {
+          const collectVfxRoots = state.render
+            && typeof state.render.collectVfxGpuResidencyRoots === 'function'
+            ? state.render.collectVfxGpuResidencyRoots
+            : null;
+          const collectedVfxRoots = collectVfxRoots ? collectVfxRoots() : null;
+          if (Array.isArray(collectedVfxRoots)) vfxRoots = collectedVfxRoots;
+          const collectVfxResources = state.render
+            && typeof state.render.collectVfxContextLossResources === 'function'
+            ? state.render.collectVfxContextLossResources
+            : null;
+          const collectedVfxResources = collectVfxResources ? collectVfxResources() : null;
+          if (Array.isArray(collectedVfxResources)) vfxResources = collectedVfxResources;
+        } catch (_) {
+          // Context-loss handling must stay alive even if a presentation pool is mid-replacement;
+          // scene/entity roots still receive the exact-listener detach pass below.
+        }
         const preparedPoolResources = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
         const contextRoots = collectContextLossRoots({
           scene,
@@ -10711,8 +11340,15 @@ export const render = {
           spaceBackground: this.spaceBg,
           bloom: this.bloom,
           renderGraph: this._renderGraph,
+          vfxRoots,
+          vfxResources,
           entities: state.entityList,
         });
+        // These renderer-owned identities are abandoned immediately below. Include both the
+        // PMREM target (which owns its cube face attachments) and the source texture while their
+        // lost-context dispose listeners still have a precise owner root.
+        if (this._envMapTarget) contextRoots.push(this._envMapTarget);
+        if (this._foundryEnvTexture) contextRoots.push(this._foundryEnvTexture);
         contextRoots.push(...preparedPoolResources.roots);
         // Residency-tracked resources can live entirely outside the scene (decoded package
         // caches, warm-sector holds). They keep the same pre-loss dispose listeners, so they
@@ -10722,9 +11358,17 @@ export const render = {
           ? this._assetResidency.contextLossResources()
           : null;
         if (Array.isArray(residencyResources)) contextRoots.push(...residencyResources);
+        // The private registration probe cannot trigger WebGLEnvironments' lazy equirectangular
+        // conversion. Merge the exact callback delta captured during each owned environment bake
+        // so its onCubemapDispose callback is detached from the source before the old context is
+        // abandoned; unrelated source listeners remain outside this provenance set.
+        const contextDisposeProvenance = mergeWebGlDisposeListenerProvenance(
+          preparedPoolResources.provenance,
+          this._environmentDisposeListenerProvenance,
+        );
         const detachReceipt = detachStaleWebGlDisposeListeners(
           contextRoots,
-          preparedPoolResources.provenance,
+          contextDisposeProvenance,
         );
         this._contextRecovery.detachedStaleDisposeListeners = detachReceipt.listenersDetached;
         this._contextRecovery.detachedContextResources = detachReceipt;
@@ -10733,7 +11377,8 @@ export const render = {
         // the same stale callbacks. Keep the identities: the boundary-teardown chokepoint strips
         // them before any dispose fires, so a parked root torn down after the loss cannot delete
         // its dead handles through the lost generation's managers (the v6 Electron delete storm).
-        stashStaleWebGlDisposeProvenance(preparedPoolResources.provenance);
+        stashStaleWebGlDisposeProvenance(contextDisposeProvenance);
+        this._environmentDisposeListenerProvenance = createWebGlDisposeListenerProvenance();
         if (this._assetResidency) this._assetResidency.handleContextLost();
         vf.clearReadyPackagedBodies('context-lost');
         retireAppearanceGpuGeneration(this, 'webgl-context-lost');
@@ -10759,6 +11404,10 @@ export const render = {
         this._envMap = null;
         // The PMREM target belongs to the dead context — abandon it, never dispose through the new one.
         this._envMapTarget = null;
+        // PMREMGenerator owns additional private render targets/materials/geometries which are not
+        // reachable from the environment target. Abandon that manager too; _bakeEnv creates a fresh
+        // one for the incremented context epoch instead of disposing stale handles after restore.
+        retirePmremGenerator(this, { contextLost: true });
         state.render.envMap = null;
         setEnvMapForShips(null);
         if (typeof console !== 'undefined') console.warn('[render] WebGL context lost — awaiting restore');
@@ -12628,6 +13277,9 @@ export const render = {
       // compile result (or a throw while building continuations) would otherwise leak the
       // counted hold and leave the subject latch-hidden forever.
       let admission;
+      let subjectPipelineReady = false;
+      let subjectResidencyReady = false;
+      let exactTargetReady = true;
       try {
         admission = compilation
         .then((result) => {
@@ -12640,7 +13292,8 @@ export const render = {
           // admission (hide) from a re-admission (stay drawn — hiding a live
           // authored hull behind a background recompile was the whole-ship
           // hide flake).
-          if (result && result.contextLost !== true && subject && subject.userData) {
+          subjectPipelineReady = !!(result && result.contextLost !== true && result.skipped !== true);
+          if (subjectPipelineReady && subject && subject.userData) {
             subject.userData.sfAdmittedOnce = true;
           }
           // A linked program still stalls inside the presented frame while its
@@ -12660,9 +13313,16 @@ export const render = {
           return preparePipelineSubjectResidency(
             gpuResidencyAdmissions, subject, admissionOptions, residencyUrgent,
           ).then(
-            (gpuResidency) => admissionOptions.strict === true
-              ? { pipelines: result, gpuResidency: assertCompleteAppearanceAdmission(gpuResidency) } : result,
-            (error) => { if (admissionOptions.strict === true) throw error; return result; },
+            (gpuResidency) => {
+              subjectResidencyReady = !!(gpuResidency && gpuResidency.skipped !== true);
+              return admissionOptions.strict === true
+                ? { pipelines: result, gpuResidency: assertCompleteAppearanceAdmission(gpuResidency) } : result;
+            },
+            (error) => {
+              subjectResidencyReady = false;
+              if (admissionOptions.strict === true) throw error;
+              return result;
+            },
           );
         })
         .then(async (result) => {
@@ -12687,11 +13347,13 @@ export const render = {
             await reattachDetachedSubjectTextures(subject);
             await reattachDetachedSubjectGeometries(subject);
           } catch (error) {
+            exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] admission touch detach reattach failed', error);
           }
           try {
             await refillPresentedCompressedUploads(collectStartupTextures(subject));
           } catch (error) {
+            exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
           }
           // compile() resolves under the armed admission state; the presented pass can still
@@ -12703,6 +13365,7 @@ export const render = {
           try {
             touchExactTargetSubject(subject);
           } catch (error) {
+            exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             // Identify which texture threw on upload and why: package-detach empties a
             // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
@@ -12754,6 +13417,9 @@ export const render = {
             }
           } finally {
             restore();
+          }
+          if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
+            markAuthoredGeologyFallbackAdmitted(subject);
           }
           return result;
         })
@@ -13010,10 +13676,17 @@ export const render = {
       // compile still lands present-sliced, just without the coalescing wait.
       // skipSharedBatch keeps the program-readiness wait on this lane's own
       // poll — joining a foreign batch parks the root on someone else's drain.
-      compile: (root) => state.render.compileObjectPipelines(
-        root,
-        { explicit: true, skipSharedBatch: true },
-      ),
+      compile: (root, options = {}) => {
+        const urgent = options && options.urgent === true;
+        return state.render.compileObjectPipelines(root, urgent
+          ? {
+            urgent: true,
+            joinOutstanding: true,
+            debugBy: 'live-geometry-urgent',
+            skipSharedBatch: true,
+          }
+          : { explicit: true, skipSharedBatch: true });
+      },
       prepare: (root, options) => state.render.prepareAuthoredGpuResidency(root, options),
       // The deadline burst pays ONE merged residency pass: a single work list
       // and chain link instead of N serialized per-root uploads.
@@ -19719,6 +20392,11 @@ export const render = {
     });
     onBus('entity:spawned', ({ entity } = {}) => {
       if (!entity) return;
+      // The residency poll is deliberately a 250 ms cadence for ambient work. A contact that
+      // spawns directly into the readable runway is already owed by the current picture, so give
+      // its mesh build a queue slot in this event turn; the normal drain still owns the bounded
+      // build budget and authored upgrade/pipeline admission remains unchanged.
+      enqueueSpawnedEntityMesh(this, entity, state);
       const spawnedSectorId = entitySectorId(entity);
       const pending = this._authoredSectorPrewarmPending?.active === true
         && this._authoredSectorPrewarmPending.sectorId === String(spawnedSectorId || '')
@@ -20600,6 +21278,7 @@ export const render = {
     this.vf?.clearReadyPackagedBodies?.('renderer-destroyed');
     this._racingCourseView?.dispose();
     this._racingCourseView = null;
+    disableRigidOpaqueBatchProbe(this, this._contextLost === true ? 'context-lost' : 'renderer-destroyed');
     try { this._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
     this._contextRestoreReceipt = null;
     // Never strand a context-loss pause on a dead renderer: teardown is not recovery, but the
@@ -25002,6 +25681,8 @@ export const render = {
       // scene.background — the visible sector plate — is never touched either way.
       let reflectionEnv = null;
       let envTarget;
+      let equirectSource = null;
+      let equirectSourceDisposeListeners = null;
       const iblSource = resolveIblSource({
         foundryTexture: this._foundryEnvTexture,
         background: scene.background,
@@ -25011,12 +25692,20 @@ export const render = {
         // from the input width, and the cubeUV height sits in every lit material's program key.
         // Baking through a fixed-size scene capture keeps the key stable across env swaps.
         const equirect = iblSource === IBL_SOURCE_FOUNDRY ? this._foundryEnvTexture : scene.background;
+        equirectSource = equirect;
+        equirectSourceDisposeListeners = snapshotWebGlDisposeListeners(equirect);
         if (!this._envBakeScene) this._envBakeScene = new THREE.Scene();
         this._envBakeScene.background = equirect;
         envTarget = pmrem.fromScene(
           this._envBakeScene, 0, 0.1, 1000, { size: IBL_PMREM_CUBE_SIZE },
         );
         this._envBakeScene.background = null;
+        captureWebGlDisposeListenerDelta(
+          this._environmentDisposeListenerProvenance,
+          equirectSource,
+          equirectSourceDisposeListeners,
+          'textures',
+        );
       } else {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
         envTarget = pmrem.fromScene(
@@ -25170,6 +25859,8 @@ export const render = {
           && !!(e && e.alive !== false && !mismatched)
           && !keepResidentSet
           && !this._retainMachineryAppearanceWork?.(e, m)
+          && !shouldRetainVisibleEntityMesh(e, m, this.scene)
+          && !shouldRetainPendingReadableMesh(e, m, this.scene, state, reconcileScanOpts.scan)
           && !isEntityRenderRelevant(e, state,
             e.type === 'ship' || e.type === 'wreck' ? reconcileEvictShipWreck : reconcileEvictBase,
             reconcileScanOpts);
@@ -25348,6 +26039,8 @@ export const render = {
         const residencyEvict = !liveShellLatched()
           && !!(entity && entity.alive !== false)
           && !this._retainMachineryAppearanceWork?.(entity, mesh)
+          && !shouldRetainVisibleEntityMesh(entity, mesh, this.scene)
+          && !shouldRetainPendingReadableMesh(entity, mesh, this.scene, state, residencyScanOpts.scan)
           && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
         if (!entity || entity.alive === false || residencyEvict) {
           this._appearanceReplacements?.get(id)?.cancel('appearance-owner-evicted');
@@ -25993,7 +26686,7 @@ export const render = {
       // used to permanently strand the entity. Failed candidates re-enter via the next
       // reconcile once simTime passes; only the third strike latches, matching the declared
       // _noMesh contract producers set themselves.
-      if (e._meshBuildRetryAtSim != null && simNow < e._meshBuildRetryAtSim) continue;
+      if (!meshBuildRetryDue(e, this.state, now())) continue;
       let m = null;
       try {
         m = this.vf.build(e);
@@ -26014,12 +26707,18 @@ export const render = {
             });
           }
         } else {
-          e._meshBuildRetryAtSim = simNow + 0.25 * failures;
+          const retryDelayS = 0.25 * failures;
+          e._meshBuildRetryAtSim = simNow + retryDelayS;
+          // state.simTime is intentionally paused during the loading shell. Keep the
+          // deterministic sim deadline for flight, but give loading its own monotonic
+          // deadline so a transient asset race gets a real retry before readiness times out.
+          e._meshBuildRetryAtWallMs = now() + retryDelayS * 1000;
         }
         continue;
       }
       e._meshBuildFailures = 0;
       e._meshBuildRetryAtSim = null;
+      e._meshBuildRetryAtWallMs = null;
       e._meshBuildLastError = null;
       // In-flight builds are the deferred-streaming tail: naming each one in the counter log
       // is how the smooth-flight probe attributes a mid-round link burst to a real entity.
@@ -26146,7 +26845,8 @@ export const render = {
             // upgrade. Ambient FIFO priority here left its root hidden for seconds.
             return compileFn(subject, {
               debugBy: 'mesh-build-compile',
-              urgent: entityIsOnDeadlineGlass(e, capturedState), isActive,
+              urgent: entityIsOnDeadlineGlass(e, capturedState)
+                || (e.type === 'asteroid' && linkOnGlass), isActive,
             });
           }).finally(() => {
             // On-glass builds never took the hold above. Releasing anyway would
@@ -27761,7 +28461,65 @@ export const render = {
       options.playerX = local.x;
       options.playerZ = local.z;
     }
-    return syncAuthoredInstancePools(this.scene, options);
+    const result = syncAuthoredInstancePools(this.scene, options);
+    if (this._rigidOpaqueBatchProbeEnabled === true) this._syncRigidOpaqueBatchProbe();
+    return result;
+  },
+
+  // Runtime-only A/B seam for the retained rigid candidate. This deliberately lives on the
+  // render owner so a probe can switch the same scene without reloading the canonical route.
+  // Enabling is transactional: the controller keeps direct sources visible until its existing
+  // compile/residency callback resolves. Disabling disposes the retained copies first, which
+  // restores every source leaf before the next ordinary submission.
+  setRigidOpaqueBatchForBench(enabled) {
+    if (enabled !== true) return disableRigidOpaqueBatchProbe(this, 'bench-disabled');
+    if (this._contextLost === true || this._rendererResourcesDisposed === true) {
+      return disableRigidOpaqueBatchProbe(this, this._contextLost === true ? 'context-lost' : 'renderer-disposed');
+    }
+    if (this._opaqueBatchSupported !== true) {
+      return disableRigidOpaqueBatchProbe(this, 'unsupported-batched-mesh-capability');
+    }
+    const scene = this.scene || this._rigidOpaqueBatchScene;
+    if (!scene) return disableRigidOpaqueBatchProbe(this, 'scene-unavailable');
+    if (!this._rigidOpaqueBatchController) {
+      this._rigidOpaqueBatchScene = scene;
+      this._rigidOpaqueBatchController = createRigidOpaqueBatchProbe(this, scene);
+    }
+    this._rigidOpaqueBatchProbeEnabled = true;
+    if (this.state?.mode !== 'loading') this._syncRigidOpaqueBatchProbe?.();
+    return { ...publishRigidOpaqueBatchDiagnostics(this) };
+  },
+
+  getRigidOpaqueBatchDiagnosticsForBench() {
+    // Keep the public bench seam snapshot-like so a caller can retain one block's counters while
+    // the live state/render diagnostics continue accumulating on the next frame.
+    return { ...publishRigidOpaqueBatchDiagnostics(this) };
+  },
+
+  // Diagnostic-only retained rigid candidate. The normal path has no extra root walk and keeps
+  // the proven authored pool bridge unchanged; when explicitly armed, use the renderer's already
+  // resident entity-root map so hidden/camera-culled roots remain represented in the batch and can
+  // toggle per-instance visibility without repeatedly rebuilding the candidate.
+  _syncRigidOpaqueBatchProbe() {
+    const controller = this._rigidOpaqueBatchController;
+    const state = this.state;
+    if (!controller || this._rigidOpaqueBatchProbeEnabled !== true || !this._meshes) return;
+    if (state && state.mode === 'loading') return;
+    const roots = this._rigidOpaqueBatchRootsScratch || (this._rigidOpaqueBatchRootsScratch = []);
+    roots.length = 0;
+    for (const root of this._meshes.values()) {
+      if (!root || typeof root.traverse !== 'function') continue;
+      const userData = root.userData || {};
+      const authored = userData.authoredAssetState != null
+        || userData.authoredRenderContract != null
+        || userData.renderContract != null
+        || typeof userData.requestAuthoredUpgrade === 'function';
+      if (authored) roots.push(root);
+    }
+    void controller.sync(roots);
+    if (state && state.render) {
+      state.render.rigidOpaqueBatch = controller.getDiagnostics();
+    }
   },
 
   _syncWorldPresentationTableMeshes() {
@@ -29568,6 +30326,17 @@ export const render = {
     // Only a completed world draw counts; Three's frame counter also counts warm-up and
     // intermediate post passes, which can advance behind a held flight picture.
     this.state.render.worldSubmittedFrames = (this.state.render.worldSubmittedFrames || 0) + 1;
+    // Flight footage snapshots the submitted canvas at this exact boundary. Keep the callback on
+    // state.render so the UI recorder owns installation/lifetime, and swallow recorder failures so
+    // an optional diagnostic capture can never turn a successful draw into a frame error. This lives
+    // in drawPreparedFrame (rather than only renderFrame) because the split render loop calls this
+    // method directly before its publishSceneTruthPlayStep tail.
+    const flightFootagePresentHook = this.state.render.flightFootagePresentHook;
+    if (typeof flightFootagePresentHook === 'function') {
+      try {
+        flightFootagePresentHook(this.renderer?.domElement || this.state.render.canvas);
+      } catch { /* optional footage capture must not break presentation */ }
+    }
     return true;
   },
 

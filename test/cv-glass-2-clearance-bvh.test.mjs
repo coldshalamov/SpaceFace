@@ -113,6 +113,34 @@ function withRetainOff(fn) {
   }
 }
 
+test('tilted authored panels retain the raster roof without querying the whole mesh', () => {
+  const geometry = new THREE.PlaneGeometry(4000, 30, 400, 3);
+  geometry.rotateX(-Math.PI / 2);
+  const { root, mesh } = stationRoot(geometry);
+  mesh.rotation.z = 0.3;
+  root.updateMatrixWorld(true);
+  const box = worldBox(root);
+  const raster = rasterClearanceGrid(root, box);
+  const triCount = geometry.index.count / 3;
+  for (const x of [-1200, -600, 0, 600, 1200]) {
+    const camX = root.position.x + x, camZ = root.position.z;
+    const hit = clearanceNeighborhoodRaw(root, box, camX, camZ);
+    const originalColumn = clearanceNeighborhoodRaw(root, box, camX, camZ, {
+      ensureBoundsTree(geo) {
+        const tree = ensureClearanceBoundsTree(geo);
+        // No enclosing-box capability selects the original +/-1e6 column.
+        return { shapecast: tree.shapecast.bind(tree) };
+      },
+    });
+    assert.equal(hit.raw, clearanceGridRawAt(raster, camX, camZ));
+    assert.equal(hit.raw, originalColumn.raw);
+    assert.equal(hit.failed, false);
+    assert.ok(hit.visited < triCount / 3, `${hit.visited}/${triCount} triangle visits`);
+    assert.ok(hit.visited * 3 < originalColumn.visited,
+      `bounded ${hit.visited}, original ${originalColumn.visited}`);
+  }
+});
+
 test('the window roof is the deck max vertex Y, and the far soup is not visited', () => {
   const geo = deckSoupGeometry(3, true);
   const indexBefore = Array.from(geo.index.array);

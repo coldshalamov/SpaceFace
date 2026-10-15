@@ -176,3 +176,23 @@ test('a second identical sync retains slots and does not rewrite instance textur
   assert.equal(second.colorWrites, 0);
   assert.equal([...state.slots.values()][0].instanceId, instanceId);
 });
+
+test('disabled opaque bridge returns before scanning the live pool map', () => {
+  const state = createOpaqueMaterialBatchState();
+  let scans = 0;
+  const pools = {
+    values() {
+      scans += 1;
+      throw new Error('disabled bridge must not enumerate pools');
+    },
+  };
+
+  const stats = syncOpaqueMaterialBatches(state, pools, {
+    enabled: false,
+    scene: new THREE.Scene(),
+  });
+
+  assert.equal(scans, 0);
+  assert.equal(stats.batches, 0);
+  assert.equal(stats.instances, 0);
+});

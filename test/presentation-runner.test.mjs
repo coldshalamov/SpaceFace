@@ -52,6 +52,82 @@ function createStubSimulationRunner(order, caps, stepsFor = () => 0) {
   };
 }
 
+test('restore stamps the worker pause boundary with the new lifecycle generation', () => {
+  const raf = createRaf();
+  let visibilityState = 'visible';
+  let visibilityListener = null;
+  const visibilityTarget = {
+    get visibilityState() { return visibilityState; },
+    addEventListener(type, listener) {
+      if (type === 'visibilitychange') visibilityListener = listener;
+    },
+    removeEventListener(type, listener) {
+      if (type === 'visibilitychange' && visibilityListener === listener) visibilityListener = null;
+    },
+    set(next) {
+      visibilityState = next;
+      visibilityListener?.();
+    },
+  };
+  const calls = [];
+  let generation = null;
+  const simulationRunner = {
+    fixedDt: LOOP_FIXED_DT,
+    maxSteps: 4,
+    clockOwner: 'worker-local',
+    advance() { return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration(value) {
+      generation = value;
+      calls.push({ type: 'generation', value });
+    },
+    setClockActive(active, reason) {
+      calls.push({ type: 'clock', active, reason, generation });
+    },
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };
+  const registry = {
+    renderUpdate() {},
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget,
+    lifecyclePort: null,
+  });
+
+  visibilityTarget.set('hidden');
+  const beforeRestore = calls.length;
+  visibilityTarget.set('visible');
+  assert.deepEqual(calls.slice(beforeRestore), [
+    { type: 'generation', value: 1 },
+    {
+      type: 'clock',
+      active: false,
+      reason: 'document-visibility',
+      generation: 1,
+    },
+  ], 'the restore pause must belong to the new lifecycle generation');
+
+  raf.flushOne(1000);
+  assert.deepEqual(calls.at(-1), {
+    type: 'clock',
+    active: true,
+    reason: 'restore-frame-complete',
+    generation: 1,
+  });
+  controller.destroy();
+});
+
 test('every callback simulates the time that passed and then presents it; the order never flips', () => {
   const raf = createRaf();
   const state = { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } };

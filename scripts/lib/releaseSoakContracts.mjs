@@ -85,7 +85,26 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
     if (!start || !end) failures.push('primary evidence requires start/end worktree fingerprints');
     else {
       if (start.digest !== envelope.worktreeDigest || start.id !== envelope.worktreeId) failures.push('start fingerprint does not bind the evidence worktree');
-      if (end.digest !== start.digest || end.id !== start.id) failures.push('worktree fingerprint changed during capture');
+      const fullRuntimeOverlay = envelope.sourceOverlay?.coverage?.fullRuntime === true
+        && /^all-runtime(?:-|$)/i.test(String(envelope.sourceOverlay?.coverage?.captureScope || ''))
+        && Number.isSafeInteger(envelope.sourceOverlay?.coverage?.pinnedPathCount)
+        && envelope.sourceOverlay.coverage.pinnedPathCount > 0;
+      if (fullRuntimeOverlay) {
+        const requested = envelope.sourceOverlay?.requested;
+        const served = envelope.sourceOverlay?.served;
+        const servedAtEnd = envelope.sourceOverlay?.servedAtEnd;
+        if (!sourceOverlayIdentityMatches(requested, served)
+            || !sourceOverlayIdentityMatches(requested, servedAtEnd)) {
+          failures.push('full-runtime source overlay identity was not stable for the entire capture');
+        }
+        if (envelope.sourceStability?.mode !== 'served-overlay'
+            || envelope.sourceStability?.uncoveredWorktreeStable !== true
+            || envelope.sourceStability?.uncoveredHeadStable !== true) {
+          failures.push('full-runtime source overlay did not prove uncovered worktree and HEAD stability');
+        }
+      } else if (end.digest !== start.digest || end.id !== start.id) {
+        failures.push('worktree fingerprint changed during capture');
+      }
     }
   }
 
@@ -146,6 +165,12 @@ function validateChecks(checks, primary, failures) {
   if (failed.length) failures.push(`evidence checks failed: ${failed.map((check) => check.name).join(', ')}`);
   if (primary && checks.some((check) => check?.status !== 'pass')) failures.push('primary evidence may not contain fail or skip checks');
   if (primary && !checks.some((check) => check?.status === 'pass')) failures.push('primary evidence requires passing checks');
+}
+
+function sourceOverlayIdentityMatches(expected, observed) {
+  if (!expected || !observed) return false;
+  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
+    .every((field) => expected[field] === observed[field]);
 }
 
 function validateCycles(cycles, primary, failures) {
@@ -350,21 +375,35 @@ export async function validateArtifactFiles(root, artifacts, { lstatImpl = lstat
 
 // Unlike `git diff --binary`, this never buffers binary patches. Git metadata is
 // bounded and each changed/untracked file is streamed into the digest.
-export async function strictWorktreeFingerprint(root) {
+export async function strictWorktreeFingerprint(root, { excludePaths = [] } = {}) {
+  const excluded = new Set(excludePaths.map(normalizeFingerprintPath).filter(Boolean));
+  const filtered = excluded.size > 0;
   const digest = createHash('sha256');
   const head = (await runGitCapture(root, ['rev-parse', 'HEAD'])).trim();
   const branch = (await runGitCapture(root, ['branch', '--show-current'])).trim();
   if (!/^[a-f0-9]{40}$/i.test(head)) throw new Error('unable to resolve git HEAD for release-soak fingerprint');
   digest.update(`HEAD\0${head}\0BRANCH\0${branch}\0`);
-  await streamGitIntoHash(root, ['status', '--porcelain=v2', '-z', '--untracked-files=all'], digest, 'STATUS');
-  await streamGitIntoHash(root, ['diff', '--raw', '-z', 'HEAD'], digest, 'DIFF');
-  await streamGitIntoHash(root, ['diff', '--cached', '--raw', '-z'], digest, 'INDEX');
+  if (filtered) {
+    // A source overlay can safely hide mutations only for the exact files it serves. Keep
+    // all status/diff records for every other path, including HEAD/branch above, so CSS,
+    // assets, launchers, and newly-added modules still invalidate the capture.
+    await hashFilteredGitRecords(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all'], digest, 'STATUS', excluded, 'status');
+    await hashFilteredGitRecords(root, ['diff', '--raw', '-z', 'HEAD'], digest, 'DIFF', excluded, 'raw');
+    await hashFilteredGitRecords(root, ['diff', '--cached', '--raw', '-z'], digest, 'INDEX', excluded, 'raw');
+  } else {
+    await streamGitIntoHash(root, ['status', '--porcelain=v2', '-z', '--untracked-files=all'], digest, 'STATUS');
+    await streamGitIntoHash(root, ['diff', '--raw', '-z', 'HEAD'], digest, 'DIFF');
+    await streamGitIntoHash(root, ['diff', '--cached', '--raw', '-z'], digest, 'INDEX');
+  }
   const changed = new Set([
     ...splitNul(await runGitCapture(root, ['diff', '--name-only', '-z'])),
     ...splitNul(await runGitCapture(root, ['diff', '--cached', '--name-only', '-z'])),
     ...splitNul(await runGitCapture(root, ['ls-files', '--others', '--exclude-standard', '-z'])),
   ]);
-  for (const relative of [...changed].sort()) {
+  const effectiveChanged = [...changed]
+    .filter((relative) => !excluded.has(normalizeFingerprintPath(relative)))
+    .sort();
+  for (const relative of effectiveChanged) {
     const absolute = path.resolve(root, relative);
     const safe = path.relative(path.resolve(root), absolute);
     if (safe.startsWith('..') || path.isAbsolute(safe)) throw new Error(`fingerprint path escapes root: ${relative}`);
@@ -379,7 +418,49 @@ export async function strictWorktreeFingerprint(root) {
     digest.update('\0');
   }
   const value = digest.digest('hex');
-  return { id: `${head.slice(0, 12)}-${value.slice(0, 16)}`, digest: value, head, branch, changedFileCount: changed.size };
+  return { id: `${head.slice(0, 12)}-${value.slice(0, 16)}`, digest: value, head, branch, changedFileCount: effectiveChanged.length };
+}
+
+export function normalizeFingerprintPath(value) {
+  const normalized = String(value || '').replaceAll('\\', '/').replace(/^\.\//, '');
+  if (!normalized || normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized)) return null;
+  const segments = normalized.split('/');
+  if (segments.includes('..')) return null;
+  return normalized;
+}
+
+async function hashFilteredGitRecords(cwd, args, hash, label, excluded, kind) {
+  const output = await runGitCapture(cwd, args);
+  hash.update(`${label}\0`);
+  const records = splitNul(output);
+  if (kind === 'status') {
+    for (let index = 0; index < records.length; index += 1) {
+      const record = records[index];
+      const paths = [record.slice(3)];
+      if (record[0] === 'R' || record[0] === 'C') {
+        if (index + 1 < records.length) paths.push(records[++index]);
+      }
+      if (paths.every((entry) => excluded.has(normalizeFingerprintPath(entry)))) continue;
+      for (const entry of [record, ...paths.slice(1)]) hash.update(`${entry}\0`);
+    }
+    return;
+  }
+  for (let index = 0; index < records.length; index += 1) {
+    const header = records[index];
+    if (!header.startsWith(':')) {
+      // Raw diff output is expected to be header/path groups. Preserve an unexpected
+      // record conservatively instead of accidentally treating it as an excluded path.
+      hash.update(`${header}\0`);
+      continue;
+    }
+    const status = header.trim().slice(-1);
+    const pathCount = status === 'R' || status === 'C' ? 2 : 1;
+    const paths = [];
+    for (let count = 0; count < pathCount && index + 1 < records.length; count += 1) paths.push(records[++index]);
+    if (paths.every((entry) => excluded.has(normalizeFingerprintPath(entry)))) continue;
+    hash.update(`${header}\0`);
+    for (const entry of paths) hash.update(`${entry}\0`);
+  }
 }
 
 function runGitCapture(cwd, args, maxBytes = 64 * 1024 * 1024) {

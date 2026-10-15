@@ -253,6 +253,41 @@ test('with a worker, captures never touch canvas.toBlob and the ring fills from 
   }
 });
 
+test('dropped video callbacks do not clone metadata, while an accepted frame keeps its capture tick', async () => {
+  const browser = fakeBrowser();
+  const sample = browser.state.replay.latestPoseSample;
+  let metadataReads = 0;
+  Object.defineProperty(browser.state.replay, 'latestPoseSample', {
+    configurable: true,
+    get() { metadataReads += 1; return sample; },
+  });
+  try {
+    const footage = installFlightFootage({ on: () => () => {} }, {
+      stateOf: () => browser.state,
+      startDelayMs: 0,
+    });
+    await browser.poll();
+    FakeWorker.instances[0].mode = 'hold';
+
+    await browser.captureFrame();
+    const readsAfterAccepted = metadataReads;
+    assert.ok(readsAfterAccepted > 0, 'an accepted frame records its metadata');
+
+    await browser.captureFrame();
+    assert.equal(metadataReads, readsAfterAccepted + 1,
+      'a rejected callback performs only the harness sample update, not a recorder metadata clone');
+
+    FakeWorker.instances[0].reply(FakeWorker.instances[0].posted[0].data.id);
+    for (let i = 0; i < 6; i += 1) await Promise.resolve();
+    assert.deepEqual(footage.ring.frames.map((frame) => frame.tick), [12]);
+    assert.deepEqual(footage.recording().poseFrames.map((row) => row.tick), [12],
+      'recorded pose metadata stays aligned with the captured frame tick');
+    footage.dispose();
+  } finally {
+    browser.restore();
+  }
+});
+
 test('one frame is in flight at a time: a held encode blocks the next capture until it lands', async () => {
   const browser = fakeBrowser();
   try {

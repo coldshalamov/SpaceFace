@@ -632,6 +632,9 @@ export const DOMAIN_CADENCE = Object.freeze({
   // resolved count on the same reply as cleanup so a finished wave cannot present a stale kill
   // total after its phase has already advanced.
   'run.resolvedThreat': 1,
+  // The HUD also reads the planned count while a wave is active. Ship a changed budget with the
+  // next domain reply; unlike spawnedThreat this is a small plan value, not a recurring census.
+  'run.threatBudget': 1,
   // The accept beat must reach the facade inside its own publish window, not the
   // missions root cadence — Mission Log / HUD / contracts render off the mirror.
   'missions.active': 1,

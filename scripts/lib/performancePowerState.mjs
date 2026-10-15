@@ -23,8 +23,9 @@ export async function captureHostPowerState(page) {
   if (!page || typeof page.evaluate !== 'function') {
     return { ...unknown, status: 'error', error: 'page unavailable' };
   }
+  let pageReadTimeout = null;
   try {
-    const result = await page.evaluate(async () => {
+    const result = await Promise.race([page.evaluate(async () => {
       if (typeof navigator.getBattery !== 'function') {
         return { status: 'unsupported', supported: false, reason: 'navigator.getBattery unavailable' };
       }
@@ -50,9 +51,15 @@ export async function captureHostPowerState(page) {
       } finally {
         if (timeoutId !== null) clearTimeout(timeoutId);
       }
-    });
+    }), new Promise((_, reject) => {
+      // The renderer may be blocked before the in-page timeout can even start.
+      // Optional host metadata must not hold the canonical launch indefinitely.
+      pageReadTimeout = setTimeout(() => reject(new Error('power-state page read timed out')), 2_000);
+    })]);
     return { ...unknown, ...(result && typeof result === 'object' ? result : { status: 'error', error: 'invalid battery result' }) };
   } catch (error) {
     return { ...unknown, status: 'error', error: errorText(error) };
+  } finally {
+    if (pageReadTimeout !== null) clearTimeout(pageReadTimeout);
   }
 }

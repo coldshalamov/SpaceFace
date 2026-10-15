@@ -92,3 +92,72 @@ test('entity observations stay fresh while VFX and pixel probes keep independent
     material.dispose();
   }
 });
+
+test('preparation samples keep scalar state without scanning rows, then the first flight frame is fresh', () => {
+  let callback = null;
+  let wall = 0;
+  let entityReads = 0;
+  let meshReads = 0;
+  const player = { id: 1, type: 'ship', alive: true, team: 1,
+    pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 4 };
+  const enemy = { id: 2, type: 'ship', alive: true, team: 2,
+    pos: { x: 12, y: 0, z: 8 }, vel: { x: 0, z: 0 }, radius: 8, data: {} };
+  const state = {
+    mode: 'loading', simTime: 2, tick: 10, playerId: 1,
+    render: { renderer: { domElement: null, info: { render: { calls: 7, triangles: 11 } } }, camera: null,
+      scene: { traverseVisible() { throw new Error('preparation must not traverse the scene'); } },
+      meshes: { get() { meshReads++; return null; } } },
+  };
+  Object.defineProperty(state, 'entityList', { get() { entityReads++; return [player, enemy]; } });
+  const win = {
+    innerWidth: 1280, innerHeight: 720,
+    performance: { now: () => wall, measure() {}, clearMeasures() {} },
+    addEventListener() {}, removeEventListener() {},
+    requestAnimationFrame(fn) { callback = fn; return 1; },
+    cancelAnimationFrame() {},
+    SF: { THREE, state },
+  };
+  const reader = installPlayerTruthReader(win, { vfxEvery: 1, pxEvery: 1 });
+  const frame = (at) => {
+    wall = at; reader.start(); callback(); reader.stop();
+    return reader.drain().samples[0];
+  };
+
+  try {
+    const loading = frame(0);
+    assert.equal(loading.mode, 'loading');
+    assert.equal(loading.info.calls, 7, 'scalar renderer timing information remains available while loading');
+    assert.equal(loading.p, null);
+    assert.deepEqual(loading.e, [], 'preparation does not retain an entity census');
+    assert.equal(loading.vfx, null);
+    assert.equal(loading.px, undefined);
+    assert.equal(entityReads, 0, 'loading does not walk the entity list');
+    assert.equal(meshReads, 0, 'loading does not resolve per-entity meshes');
+
+    state.mode = 'menu'; state.simTime = 2.05; state.tick = 10;
+    const menu = frame(8);
+    assert.equal(menu.mode, 'menu');
+    assert.equal(menu.p, null);
+    assert.deepEqual(menu.e, [], 'menu preparation does not retain an entity census');
+    assert.equal(entityReads, 0, 'menu does not walk the entity list');
+    assert.equal(meshReads, 0, 'menu does not resolve per-entity meshes');
+
+    state.mode = 'flight'; state.simTime = 2.1; state.tick = 11;
+    const firstFlight = frame(16);
+    assert.equal(firstFlight.mode, 'flight');
+    assert.ok(firstFlight.p, 'the first flight frame records the player immediately');
+    assert.equal(firstFlight.e.length, 1, 'the first flight frame has a fresh enemy row');
+    assert.equal(firstFlight.e[0][2], 12);
+    assert.equal(entityReads, 1);
+    assert.equal(meshReads, 2, 'the first flight frame resolves only its player and live entity meshes');
+    assert.notEqual(firstFlight.e, loading.e, 'flight does not reuse the preparation array');
+
+    enemy.pos.x = 24; state.simTime = 2.2; state.tick = 12;
+    const nextFlight = frame(32);
+    assert.equal(nextFlight.e[0][2], 24, 'subsequent flight frames remain fresh');
+    assert.notEqual(nextFlight.e, firstFlight.e);
+    assert.equal(entityReads, 2);
+  } finally {
+    reader.dispose();
+  }
+});

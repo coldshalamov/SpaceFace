@@ -23,7 +23,7 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 
-export const LOOK_VERSION = 'spaceface-look-v1';
+export const LOOK_VERSION = 'spaceface-look-v2';
 
 // The house look. "Arcade daylight": clean warm-white sun, electric cyan edge light,
 // ultramarine shadows, saturated paint under a clear coat.
@@ -62,6 +62,9 @@ export const LOOK_BASE = deepFreeze({
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
     rockFill: 0.85,
+    // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
+    // dark geological faces without changing their hue or texture strata; it is never emission.
+    rockFloor: 0.12,
     rockRim: 0.28,
     // Brightest a lit pigment may get (scene-linear luminance). Kept under the bloom
     // threshold of 1.0: paint never emits.

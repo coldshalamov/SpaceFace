@@ -1098,6 +1098,12 @@ export class ContrailTrail {
     };
   }
 
+  /** Raw owner seam for context-loss cleanup; path/state textures are not safe to infer from mesh
+   * traversal after a material replacement, so publish them explicitly. */
+  contextLossResources() {
+    return [this.mesh, this.geometry, this.material, this._pathTex, this._stateTex].filter(Boolean);
+  }
+
   dispose() {
     this.geometry.dispose();
     this.material.dispose();

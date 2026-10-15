@@ -1645,6 +1645,16 @@ export function presentedEntityAnchorPos(state, entity, out) {
 export function createHud(ctx, alerts) {
   const { state, helpers } = ctx;
   const root = document.getElementById('hud');
+  // The HUD is rebuilt when the UI system is re-initialised (for example after a runtime
+  // recovery). Keep every bus subscription owned by this instance so a detached HUD cannot
+  // continue doing work or retain its old state through the shared bus.
+  const hudUnsubscribers = [];
+  const on = (event, listener, opts = undefined) => {
+    if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
+    const unsubscribe = ctx.bus.on(event, listener, opts);
+    if (typeof unsubscribe === 'function') hudUnsubscribers.push(unsubscribe);
+    return unsubscribe;
+  };
   root.innerHTML = '';
   root.dataset.objectiveHierarchy = 'one-objective-one-action-one-threat';
   injectTravelTapeStyle();
@@ -1850,7 +1860,7 @@ export function createHud(ctx, alerts) {
   // (keyed by entity id, expiring) rather than on the sim entity — the target panel reads it to show
   // "where to hit" for the selected target. Populated by the scanner's flag-gated scan:weakPoint cue.
   const revealedWeakPoints = new Map();
-  ctx.bus.on('scan:weakPoint', (p) => {
+  on('scan:weakPoint', (p) => {
     if (!p || p.entityId == null) return;
     revealedWeakPoints.set(p.entityId, { label: p.label, hint: p.hint, until: p.until || 0 });
   });
@@ -1896,23 +1906,23 @@ export function createHud(ctx, alerts) {
     // FB-065 — the three condition states the sim already emits, surfaced on the objective
     // slot this same tracker owns. Progress never voices; the break voices once at mission
     // priority (announceTermBreak skips the already-voiced 'forfeit' half).
-    ctx.bus.on('mission:conditionPending', (p) => noteMissionTermEvent(state, p, 'pending'));
-    ctx.bus.on('mission:conditionProgress', (p) => noteMissionTermEvent(state, p, 'progress'));
-    ctx.bus.on('mission:conditionSatisfied', (p) => noteMissionTermEvent(state, p, 'satisfied'));
-    ctx.bus.on('mission:conditionBroken', (p) => {
+    on('mission:conditionPending', (p) => noteMissionTermEvent(state, p, 'pending'));
+    on('mission:conditionProgress', (p) => noteMissionTermEvent(state, p, 'progress'));
+    on('mission:conditionSatisfied', (p) => noteMissionTermEvent(state, p, 'satisfied'));
+    on('mission:conditionBroken', (p) => {
       noteMissionTermEvent(state, p, 'broken');
       announceTermBreak(ctx.bus, p);
     });
     // A settled or removed contract stops speaking — stale words must never outlive the job.
-    ctx.bus.on('mission:failed', (p) => {
+    on('mission:failed', (p) => {
       const terms = state.ui && state.ui.missionTerms;
       if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
     });
-    ctx.bus.on('mission:completed', (p) => {
+    on('mission:completed', (p) => {
       const terms = state.ui && state.ui.missionTerms;
       if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
     });
-    ctx.bus.on('hud:recallObjective', () => {
+    on('hud:recallObjective', () => {
       if (objectiveRecall.dismissed) {
         const restored = recallObjective(objectiveRecall);
         if (restored) {
@@ -2045,7 +2055,7 @@ export function createHud(ctx, alerts) {
   const UNDER_FIRE_HOLD_MS = 1500;
   let underFireUntilMs = 0;
   if (ctx.bus && typeof ctx.bus.on === 'function') {
-    ctx.bus.on('combat:damage', (hit) => {
+    on('combat:damage', (hit) => {
       if (hit && hit.isPlayer) underFireUntilMs = performance.now() + UNDER_FIRE_HOLD_MS;
     }, { presentation: true });
   }
@@ -2291,8 +2301,8 @@ export function createHud(ctx, alerts) {
   // The bottom-left occupant the comms strip reserves space for just changed hands.
   if (orreryCluster) publishClusterReserve();
   // Prompts borrow the number row rather than racing the rail for it.
-  const offSlotClaim = ctx.bus ? ctx.bus.on('hud:slotClaim', (p) => powerRail.claim(p)) : null;
-  const offSlotRelease = ctx.bus ? ctx.bus.on('hud:slotRelease', (p) => powerRail.release(p && p.claimId)) : null;
+  on('hud:slotClaim', (p) => powerRail.claim(p));
+  on('hud:slotRelease', (p) => powerRail.release(p && p.claimId));
   // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
   // competing with toasts in the upper-right corner while preserving all presenter state/listeners.
   const existingSectorLaw = document.getElementById('sf-sector-law');
@@ -2325,9 +2335,9 @@ export function createHud(ctx, alerts) {
     state.playerId,
   );
   root.appendChild(dmgInd.el);
-  ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p), { presentation: true });
-  ctx.bus.on('projectile:nearMiss', (p) => dmgInd.onNearMiss(p));
-  ctx.bus.on('physics:impact', (p) => {
+  on('combat:damage', (p) => dmgInd.onDamage(p), { presentation: true });
+  on('projectile:nearMiss', (p) => dmgInd.onNearMiss(p));
+  on('physics:impact', (p) => {
     const other = state.entities && state.entities.get
       ? state.entities.get(p && p.aId === state.playerId ? p.bId : p && p.aId)
       : null;
@@ -2343,7 +2353,7 @@ export function createHud(ctx, alerts) {
 
   // Shield blowout visual cue: momentary HUD glitch/flicker when player shields collapse
   let shieldBlowoutTimer = null;
-  ctx.bus.on('shieldDown', (p) => {
+  on('shieldDown', (p) => {
     if (!p || p.combatantId !== state.playerId) return;
     root.classList.add('sf-hud--blowout');
     if (shieldBlowoutTimer) clearTimeout(shieldBlowoutTimer);
@@ -2423,7 +2433,7 @@ export function createHud(ctx, alerts) {
   let firstUseHint = null;
   const firstUseProjectionWorld = { x: 0, y: 0, z: 0 };
   const firstUseProjectionScreen = { x: 0, y: 0, onScreen: false };
-  ctx.bus.on('hud:firstUse', (payload) => {
+  on('hud:firstUse', (payload) => {
     if (!payload || !payload.text) return;
     const kind = firstUseAttachKind(payload.verbId);
     // G13: a HUD string is not a caption on the player's hull. A hint whose only anchor is the
@@ -2566,13 +2576,13 @@ export function createHud(ctx, alerts) {
 
   // EMP / Shield collapse listeners on event bus
   if (ctx.bus && typeof ctx.bus.on === 'function') {
-    ctx.bus.on('combat:damage', (p) => {
+    on('combat:damage', (p) => {
       if (!p) return;
       if (p.targetId === state.playerId && (p.brokeShield || p.shieldBroke || p.damageType === 'emp' || p.emp)) {
         triggerElectronicDisruption(p.damageType === 'emp' ? 'emp' : 'shield_collapse');
       }
     }, { presentation: true });
-    ctx.bus.on('combat:emp', (p) => {
+    on('combat:emp', (p) => {
       if (!p || p.targetId === state.playerId) {
         triggerElectronicDisruption('emp');
       }
@@ -2847,7 +2857,7 @@ export function createHud(ctx, alerts) {
   deathBanner.innerHTML = '<div class="sf-death__big">SHIP DESTROYED</div><div class="sf-death__sub">Emergency recovery online…</div>';
   root.appendChild(deathBanner);
   let deathHideTimer = 0;
-  ctx.bus.on('player:death', () => {
+  on('player:death', () => {
     clearTimeout(deathHideTimer);
     deathBanner.hidden = false;
     deathBanner.removeAttribute('aria-hidden');
@@ -2861,7 +2871,7 @@ export function createHud(ctx, alerts) {
       deathBanner.setAttribute('aria-hidden', 'true');
     }, 2500);
   });
-  ctx.bus.on('player:respawn', (payload) => {
+  on('player:respawn', (payload) => {
     ctx.bus.emit('toast', {
       text: respawnToastText(payload || {}),
       kind: payload && payload.cargoLost ? 'warn' : 'good',
@@ -2910,7 +2920,7 @@ export function createHud(ctx, alerts) {
   root.appendChild(liveAssertive);
   let captionHideTimer = 0;
   let captionFadeTimer = 0;
-  ctx.bus.on('presentation:caption', (p) => {
+  on('presentation:caption', (p) => {
     if (!p || !p.text) return;
     clearTimeout(captionHideTimer);
     clearTimeout(captionFadeTimer);
@@ -3115,7 +3125,7 @@ export function createHud(ctx, alerts) {
     }
   }
 
-  ctx.bus.on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
+  on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
 
   function updateDoctrineTells(frameDt) {
     const w2s = helpers && helpers.worldToScreen;
@@ -4194,7 +4204,7 @@ export function createHud(ctx, alerts) {
   });
 
   // Listen for the jettison event in case the cargo system doesn't handle it natively
-  ctx.bus.on('cargo:jettison', ({ commodityId, qty }) => {
+  on('cargo:jettison', ({ commodityId, qty }) => {
     const cargoSys = ctx.registry && ctx.registry.get('cargo');
     if (cargoSys && cargoSys.jettison) {
       // On the worker lane the facade returns a Promise of the dumped count;
@@ -4265,11 +4275,11 @@ export function createHud(ctx, alerts) {
   });
 
   // Refresh when cargo changes
-  ctx.bus.on('cargo:changed', () => { if (cargoPanelOpen) refreshCargoPanel(); });
+  on('cargo:changed', () => { if (cargoPanelOpen) refreshCargoPanel(); });
 
   // Expose toggle/close for the input system
-  ctx.bus.on('ui:toggleCargo', toggleCargoPanel);
-  ctx.bus.on('ui:closeCargo', closeCargoPanel);
+  on('ui:toggleCargo', toggleCargoPanel);
+  on('ui:closeCargo', closeCargoPanel);
 
   // Make the CARGO stat tile clickable to open the panel
   const cargoStat = center.querySelector('[data-k=cargo]');
@@ -4293,23 +4303,23 @@ export function createHud(ctx, alerts) {
   // Event-driven (rebuild) path — credits / cargo / objectives marked dirty.
   // ---------------------------------------------------------------------------
   let creditsDirty = true, cargoDirty = true, objDirty = true;
-  ctx.bus.on('credits:changed', () => { creditsDirty = true; });
-  ctx.bus.on('cargo:changed', () => { cargoDirty = true; });
-  ctx.bus.on('ship:statsChanged', () => { cargoDirty = true; });
+  on('credits:changed', () => { creditsDirty = true; });
+  on('cargo:changed', () => { cargoDirty = true; });
+  on('ship:statsChanged', () => { cargoDirty = true; });
   // INF-086: the handling suffix rides the derived refresh, which lands after the
   // cargo event that caused it — refresh on both so collecting/jettisoning always
   // repaint the consequence.
-  ctx.bus.on('ship:massChanged', () => { cargoDirty = true; });
-  ctx.bus.on('mission:updated', () => { objDirty = true; });
-  ctx.bus.on('mission:accepted', () => { objDirty = true; });
-  ctx.bus.on('mission:completed', () => { objDirty = true; });
+  on('ship:massChanged', () => { cargoDirty = true; });
+  on('mission:updated', () => { objDirty = true; });
+  on('mission:accepted', () => { objDirty = true; });
+  on('mission:completed', () => { objDirty = true; });
 
   // Reticle accuracy bloom: the crosshair expands with sustained fire and contracts when cool — a
   // classic combat-readability cue. Driven by the player's own combat:fire events; _recoilBloom
   // spikes on each shot and decays each frame. Applied as a scale on the reticle's inner SVG (not
   // the reticle div, whose transform centers it — scaling the div would recenter awkwardly).
   let _recoilBloom = 0;   // 0 = rested (scale 1), up to ~1 (scale ~1.25) under sustained fire
-  ctx.bus.on('combat:fire', (p) => {
+  on('combat:fire', (p) => {
     if (!p || p.ownerId !== state.playerId) return;
     _recoilBloom = Math.min(1, _recoilBloom + 0.35);
   });
@@ -4321,7 +4331,7 @@ export function createHud(ctx, alerts) {
   // without a receipt shows no reason at all, never a witness claim.
   let wantedActive = false;
   if (alerts) {
-    ctx.bus.on('heat:changed', (p) => {
+    on('heat:changed', (p) => {
       const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
       const wanted = v >= 0.15;
       const reason = wantedReasonText(p, state.player);
@@ -4341,7 +4351,7 @@ export function createHud(ctx, alerts) {
   // Forced weapon-heat vent (Micro-Loops): when the player's guns peg heatMax, weapons.js locks them
   // out for ~2s while heat dumps. Flash the heat bars red + raise a top-center alert so the lockout
   // reads as a rhythm beat ("vent, then resume"), not a dead trigger.
-  ctx.bus.on('weapons:vent', (p) => {
+  on('weapons:vent', (p) => {
     if (!p || p.ownerId !== state.playerId) return;
     const venting = p.phase === 'start';
     wpnHeatsWrap.classList.toggle('venting', venting);
@@ -4802,8 +4812,8 @@ export function createHud(ctx, alerts) {
     if (until > _overviewRevealUntil) _overviewRevealUntil = until;
   }
   // A scan pulse is the player explicitly asking "what's out there" — surface the strip immediately.
-  ctx.bus.on('scan:completed', () => { revealOverview(OVERVIEW_SCAN_REVEAL_MS); updateOverview(); });
-  ctx.bus.on('scan:pulse', () => revealOverview(OVERVIEW_SCAN_REVEAL_MS));
+  on('scan:completed', () => { revealOverview(OVERVIEW_SCAN_REVEAL_MS); updateOverview(); });
+  on('scan:pulse', () => revealOverview(OVERVIEW_SCAN_REVEAL_MS));
 
   if (!state.settings) state.settings = {};
   if (!state.settings.ui) state.settings.ui = {};
@@ -4812,7 +4822,7 @@ export function createHud(ctx, alerts) {
     laneWriteSetting(state, 'settings.ui.overviewOpen', false);
   }
 
-  ctx.bus.on('ui:toggleOverview', () => {
+  on('ui:toggleOverview', () => {
     laneWriteSetting(state, 'settings.ui.overviewOpen', !state.settings.ui.overviewOpen);
     if (state.settings.ui.overviewOpen) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
     updateOverview();
@@ -6317,11 +6327,15 @@ export function createHud(ctx, alerts) {
       // FB-012 — the flight HUD owns the stunt callout mount; releasing it here mirrors the
       // Crucible results screen's dispose (the layer re-ensures idempotently on next mount).
       releaseStuntCallout();
-      if (offSlotClaim) offSlotClaim();
-      if (offSlotRelease) offSlotRelease();
+      for (const unsubscribe of hudUnsubscribers.splice(0)) {
+        try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
+      }
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       clearCargoGaugeSettle(cargoGaugeSettle.risk);
       powerRail.destroy();
+      if (radar && typeof radar.destroy === 'function') radar.destroy();
+      if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();
+      if (hudMeta && typeof hudMeta.destroy === 'function') hudMeta.destroy();
       if (orreryCluster) orreryCluster.dispose();
       forkInstrument.destroy();
       threatHalo.destroy();

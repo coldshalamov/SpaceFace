@@ -1196,11 +1196,29 @@ export function createThreatHalo(root, busOrOpts) {
     }
   }
 
+  // Indexed buckets are a derived presentation cache. A same-length entity replacement can
+  // leave an old object in `ships` until the next index rebuild, and a worker mirror can briefly
+  // expose a row before its transported occupant token lands. Treat the bucket entry as an ID
+  // hint and resolve the current map object before any geometry/hostility work. Edge markers
+  // carry a publication identity that the player-truth reader binds exactly, so the current map
+  // entry must be a live ship with the safe generation explicitly transported by the sim lane.
+  function resolveIndexedHostileEntity(state, candidate) {
+    if (!state || !candidate || candidate.id == null) return null;
+    const entities = state.entities;
+    if (!entities || typeof entities.get !== 'function') return null;
+    const current = entities.get(candidate.id);
+    if (!current || current.id !== candidate.id
+      || current.alive === false || current.type !== 'ship' || !current.pos
+      || !Number.isSafeInteger(current.occupantGeneration)) return null;
+    return current;
+  }
+
   function collectHostiles(player, state, worldToScreen) {
     hostileCount = 0;
     tetherPass += 1;
     const index = state.entityIndex;
-    const ships = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships)
+    const indexedShips = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships);
+    const ships = indexedShips
       ? index.ships
       : (state.entityList || []);
     const playerTeam = player.team;
@@ -1208,7 +1226,8 @@ export function createThreatHalo(root, busOrOpts) {
     const playerVelZ = player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0;
 
     for (let i = 0; i < ships.length; i++) {
-      const entity = ships[i];
+      let entity = ships[i];
+      if (indexedShips && entity !== player) entity = resolveIndexedHostileEntity(state, entity);
       if (!entity || entity === player || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
       const dx = entity.pos.x - player.pos.x;
       const dz = entity.pos.z - player.pos.z;

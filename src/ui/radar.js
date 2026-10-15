@@ -1759,6 +1759,18 @@ export function createRadar(ctx) {
   const hostileOpts = { selected: false, capital: false };
   const glyphOpts = { offRange: false, angle: 0 };
   const zeroVel = { x: 0, z: 0 };
+  // Retain the stance memo across draws.  The radar still clears it at the start of each draw so
+  // combat/rep changes are live, but the Map and resolver closure no longer allocate at 10 Hz.
+  const stanceMemo = new Map();
+  let stancePlayerTeam = null;
+  function hostileOf(entity) {
+    let verdict = stanceMemo.get(entity);
+    if (verdict === undefined) {
+      verdict = isHostileToPlayer(entity, stancePlayerTeam, state);
+      stanceMemo.set(entity, verdict);
+    }
+    return verdict;
+  }
   let trailPruneCountdown = 0;
   let lastAriaLabel = '';
   const unsubscribers = [];
@@ -1909,6 +1921,7 @@ export function createRadar(ctx) {
   }
 
   function draw() {
+    stanceMemo.clear();
     if (state.mode !== 'flight') clearHostileCourse();
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
@@ -1954,18 +1967,10 @@ export function createRadar(ctx) {
     const playerZ = player.pos.z;
     const targetId = state.player && state.player.targetId;
     const playerTeam = player.team;
+    stancePlayerTeam = playerTeam;
     // One stance verdict per contact per draw: the census and the glow/trail/glyph passes all ask
     // isHostileToPlayer for the same entities; a frame-scoped memo keeps stance live per frame
     // (combat lock / rep changes still repaint next draw) while paying for one evaluation each.
-    const stanceMemo = new Map();
-    const hostileOf = (entity) => {
-      let verdict = stanceMemo.get(entity);
-      if (verdict === undefined) {
-        verdict = isHostileToPlayer(entity, playerTeam, state);
-        stanceMemo.set(entity, verdict);
-      }
-      return verdict;
-    };
     const colorblindMode = (
       state.settings
       && state.settings.accessibility

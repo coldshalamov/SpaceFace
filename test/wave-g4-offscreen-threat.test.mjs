@@ -171,3 +171,82 @@ test('G4 places and publishes the submitted local hull pose in its global frame'
     halo.destroy();
   } finally { globalThis.document = oldDoc; }
 });
+
+test('G4 indexed candidates publish only the canonical live occupant generation', () => {
+  const mock = mockDocument(); const oldDoc = globalThis.document;
+  globalThis.document = mock.document;
+  try {
+    const halo = createThreatHalo(mock.document.createElement('div'));
+    const player = { id: 1, type: 'ship', team: 0, alive: true,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
+    const makeShooter = (generation) => ({ id: 450, type: 'ship', team: 1, alive: true,
+      occupantGeneration: generation, pos: { x: 900, z: 0 }, vel: { x: 0, z: 0 },
+      data: { encounter: true, weapons: ['wpn_pulse'] } });
+    const original = makeShooter(101);
+    const state = {
+      tick: 10, simTime: 10 / 60, playerId: player.id,
+      entities: new Map([[player.id, player], [original.id, original]]),
+      entityList: [player, original],
+      entityIndex: { __spacefaceEntityIndexV1: true, ships: [original], projectiles: [] },
+    };
+    const offRight = (world, out) => {
+      out.x = 640 + world.x; out.y = 360; out.onScreen = false; out.behind = false; return out;
+    };
+
+    halo.update(player, state, offRight);
+    let slot = visibleArcs(mock)[0];
+    assert.ok(slot, 'a canonical indexed shooter publishes an edge marker');
+    assert.equal(JSON.parse(slot.getAttribute('data-placement-read')).generation, 101);
+
+    // Replacing an occupant without changing the list length leaves the derived index pointing
+    // at the old object. The bucket is only an ID hint: resolve and publish the current life,
+    // never the stale object's pose or a raw-id/null-generation marker.
+    const replacement = makeShooter(202);
+    state.entities.set(replacement.id, replacement);
+    state.entityList[1] = replacement;
+    state.tick += 1; state.simTime += 1 / 60;
+    halo.update(player, state, offRight);
+    slot = visibleArcs(mock)[0];
+    assert.ok(slot, 'a stale index resolves a current live replacement');
+    assert.equal(JSON.parse(slot.getAttribute('data-placement-read')).generation, 202);
+
+    // Once the index carries the current object, its transported generation remains exact too.
+    state.entityIndex.ships[0] = replacement;
+    state.tick += 1; state.simTime += 1 / 60;
+    halo.update(player, state, offRight);
+    slot = visibleArcs(mock)[0];
+    assert.ok(slot);
+    assert.equal(JSON.parse(slot.getAttribute('data-placement-read')).generation, 202);
+
+    // A missing generation, dead/non-ship occupant, or friendly replacement is never allowed
+    // to turn into a marker merely because the derived bucket still contains the old object.
+    state.entityIndex.ships[0] = replacement;
+    delete replacement.occupantGeneration;
+    state.tick += 1; state.simTime += 1 / 60;
+    halo.update(player, state, offRight);
+    assert.equal(visibleArcs(mock).length, 0, 'a missing canonical generation fails closed');
+
+    const dead = makeShooter(303);
+    dead.alive = false;
+    state.entities.set(dead.id, dead);
+    state.entityIndex.ships[0] = replacement;
+    state.tick += 1; state.simTime += 1 / 60;
+    halo.update(player, state, offRight);
+    assert.equal(visibleArcs(mock).length, 0, 'a dead canonical occupant fails closed');
+
+    const wreck = makeShooter(404);
+    wreck.type = 'wreck';
+    state.entities.set(wreck.id, wreck);
+    state.tick += 1; state.simTime += 1 / 60;
+    halo.update(player, state, offRight);
+    assert.equal(visibleArcs(mock).length, 0, 'a type-flipped canonical occupant fails closed');
+
+    const friendly = makeShooter(505);
+    friendly.team = 0;
+    state.entities.set(friendly.id, friendly);
+    state.tick += 1; state.simTime += 1 / 60;
+    halo.update(player, state, offRight);
+    assert.equal(visibleArcs(mock).length, 0, 'a friendly canonical replacement is not a threat');
+    halo.destroy();
+  } finally { globalThis.document = oldDoc; }
+});
