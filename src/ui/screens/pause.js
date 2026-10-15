@@ -332,6 +332,18 @@ function fmtSavedAt(value) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+// What the autosave setting really does, in the pause brief's voice. The old line was a fixed list
+// of triggers that ignored the Autosave row: a player on 120 s was told something else, and a
+// player on Off was never warned that quitting loses the run. Missing or corrupt settings read as
+// the shipped default (the save loader normalizes them to it).
+const SHIPPED_AUTOSAVE_INTERVAL_S = 120;
+
+function autosaveIntervalOf(state) {
+  const gameplay = state && state.settings && state.settings.gameplay;
+  const value = gameplay ? Number(gameplay.autosaveIntervalS) : NaN;
+  return Number.isFinite(value) && value >= 0 ? value : SHIPPED_AUTOSAVE_INTERVAL_S;
+}
+
 export function saveLine(state) {
   // A Crucible run is ephemeral by contract and saving is refused for it (PQ-133 ruling 2).
   // Telling the player to press F5 here would be instructing them to attempt the one thing the
@@ -346,10 +358,14 @@ export function saveLine(state) {
   if (savedWhen) {
     return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
   }
+  const everyS = autosaveIntervalOf(state);
+  const autosaveSentence = everyS > 0
+    ? 'Use Save or F5 before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
+    : 'Autosave is Off — use Save or F5 before quitting.';
   if (slot) {
-    return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. Use Save or F5 before quitting.';
+    return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. ' + autosaveSentence;
   }
-  return 'Unsaved run. Use Save or F5 before quitting. Autosave runs on dock, undock, jump and job completion.';
+  return 'Unsaved run. ' + autosaveSentence;
 }
 
 // The combat trace (damage.routed / physics.impulse / collision.consequence) and the hull's
