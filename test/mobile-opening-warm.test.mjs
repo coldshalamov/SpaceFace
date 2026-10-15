@@ -72,7 +72,7 @@ test('priming admission observers during loading clears resolved handles and kee
   const owner = { state: { mode: 'loading', render: {
     openingGpuResidencyReady: Promise.resolve({ ready: true }),
     pipelinePrecompileReady: Promise.resolve({ ready: true }),
-    liveScenePresentReady: unfinished,
+    liveSceneCookReady: unfinished,
   } } };
   assert.equal(rendererOwner._openingAdmissionPendingCount.call(owner), 3);
   await Promise.resolve();

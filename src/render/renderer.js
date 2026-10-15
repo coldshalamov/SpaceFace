@@ -852,7 +852,12 @@ const OPENING_ADMISSION_HANDLE_KEYS = Object.freeze([
   'liveSceneCookReady',
   'authoredGpuAdmissionReady',
   'openingGpuResidencyReady',
-  'liveScenePresentReady',
+  // Not 'liveScenePresentReady' (path b probe): prepareLiveSectorBeforeFlight cooks the whole live
+  // sector (hulls, promoted rock variants, site props) under a 40-120 s budget. On no-KHR runners
+  // it spills into flight, and the first draw sat behind it until the 15 s failsafe
+  // (flight -> first playable 15-16.5 s on master and on #387's slow runs) although the exact
+  // first-picture handles above had settled. The cook keeps running; its roots keep their own
+  // pending latches.
 ]);
 
 // Materials whose program key carries the shadow fields (numDirLightShadows plus the
