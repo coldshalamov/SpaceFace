@@ -999,21 +999,65 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
    so the route band fell below the fold. A narrower hang, a smaller dial and a 2-line title give the
    reading ~330px and the band a full lane in frame; 1024×768, 1280 and the phone are outside the query. */
 @media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
-  ${ML} { --ml-dial:140px; grid-template-columns:minmax(0, 312px) minmax(0, 1fr) !important; column-gap:24px !important; }
-  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 190px; column-gap:16px; }
+  ${ML} { --ml-dial:132px; grid-template-columns:minmax(0, 300px) minmax(0, 1fr) !important; column-gap:20px !important; }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 176px; column-gap:14px; }
   ${ML} .orr-mdial__w { letter-spacing:.14em !important; }
   ${ML} .sf-mlog-card > h2.k-t-title { margin-top:8px !important; font-size:21px !important; line-height:1.08 !important; }
   ${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { margin-top:8px !important; font-size:14.5px !important; line-height:1.4 !important; }
   ${ML} .sf-mlog-card .sf-mlog-terms { margin-top:10px !important; }
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { grid-template-columns:104px minmax(0, 1fr) !important; column-gap:12px; padding-top:3px !important; padding-bottom:3px !important; }
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { font-size:14px !important; line-height:1.3 !important; }
-  ${ML} .sf-mlog-card > .ml-route-host { margin-top:18px; }
-  ${ML} .ml-route { --ml-disc:44px; padding-top:4px; }
-  ${ML} .ml-route__ends { gap:10px; margin-bottom:6px !important; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:18px; padding:0 12px; box-sizing:border-box; }
+  ${ML} .ml-route { --ml-disc:40px; padding-top:4px; }
+  /* ends were FROM | ROUTE PENDING | TO in ~200px: From sat on the mid word. Mid takes its own row. */
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:6px !important; }
+  ${ML} .ml-route__mid { grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  ${ML} .ml-route__from { grid-row:2; grid-column:1; }
+  ${ML} .ml-route__to { grid-row:2; grid-column:2; }
   ${ML} .ml-route__from, ${ML} .ml-route__to { font-size:13px !important; }
   ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:44px !important; }
   ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { gap:4px; }
-  ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.12em !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; font-size:12px !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; font-size:11px !important; }
+}
+
+/* narrow desktop window (640–760): hang|stage stayed two equal columns, so the dial sat on the
+   reading and LOCAL MAP printed through PAYS. A short hang, a stacked card (dial then reading
+   with the verbs in a row), and the same route-ends reflow as the 960 band. Phones and
+   sub-640 windows keep the prior sheet. */
+@media (min-width:640px) and (max-width:760px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog {
+    --ml-dial:min(148px, 40vw); grid-template-columns:minmax(0, 248px) minmax(0, 1fr) !important;
+    column-gap:14px !important; row-gap:14px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card {
+    grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto repeat(5, auto) minmax(12px, 1fr) auto;
+    column-gap:0; row-gap:0; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side {
+    grid-column:1 !important; grid-row:1 !important; flex-direction:row; flex-wrap:wrap; align-items:flex-start;
+    justify-content:flex-start; gap:10px 18px; margin:0 0 8px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > .sf-mlog-btns {
+    margin:4px 0 0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row {
+    flex-direction:row; flex-wrap:wrap; align-items:baseline; gap:6px 18px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > .k-hero { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > h2.k-t-title {
+    margin-top:4px !important; font-size:20px !important; line-height:1.1 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) {
+    margin-top:6px !important; font-size:14px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { margin-top:8px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row {
+    grid-template-columns:96px minmax(0, 1fr) !important; column-gap:10px; padding-top:3px !important; padding-bottom:3px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > .ml-route-host { margin-top:14px; padding:0 10px; box-sizing:border-box; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route { --ml-disc:44px; padding-top:4px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__ends {
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:6px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__mid {
+    grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__from { grid-row:2; grid-column:1; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__to { grid-row:2; grid-column:2; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__clock-read { bottom:-22px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__trace-read { bottom:-40px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-clock__of { display:none; }
 }
 @media (forced-colors:active) {
   ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }
