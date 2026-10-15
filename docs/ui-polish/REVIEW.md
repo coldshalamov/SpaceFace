@@ -51,7 +51,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
 | **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
-| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** | See § Tech Tree below — this session |
+| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** (+ phone / narrow / short desktop, ui-polish-40) | See § Tech Tree below, and § Research on a phone, a narrow window and a short desktop (ui-polish-40) |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
@@ -1169,3 +1169,21 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 **After (`src/ui/orrery/footprintDial.js`, `dialGeometry` plus two guards):** the geometry reports whether the pads have radial room between the clock's ticks and the source band. Where they don't, the pads and the Hand's ring around the traced pad are not drawn, and the Hand's arm runs from the clock to the band's inner edge instead. The band still names each source and the reading still shows the crest. Dials of ~510px and up keep their pads (700×900 and 1024×768 are 516–520px). Selectors and IDs are unchanged.
 
 **Checked:** hub-line vs pad probe (`_tools/fp-hub.mjs`) at 390×844 and 360×740 (`--phone`), 960×540, 1024×768, 700×900 and 1280×720: 0 overlaps on all three records. 1280×720 is pixel-identical to master. The bench measures clean at 390×844, 960×540, 1280×720 and 1920×1080. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. Shots: `ui-shots/polish38/{before,after}/`, `compare-{phone,960}-{wanted,marked}.png`.
+
+## Research on a phone, a narrow window and a short desktop (ui-polish-40)
+
+**Before (master 9d99c12ec3):** Research only had the desktop grid (`1fr | 270–500px`). On a phone (390×844, `--phone`) the 1fr column was ~55px, so RESEARCH printed over 18,400 CREDITS and 0 RESEARCH POINTS, the sub line broke into one word per line ("6 / nodes / ready / to…"), the dial had no room and stood down, and the node picker stayed asleep, so a phone had no way to choose a node at all. In a 700px desktop window the dial was a ~60px knot with the sector names over the stars. At 960×540 the reading ran past the frame's foot (REQUIRES and its line were cut off), and at ≤1100 wide RESEARCH POINTS in the cost reading ran off the right edge.
+
+**After (`src/ui/orrery/constellationLayouts.js` RESEARCH block, plus a 3-line scroll reset in `src/ui/screens/techTree.js`):**
+- **≤760 wide:** one scrolling column: title, the three readings in a ruled row, the dial at full width (`clamp(380px, 86vw, 620px)` tall), then the reading. Back docks at the foot on an opaque void. At 700×800 the dial is drawn at full size with clean sector names.
+- **≤560 wide (phones):** the dial still can't stand in under 360px, so the stage folds away, and the node picker (`#sf-research-node`, the screen's second route) wakes as a labelled field beside Back in the docked foot. The zoom reading sleeps with the dial.
+- **Cost reading:** the two cells share one row grid (`subgrid`). At ≤1100 a word that needs two lines ("Research / points") wraps without knocking the numerals out of line.
+- **761+ wide, ≤640 tall:** the reading scrolls inside its own column with a soft fade at its foot instead of printing under the frame, and its unlock rows are tighter. Choosing a new node scrolls that column back to the name.
+- 1280×720 and 1920×1080 are pixel-identical to master. Selectors and IDs are unchanged; no instrument (constellation.js) geometry changed.
+
+**Bench:** phone 390×844 went from a visible pile-up to 0 findings on `tech-tree` and `tech-tree-progress`. 960×540 has 0 findings, as before. 1280×720 keeps its 4 pre-existing findings ("1 Propelled charge…" curve box vs Deflector Theory, unchanged pixels). 1920×1080 has 0. A `--walk` at 960/1280/1920 exercised 24 controls per screen. A picker change on the phone re-reads the dossier (Plasma Dynamics).
+
+**Sizes checked:** 390×844 (`--phone`, top and scrolled), 700×800, 800×600, 844×390 (`--phone`), 960×540 (top, reading scrolled, node picked), 1024×768, 1280×720, 1920×1080.
+
+**Still open:** the dial itself is crowded when its stage is under ~500px (800×600, phone landscape 844×390), the same as on master. That needs instrument geometry, not layout. At 960 the "Industrial Mining" label's last letter is clipped by the dial's own sky (`labelOut` under-measures by a few px). Shots: `ui-shots/polish40/{before,after}/` plus `compare-*.png`.
+
