@@ -14,6 +14,7 @@ import {
   OPAQUE_BATCH_MAX_VERTS,
 } from './opaqueMaterialBatch.js';
 import {
+  isRigidOpaqueBatchMotionSafe,
   planRigidOpaqueBatchGroups,
   rigidOpaqueMaterialProgramKey,
 } from './rigidOpaqueBatchPolicy.js';
@@ -27,6 +28,98 @@ export const RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES = 8;
 const _sceneInverse = new THREE.Matrix4();
 const _localMatrix = new THREE.Matrix4();
 const _sourceColor = new THREE.Color(1, 1, 1);
+
+// Material.version changes for shader recompilation, not ordinary live uniforms. A retained
+// clone otherwise keeps cold emission/finish values after its real owner has changed them.
+// Snapshot at admission; compare primitive values without allocation on the live sync path.
+const MATERIAL_SCALARS = Object.freeze([
+  'opacity', 'alphaTest', 'roughness', 'metalness', 'emissiveIntensity', 'envMapIntensity',
+  'aoMapIntensity', 'lightMapIntensity', 'bumpScale', 'normalMapType', 'displacementScale',
+  'displacementBias', 'reflectivity', 'refractionRatio', 'shininess', 'clearcoat',
+  'clearcoatRoughness', 'ior', 'iridescence', 'iridescenceIOR', 'sheen', 'sheenRoughness',
+  'transmission', 'thickness', 'attenuationDistance', 'anisotropy', 'anisotropyRotation',
+  'dispersion', 'specularIntensity', 'vertexColors', 'flatShading', 'fog', 'toneMapped',
+  'dithering', 'alphaHash', 'alphaToCoverage', 'premultipliedAlpha', 'forceSinglePass',
+  'wireframe', 'transparent', 'side', 'depthTest', 'depthWrite', 'colorWrite',
+]);
+const MATERIAL_VECTORS = Object.freeze([
+  'emissive', 'specular', 'specularColor', 'normalScale', 'clearcoatNormalScale',
+  'sheenColor', 'attenuationColor',
+]);
+const MATERIAL_TEXTURES = Object.freeze([
+  'map', 'lightMap', 'aoMap', 'bumpMap', 'normalMap', 'displacementMap', 'emissiveMap',
+  'metalnessMap', 'roughnessMap', 'alphaMap', 'envMap', 'anisotropyMap', 'clearcoatMap',
+  'clearcoatNormalMap', 'clearcoatRoughnessMap', 'iridescenceMap', 'iridescenceThicknessMap',
+  'sheenColorMap', 'sheenRoughnessMap', 'specularMap', 'specularColorMap',
+  'specularIntensityMap', 'transmissionMap', 'thicknessMap', 'gradientMap', 'matcap',
+]);
+const COMPONENTS = Object.freeze(['r', 'g', 'b', 'x', 'y', 'z', 'w']);
+
+function captureUniformComponents(object) {
+  return COMPONENTS.map(key => object?.[key]);
+}
+
+function uniformComponentsStable(values, object) {
+  for (let i = 0; i < COMPONENTS.length; i++) {
+    if (!Object.is(values[i], object?.[COMPONENTS[i]])) return false;
+  }
+  return true;
+}
+
+function captureMaterialUniforms(material) {
+  const data = material.userData || {};
+  return {
+    scalars: MATERIAL_SCALARS.map(key => material[key]),
+    vectors: MATERIAL_VECTORS.map(key => captureUniformComponents(material[key])),
+    iridescenceRange: material.iridescenceThicknessRange?.slice() || null,
+    textures: MATERIAL_TEXTURES.map(key => {
+      const texture = material[key];
+      return { texture, repeat: captureUniformComponents(texture?.repeat),
+        offset: captureUniformComponents(texture?.offset), center: captureUniformComponents(texture?.center),
+        rotation: texture?.rotation };
+    }),
+    pigmentColor: data.spacefaceIllustratedPigment?.color,
+    pigmentStrength: data.spacefaceIllustratedPigment?.strength,
+    layoutKind: data.spacefaceHullLayout?.kind,
+    layoutStrength: data.spacefaceHullLayout?.strength,
+    layoutAccent: data.spacefaceHullLayout?.accent,
+    layoutCenter: data.spacefaceHullLayout?.center?.slice() || null,
+    layoutSize: data.spacefaceHullLayout?.size?.slice() || null,
+  };
+}
+
+function uniformArrayStable(previous, current) {
+  if (!previous) return current == null;
+  if (!current || previous.length !== current.length) return false;
+  for (let i = 0; i < previous.length; i++) if (!Object.is(previous[i], current[i])) return false;
+  return true;
+}
+
+function materialUniformsStable(previous, material) {
+  for (let i = 0; i < MATERIAL_SCALARS.length; i++) {
+    if (!Object.is(previous.scalars[i], material[MATERIAL_SCALARS[i]])) return false;
+  }
+  for (let i = 0; i < MATERIAL_VECTORS.length; i++) {
+    if (!uniformComponentsStable(previous.vectors[i], material[MATERIAL_VECTORS[i]])) return false;
+  }
+  if (!uniformArrayStable(previous.iridescenceRange, material.iridescenceThicknessRange)) return false;
+  for (let i = 0; i < MATERIAL_TEXTURES.length; i++) {
+    const record = previous.textures[i], texture = material[MATERIAL_TEXTURES[i]];
+    if (record.texture !== texture || !Object.is(record.rotation, texture?.rotation)
+      || !uniformComponentsStable(record.repeat, texture?.repeat)
+      || !uniformComponentsStable(record.offset, texture?.offset)
+      || !uniformComponentsStable(record.center, texture?.center)) return false;
+  }
+  const data = material.userData || EMPTY_ARRAY;
+  const pigment = data.spacefaceIllustratedPigment, layout = data.spacefaceHullLayout;
+  return Object.is(previous.pigmentColor, pigment?.color)
+    && Object.is(previous.pigmentStrength, pigment?.strength)
+    && Object.is(previous.layoutKind, layout?.kind)
+    && Object.is(previous.layoutStrength, layout?.strength)
+    && Object.is(previous.layoutAccent, layout?.accent)
+    && uniformArrayStable(previous.layoutCenter, layout?.center)
+    && uniformArrayStable(previous.layoutSize, layout?.size);
+}
 
 function defaultHookSafe(source) {
   return !!source
@@ -290,6 +383,7 @@ function buildCandidate(scene, plan, options) {
   };
   const batches = [];
   const entries = [];
+  const materialUniforms = new Map();
   _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
   const destroy = () => {
     for (const batch of batches) disposeBatch(batch, scene);
@@ -323,6 +417,9 @@ function buildCandidate(scene, plan, options) {
           batch.mesh.setMatrixAt(instanceId, _localMatrix);
           const color = colorFromMaterial(source.material);
           if (typeof batch.mesh.setColorAt === 'function') batch.mesh.setColorAt(instanceId, color);
+          if (!materialUniforms.has(source.material)) {
+            materialUniforms.set(source.material, captureMaterialUniforms(source.material));
+          }
           const entry = {
             source,
             root: rootForSource(source, options.roots),
@@ -334,6 +431,7 @@ function buildCandidate(scene, plan, options) {
             material: source.material,
             materialVisible: source.material ? source.material.visible !== false : false,
             materialVersion: source.material && source.material.version,
+            materialUniforms: materialUniforms.get(source.material),
             vertexColors: source.material?.vertexColors === true,
             onBeforeCompile: source.material && source.material.onBeforeCompile,
             customProgramCacheKey: source.material && source.material.customProgramCacheKey,
@@ -381,11 +479,13 @@ function buildCandidate(scene, plan, options) {
   return { batches, entries, destroy };
 }
 
-function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe) {
+function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSafe, noteMutableMaterial = null) {
   const source = entry.source;
   const material = source && source.material;
   const directSuppressed = hidden === true;
   const currentColor = material ? colorFromMaterial(material, _sourceColor) : null;
+  const uniformsStable = material === entry.material && materialUniformsStable(entry.materialUniforms, material);
+  if (material === entry.material && !uniformsStable && noteMutableMaterial) noteMutableMaterial(material);
   return !!source
     && source.isMesh === true
     && source.parent === entry.parent
@@ -398,6 +498,7 @@ function sourceStaticStateStable(entry, hidden = true, hookSafe = defaultHookSaf
     && material === entry.material
     && (material && material.visible !== false) === entry.materialVisible
     && (material && material.version) === entry.materialVersion
+    && uniformsStable
     // Non-vertex-colored materials read their cloned material.color directly in the batch
     // shader. A live color mutation cannot be repaired with setColorAt, so invalidate the
     // retained copy and let the normal admission path rebuild the keyed group.
@@ -447,11 +548,29 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const scene = options.scene || null;
   const prepareDefault = typeof options.prepare === 'function' ? options.prepare : null;
   const getTags = typeof options.getTags === 'function' ? options.getTags : undefined;
+  const isTransformOnlySource = typeof options.isTransformOnlySource === 'function'
+    ? options.isTransformOnlySource : undefined;
+  const motionOptions = { getTags, isTransformOnlySource };
+  // Selection only narrows the admitted cohort. It cannot override the policy's shader,
+  // material, motion or geometry guards, and remains binding until the candidate retires.
+  const selectSource = typeof options.selectSource === 'function' ? options.selectSource : null;
+  // A live heat/pulse owner stays on its direct material after the first observed mutation.
+  // Re-admitting its new value every frame would replace one stale picture with a compile storm.
+  const mutableMaterials = new WeakSet();
+  const noteMutableMaterial = material => { if (material) mutableMaterials.add(material); };
   const renderHookSafe = typeof options.isRenderHookSafe === 'function'
     ? options.isRenderHookSafe
     : defaultHookSafe;
-  const isRenderHookSafe = (source) => renderHookSafe(source) === true
-    && geometryWithinBatchLimits(source && source.geometry);
+  const isRenderHookSafe = (source) => {
+    try {
+      return !mutableMaterials.has(source?.material)
+        && (!selectSource || selectSource(source) === true)
+        && (!isTransformOnlySource || isRigidOpaqueBatchMotionSafe(source,
+          (getTags ? getTags(source) : source?.userData?.spacefaceTags) || EMPTY_ARRAY, motionOptions))
+        && renderHookSafe(source) === true
+        && geometryWithinBatchLimits(source && source.geometry);
+    } catch (_) { return false; }
+  };
   const maxInstances = options.maxInstances;
   const maxVerts = options.maxVerts;
   const maxIndices = options.maxIndices;
@@ -707,7 +826,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     let visibleCount = 0;
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
-      if (!sourceStaticStateStable(entry, true, isRenderHookSafe)) return false;
+      if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial)) return false;
       const source = entry.source;
       _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
       if (matrixChanged(entry.matrix, _localMatrix.elements)) {
@@ -747,6 +866,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
 
   const makePlan = (roots) => planRigidOpaqueBatchGroups(roots, {
     getTags,
+    isTransformOnlySource,
     isRenderHookSafe,
     materialProgramKey: rigidOpaqueMaterialProgramKey,
     shadowLane: (source) => `${source.castShadow === true ? 'cast' : 'nocast'}|${source.receiveShadow === true ? 'receive' : 'noreceive'}`,
@@ -873,7 +993,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         }
         const topologyStable = entryTopologyMatches(record.entryTopology);
         if (!topologyStable
-            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe))) {
+            || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe, noteMutableMaterial))) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
           lastSignature = null;
@@ -885,7 +1005,16 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             : 'source-topology-changed-before-commit';
           return refreshDiagnostics();
         }
+        // Preparation is asynchronous while authored rigid pivots may keep moving. Publish the
+        // current pose at the same atomic handover that suppresses the direct source draws.
+        _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
         for (const entry of candidate.entries) {
+          _localMatrix.multiplyMatrices(_sceneInverse, entry.source.matrixWorld);
+          if (matrixChanged(entry.matrix, _localMatrix.elements)) {
+            copyMatrix(entry.matrix, _localMatrix.elements);
+            entry.batch.mesh.setMatrixAt(entry.instanceId, _localMatrix);
+            stats.matrixUpdates += 1;
+          }
           // Keep the canonical source visible to clearance/picking/player-truth traversals. The
           // ordinary camera uses layer 0, so mask 0 suppresses its direct draw without removing
           // the mesh from those semantic readers. dispose/rollback restores the authored mask.

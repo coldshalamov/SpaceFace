@@ -8,6 +8,7 @@ import {
   RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES,
 } from '../src/render/rigidOpaqueBatch.js';
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
+import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
 import { acceptClearanceMesh, clearanceNeighborhoodRaw } from '../src/render/clearanceQuery.js';
 import {
   collectPresentedBodyLeaves,
@@ -112,6 +113,139 @@ test('active non-vertex material color changes invalidate the retained copy', as
   b.geometry.dispose();
   a.material.dispose();
   b.material.dispose();
+});
+
+test('actual retro heat changes retire stale retained material copies before the next draw', async () => {
+  const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
+  attachRetroMounts(root, { data: { defId: 'ship_kestrel' } });
+  scene.updateMatrixWorld(true);
+  const iris = root.getObjectByName('Retro_Iris_Port');
+  const geometry = iris.geometry, material = iris.material;
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  assert.equal((await controller.sync(root)).status, 'active');
+  const initialVersion = material.version;
+  material.emissiveIntensity += 1;
+  assert.equal(material.version, initialVersion, 'live heat is a uniform change, not a shader recompile');
+  const after = await controller.sync(root);
+  assert.equal(after.status, 'active', 'unchanged retro materials can retain their batching');
+  assert.equal(after.instances, 8, 'the two now-mutable iris sources stay direct');
+  assert.equal(iris.layers.mask, 1, 'the authored source returns to the normal draw path');
+  assert.equal(iris.geometry, geometry); assert.equal(iris.material, material);
+  assert.equal(material.emissiveIntensity, 1.1, 'rollback preserves the live owner value');
+  assert.equal(scene.children.filter(node => node.isBatchedMesh).length, 4);
+  material.emissiveIntensity += 1;
+  const next = await controller.sync(root);
+  assert.equal(next.activations, after.activations, 'another heat tick never re-admits the mutable iris');
+  assert.equal(iris.layers.mask, 1);
+  controller.dispose();
+});
+
+test('live uniform component and texture-transform changes retire the retained copy', async () => {
+  for (const mutate of [material => { material.emissive.r = 0.8; },
+    material => { material.roughness = 0.7; }, material => { material.normalScale.x = 2; },
+    material => { material.map.offset.x = 0.5; }]) {
+    const scene = new THREE.Scene(), root = new THREE.Group(); scene.add(root);
+    const material = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), roughness: 0.4 });
+    const a = new THREE.Mesh(new THREE.BoxGeometry(), material), b = new THREE.Mesh(new THREE.BoxGeometry(), material);
+    root.add(a,b); scene.updateMatrixWorld(true);
+    const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+    assert.equal((await controller.sync(root)).status, 'active');
+    mutate(material);
+    assert.equal((await controller.sync(root)).status, 'idle');
+    assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
+    controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); material.map.dispose(); material.dispose();
+  }
+});
+
+test('uniform mutation while residency awaits cannot commit a stale retained material', async () => {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot(); scene.add(root); scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  const pending = controller.sync(root); await Promise.resolve();
+  a.material.emissiveIntensity = 3;
+  finish({ ready: true });
+  const after = await pending;
+  assert.equal(after.status, 'idle'); assert.equal(after.lastReason, 'source-state-changed-before-commit');
+  assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1);
+  controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+});
+
+test('an exact source selector narrows the cohort and remains binding during residency and activation', async () => {
+  for (const retireDuringPrepare of [false, true]) {
+    const scene = new THREE.Scene(), { root, a, b } = makeRoot(); scene.add(root);
+    const unrelated = new THREE.Mesh(a.geometry,a.material); root.add(unrelated); scene.updateMatrixWorld(true);
+    let selected = true, finish;
+    const controller = createRetainedRigidOpaqueBatchController({ scene,
+      selectSource: source => selected && source !== unrelated,
+      prepare: () => new Promise(resolve => { finish = resolve; }) });
+    const pending = controller.sync(root); await Promise.resolve();
+    if (retireDuringPrepare) selected = false;
+    finish({ ready: true });
+    const ready = await pending;
+    if (retireDuringPrepare) assert.equal(ready.status,'idle');
+    else {
+      assert.equal(ready.status,'active'); assert.equal(ready.instances,2);
+      assert.equal(unrelated.layers.mask,1,'unselected leaves retain their ordinary draws');
+      selected = false;
+      assert.equal((await controller.sync(root)).status,'idle');
+    }
+    assert.equal(a.layers.mask,1); assert.equal(b.layers.mask,1); assert.equal(unrelated.layers.mask,1);
+    controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
+test('qualified rigid pivots publish the current pose at activation and track it until qualification retires', async () => {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot(), pivot = new THREE.Group();
+  pivot.userData.spacefaceTags = { motionGroup: true };
+  a.userData.spacefaceTags = { motionGroup: true }; b.userData.spacefaceTags = { motionGroup: true };
+  pivot.add(a, b); root.add(pivot); scene.add(root); scene.updateMatrixWorld(true);
+  const originalGeometry = a.geometry, originalMaterial = a.material;
+  let qualified = true, finish;
+  const controller = createRetainedRigidOpaqueBatchController({ scene,
+    isTransformOnlySource: source => qualified && (source === a || source === b),
+    prepare: () => new Promise(resolve => { finish = resolve; }) });
+  const pending = controller.sync(root); await Promise.resolve();
+  pivot.position.set(8, 2, -4); pivot.rotation.y = 0.7; scene.updateMatrixWorld(true);
+  finish({ ready: true });
+  assert.equal((await pending).status, 'active');
+  const batch = scene.children.find(child => child.isBatchedMesh), matrix = new THREE.Matrix4();
+  batch.getMatrixAt(0, matrix);
+  assert.ok(matrix.elements.every((value, index) => Math.abs(value - a.matrixWorld.elements[index]) < 1e-6),
+    'the first retained draw uses the pose after preparation, not the old admission pose');
+  pivot.rotation.y = 1.2; pivot.position.x = 12; scene.updateMatrixWorld(true);
+  const moved = await controller.sync(root); batch.getMatrixAt(0, matrix);
+  assert.equal(moved.status, 'active');
+  assert.ok(matrix.elements.every((value, index) => Math.abs(value - a.matrixWorld.elements[index]) < 1e-6));
+  assert.equal(a.parent, pivot); assert.equal(a.geometry, originalGeometry); assert.equal(a.material, originalMaterial);
+  qualified = false;
+  assert.equal((await controller.sync(root)).status, 'idle');
+  assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1); assert.equal(a.parent, pivot);
+  controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+});
+
+test('qualified rigid pivots restore direct draws when fan ownership or unsafe transforms appear', async () => {
+  for (const change of ['preparing-fan', 'active-mirrored', 'active-singular']) {
+    const scene = new THREE.Scene(), { root, a, b } = makeRoot(), pivot = new THREE.Group();
+    pivot.userData.spacefaceTags = { motionGroup: true };
+    pivot.add(a, b); root.add(pivot); scene.add(root); scene.updateMatrixWorld(true);
+    let finish;
+    const controller = createRetainedRigidOpaqueBatchController({ scene, isTransformOnlySource: () => true,
+      prepare: () => new Promise(resolve => { finish = resolve; }) });
+    const pending = controller.sync(root); await Promise.resolve();
+    if (change === 'preparing-fan') pivot.userData.spacefaceTags.fan = true;
+    finish({ ready: true });
+    const prepared = await pending;
+    if (change === 'preparing-fan') assert.equal(prepared.status, 'idle');
+    else {
+      assert.equal(prepared.status, 'active');
+      pivot.scale.x = change === 'active-mirrored' ? -1 : 0; scene.updateMatrixWorld(true);
+      assert.equal((await controller.sync(root)).status, 'idle');
+    }
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    controller.dispose(); a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
 });
 
 test('illustrated retained batches keep local hull data while Three applies the batch pose', async () => {

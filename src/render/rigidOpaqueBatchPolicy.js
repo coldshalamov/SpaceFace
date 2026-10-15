@@ -161,6 +161,10 @@ function illustratedMaterialPayloadKey(material) {
 
 function materialRenderHooksSafe(material) {
   if (!material) return false;
+  // BatchedMesh supplies transforms through Three's batching shader chunks. An arbitrary
+  // custom shader (including the station's position-only depth prepass) need not consume
+  // them at all, even when it has no own render/compile hook. Keep it on its real draw.
+  if (material.isShaderMaterial === true || material.isRawShaderMaterial === true) return false;
   // Three's default Material hook is inherited. Any own hook can write camera-dependent uniforms
   // or otherwise require the original material draw, so keep that source on the direct path.
   return !Object.prototype.hasOwnProperty.call(material, 'onBeforeRender')
@@ -223,27 +227,39 @@ function isDescendantOrSelf(object, ancestor) {
   return false;
 }
 
-function hasAnimatedAdmissionMarker(object, source, options) {
+function hasAnimatedAdmissionMarker(object, source, options, transformOnly) {
   const data = object && object.userData;
   const tags = tagsForAdmissionObject(object, options);
   if (data && (data.animated === true || data.isTurret === true)) return true;
-  if (tags.animated === true || tags.motionGroup || tags.fan || tags.turret) return true;
+  if (tags.animated === true || tags.fan || tags.turret || tags.drive) return true;
+  if (tags.motionGroup && !transformOnly) return true;
 
   // Engine and turret owners keep their animated pivot in userData. Only treat that marker as
   // dynamic when this surface is actually below the pivot; static engine siblings remain eligible.
-  for (const pivot of [data && data.fan, data && data.turretHead]) {
-    if (pivot && isDescendantOrSelf(source, pivot)) return true;
-  }
+  if (data?.fan && isDescendantOrSelf(source, data.fan)) return true;
+  if (data?.turretHead && isDescendantOrSelf(source, data.turretHead)) return true;
   return false;
 }
 
-function hasAnimatedAncestor(source, options) {
+/**
+ * Explicit transform-only membership relaxes the MOTION_* marker alone. The retained owner
+ * must copy the source's current world matrix before submission; deformation and independently
+ * owned fan/turret/drive surfaces still require their authored draw.
+ */
+export function isRigidOpaqueBatchMotionSafe(source, tags = {}, options = {}) {
+  let transformOnly = false;
+  if (typeof options.isTransformOnlySource === 'function') {
+    try { transformOnly = options.isTransformOnlySource(source) === true; }
+    catch (_) { return false; }
+  }
+  if (tags.motionGroup && !transformOnly) return false;
+  if (tags.animated === true || tags.fan || tags.turret || tags.drive) return false;
   let current = source;
   while (current) {
-    if (hasAnimatedAdmissionMarker(current, source, options)) return true;
+    if (hasAnimatedAdmissionMarker(current, source, options, transformOnly)) return false;
     current = current.parent;
   }
-  return false;
+  return hasBatchSafeWorldTransform(source);
 }
 
 function hasBatchSafeWorldTransform(source) {
@@ -261,12 +277,8 @@ export function isRigidOpaqueBatchableSurface(source, tags = {}, options = {}) {
   if (source.visible === false) return false;
   if (!source.geometry || !source.material || Array.isArray(source.material)) return false;
   if (tags.damageRole) return false;
-  // MOTION_* welded children ride authored rigid-part pivots — batching would detach them from
-  // the moving node their transform already lives under.
-  if (tags.motionGroup) return false;
   if (tags.canopy || tags.decal || tags.plume || tags.navLight || tags.fan) return false;
-  if (hasAnimatedAncestor(source, options)) return false;
-  if (!hasBatchSafeWorldTransform(source)) return false;
+  if (!isRigidOpaqueBatchMotionSafe(source, tags, options)) return false;
   const material = source.material;
   if (!material || material.visible === false) return false;
   if (!materialRenderHooksSafe(material)) return false;
