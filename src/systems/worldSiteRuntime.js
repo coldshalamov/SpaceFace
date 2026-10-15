@@ -111,7 +111,8 @@ export function reconcileWorldSiteResidency(state, helpers) {
 export function syncWorldSiteMaterialization({ state, helpers, manifest, record }) {
   if (!state || !state.entities || !manifest || !record) return { entities: [], spawned: 0, removed: 0 };
   const distance = playerSiteDistance(state, manifest);
-  const outside = distance != null && distance > siteApproachRadius(manifest);
+  const approach = siteApproachRadius(manifest);
+  const outside = distance != null && distance > approach;
   // A pilot inside the reservation gets live bodies. Farther out, shelved static
   // anatomy stays shelved — discarding it here minted a live twin every sync.
   if (!outside) discardWorldSiteStaticFarRows(state, manifest.id);
@@ -176,6 +177,14 @@ export function syncWorldSiteMaterialization({ state, helpers, manifest, record 
     for (const wanted of plan.entities) {
       const present = after.get(wanted.worldRecordId) || [];
       if (present.some((entity) => entity.alive !== false)) continue;
+      // The residency tick retires distant stowed sections without shelving a far row.
+      // Honor that same boundary before spawning, rather than recreating them on every enter.
+      // Existing tether/workfleet bodies and released sections keep their normal path.
+      if (wanted.structural && wanted.attached && distance > approach + SITE_RETIRE_PAD_WU) {
+        const player = state.entities.get(state.playerId);
+        if (player?.pos && Math.hypot(wanted.pos.x - player.pos.x, wanted.pos.z - player.pos.z)
+          > farActorTableRadius(state).exit) continue;
+      }
       const entity = spawnEntity(entitySpec(wanted, manifest, record, entryAdmitted(wanted)));
       if (entity) spawned += 1;
     }
