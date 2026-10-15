@@ -225,6 +225,15 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
       }
     }
 
+    // where a layout lifts the reading into the tape's foot, the reading's top is the figures' floor. Read
+    // once per relayout, before any label is measured: measure() adds and removes nodes, so a rect read after
+    // it would force a second layout pass
+    let floor = H - 4;
+    if (readingHost && !readingHost.hidden && typeof readingHost.getBoundingClientRect === 'function') {
+      const top = readingHost.getBoundingClientRect().top - host.getBoundingClientRect().top;
+      if (top > y + 20 && top < H) floor = top - 4;
+    }
+
     // a label's printed width, measured in the live layer (its own class sets face, size and tracking)
     if (widthsKey !== `${W}x${H}` || widths.size > 512) { widths.clear(); widthsKey = `${W}x${H}`; }
     const measure = (cls, str) => {
@@ -387,14 +396,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
         boxes.push({ l: xs[k] - 5, r: xs[k] + 5, t: tipY - 5, b: tipY + 5 });
       });
       const hit = (a) => boxes.some((b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b);
-      // where a layout lifts the reading into the tape's foot, the reading's top is the floor
-      let floor = H - 4;
-      if (readingHost && !readingHost.hidden && typeof readingHost.getBoundingClientRect === 'function') {
-        const top = readingHost.getBoundingClientRect().top - host.getBoundingClientRect().top;
-        if (top > y + 20 && top < H) floor = top - 4;
-      }
       const inside = (yy) => yy - FIG_H >= 0 && yy <= floor;
-      for (const p of figurePlan.sort((a, b) => a.x - b.x)) {
+      for (const p of [...figurePlan].sort((a, b) => a.x - b.x)) {
         const w = measure(`orr-ltape__figure${p.amt < 0 ? ' orr-ltape__figure--out' : ''}`, p.text);
         const slots = [];
         for (let lane = 0; lane < 3; lane += 1) {
