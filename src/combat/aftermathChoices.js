@@ -28,6 +28,14 @@ function firstId(outcomes, pred) {
   return null;
 }
 
+function lastId(outcomes, pred) {
+  let found = null;
+  for (const outcome of outcomes) {
+    if (pred(outcome) && outcome.entityId != null) found = outcome.entityId;
+  }
+  return found;
+}
+
 /**
  * @param {object} [facts]
  * @param {Array} [facts.outcomes] outcome, entityId, sectorId, alive
@@ -47,7 +55,8 @@ export function aftermathChoices(facts) {
   ));
   // Salvage is a kill, a body a death event already marked dead, or a wreck marker.
   // A ship that only despawned (fled off the field, removed without a death) is not a wreck.
-  const killedId = firstId(outcomes, (outcome) => outcome.outcome === 'killed' || outcome.dead === true);
+  // The later destruction is the salvage. An earlier hulk does not keep the click.
+  const killedId = lastId(outcomes, (outcome) => outcome.outcome === 'killed' || outcome.dead === true);
   const salvageId = killedId != null ? killedId : (wreckIds[0] ?? null);
   const pursuitId = firstId(outcomes, (outcome) => (
     outcome.outcome === 'fled' && outcome.alive === true && outcome.dead !== true

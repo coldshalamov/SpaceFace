@@ -366,6 +366,35 @@ test('salvage names the destroyed ship\'s own wreck, not the newest hulk', () =>
   assert.equal(h.state.paused, undefined);
 });
 
+test('a later destroyed ship is the salvage, not the first hulk', () => {
+  const h = makeHarness();
+  const first = spawnHostile(h, 400);
+  const second = spawnHostile(h, 700);
+  h.bus.emit('entity:killed', { id: first.id, killerId: h.state.playerId });
+  h.state.aftermathWrecks = {
+    bySector: {
+      [SECTOR]: [
+        { markerId: 'first-hulk', victimId: first.id, kind: 'battle-aftermath' },
+        { markerId: 'second-hulk', victimId: second.id, kind: 'battle-aftermath' },
+      ],
+    },
+  };
+  first.alive = false;
+  h.state.entities.delete(first.id);
+  h.bus.emit('entity:destroyed', { id: first.id, entity: first, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'first-hulk');
+  h.bus.emit('entity:killed', { id: second.id, killerId: h.state.playerId });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, second.id);
+  second.alive = false;
+  h.state.entities.delete(second.id);
+  h.bus.emit('entity:destroyed', { id: second.id, entity: second, reason: 'killed' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'second-hulk');
+  assert.notEqual(h.state.combatOutcome.aftermath.targets.salvage, 'first-hulk');
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'second-hulk');
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {
