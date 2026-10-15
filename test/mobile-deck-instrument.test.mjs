@@ -9,6 +9,7 @@ import { sectorDeg, createWheel } from '../src/systems/mobile/wheel.js';
 import { shipOnScreen, isPhoneLayout } from '../src/systems/mobile/model.js';
 import { enhanceMobileTouch } from '../src/systems/mobile/bridge.js';
 import { POWER_PAGES, icon } from '../src/systems/mobile/catalog.js';
+import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
 
 class El {
   constructor(tag) {
@@ -35,6 +36,26 @@ class El {
 const fakeDoc = () => ({ createElement: t => new El(t), createElementNS: (_n, t) => new El(t) });
 const findAll = (el, pred, out = []) => { if (pred(el)) out.push(el); el.children.forEach(c => findAll(c, pred, out)); return out; };
 const byClass = (el, cls) => findAll(el, n => n._classes.has(cls) || (n.attrs.class || '').split(/\s+/).includes(cls));
+
+test('only informational receipts compact in touch flight; critical copy and touch-through stay intact', () => {
+  const prefix = ':root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts';
+  const rule = selector => MOBILE_CSS.slice(MOBILE_CSS.indexOf(selector) + selector.length).match(/^\s*\{([^}]+)\}/)?.[1];
+  const row = rule(prefix + ' .sf-toast--info');
+  const text = rule(prefix + ' .sf-toast--info .sf-toast__text');
+  assert.ok(row && text, 'both phone flight flags scope the compaction to info receipts');
+  assert.match(row, /box-sizing:border-box/);
+  assert.match(row, /width:100%/);
+  assert.match(text, /min-width:0/);
+  assert.match(text, /white-space:nowrap/);
+  assert.match(text, /overflow:hidden/);
+  assert.match(text, /text-overflow:ellipsis/);
+  for (const kind of ['error', 'danger', 'warn', 'success', 'credits']) {
+    assert.equal(rule(prefix + ` .sf-toast--${kind} .sf-toast__text`), undefined,
+      `${kind} receipts retain full wrapping`);
+  }
+  assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/);
+});
+
 function withDoc(fn) {
   const prev = globalThis.document; const doc = fakeDoc(); globalThis.document = doc;
   try { return fn(doc); } finally { globalThis.document = prev; }
