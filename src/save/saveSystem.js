@@ -94,6 +94,7 @@ import {
   pushSharedPlayerStore,
   SHARED_STORE_TIMEOUT_MS,
   sharedPlayerStoreAvailable,
+  sharedPlayerStoreCapability,
 } from './sharedPlayerStore.js';
 
 const LS_PREFIX = 'sf.save.';
@@ -725,7 +726,7 @@ export const save = {
         // Still emitted in both outcomes: achievements merge + title refresh key off the
         // timing, and now off a truthful ok. No save write and no transition rides along.
         this.bus.emit('save:store-synced', Object.assign({ ok, durableStore: 'local' },
-          mirrorConfigured ? { mirror: 'shared' } : { mirror: 'none' },
+          mirrorConfigured ? { mirror: 'shared', storeCapability: sharedPlayerStoreCapability() } : { mirror: 'none' },
           error ? { error } : null));
       }
     }
@@ -776,7 +777,8 @@ export const save = {
           this._publishSharedStoreStatus();
           if (wasUnhealthy) {
             if (this.bus && typeof this.bus.emit === 'function') {
-              this.bus.emit('save:store-synced', { ok: true, mirror: 'shared', durableStore: 'local', mirrorRecovered: true });
+              this.bus.emit('save:store-synced', { ok: true, mirror: 'shared', durableStore: 'local', mirrorRecovered: true,
+                storeCapability: sharedPlayerStoreCapability() });
             }
           }
         } else {

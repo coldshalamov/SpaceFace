@@ -88,7 +88,8 @@ test('INF-092 missed mirror write reports failure and names the durable local st
     const synced = h.events.filter((e) => e.name === 'save:store-synced');
     assert.equal(synced.length, 1, 'one status event, no duplicate save or transition');
     assert.deepEqual(synced[0].payload,
-      { ok: false, durableStore: 'local', mirror: 'shared', error: 'mirror_unreachable' });
+      { ok: false, durableStore: 'local', mirror: 'shared', error: 'mirror_unreachable',
+        storeCapability: { origin: 'http://', status: 'available' } });
     assert.ok(!h.events.some((e) => e.name === 'toast'), 'no save write rides the status path');
   } finally { h.restore(); g.restore(); }
 });
