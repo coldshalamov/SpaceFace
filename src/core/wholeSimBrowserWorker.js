@@ -57,10 +57,13 @@ const LOCAL_HITCH_CATCHUP_STEPS = 2;
 // the player ~2 steps of sim, not the stall's wall time. The worker timer is not stalled by the
 // main thread, so without this it kept simulating in real time through a multi-second stall
 // (e.g. the first post-reveal frames on software GL) that no one could see or steer. Once a
-// published reply has waited longer than that hitch window for its ACK, stop accumulating; the
+// published reply has waited longer than LOCAL_PRESENT_STALL_MS for its ACK, stop accumulating; the
 // tick after the ACK then takes one clamped frame (localClampFrameSeconds + hitch cap + shed),
 // exactly the main lane's policy. Normal presentation ACKs within a frame and never trips it.
-const LOCAL_PRESENT_STALL_MS = LOCAL_FIXED_DT * 1000 * 6.5;
+// 250 ms, not the 6.5-step hitch window: on a slow host (software GL) ordinary main-thread tasks
+// of 110-200 ms are routine, and clamping those slowed steady gameplay to ~0.8x real time
+// (player-truth v18). Only a genuine stall — no ACK for a quarter second — is clamped.
+const LOCAL_PRESENT_STALL_MS = 250;
 const LOCAL_DURABLE_LIMIT = 4096;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_JOURNAL_SCALAR_STRIDE = 18;
@@ -129,7 +132,7 @@ export function nextLocalClockDeadline(deadlineMs, nowMs, intervalMs = LOCAL_TIM
   return next;
 }
 
-// True while a published reply has waited past the hitch window for the presentation ACK.
+// True while a published reply has waited past LOCAL_PRESENT_STALL_MS for the presentation ACK.
 export function localPresentStallHolds(clock, now, force = false, explicitSteps = 0) {
   if (force || !clock || !clock.active || !clock.sentAwaitingAck || !(clock.sentAtMs > 0)) return false;
   if (Number.isSafeInteger(explicitSteps) && explicitSteps > 0) return false;

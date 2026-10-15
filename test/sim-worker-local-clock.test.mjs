@@ -1195,9 +1195,9 @@ test('worker-local clock holds through a presentation stall and resumes with a m
     const clock = { active: true, sentAwaitingAck: true, sentAtMs: 1000 };
     // Normal presentation ACKs within a frame: never held.
     assert.equal(localPresentStallHolds(clock, 1000 + 33), false);
-    assert.equal(localPresentStallHolds(clock, 1000 + 100), false);
-    // Past the 6.5-step hitch window the worker stops accumulating wall time.
-    assert.equal(localPresentStallHolds(clock, 1000 + 120), true);
+    assert.equal(localPresentStallHolds(clock, 1000 + 200), false, 'routine slow-host tasks keep real time');
+    // Past a quarter second without an ACK the worker stops accumulating wall time.
+    assert.equal(localPresentStallHolds(clock, 1000 + 260), true);
     assert.equal(localPresentStallHolds({ ...clock, sentAwaitingAck: false }, 5000), false, 'an ACKed reply never holds');
     assert.equal(localPresentStallHolds({ ...clock, active: false }, 5000), false);
     assert.equal(localPresentStallHolds(clock, 5000, true), false, 'forced maintenance ticks still run');
