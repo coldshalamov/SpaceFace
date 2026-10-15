@@ -34,9 +34,21 @@ function makeHarness(overrides = {}) {
   };
   const system = Object.create(feel);
   system.state = state;
+  let clearCount = 0;
   system._slCanvas = { isConnected: true, style: { opacity: '0' }, width: 0, height: 0 };
   system._slCtx = {
-    clearRect() {},
+    clearRect() { clearCount += 1; },
+    createLinearGradient() { return { addColorStop() {} }; },
+    createPattern() { return null; },
+    save() {},
+    restore() {},
+    transform() {},
+    translate() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    stroke() {},
+    fillRect() {},
     set lineCap(_) {},
     set globalCompositeOperation(_) {},
   };
@@ -45,7 +57,7 @@ function makeHarness(overrides = {}) {
   system._streaks = [];
   system._speedLinesQuietIdle = false;
   system._speedLinesQuietMaxSpd = 1;
-  return { system, state, player };
+  return { system, state, player, getClearCount: () => clearCount };
 }
 
 test('speed-lines quiet-latches after idle silent publish and wakes on speed', () => {
@@ -125,5 +137,66 @@ test('loading mode clears quiet latch so band-0 still publishes', () => {
     assert.ok(state.render.velocityLanguage.frame > frameBefore);
   } finally {
     VELOCITY_LANGUAGE_FLAGS.bands = savedBands;
+  }
+});
+
+test('hidden HUD idles speed-lines without stopping velocity publication', () => {
+  const savedBands = VELOCITY_LANGUAGE_FLAGS.bands;
+  VELOCITY_LANGUAGE_FLAGS.bands = true;
+  try {
+    const { system, state, player, getClearCount } = makeHarness({
+      state: { ui: { docked: true } },
+      player: { vel: { x: 100, z: 0 }, flags: { boosting: true } },
+    });
+    system._slOpacity = 0.8;
+    system._slGrain = 0.4;
+    system._streaks = [{ uv: 1 }];
+    const frameBefore = state.render.velocityLanguage?.frame || 0;
+
+    system._updateSpeedLines(DT);
+
+    assert.ok(
+      state.render.velocityLanguage.frame > frameBefore,
+      'hidden HUD must still publish the retained velocity-language record',
+    );
+    assert.equal(getClearCount(), 0, 'hidden HUD must not clear the full canvas');
+    assert.equal(system._slOpacity, 0, 'hidden HUD must reset visible opacity');
+    assert.equal(system._slGrain, 0, 'hidden HUD must reset grain opacity');
+    assert.deepEqual(system._streaks, [], 'hidden HUD must release the active streak walk');
+    assert.equal(system._speedLinesQuietIdle, false, 'resume must recompute from live speed');
+    assert.equal(player.flags.boosting, true, 'the hidden gate must not mutate gameplay state');
+  } finally {
+    VELOCITY_LANGUAGE_FLAGS.bands = savedBands;
+  }
+});
+
+test('speed-lines resume after a modal without inheriting stale presentation state', () => {
+  const savedBands = VELOCITY_LANGUAGE_FLAGS.bands;
+  const savedWindow = globalThis.window;
+  VELOCITY_LANGUAGE_FLAGS.bands = true;
+  globalThis.window = { innerWidth: 1280, innerHeight: 720 };
+  try {
+    const { system, state, player } = makeHarness({
+      state: { ui: { screenStack: ['pause'] } },
+      player: { vel: { x: 100, z: 0 } },
+    });
+    system._slOpacity = 0.8;
+    system._slGrain = 0.4;
+    system._streaks = [{ uv: 1 }];
+    system._updateSpeedLines(DT);
+    assert.equal(system._slOpacity, 0);
+    assert.deepEqual(system._streaks, []);
+
+    state.ui.screenStack.length = 0;
+    // The resume path reaches the existing quiet/visibility logic; it must not remain suppressed
+    // by the modal reset when the player is still moving.
+    system._updateSpeedLines(DT);
+    assert.equal(system._speedLinesQuietIdle, false);
+    assert.ok(system._slOpacity > 0, 'visible resume must restore the active speed-line envelope');
+    assert.equal(player.vel.x, 100, 'resume must read the unchanged live velocity');
+  } finally {
+    VELOCITY_LANGUAGE_FLAGS.bands = savedBands;
+    if (savedWindow === undefined) delete globalThis.window;
+    else globalThis.window = savedWindow;
   }
 });

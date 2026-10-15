@@ -870,10 +870,12 @@ export function createMarketScreen(ctx) {
     const sameTerms = retained.commodityId === row.id
       && retained.side === mode
       && retained.qty === Math.floor(Number(quantity));
-    if (!sameTerms) {
-      authoritativeTradeQuote = null;
-      return live;
-    }
+    // Quantity-limit planning probes several candidate quantities before the
+    // selected console quote is rendered. Those probes are read-only and must
+    // not discard an authority refusal for the currently selected terms; the
+    // render boundary below clears it when the pilot actually changes the
+    // selected quantity/lot/side.
+    if (!sameTerms) return live;
     // Once the ordinary mirror reports the same total, return its complete
     // quote (impact, stock and fill fields) and release the temporary value.
     const mirrorTotal = live && live.ok === true ? Math.round(Number(live.total)) : null;
@@ -1604,6 +1606,12 @@ export function createMarketScreen(ctx) {
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
+    if (authoritativeTradeQuote
+      && (authoritativeTradeQuote.commodityId !== selectedId
+        || authoritativeTradeQuote.side !== mode
+        || authoritativeTradeQuote.qty !== Math.floor(Number(qty)))) {
+      authoritativeTradeQuote = null;
+    }
     const rows = tradedList(state);
     const r = rows.find((x) => x.id === selectedId) || null;
     if (!r) {

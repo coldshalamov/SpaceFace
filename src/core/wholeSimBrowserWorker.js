@@ -432,6 +432,47 @@ function localRefreshDurablePressure() {
   localClock.backpressured = localClock.durableCount >= LOCAL_DURABLE_LIMIT;
 }
 
+// An active ACK is already a presentation boundary. If the worker accumulated
+// a contiguous latest reply while the previous one was in flight, publish that
+// retained reply now instead of waiting for another timer wake. A journal gap,
+// rebuild marker, or durable-side-channel overflow must stay on the existing
+// authoritative rebuild/tick path; publishing one of those ranges directly
+// would make the main journal lose records. The returned action is kept pure so
+// the wire fixture can exercise the same safety decision without a wall-clock
+// dependency.
+function localAckReplyAction(reply, {
+  ackJournalEnd = 0,
+  active = false,
+  scale = 0,
+  durableCount = 0,
+  needsRebuild = false,
+} = {}) {
+  if (!reply || !active || !(scale > 0)) return 'schedule';
+  if (needsRebuild || durableCount >= LOCAL_DURABLE_LIMIT) return 'schedule-rebuild';
+  if (Number.isSafeInteger(reply.journalStart) && reply.journalStart > ackJournalEnd) {
+    return 'schedule-rebuild';
+  }
+  return 'publish';
+}
+
+async function publishRetainedReplyAfterAck(ackJournalEnd) {
+  const reply = localClock.latestReply;
+  const action = localAckReplyAction(reply, {
+    ackJournalEnd,
+    active: localClock.active,
+    scale: localClock.scale,
+    durableCount: localDurableCount(reply),
+    needsRebuild: localClock.needsRebuildOnSend || localReplyNeedsRebuild.has(reply),
+  });
+  if (action !== 'publish') {
+    if (reply && action === 'schedule-rebuild') localClock.needsRebuildOnSend = true;
+    return false;
+  }
+  localClock.latestReply = null;
+  await publishLocalReply(reply);
+  return true;
+}
+
 function postTickLikeReply(reply) {
   reply.sendNs = Number(nowNs());
   if (sabEnv) {
@@ -638,14 +679,15 @@ async function handleLocalClockControl(msg) {
 
 async function handleLocalClockAck(msg) {
   if (!localClock.enabled || localClock.stopped) return;
+  let retainedReplyPublished = false;
   if (Number.isSafeInteger(msg.ackJournalEnd)) {
     localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, msg.ackJournalEnd);
   }
   if (Number.isSafeInteger(msg.clockSequence)
     && msg.clockSequence >= localClock.sentClockSequence) {
     localClock.sentAwaitingAck = false;
+    const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
     if (localClock.latestReply) {
-      const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
       // The latest pack can be sent incrementally when it starts exactly at
       // the range the main side acknowledged. A gap means one or more worker
       // ticks were coalesced while the main thread was blocked, so rebuild the
@@ -654,9 +696,10 @@ async function handleLocalClockAck(msg) {
         && localClock.latestReply.journalStart > ackEnd;
     }
     localClock.backpressured = false;
+    retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
   }
   const needsImmediateMaintenance = !localClock.active || localClock.scale <= 0;
-  if (localClock.latestReply) {
+  if (localClock.latestReply && !retainedReplyPublished) {
     if (needsImmediateMaintenance) await runLocalClockTick(true);
     else scheduleLocalClock();
   } else if (localClock.pendingAckJournalEnd > 0) {
@@ -672,6 +715,7 @@ async function handleLocalClockAck(msg) {
 
 async function handleLocalClockCommand(msg) {
   if (!localClock.enabled || localClock.stopped) return;
+  let retainedReplyPublished = false;
   localClock.commandCount++;
   if (Number.isFinite(msg.timeScale)) localClock.scale = Math.max(0, msg.timeScale);
   if (Number.isSafeInteger(msg.lifecycleGeneration)) localClock.lifecycleGeneration = msg.lifecycleGeneration;
@@ -681,12 +725,13 @@ async function handleLocalClockCommand(msg) {
   if (Number.isSafeInteger(msg.ackClockSequence)
     && msg.ackClockSequence >= localClock.sentClockSequence) {
     localClock.sentAwaitingAck = false;
+    const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
     if (localClock.latestReply) {
-      const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
       localClock.needsRebuildOnSend = Number.isSafeInteger(localClock.latestReply.journalStart)
         && localClock.latestReply.journalStart > ackEnd;
     }
     localClock.backpressured = false;
+    retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
   }
   if (Number.isSafeInteger(msg.commandSequence)) {
     localClock.pendingCommandSequence = Math.max(localClock.pendingCommandSequence, msg.commandSequence);
@@ -702,7 +747,7 @@ async function handleLocalClockCommand(msg) {
   // lifecycle transitions cannot wait on a timer that is intentionally off.
   if (!localClock.active || localClock.scale <= 0 || explicitSteps > 0) {
     await runLocalClockTick(true, explicitSteps);
-  } else {
+  } else if (!retainedReplyPublished) {
     scheduleLocalClock();
   }
   scheduleLocalClock();
@@ -824,7 +869,7 @@ async function sabParkLoop() {
 // Kept as named exports for the deterministic transport fixture. The browser
 // worker entrypoint still uses the same functions above; exporting these pure
 // merge seams does not add a runtime message or a second simulation path.
-export { localMergeReply, localMaterializePack };
+export { localMergeReply, localMaterializePack, localAckReplyAction };
 
 self.onmessage = (event) => {
   const msg = event && event.data;

@@ -943,6 +943,26 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       return;
     }
 
+    // The flight HUD is hidden while a modal, dock, or fulfillment blackout owns the screen. Keep
+    // publishing the velocity-language record above so the retained world producer does not go
+    // stale, but do not repaint a full viewport behind an invisible HUD. Reset the presentation
+    // latch so the first visible frame after resume recomputes from live speed/boost state.
+    const ui = this.state.ui || {};
+    const stack = ui.screenStack || ui.screens;
+    const flightSurfaceHidden = this.state.mode !== 'flight'
+      || ui.docked === true
+      || ui.fulfillmentBlackoutActive === true
+      || !!(stack && stack.length > 0);
+    if (flightSurfaceHidden) {
+      if (this._streaks) this._streaks.length = 0;
+      this._slOpacity = 0;
+      this._slGrain = 0;
+      this._slSkippedLast = false;
+      if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+      this._speedLinesQuietIdle = false;
+      return;
+    }
+
     if (photoModeFeelPresentation(this.state).hideSpeedLines) {
       if (this._streaks) this._streaks.length = 0;
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
