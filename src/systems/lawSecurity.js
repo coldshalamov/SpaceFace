@@ -52,7 +52,7 @@ import {
   isJettisonedCargoPod,
 } from './lootShards.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { KillCause, compactKillCausality } from '../combat/killCausality.js';
+import { KillCause, compactKillCausality, impactLinkFromPresentation } from '../combat/killCausality.js';
 import { isHostileToPlayer } from './scanner.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { patrolCanInitiateScan } from './encounterScripts.js';
@@ -2466,6 +2466,10 @@ export const lawSecurity = {
     // much a legal fact as WHO. A hull slammed into a rock is reckless endangerment, not murder —
     // the charge, the heat price, and the rep answer all key off this same cause.
     const causality = compactKillCausality(payload, state.playerId);
+    const impactLink = impactLinkFromPresentation(payload.presentation, {
+      impactTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+      playerId: state.playerId,
+    });
     const collisionKill = causality.cause === KillCause.TERRAIN_COLLISION
       || causality.cause === KillCause.SHIP_COLLISION;
     // SF-159: a collision kill's verdict reads the recent-harm window. An isolated contact —
@@ -2546,6 +2550,7 @@ export const lawSecurity = {
         cause: causality.cause,
         surface: causality.surface,
         playerCaused: causality.playerCaused === true,
+        impactLink,
         sustainedAssault: sustainedAssault === true,
         harmEvents: collisionKill ? harmEvents : null,
         kind: outcome === 'charged' ? chargeKind : null,
@@ -2636,6 +2641,7 @@ export const lawSecurity = {
         cause: existing.killCause || causality.cause,
         surface: causality.surface,
         playerCaused: causality.playerCaused === true,
+        impactLink,
         kind: existing.kind || (discovered ? null : chargeKind),
         reportId,
         stationId: existing.stationId || (jurisdiction ? jurisdiction.stationId : null),

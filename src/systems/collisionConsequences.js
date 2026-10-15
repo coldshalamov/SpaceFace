@@ -850,6 +850,20 @@ export function playerRamPlateImpact(entity, playerId, tick, provenance, state) 
 // Shared by every collision-consequence producer (this system and masslineThrow's tangent
 // meeting): the lethal packet must carry the same frozen provenance block or combat's kill
 // receipt cannot tell a thrown-hull slam from an unauthored hit.
+function freezeImpactLink(provenance) {
+  if (!provenance || typeof provenance !== 'object') return null;
+  const tag = typeof provenance.tag === 'string' ? provenance.tag : '';
+  if (!tag && provenance.actorId == null) return null;
+  const appliedTick = Number.isFinite(provenance.appliedTick) ? provenance.appliedTick : null;
+  const holdUntilTick = Number.isFinite(provenance.holdUntilTick) ? provenance.holdUntilTick : null;
+  return Object.freeze({
+    actorId: provenance.actorId ?? null,
+    tag,
+    appliedTick,
+    holdUntilTick,
+  });
+}
+
 export function buildCollisionPresentationProvenance(target, other, receipt) {
   return Object.freeze({
     position: freezeTransientPoint(receipt && receipt.pos),
@@ -862,6 +876,8 @@ export function buildCollisionPresentationProvenance(target, other, receipt) {
       exchangedMomentum: nonNegativeFinite(receipt && receipt.exchangedMomentum),
       impactDamage: nonNegativeFinite(receipt && receipt.impactDamage),
     }),
+    // Copy the fields. The live provenance scratch is reused on the next contact.
+    provenance: freezeImpactLink(receipt && receipt.provenance),
   });
 }
 

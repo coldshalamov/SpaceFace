@@ -237,6 +237,9 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
       normal: { x: -1, z: 0 },
     });
     assert.equal(terrainKills.length, 1);
+    assert.equal(terrainKills[0].presentation.impactLink.tag, 'concussion_blast');
+    assert.equal(terrainKills[0].presentation.impactLink.actorId, terrainState.playerId);
+    assert.equal(terrainKills[0].presentation.impactLink.appliedTick, terrainState.tick);
     assert.deepEqual(terrainKills[0].presentation, {
       version: 1,
       cause: 'terrain_collision',
@@ -247,6 +250,7 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
       targetVelocity: { x: 84, z: -12 },
       playerCaused: true,
       impact: terrainKills[0].presentation.impact,
+      impactLink: terrainKills[0].presentation.impactLink,
     });
     assert.ok(terrainKills[0].presentation.impact.impactDamage > 0);
     assert.ok(terrainKills[0].presentation.impact.exchangedMomentum > 0);
