@@ -1060,6 +1060,7 @@ function failGameStart(state, bus, error, text, runTransitionGuard = null, trans
   bus.emit('game:startFailed', {
     error: error && error.message ? error.message : String(error),
     ...(failure || {}),
+    text,
   });
   if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
   // F9 can fail from flight with no screen mounted. Keep New Game/Save Load's own

@@ -226,11 +226,18 @@ test('a failed restore lands in the recoverable start-failed menu with a visible
   });
   const effects = createTimeEffects(state);
   effects.set('runtime:loading', { scale: 0 });
-  assert.equal(fail(state, bus, new Error('required ship.glb missing'), 'Retry Continue'), true);
+  assert.equal(fail(state, bus, new Error('required ship.glb missing'), 'Retry Continue', null, null, {
+    code: 'AUTHORED_LIBRARY_UNAVAILABLE', stage: 'appearance', retryable: true,
+  }), true);
   assert.equal(state.mode, 'menu');
   assert.equal(effects.describeRequests()['runtime:loading'], undefined);
   assert.equal(effects.describeRequests()['runtime:start-failed'].scale, 0);
-  assert.match(events.find(([name]) => name === 'failure')[1].error, /ship.glb missing/);
+  const failure = events.find(([name]) => name === 'failure')[1];
+  assert.match(failure.error, /ship.glb missing/);
+  assert.equal(failure.text, 'Retry Continue', 'the mounted retry screen receives the caller-specific recovery text');
+  assert.equal(failure.code, 'AUTHORED_LIBRARY_UNAVAILABLE');
+  assert.equal(failure.stage, 'appearance');
+  assert.equal(failure.retryable, true);
   assert.deepEqual(state.ui.screenStack, ['mainMenu'],
     'a quick-load from flight must expose Continue/New Game instead of only a paused HUD');
   assert.equal(events.find(([name]) => name === 'screen')[1].source, 'game-start-failed');
