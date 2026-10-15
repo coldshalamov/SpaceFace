@@ -8,6 +8,7 @@ import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { createPhaseBlinkPresentation } from '../src/render/phaseBlinkPresentation.js';
 import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
+import { isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
@@ -204,7 +205,7 @@ function loadingFixture() {
   const owner = { _meshes: new Map(), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [], _meshBuildQueueHead: 0 };
   state.render.prepareLiveSectorBeforeFlight = (options) => { calls.push(options); return cook.promise; };
   const begin = evaluate(loadingCode, owner, {
-    state, THREE, createOpeningLoadingAdmission, observePipelineAdmission,
+    state, THREE, createOpeningLoadingAdmission, observePipelineAdmission, isInitialAuthoredCompositionEntity,
     rendererGenerationIsActive: () => true, releaseOpeningGraphPublication() {},
     cam: {}, openingSubmissionCamera: () => null,
     enqueueMissingMeshBuildsSteps: function* () { yield; },

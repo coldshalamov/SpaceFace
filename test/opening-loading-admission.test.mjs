@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease,
-  enqueueMissingMeshBuildsSteps } from '../src/render/renderer.js';
+  enqueueMissingMeshBuildsSteps, render as renderSystem } from '../src/render/renderer.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
@@ -294,6 +294,91 @@ test('sector preparation keeps its existing bounded envelope and cannot consume 
   t.mock.timers.tick(20); await rejected;
   seal.resolve(true); await flush();
   assert.deepEqual(calls, ['begin'], 'a late seal cannot capture or submit');
+});
+
+function livePictureBarrier(owner) {
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const start = source.indexOf('if (ownsFirstPictureBarrier) {');
+  const end = source.indexOf('// PQ-210.00 — a roster-prewarm exemplar', start);
+  assert.ok(start > 0 && end > start);
+  return new Function('state', 'remainingMs', 'cookStale', 'cookSuperseded', 'survivalRunHoldsArena',
+    `return (async () => { let firstPictureError = null; const ownsFirstPictureBarrier = true;
+      ${source.slice(start, end)} return firstPictureError; })();`)
+    .call(owner, owner.state, () => 400, () => false, {}, () => false);
+}
+
+function pendingPictureOwner() {
+  const work = deferred(); let pending = true;
+  const state = { mode: 'loading', world: { enterSerial: 1 }, render: { admissionRunGeneration: 1 } };
+  const owner = Object.assign(Object.create(renderSystem), { state, scene: new THREE.Scene(),
+    *_publishOpeningFirstPictureSteps() { return true; },
+    *_openingFirstPictureUpgradePromisesSteps() { return pending ? [work.promise] : []; },
+    _bakeEnv() {},
+  });
+  return { owner, complete() { pending = false; work.resolve(); } };
+}
+
+test('the real live-sector handover gives required batch preparation its existing picture window', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let now = 0; t.mock.method(performance, 'now', () => now);
+  const { owner, complete } = pendingPictureOwner();
+  let settled = false;
+  const barrier = livePictureBarrier(owner).then(result => { settled = true; return result; });
+  await flush(); await flush();
+  now = 400; t.mock.timers.tick(400); await flush();
+  assert.equal(settled, false, 'the exhausted broad-cook residual must not expire required picture work');
+  now = 1000; complete();
+  assert.equal(await barrier, null);
+  assert.equal(owner._openingFirstPicturePrepared, true);
+});
+
+test('the real picture window still expires and its pool-census owner propagates the failure', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let now = 0; t.mock.method(performance, 'now', () => now);
+  const { owner } = pendingPictureOwner();
+  const barrier = livePictureBarrier(owner);
+  await flush(); await flush();
+  now = 20000; t.mock.timers.tick(20000);
+  const error = await barrier;
+  assert.match(error, /opening first-picture preparation timed out/);
+  assert.notEqual(owner._openingFirstPicturePrepared, true);
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const start = source.indexOf("recordOpeningCookStep(state.render, 'live.firstFramePoolCensus'");
+  const end = source.indexOf('\n      }\n      // Final ambient seal:', start);
+  assert.ok(start > 0 && end > start);
+  const finish = new Function('state', 'recordOpeningCookStep', 'censusStarted', 'firstPictureError',
+    'firstFrameResidency', source.slice(start, end));
+  assert.throws(() => finish(owner.state, () => {}, 0, error, { skipped: false }), /preparation timed out/);
+});
+
+test('final live-sector handover replaces only stale composition samples with a fresh owner verdict', async () => {
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const start = source.indexOf('let finalOpening = opening;');
+  const end = source.indexOf('\n      } finally {', start);
+  assert.ok(start > 0 && end > start);
+  for (const fresh of [{ settled: true, pending: 0 },
+    { settled: false, pending: 1, reason: 'unstartable' },
+    { settled: false, pending: 1, reason: 'timeout' }]) {
+    const initial = { settled: false, pending: 3, reason: 'timeout' };
+    const state = { render: { openingCookLedger: [{ step: 'live.openingComposition', outcome: 'timeout' }] } };
+    const owner = { _meshes: new Map() }, rows = [];
+    const env = { state, opening: initial, recook: false, sectorId: 'helios',
+      resumed: null, upgrades: null, pending: null, cook: null, leftover: null,
+      renderer: {}, scene: {}, cookSuperseded: {}, cookStale: () => false,
+      remainingMs: () => 400, prepareNow: () => 0, yieldAndFlushLiveSectorGpu: async () => {},
+      waitForOpeningCompositionSettled: async (_state, options) => {
+        assert.equal(options.timeoutMs, 400); assert.equal(options.meshes, owner._meshes); return fresh;
+      }, recordOpeningCookStep: (...row) => rows.push(row),
+    };
+    const result = await new Function('env', `with (env) { return (async () => { ${source.slice(start, end)} })(); }`)
+      .call(owner, env);
+    assert.equal(result.opening, fresh);
+    assert.equal(state.render.openingCompositionSettle, fresh);
+    assert.equal(initial.settled, false, 'the earlier diagnostic sample remains truthful');
+    assert.equal(state.render.openingCookLedger[0].outcome, 'timeout');
+    assert.equal(rows[0][1], 'live.openingCompositionFinal');
+    assert.equal(owner._sessionLiveSectorCookedId, fresh.settled ? 'helios' : undefined);
+  }
 });
 
 test('an exact-picture timeout names the active resource phase and retains earlier timings', async (t) => {

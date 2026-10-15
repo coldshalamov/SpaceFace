@@ -15912,16 +15912,14 @@ export const render = {
         let firstPictureError = null;
         if (ownsFirstPictureBarrier) {
           try {
-            // An over-budget cook passes remainingMs()<=0 and the cohort deadline math inside
-            // throws "opening authored boundary cohort timed out" before the barrier even runs —
-            // the firstFramePoolCensus 'error' ledger row. The barrier is the coverage mechanism
-            // itself (committed authored leaves + pool chunks must exist before the census counts
-            // them), so survival keeps an absolute floor rather than skipping the only pass that
-            // makes the chunk buffers visible to it.
+            // The broad cook's 20s work budget is not the exact picture's deadline. Its residual
+            // may already be the 400ms floor when this required barrier begins; retain the same
+            // 20s picture window used by the public launch owner instead of starving this handover.
+            // Both remain bounded by the existing outer current-sector admission envelope.
             if (cookStale()) return cookSuperseded;
             await this.prepareOpeningFirstPicture(survivalRunHoldsArena(state)
               ? Math.max(30000, remainingMs())
-              : remainingMs());
+              : 20000, { isActive: () => !cookStale() });
             if (cookStale()) return cookSuperseded;
           } catch (error) {
               if (cookStale()) return cookSuperseded;
@@ -16430,6 +16428,7 @@ export const render = {
             error: firstPictureError || undefined,
             reason: firstFrameResidency && firstFrameResidency.reason,
           });
+        if (firstPictureError) throw new Error(firstPictureError);
       }
       // Final ambient seal: the post-opening sweep, the census and every late chunk admission
       // enqueue compiles through compileObjectPipelines, which fire-and-forgets into the shared
@@ -16842,9 +16841,34 @@ export const render = {
           { roots: parked.roots, nodes: parked.nodes });
       }
       if (cookStale()) return cookSuperseded;
-      this._sessionLiveSectorCookedId = sectorId;
-      state.render.sessionLiveSectorCookedId = sectorId;
-      return { skipped: false, resumed, opening, upgrades, pending, cook, leftover };
+      let finalOpening = opening;
+      if (!recook && opening?.settled !== true) {
+        // The initial composition wait is a bounded progress sample before the GPU cook. Its
+        // timeout can outlive the jobs it described: never reject the finished picture using that
+        // stale sample, and never turn it into success without the same owner's two-poll verdict.
+        const finalOpeningStarted = prepareNow();
+        finalOpening = await waitForOpeningCompositionSettled(state, {
+          stale: cookStale,
+          timeoutMs: Math.min(12000, remainingMs()),
+          yieldToMain: yieldAndFlushLiveSectorGpu,
+          renderer,
+          scene,
+          meshes: this._meshes,
+        });
+        if (cookStale()) return cookSuperseded;
+        recordOpeningCookStep(state.render, 'live.openingCompositionFinal', finalOpeningStarted,
+          finalOpening?.settled === true ? 'resolved' : (finalOpening?.reason || 'incomplete'), {
+            pending: finalOpening?.pending,
+            ids: finalOpening?.ids?.join('/'),
+            statuses: finalOpening?.statuses?.slice(0, 6).join('/'),
+          });
+        state.render.openingCompositionSettle = finalOpening;
+      }
+      if (finalOpening?.settled === true) {
+        this._sessionLiveSectorCookedId = sectorId;
+        state.render.sessionLiveSectorCookedId = sectorId;
+      }
+      return { skipped: false, resumed, opening: finalOpening, upgrades, pending, cook, leftover };
       } finally {
         // A restore may replace the entry without starting another cook. Only the
         // captured entry and renderer owner may finalize these shared flags.
