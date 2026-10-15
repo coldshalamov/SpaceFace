@@ -888,6 +888,13 @@ export const physics = {
     if(!owner.orchardAuthorityAvailable()) {this._diag.rapierReady=false;this._diag.sg02Ready=false;return;}
     this._diag.rapierReady = true;
     this._diag.sg02Ready = true;
+    // Contact consumers that require idle native custody settle synchronously after
+    // the guarded tail, before the ordinary core lifetime sweep. Quiet ticks emit nothing.
+    if (sg02ImpactCount > 0) {
+      this.bus?.emit?.('physics:contactsCompleted', { backend: 'rapier-dynamic', tick: state.tick });
+      if (this._sg02 !== owner || owner.world !== world || this._sg02Token !== epoch || this.state !== state) return;
+      if (!owner.orchardAuthorityAvailable()) { this._diag.rapierReady=false;this._diag.sg02Ready=false;return; }
+    }
     this._diag.sg02InitTimedOut = false;
     this._diag.bodies = sdiag.bodies;
     this._diag.colliders = Number.isFinite(sdiag.colliders) ? sdiag.colliders : sdiag.bodies;
@@ -917,6 +924,8 @@ export const physics = {
       // Every option field is rewritten per receipt; receipt fields absent on non-player
       // receipts come through as undefined, matching the old literal's Number.isFinite checks.
       options.backend = 'rapier-dynamic';
+      options.aGeneration = receipt.aGeneration;
+      options.bGeneration = receipt.bGeneration;
       // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
       // provenance/status expiry belongs to the canonical simulation tick.
       options.tick = state.tick;
@@ -2290,6 +2299,8 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
   }
   // Every receipt field is rewritten each emit — an unmeasured channel loses its key so a
   // prior contact's measured value can leak neither as a stale number nor as a ghost field.
+  setOptionalImpactChannel(payload, 'aGeneration', options.aGeneration);
+  setOptionalImpactChannel(payload, 'bGeneration', options.bGeneration);
   setOptionalImpactChannel(payload, 'preSolveClosingSpeed', options.preSolveClosingSpeed);
   setOptionalImpactChannel(payload, 'appliedPlayerDeltaV', options.appliedPlayerDeltaV);
   // PQ-137.11 owner receipts. Emitted only when the authority measured them, so a missing field

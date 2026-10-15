@@ -3190,6 +3190,9 @@ export class Sg02DynamicBodyOwner {
         tick: this.tick + 1,
         aId: a.entity.id,
         bId: b.entity.id,
+        // Capture lives before any contact listener can recycle an endpoint id.
+        aGeneration: a.entity.occupantGeneration,
+        bGeneration: b.entity.occupantGeneration,
         impulse,
         pos: { x: finite(global.x), z: finite(global.z) },
         normal,

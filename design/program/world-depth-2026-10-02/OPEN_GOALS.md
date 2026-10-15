@@ -13,18 +13,18 @@ Updated2026-10-15. This register preserves the original twenty-concept map and I
 
 ## SF-ORCHARD
 - Outcome: authored finite three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: focused player route, thermal persistence and reachable maximal tow tested; explicit shock, normal browser/camera and target-device gates remain open.
+- State: player-route and thermal/tow increments are tested; the 120-file shock successor passed 629/629 selected, 62/62 native compatibility, 51/51 independent collision and 3/3 production-order checks and is published in draft PR #391. Integrated: no. Accepted: no. Independent validation is recorded; GitHub review is pending. Active thermal-readout/UI work is separate and in progress. Live browser/camera, target-device and player-feel gates remain open.
 - Owner: Orchard implementation owner and independent reviewer; integration owner publishes coherent increments.
-- Evidence: current-e3 player-route receipt;579Orchard,94activity and93neighbor checks passed. Natural4-unit harvest, mid-opening Continue, physical collection and postcollection Continue preserve finite custody.
-- Next action: complete explicit fragile-shock behavior, review the integrated ordinary experience in the live camera and measure target-device performance.
+- Evidence: player-route e3 receipt (579 Orchard, 94 activity, 93 neighbor checks); current-604 thermal/tow roster (612/612); shock snapshot (629/629, 62 native, 51 independent collision, 3 production-order). Natural harvest, Continue, collection, thermal persistence and finite-loss evidence remain scoped to their receipts. Live browser/player acceptance remains open.
+- Next action: review the draft shock increment, finish the separate thermal-readout/UI work, then review the ordinary experience in the live camera and measure target-device performance before requesting final acceptance.
 - Awaiting user: no engineering choice; final visual/experience acceptance remains open.
 
 ## SF-PUBLISH
 - Outcome: coherent tested increments delivered as verified GitHub commits and draft PRs without overwriting newer work.
-- State: open; prior frozen Orchard recovery is on recovery/orchard-reconcile-frozen-f564. Current player-route feature is published in draft PR391 at013fd560793fe16ebfa3a15416950af5b545268a. Thermal/tow successor is separately tested. GPU PR383 remains draft under reviewer HOLD.
+- State: open; player route, thermal/tow and shock are published in draft PR #391 on `feature/orchard-player-route-20261015`; branch is unmerged, so integration and acceptance are false. RUCKUS CI passes. Broader checks have recorded stale/baseline failures and remain under review; WebKit mobile readiness crashed while Chromium passed. GPU PR 383 remains draft under reviewer HOLD.
 - Owner: publication owner, one writer per branch.
-- Evidence: recovery commit56ab4abb59d80694b452e2396fe86976d2ada5eb; GPU PR383 headb9bfe3f7941191b7d49f84a3dfdcda9de6551a21; player-route receipt records tested source baseline.
-- Next action: verify new feature branch commit and draft PR, inspect CI, fix attributable failures, preserve review gates.
+- Evidence: recovery commit 56ab4abb59d80694b452e2396fe86976d2ada5eb; PR #391 branch commits and source/test manifests; RUCKUS run 38661425961 passed. PR #391 is published but not integrated or accepted.
+- Next action: continue CI attribution, resolve only demonstrated failures, preserve existing review gates, and keep integrated/accepted states open until verified.
 - Awaiting user: no new permission request recorded here; explicit platform confirmations, if any, remain outside this source register.
 
 ## SF-RECOVER
