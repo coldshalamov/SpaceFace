@@ -185,7 +185,8 @@ for (const interruption of ['stale', 'visible', 'error']) test(`sustained radar 
       state.entityList.push({ id: 2, alive: true, type: 'ship', team: 3, pos: { x: 10, z: 0 }, data: { runRole: 'enemy' } });
       state.render.meshes.set(2, { visible: true, matrixWorld: { x: 10, z: 0 } });
     }
-  }, keyboard: { down: async key => held.add(key), up: async key => held.delete(key) } };
+  }, keyboard: { down: async key => held.add(key), up: async key => held.delete(key), press: async () => {} },
+    mouse: { move: async () => {}, click: async () => {}, down: async () => {}, up: async () => {} } };
   try {
     globalThis.window = { SF: { THREE: { Vector3 }, state } };
     globalThis.document = { elementFromPoint: () => canvas,

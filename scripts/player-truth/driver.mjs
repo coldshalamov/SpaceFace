@@ -308,18 +308,25 @@ export async function readTarget({ selectedOnly = false } = {}) {
       || (e.team !== me.team && e.team !== 0 && e.team !== 2);
   };
   let best = null; let bd = Infinity; let bestX = 0; let bestY = 0;
+  // Keep a tiny explanation for a no-target observation. This is intentionally a capped list
+  // carried with the existing read result, rather than a per-frame diagnostic stream: it lets a
+  // route receipt distinguish a pending body from a canvas/HUD miss without adding observer work.
+  const rejects = [];
+  const reject = (reason) => { if (rejects.length < 4 && !rejects.includes(reason)) rejects.push(reason); };
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
     if (!hostile(e)) continue;
     // Use the same authored-presentation receipt as the live Tab/overview producer.
     // A staged pending hull must not mask an admitted contact; pooled bodies stay eligible.
-    if (!presentationAllowsTargetLock(e, st)) continue;
+    if (!presentationAllowsTargetLock(e, st)) { reject('presentation'); continue; }
     if (selectedOnly && e.id !== st.player?.targetId) continue;
     const root = meshes?.get(e.id);
     let x; let y; let depth = 0;
     if (root?.matrixWorld) {
-      if (root.visible === false) continue;
-      if (typeof root.traverse === 'function' && !collectPresentedBodyLeaves(root).length) continue;
+      if (root.visible === false) { reject('hidden'); continue; }
+      if (typeof root.traverse === 'function' && !collectPresentedBodyLeaves(root).length) {
+        reject('unpresented'); continue;
+      }
       v.setFromMatrixPosition(root.matrixWorld).project(cam);
       x = r.left + (v.x * 0.5 + 0.5) * r.width;
       y = r.top + (-v.y * 0.5 + 0.5) * r.height; depth = v.z;
@@ -327,13 +334,16 @@ export async function readTarget({ selectedOnly = false } = {}) {
       // Instanced/pooled contacts need no per-entity root. Read the renderer's current
       // frame projection instead of treating a simulation coordinate as camera-local.
       const point = window.SF.ctx?.helpers?.worldToScreen?.(e.pos);
-      if (!point?.onScreen || point.behind) continue;
+      if (!point?.onScreen || point.behind) { reject('projection'); continue; }
       x = point.x; y = point.y;
     }
     // A public shot must hit the gameplay canvas, not an off-screen coordinate
     // or a HUD control covering the target. Match the real DOM input boundary.
     if (depth < -1 || depth > 1 || x < r.left || x >= r.right || y < r.top || y >= r.bottom
-      || document.elementFromPoint(Math.round(x), Math.round(y)) !== canvas) continue;
+      ) { reject('projection'); continue; }
+    if (document.elementFromPoint(Math.round(x), Math.round(y)) !== canvas) {
+      reject('covered'); continue;
+    }
     const dist = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
     if (dist < bd) { bd = dist; best = e; bestX = x; bestY = y; }
   }
@@ -363,7 +373,8 @@ export async function readTarget({ selectedOnly = false } = {}) {
       while (radarRel > Math.PI) radarRel -= 2 * Math.PI;
       while (radarRel < -Math.PI) radarRel += 2 * Math.PI;
     }
-    return { none: true, hull, radarRel, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    return { none: true, hull, radarRel, cx: r.left + r.width / 2, cy: r.top + r.height / 2,
+      rejects: rejects.length ? rejects : null };
   }
   // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).
   const ang = Math.atan2(best.pos.z - me.pos.z, best.pos.x - me.pos.x);
@@ -433,6 +444,7 @@ async function releaseFightMassline(page) {
 }
 
 async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
+  let reachable = null;
   if (Number.isFinite(tg?.radarRel)) {
     const boostCode = await page.evaluate(async () => {
       const { resolveActionCodes } = await import('../../src/systems/input.js');
@@ -451,7 +463,13 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
       await waitSim(page, 2.4, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: async () => {
         const fresh = await page.evaluate(readTarget);
         if (!fresh) return true;
-        if (!fresh.none && await simNow(page) - searchStart >= minimumSearchS) return true;
+        if (!fresh.none && await simNow(page) - searchStart >= minimumSearchS) {
+          // Carry this same public observation into the selection path. Returning to the outer
+          // beat loop first can lose a fast contact between two canvas frames (the Gauntlet
+          // failure case); the next action still revalidates the click and selection normally.
+          reachable = fresh;
+          return true;
+        }
         // After a failed pick, seeing that same hull is not recovery. Move around the
         // cover briefly, following its visible bearing, before attempting selection again.
         const bearing = fresh.none ? fresh.radarRel : fresh.rel;
@@ -475,12 +493,13 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
     } finally {
       for (const key of new Set(['KeyW', 'KeyA', 'KeyD', boostCode].filter(Boolean))) await page.keyboard.up(key).catch(() => {});
     }
-    return;
+    return reachable;
   }
   await holdKey(page, 'KeyW', 0.6, null, null, combatPhaseEnded);
   if (beat % 3 === 0 && !await page.evaluate(readCombatPhaseEnded)) {
     await holdKey(page, 'KeyA', 0.4, null, null, combatPhaseEnded);
   }
+  return reachable;
 }
 
 /**
@@ -502,7 +521,13 @@ export async function fightBeat(page, beat) {
   fighterMemory.hull = tg.hull;
   // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
   if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
-  if (tg.none) return searchFightBeat(page, tg, beat);
+  if (tg.none) {
+    tg = await searchFightBeat(page, tg, beat);
+    // A fresh target found during radar pursuit is still a public observation. Continue through
+    // the ordinary RMB/Tab selection and firing path immediately, instead of making the caller
+    // spend another beat re-reading a contact that may already have crossed the canvas edge.
+    if (!tg || tg.none) return tg;
+  }
   if (!tg.selected) {
     // Default gun assist retains a valid old lock. A cursor over a different hull does not
     // release it: use the same quick RMB selection a person would before this shot.
