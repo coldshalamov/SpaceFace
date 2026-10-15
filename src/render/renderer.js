@@ -34383,7 +34383,10 @@ export function shouldScheduleFirstPlayablePaintRelease(owner) {
     // the latch forever: firstPlayableFrameAt gates mesh streaming, the residency
     // hold, and every opening-latch release. Re-arm once the arm outlives a grace
     // window far beyond the chain's ~33 ms transit.
-    if (!stampMissing) return false;
+    // A later mode:changed -> flight re-arms streaming while this completed paint flag and
+    // the old first-playable receipt can both survive.
+    // That old receipt only proves release while the current defer is actually cleared.
+    if (!stampMissing && owner._deferNoncriticalMeshStreaming !== true) return false;
     const armedAtMs = Number(owner._firstPlayablePaintScheduledAtMs) || 0;
     const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()

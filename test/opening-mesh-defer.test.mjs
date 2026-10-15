@@ -5,6 +5,7 @@ import {
   applyFirstPlayablePaintRelease,
   freezeOpeningGraphPublication,
   releaseOpeningMeshDefer,
+  serviceRenderMeshResidency,
   shouldScheduleFirstPlayablePaintRelease,
 } from '../src/render/renderer.js';
 
@@ -146,6 +147,45 @@ test('a same-sector recook flight still schedules the paint release for its re-a
   assert.equal(shouldScheduleFirstPlayablePaintRelease(owner), true);
 });
 
+test('a later flight releases its fresh defer despite a retained completed paint latch and queues the hostile', () => {
+  const player = { id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {} };
+  const hostile = { id: 348, type: 'ship', alive: true, presentationAdmission: 'pending',
+    pos: { x: 60, z: 0 }, vel: { x: 0, z: 0 }, radius: 12,
+    data: { defId: 'ship_wasp', runRole: 'enemy' } };
+  const state = { mode: 'flight', playerId: 1, simTime: 8.183, tick: 497,
+    entities: new Map([[1, player], [348, hostile]]), entityList: [player, hostile],
+    camera: { zoom: 144 }, settings: { video: { fov: 50 } }, player: {}, world: {},
+    render: { firstPlayableFrameAt: 55228.5, firstFlightResidencyHoldUntil: 20,
+      deferNoncriticalMeshStreaming: true } };
+  let drains = 0;
+  const owner = { state, _firstPlayablePaintScheduled: true,
+    _firstPlayablePaintScheduledAtMs: performance.now() - 60000,
+    _deferNoncriticalMeshStreaming: true, _meshReconcileDirty: true,
+    _meshes: new Map([[1, {}]]), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [],
+    _meshBuildQueueHead: 0, _renderResidencyPollS: 0, _sectorHandoffStreamHoldS: 0,
+    _drainProtectedFirstFlightBuilds() {
+      drains++;
+      assert.ok(this._meshBuildQueuedIds.has(hostile.id), 'the missing hostile reaches the normal bounded build lane');
+      return 0;
+    },
+  };
+  assert.equal(serviceRenderMeshResidency(owner, 0.5), 'deferred');
+  assert.equal(owner._meshBuildQueue.length, 0, 'the retained defer blocks even the on-glass hostile');
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(owner), true,
+    'the old first-paint receipt cannot prove a newly armed defer was released');
+  owner._firstPlayablePaintScheduledAtMs = performance.now();
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(owner), false, 'one current paint chain keeps its bounded grace');
+  applyFirstPlayablePaintRelease(owner);
+  assert.equal(state.render.firstPlayableFrameAt, 55228.5, 'the prior opening receipt stays intact');
+  assert.equal(owner._deferNoncriticalMeshStreaming, false);
+  assert.equal(state.render.deferNoncriticalMeshStreaming, false);
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(owner), false, 'an already completed release does not duplicate');
+  assert.equal(serviceRenderMeshResidency(owner, 0.5), 'held-first-flight', 'the separate first-flight hold remains active');
+  assert.equal(drains, 1);
+  assert.equal(hostile.presentationAdmission, 'pending', 'queue recovery does not bypass authored admission');
+});
+
 test('the paint latch stays armed for the opening flight and does not refire after release', () => {
   const opening = {
     state: { mode: 'flight', render: {} },
@@ -184,9 +224,9 @@ test('a stale armed paint latch re-arms while the first-playable stamp is still 
   };
   assert.equal(shouldScheduleFirstPlayablePaintRelease(wedged), true);
   assert.equal(wedged._firstPlayablePaintRearms, 1);
-  wedged.state.render.firstPlayableFrameAt = 4321;
+  applyFirstPlayablePaintRelease(wedged);
   assert.equal(shouldScheduleFirstPlayablePaintRelease(wedged), false,
-    'a stamped receipt never re-arms even with a stale scheduled flag');
+    'a completed release never re-arms even with a stale scheduled flag');
 });
 
 test('a flag armed without a timestamp re-arms immediately while the stamp is missing', () => {
