@@ -362,7 +362,7 @@ test('a preload whose residency owner died rejects incomplete instead of resolvi
     /owner became inactive during entity admission/,
     'the owner-gone abort must also cover the post-admission inactive window');
   assert.match(partsLibrary,
-    /ownerInactive\(\) && !libraryHasPreloadPlan\(library, plan\)/,
+    /ownerInactive\(\) && !libraryHasPreloadPlan\(library, plan, renderer\)/,
     'an inactive owner with a satisfied plan still resolves normally');
 });
 

@@ -100,7 +100,10 @@ try {
     && window.SF.state.render.firstPlayableFrameAt), null, { timeout: 180_000 });
   await sleep(4000);
 
-  const park = await page.evaluate((id) => {
+  // Relocation is an existing world-lane RPC.  The old probe wrote the mirrored player pose and
+  // nav.autopilot directly; that only moved the main-side read model in worker mode, so the
+  // camera could be watched for two minutes without the authoritative hull ever approaching.
+  const park = await page.evaluate(async (id) => {
     const st = window.SF.state;
     let s = null;
     for (const e of st.entities.values()) {
@@ -108,15 +111,42 @@ try {
     }
     if (!s) return null;
     const r = (s.data && s.data.dockRadius) || s.dockRadius || 90;
-    if (st.ui) { st.ui.docked = false; st.ui.dockedStationId = null; }
-    window.SF.bus.emit('dock:undocked', { stationId: s.id });
     const p = st.entities.get(st.playerId);
-    p.pos.x = s.pos.x + r * 3.2;
-    p.pos.z = s.pos.z + r * 3.2;
-    if (p.vel) { p.vel.x = 0; p.vel.y = 0; p.vel.z = 0; }
-    return { id: s.id, r };
+    if (!p || !p.pos) return { ok: false, reason: 'player-missing', id: s.id, r };
+
+    // If a route variant leaves the player in the station shell, use the same public undock intent
+    // as the flight input layer.  Do not emit dock:undocked directly: the station exit gate owns
+    // the committed transition and its pause release.
+    if (st.ui?.docked === true || p.flags?.docked === true) {
+      window.SF.bus.emit('ui:undock');
+      const undockDeadline = performance.now() + 5_000;
+      while (window.SF.state?.ui?.docked === true && performance.now() < undockDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (window.SF.state?.ui?.docked === true) {
+        return { ok: false, reason: 'undock-did-not-commit', id: s.id, r };
+      }
+    }
+
+    const dx = s.pos.x - p.pos.x;
+    const dz = s.pos.z - p.pos.z;
+    const heading = Math.atan2(dz, dx);
+    const world = window.SF.registry?.get?.('world');
+    if (!world || typeof world.relocatePlayerInSector !== 'function') {
+      return { ok: false, reason: 'world-relocation-rpc-missing', id: s.id, r };
+    }
+    const ack = await world.relocatePlayerInSector({
+      x: s.pos.x + r * 3.2,
+      z: s.pos.z + r * 3.2,
+      heading,
+    }, { reason: 'probe:camera-clearance' });
+    if (!ack || ack.ok === false || (ack.result === false)) {
+      return { ok: false, reason: 'world-relocation-refused', ack: ack || null, id: s.id, r };
+    }
+    return { ok: true, id: s.id, r, heading };
   }, STATION_ID);
   if (!park) throw new Error(`no ${STATION_ID} in this world`);
+  if (park.ok !== true) throw new Error(`camera-clearance setup failed: ${park.reason}`);
   report.park = park;
 
   const authoredDeadline = Date.now() + 240_000;
@@ -172,34 +202,70 @@ try {
   console.log('[roof]', JSON.stringify(report.stationRoofAtCenter));
   await page.evaluate((id) => {
     const st = window.SF.state;
+    const s = st.entities.get(id);
+    if (!s || !s.pos) throw new Error(`station ${id} disappeared before course arm`);
     window.__SF_CLEAR__.frames.length = 0;
     window.__SF_CLEAR__.on = true;
-    st.nav.autopilot = { active: true, targetEntityId: id, target: null, label: 'clear-probe', arrivalRadius: 4, status: 'cruise' };
+    // This is the same ui:setCourse event used by the public map/radar surfaces.  In worker mode
+    // the event is forwarded to the simulation lane; no mirrored nav object is mutated here.
+    window.SF.bus.emit('ui:setCourse', {
+      type: 'station',
+      pos: { x: s.pos.x, z: s.pos.z },
+      targetEntityId: id,
+      label: 'clear-probe',
+      waypointKind: 'nav',
+      arrivalRadius: 12,
+      autopilot: true,
+    });
   }, park.id);
+  await page.waitForFunction((id) => {
+    const ap = window.SF?.state?.nav?.autopilot;
+    return ap?.active === true && (ap.targetEntityId === id || ap.target);
+  }, park.id, { timeout: 30_000 });
 
   const deadline = Date.now() + 120_000;
+  const approachRange = Math.max(32, Math.min(180, park.r * 1.5));
+  let minDistance = Infinity;
+  let lastDistance = null;
+  let reachedApproach = false;
   while (Date.now() < deadline) {
     await sleep(500);
     const near = await page.evaluate((id) => {
       const st = window.SF.state;
       const s = st.entities.get(id);
       const p = st.entities.get(st.playerId);
-      return s && p ? Math.hypot(s.pos.x - p.pos.x, s.pos.z - p.pos.z) : null;
+      if (!s || !p) return null;
+      const distance = Math.hypot(s.pos.x - p.pos.x, s.pos.z - p.pos.z);
+      const ap = st.nav?.autopilot;
+      return { distance, autopilotActive: ap?.active === true, status: ap?.status || null };
     }, park.id);
-    console.log(`[flight] distance to structure ${near == null ? '?' : Math.round(near)}`);
-    if (near != null && near < 12) break;
+    lastDistance = near?.distance ?? null;
+    if (Number.isFinite(lastDistance)) minDistance = Math.min(minDistance, lastDistance);
+    console.log(`[flight] distance to structure ${lastDistance == null ? '?' : Math.round(lastDistance)}`);
+    if (lastDistance != null && lastDistance <= approachRange) {
+      reachedApproach = true;
+      break;
+    }
   }
   await sleep(2500);
+  report.route = {
+    approachRangeWu: approachRange,
+    minDistanceWu: Number.isFinite(minDistance) ? +minDistance.toFixed(2) : null,
+    lastDistanceWu: lastDistance == null ? null : +lastDistance.toFixed(2),
+    reachedApproach,
+  };
 
   const frames = await page.evaluate(() => { window.__SF_CLEAR__.on = false; return window.__SF_CLEAR__.frames; });
   let inside = 0;
   let minMargin = Infinity;
+  let roofFrames = 0;
   let peakY = 0;
   let peakScale = 1;
   let maxAccel = 0;
   for (let i = 0; i < frames.length; i++) {
     const [, , y, , roof, scale] = frames[i];
     if (roof != null) {
+      roofFrames++;
       const margin = y - roof;
       if (margin < minMargin) minMargin = margin;
       if (margin < -0.01) inside++;
@@ -220,16 +286,22 @@ try {
   report.summary = {
     frames: frames.length,
     insideFrames: inside,
+    roofFrames,
     minMarginWu: minMargin === Infinity ? null : +minMargin.toFixed(2),
     peakCameraY: Math.round(peakY),
     peakScale: +peakScale.toFixed(3),
     hardClampFrames: last[8] || 0,
     maxVerticalAccelWuS2: Math.round(maxAccel),
   };
+  report.summary.routeCoverage = {
+    reachedApproach,
+    nonNullRoofMargin: roofFrames > 0 && minMargin !== Infinity,
+    covered: reachedApproach && roofFrames > 0 && minMargin !== Infinity,
+  };
   fs.writeFileSync(path.join(OUT_DIR, 'report.json'), JSON.stringify({ ...report, frames: frames.length ? frames.filter((_, i) => i % 6 === 0) : [] }));
   fs.writeFileSync(path.join(OUT_DIR, 'report.md'), `# Camera clearance witness\n\n${JSON.stringify(report.summary, null, 2)}\n`);
   console.log('[summary]', JSON.stringify(report.summary));
-  if (inside > 0) process.exitCode = 1;
+  if (inside > 0 || report.summary.routeCoverage.covered !== true) process.exitCode = 1;
 } finally {
   if (browser) await browser.close().catch(() => {});
   server.kill();

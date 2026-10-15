@@ -6,6 +6,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { runSession } from '../src/systems/runSession.js';
 import { killScoreFor, survivalRewards } from '../src/systems/survivalRewards.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import {
   applyStyleKill,
   emptyStyle,
@@ -118,6 +119,9 @@ function spawnAndKill(harness, cause) {
 test('actual run kills pay neutral base score without legacy cause-history multiplier', () => {
   const harness = boot();
   beginSurvival(harness);
+  spawnAndKill(harness, 'kinetic');
+  assert.equal(harness.state.run.score, 0, 'an untouched arena does not award idle score');
+  noteSwarmPilotAction(harness.state);
   spawnAndKill(harness, 'kinetic');
   const base = killScoreFor(1);
   assert.equal(harness.state.run.score, base, 'first direct kill pays flat base');

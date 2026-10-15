@@ -1,14 +1,14 @@
 // Illustrated industrial surfaces: shape the light, never quantize the texture.
 // Runs inside the existing opaque material pass, with no targets, extra draws or textures.
 //
-// v10-v16 (the Look): every constant that decides the vibe is a shared Look
+// v10-v17 (the Look): every constant that decides the vibe is a shared Look
 // uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
 // gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
 import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v16';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v17';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -16,7 +16,9 @@ const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + total
 export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // Recover illumination independently of painted colour. This leaves markings, texture
   // gradients and material differences intact instead of posterizing final RGB.
-  float sfPaintLuma = max(dot(diffuseColor.rgb * (1.0 - metalnessFactor), vec3(0.2126, 0.7152, 0.0722)), 0.025);
+  float sfPaintPigmentY = dot(max(diffuseColor.rgb * (1.0 - metalnessFactor), vec3(0.0)),
+    vec3(0.2126, 0.7152, 0.0722));
+  float sfPaintLuma = max(sfPaintPigmentY, 0.025);
   vec3 sfLightRgb = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
   float sfLight = dot(sfLightRgb, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
   // Frequency separation. sfLow is what the SMOOTH hull form receives: the indirect
@@ -82,10 +84,15 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
     for (int sfJ = 0; sfJ < NUM_DIR_LIGHTS; sfJ++) {
       vec3 sfToLight = directionalLights[sfJ].direction;
       float sfNoL = saturate(dot(nonPerturbedNormal, sfToLight));
-      float sfNoH = saturate(dot(nonPerturbedNormal, normalize(sfToLight + geometryViewDir)));
-      float sfLobe = sfNoH * sfNoH * (sfCoatAlpha2 - 1.0) + 1.0;
-      sfCoatLight += directionalLights[sfJ].color
-        * (sfLookCoatSun * sfNoL * 0.25 * sfCoatAlpha2 / (PI * sfLobe * sfLobe));
+      // The sun lobe is exactly zero for a back-facing light. Avoid the half-vector normalize,
+      // lobe arithmetic and color multiply on that zero-contribution path; the positive path is
+      // unchanged, so this is a shader-cost reduction rather than a look adjustment.
+      if (sfNoL > 0.0) {
+        float sfNoH = saturate(dot(nonPerturbedNormal, normalize(sfToLight + geometryViewDir)));
+        float sfLobe = sfNoH * sfNoH * (sfCoatAlpha2 - 1.0) + 1.0;
+        sfCoatLight += directionalLights[sfJ].color
+          * (sfLookCoatSun * sfNoL * 0.25 * sfCoatAlpha2 / (PI * sfLobe * sfLobe));
+      }
     }
     #endif
     #ifdef USE_ENVMAP
@@ -278,6 +285,7 @@ export function installIllustratedSurface(material) {
         uniform float sfLookRimStrength;
         uniform float sfLookRimPower;
         uniform float sfLookRockFill;
+        uniform float sfLookRockFloor;
         uniform float sfLookRockRim;
         uniform float sfRockSurface;
         uniform vec3 sfLookShadowTint;
@@ -349,8 +357,16 @@ export function installIllustratedSurface(material) {
         // geometric band are not measurements of the pigment reaching the screen.
         // Lit stone keeps its response; the pigment ceiling still bounds dark-face fill.
         float sfRockIllumination = dot(max(totalDiffuse, vec3(0.0)), vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
-        vec3 sfRockFill = diffuseColor.rgb * (1.0 - metalnessFactor) * sfLookShadowTint
-          * (sfRockSurface * sfLookRockFill * (1.0 - saturate(sfRockIllumination)));
+        vec3 sfRockPigment = diffuseColor.rgb * (1.0 - metalnessFactor);
+        // sfPaintPigmentY is the un-clamped authored luminance. The separate 0.0001 guard keeps
+        // nearly black source texels finite while allowing genuinely dark pigments to reach the
+        // authored floor instead of being capped by sfPaintLuma's lighting denominator guard.
+        float sfRockPigmentY = max(sfPaintPigmentY, 0.0001);
+        float sfRockTargetY = max(sfRockPigmentY, sfLookRockFloor);
+        vec3 sfRockFloorPigment = sfRockPigment * (sfRockTargetY / sfRockPigmentY);
+        float sfRockShadowWeight = sfRockSurface * (1.0 - saturate(sfRockIllumination));
+        vec3 sfRockFill = sfRockFloorPigment * sfLookShadowTint
+          * (sfLookRockFill * sfRockShadowWeight);
         vec3 sfPaint = (totalDiffuse + sfRockFill) * sfContour;
         float sfPaintY = dot(sfPaint, vec3(0.2126, 0.7152, 0.0722));
         // Gloss needs headroom: on pigment already near the ceiling (sunlit ivory) the coat and

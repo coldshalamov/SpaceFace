@@ -36,6 +36,7 @@ export async function installFrameSolidSampler() {
     // Admission lane depths sampled every 250 ms of flight: authored composition queue, roots held
     // hidden behind a pipeline compile (+ residency + exact-target touch), residency uploads.
     lanes: [],
+    missingWitness: { version: 1, maxWitnesses: 4, candidateSamples: 0, droppedCandidates: 0, witnesses: [] },
   };
   let lastFrameAt = 0;
   let lastLaneAt = 0;
@@ -171,6 +172,130 @@ export async function installFrameSolidSampler() {
     e.type === 'station' ? Number(e.data && e.data.dockRadius) || 0 : 0,
     Number(e.data && e.data.visualRadius) || 0,
   );
+  const scalar = (value) => (
+    value == null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+      ? value ?? null : String(value)
+  );
+  const witnessUserData = (node) => {
+    const ud = node && node.userData;
+    if (!ud) return null;
+    return {
+      presentationEntityId: scalar(ud.presentationEntityId),
+      presentationEntityType: scalar(ud.presentationEntityType),
+      presentationOccupantGeneration: scalar(ud.presentationOccupantGeneration),
+      sfStableEntityKey: scalar(ud.sfStableEntityKey),
+      geometryPending: ud.geometryPending === true,
+      spacefaceGeometryResident: ud.spacefaceGeometryResident === true,
+      pipelinesPending: ud.pipelinesPending === true,
+      authoredAdmissionSubstrate: ud.authoredAdmissionSubstrate === true,
+      authoredAssetState: scalar(ud.authoredAssetState),
+    };
+  };
+  const witnessNode = (node) => {
+    if (!node) return null;
+    let ancestorVisible = node.visible !== false;
+    let parent = node.parent || null;
+    let depth = 0;
+    while (parent && depth++ < 64) {
+      if (parent.visible === false) ancestorVisible = false;
+      parent = parent.parent || null;
+    }
+    return {
+      uuid: scalar(node.uuid),
+      type: scalar(node.type),
+      name: scalar(node.name),
+      visible: node.visible !== false,
+      attached: !!node.parent,
+      ancestorVisible: depth < 64 && ancestorVisible,
+      parentUuid: scalar(node.parent && node.parent.uuid),
+      parentType: scalar(node.parent && node.parent.type),
+      userData: witnessUserData(node),
+    };
+  };
+  const witnessKeys = new Set();
+  const witnessIndexes = new Map();
+  const witnessPriorityCandidates = [];
+  let witnessFallbackCandidate = null;
+  const captureMissingWitness = (candidate) => {
+    const e = candidate.entity;
+    const generation = scalar(e.occupantGeneration);
+    const key = `${String(e.id)}:${String(generation)}`;
+    const existingIndex = witnessIndexes.get(key);
+    if (existingIndex != null) {
+      const existing = rec.missingWitness.witnesses[existingIndex];
+      if (existing && candidate.previouslyVisible && !existing.previouslyVisible) {
+        existing.previouslyVisible = true;
+        existing.previousMeshUuid = candidate.previousMeshUuid;
+        existing.upgradedFromFallback = true;
+        existing.frame = rec.frames;
+        existing.atMs = Math.round(candidate.now);
+      }
+      return;
+    }
+    if (witnessKeys.has(key)) return;
+    witnessKeys.add(key);
+    let replaceIndex = rec.missingWitness.witnesses.length;
+    if (replaceIndex >= rec.missingWitness.maxWitnesses && candidate.previouslyVisible) {
+      replaceIndex = rec.missingWitness.witnesses.findIndex((witness) => !witness.previouslyVisible);
+      if (replaceIndex >= 0) {
+        for (const [oldKey, index] of witnessIndexes) {
+          if (index === replaceIndex) {
+            witnessIndexes.delete(oldKey);
+            break;
+          }
+        }
+      }
+    }
+    if (replaceIndex >= rec.missingWitness.maxWitnesses) {
+      rec.missingWitness.droppedCandidates++;
+      return;
+    }
+    const mesh = e.mesh || null;
+    const viewRoot = e.view && e.view.root ? e.view.root : null;
+    let debug = null;
+    let debugError = null;
+    try {
+      const fn = SF.state.render && SF.state.render.debugGeometryPending;
+      if (typeof fn === 'function') debug = fn(e.id);
+      else debugError = 'debugGeometryPending unavailable';
+    } catch (error) {
+      debugError = String(error && error.message ? error.message : error).slice(0, 240);
+    }
+    const activityFrame = SF.state.render && SF.state.render.activityFrame;
+    const witness = {
+      id: scalar(e.id),
+      type: scalar(e.type),
+      alive: e.alive !== false,
+      entityGeneration: generation,
+      dataWorldRecordId: scalar(e.data && e.data.worldRecordId),
+      dataIdentityGeneration: scalar(e.data && e.data.identityGeneration),
+      previouslyVisible: candidate.previouslyVisible,
+      previousMeshUuid: candidate.previousMeshUuid,
+      inGlassSet: candidate.inGlassSet,
+      presentationTier: scalar(e.activity && e.activity.presentationTier),
+      simTier: scalar(e.activity && e.activity.simTier),
+      frame: rec.frames,
+      atMs: Math.round(candidate.now),
+      simTime: Number.isFinite(SF.state.simTime) ? SF.state.simTime : null,
+      activityFrame: {
+        renderGlassCount: activityFrame && activityFrame.renderGlassIds
+          && Number.isFinite(activityFrame.renderGlassIds.size) ? activityFrame.renderGlassIds.size : null,
+        renderRunwayCount: activityFrame && activityFrame.renderRunwayIds
+          && Number.isFinite(activityFrame.renderRunwayIds.size) ? activityFrame.renderRunwayIds.size : null,
+      },
+      entityMesh: witnessNode(mesh),
+      entityViewRoot: witnessNode(viewRoot),
+      entityMeshEqualsViewRoot: !!(mesh && viewRoot && mesh === viewRoot),
+      debugGeometryPending: debug,
+      debugGeometryPendingError: debugError,
+    };
+    if (replaceIndex === rec.missingWitness.witnesses.length) {
+      rec.missingWitness.witnesses.push(witness);
+    } else {
+      rec.missingWitness.witnesses[replaceIndex] = witness;
+    }
+    witnessIndexes.set(key, replaceIndex);
+  };
 
   const tick = () => {
     if (window.__SF_FRAME_STOP__ === true) return;
@@ -198,6 +323,8 @@ export async function installFrameSolidSampler() {
     const player = state.entities && state.entities.get(state.playerId);
     let frame = null;
     let onScreenCount = 0;
+    witnessPriorityCandidates.length = 0;
+    witnessFallbackCandidate = null;
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -258,6 +385,26 @@ export async function installFrameSolidSampler() {
         }
         if (!visible) {
           bump(e, 'missingFrames');
+          const activityFrame = render.activityFrame;
+          const inGlassSet = !!(activityFrame && activityFrame.renderGlassIds
+            && activityFrame.renderGlassIds.has && activityFrame.renderGlassIds.has(e.id));
+          if (!mesh && (t.prevVisible || inGlassSet)) {
+            rec.missingWitness.candidateSamples++;
+            const candidate = {
+              entity: e,
+              previouslyVisible: !!t.prevVisible,
+              previousMeshUuid: t.uuid || null,
+              inGlassSet,
+              now,
+            };
+            if (candidate.previouslyVisible) {
+              if (witnessPriorityCandidates.length < rec.missingWitness.maxWitnesses) {
+                witnessPriorityCandidates.push(candidate);
+              }
+            } else if (!witnessFallbackCandidate) {
+              witnessFallbackCandidate = candidate;
+            }
+          }
           if (now - t.onSince >= 1000) {
             bump(e, 'stuckMissing');
             const o = rec.offenders[String(e.id)];
@@ -296,6 +443,8 @@ export async function installFrameSolidSampler() {
         }
       }
     }
+    for (const candidate of witnessPriorityCandidates) captureMissingWitness(candidate);
+    if (witnessFallbackCandidate) captureMissingWitness(witnessFallbackCandidate);
     if (onScreenCount > rec.maxOnScreen) rec.maxOnScreen = onScreenCount;
   };
   requestAnimationFrame(tick);

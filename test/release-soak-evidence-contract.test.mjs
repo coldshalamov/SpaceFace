@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 
 import {
   parseReleaseSoakArgs,
@@ -15,16 +17,318 @@ import {
   RELEASE_SOAK_SCHEMA,
   REQUIRED_PRIMARY_CYCLE_MARKS,
   summarizeSamples,
+  strictWorktreeFingerprint,
+  validateReleaseSoakEvidence,
   validatePerformanceEvidence,
 } from '../scripts/lib/releaseSoakContracts.mjs';
+import {
+  canonicalPostGcOwnerRows,
+  evaluateSourceStability,
+  POST_GC_OWNER_ROW_LIMIT,
+  postGcOwnerEvaluateArgument,
+  summarizeImmutableSavePopulation,
+  summarizeRestorePopulation,
+  summarizeSaveEnvelope,
+} from '../scripts/lib/releaseSoakProbe.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const execFileAsync = promisify(execFile);
+
+test('post-GC checkpoints retain bounded canonical residency owner detail', async () => {
+  const source = await readFile(path.join(REPO_ROOT, 'scripts/lib/releaseSoakProbe.mjs'), 'utf8');
+  assert.match(source, /page\.evaluate\(\(\{ phaseTag: tag, ownerRowLimit \}\)/,
+    'post-GC page evaluation must use one serialized argument object');
+  assert.match(source, /diagnostics\(\{\s*canonical: true,\s*includeEvents: false,\s*includeOwners: true\s*\}\)/,
+    'post-GC snapshots must ask the existing residency API for owner rows');
+  assert.equal(POST_GC_OWNER_ROW_LIMIT, 256);
+
+  // Playwright serializes exactly one argument. Exercise the same callback boundary so a
+  // future change cannot silently turn the row limit into undefined and emit empty rows.
+  const evaluateOneSerializedArgument = async (callback, argument) => callback(argument);
+  const evaluateArgument = postGcOwnerEvaluateArgument('owner-fixture', 2);
+  const evaluated = await evaluateOneSerializedArgument(
+    ({ phaseTag, ownerRowLimit }) => ({ phaseTag, ownerRowLimit, rows: ['a', 'b', 'c'].slice(0, ownerRowLimit) }),
+    evaluateArgument,
+  );
+  assert.deepEqual(evaluated, { phaseTag: 'owner-fixture', ownerRowLimit: 2, rows: ['a', 'b'] });
+
+  const diagnostic = canonicalPostGcOwnerRows({
+    ownerCount: 3,
+    owners: [
+      {
+        owner: 'Object3D', ownerName: 'boundary-z', contentHash: null,
+        released: false, assets: 2, bytes: 10, roles: ['live-boundary', 'live-boundary'],
+      },
+      {
+        owner: 'render-package', ownerName: null, contentHash: 'hash-a',
+        released: true, assets: 1, bytes: 20, roles: ['render-package-cache'],
+      },
+      {
+        owner: 'Object3D', ownerName: 'boundary-a', contentHash: null,
+        released: false, assets: 1, bytes: 5, roles: ['ready-instance'],
+      },
+    ],
+  }, 2);
+  assert.equal(diagnostic.ownerCount, 3);
+  assert.equal(diagnostic.truncated, true);
+  assert.deepEqual(diagnostic.rows, [
+    {
+      identity: null,
+      identityLabel: 'render-package|hash-a',
+      identityAmbiguous: true,
+      role: ['render-package-cache'],
+      contentHash: 'hash-a',
+      released: true,
+      assets: 1,
+      bytes: 20,
+    },
+    {
+      identity: null,
+      identityLabel: 'Object3D|boundary-z',
+      identityAmbiguous: true,
+      role: ['live-boundary'],
+      contentHash: null,
+      released: false,
+      assets: 2,
+      bytes: 10,
+    },
+  ]);
+  assert.equal(canonicalPostGcOwnerRows({ owners: null }), null,
+    'missing owner diagnostics remain explicitly unavailable');
+});
+
+test('restore population receipt compares the loaded envelope with a bounded post-load census', () => {
+  const saved = [
+    { id: 1, type: 'ship' },
+    { id: 7, type: 'wreck', worldRecordId: 'wreck:7' },
+  ];
+  const regenerated = Array.from({ length: 20 }, (_, index) => ({
+    id: 100 + index,
+    type: index % 2 ? 'asteroid' : 'ship',
+  }));
+  const result = summarizeRestorePopulation({
+    loadedSlot: 'quick',
+    envelopeEntities: saved,
+    postLoadEntities: [...saved, ...regenerated],
+  });
+
+  assert.deepEqual(
+    {
+      loadedSlot: result.loadedSlot,
+      envelopeEntityCount: result.envelopeEntityCount,
+      postLoadEntityCount: result.postLoadEntityCount,
+      delta: result.delta,
+    },
+    { loadedSlot: 'quick', envelopeEntityCount: 2, postLoadEntityCount: 22, delta: 20 },
+  );
+  assert.equal(result.newlyMaterialized.count, 20);
+  assert.deepEqual(result.newlyMaterialized.byType, { asteroid: 10, ship: 10 });
+  assert.equal(result.newlyMaterialized.samples.length, 16, 'diagnostic samples must stay bounded');
+
+  const stable = summarizeRestorePopulation({
+    loadedSlot: 'quick',
+    envelopeEntities: saved,
+    postLoadEntities: saved,
+  });
+  assert.equal(stable.newlyMaterialized, null, 'equal populations need no extra histogram');
+});
+
+test('immutable save diagnostic binds repeated materialization to one serialized envelope', () => {
+  const raw = JSON.stringify({
+    fmt: 'spaceface-save',
+    version: 15,
+    data: {
+      meta: { tick: 42, simTime: 0.7, savedAt: '2026-10-15T00:00:00.000Z' },
+      entities: {
+        player: { id: 'player-1', type: 'ship' },
+        persistent: [{ id: 'wreck-1', type: 'wreck', data: { worldRecordId: 'wreck:1' } }],
+      },
+    },
+  });
+  const base = summarizeSaveEnvelope(raw, { slot: 'quick' });
+  assert.equal(base.available, true);
+  assert.equal(base.serializedIdentity.bytes, Buffer.byteLength(raw));
+  assert.equal(base.envelopeIdentity.tick, 42);
+  assert.deepEqual(base.envelopeEntities.map((row) => row.id), ['player-1', 'wreck-1']);
+
+  const population = summarizeImmutableSavePopulation({
+    savedEnvelopeEntities: base.envelopeEntities,
+    postLoadEntities: [
+      ...base.envelopeEntities,
+      { id: 'sector-1', type: 'asteroid' },
+      { id: 'sector-2', type: 'asteroid' },
+    ],
+  });
+  assert.equal(population.baseEntityCount, 2);
+  assert.equal(population.postLoadEntityCount, 4);
+  assert.equal(population.newlyMaterialized.count, 2);
+  assert.deepEqual(population.newlyMaterialized.byType, { asteroid: 2 });
+  assert.deepEqual(population.newlyMaterialized.samples.map((row) => row.key), ['id:sector-1', 'id:sector-2']);
+});
 
 test('probe rejects a changed worktree after persisting diagnostic telemetry', async () => {
   const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
   assert.match(source, /const worktreeStable = endFingerprint\.digest === startFingerprint\.digest/);
-  assert.match(source, /status: worktreeStable \? 'pass' : 'fail'[\s\S]*await writeTelemetry\(/);
+  assert.match(source, /sourceStability\.pass \? 'pass' : 'fail'[\s\S]*await writeTelemetry\(/);
   assert.doesNotMatch(source, /assert\.equal\(endFingerprint\.digest, startFingerprint\.digest/);
+});
+
+test('full pinned overlays use served identity while partial overlays remain worktree-strict', () => {
+  const identity = {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: 'b'.repeat(64),
+    fileCount: 2220,
+    totalBytes: 123,
+  };
+  const stableOverlay = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(stableOverlay.mode, 'served-overlay');
+  assert.equal(stableOverlay.pass, true, 'live worktree churn cannot invalidate a full pinned served graph');
+
+  const changedOverlay = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity, sourceOverlayDigest: 'c'.repeat(64) },
+    worktreeStable: true,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(changedOverlay.pass, false, 'a served-byte identity change remains fatal');
+
+  const partialOverlay = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'performance-paths', fullRuntime: false },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+  });
+  assert.equal(partialOverlay.pass, false, 'partial overlays still reject live worktree drift');
+
+  const unpinnedStyleChange = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: false,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(unpinnedStyleChange.pass, false,
+    'a live styles/kit.css mutation outside the pinned source graph remains fatal');
+
+  const unpinnedModuleChange = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: false,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(unpinnedModuleChange.pass, false,
+    'a newly-added runtime module outside the pinned manifest remains fatal');
+
+  const headDrift = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: false,
+  });
+  assert.equal(headDrift.pass, false, 'a HEAD change remains fatal even when served bytes match');
+});
+
+test('primary evidence accepts worktree drift only with a stable full-runtime overlay', () => {
+  const evidence = makeValidEvidence({
+    runtime: 'electron',
+    taskId: 'overlay-stability-contract',
+    artifact: {
+      kind: 'screenshot',
+      path: 'route.png',
+      bytes: 1,
+      sha256: 'a'.repeat(64),
+    },
+  });
+  const identity = {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'b'.repeat(40),
+    sourceOverlayDigest: 'c'.repeat(64),
+    fileCount: 2220,
+    totalBytes: 456,
+  };
+  evidence.sourceOverlay = {
+    manifest: '.devshots/source-baselines/current.json',
+    requested: identity,
+    served: { ...identity },
+    servedAtEnd: { ...identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+  };
+  evidence.sourceStability = {
+    mode: 'served-overlay',
+    overlayCoversRuntime: true,
+    worktreeStable: false,
+    servedSourceStable: true,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: true,
+    pass: true,
+  };
+  evidence.fingerprints.end = { ...evidence.fingerprints.end, digest: 'd'.repeat(64), id: `0123456789ab-${'d'.repeat(16)}` };
+  const result = validateReleaseSoakEvidence(evidence);
+  assert.equal(result.pass, true, result.failures.join('; '));
+
+  const partial = structuredClone(evidence);
+  partial.sourceOverlay.coverage = { captureScope: 'performance-paths', fullRuntime: false };
+  const partialResult = validateReleaseSoakEvidence(partial);
+  assert.equal(partialResult.pass, false);
+  assert(partialResult.failures.some((failure) => /worktree fingerprint changed/i.test(failure)));
+});
+
+test('excluded overlay files do not hide unpinned runtime mutations from the fingerprint', async () => {
+  const fixture = await mkdtemp(path.join(os.tmpdir(), 'spaceface-source-fingerprint-'));
+  const runGit = (args) => execFileAsync('git', args, { cwd: fixture, windowsHide: true });
+  const pinned = path.join(fixture, 'src', 'pinned.js');
+  const style = path.join(fixture, 'styles', 'kit.css');
+  try {
+    await mkdir(path.dirname(pinned), { recursive: true });
+    await mkdir(path.dirname(style), { recursive: true });
+    await writeFile(pinned, 'export const pinned = 1;\n');
+    await writeFile(style, ':root { --fixture: 1; }\n');
+    await runGit(['init', '-q']);
+    await runGit(['config', 'user.email', 'source-fingerprint@example.invalid']);
+    await runGit(['config', 'user.name', 'Source Fingerprint']);
+    await runGit(['add', '.']);
+    await runGit(['commit', '-qm', 'fixture']);
+
+    const baseline = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    await writeFile(pinned, 'export const pinned = 2;\n');
+    const pinnedOnly = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    assert.equal(pinnedOnly.digest, baseline.digest,
+      'a pinned source mutation is ignored only by the exact exclusion set');
+
+    await writeFile(style, ':root { --fixture: 2; }\n');
+    const styleChanged = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    assert.notEqual(styleChanged.digest, baseline.digest,
+      'an unpinned styles/kit.css mutation remains visible');
+
+    await writeFile(style, ':root { --fixture: 1; }\n');
+    await writeFile(path.join(fixture, 'src', 'newRuntime.js'), 'export const newRuntime = true;\n');
+    const moduleChanged = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    assert.notEqual(moduleChanged.digest, baseline.digest,
+      'a newly-added runtime module remains visible');
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test('parser locks the wrapper runtime and rejects acceptance bypass flags', () => {
@@ -40,6 +344,10 @@ test('parser locks the wrapper runtime and rejects acceptance bypass flags', () 
     () => parseReleaseSoakArgs(['--cycles=0'], { runtime: 'browser', root: process.cwd() }),
     /positive integer/i,
   );
+  assert.throws(
+    () => parseReleaseSoakArgs(['--immutable-save-cycles=1'], { runtime: 'browser', root: process.cwd() }),
+    /at least 2/i,
+  );
 
   const parsed = parseReleaseSoakArgs([
     '--cycles=3',
@@ -51,7 +359,54 @@ test('parser locks the wrapper runtime and rejects acceptance bypass flags', () 
   assert.equal(parsed.cycles, 3);
   assert.deepEqual(parsed.viewport, { width: 1600, height: 900 });
   assert.equal(parsed.taskId, 'browser-contract');
+  assert.equal(parsed.immutableSaveCycles, 0);
   assert.equal(parsed.outputRoot, path.resolve(process.cwd(), '.devshots/spec2/custom-soak'));
+
+  const immutable = parseReleaseSoakArgs(['--immutable-save-cycles=2'], {
+    runtime: 'browser',
+    root: process.cwd(),
+  });
+  assert.equal(immutable.immutableSaveCycles, 2);
+});
+
+test('parser validates a fenced source overlay and returns compact identity metadata', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sf-release-soak-source-overlay-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, '.devshots'), { recursive: true });
+  const body = Buffer.from('frozen-index', 'utf8');
+  const entry = {
+    path: 'index.html',
+    bytes: body.length,
+    sha256: createHash('sha256').update(body).digest('hex'),
+    contentBase64: body.toString('base64'),
+  };
+  const manifest = {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: createHash('sha256')
+      .update(`${entry.path}\0${entry.sha256}\0${entry.bytes}`, 'utf8')
+      .digest('hex'),
+    files: [entry],
+  };
+  const manifestPath = path.join(root, '.devshots', 'baseline.json');
+  await writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+
+  const parsed = parseReleaseSoakArgs(['--baseline-source=.devshots/baseline.json'], {
+    runtime: 'electron',
+    root,
+  });
+  assert.equal(parsed.baselineSource.relative, '.devshots/baseline.json');
+  assert.deepEqual(parsed.baselineSource.identity, {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: manifest.sourceOverlayDigest,
+    fileCount: 1,
+    totalBytes: body.length,
+  });
+  assert.throws(
+    () => parseReleaseSoakArgs(['--baseline-source=outside.json'], { runtime: 'electron', root }),
+    /under \.devshots/i,
+  );
 });
 
 test('publication validator revalidates artifact hashes and returns a content-hashed evidence receipt', async (t) => {

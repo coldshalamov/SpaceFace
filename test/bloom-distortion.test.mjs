@@ -37,6 +37,13 @@ test('default bloom has no distortion target or draw without an attached produce
   const h = harness();
   const bloom = createBloom(h.renderer, 640, 360);
   try {
+    const resources = bloom.contextLossResources();
+    assert.ok(resources.some((resource) => resource?.isBufferGeometry
+      && resource.name === 'SF_Bloom_SharedFullscreenQuad'),
+    'the off-scene fullscreen geometry participates in context-loss cleanup');
+    for (const material of bloom.openingProgramMaterials()) {
+      assert.ok(resources.includes(material), 'every off-scene post material participates in cleanup');
+    }
     bloom.render(new THREE.Scene(), new THREE.PerspectiveCamera());
     // scene + the four-level halo pyramid (1/2, 1/4, 1/8, 1/16) + composite.
     assert.equal(h.draws.length, 6, 'the existing scene/pyramid/composite cost is unchanged');

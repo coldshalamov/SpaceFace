@@ -30,6 +30,8 @@ export function mountBootRing(document, overlay) {
   overlay.classList.add('boot-overlay--orrery');
   row.removeAttribute('aria-hidden');
   const host = document.defaultView || globalThis;
+  const scheduleNet = typeof host.setTimeout === 'function' ? host.setTimeout.bind(host) : setTimeout;
+  const clearNet = typeof host.clearTimeout === 'function' ? host.clearTimeout.bind(host) : clearTimeout;
   const model = createLoadingProgressModel();
   const listeners = new Set(), marked = new Set();
   const shell = document.createElement('div');
@@ -70,7 +72,8 @@ export function mountBootRing(document, overlay) {
   canvas.className = 'boot-ring-layer'; canvas.setAttribute('aria-hidden', 'true');
   shell.append(emblem, svg, canvas); row.insertBefore(shell, row.firstChild);
   let worker = null, workerReady = false, running = false, disposed = false;
-  let frame = null, lastNotify = -Infinity, lastAria = -Infinity, lastPaint = -1, lastSample = null;
+  let frame = null, netTimer = null, lastRafPaint = -Infinity;
+  let lastNotify = -Infinity, lastAria = -Infinity, lastPaint = -1, lastSample = null;
   let epoch = 0;
   let stage = { id: 'boot-modules', progress: 0, ceiling: .14 };
   let resolveReady;
@@ -113,20 +116,37 @@ export function mountBootRing(document, overlay) {
   function loop(t) {
     frame = null;
     if (disposed || !running || document.hidden) return;
+    lastRafPaint = t;
     paint(t);
     // Forward the vsync beat: the worker paints in-step with presentation instead
     // of free-running on its own timer, so the needle sweeps without visible hops.
     if (workerReady) worker?.post({ type: 'frame' });
     frame = host.requestAnimationFrame?.(loop) ?? null;
   }
+  // Timer net for the main-thread fallback paint: rAF alone can stall on an occluded
+  // window (or be absent entirely) while the loading shell is still the visible
+  // picture — and then the SVG ring only moved when a stage reported, reading as
+  // frozen behind a long gate. paint() is idempotent (dash/aria/notify guards inside
+  // collapse a timer tick that lands right after a vsync one), so this only moves the
+  // needle when vsync is not delivering.
+  function netTick() {
+    netTimer = null;
+    if (disposed || !running || document.hidden) return;
+    if (clock() - lastRafPaint >= 120) paint(clock());
+    if (netTimer === null && !disposed && running) netTimer = scheduleNet(netTick, 100);
+  }
   function pauseClock() {
     if (frame !== null) host.cancelAnimationFrame?.(frame);
-    frame = null; worker?.post({ type: 'pause' });
+    frame = null;
+    if (netTimer !== null) clearNet(netTimer);
+    netTimer = null;
+    worker?.post({ type: 'pause' });
   }
   function startClock() {
     if (disposed || !running || document.hidden) return;
     worker?.post({ type: 'resume' });
     if (frame === null && host.requestAnimationFrame) frame = host.requestAnimationFrame(loop);
+    if (netTimer === null) { lastRafPaint = clock(); netTimer = scheduleNet(netTick, 100); }
   }
   function mark(value, forward = true) {
     const key = Math.round(Math.max(0, Math.min(.997, Number(value) || 0)) * 200);

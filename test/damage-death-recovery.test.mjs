@@ -652,6 +652,16 @@ test('after-action DOM locks focus, emits retry intent, and only closes on succe
 
     gameOverScreen._loadButton.click();
     assert.deepEqual(pushed, ['saveLoad']);
+
+    // Main Menu / Load must use the same authoritative exit intent as Pause.
+    // This publishes the worker's menu edge before the modal stack is closed.
+    gameOverScreen._menuButton.click();
+    const menuExit = events.filter((entry) => entry.event === 'game:exitToMenu');
+    assert.deepEqual(menuExit.map((entry) => entry.payload), [{ source: 'game-over' }]);
+    assert.deepEqual(events.slice(-2).map((entry) => entry.event), [
+      'game:exitToMenu', 'game:over:dismissed',
+    ]);
+    assert.deepEqual(pushed, ['saveLoad', 'mainMenu']);
   } finally {
     globalThis.document = previousDocument;
   }

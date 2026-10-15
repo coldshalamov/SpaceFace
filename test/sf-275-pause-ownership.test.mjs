@@ -15,6 +15,11 @@ import {
   endFocusLossSaveWrite,
   syncFocusLossHold,
 } from '../src/core/focusLossHold.js';
+import {
+  installSimCommandSink,
+  laneSetMode,
+  uninstallSimCommandSink,
+} from '../src/core/simLaneCommands.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
 
 const UI_SOURCE = 'ui:pausing-screen';
@@ -79,7 +84,7 @@ function installDomFixture() {
   globalThis.cancelAnimationFrame = () => {};
 }
 
-function makeFixture() {
+function makeFixture({ workerPause = false } = {}) {
   installDomFixture();
   const state = createGameState(11);
   state.mode = 'flight';
@@ -89,9 +94,17 @@ function makeFixture() {
   bus.on('sim:resume', () => emitted.push('resume'));
   const effects = createTimeEffects(state);
   const manager = createScreenManager({ state, bus, timeEffects: effects });
-  manager.register({ id: 'pause' });
+  manager.register({
+    id: 'pause',
+    ...(workerPause ? {
+      onShow: () => {
+        if (state.mode === 'flight') laneSetMode(state, bus, 'paused');
+      },
+    } : {}),
+  });
   manager.register({ id: 'settings' });
   manager.register({ id: 'crucibleResults' });
+  manager.register({ id: 'mainMenu' });
   return { state, bus, emitted, effects, manager };
 }
 
@@ -125,6 +138,195 @@ test('SF-275 a UI release leaves the focus-loss hold frozen; focus return releas
   assert.deepEqual(focused, { paused: false, muted: false });
   assert.equal(state.timeScale, 1);
   assert.deepEqual(sources(effects), []);
+});
+
+test('SF-275 worker pause release queues flight before the paused mirror reply', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, effects, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+    assert.equal(state.mode, 'flight', 'the delayed worker reply leaves the main mode mirror unchanged');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused']);
+    assert.equal(state.timeScale, 0);
+
+    manager.popScreen();
+    assert.equal(state.ui.screenStack.length, 0);
+    assert.deepEqual(
+      modeCommands().map((descriptor) => descriptor.mode),
+      ['paused', 'flight'],
+      'releasing the last modal must pair the queued pause with a queued resume',
+    );
+    assert.equal(state.mode, 'flight', 'mode ownership remains on the worker');
+    assert.deepEqual(effects.describeRequests(), {});
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 deferred worker menu exit does not append a stale flight command', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+
+    // Mirror main.js: queue the authoritative menu write, then publish the
+    // worker's mode edge before closeAll releases the aggregate UI hold.
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+
+    assert.deepEqual(
+      modeCommands().map((descriptor) => descriptor.mode),
+      ['paused', 'menu'],
+      'menu exit must not resume flight after the worker has left flight',
+    );
+    assert.equal(state.mode, 'flight', 'the main mirror remains worker-owned until its reply');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 menu handoff stays locked until the worker returns to flight', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+
+    // Exit to menu while the main mirror still says flight, then install the
+    // real menu screen as Pause/Game Over do after the authoritative edge.
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+    assert.equal(manager.locked(), true, 'published menu mode locks the title screen despite a stale mirror');
+
+    // Escape and backdrop both consult locked(); neither may pop the title or
+    // append a resume command while the worker remains in menu mode.
+    if (!manager.locked()) manager.popScreen();
+    if (!manager.locked()) manager.popScreen();
+    assert.equal(manager.top(), 'mainMenu');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu']);
+
+    // A later worker acknowledgement re-opens the normal flight path. The
+    // title may close without a redundant flight write, and a fresh Pause edge
+    // still resumes correctly.
+    bus.emit('mode:changed', { mode: 'flight', previousMode: 'menu' });
+    assert.equal(manager.locked(), false);
+    manager.popScreen();
+    assert.equal(manager.top(), null);
+    manager.pushScreen('pause');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu', 'paused']);
+    manager.popScreen();
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu', 'paused', 'flight']);
+    assert.equal(state.mode, 'flight', 'the mirror remains worker-owned throughout the handoff');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 stale paused ACK cannot unlock menu before a real flight re-entry', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+
+    // Main publishes menu immediately, while the worker still has the pause write in flight.
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+
+    // This is the delayed ACK from the earlier paused command. Escape and backdrop both gate
+    // through locked(); neither may dismiss the title while the worker's menu edge is pending.
+    bus.emit('mode:changed', { mode: 'paused' });
+    assert.equal(manager.locked(), true, 'a stale paused ACK must not unlock the title');
+    if (!manager.locked()) manager.popScreen(); // Escape path
+    if (!manager.locked()) manager.popScreen(); // Backdrop path
+    assert.equal(manager.top(), 'mainMenu');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu']);
+
+    // Once the worker crosses menu, a real worker flight edge is accepted. A fresh pause/resume
+    // then retains the ordinary mode lifecycle instead of inheriting the stale ACK fence.
+    bus.emit('mode:changed', { mode: 'menu' });
+    assert.equal(manager.locked(), true);
+    bus.emit('mode:changed', { mode: 'flight' });
+    assert.equal(manager.locked(), false);
+    manager.popScreen();
+    manager.pushScreen('pause');
+    manager.popScreen();
+    assert.deepEqual(
+      modeCommands().map((descriptor) => descriptor.mode),
+      ['paused', 'menu', 'paused', 'flight'],
+    );
+    assert.equal(state.mode, 'flight', 'the main mirror remains worker-owned throughout re-entry');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 menu fence survives a newer loading intent until the worker crosses it', () => {
+  installSimCommandSink(() => {});
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    manager.pushScreen('pause');
+
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+
+    // Starting a new game supersedes the menu intent, but the old paused ACK can still arrive
+    // before the worker has applied menu and loading in FIFO order.
+    bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
+    bus.emit('mode:changed', { mode: 'paused' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'loading');
+
+    // The old menu ACK is also stale relative to loading; the following loading/flight edges are
+    // still accepted normally.
+    bus.emit('mode:changed', { mode: 'menu' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'loading');
+    bus.emit('mode:changed', { mode: 'loading' });
+    bus.emit('mode:changed', { mode: 'flight' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'flight');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 worker pause release keeps menu mode guarded', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, manager } = makeFixture({ workerPause: true });
+    state.mode = 'menu';
+    manager.pushScreen('pause');
+    manager.popScreen();
+    assert.deepEqual(
+      queued.filter((descriptor) => descriptor.kind === 'mode'),
+      [],
+      'menu screens must not queue a flight mode on release',
+    );
+    assert.equal(state.mode, 'menu');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
 });
 
 test('SF-275 a focus return under a still-open screen cannot resume the sim', () => {

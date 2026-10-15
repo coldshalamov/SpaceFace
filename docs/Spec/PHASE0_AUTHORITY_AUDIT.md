@@ -66,6 +66,7 @@ Current classified wall-clock owners:
 | Owner | Classification | Rationale |
 |---|---|---|
 | `src/core/loop.js` | frame driver | Measures elapsed real time only to feed the fixed-step accumulator (receives RAF/host stamps; no direct read today). |
+| `src/core/wholeSimBrowserWorker.js` | worker frame driver | `localNowMs()` measures timer deadlines and elapsed host time for the worker-local fixed-step accumulator. The adapter delivers fixed dt to the authoritative host; gameplay systems retain `state.simTime`/seeded-RNG authority. This is the worker counterpart of the main-thread frame driver, not an ambient clock inside a gameplay system. |
 | `src/core/eventBus.js` | frame driver | `flush(maxMs)` bounds how long a queued emit slice may hold the frame — wall stamps set a delivery deadline, never a sim outcome. Stays dependency-free, so it does not route through `perfNow()`. |
 | `src/core/sectorEnterDefer.js` | frame driver | The chunked deferred-enter drain runs until a millisecond work budget expires — wall stamps bound per-tick work. Sim stamps ride separately on `_deferredEnterClock`/`_deferredEnterTick`. |
 | `src/core/perfRuntime.js` | diagnostics | The instrumentation clock. `perfNow()` is the exported seam; per-tick `tickMs` diagnostics in `src/core/physics.js`, `src/systems/flightV3.js`, and `src/systems/flight.js` call it instead of reading wall time locally (FB-095). |

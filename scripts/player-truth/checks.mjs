@@ -590,9 +590,15 @@ export function probeDead(trace, pr) {
   if (!a || !b || !a.p || !b.p) return { dead: true, why: 'no player sample' };
   if (pr.kind === 'thrust') {
     const dv = Math.hypot(b.p.vx, b.p.vz) - Math.hypot(a.p.vx, a.p.vz);
-    const moved = Math.hypot(b.p.x - a.p.x, b.p.z - a.p.z);
     const win = trace.samples.filter((s) => s.p && s.sim >= pr.startSim && s.sim <= pr.endSim);
-    let expect = 0; for (let i = 1; i < win.length; i++) expect += Math.hypot(win[i].p.vx, win[i].p.vz) * Math.max(0, win[i].sim - win[i - 1].sim);
+    let moved = 0; let expect = 0;
+    for (let i = 1; i < win.length; i++) {
+      const dt = Math.max(0, win[i].sim - win[i - 1].sim);
+      // Use the travelled path, rather than endpoint displacement: a valid thrust
+      // reversal can return near its starting point without being pinned.
+      moved += Math.hypot(win[i].p.x - win[i - 1].p.x, win[i].p.z - win[i - 1].p.z);
+      expect += Math.hypot(win[i].p.vx, win[i].p.vz) * dt;
+    }
     pr.value = dv; pr.moved = moved; pr.expect = expect;
     const held = fmt(pr.endSim - pr.startSim, 1);
     if (dv < T.thrustDeltaSpeed && moved < 3) return { dead: true, a, b, why: `held W ${held} s → Δspeed ${fmt(dv, 1)} u/s, moved ${fmt(moved, 1)} u` };

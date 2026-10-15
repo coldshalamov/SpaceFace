@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { LOOP_FIXED_DT, MAX_CATCHUP_STEPS } from '../src/core/simulationRunner.js';
-import { laneWriteSetting } from '../src/core/simLaneCommands.js';
+import { laneRpc, laneWriteSetting } from '../src/core/simLaneCommands.js';
 
 async function fixture(t) {
   let clock = 0;
@@ -115,6 +115,48 @@ test('closing the lane cancels the pending watchdog callback', async (t) => {
   f.advanceWall(15000);
   t.mock.timers.tick(15000);
   assert.equal(f.lane.getDiagnostics().error, null);
+});
+
+test('ordinary lane teardown observes cancelled RPCs without hiding real RPC failures', async (t) => {
+  const f = await fixture(t);
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const observed = laneRpc('teardownObserved', {});
+    // This models a UI-side fire-and-forget command that is still queued when
+    // the presentation runtime closes.  The returned promise is intentionally
+    // left without a caller rejection handler.
+    laneRpc('teardownIgnored', {});
+    f.lane.close();
+    await assert.rejects(observed, (error) => (
+      error instanceof Error && error.message === 'sim lane closed'
+    ));
+    for (let i = 0; i < 2; i++) await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(unhandled, [],
+      'normal teardown cancellation does not surface as a page-level rejection');
+  } finally {
+    process.removeListener('unhandledRejection', onUnhandled);
+  }
+});
+
+test('a worker RPC refusal still rejects its caller', async (t) => {
+  const f = await fixture(t);
+  const pending = laneRpc('workerRefusal', {});
+  f.receive({ kind: 'tickDone', seq: f.firstFlight.seq, stateTick: 1, simTime: LOOP_FIXED_DT });
+  const followup = f.posts.at(-1);
+  const rpc = followup.commands.find((command) => command.t === 'rpc');
+  assert.ok(rpc, 'the pending RPC crosses the next worker directive');
+  f.receive({
+    kind: 'tickDone',
+    seq: followup.seq,
+    stateTick: 2,
+    simTime: LOOP_FIXED_DT * 2,
+    rpcAcks: [{ id: rpc.p.id, op: 'workerRefusal', ok: false, reason: 'worker refused request' }],
+  });
+  await assert.rejects(pending, (error) => (
+    error instanceof Error && error.message === 'worker refused request'
+  ));
 });
 
 test('a slow worker cannot accumulate a larger catch-up burst across presentation frames', async (t) => {

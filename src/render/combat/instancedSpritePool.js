@@ -181,6 +181,10 @@ function createBucket(scene, id, capacity, texture, blending, radiance = 1.0) {
   return {
     id,
     capacity,
+    // Keep the exact texture identity beside the bucket.  The density film is referenced only
+    // through a ShaderMaterial uniform, so the context-loss provider cannot discover it by
+    // traversing the bucket mesh without walking arbitrary uniform dictionaries.
+    texture,
     mesh,
     position,
     scale,

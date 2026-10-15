@@ -900,6 +900,12 @@ export const save = {
       ['recoveryEncounters', () => this._callSerialize('recoveryEncounter') || clonePlain(state.recoveryEncounters || {})],
       // Genie 01: world memory + inbox (inbox is part of the save; serialize() does not drain it).
       ['chronicler', () => this._callSerialize('chronicler') || clonePlain(state.chronicler || {})],
+      // The chart's own memory: wreck fields you witnessed, couriers still missing, and the
+      // world-beat dedupe keys (starved shelves, claim legs, day snapshot, chronicler-legend
+      // day). Without this section every save/load wipes the marks the galaxy map draws and
+      // replays the headlines it just read. Bounded on write; absent key (old saves) restores
+      // nothing — the bag starts fresh exactly as it does today.
+      ['worldNews', () => this._serializeWorldNews()],
       // Genie 02: session-drama arc state (engine state subtree; schema-validated on restore).
       ['tensionDirector', () => clonePlain(state.tensionDirector || null)],
       ['regionalEcology', () => this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {})],
@@ -1078,6 +1084,9 @@ export const save = {
     yield 'serialize:onboarding';
     data.encounterDirector = this._serializeEncounterDirector();
     yield 'serialize:encounterDirector';
+    // The chart's own memory (witnessed wreck marks, courier pins, world-beat dedupe keys).
+    data.worldNews = this._serializeWorldNews();
+    yield 'serialize:worldNews';
     data.flight = this._serializeFlight();
     yield 'serialize:flight';
     data.nav = this._serializeNav();
@@ -1305,6 +1314,48 @@ export const save = {
   _restoreWatchlist(raw) {
     if (!this.state.ui || typeof this.state.ui !== 'object') this.state.ui = {};
     this.state.ui.watchlist = normalizeWatchlist(raw);
+  },
+
+  /** The worldNews bag — chart memory + world-beat dedupe keys. Plain JSON, bounded on write. */
+  _serializeWorldNews() {
+    const bag = this.state.worldNews;
+    if (!bag || typeof bag !== 'object') return null;
+    const pickMap = (value) => (value && typeof value === 'object' && !Array.isArray(value))
+      ? clonePlain(value)
+      : null;
+    return {
+      schemaVersion: 1,
+      markers: Array.isArray(bag.markers)
+        ? clonePlain(bag.markers.filter((row) => row && row.id)).slice(-48)
+        : [],
+      starved: pickMap(bag.starved) || {},
+      sectorSnap: pickMap(bag.sectorSnap),
+      claimLegs: pickMap(bag.claimLegs),
+      dockLines: Array.isArray(bag.dockLines) ? bag.dockLines.slice(-12) : [],
+      lastDigest: Number.isFinite(bag.lastDigest) ? bag.lastDigest : null,
+      legendDay: Number.isFinite(bag.legendDay) ? bag.legendDay : null,
+    };
+  },
+
+  /** Absent/invalid section (pre-worldNews saves) leaves the bag untouched — fresh behavior. */
+  _restoreWorldNews(raw) {
+    if (!raw || typeof raw !== 'object') return;
+    const state = this.state;
+    const bag = state.worldNews || (state.worldNews = {});
+    if (Array.isArray(raw.markers)) {
+      bag.markers = raw.markers
+        .filter((row) => row && typeof row === 'object' && typeof row.id === 'string')
+        .slice(-48)
+        .map((row) => clonePlain(row));
+    }
+    if (raw.starved && typeof raw.starved === 'object' && !Array.isArray(raw.starved)) {
+      bag.starved = clonePlain(raw.starved);
+    }
+    if (raw.sectorSnap && typeof raw.sectorSnap === 'object') bag.sectorSnap = clonePlain(raw.sectorSnap);
+    if (raw.claimLegs && typeof raw.claimLegs === 'object') bag.claimLegs = clonePlain(raw.claimLegs);
+    if (Array.isArray(raw.dockLines)) bag.dockLines = raw.dockLines.slice(-12);
+    if (Number.isFinite(raw.lastDigest)) bag.lastDigest = raw.lastDigest;
+    if (Number.isFinite(raw.legendDay)) bag.legendDay = raw.legendDay;
   },
 
   _serializeNav() {
@@ -6556,6 +6607,11 @@ export const save = {
       // graph BEFORE adopting; null/absent starts an empty archive (old saves migrate cleanly).
       yield* this._callDeserializeChunked('chronicler', data.chronicler);
       yield 'chronicler-restored';
+      // The chart's own memory (witnessed wreck marks, courier pins, world-beat dedupe keys).
+      // Absent key (pre-worldNews saves) restores nothing — the bag starts fresh, exactly as
+      // every load behaved before this section existed.
+      this._restoreWorldNews(data.worldNews);
+      yield 'world-news-restored';
       // FB-114: the first-hour rail restores BEFORE save:loaded so onboarding's handler
       // can resume the saved beat (restage cast, re-present the line) instead of running
       // the returning-pilot path. Absent key (pre-rail saves) resets to the pre-begin

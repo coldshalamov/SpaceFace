@@ -66,8 +66,9 @@ test('queue seam preserves existing mesh, no-mesh, and idempotency rules', () =>
     queue,
   );
 
-  // Dead entries remain queued exactly as before and are discarded by _drainMeshBuildQueue.
-  assert.deepEqual(queue, [alreadyQueued.id, dead.id, pending.id, rock.id]);
+  // The queue seam is live-only: dead rows are filtered before they reach the bounded drain.
+  assert.deepEqual(queue, [alreadyQueued.id, pending.id, rock.id]);
+  assert.equal(queue.includes(dead.id), false, 'a dead entity must never be newly admitted');
 });
 
 test('render residency keeps the active sector and a seam runway without building distant sectors', () => {

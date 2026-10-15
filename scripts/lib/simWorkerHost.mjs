@@ -276,6 +276,51 @@ export function entityVitalsOf(e) {
   return fields;
 }
 
+// `collectEntityVitals` ships the complete scalar row only when one of these
+// values changed. Keep the comparison state in a compact scalar tuple so a
+// steady entity does not allocate a fields object and JSON string every tick.
+// The transport fields are deliberately scalar by contract; non-finite numbers
+// share JSON.stringify's null comparison semantics while the original value is
+// still retained in the emitted row on the first/change path.
+const VITAL_SHADOW_MISSING = Symbol('vital-shadow-missing');
+const VITAL_SHADOW_JSON_NULL = Symbol('vital-shadow-json-null');
+
+function vitalShadowValue(value) {
+  if (value === undefined) return VITAL_SHADOW_MISSING;
+  if (value === null || (typeof value === 'number' && !Number.isFinite(value))) {
+    return VITAL_SHADOW_JSON_NULL;
+  }
+  return value;
+}
+
+function vitalShadowMatches(e, shadow) {
+  if (!Array.isArray(shadow)) return false;
+  let i = 0;
+  for (const key of VITAL_FIELDS) {
+    if (vitalShadowValue(e[key]) !== shadow[i++]) return false;
+  }
+  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
+  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
+  if (vitalShadowValue(boost ? boost.energy : undefined) !== shadow[i++]) return false;
+  if (vitalShadowValue(boost ? boost.max : undefined) !== shadow[i++]) return false;
+  return true;
+}
+
+function writeVitalShadow(e, shadow) {
+  let i = 0;
+  for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
+  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
+  shadow[i++] = vel ? finite(vel.x) : VITAL_SHADOW_MISSING;
+  shadow[i++] = vel ? finite(vel.z) : VITAL_SHADOW_MISSING;
+  const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
+  shadow[i++] = vitalShadowValue(boost ? boost.energy : undefined);
+  shadow[i++] = vitalShadowValue(boost ? boost.max : undefined);
+  shadow.length = i;
+  return shadow;
+}
+
 function entityInfoBlock(state, entityId) {
   const e = resolveWorldPresentationEntity(state, entityId);
   if (!e) return null;
@@ -355,18 +400,22 @@ function collectWeaponVfxProjectiles(state) {
 }
 
 // Per-tick vitals diff (production lane): scalar entity fields the renderer/UI
-// reads that are neither journal pose nor spawn-time data. A JSON signature
-// per entity per drain keeps the wire to changed rows only.
-function collectEntityVitals(state, vitalShadow) {
+// reads that are neither journal pose nor spawn-time data. A scalar shadow per
+// entity per drain keeps the wire to changed rows only without rebuilding a
+// JSON signature for unchanged entities.
+export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
   const out = [];
-  const seen = new Set();
+  const seen = seenScratch || new Set();
+  seen.clear();
   for (const e of state.entityList || []) {
     if (!e || !Number.isSafeInteger(e.id)) continue;
     seen.add(e.id);
-    const fields = entityVitalsOf(e);
-    const sig = JSON.stringify(fields);
-    if (vitalShadow.get(e.id) !== sig) {
-      vitalShadow.set(e.id, sig);
+    const previous = vitalShadow.get(e.id);
+    if (!vitalShadowMatches(e, previous)) {
+      const shadow = Array.isArray(previous) ? previous : [];
+      writeVitalShadow(e, shadow);
+      vitalShadow.set(e.id, shadow);
+      const fields = entityVitalsOf(e);
       out.push([e.id, fields]);
     }
   }
@@ -549,7 +598,8 @@ export function createSimHost() {
     stepper: null,            // createAuthoritativeStepper (production)
     tickBoundary: null,       // wire-side input boundary (production)
     inputPublishes: [],       // per-step publish records drained onto the reply
-    vitalShadow: new Map(),   // entityId -> vitals signature (production diff channel)
+    vitalShadow: new Map(),   // entityId -> scalar tuple (production diff channel)
+    vitalSeen: new Set(),     // reused membership scratch for vitalShadow cleanup
     // replayed main→worker emits must not echo back — scoped to the replayed
     // TYPE so a cascaded emit (save:loaded riding a forwarded game:load)
     // still bridges: main's presenters need it to unstack screens.
@@ -1223,6 +1273,15 @@ export function createSimHost() {
           tick: state.tick,
           seed: state.meta?.seed ?? null,
           runSeed: Number.isSafeInteger(state.run?.seed) ? state.run.seed : null,
+          run: state.run ? {
+            kind: state.run.kind ?? null,
+            ruleset: state.run.ruleset ?? null,
+            phase: state.run.phase ?? null,
+            wave: Number.isSafeInteger(state.run.wave) ? state.run.wave : null,
+            threatBudget: Number.isSafeInteger(state.run.threatBudget) ? state.run.threatBudget : null,
+            spawnedThreat: Number.isSafeInteger(state.run.spawnedThreat) ? state.run.spawnedThreat : null,
+            resolvedThreat: Number.isSafeInteger(state.run.resolvedThreat) ? state.run.resolvedThreat : null,
+          } : null,
           simTime: state.simTime,
           mode: state.mode,
           timeScale: state.timeScale,
@@ -1427,7 +1486,7 @@ export function createSimHost() {
     const initAux = diffAuxTables(host.state);
     const initDomains = diffDomains(host.state, host.domainDiffSeq++);
     // Vitals shadow primes on init — spawnInfo vitals already carry the fields.
-    collectEntityVitals(host.state, host.vitalShadow);
+    collectEntityVitals(host.state, host.vitalShadow, host.vitalSeen);
     host.ready = true;
     return {
       journalSequence: host.committedJournalSequence,
@@ -1929,7 +1988,9 @@ export function createSimHost() {
     host.totalPackNs += packNs;
 
     const events = drainEvents();
-    const entityVitals = production ? collectEntityVitals(state, host.vitalShadow) : null;
+    const entityVitals = production
+      ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen)
+      : null;
     const aux = diffAuxTables(state);
     host.auxUpsertsTotal += aux.upserts.length;
     host.auxRemovalsTotal += aux.removals.length;

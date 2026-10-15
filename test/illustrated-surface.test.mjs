@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   canonicalizeObjectSurfaceProgramKeys,
+  ILLUSTRATED_SURFACE_GLSL,
   installIllustratedSurface,
   ILLUSTRATED_SURFACE_KEY,
 } from '../src/render/illustratedSurface.js';
@@ -162,4 +163,18 @@ test('packed ORM can own the AO include before the illustration hook is installe
   const shader = { fragmentShader: THREE.ShaderLib.standard.fragmentShader };
   material.onBeforeCompile(shader, {});
   assert.ok(shader.fragmentShader.indexOf('float sfPaintLuma') < shader.fragmentShader.indexOf('// packed AO'));
+});
+
+test('clearcoat sun lobe skips zero-facing lights before half-vector work', () => {
+  const loopStart = ILLUSTRATED_SURFACE_GLSL.indexOf('vec3 sfToLight = directionalLights[sfJ].direction;');
+  const loopEnd = ILLUSTRATED_SURFACE_GLSL.indexOf('\n    }', loopStart);
+  assert.ok(loopStart >= 0);
+  assert.ok(loopEnd > loopStart);
+  const loop = ILLUSTRATED_SURFACE_GLSL.slice(loopStart, loopEnd);
+  const guard = loop.indexOf('if (sfNoL > 0.0) {');
+  assert.ok(guard > 0);
+  assert.ok(loop.indexOf('float sfNoH', guard) > guard,
+    'half-vector normalization stays inside the positive-light branch');
+  assert.ok(loop.indexOf('sfCoatLight +=', guard) > guard,
+    'the guarded branch still emits the original positive-light lobe');
 });

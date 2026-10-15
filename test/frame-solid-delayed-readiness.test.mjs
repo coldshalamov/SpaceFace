@@ -87,6 +87,30 @@ test('delayed readiness receipt bounds roots, samples, calls, and nested payload
   assert.ok(report.roots[0].samples[0].nested.text.length <= 161);
 });
 
+test('bounded receipt retains a late readable pending body over FIFO ambient rows', () => {
+  const receipt = createDelayedReadinessReceipt(0, { maxRoots: 2, maxSamples: 8 });
+  recordDelayedReadinessSample(receipt, {
+    rows: [
+      { rootKey: 'entity:ambient-a', type: 'wreck', readable: false, pending: { geometry: false } },
+      { rootKey: 'entity:ambient-b', type: 'fx', readable: false, pending: { authored: false } },
+    ],
+  }, 1);
+  recordDelayedReadinessSample(receipt, {
+    rows: [{
+      rootKey: 'entity:late-readable',
+      type: 'drone',
+      readable: true,
+      rootHidden: true,
+      pending: { geometry: true, pipelines: true, authored: true },
+      pipeline: { urgent: true },
+    }],
+  }, 2);
+  const report = finalizeDelayedReadinessReceipt(receipt);
+  assert.ok(report.roots.some((root) => root.rootKey === 'entity:late-readable'));
+  assert.equal(report.rootsTracked, 2);
+  assert.ok(report.droppedRoots >= 1);
+});
+
 test('frame-solid probe wires the delayed readiness causal fields', () => {
   const probe = readFileSync(fileURLToPath(new URL('../scripts/probe-frame-solid.mjs', import.meta.url)), 'utf8');
   const collector = readFileSync(fileURLToPath(new URL('../scripts/lib/frameSolidDelayedReadiness.mjs', import.meta.url)), 'utf8');

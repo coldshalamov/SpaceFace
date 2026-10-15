@@ -79,6 +79,22 @@ export const WRECK_CLASSES = Object.freeze({
     poolLean: 'intact',
     restricted: false,
   }),
+  archive_folio: Object.freeze({
+    id: 'archive_folio',
+    label: 'Archive Folio',
+    scanLabel: 'Sealed Folio',
+    blurb: 'A sealed reading copy racked by the Archive at Pallas. Removing it from the stacks opens a redaction writ.',
+    poolLean: 'trace',
+    restricted: false,
+  }),
+  filed_copy: Object.freeze({
+    id: 'filed_copy',
+    label: 'Filed Copy',
+    scanLabel: 'Filed Duplicate',
+    blurb: 'A duplicate Form 7-V moored by the Helix Directorate. Pulling it off the pier opens an audit variance.',
+    poolLean: 'trace',
+    restricted: false,
+  }),
 });
 
 export const WRECK_CLASS_IDS = Object.freeze(Object.keys(WRECK_CLASSES));

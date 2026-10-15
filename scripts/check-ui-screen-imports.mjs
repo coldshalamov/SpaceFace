@@ -528,9 +528,10 @@ if (!gameOverSrc.includes('_refreshSummary(ctx)') || !/onShow\(ctx\)\s*\{[\s\S]*
   ok++;
 }
 if (!(gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';")
-  || gameOverSrc.includes("laneSetMode(ctx.state, ctx.bus, 'menu')"))
+  || gameOverSrc.includes("laneSetMode(ctx.state, ctx.bus, 'menu')")
+  || gameOverSrc.includes("ctx.bus.emit('game:exitToMenu', { source: 'game-over' })"))
   || gameOverSrc.includes("\n      state.mode = 'menu';")) {
-  console.log('FAIL gameOverScreen - Main Menu action must use ctx.state, not an undefined global state');
+  console.log('FAIL gameOverScreen - Main Menu action must use ctx.state or the canonical menu intent');
   fail++;
 } else {
   console.log('ok   gameOverScreen - Main Menu action uses ctx.state');

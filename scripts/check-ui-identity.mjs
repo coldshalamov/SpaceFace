@@ -42,7 +42,7 @@ const checks = [
     path: 'src/ui/hud.js',
     label: 'Contact roster — bounded cadence, useful priority, truthful overflow, click-to-target and memoised DOM work',
     needs: [
-      'state.player.targetId = rec.id',
+      "laneInputWrite(state, 'player.targetId', rec.id)",
       'sf-overview-row',
       // Memoised DOM work is now retained keyed rows (createOverviewRow builds a row once,
       // syncOverviewRow writes only the fields that changed) instead of the old

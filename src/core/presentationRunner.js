@@ -592,15 +592,19 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     }
 
     const wasSuspended = suspended;
+    // Advance the presentation generation before telling a worker-owned clock to
+    // pause. A tick may already be in flight when the lifecycle edge arrives;
+    // the pause boundary must carry the new generation so that any reply
+    // produced after the edge cannot be mistaken for the pre-restore frame.
+    lifecycleGeneration++;
+    diagnostics.lifecycleGeneration = lifecycleGeneration;
+    simulationRunner.setLifecycleGeneration?.(lifecycleGeneration);
     setWorkerClockActive(false, reason);
     suspended = false;
     syncEmitSliceSuspension();
     diagnostics.suspended = false;
     recordState(LOOP_LIFECYCLE_STATES.RESTORING, reason);
     if (wasSuspended) diagnostics.resumeCount++;
-    lifecycleGeneration++;
-    diagnostics.lifecycleGeneration = lifecycleGeneration;
-    simulationRunner.setLifecycleGeneration?.(lifecycleGeneration);
     normalizeAccumulator();
     last = nowMs();
     diagnostics.timestampResetCount++;

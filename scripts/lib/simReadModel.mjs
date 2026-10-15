@@ -632,6 +632,9 @@ export const DOMAIN_CADENCE = Object.freeze({
   // resolved count on the same reply as cleanup so a finished wave cannot present a stale kill
   // total after its phase has already advanced.
   'run.resolvedThreat': 1,
+  // The HUD also reads the planned count while a wave is active. Ship a changed budget with the
+  // next domain reply; unlike spawnedThreat this is a small plan value, not a recurring census.
+  'run.threatBudget': 1,
   // The accept beat must reach the facade inside its own publish window, not the
   // missions root cadence — Mission Log / HUD / contracts render off the mirror.
   'missions.active': 1,
@@ -787,6 +790,79 @@ function isCanonicalObject(v) {
     && !Array.isArray(v) && !(v instanceof Map) && !(v instanceof Set)
     && !(v instanceof Date) && !(v instanceof RegExp)
     && !ArrayBuffer.isView(v) && !(v instanceof ArrayBuffer);
+}
+
+// Combat trace is an append-only producer-owned record.  Its public shape is
+// deliberately checked before using the watermark: loaded/diagnostic objects
+// with an unknown field or malformed producer field continue through the
+// ordinary exact canonical walk.  The watermark is only a work-elision hint;
+// it never crosses the wire and never replaces the full signature/payload.
+const COMBAT_TRACE_KEYS = Object.freeze([
+  'nextSeq', 'capacity', 'events', 'dropped', 'hashU32', 'digest',
+]);
+const COMBAT_TRACE_KEY_SET = new Set(COMBAT_TRACE_KEYS);
+
+function combatTraceWatermark(trace, previous = null) {
+  if (!isCanonicalObject(trace) || !Array.isArray(trace.events)) return null;
+  const keys = Object.keys(trace);
+  if (keys.length !== COMBAT_TRACE_KEYS.length
+      || keys.some((key) => !COMBAT_TRACE_KEY_SET.has(key))) return null;
+  if (!Number.isSafeInteger(trace.nextSeq) || trace.nextSeq < 1
+      || !Number.isSafeInteger(trace.capacity) || trace.capacity < 1
+      || !Number.isSafeInteger(trace.dropped) || trace.dropped < 0
+      || !Number.isInteger(trace.hashU32) || trace.hashU32 < 0 || trace.hashU32 > 0xffffffff
+      || typeof trace.digest !== 'string' || !/^[0-9a-f]{8}$/.test(trace.digest)
+      || trace.events.length > trace.capacity) return null;
+
+  const events = trace.events;
+  const firstEvent = events[0];
+  const lastEvent = events.length ? events[events.length - 1] : undefined;
+  // appendCombatTrace creates canonical plain event objects and never edits an
+  // existing event.  Validate a new/replaced event array once; subsequent
+  // unchanged passes use identity plus the producer watermarks below.
+  const eventArrayReplaced = !previous || previous.trace !== trace || previous.events !== events
+    || previous.eventLength !== events.length
+    || previous.firstEvent !== firstEvent || previous.lastEvent !== lastEvent;
+  if (eventArrayReplaced) {
+    for (const event of events) {
+      if (!isCanonicalObject(event)) return null;
+    }
+  }
+  return {
+    trace,
+    events,
+    eventLength: events.length,
+    firstEvent,
+    lastEvent,
+    nextSeq: trace.nextSeq,
+    dropped: trace.dropped,
+    capacity: trace.capacity,
+    hashU32: trace.hashU32,
+    digest: trace.digest,
+  };
+}
+
+function sameCombatTraceWatermark(a, b) {
+  if (!a || !b
+      || a.trace !== b.trace
+      || a.events !== b.events
+      || a.eventLength !== b.eventLength
+      || a.firstEvent !== b.firstEvent
+      || a.lastEvent !== b.lastEvent
+      || a.nextSeq !== b.nextSeq
+      || a.dropped !== b.dropped
+      || a.capacity !== b.capacity
+      || a.hashU32 !== b.hashU32
+      || a.digest !== b.digest) return false;
+  if (!Array.isArray(a.eventRefs) || a.eventRefs.length !== b.eventLength) return false;
+  for (let i = 0; i < b.events.length; i++) {
+    if (a.eventRefs[i] !== b.events[i]) return false;
+  }
+  return true;
+}
+
+function isCombatTracePath(segs) {
+  return segs.length === 2 && segs[0] === 'combat' && segs[1] === 'trace';
 }
 
 // sha256 hex (truncated to 64-bit) of a canonical signature string — what
@@ -1189,12 +1265,16 @@ export function createDomainDiffer(options = {}) {
         lastSign: -1, lastEnum: null, segs, slot: nextSlot++,
         probeSlot: null, probeChanged: false,
       };
+      if (isCombatTracePath(segs)) {
+        n.combatTraceWatermark = null;
+        n.combatTraceEventRefs = null;
+      }
       paths.set(path, n);
     }
     return n;
   }
 
-  function walk(path, segs, v, tick, updates, stats, npcJobsRevision) {
+  function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext) {
     const node = ensureNode(path, segs);
     // This owner publishes detached immutable snapshots only at settlement.
     // A new stock/hold receipt must not wait for the large-leaf cold cadence.
@@ -1216,7 +1296,7 @@ export function createDomainDiffer(options = {}) {
       if (enumDue) {
         const liveKids = new Set(Object.keys(v));
         for (const c of liveKids) {
-          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision);
+          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision, runContext);
         }
         if (node.kids) {
           for (const c of node.kids) {
@@ -1239,7 +1319,7 @@ export function createDomainDiffer(options = {}) {
             dropNode(`${path}.${c}`);
             node.kids.delete(c);
           } else {
-            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision);
+            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision, runContext);
           }
         }
       }
@@ -1261,6 +1341,17 @@ export function createDomainDiffer(options = {}) {
     }
     node.leaf = true;
     const leafRule = domainLeafViewFor(segs);
+    const isCombatTrace = isCombatTracePath(segs);
+    // Do not retain a replaced live trace/event array until its next cold slot.
+    // The replacement still follows the normal cadence, but dropping the old
+    // references here keeps reset/load graphs collectible immediately.
+    if (isCombatTrace && node.combatTraceWatermark
+        && (!v || typeof v !== 'object'
+          || node.combatTraceWatermark.trace !== v
+          || node.combatTraceWatermark.events !== v.events)) {
+      node.combatTraceWatermark = null;
+      node.combatTraceEventRefs = null;
+    }
     // npcJobsRuntime already increments this small revision on create/delete/reset.  Use that
     // existing lifecycle signal to bypass the large-leaf cadence for structural changes, while
     // leaving ordinary phase/progress changes on their bounded cold cadence.  This avoids a
@@ -1272,7 +1363,27 @@ export function createDomainDiffer(options = {}) {
       node.npcJobsRevision = npcJobsRevision;
     }
     const cadence = domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]);
-    if (node.lastSign >= 0 && !freshDraftSnapshot && !npcJobsRevisionChanged) {
+    // The first admitted threat in an active wave is a bootstrap edge, not a
+    // recurring progress sample.  A new game can leave the run root already
+    // expanded with spawnedThreat=0; if the worker then reaches active and
+    // admits its opening batch before the paced slot for this leaf, the phase
+    // update can arrive while the public census remains zero for the whole
+    // presentation window.  Ship that one positive edge immediately, while
+    // keeping later within-wave count changes on the existing root cadence.
+    const isRunSpawnedThreat = segs[0] === 'run' && segs[1] === 'spawnedThreat';
+    let runAdmissionBootstrap = false;
+    if (isRunSpawnedThreat) {
+      const activeWave = runContext && runContext.phase === 'active'
+        && Number.isSafeInteger(runContext.wave) ? runContext.wave : null;
+      if (activeWave === null) {
+        node.runAdmissionWave = null;
+      } else if (Number.isFinite(v) && v > 0 && node.runAdmissionWave !== activeWave) {
+        node.runAdmissionWave = activeWave;
+        runAdmissionBootstrap = true;
+      }
+    }
+    if (node.lastSign >= 0 && !freshDraftSnapshot && !npcJobsRevisionChanged
+        && !runAdmissionBootstrap) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       const interval = Math.max(tierTicks, cadence);
@@ -1296,6 +1407,22 @@ export function createDomainDiffer(options = {}) {
       const interval = Math.max(1, leafRule.firstSignTicks || cadence);
       if (interval > 1 && tick % interval !== node.slot % interval) return;
     }
+    const previousCombatTraceWatermark = isCombatTrace
+      ? node.combatTraceWatermark : null;
+    const currentCombatTraceWatermark = isCombatTrace
+      ? combatTraceWatermark(v, previousCombatTraceWatermark) : null;
+    // combat.trace is a large append-only leaf. When its producer watermark
+    // and event identities are unchanged, the exact canonical signature and
+    // full mirror payload are already retained on this node. Advance the
+    // freshness clock without re-walking the record; any append, trim,
+    // replacement, reset, malformed shape, or unknown field falls through to
+    // the existing exact path below.
+    if (currentCombatTraceWatermark
+        && node.lastSign >= 0
+        && sameCombatTraceWatermark(previousCombatTraceWatermark, currentCombatTraceWatermark)) {
+      node.lastSign = tick;
+      return;
+    }
     const pv = projectDomainLeaf(leafRule, v);
     const sig = canonicalSignature(pv, sigScratch);
     // Production sends the canonical value, never its hash. Compare the retained
@@ -1307,6 +1434,18 @@ export function createDomainDiffer(options = {}) {
     stats.signedBytes += sig.length;
     node.lastSign = tick;
     node.bytes = sig.length;
+    if (currentCombatTraceWatermark) {
+      const eventRefs = node.combatTraceEventRefs || [];
+      eventRefs.length = currentCombatTraceWatermark.events.length;
+      for (let i = 0; i < eventRefs.length; i++) {
+        eventRefs[i] = currentCombatTraceWatermark.events[i];
+      }
+      currentCombatTraceWatermark.eventRefs = eventRefs;
+      node.combatTraceEventRefs = eventRefs;
+    } else {
+      node.combatTraceEventRefs = null;
+    }
+    node.combatTraceWatermark = currentCombatTraceWatermark;
     const freshSlot = node.probeSlot == null;
     if (freshSlot) assignProbeSlot(node, path);
     if (changed) {
@@ -1331,8 +1470,10 @@ export function createDomainDiffer(options = {}) {
       const updates = [];
       const stats = { shipBytes: 0, ships: 0, signedBytes: 0, oversize: [] };
       const npcJobsRevision = resolveDomainValue(state, 'npcJobs.revision');
+      const runContext = resolveDomainValue(state, 'run');
       for (const key of DOMAIN_MIRROR_KEYS) {
-        walk(key, [key], resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision);
+        walk(key, [key], resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
+          runContext);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
       let probe = null;

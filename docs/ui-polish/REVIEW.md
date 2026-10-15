@@ -62,7 +62,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`ship`** | **DONE** (ui-polish-27) | See § THE SHIP flight host below — blurb off gauges; heroes two-up ≤1100 |
 | **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
-| `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
+| **`chart`** / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | **DONE** (desktop shell + phone sheet, ui-polish-34) | See § Chart on a phone below |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
@@ -1075,3 +1075,17 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish29a/{before,after}/`, `after
 Focused test: `pq-033-00-credits` 2/3, with the NOTICE `@elemaudio/web-renderer` check failing identically on master.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,desk}/`, `compare-{phone-390x844,800x600,960x540,1280x720,1920x1080}.png`.
+
+## Chart on a phone — the sky is a window, the page scrolls (ui-polish-34)
+
+**Before (`--phone`, 390×844 and 844×390):** the whole chart was squeezed into one frame over a full-screen canvas. Portrait: the inspector was a 64px box over a dimmed map, so ENGAGE ROUTE / PAUSE / DISENGAGE were hidden inside it; the tab strip was one 875px row (ECONOMY…HISTORY past the edge, out of reach); the zoom strip floated mid-map; and the foot's tape crossed the readings, with the lit leg's band running off the left edge from DESTINATION. On its side: the four-row phone head took 188 of 390px, the lens band, sky and inspector shared the 41px left, and the map sat under every word.
+
+**After (`mobileScreenLayouts.js`, phone only — `data-sf-mobile="1"`):**
+- Portrait (`data-layout="narrow"`) and on its side (`compact`, ≤540 tall, coarse pointer): the sheet's rows are content-sized and the page scrolls. The canvas is an in-flow window (portrait `clamp(260px, 44dvh, 420px)`, side `clamp(220px, 72dvh, 300px)`) between LENSES and the inspector, with 22px faded edges. The inspector, tabs and foot follow at full height. The glass background runs the full page (`background-attachment: local`).
+- All nine inspector tabs wrap onto the tab instrument's per-row scales (three rows in portrait, one row on its side).
+- The zoom strip stands at the window's bottom-right, clear of the canvas "per bar" ruler. `chartHub.js` (phone branch only) now measures in page coordinates and publishes `--gm-sky-bottom`, so the strip stays on the window while the page scrolls.
+- Foot: portrait is two rows of two, and each row carries its own run of the tape; on its side the four answers share one run, as on desktop.
+- On its side the head is two rows: title, LOCAL/SYSTEM/GALAXY, CONTROLS, CLOSE, then search and QUIET. The sector stamp sleeps, as it already does in portrait.
+
+**Checked:** bench clean (0 findings) for `chart`, `chart-route` and `chart-local` at 390×844 and 844×390 `--phone`, and at 390×844, 960×540, 1280×720 and 1920×1080 desktop. Desktop chrome is untouched (every rule needs `data-sf-mobile`, and the hub change is inside its phone branch); the only desktop pixel differences are inside the map, where run-to-run animation already varies. `check:map-information-depth` passes all 18 sections. Selectors and IDs are unchanged. Shots: `ui-shots/polish34/` (`compare-chart-phone*.png`).
+

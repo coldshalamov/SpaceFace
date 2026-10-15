@@ -32,6 +32,10 @@ export const ALLOWED_WALL_TIME_FILES = new Map([
   // flight.js call perfNow() for _diag.tickMs instead of touching wall time themselves.
   ['src/core/perfRuntime.js', 'perf instrumentation clock; perfNow() is the sanctioned diagnostic seam'],
   ['src/core/loop.js', 'frame driver: wall/elapsed stamps only feed the fixed-step accumulator'],
+  // Worker transport owns its fixed-step timer just as loop.js owns the main-thread driver.
+  // localNowMs measures timer deadlines/elapsed input; gameplay still advances by fixed dt
+  // through the authoritative host, and its systems continue to use state.simTime.
+  ['src/core/wholeSimBrowserWorker.js', 'worker frame driver: local wall stamps feed fixed-step scheduling and deadlines'],
   // Delivery-deadline clock: flush(maxMs) bounds how long a listener drain may hold the frame.
   // The stamps set a wall budget for queued emit slices — the same frame-pacing class as the
   // loop accumulator — and never name a sim outcome. The bus stays dependency-free, which is

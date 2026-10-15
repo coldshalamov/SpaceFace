@@ -34,6 +34,7 @@ import { oreTableByWeight, oreTableForAsteroidType } from '../data/mining.js';
 import { listSelectableComponents } from '../systems/interactionDescriptors.js';
 import { glyphSvg } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { commodityCatalogLegality, restrictedSalvageForWreck } from '../data/salvageLegality.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
@@ -494,6 +495,22 @@ export function objectInfoLine(t, state, p, dist) {
       facts.push(`Holds ${label}${amount > 0 ? ` ×${amount}` : ''}`);
     } else if (t.type === 'wreck') {
       facts.push('Salvageable');
+    }
+    const pickedClean = t.type === 'wreck' && pool != null && lines.length === 0;
+    const heldCommodityIds = lines.length
+      ? lines.map(([id]) => id)
+      : (typeof d.commodityId === 'string' && d.commodityId ? [d.commodityId] : []);
+    if (d.laundered === true) {
+      facts.push('Papers washed');
+    } else if (t.type === 'wreck' && restrictedSalvageForWreck(t) && !pickedClean) {
+      facts.push('Restricted salvage');
+    } else if (d.legality !== 'legal') {
+      const hasContraband = d.legality === 'contraband'
+        || heldCommodityIds.some((id) => commodityCatalogLegality(id) === 'contraband');
+      const hasRestricted = d.legality === 'restricted'
+        || heldCommodityIds.some((id) => commodityCatalogLegality(id) === 'restricted');
+      if (hasContraband) facts.push('Contraband');
+      else if (hasRestricted) facts.push('Restricted cargo');
     }
     // A disclosed kill record rides the same facts line in its own terse shape — the reveal's
     // story exists only at identified+, so its presence IS the disclosure gate.

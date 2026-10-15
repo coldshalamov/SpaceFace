@@ -11,6 +11,7 @@ import {
 import { PhasedExplosionLifecycle } from '../src/render/combat/phasedExplosions.js';
 import { vfx } from '../src/render/vfx.js';
 import { presentationAdapters } from '../src/systems/presentationAdapters.js';
+import { presetFor } from '../src/render/vfxColorLightDirector.js';
 
 function makeState(particleQuality = 'low') {
   const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } };
@@ -353,8 +354,13 @@ test('event-light saturation preserves hero lights and rejects weaker ambient re
   assert.ok(system._lights.every((slot) => slot.admissionSerial === -1));
 });
 
-test('explosion phase emission carries resident priority into particles, sprites, and lights', () => {
+test('fallback explosion preserves resident pool priority and authored light priorities', () => {
   const { system } = makeVfxHarness();
+  // The authored rupture presenter owns the default solid explosion now. This fixture
+  // exercises the retained fallback's pool admission contract, rather than requiring
+  // the default presenter to emit the superseded sprite composition.
+  system._explosionRupture?.dispose();
+  system._explosionRupture = null;
   const entry = system._explosions.start({
     classId: 'ordinary',
     x: 4,
@@ -373,8 +379,12 @@ test('explosion phase emission carries resident priority into particles, sprites
     (slot) => system._spr[slot].admissionPriority).every((priority) => priority === 0.93));
   assert.ok(Array.from(system._activeParticles.slice(0, system._liveCount),
     (slot) => system._particleAdmissionPriority[slot]).every((priority) => priority === 0.93));
+  // FB-074 gives the lighting director its own authored admission policy. It no longer
+  // borrows the particle priority; the particle/sprite assertions above still protect that path.
+  const authoredLightPriorities = new Set(['ignition', 'internal', 'internal-secondary', 'burst', 'rupture', 'beat']
+    .map(severity => presetFor('explosion', severity)?.priority));
   assert.ok(system._lights.filter((slot) => slot.active)
-    .every((slot) => slot.admissionPriority === 0.93));
+    .every((slot) => authoredLightPriorities.has(slot.admissionPriority)));
   assert.ok(Array.from(system._activeTrailStreaks.slice(0, system._liveTrailStreakCount),
     (slot) => system._ts[slot].admissionPriority).every((priority) => priority === 0.93));
 });
