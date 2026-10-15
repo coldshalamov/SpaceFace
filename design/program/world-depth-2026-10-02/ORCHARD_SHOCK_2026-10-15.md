@@ -22,13 +22,3 @@ This is focused explicit simulation evidence, not a complete production-manifest
 - test/anvil-orchard-pod-shock.test.mjs
 
 Full120-file recovery manifest and exact five-path delta accompany this handoff. Preserve newer unrelated upstream work when applying it.
-
-
-## Delivery state
-
-- Exported: sealed 120-file current-604 snapshot; exact manifest and five-path delta are included in the public evidence directory.
-- Tested: 629/629 selected cases, 62/62 native compatibility, 51/51 independent collision cases, and 3/3 production-order controls passed.
-- Published: draft PR #391 on `feature/orchard-player-route-20261015`.
-- Integrated: no; the PR is still open and unmerged.
-- Accepted: no; normal browser/camera review, target-device performance, player-feel and broader game acceptance remain open.
-- Separate work: thermal-readout/UI work is active and excluded from this snapshot and its 629-case run.
