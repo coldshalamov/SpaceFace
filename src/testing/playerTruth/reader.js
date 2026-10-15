@@ -787,7 +787,11 @@ export function installPlayerTruthReader(win, opts = {}) {
       vw, vh, p: null, e: [], info: null, vfx: null,
       ...(typeof opts.rounds === 'boolean' ? { roundMode: opts.rounds } : {}) };
     if (r.renderer && r.renderer.info) s.info = { calls: r.renderer.info.render.calls, tris: r.renderer.info.render.triangles };
-    const flightSample = st.mode === 'flight';
+    // While the flight reveal veil still covers the canvas the player sees the shell, not this
+    // frame, so its pixels and VFX census measure nothing. The first pixelSplit also renders the
+    // scene three times into its own target and reads it back (3-5 s on SwiftShader); landing
+    // behind the veil it used to delay the game's own first draw by that much.
+    const flightSample = st.mode === 'flight' && r.flightVeilHoldsSim !== true;
     const skipWorldCensus = PREPARATION_MODES.has(st.mode);
     let threatBoxes = null; let bodies = null;
     if (!skipWorldCensus) {
