@@ -903,3 +903,79 @@ test('an ignored cleanup finally runs once and a throwing observer stays inert',
     process.removeListener('unhandledRejection', onUnhandled);
   }
 });
+
+test('releasing an opening warm drops cached drawables and disposed package records', () => {
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  const drawable = new THREE.Mesh();
+  root.add(drawable);
+  scene.add(root);
+  root.userData.rosterPrewarm = 'opening-species-warm';
+  const activeSession = { scene, drawables: [drawable] };
+  const calls = [];
+  const instances = [
+    { dispose() { calls.push('first'); } },
+    { dispose() { calls.push('failed'); throw new Error('fixture disposal failed'); } },
+    { dispose() { calls.push('last'); } },
+  ];
+  const warm = {
+    root,
+    packageInstances: instances,
+    warmPackageResidency: {
+      release() {
+        assert.equal(instances.length, 0, 'all instance bookkeeping retires before the shared lease');
+        calls.push('residency');
+      },
+    },
+  };
+  const owner = Object.assign(Object.create(renderSystem), {
+    state: { mode: 'flight', render: { firstPlayableFrameAt: 1, parkedWarmRoots: [root] } },
+    scene,
+    _rosterPrewarmRoots: [root],
+    _earlyCrucibleWarm: warm,
+    _touchDrawableCensus: { ...activeSession, generation: 2 },
+  });
+  owner._ensureCrucibleWarmResidencyTeardown(warm);
+
+  assert.deepEqual(owner._releaseOrdinaryOpeningWarm('fixture-first-picture'), { released: 1, pending: 0 });
+  assert.equal(root.parent, null);
+  assert.equal(owner._earlyCrucibleWarm, null);
+  assert.deepEqual(owner._rosterPrewarmRoots, []);
+  assert.deepEqual(owner.state.render.parkedWarmRoots, []);
+  assert.equal(owner._touchDrawableCensus, null, 'the renderer no longer pins the retired root through its census');
+  assert.deepEqual(activeSession.drawables, [drawable], 'an in-flight session retains its untouched snapshot');
+  assert.deepEqual(calls, [], 'the paced disposal queue still owns the disposal work');
+
+  root.userData.releaseAuthoredAssetResidency('fixture-queued-disposal');
+  assert.deepEqual(calls, ['first', 'failed', 'last', 'residency'], 'one failing instance cannot skip later releases');
+  assert.equal(warm.packageInstances, instances, 'retire the existing array so other holders release the same records');
+  assert.deepEqual(instances, []);
+  root.userData.releaseAuthoredAssetResidency('fixture-repeat');
+  assert.deepEqual(calls, ['first', 'failed', 'last', 'residency'], 'release stays idempotent');
+});
+
+test('clearing a world drops its census without changing active sessions or the kept player', () => {
+  const scene = new THREE.Scene();
+  const player = new THREE.Mesh();
+  scene.add(player);
+  const activeSession = { scene, drawables: [player] };
+  const owner = Object.assign(Object.create(renderSystem), {
+    state: { playerId: 1 },
+    scene,
+    _meshes: new Map([[1, player]]),
+    _meshesVersion: 0,
+    _meshBuildQueue: [],
+    _meshBuildQueuedIds: new Set(),
+    _hazardVisuals: [],
+    _touchDrawableCensus: { ...activeSession, generation: 2 },
+    _killDepthStageSession() {},
+    _markShadowReceiversDirty() {},
+    _publishAssetResidencyDiagnostics() {},
+  });
+
+  owner.clearAllMeshes(true);
+  assert.equal(owner._touchDrawableCensus, null);
+  assert.deepEqual(activeSession.drawables, [player]);
+  assert.equal(owner._meshes.get(1), player);
+  assert.equal(player.parent, scene, 'dropping bookkeeping must preserve a resident kept-player mesh');
+});

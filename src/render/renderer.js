@@ -10525,6 +10525,7 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  owner._touchDrawableCensus = null;
   const contextLost = options.contextLost === true || owner._contextLost === true;
   disableRigidOpaqueBatchProbe(owner, contextLost ? 'context-lost' : 'renderer-destroyed');
   owner._rigidOpaqueBatchScene = null;
@@ -14789,6 +14790,7 @@ export const render = {
       // publication gate so they can commit here; keep mesh streaming deferred.
       const sectorId = state.world && state.world.currentSectorId;
       this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1;
+      const touchCensusGeneration = this._liveSectorCookGeneration;
       const capturedCookStale = captureLiveSectorCookStale();
       const cookStale = () => capturedCookStale() || ownerInactive();
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
@@ -16870,6 +16872,7 @@ export const render = {
       }
       return { skipped: false, resumed, opening: finalOpening, upgrades, pending, cook, leftover };
       } finally {
+        if (this._touchDrawableCensus?.generation === touchCensusGeneration) this._touchDrawableCensus = null;
         // A restore may replace the entry without starting another cook. Only the
         // captured entry and renderer owner may finalize these shared flags.
         if (!cookStale()) {
@@ -18406,6 +18409,7 @@ export const render = {
       // epoch). Generations plus a currentSectorId re-check at every yield bail the stale
       // cook; the newest invocation owns the shared queues, flags, and its own finally tail.
       this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1;
+      const touchCensusGeneration = this._liveSectorCookGeneration;
       if (cookOwner) cookOwner.generation = this._liveSectorCookGeneration;
       const cookStale = captureLiveSectorCookStale();
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: cookSectorId || null };
@@ -18986,6 +18990,7 @@ export const render = {
           leftover,
         };
       } finally {
+        if (this._touchDrawableCensus?.generation === touchCensusGeneration) this._touchDrawableCensus = null;
         // Entry replacement can supersede this cook without minting another generation.
         if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
@@ -23314,6 +23319,8 @@ export const render = {
       }
     }
     if (released > 0) {
+      // Active touch sessions own their snapshot; only drop the renderer's cache reference.
+      this._touchDrawableCensus = null;
       render.openingWarmReleased = {
         reason,
         released,
@@ -23463,6 +23470,8 @@ export const render = {
         try { instance && typeof instance.dispose === 'function' && instance.dispose(); }
         catch (_) { /* teardown is best-effort */ }
       }
+      // Disposed instance closures still retain their decoded package generation.
+      warm.packageInstances.length = 0;
       try { warm.warmPackageResidency.release(); } catch (_) { /* best-effort */ }
     };
     warm.residencyHookInstalled = true;
@@ -24649,6 +24658,7 @@ export const render = {
   },
 
   _releaseSurvivalRosterPrewarm(reason) {
+    this._touchDrawableCensus = null;
     const roots = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
     this._rosterPrewarmRoots = [];
     if (this.state && this.state.render) this.state.render.parkedWarmRoots = [];
@@ -26109,6 +26119,7 @@ export const render = {
   },
 
   clearAllMeshes(keepPlayer) {
+    this._touchDrawableCensus = null;
     this._sectorBoundaryPreparations?.abortAll('render-mesh-clear');
     // Whole-tree teardown stays synchronous — flush the deferred corpse tails with it.
     flushDisposeQueueLane(this, '_despawnDisposeQueue', '_despawnDisposeHead');

@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { runSession } from '../src/systems/runSession.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import {
   deathSentence,
   outcomeSentence,
@@ -140,6 +141,8 @@ test('the player dying ends the run and publishes a causal summary', () => {
   const harness = boot();
   beginActive(harness);
   harness.state.run.wave = 4;
+  // This played-round fixture must latch the same first-act admission as real flight input.
+  noteSwarmPilotAction(harness.state);
   cohortKill(harness);
   cohortKill(harness);
   harness.bus.emit('run:awardRequested', { credits: 40, xp: 260, score: 900 });
