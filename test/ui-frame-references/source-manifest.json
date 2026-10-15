@@ -693,7 +693,6 @@
   "src/ui/presenters/engineeringPreview.js": "7907c72707eff18f77303d28906f720d4861b19b0661a005e2f37f60e402cd6f",
   "src/ui/previewContextRetire.js": "0191ba3f42e80aef353200496bb6cb96d3f654f319f5ef2a48aa519e80ad09d3",
   "src/ui/priceForecast.js": "6ef26b6150dc3c8acd81aae3782b8872feecee61eca7e523ec005f3c9539cebe",
-  "src/ui/priceHistory.js": "162dd0c4432d9ef998ec43b6109236058818ff6969a26b127a77d09daf8289e8",
   "src/ui/promptDeck.js": "d15ef5f07215639d9cd837b2ad26533db1cd283fa9c028f80420f1e8c5340b2b",
   "src/ui/prompts/bulkHaulTag.js": "65565a4bdedd85184c279988c90672164afdaac92293983b724fe38709e8b368",
   "src/ui/quitGame.js": "594e22f9512070fc37a9af7e4fdc570bed9404e6b2227921331fa04285bbe854",

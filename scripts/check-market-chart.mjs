@@ -2,7 +2,7 @@
 // T8h backend gate: Market Chart.
 //
 // Proves the shipped market-chart path has real data behind it:
-// - economy ticks record per-station/per-commodity price history
+// - economy-owned market history feeds the shipped station chart
 // - forecasts come from the live hidden cycle state
 // - the Market screen wires history, forecast, regime, trend, event log, canvas, and tooltip
 import assert from 'node:assert/strict';
@@ -14,7 +14,6 @@ import { COMMODITIES } from '../src/data/commodities.js';
 import { settleCredits } from '../src/economy/economyMath.js';
 import { economy, getCycle as liveCycleFor } from '../src/systems/economy.js';
 import { cycleFactorAt, maybeAdvanceRegime, predictPriceCurve, rawCycleFactorAt, regimeLabel } from '../src/systems/economyCycles.js';
-import { initPriceHistory, getPriceHistory, loadHistory } from '../src/ui/priceHistory.js';
 import {
   createMarketHistoryBackfill,
   marketPriceHistory,
@@ -32,7 +31,6 @@ assert.equal(typeof window, 'undefined', 'this check must run headless');
 
 guarded(testRealEconomyHistoryAndForecast);
 guarded(testSeededStationMarketHistory);
-guarded(testRingBufferSeededOnFreshGame);
 guarded(testBulkQuoteMatchesExecutedTrade);
 testMarketScreenChartSourceContract();
 await testMarketHistoryAuthorityContract();
@@ -59,8 +57,8 @@ function testRealEconomyHistoryAndForecast() {
   assert.ok(firstForecast.every((p) => Number.isFinite(p.mid) && p.mid > 0),
     'forecast mids are finite positive prices');
 
-  // Seed one live event and one stock-pressure bump; priceHistory should capture both the event
-  // marker and a changing mid-price, not a static decorative sparkline.
+  // The event log is sourced from current economy events; the chart's actual price series is the
+  // economy-owned listing history and must move with live stock pressure.
   state.economy.econEvents.push({
     id: 'chart_event_1',
     type: 'shortage',
@@ -74,23 +72,25 @@ function testRealEconomyHistoryAndForecast() {
     econ.econTick(5, state);
   }
 
-  const history = getPriceHistory(stationId, commodityId);
-  assert.ok(history.length >= 12, `price history records economy ticks; got ${history.length}`);
-  assert.ok(history.some((p) => (p.events || []).includes('chart_event_1')),
-    'price history captures active economic event ids for the chart event log');
+  const entry = state.economy.markets[stationId][commodityId];
+  const history = entry.history;
+  assert.ok(history.length >= 64, `economy-owned history retains its bounded past; got ${history.length}`);
   assert.ok(new Set(history.map((p) => p.mid)).size > 1,
     'price history changes after real stock pressure and drift');
+  assert.ok(entry.lastBuy > entry.lastSell && entry.lastSell > 0,
+    'the current listing quote keeps a positive bid-ask spread separate from compact history');
   for (let i = 0; i < history.length; i++) {
     const p = history[i];
-    assert.ok(Number.isFinite(p.t) && p.t >= 0, `history[${i}] has a finite timestamp`);
+    assert.ok(Number.isFinite(p.t), `history[${i}] has a finite timestamp`);
     assert.ok(Number.isFinite(p.mid) && p.mid > 0, `history[${i}] has a finite mid`);
-    assert.ok(Number.isFinite(p.buy) && p.buy > p.sell, `history[${i}] has buy above sell`);
-    assert.ok(Number.isFinite(p.sell) && p.sell > 0, `history[${i}] has a positive sell`);
   }
 
-  const aged = getPriceHistory(stationId, commodityId, 15);
-  assert.ok(aged.length > 0 && aged.length < history.length,
-    'age-filtered history returns the recent chart window, not the full buffer');
+  const chartSeries = marketPriceHistorySeries(history, entry, def, state.simTime);
+  const trend = marketPriceHistory(history, entry, def, state.simTime);
+  assert.ok(chartSeries.length > 0 && chartSeries.length <= history.length,
+    'the visible chart selects a bounded window of recorded economy samples');
+  assert.deepEqual(trend, chartSeries.map((point) => point.mid),
+    'the row trend and expanded chart read the same authoritative samples');
 
   const afterForecast = predictPriceCurve(state, stationId, commodityId, 24, 5);
   assert.equal(afterForecast.length, 24, 'forecast still renders after live economy movement');
@@ -267,35 +267,6 @@ function testSeededStationMarketHistory() {
   economy._instance = null;
 }
 
-function testRingBufferSeededOnFreshGame() {
-  // Regression: a freshly started game used to leave the UI price-history ring buffer empty until
-  // enough live economy ticks accrued, so every chart fed by getPriceHistory drew a flat line right
-  // after starting. The real boot emits game:new on the bus once the world is warm; the recorder
-  // must backfill the buffer from the economy's seeded entry.history so the first dock has a past.
-  const { state, bus, stationId, commodityId } = bootEconomyChartFixture();
-  bus.emit('game:new');
-  const ring = getPriceHistory(stationId, commodityId);
-  assert.equal(ring.length, 64,
-    'ring buffer is seeded from entry.history on game:new, before any economy tick');
-  assert.ok(new Set(ring.map((p) => p.mid)).size > 1,
-    'seeded ring buffer shows visible price movement, not a flat line');
-  for (let i = 0; i < ring.length; i++) {
-    const p = ring[i];
-    assert.ok(Number.isFinite(p.t) && p.t >= 0, `seeded[${i}] keeps the t>=0 ring-buffer invariant`);
-    assert.ok(Number.isFinite(p.buy) && p.buy > p.sell, `seeded[${i}] keeps buy above sell`);
-    assert.ok(Number.isFinite(p.sell) && p.sell > 0, `seeded[${i}] keeps a positive sell`);
-  }
-
-  // marketOpened is the immediate-open path (screen shown before the first 5s tick): it must also
-  // seed a buffer that was empty after a reset.
-  loadHistory({});
-  bus.emit('economy:marketOpened', { stationId });
-  const reopened = getPriceHistory(stationId, commodityId);
-  assert.equal(reopened.length, 64, 'opening the market seeds an empty buffer before the first tick');
-
-  economy._instance = null;
-}
-
 function testStationMarketSourceContract() {
   assert.doesNotMatch(STATION_MARKET_SOURCE, /synthesize a gentle series/i,
     'the shipped Station Market must not fabricate one shared fallback chart');
@@ -312,7 +283,6 @@ function testStationMarketSourceContract() {
 }
 
 function bootEconomyChartFixture() {
-  loadHistory({});
   const bus = makeBus();
   const state = {
     mode: 'flight',
@@ -329,7 +299,6 @@ function bootEconomyChartFixture() {
   };
   const econ = { ...economy };
   econ.init({ state, bus, helpers: {}, registry: { get: () => null } });
-  initPriceHistory(bus, state);
   econ.newGame();
   const stationId = 'station_helios';
   const commodityId = 'cmdty_food';
