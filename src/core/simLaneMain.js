@@ -709,6 +709,9 @@ export function createSimLaneRuntime({
   let consumedTickCount = 0;
   let skippedPresentationTicks = 0;
   let lifecycleGeneration = 0;
+  // Public worker read snapshots are epoch-bound. A facade can reject an older receipt
+  // during restore/new-game without mutating any mirrored authority state on main.
+  if (helpers) helpers.workerReadGeneration = () => laneClosed ? -1 : lifecycleGeneration;
 
   // ---- reply application ------------------------------------------------------------------
   function applyInitReply(msg) {

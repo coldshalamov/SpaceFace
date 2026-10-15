@@ -765,8 +765,28 @@ export function createSimHost() {
     host.draftReadDirty = false;
   }
 
+  function refreshResultsReadView(state) {
+    const owner = host.registry?.get('survivalResults');
+    if (!owner || typeof owner.lastResult !== 'function' || typeof owner.resultRevision !== 'function') {
+      state.survivalResultsPublic = null;
+      host.resultsReadOwner = null;
+      return;
+    }
+    const revision = owner.resultRevision();
+    const generation = host.lifecycleGeneration || 0;
+    if (host.resultsReadOwner === owner && host.resultsReadRevision === revision
+        && host.resultsReadGeneration === generation) return;
+    // lastResult() detaches the native owner's private receipt. This immutable worker-owned
+    // read snapshot travels before run:resultsReady; UI code never writes the authority slot.
+    state.survivalResultsPublic = { result: owner.lastResult(), revision, generation };
+    host.resultsReadOwner = owner;
+    host.resultsReadRevision = revision;
+    host.resultsReadGeneration = generation;
+  }
+
   function diffDomains(state, seq) {
     refreshDraftReadView(state);
+    refreshResultsReadView(state);
     const r = host.domainDiffer.diff(state, seq);
     host.domainDiffNsTotal += BigInt(Math.round(r.diffMs * 1e6));
     if (r.diffMs > host.domainDiffMsMax) host.domainDiffMsMax = r.diffMs;
@@ -1185,6 +1205,26 @@ export function createSimHost() {
         const c = registry.get('crafting');
         if (!c || typeof c.build !== 'function') return { ok: false, reason: 'crafting-system-unavailable' };
         return { ok: c.build((args && args.bpId) || null, (args && args.stationId) || null) === true };
+      }],
+      // The machinery UI reads detached projections on main; commits remain on the native
+      // site owner. Exact allowlisting prevents this RPC from exposing private system methods.
+      ['asteroidSitesCall', (args) => {
+        const owner = registry.get('asteroidSites');
+        if (!owner) return { ok: false, reason: 'asteroid-sites-system-unavailable' };
+        const arities = {
+          installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3,
+          setExportFlag: 3, setPodTarget: 2, setPodDestination: 2, transferGoods: 5,
+          tickWorkbench: 2,
+        };
+        const method = args?.method;
+        const values = args?.args;
+        if (!Object.hasOwn(arities, method) || typeof owner[method] !== 'function') {
+          return { ok: false, reason: 'unknown-asteroid-sites-method' };
+        }
+        if (!Array.isArray(values) || values.length > arities[method]) {
+          return { ok: false, reason: 'bad-asteroid-sites-args' };
+        }
+        return { ok: true, result: owner[method](...values) };
       }],
       // Generic method passthroughs for facade coverage — the main side's
       // capability checks see the method names; the lane's folded ops (like

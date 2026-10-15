@@ -521,7 +521,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
   'cursor',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
-  'survivalDraftPublic',
+  'survivalDraftPublic', 'survivalResultsPublic', 'careers',
   'physicsVenueSession', 'world.wreckCourtRulings',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
@@ -530,7 +530,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'automation.meta', 'automation.traders', 'automation.fleet',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
-  'sites.byId', 'sites.worldById', 'sites.worldOrder', 'automation.drones',
+  'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'automation.drones',
   'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
   'drill.asteroidId',
   'save.slots', 'save.currentSlot',
@@ -1344,10 +1344,11 @@ export function createDomainDiffer(options = {}) {
 
   function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext, playerId) {
     const node = ensureNode(path, segs);
-    // This owner publishes detached immutable snapshots only at settlement.
-    // A new stock/hold receipt must not wait for the large-leaf cold cadence.
-    const freshDraftSnapshot = segs[0] === 'survivalDraftPublic' && node.draftSnapshotSource !== v;
-    if (segs[0] === 'survivalDraftPublic') node.draftSnapshotSource = v;
+    // These owners publish detached immutable snapshots only at settlement. A fresh result
+    // or stock/hold receipt must arrive before its event opens a screen, even for a cold leaf.
+    const ownerSnapshot = segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic';
+    const freshOwnerSnapshot = ownerSnapshot && node.ownerSnapshotSource !== v;
+    if (ownerSnapshot) node.ownerSnapshotSource = v;
     if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
       if (node.leaf) {
         releaseProbeSlot(node); // leaf -> container
@@ -1359,7 +1360,7 @@ export function createDomainDiffer(options = {}) {
         }
       }
       node.leaf = false;
-      const enumDue = freshDraftSnapshot || node.lastEnum == null
+      const enumDue = freshOwnerSnapshot || node.lastEnum == null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
         const liveKids = new Set(Object.keys(v));
@@ -1462,7 +1463,7 @@ export function createDomainDiffer(options = {}) {
         runAdmissionBootstrap = true;
       }
     }
-    if (node.lastSign >= 0 && !freshDraftSnapshot && !npcJobsRevisionChanged
+    if (node.lastSign >= 0 && !freshOwnerSnapshot && !npcJobsRevisionChanged
         && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
@@ -1482,7 +1483,7 @@ export function createDomainDiffer(options = {}) {
           return;
         }
       }
-    } else if (!freshDraftSnapshot && leafRule && leafRule.deferFirstSign) {
+    } else if (!freshOwnerSnapshot && leafRule && leafRule.deferFirstSign) {
       // Mass-mint smoothing for leaf-view rules: a first sign waits for the
       // leaf's slot instead of firing immediately, spreading mint bursts
       // (e.g. station markets materializing on one economy:tick) over
