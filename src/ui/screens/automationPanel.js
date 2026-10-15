@@ -269,6 +269,9 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
 }
 
 const STYLE_ID = 'sf-automation-style';
+// A desktop window 760px wide or narrower. A phone (data-sf-mobile) has its own sheet in
+// orrery/mobileScreenLayouts.js, so these rules leave it alone.
+const AU_NARROW = 'html:root:not([data-sf-mobile="1"]) body #screens #sf-automation.au-orrery';
 const CSS = `
 /* Operations board on the shared plate vocabulary (styles/menu.css): one flat dark surface, a
    19px title, tabs and buttons that match Settings / Codex / Help, IBM Plex for words and Plex
@@ -660,6 +663,47 @@ html body #screens #sf-automation.au-orrery .au-next-meta { font-size: 12px; }
   html body #screens #sf-automation.au-orrery .au-shop.au-shop--drones .meta { grid-auto-flow: row; grid-template-columns: 10ch 20ch 10ch; row-gap: 2px; }
 }
 html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-content: start; padding-top: 2px; }
+/* ≤760 wide desktop window: the 270px board column, the five-node strip beside the gauge and
+   the one-line purchase rungs only fit from 761px, so below it the strip names ran into the next
+   ring, the board's cost sat on its sentence and the rung stats printed under THROTTLE. The strip
+   takes its own row as a wrapping set of steppers, the board stacks over the summary, and each
+   rung puts its stats on wrapping lines with the verbs under them. */
+@media (max-width: 760px) {
+  ${AU_NARROW} { width: min(96vw, 760px); }
+  ${AU_NARROW} .au-head { padding: 14px 20px 8px; }
+  ${AU_NARROW} .au-body { padding: 10px 20px 14px; }
+  ${AU_NARROW} .au-top { flex-wrap: wrap; row-gap: 6px; }
+  ${AU_NARROW} .au-income { flex-wrap: wrap; row-gap: 10px; }
+  ${AU_NARROW} .au-flow { flex: 1 0 100%; margin-left: 0; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px 14px; }
+  ${AU_NARROW} .au-flow__cap { grid-column: 1 / -1; margin: 0; }
+  ${AU_NARROW} .au-node { display: grid; grid-template-columns: auto auto minmax(14px, 1fr); grid-template-rows: auto auto;
+    align-items: center; column-gap: 7px; row-gap: 3px; }
+  ${AU_NARROW} .au-node__ring { grid-area: 1 / 1; }
+  ${AU_NARROW} .au-node__t { display: contents; }
+  ${AU_NARROW} .au-node__t b { grid-area: 1 / 2; line-height: 1; }
+  ${AU_NARROW} .au-node__t i { grid-area: 2 / 1 / 3 / 4; line-height: 1.1; white-space: nowrap; letter-spacing: .08em; }
+  ${AU_NARROW} .au-node__beam { grid-area: 1 / 3; margin: 0 4px 0 3px; }
+  ${AU_NARROW} .au-tabs { gap: 0 20px; }
+  ${AU_NARROW} .au-tab { letter-spacing: .1em; }
+  ${AU_NARROW} .au-command { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  ${AU_NARROW} .au-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  ${AU_NARROW} .au-next-body { -webkit-line-clamp: 3; }
+  ${AU_NARROW} .au-next-row { flex-wrap: wrap; justify-content: flex-start; row-gap: 8px; }
+  ${AU_NARROW} .au-next-meta { flex: 1 0 100%; }
+  ${AU_NARROW} .au-shop { flex-wrap: wrap; row-gap: 4px; column-gap: 20px; }
+  ${AU_NARROW} .au-shop .grow { flex: 1 0 100%; }
+  ${AU_NARROW} .au-shop .meta { display: flex; flex-wrap: wrap; gap: 2px 16px; }
+  ${AU_NARROW} .au-shop .meta > span { overflow: visible; }
+}
+@media (max-width: 520px) {
+  ${AU_NARROW} .au-title { font-size: 17px; }
+  ${AU_NARROW} .au-top-right { flex: 1 0 100%; justify-content: space-between; }
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px 12px; }
+  ${AU_NARROW} .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  ${AU_NARROW} .au-shop .grow { grid-template-columns: minmax(0, 1fr); }
+  ${AU_NARROW} .au-shop .meta { grid-column: 1; }
+}
 html body #screens #sf-automation.au-orrery .au-metric {
   border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
 html body #screens #sf-automation.au-orrery .au-metric:hover { border: 0; background: none; }

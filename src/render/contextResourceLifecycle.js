@@ -58,6 +58,39 @@ export function mergeWebGlDisposeListenerProvenance(target, source) {
   return merged;
 }
 
+/**
+ * Return the exact dispose-listener identities currently attached to one owned Three resource.
+ * Three's EventDispatcher keeps these in its private `_listeners` table; reading that table is
+ * deliberately isolated here so callers can record an acquisition-time identity delta without
+ * matching callback names or detaching unrelated application listeners.
+ */
+export function snapshotWebGlDisposeListeners(resource) {
+  const listeners = resource?._listeners?.dispose;
+  if (!Array.isArray(listeners)) return new Set();
+  return new Set(listeners.filter((listener) => typeof listener === 'function'));
+}
+
+/**
+ * Add only dispose callbacks that appeared after `before` to exact renderer-generation
+ * provenance. This is used for Three's environment conversion cache: `onCubemapDispose` is
+ * attached lazily when an equirectangular source is first rendered, outside the private resource
+ * probe. The source is owned, but pre-existing listeners still belong to the caller and remain
+ * outside the provenance set.
+ */
+export function captureWebGlDisposeListenerDelta(provenance, resource, before, kind = 'textures') {
+  const target = provenance?.[kind];
+  if (!(target instanceof Set)) return 0;
+  const prior = before instanceof Set ? before : new Set();
+  const current = snapshotWebGlDisposeListeners(resource);
+  let captured = 0;
+  for (const listener of current) {
+    if (prior.has(listener) || target.has(listener)) continue;
+    target.add(listener);
+    captured++;
+  }
+  return captured;
+}
+
 export function describeWebGlDisposeListenerProvenance(provenance) {
   const listenerCounts = {};
   const missingKinds = [];
@@ -122,6 +155,8 @@ export function collectContextLossRoots({
   spaceBackground = null,
   bloom = null,
   renderGraph = null,
+  vfxRoots = [],
+  vfxResources = [],
   entities = [],
 } = {}) {
   const roots = [scene, environment];
@@ -130,6 +165,14 @@ export function collectContextLossRoots({
     const resources = provider.contextLossResources();
     if (Array.isArray(resources)) roots.push(...resources);
   }
+  // VFX owner pools can be intentionally detached from the world scene while still retaining
+  // renderer-owned geometries/materials. Include those roots so a restored context cannot later
+  // fire the dying generation's Three.js dispose listeners through the fresh GL binding.
+  if (Array.isArray(vfxRoots)) roots.push(...vfxRoots);
+  // Some VFX owners retain raw geometries/textures outside any Object3D. Providers publish only
+  // those exact identities so the detach walker can preserve the same listener provenance rules
+  // without widening the walk to arbitrary object graphs.
+  if (Array.isArray(vfxResources)) roots.push(...vfxResources);
   for (const entity of entities || []) {
     if (entity?.mesh) roots.push(entity.mesh);
   }

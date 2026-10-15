@@ -1,5 +1,6 @@
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { stationServiceGaps } from './dockArrival.js';
+import { factionBerthStatusLine } from './dockArrival.js';
 import { navigationFrameHtml } from './views/navigationFrame.js';
 import { CSS } from './views/navigationStyles.js';
 import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from './map/mapControlMap.js';
@@ -5683,6 +5684,7 @@ _stepAnimation(now) {
       const record = findStationRecord(state, t.stationId || t.id);
       const services = record && record.services ? record.services : [];
       const serviceGaps = stationServiceGaps(record);
+      const factionBerthLine = factionBerthStatusLine(state, t.stationId || t.id);
       const chartNote = record && record.chartNote ? String(record.chartNote) : '';
       const activeMissions = state.missions && state.missions.active || [];
       const relevantMission = activeMissions.find(m => m.status === 'active' && m.destStationId === (t.stationId || t.id));
@@ -5720,6 +5722,7 @@ _stepAnimation(now) {
               ${services.map(s => `<span class="gm-svc"><span class="gm-svc-ico" aria-hidden="true">${serviceIconSvg(s)}</span>${String(s).replace(/_/g, ' ').toUpperCase()}</span>`).join('')}
             </div>
             ${serviceGaps.length ? `<div class="gm-ins-note" style="margin-top:6px; color:var(--k-text-live);">Berth lacks: ${serviceGaps.join(' and ')}</div>` : ''}
+            ${factionBerthLine ? `<div class="gm-ins-note" style="margin-top:6px; color:var(--k-text-live);">${escapeMapHtml(factionBerthLine)}</div>` : ''}
             ${chartNote ? `<div class="gm-ins-note" style="margin-top:6px;">${escapeMapHtml(chartNote)}</div>` : ''}
           </div>
         `;

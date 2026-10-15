@@ -684,6 +684,26 @@ export class FamilyProductionFleet {
     }
   }
 
+  contextLossResources() {
+    const resources = [];
+    const seen = new Set();
+    const addProvider = (provider) => {
+      if (!provider || typeof provider.contextLossResources !== 'function') return;
+      const owned = provider.contextLossResources();
+      if (!Array.isArray(owned)) return;
+      for (const resource of owned) {
+        if (!resource || typeof resource !== 'object' || seen.has(resource)) continue;
+        seen.add(resource);
+        resources.push(resource);
+      }
+    };
+    for (const family of this.families || []) {
+      addProvider(family?.plume);
+      addProvider(family?.rcs);
+    }
+    return resources;
+  }
+
   dispose() {
     if (this._disposed) return;
     this.reset();

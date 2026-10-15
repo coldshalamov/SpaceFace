@@ -29,6 +29,9 @@ export const GLIDE_TUNING = Object.freeze({
   spacingMaxWu: 48,          // never sample the path coarser than this
   maxHorizonS: 3.0,          // furthest look-ahead in time
   maxHorizonWu: 1100,        // furthest look-ahead in distance (boost speeds)
+  preRiseMinSpeedWu: 1100,    // slingshot-class motion needs one bounded early-warning sample
+  preRiseHorizonS: 1.35,      // enough runway for the existing rise cap; normal flight stays on the ring
+  preRiseHorizonWu: 2300,     // hard bound on the extra early-warning column
   minSpeedWu: 4,             // below this the target is treated as parked (no look-ahead)
   velocitySmoothingS: 0.12,  // EMA time constant for the target's velocity estimate
   maxRiseScalePerS: 1.6,     // comfortable dolly-out rate, in scale units per second
@@ -162,8 +165,11 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
   const diag = glide.diag;
   const step = Number.isFinite(dt) ? Math.min(Math.max(dt, 0), t.maxStepS) : 0;
   if (!(ry > 1) || typeof roofAt !== 'function') {
-    glide.scale = 1;
-    glide.rate = 0;
+    // A missing callback is an unavailable measurement, not an empty-space measurement. Drop the
+    // predictive history so a later callback cannot replay stale look-ahead roofs while the target
+    // is already elsewhere. The renderer normally keeps a bound roofAt callback; this protects
+    // direct solver consumers and transition seams that temporarily withhold clearance data.
+    resetCameraGlide(glide);
     return 1;
   }
   const maxScale = Math.max(1, Math.min(t.maxScale, Number.isFinite(ceiling) ? ceiling / ry : t.maxScale));
@@ -204,6 +210,7 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
 
   // Age every lookahead sample, then refresh the next few around the ring.
   const n = t.slotCount;
+  let earlyTarget = 1;
   for (let i = 1; i < n; i++) glide.slotAge[i] += step;
   if (speed < t.minSpeedWu) {
     glide.slotReq.fill(1);
@@ -226,11 +233,37 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
       glide.slotTime[i] = dist / closing;
       glide.slotAge[i] = 0;
     }
+
+    // At slingshot speed the ordinary 1100 WU ring can discover a tall roof only ~0.6 s before
+    // the camera column reaches it.  The follower is deliberately capped for a comfortable rise,
+    // so that discovery is too late even though the current-column hard guarantee remains correct.
+    // Take one bounded early-warning column farther ahead, and schedule its requirement early
+    // enough for that same capped follower to reach it.  This is deliberately gated above normal
+    // boost speed and never changes the rise cap or the final penetration clamp.
+    if (speed >= t.preRiseMinSpeedWu) {
+      const preRiseDistance = Math.min(t.preRiseHorizonWu, speed * t.preRiseHorizonS);
+      if (preRiseDistance > horizon + spacing) {
+        const preRiseReq = requiredGlideScale(
+          roof, tx + dirX * preRiseDistance, tz + dirZ * preRiseDistance,
+          rx, ry, rz, pad, maxScale, t.fixedPointPasses,
+        );
+        if (preRiseReq > 1 + t.epsilon) {
+          const need = preRiseReq - 1;
+          const riseRate = t.maxRiseScalePerS * 1.5;
+          const reachS = riseRate > t.epsilon ? need / riseRate : Infinity;
+          const ramp = Math.max(t.minRampS, 1.5 * need / t.maxRiseScalePerS);
+          const remaining = preRiseDistance / closing - Math.max(t.followerLeadS, reachS);
+          const progress = 1 - (remaining > 0 ? remaining : 0) / ramp;
+          const ramped = 1 + (need * (1 + t.headroomFraction) + t.headroomScale) * smoothstep(progress);
+          if (ramped > earlyTarget) earlyTarget = ramped;
+        }
+      }
+    }
   }
 
   // Each future requirement becomes a ramp that completes at contact. A tall obstacle gets a
   // longer, gentler ramp so the rise rate stays comfortable.
-  let target = 1;
+  let target = earlyTarget;
   for (let i = 1; i < n; i++) {
     const need = glide.slotReq[i] - 1;
     if (need <= t.epsilon) continue;

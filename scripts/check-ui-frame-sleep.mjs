@@ -182,7 +182,7 @@ function checkDamageIndicatorsSleepWhenInactive() {
 
 function checkHudMetaCargoIsEventDriven() {
   const src = readFileSync(new URL('../src/ui/hudMeta.js', import.meta.url), 'utf8');
-  assert.ok(src.includes("bus.on('cargo:changed', maybeShowManifestGhost)"), 'HUD meta manifest ghost should wake from cargo:changed');
+  assert.ok(src.includes("on('cargo:changed', maybeShowManifestGhost)"), 'HUD meta manifest ghost should wake from cargo:changed through its owned subscription');
   assert.ok(!src.includes('snapshotCargo'), 'HUD meta should not clone cargo every overlay tick');
   const tickBody = src.match(/function tick\(dt\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  function diffCargo/);
   assert.ok(tickBody, 'HUD meta tick body should remain parseable by the sleep check');

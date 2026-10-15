@@ -35,6 +35,19 @@ test('the first pair still loads first, so the original sky never waits on the s
   assert.deepEqual(loads.map((load) => load.url), [PAINTED_PLANET_URL, PAINTED_RING_URL, PAINTED_PLANET_URL_2, PAINTED_RING_URL_2]);
 });
 
+test('context-loss provider publishes both atlas textures and every UV view wrapper', () => {
+  const { library } = makeLibrary();
+  const resources = library.contextLossResources();
+  assert.deepEqual(resources, [
+    library.texture,
+    library.extraTexture,
+    library.ringTexture,
+    library.ringTexture2,
+    ...library.views,
+    ...library.extraViews,
+  ]);
+});
+
 test('four more painted looks share the second image, laid out like the first atlas', () => {
   const { library, loads } = makeLibrary();
   const second = loads[2].texture;

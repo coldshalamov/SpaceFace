@@ -513,6 +513,7 @@ export const factionPresence = {
     this._presenceWakeSeq = 0;
     this._conductAt = -Infinity;
     this._serviceBerth = null;
+    this._watchedHulkByBerth = {};
     ensureOwnState(this.state);
     this._unsub = [
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
@@ -988,19 +989,23 @@ export const factionPresence = {
       }
       if (!hulk || !hulk.pos) continue;
       const watch = own.berthWatch[berth.id] || (own.berthWatch[berth.id] = sanitizeBerthWatch({ row: {} }).row);
+      const watchedByBerth = this._watchedHulkByBerth || (this._watchedHulkByBerth = {});
       const d = Math.hypot(hulk.pos.x - home.x, hulk.pos.z - home.z);
       if (!watch.displaced && d > BERTH_DISPLACED_WU) {
         watch.displaced = true;
         watch.displacedAt = Number(this.state.simTime) || 0;
+        watchedByBerth[berth.id] = hulk.id;
         this._watchedHulkId = hulk.id;
         this.bus.emit('factionPresence:berthRobbed', { berthId: berth.id, factionId: berth.factionId, distance: d });
         this._speakConduct(berth.factionId, 'robbed', { berth });
         this._recordAct(berth.factionId, 'berth_robbed', { berthId: berth.id });
       } else if (watch.displaced && d >= BERTH_RETURNED_WU) {
-        // The stolen hull persists where it was left (reentry, Continue); keep its live id so
-        // hauling that same hull home still counts as the return.
+        // The stolen hull persists where it was left (reentry, Continue); keep its live id per
+        // berth so hauling that same hull home still counts as the return even when multiple
+        // berths are displaced in the same run.
+        watchedByBerth[berth.id] = hulk.id;
         this._watchedHulkId = hulk.id;
-      } else if (watch.displaced && this._watchedHulkId === hulk.id) {
+      } else if (watch.displaced && (watchedByBerth[berth.id] === hulk.id || this._watchedHulkId === hulk.id)) {
         // Only the hull that was seen away and hauled back is restitution; a fresh copy that turns
         // up on the rack is the faction's record, and the theft stays on the books.
         watch.displaced = false;
@@ -1008,7 +1013,8 @@ export const factionPresence = {
         this.bus.emit('factionPresence:berthReturned', { berthId: berth.id, factionId: berth.factionId });
         this._speakConduct(berth.factionId, 'returned', { berth });
         this._recordAct(berth.factionId, 'berth_returned', { berthId: berth.id });
-        this._watchedHulkId = null;
+        delete watchedByBerth[berth.id];
+        if (this._watchedHulkId === hulk.id) this._watchedHulkId = null;
       }
     }
   },

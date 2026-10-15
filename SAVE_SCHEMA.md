@@ -84,6 +84,7 @@ Current save version: `15`
 - `stationServices`
 - `onboarding`
 - `encounterDirector`
+- `worldNews`
 - `flight`
 - `nav`
 - `settings`
@@ -517,4 +518,5 @@ Current save version: `15`
 | `$.v2Flavor` | object | {} |
 | `$.vesper` | object | {} |
 | `$.world` | object | {} |
+| `$.worldNews` | null | null |
 | `$.wreckCourt` | null | null |

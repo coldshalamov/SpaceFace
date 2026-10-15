@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-14",
+  "updated": "2026-10-15",
   "runs": [
     {
       "date": "2026-08-12",
@@ -97,74 +97,22 @@
       "scope": "none",
       "nx": 6,
       "note": "6-unit unscoped look-then-rotate: chart service truth; derelict first-contact plates; convoy escort desk memory; wreck black-box readout; fuel-cell decant; derelict bar directions. Also adopted 5 stranded 2026-10-13 units (production was uncommitted, memory rows pointed at a bogus commit) and closed the convoy-choices-dormant defect as VERIFIED REPAIRED."
+    },
+    {
+      "date": "2026-10-15",
+      "mode": "repair",
+      "domains": [
+        "WF-14",
+        "WF-02",
+        "WF-05",
+        "WF-04",
+        "WF-09"
+      ],
+      "nx": 5,
+      "note": "5-unit unscoped look-then-rotate INFERENCE batch (wreck/cargo legality readout, specialist incapacitation + breather lock, tractor/repulsor utility head guards, per-berth displacement watch + arrival truth, named hunter hulk identity + external revenge escalation)"
     }
   ],
   "units": [
-    {
-      "id": "verb-25-seed-latch-preview",
-      "date": "2026-10-01",
-      "wf": "WF-06",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "latch preview names a mass-seed anchor and paints its phase word so the pilot reads whether the line will hold",
-      "fingerprint": "verb=latch,subject=massseed,sector=any,domain=wf-06",
-      "references": [],
-      "integration": "live",
-      "commit": "401dc5be5",
-      "verification": "focused_green"
-    },
-    {
-      "id": "world-33-mining-noise-danger",
-      "date": "2026-10-01",
-      "wf": "WF-03",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "loud mining's named event now lands a bounded danger impulse on the worked sector instead of a parallel private seam",
-      "fingerprint": "verb=mine,subject=sector-danger,sector=any,domain=wf-03",
-      "references": [],
-      "integration": "live",
-      "commit": "77e05da46",
-      "verification": "focused_green"
-    },
-    {
-      "id": "mach-01-memorial-thief-declared",
-      "date": "2026-10-01",
-      "wf": "WF-19",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "memorial thief declared as uniqueWrecks-owned sub-object in the authoritative manifest",
-      "fingerprint": "verb=declare,subject=manifest,sector=any,domain=wf-19",
-      "references": [],
-      "integration": "live",
-      "commit": "44cc263a3",
-      "verification": "focused_green"
-    },
-    {
-      "id": "pro-09-voice-dismiss-key",
-      "date": "2026-10-01",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Delete binding emits voice:dismiss; the floor pill clears once, danger lines stay protected",
-      "fingerprint": "verb=dismiss,subject=voice-pill,sector=any,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "353cd9185",
-      "verification": "focused_green"
-    },
-    {
-      "id": "story-01-pull-headline-names-hole",
-      "date": "2026-10-01",
-      "wf": "WF-08",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "endgame pull headline now names the victim faction even without an authored line",
-      "fingerprint": "verb=publish,subject=endgame-headline,sector=any,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "5d5473bec",
-      "verification": "focused_green"
-    },
     {
       "id": "law-09-claim-defense-ignore",
       "date": "2026-10-01",
@@ -1681,6 +1629,71 @@
       "references": [],
       "integration": "live",
       "commit": "9624f911ab",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u1-wreck-cargo-legality-readout",
+      "date": "2026-10-15",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "locked wrecks and cargo pods report class fallback, volatile pickups, and Restricted salvage / Contraband / Restricted cargo / Papers washed legality before the pilot cuts or scoops",
+      "fingerprint": "verb=read,subject=wreck_cargo_legality,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "7d75cbd60e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u2-specialist-disable-and-breather",
+      "date": "2026-10-15",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "all four combat specialists obey stun/disable/subsystem incapacitation, beaten cutter passes release the SF-052 commitLock, and late-window cuts still reserve the authored breather",
+      "fingerprint": "verb=counter,subject=specialist_incapacitation,sector=combat,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "5d855facaa",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u3-tractor-and-repulsor-head-guards",
+      "date": "2026-10-15",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "whole-wreck tractor skips empty husks, unstable reactors, berth hulks, and Massline-latched wrecks; repulsor/lure/rack resolvers honor entity-fitted draft hulls without leaking parked ships",
+      "fingerprint": "verb=tractor,subject=utility_head_guards,sector=flight,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "13e173cf58",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u4-berth-watch-and-arrival-truth",
+      "date": "2026-10-15",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "per-berth displacement watch preserves restitution across multiple berths, dockArrival and galaxyMap surface moored/displaced faction-berth status, and outlaw ports advertise their fence instead of customs scans",
+      "fingerprint": "verb=dock,subject=faction_berth_arrival,sector=vesta-charon-pallas-sedna,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "7c03c94af5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "u5-named-hunter-hulk-and-external-revenge",
+      "date": "2026-10-15",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "named hunter hulks keep their authored scanLabel and black-box killerLabel when lossLedger tags them, and external captain kills record deathTick/killedBy and escalate surviving NAMED_CAPTAINS for the revenge vow",
+      "fingerprint": "verb=avenge,subject=named_hunter_revenge,sector=io_reach,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "575f70d5cd",
       "verification": "focused_green"
     }
   ],

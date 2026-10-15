@@ -72,9 +72,9 @@
        (W140-B4 safe half; cascade order untouched). -->
   <link rel="preload" as="style" href="/assets/ui/kit/tokens/tokens.css" />
   <link rel="preload" as="style" href="/assets/ui/kit/kit/fh.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="./styles/station-orbital.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="./styles/station.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="./styles/station-workbench.css" />
+  <link rel="prefetch" as="style" fetchpriority="low" href="./styles/station-orbital.css" />
+  <link rel="prefetch" as="style" fetchpriority="low" href="./styles/station.css" />
+  <link rel="prefetch" as="style" fetchpriority="low" href="./styles/station-workbench.css" />
   <link rel="modulepreload" fetchpriority="low" href="./vendor/three.module.js" />
   <link rel="modulepreload" fetchpriority="low" href="./vendor/rapier3d-compat/rapier.mjs" />
   <!-- The decode-path loader trio is discovered by dynamic import inside the first GLB/KTX2
@@ -88,11 +88,11 @@
        warmup; draco is dead weight for shipped GLBs but the decoder contract keeps it
        for future/user files, so it preloads too. -->
   <link rel="modulepreload" fetchpriority="low" href="./vendor/addons/loaders/DRACOLoader.js" />
-  <!-- The draco decoder trio is fetched by DRACOLoader at the first draco-primitive decode
-       (decoderPath, no static import edge): keep it off a conditional decode critical path. -->
-  <link rel="preload" as="fetch" fetchpriority="low" crossorigin href="./vendor/addons/libs/draco/gltf/draco_wasm_wrapper.js" />
-  <link rel="preload" as="fetch" fetchpriority="low" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.js" />
-  <link rel="preload" as="fetch" fetchpriority="low" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.wasm" />
+  <!-- Shipped GLBs do not use Draco. Warm the optional decoder as future-use fetches rather
+       than claiming it is critical to this navigation; DRACOLoader still loads it on demand. -->
+  <link rel="prefetch" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_wasm_wrapper.js" />
+  <link rel="prefetch" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.js" />
+  <link rel="prefetch" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.wasm" />
   <link rel="modulepreload" fetchpriority="low" href="./src/characters/rubricRules.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/rubric.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/characters/rubricModel.js" />
@@ -100,13 +100,13 @@
   <!-- The KTX2 transcoder trio is discovered one layer deeper still — the worker script, its
        importScripts target, and the .wasm it fetches are a serialized 3-fetch chain inside
        the first texture decode. Fetch-only hints keep them off the decode critical path. -->
-  <link rel="preload" as="worker" href="./vendor/addons/libs/basis/basis_transcoder.worker.js" />
-  <link rel="preload" as="script" href="./vendor/addons/libs/basis/basis_transcoder.js" />
-  <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/basis/basis_transcoder.wasm" />
+  <link rel="prefetch" href="./vendor/addons/libs/basis/basis_transcoder.worker.js" />
+  <link rel="prefetch" as="fetch" crossorigin href="./vendor/addons/libs/basis/basis_transcoder.js" />
+  <link rel="prefetch" as="fetch" crossorigin href="./vendor/addons/libs/basis/basis_transcoder.wasm" />
   <!-- Decode-path file workers spawn lazily per pool slot — the first runway decode otherwise
        pays each worker script's fetch + eval inside the budget window. -->
   <link rel="modulepreload" fetchpriority="low" href="./src/render/glbPrepassWorker.js" />
-  <link rel="preload" as="worker" href="./src/render/renderPackageDigestWorker.js" />
+  <link rel="prefetch" href="./src/render/renderPackageDigestWorker.js" />
   <!-- Wave-143 payload modules: loaded only via dynamic import() in the post-eval warm lane
        (ruckusMeshData/*.js feeds the RU-7 template decode; the volume films feed the vfx
        pool/salvo decoders). Low-priority fetch keeps the bytes off the eval critical path
@@ -226,7 +226,7 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-        <!-- modulepreload:registry:begin -->
+            <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -1368,6 +1368,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/paintedPlanets.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/palletJackVisuals.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/parallaxLayers.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/particlePriorityIndex.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/particleShards.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/persistentSubmitLanes.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/phaseBlinkLifecycle.js" />
@@ -1410,6 +1411,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/renderer.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rendererPoolProducer.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/resourceGovernor.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/rigidOpaqueBatch.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rigidOpaqueBatchPolicy.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rockFamilyLibrary.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rockSurfaceLibrary.js" />
@@ -2114,6 +2116,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/crucibleLabTelemetry.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/drill.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/flightFootage.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/footageVideoCodec.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/industryReadout.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/replay.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/resultsSheet.js" />

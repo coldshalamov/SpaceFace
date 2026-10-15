@@ -62,7 +62,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`ship`** | **DONE** (ui-polish-27) | See § THE SHIP flight host below — blurb off gauges; heroes two-up ≤1100 |
 | **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
-| `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
+| **`chart`** / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | **DONE** (desktop shell + phone sheet, ui-polish-34) | See § Chart on a phone below |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
@@ -73,7 +73,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | **`base` / `base-claimed`** | **DONE** (phone + narrow + 960 slot rail) | See § Base screen — phone module list, narrow spine, one slot rail (ui-polish-28) |
 | `loading` | SURVEYED | |
-| `automation` | SURVEYED | |
+| **`automation`** | **DONE** (761–1100 ui-polish-27, ≤760 desktop window ui-polish-36) | See § Automation in a narrow desktop window below; phone sheet lives in `mobileScreenLayouts.js` |
 | **`replay`** | **DONE** (ui-polish-27) | Empty-tape line wraps on phone instead of ellipsizing — see § Clips reel empty state below |
 | **`clips`** | **DONE** (ui-polish-27) | Empty reel fits every width; see § Clips reel empty state below |
 | **`sandbox`** | **DONE** (ui-polish-24) | Launch no longer buries Combat Lab / Hull / Hornet; phone tiles no longer stack — see § Sandbox Launch below |
@@ -81,6 +81,14 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `starmap` / `starmap-legacy` | SURVEYED | |
 
 ---
+
+## Automation in a narrow desktop window — session notes (2026-10-15, ui-polish-36)
+
+**Before (master cc906667e6):** below 761px wide (a desktop window, not a phone) the board kept its 270px column and the five-node strip beside the gauge. At 600–700 the DRONES / TRADERS / OUTPOSTS words printed over each other and the rung stats ran under THROTTLE; at 390 the strip, CLOSE and the throttles were off the frame, the board's cost sat on its sentence and the summary's ASSETS / NET FLOW tangled (bench: 6 findings at 600/700, 17 at 390, on every tab).
+
+**After (`src/ui/screens/automationPanel.js` only, `html:root:not([data-sf-mobile="1"])` under `max-width: 760px`):** the strip takes its own row as wrapping steppers (ring, count and beam on one axis, the word under them, five across at 700, three at 390); the board stacks over a four-column summary (two under 520); each purchase rung keeps its name, wraps its stats and puts THROTTLE and the research verb under them. Under 520 the purse and CLOSE share the row under the title. Bench is 0 findings on all four tabs at 390×844, 480×800, 600×900 and 700×800. 761+, 960, 1280, 1920 and the real phone (390×844, 844×390) are pixel-identical apart from the route-beam pulse.
+
+Shots: `ui-shots/polish36/{before-tabs,after1,after2}/` plus `compare-*.png`.
 
 ## Save / Load reading clears the filmstrip — session notes (2026-10-13, ui-polish-26)
 
@@ -199,7 +207,7 @@ Shots: `ui-shots/range-course/before/`, `after/` (all sizes), `checks/` (drawer 
 - **Automation** (`automationPanel.js`, 761–1100px only): CONDUCT THE MACHINE takes its own row under the gauge, so DRONES/TRADERS/OUTPOSTS no longer run under the next ring. The board card's "4,000 cr starter" sits on its own line above the button, the body gets a third line, and the drone bay rungs put range and upkeep on a second line so "upkeep" isn't clipped by THROTTLE at 1024.
 - 1280×720, 1920×1080, and the phone are unchanged; the only pixel differences are the animated drift field and beads. Shots are in `ui-shots/leftovers27/{before,after2}/`.
 - **Mission Log route** (`archiveLayouts.js`, 761–1100 wide and ≤640 tall): the stage was a 235px column under a four-line title, so the FROM → TO route band started at y≈437 and the stage cut it off. The hang is now 312px and the dial is 140px in a 190px side column (so OPEN ON THE CHART fits). The title is 21px over two lines, the terms use a 104px label column so their values don't wrap, and the route discs are 44px, so the whole lane, its clock, and both faces sit in frame.
-- **Station Ledger purse** (`stationTabsLayouts.js`, 761–1100 wide and ≤640 tall): the ~192px body held the 176px tape and put the reading and the purse below it, so the purse was clipped. With no receipts that cut BOUGHT/SOLD/NET · CR; with receipts it also cut the whole reading. The right column is now a grid. The purse (220px, so its ring clears NET · CR as at 1280) stands beside the tape at full height. The reading is one band (kicker, then the figure beside what/where) that rises into the tape's empty leader strip, and the leader is hidden at this size. The left column is 40% wide with a 24px heading. Still in the tape's JS geometry at every size: when entries are close together, CYCLE labels and the −750/−480 figures collide.
+- **Station Ledger purse** (`stationTabsLayouts.js`, 761–1100 wide and ≤640 tall): the ~192px body held the 176px tape and put the reading and the purse below it, so the purse was clipped. With no receipts that cut BOUGHT/SOLD/NET · CR; with receipts it also cut the whole reading. The right column is now a grid. The purse (220px, so its ring clears NET · CR as at 1280) stands beside the tape at full height. The reading is one band (kicker, then the figure beside what/where) that rises into the tape's empty leader strip, and the leader is hidden at this size. The left column is 40% wide with a 24px heading. ~~Still in the tape's JS geometry at every size: when entries are close together, CYCLE labels and the −750/−480 figures collide.~~ Fixed on ui-polish-35, see § Ledger tape labels.
 - The ledger with receipts was shot with a scratch script that seeds `player.tradeLedger`, because the bench catalog only has the empty ledger. 1280/1920/phone ledger shots are pixel-identical before and after, and mission-log differs only by beam-pulse noise, which matches the noise between two runs of the same code. Shots are in `ui-shots/leftovers27b/{before,after}/` plus `compare-*-960.png`.
 
 ## Phone station berth — session notes (2026-10-12, ui-polish-11)
@@ -1082,3 +1090,52 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,de
 - **Unchanged:** phones (`data-sf-mobile`) keep their own Codex layout. At 960×540 and 1280×720 the output is pixel-identical apart from the animated needle.
 - **Also (Code Work review):** at 640–760 the hang was still 316px wide, so the stage could not clear plate + PREVIOUS/NEXT; hang/dials/plate shrink further in that band.
 - **Leftover:** a desktop window as short as 844×390 is still cramped, with the ladder running into CLOSE. Real phones in landscape use the mobile layout, which is clean.
+
+## Station berth at a very short desktop window, 844×390 (ui-polish-33)
+
+`stationLayouts.js` + `shipworksLayouts.js`, CSS only, scoped to `max-height:460px` on non-phone desktops. Phones (`data-sf-mobile`) and every height above 460 are untouched.
+
+- **Before:** the three-band head (name, five dials, mechanic's note, next step) took ~260px of a 390px window and the foot ~78px, so every tab got a 16px sliver. Shipworks showed no hull at all (17 bench findings).
+- **651–1100 wide:** the berth scrolls. Each tab keeps a 230px cell (960×540 has ~210), and the destination rail is a solid pinned foot with a short fade above it. Rail words close up so MARKET through LEDGER, COMMS, HELP and UNDOCK fit on one line at 844.
+- **801–1100 wide:** the head is two columns: 141px tall at 801–900 and 132px at 901–1100 in the live game (`?dev=screen:station`, `.dp-frame__head`; 196px on master), 162px on the bench, whose mechanic's note and next step run longer. The left column holds the name, the mechanic's note (two lines at most) and the next step (title, count and DISMISS on one line, with the sentence ellipsized; the full sentence stays in `data-why` and the aria label). The right column holds the purse and five dials, and CREDIT LINE OPEN wraps to two lines so Munitions stays on screen.
+- **Shipworks, 651+:** LEFT · CENTER · RIGHT get their own line under the stage instead of sharing the verb row with PAINT, and the STARTER identity rides one line over the nameplate (the stage starts 22px lower), so a live condition such as SOUND 100% and a long identity (6/7 systems fitted · 17 t modules) never meet.
+- **Bench, 844×390:** the 14 findings left are the expected below-the-fold content under the pinned foot, the clamped mechanic's sentence, and the ellipsized next-step sentence, whose full text width the probe measures. 960×540, 1280×720 (11 pre-existing), 1920×1080 and 390×844 counts are unchanged.
+- **651–800 wide:** the head stays three bands but each is shorter (162px live at 700×400 and 760×420, 210px on the bench, instead of ~260px on the bench): a 24px name with the purse beside it, 64px dials with a smaller reading, and the mechanic's note and next step on one line each (the sentence ellipsized, DISMISS kept on the line). Each tab gets a 250px cell. The rail words step down to 10.5px and COMMS and HELP stack, so all seven destinations and UNDOCK fit on one line. Below 700, the rail closes up once more and CREDIT LINE OPEN wraps to two lines clear of the HOLD dial.
+- **Shipworks, 651–800:** STARTER · 1/7 systems fitted rides one line over the nameplate instead of running into the Shield callout, and the in-flow verbs break after TAKE THE HITCH so LEFT · CENTER · RIGHT sit beside RECORD · PAINT.
+- **Pinned foot** is fully opaque now (it was 96%, and the hull callouts and market rows showed faintly through the rail words).
+- **Bench:** Shipworks tangled findings go from 6 to 0 at 700×400 and 760×420. Market's remaining overlaps there are its lower rows scrolled under the pinned foot. 844×390 and up are untouched.
+- **Market, 651–1100 × ≤460 (`marketLayouts.js`):** the panel's row sized to the 345px index, so the index and stage ran ~110px past the tab cell and a pending decision (REPAIR NOW / FLY DAMAGED) was out of reach. The row now fits the cell and each side scrolls in it.
+- **Market, 651–900:** the families wrap into a strip over the register (all still visible), so the register's names get ~100px instead of 0–25px. The reading is one column: the kind line and the name on one line each, then the price with its words beside it, then the trace at full width (it was ~20px wide). While a decision waits, the last-move line yields so the trace stays above it. Bench: 26 to 8 at 700×400, 26 to 7 at 760×420, 28 to 15 at 844×390; what is left is lower rows under the pinned foot. 960×540 and up unchanged.
+- **Leftover:** 651–699 × ≤460 Market is still tight (the decision terms run four lines).
+- **HOLD fixes (Code Work review of f462ce66), measured with live values** (REARM 1,200 CR, DRAW +7,240 CR, STARTER 6/7 systems fitted · 17 t modules, SOUND 100%; the bench fixture says 792 CR, 1/7 and DOCKED, so the run overrides the text in the page, nothing committed):
+  - **Munitions at 801–~855:** the right column is ~510px and the five dials with one-line verbs need ~565px, so Munitions, / 100 and REARM 1,200 CR ran off the right edge. At 801–900 the Ledger and Munitions verbs stand over their price on two lines (Hull already has two), so the head stays 141px live (162px bench). Every dial word is on screen at 801, 812, 830, 844 and 860.
+  - **LEDGER on the rail at 801–~840:** it ran under COMMS. At 801–900 COMMS and HELP stack as they do at 651–800, and the 651–800 rail closes up 2px more, so LEDGER clears at 700×400 too (it was 1px under). Every rail word now fits from 651 to 1100.
+  - **Shipworks identity at 801–1100:** see above; it was overlapping SOUND 100% at 844×390.
+  - Head heights in the CSS comments and here are measured live and on the bench (see the second HOLD round below).
+  - Shots: `/workspace/spaceface-scratch/ui-shots/polish33d/compare-*.png` (before left). 960×540, 1024×440 station and market, 390×844 and 844×390 phone are pixel-identical; 1280×720 and 1920×1080 differ only in animated pixels (no rule reaches above 460 tall).
+- **Second HOLD (Code Work review of 209c924b97), measured live** (CREDITS 5,000, REARM 1,200 CR):
+  - **Purse over "Find a service" at 901–1100 × ≤460:** from 901 wide the search key shows its word (station-orbital.css drops it at ≤900), so the key is ~196px, and the purse's 84px right margin only cleared CTRL K. At 901–1100 × ≤460 the purse now stands 220px in from the right edge, clear of the key's full width; the key is the same width at rest, on hover and on focus. Swept 900–1100 in 25px steps at 390, 400, 440 and 460 tall: 0 overlaps on the bench (32 of 36 before), and 0 in the live game at 925–1100 and Code Work's 950×440, 1000×440, 1024×440, 1060×400 and 1100×460, at rest, hovered and focused. The purse keeps the head's first row, so the head heights do not change.
+  - **Head heights, live `.dp-frame__head`:** 141px at 801–900, 132px at 901–1100, 162px at 651–800 (700×400, 760×420). The bench's longer mechanic's note and next step give 162 / 162 / 210.
+  - **Market keyboard focus:** `scrollIntoView({block:'nearest'})` parked REPAIR NOW / FLY DAMAGED under the pinned foot (20–66px under it at 700–1100). At 651–1100 × ≤460 the choice carries `scroll-margin-bottom:88px` (the 73px foot plus its 12px fade), so Tab lands it fully above the foot at 700×400, 760×420, 801/844×390, 1024×440 and 1100×460. It sits on the choice, not as `scroll-padding` on the berth, because the station focuses the foot's MARKET tile on open and a berth padding scrolled the head away.
+  - Shots: `/workspace/spaceface-scratch/ui-shots/polish33e/compare-*.png` (before left). 960×540, 1280×720 station and Market, 900×440, 801/844×390 and 700×400 station, and phone 390×844 / 844×390 station and Market are pixel-identical; the other differences outside the purse are the rail tape's and the hull's animation (no rule reaches above 460 tall or phones).
+
+## Chart on a phone — the sky is a window, the page scrolls (ui-polish-34)
+
+**Before (`--phone`, 390×844 and 844×390):** the whole chart was squeezed into one frame over a full-screen canvas. Portrait: the inspector was a 64px box over a dimmed map, so ENGAGE ROUTE / PAUSE / DISENGAGE were hidden inside it; the tab strip was one 875px row (ECONOMY…HISTORY past the edge, out of reach); the zoom strip floated mid-map; and the foot's tape crossed the readings, with the lit leg's band running off the left edge from DESTINATION. On its side: the four-row phone head took 188 of 390px, the lens band, sky and inspector shared the 41px left, and the map sat under every word.
+
+**After (`mobileScreenLayouts.js`, phone only — `data-sf-mobile="1"`):**
+- Portrait (`data-layout="narrow"`) and on its side (`compact`, ≤540 tall, coarse pointer): the sheet's rows are content-sized and the page scrolls. The canvas is an in-flow window (portrait `clamp(260px, 44dvh, 420px)`, side `clamp(220px, 72dvh, 300px)`) between LENSES and the inspector, with 22px faded edges. The inspector, tabs and foot follow at full height. The glass background runs the full page (`background-attachment: local`).
+- All nine inspector tabs wrap onto the tab instrument's per-row scales (three rows in portrait, one row on its side).
+- The zoom strip stands at the window's bottom-right, clear of the canvas "per bar" ruler. `chartHub.js` (phone branch only) now measures in page coordinates and publishes `--gm-sky-bottom`, so the strip stays on the window while the page scrolls.
+- Foot: portrait is two rows of two, and each row carries its own run of the tape; on its side the four answers share one run, as on desktop.
+- On its side the head is two rows: title, LOCAL/SYSTEM/GALAXY, CONTROLS, CLOSE, then search and QUIET. The sector stamp sleeps, as it already does in portrait.
+
+**Checked:** bench clean (0 findings) for `chart`, `chart-route` and `chart-local` at 390×844 and 844×390 `--phone`, and at 390×844, 960×540, 1280×720 and 1920×1080 desktop. Desktop chrome is untouched (every rule needs `data-sf-mobile`, and the hub change is inside its phone branch); the only desktop pixel differences are inside the map, where run-to-run animation already varies. `check:map-information-depth` passes all 18 sections. Selectors and IDs are unchanged. Shots: `ui-shots/polish34/` (`compare-chart-phone*.png`).
+
+## Ledger tape labels (ui-polish-35)
+
+**Before:** with receipts close together, the tape printed every cycle name at its boundary and the now cursor's name on top, so at 960 three names ran into one ("CYCCYC LE0001"), and the last cycle's name always sat under the now cursor's. Debit figures took a new lane per figure whether or not they were near each other, so at 960 the stack of −220/−640/−90/−1,200 ran down into the reading's "TRADE · SOLD" and "13u Fuel Cells", and −750 printed on the cycle names.
+
+**After (`src/ui/orrery/ledgerTape.js`, plus one option passed from `src/ui/station/screens/ledger.js`):** the now cursor always keeps its name, and boundary names are planned right to left from it: a name that would run into the next prints only its number ("0007"), and yields when even that does not clear; a boundary in the now cursor's cycle is not named twice. Each figure takes the first clear slot (over or under its tip, one or two lanes out, then beside the tip), clear of other figures, the names, the axis numerals, the beads and the Hand's ring, and above the reading where a layout lifts it into the tape's foot. A figure with no clear slot yields; the list and the reading still carry it. Selectors and IDs are unchanged; the empty ledger draws as before.
+
+Overlap probe (text boxes in the tape) on two seeded ledgers, 6 receipts over three cycles and 9 receipts in one cycle: 960×540 3+3 → 0, 1024×768 / 1280×720 / 1920×1080 1 → 0. Shots: `ui-shots/polish35/{before,after}/` (seeded with `_tools/ledger-seed.mjs`).

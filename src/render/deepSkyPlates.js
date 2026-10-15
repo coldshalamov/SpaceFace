@@ -176,6 +176,13 @@ export class DeepSkyPlateResidency {
     return bytes;
   }
 
+  // Both textures are owned by this residency object and may be detached from the visible
+  // background during a transition. Expose the exact identities so context-loss cleanup can
+  // remove stale Three.js listeners without walking unrelated loader state.
+  contextLossResources() {
+    return [this.activeTexture, this.pendingTexture].filter(Boolean);
+  }
+
   /**
    * Ask for a region's plate. Returns true when this changed what the residency is working toward.
    * A null/unknown id releases everything: a region with no plate pays nothing for the feature.

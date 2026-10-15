@@ -22,12 +22,13 @@ function findFreePort() {
   });
 }
 
-export async function startBenchServer() {
+export async function startBenchServer({ sourceOverlay = null } = {}) {
   const port = await findFreePort();
   const server = createGameServer({
     root: ROOT,
     async: true,
     devDiagnostics: false,
+    ...(sourceOverlay ? { sourceOverlay } : {}),
   });
   await new Promise((resolve, reject) => {
     server.once('error', reject);

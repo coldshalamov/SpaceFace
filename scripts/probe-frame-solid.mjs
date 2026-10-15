@@ -17,10 +17,14 @@
 //     fails when any count (blinks, root swaps, regressions, stuck frames, in-flight shader
 //     links, bodies that left the frame undrawn) rises. Timing regressions warn; add
 //     --strict-timing to fail on them (only meaningful on a quiet machine).
+//   node scripts/probe-frame-solid.mjs --baseline-source=.devshots/source-baselines/<manifest>.json
+//     serves a validated frozen source overlay while keeping assets and unlisted files canonical.
 import { spawn, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus, loadavg } from 'node:os';
 import { createServer as createNetServer } from 'node:net';
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
@@ -33,8 +37,28 @@ import {
   resolveFrameSolidLinks,
   summarizeFrameSolid,
 } from './lib/frameSolidSampler.mjs';
+import {
+  DELAYED_READINESS_LIMITS,
+  createDelayedReadinessReceipt,
+  finalizeDelayedReadinessReceipt,
+  installFrameSolidDelayedReadiness,
+  recordDelayedReadinessSample,
+  recordPipelineCalls,
+  restoreFrameSolidDelayedReadiness,
+} from './lib/frameSolidDelayedReadiness.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
+function sourceOverlayIdentitySummary(identity) {
+  if (!identity) return null;
+  return Object.freeze({
+    schema: identity.schema,
+    sourceCommit: identity.sourceCommit,
+    sourceOverlayDigest: identity.sourceOverlayDigest,
+    fileCount: identity.fileCount,
+    totalBytes: identity.totalBytes,
+  });
+}
 const HEADLESS = process.argv.includes('--headless');
 // No bundled playwright chromium on this box — fall back to an installed browser.
 const browserPath = process.env.SF_PROBE_BROWSER
@@ -49,6 +73,18 @@ const NO_CANON = process.argv.includes('--no-program-canon');
 const CPU_PROFILE = process.argv.includes('--cpu-profile');
 const STRICT_TIMING = process.argv.includes('--strict-timing');
 const COMPARE_PATH = (process.argv.find((arg) => arg.startsWith('--compare=')) || '').slice('--compare='.length) || null;
+const BASELINE_SOURCE_ARG = (process.argv.find((arg) => arg.startsWith('--baseline-source=')) || '')
+  .slice('--baseline-source='.length) || null;
+const BASELINE_SOURCE_PATH = BASELINE_SOURCE_ARG ? path.resolve(ROOT, BASELINE_SOURCE_ARG) : null;
+if (BASELINE_SOURCE_PATH) {
+  const relative = path.relative(ROOT, BASELINE_SOURCE_PATH).replace(/\\/g, '/');
+  if (!relative || relative.startsWith('../') || !relative.startsWith('.devshots/')) {
+    throw new Error('--baseline-source must point to an ignored manifest under .devshots/');
+  }
+}
+const BASELINE_SOURCE_IDENTITY = BASELINE_SOURCE_PATH
+  ? sourceOverlayIdentitySummary(loadSourceOverlayManifest(BASELINE_SOURCE_PATH).identity)
+  : null;
 // Probe-side only: extra V8 flags to A/B heap/GC pacing (e.g. SF_PROBE_V8_FLAGS=
 // "--max-semi-space-size=64"). Merged into the same --js-flags switch the shell sets.
 const EXTRA_V8_FLAGS = (process.env.SF_PROBE_V8_FLAGS || '').trim();
@@ -94,9 +130,16 @@ const port = await freePort();
 const server = spawn(process.execPath, ['server.js', String(port)], {
   cwd: ROOT,
   stdio: 'ignore',
-  env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
+  env: {
+    ...process.env,
+    SPACEFACE_PLAYER_STORE_DIR: '',
+    SPACEFACE_USER_CONTENT_DIR: '',
+    SPACEFACE_PROBE_SOURCE_OVERLAY: BASELINE_SOURCE_PATH ? '1' : '0',
+    SPACEFACE_BASELINE_SOURCE_MANIFEST: BASELINE_SOURCE_PATH || '',
+  },
 });
 let browser = null;
+let restoreDelayedReadiness = null;
 const consoleErrors = [];
 const dumpErrors = () => {
   if (!consoleErrors.length) return;
@@ -106,6 +149,23 @@ const dumpErrors = () => {
 try {
   const baseUrl = `http://127.0.0.1:${port}/`;
   await waitForServer(baseUrl);
+  let servedSourceOverlayIdentity = null;
+  const sourceIdentityResponse = await fetch(`${baseUrl}__source_overlay_identity`, { cache: 'no-store' });
+  if (BASELINE_SOURCE_IDENTITY) {
+    if (!sourceIdentityResponse.ok) {
+      throw new Error(`source overlay identity unavailable (HTTP ${sourceIdentityResponse.status})`);
+    }
+    servedSourceOverlayIdentity = sourceOverlayIdentitySummary(await sourceIdentityResponse.json());
+    const requested = BASELINE_SOURCE_IDENTITY;
+    const served = servedSourceOverlayIdentity || {};
+    for (const key of ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']) {
+      if (served[key] !== requested[key]) {
+        throw new Error(`served source overlay identity mismatch for ${key}`);
+      }
+    }
+  } else if (sourceIdentityResponse.status !== 404) {
+    throw new Error(`ordinary server unexpectedly exposed source overlay identity (HTTP ${sourceIdentityResponse.status})`);
+  }
   browser = await chromium.launch({
     headless: HEADLESS,
     executablePath: browserPath || undefined,
@@ -153,6 +213,21 @@ try {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 300_000 });
   await page.bringToFront();
+
+  // Install before game:new so the receipt sees both opening-admission pipeline calls and
+  // the later delayed roots. The collector itself is invoked only during flight polls.
+  const delayedReadinessReceipt = createDelayedReadinessReceipt(Date.now());
+  const delayedReadinessInstall = await page.evaluate(installFrameSolidDelayedReadiness, {
+    maxRoots: DELAYED_READINESS_LIMITS.maxRoots,
+    maxRowsPerPoll: DELAYED_READINESS_LIMITS.maxRoots,
+    maxPipelineCalls: DELAYED_READINESS_LIMITS.maxPipelineCalls,
+    maxResidencyNodes: DELAYED_READINESS_LIMITS.maxResidencyNodes,
+    maxStringLength: DELAYED_READINESS_LIMITS.maxStringLength,
+  });
+  if (!delayedReadinessInstall || delayedReadinessInstall.installed !== true) {
+    console.warn(`delayed readiness observer unavailable: ${JSON.stringify(delayedReadinessInstall)}`);
+  }
+  restoreDelayedReadiness = async () => page.evaluate(restoreFrameSolidDelayedReadiness).catch(() => null);
 
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Frame Solid' }));
   // Same gate as probe-solid-world: the opening cook alone can run minutes on a
@@ -260,7 +335,8 @@ try {
   let lastFrameCount = 0;
   let lastFrameAt = 0;
 
-  const poll = async (sampleDue) => page.evaluate(({ stationId, wantSample }) => {
+  const poll = async (sampleDue) => {
+    const snapshot = await page.evaluate(({ stationId, wantSample }) => {
     const s = window.SF && window.SF.state;
     if (!s) return { mode: 'gone' };
     const p = s.entities && s.entities.get(s.playerId);
@@ -286,8 +362,17 @@ try {
         frames: (window.__SF_FRAME__ && window.__SF_FRAME__.frames) | 0,
       };
     }
+    out.delayedReadiness = typeof window.__SF_CAPTURE_D201_DELAYED_READINESS__ === 'function'
+      ? window.__SF_CAPTURE_D201_DELAYED_READINESS__()
+      : null;
     return out;
-  }, { stationId: station.id, wantSample: sampleDue });
+    }, { stationId: station.id, wantSample: sampleDue });
+    if (snapshot && snapshot.delayedReadiness) {
+      recordDelayedReadinessSample(delayedReadinessReceipt, snapshot.delayedReadiness,
+        Date.now() - delayedReadinessReceipt.startedAtMs);
+    }
+    return snapshot;
+  };
 
   const recordMetrics = (m) => {
     if (!m) return;
@@ -557,6 +642,7 @@ try {
   }
   await page.evaluate(() => { window.__SF_FRAME_STOP__ = true; });
   const rec = await page.evaluate(() => window.__SF_FRAME__);
+  const missingWitness = rec && rec.missingWitness;
   const summary = summarizeFrameSolid(rec);
   const shaderLinksAtEnd = await readShaderLinks();
   const flightShaderLinks = shaderLinksAtFlight && shaderLinksAtEnd
@@ -622,6 +708,14 @@ try {
     };
   }).catch(() => null);
 
+  const delayedReadinessObserver = restoreDelayedReadiness ? await restoreDelayedReadiness() : null;
+  restoreDelayedReadiness = null;
+  recordPipelineCalls(delayedReadinessReceipt,
+    delayedReadinessObserver && delayedReadinessObserver.calls,
+    delayedReadinessObserver && delayedReadinessObserver.dropped,
+    delayedReadinessObserver && delayedReadinessObserver.installed);
+  const delayedReadiness = finalizeDelayedReadinessReceipt(delayedReadinessReceipt);
+
   console.log('\nframe-solid audit — everything in the player frame stays drawn and solid');
   console.log(`  phases: ${JSON.stringify(phases.map((p) => ({ phase: p.phase, ms: p.ms, endDist: Math.round(p.endDist || 0), minDist: Math.round(p.minDist || 0), maxDist: Math.round(p.maxDist || 0) })))}`);
   if (modeLeaves.length) console.log(`  mode left flight: ${JSON.stringify(modeLeaves)}`);
@@ -633,6 +727,16 @@ try {
     + ` countsPeak=${JSON.stringify(perf.countsPeak)}`
     + ` frameInterval mean=${(perf.frameIntervalMsSum / Math.max(1, perf.frameIntervals)).toFixed(2)}ms max=${perf.frameIntervalMaxMs.toFixed(2)}ms`);
   console.log(`  summary: ${JSON.stringify(summary)}`);
+  if (missingWitness) {
+    console.log(`  missing-sample witness: candidates=${missingWitness.candidateSamples}`
+      + ` captured=${missingWitness.witnesses.length}/${missingWitness.maxWitnesses}`
+      + ` dropped=${missingWitness.droppedCandidates}`);
+    for (const witness of missingWitness.witnesses) {
+      console.log(`    id=${witness.id} type=${witness.type} generation=${witness.entityGeneration}`
+        + ` inGlass=${witness.inGlassSet} priorPresented=${!!witness.previouslyVisible}`
+        + ` debug=${JSON.stringify(witness.debugGeometryPending || witness.debugGeometryPendingError || null)}`);
+    }
+  }
   console.log(`  lodFrames=${JSON.stringify((summary && summary.lodFrames) || {})}`
     + ` lodSwapsOnScreen=${(summary && summary.lodSwapsOnScreen) | 0}`
     + ` lodSwapKinds=${JSON.stringify((summary && summary.lodSwapKinds) || {})}`);
@@ -657,6 +761,11 @@ try {
   const contextLosses = await page.evaluate(() => window.__SF_CONTEXT_LOSSES__ || 0).catch(() => null);
   console.log(`  admission lanes: ${JSON.stringify((summary && summary.lanes) || null)}`);
   console.log(`  authored composition jobs in flight: ${JSON.stringify(upgradeJobs)}`);
+  console.log(`  delayed readiness: roots=${delayedReadiness.rootsTracked}`
+    + ` samples=${delayedReadiness.samplesStored}/${delayedReadiness.delayedRowsSeen}`
+    + ` pipelineCalls=${delayedReadiness.observer.pipelineCalls.length}`
+    + ` dropped=${delayedReadiness.droppedRoots + delayedReadiness.droppedSamples
+      + delayedReadiness.observer.pipelineCallsDropped}`);
   if (upgradeJobs && upgradeJobs.phaseJobs > 0) {
     const totals = upgradeJobs.phaseTotals || {};
     const sum = Object.values(totals).reduce((acc, row) => acc + row.totalMs, 0) || 1;
@@ -703,6 +812,11 @@ try {
     head,
     headless: HEADLESS,
     programCanon: !NO_CANON,
+    sourceOverlay: BASELINE_SOURCE_IDENTITY ? {
+      manifest: path.relative(ROOT, BASELINE_SOURCE_PATH).replace(/\\/g, '/'),
+      requested: BASELINE_SOURCE_IDENTITY,
+      served: servedSourceOverlayIdentity || null,
+    } : null,
     contextLosses,
     submission,
     drawCensus,
@@ -717,6 +831,8 @@ try {
     timing: timing || null,
     lanes: (summary && summary.lanes) || null,
     upgradeJobs,
+    delayedReadiness,
+    missingWitness,
     flightLinkEvents,
     offenders: (summary && summary.offenders) || [],
     phases,
@@ -751,6 +867,7 @@ try {
   dumpErrors();
   throw error;
 } finally {
+  if (restoreDelayedReadiness) await restoreDelayedReadiness();
   if (browser) await browser.close();
   server.kill();
 }

@@ -233,6 +233,11 @@ export function createMarketNews(ctx) {
   // The encounter director's durable applied-intent ledger remains authoritative across process
   // reloads; save:loaded clears this transient set so a rewind may legitimately settle again.
   const surfacedFreightLossIds = new Set();
+  // The arrival twin's guards: one headline per intent (same replay rule as above) and one per
+  // station per cooldown window, so a busy lane's docking rhythm cannot wallpaper the wire.
+  const surfacedFreightArrivalIds = new Set();
+  const freightArrivalHeardAt = new Map();
+  const FREIGHT_ARRIVAL_COOLDOWN_S = 240;
   // Stunt wire (U8): each witnessed episode makes the wire at most once per process. Rewinding
   // a save may legitimately re-settle it, so this clears on save:loaded like the set above.
   const surfacedStuntEpisodes = new Set();
@@ -352,6 +357,60 @@ export function createMarketNews(ctx) {
     return committed;
   }
 
+  // The arrival twin. Five freight_arrival headlines, an ARRIVAL dock card and its ticker
+  // styling were authored for exactly this event, and the only listener was the visual
+  // fanfare — a station taking delivery, the thing that softens the price you are about to
+  // sell into, never printed a word. Arrivals are ordinary trade rhythm, not encounter
+  // consequences, so this seam keys on the causal intent (the loss twin's encounterId rule
+  // belongs to its legacy direct-relay guard) and a per-station cooldown keeps a busy lane's
+  // docking cadence off the wire: the arrival is news when the station has been quiet, not
+  // every time a hull docks.
+  function surfaceFreightArrival(ev) {
+    if (!ev || !ev.intentId || (ev.kind !== 'freight_arrival' && ev.cause !== 'freight_arrival')) return null;
+    const intentId = String(ev.intentId);
+    if (surfacedFreightArrivalIds.has(intentId)) return null;
+
+    const stationId = ev.stationId != null ? String(ev.stationId) : null;
+    const trades = Array.isArray(ev.trades) ? ev.trades : [];
+    const primaryLine = trades
+      .filter((line) => line && line.commodityId && (line.qty | 0) > 0)
+      .sort((a, b) => (b.qty | 0) - (a.qty | 0))[0] || null;
+    const commodityId = (primaryLine && primaryLine.commodityId) || ev.primaryCommodityId || null;
+    if (!stationId || !commodityId) return null;
+    const heardAt = freightArrivalHeardAt.get(stationId);
+    const now = Number(state.simTime) || 0;
+    if (heardAt != null && now - heardAt < FREIGHT_ARRIVAL_COOLDOWN_S) return null;
+
+    const stations = state.world && state.world.activeSector && state.world.activeSector.stations;
+    const station = Array.isArray(stations)
+      ? stations.find((candidate) => candidate && (candidate.id === stationId || candidate.stationId === stationId))
+      : null;
+    const newsEvent = {
+      type: 'freight_arrival',
+      kind: 'freight_arrival',
+      cause: ev.cause || 'freight_arrival',
+      intentId,
+      eventId: intentId,
+      stationId,
+      stationName: station && station.name ? String(station.name) : undefined,
+      commodityId: String(commodityId),
+      sectorId: ev.sectorId || null,
+      manifestId: ev.manifestId || null,
+      freighterKey: ev.freighterKey || null,
+      source: 'freight_causality',
+    };
+
+    surfacedFreightArrivalIds.add(intentId);
+    while (surfacedFreightArrivalIds.size > 64) {
+      surfacedFreightArrivalIds.delete(surfacedFreightArrivalIds.values().next().value);
+    }
+    const headline = generateHeadline(newsEvent, { seed: seedOf() });
+    const committed = commitHeadline(headline, newsEvent, { metadata: newsEvent });
+    if (committed) freightArrivalHeardAt.set(stationId, now);
+    else surfacedFreightArrivalIds.delete(intentId);
+    return committed;
+  }
+
   // Leftover pirateRumor:headline (not news:headline — commitHeadline re-emits that).
   function surfacePirateRumor(ev) {
     if (!ev) return null;
@@ -441,6 +500,7 @@ export function createMarketNews(ctx) {
     });
   });
   on('freight:loss', surfaceFreightLoss);
+  on('freight:arrival', surfaceFreightArrival);
   on('pirateRumor:headline', surfacePirateRumor);
   on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
   function citeTrafficHeadline(p, kind) {
@@ -576,6 +636,8 @@ export function createMarketNews(ctx) {
     // durable ledger decides whether the consequence may settle again; presentation must not carry
     // a later timeline's transient suppression across that rewind.
     surfacedFreightLossIds.clear();
+    surfacedFreightArrivalIds.clear();
+    freightArrivalHeardAt.clear();
     deedNewsIds.clear();
     model.log = [];
     model.lastCard = null;
@@ -583,6 +645,8 @@ export function createMarketNews(ctx) {
   });
   on('game:newGame', () => {
     surfacedFreightLossIds.clear();
+    surfacedFreightArrivalIds.clear();
+    freightArrivalHeardAt.clear();
     deedNewsIds.clear();
     model.log = [];
     model.lastCard = null;

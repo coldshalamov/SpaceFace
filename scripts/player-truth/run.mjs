@@ -8,7 +8,8 @@
 //          into design/program/player-truth/<label>/; scratch frames stay) · --prune-frames (opt-in delete of scratch frames after --evidence; default off)
 //   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
 //          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
-//          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · browser: bundled Chromium
+//          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · --baseline-source=<manifest>
+//          browser: bundled Chromium
 //          (`npx playwright install chromium`), else CHROME_PATH or /opt/google/chrome/chrome
 //
 // Drives the real public route in a real rendered browser with trusted keyboard/mouse input,
@@ -28,6 +29,7 @@ import { createGzip } from 'node:zlib';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -46,6 +48,7 @@ import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
 import { decodePlayerTruthRows } from '../../src/testing/playerTruth/packedRows.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('../lib/gameServer.cjs');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
 let sessionGuard = null;
 
@@ -272,7 +275,7 @@ export async function awaitRoundHandoff(page, {
 }
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
@@ -282,6 +285,10 @@ export function parseArgs(argv) {
     else if (k === 'fight') a.fight = true;
     else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
+    else if (k === 'baseline-source') {
+      if (v == null || !String(v).trim()) throw new Error('--baseline-source requires a manifest path');
+      a.baselineSource = String(v);
+    }
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
   if (!MODES.includes(a.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
@@ -419,6 +426,54 @@ export function readSourceState(cwd = ROOT) {
   return { commit, dirty: dirtySourcePaths === null ? null : dirtySourcePaths.length > 0, dirtySourcePaths };
 }
 
+function compactSourceOverlayIdentity(identity) {
+  return identity ? {
+    schema: identity.schema || null,
+    sourceCommit: identity.sourceCommit || null,
+    sourceOverlayDigest: identity.sourceOverlayDigest || null,
+    fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
+    totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+  } : null;
+}
+
+/** Resolve and validate an immutable probe manifest before any browser/server work starts. */
+export function resolveBaselineSource(value, root = ROOT) {
+  if (!value) return null;
+  const resolved = path.resolve(root, String(value));
+  const relative = path.relative(root, resolved).replace(/\\/g, '/');
+  if (!relative || relative === '..' || relative.startsWith('../') || !relative.startsWith('.devshots/')) {
+    throw new Error('--baseline-source must point to a manifest under .devshots/');
+  }
+  const manifest = loadSourceOverlayManifest(resolved);
+  return Object.freeze({
+    path: resolved,
+    relative,
+    identity: compactSourceOverlayIdentity(manifest.identity),
+  });
+}
+
+async function readServedBaselineSource(page, expected) {
+  if (!expected) return null;
+  const observed = await page.evaluate(async () => {
+    const response = await fetch('/__source_overlay_identity', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`source overlay identity endpoint returned ${response.status}`);
+    const identity = await response.json();
+    return {
+      schema: identity?.schema || null,
+      sourceCommit: identity?.sourceCommit || null,
+      sourceOverlayDigest: identity?.sourceOverlayDigest || null,
+      fileCount: Number.isSafeInteger(identity?.fileCount) ? identity.fileCount : null,
+      totalBytes: Number.isSafeInteger(identity?.totalBytes) ? identity.totalBytes : null,
+    };
+  });
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  const mismatch = fields.find((field) => observed?.[field] !== expected.identity?.[field]);
+  if (mismatch) {
+    throw new Error(`served source overlay identity mismatch at ${mismatch}: expected ${JSON.stringify(expected.identity)} got ${JSON.stringify(observed)}`);
+  }
+  return observed;
+}
+
 export function sourceRunMetadata(start, end) {
   return { commit: start.commit, dirty: start.dirty, startCommit: start.commit,
     startDirtySourcePaths: start.dirtySourcePaths, endCommit: end.commit,
@@ -437,7 +492,7 @@ async function runOne(args, arena, extra = {}) {
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
   const freezeWatch = createFreezeWatch();
   freezeWatch.start();
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), loadavg: { start: [...loadavg()], end: null }, ...gradedRunFields(args) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), sourceOverlay: args.baselineSource ? { manifest: args.baselineSource.relative, requested: args.baselineSource.identity, served: null } : null, loadavg: { start: [...loadavg()], end: null }, ...gradedRunFields(args) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const stampHarnessClock = () => {
     if (trace.meta.harnessFreezes) return;
     freezeWatch.stop();
@@ -455,7 +510,7 @@ async function runOne(args, arena, extra = {}) {
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
-  const server = await startBenchServer();
+  const server = await startBenchServer({ sourceOverlay: args.baselineSource?.path || null });
   const { chromium } = await loadPlaywright();
   let browser; let executable; let chrome;
   try {
@@ -621,6 +676,11 @@ async function runOne(args, arena, extra = {}) {
   const stopWindowGuard = await keepHeadedWindowNormal(page, { headed: args.headed });
   try {
     await bootToMenu(page, server.baseUrl, step);
+    trace.meta.sourceOverlay = args.baselineSource ? {
+      manifest: args.baselineSource.relative,
+      requested: args.baselineSource.identity,
+      served: await readServedBaselineSource(page, args.baselineSource),
+    } : null;
     await installReader();
     renderer = await page.evaluate(() => {
       const r = window.SF.state.render && window.SF.state.render.renderer; const gl = r ? r.getContext() : document.createElement('canvas').getContext('webgl2');
@@ -972,8 +1032,8 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pru
 // CLI mode → the Crucible door's data-ruleset (Gauntlet is the 'scored' ruleset).
 const RULESET = Object.freeze({ swarm: 'swarm', gauntlet: 'scored' });
 
-async function assertHarnessEnvironment() {
-  const server = await startBenchServer();
+async function assertHarnessEnvironment(baselineSource = null) {
+  const server = await startBenchServer({ sourceOverlay: baselineSource?.path || null });
   let code = null;
   try {
     const env = await verifyHarnessEnvironment({ root: ROOT, baseUrl: server.baseUrl });
@@ -1000,11 +1060,12 @@ async function assertHarnessEnvironment() {
 async function main() {
   sessionGuard = installSessionSignalGuard(process);
   const args = parseArgs(process.argv.slice(2));
+  args.baselineSource = resolveBaselineSource(args.baselineSource);
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
-  await assertHarnessEnvironment();
+  await assertHarnessEnvironment(args.baselineSource);
   let arenas = [args.arena];
   if (args.arena === 'all' && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
-    const server = await startBenchServer(); const { chromium } = await loadPlaywright();
+    const server = await startBenchServer({ sourceOverlay: args.baselineSource?.path || null }); const { chromium } = await loadPlaywright();
     const { browser } = await launchChromium(chromium, { headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await bootToMenu(page, server.baseUrl, () => {});
@@ -1018,7 +1079,7 @@ async function main() {
     console.log(`arenas reachable from the door: ${arenas.join(', ')}${locked.length ? ` · locked for a fresh profile: ${locked.join(', ')}` : ''}`);
   }
   if (args.hull === 'all' && !args.hullList && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
-    const server = await startBenchServer(); const { chromium } = await loadPlaywright();
+    const server = await startBenchServer({ sourceOverlay: args.baselineSource?.path || null }); const { chromium } = await loadPlaywright();
     const { browser } = await launchChromium(chromium, { headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await bootToMenu(page, server.baseUrl, () => {});

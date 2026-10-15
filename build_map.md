@@ -11,6 +11,10 @@ The asset experience plan is [Asset experience program](design/program/asset-exp
 Cloud integration intentions and resulting behavior are recorded in
 [PR maturation, 2026-10-12](design/program/PR_MATURATION_2026-10-12.md).
 
+The owner-directed whole-game research and repair campaign is
+[Maturity, 15 October](design/program/MATURITY_2026_10_15.md). It applies §1.8 across the existing
+finish lanes, with Sol research, Luna repairs, cloud PR integration and full-matrix verification.
+
 Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
 
 For the owner-directed production-quality and physics-playground planning pass, use

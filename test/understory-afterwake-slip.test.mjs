@@ -246,6 +246,7 @@ test('CR-BERTH-2: the wreck-buyer desk writes the feed order off a proved hull',
     meta: { seed: 47 },
     factions: { faction_understory: { rep: 0 } },
     world: { currentSectorId: 'sector_charon_expanse' },
+    ui: { docked: true, dockedStationId: 'station_expanse' },
     lossLedger: {
       bySector: {
         sector_charon_expanse: [{ lossId: 'loss_abc', shipDefId: 'ship_mule', t: 12 }],
@@ -306,6 +307,7 @@ test('CR-BERTH-2: the wreck-buyer desk writes the feed order off a proved hull',
   const state2 = {
     simTime: 5, meta: { seed: 47 }, factions: {},
     world: { currentSectorId: 'sector_charon_expanse' },
+    ui: { docked: true, dockedStationId: 'station_expanse' },
     lossLedger: { bySector: {} },
     factionPresence: {
       servicesByStation: {

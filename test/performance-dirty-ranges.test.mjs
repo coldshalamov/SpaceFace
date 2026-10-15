@@ -365,6 +365,38 @@ test('isolated Electron launch rejection removes its unpublished owned profile',
   assert.deepEqual(calls, [{ runtimeClosed: true }]);
 });
 
+test('Windows game launch uses Normal priority and restores the yielding helper on success or failure', async () => {
+  for (const fail of [false, true]) {
+    let currentPriority = 19;
+    const changes = [];
+    const cleanup = [];
+    const ownedApp = {};
+    const operation = launchIsolatedElectronApplication({
+      async launch() {
+        assert.equal(currentPriority, 0, 'the game must inherit Normal priority');
+        await Promise.resolve();
+        assert.equal(currentPriority, 0, 'priority stays Normal through asynchronous creation');
+        if (fail) throw new Error('priority launch rejection');
+        return ownedApp;
+      },
+    }, {
+      options: {},
+      cleanup(value) { cleanup.push(value); },
+    }, {
+      platform: 'win32',
+      priority: {
+        getPriority() { return currentPriority; },
+        setPriority(value) { currentPriority = value; changes.push(value); },
+      },
+    });
+    if (fail) await assert.rejects(operation, /priority launch rejection/);
+    else assert.equal(await operation, ownedApp);
+    assert.deepEqual(changes, [0, 19]);
+    assert.equal(currentPriority, 19, 'the helper yields again after creation');
+    assert.deepEqual(cleanup, fail ? [{ runtimeClosed: true }] : []);
+  }
+});
+
 test('isolated Electron profile cleanup depends on process shutdown, not acceptance success', () => {
   const calls = [];
   const isolatedLaunch = { cleanup(options) { calls.push(options); } };

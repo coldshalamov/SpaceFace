@@ -15,6 +15,7 @@ export const CLEARANCE_GRID_MAX_CELLS = 128;
 const _inv = new THREE.Matrix4();
 const _corner = new THREE.Vector3();
 const _localBox = new THREE.Box3();
+const _worldBox = new THREE.Box3();
 const _vA = new THREE.Vector3();
 const _vB = new THREE.Vector3();
 const _vC = new THREE.Vector3();
@@ -239,18 +240,30 @@ function resolveEnsure(options) {
   return ensureClearanceBoundsTree;
 }
 
-function writeLocalQueryBox(mesh, minX, maxX, minZ, maxZ, target) {
+function writeLocalQueryBox(mesh, tree, minX, maxX, minZ, maxZ, target) {
   const det = mesh.matrixWorld.determinant();
   if (!Number.isFinite(det) || Math.abs(det) < 1e-12) return false;
   _inv.copy(mesh.matrixWorld).invert();
+  // A world-height column of +/-1e6 becomes an enormous local X/Z slab on tilted
+  // authored panels, defeating the BVH and visiting almost every triangle. The
+  // tree's enclosing box contains every triangle, so its world Y interval is a
+  // conservative finite column with exactly the same possible roof contributors.
+  let minY = -1e6, maxY = 1e6;
+  if (typeof tree.getBoundingBox === 'function') {
+    tree.getBoundingBox(_worldBox).applyMatrix4(mesh.matrixWorld);
+    if (Number.isFinite(_worldBox.min.y) && Number.isFinite(_worldBox.max.y)) {
+      minY = _worldBox.min.y - 1e-3;
+      maxY = _worldBox.max.y + 1e-3;
+    }
+  }
   target.makeEmpty();
   for (let xi = 0; xi < 2; xi++) {
     const x = xi === 0 ? minX : maxX;
     for (let zi = 0; zi < 2; zi++) {
       const z = zi === 0 ? minZ : maxZ;
-      _corner.set(x, -1e6, z).applyMatrix4(_inv);
+      _corner.set(x, minY, z).applyMatrix4(_inv);
       target.expandByPoint(_corner);
-      _corner.set(x, 1e6, z).applyMatrix4(_inv);
+      _corner.set(x, maxY, z).applyMatrix4(_inv);
       target.expandByPoint(_corner);
     }
   }
@@ -312,7 +325,7 @@ export function clearanceNeighborhoodRaw(root, box, camX, camZ, options) {
       failed = true;
       return;
     }
-    if (!writeLocalQueryBox(object, qMinX, qMaxX, qMinZ, qMaxZ, _localBox)) {
+    if (!writeLocalQueryBox(object, tree, qMinX, qMaxX, qMinZ, qMaxZ, _localBox)) {
       failed = true;
       return;
     }

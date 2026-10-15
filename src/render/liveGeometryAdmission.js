@@ -201,7 +201,11 @@ export function createLiveGeometryAdmissionQueue({ compile, prepare, prepareBatc
     // not wait on any link.
     for (const entry of live) {
       if (!entry.active()) continue;
-      void Promise.resolve().then(() => compile(entry.root)).catch((error) => {
+      // The queue has already classified this entry as urgent. Preserve that
+      // classification at the renderer boundary; dropping it here sends the
+      // root through the explicit ambient lane and can leave an on-glass body
+      // behind the whole compile cohort while its residency is already ready.
+      void Promise.resolve().then(() => compile(entry.root, { urgent: true })).catch((error) => {
         try { onError(error, entry.entity); } catch (_) { /* log-only path */ }
       });
     }

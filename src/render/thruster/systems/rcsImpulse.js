@@ -738,6 +738,27 @@ export class RcsImpulseSystem {
     this.reset();
   }
 
+  /** Publish active and dormant quality-tier resources owned by this impulse batch. */
+  contextLossResources() {
+    const resources = [];
+    const seen = new Set();
+    const add = (resource) => {
+      if (!resource || typeof resource !== 'object' || seen.has(resource)) return;
+      seen.add(resource);
+      resources.push(resource);
+    };
+    add(this.group);
+    for (const batch of this.layerBatches || []) {
+      add(batch.mesh);
+      add(batch.material);
+      for (const tier of RCS_QUALITY_TIERS) add(batch.tierBuffers?.[tier]?.geo);
+    }
+    for (const texture of Object.values(this._textures || {})) {
+      if (texture?.isTexture) add(texture);
+    }
+    return resources;
+  }
+
   dispose() {
     if (this._disposed) return;
     this.reset();
