@@ -74,6 +74,131 @@ try {
 
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+    const failurePrefix = '[render] opening submission post-submit validation failed ';
+    const originalInfo = console.info;
+    if (typeof originalInfo !== 'function') return;
+    const [MAX_GEOMETRY_IDS, MAX_OWNERS, MAX_TRAVERSED_OBJECTS, MAX_ANCESTRY] = [8, 8, 20_000, 12];
+    const packageKeys = ['flightRenderPackage', 'renderPackage', 'spacefaceRenderPackage', 'openingSubmissionPackage'];
+    let captured = false;
+    const text = (value, max = 160) => value == null ? null
+      : typeof value === 'string' ? value.slice(0, max)
+      : typeof value === 'number' || typeof value === 'boolean' ? value : null;
+    const finite = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+    const delta = (value) => value && typeof value === 'object' ? {
+      programs: finite(value.programs), geometries: finite(value.geometries), textures: finite(value.textures),
+    } : null;
+    const list = (value, limit = MAX_GEOMETRY_IDS) => {
+      if (!Array.isArray(value)) return [];
+      const output = [], seen = new Set();
+      for (let index = 0; index < value.length && output.length < limit; index++) {
+        const entry = text(value[index]);
+        const key = entry == null ? '' : String(entry);
+        if (!key || seen.has(key)) continue;
+        seen.add(key); output.push(key);
+      }
+      return output;
+    };
+    const attachedToScene = (object, scene) => {
+      if (!object || !scene) return null;
+      for (let cursor = object, depth = 0; cursor && depth < MAX_ANCESTRY * 2;
+        depth++, cursor = cursor.parent || null) if (cursor === scene) return true;
+      return false;
+    };
+    const ancestry = (object) => {
+      const path = []; let cursor = object;
+      for (; cursor && path.length < MAX_ANCESTRY; cursor = cursor.parent || null) {
+        const parent = cursor.parent || null;
+        path.push({ childIndex: parent && Array.isArray(parent.children) ? parent.children.indexOf(cursor) : null,
+          name: text(cursor.name), type: text(cursor.type) });
+      }
+      return { path: path.reverse(), truncated: !!cursor };
+    };
+    const packageStamp = (object) => {
+      let fallback = null;
+      for (let cursor = object, depth = 0; cursor && depth < MAX_ANCESTRY * 2;
+        depth++, cursor = cursor.parent || null) {
+        const data = cursor.userData || {};
+        for (const source of packageKeys) {
+          const pkg = data[source];
+          if (!pkg || typeof pkg !== 'object') continue;
+          const stamp = { source, schema: text(pkg.schema), assetId: text(pkg.assetId),
+            hash: text(pkg.hash ?? pkg.contentHash), producer: text(pkg.producer) };
+          if (!fallback) fallback = stamp;
+          if (stamp.hash != null && stamp.hash !== '') return stamp;
+        }
+      }
+      return fallback;
+    };
+    const captureFailure = (validation) => {
+      const value = validation && typeof validation === 'object' ? validation : {};
+      const rawIds = Array.isArray(value.uncapturedGeometryBufferIds) ? value.uncapturedGeometryBufferIds : [];
+      const geometryIds = list(rawIds), ids = new Set(geometryIds);
+      const render = window.SF?.state?.render || null;
+      const receiptPlan = render?.openingSubmissionReceipt?.plan || null;
+      const planSubjects = Array.isArray(receiptPlan?.compileSubjects)
+        ? receiptPlan.compileSubjects.filter((subject) => subject && typeof subject === 'object') : [];
+      const plannedLeaves = new Set(planSubjects);
+      const firstDrawObjects = render?.openingFirstDrawIdentityCensus?.objects instanceof Map
+        ? render.openingFirstDrawIdentityCensus.objects : null;
+      const scene = window.SF?.registry?.get?.('render')?.scene || null;
+      const owners = [], seenObjects = new WeakSet();
+      let traversedObjects = 0, traversalTruncated = false, ownersTruncated = false;
+      const inspect = (object, attachedHint) => {
+        const geometry = object.geometry || null;
+        const uuid = text(geometry?.uuid), id = text(geometry?.id);
+        if (!geometry || !((uuid != null && (ids.has(String(uuid)) || ids.has(`uuid:${uuid}`)))
+          || (id != null && (ids.has(String(id)) || ids.has(`id:${id}`))))) return;
+        if (owners.length >= MAX_OWNERS) { ownersTruncated = true; return; }
+        const inCensus = firstDrawObjects ? firstDrawObjects.has(object) : null;
+        const censusEntry = inCensus ? firstDrawObjects.get(object) : null;
+        owners.push({ geometry: { uuid, id },
+          object: { uuid: text(object.uuid), name: text(object.name), type: text(object.type) },
+          ancestry: ancestry(object), visible: typeof object.visible === 'boolean' ? object.visible : null,
+          layerMask: finite(object.layers?.mask),
+          attachedToLiveScene: attachedHint == null ? attachedToScene(object, scene) : attachedHint,
+          directPlanMembership: receiptPlan ? plannedLeaves.has(object) : null,
+          firstDrawCensusHasObject: inCensus,
+          priorGeometryUuid: text(censusEntry?.geometry?.uuid) ?? text(censusEntry?.priorGeometryUuid),
+          nearestHashStamp: packageStamp(object) });
+      };
+      const scan = (roots, attachedHint) => {
+        for (const root of roots) {
+          if (!root || typeof root !== 'object') continue;
+          const stack = [root];
+          while (stack.length) {
+            if (traversedObjects >= MAX_TRAVERSED_OBJECTS) { traversalTruncated = true; return; }
+            const object = stack.pop();
+            if (!object || typeof object !== 'object' || seenObjects.has(object)) continue;
+            seenObjects.add(object); traversedObjects++; inspect(object, attachedHint);
+            const children = object.children;
+            if (Array.isArray(children)) for (let index = children.length - 1; index >= 0; index--) stack.push(children[index]);
+          }
+        }
+      };
+      if (geometryIds.length) { scan(planSubjects, null); if (!traversalTruncated && scene) scan([scene], true); }
+      return { schema: 'spaceface.shaderOpeningFailure.v1', observedAt: Date.now(),
+        sourceValidation: { ok: typeof value.ok === 'boolean' ? value.ok : null, reason: text(value.reason),
+          uncaptured: list(value.uncaptured), uncapturedGeometryBufferIds: geometryIds, delta: delta(value.delta),
+          firstVisibleDelta: delta(value.firstVisibleGpuCounts?.delta) },
+        uncapturedGeometryBufferIds: geometryIds, geometryIdCount: rawIds.length,
+        geometryIdsTruncated: rawIds.length > geometryIds.length, owners, ownersTruncated,
+        traversal: { traversedObjects, maxObjects: MAX_TRAVERSED_OBJECTS, truncated: traversalTruncated,
+          plannedLeaves: planSubjects.length },
+        timestamps: { worldSubmittedFrames: finite(render?.worldSubmittedFrames),
+          openingSubmissionFirstDrawSubmittedAt: finite(render?.openingSubmissionFirstDrawSubmittedAt),
+          firstPlayableFrameAt: finite(render?.firstPlayableFrameAt), firstPlayablePaintAt: finite(render?.firstPlayablePaintAt) } };
+    };
+    console.info = function (...args) {
+      try {
+        if (!captured && typeof args[0] === 'string' && args[0].startsWith(failurePrefix)) {
+          captured = true;
+          window.__SF_SHADER_OPENING_FAILURE__ = captureFailure(args[1]);
+        }
+      } catch (error) {
+        window.__SF_SHADER_OPENING_FAILURE__ = { schema: 'spaceface.shaderOpeningFailure.v1',
+          observedAt: Date.now(), captureError: text(error && error.message ? error.message : error) };
+      } finally { return Reflect.apply(originalInfo, this, args); }
+    };
   });
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await bootToFlight(page);
@@ -83,6 +208,9 @@ try {
   await page.waitForTimeout(2_500);
 
   const diagnostics = await readProgramDiagnostics(page);
+  const openingFailure = await page.evaluate(
+    () => window.__SF_SHADER_OPENING_FAILURE__ || null,
+  ).catch(() => null);
 
   await mkdir(EVIDENCE_DIR, { recursive: true });
   await writeFile(EVIDENCE_PATH, `${JSON.stringify({
@@ -91,6 +219,7 @@ try {
     broken: diagnostics.broken,
     pageErrors,
     consoleShaderErrors,
+    openingFailure,
   }, null, 2)}\n`, 'utf8');
 
   // --- Assertions, ordered so the most diagnostic failure reports first ---------------------
