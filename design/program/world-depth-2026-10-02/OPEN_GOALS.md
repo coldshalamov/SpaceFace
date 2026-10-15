@@ -13,10 +13,10 @@ Updated2026-10-15. This register preserves the original twenty-concept map and I
 
 ## SF-ORCHARD
 - Outcome: authored finite three-pod machinery, native custody, Continue/residency, ordinary gameplay and accepted presentation.
-- State: focused player route, thermal persistence, reachable maximal tow and finite-pod shock tested. Live thermal target facts now cross the bounded worker read model; forecast transport, normal browser/camera and target-device gates remain open.
+- State: focused player route, thermal persistence, reachable maximal tow and finite-pod shock tested. Live thermal target facts now cross the bounded worker read model; forecast phase/force facts now cross the bounded worker read model. Normal browser/camera and target-device gates remain open.
 - Owner: Orchard implementation owner and independent reviewer; integration owner publishes coherent increments.
-- Evidence: ORCHARD_SHOCK_2026-10-15.md and ORCHARD_READOUT_2026-10-15.md; current-e3 player-route receipt;579Orchard,94activity and93neighbor checks passed. Natural4-unit harvest, mid-opening Continue, physical collection and postcollection Continue preserve finite custody.
-- Next action: verify forecast HUD across the default worker transport, review the integrated ordinary experience in the live camera and measure target-device performance.
+- Evidence: ORCHARD_SHOCK_2026-10-15.md and ORCHARD_READOUT_2026-10-15.md and ORCHARD_FORECAST_TRANSPORT_2026-10-15.md; current-e3 player-route receipt;579Orchard,94activity and93neighbor checks passed. Natural4-unit harvest, mid-opening Continue, physical collection and postcollection Continue preserve finite custody.
+- Next action: review the integrated forecast and pod readouts during ordinary live-camera gameplay, then measure target-device performance.
 - Awaiting user: no engineering choice; final visual/experience acceptance remains open.
 
 ## SF-PUBLISH

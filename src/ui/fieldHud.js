@@ -1,3 +1,4 @@
+import { resolveOrchardForecast, validateMirroredOrchardForecast } from '../world/anvilOrchardForecast.js';
 // PQ-012 / SF-12 — Field HUD (DOM-guarded "own module" pattern, massSeedHud sibling).
 //
 // The HUD's ONLY job is what world-space form cannot carry (bible §8.1): the exact remaining
@@ -19,17 +20,11 @@
 
 import {
   ANVIL_ORCHARD_GUST_PROFILE,
-  anvilOrchardGustGeometry,
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   cinderSluicePhase,
   pointInsideCinderSluice,
 } from '../data/environmentalMachinery.js';
-import { fieldBodyProfile } from '../systems/fields.js';
-import { normalizeField, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
-import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardHistoryFitsTick, orchardPhase } from '../data/anvilOrchard.js';
-import { ORCHARD_GEOMETRY } from '../data/anvilOrchardBody.js';
-import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import {
   FIELD_LANE_BASE,
   LANE_PRIORITY,
@@ -256,59 +251,10 @@ export const fieldHud = {
   },
 
   _resolveOrchardEnvironmental(state) {
-    if (!state || state.mode !== 'flight'
-      || state.world?.currentSectorId !== ANVIL_ORCHARD.sectorId
-      || !Number.isSafeInteger(state.tick)) return null;
-    const record = normalizeOrchardRecord(state.sites?.anvilOrchard);
-    if (!record || record.frameStatus === 'destroyed' || !orchardHistoryFitsTick(record, state.tick)) return null;
-    let frame = state.entities?.get?.(state.planet?.orchardFrameId);
-    if (!frame || frame.alive === false || !isOrchardFrame(frame)) {
-      frame = null;
-      if (state.entities && typeof state.entities.values === 'function') {
-        for (const candidate of state.entities.values()) {
-          if (candidate?.alive !== false && isOrchardFrame(candidate)
-            && candidate.data?.worldRecordId === ORCHARD_GEOMETRY.worldRecordId) {
-            frame = candidate;
-            break;
-          }
-        }
-      }
+    if (Object.hasOwn(state?.planet || {}, 'orchardForecast')) {
+      return validateMirroredOrchardForecast(state, state.planet.orchardForecast);
     }
-    const player = state.entities?.get?.(state.playerId);
-    if (!frame || frame.alive === false || !player || player.alive === false) return null;
-    const geometry = anvilOrchardGustGeometry(frame, this._orchardGeometry);
-    if (!geometry || !player.pos || Math.hypot(player.pos.x - geometry.center.x, player.pos.z - geometry.center.z)
-      > ANVIL_ORCHARD_GUST_PROFILE.observationRadius) return null;
-    const phase = orchardPhase(record, state.tick, this._orchardPhaseOut);
-    if (!phase) return null;
-    this._orchardSampleFields ||= [null];
-    this._orchardSampleOut ||= { ax: 0, az: 0 };
-    this._orchardBodyProfile ||= {};
-    // Predict only this local Orchard field, using the same kernel math and body profile as the
-    // force owner. Forecast samples the prospective authored field; calm has no local effect.
-    let sampled = null;
-    const snapshot = state.fields?.snapshot;
-    if (phase.phase === 'gust' && Array.isArray(snapshot)) {
-      for (let i = 0; i < snapshot.length; i++) {
-        if (snapshot[i]?.id === ANVIL_ORCHARD_GUST_PROFILE.id) { sampled = snapshot[i]; break; }
-      }
-    }
-    if (!sampled && phase.phase === 'forecast') {
-      sampled = normalizeField({ ...ANVIL_ORCHARD_GUST_PROFILE, center: geometry.center, dir: geometry.dir, createdAt: 0 });
-    }
-    let localStrength = 0, dir = geometry.dir;
-    if (sampled && typeof fieldBodyProfile === 'function') {
-      this._orchardSampleFields[0] = sampled;
-      fieldBodyProfile(player, state, this._orchardBodyProfile);
-      sampleFieldAcceleration(player.pos, player.vel, this._orchardSampleFields, state.simTime || 0,
-        this._orchardBodyProfile, this._orchardSampleOut);
-      localStrength = Math.hypot(this._orchardSampleOut.ax, this._orchardSampleOut.az);
-      if (localStrength > 1e-9) dir = { x: this._orchardSampleOut.ax / localStrength, z: this._orchardSampleOut.az / localStrength };
-    }
-    return {
-      kind: 'orchard-gust', phase: phase.phase, remainingTicks: phase.remainingTicks,
-      dir, localStrength,
-    };
+    return resolveOrchardForecast(state, this);
   },
 
   _apply(dom, text, cls) {

@@ -1,3 +1,4 @@
+import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
 // S1 Phase-B stage 3 — main-side read model v1.
 //
 // Reconstructs what the present lane reads from live sim state, fed entirely by
@@ -522,7 +523,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
   'cursor',
   // Bounded live pod facts only: the leaf projector excludes other planet authority.
-  'planet.ships',
+  'planet.ships', 'planet.orchardForecast',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic',
   'physicsVenueSession', 'world.wreckCourtRulings',
@@ -681,6 +682,7 @@ function domainCadenceFor(rootKey) {
 //     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
 const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
 const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
+const ORCHARD_FORECAST_MIRROR_RULE = Object.freeze({ project: 'orchardForecast' });
 const ORCHARD_EXPOSURE_MIRROR_RULE = Object.freeze({ project: 'orchardExposure' });
 
 // Named diagnostic wire profiles. The ordinary runtime installs the empty
@@ -728,6 +730,7 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
   // DOMAIN_MIRROR_KEYS keeps dotted leaf paths as one logical root on the worker wire; the main
   // lane splits that segment while grafting it into state.npcJobs.byId.
@@ -782,6 +785,7 @@ function projectDomainLeaf(rule, v, state) {
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
   if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;

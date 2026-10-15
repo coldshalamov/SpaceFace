@@ -11,9 +11,3 @@ Publication must freshly verify feature-branch ownership and append this delta o
 ## Current upstream reconciliation
 
 Master b7a2a434353347f0e78951b1cae0d26f3a1d00af changed targetPanel after the original123-file seal. The clean three-way merge preserves its salvage-legality import and full legality facts block alongside Orchard exposure facts. The old604 snapshot remains immutable. Focused merged readout/upstream legality/target-intel tests pass19/19; independent review approves the merge.
-
-## Broader baseline status
-
-Public b7 CI is not wholly green. Root reproduced separate baseline failures and retained exact reproduction logs in the recovery evidence. This focused Orchard result does not certify the entire repository or close unrelated CI gates. The current upstream20-path refresh and restored-neighbor evidence are also retained.
-
-Final combined successor125 validation:646/646 across74files in113.167seconds. All125 source hashes match before/after. Canonical b7support plus frozen125 overlay excludes active Alin changes. Earlier overlay setup failures and their exact baseline-asset repair are retained; no gameplay source repair was needed. This full result belongs to successor125; predecessor123 additionally has its exact19-case merged validation.
