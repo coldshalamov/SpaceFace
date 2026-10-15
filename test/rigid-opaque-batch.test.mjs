@@ -990,6 +990,50 @@ test('departure and disposal cancel rejected preparation retries and ignore late
   }
 });
 
+test('superseded preparation resolve or reject cannot overwrite a newer active cohort', async () => {
+  for (const outcome of ['resolve', 'reject']) {
+    const scene = new THREE.Scene();
+    const first = makeRoot(), second = makeRoot();
+    scene.add(first.root, second.root);
+    scene.updateMatrixWorld(true);
+    let attempts = 0, settleOld;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: () => {
+        if (++attempts > 1) return { ready: true };
+        return new Promise((resolve, reject) => {
+          settleOld = () => outcome === 'resolve'
+            ? resolve({ ready: true }) : reject(new Error('superseded preparation'));
+        });
+      },
+    });
+    try {
+      const old = controller.sync(first.root);
+      await Promise.resolve();
+      await controller.sync([first.root, second.root]);
+      const current = controller.getDiagnostics();
+      const batches = scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.equal(current.status, 'active');
+      assert.equal(current.hiddenSources, 4);
+      settleOld();
+      await old;
+      const after = controller.getDiagnostics();
+      assert.equal(after.status, 'active', `late ${outcome} preserves current status`);
+      assert.equal(after.lastReason, current.lastReason);
+      assert.equal(after.lastError, current.lastError);
+      assert.equal(after.activations, 1);
+      assert.equal(after.hiddenSources, 4);
+      assert.deepEqual(scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch), batches);
+      for (const source of [first.a, first.b, second.a, second.b]) assert.equal(source.layers.mask, 0);
+    } finally {
+      controller.dispose();
+      for (const source of [first.a, first.b, second.a, second.b]) {
+        source.geometry.dispose(); source.material.dispose();
+      }
+    }
+  }
+});
+
 test('unsupported BatchedMesh capability leaves the direct path untouched', async () => {
   const scene = new THREE.Scene();
   const { root, a, b } = makeRoot();

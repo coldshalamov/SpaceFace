@@ -1124,6 +1124,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             || result?.superseded === true) {
           releaseCandidate(candidate, scene, true);
           if (pending === record) pending = null;
+          if (!wasActive) return refreshDiagnostics();
           if (wasActive && (!ready || result?.skipped === true
               || result?.ready === false || result?.timedOut === true
               || result?.superseded === true)) {
