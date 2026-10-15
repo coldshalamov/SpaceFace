@@ -15,9 +15,14 @@ const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'ArrowFunctionExpression' && node.async
+      && source.slice(node.start, node.end).includes('submitExactSubjectTouch(subject, admissionOptions.isActive)')
+      && source.slice(node.start, node.end).includes('admissionOptions.isActive(subject) !== true')) {
+    ownerActiveAdmissionNode = node;
+  }
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorAfterJump') cookNode = node.right;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'pipelinePrecompile') pipelineNode = node.init;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'compileSectorPipelines') compileNode = node.init;
@@ -28,6 +33,8 @@ function walk(node) {
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'beginOpeningLoadingAdmission') loadingNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareOpeningFirstPicture') pictureNode = node.right;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'submitExactSubjectTouch') touchSubmitNode = node.init;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'ownerInactiveTouchError') ownerInactiveTouchNode = node.init;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'isOwnerInactiveTouchError') ownerInactiveTouchCheckNode = node.init;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'touchExactTargetSubjects') groupTouchNode = node.init;
   if (node.type === 'ObjectProperty' && node.key?.name === 'touchMany'
       && source.slice(node.value.start, node.value.end).includes('settleDrawableSession')) settleTouchManyNode = node.value;
@@ -52,6 +59,9 @@ const loadingCode = source.slice(loadingNode.start, loadingNode.end);
 const pictureCode = source.slice(pictureNode.start, pictureNode.end);
 const touchSubmitCode = source.slice(touchSubmitNode.start, touchSubmitNode.end);
 const touchFacadeCode = source.slice(touchFacadeNode.start, touchFacadeNode.end);
+const ownerInactiveTouchCode = source.slice(ownerInactiveTouchNode.start, ownerInactiveTouchNode.end);
+const ownerInactiveTouchCheckCode = source.slice(ownerInactiveTouchCheckNode.start, ownerInactiveTouchCheckNode.end);
+const ownerActiveAdmissionCode = source.slice(ownerActiveAdmissionNode.start, ownerActiveAdmissionNode.end);
 const groupTouchCode = source.slice(groupTouchNode.start, groupTouchNode.end);
 const settleTouchManyCode = source.slice(settleTouchManyNode.start, settleTouchManyNode.end);
 function evaluate(code, owner, values) {
@@ -68,14 +78,22 @@ function deferred() {
   return { promise, resolve };
 }
 
-function queuedTouchFixture({ detached = false, failTouch = false } = {}) {
+function queuedTouchFixture({ detached = false, failTouch = false, serialPacer = true } = {}) {
   const scene = new THREE.Scene(), root = new THREE.Group(); root.visible = false; scene.add(root);
   const leaf = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 2);
   leaf.visible = false; leaf.count = 0; leaf.geometry.setDrawRange(0, 0); root.add(leaf);
-  const jobs = [], draws = [];
+  const jobs = [], draws = [], warnings = [];
   const owner = { scene };
   const values = { renderer: {}, revealSubjectWithAncestors, cam: { obj: {} },
-    makeGpuQueuePacer: () => ({ submit: work => new Promise((resolve, reject) => { jobs.push({ work, resolve, reject }); }) }),
+    makeGpuQueuePacer: () => serialPacer ? ({ submit: (work, admission = {}) => new Promise((resolve, reject) => {
+      jobs.push({
+        work: () => typeof admission.isActive === 'function' && admission.isActive() !== true
+          ? { skipped: true, reason: 'owner-inactive' }
+          : work(),
+        resolve,
+        reject,
+      });
+    }) }) : null,
     postTaskAtBackgroundPriorityBounded() {},
     touchExactTargetSubject(subject) {
       assert.equal(root.visible, true); assert.equal(leaf.visible, true);
@@ -89,8 +107,10 @@ function queuedTouchFixture({ detached = false, failTouch = false } = {}) {
     rehydrateDetachedTextures: async () => {}, rehydrateDetachedGeometries: async () => {},
     admissionPaceYield: async () => {},
     refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
-    rememberOpeningPreparedLeaves() {}, laneWarn() {}, emptyCompressedTextureIdentity: () => null,
+    rememberOpeningPreparedLeaves() {}, laneWarn: (...args) => warnings.push(args), emptyCompressedTextureIdentity: () => null,
   };
+  values.ownerInactiveTouchError = evaluate(ownerInactiveTouchCode, owner, values);
+  values.isOwnerInactiveTouchError = evaluate(ownerInactiveTouchCheckCode, owner, values);
   const submit = evaluate(touchSubmitCode, owner, values);
   values.submitExactSubjectTouch = submit;
   const facade = evaluate(touchFacadeCode, owner, values);
@@ -101,11 +121,11 @@ function queuedTouchFixture({ detached = false, failTouch = false } = {}) {
   };
   const runNext = async () => {
     const job = jobs.shift(); assert.ok(job, 'one touch is waiting for its GPU reservation');
-    try { job.resolve(job.work()); } catch (error) { job.reject(error); }
+    try { job.resolve(await job.work()); } catch (error) { job.reject(error); }
     assertRestored();
     await nextTurn();
   };
-  return { root, leaf, jobs, draws, facade, submit, assertRestored, runNext };
+  return { root, leaf, jobs, draws, warnings, facade, submit, assertRestored, runNext };
 }
 
 for (const detached of [false, true]) {
@@ -127,6 +147,75 @@ test('the actual submit callback restores visibility/count/range before a touch 
   const touch = f.submit(f.root);
   const rejected = assert.rejects(touch, /injected-native-touch-failure/);
   f.assertRestored(); await f.runNext(); await rejected; f.assertRestored();
+});
+
+test('inactive exact-target owners cancel before draw without masquerading as a successful admission', async () => {
+  const f = queuedTouchFixture();
+  assert.deepEqual(await f.facade(f.root, { isActive: () => false }),
+    { skipped: true, reason: 'owner-inactive' });
+  assert.equal(f.jobs.length, 0, 'inactive before admission does no async texture scan or queue work');
+
+  // The owner can retire while waiting for the serial GPU reservation. The pacer skip is a
+  // cancellation, not a successful exact touch; the awaited submit remains rejected as AbortError.
+  let active = true;
+  const retiredWhileQueued = f.submit(f.root, () => active);
+  active = false;
+  const cancelled = assert.rejects(retiredWhileQueued, (error) => (
+    error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE'
+  ));
+  await f.runNext();
+  await cancelled;
+  assert.deepEqual(f.draws, [], 'an inactive owner never runs the native exact-target draw');
+  assert.deepEqual(f.warnings, [], 'owner cancellation does not enter GPU failure diagnostics');
+
+  // The no-pacer route reaches the same typed cancellation from the submission callback itself.
+  const direct = queuedTouchFixture({ serialPacer: false });
+  active = true;
+  const retiredBeforeSubmit = direct.submit(direct.root, () => active);
+  active = false;
+  await assert.rejects(retiredBeforeSubmit, (error) => (
+    error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE'
+  ));
+  assert.deepEqual(direct.draws, []);
+});
+
+test('pipeline continuation rejects a retired owner instead of resolving stale readiness', async () => {
+  const subject = {};
+  const owner = { scene: {} };
+  const errorFactory = evaluate(ownerInactiveTouchCode, owner, {});
+  let exactTouches = 0;
+  const continuation = evaluate(ownerActiveAdmissionCode, owner, {
+    admissionOptions: { isActive: () => false },
+    cam: { obj: {} },
+    ownerInactiveTouchError: errorFactory,
+    state: { mode: 'flight', render: {} },
+    subject,
+    submitExactSubjectTouch: () => { exactTouches += 1; },
+  });
+  await assert.rejects(continuation({}), (error) => (
+    error.name === 'AbortError' && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE'
+  ));
+  assert.equal(exactTouches, 0, 'retired owner is rejected before any exact-target draw');
+});
+
+test('live exact-target touches still draw; genuine touch failures remain warned failures', async () => {
+  const live = queuedTouchFixture();
+  const ready = live.facade(live.root, { isActive: () => true });
+  await nextTurn();
+  await live.runNext();
+  assert.deepEqual(await ready, { skipped: false });
+  assert.deepEqual(live.draws, [live.root]);
+  assert.deepEqual(live.warnings, []);
+
+  const failed = queuedTouchFixture({ failTouch: true });
+  const rejectedTouch = failed.facade(failed.root, { isActive: () => true });
+  await nextTurn();
+  await failed.runNext();
+  assert.deepEqual(await rejectedTouch, { skipped: true, reason: 'touch-failed' });
+  assert.equal(failed.draws.length, 1, 'the live owner did attempt its exact-target draw');
+  assert.equal(failed.warnings.length, 1, 'a real draw failure remains observable');
+  assert.equal(failed.warnings[0][2], '[render] exact-target admission touch failed');
+  assert.match(String(failed.warnings[0][3]), /injected-native-touch-failure/);
 });
 
 for (const failDraw of [false, true]) {

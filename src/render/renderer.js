@@ -12986,10 +12986,17 @@ export const render = {
       }
       return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
     };
+    const ownerInactiveTouchError = () => {
+      const error = new Error('exact-target touch owner became inactive');
+      error.name = 'AbortError';
+      error.code = 'SF_EXACT_TARGET_OWNER_INACTIVE';
+      return error;
+    };
+    const isOwnerInactiveTouchError = (error) => error && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE';
     const submitExactSubjectTouch = (subject, isActive = null) => {
       const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
       const submit = () => {
-        if (typeof isActive === 'function' && !isActive(subject)) throw new Error('exact-target touch owner became inactive');
+        if (typeof isActive === 'function' && !isActive(subject)) throw ownerInactiveTouchError();
         // The pacer may wait behind another producer. Reveal only inside its synchronous
         // reservation: overlapping root/descendant jobs must never capture each other's
         // temporary visibility/count/range and restore that warm state into live flight.
@@ -12997,7 +13004,18 @@ export const render = {
         try { return touchExactTargetSubject(subject); }
         finally { restore(); }
       };
-      return pace?.submit ? pace.submit(submit, { isActive: () => !isActive || isActive(subject) }) : Promise.resolve().then(submit);
+      const pending = pace?.submit
+        ? pace.submit(submit, { isActive: () => !isActive || isActive(subject) })
+        : Promise.resolve().then(submit);
+      return Promise.resolve(pending).then((result) => {
+        // The serial queue can reject a stale owner before running submit. Convert its tagged
+        // skip into the same cancellation used by the exact callback so awaited admission owners
+        // never mistake an inactive target for a successful exact draw.
+        if (result && result.skipped === true && result.reason === 'owner-inactive') {
+          throw ownerInactiveTouchError();
+        }
+        return result;
+      });
     };
     const openingStampContext = () => `${state.render.admissionRunGeneration}:${state.contextRestoreSeq || 0}`
       + `:${this._envMap?.uuid || ''}:${this._shadowSettingOn === true}:${this._selectPostRoute()}`;
@@ -13673,7 +13691,7 @@ export const render = {
           }
           if (typeof admissionOptions.isActive === 'function'
               && admissionOptions.isActive(subject) !== true) {
-            return result;
+            throw ownerInactiveTouchError();
           }
           // A cpu-detached package texture this draw would force-upload reads an emptied mip
           // chain inside uploadTexture and throws — the touch exists to keep exactly that work
@@ -13699,6 +13717,7 @@ export const render = {
           try {
             await submitExactSubjectTouch(subject, admissionOptions.isActive);
           } catch (error) {
+            if (isOwnerInactiveTouchError(error)) throw error;
             exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             // Identify which texture threw on upload and why: package-detach empties a
@@ -13843,6 +13862,10 @@ export const render = {
       // residual variant links here — in the admission continuation — not inside the first
       // presented bloom pass.
       if (!subject || !this.scene || !cam.obj) return { skipped: true, reason: 'touch unavailable' };
+      if (typeof admissionOptions.isActive === 'function'
+          && admissionOptions.isActive(subject) !== true) {
+        return Promise.resolve({ skipped: true, reason: 'owner-inactive' });
+      }
       const recovery = this._contextRecovery;
       if (recovery && recovery.pending === true) {
         // A touch now would link into the dead context's program cache, and the restore
@@ -13899,6 +13922,9 @@ export const render = {
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
                   // on a best-effort caller.
+                  if (isOwnerInactiveTouchError(error)) {
+                    return { skipped: true, reason: 'owner-inactive' };
+                  }
                   laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
                   return { skipped: true, reason: 'touch-failed' };
                 }
@@ -13917,6 +13943,9 @@ export const render = {
             rememberOpeningPreparedLeaves(subject);
             return result;
           } catch (error) {
+            if (isOwnerInactiveTouchError(error)) {
+              return { skipped: true, reason: 'owner-inactive' };
+            }
             // The whole seam is async now, so mirror the detached branch's
             // anti-unhandled-rejection contract instead of propagating.
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
