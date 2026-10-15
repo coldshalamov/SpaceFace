@@ -1104,6 +1104,7 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,de
 - **Unchanged:** phones (`data-sf-mobile`) keep their own Codex layout. At 960×540 and 1280×720 the output is pixel-identical apart from the animated needle.
 - **Also (Code Work review):** at 640–760 the hang was still 316px wide, so the stage could not clear plate + PREVIOUS/NEXT; hang/dials/plate shrink further in that band.
 - **Leftover:** a desktop window as short as 844×390 is still cramped, with the ladder running into CLOSE. Real phones in landscape use the mobile layout, which is clean.
+
 ## Station berth at a very short desktop window, 844×390 (ui-polish-33)
 
 `stationLayouts.js` + `shipworksLayouts.js`, CSS only, scoped to `max-height:460px` on non-phone desktops. Phones (`data-sf-mobile`) and every height above 460 are untouched.
