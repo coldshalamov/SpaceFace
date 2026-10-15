@@ -401,6 +401,8 @@ import { preloadPlanetDetailLibrary } from './planetDetailLibrary.js';
 import {
   beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
+  createOpeningLoadingAdmission,
+  openingFirstPictureIsReady,
   createPipelineAdmissionTracker,
   prepareMobileOpeningFirstPicture,
   createSlicedYield,
@@ -1734,6 +1736,33 @@ export function openingCompileIssueKey(subject) {
     + `${subject.isInstancedMesh === true && subject.morphTexture != null ? '|im' : ''}`
     + `${subject.isBatchedMesh === true && subject._colorsTexture != null ? '|bc' : ''}`
     + `|m${parts}`;
+}
+
+/** Exact preparation is reusable only while this leaf's upload and program inputs stay unchanged. */
+const openingResourceIds = new WeakMap();
+let nextOpeningResourceId = 0;
+function openingResourceVersion(resource) {
+  if (!resource || typeof resource !== 'object') return '';
+  if (!openingResourceIds.has(resource)) openingResourceIds.set(resource, ++nextOpeningResourceId);
+  return `${openingResourceIds.get(resource)}:${resource.version || resource.data?.version || 0}`
+    + `:${resource.array ? openingResourceVersion(resource.array) : ''}`;
+}
+export function openingPreparedLeafKey(subject, context = '') {
+  const program = openingCompileIssueKey(subject);
+  if (!program || !subject.geometry) return null;
+  const geometry = subject.geometry;
+  const versions = Object.entries(geometry.attributes || {}).map(([name, attribute]) => (
+    `${name}:${openingResourceVersion(attribute)}:${attribute.count || 0}`
+  )).join('|');
+  const materials = (Array.isArray(subject.material) ? subject.material : [subject.material]).filter(Boolean);
+  const materialState = materials.map((material) => {
+    const textures = Object.values(material).filter((value) => value?.isTexture)
+      .map((texture) => `${texture.uuid}:${texture.version}`).join(',');
+    return `${material.uuid}:${material.version}:${textures}`;
+  }).join('|');
+  const morphs = Object.values(geometry.morphAttributes || {}).flat().map(openingResourceVersion).join('|');
+  return `${context};${program};${geometry.uuid};${openingResourceVersion(geometry.index)};${versions};${morphs};${materialState}`
+    + `;${openingResourceVersion(subject.instanceMatrix)}:${openingResourceVersion(subject.instanceColor)}:${subject.count ?? ''}`;
 }
 
 // Long material signature -> compact id. Equal signatures share an id, so the key still dedupes
@@ -10244,6 +10273,8 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'gpuTimers', 'diagnostics', 'resetPostTelemetrySample', 'warmPostProcess',
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
   'touchSubjectExactTarget',
+  'beginOpeningLoadingAdmission', 'isRequiredOpeningEntity', 'trackOpeningLoadingWork',
+  'openingFirstPictureOwner', 'releaseOpeningPresentationHold', 'cancelOpeningPresentationHold',
   'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
@@ -12838,6 +12869,25 @@ export const render = {
       }
       return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
     };
+    const submitExactSubjectTouch = (subject, isActive = null) => {
+      const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+      const submit = () => {
+        if (typeof isActive === 'function' && !isActive(subject)) throw new Error('exact-target touch owner became inactive');
+        return touchExactTargetSubject(subject);
+      };
+      return pace?.submit ? pace.submit(submit, { isActive: () => !isActive || isActive(subject) }) : Promise.resolve().then(submit);
+    };
+    const openingStampContext = () => `${state.render.admissionRunGeneration}:${state.contextRestoreSeq || 0}`
+      + `:${this._envMap?.uuid || ''}:${this._shadowSettingOn === true}:${this._selectPostRoute()}`;
+    const rememberOpeningPreparedLeaves = (root) => {
+      if (state.mode !== 'loading' || !root) return;
+      const stamps = this._openingPreparedLeaves || (this._openingPreparedLeaves = new WeakMap());
+      const remember = (leaf) => {
+        const key = openingPreparedLeafKey(leaf, openingStampContext());
+        if (key) stamps.set(leaf, key);
+      };
+      if (root.traverse) root.traverse(remember); else remember(root);
+    };
     // Loading-shell form of the touch above: one render draws the whole group on the same target.
     const touchExactTargetSubjects = async (subjects, drawableSession = null) => {
       const list = (Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean);
@@ -13067,7 +13117,7 @@ export const render = {
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
         });
-      if (shouldSliceFlightAdmission({
+      if ((state.mode === 'loading' && compileOptions?.openingRequired === true) || shouldSliceFlightAdmission({
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
         urgent: compileOptions && compileOptions.urgent === true,
@@ -13234,6 +13284,75 @@ export const render = {
       });
     });
     this._gpuResidencyAdmissions = gpuResidencyAdmissions;
+    state.render.isRequiredOpeningEntity = (entity) => state.mode === 'loading'
+      && this._openingLoadingAdmission?.owns(entity) === true;
+    state.render.trackOpeningLoadingWork = (entity, promise) => (
+      state.render.isRequiredOpeningEntity(entity)
+        ? this._openingLoadingAdmission.track(promise) : promise
+    );
+    state.render.beginOpeningLoadingAdmission = () => {
+      const existing = this._openingLoadingAdmission;
+      if (existing?.owns(state.entities?.get(state.playerId))) return this._openingLoadingMeshesReady;
+      const world = state.world;
+      const renderState = state.render;
+      const generation = state.render.admissionRunGeneration;
+      const serial = world?.enterSerial;
+      const context = state.contextRestoreSeq;
+      const active = () => rendererGenerationIsActive() && state.mode === 'loading'
+        && state.render === renderState && state.world === world && world?.enterSerial === serial
+        && state.render.admissionRunGeneration === generation && state.contextRestoreSeq === context;
+      this._deferNoncriticalMeshStreaming = false;
+      renderState.deferNoncriticalMeshStreaming = false;
+      releaseOpeningGraphPublication(this);
+      this._openingFirstPicturePrepared = false;
+      cam.follow?.(0, undefined, undefined, this._cameraClearanceAt);
+      cam.obj?.updateMatrixWorld?.(true);
+      const camera = openingSubmissionCamera(cam.obj);
+      const sphere = new THREE.Sphere(new THREE.Vector3(), 1);
+      const cohort = createOpeningLoadingAdmission({
+        entities: state.entityList || [], isActive: active,
+        isRequired: (entity) => {
+          if (!entity || entity.alive === false || entity._noMesh) return false;
+          if (entity.id === state.playerId || entity.isPlayer === true) return true;
+          if (!camera?.frustum || !entity.pos) return false;
+          const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
+          sphere.center.set(local.x, Number(entity.pos.y) || 0, local.z);
+          sphere.radius = Math.max(1, entityVisualCullRadius(entity, this._meshes.get(entity.id)));
+          return camera.frustum.intersectsSphere(sphere);
+        },
+      });
+      this._openingLoadingAdmission = cohort;
+      this._openingPreparedLeaves = new WeakMap();
+      const drive = async (steps) => {
+        let sliceAt = performance.now();
+        try {
+          for (;;) {
+            if (!active()) throw new Error('opening mesh preparation was superseded');
+            const step = steps.next();
+            if (step.done) return step.value;
+            if (performance.now() - sliceAt >= 4) { await yieldToBrowser(); sliceAt = performance.now(); }
+          }
+        } finally { steps.return?.(); }
+      };
+      const ready = (async () => {
+        await drive(enqueueMissingMeshBuildsSteps(cohort.entities(), this._meshes,
+          this._meshBuildQueuedIds, this._meshBuildQueue, (entity) => cohort.owns(entity)));
+        if (!active()) throw new Error('opening mesh preparation was superseded');
+        // Required roots lead, but the optional tail keeps its FIFO and ordinary sliced owner.
+        const tail = this._meshBuildQueue.slice(this._meshBuildQueueHead);
+        const requiredIds = new Set(cohort.entities().map((entity) => entity.id));
+        this._meshBuildQueue.splice(this._meshBuildQueueHead, tail.length,
+          ...tail.filter((id) => requiredIds.has(id)), ...tail.filter((id) => !requiredIds.has(id)));
+        while (this._meshBuildQueueHead < this._meshBuildQueue.length
+            && requiredIds.has(this._meshBuildQueue[this._meshBuildQueueHead])) {
+          await drive(this._drainMeshBuildQueueSteps(1));
+          await yieldToBrowser();
+        }
+        return true;
+      })();
+      this._openingLoadingMeshesReady = observePipelineAdmission(ready);
+      return ready;
+    };
     const openingCohort = createOpeningAdmissionCohort();
     const openingStillBlocking = () => (
       state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
@@ -13378,6 +13497,7 @@ export const render = {
           // flight. While the loading shell is up the opening plan's scene sweep
           // owns mounted uploads, so the extra walk is skipped there.
           if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+              && admissionOptions.openingRequired !== true
               && admissionOptions.strict !== true) {
             return result;
           }
@@ -13401,7 +13521,8 @@ export const render = {
           );
         })
         .then(async (result) => {
-          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+              && admissionOptions.openingRequired !== true) {
             return result;
           }
           const recovering = state.render
@@ -13438,7 +13559,7 @@ export const render = {
           // behind the pending latch, instead of inside a presented bloom frame.
           const restore = revealSubjectForCompile(subject);
           try {
-            touchExactTargetSubject(subject);
+            await submitExactSubjectTouch(subject, admissionOptions.isActive);
           } catch (error) {
             exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
@@ -13495,6 +13616,10 @@ export const render = {
           }
           if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
             markAuthoredGeologyFallbackAdmitted(subject);
+            rememberOpeningPreparedLeaves(subject);
+          }
+          if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
+            throw new Error('Required authored appearance admission did not complete');
           }
           return result;
         })
@@ -13534,6 +13659,11 @@ export const render = {
       if (admissionOptions && admissionOptions.isActive !== undefined) lane.isActive = admissionOptions.isActive;
       if (admissionOptions && admissionOptions.joinOutstanding === true) lane.joinOutstanding = true;
       if (admissionOptions && admissionOptions.unSliced === true) lane.unSliced = true;
+      if (admissionOptions && admissionOptions.openingRequired === true) {
+        lane.openingRequired = true;
+        lane.urgent = true;
+        lane.strict = true;
+      }
       if (admissionOptions && admissionOptions.debugBy != null && debugBy == null) {
         lane.debugBy = admissionOptions.debugBy;
       }
@@ -13549,6 +13679,9 @@ export const render = {
       // variant Three's public compile() never prepares.
       if (this._postOpeningPipelineAdmissionReleased !== true) {
         if (state.mode === 'loading') {
+          if (admissionOptions.openingRequired === true) {
+            return admitSubjectPipelines(subject, preReleaseLaneOptions(admissionOptions));
+          }
           if (state.render.liveSectorGpuAdmission === true) {
             return subject ? admitSubjectPipelines(subject, preReleaseLaneOptions(admissionOptions)) : Promise.resolve({ skipped: true });
           }
@@ -13566,7 +13699,7 @@ export const render = {
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
       return admitSubjectPipelines(subject, admissionOptions);
     };
-    state.render.touchSubjectExactTarget = (subject) => {
+    state.render.touchSubjectExactTarget = (subject, admissionOptions = {}) => {
       // Publish-seam warm: an authored boundary calls this on its attached, final-state root
       // just before reveal. The pre-commit prepare touched the root while it was detached, and
       // publish-time state can still resolve a program key the detached touch never produced
@@ -13625,7 +13758,9 @@ export const render = {
                 }
                 const restoreDetached = revealSubjectWithAncestors(subject);
                 try {
-                  return touchExactTargetSubject(subject);
+                  const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
+                  rememberOpeningPreparedLeaves(subject);
+                  return result;
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
                   // on a best-effort caller.
@@ -13646,7 +13781,9 @@ export const render = {
           }
           const restore = revealSubjectWithAncestors(subject);
           try {
-            return touchExactTargetSubject(subject);
+            const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
+            rememberOpeningPreparedLeaves(subject);
+            return result;
           } catch (error) {
             // The whole seam is async now, so mirror the detached branch's
             // anti-unhandled-rejection contract instead of propagating.
@@ -13667,7 +13804,8 @@ export const render = {
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
-      if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+      if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
+          && options.openingRequired !== true) {
         return Promise.resolve({
           skipped: true,
           reason: 'opening-submission-plan-owns-first-picture',
@@ -14097,7 +14235,13 @@ export const render = {
       lightSigFor: () => this._depthCollectLightSig(scene),
       stagingName: 'SF_OpeningShadowPipelineAdmission',
     }, yieldToBrowser);
-    const compileOpeningSubmissionPlan = async (plan) => {
+    const compileOpeningSubmissionPlan = async (plan, options = {}) => {
+      const assertActive = () => {
+        if (!rendererGenerationIsActive() || (options.isActive && !options.isActive())) {
+          throw new Error('opening submission owner became inactive');
+        }
+      };
+      assertActive();
       if (!plan || plan.complete !== true
         || !plan.firstPlayablePipelineSet
         || plan.firstPlayablePipelineSet.complete !== true) {
@@ -14177,14 +14321,18 @@ export const render = {
       const allSubjects = isMobileRenderContext() && !survivalRunHoldsArena(state)
         ? subjects
         : subjects.concat(pooledSubjects);
+      const deltaSubjects = options.strict === true ? allSubjects.filter((subject) => {
+        const key = openingPreparedLeafKey(subject, openingStampContext());
+        return !key || this._openingPreparedLeaves?.get(subject) !== key;
+      }) : allSubjects;
       // Chunked like the seal/rockPool legs — the full opening draw set is the largest
       // subject list in the run; a monolithic dedupe lands inside the veil-lift frame.
       const unitSeenMaterials = new Set();
       const unitSeenGeometries = new Set();
       const unitProgramSubjects = [];
       const unitGeometrySubjects = [];
-      for (let i = 0; i < allSubjects.length; i += 1024) {
-        const part = uniqueAdmissionUnits(allSubjects, {
+      for (let i = 0; i < deltaSubjects.length; i += 1024) {
+        const part = uniqueAdmissionUnits(deltaSubjects, {
           start: i, end: i + 1024,
           seenMaterials: unitSeenMaterials,
           seenGeometries: unitSeenGeometries,
@@ -14203,23 +14351,34 @@ export const render = {
         const restoreSubject = revealSubjectForCompile(subject);
         try { return run(); } finally { restoreSubject(); }
       };
-      const result = allSubjects.length > 0
+      const result = deltaSubjects.length > 0
         ? await admitOpeningUnitsAcrossSlices({
           units,
           renderer,
-          beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: async (subject) => {
+          strict: options.strict === true,
+          isActive: () => { assertActive(); return true; },
+          beginReadinessBatch: () => {
+            const batch = beginScenePipelineReadinessBatch(renderer);
+            if (batch?.paceQueue?.submit) batch.submit = batch.paceQueue.submit;
+            return batch;
+          },
+          compileOne: async (subject, compileOptions = {}) => {
             // The env stamp is visibility-independent — pace it outside the
             // reveal; compile's light census walks traverseVisible, so the
             // reveal covers the synchronous compile call itself.
             await stampSubjectEnvAsync(subject);
-            return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
+            assertActive();
+            return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene, {
+              ...compileOptions, isActive: () => { assertActive(); return true; },
+            }));
           },
           touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
           yieldToMain: yieldToBrowser,
         })
         : { skipped: true, reason: 'empty opening draw set' };
       const shadowResult = await warmOpeningShadowPipelines(allSubjects);
+      assertActive();
+      for (const subject of allSubjects) rememberOpeningPreparedLeaves(subject);
       // A superseded drain resolving last must not clobber the live ceremony's
       // admission keys — same guard the capture/receipt stamps carry.
       if (!admissionStale()) this._openingShadowAdmission = shadowResult;
@@ -14254,7 +14413,7 @@ export const render = {
       while (!step.done) step = iterator.next();
       return step.value;
     };
-    state.render.drainOpeningSubmissionPlan = (plan) => compileOpeningSubmissionPlan(plan);
+    state.render.drainOpeningSubmissionPlan = (plan, options) => compileOpeningSubmissionPlan(plan, options);
     state.render.captureOpeningPipelinePlan = () => {
       if (state.mode === 'loading') {
         // Broad authored-root admissions are intentionally not part of the loading receipt.  The
@@ -19362,14 +19521,20 @@ export const render = {
       inFlight.then(clear, clear);
       return inFlight;
     };
-    state.render.prepareOpeningGpuResources = async () => {
+    state.render.prepareOpeningGpuResources = async (options = {}) => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
       // rock receives its final PBR maps on its first and only visual publication. The opening plan
       // requires bound PBR maps so parallax layers and rock instances capture matching pipeline keys.
       const openingStale = captureLiveSectorCookStale();
+      const assertOpeningActive = () => {
+        if (openingStale() || (options.isActive && !options.isActive())) {
+          throw new Error('opening GPU residency owner became inactive');
+        }
+      };
+      assertOpeningActive();
       const rockWaitStarted = performance.now();
       let rockTimedOut = false;
-      if (this.rockSurfaceLibraryReady) {
+      if (this.rockSurfaceLibraryReady && options.required !== true) {
         await Promise.race([
           this.rockSurfaceLibraryReady,
           new Promise((resolve) => setTimeout(() => { rockTimedOut = true; resolve(); }, 4000)),
@@ -19379,22 +19544,22 @@ export const render = {
         this.rockSurfaceLibraryReady ? (rockTimedOut ? 'timeout' : 'resolved') : 'skipped');
       // The asteroid warm groups below build their materials from the decoded families, so the final
       // programs compile behind the shell instead of on a first sighting in flight (same 4 s cap).
-      if (this.rockFamilyLibraryReady) {
+      if (this.rockFamilyLibraryReady && options.required !== true) {
         await Promise.race([this.rockFamilyLibraryReady, new Promise((resolve) => setTimeout(resolve, 4000))]);
       }
-      if (this.creatureSkinLibraryReady) {
+      if (this.creatureSkinLibraryReady && options.required !== true) {
         await Promise.race([this.creatureSkinLibraryReady, new Promise((resolve) => setTimeout(resolve, 4000))]);
       }
       parallaxLayers.seatReadyRockSurfaceTextures();
       const openingNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
       let openingStepStarted = openingNow();
-      const restoreLivingHullWarmup = this._livingHullPresentation
+      const restoreLivingHullWarmup = options.required !== true && this._livingHullPresentation
         ? this._livingHullPresentation.beginGpuWarmup()
         : null;
       try {
         openingStepStarted = openingNow();
-        if (this._firstPresentGpuAdmission) {
+        if (this._firstPresentGpuAdmission && options.required !== true) {
           const admissionOutcome = await Promise.race([
             Promise.resolve(this._firstPresentGpuAdmission).then(() => 'resolved'),
             new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000)),
@@ -19448,6 +19613,7 @@ export const render = {
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
           || plan.firstPlayablePipelineSet.complete !== true) {
+          if (options.required === true) throw new Error('Required opening submission plan is incomplete');
           // Refusing here left New Game on gpu-resources until the 90s playable
           // gate fired. Enter flight and keep admitting behind the first picture.
           const failRole = Array.isArray(plan && plan.blockingReasons)
@@ -19487,11 +19653,13 @@ export const render = {
             debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
           }),
           includeEmpty: true,
+          includeGeometry: true,
+          beforeSubmit: assertOpeningActive,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
-          deadlineMs: softGpuOpening ? residencyBudgetMs : undefined,
+          deadlineMs: options.required !== true && softGpuOpening ? residencyBudgetMs : undefined,
         });
-        const result = await Promise.race([
+        const result = options.required === true ? await residency : await Promise.race([
           residency,
           new Promise((resolve) => setTimeout(() => resolve({
             skipped: true,
@@ -19499,6 +19667,7 @@ export const render = {
             textures: 0,
           }), residencyBudgetMs)),
         ]);
+        assertOpeningActive();
         const residencyOutcome = result && (
           result.reason === 'loading-budget'
           || result.reason === 'loading-deadline'
@@ -19551,7 +19720,7 @@ export const render = {
         // Flush the captured queue before the binding snapshot so the receipt measures resident
         // programs rather than freezing an in-flight compile as a permanent first-draw refusal.
         openingStepStarted = openingNow();
-        const pendingPipelinePlan = pipelineAdmissions.capturePending();
+        const pendingPipelinePlan = options.required === true ? null : pipelineAdmissions.capturePending();
         let pipelineDrainOutcome = 'skipped';
         if (pendingPipelinePlan && pendingPipelinePlan.pendingCount > 0) {
           let pipelineDrainTimeout = null;
@@ -19600,6 +19769,7 @@ export const render = {
           shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
         });
         for (;;) {
+          if (options.required === true) assertOpeningActive();
           let receiptStep;
           try {
             receiptStep = receiptIter.next();
@@ -19912,6 +20082,9 @@ export const render = {
       // begins the bounded roster warm at the door — its GLB decodes and boundary kicks drain
       // through the ordinary loading window instead of starting inside the prepare cook.
       queueMicrotask(() => {
+        if (state.mode === 'loading') {
+          observePipelineAdmission(state.render.beginOpeningLoadingAdmission());
+        }
         try { this._beginEarlyCrucibleRosterWarm(); }
         catch (error) { stormWarn('early-crucible-roster-warm-failed', '[render] early crucible roster warm failed', error); }
       });
@@ -21216,6 +21389,10 @@ export const render = {
       }
       if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
       if (mode === 'loading') {
+        state.render.openingFirstPictureReady = false;
+        state.render.openingFirstPictureOwner = null;
+        this._openingLoadingAdmission = null;
+        this._openingLoadingMeshesReady = null;
         const recook = this._sessionLiveSectorCookedId != null
           && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
           && this._contextLost !== true;
@@ -26943,6 +27120,7 @@ export const render = {
       const e = resolveWorldPresentationEntity(this.state, id);
       const alreadyServed = !e || e.alive === false || e._noMesh || this._meshes.has(id);
       const irrelevant = !alreadyServed && !this._sectorBoundaryPreparations?.has(id)
+        && !this._openingLoadingAdmission?.owns(e)
         && !isEntityRenderRelevant(e, this.state, null, drainScanOpts);
       if (alreadyServed || this._sectorBoundaryPreparations?.has(id) || irrelevant) {
         // Persistent-for-this-drain-epoch classes: a dead/_noMesh/already-built row
@@ -29176,7 +29354,20 @@ export const render = {
    * producer census is frozen. Hidden, offscreen, unmounted, and deferred roots never enter this
    * wait set and remain on the normal streaming runway.
    */
-  async prepareOpeningFirstPicture(timeoutMs = 20000) {
+  async prepareOpeningFirstPicture(timeoutMs = 20000, options = {}) {
+    const renderState = this.state?.render;
+    const world = this.state?.world;
+    const generation = renderState?.admissionRunGeneration;
+    const serial = world?.enterSerial;
+    const context = this.state?.contextRestoreSeq;
+    const assertActive = () => {
+      if (this.state?.render !== renderState || this.state?.world !== world
+          || world?.enterSerial !== serial || renderState?.admissionRunGeneration !== generation
+          || this.state?.contextRestoreSeq !== context || this._rendererResourcesDisposed === true
+          || (options.isActive && !options.isActive())) throw new Error('opening first-picture owner became inactive');
+    };
+    assertActive();
+    if (this._openingFirstPicturePrepared && renderState?.openingGraphPublicationFrozen) return true;
     const waitMs = Math.max(1, Number(timeoutMs) || 20000);
     const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -29191,10 +29382,14 @@ export const render = {
     // Freeze the render-owned root set at the same boundary as the exact census. Existing visible
     // roots may finish their authored child swap below; no new residency/build pass can introduce a
     // different root after capture and before the first draw.
-    this._deferNoncriticalMeshStreaming = true;
-    if (this.state && this.state.render) this.state.render.deferNoncriticalMeshStreaming = true;
-    this._openingFirstPicturePrepared = true;
     try {
+      await renderState?.beginOpeningLoadingAdmission?.();
+      assertActive();
+      // Seat maps before capturing program/resource identities. Required work has an outer
+      // recoverable deadline; a timed-out map is never silently replaced after flight starts.
+      if (this.rockSurfaceLibraryReady) await this.rockSurfaceLibraryReady;
+      assertActive();
+      parallaxLayers.seatReadyRockSurfaceTextures();
       // A replacement requested by the prior flight may already be between its post-paint yield and
       // activation when Continue enters loading. Let that finite job settle (it aborts when loading
       // owns the picture) before the exact opening census can capture a pool root. Bound the first
@@ -29220,6 +29415,7 @@ export const render = {
       // re-mint once (every leg is idempotent across the 8-pass envelope), then
       // degrade to the sync twin — degraded-but-alive over dead boot.
       const drivePublishFirstPicture = async () => {
+        assertActive();
         // Degrade memo per service epoch: a persistently sick publish leg used
         // to re-pay the stepped prefix + the atomic sync twin on every one of
         // the ≤8 settle passes. Once the twin has answered for this epoch,
@@ -29283,6 +29479,7 @@ export const render = {
               }
               if (driveStep.done) return driveStep.value;
               await yieldToBrowser();
+              assertActive();
             }
           }
           return [];
@@ -29361,6 +29558,8 @@ export const render = {
             if (survivalRunHoldsArena(this.state)) {
               if (this.state && this.state.render) this.state.render.openingVfxFrozen = true;
             } else {
+              await this._openingLoadingAdmission?.drain();
+              assertActive();
               freezeOpeningGraphPublication(this);
             }
             // Same source-dirty gate: an already-baked env of the current source needs no
@@ -29370,6 +29569,9 @@ export const render = {
               background: this.scene && this.scene.background,
             }) !== this._envMapSource) this._bakeEnv();
             this._openingEnvFrozen = true;
+            this._deferNoncriticalMeshStreaming = true;
+            if (renderState) renderState.deferNoncriticalMeshStreaming = true;
+            this._openingFirstPicturePrepared = true;
             succeeded = true;
             return true;
           }
@@ -29388,7 +29590,8 @@ export const render = {
       }
       throw new Error('opening first-picture boundary did not settle');
     } finally {
-      if (!succeeded) {
+      if (!succeeded && this.state?.render === renderState && renderState?.admissionRunGeneration === generation
+          && this.state?.world === world && world?.enterSerial === serial) {
         resumeAuthoredUpgradeQueueAfterOpening(this.scene);
         this._deferNoncriticalMeshStreaming = previousDefer;
         if (this.state && this.state.render) {
@@ -29923,6 +30126,7 @@ export const render = {
   _openingAdmissionPendingCount() {
     const renderState = this.state && this.state.render;
     if (!renderState) return 0;
+    if (openingFirstPictureIsReady(this.state)) return 0;
     const watch = this._openingAdmissionWatch
       || (this._openingAdmissionWatch = { seen: new WeakSet(), pending: 0 });
     for (const key of OPENING_ADMISSION_HANDLE_KEYS) {
@@ -30044,7 +30248,8 @@ export const render = {
         // opening-picture failsafe so a dead chain degrades to the old fail-open instead of
         // wedging behind a black canvas.
         const pendingAdmission = this._openingAdmissionPendingCount()
-          + (typeof this.state.render.pendingPipelineAdmissions === 'function'
+          + (!openingFirstPictureIsReady(this.state)
+            && typeof this.state.render.pendingPipelineAdmissions === 'function'
             ? Number(this.state.render.pendingPipelineAdmissions()) || 0
             : 0);
         // Unsettled admission handles refuse this draw. Nothing already
@@ -30591,9 +30796,19 @@ export const render = {
         ? performance.now()
         : Date.now();
       const lifecycle = this._rendererLifecycle;
+      const paintRender = this.state.render;
+      const paintWorld = this.state.world;
+      const paintGeneration = paintRender.admissionRunGeneration;
+      const paintContext = this.state.contextRestoreSeq;
+      const releasePaint = () => {
+        if (this.state.render !== paintRender || this.state.world !== paintWorld
+            || paintRender.admissionRunGeneration !== paintGeneration
+            || this.state.contextRestoreSeq !== paintContext || this._contextLost === true) return;
+        applyFirstPlayablePaintRelease(this);
+      };
       const release = lifecycle
-        ? lifecycle.guard(() => applyFirstPlayablePaintRelease(this))
-        : () => applyFirstPlayablePaintRelease(this);
+        ? lifecycle.guard(releasePaint)
+        : releasePaint;
       const schedule = lifecycle
         ? (callback) => lifecycle.setTimeout(callback, 0)
         : null;
@@ -34000,7 +34215,18 @@ export function applyFirstPlayablePaintRelease(owner) {
       keepGraphFrozen: !!(owner && owner.state && owner.state.mode === 'flight'),
     });
     if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
-      void render.resumeDeferredPipelineAdmissions();
+      const exactReady = openingFirstPictureIsReady(owner.state);
+      if (exactReady) owner._postOpeningPipelineAdmissionReleased = true;
+      // This resumes the existing bounded queue, never an awaited post-paint bulk drain.
+      void render.resumeDeferredPipelineAdmissions(exactReady ? { force: true } : undefined);
+    }
+    if (render && typeof render.releaseOpeningPresentationHold === 'function') {
+      render.releaseOpeningPresentationHold();
+    }
+    if (owner) {
+      owner._openingLoadingAdmission = null;
+      owner._openingLoadingMeshesReady = null;
+      owner._openingPreparedLeaves = null;
     }
     // A survival arena's cook warmed the whole roster and its boundary settle drained the
     // authored upgrade queue to idle before the shell released, so the first-flight queue hold

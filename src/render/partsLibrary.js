@@ -7366,6 +7366,11 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const residency = capturePort('prepareAuthoredGpuResidency');
   const present = capturePort('yieldToNextPresent');
   const packagedShadowSync = capturePort('syncPackagedBodyShadowPolicy');
+  const opening = capturePort('isRequiredOpeningEntity');
+  const trackOpening = capturePort('trackOpeningLoadingWork');
+  const openingRequired = () => !!(opening && opening.call(boundaryLiveEntity(boundary, entity)));
+  const trackOpeningWork = (promise, required) => required && trackOpening
+    ? trackOpening.call(boundaryLiveEntity(boundary, entity), promise) : promise;
   const data = entity && entity.data || {};
   const sectorId = data.sectorId || entity && entity.homeSectorId
     || liveState && liveState.world && liveState.world.currentSectorId
@@ -7401,11 +7406,27 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
           const st = authoredRuntimeState();
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return compile.call(root, { urgent: onGlass, debugBy: 'authored-prepare', isActive: compile.isActive });
+          const required = openingRequired();
+          return trackOpeningWork(compile.call(root, {
+            urgent: onGlass, openingRequired: required,
+            debugBy: 'authored-prepare', isActive: compile.isActive,
+          }), required);
         }
       : null,
     touchAuthoredExactTarget: touch
-      ? (root) => touch.call(root)
+      ? (root) => {
+          const required = openingRequired();
+          const work = Promise.resolve(touch.call(root, { isActive: touch.isActive, strict: required }))
+            .then((result) => {
+              if (required && (result === false || result?.skipped === true || result?.ok === false)) {
+                throw new Error(`Required authored publish touch failed: ${result?.reason || 'not admitted'}`);
+              }
+              return result;
+            });
+          // Publication callers remain synchronous; the loading cohort owns the async tail.
+          work.catch(() => {});
+          return trackOpeningWork(work, required);
+        }
       : null,
     syncPackagedBodyShadowPolicy: packagedShadowSync
       ? (root, entity, addedSubtree) => packagedShadowSync.call(root, entity, addedSubtree)
@@ -7418,15 +7439,18 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
           // uploads already queued there.
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
-          return residency.call(root, {
+          const required = openingRequired();
+          return trackOpeningWork(residency.call(root, {
             isActive: () => residency.isActive()
               && (typeof admissionOptions.isResidencyOwnerActive !== 'function'
                 || admissionOptions.isResidencyOwnerActive()),
             unSliced: admissionOptions.unSliced === true || onGlass,
-          });
+            openingRequired: required,
+          }), required);
         }
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
+    retainGpuOwnershipUntilSettled: !!(liveState && liveState.mode === 'loading'),
     yieldBetweenGpuStages: !!(liveState && liveState.mode === 'flight'),
     yieldToNextPresent: present
       ? async () => present.call()

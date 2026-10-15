@@ -44,13 +44,11 @@ import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import { ruckusWarmReady } from './render/characters/ruckusModel.js';
-import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
   settleRequiredPackageAdmission,
-  waitForCurrentRenderPipelines as waitForRenderPipelineWarmup,
-  waitForOpeningGpuResources,
+  waitForOpeningFirstPicture,
+  holdOpeningPresentationUntilPaint,
 } from './render/pipelineReadiness.js';
-import { shouldAwaitOpeningGpuCook } from './render/renderCapabilityProfile.js';
 import { releaseUiStage } from './render/uiStage.js';
 import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
 
@@ -303,6 +301,7 @@ async function boot() {
     let loopController = null;
     const closeRuntime = createPresentationRuntimeCloser({
       stopPresentation() {
+        state.render?.cancelOpeningPresentationHold?.();
         // Retire async Launch/Continue and GPU admissions before any teardown can settle their
         // gates. A late success must not publish flight into a runtime whose loop is stopped.
         const cancelledToken = runTransitionGuard.begin('runtime-closed');
@@ -391,6 +390,7 @@ async function boot() {
     });
 
     bus.on('game:exitToMenu', () => {
+      state.render?.cancelOpeningPresentationHold?.();
       // Returning to the menu also owns outstanding readiness work. Without a new generation,
       // an old Launch/Continue can settle afterward and put the player straight back in flight.
       const cancelledToken = runTransitionGuard.begin('exit-to-menu');
@@ -644,7 +644,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       bus, runTransitionGuard, transitionToken, 'new-game',
       'authored-library', 0.25, 'Loading the ships',
       (elapsed) => (elapsed > 8000 ? 'Still loading the ships' : 'Bringing the ships in for the first flight'),
-      () => waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS),
+      () => {
+        Promise.resolve(state.render?.beginOpeningLoadingAdmission?.()).catch(() => {});
+        return waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+      },
     ),
     waitForVisuals: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
@@ -670,22 +673,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       bus, runTransitionGuard, transitionToken, 'new-game',
       'render-pipelines', 0.78, 'Preparing the visuals',
       (elapsed) => (elapsed > 8000 ? 'Still preparing the visuals' : 'Linking the first-flight render pipelines'),
-      async () => {
-        // Hardware+KHR awaits the 20s live-sector cook next. Do not also start
-        // the 180s first-picture warmup on the same Intel context.
-        if (shouldAwaitOpeningGpuCook({
-          gpu: state.render && state.render.gpu,
-          renderer: state.render && state.render.renderer,
-        })) {
-          return true;
-        }
-        // Software WebGL links programs on the main thread. Awaiting warmup here
-        // keeps Launch on render-pipelines until the playable gate expires.
-        void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
-          console.warn('[startup] render pipeline warmup failed', error);
-        });
-        return true;
-      },
+      () => waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken)),
     ),
     waitForGpuResources: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
@@ -698,31 +686,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
           : 'Loading the opening stretch smoothly';
       },
-      async () => {
-        // Hardware with KHR_parallel_shader_compile can link behind the loading
-        // shell. Software WebGL links one program per bloomScene (1.3s+) with no
-        // parallel compile, so an awaited cook holds Launch past the playable gate.
-        const awaitCook = shouldAwaitOpeningGpuCook({
-          gpu: state.render && state.render.gpu,
-          renderer: state.render && state.render.renderer,
-        });
-        // PQ-210.02 — the composition-tail settle rides inside the cook now (both
-        // transition paths get it), finishing the serial lane's open composes/
-        // compiles/uploads while the shell still owns the picture.
-        const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
-        if (!awaitCook) {
-          void cook.catch((error) => {
-            console.warn('[startup] opening GPU cook failed', error);
-          });
-          return true;
-        }
-        try {
-          return await cook;
-        } catch (error) {
-          console.warn('[startup] opening GPU cook failed', error);
-          return false;
-        }
-      },
+      () => waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken)),
     ),
     waitForPhysics: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
@@ -773,6 +737,18 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
     },
   });
+}
+
+async function waitForRequiredOpeningPicture(state, isActive) {
+  try {
+    const budgetMs = state.run?.kind === 'survival' ? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS : 20000;
+    return await waitForOpeningFirstPicture(state, budgetMs, { isActive });
+  } catch (cause) {
+    const error = new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources',
+      cause?.message || 'The opening picture could not be prepared. Retry Launch.');
+    error.cause = cause;
+    throw error;
+  }
 }
 
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
@@ -845,6 +821,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   resetCombatInputMode(state, registry);
   enterLoadingMode(state, bus);
   if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+  Promise.resolve(state.render?.beginOpeningLoadingAdmission?.()).catch(() => {});
   const startGatePulse = (id, progress, label, detailOf) => startLoadingGatePulse(
     bus, runTransitionGuard, transitionToken, 'continue', id, progress, label, detailOf,
   );
@@ -939,15 +916,6 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     // paint before the cook — this one only needs to yield.
     await nextFrame();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-    if (!shouldAwaitOpeningGpuCook({
-      gpu: state.render && state.render.gpu,
-      renderer: state.render && state.render.renderer,
-    })) {
-      void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
-        console.warn('[startup] continue pipeline warmup failed', error);
-      });
-    }
-    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     bus.emit('game:loadingProgress', {
       id: 'gpu-resources',
       progress: 0.9,
@@ -958,10 +926,6 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     await nextPaintSliced();
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     {
-      const awaitCook = shouldAwaitOpeningGpuCook({
-        gpu: state.render && state.render.gpu,
-        renderer: state.render && state.render.renderer,
-      });
       const stopCookPulse = startGatePulse('gpu-resources', 0.9, 'Preparing the opening route', () => {
         const ledger = state.render && state.render.openingCookLedger;
         const rows = Array.isArray(ledger) ? ledger.filter((row) => row && row.step && row.step !== 'lane') : [];
@@ -970,21 +934,9 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
           ? `Loading the opening stretch smoothly — ${done} warmup steps finished`
           : 'Loading the opening stretch smoothly';
       });
-      const cook = waitForOpeningGpuResources(state, 20000, { settleTail: awaitCook });
       try {
-        if (!awaitCook) {
-          void cook.catch((error) => {
-            console.warn('[startup] continue GPU cook failed', error);
-          });
-        } else {
-          const gpuReady = await cook;
-          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-          // The awaited readiness verdict owns handover, just as it does for New Game.
-          // Refusal (including pending admission) must never silently release control.
-          if (gpuReady !== true) {
-            throw new Error('Loaded game GPU resources were not accepted; refusing to enter flight before the opening route is ready.');
-          }
-        }
+        await waitForRequiredOpeningPicture(state, () => runTransitionGuard.isCurrent(transitionToken));
+        if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
       } finally {
         stopCookPulse();
       }
@@ -1057,6 +1009,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
 const _loadingClearColor = new THREE.Color();
 
 function enterLoadingMode(state, bus) {
+  state.render?.cancelOpeningPresentationHold?.();
   const timeEffects = createTimeEffects(state);
   timeEffects.set('runtime:loading', { scale: 0 });
   const previousMode = state.mode;
@@ -1083,6 +1036,9 @@ function enterLoadingMode(state, bus) {
 function enterFlightMode(state, bus) {
   const timeEffects = createTimeEffects(state);
   const previousMode = state.mode;
+  holdOpeningPresentationUntilPaint(state, timeEffects, (error) => {
+    failGameStart(state, bus, error, error.message);
+  });
   laneSetMode(state, bus, 'flight');
   timeEffects.clear('runtime:boot-menu');
   timeEffects.clear('runtime:loading');
@@ -1092,6 +1048,7 @@ function enterFlightMode(state, bus) {
 
 function failGameStart(state, bus, error, text, runTransitionGuard = null, transitionToken = null, failure = null) {
   if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
+  state.render?.cancelOpeningPresentationHold?.();
   const timeEffects = createTimeEffects(state);
   timeEffects.set('runtime:start-failed', { scale: 0 });
   timeEffects.clear('runtime:boot-menu');

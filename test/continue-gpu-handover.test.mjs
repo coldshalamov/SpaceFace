@@ -8,7 +8,7 @@ import { createRunTransitionGuard } from '../src/core/runTransitionGuard.js';
 // stale-token checks, failure routing and guarded handover are the real function.
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const start = main.indexOf('async function finalizeLoadedGame(');
-const end = main.indexOf('\nfunction resetCombatInputMode', start);
+const end = main.indexOf('\nconst _loadingClearColor', start);
 assert(start >= 0 && end > start, 'production Continue finalizer is available');
 const source = main.slice(start, end);
 
@@ -38,13 +38,13 @@ function harness({ awaitCook = true, cook = async () => true } = {}) {
     waitForAuthoredPartLibrary: async () => true,
     authoredCriticalVisualReadiness: () => ({ openingPending: [] }),
     waitForInitialAuthoredVisualsWithRetry: async () => true,
-    shouldAwaitOpeningGpuCook: () => awaitCook,
-    waitForRenderPipelineWarmup: async () => { calls.warmups++; return true; },
-    waitForOpeningGpuResources(s, timeout, options) {
+    async waitForRequiredOpeningPicture(s, isActive) {
       assert.equal(s, state);
-      assert.equal(timeout, 20000);
-      calls.cookOptions.push(options);
-      return cook();
+      assert.equal(typeof isActive, 'function');
+      calls.cookOptions.push({ required: true });
+      const result = await cook();
+      if (result !== true) throw new Error('GPU resources were not accepted');
+      return true;
     },
     enterFlightMode(s) { calls.flights++; s.mode = 'flight'; },
     failGameStart(s, bus, error, text, owner, failedToken) {
@@ -86,7 +86,7 @@ test('Continue holds control until the awaited GPU verdict accepts', async () =>
   assert.equal(h.calls.flights, 1);
   assert.equal(h.calls.failures.length, 0);
   assert.equal(h.calls.pulses, 0);
-  assert.deepEqual(h.calls.cookOptions, [{ settleTail: true }]);
+  assert.deepEqual(h.calls.cookOptions, [{ required: true }]);
 });
 
 for (const verdict of [false, undefined]) {
@@ -127,20 +127,26 @@ for (const outcome of ['accept', 'refuse', 'reject']) {
   });
 }
 
-for (const outcome of ['pending', 'refuse', 'reject']) {
-  test(`non-KHR Continue preserves background cook policy (${outcome})`, async () => {
+for (const outcome of ['accept', 'refuse', 'reject']) {
+  test(`non-KHR Continue also requires a settled picture (${outcome})`, async () => {
     const gate = deferred();
-    const h = harness({ awaitCook: false, cook: () => gate.promise });
-    if (outcome === 'refuse') gate.resolve(false);
-    if (outcome === 'reject') gate.reject(new Error('background cook failed'));
-    assert.deepEqual(await h.run(), { stale: false });
-    assert.equal(h.state.mode, 'flight');
-    assert.equal(h.calls.flights, 1);
-    assert.equal(h.calls.failures.length, 0);
-    assert.equal(h.calls.pulses, 0);
-    assert.equal(h.calls.warmups, 1);
-    assert.deepEqual(h.calls.cookOptions, [{ settleTail: false }]);
-    gate.resolve(true);
+    const started = deferred();
+    const h = harness({ awaitCook: false, cook: () => { started.resolve(); return gate.promise; } });
+    const run = h.run();
+    await started.promise;
+    assert.equal(h.state.mode, 'loading');
+    assert.equal(h.calls.flights, 0);
+    if (outcome === 'reject') gate.reject(new Error('required cook failed'));
+    else gate.resolve(outcome === 'accept');
+    if (outcome === 'accept') {
+      assert.deepEqual(await run, { stale: false });
+      assert.equal(h.calls.flights, 1);
+    } else {
+      await assert.rejects(run);
+      assertNoHandover(h);
+      assert.equal(h.state.mode, 'menu');
+    }
+    assert.deepEqual(h.calls.cookOptions, [{ required: true }]);
   });
 }
 

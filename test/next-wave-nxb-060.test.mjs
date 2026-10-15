@@ -355,7 +355,7 @@ test('an accepted package is ready, and a stand-in or missing package is not', a
     prepareOpeningGpuResources: async () => ({ skipped: true, reason: 'opening-plan-incomplete' }),
     prepareLiveSectorBeforeFlight: async () => ({ skipped: false }),
   });
-  assert.equal(await waitForOpeningGpuResources(incomplete, 1000), true);
+  assert.equal(await waitForOpeningGpuResources(incomplete, 1000), false);
   assert.ok(!incomplete.render.requiredPackageAdmission || incomplete.render.requiredPackageAdmission.status !== 'accepted');
   assert.ok(!incomplete.render.requiredPackageAdmission || incomplete.render.requiredPackageAdmission.status !== 'rejected');
 });
@@ -368,8 +368,9 @@ test('the opening budgets stay the existing ceilings and a failed package does n
   assert.match(readiness, /Math\.max\(timeoutMs, 120000\)/);
   // 1e75f5b68 added the settle-tail options argument to the same 20000 opening budget;
   // the ceiling, not the call's arity, is the contract this pin guards.
-  assert.match(main, /waitForOpeningGpuResources\(state, 20000[,)]/);
-  assert.match(main, /void cook\.catch/);
+  assert.match(main, /waitForOpeningFirstPicture\(state, budgetMs/);
+  assert.match(main, /INITIAL_AUTHORED_VISUAL_TIMEOUT_MS : 20000/);
+  assert.doesNotMatch(main, /void cook\.catch/);
   assert.match(main, /admissionRunGeneration = transitionToken\.generation/);
   assert.match(loader, /if \(cache\.get\(contentHash\) === entry\) cache\.delete\(contentHash\)/);
   assert.doesNotMatch(loader, /cache\.clear\(/);

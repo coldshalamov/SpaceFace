@@ -1,0 +1,233 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+import { createTimeEffects } from '../src/core/timeEffects.js';
+import { prepareAuthoredVisualPipelines } from '../src/render/partsLibrary.js';
+import { openingPreparedLeafKey, applyFirstPlayablePaintRelease } from '../src/render/renderer.js';
+import {
+  createOpeningLoadingAdmission, waitForOpeningFirstPicture, holdOpeningPresentationUntilPaint,
+  openingFirstPictureIsReady,
+} from '../src/render/pipelineReadiness.js';
+
+const deferred = () => {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+};
+const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+
+function fixture(overrides = {}) {
+  const calls = [];
+  const state = { mode: 'loading', world: { currentSectorId: 'helios', enterSerial: 1 },
+    render: { admissionRunGeneration: 1,
+      beginOpeningLoadingAdmission: async () => { calls.push('begin'); },
+      prepareOpeningFirstPicture: async () => { calls.push('seal'); return true; },
+      captureOpeningSubmissionPlan: () => {
+        calls.push('capture'); return { complete: true, firstPlayablePipelineSet: { complete: true } };
+      },
+      drainOpeningSubmissionPlan: async (_plan, options) => {
+        assert.equal(options.strict, true); assert.equal(options.isActive(), true);
+        calls.push('submission'); return { ok: true };
+      },
+      prepareOpeningGpuResources: async (options) => {
+        assert.equal(options.required, true); assert.equal(options.isActive(), true);
+        calls.push('resources'); return { skipped: false };
+      }, ...overrides,
+    } };
+  return { state, calls };
+}
+
+test('loading snapshots references and admits an authored subject while another is still preparing', async () => {
+  const a = { id: 1 }, b = { id: 2 };
+  const entities = [a, b];
+  const cohort = createOpeningLoadingAdmission({ entities, isRequired: () => true });
+  entities.push({ id: 3 });
+  assert.equal(cohort.owns({ id: 1 }), false, 'a reused id is another owner');
+  assert.equal(cohort.owns(entities[2]), false, 'later spawns cannot extend launch');
+  const remaining = deferred();
+  cohort.track(remaining.promise);
+  const order = [];
+  const root = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  await cohort.track(prepareAuthoredVisualPipelines(root, {
+    prepareAuthoredPipelines: async () => { order.push('compile:a'); return { compiled: true }; },
+    prepareAuthoredGpuResidency: async () => { order.push('upload:a'); return { uploaded: true }; },
+    isResidencyOwnerActive: () => true,
+  }));
+  let ready = false;
+  const drain = cohort.drain().then(() => { ready = true; });
+  await flush();
+  assert.deepEqual(order, ['compile:a', 'upload:a']);
+  assert.equal(ready, false, 'the completed subject overlaps the remaining required subject');
+  remaining.resolve(); await drain;
+});
+
+test('a required GPU rejection survives a boundary catching its own error', async () => {
+  const cohort = createOpeningLoadingAdmission();
+  const failure = new Error('ship_kestrel texture missing');
+  await cohort.track(Promise.reject(failure)).catch(() => {});
+  await assert.rejects(cohort.drain(), /ship_kestrel texture missing/);
+});
+
+test('New Game and Continue callers join one exact sequence and acceptance follows resources', async () => {
+  const resources = deferred();
+  const { state, calls } = fixture({ prepareOpeningGpuResources: () => resources.promise });
+  const first = waitForOpeningFirstPicture(state, 1000);
+  const second = waitForOpeningFirstPicture(state, 1000);
+  assert.equal(first, second);
+  await flush();
+  assert.equal(state.render.openingFirstPictureReady, undefined);
+  assert.deepEqual(calls, ['begin', 'seal', 'capture', 'submission']);
+  resources.resolve({ skipped: false });
+  assert.equal(await first, true);
+  assert.equal(state.render.requiredPackageAdmission.status, 'accepted');
+  assert.equal(state.render.openingFirstPictureReady, true);
+  assert.equal(openingFirstPictureIsReady(state), true);
+});
+
+test('a completed picture cannot authorize a different context, sector, run or renderer', async () => {
+  for (const replace of [
+    (state) => { state.contextRestoreSeq = 1; },
+    (state) => { state.render.contextLost = true; },
+    (state) => { state.render.contextRecovery = { pending: true }; },
+    (state) => { state.world.enterSerial++; },
+    (state) => { state.world.currentSectorId = 'another-sector'; },
+    (state) => { state.world = { ...state.world }; },
+    (state) => { state.render.admissionRunGeneration++; },
+    (state) => { state.render.renderer = {}; },
+  ]) {
+    const { state } = fixture();
+    await waitForOpeningFirstPicture(state, 1000);
+    assert.equal(openingFirstPictureIsReady(state), true);
+    replace(state);
+    assert.equal(openingFirstPictureIsReady(state), false);
+  }
+});
+
+test('incomplete plans, partial residency and failed resources cannot accept flight', async () => {
+  for (const override of [
+    { captureOpeningSubmissionPlan: () => ({ complete: false }) },
+    { prepareOpeningGpuResources: async () => ({ skipped: true, reason: 'loading-budget' }) },
+    { prepareOpeningGpuResources: async () => ({ skipped: false, partial: true }) },
+    { prepareOpeningGpuResources: async () => { throw new Error('required ship.glb missing'); } },
+  ]) {
+    const { state } = fixture(override);
+    await assert.rejects(waitForOpeningFirstPicture(state, 1000), /incomplete|loading-budget|did not complete|ship.glb missing/);
+    assert.notEqual(state.render.requiredPackageAdmission?.status, 'accepted');
+    assert.notEqual(state.render.openingFirstPictureReady, true);
+  }
+});
+
+test('a bounded readiness deadline stops late submission without authorizing flight', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const seal = deferred();
+  const { state, calls } = fixture({ prepareOpeningFirstPicture: () => seal.promise });
+  const ready = waitForOpeningFirstPicture(state, 20);
+  const rejected = assert.rejects(ready, /timed out/);
+  await flush(); t.mock.timers.tick(20); await rejected;
+  seal.resolve(true); await flush();
+  assert.equal(calls.includes('submission'), false);
+  assert.notEqual(state.render.openingFirstPictureReady, true);
+});
+
+test('world, generation and context replacement discard stale completions', async () => {
+  for (const replace of [
+    (state) => { state.world = { ...state.world }; },
+    (state) => { state.render.admissionRunGeneration++; },
+    (state) => { state.contextRestoreSeq = 1; },
+  ]) {
+    const seal = deferred();
+    const { state, calls } = fixture({ prepareOpeningFirstPicture: () => seal.promise });
+    const old = waitForOpeningFirstPicture(state, 1000);
+    const rejected = assert.rejects(old, /superseded/);
+    await flush(); replace(state); seal.resolve(true); await rejected;
+    assert.equal(calls.includes('submission'), false);
+    assert.notEqual(state.render.openingFirstPictureReady, true);
+  }
+});
+
+test('the exact delta key invalidates material, texture, geometry and context changes', () => {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: new THREE.Texture() }));
+  let key = openingPreparedLeafKey(mesh, 'context:1');
+  assert.equal(openingPreparedLeafKey(mesh, 'context:1'), key);
+  for (const mutate of [
+    () => { mesh.material.needsUpdate = true; },
+    () => { mesh.material.map.needsUpdate = true; },
+    () => { mesh.geometry.attributes.position.needsUpdate = true; },
+    () => { mesh.geometry.setAttribute('position', mesh.geometry.attributes.position.clone()); },
+    () => { mesh.geometry = new THREE.BoxGeometry(); },
+  ]) {
+    mutate(); const next = openingPreparedLeafKey(mesh, 'context:1');
+    assert.notEqual(next, key); key = next;
+  }
+  assert.notEqual(openingPreparedLeafKey(mesh, 'context:2'), key);
+});
+
+test('actual paint releases only the main hold and preserves pause or worker slow time', () => {
+  const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
+  const effects = createTimeEffects(state);
+  effects.set('bullet-time', { scale: .35 });
+  effects.set('runtime:pause', { scale: 0 });
+  let scheduled;
+  holdOpeningPresentationUntilPaint(state, effects, assert.fail, {
+    schedule: (callback) => { scheduled = callback; return 1; }, cancel() { scheduled = null; },
+  });
+  assert.equal(state.render.releaseOpeningPresentationHold(), false);
+  assert.equal(effects.describeRequests()['runtime:first-picture'].scale, 0);
+  state.render.worldSubmittedFrames = 1;
+  applyFirstPlayablePaintRelease({ state });
+  assert.equal(effects.describeRequests()['runtime:first-picture'], undefined);
+  assert.equal(state.timeScale, 0);
+  effects.clear('runtime:pause'); assert.equal(state.timeScale, .35);
+  assert.equal(scheduled, null);
+});
+
+test('a completed exact first picture resumes only the existing bounded optional queue', async () => {
+  const { state } = fixture();
+  await waitForOpeningFirstPicture(state, 1000);
+  state.mode = 'flight';
+  let resumeOptions;
+  state.render.resumeDeferredPipelineAdmissions = (options) => { resumeOptions = options; };
+  const owner = { state, _openingLoadingAdmission: {}, _openingPreparedLeaves: new WeakMap() };
+  applyFirstPlayablePaintRelease(owner);
+  assert.deepEqual(resumeOptions, { force: true });
+  assert.equal(owner._postOpeningPipelineAdmissionReleased, true);
+  assert.equal(owner._openingLoadingAdmission, null);
+});
+
+test('an old paint cannot release a replacement launch, and a missing picture fails recoverably', () => {
+  const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
+  const effects = createTimeEffects(state);
+  const timers = [];
+  const options = { schedule: (callback) => { timers.push(callback); return timers.length; }, cancel() {} };
+  holdOpeningPresentationUntilPaint(state, effects, assert.fail, options);
+  const oldRelease = state.render.releaseOpeningPresentationHold;
+  state.render.admissionRunGeneration++;
+  let failure;
+  holdOpeningPresentationUntilPaint(state, effects, (error) => { failure = error; }, options);
+  state.render.worldSubmittedFrames++;
+  assert.equal(oldRelease(), false); assert.equal(state.timeScale, 0);
+  timers[1]();
+  assert.match(failure.message, /Retry Launch/);
+  assert.equal(state.timeScale, 1);
+});
+
+test('explicit cancellation retires its stale generation/world without clearing a replacement hold', () => {
+  for (const replace of [
+    (state) => { state.render.admissionRunGeneration++; },
+    (state) => { state.world = {}; },
+    (state) => { state.render = { admissionRunGeneration: 2, worldSubmittedFrames: 0 }; },
+  ]) {
+    const state = { mode: 'flight', timeScale: 1, world: {}, render: { admissionRunGeneration: 1 } };
+    const effects = createTimeEffects(state);
+    const options = { schedule: () => 1, cancel() {} };
+    const oldRender = state.render;
+    const cancelOld = holdOpeningPresentationUntilPaint(state, effects, assert.fail, options);
+    replace(state); cancelOld();
+    assert.equal(effects.describeRequests()['runtime:first-picture'], undefined);
+    assert.equal(oldRender.releaseOpeningPresentationHold, null);
+    holdOpeningPresentationUntilPaint(state, effects, assert.fail, options);
+    cancelOld();
+    assert.equal(effects.describeRequests()['runtime:first-picture'].scale, 0);
+    state.render.cancelOpeningPresentationHold();
+  }
+});

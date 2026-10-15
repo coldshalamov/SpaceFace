@@ -29,6 +29,6 @@ test('soft-GPU opening cook passes deadlineMs into residency', () => {
   const start = rendererSrc.indexOf('state.render.prepareOpeningGpuResources');
   assert.ok(start > 0);
   const section = rendererSrc.slice(start, start + 9000);
-  assert.match(section, /deadlineMs:\s*softGpuOpening\s*\?\s*residencyBudgetMs/);
+  assert.match(section, /deadlineMs:\s*options.required !== true && softGpuOpening\s*\?\s*residencyBudgetMs/);
   assert.match(section, /residencyBudgetMs\s*=\s*softGpuOpening\s*\?\s*750\s*:\s*5000/);
 });

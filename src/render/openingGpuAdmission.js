@@ -834,6 +834,12 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
   const touchOne = typeof options.touchOne === 'function' ? options.touchOne : null;
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  // Required opening drains opt into a fail-closed result. The ordinary late-repair callers keep
+  // their historical best-effort behavior; only the caller that owns a required opening seal sets
+  // this flag. `isActive` is passed to the shared renderer admission queue so a superseded owner
+  // cannot submit a late compile or touch after its handoff.
+  const strict = options.strict === true;
+  const isActive = typeof options.isActive === 'function' ? options.isActive : null;
   const now = typeof options.now === 'function'
     ? options.now
     : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -899,9 +905,34 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   // seconds (headless SwiftShader, CI run 36486329212). Pacing after each unit keeps the
   // backlog ~one unit deep — the same work happens, spread over task-queue slots.
   const paceQueue = batch && typeof batch.paceQueue === 'function' ? batch.paceQueue : null;
+  // Pacing after a direct GL call does not exclude another producer that submitted during the
+  // pacer's yield. PR383 exposes the same-renderer reservation on the readiness batch; use it
+  // before invoking compile/touch. The paceQueue.submit fallback keeps this function compatible
+  // with older batches while their owner is still rolling out the batch.submit surface.
+  const batchSubmit = batch && typeof batch.submit === 'function'
+    ? batch.submit.bind(batch)
+    : null;
+  const paceSubmit = !batchSubmit && paceQueue && typeof paceQueue.submit === 'function'
+    ? paceQueue.submit
+    : null;
+  const submitSerial = batchSubmit || paceSubmit;
+  const submitAdmission = {
+    ...(isActive ? { isActive } : {}),
+    ...(options.urgent === true ? { urgent: true } : {}),
+  };
+  // A serial reservation must not wait on this batch's own KHR readiness drain. Callers pass the
+  // second argument through to compilePipelinesContextSafe/_compilePostRoute; closures that do
+  // not consume it remain API-compatible and retain their prior behavior on the KHR path.
+  const compileOptions = submitSerial || isActive
+    ? {
+      ...(submitSerial ? { skipSharedBatch: true } : {}),
+      ...(isActive ? { isActive } : {}),
+    }
+    : undefined;
   const issued = [];
   let compiled = [];
   let drained = null;
+  let issueSettled = [];
   // Where the step's wall time went. A cook that reads "110 s" in the ledger is unreadable
   // without knowing whether it was issuing, waiting on the driver, or touching.
   let issueMs = 0;
@@ -936,10 +967,11 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
         continue;
       }
       if (issueKey) seenIssueKeys.add(issueKey);
-      issued.push(compileOne ? compileOne(subject) : null);
-      // Pace before the scheduled yield: the pacer drains everything queued so far behind a
-      // task-queue slot, so the drain stays bounded to this unit instead of the whole cohort.
-      if (paceQueue) await paceQueue();
+      const submit = () => (compileOne ? compileOne(subject, compileOptions) : null);
+      issued.push(submitSerial ? submitSerial(submit, submitAdmission) : submit());
+      // The shared submit reservation already yields and drains after its callback. Keep the
+      // legacy post-submission pacer only for an older batch that has no reservation surface.
+      if (!submitSerial && paceQueue) await paceQueue();
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
     issueMs = now() - issueStarted;
@@ -949,8 +981,28 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     );
     // One rejected compile must not discard the cohort's touches — every issued unit that skips
     // its draw still links inside the first presented scene pass. Settle each and keep going.
-    compiled = (await Promise.allSettled(issued))
+    issueSettled = await Promise.allSettled(issued);
+    compiled = issueSettled
       .map((entry) => (entry && entry.status === 'fulfilled' ? entry.value : null));
+    if (strict) {
+      if (issued.length < ordered.length) {
+        throw new Error(`opening GPU admission incomplete: issued ${issued.length}/${ordered.length}`);
+      }
+      if (!drained || drained.contextLost === true || drained.incomplete === true
+        || Number(drained.programs) > 0) {
+        throw new Error('opening GPU admission incomplete: readiness drain did not settle');
+      }
+      const rejected = issueSettled.find((entry) => entry && entry.status === 'rejected');
+      if (rejected) throw rejected.reason || new Error('opening GPU admission compile rejected');
+      const failed = issueSettled.find((entry) => {
+        if (!entry || entry.status !== 'fulfilled' || !entry.value) return false;
+        if (entry.value.contextLost === true) return true;
+        return entry.value.skipped === true && entry.value.reason !== 'program-signature-covered';
+      });
+      if (failed) {
+        throw new Error(`opening GPU admission skipped: ${failed.value.reason || 'unknown reason'}`);
+      }
+    }
     drainMs = now() - drainStarted;
   } finally {
     batch.close();
@@ -971,6 +1023,15 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   // whole-scene hide/restore walk and the render call, which were most of a touch's cost.
   const touchMany = typeof options.touchMany === 'function' ? options.touchMany : null;
   const touchBatchSize = Math.max(1, Math.floor(Number(options.touchBatchSize) || 1));
+  const touchFailures = [];
+  const reportTouchResult = (touched, label) => {
+    if (!strict || !touched || typeof touched !== 'object') return;
+    if (touched.contextLost === true || touched.skipped === true) {
+      touchFailures.push(new Error(
+        `opening GPU admission ${label} skipped: ${touched.reason || 'unknown reason'}`,
+      ));
+    }
+  };
   // The deadline gates ISSUE, not touch: a compiled-but-never-drawn unit still pays its final
   // link/bufferData inside the first presented scene pass, which is the brick this admission
   // exists to remove. Every issued subject is drawn even over budget; subjects that were never
@@ -987,14 +1048,19 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touched = null;
       let touchError = null;
       try {
-        touched = await touchMany(group);
+        const touch = () => touchMany(group);
+        touched = submitSerial
+          ? await submitSerial(touch, submitAdmission)
+          : (strict ? await touch() : touch());
+        reportTouchResult(touched, `touch group ${index}`);
       } catch (error) {
         touchError = error;
+        if (strict) touchFailures.push(error);
       }
       for (let offset = 0; offset < group.length; offset++) {
         results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
       }
-      if (paceQueue) await paceQueue();
+      if (!submitSerial && paceQueue) await paceQueue();
       if (yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
     }
   } else {
@@ -1003,20 +1069,26 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touched = null;
       let touchError = null;
       try {
-        touched = touchOne ? touchOne(ordered[index]) : null;
+        const touch = () => (touchOne ? touchOne(ordered[index]) : null);
+        touched = submitSerial
+          ? await submitSerial(touch, submitAdmission)
+          : (strict ? await touch() : touch());
+        reportTouchResult(touched, `touch ${index}`);
       } catch (error) {
         touchError = error;
+        if (strict) touchFailures.push(error);
       }
       results.push({
         compiled: compiled[index] ?? null,
         touched,
         touchError,
       });
-      if (paceQueue) await paceQueue();
+      if (!submitSerial && paceQueue) await paceQueue();
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
   }
   touchMs = now() - touchStarted;
+  if (strict && touchFailures.length > 0) throw touchFailures[0];
   return {
     batched: true,
     contextLost: drained ? drained.contextLost === true : false,
