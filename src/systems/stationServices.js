@@ -632,7 +632,8 @@ export const stationServices = {
         stationId: job.stationId,
         atT: now,
       });
-      this.bus.emit('toast', { text: 'Repair complete', kind: 'success', ttl: 2 });
+      // audio:false — service:completed above already plays the berth's confirm chime.
+      this.bus.emit('toast', { text: 'Repair complete', kind: 'success', ttl: 2, audio: false });
     } else {
       if (state.fuel) {
         this.bus.emit('fuel:changed', { current: state.fuel.current, max: state.fuel.max });
@@ -645,7 +646,7 @@ export const stationServices = {
         stationId: job.stationId,
         atT: now,
       });
-      this.bus.emit('toast', { text: 'Refuel complete', kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: 'Refuel complete', kind: 'success', ttl: 2, audio: false });
     }
   },
 

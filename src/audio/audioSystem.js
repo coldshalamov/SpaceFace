@@ -38,6 +38,7 @@ import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js'
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
+import { isRunSealed } from '../core/runSeal.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
  * per run (ship|drone|freighter members). */
@@ -1531,7 +1532,54 @@ export const WANTED_SEARCH_EDGE_CUES = Object.freeze({
 export const SERVICE_BERTH_CUES = Object.freeze({
   started: 'sfx_dock_clunk',
   aborted: 'sfx_undock_release',
+  // The work finished: the dock's own confirm chime, once, when the yard hands the hull or tank
+  // back. Berth work only — see serviceCompletedCue for which receipts count.
+  completed: 'sfx_ui_confirm',
 });
+
+// service:completed is also the receipt for loans, notes, rights and policies. Those are
+// bookkeeping with their own success toast (a click); only physical berth work earns the chime.
+const SERVICE_WORK_TYPES = Object.freeze(['repair', 'refuel', 'emergency_fuel', 'hull_wash']);
+
+/** Pure. The completed-work chime for one `service:completed` receipt, or null (silence).
+ * Gain follows how much of the hull/tank the job actually returned; a receipt that moved
+ * nothing and cost nothing is silent. `fuelMax` is the tank size when the caller knows it. */
+export function serviceCompletedCue(payload, fuelMax) {
+  if (!payload || !SERVICE_WORK_TYPES.includes(payload.type)) return null;
+  const positive = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0);
+  const cost = positive(payload.cost);
+  const debt = positive(payload.debtCr);
+  const restored = positive(payload.restoredHull) + positive(payload.restoredArmor);
+  const units = positive(payload.units);
+  if (cost <= 0 && debt <= 0 && restored <= 0 && units <= 0) return null;
+  let share = 0.5;
+  if (restored > 0) {
+    const capacity = positive(payload.hullMax) + positive(payload.armorMax);
+    share = capacity > 0 ? clamp(restored / capacity, 0, 1) : 1;
+  } else if (units > 0 && positive(fuelMax) > 0) {
+    share = clamp(units / positive(fuelMax), 0, 1);
+  }
+  return Object.freeze({ id: SERVICE_BERTH_CUES.completed, gain: 0.28 + 0.14 * share });
+}
+
+// A faction naming you a new rank is the standing moment the comms log and the news already
+// carry in words. Up is the career chord; down is the refusal tick. One cue per window so a
+// burst of kills that drags two ranks does not stutter. Going hostile is NOT voiced here: the
+// same event raises heat (heat.js `faction:aggro`) and the wanted-escalation alert owns it.
+export const FACTION_STANDING_CUES = Object.freeze({
+  rankUp: Object.freeze({ id: 'sfx_promotion_chord', gain: 0.55 }),
+  rankDown: Object.freeze({ id: 'sfx_ui_error', gain: 0.5 }),
+});
+export const FACTION_STANDING_WINDOW_S = 2;
+
+/** Pure. The standing cue for one `faction:repChanged` payload, or null. Only `applyRep`
+ * stamps `rankChanged`; spillover and direct writes carry tier-only payloads and stay silent. */
+export function factionStandingCue(payload) {
+  if (!payload || payload.rankChanged !== true) return null;
+  const delta = Number(payload.delta);
+  if (!Number.isFinite(delta) || delta === 0) return null;
+  return delta > 0 ? FACTION_STANDING_CUES.rankUp : FACTION_STANDING_CUES.rankDown;
+}
 
 // INST-31. Three distinct existing recipes. Not the field-deploy accessibility voices.
 export const UNIQUE_LOOT_CUES = Object.freeze({
@@ -2691,6 +2739,7 @@ export const audio = {
     bus.on('claim:raidWarning', (p) => this._onClaimRaidWarning(p));
     bus.on('service:started', () => this._onServiceBerthCue('started'));
     bus.on('service:aborted', () => this._onServiceBerthCue('aborted'));
+    bus.on('service:completed', (p) => this._onServiceCompleted(p));
     for (const eventName of Object.keys(UNIQUE_LOOT_CUES)) {
       bus.on(eventName, () => this._onUniqueLootCue(eventName));
     }
@@ -2744,6 +2793,8 @@ export const audio = {
     // the fanfare (and ducks the bed, like a mission resolve); a rank-up gets the warm chord.
     bus.on('achievement:unlocked', () => { this._duckMusic(); this.play('sfx_achievement_fanfare', { gain: 0.75 }); });
     bus.on('career:ladder:completed', () => this.play('sfx_promotion_chord', { gain: 0.7 }));
+    // A faction naming you a new rank (or taking one back) — the comms log and news already say it.
+    bus.on('faction:repChanged', (p) => this._onFactionRepChanged(p));
     // Feature 16 — the ka-ching. Settled sales ring the register; buys stay a quiet confirm.
     // A profitable lot rings a shade brighter so the good deal is audible, not just green.
     bus.on('economy:tradeCompleted', (p) => {
@@ -5870,6 +5921,7 @@ export const audio = {
     this._reconcileDockedState(forceUndock);
     rt._wantedSearchInside = null;
     if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
+    rt._standingCueAt = null;
     // THE EAR: the next run's score opens fresh — no inherited fight, aftermath or phrase anchor.
     if (rt.bandBed && typeof rt.bandBed.resetScore === 'function') rt.bandBed.resetScore();
     rt._scoreTransitionsSeen = null;
@@ -5938,6 +5990,36 @@ export const audio = {
     const id = SERVICE_BERTH_CUES[which];
     if (!id) return;
     this.play(id, { gain: which === 'started' ? 0.4 : 0.35 });
+  },
+
+  // The yard hands the hull or tank back. Not gated on pause: docking IS a pause (screenManager
+  // sends sim:pause for any docked state) and every berth job finishes at the dock.
+  _onServiceCompleted(payload) {
+    const cue = serviceCompletedCue(payload, this.state && this.state.fuel && this.state.fuel.max);
+    if (!cue) return;
+    this.play(cue.id, { gain: cue.gain });
+  },
+
+  // Rank change on the standing ladder. Same pause rule as the berth: a rank-up from a mission
+  // turn-in lands while docked, which is a pause, so only the title/loading screens and a sealed
+  // Crucible run (which never moves standing) are quiet. One cue per window, on the audio clock
+  // (sim time freezes at the dock, so it cannot meter a dock visit).
+  _onFactionRepChanged(payload) {
+    const cue = factionStandingCue(payload);
+    if (!cue) return;
+    const state = this.state;
+    const mode = state && state.mode;
+    if (mode === 'menu' || mode === 'loading' || isRunSealed(state)) return;
+    const rt = this.rt;
+    if (!rt) return;
+    const now = rt.ctx && Number.isFinite(rt.ctx.currentTime)
+      ? rt.ctx.currentTime
+      : Math.max(0, Number(state && state.simTime) || 0);
+    const last = rt._standingCueAt;
+    // A clock that went backwards (restore, new run on a fresh context) is a new window.
+    if (Number.isFinite(last) && now >= last && now - last < FACTION_STANDING_WINDOW_S) return;
+    rt._standingCueAt = now;
+    this.play(cue.id, { gain: cue.gain });
   },
 
   _onUniqueLootCue(eventName) {

@@ -4232,7 +4232,7 @@ export const economy = {
             this.bus.emit('service:completed', { type: 'repair', cost: 0, debtCr,
               restoredHull: e.hull - beforeHull, restoredArmor: 0, hullMax, armorMax,
               beforeProtection, stationId, atT: Number(state.simTime) || 0 });
-            this.bus.emit('toast', { text: `Emergency weld (${debtCr} cr filed as debt)`, kind: 'warn', ttl: 3 });
+            this.bus.emit('toast', { text: `Emergency weld (${debtCr} cr filed as debt)`, kind: 'warn', ttl: 3, audio: false });
           }
           return;
         }
@@ -4278,7 +4278,7 @@ export const economy = {
         } else {
           e.hull = e.hullMax; e.armorHp = e.armorMax;
           this.chargeCredits(cost, 'service:repair');
-          this.bus.emit('toast', { text: `Repaired (${cost} cr)`, kind: 'success', ttl: 2 });
+          this.bus.emit('toast', { text: `Repaired (${cost} cr)`, kind: 'success', ttl: 2, audio: false });
         }
         this.bus.emit('service:completed', {
           type: 'repair',
@@ -4319,7 +4319,7 @@ export const economy = {
         stationId,
         atT: Number(state.simTime) || 0,
       });
-      this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR} cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR} cr)`, kind: 'success', ttl: 2, audio: false });
     } else if (type === 'ammo') {
       // A missing amount means "a batch, hold and wallet permitting" — the same default
       // semantics the refuel and repair verbs carry. An explicit 0 is an answer: nothing asked.
