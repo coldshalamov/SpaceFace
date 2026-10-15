@@ -525,7 +525,7 @@ const BRIDGE_EVENTS = [
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
 ];
 
-export function createSimHost() {
+export function createSimHost({ onAsyncSaveReady } = {}) {
   // The save system's synchronous localStorage contract runs against a staged
   // snapshot in worker realms (browser worker, node worker_threads): main
   // stages its sf.* keyspace on load/save forwards via stageLaneStorage, and
@@ -916,6 +916,9 @@ export function createSimHost() {
       m: host.state ? host.state.mode : undefined,
       es: host.state && host.state.world ? host.state.world.enterSerial : undefined,
     });
+    // Paused saves finish on later task turns, after the command's tick reply. Their real
+    // bytes and terminal event need a transport wake even when no sim timer is running.
+    if (type === 'save:completed' || type === 'save:error') onAsyncSaveReady?.();
   }
 
   function installBridgeCapture(bus, captureAll) {
@@ -2197,6 +2200,7 @@ export function createSimHost() {
     async finalize() { return handleFinalize(); },
     shutdown() { handleShutdown(); },
     drainStorageOps,
+    hasPendingDurable() { return pendingStorageOps.length > 0 || host.pendingEvents.length > 0; },
     applyPresentationTimeEffects,
     effectiveTimeScale() {
       return host.timeEffectsAuthority && host.state

@@ -38,7 +38,8 @@ import {
   SAB_ENV_KIND,
 } from '../../scripts/lib/simSabEnvelope.mjs';
 
-const { tick, init, finalize, shutdown, drainStorageOps, applyPresentationTimeEffects, effectiveTimeScale } = createSimHost();
+const { tick, init, finalize, shutdown, drainStorageOps, hasPendingDurable,
+  applyPresentationTimeEffects, effectiveTimeScale } = createSimHost({ onAsyncSaveReady: requestAsyncSaveReply });
 
 let chain = Promise.resolve();
 let sabEnv = null;
@@ -93,6 +94,7 @@ const localClock = {
   // behind the shared directive chain. The next tick samples the elapsed wall
   // interval and applies the normal catch-up/shedding policy instead.
   tickQueued: false,
+  saveReplyQueued: false,
   stopped: false,
 };
 
@@ -613,7 +615,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   // the game is paused. When no coalesced presentation/durable reply is
   // waiting, that trim is an internal maintenance tick: emitting another
   // clockTick would make the main ACK feed back into this branch forever.
-  if (!publishReply && !localClock.sentAwaitingAck && !localClock.latestReply) return;
+  if (!publishReply && !localClock.sentAwaitingAck && !localClock.latestReply
+    && !localArrayLength(reply, 'events') && !localArrayLength(reply, 'storageOps')) return;
 
   if (localClock.sentAwaitingAck) {
     localClock.latestReply = localMergeReply(localClock.latestReply, reply);
@@ -633,6 +636,28 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     }
     await publishLocalReply(reply);
   }
+}
+
+function requestAsyncSaveReply() {
+  if (!localClock.enabled || localClock.stopped || localClock.saveReplyQueued
+    || (localClock.active && localClock.scale > 0)) return;
+  const generation = localClock.lifecycleGeneration;
+  localClock.saveReplyQueued = true;
+  let published = false;
+  chain = chain.then(async () => {
+    if (localClock.stopped || generation !== localClock.lifecycleGeneration
+      || (localClock.active && localClock.scale > 0) || !hasPendingDurable()) return;
+    // Force a reply, never a simulation step. The existing reply/ACK coalescer owns ordering.
+    await runLocalClockTick(true);
+    published = true;
+  }).catch((error) => {
+    self.postMessage({ kind: 'error', message: error?.message || String(error), stack: error?.stack || null });
+  }).finally(() => {
+    localClock.saveReplyQueued = false;
+    // Another async save may have settled after tick() drained its payload but before
+    // publication finished. Recheck actual queued data; an empty ACK never re-arms this.
+    if (published && generation === localClock.lifecycleGeneration && hasPendingDurable()) requestAsyncSaveReply();
+  });
 }
 
 function scheduleLocalClock() {
