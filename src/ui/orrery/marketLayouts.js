@@ -252,7 +252,7 @@ ${M} .orr-mkt-spread::after { content:""; position:absolute; right:0; top:0; bot
 ${M} .orr-mkt-spread__v { position:absolute; right:12px; top:0; transform:translateY(-100%); text-align:right; padding-bottom:3px;
   ${NUMERAL} font-size:15px !important; font-weight:520 !important; line-height:1.15 !important; color:rgb(248 244 234) !important;
   text-shadow:0 1px 8px rgb(0 0 0 / .95), 0 0 12px rgb(0 0 0 / .85) !important; white-space:nowrap; }
-${M} .orr-mkt-spread__k { display:block; ${LABEL} font-size:11px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${M} .orr-mkt-spread__k { display:block; ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${M} .sx-mkt-instrument__plot { overflow:visible !important; }
 ${M} .sx-mkt-instrument { overflow:visible !important; }
 ${M} .sx-mkt-instrument__dot { background:rgb(248 244 234) !important; box-shadow:0 0 0 3px rgb(7 8 10 / .8) !important; }
@@ -431,7 +431,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-qty .sx-qty__in { left:55px; width:100px !important; top:64px; height:44px !important; font-size:36px !important; line-height:44px !important; }
   ${M} .sx-qty .sx-qty__words { top:176px; left:4px; right:4px; }
   ${M} .sx-mkt-instrument__plot { height:80px !important; }
-  ${M} .sx-mkt-chart-key { display:flex !important; flex-wrap:wrap !important; gap:2px 10px !important; margin-top:4px !important; font-size:11px !important;
+  ${M} .sx-mkt-chart-key { display:flex !important; flex-wrap:wrap !important; gap:2px 10px !important; margin-top:4px !important; font-size:12px !important;
     letter-spacing:.06em !important; margin-left:12px !important; max-width:100% !important; }
   ${M} .sx-mkt-chart-key > span { white-space:nowrap !important; flex:none !important; }
   ${M} .orr-mkt-subkey { margin-left:20px !important; }
@@ -471,7 +471,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt-browser { display:grid !important; grid-template-columns:max-content minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) !important;
     column-gap:24px !important; row-gap:6px !important; }
   ${M} .sx-mkt-browser__mode { grid-column:1 / -1; grid-row:1; padding-right:min(50%, 190px) !important; min-height:24px !important; margin:0 !important;
-    font-size:11px !important; letter-spacing:.18em !important; }
+    font-size:12px !important; letter-spacing:.18em !important; }
   ${M} .orr-mkt-find { width:min(48%, 180px) !important; padding:0 0 6px !important; }
   ${M} .orr-mkt-find__cursor { bottom:9px; height:11px; }
   ${M} .sx-mkt-search { padding:2px 0 2px 9px !important; font-size:12px !important; }
@@ -483,7 +483,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
     background:linear-gradient(rgb(${BONE} / .3), rgb(${BONE} / .3)) 0 4px / 1px calc(100% - 8px) no-repeat !important; }
   ${M} .sx-mkt-browser__filters { align-items:flex-start !important; }
   ${M} .sx-mkt-browser__filters li { display:flex !important; justify-content:flex-start !important; padding:0 !important; background:none !important; }
-  ${M} .sx-mkt-filter { padding:2px 0 !important; font-size:9.5px !important; letter-spacing:.08em !important; line-height:13px !important; text-align:left !important;
+  ${M} .sx-mkt-filter { padding:2px 0 !important; font-size:12px !important; letter-spacing:.08em !important; line-height:13px !important; text-align:left !important;
     justify-content:flex-start !important; min-width:max-content !important; white-space:nowrap !important; }
   ${M} .sx-mkt-filter::after { left:-9px !important; top:50% !important; width:5px !important; height:1.5px !important; margin:-.75px 0 0 !important; }
   ${M} .sx-mkt-filter.is-on::after { width:8px !important; height:2px !important; margin:-1px 0 0 !important; }
@@ -499,64 +499,68 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt-table :is(th, td):first-child { padding-left:30px !important; }
   ${M} .sx-mkt-row td { padding-top:3px !important; padding-bottom:3px !important; font-size:12px !important; }
   ${M} .sx-mkt-table :is(th, td):nth-child(n+2) { padding-left:8px !important; padding-right:0 !important; white-space:nowrap !important; }
-  ${M} .sx-mkt-table thead th { font-size:10px !important; letter-spacing:.12em !important; }
-  ${M} .sx-mkt-row__price :is(i, em, small, span) { font-size:10px !important; }
+  ${M} .sx-mkt-table thead th { font-size:12px !important; letter-spacing:.12em !important; }
+  ${M} .sx-mkt-row__price :is(i, em, small, span) { font-size:12px !important; }
   /* stage: the analysis column and a slim console beside it */
   ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 1fr) 138px !important;
     grid-template-rows:minmax(0, 1fr) !important; column-gap:10px !important; row-gap:0 !important; }
   ${M} .sx-mkt__analysis { grid-column:1 !important; grid-row:1 !important; min-height:0 !important; overflow:auto !important; }
   ${M} .sx-mkt__console { grid-column:2 !important; grid-row:1 !important; align-self:start !important; width:138px !important;
-    max-height:100% !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:none; }
+    min-height:0 !important; max-height:100% !important; overflow-x:hidden !important; overflow-y:auto !important; scrollbar-width:none; }
   /* the decision stays on the board: its sentence, then one line per verb with its terms, right
      under the analysis (the console keeps the full height). On a short berth the four readings
      yield while it waits, so the trace keeps its floor. */
   ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) { grid-template-rows:minmax(0, max-content) minmax(auto, 1fr) !important; }
   ${M} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__console { grid-row:1 / -1 !important; }
   ${M} .sx-mkt__decision:not(:empty) { display:block !important; grid-column:1 !important; grid-row:2 !important; margin:0 !important;
-    padding:5px 0 0 8px !important; border-top:1px solid rgb(${BONE} / .16); align-self:start !important; min-width:0; }
+    padding:5px 0 0 8px !important; border-top:1px solid rgb(${BONE} / .16); align-self:start !important; min-width:0; min-height:0 !important;
+    max-height:100% !important; overflow:auto !important; }
   ${M} .sx-mkt__decision .sx-decision { gap:0 !important; }
-  ${M} .sx-mkt__decision .sx-decision > .k-sentence { margin:0 0 1px !important; font-size:11.5px !important; line-height:15px;
+  ${M} .sx-mkt__decision .sx-decision > .k-sentence { margin:0 0 1px !important; font-size:12px !important; line-height:15px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; color:rgb(${BONE} / .72) !important; }
   ${M} .sx-mkt__decision .sx-decision__opt { flex-direction:row !important; align-items:baseline !important; gap:10px !important; padding:2px 0 2px 12px !important;
     min-width:0; max-width:100%; }
   ${M} .sx-mkt__decision .sx-decision__opt::before { top:2px !important; }
-  ${M} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:11px !important; letter-spacing:.14em !important; }
-  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { min-width:0; font-size:11px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:12px !important; letter-spacing:.14em !important; }
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { min-width:0; font-size:12px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${M} .sx-mkt-chart-key { display:none !important; }
   /* analysis: the price keeps its words; the readings sit two-up so the last one is not cut */
   ${M} .sx-mkt__hero { padding-left:8px !important; }
   ${M} .sx-mkt__hero .k-hero__n { font-size:30px !important; }
-  ${M} .sx-mkt__hero .k-hero__w { display:block !important; max-width:72px; margin-top:2px !important; font-size:9px !important;
+  ${M} .sx-mkt__hero .k-hero__w { display:block !important; max-width:72px; margin-top:2px !important; font-size:12px !important;
     letter-spacing:.1em !important; line-height:1.25 !important; white-space:normal !important; }
   ${M} .sx-mkt__quote > .sx-mkt-title { font-size:20px !important; margin-top:0 !important; }
   ${M} .sx-mkt__quote > .sx-mkt-cause { font-size:12px !important; }
   ${M} .sx-mkt__quote > .sx-mkt-instrument { margin-top:18px !important; }
   ${M} .orr-mkt-spread__v { padding-bottom:2px; font-size:13px !important; }
-  ${M} .orr-mkt-spread__k { display:inline !important; margin-left:5px; font-size:9.5px !important; }
+  ${M} .orr-mkt-spread__k { display:inline !important; margin-left:5px; font-size:12px !important; }
   ${M} .sx-mkt-instrument__plot { height:56px !important; }
   ${M} .orr-mkt-tape { display:none !important; }
   ${M} .orr-mkt-subkey { display:grid !important; grid-template-columns:repeat(2, max-content); margin:4px 0 0 2px !important; gap:3px 20px !important; }
-  ${M} .orr-mkt-subkey__bit { font-size:9.5px !important; letter-spacing:.08em !important; }
+  ${M} .orr-mkt-subkey__bit { font-size:12px !important; letter-spacing:.08em !important; }
   /* console: dial, the three dial words under it, the total, the quote breakdown, the verbs */
   ${M} .sx-trade { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none !important;
     grid-template-areas:"dial" "total" "breakdown" "verb" !important; justify-items:center; row-gap:3px !important; }
   ${M} .sx-trade > .sx-qty { width:138px; height:106px; }
   ${M} .sx-qty .orr-qdial { left:21px; top:0; width:96px; height:96px; }
   ${M} .sx-qty .sx-qty__in { left:34px; width:70px !important; top:28px; height:28px !important; font-size:24px !important; line-height:28px !important; }
-  ${M} .sx-qty .sx-qty__k { left:21px; width:96px; top:58px; font-size:8px !important; letter-spacing:.16em !important; }
+  ${M} .sx-qty .sx-qty__k { left:21px; width:96px; top:58px; font-size:12px !important; letter-spacing:.16em !important; }
   ${M} .sx-qty .sx-qty__words { top:91px; left:0; right:0; }
-  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:9.5px !important; letter-spacing:.1em !important; padding:1px 0 !important; }
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:12px !important; letter-spacing:.1em !important; padding:1px 0 !important; }
   ${M} .so-trade-total > span { display:none !important; }
   ${M} .so-trade-total > strong { font-size:16px !important; }
   ${M} .orr-mkt-holdarc, ${M} .sx-trade__note { display:none !important; }
   ${M} .so-trade-breakdown { display:block !important; justify-self:stretch; text-align:center; }
-  ${M} .so-trade-breakdown > summary { font-size:9px !important; letter-spacing:.08em !important; white-space:nowrap; }
+  ${M} .so-trade-breakdown > summary { font-size:12px !important; letter-spacing:.08em !important; line-height:1.2 !important; white-space:normal !important; overflow-wrap:anywhere; }
   ${M} .so-trade-breakdown[open] { text-align:left; }
-  ${M} .so-trade-breakdown .sx-trade__rows { margin:4px 0 0 !important; font-size:11px !important; }
-  ${M} .sx-trade__words { flex-wrap:nowrap !important; justify-content:center !important; gap:8px !important; margin:0 !important; width:138px; }
-  ${M} .sx-trade__go.orr-lampkey { min-height:26px !important; min-width:0 !important; width:auto !important; font-size:11px !important;
-    padding:0 14px 0 9px !important; white-space:nowrap; }
-  ${M} .sx-trade__go:not([data-go]) { font-size:9.5px !important; letter-spacing:.12em !important; padding:2px 0 !important; white-space:nowrap; }
+  ${M} .so-trade-breakdown .sx-trade__rows { margin:4px 0 0 !important; font-size:12px !important; line-height:1.2 !important; white-space:normal !important; overflow-wrap:anywhere; }
+  ${M} .sx-trade__words { flex-wrap:wrap !important; justify-content:center !important; gap:2px 8px !important; margin:0 !important; width:138px; }
+  ${M} .sx-trade__go.orr-lampkey { min-height:26px !important; min-width:0 !important; width:auto !important; font-size:12px !important;
+    padding:0 14px 0 9px !important; line-height:1.2 !important; white-space:normal !important; }
+  ${M} .sx-trade__go:not([data-go]) { font-size:12px !important; letter-spacing:.12em !important; padding:2px 0 !important; line-height:1.2 !important; white-space:normal !important; }
+  ${M} .sx-qty .sx-qty__k { line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere; }
+  ${M} .sx-qty .sx-qty__words { flex-wrap:wrap !important; justify-content:center !important; gap:2px 6px !important; }
+  ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { line-height:1.2 !important; white-space:normal !important; }
 }
 /* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
 @media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
@@ -572,7 +576,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt__decision .sx-decision { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; column-gap:12px !important; }
   ${M} .sx-mkt__decision .sx-decision > .k-sentence { grid-column:1 / -1; }
   ${M} .sx-mkt__decision .sx-decision__opt { flex-direction:column !important; align-items:flex-start !important; gap:1px !important; text-align:left; }
-  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { font-size:10.5px !important; line-height:13px !important;
+  ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { font-size:12px !important; line-height:13px !important;
     white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
 }
 /* ---- 651–1100 × ≤460 desktop (e.g. 844×390): the panel's rows sized to the 345px list, so the
@@ -593,7 +597,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${MD} .sx-mkt-filter { padding:1px 0 !important; line-height:12px !important; }
   ${MD} .sx-mkt-browser__rail, ${MD} .sx-mkt-browser__empty { grid-column:1; grid-row:3; }
   /* the two verbs share ~190px: their names close up so REPAIR NOW and FLY DAMAGED keep a gap */
-  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:10px !important; letter-spacing:.06em !important; white-space:nowrap; }
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:12px !important; letter-spacing:.06em !important; white-space:nowrap; }
 }
 /* under ~720 a verb column is ~80px: FLY DAMAGED takes two lines rather than run under BUY */
 @media (min-width:651px) and (max-width:720px) and (max-height:460px) {
@@ -606,9 +610,9 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
 @media (min-width:651px) and (max-width:900px) and (max-height:460px) {
   ${MD} .sx-mkt__quote { grid-template-columns:minmax(0, 1fr) max-content !important; column-gap:8px !important; align-items:start !important; }
   ${MD} .sx-mkt__quote > :is(.sx-mkt-cat-inline, .sx-mkt-title, .sx-mkt-cause) { grid-column:1 / -1 !important; }
-  ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { grid-row:1 !important; margin:0 !important; font-size:10px !important; letter-spacing:.16em !important; white-space:nowrap; }
+  ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { grid-row:1 !important; margin:0 !important; font-size:12px !important; letter-spacing:.16em !important; white-space:nowrap; }
   ${MD} .sx-mkt__quote > .sx-mkt-title { grid-row:2 !important; font-size:19px !important; line-height:1.1 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  ${MD} .sx-mkt__quote > .sx-mkt-cause { grid-row:3 !important; margin-top:1px !important; font-size:11px !important; line-height:14px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${MD} .sx-mkt__quote > .sx-mkt-cause { grid-row:3 !important; margin-top:1px !important; font-size:12px !important; line-height:14px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${MD} .sx-mkt__quote > .sx-mkt__hero { grid-column:1 / -1 !important; grid-row:4 !important; display:flex !important; flex-direction:row !important; align-items:center !important; gap:10px !important;
     justify-self:start !important; text-align:left !important; margin:4px 0 0 !important; padding:0 !important; }
   ${MD} .sx-mkt__hero .k-hero__n { font-size:28px !important; }

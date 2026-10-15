@@ -1050,7 +1050,7 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
     top:auto !important; z-index:6; width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
     flex-direction:row !important; flex-wrap:wrap !important; gap:2px 12px !important;
     background:linear-gradient(0deg, rgb(7 8 10 / .92) 40%, rgb(7 8 10 / 0)) !important; }
-  ${W} .sx-sw-verb { font-size:11px !important; letter-spacing:.1em !important; }
+  ${W} .sx-sw-verb { font-size:12px !important; letter-spacing:.1em !important; }
 }
 /* ≤1100×≤640 desktop (960×540): the dock stage is ~162px tall and the left callout column shares
    it with the nameplate and the camera words, so long system names landed on "Name this hull" and
@@ -1106,14 +1106,14 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
     align-items: baseline !important;
     gap: 0 8px !important;
     margin: 0 !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
     letter-spacing: .12em !important;
     line-height: 1.2 !important;
     color: rgb(${BONE} / .78) !important;
     text-shadow: 0 1px 2px rgb(7 8 10 / .92);
   }
   ${W}.orr-sw--jig .sx-sw-circuit__sub {
-    font-size: 11px !important;
+    font-size: 12px !important;
     letter-spacing: .06em !important;
     color: rgb(${BONE} / .62) !important;
   }
@@ -1145,6 +1145,12 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
 }
 @media (min-width:651px) and (max-width:699px) and (max-height:460px) and (hover:hover) {
   ${W} .sx-sw__stage.is-live > .sx-sw__camera { column-gap:10px !important; }
+}
+/* Keep the narrow hull identity beside DOCKED, but wrap its fit reading before
+   the drive callout. It must remain inside the stage rather than above its clip. */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
+  ${W}.orr-sw--jig > .sx-sw__side { max-width:130px !important; }
+  ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:wrap !important; white-space:normal !important; }
 }
 `;
 

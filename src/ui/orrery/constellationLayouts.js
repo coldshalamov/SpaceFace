@@ -37,7 +37,7 @@ ${T} > .k-title .con-title { width:fit-content; margin:0; ${DISPLAY} font-size:c
 ${T} > .k-title .con-sub { width:fit-content; margin:clamp(6px, 1vh, 12px) 0 0 !important; ${READ} font-size:clamp(14px, min(.9vw, 1.7vh), 19px) !important; line-height:1.35; color:rgb(${BONE} / .88) !important; ${HALO} max-width:48ch; }
 /* hour-verb curve: one clipped line under the sub so it never prints over rim sector names */
 ${T} > .k-title .con-curve { width:fit-content; max-width:min(32ch, 22vw); margin:clamp(4px, .55vh, 8px) 0 0 !important; padding:0;
-  ${LABEL} font-size:clamp(10.5px, .6vw, 12.5px) !important; letter-spacing:.12em; line-height:1.35;
+  ${LABEL} font-size:clamp(12px, .6vw, 12.5px) !important; letter-spacing:.12em; line-height:1.35;
   color:rgb(${BONE} / .86) !important; ${HALO}
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* the three readings in the corner: thin numerals over their words, no plate */
@@ -46,7 +46,7 @@ ${T} > .k-corner.con-corner { grid-area:corner; position:relative !important; ri
   margin:0; padding:clamp(4px, .6vh, 10px) 0 0; background:none !important; border:0 !important; box-shadow:none !important; text-align:right; }
 ${T} .con-read { display:flex; flex-direction:column; align-items:flex-end; gap:clamp(4px, .6vh, 8px); min-width:0; }
 ${T} .con-read__n { ${NUMERAL} font-size:clamp(26px, min(2.1vw, 4vh), 56px); line-height:.9; color:rgb(${WARM}); ${HALO} white-space:nowrap; }
-${T} .con-read__w { ${LABEL} font-size:clamp(10px, .6vw, 12.5px); line-height:1.3; letter-spacing:.2em; color:rgb(${BONE} / .82); white-space:nowrap; ${HALO} }
+${T} .con-read__w { ${LABEL} font-size:clamp(12px, .6vw, 12.5px); line-height:1.3; letter-spacing:.2em; color:rgb(${BONE} / .82); white-space:nowrap; ${HALO} }
 @media (max-width:1500px) { ${T} .con-read__w { white-space:normal; text-align:right; max-width:9ch; } }
 
 /* the dial */
@@ -67,7 +67,7 @@ ${T} > .con-side { grid-area:side; position:relative; z-index:1; min-width:0; mi
 ${T} > .con-side::before { ${POOL('-10% -18% -6% -22%')} }
 ${T} .con-dossier { display:flex; flex-direction:column; gap:clamp(6px, 1.1vh, 14px); }
 ${T} .con-dossier > * { margin:0; }
-${T} .con-dossier__kicker { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
+${T} .con-dossier__kicker { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
 ${T} .con-dossier__kicker span { margin:0 .3em; }
 ${T} .con-dossier__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
 ${T} .con-dossier__state { ${READ} font-size:clamp(14px, .85vw, 18px); line-height:1.35; color:rgb(${BONE} / .88); }
@@ -80,21 +80,21 @@ ${T} .con-cost__track { fill:none; stroke:rgb(${BONE} / .34); stroke-width:1.5; 
 ${T} .con-cost__fill { fill:none; stroke:rgb(${WARM}); stroke-width:2.6; stroke-linecap:round; }
 ${T} .con-cost[data-short="1"] .con-cost__fill { stroke:rgb(${BONE} / .72); }
 ${T} .con-cost[data-free="1"] .con-cost__fill { stroke:rgb(${BONE} / .42); }
-${T} .con-cost dt { ${LABEL} font-size:clamp(9.5px, .55vw, 11.5px); letter-spacing:.18em; color:rgb(${BONE} / .78); white-space:nowrap; }
+${T} .con-cost dt { ${LABEL} font-size:12px; letter-spacing:.18em; color:rgb(${BONE} / .78); white-space:nowrap; }
 ${T} .con-cost dd { margin:2px 0 0; text-transform:uppercase; ${NUMERAL} font-size:clamp(24px, min(1.8vw, 3.4vh), 46px); line-height:1; color:rgb(${WARM}); }
-${T} .con-cost__sub { margin-top:3px; ${LABEL} font-size:clamp(9.5px, .55vw, 11.5px); letter-spacing:.14em; color:rgb(${BONE} / .78); white-space:nowrap; }
+${T} .con-cost__sub { margin-top:3px; ${LABEL} font-size:12px; letter-spacing:.14em; color:rgb(${BONE} / .78); white-space:nowrap; }
 ${T} .con-cost[data-short="1"] .con-cost__sub { color:rgb(${WARM} / .9); }
 ${T} .con-cost__tick { fill:none; stroke:rgb(${WARM}); stroke-width:1.5; stroke-linecap:butt; }
-${T} .con-dossier__paid { margin:clamp(2px, .5vh, 6px) 0 !important; ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .82); }
+${T} .con-dossier__paid { margin:clamp(2px, .5vh, 6px) 0 !important; ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .82); }
 ${T} .con-actions { margin:clamp(2px, .6vh, 8px) 0 clamp(4px, 1vh, 12px); }
 ${T} .con-actions .orr-lampkey { min-width:clamp(150px, 11vw, 220px); justify-content:center; }
 /* a node you cannot research yet: its reason in words where the key would be, never a box */
 ${T} .con-why { all:unset; box-sizing:border-box; display:block; cursor:default; max-width:100%; padding:6px 0 6px 18px; position:relative;
-  ${LABEL} font-size:clamp(11px, .64vw, 13px); line-height:1.4; letter-spacing:.14em; color:rgb(${BONE} / .86); white-space:normal; }
+  ${LABEL} font-size:clamp(12px, .64vw, 13px); line-height:1.4; letter-spacing:.14em; color:rgb(${BONE} / .86); white-space:normal; }
 ${T} .con-why::before { content:"›"; position:absolute; left:0; top:5px; color:rgb(${BONE} / .62); letter-spacing:0; }
 ${T} .con-actions[data-state="researched"] .con-why::before { content:"✓"; }
 ${T} .con-why:focus-visible { outline:none !important; color:rgb(${WARM}); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
-${T} .con-caps { margin:clamp(4px, .9vh, 12px) 0 0; ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.24em; color:rgb(${BONE} / .78); }
+${T} .con-caps { margin:clamp(4px, .9vh, 12px) 0 0; ${LABEL} font-size:12px; letter-spacing:.24em; color:rgb(${BONE} / .78); }
 ${T} .con-rows { list-style:none; margin:2px 0 0 !important; padding:0 0 0 14px; display:flex; flex-direction:column; position:relative; }
 ${T} .con-rows::before { content:""; position:absolute; left:3px; top:4px; bottom:4px; width:1.5px; background:rgb(${BONE} / .42); }
 ${T} .con-row { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:14px; align-items:baseline; padding:clamp(3px, .5vh, 6px) 0; min-height:0; border:0; background:none; }
@@ -108,7 +108,7 @@ ${T} .con-rows:has(.con-row__img) .con-row__art { width:68px; height:50px; }
 ${T} .con-row__art .con-row__img { width:46px; height:64px; flex:none; object-fit:cover; transform:rotate(90deg); filter:grayscale(1) sepia(.16) brightness(1.2); opacity:.9; }
 ${T} .con-reqs .con-row[data-met="1"]::before { background:rgb(${WARM}); }
 ${T} .con-row__name { ${READ} font-size:clamp(14px, .82vw, 17px); line-height:1.3; color:rgb(${WARM}); min-width:0; }
-${T} .con-row__sub { ${LABEL} font-size:clamp(9.5px, .54vw, 11px); letter-spacing:.16em; color:rgb(${BONE} / .78); white-space:nowrap; }
+${T} .con-row__sub { ${LABEL} font-size:12px; letter-spacing:.16em; color:rgb(${BONE} / .78); white-space:nowrap; }
 ${T} .con-reqs .con-row[data-met="0"] .con-row__name { color:rgb(${BONE} / .82); }
 ${T} .con-sentence, ${T} .con-empty { ${READ} font-size:clamp(13.5px, .78vw, 16px); line-height:1.45; color:rgb(${BONE} / .88); margin:0; }
 ${T} .con-dossier .sf-entity-link { text-decoration:none !important; box-shadow:none !important; border:0 !important; color:inherit !important; background:none !important; cursor:pointer; }
@@ -121,15 +121,15 @@ ${T} > .k-foot .con-back.sf-back.k-word { all:unset !important; box-sizing:borde
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${T} > .k-foot .con-back.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${T} > .k-foot .con-back.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${T} > .k-foot .con-back.sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
 ${T} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 ${T} .con-legend { display:flex; align-items:center; gap:clamp(14px, 1.5vw, 30px); }
-${T} .con-legend__item { display:inline-flex; align-items:center; gap:8px; ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.18em; color:rgb(${BONE} / .82); }
+${T} .con-legend__item { display:inline-flex; align-items:center; gap:8px; ${LABEL} font-size:12px; letter-spacing:.18em; color:rgb(${BONE} / .82); }
 ${T} .con-legend__item svg { width:24px; height:24px; overflow:visible; flex:none; }
-${T} .con-view { display:inline-flex; align-items:baseline; gap:12px; ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.18em; color:rgb(${BONE} / .82); white-space:nowrap; }
+${T} .con-view { display:inline-flex; align-items:baseline; gap:12px; ${LABEL} font-size:12px; letter-spacing:.18em; color:rgb(${BONE} / .82); white-space:nowrap; }
 ${T} .con-view__zoom { ${NUMERAL} font-size:clamp(16px, 1vw, 22px); letter-spacing:0; color:rgb(${WARM}); }
 ${T} .con-view__reset { all:unset; cursor:pointer; color:rgb(${WARM}); }
 ${T} .con-view__reset::before { content:"› "; color:rgb(${BONE} / .62); }
@@ -139,7 +139,7 @@ ${T} .con-picker { display:flex; align-items:center; gap:14px; margin-left:auto;
 /* the picker sleeps as a zero-size point until it is focused: a 1 px clip left the select's real
    box wandering past the frame's edge, so the box itself collapses instead */
 ${T} .con-picker:not(:focus-within) { position:absolute; transform:scale(0); }
-${T} .con-picker__label { ${LABEL} font-size:clamp(9.5px, .56vw, 11.5px); letter-spacing:.2em; color:rgb(${BONE} / .82); }
+${T} .con-picker__label { ${LABEL} font-size:12px; letter-spacing:.2em; color:rgb(${BONE} / .82); }
 ${T} select.k-select.con-select { min-width:clamp(180px, 13vw, 280px); min-height:36px; ${READ} font-size:clamp(14px, .8vw, 16px) !important; color:rgb(${WARM}) !important;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ece6d8' stroke-width='1.4'/%3E%3C/svg%3E") right 4px center / 10px 6px no-repeat,
     linear-gradient(0deg, rgb(${BONE} / .34) 1px, transparent 0) !important; }
@@ -155,6 +155,15 @@ ${T} select.k-select.con-select option { background:#0c0f13; color:rgb(${WARM});
 }
 @media (max-width:1100px) {
   ${T} .con-legend { display:none; }
+  /* The inspector keeps its own scroll at the desktop narrow band. Give each cost the full text
+     track so 12px labels keep whole words and their figures get a real row beneath them. */
+  ${T} > .con-side { overflow-x:hidden; overflow-y:auto; scrollbar-gutter:stable; }
+  ${T} .con-dossier__cost { grid-template-columns:minmax(0, 1fr); row-gap:clamp(8px, 1vh, 12px); }
+  ${T} .con-cost { align-items:start; }
+  ${T} .con-cost dt, ${T} .con-cost__sub, ${T} .con-row__sub {
+    min-width:0; white-space:normal; overflow-wrap:normal; word-break:normal;
+  }
+  ${T} .con-cost dt { line-height:1.2; }
 }
 @media (max-width:1400px) {
   ${T} .con-view__word { display:none; }
@@ -192,7 +201,7 @@ ${A} .k-hang.con-filters { grid-area:auto; overflow:visible !important; max-heig
 ${A} .con-filters .k-words { display:flex !important; flex-direction:row !important; flex-wrap:nowrap; gap:clamp(14px, 2vw, 44px) !important; margin:0; padding:0 8px; list-style:none; }
 ${A} .con-filters .k-words > li { margin:0; padding:0; }
 ${A} .con-filters .k-word { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; min-height:36px; cursor:pointer; position:relative;
-  ${LABEL} font-size:clamp(11px, .66vw, 14px); letter-spacing:.2em; color:rgb(${BONE} / .88); white-space:nowrap; }
+  ${LABEL} font-size:clamp(12px, .66vw, 14px); letter-spacing:.2em; color:rgb(${BONE} / .88); white-space:nowrap; }
 ${A} .con-filters .k-word::before, ${A} .con-filters .k-word::after { content:none !important; display:none !important; }
 ${A} .con-filters .k-word:hover { color:rgb(${WARM}); }
 ${A} .con-filters .k-word[aria-current="true"] { color:rgb(${WARM}); }
@@ -250,15 +259,15 @@ ${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__ghost { str
 ${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__inner { stroke:rgb(${WARM} / .58); }
 ${A} .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${BONE} / .38); }
 ${A} .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(${BONE} / .58); }
-${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
+${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
 ${A} .con-medal-read__kicker span { margin:0 .3em; }
 ${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
 ${A} .con-medal-read__line { ${READ} font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(${BONE} / .9); max-width:34ch; }
 ${A} .con-medal-read__figure { display:flex; align-items:baseline; gap:12px; margin-top:clamp(4px, 1vh, 12px) !important; }
 ${A} .con-medal-read__n { ${NUMERAL} font-size:clamp(44px, min(3.4vw, 6vh), 88px); line-height:.9; color:var(--dp-phos, #dfeeff); }
 ${A} .con-medal-read[data-state="locked"] .con-medal-read__n { color:var(--dp-phos, #dfeeff); }
-${A} .con-medal-read__of { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .82); }
-${A} .con-medal-read__status { ${LABEL} font-size:clamp(10.5px, .6vw, 12.5px); letter-spacing:.16em; color:rgb(${BONE} / .8); }
+${A} .con-medal-read__of { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .82); }
+${A} .con-medal-read__status { ${LABEL} font-size:clamp(12px, .6vw, 12.5px); letter-spacing:.16em; color:rgb(${BONE} / .8); }
 /* the foot: ‹ BACK + ESC keycap (matches settings/save-load/help/credits/codex/mission-log) */
 ${A} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:center; min-height:0; margin:0; padding:0; border:0; background:none; }
 ${A} > .k-foot .k-words { display:flex; margin:0; padding:0; list-style:none; }
@@ -267,7 +276,7 @@ ${A} > .k-foot .con-back.sf-back.k-word { all:unset !important; box-sizing:borde
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${A} > .k-foot .con-back.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${A} > .k-foot .con-back.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${A} > .k-foot .con-back.sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }

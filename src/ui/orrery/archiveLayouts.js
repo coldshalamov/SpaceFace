@@ -385,7 +385,7 @@ ${CX} > .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !i
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${CX} > .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${CX} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${CX} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
@@ -413,13 +413,13 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} > .k-title { column-gap:28px; }
   ${CX} > .k-title > p { margin-top:6px !important; font-size:14px !important; }
   ${CX} .cx-index { row-gap:4px; }
-  ${CX} .cx-index__cap { font-size:11px !important; letter-spacing:.2em !important; }
+  ${CX} .cx-index__cap { font-size:12px !important; letter-spacing:.2em !important; }
   ${CX} .cx-index__list { gap:0 4px; }
   ${CX} .cx-index__item { grid-template-rows:44px auto; width:64px; }
   ${CX} .cx-index__dial { width:44px; height:44px; }
   ${CX} .cx-index__n { font-size:12.5px !important; }
-  ${CX} .cx-index__of { font-size:10px; }
-  ${CX} .cx-index__w { margin-top:3px !important; font-size:10.5px !important; letter-spacing:.04em !important; }
+  ${CX} .cx-index__of { font-size:12px; }
+  ${CX} .cx-index__w { margin-top:3px !important; font-size:12px !important; letter-spacing:.04em !important; }
   ${CX} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
   ${CX} .cx-ladder .k-row { padding-left:32px !important; }
   ${CX} .cx-ladder .k-row.k-row--static .k-caps { letter-spacing:.14em !important; }
@@ -428,7 +428,7 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-reader__num-n { font-size:44px; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:22px !important; }
   ${CX} .sf-codex-entry > h2 { margin-top:8px !important; }
-  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:6px !important; font-size:11px !important; }
+  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:6px !important; font-size:12px !important; }
   ${CX} .sf-codex-entry .k-measure { margin-top:12px !important; padding-top:12px !important; }
   ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:14px !important; line-height:1.5 !important; }
   ${CX} .sf-codex-entry .k-measure .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:2px; padding:5px 0 !important; }
@@ -448,11 +448,15 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} { --cx-sections:96px; --cx-gap:12px; --cx-plate:min(132px, 32vh, 18vw); grid-template-columns:minmax(220px, 38vw) minmax(0, 1fr) !important; }
   ${CX} > .k-title { column-gap:16px; }
   ${CX} > .k-title > p { max-width:160px !important; font-size:12px !important; }
+  /* At the type floor the section words need a second line instead of running into the reader. */
+  ${CX} .cx-index { row-gap:2px !important; }
+  ${CX} .cx-index__list { flex-wrap:wrap !important; row-gap:4px !important; align-content:start !important; }
+  ${CX} .cx-index__w { line-height:1.15 !important; white-space:normal !important; max-width:100%; overflow-wrap:anywhere; }
   ${CX} .cx-index__item { grid-template-rows:36px auto; width:48px; }
   ${CX} .cx-index__dial { width:34px; height:34px; }
-  ${CX} .cx-index__n { font-size:11px !important; }
-  ${CX} .cx-index__of { font-size:9px; }
-  ${CX} .cx-index__w { margin-top:2px !important; font-size:9px !important; letter-spacing:.02em !important; }
+  ${CX} .cx-index__n { font-size:12px !important; }
+  ${CX} .cx-index__of { font-size:12px; }
+  ${CX} .cx-index__w { margin-top:2px !important; font-size:12px !important; letter-spacing:.02em !important; }
   ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 14px) !important; }
   ${CX} .cx-reader__num-n { font-size:34px; }
   ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:16px !important; }
@@ -465,7 +469,7 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-search .sf-codex-search { height:28px !important; }
   ${CX} .cx-search::before { top:5px; }
   ${CX} .cx-search::after { top:15px; }
-  ${CX} .sf-tabbar .sf-tab { height:22px !important; font-size:11px !important; letter-spacing:.14em !important; }
+  ${CX} .sf-tabbar .sf-tab { height:22px !important; font-size:12px !important; letter-spacing:.14em !important; }
   ${CX} .cx-ladder .k-row { padding-top:4px !important; padding-bottom:2px !important; }
   ${CX} .cx-ladder .k-row::before { top:12px !important; }
   ${CX} > .k-foot .sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; }
@@ -489,18 +493,18 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:30px !important; line-height:1 !important; }
   ${CX} > .k-title > p { margin-top:4px !important; font-size:12.5px !important; line-height:1.3 !important; }
   ${CX} .cx-index { row-gap:2px; }
-  ${CX} .cx-index__cap { font-size:10px !important; }
+  ${CX} .cx-index__cap { font-size:12px !important; }
   ${CX} .cx-index__item { grid-template-rows:34px auto; width:58px; }
   ${CX} .cx-index__dial { width:34px; height:34px; }
-  ${CX} .cx-index__n { font-size:11px !important; }
-  ${CX} .cx-index__of { font-size:9px; }
-  ${CX} .cx-index__w { margin-top:1px !important; font-size:9.5px !important; }
+  ${CX} .cx-index__n { font-size:12px !important; }
+  ${CX} .cx-index__of { font-size:12px; }
+  ${CX} .cx-index__w { margin-top:1px !important; font-size:12px !important; line-height:1.1 !important; white-space:normal !important; max-width:100%; overflow-wrap:anywhere; }
   ${CX} > .k-hang { row-gap:6px; }
   ${CX} .cx-search .sf-codex-search { height:24px !important; }
   ${CX} .cx-search::before { top:3px; }
   ${CX} .cx-search::after { top:13px; }
   ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
-  ${CX} .sf-tabbar .sf-tab { height:18px !important; font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${CX} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.12em !important; }
   ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
   ${CX} .cx-ladder .k-row::before { top:10px !important; }
   ${CX} > .k-hang > .cx-ladder { padding-bottom:10px !important; }
@@ -514,9 +518,36 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
   ${CX} .cx-reader__turn { margin-top:8px !important; column-gap:18px !important; white-space:nowrap; }
   ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
 }
+/* 640–800px short desktop: the same compact frame as 844×390, with the smaller 640–760 index.
+   Keep all nine section keys above CLOSE after the 12px floor; the reader/stage keeps its existing
+   narrow-column geometry. */
+@media (max-width:800px) and (min-width:640px) and (max-height:460px) {
+  ${CX} { padding-top:14px !important; padding-bottom:8px !important; row-gap:8px !important; --cx-foot-gap:0px; }
+  ${CX} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:30px !important; line-height:1 !important; }
+  ${CX} > .k-title > p { margin-top:4px !important; line-height:1.3 !important; }
+  ${CX} .cx-index { row-gap:1px !important; }
+  ${CX} .cx-index__item { grid-template-rows:34px auto; width:48px; }
+  ${CX} .cx-index__dial { width:34px; height:34px; }
+  ${CX} .cx-index__w { margin-top:1px !important; line-height:1.05 !important; }
+  ${CX} > .k-hang { row-gap:6px; }
+  ${CX} .cx-search .sf-codex-search { height:24px !important; }
+  ${CX} .cx-search::before { top:3px; }
+  ${CX} .cx-search::after { top:13px; }
+  ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
+  ${CX} .sf-tabbar .sf-tab { height:18px !important; letter-spacing:.12em !important; }
+  ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
+  ${CX} .cx-ladder .k-row::before { top:10px !important; }
+  ${CX} > .k-hang > .cx-ladder { padding-bottom:6px !important; }
+  ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
+}
 @media (forced-colors:active) {
   ${CX} .cx-ladder .k-row[aria-selected="true"] { outline:2px solid Highlight !important; }
   ${CX} .orr-arc-hand::before, ${CX} .orr-arc-hand::after { background:Highlight !important; forced-color-adjust:none; }
+}
+/* Compact dial captions use Archivo's width axis instead of splitting a single
+   section name mid-word. Keep the readable height and weight of the instrument. */
+@media (min-width:640px) and (max-width:1100px) {
+  ${CX} .cx-index__w { font-stretch:85% !important; font-variation-settings:"wdth" 85, "wght" 650 !important; letter-spacing:0 !important; white-space:nowrap !important; overflow-wrap:normal; }
 }
 `;
 
@@ -535,15 +566,15 @@ ${CX_PHONE} > .k-title > :is(h1, .k-t-title, .k-display) { order:1; margin:0 !im
 ${CX_PHONE} > .k-title > .cx-index { order:2; grid-column:auto !important; grid-row:auto !important; justify-self:stretch !important; align-self:stretch !important;
   width:100% !important; justify-items:start !important; row-gap:4px; margin:0 !important; }
 ${CX_PHONE} > .k-title > p { order:3; margin:2px 0 0 !important; font-size:13px !important; line-height:1.35 !important; max-width:none !important; }
-${CX_PHONE} .cx-index__cap { font-size:10px !important; letter-spacing:.18em !important; }
+${CX_PHONE} .cx-index__cap { font-size:12px !important; letter-spacing:.18em !important; }
 ${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; gap:2px 2px !important; width:100%; justify-content:space-between !important; }
 /* 7 × 48px + gaps fits one row at 390, so SURVEY no longer wraps alone and the reader gets that height back. */
 ${CX_PHONE} .cx-index__item { grid-template-rows:36px auto; width:min(48px, calc((100vw - 42px) / 7)); }
 ${CX_PHONE} .cx-index__dial { width:36px; height:36px; }
-${CX_PHONE} .cx-index__n { font-size:11px !important; padding-top:0; }
-${CX_PHONE} .cx-index__of { font-size:9px; }
-${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:9px !important; letter-spacing:.02em !important; white-space:nowrap; }
-@media (max-width:379px) { ${CX_PHONE} .cx-index__w { font-size:8px !important; letter-spacing:0 !important; } }
+${CX_PHONE} .cx-index__n { font-size:12px !important; padding-top:0; }
+${CX_PHONE} .cx-index__of { font-size:12px; }
+${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere; }
+@media (max-width:379px) { ${CX_PHONE} .cx-index__w { font-size:12px !important; letter-spacing:0 !important; } }
 ${CX_PHONE} > .cx-plate-host { flex:none; order:2; position:relative !important; inset:auto !important; right:auto !important; top:auto !important;
   width:var(--cx-plate) !important; height:var(--cx-plate) !important; margin:2px auto 0 !important; }
 ${CX_PHONE} > .cx-plate-host[hidden] { display:none !important; }
@@ -554,7 +585,7 @@ ${CX_PHONE} > .k-hang { flex:1 1 0; order:3; min-height:150px !important; overfl
 ${CX_PHONE} > .k-hang > .cx-wedge { display:none !important; }
 ${CX_PHONE} > .k-hang > .sf-tabbar { margin-bottom:0 !important; }
 ${CX_PHONE}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:0 !important; }
-${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:11px !important; letter-spacing:.1em !important; padding-right:16px !important; }
+${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:12px !important; letter-spacing:.1em !important; padding-right:16px !important; }
 /* Shorter leaders on phone (rest 8 / hover 10 / current 12px) so the current tick no longer strikes the label's last letter. */
 ${CX_PHONE} .sf-tabbar .sf-tab::after { width:8px !important; }
 ${CX_PHONE} .sf-tabbar .sf-tab:is(:hover, :focus-visible)::after { width:10px !important; }
@@ -593,24 +624,24 @@ ${CX_PHONE} > .k-foot .sf-back.k-word { padding:8px 0 10px !important; min-heigh
   /* Dial | word side by side: the row stays 26px tall but each fraction keeps its category. */
   ${CX_PHONE} .cx-index__item { grid-template-columns:26px auto; grid-template-rows:26px; column-gap:5px; align-items:center; width:auto; }
   ${CX_PHONE} .cx-index__dial { width:26px; height:26px; }
-  ${CX_PHONE} .cx-index__w { grid-row:1 !important; grid-column:2 !important; margin:0 !important; font-size:9px !important; letter-spacing:.06em !important;
+  ${CX_PHONE} .cx-index__w { grid-row:1 !important; grid-column:2 !important; margin:0 !important; font-size:12px !important; letter-spacing:.06em !important;
     text-align:left !important; white-space:nowrap; }
-  ${CX_PHONE} .cx-index__n { font-size:9px !important; }
+  ${CX_PHONE} .cx-index__n { font-size:12px !important; }
   ${CX_PHONE} .cx-index__list { gap:2px 14px !important; justify-content:flex-start !important; }
   ${CX_PHONE} > .k-hang { grid-column:1; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important;
     --cx-sections:104px; --cx-gap:8px; }
   ${CX_PHONE} > .k-stage { grid-column:2; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important; }
   ${CX_PHONE} > .k-foot { grid-column:1 / -1; grid-row:3; order:unset; flex:unset;
     padding-top:6px !important; padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
-  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:10px !important; letter-spacing:.08em !important; padding-right:15px !important; }
+  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.08em !important; padding-right:15px !important; }
   ${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:4px; }
   ${CX_PHONE} .cx-ladder .k-row { padding:3px 2px 3px 30px !important; }
   ${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:12px !important; }
   ${CX_PHONE} .cx-reader__num-n { font-size:22px; }
-  ${CX_PHONE} .cx-reader__num-of { font-size:11px; }
+  ${CX_PHONE} .cx-reader__num-of { font-size:12px; }
   ${CX_PHONE} .sf-codex-entry > h2, ${CX_PHONE} .sf-codex-entry > h2 .k-signal, ${CX_PHONE} .sf-codex-entry > h2 .k-38 { font-size:15px !important; }
   ${CX_PHONE} .sf-codex-entry > h2 { margin-top:4px !important; }
-  ${CX_PHONE} .sf-codex-entry > .fh-legend, ${CX_PHONE} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:11px !important; }
+  ${CX_PHONE} .sf-codex-entry > .fh-legend, ${CX_PHONE} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:12px !important; }
   ${CX_PHONE} .sf-codex-entry .k-measure { margin-top:8px !important; padding-top:8px !important; }
   ${CX_PHONE} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.35 !important; }
   ${CX_PHONE} .cx-reader__turn { margin-top:6px !important; gap:10px; }
@@ -960,7 +991,7 @@ ${ML} > .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !i
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${ML} > .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${ML} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${ML} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }

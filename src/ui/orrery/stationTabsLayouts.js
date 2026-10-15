@@ -156,17 +156,17 @@ ${T} .orr-ct-scales text.orr-ct-scale__end { font-family:var(--dp-face-label, "A
 ${T} .sx-dossier__briefing .sx-dossier__approach { color:rgb(${BONE} / .62); }
 ${T} .sx-dossier__gate { color:rgb(${BONE} / .85) !important; font-size:12.5px !important; }
 ${T} .sx-dossier__gate.k-bad { color:var(--dp-danger, #ff5038) !important; }
-${T} .sx-dossier__terms { ${PLAIN} max-width:560px; }
-${T} .sx-dossier__terms > li { ${PLAIN} display:grid !important; grid-template-columns:120px minmax(0, 1fr); align-items:baseline; column-gap:18px; padding:7px 0 !important; min-height:0 !important; }
-${T} .sx-dossier__terms > li > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
+${T} .sx-dossier__terms { ${PLAIN} max-width:560px; min-width:0; }
+${T} .sx-dossier__terms > li { ${PLAIN} display:grid !important; grid-template-columns:120px minmax(0, 1fr); align-items:baseline; column-gap:18px; padding:7px 0 !important; min-height:0 !important; min-width:0; }
+${T} .sx-dossier__terms > li > .k-62 { ${LABEL} min-width:0; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; white-space:normal !important; overflow-wrap:anywhere !important; }
 /* a forfeit is a loss: the threat channel's red tick on that one term */
 ${T} .sx-dossier__terms > li.sx-term--threat { position:relative; }
 ${T} .sx-dossier__terms > li.sx-term--threat .sx-term__v { color:var(--dp-danger, #ff5038) !important; }
 ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { content:""; position:absolute; left:-16px; top:.55em; width:9px; height:2px;
   background:var(--dp-danger, #ff5038); box-shadow:0 0 6px rgb(255 80 56 / .7); }
 ${T} .sx-dossier__terms .sx-term__v { display:flex !important; flex-direction:column; align-items:flex-start !important; gap:2px; font-size:13.5px !important; color:rgb(248 244 234) !important;
-  text-align:left !important; justify-self:start !important; margin:0 !important; text-transform:none !important; letter-spacing:0 !important; }
-${T} .sx-dossier__terms .sx-term__sub { justify-self:start !important; text-align:left !important; margin:0 !important; font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
+  min-width:0; text-align:left !important; justify-self:start !important; margin:0 !important; text-transform:none !important; letter-spacing:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+${T} .sx-dossier__terms .sx-term__sub { justify-self:start !important; text-align:left !important; margin:0 !important; font-size: 12px !important; color:rgb(${BONE} / .6) !important; min-width:0; white-space:normal !important; overflow-wrap:anywhere !important; }
 ${T} .sx-dossier__clauses { ${PLAIN} }
 ${T} .sx-dossier__clauses .sx-tag { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; padding:0 !important; }
 ${T} .sx-dossier__clauses .sx-tag::before { content:"› "; color:rgb(${BONE} / .5); }
@@ -1120,23 +1120,23 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-dossier > :is(.sx-dossier__risk, .sx-dossier__terms) { order:3; }
   ${T} .sx-dossier > .sx-dossier__risk { position:static !important; clip:auto !important; clip-path:none !important; width:calc(50% - 8px) !important;
     height:auto !important; overflow:visible !important; white-space:normal !important; margin:2px 0 6px !important; padding:0 !important;
-    font-size:11px !important; line-height:1.3 !important; color:rgb(${BONE} / .82) !important; }
+    font-size:12px !important; line-height:1.35 !important; color:rgb(${BONE} / .82) !important; }
   /* at this size the scales' words would be 5px and the route map a postage stamp; the risk sentence
      says both readings in words, and the title names the destination */
   ${T} .sx-dossier > :is(.orr-ct-scales, .orr-ct-route) { display:none !important; }
   ${T} .sx-dossier > .sx-dossier__terms { margin:0 !important; }
   ${T} .sx-dossier__terms > li { grid-template-columns:84px minmax(0, 1fr) !important; column-gap:8px !important; padding:2px 0 !important; }
-  ${T} .sx-dossier__terms > li > .k-62 { font-size:9.5px !important; letter-spacing:.1em !important; }
-  ${T} .sx-dossier__terms .sx-term__v { font-size:11px !important; gap:0 6px !important; line-height:1.25 !important; }
-  ${T} .sx-dossier__terms .sx-term__sub { font-size:10px !important; line-height:1.25 !important; white-space:normal !important; }
-  ${T} .sx-dossier__terms .sx-term__v { min-width:0 !important; white-space:normal !important; }
+  ${T} .sx-dossier__terms > li > .k-62 { min-width:0 !important; font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${T} .sx-dossier__terms .sx-term__v { font-size:12px !important; gap:0 6px !important; line-height:1.35 !important; }
+  ${T} .sx-dossier__terms .sx-term__sub { font-size:12px !important; line-height:1.35 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${T} .sx-dossier__terms .sx-term__v { min-width:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-10px; width:6px; }
-  ${T} .sx-dossier > .k-caps { margin:0 0 2px !important; font-size:10.5px !important; letter-spacing:.14em !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${T} .sx-dossier > .k-caps { margin:0 0 2px !important; font-size:12px !important; letter-spacing:.14em !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
   ${T} .sx-dossier__title { font-size:16px !important; line-height:1.2 !important; margin:0 0 2px !important; }
-  ${T} .sx-dossier__client { margin:0 0 2px !important; font-size:11.5px !important; }
+  ${T} .sx-dossier__client { margin:0 0 2px !important; font-size:12px !important; }
   ${T} .sx-dossier .k-hero--hero { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:8px !important; margin:2px 0 8px !important; }
   ${T} .sx-dossier .k-hero--hero .k-hero__n { font-size:26px !important; }
-  ${T} .sx-dossier .k-hero--hero .k-hero__w { font-size:9.5px !important; letter-spacing:.1em !important; margin-top:0 !important; }
+  ${T} .sx-dossier .k-hero--hero .k-hero__w { font-size:12px !important; letter-spacing:.1em !important; margin-top:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${T} .sx-dossier > ul.sx-dossier__foot.k-words { margin-top:4px !important; padding:2px 0 !important; }
   ${T} .sx-ct-commit.orr-lampkey { min-height:30px !important; font-size:12px !important; padding:0 14px 0 12px !important; }
   ${T} .sx-ct__dossier { padding-top:0 !important; }
@@ -1355,7 +1355,7 @@ ${T} .sx-ledger__right > .sx-ledger__read { padding-left:12px !important; }
 ${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto minmax(0, 1fr) !important; grid-template-areas:"time line" "note note" !important; column-gap:12px !important; align-items:baseline !important; }
 ${T} .sx-ledger .st-ledger-type { display:none !important; }
 ${T} .sx-ledger .st-ledger-line { display:flex !important; justify-content:space-between !important; gap:14px !important; min-width:0; }
-${T} .sx-ledger .st-ledger-line .sx-ledger__item { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${T} .sx-ledger .st-ledger-line .sx-ledger__item { min-width:0; overflow:visible; overflow-wrap:anywhere; text-overflow:clip; white-space:normal; }
 ${T} .sx-ledger .st-ledger-line .sx-ledger__fig { flex:none; font-family:var(--dp-face-numeral, "Archivo") !important; font-variant-numeric:tabular-nums; font-weight:500; color:rgb(${BONE} / .85); }
 ${T} .sx-ledger .st-ledger-entry[aria-selected="true"] .sx-ledger__fig { color:rgb(248 244 234); }
 ${T} .sx-ledger .st-ledger-entry { padding-top:8px !important; padding-bottom:8px !important; }
@@ -1758,10 +1758,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain { height:170px !important; min-height:0 !important; margin:-10px 0 0 !important; }
   /* the chain's right side is one column -- why it cannot run, what a run makes, the key -- since the
      reason's twelve o'clock slot and the key's place under the product both fall outside a 190px body */
-  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { left:auto !important; right:0 !important; top:-12px !important; width:auto !important; max-width:none !important; text-align:right !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { left:auto !important; right:0 !important; top:-12px !important; width:auto !important; max-width:46% !important; white-space:normal !important; overflow-wrap:anywhere !important; text-align:right !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb { align-items:flex-end !important; text-align:right !important; }
-  ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:nowrap !important; }
-  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:nowrap !important; font-size:11px !important; letter-spacing:.1em !important; }
+  ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:normal !important; overflow-wrap:anywhere !important; font-size:12px !important; line-height:14px !important; letter-spacing:.1em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > .orr-chain__wayout { margin-top:2px !important; }
   ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
@@ -1769,11 +1769,11 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__qty { font-size:30px !important; line-height:1 !important; }
   ${D} .sx-fab-foot { left:auto !important; right:0 !important; top:auto !important; bottom:0 !important; transform:none !important; }
   /* a material's three lines close up so three inputs stack in the chain's 50px pitch without touching */
-  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) { transform:translateY(4px); }
-  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__name { font-size:13px !important; line-height:15px !important; }
-  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { font-size:11px !important; line-height:13px !important; margin:0 !important; }
-  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { line-height:13px !important; margin:0 !important; }
-  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > * { font-size:10.5px !important; line-height:13px !important; padding:0 !important; min-height:0 !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) { transform:translateY(4px); max-width:46% !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__name { font-size:13px !important; line-height:15px !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { font-size:12px !important; line-height:14px !important; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { line-height:14px !important; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > * { font-size:12px !important; line-height:14px !important; padding:0 !important; min-height:0 !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .sx-fab-build.orr-lampkey { min-height:34px !important; font-size:13px !important; }
   /* Factions: a ring of fourteen crests would be ~27px a crest here, so the powers stand on the
      ladder like every other tab's index, and the reading keeps the standing scale */
@@ -1864,12 +1864,12 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   /* smaller figure so "~56 cr per unit · Vesta-Forge" fits beside it (~150px+) */
   ${D} .sx-ledger__read-num { font-size:24px !important; line-height:1 !important; }
-  ${D} .sx-ledger__read-unit { font-size:10px !important; letter-spacing:.1em !important; }
+  ${D} .sx-ledger__read-unit { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   /* list: CYCLE above the item so the line owns the full row width (three entries still fit) */
   ${D} .sx-ledger .st-ledger-entry-body { grid-template-columns:minmax(0, 1fr) !important;
     grid-template-areas:"time" "line" "note" !important; row-gap:1px !important; column-gap:0 !important; }
   ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
-  ${D} .sx-ledger .st-ledger-cycle { font-size:10.5px !important; letter-spacing:.1em !important; }
+  ${D} .sx-ledger .st-ledger-cycle { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
 }
 

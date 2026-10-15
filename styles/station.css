@@ -1978,7 +1978,7 @@ html body #screens #sf-ship .sx-sw__stats .k-caps { font-size: 12px; }
   }
   html body #screens #sf-ship .sx-sw-hero { padding: 2px 6px 4px; }
   html body #screens #sf-ship .sx-sw-hero .k-hero__n { font-size: 24px; }
-  html body #screens #sf-ship .sx-sw-hero .k-hero__w { font-size: 11px; letter-spacing: .12em; }
+  html body #screens #sf-ship .sx-sw-hero .k-hero__w { letter-spacing: .12em; }
 }
 /* S2: on a short frame the rail compresses — dial, rows, helper, rack — so the helper
    and DOCK TO EXTEND keep their floor above y=700. */

@@ -51,7 +51,7 @@ ${SL} > .k-stage__foot.sf-save-ledger { grid-area:page; position:relative !impor
   gap:calc(12px * var(--sv)); margin:0; padding:calc(10px * var(--sv)) 0 0 !important; overflow:visible !important; ${PLAIN} z-index:2; }
 ${SL} > .sf-save-ledger::before { content:""; position:absolute; inset:-40px -64px -30px -56px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .72), rgb(4 6 9 / .5) 58%, transparent); }
-${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(10.5px, calc(11.5px * var(--sv))); letter-spacing:.2em; line-height:1.35; color:rgb(${BONE} / .86); }
+${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(12px, calc(11.5px * var(--sv))); letter-spacing:.2em; line-height:1.35; color:rgb(${BONE} / .86); }
 ${SL} .sf-save-ledger .sf-slot-card-title { all:unset; display:block; ${DISPLAY} margin:0; font-size:calc(44px * var(--sv)); line-height:.95; letter-spacing:.01em;
   color:rgb(246 241 230); text-shadow:0 2px 16px rgb(0 0 0 / .5); overflow-wrap:anywhere; cursor:default; }
 ${SL} .sf-save-ledger .sf-slot-card-title.sf-entity-link { cursor:pointer; border:0 !important; text-decoration:none !important; }
@@ -65,22 +65,22 @@ ${SL} .sf-ledger-facts { display:grid !important; grid-template-columns:repeat(3
 ${SL} .sf-ledger-fact { margin:0; min-width:0; }
 ${SL}[data-slot-state="empty"] .sf-ledger-facts { display:none !important; }
 ${SL} .sf-ledger-fact--figure { grid-column:1 / -1; }
-${SL} .sf-ledger-fact dt { ${LABEL} font-size:max(10px, calc(10.5px * var(--sv))); letter-spacing:.18em; color:rgb(${BONE} / .66); }
+${SL} .sf-ledger-fact dt { ${LABEL} font-size:max(12px, calc(10.5px * var(--sv))); letter-spacing:.18em; color:rgb(${BONE} / .66); }
 ${SL} .sf-ledger-fact dd { margin:calc(5px * var(--sv)) 0 0; ${BODY} font-weight:600; font-size:max(12.5px, calc(16px * var(--sv))); line-height:1.2; font-variant-numeric:tabular-nums;
   color:var(--dp-phos, rgb(223 238 255)); text-shadow:0 0 12px rgb(143 203 255 / .12); overflow-wrap:anywhere; }
 ${SL} .sf-ledger-fact--figure dd { display:flex; align-items:flex-end; gap:calc(10px * var(--sv)); margin-top:calc(2px * var(--sv)); }
 ${SL} .sf-fact-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wght" 250, "wdth" 100; font-weight:250;
   font-size:calc(76px * var(--sv)); line-height:.92; letter-spacing:-.02em; color:var(--dp-phos, rgb(223 238 255)); font-variant-numeric:tabular-nums lining-nums; }
 ${SL} .sf-fact-n.orr-counter { line-height:1; }
-${SL} .sf-fact-u { ${LABEL} font-size:max(11.5px, calc(13px * var(--sv))); line-height:1; letter-spacing:.2em; color:rgb(${BONE} / .7); padding-bottom:calc(9px * var(--sv)); }
+${SL} .sf-fact-u { ${LABEL} font-size:max(12px, calc(13px * var(--sv))); line-height:1; letter-spacing:.2em; color:rgb(${BONE} / .7); padding-bottom:calc(9px * var(--sv)); }
 ${SL} .sf-ledger-fact dd.is-blank, ${SL} .sf-ledger-fact dd.is-blank .sf-fact-n { color:rgb(${BONE} / .5); text-shadow:none; }
 
 /* the hull's own record: a ledger of caps and values under a quiet head */
 ${SL} .sf-save-ledger .sf-save-portrait { display:flex; flex-direction:column; margin:calc(4px * var(--sv)) 0 0; padding:0; border:0 !important; }
-${SL} .sf-ledger-head { display:flex; align-items:center; gap:12px; margin:0 0 calc(4px * var(--sv)); ${LABEL} font-size:max(10px, calc(10.5px * var(--sv))); letter-spacing:.18em; color:rgb(${BONE} / .66); }
+${SL} .sf-ledger-head { display:flex; align-items:center; gap:12px; margin:0 0 calc(4px * var(--sv)); ${LABEL} font-size:max(12px, calc(10.5px * var(--sv))); letter-spacing:.18em; color:rgb(${BONE} / .66); }
 ${SL} .sf-ledger-head::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .28), rgb(${BONE} / 0)); }
 ${SL} .sf-ledger-line { display:grid; grid-template-columns:max(76px, calc(96px * var(--sv))) minmax(0, 1fr); align-items:baseline; gap:12px; padding:calc(4px * var(--sv)) 0; background:none !important; }
-${SL} .sf-ledger-k { ${LABEL} font-size:max(10px, calc(10px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .62); }
+${SL} .sf-ledger-k { ${LABEL} font-size:max(12px, calc(10px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .62); }
 ${SL} .sf-ledger-line .k-sentence { ${BODY} margin:0; font-size:max(12.5px, calc(14px * var(--sv))); line-height:1.35; color:rgb(${BONE} / .84); }
 ${SL} .sf-ledger-line .k-sentence.sf-entity-link { cursor:pointer; padding:0; border:0 !important; background:none !important; text-decoration:none; color:rgb(${BONE} / .84); }
 ${SL} .sf-ledger-line .sf-entity-link:is(:hover, :focus-visible) { color:rgb(246 241 230); outline:none; text-decoration:underline 1px rgb(${BONE} / .5); text-underline-offset:3px; }
@@ -92,7 +92,7 @@ ${SL} .sf-save-actions > .k-words { display:flex !important; flex-direction:row 
 ${SL} .sf-save-actions > .k-words > li { margin:0; padding:0; }
 ${SL} .sf-save-actions .k-word.orr-lampkey { font-size:max(12.5px, calc(15px * var(--sv))) !important; min-height:calc(44px * var(--sv)) !important; padding:0 calc(30px * var(--sv)) 0 calc(24px * var(--sv)) !important; }
 ${SL} .sf-save-actions .k-word.sf-save-verb { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:0 !important; min-width:0 !important; height:auto !important; width:auto !important;
-  padding:6px 0 !important; font-size:max(10px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); cursor:pointer; }
+  padding:6px 0 !important; font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); cursor:pointer; }
 ${SL} .sf-save-actions .k-word.sf-save-verb::after { display:none !important; content:none !important; }
 ${SL} .sf-save-actions .k-word.sf-save-verb::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
 ${SL} .sf-save-actions .k-word.sf-save-verb:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
@@ -124,7 +124,7 @@ ${SL} > .sf-save-stage > .sf-save-vacant .dp-mark { display:none; }
 ${SL} > .sf-save-stage > .sf-save-vacant::before { display:none; }
 /* no hull on file: the word stands on the open berth's floor */
 ${SL} > .sf-save-stage > .sf-save-vacant > .sf-save-vacant__word { position:absolute; left:50%; top:76%; transform:translate(-50%, -50%); white-space:nowrap;
-  ${LABEL} font-size:max(11px, calc(12.5px * var(--sv))); letter-spacing:.3em; color:rgb(${BONE} / .9); text-shadow:0 1px 0 rgb(0 0 0 / .55), 0 0 18px rgb(255 244 222 / .18); }
+  ${LABEL} font-size:max(12px, calc(12.5px * var(--sv))); letter-spacing:.3em; color:rgb(${BONE} / .9); text-shadow:0 1px 0 rgb(0 0 0 / .55), 0 0 18px rgb(255 244 222 / .18); }
 
 /* ---- the filmstrip: frames on their stations along the rail ---- */
 ${SL} > .k-hang { grid-area:hang; position:relative; min-height:0; height:calc(214px * var(--sv)); margin:0; padding:0 !important; overflow:visible !important;
@@ -152,27 +152,27 @@ ${SL} .orr-film__list > .k-row.sf-slot[aria-selected="true"] .sf-slot-frame > im
 ${SL} .orr-film__list > .k-row.sf-slot[aria-selected="true"] .sf-slot-frame::before { content:""; position:absolute; left:8%; right:8%; bottom:-10px; height:max(40px, calc(52px * var(--sv)));
   z-index:-1; pointer-events:none; background:radial-gradient(closest-side, rgb(255 244 222 / .2), rgb(255 244 222 / .07) 60%, transparent); }
 html.sf-reduce-motion ${SL} .sf-slot-frame { transition:none; }
-${SL} .orr-film__list .k-row__name.sf-slot-name { ${LABEL} display:inline; font-size:max(11.5px, calc(12px * var(--sv))) !important; letter-spacing:.14em !important; line-height:1.3;
+${SL} .orr-film__list .k-row__name.sf-slot-name { ${LABEL} display:inline; font-size:max(12px, calc(12px * var(--sv))) !important; letter-spacing:.14em !important; line-height:1.3;
   color:rgb(${BONE} / .86) !important; white-space:normal; overflow:visible; text-overflow:clip; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
 ${SL} .orr-film__list .k-row.empty .k-row__name.sf-slot-name { color:rgb(${BONE} / .82) !important; }
 ${SL} .orr-film__list > .k-row[aria-selected="true"] .k-row__name.sf-slot-name { color:rgb(250 247 240) !important; }
 ${SL} .orr-film__list .sf-slot-badges { display:inline !important; margin:0 !important; padding:0 !important; vertical-align:baseline !important; }
 ${SL} .orr-film__list .sf-slot-badge { display:inline !important; vertical-align:baseline !important; margin:0 0 0 .5em !important; padding:0 !important; }
 ${SL} .orr-film__list .sf-slot-badge:not(.sf-slot-badge--calm)::before { content:"·"; margin-right:.5em; color:rgb(${BONE} / .56); }
-${SL} .orr-film__list .sf-slot-badge { ${LABEL} font-size:max(10px, calc(9.5px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .64) !important; text-shadow:none !important; }
+${SL} .orr-film__list .sf-slot-badge { ${LABEL} font-size:max(12px, calc(9.5px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .64) !important; text-shadow:none !important; }
 ${SL} .orr-film__list .sf-slot-badge--calm { display:none !important; }
 ${SL} .orr-film__list .sf-slot-badge--you { color:rgb(${BONE} / .86) !important; }
 ${SL} .orr-film__list .sf-slot-badge--foe { color:var(--dp-danger-hot, #ff7a5c) !important; }
-${SL} .orr-film__list .k-row__sub.sf-slot-sub { ${BODY} margin-top:calc(3px * var(--sv)); font-size:max(11.5px, calc(12.5px * var(--sv))) !important; line-height:1.32; color:rgb(${BONE} / .7) !important;
+${SL} .orr-film__list .k-row__sub.sf-slot-sub { ${BODY} margin-top:calc(3px * var(--sv)); font-size:max(12px, calc(12.5px * var(--sv))) !important; line-height:1.32; color:rgb(${BONE} / .7) !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere; }
 ${SL} .orr-film__list .k-row.empty .k-row__sub.sf-slot-sub { color:rgb(${BONE} / .8) !important; }
 ${SL} .orr-film__list .k-row__num { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wght" 520, "wdth" 100; font-weight:520;
-  font-size:max(11.5px, calc(13px * var(--sv))) !important; line-height:1.3; color:var(--dp-phos, rgb(223 238 255)) !important; text-shadow:none !important; white-space:nowrap; }
+  font-size:max(12px, calc(13px * var(--sv))) !important; line-height:1.3; color:var(--dp-phos, rgb(223 238 255)) !important; text-shadow:none !important; white-space:nowrap; }
 
 /* ---- the way back: ‹ BACK + ESC keycap (settings foot rail), Export/Import stay › verbs ---- */
 ${SL} > .k-foot { grid-area:foot; display:flex !important; flex-direction:row; align-items:center; gap:calc(34px * var(--sv)); margin:0; padding:0 !important; ${PLAIN} }
 ${SL} > .k-foot .k-word { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:0 !important; min-width:0 !important; height:auto !important; width:auto !important;
-  padding:6px 0 !important; margin:0 !important; font-size:max(10px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
+  padding:6px 0 !important; margin:0 !important; font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
 ${SL} > .k-foot .k-word:not(.sf-back)::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word:not(.sf-back)::after { display:none !important; content:none !important; }
 ${SL} > .k-foot .k-word.sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
@@ -180,7 +180,7 @@ ${SL} > .k-foot .k-word.sf-back { all:unset !important; box-sizing:border-box !i
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${SL} > .k-foot .k-word.sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word.sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:max(10px, calc(11px * var(--sv))) !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
@@ -207,7 +207,7 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
 @media (max-width:1100px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-columns:minmax(356px, 38%) minmax(0, 1fr) !important; column-gap:28px !important; }
   /* the context line (QUICK SAVE · CURRENT · FLOWN 20 DAYS AGO) fits the column on one line */
-  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:10px; letter-spacing:.12em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { font-size:12px; letter-spacing:.12em; }
   /* a ~95px frame: the badge (CURRENT) takes its own line instead of running into the next slot */
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badges { display:block !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { margin:0 !important; }
@@ -216,9 +216,9 @@ html:root:not([data-sf-mobile="1"]) ${SLD} { grid-template-areas:"title stage" "
 /* ≤860px-wide desktop: the strip under the hull is ~300–390px for five stations, so a slot's name,
    badge and line set smaller and tighter and neighbouring words keep a gap (at 761 they touched) */
 @media (max-width:860px) {
-  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { font-size:10px !important; letter-spacing:.08em !important; }
-  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { font-size:9px; letter-spacing:.1em; }
-  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__sub.sf-slot-sub { font-size:10.5px !important; line-height:1.25; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { font-size:12px !important; letter-spacing:.08em !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { font-size:12px; letter-spacing:.1em; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__sub.sf-slot-sub { font-size:12px !important; line-height:1.25; }
 }
 /* 960×540-class frames: the credits numeral steps down and the hull
    record reads in two columns, so LOAD stands clear above EXPORT / IMPORT / BACK */
@@ -270,7 +270,7 @@ html.sf-reduce-motion ${GO} > .orr-go-rays { animation:none; }
 /* the verdict: a red kicker, then the cause as the headline in bone */
 ${GO} > .k-title { grid-area:title; align-self:end; margin:0; padding:0 !important; border:0 !important; max-width:min(1040px, 100%); }
 ${GO} > .k-title .k-caps { display:flex !important; align-items:center; gap:14px; margin:0 0 calc(14px * var(--sv)) !important; ${LABEL}
-  font-size:max(10px, calc(11.5px * var(--sv))) !important; letter-spacing:.26em !important; color:var(--dp-danger-hot, #ff7a5c) !important; text-shadow:0 0 14px rgb(255 80 56 / .35) !important; }
+  font-size:max(12px, calc(11.5px * var(--sv))) !important; letter-spacing:.26em !important; color:var(--dp-danger-hot, #ff7a5c) !important; text-shadow:0 0 14px rgb(255 80 56 / .35) !important; }
 ${GO} > .k-title .k-caps::before { content:""; width:calc(34px * var(--sv)); height:2px; background:var(--dp-danger, #ff5038); box-shadow:0 0 8px rgb(255 80 56 / .6); }
 ${GO} > .k-title .k-t-title { ${DISPLAY} display:block !important; margin:0 !important; padding:0 !important; max-width:17ch; text-wrap:balance;
   font-size:calc(66px * var(--sv)) !important; line-height:.94 !important; letter-spacing:.005em !important;
@@ -287,7 +287,7 @@ ${GO} .sf-go-grid .k-hero__n { ${BODY} font-weight:600 !important; font-size:cal
   color:var(--dp-phos, rgb(223 238 255)) !important; text-shadow:0 0 12px rgb(143 203 255 / .14) !important; }
 ${GO} .sf-go-grid .k-hero__n.sf-entity-link { all:unset; ${BODY} font-weight:600; font-size:calc(21px * var(--sv)); line-height:1.15; color:var(--dp-phos, rgb(223 238 255)); cursor:pointer; }
 ${GO} .sf-go-grid .k-hero__n.sf-entity-link:is(:hover, :focus-visible) { color:#fff; outline:none; text-decoration:underline 1px rgb(${BONE} / .5); text-underline-offset:4px; }
-${GO} .sf-go-grid .k-hero__w { ${LABEL} font-size:max(10px, calc(10.5px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(${BONE} / .66) !important; }
+${GO} .sf-go-grid .k-hero__w { ${LABEL} font-size:max(12px, calc(10.5px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(${BONE} / .66) !important; }
 ${GO} > .k-stage > .k-sentence { ${BODY} margin:calc(4px * var(--sv)) 0 0 !important; font-size:max(12.5px, calc(14px * var(--sv))) !important; line-height:1.45; color:rgb(${BONE} / .76) !important; max-width:70ch; }
 ${GO} > .k-stage > .sf-go-recovery { max-width:70ch !important; }
 ${GO} > .k-stage > .sf-go-recovery.is-receipt { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; white-space:nowrap !important; margin:0 !important; }
@@ -300,7 +300,7 @@ ${GO} .sf-go-foot > .k-words > li { margin:0; padding:0; }
 ${GO} .sf-go-foot > .k-words > li[hidden] { display:none !important; }
 ${GO} .sf-go-foot .k-word.orr-lampkey { font-size:max(12.5px, calc(15px * var(--sv))) !important; min-height:calc(46px * var(--sv)) !important; padding:0 calc(32px * var(--sv)) 0 calc(24px * var(--sv)) !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:0 !important; min-width:0 !important; height:auto !important; width:auto !important;
-  padding:6px 0 !important; font-size:max(10px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
+  padding:6px 0 !important; font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
 ${GO} .sf-go-foot .k-word.sf-go-verb::after { display:none !important; content:none !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
@@ -311,7 +311,7 @@ ${GO} > .sf-go-recap { grid-area:recap; align-self:end; position:relative; box-s
 ${GO} > .sf-go-recap::before { content:""; position:absolute; left:50%; top:50%; width:calc(var(--r) * 3.2); height:calc(var(--r) * 3.2); transform:translate(-50%, -50%); z-index:-1; pointer-events:none;
   border-radius:50%; background:radial-gradient(closest-side, rgb(4 6 9 / .78), rgb(4 6 9 / .5) 62%, transparent); }
 ${GO} .sf-go-recap__title { position:absolute; left:0; right:0; top:0; margin:0 !important; text-align:center; ${LABEL}
-  font-size:max(10px, calc(10.5px * var(--sv))) !important; letter-spacing:.3em !important; color:rgb(${BONE} / .7) !important; }
+  font-size:max(12px, calc(10.5px * var(--sv))) !important; letter-spacing:.3em !important; color:rgb(${BONE} / .7) !important; }
 ${GO} .sf-go-ring { position:absolute; left:50%; top:50%; width:calc(var(--r) * 2.4); height:calc(var(--r) * 2.4); transform:translate(-50%, -50%); pointer-events:none; }
 ${GO} .sf-go-ring__svg { width:100%; height:100%; overflow:visible; display:block; }
 ${GO} .sf-go-ring__ticks { fill:none; stroke:rgb(${BONE} / .42); stroke-width:1.4; vector-effect:non-scaling-stroke; }
@@ -334,7 +334,7 @@ ${GO} .sf-go-hubscrub { position:absolute; left:50%; top:50%; transform:translat
   opacity:0; transition:opacity .16s linear; text-align:center; white-space:nowrap; }
 ${GO} .sf-go-hubscrub__t { font-family:var(--dp-face-numeral, "Archivo"); font-weight:250; font-variation-settings:"wght" 250, "wdth" 100; font-size:calc(46px * var(--sv)); line-height:1;
   color:var(--dp-phos, rgb(223 238 255)); font-variant-numeric:tabular-nums; }
-${GO} .sf-go-hubscrub__w { ${LABEL} font-size:max(10px, calc(10.5px * var(--sv))); letter-spacing:.2em; color:rgb(${BONE} / .78); }
+${GO} .sf-go-hubscrub__w { ${LABEL} font-size:max(12px, calc(10.5px * var(--sv))); letter-spacing:.2em; color:rgb(${BONE} / .78); }
 ${GO} > .sf-go-recap.is-scrubbing .sf-go-hubscrub { opacity:1; }
 ${GO} > .sf-go-recap.is-scrubbing .sf-go-st--hub { visibility:hidden; }
 ${GO} .sf-go-ring__stop { fill:none; stroke:var(--dp-danger-hot, #ff7a5c); stroke-width:3; stroke-linecap:round; vector-effect:non-scaling-stroke; }
@@ -356,17 +356,17 @@ ${GO} .sf-go-st { position:absolute; margin:0; display:flex; flex-direction:colu
 ${GO} .sf-go-st[data-side="right"] { transform:translate(0, -50%); text-align:left; align-items:flex-start; }
 ${GO} .sf-go-st[data-side="left"] { transform:translate(-100%, -50%); text-align:right; align-items:flex-end; }
 ${GO} .sf-go-st > :is(dt, dd) { margin:0 !important; padding:0 !important; background:none !important; border:0 !important; }
-${GO} .sf-go-st .sf-go-recap__k { ${LABEL} font-size:max(10px, calc(10px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(${BONE} / .68) !important; }
+${GO} .sf-go-st .sf-go-recap__k { ${LABEL} font-size:max(12px, calc(10px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(${BONE} / .68) !important; }
 ${GO} .sf-go-st .sf-go-recap__v { display:flex; align-items:baseline; gap:6px; font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wght" 300, "wdth" 100 !important;
   font-weight:300 !important; font-size:calc(27px * var(--sv)) !important; line-height:1 !important; letter-spacing:-.01em; text-align:inherit !important;
   color:var(--dp-phos, rgb(223 238 255)) !important; font-variant-numeric:tabular-nums; }
-${GO} .sf-go-st .sf-go-u { ${LABEL} font-size:max(10px, calc(10.5px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .66); }
+${GO} .sf-go-st .sf-go-u { ${LABEL} font-size:max(12px, calc(10.5px * var(--sv))); letter-spacing:.16em; color:rgb(${BONE} / .66); }
 ${GO} .sf-go-st--lost .sf-go-recap__k { color:var(--dp-danger-hot, #ff7a5c) !important; }
 ${GO} .sf-go-st--lost .sf-go-recap__v { color:rgb(246 241 230) !important; }
 ${GO} .sf-go-st--hub { left:50%; top:50%; transform:translate(-50%, -50%); flex-direction:column-reverse; align-items:center; text-align:center; gap:calc(8px * var(--sv)); }
 ${GO} .sf-go-st--hub .sf-go-recap__v { font-variation-settings:"wght" 250, "wdth" 100 !important; font-weight:250 !important; font-size:calc(46px * var(--sv)) !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-st:not(.sf-go-st--hub) { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; }
-${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__v { ${LABEL} font-size:max(11px, calc(13px * var(--sv))) !important; letter-spacing:.3em !important; color:rgb(${BONE} / .7) !important; }
+${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__v { ${LABEL} font-size:max(12px, calc(13px * var(--sv))) !important; letter-spacing:.3em !important; color:rgb(${BONE} / .7) !important; }
 ${GO} > .sf-go-recap.is-blank .sf-go-st--hub .sf-go-recap__k { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip-path:inset(50%) !important; }
 
 /* ---- the black box along the foot ---- */

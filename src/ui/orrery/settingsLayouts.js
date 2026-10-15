@@ -93,7 +93,7 @@ ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backd
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
 /* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip on the stage's bottom edge while rows continue */
 ${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:6px 14px 7px !important; cursor:pointer;
-  ${PLAIN} ${LABEL} font-size:11px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
+  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
   border:1px solid rgb(${BONE} / .42) !important; border-radius:999px !important; }
 ${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:var(--dp-hand-hot, #ffd98c); }
 ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
@@ -279,7 +279,7 @@ ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
 ${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
   background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
@@ -308,11 +308,11 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
     column-gap:clamp(16px, 2vw, 24px) !important; }
   ${S} #sf-settings-pane { padding-right:10px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
-  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:11.5px !important; letter-spacing:.07em !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:12px !important; letter-spacing:.07em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:minmax(0, var(--orr-scale-w, 140px)) max-content !important; column-gap:8px !important; min-width:0 !important; }
   /* the scale gives way before the readout: a fixed 140px scale pushed '55%' past the pane's clip edge */
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
-  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:11.5px !important; letter-spacing:.1em !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:12px !important; letter-spacing:.1em !important; }
   ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
 }
 
@@ -481,7 +481,7 @@ ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }

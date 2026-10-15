@@ -2186,7 +2186,7 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
   .orr-clips__readline { flex-direction:column; align-items:center; gap:6px; }
   .orr-clips__readout, .orr-replay__readout { white-space:normal; overflow:visible; text-overflow:clip; }
   .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; letter-spacing:0; }
-  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:11px; letter-spacing:.08em; }
+  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px; letter-spacing:.08em; }
 }
 @media (max-height:640px) and (min-width:641px) {
   .orr-clips__rail { top:20%; }

@@ -199,8 +199,8 @@ ${S} :focus-visible { outline:none !important; }
   ${S} .fp-board::before { left:22px; }
   ${S} .fp-board::after { left:26px; }
   ${S} .fp-node { font-size:13.5px !important; }
-  ${S} .fp-node__meta { font-size:11.5px !important; }
-  ${S} .fp-node__stage { font-size:11px !important; letter-spacing:.16em !important; }
+  ${S} .fp-node__meta { font-size:12px !important; }
+  ${S} .fp-node__stage { font-size:12px !important; letter-spacing:.16em !important; }
   ${S} .fp-answer { gap:4px !important; }
   ${S} .fp-answer .k-words { column-gap:14px; row-gap:2px !important; }
   ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:24px !important; font-size:12px !important; letter-spacing:.1em !important; padding-left:14px !important; }

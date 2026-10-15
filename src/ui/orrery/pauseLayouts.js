@@ -107,14 +107,14 @@ ${BOTH} > .sf-pause-foot .dp-kbd.sf-pause-key,
 ${BOTH} > .sf-pause-foot .sf-pause-key.dp-kbd {
   display:inline-block !important; box-sizing:border-box !important;
   margin:0 8px 0 0 !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.18em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.18em !important; line-height:1 !important;
   color:rgb(${BONE} / .92) !important;
   background:rgb(${BONE} / .1) !important; background-color:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-image:none !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
   font-weight:650 !important; }
 ${BOTH} > .sf-pause-foot .sf-pause-key-verb {
-  ${LABEL} font-size:11.5px !important; letter-spacing:.16em !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.16em !important;
   color:rgb(${BONE} / .88) !important; margin:0 22px 0 0 !important;
   vertical-align:baseline !important; line-height:1 !important; }
 ${BOTH} > .sf-pause-foot .dp-etch.dp-bar--end,
@@ -164,16 +164,16 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-foot .sf-pause-foot__keys { gap:4px 0 !important; }
   ${P} > .sf-pause-foot .dp-kbd.sf-pause-key,
   ${P} > .sf-pause-foot .sf-pause-key.dp-kbd {
-    margin-right:5px !important; padding:3px 5px 4px !important; font-size:10.5px !important; letter-spacing:.1em !important; }
+    margin-right:5px !important; padding:3px 5px 4px !important; font-size:12px !important; letter-spacing:.1em !important; }
   ${P} > .sf-pause-foot .sf-pause-key-verb {
-    font-size:10.5px !important; letter-spacing:.1em !important; margin-right:clamp(9px, 1.4vw, 14px) !important; }
+    font-size:12px !important; letter-spacing:.1em !important; margin-right:clamp(9px, 1.4vw, 14px) !important; }
 }
 
 /* ≤760 wide (e.g. 720×480) the strip has ~620px: tighten once more so it still holds one line. */
 @media (min-width:701px) and (max-width:760px) {
   ${P} > .sf-pause-foot .dp-kbd.sf-pause-key,
-  ${P} > .sf-pause-foot .sf-pause-key.dp-kbd { margin-right:4px !important; padding:3px 4px 4px !important; font-size:10px !important; letter-spacing:.06em !important; }
-  ${P} > .sf-pause-foot .sf-pause-key-verb { font-size:10px !important; letter-spacing:.07em !important; margin-right:9px !important; }
+  ${P} > .sf-pause-foot .sf-pause-key.dp-kbd { margin-right:4px !important; padding:3px 4px 4px !important; font-size:12px !important; letter-spacing:.06em !important; }
+  ${P} > .sf-pause-foot .sf-pause-key-verb { font-size:12px !important; letter-spacing:.07em !important; margin-right:9px !important; }
 }
 /* narrow + short (≤560 tall): the foot's keys line and the version line close up, so the keys sit
    lower and leave a clear band under EXIT / MAIN MENU. */
@@ -197,7 +197,7 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
 /* phone: foot keycaps stay readable; brief kicker rule */
 @media (max-width:700px) {
   ${PH} > .sf-pause-foot .sf-pause-foot__keys { gap:6px 0 !important; }
-  ${PH} > .sf-pause-foot .sf-pause-key-verb { margin-right:14px !important; font-size:11px !important; }
+  ${PH} > .sf-pause-foot .sf-pause-key-verb { margin-right:14px !important; font-size:12px !important; }
   ${PH} .sf-pause-brief > .dp-etch.sf-slot-sub:first-child {
     display:flex !important; align-items:center !important; gap:12px !important; margin-bottom:8px !important; }
   ${PH} .sf-pause-brief > .dp-etch.sf-slot-sub:first-child::after {
