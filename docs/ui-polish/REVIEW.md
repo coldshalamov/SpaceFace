@@ -1170,6 +1170,14 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Checked:** hub-line vs pad probe (`_tools/fp-hub.mjs`) at 390×844 and 360×740 (`--phone`), 960×540, 1024×768, 700×900 and 1280×720: 0 overlaps on all three records. 1280×720 is pixel-identical to master. The bench measures clean at 390×844, 960×540, 1280×720 and 1920×1080. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. Shots: `ui-shots/polish38/{before,after}/`, `compare-{phone,960}-{wanted,marked}.png`.
 
+## Shipworks short desktop: verbs stay on-frame; next-step clears DISMISS (ui-polish-39)
+
+**Before:** at 844×390, TAKE THE HITCH · RECORD · PAINT ran past the right edge (Paint at x≈922 on an 844 frame) and overlapped UNDOCK. The next-step sentence under OPEN YOUR HOLD printed on DISMISS (bench ON TOP OF ×4). Weapon / Mining / fleet rows under the sticky foot were already the expected below-fold remainder from ui-polish-33.
+
+**After (`shipworksLayouts.js`, CSS only, `801–1100 × ≤460` desktop):** the verb row wraps inside the main (`left/right:8px`, `flex-wrap`) so RECORD · PAINT stay on-frame (Paint at x≈804 on 844, ≈761 on 801). The rule is its own 801–1100 block: at 651–800 the verbs sit in flow beside LEFT · CENTER · RIGHT and a right-justified row printed on the camera words (review). The next-step keeps master's two lines (title + 2/3, sentence ellipsized clear of DISMISS); the bench's ON TOP OF there measures the clipped sentence's text range, not ink. Selectors and IDs are unchanged. Phones, 651–800 and every height above 460 are untouched. Open: at 844×390 RECORD · PAINT are on-frame but still under the sticky UNDOCK foot.
+
+**Bench:** station-shipworks 844×390 19 → 10 (remaining: below-fold under the sticky foot + mechanic clamp). 1024×440 6 → 6 (geometry clear of DISMISS; probe still notes title vs DISMISS from hidden text). 960×540 / 1280×720 / 1920×1080 / 390×844 unchanged (1280 matches master’s 2 HITCH-pool notes). Shots: `ui-shots/polish39/{before,after,compare}/`.
+
 ## Market decision terms @651–720 × ≤460 (ui-polish-41)
 
 **Before:** at 651–720 wide and ≤460 tall, the ≤640 rule still put REPAIR NOW / FLY DAMAGED in two columns ~59–72px wide, so each verb's terms wrapped to four–six lines (~80–105px per option). The block ate the stage; beside BUY the wrapped lines collided with the console.
