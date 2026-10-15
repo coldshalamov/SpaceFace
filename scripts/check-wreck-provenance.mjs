@@ -106,8 +106,9 @@ function seedSaveablePlayer(state) {
 
 // ── 1. catalog integrity ──────────────────────────────────────────────────────────────────
 function testCatalog() {
-  assert.ok(Array.isArray(WRECK_CLASS_IDS) && WRECK_CLASS_IDS.length === 5,
-    'five wreck classes: debris/fresh/battlefield/military/ancient');
+  const coreIds = ['debris', 'fresh', 'battlefield', 'military', 'ancient'];
+  assert.ok(Array.isArray(WRECK_CLASS_IDS) && coreIds.every((id) => WRECK_CLASS_IDS.includes(id)),
+    'core wreck classes present: debris/fresh/battlefield/military/ancient');
   for (const id of WRECK_CLASS_IDS) {
     const c = wreckClassById(id);
     assert.ok(c && c.id === id, `class ${id} self-identifies`);

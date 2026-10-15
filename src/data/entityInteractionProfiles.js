@@ -7,6 +7,7 @@
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
 import { volatileClassOf } from './commodityVolatileClasses.js';
+import { wreckClassById } from './wreckClasses.js';
 import { bombInteractionState } from '../combat/bombDynamics.js';
 
 const profile = (value) => Object.freeze({
@@ -187,7 +188,12 @@ export function interactionClassLine(entity) {
   const data = (entity && entity.data) || {};
   if (semantic.kind === 'wreck' || semantic.kind === 'unstable_reactor_wreck') {
     let line = semantic.kind === 'unstable_reactor_wreck' ? 'Hazardous Salvage' : 'Salvage';
-    const label = typeof data.wreckClassLabel === 'string' ? data.wreckClassLabel.trim() : '';
+    const fallbackClass = !data.wreckClassLabel && data.wreckClass && data.wreckClass !== 'debris'
+      ? wreckClassById(data.wreckClass)
+      : null;
+    const label = typeof data.wreckClassLabel === 'string' && data.wreckClassLabel.trim()
+      ? data.wreckClassLabel.trim()
+      : (fallbackClass && typeof fallbackClass.label === 'string' ? fallbackClass.label.trim() : '');
     if (label && label.toLowerCase() !== interactionDisplayName(entity).trim().toLowerCase()) line += ` · ${label}`;
     const pool = data.salvagePool;
     if (pool && typeof pool === 'object') {
@@ -199,7 +205,8 @@ export function interactionClassLine(entity) {
   }
   if (semantic.kind === 'pickup') {
     const lot = cargoLotLine(data);
-    return lot ? `${semantic.classLabel} · ${lot}` : semantic.classLabel;
+    if (!lot) return semantic.classLabel;
+    return `${semantic.classLabel} · ${lot}${volatileClassOf(data.commodityId) ? ' · VOLATILE' : ''}`;
   }
   if (semantic.kind === 'payload') {
     const lot = cargoLotLine(data);

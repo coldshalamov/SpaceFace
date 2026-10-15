@@ -2,6 +2,8 @@
 // deliberately emits no voice, toast, mission, economy, faction, heat, or traffic mutations.
 
 import { activeHullIdentity } from '../data/hullIdentity.js';
+import { factionBerthForStation } from '../data/factionBerths.js';
+import { canLaunderSalvageAtStation } from '../data/salvageLegality.js';
 import { leftoverMechanicCard } from '../story/mechanicVoice.js';
 import { leftoverLedgerCard } from '../story/storyLedger.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -69,16 +71,20 @@ export function bindReturningPilotSummary(bus, state) {
   return bus.on('automation:offlineSummary', (receipt) => noteOfflineSummary(state, receipt));
 }
 
-const CONTRABAND_IDS = new Set(COMMODITIES.filter((def) => def.legality === 'contraband').map((def) => def.id));
+const RESTRICTED_CARGO_IDS = new Set(
+  COMMODITIES
+    .filter((def) => def.legality === 'contraband' || def.legality === 'restricted')
+    .map((def) => def.id),
+);
 
 function usedCargo(state) {
   const cargo = state && state.player && state.player.cargo;
   return Number(cargo && cargo.usedVolume) || 0;
 }
 
-function hasContraband(state) {
+function hasRestrictedCargo(state) {
   const items = state && state.player && state.player.cargo && state.player.cargo.items || {};
-  return Object.entries(items).some(([id, qty]) => CONTRABAND_IDS.has(id) && Number(qty) > 0);
+  return Object.entries(items).some(([id, qty]) => RESTRICTED_CARGO_IDS.has(id) && Number(qty) > 0);
 }
 
 function primaryActionFor(state) {
@@ -388,10 +394,36 @@ function localTraffic(state, stationId) {
   return rec ? String(rec.text).replace(/\s+/g, ' ').trim() : null;
 }
 
-function paperworkFor(state) {
+function paperworkFor(state, station) {
   if (isPlayerWanted(state)) return 'Wanted status flagged at this berth.';
-  if (hasContraband(state)) return 'Restricted cargo may draw a customs scan.';
+  if (hasRestrictedCargo(state)) {
+    const stationKey = (station && (station.id || station.stationId)) || '';
+    return (canLaunderSalvageAtStation(station) || canLaunderSalvageAtStation(stationKey))
+      ? 'Fence open for restricted cargo at this berth.'
+      : 'Restricted cargo may draw a customs scan.';
+  }
   return null;
+}
+
+/**
+ * Shared exterior faction-berth status for dockArrival and the galaxy chart station inspector.
+ * Reports only when the player has moored a record or opened a displacement variance at this berth.
+ */
+export function factionBerthStatusLine(state, stationId) {
+  const berth = stationId ? factionBerthForStation(stationId) : null;
+  if (!berth) return null;
+  const own = state && state.factionPresence;
+  if (!own || typeof own !== 'object') return null;
+  const receipt = own.serviceReceipts && own.serviceReceipts[berth.receiptKey];
+  const watch = own.berthWatch && own.berthWatch[berth.id];
+  if (!receipt && !(watch && watch.displaced === true)) return null;
+  if (watch && watch.displaced === true) {
+    return `${berth.name}: moored record missing from the apron — variance open.`;
+  }
+  const rawName = berth.hulk && typeof berth.hulk.name === 'string' ? berth.hulk.name : 'Moored hulk';
+  const shortName = rawName.split(' — ')[0].trim() || 'Moored hulk';
+  const count = Math.max(1, Math.floor(Number(receipt && receipt.count) || 1));
+  return `${berth.name}: ${shortName} moored on the apron${count > 1 ? ` (×${count})` : ''}.`;
 }
 
 /**
@@ -419,7 +451,7 @@ function yardBerthLine(state, stationId) {
 const ESSENTIAL_SERVICES = ['refuel', 'repair'];
 
 export function stationServiceGaps(station) {
-  return Array.isArray(station && station.services)
+  return Array.isArray(station && station.services) && station.services.length > 0
     ? ESSENTIAL_SERVICES.filter((req) => !station.services.includes(req))
     : [];
 }
@@ -431,7 +463,8 @@ export function buildDockArrival(state = {}, station = {}) {
   const news = rumor || localNews(state, stationId) || localDeedLine(state);
   const route = leftoverRouteLine(state, stationId);
   const traffic = localTraffic(state, stationId) || route;
-  const paperwork = paperworkFor(state);
+  const paperwork = paperworkFor(state, station);
+  const factionBerth = factionBerthStatusLine(state, stationId);
   const eventCard = leftoverEventCard(state, stationId);
   const ledgerCard = leftoverLedgerCard(state);
   const mechanicCard = leftoverMechanicCard(state);
@@ -458,7 +491,7 @@ export function buildDockArrival(state = {}, station = {}) {
   const patchText = patch && patch.text ? patch.text : null;
   const ledgerLine = ledger && ledger.body ? ledger.body : null;
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
-  const berthLine = yardBerthLine(state, stationId);
+  const berthLine = [yardBerthLine(state, stationId), factionBerth].filter(Boolean).join(' ') || null;
   const returnSummary = returningPilotLine(state);
   const hull = activeHullIdentity(state);
   // serviceNotice rides position 4: the seven-line slice must never spend the berth's
@@ -480,6 +513,7 @@ export function buildDockArrival(state = {}, station = {}) {
     patchReceiptId: patch && patch.receiptId ? patch.receiptId : null,
     route,
     berthLine,
+    factionBerth,
     ledger,
     ledgerLine,
     mechanic,

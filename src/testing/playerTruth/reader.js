@@ -7,7 +7,9 @@
 // passive and only record (first input time, kill events, long tasks).
 //
 // One sample per animation frame (registered after the game's own frame callback, so the camera
-// and meshes are the ones the player just saw). The harness drains samples every second or so.
+// and meshes are the ones the player just saw). Expensive VFX and pixel readback passes are
+// wall-gated below; the entity/scene identity census remains fresh on every frame. The harness
+// drains samples every second or so.
 
 import { encodePlayerTruthRows } from './packedRows.js';
 
@@ -350,6 +352,16 @@ export function installPlayerTruthReader(win, opts = {}) {
   const THREE = SF.THREE;
   const vfxEvery = Math.max(1, opts.vfxEvery || 4);
   const pxEvery = opts.pxEvery === 0 ? 0 : Math.max(1, opts.pxEvery || 24);
+  // The live gate uses the defaults below (vfx every 4th frame, pixel split every 24th frame),
+  // but a focused fixture may deliberately request another frame cadence. Keep those explicit
+  // cadences exact unless they opt into a wall budget, so native-resolution tests remain about
+  // readback semantics rather than scheduler policy.
+  const defaultFrameCadence = (opts.vfxEvery == null || opts.vfxEvery === 4)
+    && (opts.pxEvery == null || opts.pxEvery === 24);
+  const visualEveryMs = Number.isFinite(opts.visualEveryMs)
+    ? Math.max(0, opts.visualEveryMs) : (defaultFrameCadence ? 250 : 0);
+  const pixelEveryMs = Number.isFinite(opts.pixelEveryMs)
+    ? Math.max(0, opts.pixelEveryMs) : (defaultFrameCadence ? 1000 : 0);
   const GW = 48; const GH = 27;
   const keys = []; const keyIdx = new Map();
   const drawIdentity = createPlayerTruthDrawIdentity();
@@ -358,6 +370,7 @@ export function installPlayerTruthReader(win, opts = {}) {
   const samples = []; const events = []; const longTasks = [];
   const v = new THREE.Vector3(); const box = new THREE.Box3();
   let frame = 0; let lastT = 0; let running = false; let raf = 0;
+  let lastVfxAt = -Infinity; let lastPxAt = -Infinity;
   let firstInput = null;
   const now = () => win.performance.now();
   const simNow = () => +(SF.state.simTime || 0).toFixed(3);
@@ -777,43 +790,48 @@ export function installPlayerTruthReader(win, opts = {}) {
     if (player && player.pos) s.p = playerRecord(st, player, meshes && meshes.get(player.id), cam, vw, vh);
     const threatBoxes = []; const bodies = [];
     for (const e of list) {
-      if (!e || e.alive === false || !e.pos || e.id === st.playerId) continue;
-      const cls = classifyEntity(e, st.playerId, playerTeam);
-      const m = meshes ? meshes.get(e.id) : null;
-      let visCode = 0; let sx = -1; let sy = -1; let pr = 0; let key = -1;
-      if (cam) {
-        // Physics coordinates may be a fixed tick ahead of the interpolated/rebased picture.
-        // The already-presented root matrix is the observation seam for pixel measurements.
-        const matrix = m?.matrixWorld?.elements;
-        const sc = screenOf(cam, matrix ? matrix[12] : e.pos.x,
-          matrix ? matrix[13] : e.pos.y || 0, matrix ? matrix[14] : e.pos.z,
-          Math.max(0.5, e.radius || 1), vw, vh);
-        sx = Math.round(sc.sx); sy = Math.round(sc.sy); pr = +sc.pr.toFixed(1);
-        if (m) {
-          const vis = meshChainVisible(m);
-          visCode = !vis ? 1 : (sc.inView ? 3 : 2);
-          const ud = m.userData || {};
-          key = intern(`${m.uuid.slice(0, 8)}|${ud.authoredCompositionId || ud.assetId || m.name || ''}|${ud._appliedLodLevel || (ud.lod && ud.lod.level) || ''}|${ud.authoredAssetState || ''}|draw:${drawIdentity(m)}`);
-        } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
-        // Friendly projectile luminosity stays in the screen/player coverage masks and the
-        // readability census, but it is no threat to its own player. Removing that body in
-        // the combat counterfactual must not classify its visible light as self-occlusion.
-        const friendlyShot = cls === 'projectile' && (e.ownerId != null && e.ownerId === st.playerId
-          || e.team != null && e.team === playerTeam);
-        if ((cls === 'enemy' || cls === 'projectile' && !friendlyShot) && sc.inView) {
-          threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
+        if (!e || e.alive === false || !e.pos || e.id === st.playerId) continue;
+        const cls = classifyEntity(e, st.playerId, playerTeam);
+        const m = meshes ? meshes.get(e.id) : null;
+        let visCode = 0; let sx = -1; let sy = -1; let pr = 0; let key = -1;
+        if (cam) {
+          // Physics coordinates may be a fixed tick ahead of the interpolated/rebased picture.
+          // The already-presented root matrix is the observation seam for pixel measurements.
+          const matrix = m?.matrixWorld?.elements;
+          const sc = screenOf(cam, matrix ? matrix[12] : e.pos.x,
+            matrix ? matrix[13] : e.pos.y || 0, matrix ? matrix[14] : e.pos.z,
+            Math.max(0.5, e.radius || 1), vw, vh);
+          sx = Math.round(sc.sx); sy = Math.round(sc.sy); pr = +sc.pr.toFixed(1);
+          if (m) {
+            const vis = meshChainVisible(m);
+            visCode = !vis ? 1 : (sc.inView ? 3 : 2);
+            const ud = m.userData || {};
+            key = intern(`${m.uuid.slice(0, 8)}|${ud.authoredCompositionId || ud.assetId || m.name || ''}|${ud._appliedLodLevel || (ud.lod && ud.lod.level) || ''}|${ud.authoredAssetState || ''}|draw:${drawIdentity(m)}`);
+          } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
+          // Friendly projectile luminosity stays in the screen/player coverage masks and the
+          // readability census, but it is no threat to its own player. Removing that body in
+          // the combat counterfactual must not classify its visible light as self-occlusion.
+          const friendlyShot = cls === 'projectile' && (e.ownerId != null && e.ownerId === st.playerId
+            || e.team != null && e.team === playerTeam);
+          if ((cls === 'enemy' || cls === 'projectile' && !friendlyShot) && sc.inView) {
+            threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
+          }
         }
-      }
-      const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
-      s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
-      if (['station', 'neutral', 'other'].includes(cls) && [3, 4].includes(visCode)) {
-        bodies.push({ id: lifeId(e), cls, ty, mesh: m });
-      }
+        const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
+        s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
+        if (['station', 'neutral', 'other'].includes(cls) && [3, 4].includes(visCode)) {
+          bodies.push({ id: lifeId(e), cls, ty, mesh: m });
+        }
     }
-    if (st.mode === 'flight' && cam && scene && frame % vfxEvery === 0) {
+    const wallDue = (last, budget) => !Number.isFinite(last) || budget === 0 || t - last >= budget;
+    if (st.mode === 'flight' && cam && scene && frame % vfxEvery === 0
+        && wallDue(lastVfxAt, visualEveryMs)) {
+      lastVfxAt = t;
       try { s.vfx = vfxScan(st, cam, scene, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.vfx = { err: String(err && err.message || err) }; }
     }
-    if (st.mode === 'flight' && cam && scene && pxEvery && frame % pxEvery === 0) {
+    if (st.mode === 'flight' && cam && scene && pxEvery && frame % pxEvery === 0
+        && wallDue(lastPxAt, pixelEveryMs)) {
+      lastPxAt = t;
       try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes,
         meshes?.get(st.playerId), bodies); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }

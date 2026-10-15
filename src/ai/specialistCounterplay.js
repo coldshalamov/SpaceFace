@@ -41,11 +41,12 @@ const CUT_PHASES = new Set(['spool_cue', 'attach_window']);
 const DISRUPT_PHASES = new Set(['charge_cue', 'fire_window']);
 const WARD_ID = 'warden_escort';
 // SF-052: after a disrupt lands, the cutter may not open a committed pass for this long — the
-// breather that keeps the paired pressure solvable. It is a composition property of the pair,
-// not of one plan, so it lives beside the dispatcher that enforces it.
+// breather that keeps the paired pressure solvable. A landed cut reserves CUT_COMMIT_LOCK_TICKS
+// on the same ledger so a late-window cut still buys a breather before the ghost acquires.
+const CUT_COMMIT_LOCK_TICKS = 43;
 const DISRUPT_COMMIT_LOCK_TICKS = 60;
-// Per-state ledger of the currently committed pass: { kind, untilTick }. Keyed by the GameState
-// object (never serialized) and advanced purely by sim ticks — no ambient randomness.
+// Per-state ledger of the currently committed pass: { kind, untilTick, phase, holderId, capability }.
+// Keyed by the GameState object (never serialized) and advanced purely by sim ticks — no ambient randomness.
 const commitLedger = new WeakMap();
 // The screen function still RETURNS the warden (damage routes the hit onto that hull).
 // The warded id is a side channel so the halo can mark the hull that is being covered
@@ -78,6 +79,18 @@ export function refreshWardScreenPublication(state) {
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function specialistIncapacitated(state, entity, capability = null) {
+  if (!entity || entity.alive === false) return true;
+  if (Number.isFinite(entity.hull) && entity.hull <= 0) return true;
+  const data = entity.data;
+  if (data && (data.disabled === true || data.stunned === true)) return true;
+  if (capability && state && state.combat && state.combat.entities && entity.id != null) {
+    const runtime = state.combat.entities[String(entity.id)];
+    if (runtime && runtime.capabilities && runtime.capabilities[capability] === false) return true;
+  }
+  return false;
 }
 
 function shipsOf(state) {
@@ -153,6 +166,7 @@ export function wardScreenTarget(state, attacker, target, origin) {
   let bestDist = Infinity;
   for (const ent of wardRosterFor(state)) {
     if (!ent || ent.alive === false || !ent.pos || ent.id === target.id) continue;
+    if (specialistIncapacitated(state, ent, 'drive')) continue;
     if (target.team == null || ent.team !== target.team) continue;
     const radius = finite(ent.collisionRadius, 21) + 6;
     const dist = pointSegmentDistance(ent.pos, attacker.pos, target.pos);
@@ -198,12 +212,20 @@ function angleDelta(a, b) {
 function commitLockHeld(state, tick, kind) {
   if (!state) return false;
   const lock = commitLedger.get(state);
-  return !!(lock && lock.untilTick > tick && lock.kind !== kind);
+  if (!lock || lock.untilTick <= tick) return false;
+  if (lock.phase === 'committed' && lock.holderId != null && state.entities && typeof state.entities.get === 'function') {
+    const holder = state.entities.get(lock.holderId);
+    if (!holder || specialistIncapacitated(state, holder, lock.capability || null)) {
+      commitLedger.delete(state);
+      return false;
+    }
+  }
+  return lock.kind !== kind;
 }
 
-function claimCommitLock(state, tick, kind, untilTick) {
+function claimCommitLock(state, tick, kind, untilTick, phase = 'committed', holderId = null, capability = null) {
   if (!state) return;
-  commitLedger.set(state, { kind, untilTick });
+  commitLedger.set(state, { kind, untilTick, phase, holderId, capability });
 }
 
 function releaseCommitLock(state, kind) {
@@ -234,9 +256,10 @@ function playerAttachments(attachments, player) {
 
 /** SF-046: a committed pass that failed (angle beaten, re-anchor, expired window) buys the
  * player a vulnerable recovery — the blade may not open another pass until it expires. */
-function missCutterPass(data, tick, recoveryTicks) {
+function missCutterPass(state, data, tick, recoveryTicks) {
   delete data._cutterCommit;
   data._cutterRecoverUntil = tick + recoveryTicks;
+  releaseCommitLock(state, 'cut_line');
 }
 
 /** SF-047: the disruptor's live vitality (hull + shield) — the damage interrupt reads a drop. */
@@ -257,9 +280,8 @@ function scissorwakeCut({ state, specialist, doctrine, doctrinePhase, tick, atta
   const miss = reason => {
     const commit = data._cutterCommit;
     if (commit) data.scissorwakeLastResolvedAttack = commit.attackId;
-    missCutterPass(data, tick, SCISSORWAKE.recoveryTicks);
+    missCutterPass(state, data, tick, SCISSORWAKE.recoveryTicks);
     data.scissorwakeOutcome = reason;
-    releaseCommitLock(state, 'cut_line');
     return null;
   };
   if (!CUT_PHASES.has(doctrinePhase)) return data._cutterCommit ? miss('miss_window') : null;
@@ -290,7 +312,7 @@ function scissorwakeCut({ state, specialist, doctrine, doctrinePhase, tick, atta
       corridor: { origin: { ...corridor.origin }, dir: { ...corridor.dir }, range: corridor.range, halfWidth: corridor.halfWidth },
       lastPos: { x: specialist.pos.x, z: specialist.pos.z } };
     delete data.scissorwakeOutcome;
-    claimCommitLock(state, tick, 'cut_line', commit.deadline);
+    claimCommitLock(state, tick, 'cut_line', commit.deadline, 'committed', specialist.id, 'drive');
     return null;
   }
   if (commit.attachmentId !== line.id || commit.sourceLife !== specialist.occupantGeneration
@@ -348,11 +370,15 @@ export function applySpecialistCounterplay({
     const commitTicks = Number.isFinite(plan.commitTicks) ? plan.commitTicks : 45;
     const sweepTolerance = Number.isFinite(plan.sweepToleranceRad) ? plan.sweepToleranceRad : 0.6;
     const recoveryTicks = Number.isFinite(plan.missRecoveryTicks) ? plan.missRecoveryTicks : 120;
+    if (specialistIncapacitated(state, specialist, 'drive')) {
+      if (data._cutterCommit) missCutterPass(state, data, tick, recoveryTicks);
+      return null;
+    }
     if (!CUT_PHASES.has(doctrinePhase)) {
       // The committed pass exists only across the telegraph + attach window. A window that
       // closed without landing (egress, control, lost visibility) is a miss: resolve the
       // dangling commit here so the recovery follows the blade out of the window.
-      if (data._cutterCommit) missCutterPass(data, tick, recoveryTicks);
+      if (data._cutterCommit) missCutterPass(state, data, tick, recoveryTicks);
       return null;
     }
     if (tick - last < CUT_COOLDOWN_TICKS) return null;
@@ -387,23 +413,23 @@ export function applySpecialistCounterplay({
         committedTick: tick,
         deadline: tick + commitTicks,
       };
-      claimCommitLock(state, tick, 'cut_line', data._cutterCommit.deadline);
+      claimCommitLock(state, tick, 'cut_line', data._cutterCommit.deadline, 'committed', specialist.id, 'drive');
       return null;
     }
     // Freshness: the committed intercept must still be the rope the player is flying.
-    if (tick > commit.deadline) { missCutterPass(data, tick, recoveryTicks); return null; }
+    if (tick > commit.deadline) { missCutterPass(state, data, tick, recoveryTicks); return null; }
     const activeLine = lines.find((a) => String(a.id) === String(commit.attachmentId));
-    if (!activeLine) { missCutterPass(data, tick, recoveryTicks); return null; }
+    if (!activeLine) { missCutterPass(state, data, tick, recoveryTicks); return null; }
     const anchor = lineAnchorOf(activeLine, player, state);
-    if (!anchor) { missCutterPass(data, tick, recoveryTicks); return null; }
+    if (!anchor) { missCutterPass(state, data, tick, recoveryTicks); return null; }
     if (Math.hypot(anchor.x - commit.anchor.x, anchor.z - commit.anchor.z) > 40) {
-      missCutterPass(data, tick, recoveryTicks);
+      missCutterPass(state, data, tick, recoveryTicks);
       return null;
     }
     // The beat: the line's angle at its anchor swept past tolerance — the segment moved away
     // from the committed intercept, the pass whiffs, and the blade is exposed while recovering.
     const sweep = Math.abs(angleDelta(bearingAt(player.pos, anchor), commit.bearing));
-    if (sweep > sweepTolerance) { missCutterPass(data, tick, recoveryTicks); return null; }
+    if (sweep > sweepTolerance) { missCutterPass(state, data, tick, recoveryTicks); return null; }
     // The telegraph must be seen before the verb lands: the cut itself only exists inside the
     // attach window. Freshness above still runs on the telegraph, so an early angle change
     // beats the pass before its window even opens.
@@ -416,12 +442,17 @@ export function applySpecialistCounterplay({
     if (result && result.ok) {
       data._pq140LastVerbTick = tick;
       delete data._cutterCommit;
+      claimCommitLock(state, tick, 'cut_line', Math.max(commit.deadline, tick + CUT_COMMIT_LOCK_TICKS), 'breather');
     }
     return result && result.ok ? { verb: 'cut_line', ok: true, segmentDistance: segDist } : null;
   }
   if (plan.verb === 'disrupt_field') {
     const workTicks = Number.isFinite(plan.disruptWorkTicks) ? plan.disruptWorkTicks : 36;
     const holdRadius = Number.isFinite(plan.disruptHoldRadiusWu) ? plan.disruptHoldRadiusWu : 120;
+    if (specialistIncapacitated(state, specialist, 'weapons')) {
+      if (data._disruptWork) interruptDisruptWork(state, data, tick);
+      return null;
+    }
     if (!DISRUPT_PHASES.has(doctrinePhase)) {
       // The working interval exists only across the telegraph + fire window. A window that
       // closed without landing (closing_interrupt retreat, egress) is an interrupt: resolve
@@ -447,7 +478,7 @@ export function applySpecialistCounterplay({
         startedTick: tick,
         deadline: tick + workTicks,
       };
-      claimCommitLock(state, tick, 'disrupt_field', data._disruptWork.deadline);
+      claimCommitLock(state, tick, 'disrupt_field', data._disruptWork.deadline, 'committed', specialist.id, 'weapons');
       return null;
     }
     // Freshness beat 1 — damage: the working ghost is interruptible by the existing damage
@@ -480,7 +511,9 @@ export function applySpecialistCounterplay({
     delete data._disruptWork;
     if (n > 0) {
       data._pq140LastVerbTick = tick;
-      claimCommitLock(state, tick, 'disrupt_field', tick + DISRUPT_COMMIT_LOCK_TICKS);
+      claimCommitLock(state, tick, 'disrupt_field', tick + DISRUPT_COMMIT_LOCK_TICKS, 'breather');
+    } else {
+      releaseCommitLock(state, 'disrupt_field');
     }
     return n > 0 ? { verb: 'disrupt_field', ok: true, count: n } : null;
   }
@@ -498,7 +531,8 @@ export function applySpecialistCounterplay({
     // hull's own spinup. Placement stays honest: the center is the HULL (fields owner), never
     // the player.
     if (!fields || typeof fields.setAnchorArmed !== 'function') return null;
-    const armedWanted = doctrinePhase === 'field_spool' || doctrinePhase === 'anchor_hold';
+    const incapacitated = specialistIncapacitated(state, specialist);
+    const armedWanted = !incapacitated && (doctrinePhase === 'field_spool' || doctrinePhase === 'anchor_hold');
     const result = fields.setAnchorArmed(state, specialist.id, armedWanted, tick);
     if (!result) return null;
     return {
