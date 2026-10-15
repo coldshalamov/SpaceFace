@@ -107,14 +107,15 @@ if (process.argv.includes('--diagnose')) {
   }
 }
 if (process.argv.includes('--frame-solid')) workflow.push({ kind: 'frame-solid',
-  exit: await execute('frame-solid', ['scripts/probe-frame-solid.mjs'], 600_000) });
+  exit: await execute('frame-solid', ['scripts/probe-frame-solid.mjs', ...baselineSourceArgs], 600_000) });
 if (process.argv.includes('--soak')) workflow.push({ kind: 'lifecycle-soak',
   exit: await execute('soak', ['scripts/check-release-soak-electron.mjs', '--cycles=4',
-    '--cycle-screenshots=false', '--output-root=' + path.relative(root, out), '--task-id=soak'], 1_800_000) });
+    '--cycle-screenshots=false', '--output-root=' + path.relative(root, out), '--task-id=soak',
+    ...baselineSourceArgs], 1_800_000) });
 if (process.argv.includes('--verify')) for (const mode of ['adventure', 'swarm', 'gauntlet', 'racing']) {
   workflow.push({ kind: 'player-truth', mode, exit: await execute('truth-' + mode,
     ['scripts/player-truth/run.mjs', '--mode=' + mode, '--gate', '--headed',
-      '--out=' + path.relative(root, path.join(out, 'player-truth', mode))], 1_800_000) });
+      '--out=' + path.relative(root, path.join(out, 'player-truth', mode)), ...baselineSourceArgs], 1_800_000) });
 }
 await writeFile(path.join(out, 'workflow.json'), JSON.stringify(workflow, null, 2));
 const digests = new Set(results.map(r => r.metadata?.sourceDigest).filter(Boolean));

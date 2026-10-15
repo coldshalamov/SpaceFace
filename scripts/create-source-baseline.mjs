@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
+import { readGitCatFileBatch } from './lib/gitCatFileBatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { normalizeSourceOverlayPath, sourceOverlayDigest } = createRequire(import.meta.url)('./lib/gameServer.cjs');
@@ -79,12 +80,6 @@ function frozenCommit(ref) {
   return result;
 }
 
-function bytesAtCommit(commit, relativePath) {
-  return execFileSync('git', ['show', `${commit}:${relativePath}`], {
-    cwd: ROOT, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024, windowsHide: true,
-  });
-}
-
 function listSrcJsPathsAtCommit(commit) {
   const listing = execFileSync('git', ['ls-tree', '-r', '-z', '--name-only', commit, '--', 'src'], {
     cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true,
@@ -144,29 +139,37 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
           usage('duplicate source paths are not allowed');
         } else {
           const missingPaths = [];
-          const presentPaths = uniquePaths.filter((relativePath) => {
-            if (workingTree) {
+          let presentPaths;
+          let historicalBodies = null;
+          let historicalBodyByPath = null;
+          if (workingTree) {
+            presentPaths = uniquePaths.filter((relativePath) => {
               if (existsSync(path.join(ROOT, relativePath))) return true;
               if (!usingDefaultPaths) throw new Error(`source path is absent in the working tree: ${relativePath}`);
               missingPaths.push(relativePath);
               return false;
+            });
+          } else {
+            historicalBodies = await readGitCatFileBatch(sourceCommit, uniquePaths, { cwd: ROOT });
+            historicalBodyByPath = new Map(uniquePaths.map((relativePath, index) => [
+              relativePath, historicalBodies[index],
+            ]));
+            presentPaths = [];
+            for (let i = 0; i < uniquePaths.length; i++) {
+              if (historicalBodies[i] !== null) {
+                presentPaths.push(uniquePaths[i]);
+              } else if (usingDefaultPaths) {
+                missingPaths.push(uniquePaths[i]);
+              } else {
+                throw new Error(`source path is absent at ${sourceCommit}: ${uniquePaths[i]}`);
+              }
             }
-            try {
-              execFileSync('git', ['cat-file', '-e', `${sourceCommit}:${relativePath}`], {
-                cwd: ROOT, stdio: 'ignore', windowsHide: true,
-              });
-              return true;
-            } catch (error) {
-              if (!usingDefaultPaths) throw new Error(`source path is absent at ${sourceCommit}: ${relativePath}`);
-              missingPaths.push(relativePath);
-              return false;
-            }
-          });
+          }
           if (!presentPaths.length) throw new Error('none of the requested source paths exist at the frozen commit');
           const files = presentPaths.map((relativePath) => {
             const body = workingTree
               ? bytesAtWorkingTree(relativePath)
-              : bytesAtCommit(sourceCommit, relativePath);
+              : historicalBodyByPath.get(relativePath);
             const sha256 = createHash('sha256').update(body).digest('hex');
             return {
               path: relativePath,

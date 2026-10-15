@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./gameServer.cjs');
 
-export async function acquireVisualProbeServer({ explicitUrl = '', root } = {}) {
+export async function acquireVisualProbeServer({ explicitUrl = '', root, sourceOverlay = null } = {}) {
   if (explicitUrl) {
     return {
       baseUrl: explicitUrl,
@@ -14,7 +14,11 @@ export async function acquireVisualProbeServer({ explicitUrl = '', root } = {}) 
   }
   if (!root) throw new TypeError('visual probe server root is required');
 
-  const server = createGameServer({ root, async: true });
+  const server = createGameServer({
+    root,
+    async: true,
+    ...(sourceOverlay ? { sourceOverlay } : {}),
+  });
   try {
     await listenOnEphemeralLoopback(server);
   } catch (error) {

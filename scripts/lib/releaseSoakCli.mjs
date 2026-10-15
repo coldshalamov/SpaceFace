@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { link, mkdir, open, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -19,6 +20,8 @@ import {
   validateArtifactAncestry,
 } from './releaseSoakEvidenceChecker.mjs';
 import { loadValidationManifestById } from './validationManifestRegistry.mjs';
+
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./gameServer.cjs');
 
 const RUNTIMES = new Set(['browser', 'electron']);
 const TASK_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
@@ -49,6 +52,7 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     'cycle-timeout-ms',
     'min-duration-ms',
     'cycle-screenshots',
+    'baseline-source',
   ]);
   for (const name of values.keys()) {
     if (!supported.has(name)) throw new Error(`unknown argument: --${name}`);
@@ -63,6 +67,7 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
   if (!TASK_ID_PATTERN.test(taskId)) {
     throw new Error('--task-id must be 1-80 safe filename characters (letters, numbers, dot, underscore, or hyphen)');
   }
+  const baselineSource = resolveBaselineSource(values.get('baseline-source'), repoRoot);
 
   return {
     runtime,
@@ -77,6 +82,7 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     cycleTimeoutMs: readPositiveInteger(values, 'cycle-timeout-ms', 300_000),
     minDurationMs: readBoundedInteger(values, 'min-duration-ms', 0, MAX_MIN_DURATION_MS),
     cycleScreenshots: readBoolean(values, 'cycle-screenshots', true),
+    baselineSource,
   };
 }
 
@@ -223,6 +229,7 @@ export async function validateReleaseSoakPublication({
       claimId: evidence.claimId ?? null,
       sourceCandidateDigest: evidence.sourceCandidateDigest ?? null,
       candidateDigest: evidence.candidateDigest ?? null,
+      sourceOverlay: evidence.sourceOverlay ?? null,
       consumedClaim: evidence.consumedClaim ?? null,
       packagedStartup: evidence.packagedStartup ?? null,
       acceptedEvidencePath,
@@ -440,6 +447,31 @@ function resolveContainedPath(root, candidate, label) {
   const relative = path.relative(resolvedRoot, resolved);
   if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`${label} must stay inside ${resolvedRoot}`);
   return resolved;
+}
+
+function compactSourceOverlayIdentity(identity) {
+  return identity ? {
+    schema: identity.schema || null,
+    sourceCommit: identity.sourceCommit || null,
+    sourceOverlayDigest: identity.sourceOverlayDigest || null,
+    fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
+    totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+  } : null;
+}
+
+function resolveBaselineSource(value, root) {
+  if (!value) return null;
+  const resolved = path.resolve(root, String(value));
+  const relative = path.relative(root, resolved).replace(/\\/g, '/');
+  if (!relative || relative === '..' || relative.startsWith('../') || !relative.startsWith('.devshots/')) {
+    throw new Error('--baseline-source must point to a manifest under .devshots/');
+  }
+  const manifest = loadSourceOverlayManifest(resolved);
+  return Object.freeze({
+    path: resolved,
+    relative,
+    identity: compactSourceOverlayIdentity(manifest.identity),
+  });
 }
 
 function assertRuntime(runtime) {

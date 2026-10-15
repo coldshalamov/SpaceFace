@@ -196,6 +196,7 @@ export async function runReleaseSoakProbe({
   cycleTimeoutMs = 300_000,
   minDurationMs = 0,
   cycleScreenshots = true,
+  baselineSource = null,
   log = () => {},
 } = {}) {
   assert(['browser', 'electron'].includes(runtime), 'runtime must be browser or electron');
@@ -235,6 +236,7 @@ export async function runReleaseSoakProbe({
   let pageIssueTracker = null;
   let canonicalUrlTracker = null;
   let rootUrl = null;
+  let servedSourceOverlay = null;
   let cleanupReport = null;
   let isolatedLaunch = null;
   let packagedStartup = null;
@@ -297,7 +299,10 @@ export async function runReleaseSoakProbe({
     let navigationStartedAt = null;
 
     if (runtime === 'browser') {
-      ownedServer = await acquireVisualProbeServer({ root });
+      ownedServer = await acquireVisualProbeServer({
+        root,
+        sourceOverlay: baselineSource?.path || null,
+      });
       assert.equal(ownedServer.ownsServer, true, 'browser soak must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
       ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
@@ -333,7 +338,7 @@ export async function runReleaseSoakProbe({
         page = owned.page || page;
         canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
         rootUrl = owned.rootUrl || rootUrl;
-      });
+      }, taskId, { baselineSourcePath: baselineSource?.path || null });
       ({
         page,
         electronApp,
@@ -350,6 +355,10 @@ export async function runReleaseSoakProbe({
     page.setDefaultNavigationTimeout(60_000);
     await page.bringToFront();
     doLog(`${runtime} canonical root ${rootUrl}`);
+    servedSourceOverlay = await readServedSourceOverlayIdentity(page, baselineSource);
+    if (baselineSource) {
+      doLog(`source overlay ${baselineSource.relative} ${baselineSource.identity.sourceOverlayDigest}`);
+    }
     // Arm before the public route so an early route/load failure still leaves a
     // one-shot caller snapshot for the ordinary teardown in the failure path.
     // The helper is idempotent and never initiates a second teardown.
@@ -777,6 +786,11 @@ export async function runReleaseSoakProbe({
       sourceCandidateDigest: authority.digests?.sourceCandidateDigest ?? null,
       candidateDigest: authority.digests?.candidateDigest ?? null,
       digests: authority.digests,
+      sourceOverlay: baselineSource ? {
+        manifest: baselineSource.relative,
+        requested: baselineSource.identity,
+        served: servedSourceOverlay,
+      } : null,
       consumedClaim: authority.consumedClaim,
       fixedSeed: authority.fixedSeed,
       inputSource: 'keyboard-mouse',
@@ -892,18 +906,52 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
   }
 }
 
+function compactSourceOverlayIdentity(identity) {
+  return identity ? {
+    schema: identity.schema || null,
+    sourceCommit: identity.sourceCommit || null,
+    sourceOverlayDigest: identity.sourceOverlayDigest || null,
+    fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
+    totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+  } : null;
+}
+
+async function readServedSourceOverlayIdentity(page, expected) {
+  if (!expected) return null;
+  const observed = await page.evaluate(async () => {
+    const response = await fetch('/__source_overlay_identity', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`source overlay identity endpoint returned ${response.status}`);
+    return response.json();
+  });
+  const compact = compactSourceOverlayIdentity(observed);
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  const mismatch = fields.find((field) => compact?.[field] !== expected.identity?.[field]);
+  if (mismatch) {
+    throw new Error(`served source overlay identity mismatch at ${mismatch}: expected ${JSON.stringify(expected.identity)} got ${JSON.stringify(compact)}`);
+  }
+  return compact;
+}
+
 async function launchElectron(
   root,
   onOwnership = () => {},
   taskId = 'release-soak-electron',
-  { enableTier1Counters = false } = {},
+  { enableTier1Counters = false, baselineSourcePath = null } = {},
 ) {
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
   // 240 s launch bound: on a host running other lanes' headed checks, the Electron driver
   // handshake (ws connect -> app ready) can starve past the 90 s default before the first
   // window even exists — the third busy-host boot seam tonight (goto, load-state, launch).
-  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId, timeout: 240_000 });
+  const baseEnv = { ...process.env };
+  if (baselineSourcePath) baseEnv.SPACEFACE_BASELINE_SOURCE_MANIFEST = baselineSourcePath;
+  else delete baseEnv.SPACEFACE_BASELINE_SOURCE_MANIFEST;
+  const isolatedLaunch = createIsolatedElectronLaunch({
+    root,
+    taskId,
+    timeout: 240_000,
+    baseEnv,
+  });
   // Omit executablePath intentionally. Playwright resolves this already-verified package and,
   // only on that package-resolution path, installs its Electron readiness loader before app
   // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.

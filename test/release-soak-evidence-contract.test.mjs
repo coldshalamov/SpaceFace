@@ -91,6 +91,46 @@ test('parser locks the wrapper runtime and rejects acceptance bypass flags', () 
   assert.equal(parsed.outputRoot, path.resolve(process.cwd(), '.devshots/spec2/custom-soak'));
 });
 
+test('parser validates a fenced source overlay and returns compact identity metadata', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sf-release-soak-source-overlay-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, '.devshots'), { recursive: true });
+  const body = Buffer.from('frozen-index', 'utf8');
+  const entry = {
+    path: 'index.html',
+    bytes: body.length,
+    sha256: createHash('sha256').update(body).digest('hex'),
+    contentBase64: body.toString('base64'),
+  };
+  const manifest = {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: createHash('sha256')
+      .update(`${entry.path}\0${entry.sha256}\0${entry.bytes}`, 'utf8')
+      .digest('hex'),
+    files: [entry],
+  };
+  const manifestPath = path.join(root, '.devshots', 'baseline.json');
+  await writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+
+  const parsed = parseReleaseSoakArgs(['--baseline-source=.devshots/baseline.json'], {
+    runtime: 'electron',
+    root,
+  });
+  assert.equal(parsed.baselineSource.relative, '.devshots/baseline.json');
+  assert.deepEqual(parsed.baselineSource.identity, {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: manifest.sourceOverlayDigest,
+    fileCount: 1,
+    totalBytes: body.length,
+  });
+  assert.throws(
+    () => parseReleaseSoakArgs(['--baseline-source=outside.json'], { runtime: 'electron', root }),
+    /under \.devshots/i,
+  );
+});
+
 test('publication validator revalidates artifact hashes and returns a content-hashed evidence receipt', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sf-release-soak-cli-'));
   t.after(() => rm(root, { recursive: true, force: true }));
