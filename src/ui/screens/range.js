@@ -3117,13 +3117,11 @@ export const rangeScreen = {
       if (!this._active) return;
       const dt = clamp((now - this._lastTs) / 1000, 0, MAX_FRAME_S);
       this._lastTs = now;
-      this._accumS += dt;
-      while (this._accumS >= STEP_S) {
-        this._stepSimulation(STEP_S);
-        this._accumS -= STEP_S;
-      }
+      const stepped = this._advanceFrameSimulation(dt);
       this._render();
-      this._syncRun();
+      // If this high-refresh frame did not advance fixed simulation time, keep the run status
+      // current without repeating the full chrome/beam/rail synchronization.
+      if (!stepped) this._syncRun();
       if (!this._shouldPark()) this._rafId = requestAnimationFrame(this._renderFrame);
     };
   },
@@ -4102,6 +4100,24 @@ export const rangeScreen = {
     return !(playerStill || droneStill || inputHeld || strokeLive || wellLive || payloadStill);
   },
 
+  _advanceFrameSimulation(dt) {
+    this._accumS += dt;
+    let stepped = false;
+    while (this._accumS >= STEP_S) {
+      this._stepSimulation(STEP_S);
+      this._accumS -= STEP_S;
+      stepped = true;
+    }
+    if (!stepped) return false;
+
+    // DOM and beam state only needs the final fixed-step result for this browser frame. Keeping
+    // these syncs at the frame boundary avoids exposing intermediate catch-up states.
+    this._syncChrome();
+    this._syncBeam();
+    this._syncRail();
+    return true;
+  },
+
   _currentInput() {
     const hasYawBindings = this._controlMap
       && (this._controlMap.codeSets.yawLeft.size > 0 || this._controlMap.codeSets.yawRight.size > 0);
@@ -4263,9 +4279,6 @@ export const rangeScreen = {
       }
     }
 
-    this._syncChrome();
-    this._syncBeam();
-    this._syncRail();
   },
 
   _stepHeavyRung(sim) {
