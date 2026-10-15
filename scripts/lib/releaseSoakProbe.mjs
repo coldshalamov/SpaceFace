@@ -86,6 +86,9 @@ export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 
 // requested, its measured cycle loop performs one public save followed by a small number of
 // public quick-load round-trips against that same untouched slot.
 export const MAX_IMMUTABLE_SAVE_CYCLES = 4;
+// Owner rows are forensic checkpoint detail, not the hot-path state snapshot. Keep the
+// persisted receipt bounded even if a restore leaves an unexpectedly large owner graph.
+export const POST_GC_OWNER_ROW_LIMIT = 256;
 // Six hours — the acceptance soak is two hours; the bound catches a dropped
 // or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
 export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
@@ -5199,6 +5202,61 @@ async function captureHeapSnapshot(page, filePath) {
   }
 }
 
+export function canonicalPostGcOwnerRows(diagnostics, limit = POST_GC_OWNER_ROW_LIMIT) {
+  const sourceRows = Array.isArray(diagnostics?.owners) ? diagnostics.owners : null;
+  if (!sourceRows) return null;
+  const requestedLimit = Number(limit);
+  const rowLimit = Number.isFinite(requestedLimit)
+    ? Math.max(0, Math.floor(requestedLimit))
+    : POST_GC_OWNER_ROW_LIMIT;
+  const reportedOwnerCount = diagnostics?.ownerCount;
+  const numericOwnerCount = reportedOwnerCount !== null
+    && reportedOwnerCount !== undefined
+    && reportedOwnerCount !== ''
+    && Number.isFinite(Number(reportedOwnerCount))
+    ? Number(reportedOwnerCount)
+    : sourceRows.length;
+  const rows = sourceRows.slice(0, rowLimit).map((row) => {
+    const owner = typeof row?.owner === 'string' ? row.owner : null;
+    const ownerName = typeof row?.ownerName === 'string' ? row.ownerName : null;
+    const contentHash = typeof row?.contentHash === 'string' ? row.contentHash : null;
+    const ownerId = row?.ownerId !== null && row?.ownerId !== undefined && String(row.ownerId) !== ''
+      ? String(row.ownerId)
+      : null;
+    const apiIdentity = typeof row?.identity === 'string' && row.identity ? row.identity : null;
+    const identity = ownerId || apiIdentity;
+    const identityLabel = [owner, ownerName, contentHash].filter(Boolean).join('|') || null;
+    const role = Array.isArray(row?.roles)
+      ? [...new Set(row.roles.filter((value) => typeof value === 'string' && value))].sort()
+      : [];
+    const assets = Number(row?.assets);
+    const bytes = Number(row?.bytes);
+    return {
+      identity,
+      identityLabel,
+      identityAmbiguous: identity === null && identityLabel !== null,
+      role,
+      contentHash,
+      released: row?.released === true,
+      assets: Number.isFinite(assets) ? assets : null,
+      bytes: Number.isFinite(bytes) ? bytes : null,
+    };
+  }).sort((a, b) => (
+    (b.bytes ?? -1) - (a.bytes ?? -1)
+      || String(a.identity || a.identityLabel || '').localeCompare(String(b.identity || b.identityLabel || ''))
+      || JSON.stringify(a.role).localeCompare(JSON.stringify(b.role))
+  ));
+  return {
+    ownerCount: numericOwnerCount,
+    truncated: numericOwnerCount > rows.length,
+    rows,
+  };
+}
+
+export function postGcOwnerEvaluateArgument(phaseTag, ownerRowLimit = POST_GC_OWNER_ROW_LIMIT) {
+  return { phaseTag, ownerRowLimit };
+}
+
 async function readPostGcMemorySnapshot(page, phaseTag) {
   // The forced GC is measurement apparatus: pause the soak-window hitch register so a
   // stop-the-world collect is not billed to the game as a gameplay hitch.
@@ -5215,10 +5273,15 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
     await cdp?.detach().catch(() => {});
     await setSoakPaused(page, false);
   }
-  return page.evaluate((tag) => {
+  const snapshot = await page.evaluate(({ phaseTag: tag, ownerRowLimit }) => {
     const report = window.__THREE_GAME_DIAGNOSTICS__?.getReport?.();
     const heap = performance?.memory;
     const state = window.SF?.state;
+    const renderSystem = window.SF?.registry?.get?.('render');
+    const residency = renderSystem?._assetResidency;
+    const ownerDiagnostics = residency && typeof residency.diagnostics === 'function'
+      ? residency.diagnostics({ canonical: true, includeEvents: false, includeOwners: true })
+      : null;
     return {
       phaseTag: tag,
       at: new Date().toISOString(),
@@ -5242,9 +5305,23 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
         : null,
       entities: finiteOrNull(state?.entityList?.length),
       assetResidency: state?.render?.assetResidency || null,
+      assetResidencyOwnerDiagnostics: ownerDiagnostics
+        ? {
+            ownerCount: finiteOrNull(ownerDiagnostics.ownerCount),
+            owners: Array.isArray(ownerDiagnostics.owners)
+              ? ownerDiagnostics.owners.slice(0, ownerRowLimit)
+              : null,
+          }
+        : null,
     };
     function finiteOrNull(value) { const number = Number(value); return Number.isFinite(number) ? number : null; }
-  }, phaseTag);
+  }, postGcOwnerEvaluateArgument(phaseTag));
+  const ownerDiagnostics = snapshot.assetResidencyOwnerDiagnostics;
+  delete snapshot.assetResidencyOwnerDiagnostics;
+  return {
+    ...snapshot,
+    assetResidencyOwners: canonicalPostGcOwnerRows(ownerDiagnostics),
+  };
 }
 
 async function readSettingsTruth(page) {
