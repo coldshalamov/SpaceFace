@@ -2670,7 +2670,7 @@ export const save = {
           const isRecovery = key.startsWith(RECOVERY_PREFIX);
           if (!isRecovery && !key.startsWith(LS_PREFIX)) continue;
           const slot = key.slice((isRecovery ? RECOVERY_PREFIX : LS_PREFIX).length);
-          if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+          if (!isSaveSlotId(slot)) continue;
           const raw = (collectedRaws && collectedRaws.has(key))
             ? collectedRaws.get(key)
             : localStorage.getItem(key);
@@ -2965,7 +2965,7 @@ export const save = {
       for (const [key, raw] of entries) {
         if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
         const slot = key.slice(LS_PREFIX.length);
-        if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+        if (!isSaveSlotId(slot)) continue;
         // The write path's index card is already envelope-accurate for this slot — trust it and
         // Index cards written by _updateIndex carry the fingerprint of the bytes they were
         // verified against. One fnv1a over the blob replaces the parse+preflight+migrate+
@@ -3026,7 +3026,7 @@ export const save = {
       for (const [key, raw] of entries) {
         if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
         const slot = key.slice(LS_PREFIX.length);
-        if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+        if (!isSaveSlotId(slot)) continue;
         const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
         if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string'
             && fnv1a(raw) === indexCard._blobHash) {
@@ -3081,7 +3081,7 @@ export const save = {
       for (const [key, raw] of entries) {
         if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
         const slot = key.slice(RECOVERY_PREFIX.length);
-        if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
+        if (!isSaveSlotId(slot) || primarySlots[slot]) continue;
         // The rotation stamps the recovery copy's fingerprint on the slot's index card, so a
         // fresh-generation scan hash-compares instead of re-parsing a multi-MB backup.
         const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
@@ -3125,7 +3125,7 @@ export const save = {
       for (const [key, raw] of entries) {
         if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
         const slot = key.slice(RECOVERY_PREFIX.length);
-        if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
+        if (!isSaveSlotId(slot) || primarySlots[slot]) continue;
         const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
         if (indexCard && typeof indexCard._recoveryBlobHash === 'string' && typeof raw === 'string'
             && fnv1a(raw) === indexCard._recoveryBlobHash && indexCard._recoveryCard) {
@@ -8892,6 +8892,14 @@ function resumeObjectiveSummary(parts) {
   return parts.navSummary || parts.missionSummary || parts.storySummary || '';
 }
 
+// Profile sidecars share the save namespace, but can never be game-load targets.
+export function isSaveSlotId(slot) {
+  return typeof slot === 'string' && slot.length > 0 && slot !== 'index'
+    && !isUnsafePlainKey(slot)
+    && LS_PREFIX + slot !== ACHIEVEMENTS_STORAGE_KEY
+    && LS_PREFIX + slot !== CRUCIBLE_META_STORAGE_KEY;
+}
+
 function normalizeSlotIndex(idx) {
   const out = {};
   if (!idx || typeof idx !== 'object') return out;
@@ -8899,13 +8907,13 @@ function normalizeSlotIndex(idx) {
     for (const item of idx) {
       if (!item || item.slot == null) continue;
       const slot = String(item.slot);
-      if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+      if (!isSaveSlotId(slot)) continue;
       out[slot] = clonePlain(Object.assign({ slot }, item));
     }
     return out;
   }
   for (const slot in idx) {
-    if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+    if (!isSaveSlotId(slot)) continue;
     const meta = idx[slot];
     if (!meta || typeof meta !== 'object' || Array.isArray(meta)) continue;
     out[slot] = clonePlain(Object.assign({ slot }, meta));
@@ -8967,7 +8975,7 @@ export function selectLatestOccupiedSlot(slots) {
   let bestKey = null;
   let bestMeta = null;
   for (const key of Object.keys(slots)) {
-    if (!key || key === 'index' || isUnsafePlainKey(key)) continue;
+    if (!isSaveSlotId(key)) continue;
     const meta = slots[key];
     if (!isOccupiedSlotMeta(meta)) continue;
     const candidate = {
