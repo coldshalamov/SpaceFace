@@ -518,6 +518,15 @@ async function releaseFightMassline(page) {
   return true;
 }
 
+async function tapFightTurn(page, bearing) {
+  if (!Number.isFinite(bearing) || Math.abs(bearing) <= 0.12) return;
+  const turn = bearing > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
+  noteKey(page, turn);
+  // Release within the public input call, before any observer/aim RPC can delay a
+  // simulation-time deadline. Reobserve between short taps instead of overshooting.
+  await page.keyboard.press(turn, { delay: Math.min(80, Math.abs(bearing) / 4.5 * 1000) });
+}
+
 async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
   let reachable = null;
   if (Number.isFinite(tg?.radarRel)) {
@@ -550,7 +559,6 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
         const bearing = fresh.none ? fresh.radarRel : fresh.rel;
         if (!Number.isFinite(bearing)) return true;
         const now = await simNow(page);
-        const turn = Math.abs(bearing) > 0.12 ? (bearing > 0 ? 'KeyD' : 'KeyA') : null;
         const aligned = Math.abs(bearing) <= 0.35;
         // Keep closing while the public pilot turns onto the course. A lost contact can orbit at
         // the edge of the radar band; turning in place until the nose is nearly aligned leaves
@@ -560,12 +568,13 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
         await setHeld('KeyW', true);
         if (aligned && !wasAligned) boostUntil = now + 0.35;
         wasAligned = aligned;
-        await setHeld('KeyA', turn === 'KeyA'); await setHeld('KeyD', turn === 'KeyD');
         // Boost is a short public course pulse, not a second continuous chase throttle.
         await setHeld(boostCode, aligned && now < boostUntil);
         // A keydown can itself open a public draft/overlay. Stop before waitSim asks the
         // frozen clock for another sample, while its finally block still releases every key.
-        return await page.evaluate(readCombatPhaseEnded);
+        if (await page.evaluate(readCombatPhaseEnded)) return true;
+        await tapFightTurn(page, bearing);
+        return false;
       } });
     } finally {
       for (const key of new Set(['KeyW', 'KeyA', 'KeyD', boostCode].filter(Boolean))) await page.keyboard.up(key).catch(() => {});
@@ -644,14 +653,6 @@ export async function fightBeat(page, beat) {
     if (tg.dist < 230) keys.push('KeyS');
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
-  const tapTurn = async (bearing) => {
-    if (!Number.isFinite(bearing) || Math.abs(bearing) <= 0.12) return;
-    const turn = bearing > 0 ? 'KeyD' : 'KeyA'; // Native Pilot yaw: D raises rot, A lowers it.
-    noteKey(page, turn);
-    // Release within the public input call, before any observer/aim RPC can delay a
-    // simulation-time deadline. Reobserve between short taps instead of overshooting.
-    await page.keyboard.press(turn, { delay: Math.min(80, Math.abs(bearing) / 4.5 * 1000) });
-  };
   const refreshAim = async () => {
     const fresh = await observeTarget(page, { selectedOnly: true });
     if (!fresh || fresh.none || !fresh.selected) return true;
@@ -660,13 +661,13 @@ export async function fightBeat(page, beat) {
       x = nextX; y = nextY;
       await page.mouse.move(x, y, { steps: 1 });
     }
-    await tapTurn(retreat && fresh.away != null ? fresh.away : fresh.rel);
+    await tapFightTurn(page, retreat && fresh.away != null ? fresh.away : fresh.rel);
     return false;
   };
   try {
     await page.mouse.down();
     for (const k of keys) { noteKey(page, k); await page.keyboard.down(k); }
-    await tapTurn(err);
+    await tapFightTurn(page, err);
     await waitSim(page, 0.6, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: refreshAim });
   } finally {
     for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k).catch(() => {});
