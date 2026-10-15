@@ -215,7 +215,6 @@ test('a stalled catalog asset reports its URL, elapsed time and completed progre
           release: true, partRoot: 'assets/ships/release/parts/', entries }) } };
       }
       if (calls <= 5) {
-        time += 5;
         return { result: { value: JSON.stringify({ loaded: true, assetId: `part-${calls}`, primitiveCount: 3, markerCount: 1 }) } };
       }
       time += 44_979;
@@ -232,8 +231,8 @@ test('a stalled catalog asset reports its URL, elapsed time and completed progre
     assert.equal(payload.progress.failedEntryIndex, 5);
     assert.equal(payload.progress.failedUrl, entries[4].url);
     assert.equal(payload.progress.failedAssetMs, 44_979);
-    assert.equal(payload.progress.lastCompletedUrl, entries[3].url);
-    assert.equal(payload.progress.maxCompletedMs, 5);
+    assert.ok(entries.slice(0, 4).some((entry) => entry.url === payload.progress.lastCompletedUrl));
+    assert.equal(payload.progress.maxCompletedMs, 44_979);
     return true;
   });
   assert.equal(expressions.length, 1 + entries.length);
@@ -243,14 +242,14 @@ test('a stalled catalog asset reports its URL, elapsed time and completed progre
 });
 
 test('aggregate report deadline exhaustion is distinct from one slow asset', async () => {
-  const entries = Array.from({ length: 4 }, (_, index) => ({
+  const entries = Array.from({ length: 5 }, (_, index) => ({
     slot: 'hull', url: `assets/ships/release/parts/hulls/part-${index}.glb`, wholeShip: false,
   }));
   let time = 0;
   let calls = 0;
   const cdp = {
     setStageLabel(label) {
-      if (label === `authored asset ${entries[3].url}`) time = 45_000;
+      if (label === `authored asset ${entries[4].url}`) time = 45_000;
     },
     async send(method) {
       assert.equal(method, 'Runtime.evaluate');
@@ -260,26 +259,60 @@ test('aggregate report deadline exhaustion is distinct from one slow asset', asy
         return { result: { value: JSON.stringify({ available: true, runtime: {}, release: true,
           partRoot: 'assets/ships/release/parts/', entries }) } };
       }
-      if (calls <= 4) {
-        const duration = calls + 1;
-        time += duration;
+      if (calls <= 5) {
         return { result: { value: JSON.stringify({ loaded: true, assetId: `part-${calls}` }) } };
       }
-      throw new Error(`[authored-assets] authored asset ${entries[3].url} / Runtime.evaluate: stage deadline expired`);
+      throw new Error(`[authored-assets] authored asset ${entries[4].url} / Runtime.evaluate: stage deadline expired`);
     },
   };
 
   await assert.rejects(collectAdmittedAuthoredReport(cdp, true, { now: () => time }), (error) => {
     assert.match(error.message, /stage deadline expired/);
     const payload = JSON.parse(error.message.slice(error.message.indexOf('{')));
-    assert.equal(payload.progress.totalEntries, 4);
-    assert.equal(payload.progress.completedEntries, 3);
-    assert.equal(payload.progress.failedEntryIndex, 4);
-    assert.equal(payload.progress.failedUrl, entries[3].url);
+    assert.equal(payload.progress.totalEntries, 5);
+    assert.equal(payload.progress.completedEntries, 4);
+    assert.equal(payload.progress.failedEntryIndex, 5);
+    assert.equal(payload.progress.failedUrl, entries[4].url);
     assert.equal(payload.progress.failedAssetMs, 0);
-    assert.equal(payload.progress.maxCompletedMs, 5);
+    assert.equal(payload.progress.maxCompletedMs, 44_999);
     assert.equal(payload.progress.elapsedMs, 45_000);
     return true;
   });
-  assert.equal(calls, 5, 'the expired request is the final operation; no passive report is sent');
+  assert.equal(calls, 6, 'the expired request is the final operation; no passive report is sent');
+});
+
+test('catalog failure drains the in-flight batch and does not launch later entries', async () => {
+  const entries = Array.from({ length: 6 }, (_, index) => ({
+    slot: 'hull', url: `assets/ships/release/parts/hulls/part-${index}.glb`, wholeShip: false,
+  }));
+  const pending = [];
+  let calls = 0;
+  const cdp = {
+    setStageLabel() {},
+    send(_method, params) {
+      calls++;
+      if (calls === 1) return Promise.resolve({ result: { value: JSON.stringify({ available: true,
+        runtime: {}, release: true, partRoot: 'assets/ships/release/parts/', entries }) } });
+      const url = entries.find((entry) => params.expression.includes(entry.url))?.url;
+      assert.ok(url, 'each asset evaluation names its catalog URL');
+      if (url === entries[0].url) {
+        return Promise.reject(new Error(`[authored-assets] authored asset ${url} / Runtime.evaluate: controlled failure`));
+      }
+      return new Promise((resolve) => pending.push(() => resolve({ result: { value: JSON.stringify({ loaded: true }) } })));
+    },
+  };
+  const releaseInFlight = new Promise((resolve) => setImmediate(() => {
+    for (const release of pending) release();
+    resolve();
+  }));
+  const resultPromise = collectAuthoredLoaderDiagnostics(cdp);
+  await releaseInFlight;
+  const result = await resultPromise;
+  assert.equal(result.available, false);
+  assert.match(result.error, new RegExp(entries[0].url.replaceAll('/', '\\/')));
+  assert.equal(result.progress.failedEntryIndex, 1);
+  assert.equal(result.progress.inFlightAtFailure, 3);
+  assert.equal(result.progress.drainedInFlight, 3);
+  assert.equal(result.progress.completedEntries, 3);
+  assert.equal(calls, 5, 'four initial requests drain and no fifth asset launches after failure');
 });

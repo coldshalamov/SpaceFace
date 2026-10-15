@@ -68,6 +68,10 @@ const HELIOS_APPROACH_TIMEOUT_MS = readPositiveIntArg('--helios-approach-timeout
 // so CI behaves exactly as before.
 const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 45000);
 const CDP_REQUEST_TIMEOUT_MS = 45000;
+// The live loader deduplicates by URL+slot and already bounds worker decode concurrency through
+// its shared budget. Probe independent optional catalog entries in small batches so the passive
+// inventory does not spend the whole absolute report deadline serializing 119 admissions.
+const AUTHORED_CATALOG_CONCURRENCY = 4;
 const FAILURE_DIAGNOSTICS_TIMEOUT_MS = 10000;
 const CHROME_PROFILE_PREFIX = 'spaceface-authored-assets-live-';
 const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
@@ -1473,6 +1477,8 @@ export async function collectAuthoredLoaderDiagnostics(cdp, { now = () => perfor
     failedEntryIndex: null,
     failedUrl: null,
     failedAssetMs: null,
+    inFlightAtFailure: 0,
+    drainedInFlight: 0,
     elapsedMs: null,
   };
   const elapsedMs = () => Math.max(0, now() - startedAtMs);
@@ -1517,13 +1523,20 @@ export async function collectAuthoredLoaderDiagnostics(cdp, { now = () => perfor
     const wholeShipLoaded = [];
     const failures = [];
     const wholeShipFailures = [];
-    for (let index = 0; index < catalog.entries.length; index++) {
-      const entry = catalog.entries[index];
-      cdp.setStageLabel(`authored asset ${entry.url}`);
-      const assetStartedAtMs = now();
-      let result;
-      try {
-        result = await evalJson(cdp, `(async () => {
+    let nextIndex = 0;
+    let firstFailure = null;
+    let activeEvaluations = 0;
+    const runWorker = async () => {
+      while (!firstFailure) {
+        const index = nextIndex++;
+        if (index >= catalog.entries.length) return;
+        const entry = catalog.entries[index];
+        cdp.setStageLabel(`authored asset ${entry.url}`);
+        const assetStartedAtMs = now();
+        let result;
+        activeEvaluations++;
+        try {
+          result = await evalJson(cdp, `(async () => {
         const state = window.SF && window.SF.state || null;
         const renderer = state && state.render && state.render.renderer || null;
         if (!renderer) return { loaded: false, unavailable: 'renderer unavailable' };
@@ -1539,38 +1552,48 @@ export async function collectAuthoredLoaderDiagnostics(cdp, { now = () => perfor
         return { loaded: false, name: diagnostic && diagnostic.name || 'LoadFailure',
           message: diagnostic && diagnostic.message || 'asset returned no authored blueprint' };
       })()`);
-      } catch (error) {
-        progress.failedEntryIndex = index + 1;
-        progress.failedUrl = entry.url;
-        progress.failedAssetMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
-        throw error;
+        } catch (error) {
+          if (!firstFailure) {
+            firstFailure = { error, index, url: entry.url };
+            progress.failedEntryIndex = index + 1;
+            progress.failedUrl = entry.url;
+            progress.failedAssetMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
+            progress.inFlightAtFailure = Math.max(0, activeEvaluations - 1);
+          }
+          return;
+        } finally {
+          activeEvaluations--;
+          if (firstFailure && index !== firstFailure.index) progress.drainedInFlight++;
+        }
+        const assetElapsedMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
+        progress.completedEntries++;
+        progress.lastCompletedUrl = entry.url;
+        progress.lastCompletedMs = assetElapsedMs;
+        if (assetElapsedMs >= progress.maxCompletedMs) {
+          progress.maxCompletedUrl = entry.url;
+          progress.maxCompletedMs = assetElapsedMs;
+        }
+        if (result.loaded) {
+          (entry.wholeShip ? wholeShipLoaded : loaded).push({
+            slot: entry.wholeShip ? 'wholeShip' : entry.slot,
+            url: entry.url,
+            assetId: result.assetId,
+            primitiveCount: result.primitiveCount,
+            markerCount: result.markerCount,
+          });
+        } else {
+          const failure = {
+            slot: entry.wholeShip ? 'wholeShip' : entry.slot,
+            url: entry.url,
+            name: result.name || 'LoadFailure',
+            message: result.message || result.unavailable || 'asset returned no authored blueprint',
+          };
+          (entry.wholeShip ? wholeShipFailures : failures).push(failure);
+        }
       }
-      const assetElapsedMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
-      progress.completedEntries++;
-      progress.lastCompletedUrl = entry.url;
-      progress.lastCompletedMs = assetElapsedMs;
-      if (assetElapsedMs >= progress.maxCompletedMs) {
-        progress.maxCompletedUrl = entry.url;
-        progress.maxCompletedMs = assetElapsedMs;
-      }
-      if (result.loaded) {
-        (entry.wholeShip ? wholeShipLoaded : loaded).push({
-          slot: entry.wholeShip ? 'wholeShip' : entry.slot,
-          url: entry.url,
-          assetId: result.assetId,
-          primitiveCount: result.primitiveCount,
-          markerCount: result.markerCount,
-        });
-      } else {
-        const failure = {
-          slot: entry.wholeShip ? 'wholeShip' : entry.slot,
-          url: entry.url,
-          name: result.name || 'LoadFailure',
-          message: result.message || result.unavailable || 'asset returned no authored blueprint',
-        };
-        (entry.wholeShip ? wholeShipFailures : failures).push(failure);
-      }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(AUTHORED_CATALOG_CONCURRENCY, catalog.entries.length) }, runWorker));
+    if (firstFailure) throw firstFailure.error;
     const declaredPartCount = catalog.entries.filter((entry) => !entry.wholeShip).length;
     const wholeShipDeclaredCount = catalog.entries.length - declaredPartCount;
     progress.elapsedMs = roundedMs(elapsedMs());
