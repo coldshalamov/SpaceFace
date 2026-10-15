@@ -142,7 +142,7 @@ export class VoiceQueue {
 
   // Enqueue a message. Returns the normalized entry (for tests/inspection). `now` is the sim clock.
   // Same-id coalesce: replaces active or queued entry in place (keeps seq; refreshes text/ttl).
-  enqueue({ channel = 'info', text = '', kind, priority, ttl, id } = {}, now = 0) {
+  enqueue({ channel = 'info', text = '', kind, priority, ttl, id, valid } = {}, now = 0) {
     if (!text) return null;
     const ttlMs = normalizeTtlMs(ttl);
     const entry = {
@@ -152,6 +152,7 @@ export class VoiceQueue {
       kind: kind || channel || 'info',              // fall back to channel name as toast kind
       priority: priorityFor(channel, priority),
       ttlMs,
+      ...(typeof valid === 'function' ? { valid } : {}),
       enqueuedAt: now,
       // One extra bark gap is queue patience, not screen time. Equal-tick barks must not
       // expire together when the first finishes. Backlogged lines still have a finite age.
@@ -179,6 +180,22 @@ export class VoiceQueue {
     }
     this._items.push(entry);
     return entry;
+  }
+
+  // Local authority predicates never enter the scalar presentation wire.
+  static _valid(entry) {
+    if (typeof entry?.valid !== 'function') return true;
+    try { return entry.valid() === true; } catch { return false; }
+  }
+
+  cancel(id) {
+    if (id == null) return false;
+    const key = String(id);
+    const before = this._items.length;
+    this._items = this._items.filter(entry => entry.id !== key);
+    const active = this._active?.id === key;
+    if (active) this._active = null;
+    return active || before !== this._items.length;
   }
 
   // Compare two entries: higher priority first, then earlier insertion (deterministic tie-break).
@@ -247,11 +264,11 @@ export class VoiceQueue {
   // even when the current tutorial command is persistent UI rather than a queued voice line.
   step(now = 0, policy = {}) {
     // Expire the active floor holder.
-    if (this._active && now >= this._active.expireAt) this._active = null;
+    if (this._active && (now >= this._active.expireAt || !VoiceQueue._valid(this._active))) this._active = null;
 
     // Drop stale queued entries (their ttl elapsed before they ever got the floor).
     if (this._items.length) {
-      this._items = this._items.filter((e) => now < e.expireAt);
+      this._items = this._items.filter((e) => now < e.expireAt && VoiceQueue._valid(e));
     }
 
     // Onboarding may begin while a non-danger line is already holding the floor. Suspend it under
@@ -325,6 +342,12 @@ export const voiceArbiter = {
       if (!msg || !msg.text) return false;
       const activeBefore = this.queue.active;
       const entry = this.queue.enqueue(msg, this._now());
+      if (!entry) return false;
+      if (!VoiceQueue._valid(entry)) {
+        this.queue.cancel(entry.id);
+        this._flushPresentation(null);
+        return false;
+      }
       // Docking can pause the fixed-tick loop immediately after an authority event. When a live
       // readout replaces the CURRENT floor under the same stable id, refresh its presenter now;
       // no queue step, priority decision, or preemption is involved. Normal new arrivals still
@@ -337,6 +360,11 @@ export const voiceArbiter = {
     if (ctx.helpers) {
       ctx.helpers.voice = {
         say,
+        cancel: (id) => {
+          const removed = this.queue.cancel(id);
+          if (removed) this._flushPresentation(null);
+          return removed;
+        },
         // Deterministic floor control for presenters/tests (sim-time only).
         dismiss: () => {
           const policy = this._policy();
