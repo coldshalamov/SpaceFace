@@ -1128,12 +1128,17 @@ export function createContractsScreen(ctx) {
     if (!hold) return;
     hold.frame = 0;
     const t = holdClock();
-    const dt = Math.min(64, Math.max(0, t - hold.last));
+    const dt = Math.max(0, t - hold.last);
     hold.last = t;
     if (hold.source === 'pad' && hold.dir > 0 && !padHeld()) hold.dir = -1;
     // filling runs at the hold's pace; a released hold falls back twice as fast
     hold.frac += (dt / hold.ms) * (hold.dir > 0 ? 1 : -2);
-    if (hold.frac >= 1) { hold.frac = 1; paintHold(); fireHold(); return; }
+    if (hold.frac >= 1) {
+      // Input holds use elapsed time, not a minimum number of rendered frames.
+      // Carry the actual threshold time so a delayed frame also catches up the retract.
+      const completedAt = t - (hold.frac - 1) * hold.ms;
+      hold.frac = 1; paintHold(); fireHold(completedAt); return;
+    }
     // reduced motion shows the end state at once: no retract travel, the light simply goes out
     if (hold.frac <= 0 && hold.dir < 0) { endHold(); return; }
     paintHold();
@@ -1160,18 +1165,18 @@ export function createContractsScreen(ctx) {
     hold.dir = -1;
     if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
   }
-  function fireHold() {
+  function fireHold(completedAt = holdClock()) {
     if (!hold || hold.done) return;
     hold.done = true;
     const key = acceptKey();
-    drainAndCommit(key);
+    drainAndCommit(key, completedAt);
   }
   /**
    * The commit beat, in order: the berth flashes hot amber; the lit run retracts berth-to-key
    * into the tether's bead, which flares; the mission commits; and a pulse flies home from the
    * key to the new YOURS row's Track control. Reduced motion skips the travel and commits.
    */
-  function drainAndCommit(key) {
+  function drainAndCommit(key, completedAt) {
     const missionId = key ? key.getAttribute('data-accept') : null;
     const fromRect = key && typeof key.getBoundingClientRect === 'function' ? key.getBoundingClientRect() : null;
     const drainedHold = hold;
@@ -1206,9 +1211,10 @@ export function createContractsScreen(ctx) {
       }
       return true;
     };
-    if (reducedMotion() || typeof requestAnimationFrame !== 'function') { commit(); return; }
+    if (reducedMotion() || typeof requestAnimationFrame !== 'function'
+      || holdClock() - completedAt >= 260) { commit(); return; }
     // the retract: the head travels the run backwards, berth to key, in about a quarter second
-    const t0 = holdClock();
+    const t0 = completedAt;
     const bead = dossierEl.querySelector('.sx-ct-tether__bead');
     const step = () => {
       // a retired drain lets the light die quietly — no commit, no further frames
