@@ -619,6 +619,7 @@ export function createSimHost() {
     pendingGameStarted: null,
     gameStartedEmits: 0,
     playerTruthImpulseObserver: null,
+    missionBoardMirrorUnsubscribe: null,
   };
 
   function drainEvents() {
@@ -918,6 +919,15 @@ export function createSimHost() {
   }
 
   function installBridgeCapture(bus, captureAll) {
+    host.missionBoardMirrorUnsubscribe?.();
+    // Posted/withdrawn board rows must accompany their event/RPC even while the worker is
+    // paused and has no future timer ticks. Progress and tracking use non-null mission ids;
+    // those retain their normal cold root cadence and existing hot active-mission mirror.
+    const offBoardUpdate = bus.on('mission:updated', (payload) => {
+      if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
+    });
+    const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
+    host.missionBoardMirrorUnsubscribe = () => { offBoardUpdate(); offAccepted(); };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
       const origQueue = typeof bus.queue === 'function' ? bus.queue.bind(bus) : null;
@@ -2158,6 +2168,8 @@ export function createSimHost() {
   }
 
   function handleShutdown() {
+    host.missionBoardMirrorUnsubscribe?.();
+    host.missionBoardMirrorUnsubscribe = null;
     host.draftReadUnsubscribe?.();
     host.draftReadUnsubscribe = null;
     host.playerTruthImpulseObserver?.unsubscribe?.();

@@ -137,27 +137,30 @@ try {
       destStationId: dest ? dest.stationId : null,
       params: { cmdtyId, qty: 6 },
     };
-    // On the worker lane the facade's missions.boards is a read-only mirror — a direct
-    // mutation renders transiently but the sim never sees the offer, so accept denies.
-    // Post through the lane rpc so the seeded offer is authoritative in the sim; on the
-    // main lane laneRpc reports no handler and the in-process mutation is the authority.
-    let posted = false;
-    if (typeof sf.laneRpc === 'function') {
-      try {
-        const resp = await sf.laneRpc('missionsCall', { method: 'postBoardOffer', offer });
-        posted = !!(resp && resp.ok === true && resp.result && resp.result.ok === true);
-      } catch (_) { posted = false; }
-    }
-    if (!posted) {
-      const board = state.missions.boards[stationId] || { slots: [] };
-      board.slots = board.slots || [];
-      board.slots.unshift(offer);
-      state.missions.boards[stationId] = board;
-      sf.bus.emit('mission:updated', { missionId: null });
-    }
-    return { ok: true, stationId, cmdtyId, posted };
+    // The canonical worker owns the board. A transport acknowledgement and a successful
+    // method dispatch wrap the posting owner's verdict; neither alone proves it took the row.
+    // A facade mutation after refusal would only fabricate the UI half of this handoff.
+    const rpc = { op: 'missionsCall', args: { method: 'postBoardOffer', offer } };
+    let response = null;
+    let error = null;
+    try {
+      if (typeof sf.laneRpc !== 'function') throw new Error('laneRpc unavailable');
+      response = await sf.laneRpc(rpc.op, rpc.args);
+    } catch (cause) { error = String(cause?.message || cause).slice(0, 600); }
+    const result = response?.result?.result;
+    const posted = response?.ok === true && response.result?.ok === true
+      && result?.ok === true && result.offerId === offer.id;
+    let diag = null;
+    try { diag = typeof sf.simLaneDiag === 'function' ? sf.simLaneDiag() : null; }
+    catch (_) { /* Optional observation cannot replace the posting owner's verdict. */ }
+    return { ok: posted, stationId, cmdtyId, posted, rpc: {
+      ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null, error,
+    }, lane: diag ? { lane: diag.lane, replyCount: diag.replyCount,
+      missionDomainApplied: Object.fromEntries(Object.entries(diag.domainAppliedKeys || {})
+        .filter(([key]) => /^missions(?:\.|$)/.test(key)).slice(0, 32)) } : null };
   });
-  assert.equal(seeded.ok, true, 'probe should seed a commodity contract on the docked board');
+  assert.equal(seeded.ok, true,
+    'missions owner should post a commodity contract on the docked board: ' + JSON.stringify(seeded));
 
   // Go to Contracts, select the seeded offer, and Accept & Track it.
   await domClick(page, '[data-screen="station"] .sx-dock [data-nav="contracts"]');
@@ -170,7 +173,32 @@ try {
     const b = window.SF && window.SF.state && window.SF.state.missions && window.SF.state.missions.boards;
     return !!(b && b[sid]
       && (b[sid].slots || []).some((o) => o && o.id === 'handoff_probe_bulk_trade'));
-  }, seeded.stationId, { timeout: 20000 });
+  }, seeded.stationId, { timeout: 20000 }).catch(async (error) => {
+    // Failure-only read: distinguish an absent authoritative offer from a late facade mirror.
+    // The failed deadline remains the verdict even if this RPC's reply publishes the board.
+    let observationTimer;
+    const authoritativeBoard = await Promise.race([page.evaluate(async (stationId) => {
+      let timer;
+      const rpc = { op: 'missionsCall', args: { method: 'boardSlots', stationId } };
+      try {
+        const response = await Promise.race([
+          window.SF.laneRpc(rpc.op, rpc.args),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error('boardSlots observation exceeded 1500ms')), 1500);
+          }),
+        ]);
+        const slots = response?.result?.result;
+        return { ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null,
+          hasSeededOffer: Array.isArray(slots) ? slots.includes('handoff_probe_bulk_trade') : null };
+      } catch (cause) { return { ...rpc, error: String(cause?.message || cause).slice(0, 600) }; }
+      finally { clearTimeout(timer); }
+    }, seeded.stationId), new Promise((resolve) => {
+      observationTimer = setTimeout(() => resolve({ error: 'boardSlots page observation exceeded 2000ms' }), 2000);
+    })]).catch((cause) => ({ error: String(cause?.message || cause).slice(0, 600) }))
+      .finally(() => clearTimeout(observationTimer));
+    return reportStationHandoffFailure(page,
+      { boundary: 'posted mission mirror', seeded, authoritativeBoard }, issues, error);
+  });
   await page.waitForFunction(() => !!document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]'), null, { timeout: 6000 }).catch((error) =>
     reportStationHandoffFailure(page, { boundary: 'posted mission row', seeded }, issues, error));
   const before = await page.evaluate(() => window.SF.state.missions.active.filter((m) => m && m.status === 'active').length);

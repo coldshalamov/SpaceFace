@@ -1532,7 +1532,7 @@ export function createDomainDiffer(options = {}) {
         runAdmissionBootstrap = true;
       }
     }
-    if (node.lastSign >= 0 && !freshOwnerSnapshot && !npcJobsRevisionChanged
+    if (node.lastSign >= 0 && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
         && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
@@ -1586,6 +1586,7 @@ export function createDomainDiffer(options = {}) {
     // freshness unchanged, and exact text equality cannot hide a hash collision.
     const changed = node.lastSign < 0 || sig !== node.signature;
     stats.signedBytes += sig.length;
+    node.urgentSign = false;
     node.lastSign = tick;
     node.bytes = sig.length;
     if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
@@ -1620,6 +1621,15 @@ export function createDomainDiffer(options = {}) {
 
   return {
     paths,
+    // An owner event may require one mutable leaf before its normal cold slot. Keep the
+    // previous signature: an unchanged value still ships nothing, and the next diff resumes
+    // the usual cadence. A lazy leaf needs no flag before its first (already eager) sign.
+    invalidateLeaf(path) {
+      const node = paths.get(path);
+      if (!node || !node.leaf) return false;
+      node.urgentSign = true;
+      return true;
+    },
     diff(state, tick) {
       const start = nowNs();
       const updates = [];
