@@ -161,8 +161,9 @@ ${T} select.k-select.con-select option { background:#0c0f13; color:rgb(${WARM});
 }
 /* the cost words never cross the frame: the two cells share one row grid (subgrid), so where the
    reading is too narrow for them a word that wraps ("Research / points") lifts its own column
-   without knocking the numerals out of line */
-${T} .con-dossier__cost { grid-template-rows:repeat(3, auto); }
+   without knocking the numerals out of line (the dl only: a researched node's "Paid …" line is a
+   <p> with the same class and would gain two empty rows and their gaps) */
+${T} dl.con-dossier__cost { grid-template-rows:repeat(3, auto); }
 ${T} .con-cost { grid-row:span 3; grid-template-rows:subgrid; row-gap:0; }
 ${T} .con-cost dt { align-self:end; }
 @media (max-width:1100px) {
@@ -198,6 +199,9 @@ ${T} .con-cost dt { align-self:end; }
   ${T} .con-read__n { font-size:clamp(26px, 7.4vw, 34px); }
   ${T} .con-read__w { max-width:none; text-align:left; letter-spacing:.16em; }
   ${T} > .k-stage.con-stage { grid-area:stage; height:clamp(380px, 86vw, 620px); margin:0 -18px; }
+  /* the dial stands in a column that scrolls: a vertical swipe on it scrolls the column (a sideways
+     drag still pans the sky); the wheel yields the same way in constellation.js */
+  ${T} .con-sky { touch-action:pan-y; }
   ${T} > .con-side { grid-area:side; min-height:auto; padding:4px 0 18px; overflow:visible; }
   ${T} > .con-side::before { inset:-12px -18px; }
   ${T} .con-dossier__name { font-size:clamp(24px, 7vw, 32px); }
