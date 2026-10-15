@@ -4,4 +4,4 @@
 
 `verify_source_geometry.py` opens this file read-only and measures exact nearest-surface clearance at the proposed delivery receiver. Its JSON is geometry evidence only.
 
-Rejected/earlier production attempts and stills are retained in the packet's versioned source-renders folders; source Blender images do not claim game-camera acceptance. See `design/visual-assets/tally-3/authoring-notes.md` for exact joining and interpretation limits.
+Rejected/earlier production attempts and stills are retained in the packet's versioned source-renders folders; source Blender images do not claim game-camera acceptance. The lane's authoring notes (joining/interpretation limits) are in git history under `design/visual-assets/tally-3/authoring-notes.md` (removed 2026-10-15).
