@@ -668,31 +668,46 @@ function domainCadenceFor(rootKey) {
 // worker realm; the facade probe/checker consumes it in the main realm. Both
 // realms must install the SAME profile before the first diff pass or the probe
 // path sets diverge — the runner ships it on the init directive so the two
-// realms can't drift. Empty profile keeps the stage-6 shape and staggers cold work.
+// realms can't drift. The station profile keeps the stage-6 shape and adds
+// only the bounded live-market projection.
 //   expandPaths: [{segs, depth}] — prefix expansion overrides (was the frozen
 //     DOMAIN_EXPAND_PATHS knob; a matching prefix raises expand depth).
-//   leafViews: [{segs, leafSegs, drop, deferFirstSign, firstSignTicks}] — leaf
-//     projections: at a leaf path of length leafSegs matching prefix segs,
-//     sign/ship the leaf minus the named keys; deferFirstSign spreads
+//   leafViews: [{segs, leafSegs, drop, project, deferFirstSign, firstSignTicks,
+//     minCadenceTicks}] — leaf projections: at a leaf path of length leafSegs
+//     matching prefix segs, sign/ship the projected leaf; `drop` removes named
+//     keys from one object and `project` selects a named bounded projection.
+//     deferFirstSign spreads
 //     first-signs onto a slot schedule (firstSignTicks ticks — defaults to the
 //     root cadence, DOMAIN_COLD_TICKS flattens a mass-mint hardest).
+//     minCadenceTicks is an explicit lower bound between ordinary re-signs;
+//     it does not delay the first mint or structural deletion.
 //   staggerCold: defaults true; explicit false restores the aligned
 //     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
 const activeDomainConfig = { expandPaths: [], leafViews: [], staggerCold: true };
 const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
 
-// Named diagnostic wire profiles. The ordinary runtime installs the empty
-// profile; callers must opt into a name before the first differ is created so
-// the worker and facade can receive the same shape. Keep the history-bearing
-// commodity profile separate from the no-history ceiling experiment: the
-// market UI still reads entry.history synchronously on reset/open.
+// Named diagnostic wire profiles. The ordinary runtime installs the station
+// profile before the first differ is created and ships the same object to the
+// worker realm. The station profile projects listing history out of the live
+// mirror; the market UI backfills those authoritative rings through the
+// marketHistory RPC. The history-bearing commodity profile remains available
+// for diagnostics that keep inline history.
 export const DOMAIN_MIRROR_PROFILE_NAMES = Object.freeze([
   'station', 'commodity', 'commodity-nohist',
 ]);
 
 export function createDomainMirroringProfile(name = 'station') {
   const profile = String(name || 'station');
-  if (profile === 'station') return {};
+  if (profile === 'station') return {
+    // Keep the production station-level shape (economy.markets.<station> is
+    // still one leaf) while removing only the per-listing chart cache. The
+    // worker's authoritative market/history objects are never changed.
+    leafViews: [{
+      segs: ['economy', 'markets'], leafSegs: 3,
+      project: 'marketLive', minCadenceTicks: DOMAIN_COLD_TICKS,
+    }],
+    staggerCold: true,
+  };
   if (profile !== 'commodity' && profile !== 'commodity-nohist') {
     throw new RangeError(`unknown domain mirror profile: ${profile}`);
   }
@@ -752,11 +767,40 @@ function isNpcJobsByIdPath(segs) {
 // Shallow key-drop projection for a leaf-view rule. Returns a copy minus the
 // dropped keys — never mutates the live value; callers sign/clone the result
 // so the facade stores exactly the projected (shipped) content.
+function projectMarketLive(v) {
+  if (!isCanonicalObject(v)) return v;
+  const commodityIds = Object.keys(v);
+  let hasHistory = false;
+  for (const commodityId of commodityIds) {
+    const listing = v[commodityId];
+    if (isCanonicalObject(listing) && Object.hasOwn(listing, 'history')) {
+      hasHistory = true;
+      break;
+    }
+  }
+  if (!hasHistory) return v;
+  const out = {};
+  for (const commodityId of commodityIds) {
+    const listing = v[commodityId];
+    if (!isCanonicalObject(listing) || !Object.hasOwn(listing, 'history')) {
+      out[commodityId] = listing;
+      continue;
+    }
+    const projected = {};
+    for (const key of Object.keys(listing)) {
+      if (key !== 'history') projected[key] = listing[key];
+    }
+    out[commodityId] = projected;
+  }
+  return out;
+}
+
 function projectDomainLeaf(rule, v) {
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
+  if (rule && rule.project === 'marketLive') return projectMarketLive(v);
   if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
   let has = false;
   for (const k of rule.drop) {
@@ -1363,6 +1407,13 @@ export function createDomainDiffer(options = {}) {
       node.npcJobsRevision = npcJobsRevision;
     }
     const cadence = domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]);
+    const minCadenceTicks = leafRule && Number.isFinite(leafRule.minCadenceTicks)
+      ? Math.max(1, Math.floor(leafRule.minCadenceTicks)) : 0;
+    // A replaced station object is a reset/rebind boundary. Keep its first
+    // mint immediate even when the old path had a recent market-live sign;
+    // ordinary in-place market updates still use the explicit lower bound.
+    const marketLiveSourceChanged = leafRule && leafRule.project === 'marketLive'
+      && node.lastSign >= 0 && node.marketLiveSource !== v;
     // The first admitted threat in an active wave is a bootstrap edge, not a
     // recurring progress sample.  A new game can leave the run root already
     // expanded with spawnedThreat=0; if the worker then reaches active and
@@ -1383,10 +1434,14 @@ export function createDomainDiffer(options = {}) {
       }
     }
     if (node.lastSign >= 0 && !freshDraftSnapshot && !npcJobsRevisionChanged
-        && !runAdmissionBootstrap) {
+        && !runAdmissionBootstrap && !marketLiveSourceChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
-      const interval = Math.max(tierTicks, cadence);
+      // minCadenceTicks is a true minimum after a sign, rather than a slot
+      // phase. This keeps a projected market below 4 KiB from falling back to
+      // the economy's 10-pass cadence (six times the intended signing rate).
+      if (minCadenceTicks > 1 && tick - node.lastSign < minCadenceTicks) return;
+      const interval = Math.max(tierTicks, cadence, minCadenceTicks);
       if (interval > 1) {
         // Keep the same maximum freshness interval while spreading recurring
         // large canonical/signature walks across replies. Initial values still
@@ -1434,6 +1489,7 @@ export function createDomainDiffer(options = {}) {
     stats.signedBytes += sig.length;
     node.lastSign = tick;
     node.bytes = sig.length;
+    if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
     if (currentCombatTraceWatermark) {
       const eventRefs = node.combatTraceEventRefs || [];
       eventRefs.length = currentCombatTraceWatermark.events.length;

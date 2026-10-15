@@ -6,13 +6,18 @@ import { resolveSimLaneFlags, createSimLaneRuntime } from '../src/core/simLaneMa
 import {
   createDomainMirroringProfile,
   configureDomainMirroring,
-  createDomainDiffer,
+  createDomainDiffer, DOMAIN_COLD_TICKS,
 } from '../scripts/lib/simReadModel.mjs';
 
-test('named domain profiles preserve station default and commodity history', () => {
+test('named domain profiles preserve station shape and commodity history', () => {
   configureDomainMirroring({});
-  assert.deepEqual(createDomainMirroringProfile(), {});
-  assert.deepEqual(createDomainMirroringProfile('station'), {});
+  const station = createDomainMirroringProfile();
+  assert.deepEqual(station, createDomainMirroringProfile('station'));
+  assert.deepEqual(station.leafViews, [{
+    segs: ['economy', 'markets'], leafSegs: 3,
+    project: 'marketLive', minCadenceTicks: DOMAIN_COLD_TICKS,
+  }]);
+  assert.equal(station.staggerCold, true);
 
   const commodity = createDomainMirroringProfile('commodity');
   assert.deepEqual(commodity.expandPaths, [
