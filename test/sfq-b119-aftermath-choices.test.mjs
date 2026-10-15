@@ -150,6 +150,12 @@ test('a disabled ship that dies becomes salvage, not a rescue of a corpse', () =
 
 test('a fled ship that despawns is not a chase and not a wreck', () => {
   const h = makeHarness();
+  const calls = [];
+  const deck = {
+    offerDecision(spec) { calls.push(spec); return true; },
+    resolveDecision(id) { calls.push({ resolved: id }); return true; },
+  };
+  createAftermathChoicePrompt({ bus: h.bus, state: h.state, deck });
   const runner = spawnHostile(h, 800);
   h.bus.emit('ai:flee', { entityId: runner.id });
   assert.deepEqual(idsOf(h.state.combatOutcome.aftermath), ['pursuit', 'escape']);
@@ -158,6 +164,7 @@ test('a fled ship that despawns is not a chase and not a wreck', () => {
   h.bus.emit('entity:destroyed', { id: runner.id, reason: 'egress' });
   assert.deepEqual(idsOf(h.state.combatOutcome.aftermath), ['escape']);
   assert.equal(h.state.combatOutcome.byEntity[runner.id].dead, undefined);
+  assert.equal(calls[calls.length - 1].resolved, 'aftermath:field');
   assert.equal(applyAftermathChoice(h.state, 'pursuit'), null);
   assert.equal(applyAftermathChoice(h.state, 'salvage'), null);
   assert.equal(h.state.paused, undefined);
