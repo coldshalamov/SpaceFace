@@ -303,6 +303,46 @@ test('a later spawn does not reopen an answered card or keep salvage on the new 
   assert.equal(h.state.paused, undefined);
 });
 
+test('a destroyed reuse does not put salvage back on the old id', () => {
+  const h = makeHarness();
+  const calls = [];
+  const deck = {
+    offerDecision(spec) { calls.push(spec); return true; },
+    resolveDecision(id) { calls.push({ resolved: id }); return true; },
+  };
+  createAftermathChoicePrompt({ bus: h.bus, state: h.state, deck });
+  const victim = spawnHostile(h, 400);
+  const oldId = victim.id;
+  h.bus.emit('entity:killed', { id: oldId, killerId: h.state.playerId });
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  victim.alive = false;
+  h.state.entities.delete(oldId);
+  h.state.aftermathWrecks = {
+    bySector: { [SECTOR]: [{ markerId: 'bandit-hull', kind: 'battle-aftermath' }] },
+  };
+  h.bus.emit('entity:destroyed', { id: oldId, entity: victim, reason: 'killed' });
+  const bullet = h.helpers.spawnEntity({
+    id: oldId,
+    type: 'projectile', pos: { x: 420, z: 20 }, vel: { x: 0, z: 0 }, team: 1,
+    hull: 1, hullMax: 1, alive: true,
+    data: { name: 'shot' },
+  });
+  h.ships.push(bullet);
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'bandit-hull');
+  const beforeDestroy = calls.length;
+  bullet.alive = false;
+  h.state.entities.delete(oldId);
+  h.bus.emit('entity:destroyed', { id: oldId, entity: bullet, reason: 'impact' });
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'bandit-hull');
+  assert.notEqual(h.state.combatOutcome.aftermath.targets.salvage, oldId);
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'bandit-hull');
+  assert.equal(calls.length, beforeDestroy);
+  h.bus.emit('sector:enter', { sectorId: SECTOR });
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'bandit-hull');
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {

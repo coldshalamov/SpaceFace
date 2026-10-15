@@ -408,16 +408,18 @@ export const combatOutcome = {
     if (!state) return null;
     const own = ensureState(state);
     const sectorId = state.world && state.world.currentSectorId || null;
+    const wreckIds = sectorWreckIds(state, sectorId);
     const outcomes = [];
     for (const record of own.outcomes) {
       if (!record || record.sectorId !== sectorId) continue;
       const entity = entityFor(state, record.entityId);
       const same = sameOccupant(record, entity);
       const livingOther = !!(entity && entity.alive !== false && !same);
-      // A kill's number now belongs to a living ship. Salvage must not focus that hull.
-      const entityId = livingOther && (record.outcome === 'killed' || record.dead === true)
-        ? null
-        : record.entityId;
+      const killReceipt = record.outcome === 'killed' || record.dead === true;
+      // The number is not this body. A living reuse is never the focus. Once a wreck is
+      // here, destroying that reuse must not snap salvage back onto the old id.
+      const notThisBody = killReceipt && !same && (livingOther || wreckIds.length > 0);
+      const entityId = notThisBody ? null : record.entityId;
       outcomes.push({
         outcome: record.outcome,
         entityId,
@@ -429,7 +431,7 @@ export const combatOutcome = {
     const offer = aftermathChoices({
       outcomes,
       sectorId,
-      wreckIds: sectorWreckIds(state, sectorId),
+      wreckIds,
     });
     // Before any fight or wreck in this sector there is nothing to choose. Escape-only is
     // published once a fight receipt or a field wreck exists, not on an empty cruise.
