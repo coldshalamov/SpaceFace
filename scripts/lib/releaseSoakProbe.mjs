@@ -401,9 +401,11 @@ export async function runReleaseSoakProbe({
       } catch (_) { /* instrumentation hooks are optional */ }
     }).catch(() => {});
     let prevWarmupSnapshot = null;
+    let lastWarmupRestorePopulation = null;
     for (let warmupIndex = 0; warmupIndex < WARMUP_MAX_CYCLES; warmupIndex++) {
+      let warmupCycle = null;
       try {
-        await withTimeout(
+        warmupCycle = await withTimeout(
           runSoakCycle(page, { index: `warmup-${warmupIndex}`, outputDir, log: doLog, screenshots: false }),
           cycleTimeoutMs,
           `release-soak warmup cycle ${warmupIndex}`,
@@ -431,6 +433,8 @@ export async function runReleaseSoakProbe({
         30_000,
         `release-soak warmup ${warmupIndex} memory snapshot`,
       );
+      snap.restorePopulation = warmupCycle?.restorePopulation || null;
+      lastWarmupRestorePopulation = snap.restorePopulation;
       const snapDelta = (key) => prevWarmupSnapshot && Number.isFinite(snap[key])
         && Number.isFinite(prevWarmupSnapshot[key])
         ? snap[key] - prevWarmupSnapshot[key] : null;
@@ -457,6 +461,10 @@ export async function runReleaseSoakProbe({
       30_000,
       'release-soak baseline memory snapshot',
     );
+    // The baseline follows the final warmup cycle. Keep that cycle's restore scalar beside the
+    // baseline for population-growth interpretation; it is diagnostic context, not a second
+    // heap sample taken at the load boundary.
+    baselineMemory.restorePopulation = lastWarmupRestorePopulation;
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
       await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot')).catch(() => {});
     }
@@ -532,11 +540,13 @@ export async function runReleaseSoakProbe({
         throw cycleError;
       }
       cycleResults.push(cycle);
-      memoryCheckpoints.push(await withTimeout(
+      const checkpoint = await withTimeout(
         readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
         30_000,
         `release-soak memory checkpoint ${index + 1}`,
-      ));
+      );
+      checkpoint.restorePopulation = cycle.restorePopulation || null;
+      memoryCheckpoints.push(checkpoint);
       index += 1;
     }
     doLog(`soak cycles complete: ${cycleResults.length} cycles in ${((Date.now() - soakStartedAt) / 60_000).toFixed(1)} min`);
@@ -1615,6 +1625,77 @@ async function captureCycleStateDiag(page) {
   });
 }
 
+const RESTORE_POPULATION_SAMPLE_LIMIT = 16;
+const RESTORE_POPULATION_TYPE_LIMIT = 32;
+
+function restorePopulationIdentity(row) {
+  if (!row || typeof row !== 'object') return null;
+  const worldRecordId = row.worldRecordId ?? row.data?.worldRecordId;
+  if (worldRecordId != null && (typeof worldRecordId === 'string' || typeof worldRecordId === 'number')) {
+    return `record:${String(worldRecordId)}`;
+  }
+  if (row.id != null && (typeof row.id === 'string' || typeof row.id === 'number')) {
+    return `id:${String(row.id)}`;
+  }
+  return null;
+}
+
+function compactRestorePopulationEntity(row) {
+  if (!row || typeof row !== 'object') return { id: null, type: null, worldRecordId: null, occupantGeneration: null };
+  return {
+    id: row.id ?? null,
+    type: row.type || null,
+    worldRecordId: row.worldRecordId ?? row.data?.worldRecordId ?? null,
+    occupantGeneration: row.occupantGeneration ?? row.data?.occupantGeneration ?? null,
+  };
+}
+
+/**
+ * Compare the durable entity rows in the slot envelope with the live list immediately after
+ * restore. The saved envelope intentionally contains only the player and persistent rows;
+ * regenerated sector bodies therefore remain visible in the bounded diagnostic as expected
+ * materialization rather than being mistaken for a save leak. This helper owns no game state.
+ */
+function summarizeRestorePopulation({
+  loadedSlot = null,
+  envelopeAvailable = true,
+  envelopeEntities = [],
+  postLoadEntities = [],
+} = {}) {
+  const savedRows = Array.isArray(envelopeEntities) ? envelopeEntities.filter(Boolean) : [];
+  const postRows = Array.isArray(postLoadEntities) ? postLoadEntities.filter(Boolean) : [];
+  const base = {
+    loadedSlot: loadedSlot || null,
+    envelopeAvailable: envelopeAvailable === true,
+    envelopeEntityCount: envelopeAvailable === true ? savedRows.length : null,
+    postLoadEntityCount: postRows.length,
+    delta: envelopeAvailable === true ? postRows.length - savedRows.length : null,
+    newlyMaterialized: null,
+  };
+  if (envelopeAvailable !== true || postRows.length <= savedRows.length) return base;
+
+  const savedKeys = new Set(savedRows.map(restorePopulationIdentity).filter(Boolean));
+  const extras = [];
+  for (const row of postRows) {
+    const key = restorePopulationIdentity(row);
+    if (key && savedKeys.has(key)) continue;
+    extras.push(row);
+  }
+  const byType = Object.create(null);
+  for (const row of extras) {
+    const type = String(row?.type || 'unknown');
+    byType[type] = (byType[type] || 0) + 1;
+  }
+  const typeEntries = Object.entries(byType).sort(([a], [b]) => a.localeCompare(b));
+  base.newlyMaterialized = {
+    count: extras.length,
+    byType: Object.fromEntries(typeEntries.slice(0, RESTORE_POPULATION_TYPE_LIMIT)),
+    omittedTypeCount: Math.max(0, typeEntries.length - RESTORE_POPULATION_TYPE_LIMIT),
+    samples: extras.slice(0, RESTORE_POPULATION_SAMPLE_LIMIT).map(compactRestorePopulationEntity),
+  };
+  return base;
+}
+
 async function runSoakCycle(page, { index, outputDir, log, screenshots = true }) {
   const marks = [];
   const samples = [];
@@ -1764,35 +1845,66 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   // the envelope for the slot actually loaded is the authoritative restore reference. Keep the
   // event snapshots as diagnostics, but never compare them as if they were worker-owned bytes.
   const loadedEnvelope = await page.evaluate((slot) => {
+    const compactEntity = (entity) => entity ? {
+      id: entity.id ?? null,
+      type: entity.type || null,
+      worldRecordId: entity.data?.worldRecordId ?? entity.worldRecordId ?? null,
+      occupantGeneration: entity.occupantGeneration ?? entity.data?.occupantGeneration ?? null,
+    } : null;
+    const postLoadEntities = Array.isArray(window.SF?.state?.entityList)
+      ? window.SF.state.entityList.map(compactEntity).filter(Boolean)
+      : [];
     const raw = slot ? localStorage.getItem('sf.save.' + slot) : null;
-    if (!raw) return null;
+    if (!raw) return { available: false, postLoadEntities };
     try {
       const env = JSON.parse(raw);
       const player = env?.data?.entities?.player;
+      const persistent = Array.isArray(env?.data?.entities?.persistent)
+        ? env.data.entities.persistent : [];
       const items = env?.data?.cargo?.items || {};
       return {
+        available: true,
         pos: player?.pos ? { x: Number(player.pos.x), z: Number(player.pos.z) } : null,
         speed: Math.hypot(Number(player?.vel?.x || 0), Number(player?.vel?.z || 0)),
         economy: {
           credits: Number(env?.data?.player?.credits),
           cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
         },
+        envelopeEntities: [player, ...persistent].map(compactEntity).filter(Boolean),
+        postLoadEntities,
       };
-    } catch { return null; }
+    } catch { return { available: false, postLoadEntities };
+    }
   }, loadedSlot);
-  const restoreReference = loadedEnvelope || saved;
+  const restoreReference = loadedEnvelope?.available === true ? loadedEnvelope : saved;
   assert(restoreReference?.pos, `loaded slot envelope must carry the restored pose (slot ${loadedSlot || 'unknown'})`);
+  const restorePopulation = summarizeRestorePopulation({
+    loadedSlot,
+    envelopeAvailable: loadedEnvelope?.available === true,
+    envelopeEntities: loadedEnvelope?.envelopeEntities || [],
+    postLoadEntities: loadedEnvelope?.postLoadEntities || [],
+  });
   const loadedEconomy = await readEconomySnapshot(page);
   const divergedDistance = distance(saved.pos, diverged.pos);
   const restoredDistance = distance(restoreReference.pos, loadedAtEvent.pos);
   const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
-  mark('load-observed', { saved, loadedSlot, diverged, loadedAtEvent, loaded, divergedDistance, restoredDistance, postLoadAdvanceDistance });
+  mark('load-observed', {
+    saved,
+    loadedSlot,
+    diverged,
+    loadedAtEvent,
+    loaded,
+    divergedDistance,
+    restoredDistance,
+    postLoadAdvanceDistance,
+    restorePopulation,
+  });
   assert(
     restoredDistance <= (loadedSlot === 'quick' ? Math.max(1, divergedDistance * 0.25) : 1),
     `load position restore exceeded tolerance: ${JSON.stringify({ loadedSlot, restoredDistance, divergedDistance, saved, diverged, loaded })}`,
   );
   assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
-  mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance });
+  mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance, restorePopulation });
   // The honest roundtrip check: live economy at the save:loaded event instant must equal
   // the envelope that was loaded. The later readEconomySnapshot stays diagnostic-only —
   // gameplay keeps running after restore and can legitimately grant cargo before it.
@@ -2085,7 +2197,17 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
 
   const markNames = marks.map((entry) => entry.name);
   return {
-    summary: { index, pass: true, docked: true, marks: markNames, sampleCount: samples.length, saveBytes: savedStorage.bytes, screenshot },
+    summary: {
+      index,
+      pass: true,
+      docked: true,
+      marks: markNames,
+      sampleCount: samples.length,
+      saveBytes: savedStorage.bytes,
+      restorePopulation,
+      screenshot,
+    },
+    restorePopulation,
     marks,
     samples,
     screenshot,
@@ -6658,6 +6780,7 @@ export {
   // release soak. Keep this export harness-only; it does not create a second game path.
   launchElectron,
   allocateOutputDir,
+  summarizeRestorePopulation,
   sampleRafWindow,
   samplePerformanceAttribution,
   performanceAttributionExecutionPlan,

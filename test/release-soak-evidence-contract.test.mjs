@@ -17,8 +17,45 @@ import {
   summarizeSamples,
   validatePerformanceEvidence,
 } from '../scripts/lib/releaseSoakContracts.mjs';
+import { summarizeRestorePopulation } from '../scripts/lib/releaseSoakProbe.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+
+test('restore population receipt compares the loaded envelope with a bounded post-load census', () => {
+  const saved = [
+    { id: 1, type: 'ship' },
+    { id: 7, type: 'wreck', worldRecordId: 'wreck:7' },
+  ];
+  const regenerated = Array.from({ length: 20 }, (_, index) => ({
+    id: 100 + index,
+    type: index % 2 ? 'asteroid' : 'ship',
+  }));
+  const result = summarizeRestorePopulation({
+    loadedSlot: 'quick',
+    envelopeEntities: saved,
+    postLoadEntities: [...saved, ...regenerated],
+  });
+
+  assert.deepEqual(
+    {
+      loadedSlot: result.loadedSlot,
+      envelopeEntityCount: result.envelopeEntityCount,
+      postLoadEntityCount: result.postLoadEntityCount,
+      delta: result.delta,
+    },
+    { loadedSlot: 'quick', envelopeEntityCount: 2, postLoadEntityCount: 22, delta: 20 },
+  );
+  assert.equal(result.newlyMaterialized.count, 20);
+  assert.deepEqual(result.newlyMaterialized.byType, { asteroid: 10, ship: 10 });
+  assert.equal(result.newlyMaterialized.samples.length, 16, 'diagnostic samples must stay bounded');
+
+  const stable = summarizeRestorePopulation({
+    loadedSlot: 'quick',
+    envelopeEntities: saved,
+    postLoadEntities: saved,
+  });
+  assert.equal(stable.newlyMaterialized, null, 'equal populations need no extra histogram');
+});
 
 test('probe rejects a changed worktree after persisting diagnostic telemetry', async () => {
   const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
