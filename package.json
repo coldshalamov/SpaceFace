@@ -8,6 +8,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "postinstall": "node scripts/patch-playwright-electron.mjs",
     "stranger-lab": "node tools/agentic/stranger-lab/cli.mjs",
     "causal-foundry": "node tools/causal-foundry/cli.mjs",
     "scene-truth": "node tools/scene-truth/cli.mjs",
@@ -622,7 +623,7 @@
     "check:pq020:proofs": "node --test test/pq020-ceres-topology.test.mjs test/pq020-ceres-proofs.test.mjs test/far-shelf-promotion.test.mjs",
     "check:pq022:relay-collar": "node --test test/pq022-relay-collar-admission.test.mjs",
     "check:pq022:corridor-assets": "node scripts/check-pq022-corridor-assets.mjs --expected-gaps=scripts/lib/pq022CorridorExpectedGaps.json",
-    "check:runtime-maturity": "node --test --test-concurrency=2 test/opening-loading-admission.test.mjs test/opening-gpu-admission.test.mjs test/opening-gpu-admission-submit.test.mjs test/sim-worker-local-clock.test.mjs test/sim-lane-stall-confirmation.test.mjs test/sim-lane-dom-interruptions.test.mjs test/continue-gpu-handover.test.mjs test/ui-screen-registration-lifecycle.test.mjs test/sector-prewarm-boundary-generation.test.mjs test/feel-damage-player-involvement.test.mjs test/shipworks-fit-from-hold.test.mjs test/agent-loop.test.mjs test/source-baseline-closure.test.mjs test/source-overlay-server.test.mjs test/load-finalizer-bounded-waits.test.mjs test/weapon-clips.test.mjs test/renderer-owner-lifetime.test.mjs test/probe-main-thread-profile.test.mjs test/domain-mirror-profile.test.mjs test/domain-market-live-projection.test.mjs test/next-wave-nxi-098.test.mjs test/domain-combat-trace-watermark.test.mjs test/inference-pause-last-hit.test.mjs test/heap-snapshot-capture.test.mjs test/ledger-tape-yield.test.mjs",
+    "check:runtime-maturity": "node --test --test-concurrency=2 test/opening-loading-admission.test.mjs test/opening-gpu-admission.test.mjs test/opening-gpu-admission-submit.test.mjs test/sim-worker-local-clock.test.mjs test/sim-lane-stall-confirmation.test.mjs test/sim-lane-dom-interruptions.test.mjs test/continue-gpu-handover.test.mjs test/ui-screen-registration-lifecycle.test.mjs test/sector-prewarm-boundary-generation.test.mjs test/feel-damage-player-involvement.test.mjs test/shipworks-fit-from-hold.test.mjs test/agent-loop.test.mjs test/source-baseline-closure.test.mjs test/source-overlay-server.test.mjs test/load-finalizer-bounded-waits.test.mjs test/weapon-clips.test.mjs test/renderer-owner-lifetime.test.mjs test/probe-main-thread-profile.test.mjs test/domain-mirror-profile.test.mjs test/domain-market-live-projection.test.mjs test/next-wave-nxi-098.test.mjs test/domain-combat-trace-watermark.test.mjs test/inference-pause-last-hit.test.mjs test/heap-snapshot-capture.test.mjs test/ledger-tape-yield.test.mjs test/activity-runtime.test.mjs test/activity-classification.test.mjs test/rigid-opaque-batch-policy.test.mjs test/rigid-opaque-batch.test.mjs test/authored-live-probe-contract.test.mjs test/playwright-electron-startup-waiters.test.mjs test/tactical-ai-quiet-latch.test.mjs",
     "check:baseline": "node scripts/check-baseline.mjs",
     "check:dynres-target-pool": "node --test test/dynres-target-pool.test.mjs",
     "check:integrated-quality-preset": "node --test test/integrated-quality-preset.test.mjs test/pq-165-00-presets.test.mjs",
@@ -681,7 +682,7 @@
     "ktx2-encoder": "^0.5.3",
     "memlab": "^2.0.5",
     "meshoptimizer": "^1.2.0",
-    "playwright": "^1.61.1",
+    "playwright": "1.61.1",
     "pngjs": "^7.0.0",
     "spectorjs": "^0.9.30",
     "stats-gl": "^4.2.3",
