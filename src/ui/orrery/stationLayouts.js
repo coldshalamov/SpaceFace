@@ -354,8 +354,9 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; position:relative; z-index:1; }
   ${D} .sxb-berth.dp-frame__head > .sxb-tape { margin-top:8px !important; }
 }
-/* a very short desktop window (844×390-class): the head alone ran ~260px of a 390px window and left
-   every tab a 16px sliver — Shipworks showed no hull at all. */
+/* a very short desktop window (844×390-class): the head alone ran ~196px of a 390px window in the
+   live game (~260px with the bench's longer fixture) and left every tab a sliver — Shipworks showed
+   no hull at all. Head heights below are .dp-frame__head measured live (?dev=screen:station). */
 @media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
   /* the berth scrolls: each tab keeps a 230px cell (960×540 has ~210) and the destination rail
      stays pinned to the bottom edge */
@@ -378,7 +379,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
 }
 /* …and from 801px wide the head is two columns: name, mechanic's note and next step stacked left;
-   purse and the five dials right (~160px instead of ~260px) */
+   purse and the five dials right (141px live at 801–900, 132px at 901–1100; 162px on the bench) */
 @media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
   ${D} .sxb-berth.dp-frame__head { position:relative; grid-template-columns:minmax(0, 212px) minmax(0, 1fr) !important;
     grid-template-areas:"title crown" "tape crown" "handoff crown" !important; grid-template-rows:auto auto 1fr !important;
@@ -422,6 +423,23 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-next__n { margin-left:auto !important; }
   ${D} .sxb-next__w { order:3; flex:0 0 calc(100% - 76px) !important; min-width:0 !important; padding-left:17px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
   ${D} .sxb-next__x { margin:0 !important; padding:0 !important; }
+}
+/* …from 901 wide the search key shows its "Find a service" word (station-orbital.css drops it at
+   ≤900), so the key is ~196px rather than ~70px and CREDITS 5,000 printed over it: the purse stands
+   clear of the key's full width (rest, hover and focus are the same width) */
+@media (min-width:901px) and (max-width:1100px) and (max-height:460px) {
+  ${D} .sxb-crown .sxb-purse { margin-right:220px !important; }
+}
+/* …at 801-900 wide the right column is ~510-610px and the five dials with their one-line verbs need
+   ~565px (live prices run "REARM 1,200 CR", "DRAW +7,240 CR"), so Munitions ran off the right edge:
+   the Ledger and Munitions verbs stand over their price on two lines (Hull already has two), and
+   COMMS · HELP stack so LEDGER stays on the rail */
+@media (min-width:801px) and (max-width:900px) and (max-height:460px) {
+  ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] { flex-wrap:wrap !important; justify-content:center !important;
+    width:min-content !important; row-gap:0 !important; }
+  ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] .orr-act__cost { flex:1 0 100%; text-align:center; }
+  ${D} .sxb-ops .sx-comms { display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
+  ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
 }
 /* …and at 651-800 wide, where a four-band head leaves no working tab, the crown shares the right
    column with the title, tape and handoff. The existing 12px readings stay intact; the body is allowed
@@ -479,7 +497,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-next { flex-wrap:wrap !important; padding-block:0 !important; min-width:0 !important; gap:2px 4px !important; }
   ${D} .sxb-next__t { white-space:normal !important; flex:1 1 100% !important; min-width:0; }
   ${D} .sxb-next__w { flex:1 1 auto !important; min-width:0 !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
-  ${D} .sxb-ops { column-gap:8px !important; }
+  ${D} .sxb-ops { column-gap:6px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
   ${D} .sxb-ops .sx-tile__label { font-size:12px !important; }
   ${D} .sxb-ops .sx-comms { display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }

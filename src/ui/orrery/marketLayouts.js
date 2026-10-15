@@ -586,6 +586,11 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
 @media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-screen__body > .sx-mkt.orr-market { grid-template-rows:minmax(0, 1fr) 0 !important; row-gap:0 !important; }
   ${MD} > .sx-mkt__list { height:auto !important; max-height:100% !important; }
+  /* keyboard focus scrolls the berth to the decision with block:nearest, which parked REPAIR NOW / FLY
+     DAMAGED behind the pinned foot (73px) and its 12px fade: the choice keeps that much clear below it.
+     (A scroll-padding on the berth would also catch the foot's own tiles, which the station focuses on
+     open, and scroll the head away.) */
+  ${MD} .sx-mkt__decision .sx-decision__opt { scroll-margin-bottom:88px; }
 }
 /* ---- 651–900 × ≤460 desktop: beside the family ladder the register's name column was 0–25px (rows
    read as an icon and numbers). The families wrap into a strip over the register instead, every one
