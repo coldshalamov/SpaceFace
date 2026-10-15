@@ -67,6 +67,8 @@ const HELIOS_APPROACH_TIMEOUT_MS = readPositiveIntArg('--helios-approach-timeout
 // acceptance run 120 ms early, before a single asset had been examined. The default is unchanged,
 // so CI behaves exactly as before.
 const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 45000);
+const CDP_REQUEST_TIMEOUT_MS = 45000;
+const FAILURE_DIAGNOSTICS_TIMEOUT_MS = 10000;
 const CHROME_PROFILE_PREFIX = 'spaceface-authored-assets-live-';
 const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'src/render/partsLibrary.js',
@@ -106,20 +108,31 @@ assert.deepEqual(candidate.worktreeStatus, [],
 let server = null;
 let chrome = null;
 let ws = null;
+let cdp = null;
 let debugPort = null;
 let output = null;
 let runError = null;
 let cleanupProof = null;
+let stage = 'server readiness';
+let failureStage = null;
+const enterStage = (label, timeoutMs) => {
+  stage = label;
+  console.log(`[authored-assets] ${label}`);
+  cdp?.setStage(label, timeoutMs);
+};
 const profileDir = mkdtempSync(join(tmpdir(), CHROME_PROFILE_PREFIX));
 
 try {
+  enterStage('server readiness');
   server = await startFreshServer();
   await server.ready;
   debugPort = await findFreePort(9801);
+  enterStage('Chrome launch and CDP connection');
   chrome = await spawnChrome(debugPort, profileDir);
-  const cdp = await connectCdp(debugPort);
+  cdp = await connectCdp(debugPort);
   ws = cdp.ws;
 
+  enterStage('CDP setup');
   await cdp.send('Page.enable');
   await cdp.send('Runtime.enable');
   await cdp.send('Log.enable');
@@ -129,13 +142,16 @@ try {
 
   const pageIssues = collectPageIssues(cdp);
   const probeRoute = withDebugFlight(server.baseUrl);
+  enterStage('page navigation');
   await cdp.send('Page.navigate', { url: probeRoute });
+  enterStage('debug runtime boot', BOOT_READY_TIMEOUT_MS);
   try {
     await waitFor(cdp, isBootReady, BOOT_READY_TIMEOUT_MS, 'SpaceFace debug runtime');
   } catch (err) {
     const issues = pageIssues ? pageIssues.errorIssues() : [];
     throw new Error(`${err.message}; pageIssues=${JSON.stringify(issues)}`);
   }
+  enterStage('startup trace and seeded game intent');
   await installStartupTrace(cdp);
 
   await evalVoid(cdp, `(() => {
@@ -144,9 +160,11 @@ try {
   })()`);
   let playable;
   try {
+    enterStage('seeded flight session', PLAYABLE_TIMEOUT_MS);
     playable = await waitFor(cdp, isPlayable, PLAYABLE_TIMEOUT_MS, 'seeded flight session');
   } catch (error) {
-    const startupReport = await collectAuthoredReport(cdp).catch((reportError) => ({
+    enterStage('startup failure diagnostics', FAILURE_DIAGNOSTICS_TIMEOUT_MS);
+    const startupReport = await collectAuthoredReport(cdp, { loadAssets: false }).catch((reportError) => ({
       error: reportError && reportError.message ? reportError.message : String(reportError),
     }));
     const startupTrace = await getStartupTrace(cdp).catch(() => []);
@@ -156,6 +174,7 @@ try {
   }
   const startTick = playable.tick;
 
+  enterStage('authored ship admission');
   const report = await waitForAuthoredShips(cdp);
   // The starting hub is the only station that blocks flight readiness (`flightReadySet.js`:
   // `selectPlacePackageLayer` -> GAMEPLAY_SHELL, and `isPlaceLayerBlockingFlightReady` blocks on
@@ -166,6 +185,7 @@ try {
   //
   // This does not relax the bar: the assertion below still requires `authored`. It only stops the
   // probe from reading the clock before the work it is measuring can have happened.
+  enterStage('critical station admission', CRITICAL_STATION_TIMEOUT_MS);
   const stationDeadline = await waitForAuthoredAssetDeadline({
     timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
     pollIntervalMs: 100,
@@ -192,8 +212,10 @@ try {
   if (stationSnapshot && Array.isArray(stationSnapshot.criticalStations)) {
     report.criticalStations = stationSnapshot.criticalStations;
   }
+  enterStage('advancing gameplay ticks', 10000);
   await waitFor(cdp, () => getTick(cdp, startTick + 2), 10000, 'advancing gameplay ticks');
 
+  enterStage('spawn screenshot and browser identity');
   await captureScreenshot(cdp, SHOT);
   const browserIdentity = await collectBrowserIdentity(cdp);
 
@@ -255,9 +277,11 @@ try {
   // Moving the player by pose is sanctioned rather than a write the sim undoes:
   // `_maybeResyncBodyPose` in `src/core/sg02DynamicBodyOwner.js` re-seats the Rapier body from
   // `entity.pos` whenever the two diverge beyond `POSE_RESYNC_EPS2`.
+  enterStage('Helios approach pose');
   const approach = await approachCriticalStation(cdp, 'station_helios', HELIOS_APPROACH_STANDOFF_WU);
   assert.equal(approach.moved, true,
     `probe could not bring the player within streaming reach of Helios: ${JSON.stringify(approach)}`);
+  enterStage('Helios approach admission', HELIOS_APPROACH_TIMEOUT_MS);
   const approachDeadline = await waitForAuthoredAssetDeadline({
     timeoutMs: HELIOS_APPROACH_TIMEOUT_MS,
     pollIntervalMs: 100,
@@ -279,6 +303,7 @@ try {
     approach,
     snapshot: approachSnapshot,
   };
+  enterStage('Helios approach screenshot');
   await captureScreenshot(cdp, APPROACH_SHOT);
   assert.ok(approachDeadline.passed,
     `Helios must finish authored admission once the player is inside ${HELIOS_APPROACH_STANDOFF_WU} WU: ${JSON.stringify(report.criticalStationApproach, null, 2)}`);
@@ -393,7 +418,10 @@ try {
   };
 } catch (error) {
   runError = error;
+  failureStage = cdp?.stage || stage;
 } finally {
+  enterStage('owned runtime cleanup');
+  cdp?.dispose();
   cleanupProof = await closeOwnedAuthoredProbeRuntime({
     ws,
     chrome,
@@ -426,6 +454,7 @@ if (runError || cleanupError || candidateError) {
   const errors = [runError, cleanupError, candidateError].filter(Boolean);
   const failure = {
     status: 'FAIL',
+    stage: failureStage,
     candidate,
     route: output && output.route || null,
     cleanup: cleanupProof,
@@ -700,6 +729,7 @@ function isMainModule() {
 }
 
 async function waitForAuthoredShips(cdp) {
+  cdp.setStage('authored ship admission', 45000);
   const deadline = await waitForAuthoredAssetDeadline({
     timeoutMs: 45000,
     pollIntervalMs: 50,
@@ -713,8 +743,11 @@ async function waitForAuthoredShips(cdp) {
     ),
   });
   const diagnosticsStartedAtMs = performance.now();
-  let report = await collectAuthoredReport(cdp);
+  console.log('[authored-assets] authored ship report');
+  cdp.setStage('authored ship report', CDP_REQUEST_TIMEOUT_MS);
+  let report = await collectAuthoredReport(cdp, { loadAssets: deadline.passed });
   for (let attempt = 0; attempt < 50; attempt++) {
+    if (!deadline.passed) break;
     if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
       && report.authoredShipCount === report.presentedShipCount
       && report.repeatedPackageShipPoolKeys.length > 0) break;
@@ -886,7 +919,7 @@ function collectAuthoredGateSnapshot(cdp) {
   })()`);
 }
 
-async function collectAuthoredReport(cdp) {
+export async function collectAuthoredReport(cdp, { loadAssets = true } = {}) {
   return evalJson(cdp, `(async () => {
     const requiredPlayerModularSlots = ${JSON.stringify(REQUIRED_PLAYER_MODULAR_SLOTS)};
     const requiredPlayerWholeShipSlots = ${JSON.stringify(REQUIRED_PLAYER_WHOLE_SHIP_SLOTS)};
@@ -896,7 +929,9 @@ async function collectAuthoredReport(cdp) {
     const scene = state && state.render && state.render.scene || null;
     // Loader diagnostics can yield while expensive first-use GLBs finish. Sample entities only
     // afterward so authoredShipCount and per-job diagnostics describe the same moment in time.
-    const loaderDiagnostics = await collectLoaderDiagnostics(state);
+    const loaderDiagnostics = ${loadAssets ? 'true' : 'false'}
+      ? await collectLoaderDiagnostics(state)
+      : { available: false, skipped: true, error: 'asset loading omitted from failure diagnostics' };
     const ships = state && Array.isArray(state.entityList)
       ? state.entityList.filter((entity) => entity && entity.type === 'ship' && entity.alive !== false)
       : [];
@@ -1823,12 +1858,13 @@ function spawnProbeServer(port) {
 }
 
 async function waitForReachable(url, child) {
-  for (let i = 0; i < 80; i++) {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
     if (child.exitCode != null) {
       throw new Error(`Dev server exited before becoming reachable at ${url}\n${child.probeOutput ? child.probeOutput() : ''}`);
     }
-    if (await reachable(url)) return;
-    await sleep(250);
+    if (await reachable(url, Math.max(1, Math.min(1000, deadline - Date.now())))) return;
+    await sleep(Math.min(250, Math.max(0, deadline - Date.now())));
   }
   child.kill();
   throw new Error(`Dev server did not become reachable at ${url}`);
@@ -1850,9 +1886,9 @@ function isPortFree(port) {
   });
 }
 
-async function reachable(url) {
+async function reachable(url, timeoutMs) {
   try {
-    const res = await fetch(url, { method: 'GET' });
+    const res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(timeoutMs) });
     return !!res.ok;
   } catch (_) {
     return false;
@@ -1948,50 +1984,112 @@ async function findChrome() {
 
 async function connectCdp(debugPort) {
   let wsUrl = null;
-  for (let i = 0; i < 240; i++) {
+  const deadline = Date.now() + 36000;
+  while (Date.now() < deadline) {
     try {
-      const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json`)).json();
+      const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json`, {
+        signal: AbortSignal.timeout(Math.max(1, Math.min(1000, deadline - Date.now()))),
+      })).json();
       const page = tabs.find((tab) => tab.type === 'page');
       if (page && page.webSocketDebuggerUrl) {
         wsUrl = page.webSocketDebuggerUrl;
         break;
       }
     } catch (_) {}
-    await sleep(150);
+    await sleep(Math.min(150, Math.max(0, deadline - Date.now())));
   }
   assert.ok(wsUrl, 'no Chrome DevTools Protocol page target found');
 
   const socket = new WebSocket(wsUrl);
-  await new Promise((resolve, reject) => {
-    socket.addEventListener('open', resolve, { once: true });
-    socket.addEventListener('error', reject, { once: true });
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      const finish = error => {
+        clearTimeout(timer);
+        socket.removeEventListener('open', opened);
+        socket.removeEventListener('error', failed);
+        socket.removeEventListener('close', closed);
+        if (error) reject(error); else resolve();
+      };
+      const opened = () => finish();
+      const failed = () => finish(new Error('authored asset CDP connection failed'));
+      const closed = () => finish(new Error('authored asset CDP connection closed before open'));
+      const timer = setTimeout(() => finish(new Error('authored asset CDP connection timed out')),
+        Math.max(1, deadline - Date.now()));
+      socket.addEventListener('open', opened, { once: true });
+      socket.addEventListener('error', failed, { once: true });
+      socket.addEventListener('close', closed, { once: true });
+    });
+  } catch (error) {
+    try { socket.close(); } catch (_) {}
+    throw error;
+  }
+  return createAuthoredProbeCdpSession(socket);
+}
 
+export function createAuthoredProbeCdpSession(socket, {
+  requestTimeoutMs = CDP_REQUEST_TIMEOUT_MS,
+  now = () => Date.now(), setTimer = setTimeout, clearTimer = clearTimeout,
+} = {}) {
   let nextId = 0;
+  let stage = 'CDP setup', stageDeadline = null, terminal = null;
   const pending = new Map();
   const listeners = new Set();
-  socket.addEventListener('message', (event) => {
-    const msg = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString());
-    for (const listener of listeners) listener(msg);
+  const settle = (id, error, value) => {
+    const row = pending.get(id);
+    if (!row) return;
+    pending.delete(id);
+    clearTimer(row.timer);
+    if (error) row.reject(new Error(`${row.label}: ${error}`));
+    else row.resolve(value);
+  };
+  const dispose = (reason = 'CDP session disposed') => {
+    if (terminal) return;
+    terminal = reason;
+    for (const id of pending.keys()) settle(id, reason);
+    listeners.clear();
+    socket.removeEventListener('message', message);
+    socket.removeEventListener('close', closed);
+    socket.removeEventListener('error', failed);
+  };
+  const message = event => {
+    let msg;
+    try { msg = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString()); }
+    catch (error) { dispose(`invalid CDP response: ${error.message}`); return; }
     if (msg.id && pending.has(msg.id)) {
-      const { resolve, reject } = pending.get(msg.id);
-      pending.delete(msg.id);
-      if (msg.error) reject(new Error(msg.error.message || JSON.stringify(msg.error)));
-      else resolve(msg.result || {});
+      settle(msg.id, msg.error ? msg.error.message || JSON.stringify(msg.error) : null, msg.result || {});
     }
-  });
+    for (const listener of listeners) listener(msg);
+  };
+  const closed = event => dispose(`CDP socket closed${event.code ? ` (${event.code})` : ''}`);
+  const failed = () => dispose('CDP socket error');
+  socket.addEventListener('message', message);
+  socket.addEventListener('close', closed);
+  socket.addEventListener('error', failed);
 
   return {
     ws: socket,
+    get stage() { return stage; },
+    setStage(label, timeoutMs) {
+      stage = label;
+      stageDeadline = Number.isFinite(timeoutMs) ? now() + timeoutMs : null;
+    },
+    dispose,
     onMessage(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     send(method, params = {}) {
+      const label = `[authored-assets] ${stage} / ${method}`;
+      if (terminal) return Promise.reject(new Error(`${label}: ${terminal}`));
+      const timeoutMs = Math.min(requestTimeoutMs,
+        stageDeadline === null ? requestTimeoutMs : Math.max(0, stageDeadline - now()));
+      if (timeoutMs <= 0) return Promise.reject(new Error(`${label}: stage deadline expired`));
       return new Promise((resolve, reject) => {
         const id = ++nextId;
-        pending.set(id, { resolve, reject });
-        socket.send(JSON.stringify({ id, method, params }));
+        const timer = setTimer(() => settle(id, `no CDP reply within ${timeoutMs} ms`), timeoutMs);
+        pending.set(id, { resolve, reject, timer, label });
+        try { socket.send(JSON.stringify({ id, method, params })); }
+        catch (error) { settle(id, `CDP send failed: ${error.message}`); }
       });
     },
   };
@@ -2008,12 +2106,14 @@ async function closeWebSocket(socket) {
   try {
     if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) return;
     await new Promise((resolve) => {
-      const timeout = setTimeout(resolve, 1000);
-      socket.addEventListener('close', () => {
+      const finish = () => {
         clearTimeout(timeout);
+        socket.removeEventListener('close', finish);
         resolve();
-      }, { once: true });
-      socket.close();
+      };
+      const timeout = setTimeout(finish, 1000);
+      socket.addEventListener('close', finish, { once: true });
+      try { socket.close(); } catch (_) { finish(); }
     });
   } catch (_) {}
 }
@@ -2021,18 +2121,30 @@ async function closeWebSocket(socket) {
 async function closeOwnedAuthoredProbeRuntime({ ws, chrome, server, debugPort, profileDir }) {
   const failures = [];
   try {
-    const versionRes = await fetch(`http://127.0.0.1:${debugPort}/json/version`).catch(() => null);
+    const versionRes = await fetch(`http://127.0.0.1:${debugPort}/json/version`,
+      { signal: AbortSignal.timeout(1000) }).catch(() => null);
     if (versionRes && versionRes.ok) {
       const version = await versionRes.json().catch(() => null);
       if (version && version.webSocketDebuggerUrl) {
         const browserWs = new WebSocket(version.webSocketDebuggerUrl);
         await new Promise((resolve) => {
-          browserWs.addEventListener('open', () => {
-            browserWs.send(JSON.stringify({ id: 999999, method: 'Browser.close' }));
-            setTimeout(resolve, 500);
-          }, { once: true });
-          browserWs.addEventListener('error', resolve, { once: true });
-          setTimeout(resolve, 1000);
+          const finish = () => {
+            clearTimeout(timer);
+            browserWs.removeEventListener('open', opened);
+            browserWs.removeEventListener('error', finish);
+            browserWs.removeEventListener('close', finish);
+            resolve();
+          };
+          const opened = () => {
+            try { browserWs.send(JSON.stringify({ id: 999999, method: 'Browser.close' })); }
+            catch (_) { finish(); return; }
+            clearTimeout(timer);
+            timer = setTimeout(finish, 500);
+          };
+          let timer = setTimeout(finish, 1000);
+          browserWs.addEventListener('open', opened, { once: true });
+          browserWs.addEventListener('error', finish, { once: true });
+          browserWs.addEventListener('close', finish, { once: true });
         });
         try { browserWs.close(); } catch (_) {}
       }
