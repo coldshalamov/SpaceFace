@@ -1204,4 +1204,16 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Still open:** the dial itself is crowded when its stage is under ~500px (800×600, phone landscape 844×390), the same as on master. That needs instrument geometry, not layout. At 960 the "Industrial Mining" label's last letter is clipped by the dial's own sky (`labelOut` under-measures by a few px). Shots: `ui-shots/polish40/{before,after}/` plus `compare-*.png`.
 
+## Help on a short desktop — EVERY KEY clears the frame (ui-polish-42)
+
+**Before (844×390, 801×440, 700×400):** the 761–1200 Help strip still put the six sections beside the title and split the Controls stage into the ship rig + EVERY KEY. Under ~460px of height the title row, the section ticks, the rig's "PRESS ANY KEY · THE RIG LIGHTS WHAT IT DRIVES" echo and the register's rebound footnote all shared one band — tabs ran through CONTROL SCHEME, KEYS/PAD clipped the foot, and CLOSE sat under the echo. Loops stayed `is-off` (host under the instrument's 260px floor).
+
+**After (`src/ui/orrery/helpLayouts.js` only, desktop `html:root:not([data-sf-mobile="1"])`, `@media (max-height:460px)`):**
+- Title, section strip, stage and CLOSE stack as four rows with a tight chrome budget so the stage stays ≥260px at 390 tall.
+- Sections are one row of words on a rule (same grammar as the 761–1200 strip), even under 761 wide.
+- Controls sleeps the ship rig; EVERY KEY fills the stage and scrolls. Rebound footnote clears CLOSE.
+- Loops wakes (ring + reading). Ring names sleep at this height — the reading already carries LOOP N OF 06 + title — so they cannot climb into the section rule.
+- Ships / Commodities / Ores / Factions keep a side ladder + scrolling reading. Selectors and IDs unchanged.
+
+**Checked:** bench clean (0 findings) at 700×400, 801×440, 844×390, 900×420. 960×540 and 1280×720 keep the prior 761–1200 / wide layouts (Controls still shows the rig). Phone (`data-sf-mobile`) untouched. `--walk` at 844×390 through CONTROLS → FACTIONS. Shots: `/workspace/spaceface-scratch/ui-shots/polish42/{before,after}/`, `compare-help-844x390.png`, `compare-help-700x400.png`, `compare-help-801x440.png`.
 
