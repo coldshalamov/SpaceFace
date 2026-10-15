@@ -15,7 +15,12 @@ import { settleCredits } from '../src/economy/economyMath.js';
 import { economy, getCycle as liveCycleFor } from '../src/systems/economy.js';
 import { cycleFactorAt, maybeAdvanceRegime, predictPriceCurve, rawCycleFactorAt, regimeLabel } from '../src/systems/economyCycles.js';
 import { initPriceHistory, getPriceHistory, loadHistory } from '../src/ui/priceHistory.js';
-import { maxAffordableQuantity } from '../src/ui/station/screens/market.js';
+import {
+  createMarketHistoryBackfill,
+  marketPriceHistory,
+  marketPriceHistorySeries,
+  maxAffordableQuantity,
+} from '../src/ui/station/screens/market.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/market/tradeLogic.js'), 'utf8');
@@ -30,6 +35,7 @@ guarded(testSeededStationMarketHistory);
 guarded(testRingBufferSeededOnFreshGame);
 guarded(testBulkQuoteMatchesExecutedTrade);
 testMarketScreenChartSourceContract();
+await testMarketHistoryAuthorityContract();
 testStationMarketSourceContract();
 
 console.log('PASS  check:market-chart');
@@ -100,7 +106,8 @@ function testMarketScreenChartSourceContract() {
   // helpers live in market/tradeLogic and intentionally contain no DOM/chart implementation.
   const checks = [
     [/export function createMarketScreen\(ctx\)/, 'exports the shipped Station Market screen', STATION_MARKET_SOURCE],
-    [/entry && Array\.isArray\(entry\.history\)/, 'reads economy-owned listing history', STATION_MARKET_SOURCE],
+    [/createMarketHistoryBackfill\(/, 'owns a station-scoped history cache', STATION_MARKET_SOURCE],
+    [/return entry && entry\.history;/, 'keeps the authoritative listing history fallback', STATION_MARKET_SOURCE],
     [/marketQuoteHtml\(\{ id: r\.id/, 'renders the selected commodity through the market read model', STATION_MARKET_SOURCE],
     // Frontend Task C §1.3: the chart is a dense-register sparkline — the history as a hairline with
     // the last point marked; no gradient fill, no brush chrome.
@@ -117,6 +124,50 @@ function testMarketScreenChartSourceContract() {
       throw new Error(`station market chart source contract failed: ${label}`);
     }
   }
+}
+
+async function testMarketHistoryAuthorityContract() {
+  const pending = [];
+  const requests = [];
+  const backfill = createMarketHistoryBackfill({
+    request(operation, args) {
+      requests.push({ operation, args });
+      return new Promise((resolve) => pending.push(resolve));
+    },
+    refreshMs: 0,
+  });
+  const inline = [{ t: 0, mid: 11 }, { t: 5, mid: 12 }];
+  const authoritative = [{ t: 0, mid: 9 }, { t: 5, mid: 14 }, { mid: 20 }];
+  const entry = { history: inline, lastMid: 12 };
+  const snapshot = { economy: { markets: { station_helios: { cmdty_food: entry } } } };
+
+  backfill.ensure(snapshot, 'station_helios', 'chart-contract');
+  assert.deepEqual(requests, [{ operation: 'marketHistory', args: { stationId: 'station_helios' } }],
+    'the visible station requests authoritative history through the lane RPC');
+  assert.deepEqual(backfill.pointsFor('station_helios', 'cmdty_food', entry), inline,
+    'the cache uses the live listing history while the authority request is pending');
+  assert.equal(backfill.status, 'inflight');
+
+  pending.shift()({ result: { histories: { cmdty_food: authoritative } } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(backfill.status, 'done');
+  assert.deepEqual(backfill.pointsFor('station_helios', 'cmdty_food', entry), authoritative,
+    'a successful RPC replaces the inline fallback with the authoritative ring');
+  assert.deepEqual(marketPriceHistory(authoritative, entry, {}, 5), [9, 14, 20],
+    'the row trend uses finite authoritative samples');
+  assert.deepEqual(marketPriceHistorySeries(authoritative, entry, {}, 5), authoritative,
+    'the expanded chart keeps recorded sample objects and does not fabricate points');
+
+  backfill.reset();
+  backfill.ensure(snapshot, 'station_helios', 'chart-contract');
+  pending.shift()({ histories: { cmdty_food: [] } });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(backfill.pointsFor('station_helios', 'cmdty_food', entry), [],
+    'an explicit empty authority response cannot resurrect stale inline history');
+  assert.equal(backfill.chartState('station_helios', 'cmdty_food', entry), 'unavailable',
+    'empty authoritative history remains visibly unavailable');
 }
 
 function testBulkQuoteMatchesExecutedTrade() {
@@ -248,8 +299,8 @@ function testRingBufferSeededOnFreshGame() {
 function testStationMarketSourceContract() {
   assert.doesNotMatch(STATION_MARKET_SOURCE, /synthesize a gentle series/i,
     'the shipped Station Market must not fabricate one shared fallback chart');
-  assert.match(STATION_MARKET_SOURCE, /entry && Array\.isArray\(entry\.history\)/,
-    'the shipped Station Market reads the economy-owned price history');
+  assert.match(STATION_MARKET_SOURCE, /return entry && entry\.history;/,
+    'the shipped Station Market keeps the economy-owned listing history fallback');
   assert.match(MARKET_PRESENTATION_SOURCE, /data-chart="\$\{escapeHtml\(gradientId\)\}"/,
     'each Station Market sparkline is keyed to its commodity');
   assert.match(STATION_MARKET_SOURCE, /cargoOnly = mode === 'sell'/,

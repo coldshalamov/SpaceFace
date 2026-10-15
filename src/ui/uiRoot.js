@@ -15,7 +15,6 @@ import { commitDockedUiState } from './dockStateCommit.js';
 import { createEntityLinks } from './entityLinks.js';
 import { mountWhyReveal } from './whyReveal.js';
 import { createUiInput } from './input.js';
-import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
@@ -609,9 +608,6 @@ export const ui = {
     if (this._kitTemperature && typeof this._kitTemperature.dispose === 'function') { try { this._kitTemperature.dispose(); } catch (_) {} }
     try { this._kitSoundDispose = bindSound(ctx.bus); } catch (e) { console.warn('[ui] kit sound bind failed', e); }
     try { this._kitTemperature = bindTemperature(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] kit temperature bind failed', e); }
-
-    // UX-4: start the price-history recorder (subscribes to economy:tick; standalone, no sim writes).
-    try { initPriceHistory(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] price history init failed', e); }
 
     // toasts + alerts (transient UI feedback)
     this.toasts = createToasts(ctx);
