@@ -600,9 +600,36 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   /* the two verbs share ~190px: their names close up so REPAIR NOW and FLY DAMAGED keep a gap */
   ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:10px !important; letter-spacing:.06em !important; white-space:nowrap; }
 }
-/* under ~720 a verb column is ~80px: FLY DAMAGED takes two lines rather than run under BUY */
+/* ---- 651–720 × ≤460: two verb columns were ~59–72px, so REPAIR NOW / FLY DAMAGED terms ran
+   four–six lines and ate the stage. One column at the analysis width; each verb keeps its name
+   on one line and its terms wrap under it at the full width (two–three lines). The terms are the
+   price and hull/armor numbers being chosen between, and the buttons carry no title, so they are
+   never ellipsized. */
 @media (min-width:651px) and (max-width:720px) and (max-height:460px) {
-  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { white-space:normal; }
+  ${MD} .sx-mkt__decision .sx-decision {
+    display:flex !important; flex-direction:column !important; gap:2px !important;
+    grid-template-columns:none !important;
+  }
+  ${MD} .sx-mkt__decision .sx-decision > .k-sentence {
+    margin:0 0 2px !important; font-size:11px !important; line-height:14px !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  ${MD} .sx-mkt__decision .sx-decision__opt {
+    flex-direction:column !important; align-items:flex-start !important; gap:0 !important;
+    padding:1px 0 1px 12px !important; width:100% !important; max-width:100% !important;
+    min-width:0 !important;
+  }
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name {
+    font-size:10px !important; letter-spacing:.08em !important; white-space:nowrap !important;
+    line-height:12px !important;
+  }
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__sub {
+    font-size:10.5px !important; line-height:13px !important; max-width:100% !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+  }
+  /* stacked, the next verb sits under the focused one: focus keeps room for it above the pinned
+     foot (88px) as well, so Tab to REPAIR NOW doesn't park FLY DAMAGED under the foot */
+  ${MD} .sx-mkt__decision .sx-decision__opt:not(:last-child) { scroll-margin-bottom:144px; }
 }
 /* ---- 651–900 × ≤460 desktop (e.g. 760×420, 844×390): the analysis is ~160–240px wide, so the
    reading is one column: the kind line, the name and the last move, then the price with its words
