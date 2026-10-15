@@ -76,6 +76,28 @@ function rootKeyFor(row, index) {
   return `row:${index}`;
 }
 
+// The browser collector sees thousands of ambient rows, while the load-bearing
+// delayed body is usually a small readable/pending contact near the end of the
+// entity map. A FIFO root cap retained whichever rows happened to be enumerated
+// first and dropped the exact offender. Keep the receipt bounded, but let a
+// picture-owed pending row displace a low-value ambient row. This changes only
+// evidence retention; it does not alter admission or render behavior.
+function delayedReadinessPriority(row) {
+  if (!row || typeof row !== 'object') return 0;
+  const pending = row.pending || {};
+  const pipeline = row.pipeline || {};
+  let score = 0;
+  if (row.readable === true) score += 8;
+  if (row.rootHidden === true) score += 4;
+  if (row.noMesh === true) score += 3;
+  if (pending.geometry === true) score += 4;
+  if (pending.pipelines === true) score += 4;
+  if (pending.authored === true) score += 2;
+  if (pipeline.urgent === true) score += 3;
+  if (row.type === 'drone') score += 1;
+  return score;
+}
+
 export function recordDelayedReadinessSample(receipt, snapshot, elapsedMs = 0) {
   if (!receipt || !receipt.roots || !receipt.limits) return;
   receipt.polls += 1;
@@ -89,12 +111,35 @@ export function recordDelayedReadinessSample(receipt, snapshot, elapsedMs = 0) {
     let entry = receipt.roots.get(key);
     if (!entry) {
       if (receipt.roots.size >= receipt.limits.maxRoots) {
+        const candidatePriority = delayedReadinessPriority(row);
+        let victimKey = null;
+        let victimPriority = Infinity;
+        for (const [existingKey, existing] of receipt.roots) {
+          const priority = Number(existing.priority) || 0;
+          if (priority < victimPriority) {
+            victimKey = existingKey;
+            victimPriority = priority;
+          }
+        }
+        if (victimKey == null || candidatePriority <= victimPriority) {
+          receipt.droppedRoots += 1;
+          return;
+        }
+        receipt.roots.delete(victimKey);
         receipt.droppedRoots += 1;
-        return;
       }
-      entry = { rootKey: key, firstSeenMs: t, lastSeenMs: t, sampleCount: 0, samples: [], droppedSamples: 0 };
+      entry = {
+        rootKey: key,
+        firstSeenMs: t,
+        lastSeenMs: t,
+        sampleCount: 0,
+        samples: [],
+        droppedSamples: 0,
+        priority: delayedReadinessPriority(row),
+      };
       receipt.roots.set(key, entry);
     }
+    entry.priority = Math.max(Number(entry.priority) || 0, delayedReadinessPriority(row));
     entry.firstSeenMs = Math.min(entry.firstSeenMs, t);
     entry.lastSeenMs = Math.max(entry.lastSeenMs, t);
     entry.sampleCount += 1;

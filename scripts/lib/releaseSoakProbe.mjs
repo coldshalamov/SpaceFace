@@ -6654,6 +6654,9 @@ async function runPerformanceAttributionProbe({
 }
 
 export {
+  // The focused load-recovery diagnostic reuses the exact Electron bootstrap owned by the
+  // release soak. Keep this export harness-only; it does not create a second game path.
+  launchElectron,
   allocateOutputDir,
   sampleRafWindow,
   samplePerformanceAttribution,
