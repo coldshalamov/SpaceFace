@@ -30,3 +30,16 @@ test('a drifted lightweight entry fails instead of shipping an unrewritten sourc
   const drift = devHtml.replace('src="./src/ui/bootEntry.js"', 'src="./src/ui/missingEntry.js"');
   await assert.rejects(() => rewrite(async () => drift, join, '/repo'), /no bundled entry reference/);
 });
+
+test('retail removes development worker prefetches while retaining style hints', async () => {
+  const fixture = devHtml.replace('</head>', [
+    '<link href="./src/render/renderPackageDigestWorker.js" rel="prefetch" />',
+    "<link rel='preload' as='worker' href='./src/render/glbPrepassWorker.js' />",
+    '<link rel="prefetch" as="style" href="./styles/station.css" />',
+    '</head>',
+  ].join('\n'));
+  const html = await rewrite(async () => fixture, join, '/repo');
+  assert(!html.includes('./src/'));
+  assert(html.includes('href="./styles/station.css"'));
+  assert(html.includes('<script type="module" src="./main.js"></script>'));
+});
