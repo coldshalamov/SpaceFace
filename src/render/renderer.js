@@ -10532,6 +10532,7 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  try { owner._disarmDrawHistogram?.(); } catch (_) { /* diagnostic cleanup only */ }
   owner._touchDrawableCensus = null;
   const contextLost = options.contextLost === true || owner._contextLost === true;
   disableRigidOpaqueBatchProbe(owner, contextLost ? 'context-lost' : 'renderer-destroyed');
@@ -13031,15 +13032,22 @@ export const render = {
     // geometry.uuid, frustum-tested like WebGLRenderer's own cull). Arms the S3
     // instancing question: fly to a bloom sector, read the logged window.
     try {
+      renderer.__sfDrawHistogramArmed = false;
+      renderer.__sfLastHiddenDrawables?.clear?.();
+      renderer.__sfLastHiddenDrawables = null;
       const drawhist = query && query.get('drawhist');
       this._drawHistogramWindow = drawhist != null ? Math.max(1, +drawhist || 120) : 0;
       if (this._drawHistogramWindow) {
+        renderer.__sfDrawHistogramArmed = true;
         // accumulate info.render.calls across the whole frame's passes; the sampler
         // reads + resets once per frame so glCalls covers shadow/post/producer too.
         if (renderer && renderer.info) renderer.info.autoReset = false;
         console.info(`[drawhist] armed: window=${this._drawHistogramWindow}f — result lands on globalThis.__sfDrawHistogram each window`);
       }
-    } catch (_) { this._drawHistogramWindow = 0; }
+    } catch (_) {
+      this._drawHistogramWindow = 0;
+      this._disarmDrawHistogram();
+    }
 
     state.render.scene = scene;
     state.render.renderer = renderer;
@@ -21824,6 +21832,7 @@ export const render = {
   },
 
   destroy() {
+    this._disarmDrawHistogram();
     this.vf?.clearReadyPackagedBodies?.('renderer-destroyed');
     this._racingCourseView?.dispose();
     this._racingCourseView = null;
@@ -31112,7 +31121,9 @@ export const render = {
       endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
       if (dynamicBufferEpoch !== null) this._dynamicBuffers.disarm(dynamicBufferEpoch);
       if (postFrameToken) endPostRenderTargetFrameOrigin(postFrameToken);
-      if (this._drawHistogramWindow) this._sampleDrawHistogram();
+      if (this.renderer?.__sfDrawHistogramArmed === true && this._drawHistogramWindow) {
+        this._sampleDrawHistogram();
+      }
     }
     if (this.state.mode === 'flight'
         && !this.state.render.openingSubmissionValidation
@@ -34211,9 +34222,28 @@ export const render = {
     }
   },
 
+  _disarmDrawHistogram() {
+    this._drawHistogramWindow = 0;
+    const renderer = this.renderer;
+    if (renderer) {
+      renderer.__sfDrawHistogramArmed = false;
+      renderer.__sfLastHiddenDrawables?.clear?.();
+      renderer.__sfLastHiddenDrawables = null;
+    }
+    const state = this._drawHistState;
+    state?.byGeom?.clear?.();
+    if (state?.stack) state.stack.length = 0;
+    this._drawHistState = null;
+  },
+
   _sampleDrawHistogram() {
+    if (this.renderer?.__sfDrawHistogramArmed !== true) return;
+    const hiddenDrawn = this.renderer.__sfLastHiddenDrawables;
     const cam = this.cam && this.cam.obj;
-    if (!cam || !this.scene) return;
+    if (!cam || !this.scene) {
+      hiddenDrawn?.clear?.();
+      return;
+    }
     const st = this._drawHistState
       || (this._drawHistState = {
         frames: 0,
@@ -34224,7 +34254,6 @@ export const render = {
         byGeom: new Map(),
         stack: [],
       });
-    const hiddenDrawn = this.renderer && this.renderer.__sfLastHiddenDrawables;
     cam.updateMatrixWorld();
     st.projScreen.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
     st.frustum.setFromProjectionMatrix(st.projScreen);

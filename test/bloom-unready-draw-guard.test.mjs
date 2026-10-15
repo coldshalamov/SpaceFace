@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 import { revealSubjectForCompile } from '../src/render/compilePresentSlice.js';
+import { render } from '../src/render/renderer.js';
 
 // Draw-time safety net: while a hide→render→restore presented pass is active, a
 // stamped authored/shared material with no currentProgram must not link inside the
@@ -137,6 +138,64 @@ test('guard draws a cold stamped material once the presented pass ends', () => {
 
   assert.equal(draws.length, 2);
   assert.equal(admissions.length, 0);
+});
+
+test('unarmed readiness cleanup does not retain hidden drawable roots', () => {
+  const { renderer } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const material = canonStampedMaterial();
+  const mesh = { isMesh: true, material, visible: true };
+  const scene = { traverse(visitor) { visitor(mesh); } };
+
+  guard.hide(scene);
+  assert.equal(mesh.visible, false);
+  guard.restore();
+
+  assert.equal(mesh.visible, true, 'readiness cleanup still restores visibility');
+  assert.equal(renderer.__sfLastHiddenDrawables, null, 'unarmed passes release any prior set reference');
+  assert.equal(renderer.__sfDrawHistogramArmed, undefined, 'the guard does not arm diagnostics itself');
+});
+
+test('armed readiness records are consumed by a histogram sample and disarm clears retained references', () => {
+  const { renderer } = rendererHarness();
+  renderer.__sfDrawHistogramArmed = true;
+  renderer.info.render = { calls: 0 };
+  renderer.info.reset = () => {};
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = new THREE.Scene();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  mesh.material.userData.spacefaceProgramCanon = 1;
+  scene.add(mesh);
+  const camera = new THREE.PerspectiveCamera();
+  const owner = {
+    _drawHistogramWindow: 120,
+    renderer,
+    cam: { obj: camera },
+    scene,
+  };
+
+  try {
+    guard.hide(scene);
+    assert.equal(mesh.visible, false);
+    guard.restore();
+    assert.equal(mesh.visible, true);
+    assert.equal(renderer.__sfLastHiddenDrawables.has(mesh), true, 'the armed pass records only for its sampler');
+
+    render._sampleDrawHistogram.call(owner);
+    assert.equal(renderer.__sfLastHiddenDrawables.size, 0, 'each sample releases hidden-drawable references');
+    assert.equal(owner._drawHistState.frames, 1);
+
+    renderer.__sfLastHiddenDrawables.add(mesh);
+    owner._drawHistState.stack.push(mesh);
+    render._disarmDrawHistogram.call(owner);
+    assert.equal(renderer.__sfDrawHistogramArmed, false);
+    assert.equal(renderer.__sfLastHiddenDrawables, null);
+    assert.equal(owner._drawHistogramWindow, 0);
+    assert.equal(owner._drawHistState, null, 'disarm drops geometry and traversal scratch references');
+  } finally {
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
 });
 
 test('draw guard installs once per renderer and composes with a pre-existing wrapper', () => {

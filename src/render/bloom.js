@@ -651,8 +651,9 @@ function contextLossGeneration(gl) {
 // handle without touching the wrappers, and destroy() clears program.program — in both cases
 // isReady() reads a handle the live context does not own: it answers null and warns
 // GL_INVALID_VALUE forever. The wrapper can never become ready either; the material re-acquires
-// a fresh wrapper on its next use. Track the context generation each wrapper was first seen
-// under so a stale wrapper is recognised without a native call, and treat it as ready.
+// a fresh wrapper on its next use. Track the originating context and generation so normal polls
+// never need a synchronous native check. If an already-seen wrapper crosses GL contexts, cancel
+// it before calling isReady() on the wrong context.
 const programSeenGenerations = new WeakMap();
 
 export function programWrapperDead(gl, program) {
@@ -662,10 +663,14 @@ export function programWrapperDead(gl, program) {
   const seen = programSeenGenerations.get(program);
   if (seen === undefined) {
     const lost = typeof gl.isContextLost === 'function' && gl.isContextLost();
-    programSeenGenerations.set(program, lost ? generation - 1 : generation);
+    programSeenGenerations.set(program, {
+      gl,
+      generation: lost ? generation - 1 : generation,
+      handle: program.program,
+    });
     return lost;
   }
-  return seen !== generation;
+  return seen.gl !== gl || seen.generation !== generation || seen.handle !== program.program;
 }
 
 /**
@@ -675,9 +680,24 @@ export function programWrapperDead(gl, program) {
  * (programReadiness below).
  */
 function programHandleInvalid(gl, program, generation) {
-  if (!program.program) return true;
+  if (!program || !program.program) return true;
   if (!gl || typeof gl !== 'object') return false;
-  return programHandleContext(gl).generation !== generation;
+  if (programHandleContext(gl).generation !== generation) return true;
+
+  const handle = program.program;
+  const seen = programSeenGenerations.get(program);
+  if (seen && (seen.gl !== gl || seen.handle !== handle)) {
+    // WebGLProgram handles are context-affine. A wrapper observed under another GL cannot be
+    // queried here; isReady() remains bound to its original context.
+    return true;
+  }
+  if (!seen) {
+    const lost = typeof gl.isContextLost === 'function' && gl.isContextLost();
+    if (lost) return true;
+    programSeenGenerations.set(program, { gl, generation, handle });
+    return false;
+  }
+  return seen.generation !== generation;
 }
 
 // 'ready' | 'pending' | 'invalid'. three's WebGLProgram.isReady() returns getProgramParameter(
@@ -723,6 +743,9 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
     paceQueue,
     join(gl, programs, settle) {
       if (!batch.accepting) return false;
+      // A shared drain can poll only one WebGL context. Another renderer keeps its own guarded
+      // standalone wait rather than mixing foreign handles into this cohort.
+      if (gl && batch.gl && gl !== batch.gl) return false;
       if (gl && !batch.gl) {
         batch.gl = gl;
         batch.generation = contextLossGeneration(gl);
@@ -1651,17 +1674,22 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function restoreUnreadySceneDrawables() {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
-    // Dev instrumentation: remember what was hidden during the pass so the ?drawhist
-    // sampler (which runs after visibility is restored) can still skip it. Bounded —
-    // the sampler clears the set each frame; when it is unarmed the set saturates.
-    const hiddenLog = renderer
-      ? (renderer.__sfLastHiddenDrawables || (renderer.__sfLastHiddenDrawables = new Set()))
-      : null;
+    // Keep the temporary visibility record only while the opt-in draw histogram will consume it.
+    // Unarmed readiness passes must not retain drawable roots across frames.
+    const recordHiddenDrawables = renderer?.__sfDrawHistogramArmed === true;
+    let hiddenLog = recordHiddenDrawables ? renderer.__sfLastHiddenDrawables : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
       if (object) object.visible = true;
-      if (object && hiddenLog && hiddenLog.size < 4096) hiddenLog.add(object);
+      if (object && recordHiddenDrawables) {
+        hiddenLog ||= (renderer.__sfLastHiddenDrawables = new Set());
+        if (hiddenLog.size < 4096) hiddenLog.add(object);
+      }
       unreadySceneScratch[i] = null;
+    }
+    if (!recordHiddenDrawables && renderer) {
+      renderer.__sfLastHiddenDrawables?.clear?.();
+      renderer.__sfLastHiddenDrawables = null;
     }
     unreadySceneCount = 0;
   }
