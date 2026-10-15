@@ -14,8 +14,8 @@ Program. Detailed behavior remains in the linked source plans; this file owns st
 ## Current execution board — 2026-08-09
 
 **Snapshot base:** `8b7b1d3b26181fdc38325a63f5e9d85574bf321b` on `master`, equal to
-`origin/master` when reconciled. The durable development handoff is
-[`DEVELOPMENT_HANDOFF_2026-08-09.md`](./DEVELOPMENT_HANDOFF_2026-08-09.md).
+`origin/master` when reconciled. The durable development handoff lives in git history
+(`DEVELOPMENT_HANDOFF_2026-08-09.md`, retired 2026-10-15).
 
 This section supersedes older dated status, ownership, ordering, “next,” “immediate,” and blocker
 claims below. The broader Alpha/Depth outcome tables remain retained scope until each outcome is done
@@ -388,5 +388,5 @@ repository-state reconciliation, the roll-up remains **0 DONE, 16 IP-CP, 15 TODO
 5. Keep residual concurrent WIP separate, re-run status counts, and update
    [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) after every checkpoint or
    integration batch.
-6. Use [`09_DONOR_VALUE_LEDGER.md`](./09_DONOR_VALUE_LEDGER.md) before recovering any archived donor
+6. Consult the donor-value closeout in git history (09_DONOR_VALUE_LEDGER.md, retired 2026-10-15) before recovering any archived donor
    slice. Only `master` remains registered; never reconstruct a whole donor merge.

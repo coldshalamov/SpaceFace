@@ -48,8 +48,8 @@ Enter a directory through its `AGENTS.md`/`README.md`, not by listing it.
 
 Root files beyond the front door: `ARCHITECTURE.md` (technical contract) · `build_map.md`
 (program map) · `SAVE_SCHEMA.md` (generated) · `needed-assets.md` (active coverage inventory) ·
-`MASSLINE_PHYSICS_HANDOFF.md` (design handoff, high latitude) · `VISUAL_ASSET_PLAN.md` (historical
-generation ledger) · `plan.md` / `GOAL_PROMPT.txt` (retired legacy — do not execute).
+`MASSLINE_PHYSICS_HANDOFF.md` (design handoff, high latitude) · `GOAL_PROMPT.txt` (retired
+legacy — do not execute).
 
 ## Reading ladder
 
