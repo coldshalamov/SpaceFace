@@ -26,9 +26,11 @@ import {
   evaluateSourceStability,
   POST_GC_OWNER_ROW_LIMIT,
   postGcOwnerEvaluateArgument,
+  readReleaseSoakBaselineMemory,
   summarizeImmutableSavePopulation,
   summarizeRestorePopulation,
   summarizeSaveEnvelope,
+  waitForKnownAssetRequests,
 } from '../scripts/lib/releaseSoakProbe.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
@@ -95,6 +97,122 @@ test('post-GC checkpoints retain bounded canonical residency owner detail', asyn
   ]);
   assert.equal(canonicalPostGcOwnerRows({ owners: null }), null,
     'missing owner diagnostics remain explicitly unavailable');
+});
+
+function fakeResidencyPage({ pendingRequests = 0, settleOnPoll = false, waitError = null, owners = [] } = {}) {
+  const calls = [];
+  const state = {
+    pendingRequests,
+    owners,
+  };
+  const residency = {
+    canonicalDiagnostics: () => ({ pendingRequests: state.pendingRequests }),
+    diagnostics: () => ({
+      pendingRequests: state.pendingRequests,
+      ownerCount: state.owners.length,
+      owners: state.owners,
+    }),
+  };
+  const fakeWindow = {
+    SF: {
+      state: {
+        mode: 'docked',
+        ui: { docked: true },
+        entityList: [],
+        render: { renderer: { info: { programs: [] } } },
+      },
+      registry: {
+        get: (name) => name === 'render' ? { _assetResidency: residency } : null,
+      },
+    },
+  };
+  const page = {
+    calls,
+    waitForFunction: async (predicate, _argument, options) => {
+      calls.push({ kind: 'wait', timeout: options?.timeout });
+      if (waitError) throw waitError;
+      const before = predicate();
+      if (settleOnPoll) state.pendingRequests = 0;
+      assert.equal(predicate(), state.pendingRequests === 0);
+      if (!settleOnPoll) assert.equal(before, true);
+    },
+    evaluate: async (callback, argument) => {
+      calls.push({ kind: 'evaluate', argument });
+      return callback(argument);
+    },
+    context: () => ({
+      newCDPSession: async () => {
+        calls.push({ kind: 'context' });
+        return {
+          send: async () => {},
+          detach: async () => {},
+        };
+      },
+    }),
+  };
+  return { fakeWindow, page, state };
+}
+
+async function withFakeWindow(fakeWindow, action) {
+  const previousWindow = globalThis.window;
+  globalThis.window = fakeWindow;
+  try {
+    return await action();
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+}
+
+test('known residency readiness waits for pending requests to settle and uses the canonical ledger', async () => {
+  const { fakeWindow, page } = fakeResidencyPage({ pendingRequests: 2, settleOnPoll: true });
+  await withFakeWindow(fakeWindow, () => waitForKnownAssetRequests(page, { timeoutMs: 30_000 }));
+  assert.deepEqual(page.calls, [{ kind: 'wait', timeout: 30_000 }]);
+});
+
+test('known residency readiness fails with bounded pending-owner detail when requests stay pending', async () => {
+  const { fakeWindow, page } = fakeResidencyPage({
+    pendingRequests: 3,
+    waitError: new Error('known requests did not settle'),
+    owners: [{
+      owner: 'render-package',
+      ownerName: 'ore-barge'.repeat(100),
+      contentHash: 'hash-1',
+      requests: 3,
+      requestKeys: ['request-a'.repeat(100)],
+    }],
+  });
+  await withFakeWindow(fakeWindow, async () => {
+    await assert.rejects(
+      waitForKnownAssetRequests(page, { timeoutMs: 25 }),
+      (error) => error.message.includes('baseline residency readiness failed after 25 ms')
+        && error.message.includes('"pendingRequests":3')
+        && error.message.length < 2_000,
+    );
+  });
+  assert.deepEqual(page.calls.map((call) => call.kind), ['wait', 'evaluate']);
+});
+
+test('baseline readiness and snapshot share the existing 30-second bound and order', async () => {
+  const { fakeWindow, page } = fakeResidencyPage({ pendingRequests: 1, settleOnPoll: true });
+  const baseline = await withFakeWindow(fakeWindow, () => readReleaseSoakBaselineMemory(page));
+  assert.equal(baseline.phaseTag, 'docked-market-start');
+  assert.equal(page.calls[0].kind, 'wait');
+  assert.equal(page.calls[0].timeout, 30_000);
+  assert.equal(page.calls.findIndex((call) => call.kind === 'context') > 0, true);
+  assert.equal(page.calls.at(-1).argument.phaseTag, 'docked-market-start');
+});
+
+test('baseline bound covers an unresolved readiness wait before snapshot work begins', async () => {
+  const { fakeWindow, page } = fakeResidencyPage({ pendingRequests: 1 });
+  page.waitForFunction = async () => new Promise(() => {});
+  await withFakeWindow(fakeWindow, async () => {
+    await assert.rejects(
+      readReleaseSoakBaselineMemory(page, { timeoutMs: 20 }),
+      /release-soak baseline memory snapshot timed out after 20 ms/,
+    );
+  });
+  assert.deepEqual(page.calls, []);
 });
 
 test('restore population receipt compares the loaded envelope with a bounded post-load census', () => {

@@ -492,11 +492,7 @@ export async function runReleaseSoakProbe({
         doLog('warmup never plateaued; the baseline follows the last warmup cycle and the contract measures the remaining growth');
       }
     }
-    const baselineMemory = await withTimeout(
-      readPostGcMemorySnapshot(page, 'docked-market-start'),
-      30_000,
-      'release-soak baseline memory snapshot',
-    );
+    const baselineMemory = await readReleaseSoakBaselineMemory(page);
     // The baseline follows the final warmup cycle. Keep that cycle's restore scalar beside the
     // baseline for population-growth interpretation; it is diagnostic context, not a second
     // heap sample taken at the load boundary.
@@ -5431,6 +5427,65 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
     ...snapshot,
     assetResidencyOwners: canonicalPostGcOwnerRows(ownerDiagnostics),
   };
+}
+
+// The retained-heap baseline must not begin while the residency ledger still has known asset
+// requests in flight. This is deliberately narrower than renderer/pipeline quiescence: the soak
+// still records its raw population and resource deltas without removing ambient content or
+// changing the quality/heap contracts.
+export async function waitForKnownAssetRequests(page, { timeoutMs = 30_000 } = {}) {
+  try {
+    await page.waitForFunction(() => {
+      const renderSystem = window.SF?.registry?.get?.('render');
+      const residency = renderSystem?._assetResidency;
+      const diagnostics = residency && typeof residency.canonicalDiagnostics === 'function'
+        ? residency.canonicalDiagnostics()
+        : null;
+      return diagnostics?.pendingRequests === 0;
+    }, null, { timeout: timeoutMs });
+  } catch (error) {
+    const detail = await page.evaluate(() => {
+      const boundedText = (value) => value == null ? null : String(value).slice(0, 160);
+      const renderSystem = window.SF?.registry?.get?.('render');
+      const residency = renderSystem?._assetResidency;
+      const diagnostics = residency && typeof residency.diagnostics === 'function'
+        ? residency.diagnostics({ canonical: true, includeEvents: false, includeOwners: true })
+        : null;
+      return {
+        available: diagnostics !== null,
+        pendingRequests: Number.isFinite(Number(diagnostics?.pendingRequests))
+          ? Number(diagnostics.pendingRequests)
+          : null,
+        pendingOwners: Array.isArray(diagnostics?.owners)
+          ? diagnostics.owners
+            .filter((owner) => Number(owner?.requests) > 0)
+            .slice(0, 8)
+            .map((owner) => ({
+              owner: boundedText(owner.owner),
+              ownerName: boundedText(owner.ownerName),
+              contentHash: boundedText(owner.contentHash),
+              requests: Number(owner.requests) || 0,
+              requestKeys: Array.isArray(owner.requestKeys)
+                ? owner.requestKeys.slice(0, 8).map((key) => boundedText(key))
+                : [],
+            }))
+          : null,
+      };
+    }).catch(() => null);
+    error.message = `${error.message} | release-soak baseline residency readiness failed after ${timeoutMs} ms: ${JSON.stringify(detail)}`;
+    throw error;
+  }
+}
+
+export async function readReleaseSoakBaselineMemory(page, { timeoutMs = 30_000 } = {}) {
+  return withTimeout(
+    (async () => {
+      await waitForKnownAssetRequests(page, { timeoutMs });
+      return readPostGcMemorySnapshot(page, 'docked-market-start');
+    })(),
+    timeoutMs,
+    'release-soak baseline memory snapshot',
+  );
 }
 
 async function readSettingsTruth(page) {
