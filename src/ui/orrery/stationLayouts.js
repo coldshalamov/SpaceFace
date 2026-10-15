@@ -354,6 +354,120 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; position:relative; z-index:1; }
   ${D} .sxb-berth.dp-frame__head > .sxb-tape { margin-top:8px !important; }
 }
+/* a very short desktop window (844×390-class): the head alone ran ~260px of a 390px window and left
+   every tab a 16px sliver — Shipworks showed no hull at all. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+  /* the berth scrolls: each tab keeps a 230px cell (960×540 has ~210) and the destination rail
+     stays pinned to the bottom edge */
+  ${D} { grid-template-rows:max-content minmax(230px, 1fr) max-content !important; overflow-x:hidden !important; overflow-y:auto !important;
+    overscroll-behavior:contain; padding-bottom:0 !important; }
+  /* the pinned foot is solid ink edge to edge with a short fade above it, so the hull's lower
+     callouts pass under the destination words instead of printing through them */
+  ${D} .sxb-ops.dp-frame__foot { position:sticky !important; bottom:0; z-index:9; margin-inline:-32px !important; padding:6px 32px 12px !important;
+    background:rgb(7 8 10) !important; box-shadow:0 -12px 10px -4px rgb(7 8 10 / .85) !important; }
+  /* the foot: every destination word on the rail, closed up rather than scrolled */
+  ${D} .sxb-ops { column-gap:12px !important; }
+  ${D} .sxb-ops .of-facility-rail { max-width:none !important; flex:1 1 auto !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { gap:0 5px !important; padding-left:2px !important; }
+  ${D} .sxb-ops .sx-tile { min-height:0 !important; padding:4px 1px !important; }
+  ${D} .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
+  ${D} .sxb-ops .sx-comms { margin-left:0 !important; }
+  ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:.06em !important; }
+  ${D} .sxb-launch > .so-icon { display:none !important; }
+  ${D} .sxb-launch { gap:10px !important; }
+  ${D} .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
+}
+/* …and from 801px wide the head is two columns: name, mechanic's note and next step stacked left;
+   purse and the five dials right (~160px instead of ~260px) */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+  ${D} .sxb-berth.dp-frame__head { position:relative; grid-template-columns:minmax(0, 212px) minmax(0, 1fr) !important;
+    grid-template-areas:"title crown" "tape crown" "handoff crown" !important; grid-template-rows:auto auto 1fr !important;
+    column-gap:16px !important; row-gap:6px !important; max-height:none !important; min-height:max-content !important; padding-bottom:4px !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { grid-area:crown !important; grid-column:auto !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:auto !important; margin-top:0 !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; grid-column:auto !important; }
+  ${D} .sxb-berth.dp-frame__head > .so-command-trigger { position:absolute !important; top:0; right:0; }
+  ${D} .sxb-berth .so-station-title .dp-title__name { font-size:24px !important; line-height:1.05 !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__rule { margin-top:4px !important; }
+  ${D} .sxb-berth .sxb-crown { display:flex !important; flex-direction:column !important; align-items:stretch !important; width:auto !important;
+    justify-self:stretch !important; left:0 !important; right:auto !important; top:0 !important; margin-top:0 !important; }
+  ${D} .sxb-crown .sxb-purse { position:static !important; display:flex !important; align-items:baseline !important; justify-content:flex-end !important;
+    gap:10px !important; margin:0 84px 2px 0 !important; }
+  ${D} .sxb-crown .sxb-purse__value { font-size:24px !important; line-height:1 !important; }
+  ${D} .sxb-crown .sxb-vitals { max-width:none !important; width:100%; flex-wrap:nowrap !important; justify-content:space-between !important; gap:2px !important; margin-top:0 !important; }
+  ${D} .sxb-vital { min-width:max-content !important; width:auto !important; }
+  ${D} .sxb-vital__label { letter-spacing:.12em !important; }
+  ${D} .sxb-vital__acts { margin-top:0 !important; gap:0 !important; line-height:1.15 !important; }
+  ${D} .sxb-vital__act { min-height:0 !important; padding-block:1px !important; letter-spacing:.02em !important; }
+  /* the credit line is a sentence, not a number: it wraps to two short lines over LEDGER instead of
+     pushing Munitions off the right edge */
+  ${D} .sxb-vital--note { min-width:96px !important; }
+  ${D} .sxb-vital--note .sxb-vital__value { top:8px; white-space:normal !important; }
+  ${D} .sxb-vital--note .orr-vnum.is-word { white-space:normal !important; letter-spacing:.12em !important; line-height:1.25 !important; }
+  ${D} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; position:relative; z-index:1; }
+  /* the mechanic's note: title and sentence run on as one paragraph, two lines at most */
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { padding-left:0 !important; margin-left:0 !important; }
+  ${D} .sxb-tape .sxb-event:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden !important;
+    width:auto !important; max-width:100% !important; min-width:0 !important; margin:0 !important; padding:0 !important; line-height:16px !important; }
+  ${D} .sxb-tape .sxb-event :is(.sxb-event__badge, .sxb-event__title, .sxb-event__body) { display:inline !important; margin:0 8px 0 0 !important; }
+  /* the next step: title, count and DISMISS on one line, its sentence ellipsized under (the full
+     sentence stays in data-why and the button's label) */
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { margin-left:0 !important; padding-left:0 !important; }
+  ${D} .sxb-handoff { display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; grid-template-rows:auto auto !important;
+    align-items:end !important; column-gap:10px !important; }
+  ${D} .sxb-handoff > .sxb-next { grid-column:1 / -1; grid-row:1 / 3; }
+  ${D} .sxb-handoff > .sxb-next__x { grid-column:2; grid-row:2; position:relative; z-index:1; }
+  ${D} .sxb-next { flex-wrap:wrap !important; align-items:baseline !important; row-gap:2px !important; padding-block:0 !important; min-width:0 !important; }
+  ${D} .sxb-next__t { white-space:nowrap !important; flex:0 1 auto !important; }
+  ${D} .sxb-next__n { margin-left:auto !important; }
+  ${D} .sxb-next__w { order:3; flex:0 0 calc(100% - 76px) !important; min-width:0 !important; padding-left:17px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${D} .sxb-next__x { margin:0 !important; padding:0 !important; }
+}
+/* …and at 651-800 wide, where the five dials need the full width, the head stays three bands but
+   each is shorter (~190px instead of ~260px): a 24px name with the purse at its right, smaller dials,
+   and the mechanic's note and next step one line each. The foot closes up so all seven destinations,
+   COMMS · HELP (stacked) and UNDOCK fit on one line. */
+@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+  ${D} { grid-template-rows:max-content minmax(250px, 1fr) max-content !important; }
+  ${D} .sxb-berth.dp-frame__head { row-gap:0 !important; padding-bottom:4px !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__name { font-size:24px !important; line-height:1.05 !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__rule { margin-top:4px !important; }
+  ${D} .sxb-crown .sxb-purse { bottom:calc(100% + 2px); }
+  ${D} .sxb-crown .sxb-purse__value { font-size:24px !important; line-height:1 !important; }
+  ${D} .sxb-berth .sxb-crown { margin-top:6px !important; }
+  ${D} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:64px !important; height:42px !important; }
+  /* the 64px ring's open foot is narrower: the reading steps down the way the phone crown's does */
+  ${D} .sxb-vital__value { top:9px; }
+  ${D} .sxb-vital__value .orr-vnum { font-size:14px; }
+  ${D} .sxb-vital__value .orr-vden { font-size:9.5px !important; }
+  ${D} .sxb-vital__acts { margin-top:0 !important; gap:0 !important; line-height:1.15 !important; }
+  ${D} .sxb-vital__act { min-height:0 !important; padding-block:1px !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { margin-top:4px !important; }
+  ${D} .sxb-tape .sxb-event:not([hidden]) { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; padding-block:0 !important; }
+  ${D} .sxb-handoff { flex-wrap:nowrap !important; align-items:baseline !important; padding-block:2px 0 !important; }
+  ${D} .sxb-next { flex:1 1 auto !important; flex-wrap:nowrap !important; padding-block:0 !important; min-width:0 !important; }
+  ${D} .sxb-next__t { white-space:nowrap !important; flex:0 0 auto !important; }
+  ${D} .sxb-next__w { flex:1 1 auto !important; min-width:0 !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+  ${D} .sxb-ops { column-gap:8px !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
+  ${D} .sxb-ops .sx-tile__label { font-size:10.5px !important; }
+  ${D} .sxb-ops .sx-comms { display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
+  ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
+  ${D} .sxb-launch__label { font-size:16px !important; }
+}
+/* …below 700 wide, down to 651: the rail words and UNDOCK close up once more so LEDGER stays on, and
+   CREDIT LINE OPEN wraps to two short lines instead of running into the HOLD dial */
+@media (min-width:651px) and (max-width:699px) and (max-height:460px) {
+  ${D} .sxb-ops { column-gap:6px !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { gap:0 3px !important; }
+  ${D} .sxb-ops .sx-tile__label { font-size:10px !important; }
+  ${D} .sxb-ops > .sxb-launch-seat { padding-left:0 !important; }
+  ${D} .sxb-launch { padding-inline:0 !important; }
+  ${D} .sxb-launch__label { font-size:15px !important; letter-spacing:.06em !important; }
+  ${D} .sxb-vital--note { min-width:96px !important; }
+  ${D} .sxb-vital--note .sxb-vital__value { top:0; white-space:normal !important; }
+  ${D} .sxb-vital--note .orr-vnum.is-word { white-space:normal !important; letter-spacing:.12em !important; line-height:1.25 !important; }
+}
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
   ${S} { zoom:1.25; --k-s:1; }
