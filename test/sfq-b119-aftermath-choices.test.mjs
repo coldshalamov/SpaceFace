@@ -268,6 +268,41 @@ test('a recycled kill id is not salvage on the living hull', () => {
   assert.equal(h.state.paused, undefined);
 });
 
+test('a later spawn does not reopen an answered card or keep salvage on the new hull', () => {
+  const h = makeHarness();
+  const calls = [];
+  const deck = {
+    offerDecision(spec) { calls.push(spec); return true; },
+    resolveDecision(id) { calls.push({ resolved: id }); return true; },
+  };
+  createAftermathChoicePrompt({ bus: h.bus, state: h.state, deck });
+  const victim = spawnHostile(h, 400);
+  const oldId = victim.id;
+  h.bus.emit('entity:killed', { id: oldId, killerId: h.state.playerId });
+  h.bus.emit('combat:aftermathChoose', { choiceId: 'salvage' });
+  assert.equal(h.state.combatOutcome.chosen.entityId, oldId);
+  victim.alive = false;
+  h.state.entities.delete(oldId);
+  h.state.aftermathWrecks = {
+    bySector: { [SECTOR]: [{ markerId: 'bandit-hull', kind: 'battle-aftermath' }] },
+  };
+  h.bus.emit('entity:destroyed', { id: oldId, entity: victim, reason: 'killed' });
+  const beforeSpawn = calls.length;
+  const bullet = h.helpers.spawnEntity({
+    id: oldId,
+    type: 'projectile', pos: { x: 420, z: 20 }, vel: { x: 0, z: 0 }, team: 1,
+    hull: 1, hullMax: 1, alive: true,
+    data: { name: 'shot' },
+  });
+  h.ships.push(bullet);
+  assert.equal(bullet.id, oldId);
+  assert.equal(bullet.alive !== false, true);
+  assert.equal(h.state.combatOutcome.aftermath.targets.salvage, 'bandit-hull');
+  assert.equal(h.state.combatOutcome.chosen.entityId, 'bandit-hull');
+  assert.equal(calls.length, beforeSpawn);
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {

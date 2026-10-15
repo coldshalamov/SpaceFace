@@ -116,6 +116,19 @@ function sameOccupant(record, entity) {
   return record.occupantGeneration != null && record.occupantGeneration === live;
 }
 
+// A pick that still names a number now worn by a different living body follows the
+// wreck marker. A free id or a corpse stays put. The same occupant stays put.
+function retargetChosenOffRecycledHull(state, own, offer) {
+  const chosen = own && own.chosen;
+  if (!chosen || chosen.entityId == null) return;
+  const entity = entityFor(state, chosen.entityId);
+  if (!entity || entity.alive === false) return;
+  const prior = own.byEntity ? own.byEntity[chosen.entityId] : null;
+  if (prior && sameOccupant(prior, entity)) return;
+  const nextId = offer && offer.targets ? offer.targets[chosen.id] : null;
+  chosen.entityId = nextId != null && nextId !== entity.id ? nextId : null;
+}
+
 function sectorWreckIds(state, sectorId) {
   const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
   const list = bag && sectorId ? bag[sectorId] : null;
@@ -216,7 +229,7 @@ export const combatOutcome = {
         }),
         this.bus.on('sector:enter', () => {
           this._wakeCombatOutcomeQuiet();
-          this._publishAftermath();
+          this._publishAftermath('sector:enter');
         }),
         this.bus.on('combat:aftermathChoose', this._onAftermathChoose),
         // Flee stamps that land without an ai:flee emit (doctrine/fsm churn, surrender
@@ -390,7 +403,7 @@ export const combatOutcome = {
     return record;
   },
 
-  _publishAftermath() {
+  _publishAftermath(reason) {
     const state = this.state;
     if (!state) return null;
     const own = ensureState(state);
@@ -425,16 +438,20 @@ export const combatOutcome = {
       own.aftermath = null;
       return null;
     }
+    // The answered pick follows the wreck. The card stays closed unless the verbs changed
+    // or the player entered the sector. A same-verb retarget must not reopen it.
+    retargetChosenOffRecycledHull(state, own, offer);
     own.aftermath = offer;
-    if (this.bus && typeof this.bus.emit === 'function') {
+    const sig = `${sectorId}|${offer.choices.map((choice) => choice.id).join(',')}`;
+    const verbsChanged = sig !== this._choiceSig;
+    if ((verbsChanged || reason === 'sector:enter') && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('combat:aftermathChoices', {
         sectorId,
         paused: false,
         choices: offer.choices.map((choice) => ({ id: choice.id, label: choice.label })),
       });
     }
-    const sig = offer.choices.map((choice) => choice.id).join(',');
-    if (sig !== this._choiceSig) {
+    if (verbsChanged) {
       this._choiceSig = sig;
       if (offer.choices.length >= 2) this._speakChoices(offer);
     }
