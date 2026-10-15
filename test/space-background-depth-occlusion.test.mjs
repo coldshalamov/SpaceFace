@@ -220,6 +220,35 @@ test('planet bake program warms on the shipping sRGB target contract without ret
   assert.equal(targetDisposeCount, 1, 'only the discarded 1px warm target is retired');
   assert.strictEqual(background._planetBakeMaterial, material,
     'the linked program owner survives loading for ordinary-flight admissions');
-  assert.deepEqual(background.contextLossResources(), [material, background.bakePlane.geometry],
-    'off-scene compiled bake resources participate in stale-listener detachment before restore');
+  const resources = background.contextLossResources();
+  assert.ok(resources.includes(material),
+    'off-scene compiled bake material participates in stale-listener detachment before restore');
+  assert.ok(resources.includes(background.bakePlane.geometry),
+    'off-scene bake geometry participates in stale-listener detachment before restore');
+});
+
+test('background context-loss roots include detached sky, atlas, and flare owners', () => {
+  const background = Object.create(SpaceBackground.prototype);
+  const skyActive = { name: 'sky-active' };
+  const skyPending = { name: 'sky-pending' };
+  const baseActive = { name: 'base-active' };
+  const atlasView = { name: 'atlas-view' };
+  const flareAtlas = { name: 'flare-atlas' };
+  Object.assign(background, {
+    l0Target: null,
+    l1Target: null,
+    l2Target: null,
+    planetCache: new Map(),
+    _planetBakeMaterial: null,
+    _l0BakeMaterial: null,
+    bakePlane: null,
+    deepSkyPlates: { contextLossResources: () => [skyActive, skyPending] },
+    deepSkyBases: { contextLossResources: () => [baseActive] },
+    paintedPlanets: { contextLossResources: () => [atlasView] },
+    flareAtlas,
+  });
+
+  assert.deepEqual(background.contextLossResources(), [
+    skyActive, skyPending, baseActive, atlasView, flareAtlas,
+  ]);
 });

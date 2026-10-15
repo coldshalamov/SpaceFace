@@ -697,6 +697,10 @@ export class PlasmaRibbonPlume {
     };
   }
 
+  contextLossResources() {
+    return [this.mesh, this.geometry, this.material].filter(Boolean);
+  }
+
   dispose() {
     this.geometry.dispose();
     this.material.dispose();

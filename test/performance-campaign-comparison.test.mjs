@@ -12,7 +12,7 @@ test('diagnosis selects a frozen simulation even when its callback p99 looks bet
 const run = (fps, p95) => ({ metadata: { cpu: 'Intel CPU', platform: 'win32', gpu: 'Intel',
   userAgent: 'Electron', viewport: [1280, 720], buffer: [1280, 720],
   simLane: 'worker', mode: 'adventure', seed: 47, sampleMs: 20000, settleMs: 0, travelMs: 0,
-  observer: 'cadence-only', displayHz: 60, sourceStable: true, settings: { bloom: true } }, summary: {
+  observer: 'cadence-only', probeDigest: 'same-observer-v1', displayHz: 60, sourceStable: true, settings: { bloom: true } }, summary: {
   submissionObserved: true, wallMs: 20000, activeMs: 20000, healthyCallbacksFrozenWorld: 0, healthyCallbacksFrozenSimulation: 0,
   worldSubmitFps: fps, worldMotionFps: fps, simWallRatio: 1,
   motionSubmissionGaps: { p99: p95, max: p95 * 2, over50: fps === 20 ? 30 : 3 },
@@ -128,4 +128,17 @@ test('already smooth zero-hitch routes preserve their floor', () => {
     candidate.summary.actualMeshStaleMs.over50 = 0;
   }
   assert.equal(comparePerformanceRuns(before, after).targetMet, true);
+});
+
+
+test('changed or missing observer code cannot establish a performance comparison', () => {
+  const before = run(20, 50), after = run(60, 16);
+  after.metadata.probeDigest = 'different-observer-v2';
+  const changed = comparePerformanceRuns(before, after);
+  assert.equal(changed.comparable, false);
+  assert.equal(changed.targetMet, false);
+  assert.ok(changed.failures.some(value => value.includes('probeDigest')));
+  delete before.metadata.probeDigest;
+  delete after.metadata.probeDigest;
+  assert.equal(comparePerformanceRuns(before, after).targetMet, false);
 });

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import * as THREE from 'three';
 
 import {
+  captureWebGlDisposeListenerDelta,
   collectContextLossRoots,
   CONTEXT_LOSS_TIME_EFFECT_SOURCE,
   createWebGlDisposeListenerProvenance,
@@ -13,6 +15,7 @@ import {
   isWebGlContextUnavailable,
   pauseSimForContextLoss,
   resumeSimAfterContextRestore,
+  snapshotWebGlDisposeListeners,
   stashStaleWebGlDisposeProvenance,
 } from '../src/render/contextResourceLifecycle.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
@@ -20,6 +23,11 @@ import {
   receiptReportsContextLost,
   runWebGlContextRestoreRebuild,
 } from '../src/render/renderer.js';
+import { vfx } from '../src/render/vfx.js';
+import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
+import { RcsImpulseSystem } from '../src/render/thruster/systems/rcsImpulse.js';
+import { PlasmaStreamSystem } from '../src/render/thruster/systems/plasmaStream.js';
+import { createGasSystem } from '../src/render/combat/gas/gasVolumeField.js';
 
 test('context loss detaches only exact opaque renderer-generation callbacks by resource kind', () => {
   const provenance = createWebGlDisposeListenerProvenance();
@@ -67,6 +75,24 @@ test('context loss detaches only exact opaque renderer-generation callbacks by r
   assert.deepEqual(geometry._listeners.dispose, [appDisposeListener]);
   assert.deepEqual(material._listeners.dispose, [appDisposeListener]);
   assert.deepEqual(texture._listeners.dispose, [appDisposeListener]);
+});
+
+test('environment conversion provenance captures only newly attached source callbacks', () => {
+  const foreignListener = opaqueListener('application-owned');
+  const cubemapListener = opaqueListener('three-onCubemapDispose');
+  const source = resource({ isTexture: true }, [foreignListener]);
+  const before = snapshotWebGlDisposeListeners(source);
+  source._listeners.dispose.push(cubemapListener);
+
+  const provenance = createWebGlDisposeListenerProvenance();
+  assert.equal(captureWebGlDisposeListenerDelta(provenance, source, before, 'textures'), 1);
+  assert.equal(provenance.textures.has(cubemapListener), true);
+  assert.equal(provenance.textures.has(foreignListener), false);
+
+  const receipt = detachStaleWebGlDisposeListeners([source], provenance);
+  assert.equal(receipt.listenersDetached, 1);
+  assert.deepEqual(source._listeners.dispose, [foreignListener],
+    'pre-existing application callbacks must survive exact environment provenance cleanup');
 });
 
 test('context loss covers render-target attachments once and ignores unrelated objects', () => {
@@ -138,6 +164,9 @@ test('context loss root collection includes scene, background, bloom, graph, and
   const backgroundTarget = { name: 'background-target' };
   const bloomTarget = { name: 'bloom-target' };
   const graphTarget = { name: 'graph-target' };
+  const vfxGeometry = { name: 'detached-vfx-geometry' };
+  const vfxTexture = { name: 'detached-vfx-texture' };
+  const vfxRoot = { name: 'detached-vfx-root' };
   const entityMesh = { name: 'entity-mesh' };
   const roots = collectContextLossRoots({
     scene,
@@ -145,10 +174,115 @@ test('context loss root collection includes scene, background, bloom, graph, and
     spaceBackground: { contextLossResources: () => [backgroundTarget] },
     bloom: { contextLossResources: () => [bloomTarget] },
     renderGraph: { contextLossResources: () => [graphTarget] },
+    vfxRoots: [vfxRoot],
+    vfxResources: [vfxGeometry, vfxTexture],
     entities: [{ mesh: entityMesh }, null, {}],
   });
 
-  assert.deepEqual(roots, [scene, environment, backgroundTarget, bloomTarget, graphTarget, entityMesh]);
+  assert.deepEqual(roots, [scene, environment, backgroundTarget, bloomTarget, graphTarget,
+    vfxRoot, vfxGeometry, vfxTexture, entityMesh]);
+});
+
+test('VFX context-loss roots retain detached gas and dedicated propulsion batches', () => {
+  const system = Object.create(vfx);
+  const gasMesh = new THREE.Group();
+  gasMesh.name = 'SF_VFX_gas_volumes';
+  const ceresPlume = new THREE.Group();
+  ceresPlume.name = 'ceres-plume';
+  const latchPlume = new THREE.Group();
+  latchPlume.name = 'latch-plume';
+  system._gas = { mesh: gasMesh };
+  system._energy = {
+    ceresWorkfleet: { plume: { group: ceresPlume } },
+    latchNine: { plume: { group: latchPlume } },
+    fleet: { families: [] },
+  };
+  system._ribbonTrails = new Map();
+
+  const roots = system._vfxOwnerRoots();
+
+  assert.ok(roots.includes(gasMesh), 'detached gas mesh must remain in the loss root set');
+  assert.ok(roots.includes(ceresPlume), 'Ceres wrapper must publish its plume group');
+  assert.ok(roots.includes(latchPlume), 'Latch wrapper must publish its plume group');
+
+  const gasFilm = { isTexture: true, name: 'gas-film' };
+  const ceresTier = { isBufferGeometry: true, name: 'ceres-dormant-tier' };
+  system._gas.contextLossResources = () => [gasFilm];
+  system._energy.ceresWorkfleet.plume.contextLossResources = () => [ceresTier];
+  const resources = system._vfxContextLossResources();
+  assert.ok(resources.includes(gasFilm), 'VFX must forward raw gas films to the loss walker');
+  assert.ok(resources.includes(ceresTier), 'VFX must forward raw propulsion tiers to the loss walker');
+});
+
+test('VFX context-loss resources publish sprite bucket textures held only by uniforms', () => {
+  const system = Object.create(vfx);
+  const densityTexture = { isTexture: true, name: 'SF_OfflineDensityFilm_RG8' };
+  system._spriteBatches = {
+    glow: { texture: null },
+    ring: { texture: null },
+    smoke: { texture: densityTexture },
+    combustion: { texture: densityTexture },
+  };
+
+  const resources = system._vfxContextLossResources();
+
+  assert.deepEqual(resources, [densityTexture],
+    'the shared transient density film must be detached even though it is only a uniform value');
+});
+
+test('VFX providers publish off-graph tier and raw texture resources', () => {
+  const plume = Object.create(ContinuousPlumeSystem.prototype);
+  const plumeTierGeometry = { isBufferGeometry: true, name: 'plume-medium-tier' };
+  const plumeTexture = { isTexture: true, name: 'plume-mask' };
+  plume.group = { isObject3D: true, name: 'plume-root' };
+  plume.layerBatches = [{
+    mesh: { isObject3D: true },
+    material: { isMaterial: true },
+    tierBuffers: {
+      high: { geo: { isBufferGeometry: true, name: 'plume-high-tier' } },
+      medium: { geo: plumeTierGeometry },
+      low: { geo: { isBufferGeometry: true, name: 'plume-low-tier' } },
+    },
+  }];
+  plume._textures = { default: plumeTexture };
+  const plumeResources = plume.contextLossResources();
+  assert.ok(plumeResources.includes(plumeTierGeometry), 'dormant plume tier must be published');
+  assert.ok(plumeResources.includes(plumeTexture), 'owned plume texture must be published');
+
+  const rcs = Object.create(RcsImpulseSystem.prototype);
+  const rcsTierGeometry = { isBufferGeometry: true, name: 'rcs-low-tier' };
+  const rcsTexture = { isTexture: true, name: 'rcs-mask' };
+  rcs.group = { isObject3D: true, name: 'rcs-root' };
+  rcs.layerBatches = [{
+    mesh: { isObject3D: true },
+    material: { isMaterial: true },
+    tierBuffers: { high: { geo: {} }, medium: { geo: {} }, low: { geo: rcsTierGeometry } },
+  }];
+  rcs._textures = { default: rcsTexture };
+  const rcsResources = rcs.contextLossResources();
+  assert.ok(rcsResources.includes(rcsTierGeometry), 'dormant RCS tier must be published');
+  assert.ok(rcsResources.includes(rcsTexture), 'owned RCS texture must be published');
+
+  const plasma = Object.create(PlasmaStreamSystem.prototype);
+  const centerTexture = { isTexture: true, name: 'plasma-center-field' };
+  const contrailTexture = { isTexture: true, name: 'plasma-path-field' };
+  plasma.group = { isObject3D: true, name: 'plasma-root' };
+  plasma._centerTex = centerTexture;
+  plasma._ribbons = { contextLossResources: () => [{ isBufferGeometry: true }] };
+  plasma._trails = [{ contextLossResources: () => [contrailTexture] }];
+  plasma._forges = [];
+  plasma._throats = [];
+  const plasmaResources = plasma.contextLossResources();
+  assert.ok(plasmaResources.includes(centerTexture), 'plasma center texture must be published');
+  assert.ok(plasmaResources.includes(contrailTexture), 'contrail path texture must be published');
+
+  const gas = createGasSystem(new THREE.Scene());
+  const gasResources = gas.contextLossResources();
+  assert.ok(gasResources.some((resource) => resource?.isTexture && resource.name === 'SF_GasDensityFilm_RG8'),
+    'shared gas density film must be published as a raw resource');
+  assert.ok(gasResources.some((resource) => resource?.isTexture && resource.name === 'SF_GasMotionField_RGBA8'),
+    'shared gas motion film must be published as a raw resource');
+  gas.dispose();
 });
 
 test('context restore rebuild stays paused until every listener in the restore event has returned', () => {
@@ -504,8 +638,33 @@ test('renderer wiring: the loss handler stashes the consumed provenance and tear
   assert.ok(lostAt >= 0 && lostEnd > lostAt, 'the webglcontextlost listener must be inspectable');
   assert.match(
     lostHandler,
-    /stashStaleWebGlDisposeProvenance\(preparedPoolResources\.provenance\);/,
+    /stashStaleWebGlDisposeProvenance\(contextDisposeProvenance\);/,
     'the loss handler must stash the provenance the detach pass consumed',
+  );
+  assert.match(
+    lostHandler,
+    /collectVfxGpuResidencyRoots/,
+    'the loss handler must include detached VFX owner roots in the stale-listener detach pass',
+  );
+  assert.match(
+    lostHandler,
+    /collectVfxContextLossResources/,
+    'the loss handler must include detached raw VFX resources in the stale-listener detach pass',
+  );
+  assert.match(
+    lostHandler,
+    /contextRoots\.push\(this\._envMapTarget\)/,
+    'the loss handler must retain the owned PMREM target before abandoning it',
+  );
+  assert.match(
+    lostHandler,
+    /contextRoots\.push\(this\._foundryEnvTexture\)/,
+    'the loss handler must retain the owned foundry source before abandoning it',
+  );
+  assert.match(
+    source,
+    /equirectSourceDisposeListeners\s*=\s*snapshotWebGlDisposeListeners\(equirect\)[\s\S]*?captureWebGlDisposeListenerDelta\(/,
+    'environment bake must retain the lazy equirectangular callback identity delta',
   );
 
   const disposeAt = source.search(/function disposeObject\(obj\b/);

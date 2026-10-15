@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  GLIDE_TUNING,
   createCameraGlide,
   requiredGlideScale,
   resetCameraGlide,
@@ -69,6 +70,12 @@ function peakAccel(frames) {
   return peak;
 }
 
+function maxScaleDelta(frames) {
+  let peak = 0;
+  for (let i = 1; i < frames.length; i++) peak = Math.max(peak, Math.abs(frames[i].s - frames[i - 1].s));
+  return peak;
+}
+
 function directionChanges(frames, minStep = 0.0005) {
   let last = 0;
   let changes = 0;
@@ -126,6 +133,20 @@ test('boost speed into a tall station: never inside', () => {
   const station = box(0, 0, 300, 300, 320);
   const { frames } = fly({ boxes: [station], path: line(900, -2200), seconds: 5.5 });
   assertNeverInside(frames, 'boost');
+});
+
+test('slingshot approach pre-rises under the capped rate and settles after a mega-station', () => {
+  // The renderer documents authored mega-stations as roughly 1300 WU across with a ~380 WU roof.
+  // At the 1680 WU/s inbound bound, the ordinary ring found this roof too late for its capped rise.
+  const megaStation = box(0, 0, 650, 650, 364);
+  const { frames, glide } = fly({ boxes: [megaStation], path: line(1680, -3000), seconds: 11 });
+  assertNeverInside(frames, 'slingshot mega-station');
+  assert.equal(glide.diag.hardFrames, 0, 'bounded pre-rise must reach the roof without the emergency clamp');
+  assert.ok(glide.diag.maxScale > 2.5, `camera clears the documented roof (max scale ${glide.diag.maxScale.toFixed(3)})`);
+  const peakDelta = maxScaleDelta(frames);
+  const maxAllowedDelta = GLIDE_TUNING.maxRiseScalePerS * 1.5 * DT;
+  assert.ok(peakDelta <= maxAllowedDelta + 1e-6, `rise stays capped per frame (scale delta ${peakDelta.toFixed(4)})`);
+  assert.ok(frames[frames.length - 1].s < 1.02, `returns to the set framing after exit (s=${frames[frames.length - 1].s.toFixed(3)})`);
 });
 
 test('crawling speed still eases up instead of snapping', () => {

@@ -11,6 +11,9 @@ import {
 } from '../src/render/bloom.js';
 import { estimateGpuResourceBytes } from '../src/render/assetResidency.js';
 
+const bloomRenderTargets = (bloom) => bloom.contextLossResources()
+  .filter((resource) => resource?.isWebGLRenderTarget);
+
 function rendererHarness({ webgl2 = true, extension = true, complete = true } = {}) {
   let activeTarget = null;
   const sentinel = { name: 'caller-target' };
@@ -87,15 +90,15 @@ test('bloom keeps HalfFloat by default, supports pyramid/all opt-in modes, and r
     assert.equal(initial.packedHdrRequested, PACKED_HDR_MODE.OFF);
     assert.equal(initial.packedHdrMode, PACKED_HDR_MODE.OFF);
     assert.equal(initial.packedHdrFormat, 'rgba16f');
-    assert.equal(bloom.contextLossResources()[0].texture.format, THREE.RGBAFormat);
-    assert.equal(bloom.contextLossResources()[0].texture.type, THREE.HalfFloatType);
+    assert.equal(bloomRenderTargets(bloom)[0].texture.format, THREE.RGBAFormat);
+    assert.equal(bloomRenderTargets(bloom)[0].texture.type, THREE.HalfFloatType);
 
     bloom.setPackedHdrMode(PACKED_HDR_MODE.PYRAMID);
     let diag = bloom.diagnostics();
     assert.equal(diag.packedHdrRequested, PACKED_HDR_MODE.PYRAMID);
     assert.equal(diag.packedHdrMode, PACKED_HDR_MODE.PYRAMID);
     assert.equal(diag.packedHdrFormat, 'r11g11b10f');
-    const pyramidTargets = bloom.contextLossResources();
+    const pyramidTargets = bloomRenderTargets(bloom);
     assert.equal(pyramidTargets[0].texture.type, THREE.HalfFloatType, 'pyramid mode keeps scene precision');
     assert.ok(pyramidTargets.slice(1).every((target) => target.texture.format === THREE.RGBFormat));
     assert.ok(pyramidTargets.slice(1).every((target) => target.texture.type === THREE.UnsignedInt101111Type));
@@ -103,8 +106,8 @@ test('bloom keeps HalfFloat by default, supports pyramid/all opt-in modes, and r
     bloom.setOptions({ packedHdr: PACKED_HDR_MODE.ALL });
     diag = bloom.diagnostics();
     assert.equal(diag.packedHdrMode, PACKED_HDR_MODE.ALL);
-    assert.ok(bloom.contextLossResources().every((target) => target.texture.format === THREE.RGBFormat));
-    assert.ok(bloom.contextLossResources().every((target) => target.texture.type === THREE.UnsignedInt101111Type));
+    assert.ok(bloomRenderTargets(bloom).every((target) => target.texture.format === THREE.RGBFormat));
+    assert.ok(bloomRenderTargets(bloom).every((target) => target.texture.type === THREE.UnsignedInt101111Type));
 
     h.gl.getExtension = () => null;
     bloom.rebuild();
@@ -112,7 +115,7 @@ test('bloom keeps HalfFloat by default, supports pyramid/all opt-in modes, and r
     assert.equal(diag.packedHdrRequested, PACKED_HDR_MODE.ALL);
     assert.equal(diag.packedHdrMode, PACKED_HDR_MODE.OFF);
     assert.equal(diag.packedHdrCapability.reason, 'ext-color-buffer-float-required');
-    assert.ok(bloom.contextLossResources().every((target) => target.texture.type === THREE.HalfFloatType));
+    assert.ok(bloomRenderTargets(bloom).every((target) => target.texture.type === THREE.HalfFloatType));
   } finally {
     bloom.dispose();
   }

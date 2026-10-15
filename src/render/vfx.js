@@ -1712,11 +1712,13 @@ export const vfx = {
     // because particle-quality changes can replace the point-cloud geometry without changing the
     // renderer/VFX ownership boundary.
     this._collectVfxGpuResidencyRoots = () => this._vfxOwnerRoots();
+    this._collectVfxContextLossResources = () => this._vfxContextLossResources();
     this._prepareOpeningVfxFrame = () => this._publishOpeningPersistentVfx();
     this._warmupLiveFlightEffects = () => this.warmupLiveFlightEffectsForLoading();
     this._restLiveFlightEffectsAfterCook = () => this.restLiveFlightEffectsAfterCook();
     if (ctx.state && ctx.state.render) {
       ctx.state.render.collectVfxGpuResidencyRoots = this._collectVfxGpuResidencyRoots;
+      ctx.state.render.collectVfxContextLossResources = this._collectVfxContextLossResources;
       ctx.state.render.prepareOpeningVfxFrame = this._prepareOpeningVfxFrame;
       ctx.state.render.warmupLiveFlightEffects = this._warmupLiveFlightEffects;
       ctx.state.render.restLiveFlightEffectsAfterCook = this._restLiveFlightEffectsAfterCook;
@@ -1757,6 +1759,9 @@ export const vfx = {
     if (render) {
       if (render.collectVfxGpuResidencyRoots === this._collectVfxGpuResidencyRoots) {
         delete render.collectVfxGpuResidencyRoots;
+      }
+      if (render.collectVfxContextLossResources === this._collectVfxContextLossResources) {
+        delete render.collectVfxContextLossResources;
       }
       if (render.prepareOpeningVfxFrame === this._prepareOpeningVfxFrame) {
         delete render.prepareOpeningVfxFrame;
@@ -1971,6 +1976,7 @@ export const vfx = {
     this._explosionEmitter = null;
     this._vfxReprojectFramePort = null;
     this._collectVfxGpuResidencyRoots = null;
+    this._collectVfxContextLossResources = null;
     this._prepareOpeningVfxFrame = null;
     this._warmupLiveFlightEffects = null;
     this._restLiveFlightEffectsAfterCook = null;
@@ -2011,6 +2017,11 @@ export const vfx = {
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
     add(this._fieldGeom && this._fieldGeom.mesh);
+    // Gas volume textures are ref-counted outside the scene object graph. The field mesh normally
+    // lives in the scene, but it can be detached during a boundary/menu transition while its
+    // shared Data3DTextures remain owned by this VFX instance. Keep it in the loss walk so the
+    // dying renderer listener is detached before GasVolumeField.releaseGasVolumeTextures runs.
+    add(this._gas && this._gas.mesh);
     add(this._actionVfx && this._actionVfx.mesh);
     add(this._stationOperationVfx && this._stationOperationVfx.mesh);
     add(this._bombDetonationVfx && this._bombDetonationVfx.mesh);
@@ -2034,6 +2045,13 @@ export const vfx = {
       add(this._energy.retroVolume && this._energy.retroVolume.group);
       add(this._energy.plumeSystem && this._energy.plumeSystem.group);
       add(this._energy.rcsSystem && this._energy.rcsSystem.group);
+      // Ceres and Latch are wrapper batches around dedicated ContinuousPlumeSystem instances;
+      // their `.group` is one level below the wrapper and therefore is not covered by the fleet
+      // family loop below. Both systems can be detached before ordinary VFX teardown.
+      add(this._energy.ceresWorkfleet && this._energy.ceresWorkfleet.plume
+        && this._energy.ceresWorkfleet.plume.group);
+      add(this._energy.latchNine && this._energy.latchNine.plume
+        && this._energy.latchNine.plume.group);
       for (const family of this._energy.fleet?.families || []) {
         add(family && family.plume && family.plume.group);
         add(family && family.rcs && family.rcs.group);
@@ -2044,6 +2062,48 @@ export const vfx = {
       if (!root.userData?.openingSubmissionPackage) this._publishOpeningVfxPackage(root);
     }
     return roots;
+  },
+
+  /**
+   * Raw GPU identities owned by VFX systems that are not guaranteed to remain under an Object3D.
+   * This deliberately calls provider seams rather than walking arbitrary owner internals: the
+   * context-loss detach pass must preserve exact renderer listener provenance and foreign owners.
+   */
+  _vfxContextLossResources() {
+    const resources = [];
+    const seen = new Set();
+    const add = (resource) => {
+      if (!resource || typeof resource !== 'object' || seen.has(resource)) return;
+      if (!resource.isObject3D && !resource.isBufferGeometry && !resource.isMaterial
+        && !resource.isTexture && !resource.isWebGLRenderTarget) return;
+      seen.add(resource);
+      resources.push(resource);
+    };
+    const addProvider = (provider) => {
+      if (!provider || typeof provider.contextLossResources !== 'function') return;
+      let owned;
+      try { owned = provider.contextLossResources(); } catch (_) { return; }
+      if (Array.isArray(owned)) for (const resource of owned) add(resource);
+    };
+
+    // Sprite volume films live in ShaderMaterial uniform dictionaries. Publish the bucket-owned
+    // identities explicitly instead of broadening the context walker to arbitrary uniform values.
+    for (const bucket of spriteBucketValues(this._spriteBatches)) add(bucket && bucket.texture);
+    addProvider(this._gas);
+    addProvider(this._arcadeStructural);
+    addProvider(this._weaponPresenter);
+    if (this._energy) {
+      addProvider(this._energy.ceresWorkfleet?.plume);
+      addProvider(this._energy.latchNine?.plume);
+      addProvider(this._energy.plasmaStream);
+      addProvider(this._energy.retroVolume);
+      addProvider(this._energy.fleet);
+      if (!this._energy.fleet) {
+        addProvider(this._energy.plumeSystem);
+        addProvider(this._energy.rcsSystem);
+      }
+    }
+    return resources;
   },
 
   _publishOpeningPersistentVfx() {

@@ -45,7 +45,7 @@ function lowerDistributionTail(before, after) {
 }
 
 export function comparePerformanceRuns(before, after, target = 3) {
-  const keys = ['cpu', 'platform', 'gpu', 'userAgent', 'viewport', 'buffer', 'settings', 'simLane', 'mode', 'seed', 'sampleMs', 'settleMs', 'travelMs', 'observer', 'displayHz'];
+  const keys = ['cpu', 'platform', 'gpu', 'userAgent', 'viewport', 'buffer', 'settings', 'simLane', 'mode', 'seed', 'sampleMs', 'settleMs', 'travelMs', 'observer', 'displayHz', 'probeDigest'];
   const mismatches = keys.filter(k => before.metadata[k] == null || after.metadata[k] == null
     || JSON.stringify(before.metadata[k]) !== JSON.stringify(after.metadata[k]));
   const a = before.summary, b = after.summary;
