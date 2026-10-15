@@ -73,7 +73,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | **`base` / `base-claimed`** | **DONE** (phone + narrow + 960 slot rail) | See § Base screen — phone module list, narrow spine, one slot rail (ui-polish-28) |
 | `loading` | SURVEYED | |
-| `automation` | SURVEYED | |
+| **`automation`** | **DONE** (761–1100 ui-polish-27, ≤760 desktop window ui-polish-36) | See § Automation in a narrow desktop window below; phone sheet lives in `mobileScreenLayouts.js` |
 | **`replay`** | **DONE** (ui-polish-27) | Empty-tape line wraps on phone instead of ellipsizing — see § Clips reel empty state below |
 | **`clips`** | **DONE** (ui-polish-27) | Empty reel fits every width; see § Clips reel empty state below |
 | **`sandbox`** | **DONE** (ui-polish-24) | Launch no longer buries Combat Lab / Hull / Hornet; phone tiles no longer stack — see § Sandbox Launch below |
@@ -81,6 +81,14 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `starmap` / `starmap-legacy` | SURVEYED | |
 
 ---
+
+## Automation in a narrow desktop window — session notes (2026-10-15, ui-polish-36)
+
+**Before (master cc906667e6):** below 761px wide (a desktop window, not a phone) the board kept its 270px column and the five-node strip beside the gauge. At 600–700 the DRONES / TRADERS / OUTPOSTS words printed over each other and the rung stats ran under THROTTLE; at 390 the strip, CLOSE and the throttles were off the frame, the board's cost sat on its sentence and the summary's ASSETS / NET FLOW tangled (bench: 6 findings at 600/700, 17 at 390, on every tab).
+
+**After (`src/ui/screens/automationPanel.js` only, `html:root:not([data-sf-mobile="1"])` under `max-width: 760px`):** the strip takes its own row as wrapping steppers (ring, count and beam on one axis, the word under them, five across at 700, three at 390); the board stacks over a four-column summary (two under 520); each purchase rung keeps its name, wraps its stats and puts THROTTLE and the research verb under them. Under 520 the purse and CLOSE share the row under the title. Bench is 0 findings on all four tabs at 390×844, 480×800, 600×900 and 700×800. 761+, 960, 1280, 1920 and the real phone (390×844, 844×390) are pixel-identical apart from the route-beam pulse.
+
+Shots: `ui-shots/polish36/{before-tabs,after1,after2}/` plus `compare-*.png`.
 
 ## Save / Load reading clears the filmstrip — session notes (2026-10-13, ui-polish-26)
 
