@@ -6,6 +6,7 @@
 // transient and never enters GameState.
 import { aftermathChoices, applyAftermathChoice } from '../combat/aftermathChoices.js';
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -106,6 +107,15 @@ function outcomeText(record) {
   }
 }
 
+function sameOccupant(record, entity) {
+  if (!record || !entity) return false;
+  const live = occupantGenerationOf(entity);
+  // Unstamped fixtures have no token on either side. A stamped receipt only matches
+  // the body that still carries that token, so a recycled id is a different ship.
+  if (record.occupantGeneration == null && live == null) return true;
+  return record.occupantGeneration != null && record.occupantGeneration === live;
+}
+
 function sectorWreckIds(state, sectorId) {
   const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
   const list = bag && sectorId ? bag[sectorId] : null;
@@ -127,6 +137,7 @@ function compactRecord(state, entity, payload, outcome, reason) {
   return {
     schemaVersion: STATE_VERSION,
     entityId: id,
+    occupantGeneration: occupantGenerationOf(entity),
     outcome,
     reason: reason || outcome,
     tick: state.tick || 0,
@@ -333,12 +344,15 @@ export const combatOutcome = {
     const own = ensureState(state);
     const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
     if (id == null) return null;
-    // One receipt per ship stays the rule. A later death still refreshes the field verbs,
-    // so a disabled hull that is now a corpse stops being offered as a rescue.
-    if (own.byEntity[id]) {
-      // A later death marks the body. A despawn does not: entity:destroyed republishes
-      // without this flag, so a ship that merely left is not offered as salvage.
-      if (payload && payload.sourceEvent === 'entity:killed') own.byEntity[id].dead = true;
+    const prior = own.byEntity[id];
+    if (prior && entity && !sameOccupant(prior, entity)) {
+      // The number was recycled. The old receipt stays out of the new ship's verbs.
+      const priorIndex = own.outcomes.indexOf(prior);
+      if (priorIndex >= 0) own.outcomes.splice(priorIndex, 1);
+      delete own.byEntity[id];
+    } else if (prior) {
+      // A later death marks this same body. A despawn does not set dead.
+      if (payload && payload.sourceEvent === 'entity:killed') prior.dead = true;
       this._publishAftermath();
       return null;
     }
@@ -372,11 +386,12 @@ export const combatOutcome = {
     for (const record of own.outcomes) {
       if (!record || record.sectorId !== sectorId) continue;
       const entity = entityFor(state, record.entityId);
+      const same = sameOccupant(record, entity);
       outcomes.push({
         outcome: record.outcome,
         entityId: record.entityId,
         sectorId: record.sectorId,
-        alive: !!(entity && entity.alive !== false),
+        alive: !!(same && entity.alive !== false),
         dead: record.dead === true,
       });
     }

@@ -170,6 +170,42 @@ test('a fled ship that despawns is not a chase and not a wreck', () => {
   assert.equal(h.state.paused, undefined);
 });
 
+test('a recycled id does not revive the chase', () => {
+  const h = makeHarness();
+  const runner = spawnHostile(h, 800);
+  const oldId = runner.id;
+  const oldGeneration = runner.occupantGeneration;
+  assert.ok(oldGeneration);
+  h.bus.emit('ai:flee', { entityId: oldId });
+  runner.alive = false;
+  h.state.entities.delete(oldId);
+  h.bus.emit('entity:destroyed', { id: oldId, entity: runner, reason: 'egress' });
+  assert.deepEqual(idsOf(h.state.combatOutcome.aftermath), ['escape']);
+
+  const next = h.helpers.spawnEntity({
+    id: oldId,
+    type: 'ship', pos: { x: 900, z: 20 }, vel: { x: 0, z: 0 }, team: 1,
+    hull: 80, hullMax: 80,
+    data: { ai: { passive: true, hostileTeams: [0] }, name: 'Next' },
+  });
+  h.ships.push(next);
+  assert.equal(next.id, oldId);
+  assert.notEqual(next.occupantGeneration, oldGeneration);
+
+  const other = spawnHostile(h, 1400);
+  h.bus.emit('entity:killed', { id: other.id, killerId: h.state.playerId });
+  assert.deepEqual(idsOf(h.state.combatOutcome.aftermath), ['salvage', 'escape']);
+  assert.equal(h.state.combatOutcome.aftermath.targets.pursuit, null);
+  assert.notEqual(h.state.combatOutcome.byEntity[oldId].dead, true);
+
+  h.bus.emit('ai:flee', { entityId: next.id });
+  const replaced = h.state.combatOutcome.byEntity[oldId];
+  assert.equal(replaced.occupantGeneration, next.occupantGeneration);
+  assert.equal(replaced.outcome, 'fled');
+  assert.equal(h.state.combatOutcome.aftermath.targets.pursuit, next.id);
+  assert.equal(h.state.paused, undefined);
+});
+
 test('a wreck in the sector is salvage without a fresh kill, and the player hull is not', () => {
   const h = makeHarness();
   h.state.aftermathWrecks = {
