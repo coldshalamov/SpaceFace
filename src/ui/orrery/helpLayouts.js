@@ -333,6 +333,67 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
   ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
 }
+/* UI polish 42: a short desktop (≤460 tall). The 761–1200 row of sections still sits beside the
+   title, and the Controls stage still splits the ship rig beside EVERY KEY — but under ~460px of
+   height the title row, the section ticks, the rig's "PRESS ANY KEY" echo and the register's rebound
+   footnote all share the same band (844×390, 801×440, 700×400). Stack the title over the sections,
+   sleep the rig (EVERY KEY already carries every binding), and let the register fill the stage. */
+@media (max-height:460px) {
+  /* Chrome budget at 390 tall: keep the stage ≥260px so the Loops orrery and Ships dial leave is-off
+     (helpInstruments.js floors at H < 260). 10+8 pad + ~32 title + ~28 tabs + ~30 foot + 12 gap ≈ 120 → stage ~270. */
+  ${HD} { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title" "hang" "stage" "foot" !important;
+    padding:10px 3vw 8px !important; row-gap:4px !important; column-gap:16px !important; }
+  ${HD} > .k-title { align-self:end; }
+  ${HD} > .k-title .k-t-title { font-size:clamp(22px, 4.2vh, 34px) !important; }
+  ${HD} > .k-title > .sf-help-now { margin:2px 0 0 !important; font-size:10px !important; letter-spacing:.16em !important; gap:8px; }
+  ${HD} > .k-title > .sf-help-now::after { content:none; }
+  ${HD} > .k-hang { grid-area:hang; align-self:start; justify-self:stretch; -webkit-mask-image:none; mask-image:none; max-height:none !important; }
+  ${HD} > .k-foot { grid-area:foot; }
+  ${HD} > .orr-help__stage { grid-area:stage; min-height:0 !important; }
+  /* one row of section words on a rule (same grammar as the 761–1200 strip), even under 761 wide */
+  ${HD} .orr-help__tabs { flex-direction:row !important; gap:clamp(8px, 1.6vw, 20px) !important; padding:0 0 6px !important; overflow-x:auto !important;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1px) / 100% 6px no-repeat !important; }
+  ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
+  ${HD} .orr-help__tabs > li::before { display:none; }
+  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:24px !important; padding:1px 0 2px !important; font-size:10.5px !important; letter-spacing:.12em !important; }
+  ${HD} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-8px !important; width:2px !important; height:7px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
+  html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:50% !important; bottom:-10px !important; width:7px !important; height:7px !important; margin:0 0 0 -3.5px !important;
+    clip-path:none !important; border-radius:50% !important; filter:none !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 244 222 / .55) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:none !important; display:none !important; }
+  /* Controls: EVERY KEY owns the stage; the ship rig's echo was printing through CLOSE and the footnote */
+  ${HD} .orr-help-controls { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; height:100%; min-height:0; }
+  ${HD} .orr-help-controls__rig { display:none !important; }
+  ${HD} .orr-hreg__head { gap:4px; padding:0 0 4px 0; }
+  ${HD} .orr-hreg__title { font-size:14px; }
+  ${HD} .orr-hreg__secs { padding-bottom:8px; gap:clamp(8px, 1.4vw, 16px); }
+  ${HD} .orr-hreg__secword { font-size:10.5px !important; letter-spacing:.12em; }
+  ${HD} .orr-hreg__fine { margin:4px 0 0; padding-left:24px; font-size:11px; line-height:1.3; }
+  ${HD} .orr-hreg__row { min-height:26px; padding:2px 0 2px 24px; }
+  ${HD} .orr-hreg__sec { padding:8px 0 3px 24px; font-size:11px !important; }
+  ${HD} .orr-hreg__name { font-size:12.5px; }
+  ${HD} .orr-help__close.sf-back.k-word { padding:4px 0 6px !important; min-height:30px !important; }
+  /* Loops fills the stage (instrument wakes at H≥260); list tabs keep a side ladder + reading */
+  ${HD} .orr-help-loops { height:100% !important; min-height:0 !important; overflow:hidden; }
+  /* ring names sit on the east/west of a ~260px berth and collide with each other and the section rule;
+     the reading already names the open loop (LOOP 01 OF 06 + title) */
+  ${HD} .orr-hloop__name { display:none !important; }
+  ${HD} .orr-help-list { grid-template-columns:clamp(140px, 20vw, 200px) minmax(0, 1fr); column-gap:14px; height:100%; }
+  ${HD} .orr-help-list__hero { height:100%; min-height:0; }
+  ${HD} .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(190px, 26vw, 260px); column-gap:14px; align-items:stretch; height:100%; }
+  ${HD} .orr-help-list__stage > .orr-help-reading { align-self:stretch; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding-bottom:12px; box-sizing:border-box;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 14px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 14px), transparent); }
+  ${HD} .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list__stage > .orr-help-reading::before { content:none; }
+  ${HD} .orr-help-list--ores { grid-template-columns:140px minmax(0, 1fr); column-gap:14px; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(170px, 24vw, 230px); grid-template-rows:minmax(0, 1fr); column-gap:12px; align-items:center; }
+  ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:0 0 12px; }
+  ${HD} .orr-help-factions { grid-template-columns:minmax(0, 1.1fr) minmax(200px, .9fr); column-gap:14px; height:100%; }
+}
+
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
 ${SCROLL_EXTENT_CSS}
 @media (forced-colors: active) {
