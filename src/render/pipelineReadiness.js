@@ -186,8 +186,19 @@ export function waitForOpeningFirstPicture(state, timeoutMs = 20000, options = {
     assertActive();
     await render.beginOpeningLoadingAdmission?.();
     assertActive();
-    // Survival keeps its bounded roster owner. Ordinary flight admits the actual picture only.
-    if (state.run?.kind === 'survival') {
+    // The current-sector owner starts during loading and covers imminent real content as
+    // well as today's camera leaves. Join its finite work before sealing the picture;
+    // otherwise a correct first frame can still inherit a cold opening-flight backlog.
+    if (render.openingLiveSectorReady) {
+      const cooked = await render.openingLiveSectorReady;
+      assertActive();
+      if (cooked === false || cooked?.partial === true || cooked?.superseded === true
+          || cooked?.cancelled === true || cooked?.reason === 'sector-superseded'
+          || cooked?.cook?.reason === 'sector-superseded'
+          || cooked?.opening?.settled === false) {
+        throw new Error('opening current-sector preparation did not complete');
+      }
+    } else if (state.run?.kind === 'survival') {
       const cooked = await waitForOpeningGpuResources(state, timeoutMs, { settleTail: true });
       assertActive();
       if (cooked !== true) throw new Error(render.requiredPackageAdmission?.reason || 'arena GPU admission did not complete');

@@ -9,7 +9,9 @@ import {
   describeAuthoredUpgradeQueue,
   enqueueBoundaryUpgrade,
   prepareAuthoredVisualPipelines,
+  holdAuthoredUpgradeQueueForFirstFlight,
   residencyOptionsForBoundary,
+  resumeAuthoredUpgradeQueueAfterOpening,
   waitForOpeningGraphPublicationRelease,
 } from '../src/render/partsLibrary.js';
 import { POST_PROCESS_ROUTE, render as renderSystem } from '../src/render/renderer.js';
@@ -280,6 +282,46 @@ function liveRenderFixture() {
     },
   };
 }
+
+test('a queued loading admission adopts flight pacing while retaining its GPU owner', async () => {
+  const pump = fakeDisplayPump();
+  const fixture = liveRenderFixture();
+  const scene = new THREE.Group();
+  const gpu = deferred();
+  let admitted;
+  try {
+    fixture.liveState.mode = 'loading';
+    const job = stationJob(scene, 'loading_phase_station', ({ options }) => {
+      admitted = options;
+      return gpu.promise;
+    });
+    const requested = residencyOptionsForBoundary(job.entity, job.boundary, fixture.render.renderer);
+    job.options = requested;
+    assert.equal(requested.overlapAuthoredPipelineCompile, true);
+    assert.equal(requested.yieldBetweenGpuStages, false);
+    assert.equal(requested.retainGpuOwnershipUntilSettled, true);
+    const done = enqueueBoundaryUpgrade(scene, job);
+    holdAuthoredUpgradeQueueForFirstFlight(scene);
+    fixture.liveState.mode = 'flight';
+    pump.flushFrame(); await flushMicrotasks();
+    assert.equal(admitted, undefined, 'the ambient station remains behind the first-flight hold');
+    resumeAuthoredUpgradeQueueAfterOpening(scene);
+    pump.flushFrame(); await flushMicrotasks();
+    assert.ok(admitted, 'the existing queue admits the job after its owner releases the hold');
+    assert.equal(admitted.yieldBetweenGpuStages, true, 'the current phase enables inter-stage presents');
+    assert.equal(admitted.overlapAuthoredPipelineCompile, false, 'loading overlap cannot leak into flight');
+    assert.equal(admitted.retainGpuOwnershipUntilSettled, true, 'pacing never drops the in-flight resource lease');
+    assert.equal(admitted.onAuthoredPipelineStaged, undefined, 'an ambient job keeps its serial slot through GPU settle');
+    assert.equal(requested.yieldBetweenGpuStages, false, 'the caller request bag is not rewritten');
+    gpu.resolve('settled');
+    assert.equal((await done).status, 'completed');
+  } finally {
+    cancelAuthoredUpgradeQueue(scene, 'fixture-retired');
+    gpu.resolve('retired');
+    fixture.restore();
+    pump.restore();
+  }
+});
 
 test('captured residency ports invoke the captured render and fail closed when it departs', async () => {
   const fixture = liveRenderFixture();

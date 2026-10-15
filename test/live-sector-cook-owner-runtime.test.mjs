@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import * as THREE from 'three';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
-import { prepareMobileOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
+import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode;
 function walk(node) {
   if (!node || typeof node !== 'object') return;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorAfterJump') cookNode = node.right;
@@ -19,6 +20,7 @@ function walk(node) {
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorBeforeFlight') preflightNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'cookLiveSceneGpu') gpuNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'captureOpeningSubmissionPlanSteps') openingCaptureNode = node.right;
+  if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'beginOpeningLoadingAdmission') loadingNode = node.right;
   if (node.type === 'CallExpression' && node.callee?.name === 'onBus' && node.arguments?.[0]?.value === 'sector:enter') enterNode = node.arguments[1];
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) value.forEach(walk);
@@ -35,6 +37,7 @@ const gpuCode = source.slice(gpuNode.start, gpuNode.end);
 const compileCode = source.slice(compileNode.start, compileNode.end);
 const guardCode = guardNode ? source.slice(guardNode.start, guardNode.end) : null;
 const openingCaptureCode = source.slice(openingCaptureNode.start, openingCaptureNode.end);
+const loadingCode = source.slice(loadingNode.start, loadingNode.end);
 function evaluate(code, owner, values) {
   const env = new Proxy(values, {
     has: (target, key) => key in target || key in globalThis,
@@ -48,6 +51,77 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+function loadingFixture() {
+  const player = { id: 'player', alive: true, isPlayer: true };
+  const state = { mode: 'loading', playerId: player.id, entities: new Map([[player.id, player]]), entityList: [player],
+    world: { enterSerial: 1, currentSectorId: 'ceres' }, render: { admissionRunGeneration: 1 } };
+  const cook = deferred(), calls = [];
+  const owner = { _meshes: new Map(), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [], _meshBuildQueueHead: 0 };
+  state.render.prepareLiveSectorBeforeFlight = (options) => { calls.push(options); return cook.promise; };
+  const begin = evaluate(loadingCode, owner, {
+    state, THREE, createOpeningLoadingAdmission, observePipelineAdmission,
+    rendererGenerationIsActive: () => true, releaseOpeningGraphPublication() {},
+    cam: {}, openingSubmissionCamera: () => null,
+    enqueueMissingMeshBuildsSteps: function* () { yield; },
+    performance: { now: () => 0 }, yieldToBrowser: async () => {},
+  });
+  state.render.beginOpeningLoadingAdmission = begin;
+  return { state, owner, cook, calls, begin };
+}
+
+test('the actual loading owner starts one current-sector cook before callers wait for the picture', async () => {
+  const f = loadingFixture();
+  const meshes = f.begin();
+  assert.equal(f.begin(), meshes, 'duplicate callers share the finite mesh owner');
+  assert.equal(await meshes, true, 'mesh preparation does not recursively join the sector cook');
+  await nextTurn();
+  const ready = f.state.render.openingLiveSectorReady;
+  assert.equal(f.calls.length, 1, 'the existing sector owner starts during loading');
+  assert.equal(f.calls[0].isActive(), true);
+  assert.equal(f.begin(), meshes);
+  assert.equal(f.state.render.openingLiveSectorReady, ready);
+  f.cook.resolve({ skipped: false });
+  assert.deepEqual(await ready, { skipped: false });
+});
+
+test('the actual early cook rejects a replaced world, generation, context or loading mode', async () => {
+  for (const replace of [
+    f => { f.state.world = { ...f.state.world }; },
+    f => { f.state.render.admissionRunGeneration++; },
+    f => { f.state.contextRestoreSeq = 1; },
+    f => { f.state.world.currentSectorId = 'helios'; },
+    f => { f.state.render.renderer = {}; },
+    f => { f.state.mode = 'menu'; },
+  ]) {
+    const f = loadingFixture();
+    await f.begin(); await nextTurn();
+    const ready = f.state.render.openingLiveSectorReady;
+    const rejected = assert.rejects(ready, /superseded/);
+    replace(f);
+    assert.equal(f.calls[0].isActive(), false);
+    f.cook.resolve({ skipped: false });
+    await rejected;
+  }
+});
+
+test('replacing the captured player retires the old loading cohort before starting its replacement', async () => {
+  const f = loadingFixture();
+  await f.begin(); await nextTurn();
+  const old = f.state.render.openingLiveSectorReady;
+  const rejected = assert.rejects(old, /superseded/);
+  const player = { ...f.state.entities.get('player') };
+  f.state.entities.set('player', player); f.state.entityList = [player];
+  const replacement = f.begin();
+  await replacement; await nextTurn();
+  assert.equal(f.calls.length, 2);
+  assert.equal(f.calls[0].isActive(), false, 'the prior cohort cannot finalize against the replacement');
+  assert.equal(f.calls[1].isActive(), true);
+  assert.equal(f.begin(), replacement, 'the replacement also deduplicates nested callers');
+  f.cook.resolve({ skipped: false });
+  await rejected;
+  assert.deepEqual(await f.state.render.openingLiveSectorReady, { skipped: false });
+});
 test('opening plan capture uses the renderer owner when invoked through the render facade', () => {
   const owner = { _meshes: new Map([[1, { name: 'player' }]]) };
   const state = { render: {} };
@@ -406,6 +480,17 @@ function preflightFixture() {
   return { ...f, opening, preflight: evaluate(preflightCode, f.owner, f.values) };
 }
 
+test('the actual preflight owner stops at its next await after loading admission is cancelled', async () => {
+  const f = preflightFixture();
+  let active = true;
+  const run = f.preflight({ isActive: () => active });
+  await nextTurn(); active = false;
+  f.opening.resolve({ settled: true });
+  assert.equal((await run).reason, 'sector-superseded');
+  assert.equal(f.state.render.openingCompositionSettle, undefined);
+  assert.deepEqual(f.marks, [], 'cancelled work cannot hold/freeze a replacement presentation');
+});
+
 function mobilePreflightFixture() {
   const f = preflightFixture();
   f.values.isMobileRenderContext = () => true;
@@ -510,6 +595,18 @@ function gpuFixture() {
   });
   return { ...f, gpu: evaluate(gpuCode, f.owner, f.values) };
 }
+
+test('the nested GPU cook honors cancellation from its loading owner after an awaited upload', async () => {
+  const f = gpuFixture(), upload = deferred();
+  f.state.mode = 'loading';
+  let active = true;
+  f.values.buildAsteroidLeafWarmGroup = () => ({});
+  f.values.prepareStartupGpuResidency = () => upload.promise;
+  const run = f.gpu({ isActive: () => active, holdLeftoverFx: true, warmFirstFlightFx: true, skipBuffers: true });
+  await nextTurn(); active = false; upload.resolve({ ok: true });
+  assert.equal((await run).reason, 'sector-superseded');
+  assert.equal(f.marks.includes('rest-effects'), false, 'cancelled nested work cannot rest a replacement effect owner');
+});
 
 for (const mode of ['loading', 'flight']) {
   test('admitted actual GPU cook completes in ' + mode + ' without minting a generation', async () => {

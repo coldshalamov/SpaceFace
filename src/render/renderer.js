@@ -10279,6 +10279,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
   'touchSubjectExactTarget',
   'beginOpeningLoadingAdmission', 'isRequiredOpeningEntity', 'trackOpeningLoadingWork',
+  'openingLiveSectorReady',
   'openingFirstPictureOwner', 'releaseOpeningPresentationHold', 'cancelOpeningPresentationHold',
   'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
@@ -13302,10 +13303,14 @@ export const render = {
       const renderState = state.render;
       const generation = state.render.admissionRunGeneration;
       const serial = world?.enterSerial;
+      const sector = world?.currentSectorId;
+      const nativeRenderer = renderState.renderer;
       const context = state.contextRestoreSeq;
       const active = () => rendererGenerationIsActive() && state.mode === 'loading'
         && state.render === renderState && state.world === world && world?.enterSerial === serial
-        && state.render.admissionRunGeneration === generation && state.contextRestoreSeq === context;
+        && world?.currentSectorId === sector && renderState.renderer === nativeRenderer
+        && state.render.admissionRunGeneration === generation && state.contextRestoreSeq === context
+        && this._openingLoadingAdmission === cohort;
       this._deferNoncriticalMeshStreaming = false;
       renderState.deferNoncriticalMeshStreaming = false;
       releaseOpeningGraphPublication(this);
@@ -13356,6 +13361,15 @@ export const render = {
         return true;
       })();
       this._openingLoadingMeshesReady = observePipelineAdmission(ready);
+      // Begin the existing current-sector/imminent cook as soon as the finite mesh cohort
+      // exists. Library/visual waits can then overlap its compose/link/upload work; starting
+      // it at flight reveal merely transfers that debt into the player's opening seconds.
+      renderState.openingLiveSectorReady = observePipelineAdmission(ready.then(async () => {
+        if (!active()) throw new Error('opening live-sector cook was superseded');
+        const result = await renderState.prepareLiveSectorBeforeFlight({ isActive: active });
+        if (!active()) throw new Error('opening live-sector cook was superseded');
+        return result;
+      }));
       return ready;
     };
     const openingCohort = createOpeningAdmissionCohort();
@@ -14513,8 +14527,10 @@ export const render = {
         || cookWorld.currentSectorId !== cookSectorId
         || this._liveSectorCookGeneration !== expectedGeneration;
     };
-    state.render.prepareLiveSectorBeforeFlight = async () => {
-      const recookStale = captureLiveSectorCookStale();
+    state.render.prepareLiveSectorBeforeFlight = async (options = {}) => {
+      const ownerInactive = () => typeof options.isActive === 'function' && !options.isActive();
+      const capturedRecookStale = captureLiveSectorCookStale();
+      const recookStale = () => capturedRecookStale() || ownerInactive();
       if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
       if (state.mode !== 'loading') {
         // A late invocation must still leave no bounded warm root mounted into flight —
@@ -14651,17 +14667,17 @@ export const render = {
           }
         }
       }
-      // Publish the held next-sector upgrades behind the loading shell, drain
-      // their compiles, then touch the live materials. First-playable readiness
-      // still does not wait on this queue; this only spends time the player is
-      // already looking at the loading presenter.
+      // Publish the held current-sector upgrades behind the loading shell, drain
+      // their compiles, then touch the live materials. Launch joins this finite
+      // preparation before it seals and admits the exact first picture.
       // The exact first-picture census already froze child publication. Nearby
       // opening ships then sit at `loading` until first flight paint, and their
       // env-mapped hulls compile as 100 ms+ bloom bricks. Release only the
       // publication gate so they can commit here; keep mesh streaming deferred.
       const sectorId = state.world && state.world.currentSectorId;
       this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1;
-      const cookStale = captureLiveSectorCookStale();
+      const capturedCookStale = captureLiveSectorCookStale();
+      const cookStale = () => capturedCookStale() || ownerInactive();
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       try {
       releaseOpeningGraphPublication(this);
@@ -15599,6 +15615,7 @@ export const render = {
           holdLeftoverFx: true,
           warmFirstFlightFx: true,
           yieldToMain: yieldLiveSectorGpu,
+          isActive: () => !cookStale(),
           // Survival: the pool-warm/stamp/depth steps at the tail of the cook are what keep
           // mid-round registrations from creating cold chunks inside the fight — a 20 s
           // internal deadline under host load skips exactly those. The arena is bounded and
@@ -16754,7 +16771,9 @@ export const render = {
         return { skipped: true, reason: 'not-loading' };
       }
       // This nested stage observes its caller's generation; it must not mint another.
-      const cookStale = captureLiveSectorCookStale();
+      const capturedCookStale = captureLiveSectorCookStale();
+      const cookStale = () => capturedCookStale()
+        || (typeof options.isActive === 'function' && !options.isActive());
       const cookSuperseded = { skipped: true, reason: 'sector-superseded' };
       if (cookStale()) return cookSuperseded;
       const cookNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -21396,6 +21415,7 @@ export const render = {
       if (mode === 'loading') {
         state.render.openingFirstPictureReady = false;
         state.render.openingFirstPictureOwner = null;
+        state.render.openingLiveSectorReady = null;
         this._openingLoadingAdmission = null;
         this._openingLoadingMeshesReady = null;
         const recook = this._sessionLiveSectorCookedId != null
@@ -34220,10 +34240,9 @@ export function applyFirstPlayablePaintRelease(owner) {
       keepGraphFrozen: !!(owner && owner.state && owner.state.mode === 'flight'),
     });
     if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
-      const exactReady = openingFirstPictureIsReady(owner.state);
-      if (exactReady) owner._postOpeningPipelineAdmissionReleased = true;
-      // This resumes the existing bounded queue, never an awaited post-paint bulk drain.
-      void render.resumeDeferredPipelineAdmissions(exactReady ? { force: true } : undefined);
+      // First-picture acceptance does not release the unrelated sector/FX backlog.
+      // The existing cook and selective readable-glass first-flight lanes own that policy.
+      void render.resumeDeferredPipelineAdmissions();
     }
     if (render && typeof render.releaseOpeningPresentationHold === 'function') {
       render.releaseOpeningPresentationHold();

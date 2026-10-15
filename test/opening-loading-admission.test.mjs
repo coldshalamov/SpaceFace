@@ -84,6 +84,40 @@ test('New Game and Continue callers join one exact sequence and acceptance follo
   assert.equal(openingFirstPictureIsReady(state), true);
 });
 
+test('launch joins the early current-sector cook before sealing the exact picture', async () => {
+  const cook = deferred();
+  const { state, calls } = fixture({ openingLiveSectorReady: cook.promise });
+  const first = waitForOpeningFirstPicture(state, 1000);
+  assert.equal(waitForOpeningFirstPicture(state, 1000), first);
+  await flush();
+  assert.deepEqual(calls, ['begin'], 'no exact plan is sealed while imminent-sector work is pending');
+  cook.resolve({ skipped: false, opening: { settled: true } });
+  assert.equal(await first, true);
+  assert.deepEqual(calls, ['begin', 'seal', 'capture', 'submission', 'resources']);
+});
+
+test('a failed or cancelled current-sector cook never authorizes the exact picture', async () => {
+  for (const result of [false, { partial: true }, { reason: 'sector-superseded' },
+    { cook: { reason: 'sector-superseded' } }, { opening: { settled: false } }]) {
+    const { state, calls } = fixture({ openingLiveSectorReady: Promise.resolve(result) });
+    await assert.rejects(waitForOpeningFirstPicture(state, 1000), /current-sector preparation did not complete/);
+    assert.deepEqual(calls, ['begin']);
+    assert.notEqual(state.render.openingFirstPictureReady, true);
+  }
+});
+
+test('the current-sector wait remains bounded and cannot submit after its deadline', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const cook = deferred();
+  const { state, calls } = fixture({ openingLiveSectorReady: cook.promise });
+  const first = waitForOpeningFirstPicture(state, 20);
+  const rejected = assert.rejects(first, /timed out/);
+  await flush(); t.mock.timers.tick(20); await rejected;
+  cook.resolve({ skipped: false }); await flush();
+  assert.deepEqual(calls, ['begin']);
+  assert.notEqual(state.render.openingFirstPictureReady, true);
+});
+
 test('a completed picture cannot authorize a different context, sector, run or renderer', async () => {
   for (const replace of [
     (state) => { state.contextRestoreSeq = 1; },
@@ -181,16 +215,16 @@ test('actual paint releases only the main hold and preserves pause or worker slo
   assert.equal(scheduled, null);
 });
 
-test('a completed exact first picture resumes only the existing bounded optional queue', async () => {
+test('a completed exact first picture preserves the existing optional handoff hold', async () => {
   const { state } = fixture();
   await waitForOpeningFirstPicture(state, 1000);
   state.mode = 'flight';
-  let resumeOptions;
-  state.render.resumeDeferredPipelineAdmissions = (options) => { resumeOptions = options; };
+  const resumeCalls = [];
+  state.render.resumeDeferredPipelineAdmissions = (...options) => { resumeCalls.push(options); };
   const owner = { state, _openingLoadingAdmission: {}, _openingPreparedLeaves: new WeakMap() };
   applyFirstPlayablePaintRelease(owner);
-  assert.deepEqual(resumeOptions, { force: true });
-  assert.equal(owner._postOpeningPipelineAdmissionReleased, true);
+  assert.deepEqual(resumeCalls, [[]], 'the existing hold is consulted without a force override');
+  assert.notEqual(owner._postOpeningPipelineAdmissionReleased, true);
   assert.equal(owner._openingLoadingAdmission, null);
 });
 

@@ -8042,6 +8042,15 @@ function admitNextUpgradeJob(state) {
     isAdmissionBoundaryCurrent: isBoundaryCurrent,
     isResidencyOwnerActive: () => !admission.signal.aborted && isOwnerActive(),
   };
+  if (authoredRuntimeState()?.mode === 'flight') {
+    // A loading request may only begin after reveal. Re-grade its scheduling phase at
+    // admission, retaining its GPU lease policy while enabling the normal flight yields.
+    // Loading's unconditional overlap must not survive into watched flight frames.
+    job.options.yieldBetweenGpuStages = true;
+    if (job.options.retainGpuOwnershipUntilSettled === true) {
+      job.options.overlapAuthoredPipelineCompile = false;
+    }
+  }
   if (job.options && Object.isExtensible(job.options)
       && typeof job.options.isAbortedStalledAdmission !== 'function') {
     job.options.isAbortedStalledAdmission = () => job.abortedStalled === true;
