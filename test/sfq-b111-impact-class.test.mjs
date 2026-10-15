@@ -3,7 +3,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { IMPULSE_PROVENANCE_MAX_AGE_TICKS } from '../src/combat/impulseKernel.js';
+import {
+  IMPULSE_PROVENANCE_MAX_AGE_TICKS,
+  clearImpulseProvenance,
+  holdImpulseProvenance,
+  recordImpulseProvenance,
+  resolveCollisionConsequence,
+} from '../src/combat/impulseKernel.js';
+import { contactImpulseProvenance } from '../src/systems/collisionConsequences.js';
 import {
   classifyImpactResponsibility,
   impactLinkFromPresentation,
@@ -90,6 +97,70 @@ test('the law card speaks the class and keeps a charge only when the pilot is re
     collisionResponsibilityLine({ cause: 'kinetic', playerCaused: true, outcome: 'charged' }),
     null,
   );
+});
+
+test('a held throw past the impulse window stays indirect on the live collision receipt', () => {
+  const appliedTick = 10;
+  const impactTick = appliedTick + WINDOW + 40;
+  const holdUntilTick = appliedTick + WINDOW + 80;
+  const thrown = {
+    id: 3, type: 'asteroid', mass: 80,
+    physicsBody: { mass: 80, material: 'rock' },
+  };
+  const victim = {
+    id: 9, type: 'ship', mass: 20,
+    physicsBody: { mass: 20, material: 'ship' },
+  };
+  const classifyReceipt = (receipt) => {
+    const presentation = buildCollisionPresentationProvenance(victim, thrown, receipt);
+    const kill = buildKillPresentationReceipt({ playerId: PLAYER }, victim, PLAYER, {
+      origin: { kind: 'collision', id: 'terrain' },
+      packet: { source: { kind: 'collision_terrain', collisionPresentation: presentation } },
+    });
+    return classifyImpactResponsibility(
+      impactLinkFromPresentation(kill, { impactTick, playerId: PLAYER }),
+    );
+  };
+  try {
+    const recorded = recordImpulseProvenance(thrown, {
+      actorId: PLAYER, tag: 'massline_throw', appliedTick, magnitude: 80,
+    });
+    assert.equal(recorded.holdUntilTick, undefined);
+    const held = holdImpulseProvenance(thrown, holdUntilTick, appliedTick, appliedTick);
+    assert.equal(held.holdUntilTick, holdUntilTick);
+    const causal = contactImpulseProvenance(victim, thrown, impactTick);
+    assert.equal(causal && causal.tag, 'massline_throw');
+    assert.equal(causal.holdUntilTick, holdUntilTick);
+    const receipt = resolveCollisionConsequence({
+      target: victim,
+      other: thrown,
+      exchangedMomentum: 4000,
+      tick: impactTick,
+      pos: { x: 1, z: 2 },
+      normal: { x: 1, z: 0 },
+      provenance: causal,
+    });
+    assert.equal(receipt.provenance.tag, 'massline_throw');
+    assert.equal(receipt.provenance.holdUntilTick, holdUntilTick);
+    assert.equal(classifyReceipt(receipt).class, 'indirect');
+
+    const lapsed = resolveCollisionConsequence({
+      target: victim,
+      other: thrown,
+      exchangedMomentum: 4000,
+      tick: impactTick,
+      pos: { x: 1, z: 2 },
+      normal: { x: 1, z: 0 },
+      provenance: {
+        actorId: PLAYER, tag: 'massline_throw', appliedTick, holdUntilTick: null,
+      },
+    });
+    assert.equal(lapsed.provenance.holdUntilTick, undefined);
+    assert.equal(classifyReceipt(lapsed).class, 'stale');
+  } finally {
+    clearImpulseProvenance(thrown);
+    clearImpulseProvenance(victim);
+  }
 });
 
 test('a collision kill receipt carries the cause the card classifies', () => {

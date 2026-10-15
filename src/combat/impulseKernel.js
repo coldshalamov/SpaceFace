@@ -573,12 +573,17 @@ function normalizeProvenance(value, tick) {
   if (!value || typeof value !== 'object') {
     return Object.freeze({ actorId: null, weaponId: null, tag: 'environment', appliedTick: nonNegativeInteger(tick) });
   }
-  return Object.freeze({
+  // A flight hold outlives the impulse window without moving appliedTick. The law card reads
+  // this copy, so dropping the hold here classed a throw the sim still credits as stale.
+  const holdUntilTick = Number.isFinite(value.holdUntilTick) ? nonNegativeInteger(value.holdUntilTick) : null;
+  const normalized = {
     actorId: value.actorId == null ? null : value.actorId,
     weaponId: value.weaponId == null ? null : String(value.weaponId),
     tag: stableTag(value.tag || value.provenance) || 'environment',
     appliedTick: nonNegativeInteger(value.appliedTick),
-  });
+  };
+  if (holdUntilTick != null) normalized.holdUntilTick = holdUntilTick;
+  return Object.freeze(normalized);
 }
 
 function freezePoint(value) {
