@@ -11021,6 +11021,7 @@ function disableRigidOpaqueBatchProbe(owner, reason = 'bench-disabled') {
     owner._rigidOpaqueBatchController = null;
   }
   owner._rigidOpaqueBatchProbeEnabled = false;
+  owner._rigidOpaqueBatchAshlineLifetimes?.clear();
   if (owner._rigidOpaqueBatchRootsScratch) owner._rigidOpaqueBatchRootsScratch.length = 0;
   const previous = owner._rigidOpaqueBatchLastDiagnostics
     || controller?.getDiagnostics?.()
@@ -11091,6 +11092,40 @@ const RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES = new Set([
   'LOD0_MOTION_KESTREL_STRUT_S_MechanicalDark',
 ]);
 
+export const RIGID_OPAQUE_ASHLINE_COHORT_MAX_ROOTS = 16;
+const RIGID_ASHLINE_HULL_URL = 'assets/ships/release/parts/wholeships/ashline_dart.glb';
+const RIGID_ASHLINE_RETRO_SOURCE_NAMES = new Set([
+  'Retro_Shell_Port', 'Retro_Shell_Starboard',
+  'Retro_Body_Port', 'Retro_Body_Starboard',
+  'Retro_Trim_Port', 'Retro_Trim_Starboard',
+]);
+
+export function isRigidOpaqueAshlineCohortRoot(owner, root) {
+  const data = root?.userData, id = data?.presentationEntityId;
+  if (id == null || !root.parent || owner?._meshes?.get?.(id) !== root) return false;
+  const entity = owner.state?.entities?.get?.(id), ship = entity?.data;
+  // This exact ordinary hostile resolves to Ashline Dart before the generic ship_wasp map.
+  // Special authored owners can override that mapping, so they keep their direct presentation.
+  return entity?.alive !== false && entity?.type === 'ship'
+    && ship?.defId === 'ship_wasp' && ship.lootTableId === 'wasp_swarmer'
+    && ship.authoredAssetId == null && ship.authoredCharacter == null
+    && ship.persistenceOwner == null && ship.worldRecordId == null
+    && data.presentationEntityType === 'ship' && data.presentationShipDefId === ship.defId
+    && entity.occupantGeneration != null
+    && data.presentationOccupantGeneration === entity.occupantGeneration
+    && (data.authoredAssetState === 'authored' || data.authoredAssetState === 'authored-with-cleanup-error')
+    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.includes(RIGID_ASHLINE_HULL_URL);
+}
+
+function rigidOpaqueAshlineSourceRoot(owner, source) {
+  if (!RIGID_ASHLINE_RETRO_SOURCE_NAMES.has(source?.name) || source.isMesh !== true
+      || source.userData?.spacefaceInstanceProxy || source.userData?.spacefaceRenderPackagePooled) return null;
+  for (let node = source; node; node = node.parent) {
+    if (isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
+  }
+  return null;
+}
+
 function isRigidOpaqueKestrelPlayerRoot(owner, root) {
   const state = owner?.state;
   const playerId = state?.playerId;
@@ -11108,16 +11143,30 @@ function isRigidOpaqueKestrelPlayerSource(owner, source) {
   return current === root;
 }
 
+export function isRigidOpaqueDefaultCohortSource(owner, source) {
+  return (RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
+      && isRigidOpaqueKestrelPlayerSource(owner, source))
+    || rigidOpaqueAshlineSourceRoot(owner, source) != null;
+}
+
 function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
   const state = owner?.state;
   const defaultCohort = options.defaultCohort === true;
+  const ashlineLifetimes = defaultCohort ? new Map() : null;
+  owner._rigidOpaqueBatchAshlineLifetimes = ashlineLifetimes;
   const selectSource = defaultCohort
-    ? (source) => isRigidOpaqueKestrelPlayerSource(owner, source)
-      && RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
+    ? (source) => {
+      if (RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
+          && isRigidOpaqueKestrelPlayerSource(owner, source)) return true;
+      const root = rigidOpaqueAshlineSourceRoot(owner, source), life = root && ashlineLifetimes.get(root);
+      return !!life && life.id === root.userData.presentationEntityId
+        && life.generation === root.userData.presentationOccupantGeneration;
+    }
     : undefined;
   const isTransformOnlySource = defaultCohort
-    ? (source) => isRigidOpaqueKestrelPlayerSource(owner, source)
-      && RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES.has(source?.name)
+    ? (source) => (isRigidOpaqueKestrelPlayerSource(owner, source)
+      && RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES.has(source?.name))
+      || rigidOpaqueAshlineSourceRoot(owner, source) != null
     : undefined;
   return createRetainedRigidOpaqueBatchController({
     scene,
@@ -11133,11 +11182,18 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       const serial = world?.enterSerial, sector = world?.currentSectorId;
       const restore = state.contextRestoreSeq, nativeRenderer = owner.renderer;
       const loading = state.mode === 'loading';
+      // Admission-only allocation: a kept root can be rebound while pipeline preparation waits.
+      const ashlineLives = defaultCohort ? (context.roots || []).filter((root) => (
+        ashlineLifetimes.has(root)
+      )).map((root) => ({ root, ...ashlineLifetimes.get(root) })) : [];
       const isActive = () => owner.state === state && state.render === renderState
         && state.world === world && world?.enterSerial === serial && world?.currentSectorId === sector
         && renderState.admissionRunGeneration === generation && state.contextRestoreSeq === restore
         && owner.renderer === nativeRenderer && owner._contextLost !== true
         && owner._rendererResourcesDisposed !== true && (!loading || state.mode === 'loading')
+        && ashlineLives.every((life) => isRigidOpaqueAshlineCohortRoot(owner, life.root)
+          && life.root.userData.presentationEntityId === life.id
+          && life.root.userData.presentationOccupantGeneration === life.generation)
         && (typeof context.isActive !== 'function' || context.isActive() === true);
       for (const batch of batches || []) {
         if (!isActive()) return { skipped: true, reason: 'candidate-superseded' };
@@ -29191,6 +29247,40 @@ export const render = {
       const playerRoot = this._meshes.get(state?.playerId);
       if (isRigidOpaqueKestrelPlayerRoot(this, playerRoot)
           && typeof playerRoot.traverse === 'function') roots.push(playerRoot);
+      const lifetimes = this._rigidOpaqueBatchAshlineLifetimes
+        || (this._rigidOpaqueBatchAshlineLifetimes = new Map());
+      let ashlineCount = 0;
+      // Retain admitted lives through brief camera exits. New slots belong to shown roots only,
+      // so hidden traffic cannot fill the finite cohort before actual presented hostiles arrive.
+      for (const [root, life] of lifetimes) {
+        if (!isRigidOpaqueAshlineCohortRoot(this, root)
+            || life.id !== root.userData.presentationEntityId
+            || life.generation !== root.userData.presentationOccupantGeneration) continue;
+        roots.push(root);
+        ashlineCount++;
+      }
+      // Classification already retained just the visible ship records. Filling from this list
+      // avoids scanning every prop/asteroid mesh to save three draws on one hostile.
+      const ships = this._entityFrame?.shipAux;
+      for (let index = 0; ships && index < ships.length; index++) {
+        if (ashlineCount >= RIGID_OPAQUE_ASHLINE_COHORT_MAX_ROOTS) break;
+        const record = ships[index], root = record.mesh;
+        if (record.viewCulled === true || record.visible === false) continue;
+        // A changed same-root life stays excluded for this sync; cleanup retires its old record
+        // before it can join a fresh candidate on the following sync.
+        if (lifetimes.has(root) || !isRigidOpaqueAshlineCohortRoot(this, root)
+            || typeof root.traverse !== 'function' || !root.parent) continue;
+        let shown = true;
+        for (let node = root; node; node = node.parent) {
+          if (node.visible === false) { shown = false; break; }
+        }
+        if (!shown) continue;
+        lifetimes.set(root, { id: root.userData.presentationEntityId,
+          generation: root.userData.presentationOccupantGeneration });
+        roots.push(root);
+        ashlineCount++;
+      }
+      for (const root of lifetimes.keys()) if (!roots.includes(root)) lifetimes.delete(root);
     } else {
       for (const root of this._meshes.values()) {
         if (!root || typeof root.traverse !== 'function') continue;
