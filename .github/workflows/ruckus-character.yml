@@ -32,6 +32,7 @@ jobs:
             assets/characters/ruckus
             tools/ruckus
             vendor
+            assets/wreck-court
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
