@@ -3171,9 +3171,19 @@ function shareItem(band, { caption, value, ariaLabel, linkLabel, filename, linkA
   return field;
 }
 
-/** Select a field's text so a manual copy is one keystroke away. Best effort on any host. */
+/**
+ * Select a field's text so a manual copy is one keystroke away. Best effort on any host. The
+ * share band sits at the foot of the scrolling ledger, whose last 28px fade out: a field only
+ * scrolled "nearest" lands inside that fade, so it is centred instead.
+ */
 function selectField(field) {
-  try { field.focus(); field.select(); } catch { /* manual selection stays available */ }
+  try { field.focus({ preventScroll: true }); field.select(); } catch { /* manual selection stays available */ }
+  revealInLedger(field);
+}
+
+/** Centre a node in the scrolling ledger so what just changed is read, not buried in the fade. */
+function revealInLedger(node) {
+  try { node.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch { /* stub DOM */ }
 }
 
 /**
@@ -3200,10 +3210,14 @@ function shareCopyRow(band, { summary, ghostText, ghostField }) {
       copyShareText(summary).then((copied) => {
         if (copied) {
           status.textContent = 'Result copied — paste it anywhere.';
+          revealInLedger(status);
           cue('confirm');
           return;
         }
         // No clipboard (or it refused): show the line itself, selected, in a field of its own.
+        // The note goes first: its line grows the band, and the field is scrolled into view
+        // against the finished height.
+        status.textContent = 'Result is selected in the field — copy it from there.';
         if (!resultField) {
           resultField = shareItem(band, {
             caption: 'Result', value: summary, ariaLabel: 'Result line', linkLabel: null,
@@ -3211,7 +3225,6 @@ function shareCopyRow(band, { summary, ghostText, ghostField }) {
         }
         resultField.value = summary;
         selectField(resultField);
-        status.textContent = 'Result is selected in the field — copy it from there.';
       });
     });
   }
@@ -3220,11 +3233,12 @@ function shareCopyRow(band, { summary, ghostText, ghostField }) {
       copyShareText(ghostText).then((copied) => {
         if (copied) {
           status.textContent = 'Ghost copied — paste it into another copy of the game.';
+          revealInLedger(status);
           cue('confirm');
           return;
         }
-        if (ghostField) selectField(ghostField);
         status.textContent = 'Ghost is selected in its field — copy it from there.';
+        if (ghostField) selectField(ghostField);
       });
     });
   }
