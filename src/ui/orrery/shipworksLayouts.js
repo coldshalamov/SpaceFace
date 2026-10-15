@@ -1162,7 +1162,11 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W} .sx-chooser__head .sx-chooser__kicker::after { content:" /" !important; letter-spacing:.08em !important;
     color:rgb(${BONE} / .45) !important; }
   ${W} .sx-chooser__head h3 { display:inline !important; margin:0 !important;
-    letter-spacing:.06em !important; line-height:1.3 !important; white-space:nowrap !important; }
+    letter-spacing:.03em !important; line-height:1.3 !important; white-space:nowrap !important; }
+  /* a two-digit count ("COMPATIBLE MODULES 45", Utility / Weapon) still fits the 190px rail at .03em;
+     past that the count drops under the title instead of clipping at the rail's edge */
+  ${W} .sx-chooser__head h3:has(.k-38) { white-space:normal !important; }
+  ${W} .sx-chooser__head h3 .k-38 { letter-spacing:0 !important; white-space:nowrap !important; }
 }
 /* …and at 651-800 wide (the identity rides over the nameplate as above). The verbs (in flow
    under the stage here) always break after TAKE THE HITCH, so LEFT · CENTER · RIGHT stand on the

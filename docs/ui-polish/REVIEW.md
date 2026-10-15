@@ -1271,7 +1271,7 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Before (master be835243a1):** with a hardpoint chosen at 801–1100 × ≤460 the 190px rail showed Back, then "CARGO · S", then "COMPATIBLE MODULES 1" wrapping under a 10.8px line-height at .2em tracking — three tight lines (~75px head) before the module list.
 
-**After (`src/ui/orrery/shipworksLayouts.js`, CSS only, the existing `801–1100 × ≤460` hover block):** Back keeps its row; the kicker and title share one wrap band as "CARGO · S /" over "COMPATIBLE MODULES · N" (nowrap each, .1em / .06em tracking, 1.3 line-height). Head height 75→59px; list starts earlier. Selectors and IDs are unchanged.
+**After (`src/ui/orrery/shipworksLayouts.js`, CSS only, the existing `801–1100 × ≤460` hover block):** Back keeps its row; the kicker and title share one wrap band as "CARGO · S /" over "COMPATIBLE MODULES · N" (nowrap each, .1em / .03em tracking, 1.3 line-height; review fix: at .06em a two-digit count — Utility 45, Weapon 19 — ran 6px past the 190px rail and clipped, so the title tightens to .03em and a longer count drops under the title instead of clipping). Head height 75→59px; list starts earlier. Selectors and IDs are unchanged.
 
 **Checked:** Cargo chooser at 1024×440, 900×420, 1100×460 and 844×390. 960×540 / 1280×720 / 1920×1080 idle Shipworks are effectively pixel-identical to master (rule needs ≤460 tall; >8Δ pixels = 0%). 390×844 is out of the band. Shots: `/workspace/spaceface-scratch/ui-shots/polish47/{before,after}/`, `compare-1024x440.png`, `compare-1024x440-crop.png`.
 
