@@ -1539,7 +1539,9 @@ export const SERVICE_BERTH_CUES = Object.freeze({
 
 // service:completed is also the receipt for loans, notes, rights and policies. Those are
 // bookkeeping with their own success toast (a click); only physical berth work earns the chime.
-const SERVICE_WORK_TYPES = Object.freeze(['repair', 'refuel', 'emergency_fuel', 'hull_wash']);
+// 'emergency_fuel' is deliberately absent: the dockless reserve grant is a debt WARNING that
+// already sounds its own alert (key 'fuel:reserve'), and a confirm chime after it would contradict it.
+const SERVICE_WORK_TYPES = Object.freeze(['repair', 'refuel', 'hull_wash']);
 
 /** Pure. The completed-work chime for one `service:completed` receipt, or null (silence).
  * Gain follows how much of the hull/tank the job actually returned; a receipt that moved

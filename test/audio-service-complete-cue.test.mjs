@@ -61,7 +61,12 @@ test('repair and refuel receipts map to the confirm chime and scale with the wor
   assert.ok(topUp.gain < fill.gain);
 
   assert.equal(serviceCompletedCue({ type: 'hull_wash', cost: 50 }).id, 'sfx_ui_confirm');
-  assert.equal(serviceCompletedCue({ type: 'emergency_fuel', units: 5, debtCr: 40 }).id, 'sfx_ui_confirm');
+  // The yard's "refuel on the note" job completes as a refuel with units: it rings.
+  assert.equal(serviceCompletedCue({ type: 'refuel', cost: 0, debtCr: 40, units: 5 }, 100).id, 'sfx_ui_confirm');
+});
+
+test('the dockless emergency fuel reserve is a warning, not berth work: no confirm chime', () => {
+  assert.equal(serviceCompletedCue({ type: 'emergency_fuel', units: 5, debtCr: 40 }), null);
 });
 
 test('an emergency weld filed on the note (cost 0, hull restored) still rings', () => {
