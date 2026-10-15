@@ -1,3 +1,5 @@
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
+import { createOrchardVisualDriver } from './anvilOrchardVisuals.js';
 // LAST_ARGUMENT_INTEGRATION_V1
 import { isLastArgument } from '../data/lastArgumentBody.js';
 import { createLastArgumentVisualDriver } from './lastArgumentVisuals.js';
@@ -163,7 +165,7 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
 // Steps twin: each driver construction pays an O(subtree) named-node traverse —
 // yields between them pace the attach across the composed-build's own budget.
 export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
-  const entityId = entity && entity.id;
+  let entityId = entity && entity.id;
   const live = (controllers || []).filter(Boolean);
   const workfleetRole=ceresWorkfleetRole(entity);
   const workfleet=!!workfleetRole;
@@ -178,15 +180,16 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   const borrowedVoice=isBorrowedVoiceRing(entity)||isBorrowedVoiceRecorder(entity);
   const palletJack=isPalletJackEntity(entity),mothlight=isMothlightTender(entity)||isMothlightLamp(entity);
   const hasp=isSecondRinse(entity);
+  const orchard=isOrchardFrame(entity);
   const lastArgument=isLastArgument(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight && !hasp && !lastArgument)) return null;
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight && !hasp && !orchard && !lastArgument)) return null;
   // Abandon bank: a suspended attach (generator .return() mid-yield) used to
   // leak every driver already constructed — the detach closure does not exist
   // yet, so nothing owns their disposes. A normal completion transfers the
   // bank to detach below; an abandoned run disposes it in the finally.
   let tallyDriver=null,redKiteDriver=null,sableDriver=null,ilexDriver=null,kilnbackDriver=null,
     scissorwakeDriver=null,towlineDriver=null,borrowedVoiceDriver=null,palletJackDriver=null,
-    mothlightDriver=null,propulsion=null,haspDriver=null,lastArgumentDriver=null;
+    mothlightDriver=null,propulsion=null,haspDriver=null,orchardDriver=null,lastArgumentDriver=null;
   const driverBank=[];
   const bankDriver=(flag,create)=>{
     const driver=flag?create(root,entity):null;
@@ -223,6 +226,8 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   yield;
   haspDriver=bankDriver(hasp,createSecondRinseVisualDriver);
   yield;
+  orchardDriver=bankDriver(orchard,createOrchardVisualDriver);
+  yield;
   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
   propulsion=bankDriver(workfleet||latch,workfleet?createCeresWorkfleetPropulsionDriver:createLatchNineVisualDriver);
   const priorDriveUpdate=root.userData.updateDriveState;
@@ -236,6 +241,28 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     propulsion?.update(liveEntity, a11y);
   } : null;
   if (updatePhysical) root.userData.updateCeresPhysicalState = updatePhysical;
+  const updateOrchardPhysical = orchardDriver ? (liveEntity, state) => orchardDriver.update(liveEntity, 0, null, state) : null;
+  if (updateOrchardPhysical) root.userData.updateOrchardPhysicalState = updateOrchardPhysical;
+  const rebindOrchardPhysical = orchardDriver ? (liveEntity, state) => {
+    const next = orchardDriver.rebind(liveEntity, state);
+    if (!next) return false;
+    const index = driverBank.indexOf(orchardDriver);
+    if (index >= 0) driverBank[index] = next;
+    orchardDriver = next;
+    if (registered && entityId !== liveEntity.id) {
+      const prior = registry.get(entityId);
+      if (prior) {
+        for (const controller of live) prior.delete(controller);
+        if (!prior.size) registry.delete(entityId);
+      }
+      let current = registry.get(liveEntity.id);
+      if (!current) registry.set(liveEntity.id, (current = new Set()));
+      for (const controller of live) current.add(controller);
+    }
+    entityId = liveEntity.id;
+    return true;
+  } : null;
+  if (rebindOrchardPhysical) root.userData.rebindOrchardPhysicalState = rebindOrchardPhysical;
 
   // A hidden appearance candidate owns controllers, but cannot steal the retained body's
   // event registration before its GPU/publication gate succeeds. Ordinary builds bind now.
@@ -270,6 +297,8 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     if (retired) return;
     retired = true;
     if (root.userData.updateCeresPhysicalState === updatePhysical) delete root.userData.updateCeresPhysicalState;
+    if (root.userData.updateOrchardPhysicalState === updateOrchardPhysical) delete root.userData.updateOrchardPhysicalState;
+    if (root.userData.rebindOrchardPhysicalState === rebindOrchardPhysical) delete root.userData.rebindOrchardPhysicalState;
     // Per-driver fencing: one throwing driver must not skip the remaining
     // disposes or the unregister pass below — controllers would stay
     // registered for a dead entity forever.
@@ -293,6 +322,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     detachDriver(mothlightDriver);
     detachDriver(lastArgumentDriver);
     detachDriver(haspDriver);
+    detachDriver(orchardDriver);
     detachDriver(sableDriver);
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
@@ -334,6 +364,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     if (Array.isArray(spec)) motionPadSpec.push(...spec);
   }
   if(latch&&propulsion?.motionPadSpec)motionPadSpec.push(...propulsion.motionPadSpec);
+  if(orchardDriver?.motionPadSpec)motionPadSpec.push(...orchardDriver.motionPadSpec);
   if (motionPadSpec.length) root.userData.authoredMotionPadSpec = motionPadSpec;
   else delete root.userData.authoredMotionPadSpec;
   delete root.userData.__authoredMotionPad;
@@ -362,6 +393,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     mothlightDriver?.update(liveEntity, simNow, a11y, state);
     lastArgumentDriver?.update(liveEntity, simNow, a11y, state);
     haspDriver?.update(liveEntity, simNow, a11y, state);
+    orchardDriver?.update(liveEntity, simNow, a11y, state);
     scissorwakeDriver?.update(liveEntity, simNow, a11y, state);
     towlineDriver?.update(liveEntity, simNow, a11y, state);
     sableDriver?.update(liveEntity, simNow, a11y, state);

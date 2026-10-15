@@ -47,6 +47,8 @@ import { isHostileToPlayer } from './scanner.js';
 import { SECTOR_IMPULSE_DANGER_CAP } from './sectorSim.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
+import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardPhase } from '../data/anvilOrchard.js';
+import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 import { debrisCacheFor, spawnDebrisCachePods } from '../data/scanReveal.js';
 import { removeCargo, addCargo } from './cargo.js';
 import {
@@ -113,6 +115,15 @@ const BEAM_REFUSAL_TEXT = Object.freeze({
   'presentation-unavailable': 'The beam won\'t work that',
   'operation-unavailable': 'That job isn\'t open',
   'operation-no-progress': 'The beam isn\'t moving that',
+  'orchard-site-beam-required': 'Select the Orchard frame and use the World Site beam',
+  'orchard-invalid-frame': 'That Orchard frame is not ready for the beam',
+  'orchard-select-socket': 'Select an Orchard pod socket first',
+  'orchard-phase-locked': 'The Orchard socket can only open in calm weather',
+  'orchard-empty-socket': 'There is no pod retained in that socket',
+  'orchard-socket-unavailable': 'That Orchard socket is not ready to release',
+  'orchard-release-refused': 'The Orchard could not accept that release request',
+  'orchard-pod-missing': 'The retained Orchard pod is missing',
+  'orchard-handoff-refused': 'The Orchard pod is still mechanically secured',
 });
 
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
@@ -404,6 +415,13 @@ export const mining = {
       return this._runCargoPodBeam(player, target, beam, dt, state);
     }
 
+    // A source-tagged Orchard frame is not a generic salvage wreck. Its selected socket uses the
+    // same contextual site beam input, but the native finite ledger and body owner remain the only
+    // owners of opening progress and fixed-to-dynamic pod custody.
+    if (isOrchardFrameClaim(target)) {
+      return this._runOrchardBeam(player, target, beam, dt, state);
+    }
+
     const desc = describeEntity(state, target);
     if (target.data && target.data.worldSiteId && target.data.worldSiteComponentId) {
       return this._runWorldSiteBeam(player, target, desc, beam, dt, state);
@@ -468,6 +486,118 @@ export const mining = {
         this.applyMining(target.id, dps, dt, player.id);
         break;
     }
+  },
+
+  _runOrchardBeam(player, target, _beam, _dt, state) {
+    const deny = (reason) => {
+      if (this._beaming && this._lockTargetId === target.id) this._stopBeam();
+      this.bus.emit('beam:denied', { minerId: player.id, targetId: target.id, verb: 'cut', reason });
+      this._noteBeamRefusal(reason);
+      return { ok: false, duplicate: false, reason, moved: 0 };
+    };
+    const data = target.data || {};
+    if (!state.input?.actions?.siteBeam) return deny('orchard-site-beam-required');
+    if (!isOrchardFrame(target) || data.worldSiteTargetable !== true
+      || data.isLandmark !== true || data.landmarkId !== ANVIL_ORCHARD.id) {
+      return deny('orchard-invalid-frame');
+    }
+
+    const descriptor = describeEntity(state, target);
+    const selection = state.ui && state.ui.componentSelection;
+    if (!selection || selection.targetId !== target.id || selection.stableKey !== descriptor.stableKey) {
+      return deny('orchard-select-socket');
+    }
+    const component = descriptor.components.find((candidate) => candidate.componentId === selection.componentId);
+    if (!component || component.kind !== 'machine' || component.verb !== 'mine'
+      || component.operationId !== 'release' || !Number.isInteger(component.socket)
+      || component.socket < 0 || component.socket >= ANVIL_ORCHARD.socketCount) {
+      return deny('orchard-select-socket');
+    }
+
+    const row = normalizeOrchardRecord(state.sites && state.sites.anvilOrchard);
+    if (!row || row.frameStatus !== 'intact') return deny('orchard-invalid-frame');
+    const phase = orchardPhase(row, state.tick);
+    if (!phase || phase.phase !== 'calm') return deny('orchard-phase-locked');
+    const socket = component.socket;
+    const slot = row.sockets[socket];
+    const lot = slot && slot.lotId && row.lots.find((candidate) => candidate.id === slot.lotId);
+    if (!slot || slot.status === 'empty' || !lot) return deny('orchard-empty-socket');
+    const stowed = slot.status === 'stowed' && slot.operation === 'closed'
+      && slot.handoff === 'fixed' && slot.progress === 0;
+    const opening = slot.status === 'releasing' && slot.operation === 'opening'
+      && slot.handoff === 'fixed';
+    const openingComplete = slot.status === 'releasing' && slot.operation === 'open'
+      && slot.handoff === 'fixed' && slot.progress === ANVIL_ORCHARD.openingSteps
+      && slot.openedTick != null && slot.completedTick === slot.openedTick;
+    if (!stowed && !opening && !openingComplete) return deny('orchard-socket-unavailable');
+
+    // Re-issuing a held request is deliberately idempotent. It also explicitly re-arms a partial
+    // finite opening after Continue, because saved history never recreates the native motor intent.
+    if (stowed || opening) {
+      const machinery = this.registry && this.registry.get && this.registry.get('environmentalMachinery');
+      if (!machinery || typeof machinery.requestOrchardRelease !== 'function'
+        || !machinery.requestOrchardRelease(target, socket)) return deny('orchard-release-refused');
+    }
+
+    const activeVerb = 'orchard-release';
+    if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== activeVerb) {
+      this._setLockTargetId(target.id);
+      this._activeVerb = activeVerb;
+      this.bus.emit('mining:start', {
+        minerId: player.id,
+        targetId: target.id,
+        verb: 'cut',
+        position: { x: target.pos.x, z: target.pos.z },
+      });
+    }
+    this._beaming = true;
+    this._activeBeamLine = beamLineFor(player, target);
+    if (this._activeBeamLine) this._activeBeamLine.verb = 'cut';
+
+    if (!openingComplete) return { ok: true, duplicate: false, pending: true, moved: 0 };
+
+    // The finite row is durable history, not evidence that a physical opening happened in this
+    // session. Require native-tail evidence at or after the recorded open, with matching current
+    // motor progress and authored collar values. A newer completed socket step may refresh this
+    // evidence before the player resumes; the native owner's handoff gate remains authoritative.
+    const physics = this.registry && this.registry.get && this.registry.get('physics');
+    const pose = physics && typeof physics.readOrchardFramePose === 'function'
+      ? physics.readOrchardFramePose(target) : null;
+    const collars = data.orchardCollars;
+    if (!pose || pose.kind !== 'completed-step' || pose.provenance !== 'native-tail'
+      || !Number.isSafeInteger(pose.completedNativeTick) || !Number.isSafeInteger(pose.canonicalTick)
+      || pose.canonicalTick < slot.openedTick || pose.progress?.[socket] !== ANVIL_ORCHARD.openingSteps
+      || !collars || collars.progress?.[socket] !== ANVIL_ORCHARD.openingSteps
+      || collars.cycles?.[socket] !== slot.cycle) {
+      return { ok: true, duplicate: false, pending: true, moved: 0 };
+    }
+
+    let pod = null;
+    for (const candidate of state.entities.values()) {
+      if (candidate && candidate.data && candidate.data.worldRecordId === slot.lotId) {
+        if (pod) return deny('orchard-pod-missing');
+        pod = candidate;
+      }
+    }
+    if (!pod || !isOrchardPod(pod) || pod.data.amount !== lot.units
+      || pod.data.commodityId !== ANVIL_ORCHARD.commodityId) return deny('orchard-pod-missing');
+
+    const owner = physics && physics._sg02;
+    if (!owner || typeof owner.prepareOrchardPodHandoff !== 'function') return deny('orchard-handoff-refused');
+    let stage = null;
+    try {
+      stage = owner.prepareOrchardPodHandoff(target, pod, socket, state);
+      if (!stage || !stage.preflight() || !stage.commit()) {
+        stage?.abort();
+        return deny('orchard-handoff-refused');
+      }
+    } catch (_) {
+      stage?.abort();
+      return deny('orchard-handoff-refused');
+    }
+
+    this._stopBeam();
+    return { ok: true, duplicate: false, pending: false, released: true, socket, podId: pod.id, moved: 1 };
   },
 
   _runWorldSiteBeam(player, target, descriptor, beam, dt, state) {
@@ -1304,6 +1434,7 @@ export const mining = {
     for (const e of pickups) {
       if (!e.alive || (e.type !== 'pickup' && e.type !== 'payload')) continue;
       const pickupData = e.data || {};
+      if (pickupData.physicalCustodyOnly === true) continue;
       // Combat loot (the player's own kill burst) waits out its beat, then homes from ANY distance;
       // everything else keeps the ordinary magnet range.
       const combatLoot = arcadeLoot && e.type === 'pickup' && pickupData.combatLoot === true;
@@ -1455,6 +1586,7 @@ export const mining = {
   _collectPayload(payloadEntity, player) {
     if (!payloadEntity || !payloadEntity.alive || !player) return false;
     const data = payloadEntity.data || {};
+    if (data.physicalCustodyOnly === true) return false;
     let collectedAny = false;
     if (data.salvagePool && typeof data.salvagePool === 'object' && Object.keys(data.salvagePool).length > 0) {
       // The drain writes through data.salvagePool itself each pass — the shared remainder
@@ -1788,6 +1920,7 @@ export const mining = {
   },
 
   _drainWreck(player, wreck, dps, dt) {
+    if (wreck?.data?.physicalCustodyOnly === true) return 0;
     if (isCeresWorkfleetHardware(wreck)) return 0;
     const d = wreck.data || (wreck.data = {});
     const sourceKey = typeof d.salvageSourceKey === 'string' ? d.salvageSourceKey : null;
@@ -2405,6 +2538,7 @@ export const mining = {
   },
 
   _collectPickupViaEvent(pickup, player) {
+    if (pickup?.data?.physicalCustodyOnly === true) return { accepted: 0, rejected: finiteWholePickupAmount(pickup.data.amount), legacyFullConsume: false };
     if (pickupAcceptanceRetryBlocks(
       pickup && pickup.data,
       player && player.id,
@@ -2816,6 +2950,13 @@ export function isBeamTargetEligible(entity, state) {
   if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
   if (entity.type === 'asteroid' && entity.data && entity.data.opticMaterial) return false;
   return true;
+}
+
+function isOrchardFrameClaim(entity) {
+  const data = entity && entity.data || {};
+  return entity && entity.type === 'wreck'
+    && (data.orchardId === ANVIL_ORCHARD.id && data.orchardKind === 'frame'
+      || entity.physicsBody?.collisionProxyManifest?.id === 'anvil-orchard:frame:source-v1');
 }
 
 // --- WF-05 beam-tender: the beam can finally reach a hull that needs it ----------------------

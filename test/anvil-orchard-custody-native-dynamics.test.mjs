@@ -1,0 +1,12 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {loadRapierCompatRuntime,orchardRapierBaseline} from '../src/core/rapierCompatRuntime.js';
+import {createOrchardNativeLane,prepareOrchardNativeObservation} from '../src/core/anvilOrchardCollarQuery.js';
+import {createSimulation} from '../src/core/sim.js';import {createSg02DynamicBodyOwner} from '../src/core/sg02DynamicBodyOwner.js';import {orchardPodBodySpec} from '../src/data/anvilOrchardBody.js';
+const R=await loadRapierCompatRuntime();
+test('normal native dynamic pod has measured mass, tensor locks, damping and source point velocity',async()=>{
+ const sim=createSimulation(),owner=await createSg02DynamicBodyOwner({RAPIER:R});try{const e=sim.spawn({type:'payload',pos:{x:7,z:9},rot:.713,radius:2.2,hull:20,physicsBody:orchardPodBodySpec({dynamic:true,revision:2}),data:{}});owner.syncFromEntities([e]);const rec=owner.records.get(e.id);assert.ok(rec);const lane=createOrchardNativeLane(R,owner.world,orchardRapierBaseline(R));assert.ok(lane);const b=prepareOrchardNativeObservation(owner,lane).scan().byHandle.get(rec.body.handle);assert.equal(b.mass,10);assert.deepEqual(b.localCom,{x:0,y:0,z:0});assert.ok(Math.abs(b.principalInertia.y-16.2)<.00001);assert.deepEqual(b.effectiveInvMass,{x:Math.fround(.1),y:0,z:Math.fround(.1)});assert.ok(b.effectiveInvInertia.every((v,i)=>Math.abs(v-(i===3?1/16.2:0))<.00001));assert.equal(b.linearDamping,0);assert.equal(b.angularDamping,Math.fround(.15));assert.equal(b.type,R.RigidBodyType.Dynamic);assert.equal(b.ccd,false);
+ rec.body.setLinvel({x:3,y:0,z:5},true);rec.body.setAngvel({x:0,y:2,z:0},true);assert.deepEqual(lane.pointVelocity(rec.body.handle,{x:b.t.x+2,y:0,z:b.t.z+4}),{x:11,y:0,z:1});
+ console.log(JSON.stringify({mass:b.mass,inertia:b.principalInertia,effectiveInvMass:b.effectiveInvMass,effectiveInvInertia:b.effectiveInvInertia,ccd:b.ccd}));
+ }finally{owner.dispose();sim.dispose();}
+});
+for(const key of ['elements','free'])test(`matrix ${key} override refuses before dispatch`,()=>{const world=new R.World({x:0,y:0,z:0}),base=orchardRapierBaseline(R),lane=createOrchardNativeLane(R,world,base),target=base.matrixPrototype,d=Object.getOwnPropertyDescriptor(target,key);let calls=0;Object.defineProperty(target,key,{...d,value(...args){calls++;return d.value.apply(this,args);}});try{assert.equal(lane.verify(),false);assert.equal(calls,0);}finally{Object.defineProperty(target,key,d);world.free();}});

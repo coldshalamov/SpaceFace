@@ -1,3 +1,5 @@
+import { isOrchardFrame, isOrchardPod, orchardPlaceTransform, orchardCatalogRows, ORCHARD_FRAME_FILE, ORCHARD_POD_FILE } from '../data/anvilOrchardIdentity.js';
+import { recordOrchardAuthoredSource } from './anvilOrchardVisuals.js';
 // LAST_ARGUMENT_INTEGRATION_V1
 import { LAST_ARGUMENT as LAST_ARGUMENT_SPEC } from '../data/lastArgument.js';
 import { isLastArgument } from '../data/lastArgumentBody.js';
@@ -205,6 +207,7 @@ function authoredPayloadIsRiggedPod(entity) {
   return entity?.data?.payloadType === 'jettisoned_cargo';
 }
 export function authoredPayloadFileForEntity(entity) {
+  if (isOrchardPod(entity)) return ORCHARD_POD_FILE;
   if (isMothlightLamp(entity)) return 'wholeships/mothlight_lamp.glb';
   if (isBorrowedVoiceRing(entity)) return 'wholeships/borrowed_voice_ring.glb';
   if (isBorrowedVoiceRecorder(entity)) return `wholeships/borrowed_voice_${entity.data.borrowedVoiceRecorderId}.glb`;
@@ -215,6 +218,7 @@ export function authoredPayloadFileForEntity(entity) {
   return authoredPayloadIsSpindle(entity) ? AUTHORED_SP07_PAYLOAD_FILE : AUTHORED_CARGO_CAPSULE_FILE;
 }
 export function authoredPayloadSlotForEntity(entity) {
+  if (isOrchardPod(entity)) return 'place';
   // The ring is an inert wreck carrying one exact Forge hull, never a dockable station.
   if (isBorrowedVoiceRing(entity)) return 'hull';
   return (authoredPayloadIsSpindle(entity) || authoredPayloadIsRiggedPod(entity)) ? 'place' : 'pod';
@@ -222,6 +226,7 @@ export function authoredPayloadSlotForEntity(entity) {
 // Draw-time fit: the spindle is authored 1:1 in WU (scale 1 always); the capsule keeps
 // the longest-axis fit. Exported for the PQ-195.00 render-selector contract test.
 export function authoredPayloadDrawScale(entity, targetRadius, authoredEnvelope) {
+  if (isOrchardPod(entity)) return 1;
   if (isMothlightLamp(entity)) return 1;
   if (isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity)) return 1;
   if (isKilnbackCask(entity) || isTowlineCleanupEntity(entity)) return 1;
@@ -2567,6 +2572,8 @@ export function liveSolidGlbCatalog() {
   }
 
   add(latchNineCatalogRow(file => RENDER_PACKAGE_PILOTS.some(pilot => pilot.sourceUrl === `assets/ships/release/parts/${file}`)));
+  for (const row of orchardCatalogRows(file => RENDER_PACKAGE_PILOTS.some(
+    pilot => pilot.sourceUrl === `assets/ships/release/parts/${file}`))) add(row);
   for (const row of ceresWorkfleetCatalogRows(file => RENDER_PACKAGE_PILOTS.some(
     pilot => pilot.sourceUrl === `assets/ships/release/parts/${file}`))) add(row);
 
@@ -3713,7 +3720,7 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
   yield* attachAuthoredMotionDriverSteps(root, entity, bindings.authoredMotions);
 
   const center = Array.isArray(record.bounds?.center) ? record.bounds.center : [0, 0, 0];
-  const sourceOrigin = isIlexVaultEntity(entity) || isKilnbackCask(entity) || isTowlineCleanupEntity(entity)
+  const sourceOrigin = isOrchardPod(entity) || isIlexVaultEntity(entity) || isKilnbackCask(entity) || isTowlineCleanupEntity(entity)
     || isBorrowedVoiceRing(entity) || isBorrowedVoiceRecorder(entity) || isMothlightLamp(entity);
   root.position.set(
     sourceOrigin ? 0 : -(Number(center[0]) || 0) * scale,
@@ -3737,7 +3744,9 @@ function* buildAuthoredCargoCapsuleRootSteps(entity, record, scene, ownerBoundar
     coordinateSystem: '+X forward, +Y up, +Z starboard; authored payload centered on physics origin',
     authoredParts: [record.url],
     authoredSlots: authoredSlotMap,
-    collisionEnvelope: authoredPayloadIsSpindle(entity)
+    collisionEnvelope: isOrchardPod(entity)
+      ? 'authored source origin and scale1; exact source convex body owns contacts'
+      : authoredPayloadIsSpindle(entity)
       ? 'authored 1:1 in WU; spindle circumradius fills the 16 WU body'
       : 'longest authored axis equals payload diameter',
     gracefulFallback: false,
@@ -4038,7 +4047,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
   const geologySkin = hasExplicitAuthoredGeologyPresentation(entity);
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity
-      || (entity.type !== 'fx' && !geologySkin && !isCeresShipbreakSection(entity) && !isCeresWorkfleetPlace(entity) && !isLatchActor(entity) && !isTallyThreeAssessor(entity)) || !placeFile) return fallbackRoot;
+      || (entity.type !== 'fx' && !geologySkin && !isCeresShipbreakSection(entity) && !isCeresWorkfleetPlace(entity) && !isLatchActor(entity) && !isTallyThreeAssessor(entity) && !isOrchardFrame(entity)) || !placeFile) return fallbackRoot;
   const releaseMode = isReleaseAssetMode(options);
   setPresentationAdmission(entity, PRESENTATION_ADMISSION.pending);
 
@@ -4138,6 +4147,12 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   if (ceresWorkfleetRole(entity)) {
     boundary.userData.updateCeresPhysicalState = (liveEntity, a11y) =>
       activeRoot?.userData?.updateCeresPhysicalState?.(liveEntity, a11y);
+  }
+  if (isOrchardFrame(entity)) {
+    boundary.userData.updateOrchardPhysicalState = (liveEntity, state) =>
+      activeRoot?.userData?.updateOrchardPhysicalState?.(liveEntity, state);
+    boundary.userData.rebindOrchardPhysicalState = (liveEntity, state) =>
+      activeRoot?.userData?.rebindOrchardPhysicalState?.(liveEntity, state);
   }
   if (ceresWorkfleetRole(entity) === 'cradle') {
     boundary.userData.rebindCeresCradleLayout = (liveEntity, state) =>
@@ -4766,6 +4781,7 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
     const row = stampRow;
     const size = row && row.bounds && row.bounds.size;
     const committedScaleGuess = resolvePlaceDrawScale(entity && entity.data || {}, {
+      entity,
       targetRadius,
       authoredEnvelope: Array.isArray(size)
         ? Math.max(1e-6, ...size.map((value) => Number(value) || 0))
@@ -4812,6 +4828,7 @@ function stampPendingPlaceVisualBounds(boundary, entity, placeFile) {
   // boundary at a fraction of its drawn size for the whole queue wait. The census envelope only
   // feeds the non-poi targetScale term, which loses to worldSiteScale/censusScale as intended.
   const scale = resolvePlaceDrawScale(data, {
+    entity,
     targetRadius: declaredPlaceTargetRadius(entity),
     authoredEnvelope: Array.isArray(size)
       ? Math.max(1e-6, ...size.map((value) => Number(value) || 0))
@@ -4866,8 +4883,8 @@ function stampPendingCommittedVisualBounds(boundary, stampedBounds, authoredCent
 // they carry placeScale = manifest visualRoot.initialScale while entity.radius is the site's
 // visualRadius footprint — applying the census ratio there blew the Wreck Cathedral out to ~30x
 // authored (D54).
-export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, censusScale }) {
-  const physical = latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data);
+export function resolvePlaceDrawScale(data, { targetRadius, authoredEnvelope, censusScale, entity = null }) {
+  const physical = orchardPlaceTransform(entity) || latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data);
   if (physical) return physical.scale;
   const radius = Number(targetRadius);
   const envelope = Math.max(1e-6, Number(authoredEnvelope) || 1e-6);
@@ -5005,6 +5022,7 @@ export function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, o
       : [authoredLength]),
   );
   const scale = resolvePlaceDrawScale(data, {
+    entity,
     targetRadius,
     authoredEnvelope,
     censusScale,
@@ -5050,7 +5068,7 @@ export function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, o
   yield;
   normalizePlacePropBindings(bindings);
   yield;
-  centerAuthoredPlaceRoot(root, record, scale, latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
+  centerAuthoredPlaceRoot(root, record, scale, orchardPlaceTransform(entity) || latchPlaceTransform(data) || tallyThreePlaceTransform(data) || ceresWorkfleetPlaceTransform(data) || ceresShipbreakTransform(data));
   yield;
   // Stations key on the placeFile stem recorded on the boundary (e.g. place_station_trade_hub),
   // not the GLB's internal assetId.
@@ -5066,9 +5084,12 @@ export function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, o
   root.userData.updateLod('lod0');
   if(isLatchActor(entity))root.userData.latchNineAuthoredSource={assetId:record.assetId,file:record.url};
   if(isTallyThreeAssessor(entity))root.userData.tallyThreeAuthoredSource={assetId:record.assetId,file:record.url};
+  // Placement snapshots omit non-enumerable occupant generation; bind the live source.
+  const motionEntity = isOrchardFrame(entity) ? (options.layoutEntity || entity) : entity;
+  if (isOrchardFrame(motionEntity)) recordOrchardAuthoredSource(root, motionEntity, record);
   // Places carrying a sealed motion bank (e.g. the rigged cargo pod) animate off the same
   // entity-keyed driver surface as ships.
-  yield* attachAuthoredMotionDriverSteps(root, entity, bindings.authoredMotions);
+  yield* attachAuthoredMotionDriverSteps(root, motionEntity, bindings.authoredMotions);
   yield* installCeresCradleLayoutGuardSteps(root, options.layoutEntity || entity, ownerBoundary);
   if (isCeresWorkfleetPlace(entity)) {
     root.userData.ceresWorkfleetAuthoredSource = { assetId: record.assetId, file: record.url };
@@ -5086,7 +5107,7 @@ export function* buildPlacePropRootSteps(entity, record, scene, ownerBoundary, o
     authoredSlots: {
       place: options.overlayRecord ? [record.url, options.overlayRecord.url] : [record.url],
     },
-    hookBinding: isCeresWorkfleetPlace(entity) || isCeresShipbreakSection(entity)
+    hookBinding: isOrchardFrame(entity) || isCeresWorkfleetPlace(entity) || isCeresShipbreakSection(entity)
       ? 'SOCKET_* markers retain source-origin mechanical attachment coordinates; simulation owns collision and service'
       : hasExplicitAuthoredGeologyPresentation(entity)
       ? 'SOCKET_* markers remain available; authored mesh is presentation over a simulation-owned asteroid'
@@ -6029,6 +6050,7 @@ function warnUnresolvedStationPlaceId(entity, id, rescue) {
 }
 
 function placeFileForEntity(entity) {
+  if (isOrchardFrame(entity)) return ORCHARD_FRAME_FILE;
   if(isLatchActor(entity))return LATCH_PLACE_FILE;
   if(isTallyThreeAssessor(entity))return TALLY_THREE_PLACE_FILE;
   const data = entity && entity.data || {};

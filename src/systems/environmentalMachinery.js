@@ -1,3 +1,6 @@
+import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardHistoryFitsTick, orchardPhase, orchardLotId } from '../data/anvilOrchard.js';
+import { ORCHARD_GEOMETRY as ORCHARD_G, orchardPodBodySpec } from '../data/anvilOrchardBody.js';
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 // PQ-027 / SF-22 — Cinder Sluice runtime adapter, three Ceres kill machines, the
 // Pallas Drift debris reef, Veil/Vesta weather, and the Ceres hangar aperture jam.
 // World Site receipts are the durable Cinder Sluice state. The rest is authored furniture
@@ -10,6 +13,8 @@
 import { fieldsFlag } from '../data/fields.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
+  ANVIL_ORCHARD_GUST_PROFILE,
+  anvilOrchardGustGeometry,
   CINDER_SLUICE_FIELD,
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
@@ -156,6 +161,21 @@ function acknowledgeRepairOrder(ledger) {
   };
 }
 
+// Only consumed data cells are retained. Unsupported accessors refuse without invocation;
+// unrelated worker state stays under its existing owner.
+function orchardCells(object,keys){
+ if(!object)return null;const cells=[];
+ for(const key of keys){const d=Object.getOwnPropertyDescriptor(object,key);if(!d || !('value' in d))return null;cells.push([key,d]);}
+ return {values:Object.fromEntries(cells.map(([key,d])=>[key,d.value])),current:()=>cells.every(([key,d])=>{const n=Object.getOwnPropertyDescriptor(object,key);return n && 'value' in n && n.value===d.value && n.writable===d.writable && n.configurable===d.configurable && n.enumerable===d.enumerable;})};
+}
+function orchardTree(value,seen=new Set()){
+ if(value===null || ['number','string','boolean','undefined'].includes(typeof value))return ()=>true;
+ if(!value || typeof value!=='object' || seen.has(value) || Object.getPrototypeOf(value)!==(Array.isArray(value)?Array.prototype:Object.prototype))return null;
+ seen.add(value);const keys=Reflect.ownKeys(value),cells=orchardCells(value,keys),children=[];if(!cells)return null;
+ for(const key of keys){if(typeof key!=='string')return null;const child=orchardTree(cells.values[key],seen);if(!child)return null;children.push(child);}
+ seen.delete(value);return ()=>Reflect.ownKeys(value).length===keys.length && cells.current() && children.every(check=>check());
+}
+
 export const environmentalMachinery = {
   name: 'environmentalMachinery',
 
@@ -163,6 +183,8 @@ export const environmentalMachinery = {
     for (const unsub of this._unsubs || []) unsub();
     this._unsubs = [];
     this.state = ctx.state;
+    this._orchardHelpers=ctx.helpers;
+    this._orchardEpoch=(this._orchardEpoch||0)+1;
     this.bus = ctx.bus;
     this.registry = ctx.registry || null;
     this._phaseOut = {};
@@ -202,6 +224,10 @@ export const environmentalMachinery = {
     this._industryLedger = null;
     this._industrySiteResult = null;
     this._killCollateral = new Map();
+    this._orchardGeometry = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
+    this._orchardFieldPatch = { center: this._orchardGeometry.center, dir: this._orchardGeometry.dir };
+    this._orchardFieldRegistered = false;
+    this._orchardLastPhase = null;
     // The Metronome (Eris Margin): a rotating denial cone registered per-tick via one
     // dir patch — the field kernel renormalizes it, presentation reads field.dir live.
     this._metronomeRegistered = false;
@@ -216,6 +242,7 @@ export const environmentalMachinery = {
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
+        this.bus.on('entity:destroyed', (receipt) => this._onOrchardPodDestroyed(receipt)),
         this.bus.on('sector:exit', () => clear('sector_exit')),
         this.bus.on('game:new', () => clear('new_game')),
         this.bus.on('save:restoring', () => clear('save_restoring')),
@@ -234,23 +261,134 @@ export const environmentalMachinery = {
     this._clear('new_game');
   },
 
+  /** Fixed insertion consumer. Frame acquisition and the harvest producer must be enabled
+   * together only after their migration/physical release contracts are complete. */
+  acceptOrchardNewPod(worker,options={}) {return this.acceptOrchardHarvest(worker,{...options,newOnly:true});},
+
+  acceptOrchardHarvest(worker,{frame,socket,commodityId,qty,newOnly=false}={}) {
+    const systemCells=orchardCells(this,['state','_orchardEpoch','_orchardHelpers','registry']);if(!systemCells)return 0;
+    const state=systemCells.values.state,epoch=systemCells.values._orchardEpoch,helpers=systemCells.values._orchardHelpers;
+    const stateCells=orchardCells(state,['mode','tick','entities','sites','world']);
+    const workerCells=orchardCells(worker,['id','occupantGeneration','alive','hull','data','physicsBody']);
+    const workerBody=workerCells && orchardTree(workerCells.values.physicsBody);
+    const frameCells=orchardCells(frame,['id','occupantGeneration','alive','hull','data','pos','rot']);
+    if(!stateCells || !workerCells || !workerBody || !frameCells || state.mode!=='flight' || !Number.isSafeInteger(state.tick) || state.tick<0
+      || commodityId!==ANVIL_ORCHARD.commodityId || !Number.isSafeInteger(qty) || qty<=0)return 0;
+    const {entities,sites,world}=stateCells.values,rowCells=orchardCells(sites,['anvilOrchard']),worldCells=orchardCells(world,['currentSectorId']);
+    const workerData=orchardCells(worker.data,['anvilSlingWitness','itinerary']),itinerary=workerData && orchardCells(workerData.values.itinerary,['kind','role','phase']);
+    if(!rowCells || !worldCells || world.currentSectorId!==ANVIL_ORCHARD.sectorId || !workerData || !itinerary
+      || workerData.values.anvilSlingWitness!==true || itinerary.values.kind!=='anvil_work' || itinerary.values.role!=='collector' || itinerary.values.phase!=='collect')return 0;
+    const prior=rowCells.values.anvilOrchard,tree=orchardTree(prior);if(!tree)return 0;
+    const row=normalizeOrchardRecord(prior);
+    if(socket===undefined && row)socket=row.sockets.find(s=>!newOnly && s.status==='stowed' && row.lots.find(l=>l.id===s.lotId)?.units<4)?.socket
+      ?? row.sockets.find(s=>['empty','delivered','lost'].includes(s.status) && s.operation==='closed' && s.progress===0 && s.cycle<4)?.socket;
+    const slot=Number.isInteger(socket) && socket>=0 && socket<3?row?.sockets[socket]:null,filling=!newOnly && slot?.status==='stowed';
+    if(!row || !orchardHistoryFitsTick(row,state.tick) || row.frameStatus!=='intact' || orchardPhase(row,state.tick)?.phase!=='calm'
+      || !slot || (!filling && !['empty','delivered','lost'].includes(slot.status)) || slot.operation!=='closed' || slot.progress!==0 || (!filling && slot.cycle>=4) || row.sourceRemaining<=0)return 0;
+    const ledgerSlot=Object.getOwnPropertyDescriptor(sites,'anvilOrchard');if(!ledgerSlot?.writable)return 0;
+    let nativeCurrent=()=>true;
+    const current=()=>nativeCurrent() && systemCells.current() && this.state===state && this._orchardEpoch===epoch && this._orchardHelpers===helpers && stateCells.current() && worldCells.current() && rowCells.current() && tree()
+      && workerCells.current() && workerBody() && workerData.current() && itinerary.current() && frameCells.current()
+      && worker.alive===true && Number.isFinite(worker.hull) && worker.hull>0 && frame.alive===true && Number.isFinite(frame.hull) && frame.hull>0
+      && Map.prototype.get.call(entities,worker.id)===worker && Map.prototype.get.call(entities,frame.id)===frame;
+    if(!current())return 0;
+    let facade;try{facade=systemCells.values.registry?.get?.('physics');}catch(_){return 0;}
+    if(!current())return 0;
+    const facadeCells=orchardCells(facade,['_sg02']),owner=facadeCells?.values._sg02;
+    const ownerCells=orchardCells(owner,['world','records','_colliderOwners','_eventQueue']);if(!ownerCells)return 0;
+    const nativeWorker=Map.prototype.get.call(ownerCells.values.records,workerCells.values.id),nativeCells=orchardCells(nativeWorker,['entity','body','spec','collider','colliders','revision']);
+    if(!nativeCells || nativeCells.values.entity!==worker || !Array.isArray(nativeCells.values.colliders))return 0;
+    const members=orchardCells(nativeCells.values.colliders,Reflect.ownKeys(nativeCells.values.colliders)),nativeSpec=orchardTree(nativeCells.values.spec);if(!members || !nativeSpec)return 0;
+    const authoredBody=workerCells.values.physicsBody,resolvedBody=nativeCells.values.spec;
+    if(!authoredBody || typeof authoredBody!=='object' || !resolvedBody || typeof resolvedBody!=='object' || authoredBody.enabled===false || !Number.isSafeInteger(authoredBody.revision) || authoredBody.revision<0
+      || nativeCells.values.revision!==authoredBody.revision || resolvedBody.revision!==authoredBody.revision
+      || !['schemaVersion','dynamic','mass','inertiaY','radius','shape','material','ccd'].every(key=>authoredBody[key]===resolvedBody[key]))return 0;
+    nativeCurrent=()=>ownerCells.current() && nativeCells.current() && nativeSpec() && members.current() && Map.prototype.get.call(ownerCells.values.records,workerCells.values.id)===nativeWorker;
+    if(!facadeCells || !current() || !owner || !facade.readOrchardFramePose(frame) || !current() || !facadeCells.current())return 0;
+    const collars=frame.data.orchardCollars;
+    if(!collars || collars.cycles[socket]!==slot.cycle || collars.progress[socket]!==0)return 0;
+    if(filling){
+      const lot=row.lots.find(l=>l.id===slot.lotId),accepted=Math.min(qty,ANVIL_ORCHARD.unitsPerPod-(lot?.units??4),row.sourceRemaining);if(!(accepted>0))return 0;
+      let pod=null;
+      for(const e of Map.prototype.values.call(entities)){const d=orchardCells(e,['data']);if(!d)continue;const identity=orchardCells(d.values.data,['worldRecordId']);if(identity?.values.worldRecordId===slot.lotId){if(pod)return 0;pod=e;}}
+      const podCells=orchardCells(pod,['id','occupantGeneration','alive','data']),podData=podCells && orchardCells(podCells.values.data,['amount','commodityId']);
+      const fillCurrent=()=>current() && facadeCells.current() && podCells?.current() && podData?.current() && Map.prototype.get.call(entities,podCells.values.id)===pod;
+      if(!podCells || !podData || !fillCurrent() || podData.values.amount!==lot.units || podData.values.commodityId!==ANVIL_ORCHARD.commodityId)return 0;
+      const next=normalizeOrchardRecord(prior);next.sourceRemaining-=accepted;next.lots.find(l=>l.id===slot.lotId).units+=accepted;if(!normalizeOrchardRecord(next))return 0;
+      let prepared;
+      try{prepared=owner.prepareOrchardPodFill(frame,pod,socket,accepted,state);
+        if(!prepared || !fillCurrent() || !prepared.preflight() || !fillCurrent()){prepared?.abort();return 0;}
+        if(!prepared.commit()){prepared.abort();return 0;}
+        return accepted;
+      }catch(_){if(prepared?.committed)return accepted;prepared?.abort();return 0;}
+    }
+    const accepted=Math.min(qty,ANVIL_ORCHARD.unitsPerPod,row.sourceRemaining),lotId=orchardLotId(socket,slot.cycle+1);
+    const next=normalizeOrchardRecord(prior);next.sourceRemaining-=accepted;
+    next.lots.push({id:lotId,socket,cycle:slot.cycle+1,units:accepted,outcome:'retained'});
+    next.sockets[socket]={socket,cycle:slot.cycle+1,lotId,status:'stowed',operation:'closed',progress:0,handoff:'fixed',targetRevision:null,acceptedTick:null,completedTick:null,openedTick:null,readyTick:null,mountLostWork:0,mountLostTick:null};
+    if(!normalizeOrchardRecord(next))return 0;
+    const source=ORCHARD_G.pods[socket],c=Math.cos(frame.rot),s=Math.sin(frame.rot);
+    let stage,prepared;
+    try {
+      stage=helpers.stageEntitySpawn({type:'payload',pos:{x:frame.pos.x+c*source.pos.x-s*source.pos.z,z:frame.pos.z+s*source.pos.x+c*source.pos.z},rot:frame.rot+source.yaw,
+        radius:ORCHARD_G.pod.radius,hull:100,flags:{persistent:true},physicsBody:orchardPodBodySpec(),data:{orchardId:ANVIL_ORCHARD.id,orchardKind:'pod',masslineTetherable:false,
+        worldRecordId:lotId,identityKey:lotId,authoredAssetId:ORCHARD_G.pod.assetId,authoredPayloadAssetId:ORCHARD_G.pod.assetId,commodityId,amount:accepted}});
+      if(!current() || !facadeCells.current()){stage.abort();return 0;}
+      prepared=owner.prepareOrchardPodInsertion(frame,stage.entity,socket,state);
+      if(!prepared || !current() || !facadeCells.current()){prepared?.abort();stage.abort();return 0;}
+      stage.commit({preflight:()=>current() && facadeCells.current() && prepared.preflight() && current() && facadeCells.current(),
+        commit:()=>{if(!current() || !facadeCells.current() || !prepared.commit())return false;
+          // No callback after native commit: the retained ledger cell is the finite debit.
+          return true;},abort:prepared.abort});
+      return stage.committed?accepted:0;
+    } catch(error) {
+      // A presentation callback may throw after committed native/core/finite publication.
+      // Accepted custody remains authoritative; never retry it as a refused harvest.
+      if(stage?.committed)return accepted;
+      prepared?.abort();stage?.abort();return 0;
+    }
+  },
+
+  /** Accepted interaction entry. Interaction reach/offer wiring remains in its existing owner. */
+  requestOrchardRelease(frame,socket) {
+    const system=orchardCells(this,['state','_orchardEpoch','registry']);if(!system)return false;
+    const state=system.values.state,cells=orchardCells(state,['mode','tick','entities','sites','world']);
+    const actor=orchardCells(frame,['id','occupantGeneration','alive','hull','data','physicsBody']);
+    const source=actor && orchardTree(actor.values.physicsBody);
+    const current=()=>system.current() && cells?.current() && actor?.current() && source?.()
+      && Map.prototype.get.call(cells.values.entities,actor.values.id)===frame;
+    if(!cells || !actor || !source || !current())return false;
+    let facade;try{facade=system.values.registry?.get?.('physics');}catch(_){return false;}
+    if(!current())return false;
+    const native=orchardCells(facade,['_sg02']);if(!native)return false;
+    try{if(!facade.readOrchardFramePose(frame) || !current() || !native.current())return false;
+      return native.values._sg02.requestOrchardFiniteRelease(frame,socket,state);
+    }catch(_){return false;}
+  },
+
   update(_dt, state) {
+    // One native mechanism, prepared here before physics; the yard owns its job only.
+    this.registry?.get?.('tethysSwitchyard')?.bindNative?.();
     this._industryDt = Number.isFinite(_dt) ? _dt : 0;
     const sectorId = state && state.world && state.world.currentSectorId;
     const inFlight = !!(state && state.mode === 'flight');
+    const inOrchard = !!(inFlight && sectorId === ANVIL_ORCHARD.sectorId);
     const inCeres = !!(inFlight && sectorId === CINDER_SLUICE_SECTOR_ID);
     const inPallas = !!(inFlight && sectorId === PALLAS_REEF_SECTOR_ID);
     const inWeather = !!(inFlight && WEATHER_SECTOR_IDS.has(sectorId));
     const sectorMachines = inFlight ? killMachinesForSector(sectorId) : EMPTY_LIST;
     const inKill = sectorMachines.length > 0;
     const inMetronome = !!(inFlight && sectorId === METRONOME_SECTOR_ID);
-    if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather || inKill || inMetronome)) {
+    if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather || inKill || inMetronome || inOrchard)) {
       if (this._clearSettled !== true) {
-        this._clear(!(inCeres || inPallas || inWeather || inKill || inMetronome) ? 'inactive_route' : 'fields_disabled');
+        this._clear(!(inCeres || inPallas || inWeather || inKill || inMetronome || inOrchard) ? 'inactive_route' : 'fields_disabled');
       }
       return;
     }
     this._clearSettled = false;
+
+    if (inOrchard) this._updateOrchard(state);
+    else this._clearOrchard('wrong_sector');
 
     if (inCeres) {
       this._updateCinder(state);
@@ -1296,6 +1434,137 @@ export const environmentalMachinery = {
     }
   },
 
+  // Orchard weather follows only the existing durable row and resident frame. The gust is a
+  // temporary field-kernel cone; calm/forecast have no registered force volume, and no saved
+  // timer or direct velocity/impulse writer is introduced here.
+  _updateOrchard(state) {
+    const row = normalizeOrchardRecord(state?.sites?.anvilOrchard);
+    if (!row || row.frameStatus === 'destroyed' || !orchardHistoryFitsTick(row, state.tick)) {
+      this._removeOrchardField();
+      this._orchardLastPhase = null;
+      return;
+    }
+    const phase = orchardPhase(row, state.tick);
+    const entities = state.entities;
+    let frame = null;
+    const residentId = state.planet?.orchardFrameId;
+    if (entities && typeof entities.get === 'function' && residentId != null) frame = entities.get(residentId);
+    if (!frame || frame.alive === false || !isOrchardFrame(frame)) {
+      frame = null;
+      if (entities && typeof entities.values === 'function') {
+        for (const candidate of entities.values()) {
+          if (candidate?.alive !== false && isOrchardFrame(candidate)
+            && candidate.data?.worldRecordId === ORCHARD_G.worldRecordId) {
+            frame = candidate;
+            break;
+          }
+        }
+      }
+    }
+    const exactFrame = frame && frame.data?.worldRecordId === ORCHARD_G.worldRecordId;
+    if (exactFrame && phase?.phase === 'calm') {
+      // Re-arm a native close only after ordinary service admission. This deliberately lives on
+      // the normal route tick (never a deserialize/restore hook), so native owner validation sees
+      // the current exact frame, finite row, and socket pose before it creates an intent.
+      let facade;
+      try { facade = this.registry?.get?.('physics'); } catch (_) { facade = null; }
+      const nativeOwner = facade?._sg02;
+      if (typeof nativeOwner?.requestOrchardFiniteClose === 'function') {
+        for (const socket of row.sockets) {
+          if ((socket.status === 'delivered' || socket.status === 'lost') && socket.handoff === 'ready'
+            && (socket.operation === 'open' || socket.operation === 'closing')) {
+            try { nativeOwner.requestOrchardFiniteClose(frame, socket.socket, state); } catch (_) {}
+          }
+        }
+      }
+    }
+    if (phase?.phase === 'gust' && exactFrame) {
+      this._upsertOrchardField(frame);
+    } else {
+      this._removeOrchardField();
+    }
+    this._orchardLastPhase = phase?.phase || null;
+  },
+
+  _upsertOrchardField(frame) {
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const geometry = anvilOrchardGustGeometry(frame, this._orchardGeometry);
+    if (!geometry) { this._removeOrchardField(); return; }
+    const id = ANVIL_ORCHARD_GUST_PROFILE.id;
+    const live = typeof system.hasExternal === 'function'
+      ? system.hasExternal(id)
+      : this._orchardFieldRegistered;
+    if (!live) {
+      system.registerEnvironmental({
+        id,
+        kind: ANVIL_ORCHARD_GUST_PROFILE.kind,
+        center: { x: geometry.center.x, z: geometry.center.z },
+        dir: { x: geometry.dir.x, z: geometry.dir.z },
+        radius: ANVIL_ORCHARD_GUST_PROFILE.radius,
+        strength: ANVIL_ORCHARD_GUST_PROFILE.strength,
+        falloff: ANVIL_ORCHARD_GUST_PROFILE.falloff,
+        halfAngleRad: ANVIL_ORCHARD_GUST_PROFILE.halfAngleRad,
+        edgeSoftRad: ANVIL_ORCHARD_GUST_PROFILE.edgeSoftRad,
+        sourceId: ANVIL_ORCHARD_GUST_PROFILE.sourceId,
+        team: ANVIL_ORCHARD_GUST_PROFILE.team,
+        createdAt: simTimeOf(this.state),
+      });
+      this._orchardFieldRegistered = typeof system.hasExternal === 'function'
+        ? system.hasExternal(id) : true;
+      return;
+    }
+    this._orchardFieldRegistered = true;
+    this._orchardFieldPatch.center.x = geometry.center.x;
+    this._orchardFieldPatch.center.z = geometry.center.z;
+    this._orchardFieldPatch.dir.x = geometry.dir.x;
+    this._orchardFieldPatch.dir.z = geometry.dir.z;
+    if (typeof system.updateExternal === 'function') system.updateExternal(id, this._orchardFieldPatch);
+  },
+
+  _removeOrchardField() {
+    const system = this._fieldsSystem();
+    const id = ANVIL_ORCHARD_GUST_PROFILE.id;
+    const live = system && typeof system.hasExternal === 'function'
+      ? system.hasExternal(id) : this._orchardFieldRegistered;
+    if (live && typeof system?.unregisterExternal === 'function') system.unregisterExternal(id);
+    this._orchardFieldRegistered = false;
+  },
+
+  _clearOrchard(_why) {
+    this._removeOrchardField();
+    this._orchardLastPhase = null;
+  },
+
+  _onOrchardPodDestroyed(receipt) {
+    const entity = receipt?.entity;
+    const data = entity?.data;
+    const parts = typeof data?.worldRecordId === 'string' ? data.worldRecordId.split(':') : [];
+    // Destruction is a positive lifecycle receipt; never infer loss from a missing resident.
+    // Native owner still validates the current exact lease, saved lot, and destroyed entity.
+    if (!entity || receipt.id !== entity.id || entity.alive !== false || entity.type !== 'payload'
+      || data?.orchardId !== ANVIL_ORCHARD.id || data?.orchardKind !== 'pod'
+      || data.identityKey !== data.worldRecordId || parts.length !== 3 || parts[0] !== ANVIL_ORCHARD.id
+      || !['0', '1', '2'].includes(parts[1]) || !['1', '2', '3', '4'].includes(parts[2])
+      || data.authoredAssetId !== ORCHARD_G.pod.assetId
+      || data.authoredPayloadAssetId !== ORCHARD_G.pod.assetId) return false;
+    const state = this.state;
+    let frame = state?.entities?.get?.(state?.planet?.orchardFrameId);
+    if (!frame || frame.alive === false || !isOrchardFrame(frame)) {
+      frame = null;
+      for (const candidate of state?.entities?.values?.() || []) {
+        if (candidate?.alive !== false && isOrchardFrame(candidate)
+          && candidate.data?.worldRecordId === ORCHARD_G.worldRecordId) { frame = candidate; break; }
+      }
+    }
+    if (!frame) return false;
+    let facade;
+    try { facade = this.registry?.get?.('physics'); } catch (_) { return false; }
+    const owner = facade?._sg02;
+    if (typeof owner?.commitOrchardPodLoss !== 'function') return false;
+    try { return owner.commitOrchardPodLoss(frame, entity, state, receipt) === true; } catch (_) { return false; }
+  },
+
   _upsertWeatherField(volume, phase) {
     const system = this._fieldsSystem();
     if (!system || typeof system.registerEnvironmental !== 'function') return;
@@ -1358,6 +1627,9 @@ export const environmentalMachinery = {
   },
 
   _clear(why) {
+    if(['new_game','destroy','save_restoring','save_loaded','sector_exit'].includes(why))this._orchardEpoch=(this._orchardEpoch||0)+1;
+    this._removeOrchardField();
+    this._orchardLastPhase = null;
     this._clearWinnow();
     this._clearCinder(why);
     this._clearKillMachines(why);

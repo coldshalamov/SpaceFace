@@ -39,6 +39,10 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { occupantGenerationOf } from '../core/entity.js';
+import { ANVIL_ORCHARD, createOrchardRecord, normalizeOrchardRecord, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
+import { ORCHARD_GEOMETRY, orchardFrameBodySpec } from '../data/anvilOrchardBody.js';
+import { createOrchardMotorState } from '../core/anvilOrchardNative.js';
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 
 const MAX_TRACKED_SHIPS = 8;   // bounded per-tick work: player + the nearest 7 ships in the bands
 const MAX_AFTERMATH = 4;       // bounded presentation memory of recent plunge terminations
@@ -62,6 +66,8 @@ function defaultRuntime() {
     entityGeneration: null,
     witnessId: null,
     witnessGeneration: null,
+    orchardFrameId: null,
+    orchardFrameGeneration: null,
     fieldId: null,         // the annular attraction profile in the PQ-012 kernel
     center: { x: 0, z: 0 },// global centre (converted once from the authored sector-local anchor)
     player: {
@@ -144,6 +150,14 @@ export const planetRuntime = {
     const fsys = this.registry && this.registry.get ? this.registry.get('fields') : null;
     if (fsys && typeof fsys.hasExternal === 'function' && !fsys.hasExternal(rt.fieldId)) {
       this._registerField(fsys, rt, site);
+    }
+
+    // The finite Orchard joins the existing Anvil only when its normal consumer is installed.
+    // planetRuntime remains the one place/band adapter; the machine, cargo, and physics owners
+    // keep their existing authority, while this adapter admits one authored fixed landmark.
+    if (site && rt.active && site.id === ANVIL_ORCHARD.planetId
+      && sectorId === ANVIL_ORCHARD.sectorId) {
+      this._ensureOrchardFrame(state, rt, site);
     }
 
     if (state.mode !== 'flight' || dt <= 0) return;
@@ -263,6 +277,118 @@ export const planetRuntime = {
       sourceId: rt.entityId,
       createdAt: nowOf(this.state),
     });
+  },
+
+  _ensureOrchardFrame(state, rt, site) {
+    const machinery = this.registry?.get?.('environmentalMachinery');
+    const worldOwner = this.registry?.get?.('world');
+    const sites = state && state.sites;
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof machinery?.acceptOrchardHarvest !== 'function'
+      || typeof worldOwner?.upsertWorldRecord !== 'function'
+      || typeof spawnEntity !== 'function'
+      || !sites || typeof sites !== 'object' || Array.isArray(sites)
+      || !Number.isSafeInteger(state.tick) || state.tick < 0) return null;
+
+    // This is the finite site row, not a producer-owned cache. A missing/null save section is
+    // the only admission case; malformed or future-authored custody stays fail-closed.
+    let rowDescriptor = Object.getOwnPropertyDescriptor(sites, 'anvilOrchard');
+    if (!rowDescriptor || ('value' in rowDescriptor && rowDescriptor.value === null)) {
+      if ((rowDescriptor && (!('value' in rowDescriptor) || !rowDescriptor.writable))
+        || (!rowDescriptor && !Object.isExtensible(sites))) return null;
+      try {
+        Object.defineProperty(sites, 'anvilOrchard', {
+          value: createOrchardRecord(state.tick), enumerable: true, configurable: true, writable: true,
+        });
+        rowDescriptor = Object.getOwnPropertyDescriptor(sites, 'anvilOrchard');
+      } catch (_) { return null; }
+    }
+    if (!rowDescriptor || !('value' in rowDescriptor)) return null;
+    const row = normalizeOrchardRecord(rowDescriptor.value);
+    if (!row || !orchardHistoryFitsTick(row, state.tick) || row.frameStatus !== 'intact') return null;
+
+    const resident = state.entities?.get?.(rt.orchardFrameId);
+    if (boundLife(resident, rt.orchardFrameId, rt.orchardFrameGeneration)
+      && resident.data?.worldRecordId === ORCHARD_GEOMETRY.worldRecordId
+      && isOrchardFrame(resident) && resident.data?.isLandmark === true
+      && resident.data?.worldSiteTargetable === true) return resident;
+
+    // The world-record index is the existing residency lane. Reuse a live exact frame rather
+    // than minting a second owner when save/load or sector residency already materialized it.
+    let frame = null;
+    const index = state.entityIndex;
+    if (index?.__spacefaceEntityIndexV1 === true && index.ready === true
+      && index.byWorldRecordId instanceof Map) {
+      frame = index.byWorldRecordId.get(ORCHARD_GEOMETRY.worldRecordId) || null;
+    }
+    if (!frame || frame.alive === false || state.entities?.get?.(frame.id) !== frame) {
+      const entities = state.entities;
+      if (entities && typeof entities.values === 'function') {
+        for (const candidate of entities.values()) {
+          if (candidate?.alive !== false
+            && candidate.data?.worldRecordId === ORCHARD_GEOMETRY.worldRecordId) {
+            frame = candidate;
+            break;
+          }
+        }
+      }
+    }
+    if (frame) {
+      if (!isOrchardFrame(frame) || frame.data?.isLandmark !== true
+        || frame.data?.worldSiteTargetable !== true) return null;
+      rt.orchardFrameId = frame.id;
+      rt.orchardFrameGeneration = occupantGenerationOf(frame);
+      return frame;
+    }
+    // A durable row may already be shelved by the ordinary world owner. Never mint a live
+    // duplicate just because the transient planet cache cannot see that residency row.
+    const worldRecord = state.world?.records?.byId;
+    if (worldRecord && Object.prototype.hasOwnProperty.call(worldRecord, ORCHARD_GEOMETRY.worldRecordId)) {
+      return null;
+    }
+
+    // Keep the only absolute anchor on PLANET_SITE. This point is derived from the existing
+    // safe sling interval and a small angular offset, keeping it near the skim route while
+    // leaving the outer working-band path clear of the frame's 70-WU physical bound. The
+    // authored landmark identity also opts it out of debris heat/impact.
+    const radius = site.bands.skim + (site.bands.sling - site.bands.skim) * 0.5;
+    const angle = Math.PI / 9;
+    const pos = { x: rt.center.x + Math.cos(angle) * radius,
+      z: rt.center.z + Math.sin(angle) * radius };
+    try {
+      frame = spawnEntity({
+        type: 'wreck', team: 0, pos, vel: { x: 0, z: 0 }, rot: angle,
+        radius: ORCHARD_GEOMETRY.radius, mass: 1000000,
+        collides: true, hull: 1e9, hullMax: 1e9,
+        flags: { persistent: true }, homeSectorId: ANVIL_ORCHARD.sectorId,
+        physicsBody: orchardFrameBodySpec(),
+        data: {
+          orchardId: ANVIL_ORCHARD.id, orchardKind: 'frame',
+          worldRecordId: ORCHARD_GEOMETRY.worldRecordId,
+          identityKey: ORCHARD_GEOMETRY.worldRecordId,
+          placeId: 'place_anvil_storm_orchard',
+          authoredAssetId: ORCHARD_GEOMETRY.assetId,
+          authoredPayloadAssetId: ORCHARD_GEOMETRY.assetId,
+          masslineTetherable: false,
+          orchardCollars: createOrchardMotorState(
+            row.sockets.map((socket) => socket.progress), row.sockets.map((socket) => socket.cycle)),
+          homeSectorId: ANVIL_ORCHARD.sectorId, sectorId: ANVIL_ORCHARD.sectorId,
+          isLandmark: true, landmark: true, landmarkId: ANVIL_ORCHARD.id,
+          worldSiteTargetable: true, durable: true,
+          name: 'Anvil Storm Orchard',
+        },
+      });
+    } catch (_) { return null; }
+    if (!frame || !isOrchardFrame(frame) || frame.data?.isLandmark !== true
+      || frame.data?.worldSiteTargetable !== true) return null;
+
+    // Register the already-spawned authored body through the existing world-record owner.
+    // Persistent entity serialization remains the canonical body snapshot; this record is its
+    // stable sector identity and lets the ordinary residency index find the same frame.
+    try { worldOwner.upsertWorldRecord(frame); } catch (_) { /* the persistent body remains live */ }
+    rt.orchardFrameId = frame.id;
+    rt.orchardFrameGeneration = occupantGenerationOf(frame);
+    return frame;
   },
 
   _unwind(why) {
@@ -599,9 +725,10 @@ export const planetRuntime = {
   },
 
   // One admitted worker uses the SAME physical band and density law as the player.
-  // Fractions are transient atmospheric exposure, not a second cargo ledger. Traffic alone
-  // accepts whole units into the current finite manifest. A ship outside the thermal budget
-  // cannot collect for free, and a stopped/interrupted worker cannot bank a timed yield.
+  // Fractions are transient atmospheric exposure, not a second cargo ledger. Whole shallow gas
+  // is offered first to the finite Orchard, then only its unaccepted remainder to traffic's
+  // existing manifest. A ship outside the thermal budget cannot collect for free, and a
+  // stopped/interrupted worker cannot bank a timed yield.
   _tickWorkerHarvest(dt, state, rt, site) {
     if (!(Number.isFinite(dt) && dt > 0)) return;
     const worker = state.entities.get(rt.witnessId);
@@ -634,8 +761,26 @@ export const planetRuntime = {
     // Discard refused whole units, as the player collector does. No hidden reserve can
     // appear after unloading or while the intake is closed.
     rec[key] -= whole;
-    const accepted = traffic.acceptAnvilHarvest(worker, { siteId: site.id, commodityId, qty: whole });
-    const qty = Number.isFinite(accepted) ? Math.max(0, Math.min(whole, Math.floor(accepted))) : 0;
+    let orchardQty = 0;
+    if (commodityId === ANVIL_ORCHARD.commodityId) {
+      const machine = this.registry?.get?.('environmentalMachinery');
+      const frame = state.entities?.get?.(rt.orchardFrameId);
+      if (typeof machine?.acceptOrchardHarvest === 'function'
+        && boundLife(frame, rt.orchardFrameId, rt.orchardFrameGeneration)
+        && isOrchardFrame(frame)) {
+        const acceptedByOrchard = machine.acceptOrchardHarvest(worker, {
+          frame, commodityId, qty: whole,
+        });
+        orchardQty = Number.isFinite(acceptedByOrchard)
+          ? Math.max(0, Math.min(whole, Math.floor(acceptedByOrchard))) : 0;
+      }
+    }
+    const remaining = whole - orchardQty;
+    const acceptedTraffic = remaining > 0
+      ? traffic.acceptAnvilHarvest(worker, { siteId: site.id, commodityId, qty: remaining }) : 0;
+    const trafficAccepted = Number.isFinite(acceptedTraffic)
+      ? Math.max(0, Math.min(remaining, Math.floor(acceptedTraffic))) : 0;
+    const qty = orchardQty + trafficAccepted;
     if (!qty) return;
     rec.harvestedUnits = finite(rec.harvestedUnits) + qty;
     this.bus.emit('planet:npcHarvest', { entityId: worker.id, siteId: site.id, commodityId, qty });

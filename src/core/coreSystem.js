@@ -6,7 +6,7 @@ import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import { initializePresentationAdmission } from './presentationAdmission.js';
 import { packCombatTable } from './combatTable.js';
-import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
+import { beginDirtyTick, markDirty, collectDirtyIds, ensureDirtyJournal, DIRTY } from './dirtyJournal.js';
 import { stampNearWorkBudget, refreshNearWorkAlwaysAwake } from './activityScheduler.js';
 import { modelTruthProxyManifest } from '../data/modelTruth.js';
 import { measuredSkinAllowedFor } from '../data/collisionProxyManifests.js';
@@ -107,6 +107,163 @@ export function clearRecycledEntityPointers(state, id) {
   }
 }
 
+// Staged publication supports ordinary core-created storage. Classification runs on a
+// private copy through the existing classifier; its completed delta has no source reads.
+// Proxy storage and replaced global JS intrinsics are outside this bounded core contract.
+const STAGED_STORAGE_UNSUPPORTED = Symbol('unsupported-staged-storage');
+function stagedOwnValue(object, key) {
+  const d=object && Object.getOwnPropertyDescriptor(object,key);
+  return d && 'value' in d ? d.value : undefined;
+}
+function captureStagedIndexInputs(entity, transition = false) {
+  const rows=[];
+  const retain=(object,keys)=>{
+    if(!object || typeof object!=='object')return false;
+    for(const key of keys){
+      const d=Object.getOwnPropertyDescriptor(object,key);
+      if(d && !('value' in d))return false;
+      rows.push([object,key,d]);
+    }
+    return true;
+  };
+  if(!retain(entity,['id','occupantGeneration','alive','type','collides','radius','physicsBody','data']))return null;
+  const data=stagedOwnValue(entity,'data'),body=stagedOwnValue(entity,'physicsBody');
+  if(data && (Object.getPrototypeOf(data)!==Object.prototype && Object.getPrototypeOf(data)!==null))return null;
+  if(data && !retain(data,['machine','flavorTargetRef','flavorSourceId','role','worldRecordId','worldSiteId',
+    'capitalBossActorKey','capitalBossWingKey','activityObjectSlotId','activityActorSlotId','ai','weapons',
+    'isGate','dockless','stationId','respawnAt','isWormhole','placeId','isLandmark','isLandmarkRock',
+    'landmark','archetype','archetypeGlb']))return null;
+  const weapons=data && stagedOwnValue(data,'weapons');
+  if(weapons && !retain(weapons,['length']))return null;
+  if(body && typeof body==='object'){
+    if(Object.getPrototypeOf(body)!==Object.prototype && Object.getPrototypeOf(body)!==null)return null;
+    if(!retain(body,['radius','dynamic','material','shape',...(transition?['revision','collisionProxyManifest']:[])]))return null;
+    for(const key of ['material','shape']){
+      const value=stagedOwnValue(body,key);
+      if(value && (typeof value==='object' || typeof value==='function'))return null;
+    }
+  }
+  const same=(a,b)=>a===undefined?b===undefined:!!b && 'value' in b && Object.is(a.value,b.value)
+    && a.writable===b.writable && a.enumerable===b.enumerable && a.configurable===b.configurable;
+  return ()=>rows.every(([object,key,d])=>same(d,Object.getOwnPropertyDescriptor(object,key)));
+}
+function prepareStagedPublication(state,entities,list,index,entity,transitionBody = null) {
+  const journal=ensureDirtyJournal(state),nodes=[],copies=new Map(),originals=new Map();
+  const ownKeys=Reflect.ownKeys,desc=Object.getOwnPropertyDescriptor;
+  const mapEntries=object=>{const out=[];Map.prototype.forEach.call(object,(v,k)=>out.push([k,v]));return out;};
+  const setValues=object=>{const out=[];Set.prototype.forEach.call(object,v=>out.push(v));return out;};
+  const sameDescriptor=(a,b)=>!!a && !!b && 'value' in a && 'value' in b && Object.is(a.value,b.value)
+    && a.writable===b.writable && a.enumerable===b.enumerable && a.configurable===b.configurable;
+  const capture=(source,kind)=>{
+    if(copies.has(source))return copies.get(source);
+    const proto=Object.getPrototypeOf(source),keys=ownKeys(source),descriptors=keys.map(k=>desc(source,k));
+    let copy,values;
+    if(kind==='array'){
+      if(proto!==Array.prototype || !Object.isExtensible(source) || !desc(source,'length')?.writable
+        || keys.some(k=>k!=='length' && (typeof k!=='string' || !/^(0|[1-9]\d*)$/.test(k))))throw STAGED_STORAGE_UNSUPPORTED;
+      copy=[];values=[];
+      for(let i=0;i<source.length;i++){
+        const d=desc(source,String(i));if(!d || !('value' in d) || !d.writable || !d.configurable)throw STAGED_STORAGE_UNSUPPORTED;
+        values.push(d.value);copy.push(d.value);
+      }
+    }else if(kind==='map' || kind==='set'){
+      if(proto!==(kind==='map'?Map.prototype:Set.prototype) || keys.length)throw STAGED_STORAGE_UNSUPPORTED;
+      copy=kind==='map'?new Map():new Set();values=kind==='map'?mapEntries(source):setValues(source);
+    }else if(kind==='typed'){
+      if(proto!==Uint32Array.prototype || keys.length!==source.length)throw STAGED_STORAGE_UNSUPPORTED;
+      copy=new Uint32Array(source.length);Uint32Array.prototype.set.call(copy,source);values=new Uint32Array(copy);
+    }else{
+      if((proto!==Object.prototype && proto!==null) || !Object.isExtensible(source)
+        || descriptors.some(d=>!d || !('value' in d) || !d.writable || !d.configurable))throw STAGED_STORAGE_UNSUPPORTED;
+      copy=Object.create(proto);
+    }
+    copies.set(source,copy);originals.set(copy,source);nodes.push({source,copy,kind,keys,descriptors,values,proto});
+    if(kind==='map')for(const [k,v] of values)copy.set(k,v instanceof Set?capture(v,'set'):v);
+    else if(kind==='set')for(const v of values)copy.add(v);
+    else if(kind==='index' || kind==='record' || kind==='journal')for(let i=0;i<keys.length;i++){
+      const k=keys[i],v=descriptors[i].value;
+      copy[k]=copies.has(v)?copies.get(v):kind==='index' && k!=='_sourceList' && Array.isArray(v)?capture(v,'array')
+        :kind==='index' && v instanceof Map?capture(v,'map'):kind==='index' && v instanceof Set?capture(v,'set')
+        :kind==='index' && k==='laneVersions'?capture(v,'record'):kind==='journal' && v instanceof Uint32Array?capture(v,'typed'):v;
+    }
+    return copy;
+  };
+  const copiedEntities=capture(entities,'map'),copiedList=capture(list,'array'),copiedIndex=capture(index,'index'),copiedJournal=capture(journal,'journal');
+  const inputs=captureStagedIndexInputs(entity,!!transitionBody);if(!inputs)return null;
+  let projectedInputs=()=>true;
+  if(transitionBody){
+    const descriptors=Object.getOwnPropertyDescriptors(entity);
+    descriptors.physicsBody={...descriptors.physicsBody,value:transitionBody};
+    const projected=Object.create(Object.getPrototypeOf(entity),descriptors);
+    projectedInputs=captureStagedIndexInputs(projected,true);if(!projectedInputs)return null;
+    copiedEntities.set(entity.id,projected);
+    for(const n of nodes)if(n.kind==='array')for(let i=0;i<n.copy.length;i++)if(n.copy[i]===entity)n.copy[i]=projected;
+    if(!refreshEntityPhysicsIndex({entities:copiedEntities,entityIndex:copiedIndex},projected,entity.occupantGeneration))return null;
+    if(!inputs() || !projectedInputs())return null;
+    copiedEntities.set(entity.id,entity);
+    for(const n of nodes)if(n.kind==='array')for(let i=0;i<n.copy.length;i++)if(n.copy[i]===projected)n.copy[i]=entity;
+  }else{
+    appendEntityIndex(copiedIndex,entity);
+    if(!inputs())return null;
+    copiedEntities.set(entity.id,entity);copiedList.push(entity);
+    markEntityIndexSourceSynced(copiedIndex,copiedList);
+  }
+  markDirty({dirtyJournal:copiedJournal},entity.id,DIRTY.MEMBERSHIP|DIRTY.POSE);
+  const storageCurrent=()=>nodes.every(n=>{
+    if(Object.getPrototypeOf(n.source)!==n.proto)return false;
+    const keys=ownKeys(n.source);
+    if(keys.length!==n.keys.length || keys.some((k,i)=>k!==n.keys[i] || !sameDescriptor(n.descriptors[i],desc(n.source,k))))return false;
+    if(n.kind==='array')return Object.isExtensible(n.source);
+    if(n.kind==='map'){
+      const now=mapEntries(n.source);return now.length===n.values.length && now.every(([k,v],i)=>Object.is(k,n.values[i][0]) && v===n.values[i][1]);
+    }
+    if(n.kind==='set'){
+      const now=setValues(n.source);return now.length===n.values.length && now.every((v,i)=>Object.is(v,n.values[i]));
+    }
+    if(n.kind==='typed')return n.source.length===n.values.length && n.values.every((v,i)=>n.source[i]===v);
+    return Object.isExtensible(n.source);
+  });
+  const stateRefs=['entities','entityList','entityIndex','dirtyJournal'].map((key,i)=>[key,[entities,list,index,journal][i]]);
+  const current=()=>stateRefs.every(([key,value])=>stagedOwnValue(state,key)===value) && inputs() && projectedInputs() && storageCurrent();
+  const original=v=>originals.get(v)||v,actions=[];
+  for(const n of nodes){
+    if(n.kind==='array'){
+      if(transitionBody){
+        for(let i=0;i<n.copy.length;i++)if(n.copy[i]!==n.values[i]){const value=n.copy[i];actions.push(()=>Object.defineProperty(n.source,String(i),{value,writable:true,enumerable:true,configurable:true}));}
+        if(n.copy.length!==n.values.length){const length=n.copy.length;actions.push(()=>Object.defineProperty(n.source,'length',{value:length}));}
+      }else for(let i=n.values.length;i<n.copy.length;i++){const value=n.copy[i];actions.push(()=>Array.prototype.push.call(n.source,value));}
+    }else if(n.kind==='map'){
+      Map.prototype.forEach.call(n.copy,(value,key)=>{value=original(value);if(!Map.prototype.has.call(n.source,key) || Map.prototype.get.call(n.source,key)!==value)actions.push(()=>Map.prototype.set.call(n.source,key,value));});
+    }else if(n.kind==='set'){
+      Set.prototype.forEach.call(n.copy,value=>{if(!Set.prototype.has.call(n.source,value))actions.push(()=>Set.prototype.add.call(n.source,value));});
+    }else if(n.kind==='typed'){
+      for(let i=0;i<n.copy.length;i++)if(n.copy[i]!==n.values[i]){const value=n.copy[i];actions.push(()=>{n.source[i]=value;});}
+    }else for(const key of ownKeys(n.copy)){
+      const value=original(desc(n.copy,key).value),before=desc(n.source,key);
+      if(!before || !Object.is(before.value,value))actions.push(()=>Object.defineProperty(n.source,key,{value,writable:true,enumerable:true,configurable:true}));
+    }
+  }
+  return {current,publish(){for(const action of actions)action();}};
+}
+
+
+/** Prepared same-life physics membership using the existing classifier. The native caller
+ * checks current before its final callback-free commit and publishes this retained delta
+ * beside its source-body publication. This helper never changes entity/native authoring. */
+export function prepareEntityPhysicsIndexPublication(state,entity,nextBody){
+  try{
+    const entities=stagedOwnValue(state,'entities'),list=stagedOwnValue(state,'entityList'),index=stagedOwnValue(state,'entityIndex');
+    const id=stagedOwnValue(entity,'id'),life=stagedOwnValue(entity,'occupantGeneration');
+    if(!index || stagedOwnValue(index,'__spacefaceEntityIndexV1')!==true || Map.prototype.get.call(entities,id)!==entity
+      || stagedOwnValue(entity,'alive')!==true || !Number.isSafeInteger(life) || life<1
+      || !Set.prototype.has.call(stagedOwnValue(index,'_indexedIds'),id) || !nextBody || typeof nextBody!=='object')return null;
+    const plan=prepareStagedPublication(state,entities,list,index,entity,nextBody);if(!plan)return null;
+    let published=false;
+    return Object.freeze({current:()=>!published && stagedOwnValue(entity,'occupantGeneration')===life
+      && Map.prototype.get.call(entities,id)===entity && plan.current(),publish(){if(published)return false;published=true;plan.publish();return true;}});
+  }catch(error){if(error===STAGED_STORAGE_UNSUPPORTED)return null;throw error;}
+}
+
 export const core = {
   name: 'core',
   init(ctx) {
@@ -144,10 +301,10 @@ export const core = {
     };
     this._publishPresentation = publishPresentation;
 
-    const spawnEntity = (spec) => {
-      const index = ensureEntityIndex(state);
-      reconcileEntityIndexSource(index, state.entityList);
+    let privateSpawnEpoch = {};
+    const constructEntity = (spec, fence = null) => {
       const e = makeEntity(spec);
+      if(fence && !fence())throw new Error('staged_spawn_superseded');
       // Measured skins ride fixed bodies and eligible solid dynamics alike; authored physicsBody
       // geometry (shape, collisionProxyManifest, useMeasuredSkin:false) opts out — Package C.
       const measuredSkin = e && e.collides !== false && measuredSkinAllowedFor(e)
@@ -160,14 +317,23 @@ export const core = {
           e.data.collisionProxy = measuredSkin.id;
         }
       }
+      if(fence && !fence())throw new Error('staged_spawn_superseded');
       initializePresentationAdmission(e);
+      if(fence && !fence())throw new Error('staged_spawn_superseded');
       const reserved = Number.isSafeInteger(spec && spec.id) && spec.id > 0 ? spec.id : 0;
+      if(fence && !fence())throw new Error('staged_spawn_superseded');
       const id = reserved && !state.entities.has(reserved)
         ? reserved
         : allocateEntityId(state);
       e.id = id;
       // A reserved id and a freeIds recycle are both a new occupant of that number.
       stampOccupantGeneration(state, e);
+      return e;
+    };
+    const spawnEntity = (spec) => {
+      const index = ensureEntityIndex(state);
+      reconcileEntityIndexSource(index, state.entityList);
+      const e=constructEntity(spec),id=e.id;
       state.entities.set(id, e);
       state.entityList.push(e);
       appendEntityIndex(index, e);
@@ -176,6 +342,48 @@ export const core = {
       publishPresentation('recordSpawn', e);
       bus.emit('entity:spawned', { id, type: e.type, entity: e });
       return e;
+    };
+    // The normal allocator/constructor is shared; only publication is staged.
+    const stageEntitySpawn = (spec) => {
+      const index=ensureEntityIndex(state);reconcileEntityIndexSource(index,state.entityList);
+      const entities=state.entities,list=state.entityList,epoch=privateSpawnEpoch,laneEpoch=index.laneEpoch;
+      const context=()=>stagedOwnValue(this,'state')===state && privateSpawnEpoch===epoch && stagedOwnValue(state,'entities')===entities
+        && stagedOwnValue(state,'entityList')===list && stagedOwnValue(state,'entityIndex')===index && stagedOwnValue(index,'laneEpoch')===laneEpoch;
+      const entity=constructEntity(spec,context),id=entity.id,life=entity.occupantGeneration;
+      let phase='pending',prepared=null,abortAttempted=false;
+      const current=()=>phase!=='aborted' && context() && stagedOwnValue(entity,'id')===id && stagedOwnValue(entity,'occupantGeneration')===life && stagedOwnValue(entity,'alive')===true
+        && (phase==='committed'?Map.prototype.get.call(entities,id)===entity:!Map.prototype.has.call(entities,id))
+        && (()=>{const length=stagedOwnValue(list,'length');let present=false;
+          if(!Number.isSafeInteger(length))return false;
+          for(let i=0;i<length;i++){const d=Object.getOwnPropertyDescriptor(list,String(i));if(!d || !('value' in d))return false;if(d.value===entity)present=true;}
+          return phase==='committed'?present:!present;})();
+      const abort=()=>{if(phase==='committed' || abortAttempted)return false;abortAttempted=true;phase='aborted';if(prepared)Reflect.apply(prepared.abort,prepared.receiver,[]);return true;};
+      const commit=(contract)=>{
+        if(phase!=='pending')return false;phase='preparing';
+        try {
+          const methods={};
+          for(const key of ['preflight','commit','abort']) {
+            const d=Object.getOwnPropertyDescriptor(contract||{},key);
+            if(!d || !('value' in d) || typeof d.value!=='function'){abort();return false;}
+            methods[key]=d.value;
+          }
+          prepared={...methods,receiver:contract};
+          if(!current()){abort();return false;}
+          let publication;
+          try {publication=prepareStagedPublication(state,entities,list,index,entity);}
+          catch(error){if(error!==STAGED_STORAGE_UNSUPPORTED)throw error;abort();return false;}
+          if(!publication || !current() || !publication.current()
+            || Reflect.apply(prepared.preflight,prepared.receiver,[])!==true || !current() || !publication.current()
+            || Reflect.apply(prepared.commit,prepared.receiver,[])!==true || !current() || !publication.current()){abort();return false;}
+          // Native commit and this delta are a callback-free publication boundary. The
+          // existing classifier and all growth/allocation already ran on private storage.
+          publication.publish();phase='committed';
+          publishPresentation('recordSpawn',entity);
+          if(current())bus.emit('entity:spawned',{id,type:entity.type,entity});
+          return true;
+        } catch(error){if(phase!=='committed' && !abortAttempted)abort();throw error;}
+      };
+      return Object.freeze({entity,current,commit,abort,get committed(){return phase==='committed';}});
     };
     const getEntity = (id) => state.entities.get(id) || null;
     const removeEntity = (id, opts) => {
@@ -287,7 +495,7 @@ export const core = {
       return entity ? publishPresentation('recordVisual', entity) : 0;
     };
     Object.assign(ctx.helpers, {
-      spawnEntity, getEntity, removeEntity, removeEntitiesAtIndices, queryRadius, player,
+      spawnEntity, stageEntitySpawn, getEntity, removeEntity, removeEntitiesAtIndices, queryRadius, player,
       entityIndex: () => ensureEntityIndex(state),
       markEntityVisualChanged,
       requestPresentationRebuild,
@@ -304,7 +512,7 @@ export const core = {
       }),
       bus.on('entity:spawnRequest', ({ spec }) => spawnEntity(spec)),
       bus.on('ship:appearanceChanged', ({ id }) => markEntityVisualChanged(id)),
-      bus.on('save:restoring', () => requestPresentationRebuild('save-restoring')),
+      bus.on('save:restoring', () => {privateSpawnEpoch={};requestPresentationRebuild('save-restoring');}),
       // Continue restores simTime without reconstructing core. Re-anchor the day boundary so the
       // first preStep cannot invent a multi-day day:tick from _lastDay still sitting at 0.
       bus.on('save:loaded', () => {
@@ -316,8 +524,8 @@ export const core = {
       // continuous source across it. A parked hull stayed at the old spot with the camera on it
       // (measured: Helios capture 1915 WU from the sim pose for 55 s). Re-seed like a sector entry.
       bus.on('world:playerRelocated', () => requestPresentationRebuild('player-relocated')),
-      bus.on('game:new', () => requestPresentationRebuild('game-new')),
-      bus.on('game:newGame', () => requestPresentationRebuild('game-new')),
+      bus.on('game:new', () => {privateSpawnEpoch={};requestPresentationRebuild('game-new');}),
+      bus.on('game:newGame', () => {privateSpawnEpoch={};requestPresentationRebuild('game-new');}),
       bus.on('game:started', () => requestPresentationRebuild('game-started')),
     );
   },

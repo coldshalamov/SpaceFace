@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { hasUnclassifiedTextures } from './lib/modelTextureRoles.mjs';
-import { authoredCompoundMeasurement, authoredCompoundCoverage, isAuthoredNonRenderHelper } from './lib/modelTruthAuthoredCompound.mjs';
+import { authoredCompoundMeasurement, authoredCompoundCoverage, extractAuthoredConvexSource, isAuthoredNonRenderHelper } from './lib/modelTruthAuthoredCompound.mjs';
 import { authoredWorldSiteMeasurement, measureWorldSiteAssetChain } from './lib/modelTruthWorldSite.mjs';
 // Measure every live solid the loader resolves and write src/data/modelTruthCensus.json.
 // The game does not read this file until a later pass. Re-running with --check fails
@@ -80,7 +80,10 @@ function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
   if (value && typeof value === 'object') {
     const out = {};
-    for (const key of Object.keys(value).sort()) out[key] = stable(value[key]);
+    for (const key of Object.keys(value).sort()) {
+      // Exact convex source coordinates are evidence, not rounded display metrics.
+      out[key] = key === 'convexPartsWU' ? value[key] : stable(value[key]);
+    }
     return out;
   }
   if (typeof value === 'number') return roundWu(value);
@@ -583,6 +586,17 @@ async function measureRow(row) {
     };
   }
 
+  // Exact native convexes are sealed to the canonical source accessors. The
+  // release file above supplies visible coverage and may be quantized.
+  let compoundCertificate = measured.authoredCompoundCertificate;
+  if (authoredCompound?.convexPartsWU) {
+    const sourcePath = resolve(ROOT, authoredCompound.sourceGlbPath);
+    const sourceBytes = readFileSync(sourcePath);
+    const sourceHash = createHash('sha256').update(sourceBytes).digest('hex');
+    if (sourceHash !== authoredCompound.sourceGlbSha256) throw new Error(`${row.id}: canonical collision source hash mismatch`);
+    compoundCertificate = extractAuthoredConvexSource(await io.read(sourcePath), sourceHash);
+  }
+
   const sizes = Array.isArray(row.sizes) && row.sizes.length ? row.sizes : [null];
   let worst = null;
   let worstEval = null;
@@ -599,7 +613,7 @@ async function measureRow(row) {
     const world = applyFit(measured.points, fit);
     const collider = authoredWorldSite?.collider || authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
     const evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
-    if (authoredCompound) Object.assign(evaluated, authoredCompoundCoverage(world, authoredCompound, measured.authoredCompoundCertificate));
+    if (authoredCompound) Object.assign(evaluated, authoredCompoundCoverage(world, authoredCompound, compoundCertificate));
     if (worldSiteEvidence) Object.assign(evaluated, worldSiteEvidence);
     if (!worst || evaluated.gapWu > worst.gapWu || evaluated.throatSealed) {
       worst = {
@@ -733,10 +747,19 @@ async function measureRow(row) {
       id: worstCollider.id,
       ...(authoredCompound ? {
         referenceState: authoredCompound.referenceState,
-        compoundBoxesWU: stable(authoredCompound.compoundBoxesWU),
+        ...(authoredCompound.convexPartsWU ? {
+          // Preserve native coordinates without the census's coarse display rounding.
+          convexPartsWU: authoredCompound.convexPartsWU,
+          sourceGlbPath: authoredCompound.sourceGlbPath,
+          sourceGlbSha256: authoredCompound.sourceGlbSha256,
+          sourceSha: authoredCompound.sourceSha,
+          sourceDecompositionPreserved: worstEval.sourceDecompositionPreserved,
+        } : {
+          compoundBoxesWU: stable(authoredCompound.compoundBoxesWU),
+          authoredClearVolumesPreserved: worstEval.authoredClearVolumesPreserved,
+        }),
         coverageMetric: worstEval.coverageMetric,
         sourceCompoundParity: worstEval.sourceCompoundParity,
-        authoredClearVolumesPreserved: worstEval.authoredClearVolumesPreserved,
       } : {}),
       ...(worldSiteEvidence ? { worldSiteEvidence } : {}),
       gapWu: worstEval.gapWu,

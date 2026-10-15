@@ -10,6 +10,7 @@ import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
@@ -24282,6 +24283,9 @@ export const render = {
     if (ceresWorkfleetRole(entity)) {
       mesh.userData.rebindCeresCradleLayout?.(entity, this.state);
     }
+    if (isOrchardFrame(entity)) {
+      mesh.userData.rebindOrchardPhysicalState?.(entity, this.state);
+    }
     return true;
   },
 
@@ -27406,6 +27410,10 @@ export const render = {
         } else if (entity && userData.updateCeresPhysicalState) {
           // Native shoe/pad poses and consumed-force radiance remain exact when decoration sleeps.
           userData.updateCeresPhysicalState(entity, _worldSiteA11y);
+        } else if (entity && userData.updateOrchardPhysicalState) {
+          // Physical collars keep their verified pose when decoration sleeps.
+          // This alternate branch must never double-read an awake authored row.
+          userData.updateOrchardPhysicalState(entity, this.state);
         }
 
         // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
@@ -27477,7 +27485,7 @@ export const render = {
             } else {
               globalInfrastructureMotion.updatePlaceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
             }
-          } else if (typeName === 'wreck') {
+          } else if (typeName === 'wreck' && !isOrchardFrame(entity)) {
             // Fresh kill wrecks spiral (root-owned) while dead drift continues (child-owned).
             globalShipMicroMotion.updateDeathSpiral(entity, mesh, simTime, frameDt, _worldSiteA11y);
             globalInfrastructureMotion.updateWreckMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);

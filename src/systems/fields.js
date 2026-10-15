@@ -385,7 +385,7 @@ export function fieldBodyProfile(entity, state, out = null) {
   profile.mass = hullMass + hitchMass;
   profile.type = entity && entity.type;
   profile.radius = entity?.radius;
-  profile.anchored = isAnchoredPhysicalBody(entity);
+  profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)

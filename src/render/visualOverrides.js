@@ -1,3 +1,4 @@
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
 import { isCeresWorkfleetPlace } from './ceresWorkfleetVisuals.js';
@@ -76,7 +77,7 @@ function requiresProductionWholeShip(entity) {
 
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
-  if (isLatchActor(entity) || isTallyThreeAssessor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
+  if (isOrchardFrame(entity) || isLatchActor(entity) || isTallyThreeAssessor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
   if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
 }
