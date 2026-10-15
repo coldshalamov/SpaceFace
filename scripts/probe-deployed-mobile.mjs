@@ -56,7 +56,7 @@ function installStartupObserver() {
     events.push({ type, at: performance.now(), ...payload });
   };
   if (typeof bus?.on === 'function') {
-    for (const type of ['game:startFailed', 'save:error', 'mode:changed', 'game:loadingProgress']) {
+    for (const type of ['game:startFailed', 'save:error', 'save:completed', 'mode:changed', 'game:loadingProgress']) {
       unsubs.push(bus.on(type, payload => {
         const row = {};
         for (const key of ['code', 'stage', 'error', 'text', 'retryable', 'reason', 'mode', 'previousMode',
@@ -98,6 +98,48 @@ function installStartupObserver() {
         simLaneEventsBeforeClick: lastPublicClick.simLaneEventsBeforeClick.slice() } : null }),
     stop() { for (const off of unsubs) if (typeof off === 'function') off(); },
   };
+}
+async function waitForPublicSave(page, { slot, afterAt, timeoutMs = 90000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const result = await boundedBrowserRead(() => page.evaluate((slot, startedAt) => {
+      const events = window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.()?.events || [];
+      const saved = events.findLast(event => event.type === 'save:completed' && event.at >= startedAt);
+      if (saved) return { saved: { source: 'save:completed', slot, ...saved } };
+      const failed = events.findLast(event => event.type === 'save:error' && event.at >= startedAt);
+      if (failed) return { failed };
+      // Retail builds strip SF.bus. The selected row was verified empty before the public tap;
+      // observing its new, real envelope is the durable-write receipt on that route.
+      const raw = localStorage.getItem('sf.save.' + slot);
+      if (raw) {
+        try {
+          const envelope = JSON.parse(raw);
+          if (envelope && (envelope.fmt === 'spaceface-save' || envelope.fmt === 'spaceface-save-gz')) {
+            return { saved: { source: 'storage-envelope', slot, format: envelope.fmt,
+              savedAt: envelope.savedAt || null } };
+          }
+        } catch (_) { /* keep waiting for the complete envelope */ }
+      }
+      return null;
+    }, slot, afterAt), 5000);
+    if (result?.saved) return result.saved;
+    if (result?.failed) {
+      const failed = result.failed;
+      throw new Error(`Public Save failed: ${failed.text || failed.error || failed.reason || 'save:error'}`);
+    }
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`Public Save did not emit save:completed within ${timeoutMs / 1000} seconds`);
+}
+async function waitForContinueEnabled(page, timeoutMs = 60000) {
+  try {
+    await page.waitForFunction(() => {
+      const control = document.querySelector('[data-screen="mainMenu"] button[data-action="continue"]');
+      return !!control && !control.disabled && control.getAttribute('aria-disabled') !== 'true';
+    }, null, { timeout: timeoutMs });
+  } catch (error) {
+    throw new Error(`Continue remained disabled after reload for ${timeoutMs / 1000} seconds: ${error?.message || error}`);
+  }
 }
 const snapshotBase = page => boundedBrowserRead(() => page.evaluate(() => {
   const shown = e => !e.hidden && e.getBoundingClientRect().width > 0
@@ -392,6 +434,37 @@ try {
   report.acceptance.startupAndControls = 'passed';
   if (checkContinue) {
     activeRoute = 'continue';
+    actorStage = 'continue-save-open-pause';
+    await page.locator('.mf-pause').tap();
+    await page.locator('[data-screen="pause"]').waitFor({ state: 'visible' });
+    actorStage = 'continue-save-open-menu';
+    await tapControl(page.locator('[data-screen="pause"] button').filter({ hasText: /^Save$/i }).first());
+    await page.locator('[data-screen="saveLoad"]').waitFor({ state: 'visible' });
+    actorStage = 'continue-save-select-empty';
+    const emptyRows = page.locator('[data-screen="saveLoad"] .sf-slot.empty');
+    await emptyRows.first().waitFor({ state: 'visible' });
+    let emptySlot = null, saveSlot = null;
+    for (let i = 0, count = await emptyRows.count(); i < count; i++) {
+      const candidate = emptyRows.nth(i);
+      const id = await candidate.getAttribute('data-id');
+      if (!id) continue;
+      const hasStoredEnvelope = await boundedBrowserRead(() => page.evaluate(slot =>
+        localStorage.getItem('sf.save.' + slot) !== null, id));
+      if (!hasStoredEnvelope) { emptySlot = candidate; saveSlot = id; break; }
+    }
+    if (!emptySlot) throw new Error('No empty Save slot without a stored envelope was available');
+    report.saveSlot = saveSlot;
+    await tapControl(emptySlot);
+    const saveAt = await boundedBrowserRead(() => page.evaluate(() => performance.now()));
+    actorStage = 'continue-save-write';
+    await tapControl('[data-screen="saveLoad"] button[data-action="save"]');
+    report.saveClick = await boundedBrowserRead(() => page.evaluate(() =>
+      window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.()?.lastPublicClick || null));
+    if (report.saveClick?.action !== 'save' || report.saveClick.isTrusted !== true)
+      throw new Error('Save here public touch was not delivered to the Save control');
+    actorStage = 'continue-save-receipt';
+    report.saveReceipt = await waitForPublicSave(page, { slot: saveSlot, afterAt: saveAt });
+    report.stages.push({ stage: 'continue-save-completed', saveReceipt: report.saveReceipt, ...await snapshot(page) });
     actorStage = 'continue-reload';
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
     await waitForMenu();
@@ -399,11 +472,9 @@ try {
     await boundedBrowserRead(() => page.evaluate(installStartupObserver));
     report.stages.push({ stage: 'continue-menu', ...await snapshot(page) });
     await page.screenshot({ path: join(out, '07-continue-menu.png') });
+    actorStage = 'continue-enabled-wait';
+    await waitForContinueEnabled(page);
     actorStage = 'continue-launch';
-    await boundedBrowserRead(() => page.waitForFunction(() => {
-      const control = document.querySelector('[data-screen="mainMenu"] button[data-action="continue"]');
-      return !!control && !control.disabled && control.getAttribute('aria-disabled') !== 'true';
-    }, null, { timeout: 20000 }));
     await tapControl('[data-screen="mainMenu"] button[data-action="continue"]');
     const continueClick = await boundedBrowserRead(() => page.evaluate(() =>
       window.__SF_MOBILE_STARTUP_OBSERVER__?.snapshot?.()?.lastPublicClick || null));
