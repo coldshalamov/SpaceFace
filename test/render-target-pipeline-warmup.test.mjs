@@ -21,6 +21,9 @@ import {
   render as renderSystem,
 } from '../src/render/renderer.js';
 
+const bloomRenderTargets = (bloom) => bloom.contextLossResources()
+  .filter((resource) => resource?.isWebGLRenderTarget);
+
 test('pipeline warm-up compiles against the exact render target and restores renderer state', async () => {
   const previousTarget = { name: 'previous-target' };
   const hdrTarget = { name: 'flight-hdr-target' };
@@ -205,10 +208,10 @@ test('bloom instance exposes the loading warm-up contract used by renderer admis
     subject, new THREE.PerspectiveCamera(), scene,
   );
   assert.equal(compileResult.skipped, false);
-  assert.strictEqual(compileTargets[0], bloom.contextLossResources()[0],
+  assert.strictEqual(compileTargets[0], bloomRenderTargets(bloom)[0],
     'the wrapper compile seam selects its exact HDR scene target');
   assert.strictEqual(activeTarget, null, 'the wrapper restores the prior screen target');
-  assert.equal(bloom.contextLossResources().length, bloom.diagnostics().renderTargetCount,
+  assert.equal(bloomRenderTargets(bloom).length, bloom.diagnostics().renderTargetCount,
     'context loss exposes every bloom render target before rebuild/resize can dispose it');
   bloom.dispose();
 });
@@ -232,9 +235,9 @@ test('bloom resource preparation submits its private fullscreen geometry before 
   const result = await bloom.prepareResources();
 
   assert.equal(result.skipped, false);
-  assert.equal(initializedTargets.length, bloom.contextLossResources().length);
+  assert.equal(initializedTargets.length, bloomRenderTargets(bloom).length);
   assert.equal(renders.length, 1, 'one private offscreen quad submission admits its geometry');
-  assert.strictEqual(renders[0].target, bloom.contextLossResources()[1],
+  assert.strictEqual(renders[0].target, bloomRenderTargets(bloom)[1],
     'the admission draw stays on the initialized first bloom target');
   assert.strictEqual(activeTarget, priorTarget, 'resource preparation restores the prior target');
   bloom.dispose();

@@ -83,6 +83,20 @@ export class PaintedPlanets {
     return k === 0 ? this.views[base] : this.extraViews[extras[k - 1]];
   }
 
+  // Atlas views retain the source identity but are themselves disposable Texture wrappers. Keep
+  // every owned wrapper and atlas in the exact loss root set, including views that are not visible
+  // in the current sky selection.
+  contextLossResources() {
+    return [
+      this.texture,
+      this.extraTexture,
+      this.ringTexture,
+      this.ringTexture2,
+      ...this.views,
+      ...this.extraViews,
+    ].filter(Boolean);
+  }
+
   dispose() {
     this.disposed = true;
     for (const view of this.views) view.dispose();

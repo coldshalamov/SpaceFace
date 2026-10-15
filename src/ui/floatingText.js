@@ -90,8 +90,8 @@ export function commsToastSpec(payload = {}) {
 }
 
 export function bindCommsLogToasts(bus) {
-  if (!bus || typeof bus.on !== 'function') return;
-  bus.on('comms:log', (p) => {
+  if (!bus || typeof bus.on !== 'function') return null;
+  return bus.on('comms:log', (p) => {
     const spec = commsToastSpec(p);
     if (spec) bus.emit('toast', spec);
   });
@@ -112,6 +112,13 @@ export function weakPointFloatingTextSpec(payload) {
 
 export function createFloatingText(ctx) {
   const { state, helpers, bus } = ctx;
+  const unsubscribers = [];
+  const on = (event, listener, options = undefined) => {
+    if (!bus || typeof bus.on !== 'function') return null;
+    const unsubscribe = bus.on(event, listener, options);
+    if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    return unsubscribe;
+  };
   injectStyle();
   const layer = document.createElement('div');
   layer.id = 'sf-floattext';
@@ -193,7 +200,7 @@ export function createFloatingText(ctx) {
   // own gameplay.hitPips key and stays lit when damage numbers are off. flashReduce holds the
   // mark longer at lower brightness instead of flashing it.
   const pipBook = Object.create(null);
-  bus.on('combat:damage', (p) => {
+  on('combat:damage', (p) => {
     if (!p) return;
     const amount = Number.isFinite(p?.applied) ? p.applied : Number(p?.amount) || 0;
     const playerCaused = p.attackerId === state.playerId
@@ -237,10 +244,10 @@ export function createFloatingText(ctx) {
       { life: big ? 0.95 : 0.72, vy: big ? 58 : 42, damage: amount, damageClass: cls });
   }, { presentation: true });
   // INST-14: "SHIELD DOWN" does not float over the fight; alerts/voice floor owns shield-break telemetry.
-  bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); }, { presentation: true });
+  on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); }, { presentation: true });
   // Weak-point hit (BP-02): a player shot landed in the target's exposed subsystem arc. Callout at the
   // hit so the bonus reads as skill, not noise. targetId lets it ride the target's screen motion.
-  bus.on('combat:weakPointHit', (p) => {
+  on('combat:weakPointHit', (p) => {
     const spec = weakPointFloatingTextSpec(p);
     if (!spec) return;
     // Accent the existing callout; combat:damage remains the sole damage-number receipt.
@@ -248,7 +255,7 @@ export function createFloatingText(ctx) {
   });
   // Direct-to-cargo mining never fires pickup:collected, so this is the only on-screen yield
   // receipt — always name the commodity (bare "+1" is opaque; cargo hold is the real ledger).
-  bus.on('mining:yield', (p) => {
+  on('mining:yield', (p) => {
     const reported = miningYieldReportedAmount(p);
     if (!p || !p.pos || !(reported > 0)) return;
     if (p.minerId != null && p.minerId !== state.playerId) return;
@@ -264,14 +271,14 @@ export function createFloatingText(ctx) {
       vy: p.richCore ? 48 : 40,
     });
   });
-  bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
+  on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
   // Combat ore a full hold refused pays credits (combat.arcadeLoot): show the payout where it landed.
-  bus.on('loot:overflowConverted', (p) => {
+  on('loot:overflowConverted', (p) => {
     if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
   });
   // A rated trick mints its claim chit at the contact site — mark the mint so the payout reads
   // where it happened, not only when the chit is later scooped.
-  bus.on('loot:drop', (p) => {
+  on('loot:drop', (p) => {
     if (!p || !p.pos || !Array.isArray(p.items)) return;
     const rights = salvageRightsItemsOf(p.items).reduce((n, it) => n + (Number(it.salvageRights) || 0), 0);
     if (rights > 0) spawn('+' + rights + ' SALVAGE RIGHTS', 'sf-ft--rights', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 });
@@ -280,7 +287,7 @@ export function createFloatingText(ctx) {
   // "DASH" label; word-pop combat juice reads as arcade-corny for a thruster impulse.
 
   // ---- bounty / kill credits ----------------------------------------------------------------
-  bus.on('entity:killed', (p) => {
+  on('entity:killed', (p) => {
     if (!p || !p.pos || !p.bountyCr || p.killerId !== state.playerId) return;
     // Gold "+800 CR" floating text at the kill site
     spawn('+' + p.bountyCr + ' CR', 'sf-ft--bounty', p.pos.x, p.pos.z, null, { life: 1.6, vy: 30 });
@@ -290,7 +297,7 @@ export function createFloatingText(ctx) {
   }, { presentation: true });
 
   // ---- pickup collected (ore / cargo / module) ----------------------------------------------
-  bus.on('pickup:collected', (p) => {
+  on('pickup:collected', (p) => {
     if (!p || p.collectorId !== state.playerId) return;
     const spec = pickupFloatingTextSpec(p);
     if (!spec || !p.pos) return;
@@ -298,22 +305,23 @@ export function createFloatingText(ctx) {
   });
 
   // ---- faction rep changes ------------------------------------------------------------------
-  bus.on('faction:repChanged', (p) => {
+  on('faction:repChanged', (p) => {
     if (!p || !p.delta) return;
     const kind = p.delta > 0 ? 'good' : 'danger';
     bus.emit('toast', { text: factionRepToastText(state, p), kind, ttl: 3.5 });
   });
 
   // ---- comms log (was emit-only: rescue acks, survey/rumor lines, cargo barks) -----------------
-  bindCommsLogToasts(bus);
+  const commsLogUnsubscribe = bindCommsLogToasts(bus);
+  if (typeof commsLogUnsubscribe === 'function') unsubscribers.push(commsLogUnsubscribe);
 
   // ---- cargo full ---------------------------------------------------------------------------
-  bus.on('cargo:full', (p) => {
+  on('cargo:full', (p) => {
     bus.emit('toast', { text: 'CARGO FULL', kind: 'warn', ttl: 3.5 });
   });
 
   // ---- economy events (market alerts) -------------------------------------------------------
-  bus.on('economy:eventStarted', (p) => {
+  on('economy:eventStarted', (p) => {
     if (!p) return;
     const cmdty = CMDTY_BY_ID[p.commodityId];
     const station = STATION_BY_ID[p.stationId];
@@ -331,7 +339,7 @@ export function createFloatingText(ctx) {
   // minted by the pre-save session — retire them rather than letting them finish their drift
   // over the restored scene at stale world anchors.
   for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
-    bus.on(name, () => { for (const n of nodes) retire(n); });
+    on(name, () => { for (const n of nodes) retire(n); });
   }
 
   // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
@@ -397,6 +405,13 @@ export function createFloatingText(ctx) {
   return {
     update,
     _activeCount() { return activeCount; },
+    destroy() {
+      for (const unsubscribe of unsubscribers.splice(0)) {
+        try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
+      }
+      for (const n of nodes) retire(n);
+      if (layer.parentNode) layer.parentNode.removeChild(layer);
+    },
   };
 }
 

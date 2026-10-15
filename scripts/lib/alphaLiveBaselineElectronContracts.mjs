@@ -77,6 +77,33 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const activeRequests = new Set();
   const requestProvenance = new WeakMap();
   const pendingStoreRequests = new Map();
+  // Electron can deliver requestfinished before a response wrapper is handed to the
+  // application-wide listener. Keep the exact store request metadata through that
+  // boundary so a methodless response can still be classified from its own request.
+  // Entries are retired when their response (or failure) is observed; an unknown or
+  // ambiguous method remains fatal rather than falling back to GET.
+  const completedStoreRequests = new Map();
+  // Playwright's Electron response/request façade can omit the method and can hand the
+  // response a different wrapper object from the request event. Keep the exact CDP requestId
+  // provenance for the optional store route so classification never depends on URL coincidence.
+  // Only this bounded, narrow route is retained; ordinary network traffic is not accumulated.
+  const cdpStoreRequests = new Map();
+  const cdpHandledResponseIds = new Set();
+  const cdpClassifiedResponseCounts = new Map();
+  let cdpClassifiedResponseTotal = 0;
+  const deferredPlaywrightStoreResponses = [];
+  const cdpSessions = new Set();
+  const cdpPages = new WeakSet();
+  const cdpNetwork = {
+    attempted: false,
+    supported: null,
+    attached: false,
+    enabled: false,
+    trackedRequests: 0,
+    observedResponses: 0,
+    errors: [],
+  };
+  const MAX_CDP_STORE_PROVENANCE = 64;
   const expectedNavigationAborts = new Map();
   const expectedNavigationTokens = new Map();
   let nextExpectedNavigationToken = 1;
@@ -116,6 +143,67 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   };
   const flushPendingGenericNotFoundConsoles = () => {
     while (pendingGenericNotFoundConsoles.length > 0) push(pendingGenericNotFoundConsoles.shift());
+  };
+  const cdpResponseKey = (status, url) => `${Number(status)}\u0000${String(url || '')}`;
+  const consumeCdpClassifiedResponse = (status, url) => {
+    const key = cdpResponseKey(status, url);
+    const count = cdpClassifiedResponseCounts.get(key) || 0;
+    if (count <= 0) return false;
+    if (count === 1) cdpClassifiedResponseCounts.delete(key);
+    else cdpClassifiedResponseCounts.set(key, count - 1);
+    cdpClassifiedResponseTotal = Math.max(0, cdpClassifiedResponseTotal - 1);
+    return true;
+  };
+  const retainCdpClassifiedResponse = (status, url) => {
+    const key = cdpResponseKey(status, url);
+    // Keep the duplicate ledger bounded by entries and by total response count. If the
+    // cap is reached, evict the oldest aggregate; a later Playwright response then fails
+    // closed instead of being silently paired to an unbounded count.
+    if (cdpClassifiedResponseTotal >= MAX_CDP_STORE_PROVENANCE) {
+      const oldestAtCapacity = cdpClassifiedResponseCounts.keys().next().value;
+      if (oldestAtCapacity !== undefined) {
+        cdpClassifiedResponseTotal -= cdpClassifiedResponseCounts.get(oldestAtCapacity) || 0;
+        cdpClassifiedResponseCounts.delete(oldestAtCapacity);
+      }
+    }
+    if (!cdpClassifiedResponseCounts.has(key)
+      && cdpClassifiedResponseCounts.size >= MAX_CDP_STORE_PROVENANCE) {
+      const oldest = cdpClassifiedResponseCounts.keys().next().value;
+      if (oldest !== undefined) {
+        cdpClassifiedResponseTotal -= cdpClassifiedResponseCounts.get(oldest) || 0;
+        cdpClassifiedResponseCounts.delete(oldest);
+      }
+    }
+    cdpClassifiedResponseCounts.set(key, (cdpClassifiedResponseCounts.get(key) || 0) + 1);
+    cdpClassifiedResponseTotal += 1;
+  };
+  const failUnmatchedPlaywrightStoreResponse = ({ response, status, url }) => {
+    // This response was observed by Playwright but never paired to an exact CDP response.
+    // Its method is therefore unknown even if a wrapper happens to expose a stale GET.
+    flushPendingGenericNotFoundConsoles();
+    expectedAbsentStoreConsoleTokens = 0;
+    push({
+      source: 'response',
+      level: 'error',
+      text: `HTTP ${status} ${url}`,
+      networkProvenance: {
+        source: 'playwright-unmatched-cdp-response',
+        status,
+        url,
+      },
+    });
+    retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests);
+  };
+  const flushDeferredPlaywrightStoreResponses = () => {
+    while (deferredPlaywrightStoreResponses.length > 0) {
+      failUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
+    }
+  };
+  const deferPlaywrightStoreResponse = (response, status, url) => {
+    if (deferredPlaywrightStoreResponses.length >= MAX_CDP_STORE_PROVENANCE) {
+      failUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
+    }
+    deferredPlaywrightStoreResponses.push({ response, status, url });
   };
   const recordConsole = (message) => {
     if (!markOnce(seenConsoleMessages, message)) return;
@@ -157,6 +245,9 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       if (isPlayerStorePath(url)) {
         const rawMethod = readMaybeFunction(request, 'method');
         const method = rawMethod == null ? null : String(rawMethod).toUpperCase();
+        // Backfill can replay the same request object after its live lifecycle has
+        // already moved it to the completed map. Keep one authoritative entry.
+        completedStoreRequests.delete(request);
         pendingStoreRequests.set(request, { url, method: method || null });
       }
     }
@@ -166,10 +257,16 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       expectedNavigationAborts.set(request, labels);
     }
   };
-  const completeRequest = (request) => {
+  const completeRequest = (request, { retainStoreResponse = true } = {}) => {
     activeRequests.delete(request);
     expectedNavigationAborts.delete(request);
+    const storeEntry = pendingStoreRequests.get(request);
     pendingStoreRequests.delete(request);
+    if (retainStoreResponse && storeEntry) {
+      completedStoreRequests.set(request, storeEntry);
+    } else {
+      completedStoreRequests.delete(request);
+    }
   };
   const recordFailedRequest = (request, failedEventObserved = false) => {
     const failure = readMaybeFunction(request, 'failure');
@@ -182,7 +279,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       resourceType: readMaybeFunction(request, 'resourceType') || 'unknown',
       url: readMaybeFunction(request, 'url') || '',
     };
-    completeRequest(request);
+    completeRequest(request, { retainStoreResponse: false });
     if (!markOnce(seenFailedRequests, request)) return;
     const issue = {
       source: 'request',
@@ -204,32 +301,174 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     }
     push(issue);
   };
-  const recordResponse = (response) => {
+  const recordResponse = (response, networkProvenance = null) => {
     if (!response || !markOnce(seenResponses, response)) return;
+    const responseUrl = readMaybeFunction(response, 'url') || '';
     const status = Number(readMaybeFunction(response, 'status'));
+    // Once CDP Network.responseReceived is active, a failing Playwright store response is only a
+    // duplicate if an exact CDP response with the same URL/status was already classified. URL and
+    // status are used here solely to pair observer duplicates; the method verdict below still
+    // comes from the CDP requestId. If CDP never reports the response, retain it and fail closed at
+    // finalization rather than silently dropping an unknown 404/500.
+    if (cdpNetwork.attached && isPlayerStorePath(responseUrl) && !networkProvenance && status >= 400) {
+      if (consumeCdpClassifiedResponse(status, responseUrl)) return;
+      deferPlaywrightStoreResponse(response, status, responseUrl);
+      return;
+    }
     if (status >= 400) {
-      const url = readMaybeFunction(response, 'url') || '';
+      const url = responseUrl;
       // Any generic 404 console message seen before this response cannot be tied to this
       // response, so keep it fatal. This makes the console exception sequence-exact rather
       // than a loose count of all 404s in the application.
       flushPendingGenericNotFoundConsoles();
       const issue = { source: 'response', level: 'error', text: `HTTP ${status} ${url}` };
+      // A CDP response is authoritative only when its requestId joined a tracked request.
+      // Never let a same-URL Playwright map entry turn an unknown CDP method into an expected
+      // GET; URL fallback is for the Playwright-only path and remains ambiguity-checked there.
       const fallbackStoreMethod = allowAbsentPlayerStore
-        ? resolvePendingStoreRequestMethod(response, url, pendingStoreRequests)
+        ? (networkProvenance?.source === 'cdp-network'
+          ? networkProvenance.method
+          : resolvePendingStoreRequestMethod(response, url, pendingStoreRequests, completedStoreRequests))
         : null;
       if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url, fallbackStoreMethod)) {
         expectedAbsentStoreConsoleTokens += 1;
-        pushIgnored(issue, { absentPlayerStore: true });
+        pushIgnored(issue, {
+          absentPlayerStore: true,
+          ...(networkProvenance ? { networkProvenance: { ...networkProvenance } } : {}),
+        });
+        retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests);
         return;
       }
       // A different response between the exact store response and its console twin makes
       // the generic message ambiguous; leave the next one strict as well.
       expectedAbsentStoreConsoleTokens = 0;
+      if (networkProvenance) issue.networkProvenance = { ...networkProvenance };
       push(issue);
+      retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests);
     } else {
       // A successful/intermediate response between the exact store response and its
       // console twin makes the next generic 404 ambiguous, so fail closed.
       expectedAbsentStoreConsoleTokens = 0;
+      retireStoreResponse(response, readMaybeFunction(response, 'url') || '', pendingStoreRequests, completedStoreRequests);
+    }
+  };
+  const recordCdpNetworkError = (error) => {
+    const message = String(error?.message || error || 'unknown CDP network error');
+    if (cdpNetwork.errors.length < 4) cdpNetwork.errors.push(message);
+  };
+  const normalizeCdpMethod = (method) => {
+    const text = String(method || '').trim().toUpperCase();
+    return text || null;
+  };
+  const rememberCdpRequest = (params) => {
+    const requestId = String(params?.requestId || '');
+    const request = params?.request || {};
+    const url = String(request.url || '');
+    if (!requestId) return;
+    // A redirect reuses the CDP requestId. If it leaves the store route, retire the old
+    // store entry instead of allowing stale metadata to survive until the bounded cap.
+    if (!isPlayerStorePath(url)) {
+      cdpStoreRequests.delete(requestId);
+      return;
+    }
+    if (cdpStoreRequests.size >= MAX_CDP_STORE_PROVENANCE) {
+      const oldest = cdpStoreRequests.keys().next().value;
+      if (oldest !== undefined) cdpStoreRequests.delete(oldest);
+    }
+    cdpStoreRequests.set(requestId, {
+      requestId,
+      url,
+      method: normalizeCdpMethod(request.method),
+      resourceType: String(params?.type || 'unknown'),
+      startedAt: new Date().toISOString(),
+      startedPhase: currentPhase,
+    });
+    cdpNetwork.trackedRequests += 1;
+  };
+  const handleCdpResponse = (params) => {
+    const requestId = String(params?.requestId || '');
+    const response = params?.response || {};
+    const url = String(response.url || '');
+    if (!requestId || !isPlayerStorePath(url)) return;
+    if (cdpHandledResponseIds.has(requestId)) return;
+    cdpHandledResponseIds.add(requestId);
+    if (cdpHandledResponseIds.size > MAX_CDP_STORE_PROVENANCE) {
+      const oldest = cdpHandledResponseIds.values().next().value;
+      if (oldest !== undefined) cdpHandledResponseIds.delete(oldest);
+    }
+    const request = cdpStoreRequests.get(requestId) || {
+      requestId,
+      url,
+      method: null,
+      resourceType: 'unknown',
+      startedAt: null,
+      startedPhase: null,
+    };
+    cdpStoreRequests.delete(requestId);
+    cdpNetwork.observedResponses += 1;
+    const status = Number(response.status || 0);
+    if (status >= 400) {
+      const duplicateIndex = deferredPlaywrightStoreResponses.findIndex((entry) => (
+        entry.status === status && entry.url === url
+      ));
+      if (duplicateIndex >= 0) deferredPlaywrightStoreResponses.splice(duplicateIndex, 1);
+      else retainCdpClassifiedResponse(status, url);
+    }
+    const provenance = {
+      source: 'cdp-network',
+      requestId,
+      method: request.method,
+      resourceType: request.resourceType,
+      startedAt: request.startedAt,
+      startedPhase: request.startedPhase,
+      responseAt: new Date().toISOString(),
+      responsePhase: currentPhase,
+    };
+    const requestWrapper = {
+      method: () => request.method,
+      url: () => url,
+      resourceType: () => request.resourceType,
+    };
+    const responseWrapper = {
+      status: () => status,
+      url: () => url,
+      request: () => requestWrapper,
+    };
+    recordResponse(responseWrapper, provenance);
+  };
+  const handleCdpLoadingFailed = (params) => {
+    const requestId = String(params?.requestId || '');
+    if (requestId) cdpStoreRequests.delete(requestId);
+  };
+  const bindNetworkProvenance = async (page) => {
+    if (!page || stopped || cdpPages.has(page)) return cdpNetwork.attached;
+    cdpPages.add(page);
+    cdpNetwork.attempted = true;
+    const pageContext = typeof page.context === 'function' ? page.context() : context;
+    if (typeof pageContext?.newCDPSession !== 'function') {
+      cdpNetwork.supported = false;
+      return false;
+    }
+    cdpNetwork.supported = true;
+    let session = null;
+    const listenersForSession = [
+      ['Network.requestWillBeSent', rememberCdpRequest],
+      ['Network.responseReceived', handleCdpResponse],
+      ['Network.loadingFailed', handleCdpLoadingFailed],
+    ];
+    try {
+      session = await pageContext.newCDPSession(page);
+      for (const [event, handler] of listenersForSession) session.on(event, handler);
+      await session.send('Network.enable');
+      cdpNetwork.attached = true;
+      cdpNetwork.enabled = true;
+      cdpSessions.add({ session, listeners: listenersForSession });
+      return true;
+    } catch (error) {
+      recordCdpNetworkError(error);
+      for (const [event, handler] of listenersForSession) session?.off?.(event, handler);
+      try { await session?.detach?.(); } catch (_) { /* best effort */ }
+      return false;
     }
   };
   const bindPage = (page) => {
@@ -319,12 +558,15 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
 
   return {
     bindAndBackfillPage,
+    bindNetworkProvenance,
     all: () => {
       flushPendingGenericNotFoundConsoles();
+      flushDeferredPlaywrightStoreResponses();
       return issues.slice();
     },
     errors: () => {
       flushPendingGenericNotFoundConsoles();
+      flushDeferredPlaywrightStoreResponses();
       return issues.filter((issue) => issue.level === 'error');
     },
     ignored: () => ignoredIssues.slice(),
@@ -353,6 +595,17 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       contextEvents: [...new Set(contextEvents)],
       pageEvents: [...pageEvents],
       currentPhase,
+      networkProvenance: {
+        schema: 'spaceface.electronNetworkProvenance.v1',
+        attempted: cdpNetwork.attempted,
+        supported: cdpNetwork.supported,
+        attached: cdpNetwork.attached,
+        enabled: cdpNetwork.enabled,
+        trackedRequests: cdpNetwork.trackedRequests,
+        observedResponses: cdpNetwork.observedResponses,
+        pendingStoreRequests: cdpStoreRequests.size,
+        errors: [...cdpNetwork.errors],
+      },
       backfill: Object.fromEntries(Object.entries(backfill).map(([name, status]) => [name, {
         ...status,
         errors: status.errors.map((error) => ({ ...error })),
@@ -360,8 +613,26 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     }),
     stop() {
       flushPendingGenericNotFoundConsoles();
+      flushDeferredPlaywrightStoreResponses();
       if (!stopped) {
         for (const remove of removers.splice(0)) remove();
+        for (const { session, listeners } of cdpSessions) {
+          for (const [event, handler] of listeners) session.off?.(event, handler);
+          try {
+            const detached = session.detach?.();
+            if (detached && typeof detached.catch === 'function') detached.catch(() => {});
+          } catch (_) { /* best effort */ }
+        }
+        cdpSessions.clear();
+        cdpNetwork.attached = false;
+        cdpNetwork.enabled = false;
+        cdpStoreRequests.clear();
+        cdpHandledResponseIds.clear();
+        cdpClassifiedResponseCounts.clear();
+        cdpClassifiedResponseTotal = 0;
+        deferredPlaywrightStoreResponses.length = 0;
+        pendingStoreRequests.clear();
+        completedStoreRequests.clear();
         stopped = true;
       }
       return issues.slice();
@@ -397,15 +668,36 @@ function isPlayerStorePath(url) {
   }
 }
 
-function resolvePendingStoreRequestMethod(response, url, pendingRequests) {
+function resolvePendingStoreRequestMethod(response, url, pendingRequests, completedRequests = null) {
   if (!isPlayerStorePath(url)) return null;
   const responseRequest = readMaybeFunction(response, 'request');
-  const direct = pendingRequests.get(responseRequest);
+  const maps = [pendingRequests, completedRequests].filter(Boolean);
+  const direct = maps.map((requests) => requests.get(responseRequest)).find(Boolean);
   if (direct?.method) return direct.method;
-  const matching = [...pendingRequests.values()].filter((entry) => entry.url === url);
+  const matching = maps.flatMap((requests) => [...requests.values()]).filter((entry) => entry.url === url);
   // Any unknown or multiple same-URL requests make the fallback ambiguous. Keep the
   // response fatal rather than allowing a GET to hide a write or another failure.
   return matching.length === 1 && matching[0].method ? matching[0].method : null;
+}
+
+function retireStoreResponse(response, url, pendingRequests, completedRequests) {
+  if (!isPlayerStorePath(url)) return;
+  const responseRequest = readMaybeFunction(response, 'request');
+  for (const requests of [pendingRequests, completedRequests]) {
+    if (requests?.has(responseRequest)) {
+      requests.delete(responseRequest);
+      return;
+    }
+  }
+  const matches = [pendingRequests, completedRequests]
+    .filter(Boolean)
+    .flatMap((requests) => [...requests.entries()])
+    .filter(([, entry]) => entry.url === url);
+  if (matches.length === 1) {
+    const [request] = matches[0];
+    pendingRequests.delete(request);
+    completedRequests?.delete(request);
+  }
 }
 
 function isCancelledCinematicMediaRequest(request, failure) {

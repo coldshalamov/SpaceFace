@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { MAP_FOCUS, MAP_SCREEN_ID } from '../src/ui/mapAuthority.js';
-import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
+import { pauseExitConfirmBody, pauseExitConfirmNote, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 const menuFramesSrc = readFileSync(new URL('../src/ui/views/menuFrames.js', import.meta.url), 'utf8');
@@ -77,18 +77,21 @@ assert.match(lines.save, /^Saved .+ to the quick slot\.$/);
 assert.doesNotMatch(lines.save, /F5/, 'the pause footer already lists F5/F9; the save line does not repeat them');
 
 let body = pauseExitConfirmBody(trackedState, 'load');
-assert.match(body, /Opening Load lets you review slots/);
-// The brief joins its fields with a middle dot (888dbcfa polish pass); either separator is accepted.
-assert.match(body, /TRACKED [-·] Helios Priority Run/);
-assert.match(body, /Helios Gate/);
-assert.match(body, /Save status: Saved .+ to the quick slot\./);
-assert.match(body, /If you complete a load, unsaved progress is lost/);
+assert.match(body, /Opening Load lets you review (?:slots|saves)/);
+assert.match(body, /choosing a slot replaces this session/);
+assert.match(body, /Saved .+ to the quick slot\./);
+// Objective context remains on the brief (asserted above). The destructive warning is the
+// confirmation's separate note, so verify that policy and its wiring instead of old body copy.
+assert.match(pauseExitConfirmNote(trackedState), /Progress since then will be lost/);
+assert.match(pauseSrc, /note: pauseExitConfirmNote\(ctx && ctx\.state\)/);
 
 body = pauseExitConfirmBody(trackedState, 'menu');
-assert.match(body, /Returning to main menu closes the current session/);
-assert.match(body, /TRACKED [-·] Helios Priority Run/);
-assert.match(body, /Save status: Saved .+ to the quick slot\./);
-assert.match(body, /Unsaved progress will be lost/);
+assert.match(body, /Returning to the main menu ends this session/);
+assert.match(body, /Saved .+ to the quick slot\./);
+assert.match(pauseExitConfirmNote({}), /All progress this session will be lost/);
+const arenaState = { run: { kind: 'survival', phase: 'active' } };
+assert.match(pauseExitConfirmBody(arenaState, 'menu'), /Arena runs are never saved/);
+assert.match(pauseExitConfirmNote(arenaState), /Leaving ends the run; your campaign save is untouched/);
 
 lines = pauseStatusLines({
   ...trackedState,
@@ -178,9 +181,7 @@ body = pauseExitConfirmBody({
   meta: {},
   save: {},
 }, 'menu');
-assert.match(body, /NAV SET [-·] Sell Food at Vesta Exchange/);
-assert.match(body, /Save status: Unsaved run/);
-assert.match(body, /Use Save or F5 before quitting/);
+assert.match(body, /Nothing saved this session/);
 
 lines = pauseStatusLines({
   simTime: 10,

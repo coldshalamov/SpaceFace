@@ -499,12 +499,16 @@ import {
 } from './rendererPoolProducer.js';
 import {
   collectContextLossRoots,
+  captureWebGlDisposeListenerDelta,
+  createWebGlDisposeListenerProvenance,
   deferWebGlContextRestore,
   detachStaleWebGlDisposeListeners,
   detachStashedStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
+  mergeWebGlDisposeListenerProvenance,
   pauseSimForContextLoss,
   resumeSimAfterContextRestore,
+  snapshotWebGlDisposeListeners,
   stashStaleWebGlDisposeProvenance,
 } from './contextResourceLifecycle.js';
 import {
@@ -10613,6 +10617,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._rebuildRestoredGpuResources = null;
   owner._envMap = null;
   owner._envMapTarget = null;
+  owner._environmentDisposeListenerProvenance = null;
   owner._foundryEnvTexture = null;
   owner._envMapSource = null;
   owner._envBakeScene = null;
@@ -11251,6 +11256,10 @@ export const render = {
     // a driver/GPU hiccup.
     this._envMap = null;
     this._envMapTarget = null;
+    // Three registers WebGLEnvironments.onCubemapDispose lazily when an equirectangular
+    // environment source is first rendered. Keep only callbacks added by this renderer's bake
+    // delta; the loss handler merges these exact identities with the normal generation probe.
+    this._environmentDisposeListenerProvenance = createWebGlDisposeListenerProvenance();
     // AQ-LIGHT: fetch the foundry HDRI once; when it lands, _bakeEnv promotes it as the PMREM
     // source (foundryEnvironment.js). The visible sky stays the sector plate either way.
     this._foundryEnvTexture = null;
@@ -11305,6 +11314,25 @@ export const render = {
         clearCanonicalProgramSpecimens();
         this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
         dynamicBuffers.handleContextLost();
+        let vfxRoots = [];
+        let vfxResources = [];
+        try {
+          const collectVfxRoots = state.render
+            && typeof state.render.collectVfxGpuResidencyRoots === 'function'
+            ? state.render.collectVfxGpuResidencyRoots
+            : null;
+          const collectedVfxRoots = collectVfxRoots ? collectVfxRoots() : null;
+          if (Array.isArray(collectedVfxRoots)) vfxRoots = collectedVfxRoots;
+          const collectVfxResources = state.render
+            && typeof state.render.collectVfxContextLossResources === 'function'
+            ? state.render.collectVfxContextLossResources
+            : null;
+          const collectedVfxResources = collectVfxResources ? collectVfxResources() : null;
+          if (Array.isArray(collectedVfxResources)) vfxResources = collectedVfxResources;
+        } catch (_) {
+          // Context-loss handling must stay alive even if a presentation pool is mid-replacement;
+          // scene/entity roots still receive the exact-listener detach pass below.
+        }
         const preparedPoolResources = prepareAuthoredInstancePoolsForContextLoss(scene, renderer);
         const contextRoots = collectContextLossRoots({
           scene,
@@ -11312,8 +11340,15 @@ export const render = {
           spaceBackground: this.spaceBg,
           bloom: this.bloom,
           renderGraph: this._renderGraph,
+          vfxRoots,
+          vfxResources,
           entities: state.entityList,
         });
+        // These renderer-owned identities are abandoned immediately below. Include both the
+        // PMREM target (which owns its cube face attachments) and the source texture while their
+        // lost-context dispose listeners still have a precise owner root.
+        if (this._envMapTarget) contextRoots.push(this._envMapTarget);
+        if (this._foundryEnvTexture) contextRoots.push(this._foundryEnvTexture);
         contextRoots.push(...preparedPoolResources.roots);
         // Residency-tracked resources can live entirely outside the scene (decoded package
         // caches, warm-sector holds). They keep the same pre-loss dispose listeners, so they
@@ -11323,9 +11358,17 @@ export const render = {
           ? this._assetResidency.contextLossResources()
           : null;
         if (Array.isArray(residencyResources)) contextRoots.push(...residencyResources);
+        // The private registration probe cannot trigger WebGLEnvironments' lazy equirectangular
+        // conversion. Merge the exact callback delta captured during each owned environment bake
+        // so its onCubemapDispose callback is detached from the source before the old context is
+        // abandoned; unrelated source listeners remain outside this provenance set.
+        const contextDisposeProvenance = mergeWebGlDisposeListenerProvenance(
+          preparedPoolResources.provenance,
+          this._environmentDisposeListenerProvenance,
+        );
         const detachReceipt = detachStaleWebGlDisposeListeners(
           contextRoots,
-          preparedPoolResources.provenance,
+          contextDisposeProvenance,
         );
         this._contextRecovery.detachedStaleDisposeListeners = detachReceipt.listenersDetached;
         this._contextRecovery.detachedContextResources = detachReceipt;
@@ -11334,7 +11377,8 @@ export const render = {
         // the same stale callbacks. Keep the identities: the boundary-teardown chokepoint strips
         // them before any dispose fires, so a parked root torn down after the loss cannot delete
         // its dead handles through the lost generation's managers (the v6 Electron delete storm).
-        stashStaleWebGlDisposeProvenance(preparedPoolResources.provenance);
+        stashStaleWebGlDisposeProvenance(contextDisposeProvenance);
+        this._environmentDisposeListenerProvenance = createWebGlDisposeListenerProvenance();
         if (this._assetResidency) this._assetResidency.handleContextLost();
         vf.clearReadyPackagedBodies('context-lost');
         retireAppearanceGpuGeneration(this, 'webgl-context-lost');
@@ -25637,6 +25681,8 @@ export const render = {
       // scene.background — the visible sector plate — is never touched either way.
       let reflectionEnv = null;
       let envTarget;
+      let equirectSource = null;
+      let equirectSourceDisposeListeners = null;
       const iblSource = resolveIblSource({
         foundryTexture: this._foundryEnvTexture,
         background: scene.background,
@@ -25646,12 +25692,20 @@ export const render = {
         // from the input width, and the cubeUV height sits in every lit material's program key.
         // Baking through a fixed-size scene capture keeps the key stable across env swaps.
         const equirect = iblSource === IBL_SOURCE_FOUNDRY ? this._foundryEnvTexture : scene.background;
+        equirectSource = equirect;
+        equirectSourceDisposeListeners = snapshotWebGlDisposeListeners(equirect);
         if (!this._envBakeScene) this._envBakeScene = new THREE.Scene();
         this._envBakeScene.background = equirect;
         envTarget = pmrem.fromScene(
           this._envBakeScene, 0, 0.1, 1000, { size: IBL_PMREM_CUBE_SIZE },
         );
         this._envBakeScene.background = null;
+        captureWebGlDisposeListenerDelta(
+          this._environmentDisposeListenerProvenance,
+          equirectSource,
+          equirectSourceDisposeListeners,
+          'textures',
+        );
       } else {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
         envTarget = pmrem.fromScene(

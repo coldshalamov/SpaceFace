@@ -122,11 +122,29 @@ const digests = new Set(results.map(r => r.metadata?.sourceDigest).filter(Boolea
 const coherentCandidate = digests.size === 1
   && results.every(r => r.metadata?.sourceDigest && r.metadata.sourceStable === true);
 const targetMet = !!baseline && coherentCandidate && results.length > 0 && results.every(r => r.comparison?.targetMet);
+const actualPoseIncomplete = results.some(r => r.comparison?.actualPoseStatus === 'incomplete');
+const formatMs = value => Number.isFinite(value) ? value.toFixed(1) : 'unmeasured';
+const actualPoseColumns = (summary, comparison) => {
+  const status = summary.actualMeshStatus || (summary.actualMeshObserved ? 'observed' : 'unavailable');
+  const eligible = Number.isFinite(summary.actualMeshEligibleSamples)
+    ? summary.actualMeshEligibleSamples : 'unmeasured';
+  const gaps = summary.actualMeshPoseChangeGaps;
+  const stale = summary.actualMeshStaleMs;
+  const reason = comparison?.actualPoseReason || (status === 'observed' ? 'comparison unavailable' : 'actual mesh pose unmeasured');
+  const gapEvents = comparison?.afterActualPoseGapEventsPerSecond;
+  const staleExposure = comparison?.afterActualPoseStaleExposurePerSecond;
+  return `actual pose ${status}; eligible ${eligible}; pose-gap p99 ${formatMs(gaps?.p99)} ms/>50 ${gaps?.over50 ?? 'unmeasured'}; gap events/s ${formatMs(gapEvents)}; stale-pose p99 ${formatMs(stale?.p99)} ms/>50 ${stale?.over50 ?? 'unmeasured'}; stale samples/s ${formatMs(staleExposure)}; reason ${reason}`;
+};
+const targetLabel = !baseline
+  ? 'UNMEASURED; baseline required'
+  : actualPoseIncomplete
+    ? 'INCOMPLETE; actual mesh pose evidence unmeasured in one or more arms'
+    : targetMet ? 'MET in every measured cell' : 'NOT MET';
 await writeFile(path.join(out, 'report.md'), '# Performance campaign: ' + label
-  + `\n\nTarget: ${baseline ? targetMet ? 'MET in every measured cell' : 'NOT MET' : 'UNMEASURED; baseline required'}.\n\n`
+  + `\n\nTarget: ${targetLabel}.\n\n`
   + `Source overlay: ${baselineSource || 'none (current checkout)'}\n\n`
   + `Candidate across cells: ${coherentCandidate ? 'one source digest' : 'CHANGED or unobserved; matrix is diagnostic only'}.\n\n`
-  + results.map(r => `- ${r.cell}: ${r.status || `${r.summary.worldSubmitFps?.toFixed(1)} world submissions/s; ${r.summary.worldMotionFps?.toFixed(1) ?? 'unmeasured'} distinct snapshots/s; callback p99 ${r.summary.callbackGaps.p99?.toFixed(1)} ms; >50 ms ${r.summary.callbackGaps.over50}; snapshot p99 ${r.summary.motionSubmissionGaps?.p99?.toFixed(1) ?? 'unmeasured'} ms; snapshot >50 ms ${r.summary.motionSubmissionGaps?.over50 ?? 'unmeasured'}; frozen callback samples ${r.summary.healthyCallbacksFrozenWorld}; stale simulation samples ${r.summary.healthyCallbacksFrozenSimulation}`}${r.baselineError ? `; baseline unavailable: ${r.baselineError}` : ''}${r.comparison ? `; target ${r.comparison.targetMet ? 'MET' : 'NOT MET'}; callback ratio ${r.comparison.hitchRatio}; snapshot ratio ${r.comparison.motionHitchRatio}; ${r.comparison.failures.join(', ')}` : ''}`).join('\n')
+  + results.map(r => `- ${r.cell}: ${r.status || `${r.summary.worldSubmitFps?.toFixed(1)} world submissions/s; ${r.summary.worldMotionFps?.toFixed(1) ?? 'unmeasured'} distinct snapshots/s (informational); callback p99 ${r.summary.callbackGaps.p99?.toFixed(1)} ms; >50 ms ${r.summary.callbackGaps.over50}; snapshot p99 ${r.summary.motionSubmissionGaps?.p99?.toFixed(1) ?? 'unmeasured'} ms (informational); snapshot >50 ms ${r.summary.motionSubmissionGaps?.over50 ?? 'unmeasured'}; frozen callback samples ${r.summary.healthyCallbacksFrozenWorld}; stale simulation samples ${r.summary.healthyCallbacksFrozenSimulation}; ${actualPoseColumns(r.summary, r.comparison)}`}${r.baselineError ? `; baseline unavailable: ${r.baselineError}` : ''}${r.comparison ? `; target ${r.comparison.actualPoseStatus === 'incomplete' ? 'INCOMPLETE' : r.comparison.targetMet ? 'MET' : 'NOT MET'}; callback ratio ${r.comparison.hitchRatio}; actual pose gap-event ratio ${r.comparison.actualPoseGapEventRatio ?? 'unmeasured'}; actual stale-exposure ratio ${r.comparison.actualPoseStaleExposureRatio ?? 'unmeasured'}; ${r.comparison.failures.join(', ')}` : ''}`).join('\n')
   + '\n\n' + workflow.map(r => `- ${r.kind}${r.mode ? ' ' + r.mode : ''}: exit ${r.exit}${r.output ? '; ' + r.output : ''}`).join('\n') + '\n');
 if (!coherentCandidate || results.some(r => r.status || r.baselineError || r.comparison?.failures.length)
     || workflow.some(r => r.exit !== 0) || (process.argv.includes('--require-target') && !targetMet)) process.exitCode = 1;

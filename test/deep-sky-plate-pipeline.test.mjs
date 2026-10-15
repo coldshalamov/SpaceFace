@@ -184,6 +184,18 @@ test('residency never holds more than one active plate plus one incoming', () =>
   assert.equal(residency.readyId, null);
 });
 
+test('residency publishes active and incoming textures for context-loss cleanup', () => {
+  const { residency, loads } = fakeResidency();
+  residency.request('helios-amber-estuary');
+  const incoming = loads[0].texture;
+  assert.deepEqual(residency.contextLossResources(), [incoming]);
+  loads[0].onLoad();
+  assert.equal(residency.pump(), true);
+  const active = residency.activeTexture;
+  residency.request('core-lantern-shelf');
+  assert.deepEqual(residency.contextLossResources(), [active, loads[1].texture]);
+});
+
 test('the plate upload waits for a frame with room, and is never skipped forever', () => {
   const { residency, loads, uploaded, state } = fakeResidency({ lastPresentDtMs: 48 });
   residency.request('core-lantern-shelf');

@@ -630,6 +630,14 @@ const SAMPLED_EDGE_ACTIONS = new Set([
 // The first connected sample must be neutral before a held button can re-arm an edge verb — a
 // chord physically held across a dock or a tab-hide must not fire the moment the pad publishes
 // again. The bomb bay verbs always read this gate; adding them here repairs a silent no-op.
+// Continuous pad controls use the same fence. Their raw gamepad samples remain truthful, but a
+// held trigger, shoulder or stick must not become flight authority again until a connected neutral
+// sample proves the physical control was released. The modal/mode fence reapplies this set while
+// flight is unavailable, so a press made inside a screen cannot arm the next flight tick.
+const GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS = Object.freeze([
+  'fire', 'mine', 'boost', 'brake', 'leftStick', 'rightStick',
+]);
+
 const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
   'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate', 'deployRepulsor',
   'dropBomb', 'cycleBomb',
@@ -638,13 +646,16 @@ const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
   // gyreSnare is a held pad chord (RB+Y): a grip held across a dock or tab-hide must not
   // re-fire the beam the moment the pad publishes again.
   'gyreSnare',
+  ...GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS,
 ]);
 
-function freshGamepadLifecycleQuarantine() {
+function freshGamepadLifecycleQuarantine({ continuous = false } = {}) {
   // A plain object, not Object.create(null): the lifecycle suites deep-compare this map against
   // an object literal, and the keys are a fixed internal table, never player-supplied names.
   const q = {};
-  for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) q[action] = true;
+  for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) {
+    q[action] = continuous || !GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS.includes(action);
+  }
   return q;
 }
 
@@ -1389,7 +1400,7 @@ export const input = {
     this._cmHeld = false;
     // Keyboard transitions remain event-owned after restore. Only polled gamepad actions need a
     // connected neutral sample before a hold can become authoritative again.
-    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
+    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine({ continuous: true });
     resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
@@ -1433,9 +1444,26 @@ export const input = {
     if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
       || !gamepad.isConnected()) return;
     for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) {
+      if (action === 'leftStick' || action === 'rightStick') continue;
       const sample = gamepad.actions && gamepad.actions[action];
       if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
     }
+    const axes = gamepad.axes;
+    const axisNeutral = (value) => Number.isFinite(value) && Math.abs(value) <= 0.001;
+    if (quarantine.leftStick && axes
+      && axisNeutral(axes.leftX) && axisNeutral(axes.leftY)) {
+      quarantine.leftStick = false;
+    }
+    if (quarantine.rightStick && axes
+      && axisNeutral(axes.rightX) && axisNeutral(axes.rightY)) {
+      quarantine.rightStick = false;
+    }
+  },
+
+  _quarantineContinuousGamepadControls() {
+    const quarantine = this._gamepadLifecycleQuarantine;
+    if (!quarantine) return;
+    for (const action of GAMEPAD_LIFECYCLE_CONTINUOUS_ACTIONS) quarantine[action] = true;
   },
 
   _gamepadLifecycleActionAllowed(action) {
@@ -1551,7 +1579,12 @@ export const input = {
       gyreSnare: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
-    if (shouldNeutralizeFlightInput(state, modalInputActive())) {
+    const flightInputNeutralized = shouldNeutralizeFlightInput(state, modalInputActive());
+    if (flightInputNeutralized) {
+      // Keep ordinary pad holds fenced for the whole non-flight interval. This covers direct
+      // mode/modal transitions as well as the presentation runner's blur release, and leaves the
+      // raw gamepad actions/axes untouched for UI ownership and reconnect detection.
+      this._quarantineContinuousGamepadControls();
       this._screen.active = false;
       if (inp.pointerScreen) inp.pointerScreen.active = false;
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.
@@ -1708,7 +1741,9 @@ export const input = {
     let gpCountermeasure = false;
     let gpAimActive = false;
     if (gp && gp.isConnected()) {
-      if (padScheme === 'twinstick' && p && p.pos) {
+      const leftStickAllowed = this._gamepadLifecycleActionAllowed('leftStick');
+      const rightStickAllowed = this._gamepadLifecycleActionAllowed('rightStick');
+      if (leftStickAllowed && padScheme === 'twinstick' && p && p.pos) {
         // The stick points where the ship pushes on screen — decomposed into the hull's
         // forward/strafe axes the same way helm-assist decomposes a brake vector. The curve
         // reshapes the magnitude so the pushed direction survives untouched.
@@ -1720,17 +1755,22 @@ export const input = {
         const sf = Math.sin(p.rot || 0);
         gpMoveZ = wx * cf + wz * sf;
         gpMoveX = wx * -sf + wz * cf;
-      } else {
+      } else if (leftStickAllowed) {
         gpTurn = shapePadAxis(gp.axes.leftX, padCurve, padSensFly);
         gpMoveZ = shapePadAxis(-gp.axes.leftY, padCurve, padSensFly); // stick up = forward
       }
-      gpBoost = gp.actions.boost && gp.actions.boost.held;
-      gpFire = gp.actions.fire && gp.actions.fire.held;
-      gpMine = gp.actions.mine && gp.actions.mine.held;
-      gpBrake = gp.actions.brake && gp.actions.brake.held;
+      gpBoost = this._gamepadLifecycleActionAllowed('boost')
+        && gp.actions.boost && gp.actions.boost.held;
+      gpFire = this._gamepadLifecycleActionAllowed('fire')
+        && gp.actions.fire && gp.actions.fire.held;
+      gpMine = this._gamepadLifecycleActionAllowed('mine')
+        && gp.actions.mine && gp.actions.mine.held;
+      gpBrake = this._gamepadLifecycleActionAllowed('brake')
+        && gp.actions.brake && gp.actions.brake.held;
       gpCountermeasure = this._gamepadLifecycleActionAllowed('countermeasure')
         && gp.actions.countermeasure && gp.actions.countermeasure.held;
-      gpAimActive = Math.abs(gp.axes.rightX) > 0.001 || Math.abs(gp.axes.rightY) > 0.001;
+      gpAimActive = rightStickAllowed
+        && (Math.abs(gp.axes.rightX) > 0.001 || Math.abs(gp.axes.rightY) > 0.001);
     }
 
     // --- touch merge (P1-12): virtual dual-stick. Left stick = yaw/throttle (same as gamepad),

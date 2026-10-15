@@ -1096,6 +1096,30 @@ export class ContinuousPlumeSystem {
   }
 
   /**
+   * Publish every resource this owner disposes, including quality tiers kept off the active mesh.
+   * The dormant tiers are still renderer-owned and can retain the lost generation's listeners.
+   */
+  contextLossResources() {
+    const resources = [];
+    const seen = new Set();
+    const add = (resource) => {
+      if (!resource || typeof resource !== 'object' || seen.has(resource)) return;
+      seen.add(resource);
+      resources.push(resource);
+    };
+    add(this.group);
+    for (const batch of this.layerBatches || []) {
+      add(batch.mesh);
+      add(batch.material);
+      for (const tier of QUALITY_TIERS) add(batch.tierBuffers?.[tier]?.geo);
+    }
+    for (const texture of Object.values(this._textures || {})) {
+      if (texture?.isTexture) add(texture);
+    }
+    return resources;
+  }
+
+  /**
    * Dispose owned GPU resources once. Idempotent.
    */
   dispose() {

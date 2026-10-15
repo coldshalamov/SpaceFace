@@ -2702,7 +2702,21 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function contextLossResources() {
-    return [rtScene, rtPost, rtDistortion, ...down].filter(Boolean);
+    // The fullscreen quad is intentionally off-scene, and its material is swapped on every pass.
+    // Publish those exact owners alongside the targets so a restored renderer can detach the old
+    // geometry/material listeners before a later teardown. The optional LUT is similarly outside
+    // the scene graph and only exists when its explicit variant is enabled.
+    return [...new Set([
+      rtScene,
+      rtPost,
+      rtDistortion,
+      ...down,
+      quadGeo,
+      downsampleMat,
+      compositeMat,
+      casMat,
+      contrastLutTexture,
+    ].filter(Boolean))];
   }
 
   function openingProgramMaterials() {

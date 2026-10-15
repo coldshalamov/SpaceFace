@@ -21,10 +21,81 @@ import {
   validateReleaseSoakEvidence,
   validatePerformanceEvidence,
 } from '../scripts/lib/releaseSoakContracts.mjs';
-import { evaluateSourceStability, summarizeRestorePopulation } from '../scripts/lib/releaseSoakProbe.mjs';
+import {
+  canonicalPostGcOwnerRows,
+  evaluateSourceStability,
+  POST_GC_OWNER_ROW_LIMIT,
+  postGcOwnerEvaluateArgument,
+  summarizeImmutableSavePopulation,
+  summarizeRestorePopulation,
+  summarizeSaveEnvelope,
+} from '../scripts/lib/releaseSoakProbe.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const execFileAsync = promisify(execFile);
+
+test('post-GC checkpoints retain bounded canonical residency owner detail', async () => {
+  const source = await readFile(path.join(REPO_ROOT, 'scripts/lib/releaseSoakProbe.mjs'), 'utf8');
+  assert.match(source, /page\.evaluate\(\(\{ phaseTag: tag, ownerRowLimit \}\)/,
+    'post-GC page evaluation must use one serialized argument object');
+  assert.match(source, /diagnostics\(\{\s*canonical: true,\s*includeEvents: false,\s*includeOwners: true\s*\}\)/,
+    'post-GC snapshots must ask the existing residency API for owner rows');
+  assert.equal(POST_GC_OWNER_ROW_LIMIT, 256);
+
+  // Playwright serializes exactly one argument. Exercise the same callback boundary so a
+  // future change cannot silently turn the row limit into undefined and emit empty rows.
+  const evaluateOneSerializedArgument = async (callback, argument) => callback(argument);
+  const evaluateArgument = postGcOwnerEvaluateArgument('owner-fixture', 2);
+  const evaluated = await evaluateOneSerializedArgument(
+    ({ phaseTag, ownerRowLimit }) => ({ phaseTag, ownerRowLimit, rows: ['a', 'b', 'c'].slice(0, ownerRowLimit) }),
+    evaluateArgument,
+  );
+  assert.deepEqual(evaluated, { phaseTag: 'owner-fixture', ownerRowLimit: 2, rows: ['a', 'b'] });
+
+  const diagnostic = canonicalPostGcOwnerRows({
+    ownerCount: 3,
+    owners: [
+      {
+        owner: 'Object3D', ownerName: 'boundary-z', contentHash: null,
+        released: false, assets: 2, bytes: 10, roles: ['live-boundary', 'live-boundary'],
+      },
+      {
+        owner: 'render-package', ownerName: null, contentHash: 'hash-a',
+        released: true, assets: 1, bytes: 20, roles: ['render-package-cache'],
+      },
+      {
+        owner: 'Object3D', ownerName: 'boundary-a', contentHash: null,
+        released: false, assets: 1, bytes: 5, roles: ['ready-instance'],
+      },
+    ],
+  }, 2);
+  assert.equal(diagnostic.ownerCount, 3);
+  assert.equal(diagnostic.truncated, true);
+  assert.deepEqual(diagnostic.rows, [
+    {
+      identity: null,
+      identityLabel: 'render-package|hash-a',
+      identityAmbiguous: true,
+      role: ['render-package-cache'],
+      contentHash: 'hash-a',
+      released: true,
+      assets: 1,
+      bytes: 20,
+    },
+    {
+      identity: null,
+      identityLabel: 'Object3D|boundary-z',
+      identityAmbiguous: true,
+      role: ['live-boundary'],
+      contentHash: null,
+      released: false,
+      assets: 2,
+      bytes: 10,
+    },
+  ]);
+  assert.equal(canonicalPostGcOwnerRows({ owners: null }), null,
+    'missing owner diagnostics remain explicitly unavailable');
+});
 
 test('restore population receipt compares the loaded envelope with a bounded post-load census', () => {
   const saved = [
@@ -60,6 +131,39 @@ test('restore population receipt compares the loaded envelope with a bounded pos
     postLoadEntities: saved,
   });
   assert.equal(stable.newlyMaterialized, null, 'equal populations need no extra histogram');
+});
+
+test('immutable save diagnostic binds repeated materialization to one serialized envelope', () => {
+  const raw = JSON.stringify({
+    fmt: 'spaceface-save',
+    version: 15,
+    data: {
+      meta: { tick: 42, simTime: 0.7, savedAt: '2026-10-15T00:00:00.000Z' },
+      entities: {
+        player: { id: 'player-1', type: 'ship' },
+        persistent: [{ id: 'wreck-1', type: 'wreck', data: { worldRecordId: 'wreck:1' } }],
+      },
+    },
+  });
+  const base = summarizeSaveEnvelope(raw, { slot: 'quick' });
+  assert.equal(base.available, true);
+  assert.equal(base.serializedIdentity.bytes, Buffer.byteLength(raw));
+  assert.equal(base.envelopeIdentity.tick, 42);
+  assert.deepEqual(base.envelopeEntities.map((row) => row.id), ['player-1', 'wreck-1']);
+
+  const population = summarizeImmutableSavePopulation({
+    savedEnvelopeEntities: base.envelopeEntities,
+    postLoadEntities: [
+      ...base.envelopeEntities,
+      { id: 'sector-1', type: 'asteroid' },
+      { id: 'sector-2', type: 'asteroid' },
+    ],
+  });
+  assert.equal(population.baseEntityCount, 2);
+  assert.equal(population.postLoadEntityCount, 4);
+  assert.equal(population.newlyMaterialized.count, 2);
+  assert.deepEqual(population.newlyMaterialized.byType, { asteroid: 2 });
+  assert.deepEqual(population.newlyMaterialized.samples.map((row) => row.key), ['id:sector-1', 'id:sector-2']);
 });
 
 test('probe rejects a changed worktree after persisting diagnostic telemetry', async () => {
@@ -240,6 +344,10 @@ test('parser locks the wrapper runtime and rejects acceptance bypass flags', () 
     () => parseReleaseSoakArgs(['--cycles=0'], { runtime: 'browser', root: process.cwd() }),
     /positive integer/i,
   );
+  assert.throws(
+    () => parseReleaseSoakArgs(['--immutable-save-cycles=1'], { runtime: 'browser', root: process.cwd() }),
+    /at least 2/i,
+  );
 
   const parsed = parseReleaseSoakArgs([
     '--cycles=3',
@@ -251,7 +359,14 @@ test('parser locks the wrapper runtime and rejects acceptance bypass flags', () 
   assert.equal(parsed.cycles, 3);
   assert.deepEqual(parsed.viewport, { width: 1600, height: 900 });
   assert.equal(parsed.taskId, 'browser-contract');
+  assert.equal(parsed.immutableSaveCycles, 0);
   assert.equal(parsed.outputRoot, path.resolve(process.cwd(), '.devshots/spec2/custom-soak'));
+
+  const immutable = parseReleaseSoakArgs(['--immutable-save-cycles=2'], {
+    runtime: 'browser',
+    root: process.cwd(),
+  });
+  assert.equal(immutable.immutableSaveCycles, 2);
 });
 
 test('parser validates a fenced source overlay and returns compact identity metadata', async (t) => {
