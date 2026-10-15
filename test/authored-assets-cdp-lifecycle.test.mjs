@@ -6,6 +6,7 @@ import {
   collectAuthoredLoaderDiagnostics,
   collectAuthoredReport,
   createAuthoredProbeCdpSession,
+  waitForAuthoredShips,
 } from '../scripts/probe-authored-assets-live.mjs';
 
 function fixture() {
@@ -27,7 +28,7 @@ function fixture() {
     setTimer(fn, ms) { const id = ++nextTimer; timers.set(id, { fn, at: now + ms }); return id; },
     clearTimer: id => timers.delete(id),
   });
-  return { socket, cdp, timers,
+  return { socket, cdp, timers, now: () => now,
     advance(ms) {
       now += ms;
       for (const [id, timer] of [...timers]) {
@@ -315,4 +316,100 @@ test('catalog failure drains the in-flight batch and does not launch later entri
   assert.equal(result.progress.drainedInFlight, 3);
   assert.equal(result.progress.completedEntries, 3);
   assert.equal(calls, 5, 'four initial requests drain and no fifth asset launches after failure');
+});
+
+function shipReportDeadlineFixture({ entryCount = 119, passiveReply = null } = {}) {
+  const f = fixture();
+  const entries = Array.from({ length: entryCount }, (_, index) => ({
+    slot: 'hull', url: `assets/ships/release/parts/hulls/diagnostic-${index}.glb`, wholeShip: false,
+  }));
+  let assetReplies = 0, transportError = null;
+  const send = f.cdp.send.bind(f.cdp);
+  f.cdp.send = (...args) => send(...args).catch(error => { transportError = error; throw error; });
+  const sendSocket = f.socket.send.bind(f.socket);
+  f.socket.send = text => {
+    sendSocket(text);
+    const request = JSON.parse(text);
+    const jsonReply = value => f.socket.reply(request.id, { result: { value: JSON.stringify(value) } });
+    if (f.cdp.stage === 'authored ship admission') {
+      if (!request.params.returnByValue) f.socket.reply(request.id);
+      else jsonReply({ mode: 'flight', tick: 120, shipCount: 4, playerState: 'authored',
+        presentedShipCount: 3, authoredShipCount: 3 });
+    } else if (f.cdp.stage === 'authored asset catalog') {
+      jsonReply({ available: true, runtime: {}, release: true, partRoot: 'assets/ships/release/parts/', entries });
+    } else if (f.cdp.stage.startsWith('authored asset ')) {
+      assetReplies++;
+      if (assetReplies === entryCount) f.advance(44_830);
+      jsonReply({ loaded: true, assetId: `actual-${assetReplies}`, primitiveCount: 2, markerCount: 1 });
+    } else if (f.cdp.stage === 'authored ship report snapshot') {
+      if (passiveReply) jsonReply(passiveReply);
+      else f.advance(170); // No passive response arrives in the remaining absolute budget.
+    } else assert.fail(`unexpected CDP stage ${f.cdp.stage}`);
+  };
+  return { ...f, transportError: () => transportError, assetReplies: () => assetReplies };
+}
+
+test('a 170ms passive snapshot timeout retains actual completed catalog and admission replies', async () => {
+  const f = shipReportDeadlineFixture();
+  try {
+    await assert.rejects(waitForAuthoredShips(f.cdp, { now: f.now, sleep: ms => f.advance(ms) }), error => {
+      assert.equal(error, f.transportError(), 'the original CDP failure remains the rejection');
+      assert.match(error.message, /authored ship report snapshot.*no CDP reply within 170 ms/);
+      const diagnostic = error.authoredShipDiagnostics;
+      assert.equal(diagnostic.operation, 'report-collection');
+      assert.equal(diagnostic.reportPhase, 'ship-snapshot');
+      assert.equal(diagnostic.admission.passed, true);
+      assert.equal(diagnostic.admission.lastOnTimeSnapshot.authoredShipCount, 3);
+      assert.equal(diagnostic.lastGateReply.snapshot.tick, 120);
+      assert.equal(diagnostic.catalog.available, true);
+      assert.equal(diagnostic.catalog.declaredCount, 119);
+      assert.equal(diagnostic.catalog.loadedCount, 119);
+      assert.equal(diagnostic.catalog.progress.completedEntries, 119);
+      assert.equal(diagnostic.catalog.progress.elapsedMs, 44_830);
+      assert.equal(diagnostic.snapshotElapsedMs, 170);
+      assert.equal(diagnostic.collectionElapsedMs, 45_000);
+      assert.equal(diagnostic.lastReport, null, 'a missing passive reply cannot be invented');
+      return true;
+    });
+    assert.equal(f.assetReplies(), 119);
+    assert.equal(f.socket.sent.length, 123, 'failure capture issues no extra CDP diagnostic request');
+    assert.equal(f.now(), 45_000, 'the report deadline remains unchanged');
+    assert.equal(f.timers.size, 0);
+  } finally { f.cdp.dispose(); }
+});
+
+test('a retry deadline preserves the last ship/pool producer report without treating it as a pass', async () => {
+  const passiveReply = {
+    mode: 'flight', tick: 440, shipCount: 4, presentedShipCount: 3, authoredShipCount: 3,
+    repeatedPackageShipPoolKeys: [], instancePoolCount: 2, instancePoolLiveCount: 3,
+    player: { id: 1, defId: 'ship_kestrel', state: 'authored', authoredBodyProof: { ok: true, bodySurfaceCount: 2 } },
+    ships: [{ id: 40, defId: 'ship_wasp', presented: false, state: 'awaiting-authored-admission',
+      packageInstancePoolKeys: ['package:wasp'], packageSubmittedPoolKeys: [] }],
+    packageShipPoolRoots: [{ key: 'package:wasp', distinctAuthoredRootCount: 1, roots: [{ id: 41, defId: 'ship_wasp' }] }],
+    instancePools: [{ key: 'package:wasp', count: 1, submittedSlotCount: 1 }],
+    criticalStations: [], authoredUpgradeDiagnostics: { activeJobs: 1,
+      jobs: [{ entityId: 40, state: 'waiting-pipeline' }], partLoads: [] },
+  };
+  const f = shipReportDeadlineFixture({ entryCount: 2, passiveReply });
+  try {
+    await assert.rejects(waitForAuthoredShips(f.cdp, { now: f.now, sleep: ms => f.advance(ms) }), error => {
+      assert.equal(error, f.transportError());
+      assert.match(error.message, /stage deadline expired/);
+      const diagnostic = error.authoredShipDiagnostics;
+      assert.equal(diagnostic.operation, 'retry-render');
+      assert.equal(diagnostic.retryAttempts, 1);
+      assert.equal(diagnostic.lastReportAgeMs, 200);
+      assert.equal(diagnostic.lastReport.tick, 440);
+      assert.deepEqual(diagnostic.lastReport.repeatedPackageShipPoolKeys, []);
+      assert.equal(diagnostic.lastReport.ships[0].id, 40);
+      assert.equal(diagnostic.lastReport.ships[0].state, 'awaiting-authored-admission');
+      assert.equal(diagnostic.lastReport.packageShipPoolRoots[0].distinctAuthoredRootCount, 1);
+      assert.equal(diagnostic.lastReport.authoredUpgradeDiagnostics.jobs[0].state, 'waiting-pipeline');
+      assert.equal(diagnostic.catalog.progress.completedEntries, 2);
+      assert.equal(diagnostic.catalog.loadedCount, 2, 'actual returned counts are never assumed to be 119');
+      return true;
+    });
+    assert.equal(f.socket.sent.length, 6, 'an expired retry cannot send a forced draw or another passive report');
+    assert.equal(f.timers.size, 0);
+  } finally { f.cdp.dispose(); }
 });

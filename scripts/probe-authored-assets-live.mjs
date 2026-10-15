@@ -423,6 +423,9 @@ try {
 } catch (error) {
   runError = error;
   failureStage = cdp?.stage || stage;
+  if (error?.authoredShipDiagnostics) {
+    console.error(`[authored-assets] retained ship diagnostics ${JSON.stringify(error.authoredShipDiagnostics)}`);
+  }
 } finally {
   enterStage('owned runtime cleanup');
   cdp?.dispose();
@@ -465,6 +468,7 @@ if (runError || cleanupError || candidateError) {
     errors: errors.map((error) => ({
       name: error && error.name || 'Error',
       message: error && error.message || String(error),
+      ...(error?.authoredShipDiagnostics ? { authoredShipDiagnostics: error.authoredShipDiagnostics } : {}),
     })),
   };
   const renderedFailure = JSON.stringify(failure, null, 2);
@@ -732,13 +736,26 @@ function isMainModule() {
   return !!process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
 }
 
-async function waitForAuthoredShips(cdp) {
+export async function waitForAuthoredShips(cdp, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : () => performance.now();
+  const pause = typeof options.sleep === 'function' ? options.sleep : sleep;
+  const startedAtMs = now();
+  let deadline = null, report = null, lastGateReply = null;
+  let reportStartedAtMs = null, lastReportCompletedAtMs = null, retryStartedAtMs = null;
+  let operation = 'admission', retryAttempts = 0;
+  try {
   cdp.setStage('authored ship admission', 45000);
-  const deadline = await waitForAuthoredAssetDeadline({
+  deadline = await waitForAuthoredAssetDeadline({
     timeoutMs: 45000,
     pollIntervalMs: 50,
-    onPoll: () => forceShipRender(cdp),
-    sample: () => collectAuthoredGateSnapshot(cdp),
+    now, sleep: pause,
+    onPoll: () => { operation = 'admission-render'; return forceShipRender(cdp); },
+    sample: async () => {
+      operation = 'admission-snapshot';
+      const snapshot = await collectAuthoredGateSnapshot(cdp);
+      lastGateReply = { completedAtMs: now(), snapshot };
+      return snapshot;
+    },
     isReady: (snapshot) => !!(
       snapshot
       && snapshot.playerState === 'authored'
@@ -746,25 +763,33 @@ async function waitForAuthoredShips(cdp) {
       && snapshot.authoredShipCount === snapshot.presentedShipCount
     ),
   });
-  const diagnosticsStartedAtMs = performance.now();
+  const diagnosticsStartedAtMs = reportStartedAtMs = now();
   console.log('[authored-assets] authored ship report');
   cdp.setStage('authored ship report', CDP_REQUEST_TIMEOUT_MS);
-  let report = await collectAdmittedAuthoredReport(cdp, deadline.passed);
+  operation = 'report-collection';
+  report = await collectAdmittedAuthoredReport(cdp, deadline.passed, { now });
+  lastReportCompletedAtMs = now();
   for (let attempt = 0; attempt < 50; attempt++) {
     if (!deadline.passed) break;
     if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
       && report.authoredShipCount === report.presentedShipCount
       && report.repeatedPackageShipPoolKeys.length > 0) break;
-    await sleep(200);
+    retryAttempts++;
+    retryStartedAtMs ??= now();
+    operation = 'retry-wait';
+    await pause(200);
+    operation = 'retry-render';
     await forceShipRender(cdp);
+    operation = 'retry-snapshot';
     const latest = await collectAuthoredReport(cdp);
     latest.loaderDiagnostics = report.loaderDiagnostics;
     report = latest;
+    lastReportCompletedAtMs = now();
   }
-  const diagnosticsCompletedAtMs = performance.now();
+  const diagnosticsCompletedAtMs = now();
   report.authoredDeadline = {
     passed: deadline.passed,
-    timeoutMs: deadline.timeoutMs,
+    timeoutMs: 45000,
     elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
     diagnosticsStartedAtMs,
     diagnosticsCompletedAtMs,
@@ -787,6 +812,68 @@ async function waitForAuthoredShips(cdp) {
     }, null, 2)}`);
   }
   return report;
+  } catch (error) {
+    // These are already-returned replies, never replacement evidence for a failed
+    // deadline. A later CDP timeout must not erase the runtime state we did observe.
+    error.authoredShipDiagnostics = {
+      ...error.authoredShipDiagnostics,
+      operation,
+      elapsedMs: Math.round(now() - startedAtMs),
+      reportElapsedMs: reportStartedAtMs === null ? null : Math.round(now() - reportStartedAtMs),
+      retryElapsedMs: retryStartedAtMs === null ? null : Math.round(now() - retryStartedAtMs),
+      retryAttempts,
+      admission: deadline ? {
+        passed: deadline.passed, timeoutMs: 45000,
+        elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
+        lastOnTimeSnapshot: deadline.lastOnTimeSnapshot,
+        postDeadlineSnapshot: deadline.postDeadlineSnapshot || null,
+      } : null,
+      lastGateReply,
+      lastReportAgeMs: lastReportCompletedAtMs === null ? null : Math.round(now() - lastReportCompletedAtMs),
+      lastReport: compactAuthoredShipReport(report),
+      ...(report?.loaderDiagnostics ? { catalog: compactAuthoredCatalog(report.loaderDiagnostics) } : {}),
+    };
+    throw error;
+  }
+}
+
+function compactAuthoredCatalog(loader) {
+  if (!loader) return null;
+  return {
+    available: loader.available, declaredCount: loader.declaredCount, loadedCount: loader.loadedCount,
+    failureCount: loader.failureCount, wholeShipDeclaredCount: loader.wholeShipDeclaredCount,
+    wholeShipLoadedCount: loader.wholeShipLoadedCount, wholeShipFailureCount: loader.wholeShipFailureCount,
+    progress: loader.progress || null, failures: loader.failures?.slice(0, 8) || [], error: loader.error,
+  };
+}
+
+function compactAuthoredShipReport(report) {
+  if (!report) return null;
+  const scalarRow = value => Object.fromEntries(Object.entries(value || {})
+    .filter(([, item]) => item == null || ['string', 'number', 'boolean'].includes(typeof item))
+    .slice(0, 32).map(([key, item]) => [key, typeof item === 'string' ? item.slice(0, 400) : item]));
+  const ship = value => value ? {
+    ...scalarRow(value),
+    packageInstancePoolKeys: value.packageInstancePoolKeys?.slice(0, 8) || [],
+    packageSubmittedPoolKeys: value.packageSubmittedPoolKeys?.slice(0, 8) || [],
+    authoredBodyProof: value.authoredBodyProof ? {
+      ...scalarRow(value.authoredBodyProof), failures: value.authoredBodyProof.failures?.slice(0, 8) || [],
+    } : null,
+  } : null;
+  const upgrade = report.authoredUpgradeDiagnostics;
+  return {
+    ...scalarRow(report), player: ship(report.player), ships: report.ships?.slice(0, 16).map(ship) || [],
+    repeatedPackageShipPoolKeys: report.repeatedPackageShipPoolKeys?.slice(0, 12) || [],
+    packageShipPoolRoots: report.packageShipPoolRoots?.slice(0, 12).map(pool => ({
+      ...scalarRow(pool), roots: pool.roots?.slice(0, 8).map(scalarRow) || [],
+    })) || [],
+    instancePools: report.instancePools?.slice(0, 12).map(scalarRow) || [],
+    criticalStations: report.criticalStations?.slice(0, 8).map(scalarRow) || [],
+    authoredUpgradeDiagnostics: upgrade ? {
+      ...scalarRow(upgrade), jobs: upgrade.jobs?.slice(-16).map(scalarRow) || [],
+      partLoads: upgrade.partLoads?.slice(-8).map(scalarRow) || [],
+    } : null,
+  };
 }
 
 /**
@@ -1452,16 +1539,30 @@ export async function collectAuthoredReport(cdp) {
 }
 
 export async function collectAdmittedAuthoredReport(cdp, admissionPassed, options = {}) {
-  const loaderDiagnostics = admissionPassed
+  const now = typeof options.now === 'function' ? options.now : () => performance.now();
+  const startedAtMs = now();
+  let loaderDiagnostics = null, snapshotStartedAtMs = null;
+  try {
+  loaderDiagnostics = admissionPassed
     ? await collectAuthoredLoaderDiagnostics(cdp, options)
     : null;
   if (loaderDiagnostics && !loaderDiagnostics.available) {
     throw new Error(`[authored-assets] authored catalog diagnostics failed: ${JSON.stringify(loaderDiagnostics)}`);
   }
   cdp.setStageLabel('authored ship report snapshot');
+  snapshotStartedAtMs = now();
   const report = await collectAuthoredReport(cdp);
   if (loaderDiagnostics) report.loaderDiagnostics = loaderDiagnostics;
   return report;
+  } catch (error) {
+    error.authoredShipDiagnostics = {
+      reportPhase: snapshotStartedAtMs === null ? 'catalog' : 'ship-snapshot',
+      collectionElapsedMs: Math.round(now() - startedAtMs),
+      snapshotElapsedMs: snapshotStartedAtMs === null ? null : Math.round(now() - snapshotStartedAtMs),
+      catalog: compactAuthoredCatalog(loaderDiagnostics),
+    };
+    throw error;
+  }
 }
 
 export async function collectAuthoredLoaderDiagnostics(cdp, { now = () => performance.now() } = {}) {
