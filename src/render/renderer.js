@@ -12896,7 +12896,12 @@ export const render = {
       const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
       const submit = () => {
         if (typeof isActive === 'function' && !isActive(subject)) throw new Error('exact-target touch owner became inactive');
-        return touchExactTargetSubject(subject);
+        // The pacer may wait behind another producer. Reveal only inside its synchronous
+        // reservation: overlapping root/descendant jobs must never capture each other's
+        // temporary visibility/count/range and restore that warm state into live flight.
+        const restore = revealSubjectWithAncestors(subject);
+        try { return touchExactTargetSubject(subject); }
+        finally { restore(); }
       };
       return pace?.submit ? pace.submit(submit, { isActive: () => !isActive || isActive(subject) }) : Promise.resolve().then(submit);
     };
@@ -13586,7 +13591,6 @@ export const render = {
           // color space). Draw the admitted subject once on the exact post target under live
           // state — the same touch the opening plan runs — so any residual variant links here,
           // behind the pending latch, instead of inside a presented bloom frame.
-          const restore = revealSubjectForCompile(subject);
           try {
             await submitExactSubjectTouch(subject, admissionOptions.isActive);
           } catch (error) {
@@ -13640,8 +13644,6 @@ export const render = {
                   String(diagError && diagError.message || diagError));
               }
             }
-          } finally {
-            restore();
           }
           if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
             markAuthoredGeologyFallbackAdmitted(subject);
@@ -13785,7 +13787,6 @@ export const render = {
                 } catch (error) {
                   laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
                 }
-                const restoreDetached = revealSubjectWithAncestors(subject);
                 try {
                   const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
                   rememberOpeningPreparedLeaves(subject);
@@ -13795,8 +13796,6 @@ export const render = {
                   // on a best-effort caller.
                   laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
                   return { skipped: true, reason: 'touch-failed' };
-                } finally {
-                  restoreDetached();
                 }
               });
           }
@@ -13808,7 +13807,6 @@ export const render = {
           } catch (error) {
             laneWarn(this, 'admissionTouch', '[render] exact-target compressed refill failed', error);
           }
-          const restore = revealSubjectWithAncestors(subject);
           try {
             const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
             rememberOpeningPreparedLeaves(subject);
@@ -13818,8 +13816,6 @@ export const render = {
             // anti-unhandled-rejection contract instead of propagating.
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             return { skipped: true, reason: 'touch-failed' };
-          } finally {
-            restore();
           }
         });
     };

@@ -4,13 +4,14 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import * as THREE from 'three';
+import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, touchSubmitNode, touchFacadeNode;
 function walk(node) {
   if (!node || typeof node !== 'object') return;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorAfterJump') cookNode = node.right;
@@ -22,6 +23,8 @@ function walk(node) {
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'captureOpeningSubmissionPlanSteps') openingCaptureNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'beginOpeningLoadingAdmission') loadingNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareOpeningFirstPicture') pictureNode = node.right;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'submitExactSubjectTouch') touchSubmitNode = node.init;
+  if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'touchSubjectExactTarget') touchFacadeNode = node.right;
   if (node.type === 'CallExpression' && node.callee?.name === 'onBus' && node.arguments?.[0]?.value === 'sector:enter') enterNode = node.arguments[1];
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) value.forEach(walk);
@@ -40,6 +43,8 @@ const guardCode = guardNode ? source.slice(guardNode.start, guardNode.end) : nul
 const openingCaptureCode = source.slice(openingCaptureNode.start, openingCaptureNode.end);
 const loadingCode = source.slice(loadingNode.start, loadingNode.end);
 const pictureCode = source.slice(pictureNode.start, pictureNode.end);
+const touchSubmitCode = source.slice(touchSubmitNode.start, touchSubmitNode.end);
+const touchFacadeCode = source.slice(touchFacadeNode.start, touchFacadeNode.end);
 function evaluate(code, owner, values) {
   const env = new Proxy(values, {
     has: (target, key) => key in target || key in globalThis,
@@ -53,6 +58,67 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+function queuedTouchFixture({ detached = false, failTouch = false } = {}) {
+  const scene = new THREE.Scene(), root = new THREE.Group(); root.visible = false; scene.add(root);
+  const leaf = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 2);
+  leaf.visible = false; leaf.count = 0; leaf.geometry.setDrawRange(0, 0); root.add(leaf);
+  const jobs = [], draws = [];
+  const owner = { scene };
+  const values = { renderer: {}, revealSubjectWithAncestors, cam: { obj: {} },
+    makeGpuQueuePacer: () => ({ submit: work => new Promise((resolve, reject) => { jobs.push({ work, resolve, reject }); }) }),
+    postTaskAtBackgroundPriorityBounded() {},
+    touchExactTargetSubject(subject) {
+      assert.equal(root.visible, true); assert.equal(leaf.visible, true);
+      assert.equal(leaf.count, 1); assert.ok(leaf.geometry.drawRange.count > 0);
+      draws.push(subject);
+      if (failTouch) throw new Error('injected-native-touch-failure');
+      return { skipped: false };
+    },
+    detachedSubjectUploadsPendingAsync: async () => detached ? [{}] : [],
+    detachedSubjectGeometriesPendingAsync: async () => [],
+    rehydrateDetachedTextures: async () => {}, rehydrateDetachedGeometries: async () => {},
+    admissionPaceYield: async () => {},
+    refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
+    rememberOpeningPreparedLeaves() {}, laneWarn() {}, emptyCompressedTextureIdentity: () => null,
+  };
+  const submit = evaluate(touchSubmitCode, owner, values);
+  values.submitExactSubjectTouch = submit;
+  const facade = evaluate(touchFacadeCode, owner, values);
+  const assertRestored = () => {
+    assert.equal(root.visible, false, 'hidden ancestor stays hidden outside the synchronous draw');
+    assert.equal(leaf.visible, false, 'a hidden LOD/pool layer never leaks into live submission');
+    assert.equal(leaf.count, 0); assert.equal(leaf.geometry.drawRange.count, 0);
+  };
+  const runNext = async () => {
+    const job = jobs.shift(); assert.ok(job, 'one touch is waiting for its GPU reservation');
+    try { job.resolve(job.work()); } catch (error) { job.reject(error); }
+    assertRestored();
+    await nextTurn();
+  };
+  return { root, leaf, jobs, draws, facade, submit, assertRestored, runNext };
+}
+
+for (const detached of [false, true]) {
+  test('actual queued publish touches restore overlapping root/descendant visibility; detached=' + detached, async () => {
+    const f = queuedTouchFixture({ detached });
+    const root = f.facade(f.root), leaf = f.facade(f.leaf);
+    await nextTurn();
+    assert.equal(f.jobs.length, 2);
+    f.assertRestored();
+    await f.runNext(); f.assertRestored();
+    await f.runNext(); f.assertRestored();
+    assert.deepEqual(await Promise.all([root, leaf]), [{ skipped: false }, { skipped: false }]);
+    assert.deepEqual(f.draws, [f.root, f.leaf]);
+  });
+}
+
+test('the actual submit callback restores visibility/count/range before a touch rejection escapes', async () => {
+  const f = queuedTouchFixture({ failTouch: true });
+  const touch = f.submit(f.root);
+  const rejected = assert.rejects(touch, /injected-native-touch-failure/);
+  f.assertRestored(); await f.runNext(); await rejected; f.assertRestored();
+});
 
 test('the actual first-picture facade forwards the readiness cancellation guard to its renderer owner', async () => {
   let active = true;
