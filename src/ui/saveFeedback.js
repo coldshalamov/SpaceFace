@@ -29,7 +29,7 @@ function saveErrorReasonText(payload = {}) {
   // "the file on disk failed to load" for the shared reason names below.
   const writeAttempt = payload.trigger != null;
   switch (reason) {
-    case 'no_player': return 'Start or load a game before saving';
+    case 'no_player': return writeAttempt ? 'Start or load a game before saving' : slot + ' has no playable ship';
     case 'no_save': return 'No save found for ' + slot;
     case 'read_failed': return 'Could not read ' + slot;
     case 'parse_failed':
@@ -100,7 +100,22 @@ function saveErrorReasonText(payload = {}) {
   }
 }
 
+const titleSaveReadFailureReasons = new Set([
+  'no_save', 'read_failed', 'parse_failed', 'bad_format', 'no_data', 'checksum',
+  'newer_version', 'migration_failed', 'invalid_player', 'no_player',
+  'invalid_orchard_history', 'invalid_orchard_custody', 'import_too_large',
+  'import_depth_limit', 'import_node_limit', 'import_collection_limit', 'import_cycle',
+  'import_persistent_entity_limit', 'compressed_envelope', 'restore_prepare_failed', 'load_failed',
+]);
+
+export function isTitleSaveReadFailure(payload) {
+  if (!payload || typeof payload !== 'object' || payload.trigger != null
+      || payload.reason === 'superseded' || payload.slot === 'import') return false;
+  const reason = String(payload.reason || '').split(':', 1)[0];
+  return titleSaveReadFailureReasons.has(reason);
+}
+
 export function shouldToastSaveError(payload, titleMenuActive = false) {
   if (payload && payload.reason === 'superseded') return false;
-  return !(titleMenuActive === true && payload && payload.reason === 'load_failed');
+  return !(titleMenuActive === true && isTitleSaveReadFailure(payload));
 }

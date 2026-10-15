@@ -14,7 +14,7 @@ import { IS_DEV } from '../../core/devMode.js';
 import { IS_DEMO } from '../../core/demoMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
-import { saveErrorText } from '../saveFeedback.js';
+import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
@@ -138,7 +138,7 @@ function normalizeSlots(idx) {
 }
 
 export function presentTitleContinueLoadFailure(saveSummary, payload) {
-  if (!saveSummary || !payload || payload.reason !== 'load_failed') return false;
+  if (!saveSummary || !isTitleSaveReadFailure(payload)) return false;
   saveSummary.setAttribute('role', 'alert');
   saveSummary.setAttribute('aria-live', 'assertive');
   saveSummary.setAttribute('aria-atomic', 'true');

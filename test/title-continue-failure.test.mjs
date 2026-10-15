@@ -6,7 +6,7 @@ import {
   handleTitleContinueLoadFailure,
   presentTitleContinueLoadFailure,
 } from '../src/ui/screens/mainMenu.js';
-import { saveErrorText, shouldToastSaveError } from '../src/ui/saveFeedback.js';
+import { isTitleSaveReadFailure, saveErrorText, shouldToastSaveError } from '../src/ui/saveFeedback.js';
 
 function liveTextTarget() {
   const attributes = new Map();
@@ -40,11 +40,34 @@ test('a failed title Continue uses the shared save copy in its single accessible
   assert.equal(target.attributes.has('aria-atomic'), false);
 });
 
-test('only a title-visible load failure replaces the global toast with the title alert', () => {
+test('title recovery presents real prepare failures such as the achievements metadata record', () => {
+  const target = liveTextTarget();
+  const failure = { reason: 'bad_format', slot: 'achievements' };
+
+  assert.equal(isTitleSaveReadFailure(failure), true);
+  assert.equal(presentTitleContinueLoadFailure(target, failure), true);
+  assert.equal(target.textContent, 'Slot achievements is corrupt or not a SpaceFace save');
+  assert.equal(target.textContent, saveErrorText(failure));
+  assert.equal(target.attributes.get('role'), 'alert');
+  assert.equal(target.attributes.get('aria-live'), 'assertive');
+});
+
+test('only title-visible read failures replace the global toast with the title alert', () => {
   assert.equal(shouldToastSaveError({ reason: 'load_failed' }, true), false);
+  assert.equal(shouldToastSaveError({ reason: 'bad_format' }, true), false);
+  assert.equal(shouldToastSaveError({ reason: 'restore_prepare_failed' }, true), false);
   assert.equal(shouldToastSaveError({ reason: 'load_failed' }, false), true);
   assert.equal(shouldToastSaveError({ reason: 'quota' }, true), true,
     'other save receipts keep the existing global presenter');
+  assert.equal(isTitleSaveReadFailure({ reason: 'bad_format', trigger: 'manual' }), false,
+    'write receipts remain on the global receipt path');
+  assert.equal(shouldToastSaveError({ reason: 'bad_format', trigger: 'manual' }, true), true);
+  assert.equal(saveErrorText({ reason: 'no_player', slot: 'quick' }), 'Quick has no playable ship');
+  assert.equal(saveErrorText({ reason: 'no_player', slot: 'quick', trigger: 'manual' }),
+    'Start or load a game before saving');
+  assert.equal(isTitleSaveReadFailure({ reason: 'superseded', slot: 'quick' }), false);
+  assert.equal(isTitleSaveReadFailure({ reason: 'read_failed', slot: 'import' }), false,
+    'a file-import read error cannot replace the title summary');
   assert.equal(shouldToastSaveError({ reason: 'superseded' }, false), false,
     'intentional route replacement remains quiet');
 
