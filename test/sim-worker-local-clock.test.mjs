@@ -157,6 +157,31 @@ function makeFixture(t, { helpers } = {}) {
   return { lane, posts, state, receive, bus };
 }
 
+function makeWatchdogFixture(t) {
+  let clock = 0;
+  const performanceDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'performance');
+  Object.defineProperty(globalThis, 'performance', {
+    configurable: true,
+    value: { now: () => clock },
+  });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  // Register restoration before makeFixture registers lane teardown so the
+  // lane can still use the mocked clock while its close path runs.
+  t.after(() => {
+    if (performanceDescriptor) Object.defineProperty(globalThis, 'performance', performanceDescriptor);
+    else delete globalThis.performance;
+  });
+  const fixture = makeFixture(t);
+  return {
+    ...fixture,
+    advanceWall(ms) { clock += ms; },
+    dispatch(ms = 100) {
+      clock += ms;
+      t.mock.timers.tick(ms);
+    },
+  };
+}
+
 function sendClockTick(fixture, clockSequence, commandSequence = 0, tick = clockSequence) {
   fixture.receive({
     kind: 'clockTick',
@@ -474,6 +499,113 @@ test('worker-local clock is unsolicited and command FIFO remains serialized', as
   f.lane.runner.setClockActive(false);
   assert.equal(f.posts.at(-1).kind, 'clockControl');
   assert.equal(f.posts.at(-1).active, false);
+});
+
+test('a silent worker-local command closes after five seconds of responsive dispatch', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.lane.runner.setClockActive(true);
+  laneDomEvent({ type: 'resize' });
+  const command = f.posts.at(-1);
+  assert.equal(command.kind, 'clockCommand');
+  assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, true);
+
+  for (let i = 0; i < 49; i++) f.dispatch();
+  assert.equal(f.lane.runner.isClosed(), false);
+  f.dispatch();
+  t.mock.timers.tick(0);
+
+  assert.equal(f.lane.runner.isClosed(), true);
+  assert.match(f.lane.getDiagnostics().error, new RegExp(
+    `clock command stalled >5000ms.*commandSequence ${command.commandSequence}`,
+  ));
+  assert.equal(f.lane.getDiagnostics().closeCauseMessage, f.lane.getDiagnostics().error);
+  assert.equal(f.lane.getDiagnostics().closeCauseSite, f.lane.getDiagnostics().errorSite);
+  assert.throws(() => f.lane.runner.stepOnce(), /clock command stalled >5000ms/);
+});
+
+test('local command watchdog excludes a blocked main-thread interval', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.lane.runner.setClockActive(true);
+  laneDomEvent({ type: 'resize' });
+  f.advanceWall(15000);
+  t.mock.timers.tick(100);
+  assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, true);
+
+  // Dispatch was unavailable for 14.9 s; only the 100 ms timer turn counts
+  // toward the worker's responsive silence budget.
+  const diagnostics = f.lane.getDiagnostics();
+  assert.equal(diagnostics.workerClockCommandMainThreadDelayedMs, 14900);
+  assert.equal(diagnostics.workerClockCommandResponsiveMs, 100);
+  assert.equal(f.lane.runner.isClosed(), false);
+  f.dispatch();
+  f.dispatch();
+  assert.equal(f.lane.runner.isClosed(), false);
+});
+
+test('the applied command watermark cancels a local command watchdog', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.lane.runner.setClockActive(true);
+  laneDomEvent({ type: 'resize' });
+  const command = f.posts.at(-1);
+
+  // A top-level command sequence alone must not overrule an explicit worker
+  // diagnostic watermark that says the batch is still pending.
+  f.receive({
+    kind: 'clockTick', clockSequence: 1, commandSequence: command.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: command.commandSequence - 1 },
+    stateTick: 1, simTime: 1 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, true);
+
+  f.receive({
+    kind: 'clockTick', clockSequence: 2, commandSequence: command.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: command.commandSequence },
+    stateTick: 2, simTime: 2 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, false);
+  f.advanceWall(15000);
+  t.mock.timers.tick(15000);
+  assert.equal(f.lane.runner.isClosed(), false);
+});
+
+test('a stale local completion cannot close a replacement command', async (t) => {
+  const f = makeWatchdogFixture(t);
+  f.lane.runner.setClockActive(true);
+  laneDomEvent({ type: 'resize' });
+  const first = f.posts.at(-1);
+  f.receive({
+    kind: 'clockTick', clockSequence: 1, commandSequence: first.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: first.commandSequence },
+    stateTick: 1, simTime: 1 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  laneDomEvent({ type: 'resize' });
+  const replacement = f.posts.at(-1);
+  assert.equal(replacement.kind, 'clockCommand');
+  assert.notEqual(replacement.commandSequence, first.commandSequence);
+  assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, true);
+
+  // This is a delayed reply for the first command. Its lower applied
+  // watermark must not release the replacement or affect its watchdog.
+  f.receive({
+    kind: 'clockTick', clockSequence: 2, commandSequence: first.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: first.commandSequence },
+    stateTick: 2, simTime: 2 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, true);
+  assert.equal(f.lane.runner.isClosed(), false);
+
+  f.receive({
+    kind: 'clockTick', clockSequence: 3, commandSequence: replacement.commandSequence,
+    clockDiagnostics: { appliedCommandSequence: replacement.commandSequence },
+    stateTick: 3, simTime: 3 / 60, clockAccumulator: 0,
+    journalStart: 0, journalEnd: 0, pack: emptyPack(),
+  });
+  assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, false);
+  assert.equal(f.lane.runner.isClosed(), false);
 });
 
 test('worker-local completed metadata coalesces a blocked presentation without losing rebuild boundaries', async (t) => {

@@ -15,7 +15,7 @@ const checks = [
       'function syncHudAccessibility',
       'function hasScreen',
       'isOpen, hasScreen',
-      "state.mode !== 'flight'",
+      "effectiveMode() !== 'flight'",
       "hud.setAttribute('aria-hidden', 'true')",
       "hud.removeAttribute('aria-hidden')",
       'hud.inert = next',

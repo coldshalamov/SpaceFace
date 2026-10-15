@@ -92,6 +92,8 @@ export function qtyFromDialPoint(svgEl, clientX, clientY, limit) {
 }
 
 const M = 'html body #screens > .sx-berth.orr-station .sx-mkt.orr-market';
+/* desktop only (phones carry data-sf-mobile and their own sheet) */
+const MD = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-mkt.orr-market';
 const BONE = '236 230 216';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
@@ -572,6 +574,56 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .sx-mkt__decision .sx-decision__opt { flex-direction:column !important; align-items:flex-start !important; gap:1px !important; text-align:left; }
   ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { font-size:10.5px !important; line-height:13px !important;
     white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+}
+/* ---- 651–1100 × ≤460 desktop (e.g. 844×390): the panel's rows sized to the 345px list, so the
+   index and the stage ran ~110px past the berth's tab cell and a pending decision (REPAIR NOW / FLY
+   DAMAGED) sat below it, out of reach. The row now fits the cell (no gap to an empty second row);
+   each side scrolls in it. */
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-screen__body > .sx-mkt.orr-market { grid-template-rows:minmax(0, 1fr) 0 !important; row-gap:0 !important; }
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:100% !important; }
+  /* keyboard focus scrolls the berth to the decision with block:nearest, which parked REPAIR NOW / FLY
+     DAMAGED behind the pinned foot (73px) and its 12px fade: the choice keeps that much clear below it.
+     (A scroll-padding on the berth would also catch the foot's own tiles, which the station focuses on
+     open, and scroll the head away.) */
+  ${MD} .sx-mkt__decision .sx-decision__opt { scroll-margin-bottom:88px; }
+}
+/* ---- 651–900 × ≤460 desktop: beside the family ladder the register's name column was 0–25px (rows
+   read as an icon and numbers). The families wrap into a strip over the register instead, every one
+   still on the board, and the names get ~100px. */
+@media (min-width:651px) and (max-width:900px) and (max-height:460px) {
+  ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) !important; row-gap:4px !important; }
+  ${MD} .sx-mkt-browser__filters { grid-column:1; grid-row:2; flex-direction:row !important; flex-wrap:wrap !important; width:auto !important; min-width:0 !important;
+    gap:0 14px !important; padding:0 0 0 9px !important; background:none !important; }
+  ${MD} .sx-mkt-filter { padding:1px 0 !important; line-height:12px !important; }
+  ${MD} .sx-mkt-browser__rail, ${MD} .sx-mkt-browser__empty { grid-column:1; grid-row:3; }
+  /* the two verbs share ~190px: their names close up so REPAIR NOW and FLY DAMAGED keep a gap */
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { font-size:10px !important; letter-spacing:.06em !important; white-space:nowrap; }
+}
+/* under ~720 a verb column is ~80px: FLY DAMAGED takes two lines rather than run under BUY */
+@media (min-width:651px) and (max-width:720px) and (max-height:460px) {
+  ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name { white-space:normal; }
+}
+/* ---- 651–900 × ≤460 desktop (e.g. 760×420, 844×390): the analysis is ~160–240px wide, so the
+   reading is one column: the kind line, the name and the last move, then the price with its words
+   beside it, then the trace at the full width (beside the name the price left ~65px for both and
+   squeezed the trace to ~20px). From ~1000 wide the two-column reading fits as it is. */
+@media (min-width:651px) and (max-width:900px) and (max-height:460px) {
+  ${MD} .sx-mkt__quote { grid-template-columns:minmax(0, 1fr) max-content !important; column-gap:8px !important; align-items:start !important; }
+  ${MD} .sx-mkt__quote > :is(.sx-mkt-cat-inline, .sx-mkt-title, .sx-mkt-cause) { grid-column:1 / -1 !important; }
+  ${MD} .sx-mkt__quote > .sx-mkt-cat-inline { grid-row:1 !important; margin:0 !important; font-size:10px !important; letter-spacing:.16em !important; white-space:nowrap; }
+  ${MD} .sx-mkt__quote > .sx-mkt-title { grid-row:2 !important; font-size:19px !important; line-height:1.1 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${MD} .sx-mkt__quote > .sx-mkt-cause { grid-row:3 !important; margin-top:1px !important; font-size:11px !important; line-height:14px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  ${MD} .sx-mkt__quote > .sx-mkt__hero { grid-column:1 / -1 !important; grid-row:4 !important; display:flex !important; flex-direction:row !important; align-items:center !important; gap:10px !important;
+    justify-self:start !important; text-align:left !important; margin:4px 0 0 !important; padding:0 !important; }
+  ${MD} .sx-mkt__hero .k-hero__n { font-size:28px !important; }
+  ${MD} .sx-mkt__hero .k-hero__w { flex:0 1 auto; min-width:0; margin:0 !important; max-width:none !important; text-align:left !important; }
+  ${MD} .sx-mkt__quote > .sx-mkt-instrument { grid-column:1 / -1 !important; grid-row:5 !important; margin-top:24px !important; }
+  ${MD} .sx-mkt-instrument__plot { height:42px !important; }
+  /* while a decision waits it takes ~80px of the ~215–235px stage: the last-move line yields (the
+     register's ▲/▼ still says it) so the whole trace stays above the decision */
+  ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-cause { display:none !important; }
+  ${MD} .sx-mkt__stage:has(.sx-mkt__decision:not(:empty)) .sx-mkt__quote > .sx-mkt-instrument { margin-top:18px !important; }
 }
 `;
 

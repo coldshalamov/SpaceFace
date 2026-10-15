@@ -546,6 +546,113 @@ async function testStorelessResponseMethodFallback() {
   }
 }
 
+async function testStorelessCdpRequestIdProvenance() {
+  const exactUrl = `${CANONICAL}__spaceface_player_store`;
+  const genericNotFound = 'Failed to load resource: the server responded with a status of 404 (Not Found)';
+  const context = new EventEmitter();
+  const cdp = new EventEmitter();
+  cdp.sent = [];
+  cdp.send = async (method) => { cdp.sent.push(method); };
+  let detached = false;
+  cdp.detach = async () => { detached = true; };
+  context.newCDPSession = async () => cdp;
+  const electronApp = new EventEmitter();
+  electronApp.context = () => context;
+  const page = new FakePage(CANONICAL);
+  page.context = () => context;
+  const tracker = createStrictElectronApplicationIssueTracker(electronApp, {
+    playerStoreMounted: false,
+  });
+  assert.equal(await tracker.bindNetworkProvenance(page), true,
+    'the Electron page binds an exact CDP network provenance session');
+  assert.deepEqual(cdp.sent, ['Network.enable'], 'the provenance session enables only Network events');
+
+  // Two same-URL requests prove that classification uses the exact requestId rather than a URL
+  // count or whichever Playwright wrapper happens to be retained by the Electron façade.
+  cdp.emit('Network.requestWillBeSent', {
+    requestId: 'store-get-1',
+    request: { url: exactUrl, method: 'GET' },
+    type: 'Fetch',
+  });
+  cdp.emit('Network.requestWillBeSent', {
+    requestId: 'store-put-1',
+    request: { url: exactUrl, method: 'PUT' },
+    type: 'Fetch',
+  });
+  cdp.emit('Network.responseReceived', {
+    requestId: 'store-get-1',
+    response: { status: 404, url: exactUrl },
+  });
+  // A methodless Playwright duplicate must not override the exact CDP verdict.
+  context.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({}),
+  });
+  context.emit('console', fakeConsoleMessage('error', genericNotFound));
+  assert.equal(tracker.errors().length, 0,
+    'an exact CDP GET 404 plus its console twin remains diagnostic even with a same-URL PUT pending');
+  const ignoredGet = tracker.ignored().find((issue) => issue.networkProvenance?.requestId === 'store-get-1');
+  assert(ignoredGet, 'the ignored store GET retains exact CDP requestId provenance');
+  assert.equal(ignoredGet.networkProvenance.method, 'GET');
+
+  cdp.emit('Network.responseReceived', {
+    requestId: 'store-put-1',
+    response: { status: 404, url: exactUrl },
+  });
+  assert.equal(tracker.errors().length, 1,
+    'an exact CDP PUT 404 remains fatal');
+  assert.equal(tracker.errors()[0].networkProvenance.method, 'PUT');
+
+  // A response with no corresponding requestId is deliberately unknown and remains fatal.
+  context.emit('request', { method: () => 'GET', url: () => exactUrl });
+  cdp.emit('Network.responseReceived', {
+    requestId: 'store-unknown-1',
+    response: { status: 404, url: exactUrl },
+  });
+  assert.equal(tracker.errors().length, 2,
+    'an exact store response with missing request provenance remains fatal');
+  assert.equal(tracker.errors()[1].networkProvenance.method, null);
+  const coverage = tracker.coverage().networkProvenance;
+  assert.equal(coverage.trackedRequests, 2);
+  assert.equal(coverage.observedResponses, 3);
+  tracker.stop();
+  assert.equal(detached, true, 'tracker cleanup detaches its CDP session');
+}
+
+async function testStorelessCdpUnmatchedPlaywrightFailsClosed() {
+  const exactUrl = `${CANONICAL}__spaceface_player_store`;
+  const context = new EventEmitter();
+  const cdp = new EventEmitter();
+  cdp.send = async () => {};
+  let detached = false;
+  // Some Playwright/CDP fakes return void from detach; cleanup must not assume a promise.
+  cdp.detach = () => { detached = true; };
+  context.newCDPSession = async () => cdp;
+  const electronApp = new EventEmitter();
+  electronApp.context = () => context;
+  const page = new FakePage(CANONICAL);
+  page.context = () => context;
+  const tracker = createStrictElectronApplicationIssueTracker(electronApp, {
+    playerStoreMounted: false,
+  });
+  await tracker.bindNetworkProvenance(page);
+
+  // CDP is attached, but this Playwright response has no matching
+  // Network.responseReceived. It must remain fatal at finalization rather than
+  // disappearing behind the CDP-attached flag.
+  context.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({}),
+  });
+  assert.equal(tracker.errors().length, 1,
+    'an unmatched Playwright store 404 remains fatal when CDP reports no response');
+  assert.equal(tracker.errors()[0].networkProvenance.source, 'playwright-unmatched-cdp-response');
+  tracker.stop();
+  assert.equal(detached, true, 'void-valued CDP detach is still invoked safely');
+}
+
 async function testElectronUrlLifecycle() {
   const bootPage = new FakePage('about:blank');
   const bootTracker = createElectronCanonicalUrlTracker(bootPage, {
@@ -1419,6 +1526,8 @@ await testStrictPageIssueTracker();
 await testApplicationWideIssueTrackerAndBackfill();
 await testOptInExpectedSoakNetworkPolicy();
 await testStorelessResponseMethodFallback();
+await testStorelessCdpRequestIdProvenance();
+await testStorelessCdpUnmatchedPlaywrightFailsClosed();
 await testElectronUrlLifecycle();
 await testProcessMonitorAndCrashRejection();
 await testOwnedElectronCleanup();

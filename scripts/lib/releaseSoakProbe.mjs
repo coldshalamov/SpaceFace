@@ -10,6 +10,7 @@ import { spawn } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 
 import { collectPageIssues } from './browser-issues.mjs';
@@ -1206,6 +1207,10 @@ async function launchElectron(
   assert(childProcess, 'Electron launch must expose its owned child process');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
   publishOwnership({ page });
+  // Playwright's Electron response wrapper can lose request method/identity at the
+  // requestfinished -> response boundary. Bind the exact CDP requestId ledger before
+  // backfill or later route work so the optional store 404 policy remains fail-closed.
+  await pageIssueTracker.bindNetworkProvenance?.(page);
   installCspSafePlaywrightPolling(page);
   await installFrameKeepalive(page);
   const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
@@ -1784,11 +1789,26 @@ export async function reloadElectronWithTier1Counters(page, pageIssueTracker, { 
   }
 }
 
-export async function launchIsolatedElectronApplication(electron, isolatedLaunch) {
+export async function launchIsolatedElectronApplication(electron, isolatedLaunch, {
+  platform = process.platform,
+  priority = os,
+} = {}) {
   assert(electron && typeof electron.launch === 'function', 'isolated Electron launch requires Playwright Electron');
   assert(isolatedLaunch && isolatedLaunch.options && typeof isolatedLaunch.cleanup === 'function',
     'isolated Electron launch requires an owned profile');
+  let restorePriority = null;
   try {
+    // Windows children inherit Idle/BelowNormal priority. The soak helper yields on
+    // purpose, but its game must run at the same Normal priority as a player launch.
+    // Raise only this owned helper during creation; the acquired game stays Normal
+    // while the helper returns to its original class after launch succeeds or fails.
+    if (platform === 'win32') {
+      const inheritedPriority = priority.getPriority();
+      if (inheritedPriority > 0) {
+        priority.setPriority(0);
+        restorePriority = inheritedPriority;
+      }
+    }
     return await electron.launch(isolatedLaunch.options);
   } catch (error) {
     // A rejected Playwright launch returned no ElectronApplication owner. Match the canonical
@@ -1796,6 +1816,8 @@ export async function launchIsolatedElectronApplication(electron, isolatedLaunch
     // may be removed immediately rather than leaking from a failed pre-ownership launch.
     isolatedLaunch.cleanup({ runtimeClosed: true });
     throw error;
+  } finally {
+    if (restorePriority !== null) priority.setPriority(restorePriority);
   }
 }
 

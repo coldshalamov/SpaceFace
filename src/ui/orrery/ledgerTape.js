@@ -108,9 +108,9 @@ const signed = (n) => (n > 0 ? `+${fmt(n)}` : n < 0 ? `−${fmt(n)}` : '0');
 
 /**
  * @param {HTMLElement} host
- * @param {{ onPick?: (id: string) => void }} [opts]
+ * @param {{ onPick?: (id: string) => void, purseHost?: HTMLElement|null, readingHost?: HTMLElement|null }} [opts]
  */
-export function createLedgerTape(host, { onPick = null, purseHost = null } = {}) {
+export function createLedgerTape(host, { onPick = null, purseHost = null, readingHost = null } = {}) {
   const doc = host && host.ownerDocument ? host.ownerDocument : globalThis.document;
   const inert = { el: host, set() {}, relayout() {}, dispose() {} };
   if (!host || !doc || typeof doc.createElementNS !== 'function' || typeof host.getBoundingClientRect !== 'function') return inert;
@@ -131,6 +131,11 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
   let frame = 0;
   let ro = null;
   let drawnKey = '';
+  // printed label widths, kept between relayouts of one size: each getComputedTextLength forces a style and
+  // layout pass, and a pick (or the ledger ticking) relayouts the whole tape. Cleared when the tape's size
+  // changes (a breakpoint can restyle the labels) and only filled once the fonts are in
+  const widths = new Map();
+  let widthsKey = '';
 
   const schedule = () => {
     if (frame) return;
@@ -220,8 +225,42 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       }
     }
 
-    // cycle boundaries as major ticks, the first cycle named at the origin
+    // where a layout lifts the reading into the tape's foot, the reading's top is the figures' floor. Read
+    // once per relayout, before any label is measured: measure() adds and removes nodes, so a rect read after
+    // it would force a second layout pass
+    let floor = H - 4;
+    if (readingHost && !readingHost.hidden && typeof readingHost.getBoundingClientRect === 'function') {
+      const top = readingHost.getBoundingClientRect().top - host.getBoundingClientRect().top;
+      if (top > y + 20 && top < H) floor = top - 4;
+    }
+
+    // a label's printed width, measured in the live layer (its own class sets face, size and tracking)
+    if (widthsKey !== `${W}x${H}` || widths.size > 512) { widths.clear(); widthsKey = `${W}x${H}`; }
+    const measure = (cls, str) => {
+      const wk = `${cls}|${str}`;
+      const known = widths.get(wk);
+      if (known) return known;
+      const t = svg('text', { x: -9999, y: -9999, class: cls });
+      t.textContent = str;
+      layer.appendChild(t);
+      let w = 0;
+      try { w = t.getComputedTextLength(); } catch (_) { w = 0; }
+      t.remove();
+      if (w > 0 && (!doc.fonts || doc.fonts.status === 'loaded')) widths.set(wk, w);
+      return w > 0 ? w : str.length * 8.6;
+    };
+    // boxes already printed under the tape (cycle names, the now name): debit figures keep clear of them
+    const underBoxes = [];
+    const LABEL_Y = y + 24;
+    const nowText = data.nowCycle || data.emptyCycle || 'CYCLE 0001';
+    const nowW = measure('orr-ltape__cycle orr-ltape__cycle--now', nowText);
+    underBoxes.push({ l: nowX - nowW / 2, r: nowX + nowW / 2, t: LABEL_Y - 11, b: LABEL_Y + 3 });
+
+    // cycle boundaries as major ticks, the first cycle named at the origin. Names are planned right to
+    // left from the now cursor, which always keeps its name: a boundary whose name would run into the
+    // next one prints only its number, and yields entirely when even that does not clear
     let lastCycle = null;
+    const names = [];
     sorted.forEach((e, k) => {
       const c = e.cycleLabel || '';
       if (c && c !== lastCycle) {
@@ -229,15 +268,31 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         if (k > 0) layer.appendChild(rise(svg('path', { d: `M ${f(mx)} ${y - 6} L ${f(mx)} ${y + 12}`, class: 'orr-core orr-ltape__major', 'stroke-width': 2 }), 60));
         // the origin's name yields when the first tick stands inside its run — the now cursor still names the cycle
         const crowded = k === 0 && xs.length && xs[0] - x0 < (AXIS_COL + 40);
-        if (!(k === 0 && crowded)) {
-          const labelY = y + 24;
-          const t = svg('text', { x: f(mx + (k === 0 ? AXIS_COL + 8 : 4)), y: f(labelY), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
-          t.textContent = c;
-          layer.appendChild(rise(t, 80));
-        }
+        if (!(k === 0 && crowded)) names.push({ x: mx + (k === 0 ? AXIS_COL + 8 : 4), full: c });
         lastCycle = c;
       }
     });
+    {
+      const NAME_GAP = 12;
+      let limit = nowX - nowW / 2 - NAME_GAP;
+      for (let i = names.length - 1; i >= 0; i -= 1) {
+        const n = names[i];
+        if (n.full === nowText && i === names.length - 1) continue; // the now cursor already names this cycle
+        const short = n.full.replace(/^CYCLE\s+/i, '');
+        const wFull = measure('orr-ltape__cycle', n.full);
+        const wShort = short !== n.full ? measure('orr-ltape__cycle', short) : Infinity;
+        let str = '';
+        let w = 0;
+        if (n.x + wFull <= limit) { str = n.full; w = wFull; }
+        else if (n.x + wShort <= limit) { str = short; w = wShort; }
+        if (!str) continue;
+        const t = svg('text', { x: f(n.x), y: f(LABEL_Y), 'text-anchor': 'start', class: 'orr-ltape__cycle' });
+        t.textContent = str;
+        layer.appendChild(rise(t, 80));
+        underBoxes.push({ l: n.x, r: n.x + w, t: LABEL_Y - 11, b: LABEL_Y + 3 });
+        limit = n.x - NAME_GAP;
+      }
+    }
     // the now cursor: the same bright mark at the tape's right end in both states, named with the current cycle
     {
       const ng = svg('g', { class: 'orr-ltape__now' });
@@ -245,8 +300,8 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
         svg('path', { d: `M ${f(nowX)} ${y - 12} L ${f(nowX)} ${y + 12}`, class: 'orr-bloom orr-ltape__cursor-bloom', 'stroke-width': 10 }),
         svg('path', { d: `M ${f(nowX)} ${y - 12} L ${f(nowX)} ${y + 12}`, class: 'orr-core orr-ltape__cursor', 'stroke-width': 2.4 }),
       );
-      const t = svg('text', { x: f(nowX), y: f(y + 24), 'text-anchor': 'middle', class: 'orr-ltape__cycle orr-ltape__cycle--now' });
-      t.textContent = data.nowCycle || data.emptyCycle || 'CYCLE 0001';
+      const t = svg('text', { x: f(nowX), y: f(LABEL_Y), 'text-anchor': 'middle', class: 'orr-ltape__cycle orr-ltape__cycle--now' });
+      t.textContent = nowText;
       ng.appendChild(t);
       layer.appendChild(rise(ng, 90));
     }
@@ -324,48 +379,49 @@ export function createLedgerTape(host, { onPick = null, purseHost = null } = {})
       if (isChosen) chosen = { x, tipY, up };
     });
 
-    // lane same-side figures so close stems do not print their amounts on each other or the axis
+    // place each figure in the first clear slot: over (or under) its tip, then one lane further out, then
+    // beside the tip. A slot is clear of every figure already placed, the names under the tape, the axis
+    // numerals and the Hand's ring. A figure with no clear slot yields; the list and the reading carry it
     {
       const FIG_GAP = 15;
-      let upLane = 0;
-      let downLane = 0;
-      const placed = figurePlan.map((p) => {
-        const lane = p.up ? upLane++ : downLane++;
-        const lift = lane * FIG_GAP;
-        let labelY = p.up ? p.tipY - 10 - lift : p.tipY + 17 + lift;
-        // keep debit figures inside the tape so they do not run into the reading under it
-        if (!p.up) labelY = Math.min(labelY, H - 6);
-        if (p.up) labelY = Math.max(labelY, 12);
-        let labelX = p.x;
-        let anchor = 'middle';
-        if (labelX < x0 + AXIS_COL + 12) {
-          labelX = x0 + AXIS_COL + 12;
-          anchor = 'start';
-        }
-        return { ...p, labelX, labelY, anchor };
+      const FIG_H = 11;
+      const boxes = underBoxes.slice();
+      boxes.push({ l: x0, r: x0 + AXIS_COL, t: -1e4, b: 1e4 });
+      if (chosen) boxes.push({ l: chosen.x - 14, r: chosen.x + 14, t: chosen.tipY - 14, b: chosen.tipY + 14 });
+      // every tip is a bead the figures should not print over
+      sorted.forEach((e, k) => {
+        const amt = Number.isFinite(e.amount) ? e.amount : null;
+        const len = amt == null ? 10 : Math.max(10, stemLen(amt));
+        const tipY = amt == null || amt > 0 ? y - len : y + len;
+        boxes.push({ l: xs[k] - 5, r: xs[k] + 5, t: tipY - 5, b: tipY + 5 });
       });
-      // final pairwise separation for any that still sit within a glyph
-      for (let pass = 0; pass < 3; pass += 1) {
-        for (let i = 0; i < placed.length; i += 1) {
-          for (let j = i + 1; j < placed.length; j += 1) {
-            const a = placed[i], b = placed[j];
-            if (a.up !== b.up) continue;
-            if (Math.abs(a.labelX - b.labelX) > 56) continue;
-            const dy = b.labelY - a.labelY;
-            if (Math.abs(dy) >= FIG_GAP) continue;
-            const push = (FIG_GAP - Math.abs(dy)) / 2 + 0.5;
-            if (a.labelY <= b.labelY) { a.labelY -= push; b.labelY += push; }
-            else { b.labelY -= push; a.labelY += push; }
-            if (!a.up) { a.labelY = Math.min(a.labelY, H - 6); b.labelY = Math.min(b.labelY, H - 6); }
-            if (a.up) { a.labelY = Math.max(a.labelY, 12); b.labelY = Math.max(b.labelY, 12); }
-          }
+      const hit = (a) => boxes.some((b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b);
+      const inside = (yy) => yy - FIG_H >= 0 && yy <= floor;
+      for (const p of [...figurePlan].sort((a, b) => a.x - b.x)) {
+        const w = measure(`orr-ltape__figure${p.amt < 0 ? ' orr-ltape__figure--out' : ''}`, p.text);
+        const slots = [];
+        for (let lane = 0; lane < 3; lane += 1) {
+          const yy = p.up ? p.tipY - 10 - lane * FIG_GAP : p.tipY + 17 + lane * FIG_GAP;
+          slots.push({ x: p.x, yy, anchor: 'middle' });
         }
-      }
-      for (const p of placed) {
+        slots.push({ x: p.x + 9, yy: p.tipY + 4, anchor: 'start' }, { x: p.x - 9, yy: p.tipY + 4, anchor: 'end' });
+        let pick = null;
+        for (const sl of slots) {
+          if (!inside(sl.yy)) continue;
+          let l = sl.anchor === 'start' ? sl.x : sl.anchor === 'end' ? sl.x - w : sl.x - w / 2;
+          // a figure near the origin slides right to clear the axis numerals instead of yielding
+          if (sl.anchor === 'middle' && l < x0 + AXIS_COL + 4) { l = x0 + AXIS_COL + 4; sl.x = l; sl.anchor = 'start'; }
+          const box = { l: l - 3, r: l + w + 3, t: sl.yy - FIG_H, b: sl.yy + 2 };
+          if (hit(box)) continue;
+          pick = { ...sl, box };
+          break;
+        }
+        if (!pick) continue;
+        boxes.push(pick.box);
         const t = svg('text', {
-          x: f(p.labelX),
-          y: f(p.labelY),
-          'text-anchor': p.anchor,
+          x: f(pick.x),
+          y: f(pick.yy),
+          'text-anchor': pick.anchor,
           class: `orr-ltape__figure${p.amt < 0 ? ' orr-ltape__figure--out' : ''}`,
         });
         t.textContent = p.text;
