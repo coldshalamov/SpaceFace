@@ -59,6 +59,13 @@ bundle bytes, save/schema or deterministic simulation effect. Keep it diagnostic
 update through the official wrapper. Existing CDP/Playwright, Spector.js, stats-gl and MemLab
 remain the browser profiling tools. Execution: `design/program/PERF_2026_10_14.md`.
 
+Heap diagnostic intake, 2026-10-15: **[stream-json 3.7.0](https://github.com/uhop/stream-json)**,
+BSD-3-Clause, pinned as a development dependency (414,142 unpacked bytes plus stream-chain).
+The native heap captures exceed V8's single-string limit; existing MemLab's public loader builds
+additional graph indexes, so the two existing heap analysis commands share a streaming loader.
+This offline tool adds no retail bundle bytes and touches no simulation or save data. Maintain
+the exact version with the chunk-boundary and real-capture checks when upgrading.
+
 Inspect `package.json`, the current asset builders, and the release manifests before adding a tool.
 Extend the established glTF Transform, meshoptimizer, KTX2/Basis, Playwright, Three.js, Rapier, and
 Blender/export/validation paths when they already own the required transformation.
