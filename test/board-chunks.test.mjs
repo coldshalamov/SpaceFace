@@ -10,5 +10,5 @@ test('every open board row is in exactly one seam, except the five area lanes', 
   assert.deepEqual(board.missing, []);
   assert.deepEqual(board.dupes, []);
   const free = board.seams.filter((seam) => seam.claim === 'free');
-  assert.ok(free.length >= 5, 'a fresh board has five free seams to claim');
+  assert.ok(free.length >= 1, 'a finished board still has a free seam to claim');
 });

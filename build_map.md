@@ -583,32 +583,32 @@ Ship them or mark them already true inside that row. They are not an alternate q
 
 | Seam | Claim | Files — one agent | Rows, in order |
 |---|---|---|---|
-| picture | done (devin-oct3-40) | renderer, admission, residency | 140, 141, 259 |
-| camera | done | camera, tabletop, hull readability | 218 |
-| boot | done (devin-oct3-40) | boot time, hitch leaves, not the renderer seam | 57 |
-| audio | done | audio system, combat verb cues | 143, 194, 228 |
-| save | done (devin-oct2-batch) | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
-| economy | done (devin-sweep-oct2) | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250, 274 |
-| effects | done | vfx, profiles, cues | 230, 255 |
-| swarm | done (devin-sweep-oct2) | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
-| fight | done | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
-| fields | done | fields | 162 |
-| law | done (devin-oct2-batch) | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
-| discovery | done | scanner, scan reveal | 214 |
-| industry | done | world sites, machinery, mining commitment | 206 |
-| people | done (devin-sweep-oct2) | jobs, aftermath, convoys | 201, 209, 212, 213 |
-| ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 252 |
-| hand | done | flight, tether, massline, onboarding | 106, 220, 238, 275 |
-| missions | done (devin-sweep-oct2) | missions | 83, 84, 85, 86, 188, 189, 211, 222, 254 |
-| world | done | sectors, traffic, factions, news | 243, 244, 245, 248 |
-| story | done (devin-oct2-batch) | story | 192, 215, 216, 253 |
-| input | done (devin-oct2-batch) | gamepad, input, settings behavior | 196, 237, 262 |
-| ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | 197, 246, 276, 277 |
-| physics | done (devin-oct2-batch) | physics clocks, manifest | 258 |
-| accept | free | judge work that is already built; quiet-host session produce/land | 60, 63, 64, 284 |
-| imports | done (devin-sweep-oct2) | doc imports only, after code seams | 30 |
-| art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | 223 |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| picture | done (devin-oct3-40) | renderer, admission, residency | - |
+| camera | done | camera, tabletop, hull readability | - |
+| boot | done (devin-oct3-40) | boot time, hitch leaves, not the renderer seam | - |
+| audio | done | audio system, combat verb cues | - |
+| save | done (devin-oct2-batch) | save system | - |
+| economy | done (devin-sweep-oct2) | economy, contracts, station services | - |
+| effects | done | vfx, profiles, cues | - |
+| swarm | done (devin-sweep-oct2) | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 270, 271, 272, 273 |
+| fight | done | enemies, bombs, countermeasures, squads | - |
+| fields | done | fields | - |
+| law | done (devin-oct2-batch) | law, claims, custody consequences | - |
+| discovery | done | scanner, scan reveal | - |
+| industry | done | world sites, machinery, mining commitment | - |
+| people | done (devin-sweep-oct2) | jobs, aftermath, convoys | - |
+| ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | - |
+| hand | done | flight, tether, massline, onboarding | - |
+| missions | done (devin-sweep-oct2) | missions | - |
+| world | done | sectors, traffic, factions, news | - |
+| story | done (devin-oct2-batch) | story | - |
+| input | done (devin-oct2-batch) | gamepad, input, settings behavior | - |
+| ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | - |
+| physics | done (devin-oct2-batch) | physics clocks, manifest | - |
+| accept | free | judge work that is already built; quiet-host session produce/land | 284 |
+| imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
+| art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 292 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -838,6 +838,7 @@ real missing capability, never by another lane's sitting.
 | 287 | ADMIT-SFQ-M | 36 mission briefs → mission rows; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
 | 288 | ADMIT-SFQ-ART | 36 model-family briefs → rows; routes to L-PICTURE write sets; lanes run in parallel over disjoint brief sets | ADMIT | OPEN — parallel |
 | 291 | ADMIT-DEPTH | `02_REMAINING_WORK.md` Depth roll-up + Alpha M-rows: admitted scope never decomposed → dispatchable leaves; decompose disjoint M-rows and Depth tables in parallel | ADMIT | OPEN — parallel |
+| 292 | SFQ-B111 | A collision names whether it is the pilot's own hull (direct), a body still carrying their fresh cause (indirect), a contact that was never their cause (accidental), or a cause whose window has lapsed (stale). The law card says which, and the same facts always say the same class. | BUILD | OPEN |
 
 ADMIT-SFQ-B, DAG level L0 dispositioned 2026-10-12 (wf-oct12-r285; row 285 stays OPEN — next level L1, 122 nodes). Kahn layering over `catalog/dependency_graph.json` re-computed this sitting: 336 nodes (240 build + 96 inference), 507 edges, zero cycles; layer-0 build candidates are exactly SFQ-B001/B004/B006/B007/B009, all program SFQ-P01 process scope. All five close as already-true; no rows minted, none parked. **B001** (reconcile without a second queue): §1C "The old packet queue (`program-dispatch --next`) is drained. That is not an empty plan" is live law; the pack declares `is_native_queue: false` (`catalog/task_catalog.json`, `catalog/README.md` "No native queue mutation"); and `node scripts/program-dispatch.mjs --next` still exits 0 with its JSON notice — verified this sitting after a checkout-local repair: this box was missing the `archive/pre-squash-2026-09-08` tag that the control-plane validation resolves recorded integrated commits against (they read "unavailable" without it, failing the run), and the tag was re-fetched from origin, where it lives; with it present the run is clean, no unavailable warnings. Residual retired in place: `design/PLAN_REGISTRY.md` still crowned `frontend/direction/FIELD_HARDWARE_PROGRAM.md` "ACTIVE AUTHORITY — outranks every other frontend document on aesthetics" with `direction/approved/` frames outranking it — superseded by the ORRERY direction (owner 2026-09-22 late, root `AGENTS.md` §1; `build_map.md` §20 "CLAIMED 2026-09-26" banner) and the owner ruling of 2026-09-18 that nothing under `direction/approved/` carries owner authority; that registry row now reads HISTORY (registry law: "when it disagrees … fix the registry in the same pass"). **B004** (retire false work from stale diagnoses) — audited: no active instruction sends default-flight fixes into the legacy controllers. Root `AGENTS.md` §5 names `flightV3` + `src/core/flight/` live and `flight.js`/`flightDynamics.js` compatibility-only ("do not edit them for default gameplay fixes"); `docs/MODULE_MAP.md` marks them legacy/default-off and "not the default controllers" (lines 52, 56, 259); `docs/COMMON_BUGS.md:47-53` labels the same; `docs/TASK_ROUTER.md` routes feel work to §13C → FEEL_CONTRACT, not legacy files; the tuning work list itself routes into `propulsionKernel.js` + `flightV3.js` (`docs/TUNING_JOBS.md` row 1, INTEGRATED). The "old cruise" chip-harassment defect is fixed in live code — `src/systems/cruise.js:2-9` ("Drops on meaningful damage… Chip harassment … no longer drops the tier") with `STUMBLE_REARM_S` at :21 and `_isMeaningfulHit` at :145. One stale claim remains: `docs/TUNING_JOBS.md` row 2 still marks that fixed defect `open` — outside this lane's write set, and it is exactly SFQ-I002's brief ("the work list stops claiming the old bug without evidence"): one outcome, one owner — row 286 admits I002 to retire that status cell against the `cruise.js` receipt. **B006** (adopt remote work without regressions): the native adoption contract is live — root `AGENTS.md` §3 (take the remote `design/program/vm-drop/` tree wholesale, `IMPORT_DIGEST/` as the pending-import ledger, per-folder imports on purpose, never write under it locally) + `design/program/VM_LANES.md`; the no-regressions clause has a standing guard in ledger row D175 (drop dead-location hunks on any future `classify-*` import). **B007** (unify the weakness ledger): root `AGENTS.md` §7 names `DEMO_READINESS_2026-09-20.md` §6 the ONE defect list ("Never open a second bug list elsewhere") with rows leaving only by being fixed in the fixing commit; §6's open rows (D185–D190) each name symptom, repro, demo step and evidence — the acceptance's exact shape, verified live this sitting. **B009** (done means playable): the progression B009 says to keep is the live `stateContract` in `design/program/roadmap/program-queue.json` (planned → implemented → focused_green → route_accepted → integrated; `integrationRequires` integratedCommit + acceptanceRef + receipt); route-level truth is the binding player-truth gate (root `AGENTS.md` §9 — FAIL blocks landing, UNKNOWN counts as FAIL); the evidence discipline is §1.6 (player units on a fixed seed, default route, owner's words). All five verdicts cite live-tree files read this sitting; no `src/**` was edited (the pack's `src/core/registry.js` candidate path stays code-outcome-as-row, never inline).
 ADMIT-SFQ-B, DAG level L0 dispositioned 2026-10-12: layer-0 candidates SFQ-B001/B004/B006/B007/B009
