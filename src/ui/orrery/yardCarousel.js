@@ -219,7 +219,7 @@ export function createYardCarousel({ row, host, anchor, hero, art = null, artWid
   let lastSig = null;
   let buildDirty = false;
   let buildFrame = false;
-  const q1 = (v) => Math.round(v * 10) / 10;
+  const q1 = (v) => Math.round(v * 100) / 100;
 
   // `force` (an explicit layout()) always rebuilds; returns whether the pass wrote anything
   function build(force = false) {
