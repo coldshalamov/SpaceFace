@@ -235,32 +235,6 @@ test('player-store 404 exemption requires same-origin GET evidence and exact con
   });
 });
 
-test('late favicon response evidence is matched before cell teardown', async t => {
-  const r = rig(t);
-  r.options.args.shots = ['pause'];
-  r.options.args.viewports = [{ width: 960, height: 540 }];
-  const favicon = 'http://127.0.0.1:9000/favicon.ico';
-  const response = {
-    url: () => favicon, status: () => 404,
-    request: () => ({ method: () => 'GET' }),
-  };
-  const console404 = {
-    type: () => 'error',
-    text: () => 'Failed to load resource: the server responded with a status of 404 (Not Found)',
-    location: () => ({ url: favicon }),
-  };
-  r.options.shoot = async page => {
-    page.emit('console', console404);
-    // This is deliberately scheduled after shoot resolves. The browser can
-    // deliver the response event in the same shape after screenshot/evaluate.
-    setTimeout(() => page.emit('response', response), 0);
-    return { ok: true };
-  };
-  const result = await runUiBenchBatch(r.options);
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.cells[0].errors, []);
-});
-
 test('UI bench request diagnostics remain bounded per page', async t => {
   const r = rig(t);
   r.options.shoot = async page => {

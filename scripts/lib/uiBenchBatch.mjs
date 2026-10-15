@@ -10,10 +10,6 @@ import { isGenericResourceLoadConsoleError } from './browser-issues.mjs';
 const MAX_PAGE_REQUESTS = 10_000;
 const MAX_OPTIONAL_RESPONSE_EVIDENCE = 64;
 const MAX_PENDING_OPTIONAL_CONSOLE_ERRORS = 32;
-// Playwright can deliver the console-side 404 before the matching response,
-// including after the capture promise resolves. Give that one candidate a
-// bounded event-drain window before declaring it unmatched.
-const OPTIONAL_CONSOLE_MATCH_GRACE_MS = 100;
 
 export function parseBenchArgs(argv) {
   const { options: o, positional } = parseOptions(argv, {
@@ -99,7 +95,6 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
       mkdirSync(folder, { recursive: true });
       let context, collecting = true;
       let flushPendingOptionalConsole = () => {};
-      let settlePendingOptionalConsole = async () => {};
       try {
         // Reuse the expensive browser process; isolate storage, listeners, focus and fixtures.
         context = await browser.newContext({ viewport,
@@ -108,18 +103,11 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
         page.setDefaultTimeout(args.timeoutMs);
         const pendingOptionalConsole = [];
         const optionalResponseCredits = new Map();
-        const optionalConsoleWaiters = new Set();
         let optionalResponseCount = 0;
-        const resolveOptionalConsoleWaiters = () => {
-          if (pendingOptionalConsole.length) return;
-          for (const resolve of optionalConsoleWaiters) resolve();
-          optionalConsoleWaiters.clear();
-        };
         const addOptionalResponseEvidence = href => {
           const pendingIndex = pendingOptionalConsole.findIndex(entry => entry.href === href);
           if (pendingIndex >= 0) {
             pendingOptionalConsole.splice(pendingIndex, 1);
-            resolveOptionalConsoleWaiters();
             return;
           }
           if (optionalResponseCount >= MAX_OPTIONAL_RESPONSE_EVIDENCE) return;
@@ -137,21 +125,6 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
         flushPendingOptionalConsole = () => {
           for (const entry of pendingOptionalConsole) errors.push({ ...entry.error, unmatchedOptional404: true });
           pendingOptionalConsole.length = 0;
-          resolveOptionalConsoleWaiters();
-        };
-        settlePendingOptionalConsole = async () => {
-          if (!pendingOptionalConsole.length) return;
-          await new Promise(resolve => {
-            let timer;
-            const waiter = () => {
-              clearTimeout(timer);
-              optionalConsoleWaiters.delete(waiter);
-              resolve();
-            };
-            timer = setTimeout(waiter, OPTIONAL_CONSOLE_MATCH_GRACE_MS);
-            optionalConsoleWaiters.add(waiter);
-          });
-          flushPendingOptionalConsole();
         };
         page.on('pageerror', e => { if (collecting) errors.push({ kind: 'pageerror', message: e.message || String(e) }); });
         page.on('console', msg => {
@@ -188,16 +161,15 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
         const result = await timeout(shoot(page, id, folder, `${server.baseUrl}tools/ui-bench.html`),
           args.timeoutMs, `Cell ${id} exceeded ${args.timeoutMs}ms; remaining cells can still run`);
         // A Chrome resource error may arrive before its response event. Only a
-        // response observed in this page can close that candidate. Keep the
-        // page listeners alive for a short bounded drain after capture returns.
-        await settlePendingOptionalConsole();
+        // response observed in this page can close that candidate.
+        flushPendingOptionalConsole();
         Object.assign(cell, result, { ok: result?.ok === true && errors.length === 0 });
       } catch (error) {
-        await settlePendingOptionalConsole();
+        flushPendingOptionalConsole();
         errors.push({ kind: 'harness', message: error?.message || String(error) });
       }
       finally {
-        await settlePendingOptionalConsole();
+        flushPendingOptionalConsole();
         collecting = false; // Context teardown cancels pending requests; that is not a screen defect.
         if (context) {
           try { await timeout(context.close(), 5000, 'Context cleanup timed out'); }
