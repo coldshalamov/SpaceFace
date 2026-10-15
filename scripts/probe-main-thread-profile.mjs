@@ -30,6 +30,9 @@
 //   --footage-source=default|presented|video|video-frame
 //                         choose the real flight-footage capture source for a steady-flight diagnostic;
 //                         both arms use the same five-second post-first-frame opening delay.
+//   --domain-profile=station|commodity
+//                         choose the diagnostic domain mirror shape before the worker initializes;
+//                         the default empty profile remains unchanged.
 //   --drop-profile=NAME   delete that kept profile and exit
 //   --baseline-source=PATH serve the validated ignored source manifest for an immutable
 //                         historical comparison; assets and unlisted files remain canonical.
@@ -138,6 +141,10 @@ const FIXED_SEED = 47;
 const requestedFootageSource = argValue('--footage-source') || 'default';
 if (!['default', 'presented', 'video', 'video-frame'].includes(requestedFootageSource)) {
   throw new Error(`--footage-source must be default, presented, video or video-frame (received ${requestedFootageSource})`);
+}
+const requestedDomainProfile = argValue('--domain-profile');
+if (requestedDomainProfile != null && !['station', 'commodity'].includes(requestedDomainProfile)) {
+  throw new Error(`--domain-profile must be station or commodity (received ${requestedDomainProfile})`);
 }
 const FOOTAGE_OPENING_DELAY_MS = 5_000;
 // --chromium-arg=--flag lets an A/B run change one browser behaviour (for example
@@ -898,6 +905,9 @@ async function runSteadyFlightProfile(page, cdp) {
       ...evalIdentity, sourceDigest, sourceDigestAfter, sourceStable: sourceDigest === sourceDigestAfter,
       sourceOverlay: sourceOverlayMetadata(),
       probeDigest, displayHz, seed: launchedSeed, requestedSeed: expectedSeed,
+      domainProfileRequested: requestedDomainProfile,
+      domainProfileActual: await page.evaluate(() => window.SF?.simLaneDiag?.()?.domainProfile || 'station')
+        .catch(() => 'station'),
       mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
       observer: 'same-flight-eval', evalFile: EVAL_FILE,
     }, null, 1));
@@ -939,6 +949,7 @@ async function runSteadyFlightProfile(page, cdp) {
       userAgent: navigator.userAgent, gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : null,
       viewport: [innerWidth, innerHeight], buffer: [gl?.drawingBufferWidth, gl?.drawingBufferHeight],
       settings: JSON.parse(JSON.stringify(st.settings || {})), simLane: window.SF.simLaneDiag ? 'worker' : 'main',
+      domainProfileActual: window.SF.simLaneDiag?.()?.domainProfile || 'station',
     };
   });
   if (!CADENCE_ONLY) await cdp.send('Profiler.start');
@@ -971,6 +982,8 @@ async function runSteadyFlightProfile(page, cdp) {
     sourceOverlay: sourceOverlayMetadata(),
     mode: RACING ? 'racing' : GAUNTLET ? 'gauntlet' : CRUCIBLE ? 'swarm' : 'adventure',
     seed: launchedSeed, requestedSeed: expectedSeed,
+    domainProfileRequested: requestedDomainProfile,
+    domainProfileActual: identity.domainProfileActual,
     requestedFootageSource, footageOpeningDelayMs: FOOTAGE_OPENING_DELAY_MS,
     sampleMs: WINDOW_MS, settleMs: SETTLE_MS, travelMs: TRAVEL_MS,
     clockStart, clockEnd,
@@ -1216,6 +1229,9 @@ const { _electron: electron } = await loadPlaywright();
 const baseEnv = {
   ...process.env,
   SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1',
+  // electron/preload.cjs copies this into a private boot key before any game
+  // module evaluates; blank clears a prior diagnostic arm.
+  SPACEFACE_DOMAIN_PROFILE: requestedDomainProfile || '',
   ...(baselineSourceManifestPath
     ? { SPACEFACE_BASELINE_SOURCE_MANIFEST: baselineSourceManifestPath }
     : {}),

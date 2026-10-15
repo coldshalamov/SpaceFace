@@ -53,10 +53,17 @@ export function createStrictElectronPageIssueTracker(page) {
   };
 }
 
-export function createStrictElectronApplicationIssueTracker(electronApp) {
+export function createStrictElectronApplicationIssueTracker(electronApp, options = {}) {
   const context = typeof electronApp?.context === 'function' ? electronApp.context() : null;
+  const allowAbsentPlayerStore = options.playerStoreMounted === false;
+  const allowCancelledCinematicMedia = options.allowCancelledMedia === true;
   const issues = [];
   const ignoredIssues = [];
+  // Chromium reports a store-less 404 twice: once as the response and once as a generic
+  // console resource-load error with no URL. Keep a response token for the immediately
+  // following console event instead of suppressing arbitrary generic 404 console errors.
+  let expectedAbsentStoreConsoleTokens = 0;
+  const pendingGenericNotFoundConsoles = [];
   const removers = [];
   const boundPages = new WeakSet();
   const backfillPromises = new WeakMap();
@@ -98,11 +105,34 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
     telemetry?.push?.(event);
     return true;
   };
+  const pushIgnored = (issue, reason) => {
+    ignoredIssues.push({
+      ...issue,
+      at: issue.at || new Date().toISOString(),
+      level: 'diagnostic',
+      ...reason,
+    });
+  };
+  const flushPendingGenericNotFoundConsoles = () => {
+    while (pendingGenericNotFoundConsoles.length > 0) push(pendingGenericNotFoundConsoles.shift());
+  };
   const recordConsole = (message) => {
     if (!markOnce(seenConsoleMessages, message)) return;
     const level = readMaybeFunction(message, 'type') || 'unknown';
     if (level === 'error' || level === 'warning') {
-      push({ source: 'console', level, text: readMaybeFunction(message, 'text') || '' });
+      const issue = { source: 'console', level, text: readMaybeFunction(message, 'text') || '' };
+      if (allowAbsentPlayerStore && level === 'error' && isGenericNotFoundConsole(issue.text)) {
+        if (expectedAbsentStoreConsoleTokens > 0) {
+          expectedAbsentStoreConsoleTokens -= 1;
+          pushIgnored(issue, { absentPlayerStoreConsole: true });
+        } else {
+          // A generic console message cannot identify its failed URL. Hold it until the
+          // next response proves whether an exact store 404 was adjacent; if not, flush it.
+          pendingGenericNotFoundConsoles.push({ at: new Date().toISOString(), ...issue });
+        }
+        return;
+      }
+      push(issue);
     }
   };
   const recordPageError = (error) => {
@@ -155,12 +185,11 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
       },
     };
     if (expectedNavigation && isExactNavigationCancellation(failure)) {
-      ignoredIssues.push({
-        at: new Date().toISOString(),
-        ...issue,
-        level: 'diagnostic',
-        expectedNavigation: [...expectedNavigation],
-      });
+      pushIgnored(issue, { expectedNavigation: [...expectedNavigation] });
+      return;
+    }
+    if (allowCancelledCinematicMedia && isCancelledCinematicMediaRequest(request, failure)) {
+      pushIgnored(issue, { cancelledCinematicMedia: true });
       return;
     }
     push(issue);
@@ -169,7 +198,25 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
     if (!response || !markOnce(seenResponses, response)) return;
     const status = Number(readMaybeFunction(response, 'status'));
     if (status >= 400) {
-      push({ source: 'response', level: 'error', text: `HTTP ${status} ${readMaybeFunction(response, 'url') || ''}` });
+      const url = readMaybeFunction(response, 'url') || '';
+      // Any generic 404 console message seen before this response cannot be tied to this
+      // response, so keep it fatal. This makes the console exception sequence-exact rather
+      // than a loose count of all 404s in the application.
+      flushPendingGenericNotFoundConsoles();
+      const issue = { source: 'response', level: 'error', text: `HTTP ${status} ${url}` };
+      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url)) {
+        expectedAbsentStoreConsoleTokens += 1;
+        pushIgnored(issue, { absentPlayerStore: true });
+        return;
+      }
+      // A different response between the exact store response and its console twin makes
+      // the generic message ambiguous; leave the next one strict as well.
+      expectedAbsentStoreConsoleTokens = 0;
+      push(issue);
+    } else {
+      // A successful/intermediate response between the exact store response and its
+      // console twin makes the next generic 404 ambiguous, so fail closed.
+      expectedAbsentStoreConsoleTokens = 0;
     }
   };
   const bindPage = (page) => {
@@ -259,8 +306,14 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
 
   return {
     bindAndBackfillPage,
-    all: () => issues.slice(),
-    errors: () => issues.filter((issue) => issue.level === 'error'),
+    all: () => {
+      flushPendingGenericNotFoundConsoles();
+      return issues.slice();
+    },
+    errors: () => {
+      flushPendingGenericNotFoundConsoles();
+      return issues.filter((issue) => issue.level === 'error');
+    },
     ignored: () => ignoredIssues.slice(),
     setPhase(nextPhase) {
       currentPhase = String(nextPhase || 'unspecified');
@@ -293,6 +346,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
       }])),
     }),
     stop() {
+      flushPendingGenericNotFoundConsoles();
       if (!stopped) {
         for (const remove of removers.splice(0)) remove();
         stopped = true;
@@ -304,6 +358,37 @@ export function createStrictElectronApplicationIssueTracker(electronApp) {
 
 function isExactNavigationCancellation(failure) {
   return /^net::ERR_ABORTED$/i.test(String(failure?.errorText || '').trim());
+}
+
+function isGenericNotFoundConsole(text) {
+  return /^Failed to load resource: the server responded with a status of 404 \(Not Found\)$/i
+    .test(String(text || '').trim());
+}
+
+function isAbsentPlayerStoreGetResponse(response, status, url) {
+  if (status !== 404) return false;
+  let pathname = '';
+  try {
+    pathname = new URL(String(url || '')).pathname;
+  } catch (_) {
+    return false;
+  }
+  if (pathname !== '/__spaceface_player_store') return false;
+  const request = readMaybeFunction(response, 'request');
+  const method = String(readMaybeFunction(request, 'method') || '').toUpperCase();
+  // Playwright responses expose request(); without a method there is no safe way to
+  // distinguish the optional bootstrap GET from a failed write, so keep it fatal.
+  return method === 'GET';
+}
+
+function isCancelledCinematicMediaRequest(request, failure) {
+  if (!isExactNavigationCancellation(failure)) return false;
+  let resourceType = '';
+  try { resourceType = String(readMaybeFunction(request, 'resourceType') || '').toLowerCase(); } catch (_) { /* best effort */ }
+  if (resourceType !== 'media') return false;
+  let pathname = '';
+  try { pathname = new URL(String(readMaybeFunction(request, 'url') || '')).pathname; } catch (_) { return false; }
+  return pathname.startsWith('/assets/cinematics/');
 }
 
 export function createElectronCanonicalUrlTracker(targetPage, options = {}) {

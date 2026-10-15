@@ -283,6 +283,41 @@ test('worker-local deadline scheduling keeps cadence across async tick work', as
   }
 });
 
+test('active ACK publishes only a contiguous retained reply and fails closed on a journal gap', async () => {
+  const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
+  const previousSelf = globalThis.self;
+  globalThis.self = { postMessage() {} };
+  try {
+    const worker = await import(`../src/core/wholeSimBrowserWorker.js?ack-retained-${Date.now()}`);
+    const retained = { journalStart: 42, journalEnd: 48 };
+    assert.equal(
+      worker.localAckReplyAction(retained, { ackJournalEnd: 42, active: true, scale: 1 }),
+      'publish',
+      'an active ACK can publish the already-merged contiguous reply immediately',
+    );
+    assert.equal(
+      worker.localAckReplyAction(retained, { ackJournalEnd: 41, active: true, scale: 1 }),
+      'schedule-rebuild',
+      'a retained range that starts after the ACK watermark must wait for a rebuild tick',
+    );
+    assert.equal(
+      worker.localAckReplyAction(retained, {
+        ackJournalEnd: 42, active: true, scale: 1, needsRebuild: true,
+      }),
+      'schedule-rebuild',
+      'an explicit rebuild marker cannot take the direct publish path',
+    );
+    assert.equal(
+      worker.localAckReplyAction(retained, { ackJournalEnd: 42, active: false, scale: 1 }),
+      'schedule',
+      'inactive clocks preserve their immediate maintenance path',
+    );
+  } finally {
+    if (hadSelf) globalThis.self = previousSelf;
+    else delete globalThis.self;
+  }
+});
+
 test('coalesced journal keeps generation reuse ordering, type remaps, and SAB bounds', { timeout: 60000 }, async (t) => {
   const hadSelf = Object.prototype.hasOwnProperty.call(globalThis, 'self');
   const previousSelf = globalThis.self;

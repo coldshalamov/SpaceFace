@@ -630,7 +630,7 @@ function openSell(state) {
   return { screen, emitted };
 }
 
-function openSellWithEventBus(state, quoteState) {
+function openSellWithEventBus(state, quoteState, tradeMode = 'sell') {
   const emitted = [];
   const handlers = new Map();
   const bus = {
@@ -663,7 +663,7 @@ function openSellWithEventBus(state, quoteState) {
     },
   });
   document.body.appendChild(screen.el);
-  screen.onShow({ tradeMode: 'sell', state });
+  screen.onShow({ tradeMode, state });
   return { screen, emitted, bus };
 }
 
@@ -792,6 +792,35 @@ test('NXI-098: a worker price refusal refreshes the next sell terms from the aut
     const sell = emitted.find((entry) => entry.name === 'ui:sell');
     assert.equal(sell && sell.payload.expectedTotal, 29,
       'the retry binds to the worker refusal, not the stale facade total');
+    screen.dispose();
+  } finally {
+    dom.restore();
+  }
+});
+
+test('NXI-098: quantity planning probes do not clear an authoritative buy refusal', () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 0);
+    const quoteState = { total: 30 };
+    const { screen, emitted, bus } = openSellWithEventBus(state, quoteState, 'buy');
+    const food = row(screen, FOOD);
+    assert.ok(food, 'the buy register lists the selected lot');
+    food.click();
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false);
+
+    // The refusal is authoritative at 31, while the main facade still quotes 30.
+    // Rendering the buy limit probes larger quantities before repainting quantity 1.
+    bus.emit('economy:tradeFailed', {
+      stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1,
+      reason: 'price_changed', expectedTotal: 30, liveTotal: 31,
+    });
+    assert.match(screen.el.querySelector('[data-trade-total]').getAttribute('aria-label'), /31/);
+
+    screen.el.querySelector('[data-go]').click();
+    const buy = emitted.find((entry) => entry.name === 'ui:buy');
+    assert.equal(buy && buy.payload.expectedTotal, 31,
+      'the retry keeps the worker refusal after quantity-limit planning probes');
     screen.dispose();
   } finally {
     dom.restore();

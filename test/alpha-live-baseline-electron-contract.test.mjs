@@ -312,6 +312,98 @@ async function testApplicationWideIssueTrackerAndBackfill() {
   optionalTracker.stop();
 }
 
+async function testOptInExpectedSoakNetworkPolicy() {
+  const genericNotFound = 'Failed to load resource: the server responded with a status of 404 (Not Found)';
+  const context = new EventEmitter();
+  const electronApp = new EventEmitter();
+  electronApp.context = () => context;
+  const tracker = createStrictElectronApplicationIssueTracker(electronApp, {
+    playerStoreMounted: false,
+    allowCancelledMedia: true,
+  });
+  const storeGet = {
+    status: () => 404,
+    url: () => `${CANONICAL}__spaceface_player_store`,
+    request: () => ({ method: () => 'GET' }),
+  };
+  context.emit('response', storeGet);
+  // The response token is consumed only by the next generic 404 console event. There is no
+  // loose “any 404 count” exemption that could hide an unrelated resource failure.
+  context.emit('console', fakeConsoleMessage('error', genericNotFound));
+  const cinematicAbort = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}assets/cinematics/intro-visualizer.mp4`,
+    resourceType: () => 'media',
+    failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+  };
+  context.emit('request', cinematicAbort);
+  context.emit('requestfailed', cinematicAbort);
+  assert.equal(tracker.errors().length, 0,
+    'the explicitly opt-in store-less soak policy excuses only the exact paired events');
+  assert(tracker.ignored().some((issue) => issue.absentPlayerStore === true),
+    'the exact absent player-store response is retained as diagnostic evidence');
+  assert(tracker.ignored().some((issue) => issue.absentPlayerStoreConsole === true),
+    'the generic 404 console twin is ignored only after an exact store response token');
+  assert(tracker.ignored().some((issue) => issue.cancelledCinematicMedia === true),
+    'the cancelled cinematic media request is retained as diagnostic evidence');
+  tracker.stop();
+
+  const negativeContext = new EventEmitter();
+  const negativeApp = new EventEmitter();
+  negativeApp.context = () => negativeContext;
+  const negativeTracker = createStrictElectronApplicationIssueTracker(negativeApp, {
+    playerStoreMounted: false,
+    allowCancelledMedia: true,
+  });
+  negativeContext.emit('response', {
+    status: () => 404,
+    url: () => `${CANONICAL}__spaceface_player_store`,
+    request: () => ({ method: () => 'PUT' }),
+  });
+  negativeContext.emit('response', {
+    status: () => 500,
+    url: () => `${CANONICAL}__spaceface_player_store`,
+    request: () => ({ method: () => 'GET' }),
+  });
+  negativeContext.emit('response', {
+    status: () => 404,
+    url: () => `${CANONICAL}other-resource.json`,
+    request: () => ({ method: () => 'GET' }),
+  });
+  const nonMediaAbort = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}assets/cinematics/intro-visualizer.mp4`,
+    resourceType: () => 'xhr',
+    failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+  };
+  negativeContext.emit('request', nonMediaAbort);
+  negativeContext.emit('requestfailed', nonMediaAbort);
+  const failedMedia = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}assets/cinematics/intro-visualizer.mp4`,
+    resourceType: () => 'media',
+    failure: () => ({ errorText: 'net::ERR_FAILED' }),
+  };
+  negativeContext.emit('request', failedMedia);
+  negativeContext.emit('requestfailed', failedMedia);
+  negativeContext.emit('console', fakeConsoleMessage('error', genericNotFound));
+  assert.equal(negativeTracker.errors().length, 6,
+    'store PUT/500, unrelated 404, non-media abort, failed media, and unpaired generic 404 remain fatal');
+  negativeTracker.stop();
+
+  const strictContext = new EventEmitter();
+  const strictApp = new EventEmitter();
+  strictApp.context = () => strictContext;
+  const strictTracker = createStrictElectronApplicationIssueTracker(strictApp);
+  strictContext.emit('response', storeGet);
+  strictContext.emit('console', fakeConsoleMessage('error', genericNotFound));
+  strictContext.emit('request', cinematicAbort);
+  strictContext.emit('requestfailed', cinematicAbort);
+  assert.equal(strictTracker.errors().length, 3,
+    'the default application tracker remains strict when no soak policy is supplied');
+  strictTracker.stop();
+}
+
 async function testElectronUrlLifecycle() {
   const bootPage = new FakePage('about:blank');
   const bootTracker = createElectronCanonicalUrlTracker(bootPage, {
@@ -1183,6 +1275,7 @@ function delay(ms) {
 
 await testStrictPageIssueTracker();
 await testApplicationWideIssueTrackerAndBackfill();
+await testOptInExpectedSoakNetworkPolicy();
 await testElectronUrlLifecycle();
 await testProcessMonitorAndCrashRejection();
 await testOwnedElectronCleanup();

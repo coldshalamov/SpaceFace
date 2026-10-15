@@ -27,6 +27,7 @@
 //   node scripts/sf-sim-worker-spike.mjs [--ticks 720] [--seed 47]
 //     [--inputs test/47a.inputs.json] [--reload-at 600] [--repeat 1]
 //     [--pipeline N] [--journal-capacity N] [--ack-stall] [--consume-batch N]
+//     [--market-wire station|commodity|commodity-nohist]
 //     [--probe pause|aux|churn|domains|commands|market-parity|crash]
 //     [--sim-lane worker|main] [--canary] [--expected-hash <sha256>] [--json]
 //   SIM_LANE=main env var is equivalent to --sim-lane main.
@@ -81,6 +82,7 @@ import {
   applySpawnInfos,
   canonicalSignature,
   configureDomainMirroring,
+  createDomainMirroringProfile,
   createDomainProbeChecker,
   createReadModel,
   digestIds,
@@ -487,30 +489,7 @@ async function runBody(client, frames, options = {}) {
   // Item B wire profile — installed in THIS realm before the facade probe
   // exists, and shipped on init so the worker realm's differ signs/projects
   // identically. 'station' sends an empty profile = stage-6 byte-identical.
-  const marketWireProfile = OPT.marketWire === 'station' ? {} : {
-    expandPaths: [
-      { segs: ['economy', 'markets'], depth: 3 },
-      { segs: ['economy', 'cycles'], depth: 3 },
-    ],
-    leafViews: [
-      // 'commodity' keeps every render-lane-consumed path on the wire (the
-      // market screen charts entry.history — census contract). The
-      // 'commodity-nohist' variant projects the 64-point price history ring
-      // off the wire instead (89.7% of a station leaf's canonical bytes) to
-      // measure the ceiling; it is only safe once the two no-op-safe readers
-      // (priceHistory backfill, market screen chart) switch to the
-      // 'marketHistory' rpc.
-      {
-        segs: ['economy', 'markets'], leafSegs: 4,
-        drop: OPT.marketWire === 'commodity-nohist' ? ['history'] : [],
-        deferFirstSign: true, firstSignTicks: 60,
-      },
-      // cycles: no projected field — expansion + deferred mints alone kill the
-      // ~24KB-per-station mint bursts (~440KB single ticks measured).
-      { segs: ['economy', 'cycles'], leafSegs: 4, drop: [], deferFirstSign: true, firstSignTicks: 60 },
-    ],
-    staggerCold: true,
-  };
+  const marketWireProfile = createDomainMirroringProfile(OPT.marketWire);
   configureDomainMirroring(marketWireProfile);
   const world = createPresentationWorld();
   const publisher = createPresentationPublisher(world, readModel, { journal });
