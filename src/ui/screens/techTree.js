@@ -529,6 +529,9 @@ export const techTreeScreen = {
     this._syncSidebar();
     if (this._sky) this._sky.choose(id);
     if (changed) this._decryptName();
+    // On a short frame the reading scrolls inside its own column; a new choice reads from its name.
+    const side = changed && this._els && this._els.selected && this._els.selected.parentNode;
+    if (side && side.scrollTop) side.scrollTop = 0;
   },
 
   /** The chosen node's name resolves like telemetry when the choice changes. */
