@@ -11034,32 +11034,121 @@ function disableRigidOpaqueBatchProbe(owner, reason = 'bench-disabled') {
   return diagnostics;
 }
 
-function createRigidOpaqueBatchProbe(owner, scene) {
+// The retained rigid path is deliberately narrow on the live route. These are the surfaces
+// whose authored/material contracts are known to remain rigid within the player Kestrel root:
+// the cold retro shell/body/trim pair and the immutable Kestrel LOD0 mechanical cohorts. The
+// motion-tagged entries are admitted only through the explicit transform-only callback below;
+// the policy still rejects drive/fan/turret/damage/canopy/nav/custom-shader ownership.
+const RIGID_KESTREL_COHORT_SOURCE_NAMES = new Set([
+  'Retro_Shell_Port', 'Retro_Shell_Starboard',
+  'Retro_Body_Port', 'Retro_Body_Starboard',
+  'Retro_Trim_Port', 'Retro_Trim_Starboard',
+  'LOD0_Beacon_Amber_beacon',
+  'LOD0_Mechanical',
+  'LOD0_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_1_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_2_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_3_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_4_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_5_MechanicalDark',
+  'LOD0_MOTION_KESTREL_MINING_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_MINING_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical',
+  'LOD0_MOTION_KESTREL_STRUT_F_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_P_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_S_MechanicalDark',
+]);
+
+const RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES = new Set([
+  'Retro_Shell_Port', 'Retro_Shell_Starboard',
+  'Retro_Body_Port', 'Retro_Body_Starboard',
+  'Retro_Trim_Port', 'Retro_Trim_Starboard',
+  'LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_1_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_2_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_3_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_4_MechanicalDark',
+  'LOD0_MOTION_KESTREL_IRIS_5_MechanicalDark',
+  'LOD0_MOTION_KESTREL_MINING_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_MINING_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Beacon_Amber',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_Mechanical',
+  'LOD0_MOTION_KESTREL_POD_ARM_ELBOW_MechanicalDark',
+  'LOD0_MOTION_KESTREL_POD_ARM_SHOULDER_Mechanical',
+  'LOD0_MOTION_KESTREL_STRUT_F_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_P_MechanicalDark',
+  'LOD0_MOTION_KESTREL_STRUT_S_MechanicalDark',
+]);
+
+function isRigidOpaqueKestrelPlayerRoot(owner, root) {
   const state = owner?.state;
+  const playerId = state?.playerId;
+  if (playerId == null || !root || owner?._meshes?.get?.(playerId) !== root) return false;
+  const entity = state?.entities?.get?.(playerId);
+  const defId = entity?.data?.defId || root.userData?.presentationShipDefId;
+  return defId === 'ship_kestrel';
+}
+
+function isRigidOpaqueKestrelPlayerSource(owner, source) {
+  const root = owner?._meshes?.get?.(owner?.state?.playerId);
+  if (!isRigidOpaqueKestrelPlayerRoot(owner, root) || !source) return false;
+  let current = source;
+  while (current && current !== root) current = current.parent;
+  return current === root;
+}
+
+function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
+  const state = owner?.state;
+  const defaultCohort = options.defaultCohort === true;
+  const selectSource = defaultCohort
+    ? (source) => isRigidOpaqueKestrelPlayerSource(owner, source)
+      && RIGID_KESTREL_COHORT_SOURCE_NAMES.has(source?.name)
+    : undefined;
+  const isTransformOnlySource = defaultCohort
+    ? (source) => isRigidOpaqueKestrelPlayerSource(owner, source)
+      && RIGID_KESTREL_TRANSFORM_ONLY_SOURCE_NAMES.has(source?.name)
+    : undefined;
   return createRetainedRigidOpaqueBatchController({
     scene,
     supported: owner?._opaqueBatchSupported === true,
     assumeUniqueRoots: true,
+    selectSource,
+    isTransformOnlySource,
     prepare: async (batches, context = {}) => {
-      const compile = state?.render?.compileObjectPipelines;
+      const renderState = state?.render;
+      const compile = renderState?.compileObjectPipelines;
       if (typeof compile !== 'function') return { skipped: true, reason: 'compile-unavailable' };
+      const world = state.world, generation = renderState.admissionRunGeneration;
+      const serial = world?.enterSerial, sector = world?.currentSectorId;
+      const restore = state.contextRestoreSeq, nativeRenderer = owner.renderer;
+      const loading = state.mode === 'loading';
+      const isActive = () => owner.state === state && state.render === renderState
+        && state.world === world && world?.enterSerial === serial && world?.currentSectorId === sector
+        && renderState.admissionRunGeneration === generation && state.contextRestoreSeq === restore
+        && owner.renderer === nativeRenderer && owner._contextLost !== true
+        && owner._rendererResourcesDisposed !== true && (!loading || state.mode === 'loading')
+        && (typeof context.isActive !== 'function' || context.isActive() === true);
       for (const batch of batches || []) {
-        if (owner?._contextLost === true || owner?._rendererResourcesDisposed === true
-            || (typeof context.isActive === 'function' && context.isActive() !== true)) {
-          return { skipped: true, reason: 'candidate-superseded' };
-        }
+        if (!isActive()) return { skipped: true, reason: 'candidate-superseded' };
         const result = await Promise.resolve(compile(batch, {
           explicit: true,
           strict: true,
           joinOutstanding: true,
+          // The loading facade otherwise returns a skipped receipt and queues detached ambient
+          // work. This finite default cohort must finish compile/residency/exact touch before seal.
+          openingRequired: defaultCohort && loading,
           debugBy: 'rigid-opaque-batch',
-          isActive: () => owner?._contextLost !== true
-            && owner?._rendererResourcesDisposed !== true
-            && (typeof context.isActive !== 'function' || context.isActive() === true),
+          isActive,
         }));
+        if (!isActive()) return { skipped: true, reason: 'candidate-superseded' };
         if (!result || result.skipped === true) {
           return { skipped: true, reason: result && result.reason || 'compile-incomplete' };
         }
+        assertCompleteAppearanceAdmission(result);
       }
       return { ready: true };
     },
@@ -11222,12 +11311,14 @@ export const render = {
     // write skip. With the compose off, the per-frame walk only rewrites subtrees whose nodes
     // actually re-posed this frame.
     scene.matrixAutoUpdate = false;
-    // Controlled A/B only: the retained rigid candidate is opt-in and requires the same
-    // WEBGL_multi_draw capability as the existing opaque bridge. Its source leaves remain in the
-    // ordinary path until the exact pipeline + residency callback below resolves successfully.
-    this._rigidOpaqueBatchProbeEnabled = !!(
-      query && query.get('rigidOpaqueBatch') === '1' && this._opaqueBatchSupported
-    );
+    // The live route uses the retained rigid candidate only for the exact Kestrel player cohort
+    // below. `?rigidOpaqueBatch=1` remains the broad diagnostic probe for the existing bench;
+    // both paths retain direct source draws until the exact pipeline + residency callback below
+    // resolves successfully. A supported GPU therefore gets the bounded default without making
+    // the bench flag part of the player route.
+    const rigidOpaqueBatchBenchRequested = !!(query && query.get('rigidOpaqueBatch') === '1');
+    this._rigidOpaqueBatchDefaultCohort = !rigidOpaqueBatchBenchRequested;
+    this._rigidOpaqueBatchProbeEnabled = this._opaqueBatchSupported === true;
     this._rigidOpaqueBatchScene = scene;
     this._rigidOpaqueBatchRootsScratch = [];
     this._rigidOpaqueBatchController = null;
@@ -11238,7 +11329,10 @@ export const render = {
     state.render.rigidOpaqueBatch = this._rigidOpaqueBatchLastDiagnostics;
     state.render.setRigidOpaqueBatchForBench = (enabled) => this.setRigidOpaqueBatchForBench(enabled);
     state.render.getRigidOpaqueBatchDiagnosticsForBench = () => this.getRigidOpaqueBatchDiagnosticsForBench();
-    if (this._rigidOpaqueBatchProbeEnabled) this.setRigidOpaqueBatchForBench(true);
+    if (this._rigidOpaqueBatchProbeEnabled) {
+      if (rigidOpaqueBatchBenchRequested) this.setRigidOpaqueBatchForBench(true);
+      else this._enableRigidOpaqueBatch(true);
+    }
     const dynamicBuffers = createDynamicBufferCoordinator(scene);
     this._dynamicBuffers = dynamicBuffers;
     state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
@@ -14131,13 +14225,7 @@ export const render = {
       // These renderer-owned pools are real first-picture draw roots once the final entity frame
       // populates them. They are not entity children and therefore cannot be discovered by the
       // entity-root census above.
-      const derivedPoolRoots = [
-        this._contactShadowPool && this._contactShadowPool.mesh,
-        this._shipAuxPool && this._shipAuxPool.shield && this._shipAuxPool.shield.mesh,
-        this._shipAuxPool && this._shipAuxPool.nav && this._shipAuxPool.nav.mesh,
-        ...collectAuthoredInstancePoolRoots(scene),
-        ...collectAsteroidInstancePoolRoots(this._asteroidInstancePool),
-      ];
+      const derivedPoolRoots = this._collectOpeningDerivedPoolRoots();
       for (const root of derivedPoolRoots) {
         if (collectOpeningSubmissionLeaves(root, { camera: submissionCamera }).length === 0) continue;
         addCandidate(root, {
@@ -28933,8 +29021,7 @@ export const render = {
   // Enabling is transactional: the controller keeps direct sources visible until its existing
   // compile/residency callback resolves. Disabling disposes the retained copies first, which
   // restores every source leaf before the next ordinary submission.
-  setRigidOpaqueBatchForBench(enabled) {
-    if (enabled !== true) return disableRigidOpaqueBatchProbe(this, 'bench-disabled');
+  _enableRigidOpaqueBatch(defaultCohort = false) {
     if (this._contextLost === true || this._rendererResourcesDisposed === true) {
       return disableRigidOpaqueBatchProbe(this, this._contextLost === true ? 'context-lost' : 'renderer-disposed');
     }
@@ -28943,13 +29030,31 @@ export const render = {
     }
     const scene = this.scene || this._rigidOpaqueBatchScene;
     if (!scene) return disableRigidOpaqueBatchProbe(this, 'scene-unavailable');
+    const requestedDefaultCohort = defaultCohort === true;
+    if (this._rigidOpaqueBatchController
+        && this._rigidOpaqueBatchDefaultCohort !== requestedDefaultCohort) {
+      // A bench can be armed after the default cohort has already activated. Dispose the old
+      // retained copies first so every source returns to the direct path before replanning the
+      // broader diagnostic candidate.
+      try { this._rigidOpaqueBatchController.dispose?.(); } catch (_) { /* best-effort restore */ }
+      this._rigidOpaqueBatchController = null;
+      if (this._rigidOpaqueBatchRootsScratch) this._rigidOpaqueBatchRootsScratch.length = 0;
+    }
     if (!this._rigidOpaqueBatchController) {
       this._rigidOpaqueBatchScene = scene;
-      this._rigidOpaqueBatchController = createRigidOpaqueBatchProbe(this, scene);
+      this._rigidOpaqueBatchController = createRigidOpaqueBatchProbe(this, scene, {
+        defaultCohort: requestedDefaultCohort,
+      });
+      this._rigidOpaqueBatchDefaultCohort = requestedDefaultCohort;
     }
     this._rigidOpaqueBatchProbeEnabled = true;
     if (this.state?.mode !== 'loading') this._syncRigidOpaqueBatchProbe?.();
     return { ...publishRigidOpaqueBatchDiagnostics(this) };
+  },
+
+  setRigidOpaqueBatchForBench(enabled) {
+    if (enabled !== true) return disableRigidOpaqueBatchProbe(this, 'bench-disabled');
+    return this._enableRigidOpaqueBatch(false);
   },
 
   getRigidOpaqueBatchDiagnosticsForBench() {
@@ -28958,30 +29063,53 @@ export const render = {
     return { ...publishRigidOpaqueBatchDiagnostics(this) };
   },
 
-  // Diagnostic-only retained rigid candidate. The normal path has no extra root walk and keeps
-  // the proven authored pool bridge unchanged; when explicitly armed, use the renderer's already
-  // resident entity-root map so hidden/camera-culled roots remain represented in the batch and can
-  // toggle per-instance visibility without repeatedly rebuilding the candidate.
+  // Retained rigid candidate. The default path walks only the already-resident player root; the
+  // explicit bench scope keeps the broader entity-root census so hidden/camera-culled roots remain
+  // represented and can toggle per-instance visibility without rebuilding the candidate.
   _syncRigidOpaqueBatchProbe() {
     const controller = this._rigidOpaqueBatchController;
     const state = this.state;
     if (!controller || this._rigidOpaqueBatchProbeEnabled !== true || !this._meshes) return;
-    if (state && state.mode === 'loading') return;
+    // The bounded default is allowed to submit its existing loading admission here. The prepare
+    // callback joins the renderer's paced compile queue and the controller keeps direct leaves
+    // visible until that queue resolves; this prewarms a supported Kestrel without adding a new
+    // first-flight shader/upload burst. The broad bench probe retains its old loading exclusion.
+    if (state && state.mode === 'loading' && this._rigidOpaqueBatchDefaultCohort !== true) return;
     const roots = this._rigidOpaqueBatchRootsScratch || (this._rigidOpaqueBatchRootsScratch = []);
     roots.length = 0;
-    for (const root of this._meshes.values()) {
-      if (!root || typeof root.traverse !== 'function') continue;
-      const userData = root.userData || {};
-      const authored = userData.authoredAssetState != null
-        || userData.authoredRenderContract != null
-        || userData.renderContract != null
-        || typeof userData.requestAuthoredUpgrade === 'function';
-      if (authored) roots.push(root);
+    if (this._rigidOpaqueBatchDefaultCohort === true) {
+      const playerRoot = this._meshes.get(state?.playerId);
+      if (isRigidOpaqueKestrelPlayerRoot(this, playerRoot)
+          && typeof playerRoot.traverse === 'function') roots.push(playerRoot);
+    } else {
+      for (const root of this._meshes.values()) {
+        if (!root || typeof root.traverse !== 'function') continue;
+        const userData = root.userData || {};
+        const authored = userData.authoredAssetState != null
+          || userData.authoredRenderContract != null
+          || userData.renderContract != null
+          || typeof userData.requestAuthoredUpgrade === 'function';
+        if (authored) roots.push(root);
+      }
     }
-    void controller.sync(roots);
+    const completion = controller.sync(roots);
     if (state && state.render) {
       state.render.rigidOpaqueBatch = controller.getDiagnostics();
     }
+    return completion;
+  },
+
+  _collectOpeningDerivedPoolRoots() {
+    return [
+      this._contactShadowPool && this._contactShadowPool.mesh,
+      this._shipAuxPool && this._shipAuxPool.shield && this._shipAuxPool.shield.mesh,
+      this._shipAuxPool && this._shipAuxPool.nav && this._shipAuxPool.nav.mesh,
+      ...collectAuthoredInstancePoolRoots(this.scene),
+      ...collectAsteroidInstancePoolRoots(this._asteroidInstancePool),
+      // Retained copies are scene-owned, while the semantic player leaves use layer mask 0.
+      // Include the actual submitted roots in the exact first-picture producer/resource census.
+      ...(this.scene?.children || []).filter(root => root.userData?.spacefaceRigidOpaqueBatch === true),
+    ];
   },
 
   _syncWorldPresentationTableMeshes() {
@@ -29308,6 +29436,10 @@ export const render = {
       },
     )).map((candidate) => candidate.root));
     const pending = new Set();
+    if (state?.mode === 'loading' && this._rigidOpaqueBatchDefaultCohort === true) {
+      const retained = this._syncRigidOpaqueBatchProbe();
+      if (retained && typeof retained.then === 'function') pending.add(retained);
+    }
     let upgradeVisited = 0;
     // Same stride-cost bound as the shadow-caster census: each row can pay a
     // subtree bounds walk + an upgrade mint, so a fat 64-row stride yields

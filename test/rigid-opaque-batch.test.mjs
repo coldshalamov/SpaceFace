@@ -9,6 +9,8 @@ import {
 } from '../src/render/rigidOpaqueBatch.js';
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
 import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
+import { render as renderSystem } from '../src/render/renderer.js';
+import { collectOpeningSubmissionLeaves, createOpeningProducerCensus } from '../src/render/openingSubmissionPlan.js';
 import { acceptClearanceMesh, clearanceNeighborhoodRaw } from '../src/render/clearanceQuery.js';
 import {
   collectPresentedBodyLeaves,
@@ -35,6 +37,106 @@ function makeRoot() {
   root.updateMatrixWorld(true);
   return { root, a, b };
 }
+
+function makeDefaultKestrelOwner(compile) {
+  const scene = new THREE.Scene(), { root, a, b } = makeRoot();
+  a.name = 'LOD0_MechanicalDark'; b.name = 'LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark';
+  b.userData.spacefaceTags = { motionGroup: true };
+  root.userData.authoredAssetState = 'authored';
+  scene.add(root);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+  camera.position.set(0, 10, 10); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
+  scene.updateMatrixWorld(true);
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: { defId: 'ship_kestrel' } };
+  const state = { mode: 'loading', playerId: 1, entities: new Map([[1, player]]),
+    world: { enterSerial: 1, currentSectorId: 'test' }, contextRestoreSeq: 0,
+    render: { admissionRunGeneration: 1, compileObjectPipelines: compile } };
+  const owner = Object.assign(Object.create(renderSystem), { scene, state, cam: { obj: camera },
+    _opaqueBatchSupported: true, _meshes: new Map([[1, root]]), _authoredInstanceSyncOptions: {},
+    _entityFrame: { authored: [] }, _shadowSettingOn: false });
+  owner._enableRigidOpaqueBatch(true);
+  return { owner, state, scene, root, a, b, dispose() {
+    owner._rigidOpaqueBatchController?.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  } };
+}
+
+test('default renderer submission joins strict loading preparation before first-picture capture', async () => {
+  let finish, compileOptions;
+  const fixture = makeDefaultKestrelOwner((batch, options) => {
+    assert.equal(batch.isBatchedMesh, true); compileOptions = options;
+    return new Promise(resolve => { finish = resolve; });
+  });
+  const { owner, scene, a, b } = fixture;
+  const hotIris = new THREE.Mesh(new THREE.BoxGeometry(), a.material);
+  hotIris.name = 'Retro_Iris_Port'; fixture.root.add(hotIris);
+  const npc = new THREE.Mesh(new THREE.BoxGeometry(), a.material);
+  npc.name = a.name; scene.add(npc);
+  owner._meshes.set(2, npc); fixture.state.entities.set(2, { id: 2, data: { defId: 'ship_kestrel' } });
+  scene.updateMatrixWorld(true);
+  try {
+    owner._syncAuthoredInstanceSubmission(100);
+    const completion = owner._syncRigidOpaqueBatchProbe();
+    await Promise.resolve();
+    assert.equal(typeof completion?.then, 'function', 'the real renderer returns its pending controller preparation');
+    assert.equal(compileOptions.openingRequired, true);
+    assert.equal(compileOptions.strict, true); assert.equal(compileOptions.explicit, true);
+    assert.equal(compileOptions.joinOutstanding, true); assert.equal(compileOptions.isActive(), true);
+    const waitSet = owner._openingFirstPictureUpgradePromises();
+    assert.ok(waitSet.includes(completion), 'the existing bounded opening settle joins that exact promise');
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    finish({ pipelines: {}, gpuResidency: {} });
+    await Promise.all(waitSet);
+    assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().instances, 2);
+    assert.equal(a.layers.mask, 0); assert.equal(b.layers.mask, 0);
+    assert.equal(hotIris.layers.mask, 1, 'the player hot iris stays on its live direct material');
+    assert.equal(npc.layers.mask, 1, 'an identically named NPC source is outside the player cohort');
+    const batch = scene.children.find(child => child.isBatchedMesh);
+    const roots = owner._collectOpeningDerivedPoolRoots();
+    assert.ok(roots.includes(batch), 'the real scene-owned copy enters the exact opening root census');
+    assert.deepEqual(collectOpeningSubmissionLeaves(batch), [batch]);
+    assert.equal(createOpeningProducerCensus(batch, { includeOffscreen: true }).drawLeafIds.length, 1);
+    fixture.state.entities.get(1).data.defId = 'ship_other';
+    await owner._syncRigidOpaqueBatchProbe();
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+  } finally { fixture.dispose(); hotIris.geometry.dispose(); npc.geometry.dispose(); }
+});
+
+test('default renderer never suppresses sources after skipped or rejected preparation', async () => {
+  for (const outcome of ['skipped', 'partial', 'rejected', 'missing']) {
+    const fixture = makeDefaultKestrelOwner(outcome === 'missing' ? undefined : () => {
+      if (outcome === 'rejected') return Promise.reject(new Error('driver failure'));
+      return outcome === 'skipped' ? { skipped: true, reason: 'unavailable' }
+        : { pipelines: {}, gpuResidency: { partial: true } };
+    });
+    try {
+      await fixture.owner._syncRigidOpaqueBatchProbe();
+      assert.notEqual(fixture.owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+      assert.equal(fixture.a.layers.mask, 1); assert.equal(fixture.b.layers.mask, 1);
+      assert.equal(fixture.scene.children.some(child => child.isBatchedMesh), false);
+    } finally { fixture.dispose(); }
+  }
+});
+
+test('default renderer preparation cannot activate across a replaced run or context', async () => {
+  for (const replacement of ['run', 'world', 'context']) {
+    let finish, isActive;
+    const fixture = makeDefaultKestrelOwner((_batch, options) => {
+      isActive = options.isActive; return new Promise(resolve => { finish = resolve; });
+    });
+    try {
+      const pending = fixture.owner._syncRigidOpaqueBatchProbe(); await Promise.resolve();
+      if (replacement === 'run') fixture.state.render.admissionRunGeneration += 1;
+      else if (replacement === 'world') fixture.state.world = { ...fixture.state.world };
+      else fixture.state.contextRestoreSeq += 1;
+      assert.equal(isActive(), false);
+      finish({ pipelines: {}, gpuResidency: {} }); await pending;
+      assert.equal(fixture.a.layers.mask, 1); assert.equal(fixture.b.layers.mask, 1);
+      assert.equal(fixture.scene.children.some(child => child.isBatchedMesh), false);
+    } finally { fixture.dispose(); }
+  }
+});
 
 test('retained rigid batches wait for residency before suppressing direct source draws', async () => {
   const scene = new THREE.Scene();
