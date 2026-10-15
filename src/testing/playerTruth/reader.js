@@ -8,8 +8,9 @@
 //
 // One sample per animation frame (registered after the game's own frame callback, so the camera
 // and meshes are the ones the player just saw). Expensive VFX and pixel readback passes are
-// wall-gated below; the entity/scene identity census remains fresh on every frame. The harness
-// drains samples every second or so.
+// wall-gated below; the entity/scene identity census is skipped for known preparation/menu modes,
+// when the player-truth grader cannot consume it. Those samples retain scalar route/timing state
+// without carrying stale rows into the first flight sample. The harness drains samples every second.
 
 import { encodePlayerTruthRows } from './packedRows.js';
 
@@ -19,6 +20,9 @@ export const PLAYER_TRUTH_CLASSES = Object.freeze([
 const CLS = Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i]));
 const SHIPLIKE = new Set(['ship', 'drone', 'reaver', 'fauna', 'freighter']);
 const PROJECTILE_LIKE = new Set(['projectile', 'charge', 'vectormine', 'missile', 'mine']);
+// The player-truth checks only grade world rows during flight. Keep this list explicit so a
+// future non-flight mode does not silently lose diagnostic rows until its reader contract is known.
+const PREPARATION_MODES = new Set(['loading', 'menu', 'paused']);
 
 /**
  * True when `#screens` is the surface on top of the flight canvas.
@@ -783,57 +787,62 @@ export function installPlayerTruthReader(win, opts = {}) {
       vw, vh, p: null, e: [], info: null, vfx: null,
       ...(typeof opts.rounds === 'boolean' ? { roundMode: opts.rounds } : {}) };
     if (r.renderer && r.renderer.info) s.info = { calls: r.renderer.info.render.calls, tris: r.renderer.info.render.triangles };
-    const list = st.entityList || [];
-    let player = null;
-    for (const e of list) if (e.id === st.playerId) { player = e; break; }
-    const playerTeam = player ? player.team : 1;
-    if (player && player.pos) s.p = playerRecord(st, player, meshes && meshes.get(player.id), cam, vw, vh);
-    const threatBoxes = []; const bodies = [];
-    for (const e of list) {
-        if (!e || e.alive === false || !e.pos || e.id === st.playerId) continue;
-        const cls = classifyEntity(e, st.playerId, playerTeam);
-        const m = meshes ? meshes.get(e.id) : null;
-        let visCode = 0; let sx = -1; let sy = -1; let pr = 0; let key = -1;
-        if (cam) {
-          // Physics coordinates may be a fixed tick ahead of the interpolated/rebased picture.
-          // The already-presented root matrix is the observation seam for pixel measurements.
-          const matrix = m?.matrixWorld?.elements;
-          const sc = screenOf(cam, matrix ? matrix[12] : e.pos.x,
-            matrix ? matrix[13] : e.pos.y || 0, matrix ? matrix[14] : e.pos.z,
-            Math.max(0.5, e.radius || 1), vw, vh);
-          sx = Math.round(sc.sx); sy = Math.round(sc.sy); pr = +sc.pr.toFixed(1);
-          if (m) {
-            const vis = meshChainVisible(m);
-            visCode = !vis ? 1 : (sc.inView ? 3 : 2);
-            const ud = m.userData || {};
-            key = intern(`${m.uuid.slice(0, 8)}|${ud.authoredCompositionId || ud.assetId || m.name || ''}|${ud._appliedLodLevel || (ud.lod && ud.lod.level) || ''}|${ud.authoredAssetState || ''}|draw:${drawIdentity(m)}`);
-          } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
-          // Friendly projectile luminosity stays in the screen/player coverage masks and the
-          // readability census, but it is no threat to its own player. Removing that body in
-          // the combat counterfactual must not classify its visible light as self-occlusion.
-          const friendlyShot = cls === 'projectile' && (e.ownerId != null && e.ownerId === st.playerId
-            || e.team != null && e.team === playerTeam);
-          if ((cls === 'enemy' || cls === 'projectile' && !friendlyShot) && sc.inView) {
-            threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
+    const flightSample = st.mode === 'flight';
+    const skipWorldCensus = PREPARATION_MODES.has(st.mode);
+    let threatBoxes = null; let bodies = null;
+    if (!skipWorldCensus) {
+      const list = st.entityList || [];
+      let player = null;
+      for (const e of list) if (e.id === st.playerId) { player = e; break; }
+      const playerTeam = player ? player.team : 1;
+      if (player && player.pos) s.p = playerRecord(st, player, meshes && meshes.get(player.id), cam, vw, vh);
+      threatBoxes = []; bodies = [];
+      for (const e of list) {
+          if (!e || e.alive === false || !e.pos || e.id === st.playerId) continue;
+          const cls = classifyEntity(e, st.playerId, playerTeam);
+          const m = meshes ? meshes.get(e.id) : null;
+          let visCode = 0; let sx = -1; let sy = -1; let pr = 0; let key = -1;
+          if (cam) {
+            // Physics coordinates may be a fixed tick ahead of the interpolated/rebased picture.
+            // The already-presented root matrix is the observation seam for pixel measurements.
+            const matrix = m?.matrixWorld?.elements;
+            const sc = screenOf(cam, matrix ? matrix[12] : e.pos.x,
+              matrix ? matrix[13] : e.pos.y || 0, matrix ? matrix[14] : e.pos.z,
+              Math.max(0.5, e.radius || 1), vw, vh);
+            sx = Math.round(sc.sx); sy = Math.round(sc.sy); pr = +sc.pr.toFixed(1);
+            if (m) {
+              const vis = meshChainVisible(m);
+              visCode = !vis ? 1 : (sc.inView ? 3 : 2);
+              const ud = m.userData || {};
+              key = intern(`${m.uuid.slice(0, 8)}|${ud.authoredCompositionId || ud.assetId || m.name || ''}|${ud._appliedLodLevel || (ud.lod && ud.lod.level) || ''}|${ud.authoredAssetState || ''}|draw:${drawIdentity(m)}`);
+            } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
+            // Friendly projectile luminosity stays in the screen/player coverage masks and the
+            // readability census, but it is no threat to its own player. Removing that body in
+            // the combat counterfactual must not classify its visible light as self-occlusion.
+            const friendlyShot = cls === 'projectile' && (e.ownerId != null && e.ownerId === st.playerId
+              || e.team != null && e.team === playerTeam);
+            if ((cls === 'enemy' || cls === 'projectile' && !friendlyShot) && sc.inView) {
+              threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
+            }
           }
-        }
-        const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
-        s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
-        if (['station', 'neutral', 'other'].includes(cls) && [3, 4].includes(visCode)) {
-          bodies.push({ id: lifeId(e), cls, ty, mesh: m });
-        }
+          const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
+          s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
+          if (['station', 'neutral', 'other'].includes(cls) && [3, 4].includes(visCode)) {
+            bodies.push({ id: lifeId(e), cls, ty, mesh: m });
+          }
+      }
     }
     const wallDue = (last, budget) => !Number.isFinite(last) || budget === 0 || t - last >= budget;
-    if (st.mode === 'flight' && cam && scene && frame % vfxEvery === 0
+    if (flightSample && cam && scene && frame % vfxEvery === 0
         && wallDue(lastVfxAt, visualEveryMs)) {
       lastVfxAt = t;
-      try { s.vfx = vfxScan(st, cam, scene, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.vfx = { err: String(err && err.message || err) }; }
+      try { s.vfx = vfxScan(st, cam, scene, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes || []); } catch (err) { s.vfx = { err: String(err && err.message || err) }; }
     }
-    if (st.mode === 'flight' && cam && scene && pxEvery && frame % pxEvery === 0
+    if (flightSample && cam && scene && pxEvery && frame % pxEvery === 0
         && wallDue(lastPxAt, pixelEveryMs)) {
       lastPxAt = t;
-      try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes,
-        meshes?.get(st.playerId), bodies); } catch (err) { s.px = { err: String(err && err.message || err) }; }
+      try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes || [],
+        meshes?.get(st.playerId), bodies || []); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }
     // Harness window: wall ms this sample spent on the main thread (scan, vfx census, pixel
     // redraw + readback). The grader subtracts it from the next frame's dt and from any long
