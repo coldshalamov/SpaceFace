@@ -642,6 +642,7 @@ try {
   }
   await page.evaluate(() => { window.__SF_FRAME_STOP__ = true; });
   const rec = await page.evaluate(() => window.__SF_FRAME__);
+  const missingWitness = rec && rec.missingWitness;
   const summary = summarizeFrameSolid(rec);
   const shaderLinksAtEnd = await readShaderLinks();
   const flightShaderLinks = shaderLinksAtFlight && shaderLinksAtEnd
@@ -726,6 +727,16 @@ try {
     + ` countsPeak=${JSON.stringify(perf.countsPeak)}`
     + ` frameInterval mean=${(perf.frameIntervalMsSum / Math.max(1, perf.frameIntervals)).toFixed(2)}ms max=${perf.frameIntervalMaxMs.toFixed(2)}ms`);
   console.log(`  summary: ${JSON.stringify(summary)}`);
+  if (missingWitness) {
+    console.log(`  missing-sample witness: candidates=${missingWitness.candidateSamples}`
+      + ` captured=${missingWitness.witnesses.length}/${missingWitness.maxWitnesses}`
+      + ` dropped=${missingWitness.droppedCandidates}`);
+    for (const witness of missingWitness.witnesses) {
+      console.log(`    id=${witness.id} type=${witness.type} generation=${witness.entityGeneration}`
+        + ` inGlass=${witness.inGlassSet} priorPresented=${!!witness.previouslyVisible}`
+        + ` debug=${JSON.stringify(witness.debugGeometryPending || witness.debugGeometryPendingError || null)}`);
+    }
+  }
   console.log(`  lodFrames=${JSON.stringify((summary && summary.lodFrames) || {})}`
     + ` lodSwapsOnScreen=${(summary && summary.lodSwapsOnScreen) | 0}`
     + ` lodSwapKinds=${JSON.stringify((summary && summary.lodSwapKinds) || {})}`);
@@ -821,6 +832,7 @@ try {
     lanes: (summary && summary.lanes) || null,
     upgradeJobs,
     delayedReadiness,
+    missingWitness,
     flightLinkEvents,
     offenders: (summary && summary.offenders) || [],
     phases,
