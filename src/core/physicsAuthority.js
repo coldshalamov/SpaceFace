@@ -211,6 +211,8 @@ export function queuePhysicsImpulse(entity, impulse, evidence = null) {
   const prepared = prepareExternalPhysicsImpulse(entity, impulse, evidence);
   if (!prepared || (evidence?.externalEffect && Math.hypot(prepared.x, prepared.z) === 0)) return false;
   if (isAnchoredPhysicalBody(entity)) {
+    // Authored fixed roots retain landmark semantics but cannot acquire recoil state.
+    if (entity.physicsBody?.anchorRecoil === false) return false;
     const body = ensurePhysicsBodySpec(entity);
     if (!body.anchorRecoil) body.anchorRecoil = { rest: { x: finite(entity.pos?.x), z: finite(entity.pos?.z) }, x: 0, z: 0, vx: 0, vz: 0 };
     const previous = ANCHORED_IMPULSES.get(entity) || { x: 0, z: 0 };
@@ -387,7 +389,14 @@ export function ensurePhysicsBodySpec(entity) {
   if (!entity || typeof entity !== 'object') return null;
   const authoredBody = authoredPhysicsBody(entity);
   if (authoredBody && NORMALIZED_BODY_CACHE.get(entity) === authoredBody) return authoredBody;
-  const authored = authoredBody || {};
+  const body = buildNormalizedPhysicsBody(entity);
+  entity.physicsBody = body;
+  NORMALIZED_BODY_CACHE.set(entity, body);
+  return body;
+}
+
+function buildNormalizedPhysicsBody(entity) {
+  const authored = authoredPhysicsBody(entity) || {};
   const radius = positive(authored.radius, positive(entity.radius, 1));
   const dynamic = authored.dynamic == null ? defaultDynamic(entity) : !!authored.dynamic;
   let mass;
@@ -437,9 +446,73 @@ export function ensurePhysicsBodySpec(entity) {
   else delete body.impactDamageScale;
   if (Number.isFinite(authored.fieldResponseMult)) body.fieldResponseMult = clamp(authored.fieldResponseMult, 0, 8);
   else delete body.fieldResponseMult;
-  entity.physicsBody = body;
-  NORMALIZED_BODY_CACHE.set(entity, body);
   return body;
+}
+
+// Cold native construction may normalize a private entity before publishing it. Transfer that
+// exact ordinary normalization only inside the caller's mirror transaction, never through bind.
+export function preparePhysicsBodyNormalizationAdoption(entity, normalizedBody) {
+  const source = entity?.physicsBody, life = entity?.occupantGeneration;
+  if (!source || !normalizedStorageEqual(normalizedBody, buildNormalizedPhysicsBody(entity))) return null;
+  const sourceContract = JSON.stringify(source);
+  let committed = false;
+  const current = (published = false) => !committed
+    && entity.occupantGeneration === life
+    && entity.physicsBody === (published ? normalizedBody : source)
+    && (published || JSON.stringify(source) === sourceContract)
+    && normalizedStorageEqual(normalizedBody, buildNormalizedPhysicsBody(entity));
+  return {
+    body: normalizedBody,
+    source,
+    current,
+    commit() {
+      if (committed) return false;
+      committed = true;
+      NORMALIZED_BODY_CACHE.set(entity, normalizedBody);
+      return true;
+    },
+  };
+}
+
+
+/** Same-life prepared body replacement. The caller supplies a private normalized projection
+ * and publishes that exact body in its own atomic native/entity transaction. Preparation and
+ * current() never change the original entity/cache; commit only seeds the retained cache. */
+export function preparePhysicsBodyNormalizationReplacement(entity,projection){
+  const cell=(object,key)=>{const d=object && Object.getOwnPropertyDescriptor(object,key);return d && 'value' in d?d:null;};
+  const id=cell(entity,'id'),life=cell(entity,'occupantGeneration'),source=cell(entity,'physicsBody');
+  const projectedId=cell(projection,'id'),projectedLife=cell(projection,'occupantGeneration'),target=cell(projection,'physicsBody');
+  if(!id || !life || !source || !source.writable || !target || entity===projection || projectedId?.value!==id.value || projectedLife?.value!==life.value
+    || source.value===target.value)return null;
+  const sameCell=(a,b)=>!!a && !!b && a.value===b.value && a.writable===b.writable && a.configurable===b.configurable && a.enumerable===b.enumerable;
+  const references=()=>sameCell(id,cell(entity,'id')) && sameCell(life,cell(entity,'occupantGeneration')) && sameCell(source,cell(entity,'physicsBody'))
+    && sameCell(projectedId,cell(projection,'id')) && sameCell(projectedLife,cell(projection,'occupantGeneration')) && sameCell(target,cell(projection,'physicsBody'));
+  if(!normalizedStorageEqual(source.value,buildNormalizedPhysicsBody(entity)) || !normalizedStorageEqual(target.value,buildNormalizedPhysicsBody(projection)) || !references())return null;
+  // Only validated plain writable normalization storage is copied, so serialization cannot
+  // invoke a callable hook or accessor. Retain values independently of both mutable inputs.
+  const sourceContract=JSON.parse(JSON.stringify(source.value)),targetContract=JSON.parse(JSON.stringify(target.value));
+  let committed=false;
+  const current=()=>!committed && references() && normalizedStorageEqual(source.value,sourceContract) && normalizedStorageEqual(target.value,targetContract);
+  if(!current())return null;
+  return Object.freeze({body:target.value,source:source.value,current,commit(){if(committed)return false;committed=true;NORMALIZED_BODY_CACHE.set(entity,target.value);return true;}});
+}
+
+function normalizedStorageEqual(actual, expected) {
+  if (typeof actual === 'function' || typeof actual === 'symbol') return false;
+  if (actual === expected && (actual === null || typeof actual !== 'object')) return true;
+  if (!actual || !expected || typeof actual !== 'object' || typeof expected !== 'object'
+    || Array.isArray(actual) !== Array.isArray(expected)) return false;
+  const prototype = Array.isArray(actual) ? Array.prototype : Object.prototype;
+  if (Object.getPrototypeOf(actual) !== prototype || !Object.isExtensible(actual)) return false;
+  const descriptors = Object.getOwnPropertyDescriptors(actual), keys = Reflect.ownKeys(descriptors);
+  const expectedKeys = Reflect.ownKeys(expected);
+  if (keys.length !== expectedKeys.length || keys.some(k => typeof k !== 'string' || !Object.hasOwn(expected, k))) return false;
+  return keys.every(key => {
+    const d = descriptors[key];
+    if (!('value' in d) || !d.writable) return false;
+    if (Array.isArray(actual) && key === 'length') return !d.enumerable && !d.configurable && d.value === expected.length;
+    return d.enumerable && d.configurable && normalizedStorageEqual(d.value, expected[key]);
+  });
 }
 
 /** Keep the save-safe physics authoring record aligned with ships-owned derived stats. */

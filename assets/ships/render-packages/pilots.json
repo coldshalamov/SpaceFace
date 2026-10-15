@@ -6370,6 +6370,49 @@
       ],
       "outputDir": "assets/ships/release/render-packages/last_argument",
       "metadataUrl": "assets/ships/release/render-packages/last_argument/render-package.json"
+    },
+    {
+      "key": "anvil-storm-orchard",
+      "assetId": "sf.render.anvil-storm-orchard",
+      "runtimeAssetId": "SF_PLACE_ANVIL_STORM_ORCHARD",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_anvil_storm_orchard",
+      "sourceUrl": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb",
+      "releaseSha256": "3fb008e52abfdfd4b3108b0ebd732dd09ff242939954a96b98bd6ee3e4823ff6",
+      "releaseBytes": 890644,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [
+        "MOTION_ORCHARD_",
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/anvil-storm-orchard",
+      "metadataUrl": "assets/ships/release/render-packages/anvil-storm-orchard/render-package.json"
+    },
+    {
+      "key": "anvil-condensate-pod",
+      "assetId": "sf.render.anvil-condensate-pod",
+      "runtimeAssetId": "SF_PLACE_ANVIL_CONDENSATE_POD",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_anvil_condensate_pod",
+      "sourceUrl": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb",
+      "releaseSha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
+      "releaseBytes": 192204,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/anvil-condensate-pod",
+      "metadataUrl": "assets/ships/release/render-packages/anvil-condensate-pod/render-package.json"
     }
   ]
 }

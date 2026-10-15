@@ -199,3 +199,26 @@ test('dotted mirrors reuse expanded parent nodes across scheduled collapse and r
     }
   }
 });
+
+test('expanded profiles keep bounded Orchard projections atomic across source replacement', (t) => {
+  configureDomainMirroring({ expandPaths: [{ segs: [], depth: 2 }] });
+  t.after(() => configureDomainMirroring({}));
+  const state = {};
+  const differ = createDomainDiffer({ probe: true });
+  const mirror = new Map();
+  const checker = createDomainProbeChecker(mirror);
+  const rawPlanet = () => ({
+    active: false,
+    ships: { 7: { heat: 0.8, privateAuthority: { nativeHandle: 123 } } },
+    orchardForecast: { privateAuthority: { nativeHandle: 456 } },
+  });
+
+  for (const [tick, planet] of [[0, undefined], [1, rawPlanet()], [2, null], [60, rawPlanet()]]) {
+    state.planet = planet;
+    const result = differ.diff(state, tick);
+    for (const update of result.updates) applyDomainPathUpdate(mirror, update, new WeakSet());
+    assert.deepEqual(checker.consume(result.probe).events, [], `probe parity at tick ${tick}`);
+    assert.deepEqual(mirror.get('planet.ships'), {}, 'inactive source cannot expose raw ship authority');
+    assert.equal(mirror.get('planet.orchardForecast'), null, 'raw forecast cannot replace derived facts');
+  }
+});

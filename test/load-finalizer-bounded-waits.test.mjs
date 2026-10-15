@@ -57,6 +57,9 @@ async function settlePromises(rounds = 8) {
 function fakeSg02Owner() {
   return {
     publishTelemetry: false,
+    orchardAuthorityAvailable: () => true,
+    completedOrchardTail: () => null,
+    publishCompletedOrchardContacts: () => 0,
     setFrameOrigin: () => true,
     syncFromEntityLayers: () => {},
     syncFromEntities: () => {},

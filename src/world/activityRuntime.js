@@ -1401,6 +1401,10 @@ function tryRetainClassifyFrame(runtime, visit, simTime, state) {
   for (let i = 0; i < n; i++) {
     const entity = visit[i];
     if (!entity || entity.alive === false) return false;
+    // A same-life body handoff invalidates this derived partition. Reusing the old
+    // whole-frame lists would strand its newly dynamic native body in the static lane.
+    const partition = entity._physicsPartition;
+    if (partition !== 0 && partition !== 1 && partition !== 2) return false;
     if (ids[i] !== entity.id) return false;
     const stamp = entity.activity;
     if (!stamp || !stamp.simTier || !stamp.presentationTier) return false;
@@ -1477,6 +1481,10 @@ function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, gla
   for (let i = 0; i < n; i++) {
     const entity = visit[i];
     if (!entity || entity.alive === false) return false;
+    // A same-life body handoff invalidates this derived partition. Reusing the old
+    // whole-frame lists would strand its newly dynamic native body in the static lane.
+    const partition = entity._physicsPartition;
+    if (partition !== 0 && partition !== 1 && partition !== 2) return false;
     if (ids[i] !== entity.id) return false;
     const type = entity.type;
     if (type !== 'asteroid' && type !== 'payload') {

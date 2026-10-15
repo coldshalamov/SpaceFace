@@ -1,4 +1,5 @@
 import { tickPhysicalEffects, clearPhysicalEffects } from '../combat/physicalEffects.js';
+import {orchardRestoreInputsRequired,captureOrchardRestoreInputs,orchardRestoreInputsCurrent,orchardRestoreContextCurrent} from './anvilOrchardNative.js';
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
 import { dedupWarn } from './warnDedup.js';
 import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
@@ -119,13 +120,24 @@ function projectileProxyRadius(entity, manifest) {
   return radius;
 }
 
+// Presentation receives state, not the registry. Keep the current facade private and
+// resolve only a verified current native pose; saved collar scalars are never a read source.
+const ORCHARD_COLD_RESTORE_BOUNDARIES=new WeakMap();
+const ORCHARD_RESTORE_CAPABILITIES=new WeakMap();
+const ORCHARD_POSE_READERS = new WeakMap();
+export function readOrchardNativePose(state, entity) {
+  return ORCHARD_POSE_READERS.get(state)?.readOrchardFramePose(entity) ?? null;
+}
+
 export const physics = {
   name: 'physics',
   // The snapshot payload is a freshly allocated plain object (base64 string + handle map);
   // nothing in it aliases live WASM state, so the defensive save clone is unnecessary.
   saveSnapshotOwned: true,
   init(ctx) {
+    ORCHARD_RESTORE_CAPABILITIES.set(this,Object.freeze({}));
     this.state = ctx.state;
+    ORCHARD_POSE_READERS.set(ctx.state, this);
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
     this._scratch = [];
@@ -350,6 +362,34 @@ export const physics = {
     return this._sg02 != null;
   },
 
+  readOrchardFramePose(entity) {
+    const state = this.state, owner = this._sg02, world = owner?.world;
+    const life = entity?.occupantGeneration, entities = state?.entities;
+    const current = () => this.state === state && this._sg02 === owner && owner?.world === world
+      && ORCHARD_POSE_READERS.get(state) === this && state.entities === entities && entities?.get(entity?.id) === entity
+      && entity?.occupantGeneration === life && !this._nativeRestorePending && !this._nativeRestoreDeferred
+      && !owner?._pendingNativeRebuilds?.size && owner?.orchardAuthorityAvailable() && this._diag.sg02Ready === true && usesSg02DynamicAuthority(state);
+    try {
+      if (!owner || !entity || !current()) return null;
+      const pose = owner.readOrchardFramePose(entity);
+      return current() ? pose : null;
+    } catch (_) { return null; }
+  },
+
+  readOrchardPodReady(entity) {
+    const state = this.state, owner = this._sg02, world = owner?.world;
+    const life = entity?.occupantGeneration, entities = state?.entities;
+    const current = () => this.state === state && this._sg02 === owner && owner?.world === world
+      && ORCHARD_POSE_READERS.get(state) === this && state.entities === entities && entities?.get(entity?.id) === entity
+      && entity?.occupantGeneration === life && !this._nativeRestorePending && !this._nativeRestoreDeferred
+      && !owner?._pendingNativeRebuilds?.size && owner?.orchardAuthorityAvailable() && this._diag.sg02Ready === true && usesSg02DynamicAuthority(state);
+    try {
+      if (!owner || !entity || !current()) return null;
+      const pose = owner.readOrchardPodReady(entity,state);
+      return current() ? pose : null;
+    } catch (_) { return null; }
+  },
+
   /**
    * Save-envelope physics payload. Entity scalars round-trip position and velocity, but a
    * rebuilt Rapier world loses contact-manifold warm starts, so its first post-load step can
@@ -358,6 +398,7 @@ export const physics = {
    * live authority so non-rapier saves stay untouched.
    */
   serialize() {
+    if(this._nativeRestorePending || this._nativeRestoreDeferred)return null;
     const owner = this._sg02;
     if (!owner || typeof owner.exportWorldSnapshot !== 'function') return null;
     try {
@@ -391,18 +432,22 @@ export const physics = {
     this._nativeRestorePending = true;
     this._nativeRestoreDeferred = options.deferNative === true;
     this._nativeRestoreContext = null;
+    if(this._nativeRestoreDeferred)ORCHARD_COLD_RESTORE_BOUNDARIES.set(this,{state:this.state,payload:this._pendingSg02Snapshot});else ORCHARD_COLD_RESTORE_BOUNDARIES.delete(this);
   },
 
   // Called by the existing save owner after its event drain and semantic reference resume,
   // before autosave capture or visual admission. No clock/polling or second restore loop.
   completeRestore(options = {}) {
+    const boundary=ORCHARD_COLD_RESTORE_BOUNDARIES.get(this);ORCHARD_COLD_RESTORE_BOUNDARIES.delete(this);
+    const cold=!!boundary && boundary.state===this.state && boundary.payload===this._pendingSg02Snapshot && this._nativeRestorePending && this._nativeRestoreDeferred;
     this._nativeRestoreDeferred = false;
-    this._nativeRestoreContext = options;
+    this._nativeRestoreContext = cold?options:null;
     this._nativeRestorePending = true;
     if (this._sg02) this._finishNativeRestore();
   },
 
   cancelRestore() {
+    ORCHARD_COLD_RESTORE_BOUNDARIES.delete(this);
     this._pendingSg02Snapshot = null;
     this._pendingAnchoredRecoil = null;
     this._nativeRestoreContext = null;
@@ -415,8 +460,10 @@ export const physics = {
   // The WASM adopt stays one step (an un-sliceable invoke); the fallback rebuild
   // batches bodies under syncFromEntitiesSteps and commits atomically.
   *completeRestoreSteps(options = {}) {
+    const boundary=ORCHARD_COLD_RESTORE_BOUNDARIES.get(this);ORCHARD_COLD_RESTORE_BOUNDARIES.delete(this);
+    const cold=!!boundary && boundary.state===this.state && boundary.payload===this._pendingSg02Snapshot && this._nativeRestorePending && this._nativeRestoreDeferred;
     this._nativeRestoreDeferred = false;
-    this._nativeRestoreContext = options;
+    this._nativeRestoreContext = cold?options:null;
     this._nativeRestorePending = true;
     if (!this._sg02) return false;
     return yield* this._finishNativeRestoreSteps();
@@ -427,22 +474,30 @@ export const physics = {
     if (!live()) return false;
     const state = this.state;
     const payload = this._pendingSg02Snapshot;
-    const context = this._nativeRestoreContext || {};
+    const restoreContext=this._nativeRestoreContext,context=restoreContext || {},owner=this._sg02,epoch=this._sg02Token;
+    const retainedCells=[['state',state],['_sg02',owner],['_sg02Token',epoch],['_nativeRestoreContext',restoreContext],['_pendingSg02Snapshot',payload],['_nativeRestorePending',true],['_nativeRestoreDeferred',false]];
+    const current=()=>retainedCells.every(([key,value])=>{const d=Object.getOwnPropertyDescriptor(this,key);return d && 'value' in d && d.value===value;});
+    if(restoreContext!==null && !orchardRestoreContextCurrent(restoreContext)){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     resetActivityRuntimeForRestore(state);
     yield 'native-restore-activity-reset';
-    if (!live()) return false;
+    if (!live() || !current()) return false;
     reconcileMachineryBeforePhysics(state);
     yield 'native-restore-machinery-reconciled';
-    if (!live()) return false;
+    if (!live() || !current()) return false;
     reconcileLatchBeforePhysics(state);
     yield 'native-restore-latch-reconciled';
-    if (!live()) return false;
+    if (!live() || !current()) return false;
     const activity = ensureActivityClassified(state);
     const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
+    if(!current())return false;
     // Match the synchronous restore: recoil selects the body type and saved pose
     // before native adoption or fallback rebuild claims the regenerated entities.
     applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
     this._pendingAnchoredRecoil = null;
+    if(!current())return false;
+    const needsOrchardInputs=restoreContext!==null && orchardRestoreInputsRequired(state,entities);
+    const orchardRestoreInputs=needsOrchardInputs?captureOrchardRestoreInputs(context,state,entities,this,ORCHARD_RESTORE_CAPABILITIES.get(this)):null;
+    if(needsOrchardInputs && (!orchardRestoreInputs || !orchardRestoreInputsCurrent(orchardRestoreInputs))){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     let adopted = false;
     let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
@@ -450,18 +505,26 @@ export const physics = {
       || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
     else if (payload) {
       adopted = this._sg02.adoptWorldSnapshot(payload, entities, {
+        orchardRestoreInputs,
+        orchardColdRestore:this._nativeRestoreContext!==null,
+        orchardFiniteState:this._nativeRestoreContext!==null?state:undefined,
         entityIdRemap: context.entityIdRemap || state.sessionEntityIdRemap,
         attachments: state.combat?.attachments?.byId || {},
         resolveAttachmentContract: this.helpers?.describeCombatPhysicsAttachment,
       });
     }
     yield 'native-restore-adopted';
-    if (!live()) return false;
+    if (!live() || !current()) return false;
+    if(!adopted && orchardRestoreInputs && !orchardRestoreInputsCurrent(orchardRestoreInputs)){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     if (!adopted) {
       yield* this._sg02.rebuildWorldFromEntitiesSteps(entities, {
         frameOrigin: worldFrameOrigin(state), frameOriginSeq: worldFrameOriginSeq(state),
+        orchardRestoreInputs,
+        orchardColdRestore:this._nativeRestoreContext!==null,
+        orchardFiniteState:this._nativeRestoreContext!==null?state:undefined,
       });
     }
+    if(!current())return false;
     this._pendingSg02Snapshot = null;
     this._nativeRestorePending = false;
     this._nativeRestoreContext = null;
@@ -474,16 +537,24 @@ export const physics = {
     if (!this._sg02 || !this._nativeRestorePending || this._nativeRestoreDeferred) return false;
     const state = this.state;
     const payload = this._pendingSg02Snapshot;
-    const context = this._nativeRestoreContext || {};
+    const restoreContext=this._nativeRestoreContext,context=restoreContext || {},owner=this._sg02,epoch=this._sg02Token;
+    const retainedCells=[['state',state],['_sg02',owner],['_sg02Token',epoch],['_nativeRestoreContext',restoreContext],['_pendingSg02Snapshot',payload],['_nativeRestorePending',true],['_nativeRestoreDeferred',false]];
+    const current=()=>retainedCells.every(([key,value])=>{const d=Object.getOwnPropertyDescriptor(this,key);return d && 'value' in d && d.value===value;});
+    if(restoreContext!==null && !orchardRestoreContextCurrent(restoreContext)){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     resetActivityRuntimeForRestore(state);
     reconcileMachineryBeforePhysics(state);
     reconcileLatchBeforePhysics(state);
     const activity = ensureActivityClassified(state);
     const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
+    if(!current())return false;
     // Recoil must be on the body spec before adoption claims handles or a rebuild picks
     // the kinematic body type; its rest pose is the regenerated spawn, not the saved pose.
     applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
     this._pendingAnchoredRecoil = null;
+    if(!current())return false;
+    const needsOrchardInputs=restoreContext!==null && orchardRestoreInputsRequired(state,entities);
+    const orchardRestoreInputs=needsOrchardInputs?captureOrchardRestoreInputs(context,state,entities,this,ORCHARD_RESTORE_CAPABILITIES.get(this)):null;
+    if(needsOrchardInputs && (!orchardRestoreInputs || !orchardRestoreInputsCurrent(orchardRestoreInputs))){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     let adopted = false;
     let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
@@ -491,16 +562,25 @@ export const physics = {
       || payload.frameOrigin?.z !== worldFrameOrigin(state).z)) reason = 'frame_origin_changed';
     else if (payload) {
       adopted = this._sg02.adoptWorldSnapshot(payload, entities, {
+        orchardRestoreInputs,
+        orchardColdRestore:this._nativeRestoreContext!==null,
+        orchardFiniteState:this._nativeRestoreContext!==null?state:undefined,
         entityIdRemap: context.entityIdRemap || state.sessionEntityIdRemap,
         attachments: state.combat?.attachments?.byId || {},
         resolveAttachmentContract: this.helpers?.describeCombatPhysicsAttachment,
       });
     }
+    if(!current())return false;
+    if(!adopted && orchardRestoreInputs && !orchardRestoreInputsCurrent(orchardRestoreInputs)){this._diag.rapierReady=false;this._diag.sg02Ready=false;return false;}
     if (!adopted) {
       this._sg02.rebuildWorldFromEntities(entities, {
         frameOrigin: worldFrameOrigin(state), frameOriginSeq: worldFrameOriginSeq(state),
+        orchardRestoreInputs,
+        orchardColdRestore:this._nativeRestoreContext!==null,
+        orchardFiniteState:this._nativeRestoreContext!==null?state:undefined,
       });
     }
+    if(!current())return false;
     this._pendingSg02Snapshot = null;
     this._nativeRestorePending = false;
     this._nativeRestoreContext = null;
@@ -698,6 +778,7 @@ export const physics = {
       col && col.id,
       state && state.playerId,
       state && state.simTime,
+      { state, pickup: pk, collector: col },
     )) return false;
     const requested = finiteWholePickupAmount(pk && pk.data && pk.data.amount);
     if (requested <= 0) {
@@ -724,6 +805,7 @@ export const physics = {
         Number.isFinite(ownerRetryAt)
           ? ownerRetryAt
           : (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S,
+        { state, pickup: pk, collector: col },
       );
     } else if (pk.data) {
       clearPickupAcceptanceRetry(pk.data);
@@ -740,6 +822,7 @@ export const physics = {
     if (!this._sg02Init && !this._sg02 && !rapierRuntimeBlocked()) {
       const token = ++this._sg02Token;
       const init = createSg02DynamicBodyOwner({
+        orchardRestoreCapability:ORCHARD_RESTORE_CAPABILITIES.get(this),
         mode: 'rapier-dynamic',
         captureContactImpacts: combatFlag('weaponImpulseConsequences'),
         publishTelemetry: shouldPublishSg02Telemetry(state),
@@ -790,15 +873,34 @@ export const physics = {
 
     if (this._nativeRestoreDeferred) return;
     if (this._nativeRestorePending) this._finishNativeRestore();
+    if (this._nativeRestorePending) {this._diag.rapierReady=false;this._diag.sg02Ready=false;return;}
+    if (!this._sg02?.orchardAuthorityAvailable()) {
+      const retainedOwner=this._sg02,retainedWorld=retainedOwner?.world,retainedEpoch=this._sg02Token;
+      const recovered=retainedOwner?.recoverOrchardFrame();
+      if(this._sg02!==retainedOwner || retainedOwner?.world!==retainedWorld || this._sg02Token!==retainedEpoch || this.state!==state)return;
+      if(!recovered || !retainedOwner.orchardAuthorityAvailable()) {
+        this._diag.rapierReady=false;this._diag.sg02Ready=false;return;
+      }
+    }
     this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
     this._syncSg02FrameOrigin(state);
     this._queueSectorFenceImpulses(dt, state);
     this._syncSg02DynamicAuthorityEntities(state);
     this._reconcileCombatPhysicsBeforeStep();
-    const sdiag = this._sg02.step(dt, state.tick);
-    const sg02ImpactCount = this._emitSg02ContactImpacts(state);
+    const owner=this._sg02, world=owner.world, epoch=this._sg02Token;
+    const sdiag = owner.step(dt, state.tick);
+    const sg02ImpactCount = owner.publishCompletedOrchardContacts(owner.completedOrchardTail(),()=>this._emitSg02ContactImpacts(state));
+    if(this._sg02!==owner || owner.world!==world || this._sg02Token!==epoch || this.state!==state) return;
+    if(!owner.orchardAuthorityAvailable()) {this._diag.rapierReady=false;this._diag.sg02Ready=false;return;}
     this._diag.rapierReady = true;
     this._diag.sg02Ready = true;
+    // Contact consumers that require idle native custody settle synchronously after
+    // the guarded tail, before the ordinary core lifetime sweep. Quiet ticks emit nothing.
+    if (sg02ImpactCount > 0) {
+      this.bus?.emit?.('physics:contactsCompleted', { backend: 'rapier-dynamic', tick: state.tick });
+      if (this._sg02 !== owner || owner.world !== world || this._sg02Token !== epoch || this.state !== state) return;
+      if (!owner.orchardAuthorityAvailable()) { this._diag.rapierReady=false;this._diag.sg02Ready=false;return; }
+    }
     this._diag.sg02InitTimedOut = false;
     this._diag.bodies = sdiag.bodies;
     this._diag.colliders = Number.isFinite(sdiag.colliders) ? sdiag.colliders : sdiag.bodies;
@@ -828,6 +930,8 @@ export const physics = {
       // Every option field is rewritten per receipt; receipt fields absent on non-player
       // receipts come through as undefined, matching the old literal's Number.isFinite checks.
       options.backend = 'rapier-dynamic';
+      options.aGeneration = receipt.aGeneration;
+      options.bGeneration = receipt.bGeneration;
       // Owner tick is lifetime-local and restarts whenever SG-02 is rebuilt. Consequence
       // provenance/status expiry belongs to the canonical simulation tick.
       options.tick = state.tick;
@@ -2201,6 +2305,8 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
   }
   // Every receipt field is rewritten each emit — an unmeasured channel loses its key so a
   // prior contact's measured value can leak neither as a stale number nor as a ghost field.
+  setOptionalImpactChannel(payload, 'aGeneration', options.aGeneration);
+  setOptionalImpactChannel(payload, 'bGeneration', options.bGeneration);
   setOptionalImpactChannel(payload, 'preSolveClosingSpeed', options.preSolveClosingSpeed);
   setOptionalImpactChannel(payload, 'appliedPlayerDeltaV', options.appliedPlayerDeltaV);
   // PQ-137.11 owner receipts. Emitted only when the authority measured them, so a missing field
