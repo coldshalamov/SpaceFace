@@ -20,6 +20,7 @@ import {
   LAMP_BUS_VERSION, LAMP_CHANNELS, LAMP_TIME_WRAP_S, lampPhaseForKey,
 } from '../data/lampChannels.js';
 import { canonicalizeSurfaceProgramFamilyKey } from './illustratedSurface.js';
+import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
 
 const TAG = 'spacefaceLampBusHook';
 const COMMON_NEEDLE = '#include <common>';
@@ -118,6 +119,7 @@ export function installLampBus(material, channelId) {
       .replace(EMISSIVE_NEEDLE, `${EMISSIVE_NEEDLE}\n  totalEmissiveRadiance *= sfLampGain();`);
   }
   Object.assign(lampBusShader, previousHook);
+  registerGeometryPreservingShaderHook(lampBusShader, previousHook);
   lampBusShader[TAG] = LAMP_BUS_VERSION;
   material.onBeforeCompile = lampBusShader;
   const familyKey = canonicalizeSurfaceProgramFamilyKey(previousKey, LAMP_BUS_VERSION);

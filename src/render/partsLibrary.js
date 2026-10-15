@@ -50,6 +50,7 @@ import { detachBoundaryResolvingMarker, installBoundaryResolvingMarker, packaged
 import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, attachAuthoredMotionDriverSteps, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
 import { lampShareToken } from './lampBus.js';
+import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
 import { armCallbackAfterPresent, postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
@@ -5903,7 +5904,7 @@ function specializeWreckCathedralClosedSurfaces(sources) {
   };
 }
 
-function installSingleSamplePackedOrmShader(material) {
+export function installSingleSamplePackedOrmShader(material) {
   if (!material || material.userData?.spacefacePackedOrmSingleSample === true) return material;
   const orm = material.roughnessMap;
   if (!sameTextureSamplingForPackedOrm(orm, material.metalnessMap)
@@ -5962,6 +5963,7 @@ function installSingleSamplePackedOrmShader(material) {
       shader.fragmentShader = shader.fragmentShader.replace(needle, replacement);
     }
   };
+  registerGeometryPreservingShaderHook(material.onBeforeCompile, originalOnBeforeCompile);
   material.customProgramCacheKey = () => canonicalizeSurfaceProgramFamilyKey(
     originalProgramCacheKey,
     'spaceface-packed-orm-single-sample-v1',
