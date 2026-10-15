@@ -1154,6 +1154,14 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish30a/{before,after}/{phone,de
 
 Overlap probe (text boxes in the tape) on two seeded ledgers, 6 receipts over three cycles and 9 receipts in one cycle: 960×540 3+3 → 0, 1024×768 / 1280×720 / 1920×1080 1 → 0. Shots: `ui-shots/polish35/{before,after}/` (seeded with `_tools/ledger-seed.mjs`).
 
+## Ledger tape — figures clear the axis numerals (ui-polish-37)
+
+**Before:** the tape kept figures out of a fixed 64px axis column, but the top numeral ("3,000 CR", 12px tracked caps from x0 + 9) prints wider than that. A big credit near the origin slid just past the column and printed on it: in a 12-receipt ledger with a 3,000 cr ceiling, `+1,806` sat on "3,000 CR" at 844×390, 960×540 and 1280×720, and `+2,950` did at 1920×1080. Same on master since #395 (Code Work's follow-up note there).
+
+**After (`src/ui/orrery/ledgerTape.js`):** each axis numeral adds its own box to the clear set at its measured printed width (the same cached `measure()` the names and figures use), and a figure near the origin slides right past whichever numeral shares its row, not just past the fixed column. Nothing else moves: the column, the tick spacing and the empty ledger are unchanged. Where the slide takes a neighbour's slot, that neighbour yields as before (at 960 `+1,500` now yields; the list and the reading carry it).
+
+Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×390 / 960×540 / 1280×720 / 1920×1080: master 3 + 1 → 0. `test/ledger-tape-yield.test.mjs` gains a case that fails on master ("+1,806 prints on the 3,000 cr numeral") and passes here. Shots: `ui-shots/polish37/{before,after}/`, compares in `ui-shots/polish37/compare/` (seeded with `_tools/ledger-seed.mjs` sets c and d).
+
 ## Footprint dial: crest pads yield on a small dial (ui-polish-38)
 
 **Before:** the hub's radius has a 96px floor, so on a dial under ~510px (960×540 at 430px, phones at 368–401px) the escape clock and its ticks sat exactly where the source crest pads go. The pads printed over the clock, and the lower pads printed over the hub's CLEARS IN, the bounty line and (MARKED) T0 · NO SEARCH. The probe found 2–3 hub lines under a pad on every WANTED and MARKED dial at those sizes.
