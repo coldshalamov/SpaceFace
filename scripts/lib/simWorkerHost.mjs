@@ -78,7 +78,10 @@ import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js'
 import { partitionUpdateSystems } from '../../src/core/catchupPolicy.js';
 import { createBus } from '../../src/core/eventBus.js';
 import { createGameState } from '../../src/core/gameState.js';
-import { readTimeEffectsRequests } from '../../src/core/timeEffects.js';
+import {
+  createTimeEffects, readTimeEffectsRequests, readLocalTimeEffectsSnapshot,
+  applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration,
+} from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
@@ -1286,6 +1289,10 @@ export function createSimHost() {
           mode: state.mode,
           timeScale: state.timeScale,
           timeEffects: readTimeEffectsRequests(state),
+          bulletTime: state.massline2?.bulletTime ? {
+            active: state.massline2.bulletTime.active === true,
+            energy: state.massline2.bulletTime.energy,
+          } : null,
           playerId: state.playerId,
           skipFullTick: shouldSkipFullTickSystems(state),
           input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ, boost: state.input.boost, blocked: state.input.blocked } : null,
@@ -1410,6 +1417,12 @@ export function createSimHost() {
     // (rng) and Maps do not survive a transport clone, and menu-time state has
     // no sim-authored data worth carrying anyway.
     const state = createGameState(seed);
+    if (msg.timeEffectsSnapshot) {
+      createTimeEffects(state);
+      setTimeEffectsGeneration(state, msg.timeEffectsSnapshot.generation);
+      applyRemoteTimeEffectsSnapshot(state, 'presentation', msg.timeEffectsSnapshot);
+      host.timeEffectsAuthority = true;
+    }
     if (msg.settings && typeof msg.settings === 'object') {
       deepAssignInPlace(state.settings, canonicalClone(msg.settings));
     }
@@ -1497,6 +1510,7 @@ export function createSimHost() {
       storageOps: drainStorageOps(),
       collectProbe: null,
       domainUpdates: initDomains.updates,
+      timeEffectsSnapshot: host.timeEffectsAuthority ? readLocalTimeEffectsSnapshot(state) : undefined,
       domainProbe: null,
       domainShipBytes: initDomains.shipBytes,
       domainDiffMs: initDomains.diffMs,
@@ -1718,7 +1732,9 @@ export function createSimHost() {
     // folded in wire order through the shared channel.
     if (Number.isSafeInteger(msg.generation) && msg.generation >= 0) {
       host.lifecycleGeneration = msg.generation;
+      setTimeEffectsGeneration(state, msg.generation);
     }
+    applyPresentationTimeEffects(msg.timeEffectsSnapshot, host.lifecycleGeneration);
     const drain = drainSimCommandEnvelopes(msg.commands || [], {
       state,
       helpers: sim.helpers,
@@ -1805,6 +1821,9 @@ export function createSimHost() {
         if (mode !== 'flight' || !host.pendingGameStarted || !host.bus) return false;
         const payload = host.pendingGameStarted;
         host.pendingGameStarted = null;
+        // The main realm releases its own veil separately. Retire only the sim boot lease;
+        // any mirrored loading/pause hold continues to own the first-picture boundary.
+        createTimeEffects(state).clear('runtime:loading');
         host.gameStartedEmits += 1;
         try { host.bus.emit('game:started', payload); } catch (_) {}
         return true;
@@ -2008,6 +2027,7 @@ export function createSimHost() {
       // flag off = zero probe allocation on production ticks.
       collectProbe: (completedTick && msg.aux === true) ? collectProbeBlock(state) : null,
       domainUpdates: domains.updates,
+      timeEffectsSnapshot: host.timeEffectsAuthority ? readLocalTimeEffectsSnapshot(state) : undefined,
       domainProbe: (completedTick && host.domainProbeEnabled) ? domains.probe : null,
       domainShipBytes: domains.shipBytes,
       domainMarketShipBytes: domains.marketShipBytes || 0,
@@ -2108,6 +2128,14 @@ export function createSimHost() {
     } catch (_) { /* spike teardown */ }
   }
 
+  function applyPresentationTimeEffects(snapshot, generation) {
+    if (!host.state || !snapshot) return false;
+    host.timeEffectsAuthority = true;
+    createTimeEffects(host.state);
+    setTimeEffectsGeneration(host.state, generation);
+    return applyRemoteTimeEffectsSnapshot(host.state, 'presentation', snapshot);
+  }
+
   // Dispatch table — the adapters (worker_threads or in-process) call this;
   // reply objects are IDENTICAL in both lanes.
   return {
@@ -2117,5 +2145,10 @@ export function createSimHost() {
     async finalize() { return handleFinalize(); },
     shutdown() { handleShutdown(); },
     drainStorageOps,
+    applyPresentationTimeEffects,
+    effectiveTimeScale() {
+      return host.timeEffectsAuthority && host.state
+        ? createTimeEffects(host.state).getEffectiveScale() : null;
+    },
   };
 }

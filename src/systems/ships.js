@@ -1684,9 +1684,25 @@ export const ships = {
     // absent here even when researched. Direct buyShip callers (rewards, crafting, sandbox) keep
     // their unconditional path, the same way they already bypass the dock gate.
     bus.on('ui:buyShip', withShipworksAccess('hull', (p) => {
-      const def = SHIP_BY_ID.get(p && p.defId);
+      // Shipworks is a paid capability surface. The UI packet is deliberately narrower than
+      // buyShip's internal grant API: rewards, drafts, and sandbox setup may grant a hull, but a
+      // station click can only name a real, priced catalog hull. Do not forward control flags from
+      // an untrusted DOM/event payload.
+      const defId = p && p.defId;
+      const def = SHIP_BY_ID.get(defId);
+      const stationId = dockedShopStationId(this.state);
+      const offer = stationShopOffer(def, stationId);
+      const price = offer ? offer.price : (def && def.price);
+      if (!def || !Number.isFinite(Number(price)) || Number(price) <= 0) {
+        this.bus.emit('toast', {
+          text: def ? 'That hull is not a paid Shipworks option.' : 'Unknown ship',
+          kind: 'error',
+          ttl: 3,
+        });
+        return false;
+      }
       const exclusiveAt = hullExclusiveStationId(def);
-      if (exclusiveAt && exclusiveAt !== dockedShopStationId(this.state)) {
+      if (exclusiveAt && exclusiveAt !== stationId) {
         this.bus.emit('toast', {
           text: `${def.name} is only on the ways at ${shopStationName(exclusiveAt)}.`,
           kind: 'error',
@@ -1694,11 +1710,19 @@ export const ships = {
         });
         return false;
       }
-      return this.buyShip(p);
+      return this.buyShip({ defId });
     }));
     bus.on('ui:setActiveShip', withShipworksAccess('hull', (p) => this.setActiveShip(p && p.index)));
     bus.on('ui:buyModule', withShipworksAccess('outfit', (p) => this.buyModule(p)));
-    bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => this.fitModule(p)));
+    bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => {
+      // Inventory identity is the only UI fitting authority. A catalog defId is intentionally
+      // ignored here: fitModule's defId-only form is reserved for internal draft/reward paths
+      // and would mint a fresh copy from a forged station intent.
+      const shipIndex = p && p.shipIndex;
+      const slotIndex = p && p.slotIndex;
+      const instanceId = p && typeof p.instanceId === 'string' && p.instanceId ? p.instanceId : null;
+      return this.fitModule({ shipIndex, slotIndex, instanceId });
+    }));
     bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p)));
     // Saving a preset snapshots the CURRENT fit — it mutates only the preset store, not the
     // ship, so it needs no station service and works on the flight host too (J13 packet).
@@ -2477,6 +2501,7 @@ export const ships = {
     // resolve the module def + whether it comes from inventory
     let invIdx = -1;
     let def = null;
+    if (instanceId == null && defId == null) return refuse('missing_identity');
     if (instanceId != null) {
       invIdx = p.moduleInventory.findIndex((m) => m.instanceId === instanceId);
       if (invIdx < 0) return refuse('missing_module');

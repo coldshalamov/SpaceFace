@@ -1255,6 +1255,8 @@ const profileNote = KEEP_PROFILE
   : 'fresh temporary evidence profile (cold GPU program cache and HTTP cache)';
 
 let app = null;
+let diagnosticPage = null;
+const startupIssues = [];
 let displayHz = null;
 let runtimeClosed = false;
 try {
@@ -1267,6 +1269,11 @@ try {
       ? display.displayFrequency : null;
   });
   const page = await app.firstWindow({ timeout: 180_000 });
+  diagnosticPage = page;
+  page.on('pageerror', error => startupIssues.push(String(error?.stack || error).slice(0, 4000)));
+  page.on('console', message => {
+    if (message.type() === 'error' && startupIssues.length < 40) startupIssues.push(message.text().slice(0, 4000));
+  });
   // A cold native source boot can outlast Playwright's default 30-second apparatus timeout.
   // This does not change the measured flight window or the game's loading-time result.
   await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
@@ -1296,6 +1303,21 @@ try {
     if (!record.metadata.sourceStable) log('source changed during capture; diagnostic only');
   }
   log(`report ${path.join(OUT_DIR, 'report.md')}`);
+} catch (error) {
+  // A failed startup has no cadence window. Preserve the visible route and its errors so
+  // the next investigation can distinguish missing controls from a failed module boot.
+  let route = null;
+  try {
+    route = await diagnosticPage?.evaluate(() => ({
+      url: location.href,
+      text: document.body?.innerText?.slice(0, 12000),
+      buttons: [...document.querySelectorAll('button')].map(button => button.textContent),
+      mode: window.SF?.state?.mode,
+    }));
+  } catch (_) { /* the failed runtime may have closed its page */ }
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  fs.writeFileSync(path.join(OUT_DIR, 'failure.json'), JSON.stringify({ error: String(error?.stack || error), startupIssues, route }, null, 2));
+  throw error;
 } finally {
   try {
     await app?.close();

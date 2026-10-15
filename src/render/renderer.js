@@ -133,6 +133,7 @@ import {
   queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { entityIsMissionCritical, hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
+import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION } from './wholeShipLodPolicy.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
@@ -10744,11 +10745,12 @@ function normalizeWarmHullFile(file) {
 /**
  * The whole-ship files a scoped ship-exemplar cohort can actually resolve — each spec's live
  * selection (hostile id -> silhouette -> assetRef -> trafficRole -> defId, faction kits included)
- * plus its LOD family siblings, because a demoted live spawn draws the lod1/lod2 GLB the lod0
- * exemplar never carries. Keys are normalized 'wholeships/x.glb' paths matching the explicit
- * decode list's file strings and finish()'s normalizeFile(url) output.
+ * plus the policy-allowed LOD fallback. Runtime demotion is currently disabled, so the selected
+ * primary plus the low-detail LOD2 stand-in are the only whole-ship files the launch warm needs;
+ * LOD1 remains opt-in with the demotion policy. Keys are normalized 'wholeships/x.glb' paths
+ * matching the explicit decode list's file strings and finish()'s normalizeFile(url) output.
  */
-function warmHullFilesForSpecs(specs) {
+export function warmHullFilesForSpecs(specs) {
   const files = new Set();
   for (const spec of specs || []) {
     let visual = null;
@@ -10757,11 +10759,63 @@ function warmHullFilesForSpecs(specs) {
     if (!visual || !visual.file) continue;
     files.add(normalizeWarmHullFile(visual.file));
     const family = visual.lodFamily;
-    for (const sibling of [family && family.lod0, family && family.lod1, family && family.lod2]) {
+    // Admission builds the selected primary. LOD2 is still a required fallback for a cold
+    // boundary/stand-in even while runtime whole-ship demotion is disabled; decoding LOD1 here
+    // would pay a file nobody can select on the live top-down route. If the policy is enabled,
+    // retain both siblings because the runtime controller may request either one.
+    const siblings = WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
+      ? [family && family.lod1, family && family.lod2]
+      : [family && family.lod2];
+    for (const sibling of siblings) {
       if (sibling) files.add(normalizeWarmHullFile(sibling));
     }
   }
   return files;
+}
+
+// Ordinary Adventure has a smaller, deterministic opening cast than the Crucible roster.  Keep
+// the bounded warm's hull set on the same sources that own that picture: the current first-flight
+// cook entities, the two fixed embark flyby bodies, the starter/player hull, and the scripted
+// onboarding roster that _prefetchEmbarkVisuals warms during the embark dwell.  The generic
+// spawnable catalog is intentionally excluded here; it belongs to the explicit Crucible/Swarm
+// roster warm and the armory dwell, not an ordinary opening.
+function openingWarmHullFilesForState(state) {
+  const specs = [];
+  try {
+    specs.push(...collectFirstFlightCookEntities(state));
+  } catch (_) {
+    // The opening warm is best-effort; the live first-flight cook remains authoritative when a
+    // partially prepared state cannot be enumerated yet.
+  }
+  const playerSpec = cruciblePlayerShipExemplarSpec(state);
+  if (playerSpec) specs.push(playerSpec);
+  specs.push(
+    {
+      id: 'opening-warm:ship:wasp',
+      type: 'ship',
+      alive: true,
+      factionId: 'faction_reavers',
+      data: { defId: 'ship_wasp' },
+    },
+    {
+      id: 'opening-warm:ship:mule',
+      type: 'ship',
+      alive: true,
+      factionId: 'faction_free',
+      data: { defId: 'ship_mule' },
+    },
+  );
+  for (const row of scriptedOnboardingRosterRows()) {
+    if (!row || typeof row.archetype !== 'string' || !row.archetype) continue;
+    specs.push({
+      id: `opening-warm:roster:${row.archetype}`,
+      type: 'ship',
+      alive: true,
+      factionId: row.factionId || null,
+      data: { lootTableId: row.archetype },
+    });
+  }
+  return warmHullFilesForSpecs(specs);
 }
 
 const PRESENTATION_TEXTURE_KEYS = Object.freeze([
@@ -17387,8 +17441,10 @@ export const render = {
           this._noteShadowMeshAdded?.(crucibleWarmRoot);
         }
         addFirstFlightBufferRoot(crucibleWarmRoot);
-        // Stays mounted hidden for the run — _releaseSurvivalRosterPrewarm tears the root
-        // down at run end, and the bare→PBR sweep reaches it via _rosterPrewarmRoots.
+        // Crucible roots stay mounted hidden for the run — _releaseSurvivalRosterPrewarm tears
+        // them down at run end. Ordinary opening roots are parked for the first picture and then
+        // released by _releaseOrdinaryOpeningWarm; both remain reachable through the shared list
+        // until their respective teardown.
         if (!this._rosterPrewarmRoots.includes(crucibleWarmRoot)) {
           this._rosterPrewarmRoots.push(crucibleWarmRoot);
         }
@@ -17650,7 +17706,16 @@ export const render = {
           // still have to drop or the mounted warm root can never park (its
           // hidden subtree then rides every presented frame for the run) and
           // its decode leases stay owner-pinned. Mirror finish()'s early
-          // building clear and arm the bounded settle.
+          // building clear and arm the bounded settle. Install the same idempotent
+          // teardown owner even though the census was skipped, so an ordinary opening
+          // still has a valid release path after first paint.
+          this._ensureCrucibleWarmResidencyTeardown(crucibleWarm);
+          crucibleWarm.censusActive = false;
+          crucibleWarm.censusFinished = true;
+          if (crucibleWarm.root && crucibleWarm.root.userData) {
+            crucibleWarm.root.userData.warmCensusActive = false;
+            crucibleWarm.root.userData.warmCensusFinished = true;
+          }
           crucibleWarm.building = false;
           this._armCrucibleWarmBuildingSettle(crucibleWarm);
         }
@@ -22073,8 +22138,9 @@ export const render = {
    * the end-of-cook scene residency census. Palette coverage comes from
    * paletteWarmSubjectsForRecord — hidden meshes + count-0 instanced twins link the direct and
    * USE_INSTANCING palette-material families without publishing the per-(key x palette) chunk
-   * fleet that was itself the regression. The root stays mounted hidden for the run and
-   * releases through _releaseSurvivalRosterPrewarm.
+   * fleet that was itself the regression. A Crucible root stays mounted hidden for the run and
+   * releases through _releaseSurvivalRosterPrewarm; an ordinary opening root releases after the
+   * first playable picture through _releaseOrdinaryOpeningWarm.
    */
   _beginCrucibleBoundedRosterWarm(options = {}) {
     const { renderer, scene, state } = this;
@@ -22088,6 +22154,16 @@ export const render = {
       boundaryKicks: [],
       building: true,
       profile,
+      // The opening root may reach first paint while finish() is still walking decoded records.
+      // Keep the lifecycle state on the warm so the settle arm cannot tear down its scene root
+      // before the census has installed the residency owner and completed its last async yield.
+      censusActive: false,
+      censusSettled: false,
+      censusFinished: false,
+      residencyHookInstalled: false,
+      residencyReleased: false,
+      packageInstances: [],
+      warmPackageResidency: null,
     };
     const root = warm.root;
     root.name = profile === 'opening' ? 'SF_OpeningSpeciesWarm' : 'SF_CrucibleBoundedWarm';
@@ -22096,6 +22172,11 @@ export const render = {
     // Still building: _parkBoundedWarmRoots must skip this root — parked boundaries
     // fail boundaryBelongsToScene, so a queued attach/upgrade job would drop silently.
     root.userData.warmBuilding = true;
+    root.userData.warmCensusManaged = true;
+    root.userData.warmCensusActive = false;
+    root.userData.warmCensusSettled = false;
+    root.userData.warmCensusFinished = false;
+    root.userData.warmResidencyHookInstalled = false;
     // Mount immediately: queue-lane boundary requests refuse detached roots
     // (boundaryBelongsToScene), and the ship kicks below run through that check. The caller
     // re-adds the root after begin() returns — re-adding to the same parent is a no-op.
@@ -22537,20 +22618,21 @@ export const render = {
     // and the bounded substitute for the swept catalog where not.
     const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
       || 'assets/ships/release/parts/';
-    // Swarm-scoped crucible warm: the whole-ship decode list follows the same eligibility as the
-    // ship cohort above. spawnableShipArchetypePrewarmUrls() is the whole catalog — traffic and
-    // freight hulls the arena never fields plus wave-2+ archetypes whose GLB decodes belong to
-    // their own armory-dwell warm (the deferred kick loads the file on demand). Resolving the
-    // scoped specs through wholeShipVisualForEntity picks up faction-kit and LOD-sibling files a
-    // bare defId map would miss. finish() uses the same set to skip instantiating catalog hull
-    // records it never asked for. Non-swarm profiles keep the full catalog — no eligibility
-    // ladder exists to defer to.
+    // The whole-ship decode list follows the same eligibility as the profile's opening picture.
+    // Swarm-scoped Crucible uses the current wave's roster; ordinary Adventure uses the live
+    // first-flight/startup/embark cast above. spawnableShipArchetypePrewarmUrls() is the full
+    // catalog — traffic/freight hulls and later wave archetypes belong to their explicit menu or
+    // armory dwell, never the ordinary opening's bounded warm.
     const scopedHullFiles = profile === 'crucible' && swarmScoped === true
       ? warmHullFilesForSpecs(shipSpecs)
       : null;
-    // An empty scoped set means selection resolution produced nothing usable — fall back to the
-    // full catalog (and no finish() filtering) rather than warming no hulls at all.
-    const launchHullFiles = scopedHullFiles && scopedHullFiles.size > 0 ? scopedHullFiles : null;
+    const openingHullFiles = profile === 'opening' ? openingWarmHullFilesForState(state) : null;
+    // An empty Crucible-scoped set means selection resolution produced nothing usable — fall back
+    // to the full catalog. Opening keeps its (possibly empty) explicit set so it never expands the
+    // entire spawnable catalog while the live first-flight cook remains authoritative.
+    const launchHullFiles = profile === 'opening'
+      ? openingHullFiles
+      : scopedHullFiles && scopedHullFiles.size > 0 ? scopedHullFiles : null;
     warm.launchHullFiles = launchHullFiles;
     const explicitFiles = [
       ...PQ_193_05_WRECK_PACKAGED_FILES.map((file) => ({ file, slot: 'place' })),
@@ -22829,6 +22911,100 @@ export const render = {
     } catch (_) { /* teardown is best-effort */ }
   },
 
+  /**
+   * Ordinary Adventure's opening warm only owns the loading picture. Once that picture has
+   * appeared, release its root and residency lease instead of retaining it until a survival
+   * `run:ended` (ordinary Adventure does not emit that event on menu return). Crucible and other
+   * bounded roots remain in the shared roster list for their existing run-end release.
+   *
+   * The helper is intentionally gated by the first-playable stamp and the warm's settle flag:
+   * shared authored package owners may still be attaching while the first paint latch fires, and
+   * disposing that root early would turn a late attach into a cold live boundary. The settle arm
+   * calls this again after `warmBuilding` drops.
+   */
+  _releaseOrdinaryOpeningWarm(reason = 'opening-first-playable') {
+    const state = this.state;
+    const render = state && state.render;
+    if (!state || state.mode !== 'flight' || !render
+        || !Number.isFinite(render.firstPlayableFrameAt)) {
+      return { released: 0, pending: 0 };
+    }
+    const roots = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
+    let released = 0;
+    let pending = 0;
+    for (let index = roots.length - 1; index >= 0; index--) {
+      const root = roots[index];
+      if (!root || root.userData?.rosterPrewarm !== 'opening-species-warm') continue;
+      if (root.userData && root.userData.warmBuilding === true) {
+        pending += 1;
+        continue;
+      }
+      // A managed opening warm has an async finish/census owner. Its first-paint release can
+      // happen while that owner is still awaiting decoded records, so require both lifecycle
+      // latches before detaching. Roots created by older/skip paths without the managed marker
+      // retain the original best-effort release behavior.
+      if (root.userData && root.userData.warmCensusManaged === true
+          && (root.userData.warmCensusActive === true
+            || root.userData.warmCensusSettled !== true
+            || root.userData.warmCensusFinished !== true
+            || root.userData.warmResidencyHookInstalled !== true)) {
+        pending += 1;
+        continue;
+      }
+      roots.splice(index, 1);
+      const parked = render.parkedWarmRoots;
+      if (Array.isArray(parked)) {
+        const parkedIndex = parked.indexOf(root);
+        if (parkedIndex >= 0) parked.splice(parkedIndex, 1);
+      }
+      if (this._earlyCrucibleWarm && this._earlyCrucibleWarm.root === root) {
+        this._earlyCrucibleWarm = null;
+        this._earlyCrucibleWarmMenu = false;
+      }
+      try {
+        const wasMounted = !!root.parent;
+        if (root.parent) {
+          root.parent.remove(root);
+          // The ordinary warm can still be mounted when the settle arm wins the race with the
+          // first-paint park. A parked root was already counted out by _parkBoundedWarmRoots.
+          if (this._contextLost === true) {
+            this._noteShadowMeshRemoved?.(root);
+            if (root.userData) root.userData.sfDespawnNoted = true;
+          }
+        }
+        // A lost context already owns these buffers; detach only, matching the existing
+        // survival-roster release contract. Live contexts use the authored disposer when one
+        // exists, otherwise the paced warm teardown queue owns the subtree walk.
+        if (this._contextLost === true) {
+          released += 1;
+          continue;
+        }
+        if (!disposePreparedAuthoredBoundary(root)) {
+          if (!this._warmDisposeQueue) {
+            this._warmDisposeQueue = [];
+            this._warmDisposeHead = 0;
+          }
+          if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+          this._warmDisposeQueue.push(root);
+        } else if (wasMounted) {
+          this._noteShadowMeshRemoved?.(root);
+        }
+        released += 1;
+      } catch (error) {
+        stormWarn('ordinary-opening-warm-release-failed',
+          '[render] ordinary opening warm release failed', reason, error);
+      }
+    }
+    if (released > 0) {
+      render.openingWarmReleased = {
+        reason,
+        released,
+        pending,
+      };
+    }
+    return { released, pending };
+  },
+
   // Park-safety: the root flag may drop only once every queued attach/upgrade
   // job settles — a parked boundary fails boundaryBelongsToScene and its queued
   // attaches drop silently. Post-snapshot pushes re-arm (the snapshot only
@@ -22854,8 +23030,21 @@ export const render = {
           settle(warm.pendingAttachments.length);
           return;
         }
+        warm.censusSettled = true;
         warm.building = false;
-        if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
+        if (warm.root && warm.root.userData) {
+          warm.root.userData.warmBuilding = false;
+          warm.root.userData.warmCensusSettled = true;
+        }
+        // An ordinary opening may have painted while this bounded settle was still waiting on a
+        // late attach. Release is permitted only after the finish/census wrapper has installed its
+        // residency owner and marked the census complete; otherwise the root stays owned until
+        // the wrapper's finally retry.
+        if (warm.profile === 'opening' && warm.censusFinished === true
+            && warm.residencyHookInstalled === true) {
+          try { this._releaseOrdinaryOpeningWarm('opening-warm-settled'); }
+          catch (_) { /* release is best-effort; the normal teardown remains authoritative */ }
+        }
       });
     };
     settle(warm.pendingAttachments.length);
@@ -22938,7 +23127,71 @@ export const render = {
     return reKickResult;
   },
 
+  _ensureCrucibleWarmResidencyTeardown(warm) {
+    if (!warm || !warm.root) return;
+    const root = warm.root;
+    if (!warm.warmPackageResidency) {
+      warm.warmPackageResidency = createCrucibleWarmPackageResidency({
+        residency: this._assetResidency || getAssetResidency(this.renderer),
+        profile: warm.profile || 'crucible',
+      });
+    }
+    if (!Array.isArray(warm.packageInstances)) warm.packageInstances = [];
+    if (warm.residencyHookInstalled === true) return;
+    root.userData.releaseAuthoredAssetResidency = () => {
+      if (warm.residencyReleased === true) return;
+      warm.residencyReleased = true;
+      for (const instance of warm.packageInstances) {
+        try { instance && typeof instance.dispose === 'function' && instance.dispose(); }
+        catch (_) { /* teardown is best-effort */ }
+      }
+      try { warm.warmPackageResidency.release(); } catch (_) { /* best-effort */ }
+    };
+    warm.residencyHookInstalled = true;
+    if (root.userData) root.userData.warmResidencyHookInstalled = true;
+  },
+
+  /**
+   * Finish the bounded warm behind one lifecycle fence. The settle arm can resolve on a
+   * microtask while the census is yielding between records, and first playable paint can fire
+   * during that same gap. Install the teardown owner before entering the core (and before its
+   * first await), then make the opening release wait for both the attachment settle and the
+   * complete census. The finally path is deliberate: a budget/loader failure still leaves a
+   * safe, idempotent owner for the release retry instead of leaking package leases.
+   */
   async _finishCrucibleBoundedRosterWarm(warm, options = {}) {
+    if (!warm || !warm.root) return null;
+    const root = warm.root;
+    warm.censusActive = true;
+    warm.censusSettled = warm.censusSettled === true;
+    warm.censusFinished = false;
+    if (root.userData) {
+      root.userData.warmCensusActive = true;
+      root.userData.warmCensusFinished = false;
+    }
+
+    // This owner must exist before any census/settle await. Package instances and retained
+    // records are appended to these same containers by the core; the hook therefore remains
+    // valid even if first paint wins the race immediately after the final record.
+    this._ensureCrucibleWarmResidencyTeardown(warm);
+
+    try {
+      return await this._finishCrucibleBoundedRosterWarmCore(warm, options);
+    } finally {
+      warm.censusActive = false;
+      warm.censusFinished = true;
+      if (root.userData) {
+        root.userData.warmCensusActive = false;
+        root.userData.warmCensusFinished = true;
+      }
+      // If first paint already stamped, this is the second (and final) release opportunity.
+      // _releaseOrdinaryOpeningWarm itself is latch- and disposal-idempotent.
+      try { this._releaseOrdinaryOpeningWarm('opening-warm-finished'); }
+      catch (_) { /* the next first-paint/settle edge retries through the same latch */ }
+    }
+  },
+
+  async _finishCrucibleBoundedRosterWarmCore(warm, options = {}) {
     const { renderer, scene, state } = this;
     if (!warm || !warm.root || !renderer || !scene) return null;
     const root = warm.root;
@@ -23059,6 +23312,7 @@ export const render = {
     // cook's compile sweep. Live entities' resolved files always stay — their palette shares are
     // what the instance pools promote from.
     const catalogHullFiles = (warm.profile === 'crucible' && warm.swarmScoped === true)
+      || warm.profile === 'opening'
       ? new Set(spawnableShipArchetypePrewarmUrls().map(normalizeWarmHullFile))
       : null;
     const launchHullKeepSet = catalogHullFiles
@@ -23123,17 +23377,20 @@ export const render = {
     // otherwise warmed only as an instanced chunk, which is the enemy path.
     const playerSpec = state ? cruciblePlayerShipExemplarSpec(state) : null;
     const playerHullFiles = playerSpec ? warmHullFilesForSpecs([playerSpec]) : new Set();
-    const packageInstances = [];
+    const packageInstances = Array.isArray(warm.packageInstances)
+      ? warm.packageInstances : (warm.packageInstances = []);
     let instantiated = 0;
     let paletteSubjects = 0;
     let chunkPromotions = 0;
-    // A census record is only cache/bootstrap-owned: retain each package under a dedicated warm
-    // owner before createInstance (a released or evicted package re-acquires through the normal
-    // loader), then drain every lease with one owner release at warm teardown.
-    const warmPackageResidency = createCrucibleWarmPackageResidency({
-      residency: this._assetResidency || getAssetResidency(renderer),
-      profile: warm.profile || 'crucible',
-    });
+    // A census record is only cache/bootstrap-owned: retain each package under the dedicated warm
+    // owner installed by the lifecycle wrapper before the first await. The wrapper's release hook
+    // drains these leases after the census, even when first paint wins the settle race.
+    const warmPackageResidency = warm.warmPackageResidency
+      || createCrucibleWarmPackageResidency({
+        residency: this._assetResidency || getAssetResidency(renderer),
+        profile: warm.profile || 'crucible',
+      });
+    warm.warmPackageResidency = warmPackageResidency;
     const reloadAuthoredPart = (partUrl, partOptions) => (
       loadAuthoredPart(partUrl, { renderer, ...partOptions })
     );
@@ -23172,7 +23429,11 @@ export const render = {
       // field yet — non-catalog hulls and every kept file still instantiate normally. An empty
       // keep set means selection resolution failed (or no cohort exists); fall back to the
       // unfiltered sweep rather than launching with every hull family cold.
-      if (slot === 'hull' && catalogHullFiles && launchHullKeepSet && launchHullKeepSet.size > 0) {
+      const filterCatalogHull = slot === 'hull'
+        && catalogHullFiles
+        && launchHullKeepSet
+        && (warm.profile === 'opening' || launchHullKeepSet.size > 0);
+      if (filterCatalogHull) {
         const file = normalizeFile(url);
         if (catalogHullFiles.has(file) && !launchHullKeepSet.has(file)) {
           censusSkippedRows += 1;
@@ -23325,18 +23586,9 @@ export const render = {
       if (budgetLeft() <= 4000) break;
     }
     notePacedFrameSpend(censusNow() - censusLastDebitAt);
-    // Let the package instances' residency leases release with the root at teardown — the hook
-    // is the one disposeObject already honours on userData. The warm owner's own retains drain
-    // through the same hook so a retain without an instance cannot leak.
-    if (packageInstances.length > 0 || warmPackageResidency.retained) {
-      root.userData.releaseAuthoredAssetResidency = () => {
-        for (const instance of packageInstances) {
-          try { instance && typeof instance.dispose === 'function' && instance.dispose(); }
-          catch (_) { /* teardown is best-effort */ }
-        }
-        warmPackageResidency.release();
-      };
-    }
+    // The lifecycle wrapper installed the residency hook before this census started. Keep it
+    // installed even for an empty result: a late retain cannot be allowed to outlive the warm,
+    // and the idempotent hook is the same boundary teardown uses for populated package rows.
     if (state && state.render) {
       // Per-kick evidence: the ship exemplar's request status ('admitted', 'cancelled-*', ...)
       // plus the boundary's terminal state and the record it actually composed. A live hull
@@ -24027,10 +24279,13 @@ export const render = {
     const parkStartedAt = parkNow();
     let lastDebitAt = parkStartedAt;
     for (const root of this._rosterPrewarmRoots || []) {
-      // Still-building roots keep their mount: a parked boundary fails
-      // boundaryBelongsToScene and its queued attach/upgrade jobs drop silently.
+      // Still-building or still-censused roots keep their mount: a parked boundary fails
+      // boundaryBelongsToScene and its queued attach/upgrade jobs drop silently. The census latch
+      // stays active after attachments settle so first paint cannot detach the root while the
+      // decoded-record pass is still appending authored package instances.
       if (!isBoundedWarmRoot(root) || !root.parent
-          || (root.userData && root.userData.warmBuilding === true)) continue;
+          || (root.userData && (root.userData.warmBuilding === true
+            || root.userData.warmCensusActive === true))) continue;
       try {
         // One walk feeds both the diagnostic node count and the receiver tally's
         // exact settle — the tally's own recount would re-traverse the same subtree.
@@ -33714,6 +33969,11 @@ export function applyFirstPlayablePaintRelease(owner) {
       // ~13k hidden nodes through every frame's updateMatrixWorld. Idempotent by design.
       try { owner._parkBoundedWarmRoots?.(); } catch (_) { /* parking is best-effort */ }
     }
+    // The ordinary opening warm has served its one first-picture purpose. Crucible/deferred
+    // roots remain owned by their run-end path; this tag-scoped release only drops the ordinary
+    // Adventure residency after the picture is ready.
+    try { owner?._releaseOrdinaryOpeningWarm?.('opening-first-playable'); }
+    catch (_) { /* the settle arm retries once any late attach has drained */ }
   } finally {
     releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null, {
       keepGraphFrozen: !!(owner && owner.state && owner.state.mode === 'flight'),

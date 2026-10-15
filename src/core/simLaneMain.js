@@ -39,6 +39,7 @@ import {
   pushLaneCommand,
 } from '../../scripts/lib/simCommandChannel.mjs';
 import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
+import { readLocalTimeEffectsSnapshot, applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration } from './timeEffects.js';
 import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
 import {
   bindSabEnvelopeChannel,
@@ -605,6 +606,7 @@ export function createSimLaneRuntime({
       generation: workerClockGeneration,
       lifecycleGeneration,
       timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+      timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     });
   }
 
@@ -724,6 +726,7 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.auxUpserts)) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals)) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);
+    if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     reconcileEntities();
     const vp = viewportSize();
     if (vp.w && vp.h) laneViewport(vp.w, vp.h);
@@ -792,6 +795,7 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.auxUpserts) && msg.auxUpserts.length) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);
+    if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
     reconcileEntities();
 
     // Worker-emitted sim-bus events replay onto the main bus with forwarding
@@ -1185,6 +1189,7 @@ export function createSimLaneRuntime({
       generation: lifecycleGeneration,
       lifecycleGeneration,
       timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+      timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     };
     pendingAckEnd = 0;
     postedSteps += Math.max(0, pendingSteps);
@@ -1631,6 +1636,7 @@ export function createSimLaneRuntime({
     },
     setLifecycleGeneration(value) {
       lifecycleGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
+      setTimeEffectsGeneration(state, lifecycleGeneration);
     },
     setClockActive(active) {
       if (laneClosed) return false;
@@ -1737,6 +1743,7 @@ export function createSimLaneRuntime({
     profile: 'production',
     clockMode: workerClockMode,
     timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
+    timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     seed: (state.meta && Number.isSafeInteger(state.meta.seed) ? state.meta.seed : 1) >>> 0,
     settings: canonicalClone(state.settings || {}),
     domainMirroring,

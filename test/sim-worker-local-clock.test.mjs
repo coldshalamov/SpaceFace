@@ -5,6 +5,7 @@ import { Worker } from 'node:worker_threads';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { createTimeEffects, readLocalTimeEffectsSnapshot } from '../src/core/timeEffects.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import {
   laneDomEvent,
@@ -262,6 +263,108 @@ test('worker-local coalesced replies retain contiguous journal records and ACK r
   } finally {
     if (hadSelf) globalThis.self = previousSelf;
     else delete globalThis.self;
+  }
+});
+
+test('public Bullet Time composes across the real worker clock, loading veil, hit-stop and pause', { timeout: 60000 }, async () => {
+  const replies = [];
+  const posts = [];
+  let receive;
+  let workerError;
+  const worker = new Worker(new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url), { type: 'module' });
+  const state = createGameState(4242);
+  const effects = createTimeEffects(state);
+  effects.set('runtime:loading', { scale: 0 });
+  let lane;
+  try {
+    worker.on('message', (message) => {
+      replies.push(message);
+      if (message.kind === 'error') workerError = message;
+      receive?.(message);
+    });
+    worker.on('error', (error) => { workerError = error; });
+    lane = createSimLaneRuntime({
+      state, bus: createBus(), registry: {},
+      flags: { lane: 'worker', warnings: [], sab: false }, clockMode: 'worker-local',
+      helpers: {
+        scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')),
+        scenarioContractPath: 'src/data/scenarios/47a.scenario.json', scenarioContractHash: 'time-effects-wire',
+      },
+      channelFactory: () => ({
+        post(message) { posts.push(message); worker.postMessage(message); },
+        onMessage(handler) { receive = handler; },
+        onError(handler) { worker.on('error', handler); }, terminate() {},
+      }),
+    });
+    await lane.readyPromise;
+    lane.runner.setClockActive(true);
+    const latestScale = () => replies.filter((r) => r.kind === 'clockTick').at(-1)?.clockDiagnostics?.scale;
+    const probe = async () => {
+      const result = await laneRpc('probeState');
+      assert.equal(result.ok, true, workerError?.message);
+      return result.result;
+    };
+    async function launch() {
+      const result = await laneRpc('newGameBoot', { opts: { seed: 4242 }, newGamePlus: null });
+      assert.equal(result.ok, true);
+      assert.equal(result.result.ok, true);
+      laneSetMode(state, null, 'flight');
+      const held = await probe();
+      assert.equal(held.mode, 'flight');
+      assert.equal(held.timeEffects['runtime:loading']?.scale, 0, 'presentation still holds the first-picture veil');
+      assert.equal(held.timeEffects['presentation:runtime:loading'], undefined, 'sim boot has retired its own overlapping lease');
+      assert.equal(latestScale(), 0);
+      assert.equal(held.bulletTime?.active, false, 'the old run request is cleared before the veil releases');
+      laneDomEvent({ type: 'keyup', code: 'CapsLock', pressed: false, repeat: false });
+      effects.clear('runtime:loading');
+      const released = await probe();
+      assert.equal(Object.keys(released.timeEffects).some((key) => key.endsWith('runtime:loading')), false);
+      assert.equal(released.timeScale, 1);
+    }
+    await launch();
+    laneDomEvent({ type: 'keydown', code: 'CapsLock', pressed: true, repeat: false });
+    await waitFor(() => latestScale() === 0.35 && state.timeScale === 0.35);
+    const held = await probe();
+    assert.equal(held.bulletTime.active, true);
+    assert.ok(held.bulletTime.energy > 0 && held.bulletTime.energy <= 1);
+    assert.equal(held.timeEffects['player:bullet-time'].scale, 0.35);
+    assert.equal(readLocalTimeEffectsSnapshot(state).requests['player:bullet-time'], undefined, 'worker requests never echo as presentation ownership');
+
+    effects.set('ui:pausing-screen', { scale: 0 });
+    await waitFor(() => latestScale() === 0);
+    const pausedTick = (await probe()).tick;
+    effects.set('feel:hit-stop', { scale: 0.12 });
+    const paused = await probe();
+    assert.equal(paused.timeScale, 0);
+    assert.equal(paused.timeEffects['feel:hit-stop'].scale, 0.12, 'a hidden source change crosses while the effective scale stays zero');
+    assert.equal(paused.tick, pausedTick);
+    const settledCommands = posts.filter((p) => p.kind === 'clockCommand').length;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    assert.equal(posts.filter((p) => p.kind === 'clockCommand').length, settledCommands, 'mirrored requests and ACKs settle without a command echo loop');
+    effects.clear('ui:pausing-screen');
+    await waitFor(() => latestScale() === 0.12);
+    effects.clear('feel:hit-stop');
+    await waitFor(() => latestScale() === 0.35);
+    laneDomEvent({ type: 'keyup', code: 'CapsLock', pressed: false, repeat: false });
+    await waitFor(() => latestScale() === 1 && state.timeScale === 1);
+    const released = await probe();
+    assert.equal(released.bulletTime.active, false);
+    assert.equal(released.timeEffects['player:bullet-time'], undefined);
+
+    laneDomEvent({ type: 'keydown', code: 'CapsLock', pressed: true, repeat: false });
+    await waitFor(() => latestScale() === 0.35);
+    effects.set('runtime:loading', { scale: 0 });
+    await launch();
+    const fresh = await probe();
+    assert.equal(fresh.bulletTime.active, false, 'new game clears the previous run effect');
+    assert.equal(fresh.timeEffects['player:bullet-time'], undefined);
+    lane.runner.setLifecycleGeneration(1);
+    const current = await probe();
+    assert.equal(current.timeScale, 1);
+    assert.equal(workerError, undefined);
+  } finally {
+    lane?.close();
+    await worker.terminate();
   }
 });
 

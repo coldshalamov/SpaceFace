@@ -21,6 +21,7 @@ const RENDERER_SOURCE = readFileSync(
 const DRAFT_SOURCE = readFileSync(
   new URL('../src/ui/screens/crucibleDraft.js', import.meta.url), 'utf8',
 );
+const { warmHullFilesForSpecs } = await import('../src/render/renderer.js');
 
 const ALL_ROSTER_IDS = [
   ...new Set([
@@ -125,9 +126,17 @@ test('a swarm launch decodes and instantiates only the hulls wave 1 can field', 
   assert.match(beginBlock,
     /\.\.\.\(launchHullFiles \? \[\.\.\.launchHullFiles\] : spawnableShipArchetypePrewarmUrls\(\)\)/,
     'the explicit decode list takes the scoped set, not the whole catalog');
-  // Non-swarm profiles (the ordinary opening, scored/boss_circuit survival) have no
-  // eligibility ladder — they keep the full catalog.
+  // The ordinary opening has its own live/startup/embark keep set; scored/boss_circuit survival
+  // still falls back to the full roster because it has no eligibility ladder.
   assert.match(beginBlock, /profile === 'crucible' && swarmScoped === true/);
+  assert.match(beginBlock, /openingWarmHullFilesForState\(state\)/,
+    'ordinary opening derives hull files from the real first-flight/startup cast');
+  assert.match(beginBlock, /profile === 'opening'\s*\n\s*\? openingHullFiles/,
+    'ordinary opening keeps its explicit set even when Crucible scoping is absent');
+  assert.match(RENDERER_SOURCE, /function openingWarmHullFilesForState\(state\)[\s\S]*collectFirstFlightCookEntities\(state\)/,
+    'the opening keep set follows the live first-flight cook');
+  assert.match(RENDERER_SOURCE, /function openingWarmHullFilesForState\(state\)[\s\S]*scriptedOnboardingRosterRows\(\)/,
+    'the opening keep set retains the embark-prefetched onboarding bodies');
 
   const releaseDef = RENDERER_SOURCE.indexOf('_releaseSurvivalRosterPrewarm(reason)', finishDef);
   const finishBlock = RENDERER_SOURCE.slice(finishDef, releaseDef);
@@ -135,9 +144,28 @@ test('a swarm launch decodes and instantiates only the hulls wave 1 can field', 
     'the instantiate sweep recognizes catalog hulls');
   assert.match(finishBlock, /catalogHullFiles\.has\(file\) && !launchHullKeepSet\.has\(file\)/,
     'a catalog hull nobody can field this wave never instantiates at launch');
+  assert.match(finishBlock, /warm\.profile === 'opening'/,
+    'ordinary opening records are filtered against its explicit keep set too');
   // Live entities must never be filtered out — their files join the keep set.
   assert.match(finishBlock, /warmHullFilesForSpecs\(\[entity\]\)/,
     'live entities\' resolved hulls always stay in the keep set');
+});
+
+test('scoped swarm hull selection is exact: selected primary, LOD2 fallback, no LOD1', () => {
+  const waveOne = swarmRosterShipExemplarSpecs('test:ship:', {
+    enemyIds: swarmEligibleEnemyIds(1),
+  });
+  const files = [...warmHullFilesForSpecs(waveOne.concat({
+    id: 'scoped:player', type: 'ship', alive: true,
+    data: { defId: 'ship_mule' },
+  }))].sort();
+  assert.deepEqual(files, [
+    'wholeships/ashline_dart.glb',
+    'wholeships/mule_production_v1.glb',
+    'wholeships/mule_production_v1_lod2.glb',
+  ], 'the scoped warm retains the selected wave body and the player stand-in family');
+  assert.equal(files.some((file) => file.includes('_lod1.')), false,
+    'disabled runtime demotion excludes LOD1 from scoped warm decodes');
 });
 
 test('the deferred warm fires on the armory dwell and publishes its readiness', () => {
