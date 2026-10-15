@@ -295,6 +295,28 @@ export function rememberedSpareChoice(options, remembered) {
   return match ? String(match.instanceId) : null;
 }
 
+/**
+ * How many of the drawn shop cards the wallet can still buy: available (the owner already folds
+ * affordability and slot legality into it), not yet fitted, not the hull being flown, and not a
+ * hull already on the manifest (a free switch, not a sale). Pure so a check can pin the count
+ * the Escape guard reads without a DOM.
+ */
+export function affordableOfferCount(offers) {
+  let count = 0;
+  for (const offer of Array.isArray(offers) ? offers : []) {
+    if (!offer || offer._flying || offer.purchased || offer.available !== true) continue;
+    if (offer.kind === 'hull' && Number.isInteger(offer._ownedIndex)) continue;
+    count += 1;
+  }
+  return count;
+}
+
+/** The one line the first Escape leaves behind when it spared the player's unspent credits. */
+export function launchGuardLine(count) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  return `You can still afford ${n} card${n === 1 ? '' : 's'} — Esc again or Launch to go`;
+}
+
 const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
 
 function finiteNum(value) {
@@ -855,6 +877,9 @@ export const crucibleDraftScreen = {
         // would reach the document-level flight handler with no modal open and Escape would
         // also push Pause — one key, two consequences. Own it here end to end.
         event.stopPropagation();
+        // In the armory Esc is a way out, not a launch: while the wallet still buys something on
+        // the shelf, the first press spends itself on a warning and the second one goes.
+        if (this._guardLaunch(ctx)) return;
         skip.click();
         return;
       }
@@ -924,6 +949,34 @@ export const crucibleDraftScreen = {
     this.refresh(context);
   },
 
+  /**
+   * The armory's Escape guard. Esc (and a pad's B) used to launch the next round on the spot,
+   * with whatever the player had not spent. In the swarm shop, while at least one drawn card is
+   * still buyable, the first Esc only moves focus to Launch and says what is left to buy; the
+   * second Esc — or a click or Enter on Launch, which never comes through here — goes. Nothing
+   * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
+   * was spent on the warning and must not resolve the draft.
+   */
+  _guardLaunch(ctx) {
+    const run = ctx && ctx.state && ctx.state.run;
+    if (!run || run.ruleset !== 'swarm') return false;
+    if (this._launchWarned === true) {
+      this._launchWarned = false;
+      return false;
+    }
+    const count = affordableOfferCount(this._drawnOffers);
+    if (count < 1) return false;
+    this._launchWarned = true;
+    const text = launchGuardLine(count);
+    this._flash = { text, until: Date.now() + 8000, guard: true };
+    if (this._note) this._note.textContent = text;
+    const skip = this._skip;
+    if (skip && typeof skip.focus === 'function') {
+      try { skip.focus(); } catch { /* focus is best-effort */ }
+    }
+    return true;
+  },
+
   refresh(ctx) {
     // uiRoot repaints the open screen ~3x/sec as refresh(ctx, { periodic: true }); the draft
     // rebuilds its cards on every real change itself (pick, re-roll, filter, mount/onShow), so a
@@ -936,6 +989,10 @@ export const crucibleDraftScreen = {
     const cards = this._cards;
     if (!context || !rootEl || !cards) return;
     this._ctx = context;
+    // A rebuilt shelf (a purchase, a re-roll, a filter) is a different shelf: the Escape warning
+    // and its line described the old one, so the next Esc reads the new one fresh.
+    this._launchWarned = false;
+    if (this._flash && this._flash.guard) this._flash = null;
 
     const owner = draftOwner(context);
     const offers = owner && typeof owner.currentOffers === 'function' ? owner.currentOffers() : [];
@@ -1096,6 +1153,8 @@ export const crucibleDraftScreen = {
     }
     this._note.textContent = notice || lines.notice || '';
     this._offersById = new Map([...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
+    // What the shelf shows right now, for the Escape guard (the Gauntlet never reads it).
+    this._drawnOffers = shop ? [...recommended, ...visibleOffers] : [];
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
     if (this._reading) {
       this._reading.el.hidden = !shop || !(visibleOffers.length || recommended.length);
