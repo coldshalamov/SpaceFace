@@ -13351,7 +13351,9 @@ export const render = {
         entities: state.entityList || [], isActive: active,
         isRequired: (entity) => {
           if (!entity || entity.alive === false || entity._noMesh) return false;
-          if (entity.id === state.playerId || entity.isPlayer === true) return true;
+          // The authored gate also owns runway payloads outside the opening camera.
+          // Schedule that same finite set before waiting for its pipeline status.
+          if (isInitialAuthoredCompositionEntity(entity, state)) return true;
           if (!camera?.frustum || !entity.pos) return false;
           const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
           sphere.center.set(local.x, Number(entity.pos.y) || 0, local.z);
@@ -21387,7 +21389,12 @@ export const render = {
         };
       }
       if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
-      if (mode === 'loading') {
+      // Continue starts its cohort during save:loaded; the worker may acknowledge
+      // the loading MODE command afterward. That same-restore echo cannot retire
+      // the cohort. owns() checks the exact player plus world/run/context identity,
+      // so a replacement restore or generation still resets the departed owner.
+      if (mode === 'loading'
+          && !this._openingLoadingAdmission?.owns(state.entities?.get(state.playerId))) {
         state.render.openingFirstPictureReady = false;
         state.render.openingFirstPictureOwner = null;
         state.render.openingLiveSectorReady = null;

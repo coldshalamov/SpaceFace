@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
-import { prepareAuthoredVisualPipelines } from '../src/render/partsLibrary.js';
-import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease } from '../src/render/renderer.js';
+import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
+import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease,
+  enqueueMissingMeshBuildsSteps } from '../src/render/renderer.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
@@ -18,6 +20,97 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+
+function loadingOwnerFixture() {
+  const player = { id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: 1205, z: -378 }, data: { defId: 'ship_kestrel' } };
+  const spindle = { id: 373, type: 'payload', alive: true,
+    pos: { x: -46, z: 278 }, data: { scenarioActorId: 'evidence_spindle_47a',
+      assetRef: 'asset.slice.47a_spindle', packagedPropFile: 'pods/pod_47a_evidence_spindle.glb',
+      packagedPropSlot: 'pod' } };
+  const pelican = { id: 534, type: 'ship', alive: true,
+    pos: { x: 1152, z: -411 }, data: { defId: 'ship_pelican' } };
+  const distant = { ...spindle, id: 900, pos: { x: -10000, z: 0 } };
+  const state = { mode: 'loading', playerId: 1, simTime: 131,
+    entityList: [player, spindle, pelican, distant],
+    entities: new Map([[1, player], [373, spindle], [534, pelican], [900, distant]]),
+    camera: { zoom: 144, liveZoom: 528, fov: 50, aspect: 1.88, tilt: 60 },
+    world: { currentSectorId: 'sector_helios_prime', enterSerial: 1 },
+    render: { admissionRunGeneration: 1, renderer: {} }, contextRestoreSeq: 0 };
+  const built = [];
+  const owner = { state, _meshes: new Map(), _meshBuildQueuedIds: new Set(), _meshBuildQueue: [],
+    _meshBuildQueueHead: 0, _sessionLiveSectorCookedId: 'sector_helios_prime',
+    _frameMembrane: { toLocal(pos, out) { out.x = pos.x; out.z = pos.z; return out; } },
+    *_drainMeshBuildQueueSteps() {
+      const id = this._meshBuildQueue[this._meshBuildQueueHead++];
+      this._meshBuildQueuedIds.delete(id);
+      const entity = state.entities.get(id);
+      const mesh = new THREE.Group(); mesh.userData.authoredAssetState = 'authored';
+      entity.mesh = mesh; this._meshes.set(id, mesh); built.push(id);
+    },
+  };
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const start = source.indexOf('state.render.beginOpeningLoadingAdmission = () => {');
+  const end = source.indexOf('const openingCohort = createOpeningAdmissionCohort();', start);
+  assert.ok(start > 0 && end > start, 'the real opening admission owner exists');
+  new Function('state', 'cam', 'THREE', 'openingSubmissionCamera', '_meshLocalXZ',
+    'rendererGenerationIsActive', 'releaseOpeningGraphPublication', 'createOpeningLoadingAdmission',
+    'enqueueMissingMeshBuildsSteps', 'observePipelineAdmission', 'yieldToBrowser',
+    'entityVisualCullRadius', 'isInitialAuthoredCompositionEntity', source.slice(start, end))
+    .call(owner, state, { obj: { updateMatrixWorld() {} } }, THREE,
+      () => ({ frustum: { intersectsSphere: () => false } }), {}, () => true, () => {},
+      createOpeningLoadingAdmission, enqueueMissingMeshBuildsSteps, promise => promise,
+      () => Promise.resolve(), () => 1, isInitialAuthoredCompositionEntity);
+  let loadingListener;
+  const listenerStart = source.indexOf("onBus('mode:changed', ({ mode } = {}) => {");
+  const listenerEnd = source.indexOf("onBus('jump:arrive'", listenerStart);
+  new Function('onBus', 'state', 'vf', 'serviceFaultEpoch', 'mintResidentReattachSweep',
+    'resumeAuthoredUpgradeQueueForLoadingHulls', source.slice(listenerStart, listenerEnd))
+    .call(owner, (_event, listener) => { loadingListener = listener; }, state,
+      { clearReadyPackagedBodies() {} }, () => 'fixture', () => {}, () => {});
+  return { state, owner, player, spindle, pelican, distant, built, loadingListener };
+}
+
+test('loading cohort schedules valid runway actors outside the camera before the authored gate', async () => {
+  const { state, owner, spindle, pelican, distant, built } = loadingOwnerFixture();
+  assert.equal(isInitialAuthoredCompositionEntity(spindle, state), true,
+    'the reproduced payload lies in the legitimate startup runway');
+  await state.render.beginOpeningLoadingAdmission();
+  assert.equal(owner._openingLoadingAdmission.owns(spindle), true,
+    'the off-table evidence spindle owns a real required admission');
+  assert.equal(owner._openingLoadingAdmission.owns(pelican), true,
+    'restored opening traffic receives its missing build too');
+  assert.equal(owner._openingLoadingAdmission.owns(distant), false,
+    'the startup runway does not widen to the whole scenario catalog');
+  assert.deepEqual(new Set(built), new Set([1, 373, 534]));
+});
+
+test('delayed loading acknowledgement preserves the cohort that already owns this restore', async () => {
+  const { state, owner, loadingListener } = loadingOwnerFixture();
+  await state.render.beginOpeningLoadingAdmission();
+  const cohort = owner._openingLoadingAdmission;
+  const ready = owner._openingLoadingMeshesReady;
+  loadingListener({ mode: 'loading' });
+  assert.equal(owner._openingLoadingAdmission, cohort,
+    'the worker MODE acknowledgement must not retire the finite restore cohort');
+  assert.equal(owner._openingLoadingMeshesReady, ready);
+  state.render.admissionRunGeneration++;
+  loadingListener({ mode: 'loading' });
+  assert.equal(owner._openingLoadingAdmission, null, 'a new generation still resets the old owner');
+  assert.equal(owner._openingLoadingMeshesReady, null);
+});
+
+test('another restore with the same player id still retires the prior cohort', async () => {
+  const { state, owner, player, loadingListener } = loadingOwnerFixture();
+  await state.render.beginOpeningLoadingAdmission();
+  const replacement = { ...player };
+  state.entities.set(player.id, replacement);
+  state.entityList[0] = replacement;
+  loadingListener({ mode: 'loading' });
+  assert.equal(owner._openingLoadingAdmission, null,
+    'an id reused by a different entity reference is a new restore owner');
+  assert.equal(owner._openingLoadingMeshesReady, null);
+});
 
 function strictTouchFixture(scene, drawn, reveal = revealSubjectWithAncestors) {
   const camera = new THREE.PerspectiveCamera();
