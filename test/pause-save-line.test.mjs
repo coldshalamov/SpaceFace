@@ -28,8 +28,8 @@ test('the unsaved-run line reads the Autosave setting instead of a fixed list', 
   );
   assert.equal(
     saveLine(withAutosave(0)),
-    'Unsaved run. Autosave is Off — use Save or F5 before quitting.',
-    'an Off player is warned that quitting loses the run',
+    'Unsaved run. Timed autosave is Off. It still saves when you dock, jump or finish a contract — use Save or F5 before quitting.',
+    'an Off player is warned, and told the truth: Off stops the timer, not the dock/jump/contract saves',
   );
 });
 
@@ -40,7 +40,7 @@ test('the loaded-but-nothing-saved line says the same thing about autosave', () 
   );
   assert.equal(
     saveLine(withAutosave(0, { save: { currentSlot: 'auto' } })),
-    'Loaded autosave. Nothing saved this session. Autosave is Off — use Save or F5 before quitting.',
+    'Loaded autosave. Nothing saved this session. Timed autosave is Off. It still saves when you dock, jump or finish a contract — use Save or F5 before quitting.',
   );
 });
 

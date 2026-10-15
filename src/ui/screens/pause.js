@@ -334,7 +334,9 @@ function fmtSavedAt(value) {
 
 // What the autosave setting really does, in the pause brief's voice. The old line was a fixed list
 // of triggers that ignored the Autosave row: a player on 120 s was told something else, and a
-// player on Off was never warned that quitting loses the run. Missing or corrupt settings read as
+// player on Off was never warned that quitting loses the run. Off stops only the timer
+// (saveSystem.update): requestAutosave never reads the setting, so docking, jumping and finishing
+// a contract still save, and the Off line says exactly that rather than claiming nothing saves. Missing or corrupt settings read as
 // the shipped default (the save loader normalizes them to it).
 const SHIPPED_AUTOSAVE_INTERVAL_S = 120;
 
@@ -361,7 +363,7 @@ export function saveLine(state) {
   const everyS = autosaveIntervalOf(state);
   const autosaveSentence = everyS > 0
     ? 'Use Save or F5 before quitting. Autosave runs about every ' + Math.round(everyS) + ' s and when you dock, jump or finish a contract.'
-    : 'Autosave is Off — use Save or F5 before quitting.';
+    : 'Timed autosave is Off. It still saves when you dock, jump or finish a contract — use Save or F5 before quitting.';
   if (slot) {
     return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. ' + autosaveSentence;
   }
