@@ -42,7 +42,9 @@ function analyzeSpectorCapture(capture) {
     const name = cmd.name || '';
     if (name === 'useProgram') {
       useProgramCalls++;
-      currentProgram = cmd.commandArguments?.[0] || 'program_' + useProgramCalls;
+      const program = cmd.commandArguments?.[0];
+      currentProgram = program?.__SPECTOR_Object_TAG?.displayText
+        || (typeof program === 'string' ? program : 'program_' + useProgramCalls);
     } else if (name.startsWith('draw')) {
       drawCalls++;
       if (name.includes('Instanced')) instancedDrawCalls++;
