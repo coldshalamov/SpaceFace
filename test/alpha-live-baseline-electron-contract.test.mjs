@@ -404,6 +404,86 @@ async function testOptInExpectedSoakNetworkPolicy() {
   strictTracker.stop();
 }
 
+async function testStorelessResponseMethodFallback() {
+  const exactUrl = `${CANONICAL}__spaceface_player_store`;
+  const genericNotFound = 'Failed to load resource: the server responded with a status of 404 (Not Found)';
+  const context = new EventEmitter();
+  const electronApp = new EventEmitter();
+  electronApp.context = () => context;
+  const tracker = createStrictElectronApplicationIssueTracker(electronApp, {
+    playerStoreMounted: false,
+    allowCancelledMedia: true,
+  });
+  // Some Electron/Playwright response wrappers do not expose request().method(). The
+  // application request event remains the strict source of truth for the matching URL.
+  context.emit('request', { method: () => 'GET', url: () => exactUrl });
+  context.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({}),
+  });
+  context.emit('console', fakeConsoleMessage('error', genericNotFound));
+  assert.equal(tracker.errors().length, 0,
+    'a store-less GET remains diagnostic when the response wrapper omits its method');
+  assert.equal(tracker.ignored().filter((issue) => issue.absentPlayerStore || issue.absentPlayerStoreConsole).length, 2);
+  tracker.stop();
+
+  const negativeContext = new EventEmitter();
+  const negativeApp = new EventEmitter();
+  negativeApp.context = () => negativeContext;
+  const negativeTracker = createStrictElectronApplicationIssueTracker(negativeApp, {
+    playerStoreMounted: false,
+  });
+  negativeContext.emit('request', { method: () => 'PUT', url: () => exactUrl });
+  negativeContext.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({}),
+  });
+  assert.equal(negativeTracker.errors().length, 1,
+    'a store-less write remains fatal when the response wrapper omits its method');
+  negativeTracker.stop();
+
+  const knownResponseMethodContext = new EventEmitter();
+  const knownResponseMethodApp = new EventEmitter();
+  knownResponseMethodApp.context = () => knownResponseMethodContext;
+  const knownResponseMethodTracker = createStrictElectronApplicationIssueTracker(knownResponseMethodApp, {
+    playerStoreMounted: false,
+  });
+  knownResponseMethodContext.emit('request', { method: () => 'GET', url: () => exactUrl });
+  knownResponseMethodContext.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({ method: () => 'PUT' }),
+  });
+  assert.equal(knownResponseMethodTracker.errors().length, 1,
+    'an explicit response PUT wins over a stale pending GET fallback');
+  knownResponseMethodTracker.stop();
+
+  for (const [label, requests] of [
+    ['GET plus unknown', [{ method: () => 'GET' }, {}]],
+    ['GET plus PUT', [{ method: () => 'GET' }, { method: () => 'PUT' }]],
+  ]) {
+    const ambiguousContext = new EventEmitter();
+    const ambiguousApp = new EventEmitter();
+    ambiguousApp.context = () => ambiguousContext;
+    const ambiguousTracker = createStrictElectronApplicationIssueTracker(ambiguousApp, {
+      playerStoreMounted: false,
+    });
+    for (const request of requests) {
+      ambiguousContext.emit('request', { ...request, url: () => exactUrl });
+    }
+    ambiguousContext.emit('response', {
+      status: () => 404,
+      url: () => exactUrl,
+      request: () => ({}),
+    });
+    assert.equal(ambiguousTracker.errors().length, 1,
+      `${label} same-URL requests keep a methodless response fatal`);
+    ambiguousTracker.stop();
+  }
+}
+
 async function testElectronUrlLifecycle() {
   const bootPage = new FakePage('about:blank');
   const bootTracker = createElectronCanonicalUrlTracker(bootPage, {
@@ -1276,6 +1356,7 @@ function delay(ms) {
 await testStrictPageIssueTracker();
 await testApplicationWideIssueTrackerAndBackfill();
 await testOptInExpectedSoakNetworkPolicy();
+await testStorelessResponseMethodFallback();
 await testElectronUrlLifecycle();
 await testProcessMonitorAndCrashRejection();
 await testOwnedElectronCleanup();

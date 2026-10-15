@@ -26,6 +26,7 @@ import {
   ATTRIBUTION_ROUTE_TAGS,
   ATTRIBUTION_DIAGNOSTIC_VARIANTS,
   strictWorktreeFingerprint,
+  normalizeFingerprintPath,
   summarizeSamples,
   validateArtifactFiles,
   validateCleanupEvidence,
@@ -237,6 +238,10 @@ export async function runReleaseSoakProbe({
   let canonicalUrlTracker = null;
   let rootUrl = null;
   let servedSourceOverlay = null;
+  let servedSourceOverlayAtEnd = null;
+  let sourceOverlayCoverage = null;
+  let startUncoveredFingerprint = null;
+  let endUncoveredFingerprint = null;
   let cleanupReport = null;
   let isolatedLaunch = null;
   let packagedStartup = null;
@@ -275,6 +280,12 @@ export async function runReleaseSoakProbe({
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
+    sourceOverlayCoverage = await readSourceOverlayCoverage(baselineSource);
+    if (sourceOverlayCoverage?.fullRuntime) {
+      startUncoveredFingerprint = await strictWorktreeFingerprint(root, {
+        excludePaths: sourceOverlayCoverage.pinnedPaths,
+      });
+    }
 
     if (runtime === 'electron' && authority.primaryAcceptance) {
       assert.equal(
@@ -639,13 +650,42 @@ export async function runReleaseSoakProbe({
     // this still wraps the same ordinary teardown exactly once.
     await armPostTeardownGlDeleteTrap();
 
+    if (baselineSource) {
+      try {
+        servedSourceOverlayAtEnd = await readServedSourceOverlayIdentity(page, baselineSource);
+      } catch (error) {
+        doLog(`served source overlay identity unavailable at capture end: ${error?.message || error}`);
+      }
+    }
     const endFingerprint = await strictWorktreeFingerprint(root);
+    if (sourceOverlayCoverage?.fullRuntime) {
+      endUncoveredFingerprint = await strictWorktreeFingerprint(root, {
+        excludePaths: sourceOverlayCoverage.pinnedPaths,
+      });
+    }
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
+    const sourceStability = evaluateSourceStability({
+      baselineSource,
+      coverage: sourceOverlayCoverage,
+      servedAtStart: servedSourceOverlay,
+      servedAtEnd: servedSourceOverlayAtEnd,
+      worktreeStable,
+      uncoveredWorktreeStable: startUncoveredFingerprint && endUncoveredFingerprint
+        ? endUncoveredFingerprint.digest === startUncoveredFingerprint.digest
+        : null,
+      uncoveredHeadStable: startUncoveredFingerprint && endUncoveredFingerprint
+        ? endUncoveredFingerprint.head === startUncoveredFingerprint.head
+        : null,
+    });
     if (!worktreeStable) {
-      // Reject primary acceptance below, but preserve the expensive runtime telemetry. Throwing at
-      // this boundary used to discard post-GC heap, rAF/GPU attribution, and context-recovery data
-      // after a long valid browser session whenever an unrelated parallel lane touched the tree.
-      doLog(`worktree changed during capture: ${startFingerprint.digest} -> ${endFingerprint.digest}`);
+      if (sourceStability.mode === 'served-overlay' && sourceStability.pass) {
+        doLog(`worktree changed during capture, but the full pinned source overlay remained stable: ${startFingerprint.digest} -> ${endFingerprint.digest}`);
+      } else {
+        // Reject primary acceptance below, but preserve the expensive runtime telemetry. Throwing at
+        // this boundary used to discard post-GC heap, rAF/GPU attribution, and context-recovery data
+        // after a long valid browser session whenever an unrelated parallel lane touched the tree.
+        doLog(`worktree changed during capture: ${startFingerprint.digest} -> ${endFingerprint.digest}`);
+      }
     }
     if (runtime === 'electron') {
       const liveUrl = canonicalUrlTracker.observeNow('post-worktree-fingerprint-live');
@@ -720,7 +760,7 @@ export async function runReleaseSoakProbe({
       { name: 'WebGL mesh and frame recovery', status: contextLoss.recovered ? 'pass' : 'fail' },
       { name: 'heap and renderer resources stable', status: validateMemoryEvidence(memory).pass ? 'pass' : 'fail' },
       { name: 'owned runtime cleanup', status: cleanupValidation.pass ? 'pass' : 'fail' },
-      { name: 'worktree stable', status: worktreeStable ? 'pass' : 'fail' },
+      { name: 'source stable', status: sourceStability.pass ? 'pass' : 'fail' },
       { name: authority.primaryAcceptance ? 'broker claim consumed' : 'diagnostic evidence is non-promoting', status: 'pass' },
     ];
     if (runtime === 'electron' && authority.primaryAcceptance) {
@@ -790,7 +830,10 @@ export async function runReleaseSoakProbe({
         manifest: baselineSource.relative,
         requested: baselineSource.identity,
         served: servedSourceOverlay,
+        servedAtEnd: servedSourceOverlayAtEnd,
+        coverage: compactSourceOverlayCoverage(sourceOverlayCoverage),
       } : null,
+      sourceStability,
       consumedClaim: authority.consumedClaim,
       fixedSeed: authority.fixedSeed,
       inputSource: 'keyboard-mouse',
@@ -914,6 +957,99 @@ function compactSourceOverlayIdentity(identity) {
     fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
     totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
   } : null;
+}
+
+function isFullRuntimeCaptureScope(captureScope) {
+  return /^all-runtime(?:-|$)/i.test(String(captureScope || '').trim());
+}
+
+async function readSourceOverlayCoverage(baselineSource) {
+  if (!baselineSource?.path) return null;
+  try {
+    const manifest = JSON.parse(await readFile(baselineSource.path, 'utf8'));
+    const captureScope = String(manifest.captureScope || '').trim() || null;
+    const rawPinnedPaths = Array.isArray(manifest.files)
+      ? manifest.files.map((entry) => entry?.path)
+      : [];
+    const pinnedPaths = rawPinnedPaths.map(normalizeFingerprintPath);
+    const validPinnedPaths = rawPinnedPaths.length > 0
+      && pinnedPaths.every(Boolean)
+      && new Set(pinnedPaths).size === pinnedPaths.length;
+    return {
+      sourceMode: String(manifest.sourceMode || '').trim() || null,
+      captureScope,
+      runtimePathPolicy: String(manifest.runtimePathPolicy || '').trim() || null,
+      fullRuntime: isFullRuntimeCaptureScope(captureScope) && validPinnedPaths,
+      pinnedPaths: validPinnedPaths ? pinnedPaths : [],
+      pinnedPathCount: validPinnedPaths ? pinnedPaths.length : 0,
+    };
+  } catch (error) {
+    return {
+      sourceMode: null,
+      captureScope: null,
+      runtimePathPolicy: null,
+      fullRuntime: false,
+      pinnedPaths: [],
+      pinnedPathCount: 0,
+      readError: error?.message || String(error),
+    };
+  }
+}
+
+function compactSourceOverlayCoverage(coverage) {
+  if (!coverage) return null;
+  return {
+    sourceMode: coverage.sourceMode || null,
+    captureScope: coverage.captureScope || null,
+    runtimePathPolicy: coverage.runtimePathPolicy || null,
+    fullRuntime: coverage.fullRuntime === true,
+    pinnedPathCount: Number.isSafeInteger(coverage.pinnedPathCount) ? coverage.pinnedPathCount : 0,
+    ...(coverage.readError ? { readError: coverage.readError } : {}),
+  };
+}
+
+function sourceOverlayIdentityMatches(expected, observed) {
+  if (!expected || !observed) return false;
+  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
+    .every((field) => expected[field] === observed[field]);
+}
+
+export function evaluateSourceStability({
+  baselineSource = null,
+  coverage = null,
+  servedAtStart = null,
+  servedAtEnd = null,
+  worktreeStable = false,
+  uncoveredWorktreeStable = null,
+  uncoveredHeadStable = null,
+} = {}) {
+  if (!baselineSource) {
+    return {
+      mode: 'worktree',
+      overlayCoversRuntime: false,
+      worktreeStable: worktreeStable === true,
+      servedSourceStable: null,
+      uncoveredWorktreeStable: null,
+      uncoveredHeadStable: null,
+      pass: worktreeStable === true,
+    };
+  }
+  const overlayCoversRuntime = coverage?.fullRuntime === true;
+  const servedSourceStable = sourceOverlayIdentityMatches(baselineSource.identity, servedAtStart)
+    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd);
+  const uncoveredStable = uncoveredWorktreeStable === true;
+  const headStable = uncoveredHeadStable === true;
+  return {
+    mode: overlayCoversRuntime ? 'served-overlay' : 'worktree',
+    overlayCoversRuntime,
+    worktreeStable: worktreeStable === true,
+    servedSourceStable,
+    uncoveredWorktreeStable: overlayCoversRuntime ? uncoveredStable : null,
+    uncoveredHeadStable: overlayCoversRuntime ? headStable : null,
+    pass: overlayCoversRuntime
+      ? (servedSourceStable && uncoveredStable && headStable)
+      : (worktreeStable === true && servedSourceStable),
+  };
 }
 
 async function readServedSourceOverlayIdentity(page, expected) {

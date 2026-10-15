@@ -59,6 +59,12 @@ export function createScreenManager(ctx) {
   // Worker mode edges are authoritative for presentation before the main mirror
   // catches up. Keep the latest published edge for lock and pause decisions.
   let latestPublishedMode = null;
+  // A main-side menu transition publishes its edge before the worker has applied the queued
+  // paused write that opened Pause. Worker mode ACKs carry only `mode`, while main-side
+  // transitions carry `previousMode`; keep a narrow fence so that one stale paused ACK cannot
+  // unlock the title. A later loading/flight intent keeps the same fence until the worker crosses
+  // the old menu boundary, so starting a new game is not regressed by that delayed ACK.
+  let menuHandoffFence = null; // { intentMode: string }
   let destroyed = false;
 
   function effectiveMode() {
@@ -509,8 +515,30 @@ export function createScreenManager(ctx) {
     // has already accepted a transition to the menu.  Consume that published
     // mode before a later closeAll/pop release can decide whether to resume.
     if (modeEvent && typeof modeEvent.mode === 'string') {
-      latestPublishedMode = modeEvent.mode;
-      if (modeEvent.mode !== 'flight' && modeEvent.mode !== 'paused') {
+      const nextMode = modeEvent.mode;
+      const hasPreviousMode = Object.prototype.hasOwnProperty.call(modeEvent, 'previousMode');
+
+      if (hasPreviousMode) {
+        // The immediate main-side edge is the intent fence. Keep it alive across a newer
+        // loading/flight intent until the worker has acknowledged the queued menu boundary.
+        if (nextMode === 'menu') {
+          menuHandoffFence = { intentMode: nextMode };
+        } else if (menuHandoffFence) {
+          menuHandoffFence.intentMode = nextMode;
+        }
+      } else if (menuHandoffFence) {
+        // The worker's delayed paused edge belongs to the pre-menu command and must not
+        // overwrite the published intent. Any non-paused worker edge crosses that fence.
+        if (nextMode === 'paused') return;
+        const intentMode = menuHandoffFence.intentMode;
+        menuHandoffFence = null;
+        // A menu ACK that follows a newer loading/flight intent is itself stale. Keep the
+        // newer intent visible until its own worker edge arrives.
+        if (nextMode === 'menu' && intentMode !== 'menu') return;
+      }
+
+      latestPublishedMode = nextMode;
+      if (nextMode !== 'flight' && nextMode !== 'paused') {
         pauseResumeEligible = false;
       }
     }
@@ -753,6 +781,7 @@ export function createScreenManager(ctx) {
     for (const unsubscribe of runtimeUnsubscribers.splice(0)) {
       try { unsubscribe(); } catch (_) {}
     }
+    menuHandoffFence = null;
     timeEffects.clear('ui:pausing-screen');
     for (const rec of registry.values()) {
       cancelPendingExit(rec);

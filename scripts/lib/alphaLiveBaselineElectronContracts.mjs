@@ -76,6 +76,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const pageEvents = new Set();
   const activeRequests = new Set();
   const requestProvenance = new WeakMap();
+  const pendingStoreRequests = new Map();
   const expectedNavigationAborts = new Map();
   const expectedNavigationTokens = new Map();
   let nextExpectedNavigationToken = 1;
@@ -151,6 +152,14 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       });
     }
     activeRequests.add(request);
+    if (allowAbsentPlayerStore) {
+      const url = String(readMaybeFunction(request, 'url') || '');
+      if (isPlayerStorePath(url)) {
+        const rawMethod = readMaybeFunction(request, 'method');
+        const method = rawMethod == null ? null : String(rawMethod).toUpperCase();
+        pendingStoreRequests.set(request, { url, method: method || null });
+      }
+    }
     if (expectedNavigationTokens.size > 0) {
       const labels = expectedNavigationAborts.get(request) || new Set();
       for (const label of expectedNavigationTokens.values()) labels.add(label);
@@ -160,6 +169,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const completeRequest = (request) => {
     activeRequests.delete(request);
     expectedNavigationAborts.delete(request);
+    pendingStoreRequests.delete(request);
   };
   const recordFailedRequest = (request, failedEventObserved = false) => {
     const failure = readMaybeFunction(request, 'failure');
@@ -204,7 +214,10 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       // than a loose count of all 404s in the application.
       flushPendingGenericNotFoundConsoles();
       const issue = { source: 'response', level: 'error', text: `HTTP ${status} ${url}` };
-      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url)) {
+      const fallbackStoreMethod = allowAbsentPlayerStore
+        ? resolvePendingStoreRequestMethod(response, url, pendingStoreRequests)
+        : null;
+      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url, fallbackStoreMethod)) {
         expectedAbsentStoreConsoleTokens += 1;
         pushIgnored(issue, { absentPlayerStore: true });
         return;
@@ -365,20 +378,34 @@ function isGenericNotFoundConsole(text) {
     .test(String(text || '').trim());
 }
 
-function isAbsentPlayerStoreGetResponse(response, status, url) {
+function isAbsentPlayerStoreGetResponse(response, status, url, fallbackMethod = null) {
   if (status !== 404) return false;
-  let pathname = '';
-  try {
-    pathname = new URL(String(url || '')).pathname;
-  } catch (_) {
-    return false;
-  }
-  if (pathname !== '/__spaceface_player_store') return false;
+  if (!isPlayerStorePath(url)) return false;
   const request = readMaybeFunction(response, 'request');
-  const method = String(readMaybeFunction(request, 'method') || '').toUpperCase();
+  const responseMethod = readMaybeFunction(request, 'method');
+  const method = String(responseMethod || fallbackMethod || '').toUpperCase();
   // Playwright responses expose request(); without a method there is no safe way to
   // distinguish the optional bootstrap GET from a failed write, so keep it fatal.
   return method === 'GET';
+}
+
+function isPlayerStorePath(url) {
+  try {
+    return new URL(String(url || '')).pathname === '/__spaceface_player_store';
+  } catch (_) {
+    return false;
+  }
+}
+
+function resolvePendingStoreRequestMethod(response, url, pendingRequests) {
+  if (!isPlayerStorePath(url)) return null;
+  const responseRequest = readMaybeFunction(response, 'request');
+  const direct = pendingRequests.get(responseRequest);
+  if (direct?.method) return direct.method;
+  const matching = [...pendingRequests.values()].filter((entry) => entry.url === url);
+  // Any unknown or multiple same-URL requests make the fallback ambiguous. Keep the
+  // response fatal rather than allowing a GET to hide a write or another failure.
+  return matching.length === 1 && matching[0].method ? matching[0].method : null;
 }
 
 function isCancelledCinematicMediaRequest(request, failure) {

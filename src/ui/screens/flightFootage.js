@@ -523,7 +523,6 @@ export function installFlightFootage(bus, {
     if (stopped || !video) return;
     const state = stateOf();
     if (!eligible(state)) { stopStream(); return; }
-    recordMetadata(state);
     const tick = Number(state.tick);
     const previous = ring.frames.at(-1);
     if (video.readyState >= 2) {
@@ -534,6 +533,9 @@ export function installFlightFootage(bus, {
           const { width, height } = outputSize();
           const claim = reserveCodecCapture(state, tick, width, height);
           if (claim) {
+            // Record only a frame that passed the capture gate. The submitted-frame helper retains
+            // its existing metadata call for asynchronous completion.
+            recordMetadata(state);
             try {
               const frame = new globalThis.VideoFrame(video, {
                 timestamp: Math.round(tick * 1_000_000 / 60),
@@ -552,6 +554,7 @@ export function installFlightFootage(bus, {
           const { width, height } = outputSize();
           const claim = reserveWorkerCapture(state, tick, width, height);
           if (claim) {
+            recordMetadata(state);
             createImageBitmap(video, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' })
               .then((bitmap) => submitWorkerFrame(bitmap, 'bitmap', claim),
                 (error) => finishWorkerCapture(claim, null, error));
@@ -595,13 +598,15 @@ export function installFlightFootage(bus, {
       if (current !== hookState || !eligible(current)) return;
       const now = clock();
       if (openingSince == null || now - openingSince < openingDelay) return;
-      recordMetadata(current);
       const tick = Number(current.tick);
       const { width, height } = outputSize(hookCanvas);
       if (webCodecHook) {
         const claim = reserveCodecCapture(current, tick, width, height);
         if (!claim) return;
         claim.presented = true;
+        // Reserve first so rejected render callbacks do not clone pose/event metadata. Keep this
+        // before VideoFrame snapshots the submitted canvas, preserving the captured tick.
+        recordMetadata(current);
         try {
           // VideoFrame snapshots the successfully submitted canvas at this boundary. The frame is
           // transferred to WebCodecs; no ImageBitmap or JPEG readback is performed on this path.
@@ -616,6 +621,7 @@ export function installFlightFootage(bus, {
         const claim = reserveWorkerCapture(current, tick, width, height);
         if (!claim) return;
         claim.presented = true;
+        recordMetadata(current);
         try {
           // Calling createImageBitmap synchronously at this boundary is intentional: it snapshots the
           // submitted canvas before a later renderer pass can overwrite the pixels. The promise only

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 
 import {
   parseReleaseSoakArgs,
@@ -15,11 +17,14 @@ import {
   RELEASE_SOAK_SCHEMA,
   REQUIRED_PRIMARY_CYCLE_MARKS,
   summarizeSamples,
+  strictWorktreeFingerprint,
+  validateReleaseSoakEvidence,
   validatePerformanceEvidence,
 } from '../scripts/lib/releaseSoakContracts.mjs';
-import { summarizeRestorePopulation } from '../scripts/lib/releaseSoakProbe.mjs';
+import { evaluateSourceStability, summarizeRestorePopulation } from '../scripts/lib/releaseSoakProbe.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const execFileAsync = promisify(execFile);
 
 test('restore population receipt compares the loaded envelope with a bounded post-load census', () => {
   const saved = [
@@ -60,8 +65,166 @@ test('restore population receipt compares the loaded envelope with a bounded pos
 test('probe rejects a changed worktree after persisting diagnostic telemetry', async () => {
   const source = await readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8');
   assert.match(source, /const worktreeStable = endFingerprint\.digest === startFingerprint\.digest/);
-  assert.match(source, /status: worktreeStable \? 'pass' : 'fail'[\s\S]*await writeTelemetry\(/);
+  assert.match(source, /sourceStability\.pass \? 'pass' : 'fail'[\s\S]*await writeTelemetry\(/);
   assert.doesNotMatch(source, /assert\.equal\(endFingerprint\.digest, startFingerprint\.digest/);
+});
+
+test('full pinned overlays use served identity while partial overlays remain worktree-strict', () => {
+  const identity = {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'a'.repeat(40),
+    sourceOverlayDigest: 'b'.repeat(64),
+    fileCount: 2220,
+    totalBytes: 123,
+  };
+  const stableOverlay = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(stableOverlay.mode, 'served-overlay');
+  assert.equal(stableOverlay.pass, true, 'live worktree churn cannot invalidate a full pinned served graph');
+
+  const changedOverlay = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity, sourceOverlayDigest: 'c'.repeat(64) },
+    worktreeStable: true,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(changedOverlay.pass, false, 'a served-byte identity change remains fatal');
+
+  const partialOverlay = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'performance-paths', fullRuntime: false },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+  });
+  assert.equal(partialOverlay.pass, false, 'partial overlays still reject live worktree drift');
+
+  const unpinnedStyleChange = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: false,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(unpinnedStyleChange.pass, false,
+    'a live styles/kit.css mutation outside the pinned source graph remains fatal');
+
+  const unpinnedModuleChange = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: false,
+    uncoveredHeadStable: true,
+  });
+  assert.equal(unpinnedModuleChange.pass, false,
+    'a newly-added runtime module outside the pinned manifest remains fatal');
+
+  const headDrift = evaluateSourceStability({
+    baselineSource: { identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    servedAtStart: { ...identity },
+    servedAtEnd: { ...identity },
+    worktreeStable: false,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: false,
+  });
+  assert.equal(headDrift.pass, false, 'a HEAD change remains fatal even when served bytes match');
+});
+
+test('primary evidence accepts worktree drift only with a stable full-runtime overlay', () => {
+  const evidence = makeValidEvidence({
+    runtime: 'electron',
+    taskId: 'overlay-stability-contract',
+    artifact: {
+      kind: 'screenshot',
+      path: 'route.png',
+      bytes: 1,
+      sha256: 'a'.repeat(64),
+    },
+  });
+  const identity = {
+    schema: 'spaceface.sourceBaseline.v1',
+    sourceCommit: 'b'.repeat(40),
+    sourceOverlayDigest: 'c'.repeat(64),
+    fileCount: 2220,
+    totalBytes: 456,
+  };
+  evidence.sourceOverlay = {
+    manifest: '.devshots/source-baselines/current.json',
+    requested: identity,
+    served: { ...identity },
+    servedAtEnd: { ...identity },
+    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+  };
+  evidence.sourceStability = {
+    mode: 'served-overlay',
+    overlayCoversRuntime: true,
+    worktreeStable: false,
+    servedSourceStable: true,
+    uncoveredWorktreeStable: true,
+    uncoveredHeadStable: true,
+    pass: true,
+  };
+  evidence.fingerprints.end = { ...evidence.fingerprints.end, digest: 'd'.repeat(64), id: `0123456789ab-${'d'.repeat(16)}` };
+  const result = validateReleaseSoakEvidence(evidence);
+  assert.equal(result.pass, true, result.failures.join('; '));
+
+  const partial = structuredClone(evidence);
+  partial.sourceOverlay.coverage = { captureScope: 'performance-paths', fullRuntime: false };
+  const partialResult = validateReleaseSoakEvidence(partial);
+  assert.equal(partialResult.pass, false);
+  assert(partialResult.failures.some((failure) => /worktree fingerprint changed/i.test(failure)));
+});
+
+test('excluded overlay files do not hide unpinned runtime mutations from the fingerprint', async () => {
+  const fixture = await mkdtemp(path.join(os.tmpdir(), 'spaceface-source-fingerprint-'));
+  const runGit = (args) => execFileAsync('git', args, { cwd: fixture, windowsHide: true });
+  const pinned = path.join(fixture, 'src', 'pinned.js');
+  const style = path.join(fixture, 'styles', 'kit.css');
+  try {
+    await mkdir(path.dirname(pinned), { recursive: true });
+    await mkdir(path.dirname(style), { recursive: true });
+    await writeFile(pinned, 'export const pinned = 1;\n');
+    await writeFile(style, ':root { --fixture: 1; }\n');
+    await runGit(['init', '-q']);
+    await runGit(['config', 'user.email', 'source-fingerprint@example.invalid']);
+    await runGit(['config', 'user.name', 'Source Fingerprint']);
+    await runGit(['add', '.']);
+    await runGit(['commit', '-qm', 'fixture']);
+
+    const baseline = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    await writeFile(pinned, 'export const pinned = 2;\n');
+    const pinnedOnly = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    assert.equal(pinnedOnly.digest, baseline.digest,
+      'a pinned source mutation is ignored only by the exact exclusion set');
+
+    await writeFile(style, ':root { --fixture: 2; }\n');
+    const styleChanged = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    assert.notEqual(styleChanged.digest, baseline.digest,
+      'an unpinned styles/kit.css mutation remains visible');
+
+    await writeFile(style, ':root { --fixture: 1; }\n');
+    await writeFile(path.join(fixture, 'src', 'newRuntime.js'), 'export const newRuntime = true;\n');
+    const moduleChanged = await strictWorktreeFingerprint(fixture, { excludePaths: ['src/pinned.js'] });
+    assert.notEqual(moduleChanged.digest, baseline.digest,
+      'a newly-added runtime module remains visible');
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test('parser locks the wrapper runtime and rejects acceptance bypass flags', () => {

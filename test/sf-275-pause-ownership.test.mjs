@@ -233,6 +233,82 @@ test('SF-275 menu handoff stays locked until the worker returns to flight', () =
   }
 });
 
+test('SF-275 stale paused ACK cannot unlock menu before a real flight re-entry', () => {
+  const queued = [];
+  installSimCommandSink((descriptor) => { queued.push(descriptor); });
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    const modeCommands = () => queued.filter((descriptor) => descriptor.kind === 'mode');
+    manager.pushScreen('pause');
+
+    // Main publishes menu immediately, while the worker still has the pause write in flight.
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+
+    // This is the delayed ACK from the earlier paused command. Escape and backdrop both gate
+    // through locked(); neither may dismiss the title while the worker's menu edge is pending.
+    bus.emit('mode:changed', { mode: 'paused' });
+    assert.equal(manager.locked(), true, 'a stale paused ACK must not unlock the title');
+    if (!manager.locked()) manager.popScreen(); // Escape path
+    if (!manager.locked()) manager.popScreen(); // Backdrop path
+    assert.equal(manager.top(), 'mainMenu');
+    assert.deepEqual(modeCommands().map((descriptor) => descriptor.mode), ['paused', 'menu']);
+
+    // Once the worker crosses menu, a real worker flight edge is accepted. A fresh pause/resume
+    // then retains the ordinary mode lifecycle instead of inheriting the stale ACK fence.
+    bus.emit('mode:changed', { mode: 'menu' });
+    assert.equal(manager.locked(), true);
+    bus.emit('mode:changed', { mode: 'flight' });
+    assert.equal(manager.locked(), false);
+    manager.popScreen();
+    manager.pushScreen('pause');
+    manager.popScreen();
+    assert.deepEqual(
+      modeCommands().map((descriptor) => descriptor.mode),
+      ['paused', 'menu', 'paused', 'flight'],
+    );
+    assert.equal(state.mode, 'flight', 'the main mirror remains worker-owned throughout re-entry');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
+test('SF-275 menu fence survives a newer loading intent until the worker crosses it', () => {
+  installSimCommandSink(() => {});
+  try {
+    const { state, bus, manager } = makeFixture({ workerPause: true });
+    manager.pushScreen('pause');
+
+    laneSetMode(state, bus, 'menu');
+    bus.emit('mode:changed', { mode: 'menu', previousMode: 'flight' });
+    manager.closeAll();
+    manager.pushScreen('mainMenu');
+
+    // Starting a new game supersedes the menu intent, but the old paused ACK can still arrive
+    // before the worker has applied menu and loading in FIFO order.
+    bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
+    bus.emit('mode:changed', { mode: 'paused' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'loading');
+
+    // The old menu ACK is also stale relative to loading; the following loading/flight edges are
+    // still accepted normally.
+    bus.emit('mode:changed', { mode: 'menu' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'loading');
+    bus.emit('mode:changed', { mode: 'loading' });
+    bus.emit('mode:changed', { mode: 'flight' });
+    manager.syncVisibility();
+    assert.equal(document.body.dataset.gameMode, 'flight');
+    manager.destroy();
+  } finally {
+    uninstallSimCommandSink();
+  }
+});
+
 test('SF-275 worker pause release keeps menu mode guarded', () => {
   const queued = [];
   installSimCommandSink((descriptor) => { queued.push(descriptor); });
