@@ -153,7 +153,7 @@ export function createLedgerScreen(ctx) {
   function syncTape(selectedId) {
     const model = panel.model;
     const entries = model && Array.isArray(model.entries) ? model.entries.map(tapeEntryOf) : [];
-    if (!tape) tape = createLedgerTape(tapeHost, { onPick: (id) => pickById(id), purseHost });
+    if (!tape) tape = createLedgerTape(tapeHost, { onPick: (id) => pickById(id), purseHost, readingHost: read });
     let nowCycle = '';
     try { nowCycle = formatLedgerCycle(Number(ctx && ctx.state && ctx.state.simTime) || 0); } catch (_) { nowCycle = ''; }
     tape.set({ entries, selectedId: selectedId || null, nowCycle });
