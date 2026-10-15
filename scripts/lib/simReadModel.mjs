@@ -1274,10 +1274,15 @@ export function sameDomainContainerKind(a, b) {
 // canonical clone when the signature changes. The probe is the digest set of every
 // leaf path — the runner replays the same walk over its facades and compares.
 //
-// Node records: { leaf, kids:Set<string>|null, digest, bytes, lastSign, segs }.
+// Node records: { leaf, kids:Map<string,node>|null, digest, bytes, lastSign, segs }.
 // paths is keyed by the joined path string; segs is the segment array where
 // segs[0] is the mirrored root key (which itself may contain dots, e.g.
 // 'world.currentSectorId').
+
+function domainWireChildSegs(segs, aliased, child, name) {
+  return aliased || child.segs[0] !== segs[0]
+    ? segs.concat(name) : child.segs;
+}
 
 export function createDomainDiffer(options = {}) {
   // Stage-6 instrumentation gate (item F3): the probe slot table + digest sets
@@ -1286,6 +1291,11 @@ export function createDomainDiffer(options = {}) {
   // either way (probe content never fed the shipped updates).
   const probeEnabled = options.probe === true;
   const paths = new Map();
+  // Roots are created lazily in DOMAIN_MIRROR_KEYS order. That interleaving is
+  // part of the wire cadence contract because each node's creation slot seeds
+  // its staggered signing phase.
+  const rootNodes = new Array(DOMAIN_MIRROR_KEYS.length);
+  const rootAliasSegs = new Array(DOMAIN_MIRROR_KEYS.length);
   const sigScratch = {};
   const cloneScratch = {};
   let nextSlot = 0;
@@ -1317,38 +1327,86 @@ export function createDomainDiffer(options = {}) {
     probeGen++;
   }
 
-  function dropNode(path) {
-    const n = paths.get(path);
-    if (!n) return;
-    if (n.kids) for (const c of n.kids) dropNode(`${path}.${c}`);
-    releaseProbeSlot(n);
-    paths.delete(path);
-  }
-
-  function ensureNode(path, segs) {
-    let n = paths.get(path);
-    if (!n) {
-      n = {
-        leaf: true, kids: null, digest: null, signature: null, bytes: 0,
-        lastSign: -1, lastEnum: null, segs, slot: nextSlot++,
-        probeSlot: null, probeChanged: false,
-      };
-      if (isCombatTracePath(segs)) {
-        n.combatTraceWatermark = null;
-        n.combatTraceEventRefs = null;
-      }
-      paths.set(path, n);
+  function dropNode(node) {
+    if (!node) return;
+    if (node.kids) {
+      for (const child of node.kids.values()) dropNode(child);
+      node.kids = null;
     }
-    return n;
+    node.alive = false;
+    releaseProbeSlot(node);
+    if (paths.get(node.path) === node) paths.delete(node.path);
   }
 
-  function walk(path, segs, v, tick, updates, stats, npcJobsRevision, runContext, playerId) {
-    const node = ensureNode(path, segs);
+  function createNode(path, segs) {
+    const node = {
+      path,
+      segs,
+      alive: true,
+      leaf: true,
+      kids: null,
+      digest: null,
+      signature: null,
+      bytes: 0,
+      lastSign: -1,
+      lastEnum: null,
+      slot: nextSlot++,
+      probeSlot: null,
+      probeChanged: false,
+      // These values depend only on the path. Keep them on the node so the
+      // hot walk does not repeatedly classify the same path.
+      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      isCombatTrace: isCombatTracePath(segs),
+      isNpcJobsById: isNpcJobsByIdPath(segs),
+      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
+      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]),
+    };
+    if (node.isCombatTrace) {
+      node.combatTraceWatermark = null;
+      node.combatTraceEventRefs = null;
+    }
+    paths.set(path, node);
+    return node;
+  }
+
+  // A path can be discovered through an expanded parent before its dotted
+  // mirror key reaches the root loop. Resolve that alias only while creating
+  // a node; hot visits use the parent/root's retained node reference directly.
+  function getOrCreateNode(path, segs) {
+    return paths.get(path) || createNode(path, segs);
+  }
+
+  // Dotted mirror roots can revisit a node with a different segment boundary
+  // after an expanded parent created it. Cache that rare alias view once so
+  // metadata keeps the old walk(segs) semantics without classifying on every
+  // hot visit; canonical visits use the node's creation-time metadata directly.
+  function staticMetadataFor(node, segs) {
+    if (segs === node.segs) return node;
+    const aliasKey = `${segs[0]}\u0000${segs.length}\u0000${segs[1] ?? ''}`;
+    let metadata = node.aliasMetadata && node.aliasMetadata.get(aliasKey);
+    if (metadata) return metadata;
+    metadata = {
+      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      isCombatTrace: isCombatTracePath(segs),
+      isNpcJobsById: isNpcJobsByIdPath(segs),
+      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
+      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? node.path : segs[0]),
+    };
+    if (!node.aliasMetadata) node.aliasMetadata = new Map();
+    node.aliasMetadata.set(aliasKey, metadata);
+    return metadata;
+  }
+
+  function walk(node, v, tick, updates, stats, npcJobsRevision, runContext, playerId,
+    walkSegs = node.segs) {
+    const path = node.path;
+    const segs = walkSegs;
+    const aliased = segs !== node.segs;
+    const metadata = staticMetadataFor(node, segs);
     // These owners publish detached immutable snapshots only at settlement. A fresh result
     // or stock/hold receipt must arrive before its event opens a screen, even for a cold leaf.
-    const ownerSnapshot = segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic';
-    const freshOwnerSnapshot = ownerSnapshot && node.ownerSnapshotSource !== v;
-    if (ownerSnapshot) node.ownerSnapshotSource = v;
+    const freshOwnerSnapshot = metadata.ownerSnapshot && node.ownerSnapshotSource !== v;
+    if (metadata.ownerSnapshot) node.ownerSnapshotSource = v;
     if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
       if (node.leaf) {
         releaseProbeSlot(node); // leaf -> container
@@ -1363,34 +1421,43 @@ export function createDomainDiffer(options = {}) {
       const enumDue = freshOwnerSnapshot || node.lastEnum == null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
-        const liveKids = new Set(Object.keys(v));
-        for (const c of liveKids) {
-          walk(`${path}.${c}`, segs.concat(c), v[c], tick, updates, stats, npcJobsRevision, runContext,
-            playerId);
+        const previousKids = node.kids;
+        const nextKids = new Map();
+        for (const c of Object.keys(v)) {
+          let child = previousKids && previousKids.get(c);
+          let childSegs;
+          if (child) {
+            childSegs = domainWireChildSegs(segs, aliased, child, c);
+          } else {
+            childSegs = segs.concat(c);
+            child = getOrCreateNode(`${path}.${c}`, childSegs);
+          }
+          nextKids.set(c, child);
+          walk(child, v[c], tick, updates, stats, npcJobsRevision, runContext, playerId, childSegs);
         }
-        if (node.kids) {
-          for (const c of node.kids) {
-            if (!liveKids.has(c)) {
-              updates.push({ segs: segs.concat(c), del: true });
-              dropNode(`${path}.${c}`);
+        if (previousKids) {
+          for (const [c, child] of previousKids) {
+            if (!nextKids.has(c)) {
+              updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+              dropNode(child);
             }
           }
         }
-        node.kids = liveKids;
+        node.kids = nextKids;
         node.lastEnum = tick;
       } else {
         // Between enumerations walk the known set only: absent children delete
         // eagerly (a present-undefined child will be re-discovered next enum);
         // new children wait for the enumeration pass.
-        for (const c of node.kids) {
+        for (const [c, child] of node.kids) {
           const cv = v[c];
           if (cv === undefined) {
-            updates.push({ segs: segs.concat(c), del: true });
-            dropNode(`${path}.${c}`);
+            updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+            dropNode(child);
             node.kids.delete(c);
           } else {
-            walk(`${path}.${c}`, segs.concat(c), cv, tick, updates, stats, npcJobsRevision, runContext,
-              playerId);
+            walk(child, cv, tick, updates, stats, npcJobsRevision, runContext, playerId,
+              domainWireChildSegs(segs, aliased, child, c));
           }
         }
       }
@@ -1399,9 +1466,9 @@ export function createDomainDiffer(options = {}) {
     if (node.kids) {
       // Was expanded, value no longer a canonical object — collapse: every
       // former child path deletes, then this node diffs as a leaf.
-      for (const c of node.kids) {
-        updates.push({ segs: segs.concat(c), del: true });
-        dropNode(`${path}.${c}`);
+      for (const [c, child] of node.kids) {
+        updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+        dropNode(child);
       }
       node.kids = null;
       if (segs[0] === 'run' && segs.length === 1) {
@@ -1412,7 +1479,7 @@ export function createDomainDiffer(options = {}) {
     }
     node.leaf = true;
     const leafRule = domainLeafViewFor(segs);
-    const isCombatTrace = isCombatTracePath(segs);
+    const isCombatTrace = metadata.isCombatTrace;
     // Do not retain a replaced live trace/event array until its next cold slot.
     // The replacement still follows the normal cadence, but dropping the old
     // references here keeps reset/load graphs collectible immediately.
@@ -1427,16 +1494,16 @@ export function createDomainDiffer(options = {}) {
     // existing lifecycle signal to bypass the large-leaf cadence for structural changes, while
     // leaving ordinary phase/progress changes on their bounded cold cadence.  This avoids a
     // per-tick Object.keys membership scan and keeps the authoritative worker object untouched.
-    const npcJobsRevisionChanged = isNpcJobsByIdPath(segs)
+    const npcJobsRevisionChanged = metadata.isNpcJobsById
       && Number.isSafeInteger(npcJobsRevision)
       && node.npcJobsRevision !== npcJobsRevision;
-    if (isNpcJobsByIdPath(segs) && Number.isSafeInteger(npcJobsRevision)) {
+    if (metadata.isNpcJobsById && Number.isSafeInteger(npcJobsRevision)) {
       node.npcJobsRevision = npcJobsRevision;
     }
     const normalizedPlayerId = playerId == null ? null : playerId;
     const combatTracePlayerChanged = isCombatTrace && node.combatTraceWatermark
       && node.combatTraceWatermark.playerId !== normalizedPlayerId;
-    const cadence = domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]);
+    const cadence = metadata.cadence;
     const minCadenceTicks = leafRule && Number.isFinite(leafRule.minCadenceTicks)
       ? Math.max(1, Math.floor(leafRule.minCadenceTicks)) : 0;
     // A replaced station object is a reset/rebind boundary. Keep its first
@@ -1451,9 +1518,8 @@ export function createDomainDiffer(options = {}) {
     // update can arrive while the public census remains zero for the whole
     // presentation window.  Ship that one positive edge immediately, while
     // keeping later within-wave count changes on the existing root cadence.
-    const isRunSpawnedThreat = segs[0] === 'run' && segs[1] === 'spawnedThreat';
     let runAdmissionBootstrap = false;
-    if (isRunSpawnedThreat) {
+    if (metadata.isRunSpawnedThreat) {
       const activeWave = runContext && runContext.phase === 'active'
         && Number.isSafeInteger(runContext.wave) ? runContext.wave : null;
       if (activeWave === null) {
@@ -1557,9 +1623,20 @@ export function createDomainDiffer(options = {}) {
       const stats = { shipBytes: 0, ships: 0, signedBytes: 0, oversize: [] };
       const npcJobsRevision = resolveDomainValue(state, 'npcJobs.revision');
       const runContext = resolveDomainValue(state, 'run');
-      for (const key of DOMAIN_MIRROR_KEYS) {
-        walk(key, [key], resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
-          runContext, state && state.playerId);
+      for (let rootIndex = 0; rootIndex < DOMAIN_MIRROR_KEYS.length; rootIndex++) {
+        const key = DOMAIN_MIRROR_KEYS[rootIndex];
+        let rootNode = rootNodes[rootIndex];
+        if (!rootNode || !rootNode.alive) {
+          rootNode = getOrCreateNode(key, [key]);
+          rootNodes[rootIndex] = rootNode;
+        }
+        let walkSegs = rootNode.segs;
+        if (walkSegs.length !== 1 || walkSegs[0] !== key) {
+          walkSegs = rootAliasSegs[rootIndex];
+          if (!walkSegs) walkSegs = rootAliasSegs[rootIndex] = [key];
+        }
+        walk(rootNode, resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
+          runContext, state && state.playerId, walkSegs);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
       let probe = null;
