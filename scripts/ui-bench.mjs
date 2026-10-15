@@ -29,8 +29,13 @@ if (args.list) {
   const unknown = args.shots.filter(id => !resolveShot(id));
   if (unknown.length) throw new Error(`Unknown screen ${unknown.join(', ')}; use --list`);
   const { startBenchServer } = await import('./lib/benchServer.mjs');
+  const sourceOverlay = args['baseline-source'] ? path.resolve(ROOT, args['baseline-source']) : null;
+  if (sourceOverlay && !path.relative(ROOT, sourceOverlay).replaceAll('\\', '/').startsWith('.devshots/')) {
+    throw new Error('--baseline-source must name an ignored manifest under .devshots/');
+  }
+  const startSelectedServer = () => startBenchServer({ sourceOverlay });
   if (!args.shots.length) {
-    const server = await startBenchServer();
+    const server = await startSelectedServer();
     const base = `${server.baseUrl}tools/ui-bench.html`;
     console.log('ui-bench is serving. Open a screen directly:');
     for (const id of ['pause', 'settings', 'flight', 'station-market', 'title', 'chart']) console.log(`  ${base}?screen=${id}&chrome=0`);
@@ -40,7 +45,7 @@ if (args.list) {
   } else {
     const { loadPlaywright } = await import('./lib/load-playwright.mjs');
     args.executablePath = process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-    const summary = await runUiBenchBatch({ args, root: ROOT, loadPlaywright, startServer: startBenchServer, shoot });
+    const summary = await runUiBenchBatch({ args, root: ROOT, loadPlaywright, startServer: startSelectedServer, shoot });
     for (const cell of summary.cells) for (const error of cell.errors) console.error(`  ${cell.id}: ${error.kind}: ${error.message || error.url}`);
     for (const error of summary.errors) console.error(`ui-bench: ${error}`);
     console.log(`\nBatch report: ${path.join(args.out || '.devshots/ui-bench', 'report.json')}`);

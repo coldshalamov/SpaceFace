@@ -101,6 +101,7 @@ test('viewport parser preserves phone/default/single and adds a deduplicated mat
   assert.deepEqual(parseBenchArgs(['--phone']).viewport, { width: 390, height: 844 });
   const a = parseBenchArgs(['--shot=pause', '--shot=settings', '--viewports=960x540,1920x1080,960x540']);
   assert.equal(a.viewports.length, 2); assert.deepEqual(a.shots, ['pause', 'settings']);
+  assert.equal(parseBenchArgs(['--shot=pause', '--baseline-source=.devshots/baseline/report.json'])['baseline-source'], '.devshots/baseline/report.json');
   assert.throws(() => parseBenchArgs(['--viewport=0x600']));
   assert.throws(() => parseBenchArgs(['--viewport=960x540', '--viewports=1920x1080']));
   assert.throws(() => parseBenchArgs(['--timeout-ms=Infinity']));
@@ -165,16 +166,82 @@ test('cell deadline closes context and keeps completed/remaining evidence', asyn
 });
 test('only same-origin root metadata/favicon requests are exempt from bench errors', async t => {
   const r = rig(t);
+  const response = (url, status = 404, method = 'GET') => ({
+    url: () => url, status: () => status, request: () => ({ method: () => method }),
+  });
   r.options.shoot = async page => {
-    page.emit('response', { url: () => 'http://127.0.0.1:9000/spaceface-release-build.json', status: () => 404 });
-    page.emit('response', { url: () => 'http://127.0.0.1:9000/favicon.ico', status: () => 404 });
-    page.emit('console', { type: () => 'error', text: () => '404', location: () => ({ url: 'http://127.0.0.1:9000/spaceface-release-build.json' }) });
+    page.emit('response', response('http://127.0.0.1:9000/spaceface-release-build.json'));
+    page.emit('response', response('http://127.0.0.1:9000/favicon.ico'));
+    page.emit('console', {
+      type: () => 'error',
+      text: () => 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+      location: () => ({ url: 'http://127.0.0.1:9000/spaceface-release-build.json' }),
+    });
     return { ok: true };
   };
   assert.equal((await runUiBenchBatch(r.options)).ok, true);
   r.options.shoot = async page => {
-    page.emit('response', { url: () => 'https://cdn.example/spaceface-release-build.json', status: () => 404 });
+    page.emit('response', response('https://cdn.example/spaceface-release-build.json'));
     return { ok: true };
   };
   assert.equal((await runUiBenchBatch(r.options)).ok, false);
+});
+
+test('player-store 404 exemption requires same-origin GET evidence and exact console provenance', async t => {
+  const store = 'http://127.0.0.1:9000/__spaceface_player_store';
+  const response = (url, status = 404, method) => ({
+    url: () => url, status: () => status,
+    ...(method === undefined ? {} : { request: () => ({ method: () => method }) }),
+  });
+  const console404 = url => ({
+    type: () => 'error', text: () => 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+    location: () => ({ url }),
+  });
+  const run = async (tcase, shoot) => {
+    const r = rig(t); r.options.shoot = shoot;
+    const result = await runUiBenchBatch(r.options);
+    assert.equal(result.ok, tcase.ok, tcase.name);
+    if (tcase.kind) assert.ok(result.cells[0].errors.some(error => error.kind === tcase.kind), tcase.name);
+  };
+
+  await run({ name: 'console-before-response is matched by exact GET 404', ok: true }, async page => {
+    page.emit('console', console404(store));
+    page.emit('response', response(store, 404, 'GET'));
+    return { ok: true };
+  });
+  await run({ name: 'PUT 404 remains fatal', ok: false, kind: 'http' }, async page => {
+    page.emit('response', response(store, 404, 'PUT'));
+    return { ok: true };
+  });
+  await run({ name: 'unknown method remains fatal', ok: false, kind: 'http' }, async page => {
+    page.emit('response', response(store));
+    return { ok: true };
+  });
+  await run({ name: 'wrong status remains fatal', ok: false, kind: 'http' }, async page => {
+    page.emit('response', response(store, 500, 'GET'));
+    return { ok: true };
+  });
+  await run({ name: 'different same-origin path remains fatal', ok: false, kind: 'http' }, async page => {
+    page.emit('response', response(`${store}/probe`, 404, 'GET'));
+    return { ok: true };
+  });
+  await run({ name: 'unmatched optional console remains fatal', ok: false, kind: 'console' }, async page => {
+    page.emit('console', console404(store));
+    return { ok: true };
+  });
+  await run({ name: 'unrelated 404 is never globally suppressed', ok: false, kind: 'http' }, async page => {
+    page.emit('response', response('http://127.0.0.1:9000/assets/missing.js', 404, 'GET'));
+    return { ok: true };
+  });
+});
+
+test('UI bench request diagnostics remain bounded per page', async t => {
+  const r = rig(t);
+  r.options.shoot = async page => {
+    for (let i = 0; i < 12_000; i++) page.emit('request', { url: () => `/asset-${i}.glb` });
+    return { ok: true };
+  };
+  const result = await runUiBenchBatch(r.options);
+  assert.equal(result.ok, true);
+  assert.ok(result.cells.every(cell => cell.requests <= 10_000));
 });
