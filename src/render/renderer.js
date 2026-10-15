@@ -14259,6 +14259,101 @@ export const render = {
     };
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
+    // Near live-sector admission. The first draw no longer waits on the whole-sector cook
+    // (liveScenePresentReady), so its never-drawn materials would otherwise link inside the first
+    // presented seconds after the lift. While the veil still holds the sim past the first playable
+    // paint, admit the roots the player is about to see — inside the camera frustum or within one
+    // streaming radius — through the ordinary subject admission lane. No new handle: these are
+    // plain pipeline admissions, so the veil's existing 3 s quiet/cap drain
+    // (ADMISSION_DRAIN_CAP_MS) bounds the wait and whatever is still queued links after the lift
+    // exactly as before. Largest on-screen roots first (sphere radius over distance).
+    const nearAdmissionFrustum = new THREE.Frustum();
+    const nearAdmissionProjView = new THREE.Matrix4();
+    const nearAdmissionSphere = new THREE.Sphere();
+    const nearAdmittedRoots = new WeakSet();
+    let nearAdmissionLastScanAt = -Infinity;
+    const NEAR_ADMISSION_SCAN_MS = 250;
+    const NEAR_ADMISSION_ROOTS_PER_SCAN = 8;
+    const nearAdmissionRecord = { scans: 0, admitted: 0, roots: [], materials: [] };
+    const materialNeverDrawn = (material) => {
+      if (!material || !this.renderer || !this.renderer.properties) return false;
+      const props = this.renderer.properties.get(material);
+      return !props || !props.currentProgram;
+    };
+    state.render.nearLiveSectorAdmission = nearAdmissionRecord;
+    state.render.admitNearLiveSectorPipelines = () => {
+      if (!(state.render && state.render.flightVeilHoldsSim === true
+        && Number.isFinite(state.render.firstPlayableFrameAt))) return 0;
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (now - nearAdmissionLastScanAt < NEAR_ADMISSION_SCAN_MS) return 0;
+      nearAdmissionLastScanAt = now;
+      const camera = (state.camera && state.camera.obj) || (cam && cam.obj);
+      if (!camera || !camera.matrixWorld) return 0;
+      camera.updateMatrixWorld();
+      nearAdmissionProjView.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      nearAdmissionFrustum.setFromProjectionMatrix(nearAdmissionProjView);
+      const ce = camera.matrixWorld.elements;
+      const cx = ce[12]; const cy = ce[13]; const cz = ce[14];
+      const radius = RENDER_STREAM_PREFETCH_RADIUS;
+      const best = new Map();
+      for (const root of scene.children) {
+        if (!root || nearAdmittedRoots.has(root)) continue;
+        if (root.userData && root.userData.pipelinesPending === true) continue;
+        if (root.isLight || root.isCamera) continue;
+        root.traverse((object) => {
+          if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return;
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          const cold = materials.filter(materialNeverDrawn);
+          if (cold.length === 0) return;
+          const e = object.matrixWorld.elements;
+          const geometry = object.geometry;
+          if (geometry && !geometry.boundingSphere && typeof geometry.computeBoundingSphere === 'function'
+            && geometry.attributes && geometry.attributes.position) {
+            try { geometry.computeBoundingSphere(); } catch (_) { /* unbounded geometry stays a point */ }
+          }
+          if (geometry && geometry.boundingSphere) {
+            nearAdmissionSphere.copy(geometry.boundingSphere).applyMatrix4(object.matrixWorld);
+          } else {
+            nearAdmissionSphere.center.set(e[12], e[13], e[14]);
+            nearAdmissionSphere.radius = 0;
+          }
+          const dx = nearAdmissionSphere.center.x - cx;
+          const dy = nearAdmissionSphere.center.y - cy;
+          const dz = nearAdmissionSphere.center.z - cz;
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          const inFrustum = nearAdmissionFrustum.intersectsSphere(nearAdmissionSphere);
+          if (!inFrustum && dist - nearAdmissionSphere.radius > radius) return;
+          const size = (inFrustum ? 2 : 1) * Math.max(nearAdmissionSphere.radius, 1) / Math.max(dist, 1);
+          const prior = best.get(root);
+          if (!prior || size > prior.size) best.set(root, { size, cold });
+          else for (const m of cold) prior.cold.push(m);
+        });
+      }
+      nearAdmissionRecord.scans += 1;
+      if (best.size === 0) return 0;
+      const ordered = [...best.entries()].sort((a, b) => b[1].size - a[1].size)
+        .slice(0, NEAR_ADMISSION_ROOTS_PER_SCAN);
+      let admitted = 0;
+      for (const [root, info] of ordered) {
+        nearAdmittedRoots.add(root);
+        try {
+          const admission = admitSubjectPipelines(root, { debugBy: 'near-live-sector', joinOutstanding: true });
+          if (admission && typeof admission.catch === 'function') admission.catch(() => {});
+          admitted += 1;
+          if (nearAdmissionRecord.roots.length < 48) nearAdmissionRecord.roots.push(root.name || root.type);
+          for (const m of info.cold) {
+            const name = m.name || m.type;
+            if (nearAdmissionRecord.materials.length < 96 && !nearAdmissionRecord.materials.includes(name)) {
+              nearAdmissionRecord.materials.push(name);
+            }
+          }
+        } catch (error) {
+          laneWarn(this, 'nearLiveSectorAdmission', '[render] near live-sector admission failed', error);
+        }
+      }
+      nearAdmissionRecord.admitted += admitted;
+      return admitted;
+    };
     // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
     state.render.sampleOpeningCookLane = () => {
       const upgrades = describeAuthoredUpgradeQueue(scene);

@@ -236,6 +236,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       // not cost a long load. Whatever is still pending then links after the lift.
       if (firstDrawSeenAt === null) firstDrawSeenAt = clockNow();
       if (clockNow() - firstDrawSeenAt >= ADMISSION_DRAIN_CAP_MS) return true;
+      // Queue the near live-sector roots (frustum or one streaming radius, largest first) into the
+      // same admission lane this drain already waits on; the renderer throttles its own scan.
+      try { render?.admitNearLiveSectorPipelines?.(); } catch (_) { /* admission is best-effort */ }
       const pendingFn = render && render.pendingPipelineAdmissions;
       if (typeof pendingFn !== 'function') return true;
       let pending = 0;
