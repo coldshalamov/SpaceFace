@@ -1834,6 +1834,9 @@ export const encounterDirector = {
         scanLabel: opts.scanLabel || 'Wreck Debris',
         encounterId: live.id,
         storyPropKind: opts.storyPropKind || null,
+        ...(opts.wreckClass ? { wreckClass: opts.wreckClass } : {}),
+        ...(opts.wreckClassLabel ? { wreckClassLabel: opts.wreckClassLabel } : {}),
+        ...(opts.provenance ? { provenance: opts.provenance } : {}),
       },
     });
   },
@@ -2450,12 +2453,33 @@ export const encounterDirector = {
     const byPlayer = p.killerId != null && p.killerId === this.state.playerId;
     const externalCaptainId = dir.externalNamed && dir.externalNamed[p.id];
     if (externalCaptainId) {
+      const sectorId = this._currentSectorId();
+      const capDef = NAMED_CAPTAINS.find((c) => c.id === externalCaptainId) || null;
       const named = dir.named[externalCaptainId] || (dir.named[externalCaptainId] = {});
       named.alive = false;
-      named.lastSeenSector = this._currentSectorId();
+      named.lastSeenSector = sectorId;
+      named.killedBy = byPlayer ? 'player' : 'world';
+      named.deathSector = sectorId;
+      named.deathTick = this.state.tick | 0;
       named.kills = (named.kills || 0) + (byPlayer ? 0 : 1);
       delete dir.externalNamed[p.id];
-      this.emit('encounter:namedCaptainDefeated', { captainId: externalCaptainId, entityId: p.id, byPlayer });
+      if (byPlayer) {
+        for (const survivor of NAMED_CAPTAINS) {
+          if (survivor.id === externalCaptainId) continue;
+          const srec = dir.named[survivor.id]
+            || (dir.named[survivor.id] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+          if (srec.alive !== false) srec.tier = Math.min(3, (srec.tier | 0) + 1);
+        }
+      }
+      this.emit('encounter:namedCaptainDefeated', {
+        captainId: externalCaptainId,
+        captainName: (capDef && capDef.name) || externalCaptainId,
+        entityId: p.id,
+        byPlayer,
+        sectorId,
+        t: this.now(),
+        tick: this.state.tick | 0,
+      });
     }
     let handled = null;
     // squadMembership answers the squad question in O(1); the walk below stays as the cold path
