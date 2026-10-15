@@ -39,16 +39,20 @@ export function arcGauge({
   if (headDot) g.appendChild(headDot);
 
   let shown = 0;
+  let paintedValue = null;
   let toneNow = tone;
   let ghostValue = 0;
   let ghostTimer = 0;
   const paint = (v) => {
     shown = v;
-    const dash = `${clamp01(v)} 1`;
+    const normalized = clamp01(v);
+    if (paintedValue === normalized) return;
+    paintedValue = normalized;
+    const dash = `${normalized} 1`;
     fill.setAttribute('stroke-dasharray', dash);
     bloom.setAttribute('stroke-dasharray', dash);
     if (headDot) {
-      const [hx, hy] = polar(cx, cy, r, from + span * clamp01(v));
+      const [hx, hy] = polar(cx, cy, r, from + span * normalized);
       headDot.setAttribute('cx', hx.toFixed(2));
       headDot.setAttribute('cy', hy.toFixed(2));
       headDot.setAttribute('opacity', v > 0.002 ? '1' : '0');

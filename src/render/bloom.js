@@ -404,8 +404,12 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float grainFrame
   ) {
     vec3 hdr = max(scene, vec3(0.0)) * exposure;
-    vec3 filmic = mix(spaceAcesFilmic(hdr), spaceRadianceShoulder(hdr),
-      0.55 * smoothstep(0.65, 2.5, max(hdr.r, max(hdr.g, hdr.b))));
+    vec3 filmic = spaceAcesFilmic(hdr);
+    float peak = max(hdr.r, max(hdr.g, hdr.b));
+    if (peak > 0.65) {
+      filmic = mix(filmic, spaceRadianceShoulder(hdr),
+        0.55 * smoothstep(0.65, 2.5, peak));
+    }
     vec3 color = mix(clamp(hdr, 0.0, 1.0), filmic, acesAmount);
     // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
     // shoulders so movement does not turn into flickering hard posterization. Do this
