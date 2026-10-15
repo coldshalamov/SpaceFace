@@ -1229,6 +1229,21 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Bench:** 0 findings at 700×900, 800×600, 960×540, 1280×720, 1920×1080, 390×844 (+ `--phone`). `--walk` exercised SHOW / Track / Local map / Abandon / Close at each size.
 
-**Leftovers (not this pass):** Research dial crowded under ~500px of stage and "Industrial Mining" last letter clipped at 960 (`labelOut` under-measure in constellation.js); Shipworks second Cargo callout line at 1024×440 under rail fade; Station Ledger right column can still feel tight at 800×600 with receipts.
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage and "Industrial Mining" last letter clipped at 960 (`labelOut` under-measure in constellation.js; open on #407 / ui-polish-44); Shipworks second Cargo callout line at 1024×440 under rail fade; ~~Station Ledger right column tight at 800×600 with receipts~~ **fixed in ui-polish-45**.
 
 Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compare-700x900.png`, `compare-800x600.png`, `compare-960x540.png`.
+
+## Station Ledger purse at 800×600 (ui-polish-45)
+
+**Before:** under the 761–900 × ≤640 compact rule the purse column was **140px**, so the ring starved and BOUGHT / SOLD / NET · CR clipped against the right edge (and inward into the reading). The list still took the parent 40%, leaving the reading column thin beside that narrow purse.
+
+**After (`src/ui/orrery/stationTabsLayouts.js` only, `761–900 × ≤640`):**
+- List `max-width` **34%** (overrides the parent 40%).
+- Right column `left: calc(34% + 22px)` with `grid-template-columns: minmax(0, 1fr) 200px` so the purse is ~200px again.
+- Keeps the existing CYCLE-above-line list stack and the trimmed reading figure from this band.
+- Parent **761–1100 × ≤640** (40% / 220px) and every size outside 761–900 × ≤640 are unchanged (960×540 / 1280×720 / 390×844 pixel-identical; 1920×1080 noise only).
+
+**Checked:** seeded ledger (set `a`, 6 receipts) at 800×600, 960×540, 1280×720, 1920×1080, 390×844. DOM at 800×600: list 250px (34%), purse 200px, reading ~258px; purse text shows full BOUGHT / SOLD / NET · CR. Shots: `/workspace/spaceface-scratch/ui-shots/polish45/{before,after}/`, `compare-800x600.png`, `compare-purse-800x600.png` (not committed).
+
+**Leftovers remaining:** Research dial crowded under ~500px of stage; Shipworks second Cargo callout line at 1024×440 under rail fade; Industrial Mining @960 pending #407.
+
