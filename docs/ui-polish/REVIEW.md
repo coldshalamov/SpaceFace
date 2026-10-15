@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`footprint` / `footprint-marked` / `footprint-clean`** | **DONE** (960 reading column + phone stack) | See § Footprint — 960 reading column, phone stack (ui-polish-28) |
 | **`range`** | **DONE @960×540** (ui-polish-17), **@1280 / mid-height + phone** (ui-polish-23) | See § Proving Range @960 and § Proving Range @1280 + phone below; 1920 unchanged |
 | **`chart`** / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | **DONE** (desktop shell + phone sheet, ui-polish-34) | See § Chart on a phone below |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15); Ledger purse @800 DONE (ui-polish-45); one-line callouts @801–1100 × ≤460 (ui-polish-46) |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE (#333); phone berth + phone Market DONE (#335); Market/Contracts/Shipworks @960 + SPREAD done; Industry/Factions/Bar @960 done (ui-polish-13); Ledger already fit; Shipworks callouts @960 DONE (ui-polish-15); Ledger purse @800 DONE (ui-polish-45); one-line callouts @801–1100 × ≤460 (ui-polish-46); chooser head CARGO · S / COMPATIBLE (ui-polish-47) |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -1265,5 +1265,15 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Checked:** 1024×440, 900×420 and 1100×460 (whole column on-frame at first view), and 844×390 (better, but Mining, Drive and Cargo are still below the fold there; the berth scrolls by design). 960×540, 1280×720 and 1920×1080 are pixel-identical to master (the rule needs ≤460 tall). 390×844 is out of the band (≥801 wide only), and the bench reads it clean. Bench findings at 1024×440 stay 6 → 6 and at 844×390 14 → 14 (the head's next-step and mechanic notes, plus the below-fold remainder). Shots: `/workspace/spaceface-scratch/ui-shots/polish46/{before,after}/`, `compare-1024x440.png`, `compare-1024x440-crop.png`, `compare-900x420.png`, `compare-1100x460.png`, `compare-844x390.png`.
 
-**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~Station Ledger right column at 800×600~~ (fixed ui-polish-45); at 844×390 the lower Shipworks callouts start below the fold; with a slot chosen at 1024×440 the chooser's CARGO · S / COMPATIBLE MODULES 1 heading stacks tight.
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; ~~Station Ledger right column at 800×600~~ (fixed ui-polish-45); at 844×390 the lower Shipworks callouts start below the fold; ~~with a slot chosen at 1024×440 the chooser's CARGO · S / COMPATIBLE MODULES 1 heading stacks tight~~ (fixed ui-polish-47).
+
+## Shipworks chooser head on a short desktop: CARGO · S / COMPATIBLE MODULES (ui-polish-47)
+
+**Before (master be835243a1):** with a hardpoint chosen at 801–1100 × ≤460 the 190px rail showed Back, then "CARGO · S", then "COMPATIBLE MODULES 1" wrapping under a 10.8px line-height at .2em tracking — three tight lines (~75px head) before the module list.
+
+**After (`src/ui/orrery/shipworksLayouts.js`, CSS only, the existing `801–1100 × ≤460` hover block):** Back keeps its row; the kicker and title share one wrap band as "CARGO · S /" over "COMPATIBLE MODULES · N" (nowrap each, .1em / .06em tracking, 1.3 line-height). Head height 75→59px; list starts earlier. Selectors and IDs are unchanged.
+
+**Checked:** Cargo chooser at 1024×440, 900×420, 1100×460 and 844×390. 960×540 / 1280×720 / 1920×1080 idle Shipworks are effectively pixel-identical to master (rule needs ≤460 tall; >8Δ pixels = 0%). 390×844 is out of the band. Shots: `/workspace/spaceface-scratch/ui-shots/polish47/{before,after}/`, `compare-1024x440.png`, `compare-1024x440-crop.png`.
+
+**Leftovers (not this pass):** Research dial crowded under ~500px of stage; at 844×390 the lower Shipworks callouts (Mining / Drive / Cargo) still start below the fold (berth scrolls by design).
 
