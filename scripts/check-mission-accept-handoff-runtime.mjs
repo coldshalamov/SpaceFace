@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 import { reportStationHandoffFailure, installStationHandoffTimingObserver } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -26,6 +27,7 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
+  installCspSafePlaywrightPolling(page);
   await page.addInitScript(installStationHandoffTimingObserver);
   // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
   // harnesses never touch the machine save drawer, and store calls take the localStorage path.
@@ -45,12 +47,52 @@ try {
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game first-session rail');
+  await page.evaluate(() => {
+    window.__sfMissionHandoffLaunch = { started: false, failure: null };
+    const bus = window.SF && window.SF.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    bus.on('game:started', () => { window.__sfMissionHandoffLaunch.started = true; });
+    bus.on('game:startFailed', (payload) => {
+      window.__sfMissionHandoffLaunch.failure = {
+        code: String(payload?.code || '').slice(0, 200),
+        stage: String(payload?.stage || '').slice(0, 200),
+        error: String(payload?.error || payload?.message || payload || '').slice(0, 400),
+      };
+    });
+  });
   assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
   await page.waitForFunction(() => {
+    if (window.__sfMissionHandoffLaunch?.failure) {
+      throw new Error(`game:startFailed ${JSON.stringify(window.__sfMissionHandoffLaunch.failure)}`);
+    }
     const state = window.SF && window.SF.state;
     const player = state && state.entities && state.entities.get(state.playerId);
-    return !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0);
-  }, null, { timeout: START_TIMEOUT_MS });
+    const render = state && state.render;
+    return !!(state && state.mode === 'flight'
+      && window.__sfMissionHandoffLaunch?.started === true
+      && player && player.alive && player.hull > 0
+      && render && render.flightVeilHoldsSim !== true
+      && Number.isFinite(render.firstPlayableFrameAt));
+  }, null, { timeout: START_TIMEOUT_MS, polling: 250 }).catch(async (error) => {
+    const detail = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      const render = state && state.render;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      return {
+        launch: window.__sfMissionHandoffLaunch,
+        mode: state && state.mode,
+        tick: state && state.tick,
+        simTime: state && state.simTime,
+        player: player ? { id: player.id, alive: player.alive !== false, hull: player.hull } : null,
+        flightVeilHoldsSim: render && render.flightVeilHoldsSim,
+        firstPlayableFrameAt: render && render.firstPlayableFrameAt != null
+          ? render.firstPlayableFrameAt : null,
+        firstPicturePhase: render && render.openingFirstPicturePhase != null
+          ? render.openingFirstPicturePhase : null,
+      };
+    }).catch(() => null);
+    throw new Error(`${error.message} :: Mission handoff launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
+  });
 
   const dockTarget = await page.evaluate(() => {
     const sf = window.SF;
@@ -203,15 +245,22 @@ try {
     reportAcceptHandoffFailure(page, { before, seeded, commit, consumed }, issues, error));
 
   // Plot a trade course for the tracked commodity (what tracking a cargo job does in flight); the
-  // Market must then flag it. Uses the canonical market nav helper via the bus contract.
-  await page.evaluate(() => {
-    const state = window.SF.state;
+  // Market must then flag it. Run the shipped helper in the page realm so its laneSetNavWaypoint
+  // call reaches the worker when the canonical route is running there, then wait for the mirror.
+  const navSeed = await page.evaluate(async () => {
+    const sf = window.SF;
+    const state = sf.state;
     const sid = state.ui.dockedStationId;
     const cid = Object.keys((state.economy.markets && state.economy.markets[sid]) || { cmdty_ore_iron: 1 })[0];
-    state.nav = state.nav || {};
-    state.nav.waypoint = { kind: 'trade', commodityId: cid, stationId: sid, label: 'Tracked cargo' };
-    window.SF.bus.emit('nav:waypoint', state.nav.waypoint);
+    const { applyTradeNavigation } = await import('/src/ui/market/tradeLogic.js');
+    applyTradeNavigation({ state, bus: sf.bus }, sid, cid);
+    return { stationId: sid, commodityId: cid };
   });
+  await page.waitForFunction(({ stationId, commodityId }) => {
+    const wp = window.SF && window.SF.state && window.SF.state.nav && window.SF.state.nav.waypoint;
+    return !!(wp && wp.kind === 'trade' && wp.stationId === stationId && wp.commodityId === commodityId);
+  }, navSeed, { timeout: DOCK_TIMEOUT_MS }).catch((error) =>
+    reportStationHandoffFailure(page, { boundary: 'trade waypoint mirror', navSeed }, issues, error));
 
   const active = await page.evaluate(() => {
     const state = window.SF.state;
