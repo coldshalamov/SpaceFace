@@ -162,8 +162,11 @@ export function stepCameraGlide(glide, dt, tx, tz, rx, ry, rz, roofAt, ceiling =
   const diag = glide.diag;
   const step = Number.isFinite(dt) ? Math.min(Math.max(dt, 0), t.maxStepS) : 0;
   if (!(ry > 1) || typeof roofAt !== 'function') {
-    glide.scale = 1;
-    glide.rate = 0;
+    // A missing callback is an unavailable measurement, not an empty-space measurement. Drop the
+    // predictive history so a later callback cannot replay stale look-ahead roofs while the target
+    // is already elsewhere. The renderer normally keeps a bound roofAt callback; this protects
+    // direct solver consumers and transition seams that temporarily withhold clearance data.
+    resetCameraGlide(glide);
     return 1;
   }
   const maxScale = Math.max(1, Math.min(t.maxScale, Number.isFinite(ceiling) ? ceiling / ry : t.maxScale));

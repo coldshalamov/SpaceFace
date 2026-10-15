@@ -228,6 +228,28 @@ test('broken bounds beyond the ceiling are ignored', () => {
   assert.equal(s, 1);
 });
 
+test('a missing clearance callback drops stale lookahead before open-space recovery', () => {
+  const glide = createCameraGlide();
+  const solid = () => 300;
+  for (let i = 0; i < 120; i++) {
+    stepCameraGlide(glide, i === 0 ? 0 : DT, 0, -300 + i * 10, RX, RY, RZ, solid);
+  }
+  assert.ok(glide.scale > 2, 'the setup must contain predictive lift history');
+
+  // A caller may temporarily withhold clearance data during a presentation transition. Returning
+  // 1 is not enough if the old slots and velocity remain alive.
+  assert.equal(stepCameraGlide(glide, DT, 0, 900, RX, RY, RZ, undefined), 1);
+  const open = () => -Infinity;
+  for (let i = 1; i <= 12; i++) {
+    assert.equal(
+      stepCameraGlide(glide, DT, 0, 900 + i * 10, RX, RY, RZ, open),
+      1,
+      `open-space recovery frame ${i} must not replay the removed roof`,
+    );
+  }
+  assert.equal(glide.diag.target, 1);
+});
+
 test('a roof that pops in for one frame does not fling the camera', () => {
   const glide = createCameraGlide();
   let present = false;

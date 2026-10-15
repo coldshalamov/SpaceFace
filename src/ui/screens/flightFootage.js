@@ -816,23 +816,28 @@ export function installFlightFootage(bus, {
 
 /** One bitmap at a time; seeking never mutates the live camera or bodies. */
 export function createFootageViewer(canvas) {
-  let token = 0, disposed = false, lastTick = null;
+  let token = 0, disposed = false, lastTick = null, lastRing = null, lastFrame = null;
   return {
     async show(tick) {
-      const frames = active?.ring.frames || [];
+      // Every request is authoritative, including a no-op request for the already-visible frame.
+      // This invalidates an older decode that could otherwise paint after the caller moved back.
+      const own = ++token;
+      const ring = active?.ring;
+      const frames = ring?.frames || [];
       if (!frames.length || disposed) return false;
       let chosen = frames[0];
       for (const frame of frames) { if (frame.tick > tick) break; chosen = frame; }
-      if (chosen.tick === lastTick) return true;
-      lastTick = chosen.tick;
-      const own = ++token;
+      if (chosen.tick === lastTick && ring === lastRing && chosen === lastFrame) return true;
       const blob = await decodeFootageFrameToBlob(chosen);
       if (!blob) return false;
       const bitmap = await createImageBitmap(blob);
       try {
-        if (disposed || own !== token) return false;
+        // A clear/restart can retain the same viewer while replacing the recorder ring. Do not
+        // let a delayed decode from the retired capture repaint the current viewer.
+        if (disposed || own !== token || active?.ring !== ring || !ring.frames.includes(chosen)) return false;
         canvas.width = chosen.width; canvas.height = chosen.height;
         canvas.getContext('2d').drawImage(bitmap, 0, 0);
+        lastTick = chosen.tick; lastRing = ring; lastFrame = chosen;
         return true;
       } finally { bitmap.close(); }
     },

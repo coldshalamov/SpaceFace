@@ -340,7 +340,7 @@ function abortDecode(signal) {
 
 /** Materialize one encoded ring entry only when a viewer/export asks for actual pixels. */
 export async function decodeFootageFrameToBlob(frame, { signal, scope = globalThis } = {}) {
-  if (frame?.blob) return frame.blob;
+  if (frame?.blob) { abortDecode(signal); return frame.blob; }
   const encoded = frame?.encoded;
   if (!encoded || typeof scope.VideoDecoder !== 'function' || typeof scope.EncodedVideoChunk !== 'function') return null;
   abortDecode(signal);
