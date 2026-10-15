@@ -257,7 +257,7 @@ export const techTreeScreen = {
     const curveFull = hourVerbCurveLine();
     const curveLine = el('p', 'k-t-fine con-curve', clipHourVerbCurve(curveFull, 42));
     curveLine.dataset.hourVerbCurve = '1';
-    if (curveFull) curveLine.title = curveFull;
+    if (curveFull) curveLine.setAttribute('data-why', curveFull);
     head.appendChild(curveLine);
     rootEl.appendChild(head);
 
