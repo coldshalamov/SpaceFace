@@ -608,7 +608,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | - |
-| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291, 295 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -841,7 +841,7 @@ real missing capability, never by another lane's sitting.
 
 SFQ-B119 landed 2026-10-15: after a fight the field offers rescue, salvage, pursuit, and escape from what is actually there, and choosing does not pause physics (`test/sfq-b119-aftermath-choices.test.mjs`). Row 293 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 SFQ-B120 landed 2026-10-15: a named restitution returns only the standing its own cause took. A second payment does not charge, and heat and other hostility stay (`test/sfq-b120-restitution-standing.test.mjs`). Row 294 carried that outcome and was deleted on landing. Row 285 stays OPEN.
-| 295 | SFQ-B122 | The same approach reads as feeding, alarm, defense, or retreat, and a quiet watch does not turn the animal aggressive. | BUILD | OPEN |
+SFQ-B122 landed 2026-10-15: the same approach reads as feeding, alarm, defense, or retreat, and a quiet watch does not turn the animal aggressive (`test/sfq-b122-fauna-motion.test.mjs`). Row 295 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 
 SFQ-B111 landed 2026-10-15: a collision is classed direct, indirect, accidental, or stale, and the law card says which (`test/sfq-b111-impact-class.test.mjs`). Row 292 carried that outcome and was deleted on landing. Row 285 stays OPEN.
 

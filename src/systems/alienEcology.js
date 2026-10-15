@@ -39,6 +39,7 @@ import {
   grantAlienUnique,
 } from '../data/alienEcology.js';
 import { carrierSpecies, faunaSpeciesById } from '../data/alienFauna.js';
+import { resolveFaunaApproachDrive } from '../data/faunaMotionRead.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -1387,19 +1388,16 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     if (eco.driveState !== species.drives.idle) setDrive(eco, species.drives.idle);
   }
 
-  if (reacted && !species.dormant && !silenced) {
-    if (species.heatHunter && (eco.heatSat || 0) > 3 && playerD < alertR) {
-      setDrive(eco, 'charge');
-    } else if (playerD < species.threatenR) {
-      setDrive(eco, species.drives.panic);
-    } else if (playerD < alertR) {
-      setDrive(eco, awake ? species.drives.tense : species.drives.curious);
-    } else if (eco.driveState !== 'attach' && eco.driveState !== 'idle' && eco.driveState !== 'feed') {
-      setDrive(eco, species.drives.idle);
-    }
-  } else if (eco.driveState === 'idle') {
-    setDrive(eco, species.drives.idle);
-  }
+  const approach = resolveFaunaApproachDrive(species, {
+    playerD,
+    awake,
+    heatSaturated: (eco.heatSat || 0) > 3,
+    reacted,
+    silenced,
+    currentDrive: eco.driveState,
+  });
+  if (approach) setDrive(eco, approach);
+  else if (eco.driveState === 'idle') setDrive(eco, species.drives.idle);
 
   // AE-172 flee wave (D09): a kill at this site scatters the whole cast — the killed
   // species panics instantly; unrelated species flip after the propagation delay. Applied

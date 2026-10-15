@@ -9,6 +9,7 @@ import { MODULES } from './modules.js';
 import { volatileClassOf } from './commodityVolatileClasses.js';
 import { wreckClassById } from './wreckClasses.js';
 import { bombInteractionState } from '../combat/bombDynamics.js';
+import { readFaunaMotion } from './faunaMotionRead.js';
 
 const profile = (value) => Object.freeze({
   mineable: false,
@@ -212,6 +213,11 @@ export function interactionClassLine(entity) {
     const lot = cargoLotLine(data);
     if (!lot) return semantic.classLabel;
     return `${semantic.classLabel} · ${lot}${volatileClassOf(data.commodityId) ? ' · VOLATILE' : ''}`;
+  }
+  if (semantic.kind === 'fauna') {
+    const motion = readFaunaMotion(data.ecology && data.ecology.driveState);
+    const base = semantic.classLabel || 'Fauna';
+    return motion ? `${base} · ${motion}` : base;
   }
   return semantic.classLabel || '';
 }
