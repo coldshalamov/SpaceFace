@@ -37,11 +37,13 @@ export function resolveFaunaApproachDrive(species, ctx = {}) {
   if (!species || !species.drives) return null;
   if (!ctx.reacted || species.dormant || ctx.silenced) return null;
   const playerD = Number.isFinite(ctx.playerD) ? ctx.playerD : Infinity;
-  const alertR = Number(species.alertR) || 0;
+  // The tick passes the scaled notice ring (stealth, awake site, severed relay).
+  // A direct call uses the species ring.
+  const noticeR = Number.isFinite(ctx.noticeR) ? ctx.noticeR : (Number(species.alertR) || 0);
   const threatenR = Number(species.threatenR) || 0;
-  if (species.heatHunter && ctx.heatSaturated && playerD < alertR) return 'charge';
+  if (species.heatHunter && ctx.heatSaturated && playerD < noticeR) return 'charge';
   if (playerD < threatenR) return species.drives.panic;
-  if (playerD < alertR) return ctx.awake ? species.drives.tense : species.drives.curious;
+  if (playerD < noticeR) return ctx.awake ? species.drives.tense : species.drives.curious;
   const current = ctx.currentDrive;
   if (current === 'attach' || current === 'idle' || current === 'feed') return current;
   return species.drives.idle;

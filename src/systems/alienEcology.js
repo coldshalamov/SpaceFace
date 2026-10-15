@@ -1390,6 +1390,7 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
 
   const approach = resolveFaunaApproachDrive(species, {
     playerD,
+    noticeR: alertR,
     awake,
     heatSaturated: (eco.heatSat || 0) > 3,
     reacted,
