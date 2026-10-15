@@ -1,8 +1,8 @@
-// Opt-in retained BatchedMesh admission for repeated rigid opaque authored leaves.
+// Retained BatchedMesh admission for repeated rigid opaque authored leaves.
 //
-// This module is intentionally separate from the default authored-instance bridge. It is a
-// diagnostic candidate: callers must opt in, provide an exact pipeline/residency preparation
-// callback, and accept the batch only after that callback resolves. Until then the authored
+// The bounded default player cohort and explicit diagnostic cohorts share this admission path.
+// Callers select the exact sources, provide a pipeline/residency preparation callback,
+// and accept the batch only after that callback resolves. Until then the authored
 // leaves remain visible and continue to use their ordinary material path. Once active, direct
 // submission is suppressed with the source layer mask while the source Object3Ds remain visible
 // and mesh-backed for clearance, picking, ownership masks, and other semantic readers.
@@ -18,6 +18,7 @@ import {
   planRigidOpaqueBatchGroups,
   rigidOpaqueMaterialProgramKey,
 } from './rigidOpaqueBatchPolicy.js';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_ARRAY = Object.freeze([]);
 // A streamed world can add one authored root per frame while the player crosses a sector. Keep
@@ -54,6 +55,10 @@ const MATERIAL_TEXTURES = Object.freeze([
   'specularIntensityMap', 'transmissionMap', 'thicknessMap', 'gradientMap', 'matcap',
 ]);
 const COMPONENTS = Object.freeze(['r', 'g', 'b', 'x', 'y', 'z', 'w']);
+const SOURCE_PACKAGE_KEYS = Object.freeze([
+  'flightRenderPackage', 'renderPackage', 'spacefaceRenderPackage', 'openingSubmissionPackage',
+]);
+const RIGID_OPAQUE_BATCH_PRODUCER = 'rigid-opaque-batch';
 
 function captureUniformComponents(object) {
   return COMPONENTS.map(key => object?.[key]);
@@ -298,6 +303,130 @@ function rootForSource(source, roots) {
   return null;
 }
 
+function sourcePackageBoundary(source) {
+  let boundary = null;
+  for (let node = source; node; node = node.parent) {
+    const data = node.userData || {};
+    for (const key of SOURCE_PACKAGE_KEYS) {
+      const packageInfo = data[key];
+      if (!packageInfo || typeof packageInfo !== 'object') continue;
+      const contentHash = packageInfo.contentHash || packageInfo.hash;
+      if (!contentHash) continue;
+      const verified = packageInfo.contentHashVerified === true
+        || packageInfo.verified === true
+        || data.contentHashVerified === true
+        || /^[0-9a-f]{64}$/i.test(String(contentHash));
+      boundary = { node, key, packageInfo, contentHash: String(contentHash), verified };
+      break;
+    }
+    if (boundary) break;
+  }
+  if (!boundary || !boundary.verified) return null;
+
+  const path = [];
+  for (let node = source; node && node !== boundary.node; node = node.parent) {
+    const parent = node.parent;
+    const index = parent && parent.children ? parent.children.indexOf(node) : -1;
+    if (index < 0) return null;
+    path.push({ index, name: String(node.name || ''), type: String(node.type || '') });
+  }
+  if (source !== boundary.node && path.length === 0) return null;
+  path.reverse();
+  return {
+    contentHash: boundary.contentHash,
+    packageKey: boundary.key,
+    packageSchema: String(boundary.packageInfo.schema || ''),
+    assetId: String(boundary.packageInfo.assetId || boundary.packageInfo.id || ''),
+    path,
+    leaf: { name: String(source.name || ''), type: String(source.type || '') },
+  };
+}
+
+function bufferAttributeRecipe(attribute) {
+  if (!attribute) return null;
+  const buffer = attribute.isInterleavedBufferAttribute ? attribute.data : attribute;
+  return {
+    itemSize: attribute.itemSize,
+    normalized: attribute.normalized === true,
+    count: attribute.count,
+    version: attribute.version ?? buffer.version ?? 0,
+    arrayType: buffer.array && buffer.array.constructor ? buffer.array.constructor.name : '',
+    stride: attribute.isInterleavedBufferAttribute ? buffer.stride : null,
+    offset: attribute.isInterleavedBufferAttribute ? attribute.offset : null,
+  };
+}
+
+function geometryRecipe(geometry) {
+  const attributes = {};
+  for (const name of Object.keys(geometry && geometry.attributes || {}).sort()) {
+    attributes[name] = bufferAttributeRecipe(geometry.attributes[name]);
+  }
+  const index = geometry && geometry.index;
+  return {
+    type: String(geometry && geometry.type || ''),
+    attributes,
+    index: bufferAttributeRecipe(index),
+    groups: (geometry && geometry.groups || EMPTY_ARRAY).map(({ start, count, materialIndex }) => ({
+      start, count, materialIndex,
+    })),
+    drawRange: geometry && geometry.drawRange
+      ? { start: geometry.drawRange.start, count: geometry.drawRange.count }
+      : null,
+  };
+}
+
+function batchOpeningManifest(batch) {
+  const instances = [];
+  const sourcePackages = new Map();
+  for (const entry of batch.entries) {
+    const boundary = sourcePackageBoundary(entry.source);
+    if (!boundary) return null;
+    sourcePackages.set(boundary.contentHash, {
+      contentHash: boundary.contentHash,
+      packageKey: boundary.packageKey,
+      packageSchema: boundary.packageSchema,
+      assetId: boundary.assetId,
+    });
+    instances.push({
+      sourcePackageHash: boundary.contentHash,
+      sourcePath: boundary.path,
+      sourceLeaf: boundary.leaf,
+      geometry: geometryRecipe(entry.geometry),
+      materialColor: entry.color.slice(),
+      renderOrder: entry.renderOrder,
+    });
+  }
+  instances.sort((a, b) => `${a.sourcePackageHash}:${JSON.stringify(a.sourcePath)}`
+    .localeCompare(`${b.sourcePackageHash}:${JSON.stringify(b.sourcePath)}`));
+  return {
+    producer: RIGID_OPAQUE_BATCH_PRODUCER,
+    sourcePackages: [...sourcePackages.values()].sort((a, b) => a.contentHash.localeCompare(b.contentHash)),
+    instances,
+    group: {
+      lane: batch.lane,
+      materialKey: batch.recipe.materialKey,
+      geometryKey: batch.recipe.geometryKey,
+      drawSemantics: {
+        castShadow: batch.mesh.castShadow === true,
+        receiveShadow: batch.mesh.receiveShadow === true,
+      },
+    },
+  };
+}
+
+function publishBatchOpeningPackage(batch) {
+  const manifest = batchOpeningManifest(batch);
+  if (manifest) {
+    stampOpeningSubmissionPackage(batch.mesh, manifest, {
+      assetId: batch.mesh.name,
+      producer: RIGID_OPAQUE_BATCH_PRODUCER,
+      replace: true,
+    });
+  } else if (batch.mesh.userData.openingSubmissionPackage?.producer === RIGID_OPAQUE_BATCH_PRODUCER) {
+    delete batch.mesh.userData.openingSubmissionPackage;
+  }
+}
+
 function matrixChanged(previous, elements) {
   if (!previous || !elements) return true;
   for (let i = 0; i < 16; i++) if (previous[i] !== elements[i]) return true;
@@ -405,6 +534,7 @@ function buildCandidate(scene, plan, options) {
         };
         const batch = createBatch(scene, pendingSources[0], group.lane, batchCapacity);
         if (!batch) throw new Error('rigid-opaque-batch-create-failed');
+        batch.recipe = { materialKey: group.materialKey, geometryKey: group.geometryKey };
         batches.push(batch);
         for (const source of pendingSources) {
           let geometryId = batch.geometryIds.get(source.geometry);
@@ -452,6 +582,7 @@ function buildCandidate(scene, plan, options) {
           batch.entries.push(entry);
           entries.push(entry);
         }
+        publishBatchOpeningPackage(batch);
         pendingSources = [];
         pendingVerts = 0;
         pendingIndices = 0;
@@ -795,6 +926,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         if (batch.entries.length === 0) {
           disposeBatch(batch, scene);
         } else {
+          publishBatchOpeningPackage(batch);
           batch.mesh.visible = batch.visibleCount > 0;
           retainedBatches.push(batch);
         }

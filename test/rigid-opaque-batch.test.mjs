@@ -10,7 +10,12 @@ import {
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
 import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
 import { render as renderSystem } from '../src/render/renderer.js';
-import { collectOpeningSubmissionLeaves, createOpeningProducerCensus } from '../src/render/openingSubmissionPlan.js';
+import {
+  collectOpeningSubmissionLeaves,
+  combineOpeningProducerCensuses,
+  createOpeningProducerCensus,
+  createOpeningSubmissionPlan,
+} from '../src/render/openingSubmissionPlan.js';
 import { acceptClearanceMesh, clearanceNeighborhoodRaw } from '../src/render/clearanceQuery.js';
 import {
   collectPresentedBodyLeaves,
@@ -38,11 +43,36 @@ function makeRoot() {
   return { root, a, b };
 }
 
+function verifiedSourcePackage(root, contentHash = 'a'.repeat(64)) {
+  root.userData.flightRenderPackage = {
+    schema: 'spaceface.flightRenderPackage.v1',
+    assetId: 'test-retained-source',
+    contentHash,
+    contentHashVerified: true,
+  };
+}
+
+function strictOpeningPlan(root) {
+  const census = combineOpeningProducerCensuses([
+    createOpeningProducerCensus(root, { includeOffscreen: true }),
+  ]);
+  return createOpeningSubmissionPlan({
+    candidates: [{ root, role: 'retained-rigid-opaque-batch' }],
+    includeOffscreen: true,
+    globalProgramKeys: census.globalProgramKeys,
+    openingProgramKeys: census.openingProgramKeys,
+    requiredContentHashes: census.requiredContentHashes,
+    producerCensus: census,
+    producerResourceIdentitySets: census.resourceIdentitySets,
+  });
+}
+
 function makeDefaultKestrelOwner(compile) {
   const scene = new THREE.Scene(), { root, a, b } = makeRoot();
   a.name = 'LOD0_MechanicalDark'; b.name = 'LOD0_MOTION_KESTREL_IRIS_0_MechanicalDark';
   b.userData.spacefaceTags = { motionGroup: true };
   root.userData.authoredAssetState = 'authored';
+  verifiedSourcePackage(root);
   scene.add(root);
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
   camera.position.set(0, 10, 10); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
@@ -65,6 +95,8 @@ test('default renderer submission joins strict loading preparation before first-
   let finish, compileOptions;
   const fixture = makeDefaultKestrelOwner((batch, options) => {
     assert.equal(batch.isBatchedMesh, true); compileOptions = options;
+    assert.equal(batch.userData.openingSubmissionPackage?.contentHashVerified, true,
+      'the producer publishes the derived package before pipeline preparation');
     return new Promise(resolve => { finish = resolve; });
   });
   const { owner, scene, a, b } = fixture;
@@ -97,10 +129,87 @@ test('default renderer submission joins strict loading preparation before first-
     assert.ok(roots.includes(batch), 'the real scene-owned copy enters the exact opening root census');
     assert.deepEqual(collectOpeningSubmissionLeaves(batch), [batch]);
     assert.equal(createOpeningProducerCensus(batch, { includeOffscreen: true }).drawLeafIds.length, 1);
+    const openingPlan = strictOpeningPlan(batch);
+    assert.equal(openingPlan.roots[0].productionBoundary.contentHashVerified, true,
+      'the retained copy carries its own verified producer boundary');
+    assert.equal(openingPlan.complete, true,
+      'the actual scene batch passes the strict opening plan, beyond its draw census');
     fixture.state.entities.get(1).data.defId = 'ship_other';
     await owner._syncRigidOpaqueBatchProbe();
     assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
   } finally { fixture.dispose(); hotIris.geometry.dispose(); npc.geometry.dispose(); }
+});
+
+test('retained batch package identity binds source content, selection, lane, geometry and material semantics', async () => {
+  async function identity(change = () => {}) {
+    const fixture = makeRoot();
+    const { root, a, b } = fixture;
+    verifiedSourcePackage(root);
+    const extra = new THREE.Mesh(a.geometry.clone(), a.material);
+    root.add(extra);
+    const scene = new THREE.Scene();
+    scene.add(root);
+    const selected = new Set([a, b]);
+    change({ ...fixture, extra, selected });
+    scene.updateMatrixWorld(true);
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene, selectSource: source => selected.has(source), prepare: () => ({ ready: true }),
+    });
+    try {
+      await controller.sync(root);
+      const batch = scene.children.find(child => child.isBatchedMesh);
+      assert.ok(batch);
+      const plan = strictOpeningPlan(batch);
+      assert.equal(plan.complete, true);
+      assert.equal(plan.roots[0].productionBoundary.contentHashVerified, true);
+      return plan.roots[0].productionBoundary.contentHash;
+    } finally {
+      controller.dispose();
+      a.geometry.dispose(); b.geometry.dispose(); extra.geometry.dispose();
+      a.material.dispose(); b.material.dispose();
+    }
+  }
+
+  const original = await identity();
+  assert.equal(await identity(), original, 'equivalent source recipes have the same derived identity');
+  const variants = [
+    ({ root }) => verifiedSourcePackage(root, 'b'.repeat(64)),
+    ({ a, b, extra, selected }) => { selected.delete(b); selected.add(extra); extra.position.copy(a.position); },
+    ({ a, b }) => { a.castShadow = true; b.castShadow = true; },
+    ({ a }) => { a.geometry.getAttribute('position').setX(0, 4); a.geometry.getAttribute('position').needsUpdate = true; },
+    ({ a, b }) => { a.material.roughness = 0.7; b.material.roughness = 0.7; },
+  ];
+  for (const change of variants) assert.notEqual(await identity(change), original);
+});
+
+test('retained copies cannot turn missing or unverified source provenance into a strict opening pass', async () => {
+  for (const provenance of ['missing', 'unverified', 'verified-sibling-only']) {
+    const { root, a, b } = makeRoot();
+    if (provenance === 'unverified') {
+      root.userData.flightRenderPackage = {
+        assetId: 'unverified-source', contentHash: 'unverified-digest', contentHashVerified: false,
+      };
+    } else if (provenance === 'verified-sibling-only') {
+      verifiedSourcePackage(a);
+    }
+    const scene = new THREE.Scene();
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+    try {
+      await controller.sync(root);
+      const batch = scene.children.find(child => child.isBatchedMesh);
+      assert.ok(batch, 'direct batching remains available without inventing provenance');
+      assert.equal(batch.userData.openingSubmissionPackage, undefined);
+      const plan = strictOpeningPlan(batch);
+      assert.equal(plan.complete, false);
+      assert.equal(plan.roots[0].productionBoundary.contentHashVerified, false);
+      assert.ok(plan.blockingReasons.some(reason => reason.reason === 'missing-or-unverified-blocking-content-hash'));
+    } finally {
+      controller.dispose();
+      a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+    }
+  }
 });
 
 test('default renderer never suppresses sources after skipped or rejected preparation', async () => {
@@ -424,6 +533,9 @@ test('root removal restores only departed sources and retains the surviving batc
   const scene = new THREE.Scene();
   const first = makeRoot();
   const second = makeRoot();
+  verifiedSourcePackage(first.root);
+  const departedHash = 'b'.repeat(64);
+  verifiedSourcePackage(second.root, departedHash);
   scene.add(first.root, second.root);
   scene.updateMatrixWorld(true);
   const controller = createRetainedRigidOpaqueBatchController({
@@ -434,6 +546,8 @@ test('root removal restores only departed sources and retains the surviving batc
   await controller.sync([first.root, second.root]);
   const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
   assert.ok(batch);
+  const originalHash = batch.userData.openingSubmissionPackage.contentHash;
+  assert.ok(JSON.stringify(batch.userData.openingSubmissionPackage.manifest).includes(departedHash));
   assert.equal(first.a.layers.mask, 0);
   assert.equal(second.a.layers.mask, 0);
   const activations = controller.getDiagnostics().activations;
@@ -450,6 +564,11 @@ test('root removal restores only departed sources and retains the surviving batc
   assert.equal(first.b.layers.mask, 0);
   assert.equal(second.a.layers.mask, 1, 'the departed source returns to its authored layer');
   assert.equal(second.b.layers.mask, 1);
+  assert.equal(strictOpeningPlan(batch).complete, true);
+  assert.notEqual(batch.userData.openingSubmissionPackage.contentHash, originalHash,
+    'the retained producer republishes its changed source selection');
+  assert.equal(JSON.stringify(batch.userData.openingSubmissionPackage.manifest).includes(departedHash), false,
+    'the surviving package no longer claims departed source content');
 
   controller.dispose();
   for (const { a, b } of [first, second]) {
