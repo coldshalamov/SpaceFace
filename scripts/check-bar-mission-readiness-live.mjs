@@ -6,6 +6,7 @@
 // language/chips/button state.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +15,8 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 import { BINDINGS } from '../src/ui/bindings.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const PROFILE_LAUNCH = process.argv.includes('--profile-launch');
+const LAUNCH_PROFILE_PATH = fileURLToPath(new URL('../.devshots/bar-mission-launch.cpuprofile', import.meta.url));
 const START_TIMEOUT_MS = 90000;
 // Same starvation allowance as check-mission-cargo-loading: the loaded headless host
 // brick-walls frames for hundreds of ms, so waits that would pass in under a second on
@@ -28,6 +31,8 @@ const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
+let launchProfileSession = null;
+let launchProfileStarted = false;
 
 try {
   server = await startFreshServer();
@@ -68,35 +73,68 @@ try {
       };
     });
   });
-  await clickButton(page, 'Launch');
-  await page.waitForFunction(() => {
-    if (window.__sfBarLaunch?.failure) {
-      throw new Error(`game:startFailed ${JSON.stringify(window.__sfBarLaunch.failure)}`);
-    }
-    const state = window.SF?.state;
-    return state?.mode === 'flight' && window.__sfBarLaunch?.started === true
-      && state.render?.flightVeilHoldsSim !== true
-      && Number.isFinite(state.render?.firstPlayableFrameAt);
-  }, null, {
-    timeout: START_TIMEOUT_MS,
-    polling: 250,
-  }).catch(async (error) => {
-    const detail = await page.evaluate(() => {
+  if (PROFILE_LAUNCH) {
+    launchProfileSession = await page.context().newCDPSession(page);
+    await launchProfileSession.send('Profiler.enable');
+    await launchProfileSession.send('Profiler.setSamplingInterval', { interval: 4000 });
+    await launchProfileSession.send('Profiler.start');
+    launchProfileStarted = true;
+  }
+  let launchError = null;
+  try {
+    await clickButton(page, 'Launch');
+    await page.waitForFunction(() => {
+      if (window.__sfBarLaunch?.failure) {
+        throw new Error(`game:startFailed ${JSON.stringify(window.__sfBarLaunch.failure)}`);
+      }
       const state = window.SF?.state;
-      const render = state?.render;
-      return {
-        launch: window.__sfBarLaunch,
-        mode: state?.mode, tick: state?.tick, simTime: state?.simTime,
-        flightVeilHoldsSim: render?.flightVeilHoldsSim,
-        firstPlayableFrameAt: render?.firstPlayableFrameAt ?? null,
-        cook: Array.isArray(render?.openingCookLedger)
-          ? render.openingCookLedger.slice(-12).map(({ step, ms, outcome, t }) => ({ step, ms, outcome, t }))
-          : null,
-        visibleText: document.body.innerText.slice(0, 1000),
-      };
-    }).catch(() => null);
-    throw new Error(`${error.message} :: Bar launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
-  });
+      return state?.mode === 'flight' && window.__sfBarLaunch?.started === true
+        && state.render?.flightVeilHoldsSim !== true
+        && Number.isFinite(state.render?.firstPlayableFrameAt);
+    }, null, {
+      timeout: START_TIMEOUT_MS,
+      polling: 250,
+    }).catch(async (error) => {
+      const detail = await page.evaluate(() => {
+        const state = window.SF?.state;
+        const render = state?.render;
+        const owner = window.SF?.ctx?.registry?.get?.('render');
+        const rosterPending = [...(owner?._rosterPrewarmPending || [])];
+        return {
+          launch: window.__sfBarLaunch,
+          mode: state?.mode, tick: state?.tick, simTime: state?.simTime,
+          flightVeilHoldsSim: render?.flightVeilHoldsSim,
+          firstPlayableFrameAt: render?.firstPlayableFrameAt ?? null,
+          firstPicturePhase: render?.openingFirstPicturePhase ?? null,
+          cookLane: render?.sampleOpeningCookLane?.() ?? null,
+          postOpening: {
+            inFlight: !!owner?._postOpeningPipelinesInFlight,
+            released: owner?._postOpeningPipelineAdmissionReleased === true,
+            rescanRequested: owner?._postOpeningRescanRequested === true,
+          },
+          roster: {
+            pending: rosterPending.length,
+            labels: rosterPending.slice(0, 8).map((promise) =>
+              owner?._rosterPrewarmPendingLabels?.get(promise) || 'other'),
+          },
+          liveSectorGpuAdmission: render?.liveSectorGpuAdmission,
+          contextLost: render?.contextLost,
+          enterSerial: state?.world?.enterSerial,
+          admissionRunGeneration: render?.admissionRunGeneration,
+          cook: Array.isArray(render?.openingCookLedger)
+            ? render.openingCookLedger.slice(-12)
+            : null,
+          visibleText: document.body.innerText.slice(0, 1000),
+        };
+      }).catch(() => null);
+      throw new Error(`${error.message} :: Bar launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
+    });
+  } catch (error) {
+    launchError = error;
+    throw error;
+  } finally {
+    await stopLaunchProfile(launchError);
+  }
 
   await page.evaluate(() => {
     const sf = window.SF;
@@ -488,8 +526,33 @@ try {
 
   console.log('Bar mission readiness live OK: Bar offer chips, blocker, Accept + Track, and Mission Log handoff render on the default route.');
 } finally {
-  if (browser) await browser.close();
-  if (server && server.kill) server.kill();
+  try {
+    await stopLaunchProfile();
+  } finally {
+    try { if (browser) await browser.close(); }
+    finally { if (server && server.kill) server.kill(); }
+  }
+}
+
+async function stopLaunchProfile(primaryError = null) {
+  const session = launchProfileSession;
+  if (!session) return;
+  launchProfileSession = null;
+  try {
+    if (launchProfileStarted) {
+      launchProfileStarted = false;
+      const { profile } = await session.send('Profiler.stop');
+      await mkdir(new URL('../.devshots/', import.meta.url), { recursive: true });
+      await writeFile(LAUNCH_PROFILE_PATH, JSON.stringify(profile));
+      console.log('Bar launch CPU profile: ' + LAUNCH_PROFILE_PATH);
+    }
+  } catch (error) {
+    if (!primaryError) throw error;
+    console.error('Bar launch CPU profile failed:', error);
+  } finally {
+    try { await session.send('Profiler.disable'); } catch (_) {}
+    try { await session.detach(); } catch (_) {}
+  }
 }
 
 async function waitForVisible(page, selector, timeoutMs, label) {
