@@ -51,7 +51,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
 | **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
-| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** | See § Tech Tree below — this session |
+| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** (+ phone / narrow / short desktop, ui-polish-40) | See § Tech Tree below, and § Research on a phone, a narrow window and a short desktop (ui-polish-40) |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
@@ -1170,6 +1170,7 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 
 **Checked:** hub-line vs pad probe (`_tools/fp-hub.mjs`) at 390×844 and 360×740 (`--phone`), 960×540, 1024×768, 700×900 and 1280×720: 0 overlaps on all three records. 1280×720 is pixel-identical to master. The bench measures clean at 390×844, 960×540, 1280×720 and 1920×1080. Focused tests pass: footprint-heat-dial, footprint-board-churn, law-08-unwitnessed-footprint. Shots: `ui-shots/polish38/{before,after}/`, `compare-{phone,960}-{wanted,marked}.png`.
 
+
 ## Shipworks short desktop: verbs stay on-frame; next-step clears DISMISS (ui-polish-39)
 
 **Before:** at 844×390, TAKE THE HITCH · RECORD · PAINT ran past the right edge (Paint at x≈922 on an 844 frame) and overlapped UNDOCK. The next-step sentence under OPEN YOUR HOLD printed on DISMISS (bench ON TOP OF ×4). Weapon / Mining / fleet rows under the sticky foot were already the expected below-fold remainder from ui-polish-33.
@@ -1185,3 +1186,22 @@ Overlap probe (text boxes in the tape), two seeded 12-receipt ledgers at 844×39
 **After (`src/ui/orrery/marketLayouts.js` only):** the same short-berth band stacks the two options in one column at the analysis width. Each verb keeps its name on one line and its terms wrap under it at the full width. Term lines 4–6→2–3. **Code Work review:** the first cut ellipsized the terms to one line ("Pay 22 cr. Hull 86 → 10…", FLY DAMAGED's "stays at 86 (armor 20)" lost), and the buttons carry no title or aria-label, so the numbers being chosen between couldn't be read. The terms now wrap. Stacked, Tab to REPAIR NOW also parked FLY DAMAGED under the pinned foot at 675×420 and 720×440, so a non-last verb keeps 144px clear below it on focus. 760×420 and up (two-column wrap) and 960×540 / 1280×720 are unchanged. Selectors and IDs are unchanged. Phone rules are untouched (`MD` is desktop-only).
 
 **Checked:** scrolled decision probe at 651×400, 675×420, 700×400 (fix), 760×420 / 844×390 / 960×540 / 1280×720 (unchanged layout). Shots: `/workspace/spaceface-scratch/ui-shots/polish41/` (`compare-decision-crop-651.png`, `compare-decision-*.png`).
+
+## Research on a phone, a narrow window and a short desktop (ui-polish-40)
+
+**Before (master 9d99c12ec3):** Research only had the desktop grid (`1fr | 270–500px`). On a phone (390×844, `--phone`) the 1fr column was ~55px, so RESEARCH printed over 18,400 CREDITS and 0 RESEARCH POINTS, the sub line broke into one word per line ("6 / nodes / ready / to…"), the dial had no room and stood down, and the node picker stayed asleep, so a phone had no way to choose a node at all. In a 700px desktop window the dial was a ~60px knot with the sector names over the stars. At 960×540 the reading ran past the frame's foot (REQUIRES and its line were cut off), and at ≤1100 wide RESEARCH POINTS in the cost reading ran off the right edge.
+
+**After (`src/ui/orrery/constellationLayouts.js` RESEARCH block, plus a 3-line scroll reset in `src/ui/screens/techTree.js`):**
+- **≤760 wide:** one scrolling column: title, the three readings in a ruled row, the dial at full width (`clamp(380px, 86vw, 620px)` tall), then the reading. Back docks at the foot on an opaque void. At 700×800 the dial is drawn at full size with clean sector names.
+- **≤560 wide (phones):** the dial still can't stand in under 360px, so the stage folds away, and the node picker (`#sf-research-node`, the screen's second route) wakes as a labelled field beside Back in the docked foot. The zoom reading sleeps with the dial.
+- **Cost reading:** the two cells share one row grid (`subgrid`). At ≤1100 a word that needs two lines ("Research / points") wraps without knocking the numerals out of line.
+- **761+ wide, ≤640 tall:** the reading scrolls inside its own column with a soft fade at its foot instead of printing under the frame, and its unlock rows are tighter. Choosing a new node scrolls that column back to the name.
+- 1280×720 and 1920×1080 are pixel-identical to master. Selectors and IDs are unchanged; no instrument (constellation.js) geometry changed.
+
+**Bench:** phone 390×844 went from a visible pile-up to 0 findings on `tech-tree` and `tech-tree-progress`. 960×540 has 0 findings, as before. 1280×720 keeps its 4 pre-existing findings ("1 Propelled charge…" curve box vs Deflector Theory, unchanged pixels). 1920×1080 has 0. A `--walk` at 960/1280/1920 exercised 24 controls per screen. A picker change on the phone re-reads the dossier (Plasma Dynamics).
+
+**Sizes checked:** 390×844 (`--phone`, top and scrolled), 700×800, 800×600, 844×390 (`--phone`), 960×540 (top, reading scrolled, node picked), 1024×768, 1280×720, 1920×1080.
+
+**Still open:** the dial itself is crowded when its stage is under ~500px (800×600, phone landscape 844×390), the same as on master. That needs instrument geometry, not layout. At 960 the "Industrial Mining" label's last letter is clipped by the dial's own sky (`labelOut` under-measures by a few px). Shots: `ui-shots/polish40/{before,after}/` plus `compare-*.png`.
+
+
