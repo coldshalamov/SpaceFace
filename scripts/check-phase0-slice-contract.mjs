@@ -74,7 +74,7 @@ const allowedRandomFiles = new Map([
   ['src/ui/screens/drill.js', 'cosmetic drill screen particles and rover shake'],
   // The Band's carrier beds own only cosmetic Web Audio nodes. createBandBedRuntime's RNG is an
   // injected seam (`options.random`) whose ambient default feeds a procedural noise buffer only;
-  // the sim's state.rng is never read here. See PHASE0_AUTHORITY_AUDIT.md.
+  // the sim's state.rng is never read here.
   ['src/audio/bandBeds.js', 'cosmetic procedural noise buffer (injected-default RNG seam)'],
   ['src/testing/lab/runScenario.js', 'local lab run id only; lab results are non-promoting/internal-test'],
   // spawnChunks() scatters the tumbling rock debris when a mining block lets go. Verified
@@ -103,15 +103,15 @@ const randomSites = activeMathRandomSites('src');
 for (const site of randomSites) {
   assert(allowedRandomFiles.has(site.rel), `Unclassified Math.random site: ${site.rel}:${site.line}`);
 }
-for (const rel of allowedRandomFiles.keys()) {
-  assert(read('docs/Spec/PHASE0_AUTHORITY_AUDIT.md').includes(rel), `Authority audit must classify ${rel}`);
+for (const [rel, rationale] of allowedRandomFiles) {
+  assert(typeof rationale === 'string' && rationale.trim(), `${rel} needs a written Math.random classification`);
 }
 
 // FB-095 — wall-clock guard. performance.now()/Date.now() are the same determinism failure class
 // as a Math.random draw: a host-dependent value. Simulation-owner directories must not invoke
 // them directly. Diagnostics that genuinely need wall time read it through perfNow() in
-// src/core/perfRuntime.js — the single classified instrumentation seam. Every classified file
-// carries its written rationale in docs/Spec/PHASE0_AUTHORITY_AUDIT.md (Wall-Clock Catalogue).
+// src/core/perfRuntime.js — the single classified instrumentation seam. The executable allowlist
+// in scripts/lib/wallTimeGuard.mjs carries the rationale for each exception.
 // The scan engine lives in scripts/lib/wallTimeGuard.mjs so the guard is unit-testable.
 const wallTimeSites = unclassifiedWallTimeSites(ROOT);
 for (const site of wallTimeSites) {
@@ -120,8 +120,8 @@ for (const site of wallTimeSites) {
     'use dt/state.simTime, or route diagnostics through perfNow() in src/core/perfRuntime.js',
   );
 }
-for (const rel of ALLOWED_WALL_TIME_FILES.keys()) {
-  assert(read('docs/Spec/PHASE0_AUTHORITY_AUDIT.md').includes(rel), `Authority audit must classify wall-clock owner ${rel}`);
+for (const [rel, rationale] of ALLOWED_WALL_TIME_FILES) {
+  assert(typeof rationale === 'string' && rationale.trim(), `${rel} needs a written wall-clock classification`);
 }
 
 const a = { rngSeed: hash32(47, 'phase0') };

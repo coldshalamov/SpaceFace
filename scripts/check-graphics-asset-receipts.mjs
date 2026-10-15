@@ -152,11 +152,18 @@ assert.equal(rcsPart.bytes, fileRecord(rcsRelease.source).bytes, 'RCS parts-mani
 assert.equal(rcsPart.tris, glbMetrics(rcsRelease.source).triangles, 'RCS parts-manifest triangles');
 assert.doesNotMatch(rcsPart.note, /antenna/i, 'RCS note must not describe a different asset family');
 
-const visualPlan = text('VISUAL_ASSET_PLAN.md');
-assert.doesNotMatch(visualPlan, /vfx\.js loads and uses fx_thruster_main\.jpg/,
-  'visual plan must not claim the reference JPG is a runtime thruster source');
-assert.match(visualPlan, /assets\/fx\/thruster\/manifest\.json/,
-  'visual plan must name the deterministic runtime thruster texture manifest');
+const thrusterManifest = json('assets/fx/thruster/manifest.json');
+assert.equal(thrusterManifest.schema, 'spaceface.thrusterTextureManifest.v1', 'thruster texture manifest schema');
+assert.equal(thrusterManifest.generator, 'scripts/generate-thruster-textures.mjs',
+  'thruster textures must name their deterministic generator');
+assert.equal(thrusterManifest.deterministic, true, 'thruster texture manifest must declare deterministic generation');
+assert(Array.isArray(thrusterManifest.textures) && thrusterManifest.textures.length > 0,
+  'thruster texture manifest must list generated textures');
+const vfxSource = text('src/render/vfx.js');
+assert.match(vfxSource, /collectThrusterTextureIds\(\)/,
+  'runtime thruster loading must use the registered recipe texture ids');
+assert.match(vfxSource, /`assets\/fx\/thruster\/\$\{id\}\.png`/,
+  'runtime thruster loading must resolve generated textures, not the retired reference JPG');
 
 // ---------------------------------------------------------------------------
 // Extended coverage: verify EVERY release-manifest asset against disk.

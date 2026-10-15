@@ -615,7 +615,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
     grid-template-columns:none !important;
   }
   ${MD} .sx-mkt__decision .sx-decision > .k-sentence {
-    margin:0 0 2px !important; font-size:11px !important; line-height:14px !important;
+    margin:0 0 2px !important; font-size:12px !important; line-height:14px !important;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   ${MD} .sx-mkt__decision .sx-decision__opt {
@@ -624,11 +624,11 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
     min-width:0 !important;
   }
   ${MD} .sx-mkt__decision .sx-decision__opt .k-row__name {
-    font-size:10px !important; letter-spacing:.08em !important; white-space:nowrap !important;
+    font-size:12px !important; letter-spacing:.08em !important; white-space:nowrap !important;
     line-height:12px !important;
   }
   ${MD} .sx-mkt__decision .sx-decision__opt .k-row__sub {
-    font-size:10.5px !important; line-height:13px !important; max-width:100% !important;
+    font-size:12px !important; line-height:13px !important; max-width:100% !important;
     white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
   }
   /* stacked, the next verb sits under the focused one: focus keeps room for it above the pinned

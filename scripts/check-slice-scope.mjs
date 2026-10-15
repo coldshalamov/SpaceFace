@@ -16,7 +16,6 @@ const scenario = readJson(SCENARIO_PATH);
 const packageJson = readJson('package.json');
 const sliceContract = readText(scope.sliceContract);
 const sourceSpec = readText(scope.sourceSpec);
-const ledger = readText('docs/handoffs/FOUNDATION_INTAKE_LEDGER.md');
 const prTemplate = readText(PR_TEMPLATE_PATH);
 
 const scenarioReport = validateScenarioDocument(scenario, { file: SCENARIO_PATH });
@@ -65,8 +64,10 @@ assert(packageJson.scripts.check.indexOf('npm run check:slice-scope')
 assert(prTemplate.includes('Required `proofMetricId`'), 'PR template must require a proofMetricId');
 assert(prTemplate.includes('Evidence run'), 'PR template must require evidence run notes');
 assert(sliceContract.includes('Every merge must name the slice metric it'), 'slice contract must keep the merge metric guardrail');
-assert(sourceSpec.includes('Every merge names the slice metric'), 'master plan must keep the merge metric guardrail');
-assert(ledger.includes('improves a named slice metric'), 'intake ledger must keep the named-metric acceptance rule');
+assert(sourceSpec.includes('Every merge must name the slice metric it'),
+  'current source spec must keep the merge metric guardrail');
+assert(scope.guardrails.some((guardrail) => guardrail.includes('Every merge must name the slice metric it improves')),
+  'slice scope must retain the named-metric merge guardrail');
 
 console.log('47-A slice scope guard checks OK');
 
