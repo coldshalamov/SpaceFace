@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Create an immutable, probe-only source overlay from one frozen git commit.
 // The output belongs under .devshots/ and embeds either explicitly named runtime files or,
-// with --all-runtime, the complete index.html + src/**/*.js + scripts/lib runtime + styles trees.
+// with --all-runtime, the complete index.html + src/**/*.{js,json} + scripts/lib runtime + styles trees.
 // Assets, node_modules, and every other unlisted working-tree file stay outside the capture.
 
 import { createHash } from 'node:crypto';
@@ -11,7 +11,6 @@ import { mkdir, readFile, readdir, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
 import { readGitCatFileBatch } from './lib/gitCatFileBatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,7 +45,8 @@ const DEFAULT_PERFORMANCE_PATHS = Object.freeze([
   'src/world/activityRuntime.js',
 ]);
 
-const ALL_RUNTIME_PATH_POLICY = 'index.html + src/**/*.js + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+const ALL_RUNTIME_PATH_POLICY = 'index.html + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+const SOURCE_RUNTIME_EXTENSIONS = Object.freeze(new Set(['.js', '.json']));
 const SCRIPT_RUNTIME_EXTENSIONS = Object.freeze(new Set(['.js', '.mjs', '.cjs']));
 
 function value(name) {
@@ -93,8 +93,9 @@ function listTrackedPathsAtCommit(commit, prefix, include = () => true) {
     .sort();
 }
 
-function listSrcJsPathsAtCommit(commit) {
-  return listTrackedPathsAtCommit(commit, 'src', (relativePath) => relativePath.endsWith('.js'));
+function listSrcRuntimePathsAtCommit(commit) {
+  return listTrackedPathsAtCommit(commit, 'src', (relativePath) =>
+    SOURCE_RUNTIME_EXTENSIONS.has(path.extname(relativePath).toLowerCase()));
 }
 
 function listScriptRuntimePathsAtCommit(commit) {
@@ -175,7 +176,10 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
       if (allRuntime) {
         fileList = [
           'index.html',
-          ...(workingTree ? await listSrcJsSourcePaths(ROOT) : listSrcJsPathsAtCommit(sourceCommit)),
+          ...(workingTree
+            ? await listWorkingTreePaths('src', (relativePath) =>
+              SOURCE_RUNTIME_EXTENSIONS.has(path.extname(relativePath).toLowerCase()))
+            : listSrcRuntimePathsAtCommit(sourceCommit)),
           ...(workingTree ? await listScriptRuntimePathsAtWorkingTree() : listScriptRuntimePathsAtCommit(sourceCommit)),
           ...(workingTree ? await listStylesPathsAtWorkingTree() : listStylesPathsAtCommit(sourceCommit)),
         ];
@@ -197,6 +201,10 @@ if (!outputRel.startsWith('.devshots/') || outputRel.includes('/../') || outputR
           if (workingTree) {
             presentPaths = uniquePaths.filter((relativePath) => {
               if (existsSync(path.join(ROOT, relativePath))) return true;
+              if (allRuntime) {
+                missingPaths.push(relativePath);
+                return false;
+              }
               if (!usingDefaultPaths) throw new Error(`source path is absent in the working tree: ${relativePath}`);
               missingPaths.push(relativePath);
               return false;
