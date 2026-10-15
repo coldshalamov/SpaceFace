@@ -77,3 +77,29 @@ test('a still-arriving structure has no roof; the committed body does', () => {
   pending.userData.authoredAssetState = 'authored';
   assert.ok(Number.isFinite(cameraRoofAt(owner, 0, 0, 0)), 'the committed body reports its roof');
 });
+
+test('a committed roof survives a transient pipeline latch, while first admission stays roofless', () => {
+  const scene = new THREE.Scene();
+  const root = structure('station', [180, 79, 160], [0, 0]);
+  scene.add(root);
+  const owner = stubOwner(scene, [root]);
+  const committedRoof = cameraRoofAt(owner, 0, 0, 0);
+  assert.ok(Number.isFinite(committedRoof), 'the authored body establishes a roof');
+
+  root.userData.geometryPending = true;
+  root.userData.authoredAssetState = 'compiling-pipelines';
+  assert.equal(
+    cameraRoofAt(owner, 0, 0, 0),
+    committedRoof,
+    'a transient readiness latch must not drop the last committed camera roof',
+  );
+
+  const first = structure('station', [180, 79, 160], [300, 0], {
+    authoredAssetState: 'compiling-pipelines',
+    geometryPending: true,
+  });
+  scene.add(first);
+  owner._meshes.set(2, first);
+  owner._meshesVersion += 1;
+  assert.equal(cameraRoofAt(owner, 300, 0, 0), -Infinity, 'first admission has no committed roof to retain');
+});

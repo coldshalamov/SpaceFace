@@ -16,23 +16,46 @@ function compiledShader(material) {
   return shader;
 }
 
+function shaderAssignment(shader, type, name) {
+  const match = shader.fragmentShader.match(new RegExp(`\\b${type}\\s+${name}\\s*=\\s*([\\s\\S]*?);`));
+  assert.ok(match, `compiled shader declares ${name}`);
+  return match[1];
+}
+
+function evaluateScalar(expression, values) {
+  const names = Object.keys(values);
+  return new Function(...names, `return ${expression};`)(...names.map(name => values[name]));
+}
+
 // Evaluate the real compiled GLSL fill term for each colour channel. The
 // geometric band can disagree with visible illumination under shadows or
 // normal-mapped geology; neither input is substituted with a test-side copy
-// of the fill algorithm.
+// of the fill algorithm. The intermediate source declarations are evaluated
+// in the same order as the generated shader so the test follows the contract
+// when the floor changes.
 function terrainFill(shader, albedo, metalness, light, bodyLight) {
-  const expression = shader.fragmentShader.match(/vec3 sfRockFill = ([\s\S]*?);/)[1]
+  const pigmentExpression = shaderAssignment(shader, 'vec3', 'sfRockPigment')
     .replace(/diffuseColor\.rgb/g, 'albedo');
-  const evaluate = new Function(
-    'albedo', 'metalnessFactor', 'sfLookShadowTint', 'sfRockSurface', 'sfLookRockFill',
-    'sfRockIllumination', 'sfBodyLight', 'saturate', `return ${expression};`,
-  );
+  const fillExpression = shaderAssignment(shader, 'vec3', 'sfRockFill');
   const tint = shader.uniforms.sfLookShadowTint.value.toArray();
-  return albedo.map((value, channel) => evaluate(
-    value, metalness, tint[channel], shader.uniforms.sfRockSurface.value,
-    shader.uniforms.sfLookRockFill.value, light, bodyLight,
-    value => Math.max(0, Math.min(1, value)),
-  ));
+  const pigment = albedo.map(value => evaluateScalar(pigmentExpression, {
+    albedo: value,
+    metalnessFactor: metalness,
+  }));
+  const pigmentY = Math.max(
+    pigment.reduce((sum, value, channel) => sum + value * [0.2126, 0.7152, 0.0722][channel], 0),
+    0.0001,
+  );
+  const targetY = Math.max(pigmentY, shader.uniforms.sfLookRockFloor.value);
+  const floorPigment = pigment.map(value => value * (targetY / pigmentY));
+  const shadowWeight = shader.uniforms.sfRockSurface.value
+    * (1 - Math.max(0, Math.min(1, light)));
+  return floorPigment.map((value, channel) => evaluateScalar(fillExpression, {
+    sfRockFloorPigment: value,
+    sfLookShadowTint: tint[channel],
+    sfLookRockFill: shader.uniforms.sfLookRockFill.value,
+    sfRockShadowWeight: shadowWeight,
+  }));
 }
 
 function visibleRockIllumination(shader, diffuse, paintLuma) {
@@ -59,6 +82,25 @@ test('terrain fill follows final AO-adjusted diffuse light, not pre-AO irradianc
   const dark = visibleRockIllumination(shader, albedo.map(v => v * 0.08), paintLuma);
   const filled = terrainFill(shader, albedo, 0.025, dark, 1);
   const unlit = terrainFill(shader, albedo, 0.025, 0, 1);
+  const noFloor = shader.uniforms.sfLookRockFloor.value;
+  shader.uniforms.sfLookRockFloor.value = 0;
+  const pigmentOnly = terrainFill(shader, albedo, 0.025, 0, 1);
+  shader.uniforms.sfLookRockFloor.value = noFloor;
+  assert.ok(unlit.some((value, channel) => value > pigmentOnly[channel] + 1e-6),
+    'the authored scene-linear floor contributes to a dark rock face');
+  const tintedPigment = albedo.map((value, channel) => value * shader.uniforms.sfLookShadowTint.value.toArray()[channel]);
+  const normalized = unlit.map((value, channel) => value / tintedPigment[channel]);
+  assert.ok(Math.max(...normalized) - Math.min(...normalized) < 1e-9,
+    'the floor scales pigment uniformly and preserves hue/texture ratios');
+  const veryDark = [0.006, 0.005, 0.004];
+  const veryDarkFill = terrainFill(shader, veryDark, 0.025, 0, 1);
+  const veryDarkLuma = veryDarkFill.reduce((sum, value, channel) =>
+    sum + value * [0.2126, 0.7152, 0.0722][channel], 0);
+  const tintLuma = shader.uniforms.sfLookShadowTint.value.toArray()
+    .reduce((sum, value, channel) => sum + value * [0.2126, 0.7152, 0.0722][channel], 0);
+  assert.ok(veryDarkLuma >= shader.uniforms.sfLookRockFloor.value * tintLuma
+    * shader.uniforms.sfLookRockFill.value * 0.999,
+  'sub-.025 pigments reach the authored floor instead of the lighting denominator guard');
   assert.ok(filled.every((value, channel) => value >= unlit[channel] * 0.9),
     'AO-darkened rock retains pigment fill even with a sun-facing geometric band');
   assert.equal(visibleRockIllumination(shader, [-0.1, -0.1, -0.1], paintLuma), 0,

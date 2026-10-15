@@ -66,6 +66,157 @@ export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, 
 export const DEFAULT_CINEMATIC_TOE = 0.0039;
 export const POST_TOE_TINT = Object.freeze([0.82, 0.92, 1.15]);
 
+// Contrast is normally evaluated with the authored pow() path. The LUT is an opt-in experiment
+// for the measured composite hotspot: it stores the already-squared sigmoid in two normalized
+// 8-bit channels, giving a portable 16-bit scalar on WebGL2 without changing any look parameter.
+// Keep the table size fixed because the shader's texel-center mapping is part of the format.
+export const CONTRAST_LUT_SIZE = 1024;
+export const CONTRAST_LUT_FORMAT = 'rg8-linear-16bit';
+
+export function contrastShapedSquared(value, contrast) {
+  const v = Math.max(0, Math.min(1, Number(value) || 0));
+  const c = Number.isFinite(Number(contrast)) ? Number(contrast) : 1;
+  const rise = v ** c;
+  const fall = (1 - v) ** c;
+  const shaped = rise / Math.max(rise + fall, 0.00001);
+  return shaped * shaped;
+}
+
+function writeContrastLutData(contrast, data) {
+  if (!(data instanceof Uint8Array) || data.length !== CONTRAST_LUT_SIZE * 2) {
+    throw new TypeError('contrast LUT data must be a 1024-entry RG8 Uint8Array');
+  }
+  for (let i = 0; i < CONTRAST_LUT_SIZE; i++) {
+    const quantized = Math.max(0, Math.min(65535, Math.round(
+      contrastShapedSquared(i / (CONTRAST_LUT_SIZE - 1), contrast) * 65535,
+    )));
+    data[i * 2] = Math.floor(quantized / 256);
+    data[i * 2 + 1] = quantized % 256;
+  }
+  return data;
+}
+
+/** Build the opt-in contrast LUT's exact RG8 payload without touching Three or a renderer. */
+export function buildContrastLutData(contrast) {
+  return writeContrastLutData(contrast, new Uint8Array(CONTRAST_LUT_SIZE * 2));
+}
+
+/** CPU reference for the shader's texel-center/linear-filter lookup, used by focused tests. */
+export function sampleContrastLutData(data, value) {
+  if (!(data instanceof Uint8Array) || data.length !== CONTRAST_LUT_SIZE * 2) {
+    throw new TypeError('contrast LUT data must be a 1024-entry RG8 Uint8Array');
+  }
+  const x = Math.max(0, Math.min(1, Number(value) || 0)) * (CONTRAST_LUT_SIZE - 1);
+  const lo = Math.floor(x);
+  const hi = Math.min(CONTRAST_LUT_SIZE - 1, lo + 1);
+  const t = x - lo;
+  const decode = (index) => (data[index * 2] * 256 + data[index * 2 + 1]) / 65535;
+  return decode(lo) * (1 - t) + decode(hi) * t;
+}
+
+function createContrastLutTexture(contrast) {
+  const texture = new THREE.DataTexture(
+    buildContrastLutData(contrast),
+    CONTRAST_LUT_SIZE,
+    1,
+    THREE.RGFormat,
+    THREE.UnsignedByteType,
+  );
+  texture.name = 'Bloom:ContrastLut';
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.generateMipmaps = false;
+  texture.unpackAlignment = 1;
+  if ('colorSpace' in texture && THREE.NoColorSpace != null) texture.colorSpace = THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// Packed HDR is deliberately an experiment rather than a quality setting. R11F_G11F_B10F has
+// no alpha and less mantissa precision than HalfFloat, so the normal route remains RGBA16F until
+// a native timer/picture comparison accepts the requested mode. The switch is local to this
+// compositor and never changes the persisted video settings.
+export const PACKED_HDR_MODE = Object.freeze({ OFF: 'off', PYRAMID: 'pyramid', ALL: 'all' });
+
+export function normalizePackedHdrMode(value) {
+  if (value === true) return PACKED_HDR_MODE.PYRAMID;
+  if (value === false || value == null) return PACKED_HDR_MODE.OFF;
+  const mode = String(value).trim().toLowerCase();
+  if (mode === PACKED_HDR_MODE.ALL || mode === 'all-color-targets') return PACKED_HDR_MODE.ALL;
+  if (mode === PACKED_HDR_MODE.PYRAMID || mode === 'pyramid-only') return PACKED_HDR_MODE.PYRAMID;
+  return PACKED_HDR_MODE.OFF;
+}
+
+export function packedHdrTargetOptions(mode, depthBuffer = false) {
+  const packed = normalizePackedHdrMode(mode) !== PACKED_HDR_MODE.OFF;
+  return {
+    format: packed ? THREE.RGBFormat : THREE.RGBAFormat,
+    type: packed ? THREE.UnsignedInt101111Type : THREE.HalfFloatType,
+    magFilter: THREE.LinearFilter,
+    minFilter: THREE.LinearFilter,
+    depthBuffer: !!depthBuffer,
+    stencilBuffer: false,
+  };
+}
+
+function packedHdrProbeFailure(reason, framebufferStatus = null) {
+  return {
+    supported: false,
+    reason,
+    framebufferStatus,
+  };
+}
+
+/**
+ * Probe the exact target format through Three's target setup and a real FBO completeness check.
+ * This is called only when the opt-in experiment is requested or after context restoration.
+ */
+export function probePackedHdrCapability(renderer) {
+  const capabilities = renderer && renderer.capabilities;
+  if (!capabilities || capabilities.isWebGL2 !== true) {
+    return packedHdrProbeFailure('webgl2-required');
+  }
+  const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  if (!gl || typeof gl.getExtension !== 'function') {
+    return packedHdrProbeFailure('webgl-context-unavailable');
+  }
+  if (typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+    return packedHdrProbeFailure('context-lost');
+  }
+  let extension = null;
+  try { extension = gl.getExtension('EXT_color_buffer_float'); } catch (_) { extension = null; }
+  if (!extension) return packedHdrProbeFailure('ext-color-buffer-float-required');
+  if (typeof renderer.initRenderTarget !== 'function' || typeof renderer.setRenderTarget !== 'function') {
+    return packedHdrProbeFailure('render-target-probe-unavailable');
+  }
+  if (typeof gl.checkFramebufferStatus !== 'function'
+      || !Number.isFinite(Number(gl.FRAMEBUFFER))
+      || !Number.isFinite(Number(gl.FRAMEBUFFER_COMPLETE))) {
+    return packedHdrProbeFailure('framebuffer-status-unavailable');
+  }
+
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const target = new THREE.WebGLRenderTarget(1, 1, packedHdrTargetOptions(PACKED_HDR_MODE.PYRAMID));
+  try {
+    renderer.initRenderTarget(target);
+    renderer.setRenderTarget(target);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      return packedHdrProbeFailure(`framebuffer-incomplete:${status}`, status);
+    }
+    return { supported: true, reason: 'framebuffer-complete', framebufferStatus: status };
+  } catch (_) {
+    return packedHdrProbeFailure('target-probe-threw');
+  } finally {
+    try { renderer.setRenderTarget(previousTarget || null); } catch (_) {}
+    target.dispose();
+  }
+}
+
 function linearToSrgbChannel(value) {
   const c = Math.max(0, Number(value) || 0);
   return c <= 0.0031308 ? c * 12.92 : 1.055 * (c ** (1 / 2.4)) - 0.055;
@@ -174,6 +325,28 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
   }
 
+#ifdef SF_CONTRAST_LUT
+  uniform sampler2D tLookContrastLut;
+
+  float spaceContrastShapedSquared(float value) {
+    // The CPU table stores a 16-bit scalar as RG8. Sampling at texel centers makes the
+    // endpoints exact and lets the hardware's linear filter interpolate only between adjacent
+    // authored samples. The decode is deliberately explicit: no sRGB conversion or gamma belongs
+    // on this data texture.
+    float x = clamp(value, 0.0, 1.0);
+    vec2 packed = texture2D(tLookContrastLut,
+      vec2((x * 1023.0 + 0.5) / 1024.0, 0.5)).rg;
+    return ((packed.r * 255.0) * 256.0 + packed.g * 255.0) / 65535.0;
+  }
+#else
+  float spaceContrastShapedSquared(float value) {
+    float rise = pow(value, uLookContrast);
+    float fall = pow(1.0 - value, uLookContrast);
+    float shaped = rise / max(rise + fall, 0.00001);
+    return shaped * shaped;
+  }
+#endif
+
   vec3 applySpacePostPresentation(
     vec3 color,
     vec2 uv,
@@ -193,10 +366,8 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
       // pow() of the negative (1 - value) is NaN.
       float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
       float value = sqrt(clamp(y, 0.0, 1.0));
-      float rise = pow(value, uLookContrast);
-      float fall = pow(1.0 - value, uLookContrast);
-      float shaped = rise / max(rise + fall, 0.00001);
-      c *= (y > 0.00001 ? min(shaped * shaped / y, 4.0) : 1.0);
+      float shapedSquared = spaceContrastShapedSquared(value);
+      c *= (y > 0.00001 ? min(shapedSquared / y, 4.0) : 1.0);
       // Saturation, plus vibrance that lifts muted colours more than ones already at full chroma.
       // Luma is recomputed after the contrast step and the result clamped: a dark saturated
       // pixel pushed negative would poison the sRGB encode.
@@ -978,9 +1149,12 @@ const COMPOSITE_FRAG = /* glsl */`
     vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
     // Pyramid targets share the same content/allocated ratio, so one UV remap serves all.
-    vec3 bloom = texture2D(tBloom0, sceneUv).rgb * uBloomW0
-               + texture2D(tBloom1, sceneUv).rgb * uBloomW1
-               + texture2D(tBloom2, sceneUv).rgb * uBloomW2;
+    vec3 bloom = vec3(0.0);
+    // These weights are uniform for the whole draw. A disabled pyramid level
+    // contributes exactly zero, so avoid its texture read on every output pixel.
+    if (uBloomW0 != 0.0) bloom += texture2D(tBloom0, sceneUv).rgb * uBloomW0;
+    if (uBloomW1 != 0.0) bloom += texture2D(tBloom1, sceneUv).rgb * uBloomW1;
+    if (uBloomW2 != 0.0) bloom += texture2D(tBloom2, sceneUv).rgb * uBloomW2;
     vec3 spill = bloom * uStrength * uBloomNorm;
     vec3 color = composeSpacePostPresentation(
       scene, spill, vUv, gl_FragCoord.xy, uExposure, uAces,
@@ -1501,29 +1675,30 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let vignette = defaultPresentation.vignette;
   let grade = defaultPresentation.grade;
   let toe = defaultPresentation.toe;
+  // Requested mode survives context loss; packedHdrMode is the capability-gated mode actually
+  // allocated for the current GL context. The default deliberately stays HalfFloat/off.
+  let packedHdrRequestedMode = PACKED_HDR_MODE.OFF;
+  let packedHdrMode = PACKED_HDR_MODE.OFF;
+  let packedHdrCapability = packedHdrProbeFailure('disabled');
+  // The contrast LUT is a separate opt-in shader variant. Keeping the default material free of
+  // the sampler preserves the shipped pow() path exactly; enabling the experiment recompiles once
+  // and then only refreshes the 2 KiB table when the shared look contrast changes.
+  let contrastLutRequested = false;
+  let contrastLutEnabled = false;
+  let contrastLutTexture = null;
+  let contrastLutContrast = NaN;
+  let contrastLutReason = 'disabled';
 
   // ---- render targets ----
   // rtScene is full-res (needs a depth buffer for the scene render). The pyramid targets halve each
   // level (½→¼). There is no separate upsample RT: the composite samples the pyramid multi-scale.
   // Targets allocate at init/resize/context-restore or producer attachment, never inside render().
   // Dyn-res scale changes use setContentScale (viewport sub-rects) and must not call setSize.
-  // All HalfFloat + linear colorSpace (default) so brights exceed 1.0.
+  // Default is HalfFloat + linear colorSpace so brights exceed 1.0; the opt-in packed experiment
+  // swaps only the HDR color attachment format after a capability probe.
   // Reuse one options object so we do not allocate a fresh descriptor on every RT create/resize.
-  const pyramidRtOpts = {
-    type: THREE.HalfFloatType,
-    magFilter: THREE.LinearFilter,
-    minFilter: THREE.LinearFilter,
-    depthBuffer: false,
-    stencilBuffer: false,
-  };
-  const sceneRtOpts = {
-    type: THREE.HalfFloatType,
-    magFilter: THREE.LinearFilter,
-    minFilter: THREE.LinearFilter,
-    depthBuffer: true,
-    stencilBuffer: false,
-    samples: 0,
-  };
+  const pyramidRtOpts = packedHdrTargetOptions(PACKED_HDR_MODE.OFF);
+  const sceneRtOpts = { ...packedHdrTargetOptions(PACKED_HDR_MODE.OFF, true), samples: 0 };
   // rtPost carries the presented sRGB bytes for the CAS pass — exactly what would reach the
   // canvas, so byte storage is honest (no depth, no filtering; CasFilter texelFetches).
   const postRtOpts = {
@@ -1553,6 +1728,38 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     ? Math.max(0, Math.min(BALANCED_BLOOM_MSAA_SAMPLES, maxSamples))
     : 0;
   sceneRtOpts.samples = sceneSamples;
+
+  function applyPackedHdrTargetOptions() {
+    // Pyramid-only is the first A/B arm. `all` additionally packs rtScene; rtPost and the optional
+    // distortion target remain their existing formats because they are presented/coverage buffers,
+    // not HDR bloom intermediates.
+    Object.assign(
+      pyramidRtOpts,
+      packedHdrTargetOptions(packedHdrMode === PACKED_HDR_MODE.OFF
+        ? PACKED_HDR_MODE.OFF : PACKED_HDR_MODE.PYRAMID),
+    );
+    Object.assign(
+      sceneRtOpts,
+      packedHdrTargetOptions(packedHdrMode === PACKED_HDR_MODE.ALL
+        ? PACKED_HDR_MODE.ALL : PACKED_HDR_MODE.OFF, true),
+      { samples: sceneSamples },
+    );
+  }
+
+  function selectPackedHdrMode() {
+    if (packedHdrRequestedMode === PACKED_HDR_MODE.OFF) {
+      packedHdrCapability = packedHdrProbeFailure('disabled');
+      packedHdrMode = PACKED_HDR_MODE.OFF;
+      return packedHdrMode;
+    }
+    packedHdrCapability = probePackedHdrCapability(renderer);
+    packedHdrMode = packedHdrCapability.supported
+      ? packedHdrRequestedMode
+      : PACKED_HDR_MODE.OFF;
+    return packedHdrMode;
+  }
+
+  applyPackedHdrTargetOptions();
 
   function levelCountForSize(w, h) {
     const halfW = Math.max(1, w >> 1);
@@ -1736,6 +1943,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uUvOffset: { value: new THREE.Vector2(0, 0) },
     uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
     uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
+    tLookContrastLut: { value: null },
     // Shared objects: look.js writes the mood once and every composite reads it.
     ...LOOK_POST_UNIFORMS,
   });
@@ -1761,6 +1969,72 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.uGrade.value = grade;
   }
   applyPostStyleUniforms();
+
+  function contrastLutSupported() {
+    return renderer && renderer.capabilities && renderer.capabilities.isWebGL2 === true;
+  }
+
+  function setContrastLutShaderVariant(enabledVariant) {
+    const defines = compositeMat.defines || (compositeMat.defines = {});
+    if (enabledVariant) defines.SF_CONTRAST_LUT = 1;
+    else delete defines.SF_CONTRAST_LUT;
+    // The variant is selected only by the explicit experiment switch, never per frame.
+    compositeMat.needsUpdate = true;
+  }
+
+  function syncContrastLut(force = false) {
+    if (!contrastLutEnabled) return;
+    const rawContrast = Number(LOOK_POST_UNIFORMS.uLookContrast.value);
+    const contrast = Number.isFinite(rawContrast) ? rawContrast : 1;
+    if (!contrastLutTexture) {
+      contrastLutTexture = createContrastLutTexture(contrast);
+      compositeMat.uniforms.tLookContrastLut.value = contrastLutTexture;
+      contrastLutContrast = contrast;
+      return;
+    }
+    if (force || contrastLutContrast !== contrast) {
+      writeContrastLutData(contrast, contrastLutTexture.image.data);
+      contrastLutTexture.needsUpdate = true;
+      contrastLutContrast = contrast;
+    }
+    if (compositeMat.uniforms.tLookContrastLut.value !== contrastLutTexture) {
+      compositeMat.uniforms.tLookContrastLut.value = contrastLutTexture;
+    }
+  }
+
+  function releaseContrastLutTexture() {
+    if (contrastLutTexture) contrastLutTexture.dispose();
+    contrastLutTexture = null;
+    contrastLutContrast = NaN;
+    compositeMat.uniforms.tLookContrastLut.value = null;
+  }
+
+  function setContrastLutEnabled(value) {
+    contrastLutRequested = !!value;
+    if (contrastLutRequested && !contrastLutSupported()) {
+      contrastLutEnabled = false;
+      contrastLutReason = 'webgl2-required';
+      setContrastLutShaderVariant(false);
+      releaseContrastLutTexture();
+      return diagnostics();
+    }
+    const next = contrastLutRequested;
+    if (next === contrastLutEnabled) {
+      if (next) syncContrastLut();
+      return diagnostics();
+    }
+    contrastLutEnabled = next;
+    if (contrastLutEnabled) {
+      contrastLutReason = 'enabled';
+      setContrastLutShaderVariant(true);
+      syncContrastLut(true);
+    } else {
+      contrastLutReason = 'disabled';
+      setContrastLutShaderVariant(false);
+      releaseContrastLutTexture();
+    }
+    return diagnostics();
+  }
 
   // draw the shared quad with a given material into a given target (null = screen).
   // Optional viewW/viewH restrict the write to an origin-aligned content sub-rect of a
@@ -2221,6 +2495,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function renderCompositePass(tier1, bloomActive) {
+    // Mood transitions update the shared contrast uniform outside this module. The experiment
+    // table follows that value lazily and reuses its DataTexture between changes.
+    syncContrastLut();
     // Bind initialized scene color when bloom is inactive. Zero weights would normally be enough,
     // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
     // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
@@ -2375,6 +2652,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   function rebuild() {
     // WebGL context restore: the old render-target GPU textures are invalid. Dispose them and
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
+    // Re-probe the opt-in packed target against the restored context before allocating replacement
+    // targets; unsupported restore paths fall back to the ordinary HalfFloat descriptors.
+    selectPackedHdrMode();
+    applyPackedHdrTargetOptions();
     rtScene.dispose();
     for (const rt of down) rt.dispose();
     if (rtPost) { rtPost.dispose(); rtPost = null; }
@@ -2392,7 +2673,32 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       rtDistortion = allocRenderTarget(halfW, halfH, distortionRtOpts, 'contextRestore');
       rtDistortion.texture.name = 'Bloom:Distortion';
     }
+    if (contrastLutRequested && !contrastLutSupported()) {
+      // A restored context may lose WebGL2/RG support. Keep the explicit request for a later
+      // retry, but fail closed for this context and release the old GPU texture/variant.
+      contrastLutEnabled = false;
+      contrastLutReason = 'webgl2-required';
+      setContrastLutShaderVariant(false);
+      releaseContrastLutTexture();
+    } else if (contrastLutRequested && !contrastLutEnabled) {
+      // Conversely, a restored context can regain the capability after an earlier failed probe.
+      contrastLutEnabled = true;
+      contrastLutReason = 'enabled';
+      setContrastLutShaderVariant(true);
+      syncContrastLut(true);
+    }
+    // DataTexture retains its CPU payload across a WebGL context loss. Mark it for upload when
+    // the renderer restores the context; rebuilding the table itself is unnecessary unless the
+    // authored contrast changed.
+    if (contrastLutTexture) contrastLutTexture.needsUpdate = true;
     distortionLiveCount = 0;
+  }
+
+  function setPackedHdrMode(value) {
+    const requested = normalizePackedHdrMode(value);
+    packedHdrRequestedMode = requested;
+    rebuild();
+    return diagnostics();
   }
 
   function contextLossResources() {
@@ -2462,6 +2768,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // Accept partial option updates (wired from settings:changed by the render layer).
   function setOptions(o) {
     if (!o) return;
+    if (Object.prototype.hasOwnProperty.call(o, 'packedHdr')) {
+      setPackedHdrMode(o.packedHdr);
+    } else if (Object.prototype.hasOwnProperty.call(o, 'packedHdrMode')) {
+      setPackedHdrMode(o.packedHdrMode);
+    }
+    if (Object.prototype.hasOwnProperty.call(o, 'contrastLut')) {
+      setContrastLutEnabled(o.contrastLut);
+    } else if (Object.prototype.hasOwnProperty.call(o, 'lookContrastLut')) {
+      setContrastLutEnabled(o.lookContrastLut);
+    }
     if (typeof o.enabled === 'boolean') enabled = o.enabled;
     if (typeof o.bloom === 'boolean') enabled = o.bloom; // settings.video.bloom alias
     if (typeof o.strength === 'number') {
@@ -2555,6 +2871,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       targetPoolMaxHeight: H,
       casSharpenActive: casActive,
       casSharpenTarget: rtPost ? { width: rtPost.width, height: rtPost.height } : null,
+      packedHdrRequested: packedHdrRequestedMode,
+      packedHdrMode,
+      packedHdrFormat: packedHdrMode === PACKED_HDR_MODE.OFF ? 'rgba16f' : 'r11g11b10f',
+      packedHdrCapability: { ...packedHdrCapability },
+      contrastLutRequested,
+      contrastLutEnabled,
+      contrastLutReason,
+      contrastLutSize: contrastLutTexture ? CONTRAST_LUT_SIZE : 0,
+      contrastLutFormat: contrastLutTexture ? CONTRAST_LUT_FORMAT : null,
+      contrastLutContrast: Number.isFinite(contrastLutContrast) ? contrastLutContrast : null,
       fullFramePasses: casActive && rtPost ? 3 : 2,
       // Downsample pyramid only — multi-scale composite replaced the upsample chain.
       bloomPasses: enabled && strength > 0.0001 ? down.length : 0,
@@ -2577,6 +2903,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     rtScene.dispose();
     if (rtPost) { rtPost.dispose(); rtPost = null; }
     for (const rt of down) rt.dispose();
+    if (contrastLutTexture) {
+      releaseContrastLutTexture();
+    }
     downsampleMat.dispose();
     compositeMat.dispose();
     casMat.dispose();
@@ -2597,6 +2926,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     setSize,
     setContentScale,
     setOptions,
+    setPackedHdrMode,
+    setContrastLutEnabled,
     setInstrumentation,
     diagnostics,
     dispose,

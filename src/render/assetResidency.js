@@ -3104,6 +3104,13 @@ const TYPE_BYTES = new Map([
   [THREE.UnsignedInt248Type, 4],
 ]);
 
+// These are packed words, not one scalar per declared RGB channel. Keep them separate from
+// TYPE_BYTES so textureFormatInfo does not multiply their four-byte word by three channels.
+const PACKED_TYPE_BYTES = new Map([
+  [THREE.UnsignedInt5999Type, 4],
+  [THREE.UnsignedInt101111Type, 4],
+].filter(([type]) => type != null));
+
 const FORMAT_CHANNELS = new Map([
   [THREE.AlphaFormat, 1],
   [THREE.RedFormat, 1],
@@ -3184,6 +3191,8 @@ function textureFormatInfo(texture) {
       bytesPerPixel: Number(texture && texture.type) === THREE.FloatType ? 8 : 4,
     };
   }
+  const packedBytes = PACKED_TYPE_BYTES.get(Number(texture && texture.type));
+  if (packedBytes) return { compressed: false, bytesPerPixel: packedBytes };
   const typeBytes = Number(texture && texture.bytesPerChannel)
     || Number(texture && texture.bytesPerComponent)
     || TYPE_BYTES.get(Number(texture && texture.type))
