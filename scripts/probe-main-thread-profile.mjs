@@ -33,7 +33,7 @@
 //   --domain-profile=station|commodity
 //                         choose the diagnostic domain mirror shape before the worker initializes;
 //                         the default empty profile remains unchanged.
-//   --trace-stacks        with --trace, include source stacks for style/layout invalidations.
+//   --trace-stacks        with --trace, include style/layout invalidation records and source stacks.
 //   --drop-profile=NAME   delete that kept profile and exit
 //   --baseline-source=PATH serve the validated ignored source manifest for an immutable
 //                         historical comparison; assets and unlisted files remain canonical.
@@ -194,7 +194,10 @@ const SAMPLING_US = Math.max(100, Number(argValue('--sampling-us')) || 0);
 const EFFECTIVE_SAMPLING_US = SAMPLING_US > 100 ? SAMPLING_US : FROM_LAUNCH ? 500 : 200;
 const TRACE_CATEGORIES = [
   '-*', 'toplevel', 'devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'gpu',
-  ...(TRACE_STACKS ? ['disabled-by-default-devtools.timeline.stack'] : []),
+  ...(TRACE_STACKS ? [
+    'disabled-by-default-devtools.timeline.stack',
+    'disabled-by-default-devtools.timeline.invalidationTracking',
+  ] : []),
 ];
 
 async function startTrace(cdp) {
