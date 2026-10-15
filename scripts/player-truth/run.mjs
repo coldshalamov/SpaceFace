@@ -42,7 +42,7 @@ import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
 import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
-import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey } from './driver.mjs';
+import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey, foldTargetRejections } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
 import { decodePlayerTruthRows } from '../../src/testing/playerTruth/packedRows.js';
@@ -662,6 +662,9 @@ async function runOne(args, arena, extra = {}) {
     } catch { return null; }
   };
   page.__ptObserve = observePlay;
+  page.__ptOnTargetRead = read => {
+    trace.targetRejections = foldTargetRejections(trace.targetRejections, read);
+  };
   const haltIfInterrupted = async () => {
     await observePlay();
     const why = playWatch.interrupts.length ? formatPlayStop(playWatch) : null;
@@ -905,6 +908,7 @@ async function runOne(args, arena, extra = {}) {
     await page.evaluate(() => window.__playerTruth?.stop()).catch(() => {});
     await stopWindowGuard();
     page.__ptObserve = null;
+    page.__ptOnTargetRead = null;
     clearInterval(shotTimer); clearInterval(drainTimer);
     while (busy || draining) await new Promise((r) => setTimeout(r, 100));
     await drain({ all: true }).catch(() => {});

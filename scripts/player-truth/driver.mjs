@@ -312,20 +312,40 @@ export async function readTarget({ selectedOnly = false } = {}) {
   // carried with the existing read result, rather than a per-frame diagnostic stream: it lets a
   // route receipt distinguish a pending body from a canvas/HUD miss without adding observer work.
   const rejects = [];
-  const reject = (reason) => { if (rejects.length < 4 && !rejects.includes(reason)) rejects.push(reason); };
+  const targetRejections = { candidates: 0, reachable: false, reasons: [] };
+  const reject = (reason, e, root, projection = null, hit = null) => {
+    if (rejects.length < 4 && !rejects.includes(reason)) rejects.push(reason);
+    let row = targetRejections.reasons.find(row => row.reason === reason);
+    if (row) { row.count++; return; }
+    if (targetRejections.reasons.length >= 8) return;
+    const number = value => Number.isFinite(value) ? value : null;
+    row = { reason, count: 1, sample: {
+      sim: number(st.simTime), tick: number(st.tick), id: e.id,
+      generation: number(e.occupantGeneration), type: e.type,
+      admission: e.presentationAdmission ?? null, fallbackVisible: e.presentationFallbackVisible ?? null,
+      hasRoot: root === undefined ? null : !!root, rootVisible: root?.visible ?? null,
+      authoredState: root?.userData?.authoredAssetState ?? null,
+      projection: projection ? { x: number(projection.x), y: number(projection.y), depth: number(projection.depth),
+        onScreen: projection.onScreen ?? null, behind: projection.behind ?? null } : null,
+      hit: hit ? { tag: String(hit.tagName || '').slice(0, 40), id: String(hit.id || '').slice(0, 80),
+        className: String(hit.className || '').slice(0, 160) } : null,
+    } };
+    targetRejections.reasons.push(row);
+  };
   for (const e of st.entityList) {
     if (!e.alive || e.id === me.id || !(e.type === 'ship' || e.type === 'drone')) continue;
     if (!hostile(e)) continue;
+    targetRejections.candidates++;
     // Use the same authored-presentation receipt as the live Tab/overview producer.
     // A staged pending hull must not mask an admitted contact; pooled bodies stay eligible.
-    if (!presentationAllowsTargetLock(e, st)) { reject('presentation'); continue; }
+    if (!presentationAllowsTargetLock(e, st)) { reject('presentation', e); continue; }
     if (selectedOnly && e.id !== st.player?.targetId) continue;
-    const root = meshes?.get(e.id);
+    const root = meshes?.get(e.id) ?? null;
     let x; let y; let depth = 0;
     if (root?.matrixWorld) {
-      if (root.visible === false) { reject('hidden'); continue; }
+      if (root.visible === false) { reject('hidden', e, root); continue; }
       if (typeof root.traverse === 'function' && !collectPresentedBodyLeaves(root).length) {
-        reject('unpresented'); continue;
+        reject('unpresented', e, root); continue;
       }
       v.setFromMatrixPosition(root.matrixWorld).project(cam);
       x = r.left + (v.x * 0.5 + 0.5) * r.width;
@@ -334,15 +354,16 @@ export async function readTarget({ selectedOnly = false } = {}) {
       // Instanced/pooled contacts need no per-entity root. Read the renderer's current
       // frame projection instead of treating a simulation coordinate as camera-local.
       const point = window.SF.ctx?.helpers?.worldToScreen?.(e.pos);
-      if (!point?.onScreen || point.behind) { reject('projection'); continue; }
+      if (!point?.onScreen || point.behind) { reject('projection', e, root, point); continue; }
       x = point.x; y = point.y;
     }
     // A public shot must hit the gameplay canvas, not an off-screen coordinate
     // or a HUD control covering the target. Match the real DOM input boundary.
     if (depth < -1 || depth > 1 || x < r.left || x >= r.right || y < r.top || y >= r.bottom
-      ) { reject('projection'); continue; }
-    if (document.elementFromPoint(Math.round(x), Math.round(y)) !== canvas) {
-      reject('covered'); continue;
+      ) { reject('projection', e, root, { x, y, depth }); continue; }
+    const hit = document.elementFromPoint(Math.round(x), Math.round(y));
+    if (hit !== canvas) {
+      reject('covered', e, root, { x, y, depth }, hit); continue;
     }
     const dist = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
     if (dist < bd) { bd = dist; best = e; bestX = x; bestY = y; }
@@ -374,7 +395,7 @@ export async function readTarget({ selectedOnly = false } = {}) {
       while (radarRel < -Math.PI) radarRel += 2 * Math.PI;
     }
     return { none: true, hull, radarRel, cx: r.left + r.width / 2, cy: r.top + r.height / 2,
-      rejects: rejects.length ? rejects : null };
+      rejects: rejects.length ? rejects : null, targetRejections };
   }
   // The hull's nose is (cos rot, sin rot) on XZ (src/core/flightDynamics.js localAxesInto).
   const ang = Math.atan2(best.pos.z - me.pos.z, best.pos.x - me.pos.x);
@@ -390,7 +411,32 @@ export async function readTarget({ selectedOnly = false } = {}) {
     if (box.width > 0 && box.height > 0 && px >= r.left && px < r.right && py >= r.top && py < r.bottom
       && document.elementFromPoint(Math.round(px), Math.round(py)) === canvas) { x = px; y = py; }
   }
-  return { x, y, selected, dist: bd, rel, away, near, packDist, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  targetRejections.reachable = true;
+  return { x, y, selected, dist: bd, rel, away, near, packDist, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2,
+    targetRejections };
+}
+
+/** Fold observer receipts only; neither these counters nor their samples steer the actor. */
+export function foldTargetRejections(summary, read) {
+  const receipt = read?.targetRejections;
+  if (!receipt) return summary;
+  const out = summary || { reads: 0, candidates: 0, reachableReads: 0, reasons: [] };
+  out.reads++;
+  out.candidates += receipt.candidates;
+  if (receipt.reachable) out.reachableReads++;
+  for (const row of receipt.reasons.slice(0, 8)) {
+    const prior = out.reasons.find(prior => prior.reason === row.reason);
+    if (prior) prior.count += row.count;
+    else if (out.reasons.length < 8) out.reasons.push({ reason: row.reason, count: row.count,
+      sample: structuredClone(row.sample) });
+  }
+  return out;
+}
+
+async function observeTarget(page, options) {
+  const read = await page.evaluate(readTarget, options);
+  try { page.__ptOnTargetRead?.(read); } catch { /* diagnostics never change actor choices */ }
+  return read;
 }
 
 const fighterMemory = { hull: null, breakBeats: 0 };
@@ -461,7 +507,7 @@ async function searchFightBeat(page, tg, beat, minimumSearchS = 0) {
     let wasAligned = false;
     try {
       await waitSim(page, 2.4, { maxWallMs: 30000, until: combatPhaseEnded, onPoll: async () => {
-        const fresh = await page.evaluate(readTarget);
+        const fresh = await observeTarget(page);
         if (!fresh) return true;
         if (!fresh.none && await simNow(page) - searchStart >= minimumSearchS) {
           // Carry this same public observation into the selection path. Returning to the outer
@@ -517,7 +563,7 @@ export async function fightBeat(page, beat) {
   // A reachable target is not evidence that the previous line has released.
   // Cut the painted payload before either visible-target steering or radar pursuit.
   if (!await releaseFightMassline(page)) return null;
-  let tg = await page.evaluate(readTarget).catch(() => null);
+  let tg = await observeTarget(page).catch(() => null);
   if (!tg) { await page.waitForTimeout(300); return null; }
   const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
   fighterMemory.hull = tg.hull;
@@ -538,7 +584,7 @@ export async function fightBeat(page, beat) {
     await page.mouse.click(pickX, pickY, { button: 'right' });
     await waitSim(page, 1 / 60, { maxWallMs: 30000, until: combatPhaseEnded });
     if (await page.evaluate(readCombatPhaseEnded)) return;
-    tg = await page.evaluate(readTarget, { selectedOnly: true }).catch(() => null);
+    tg = await observeTarget(page, { selectedOnly: true }).catch(() => null);
     if (!tg || tg.none || !tg.selected) {
       // A hull can move behind cover between observation and the real ray pick. Use the
       // shipped keyboard lock controls, then shoot only a selection visible on the canvas.
@@ -546,7 +592,7 @@ export async function fightBeat(page, beat) {
       noteKey(page, 'Tab'); await page.keyboard.press('Tab');
       await waitSim(page, 1 / 60, { maxWallMs: 30000, until: combatPhaseEnded });
       if (await page.evaluate(readCombatPhaseEnded)) return;
-      tg = await page.evaluate(readTarget, { selectedOnly: true }).catch(() => null);
+      tg = await observeTarget(page, { selectedOnly: true }).catch(() => null);
       // Selection attempts are not a flight action. A repeated miss must still move
       // through the public search route rather than freezing on the same failed pick.
       if (!tg || tg.none || !tg.selected) return searchFightBeat(page, tg, beat, 0.4);
@@ -578,7 +624,7 @@ export async function fightBeat(page, beat) {
     await page.keyboard.press(turn, { delay: Math.min(80, Math.abs(bearing) / 4.5 * 1000) });
   };
   const refreshAim = async () => {
-    const fresh = await page.evaluate(readTarget, { selectedOnly: true });
+    const fresh = await observeTarget(page, { selectedOnly: true });
     if (!fresh || fresh.none || !fresh.selected) return true;
     const nextX = Math.round(fresh.x); const nextY = Math.round(fresh.y);
     if (nextX !== x || nextY !== y) {
