@@ -843,7 +843,12 @@ const OPENING_ADMISSION_HANDLE_KEYS = Object.freeze([
   'pipelinePrecompileReady',
   'exactPipelineWarmupReady',
   'openingSubmissionReady',
-  'postOpeningPipelinesReady',
+  // Not 'postOpeningPipelinesReady': that pass compiles the programs that are NOT in the first
+  // picture (remaining sector/NPC roots, depth variants). Measured on software GPUs (player-truth,
+  // master 8001fcc): once the exact submission drain settled, the first draw still sat behind this
+  // one handle until the 15 s failsafe (flight→first playable 15.0–15.6 s on the slow runs vs
+  // 1.2–4.5 s when the pass had already finished), i.e. the gate waited on work it does not draw.
+  // The pass keeps running and its links stay behind the pending latch it already owns.
   'liveSceneCookReady',
   'authoredGpuAdmissionReady',
   'openingGpuResidencyReady',
