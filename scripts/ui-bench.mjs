@@ -95,13 +95,13 @@ async function settleAnimations(page) {
 }
 
 async function probe(page, selector) {
-  const rows = await page.evaluate(sel => {
+  const rows = await page.evaluate(async sel => {
     const out = []; let nodes;
     if (sel.startsWith('js:')) {
       try {
         // Existing developer-only diagnostic escape hatch; never player-truth evidence.
         // eslint-disable-next-line no-eval
-        const value = eval(sel.slice(3));
+        const value = await eval(sel.slice(3));
         return [{ note: typeof value === 'string' ? value : JSON.stringify(value) }];
       } catch (error) { return [{ error: error.message }]; }
     }
