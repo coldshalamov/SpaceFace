@@ -745,9 +745,7 @@ async function waitForAuthoredShips(cdp) {
   const diagnosticsStartedAtMs = performance.now();
   console.log('[authored-assets] authored ship report');
   cdp.setStage('authored ship report', CDP_REQUEST_TIMEOUT_MS);
-  const loaderDiagnostics = deadline.passed ? await collectAuthoredLoaderDiagnostics(cdp) : null;
-  let report = await collectAuthoredReport(cdp);
-  if (loaderDiagnostics) report.loaderDiagnostics = loaderDiagnostics;
+  let report = await collectAdmittedAuthoredReport(cdp, deadline.passed);
   for (let attempt = 0; attempt < 50; attempt++) {
     if (!deadline.passed) break;
     if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
@@ -1449,7 +1447,36 @@ export async function collectAuthoredReport(cdp) {
   })()`);
 }
 
-export async function collectAuthoredLoaderDiagnostics(cdp) {
+export async function collectAdmittedAuthoredReport(cdp, admissionPassed, options = {}) {
+  const loaderDiagnostics = admissionPassed
+    ? await collectAuthoredLoaderDiagnostics(cdp, options)
+    : null;
+  if (loaderDiagnostics && !loaderDiagnostics.available) {
+    throw new Error(`[authored-assets] authored catalog diagnostics failed: ${JSON.stringify(loaderDiagnostics)}`);
+  }
+  cdp.setStageLabel('authored ship report snapshot');
+  const report = await collectAuthoredReport(cdp);
+  if (loaderDiagnostics) report.loaderDiagnostics = loaderDiagnostics;
+  return report;
+}
+
+export async function collectAuthoredLoaderDiagnostics(cdp, { now = () => performance.now() } = {}) {
+  const startedAtMs = now();
+  const progress = {
+    catalogElapsedMs: null,
+    totalEntries: 0,
+    completedEntries: 0,
+    lastCompletedUrl: null,
+    lastCompletedMs: null,
+    maxCompletedUrl: null,
+    maxCompletedMs: 0,
+    failedEntryIndex: null,
+    failedUrl: null,
+    failedAssetMs: null,
+    elapsedMs: null,
+  };
+  const elapsedMs = () => Math.max(0, now() - startedAtMs);
+  const roundedMs = (value) => Math.round(value * 100) / 100;
   try {
     cdp.setStageLabel('authored asset catalog');
     const catalog = await evalJson(cdp, `(async () => {
@@ -1479,15 +1506,24 @@ export async function collectAuthoredLoaderDiagnostics(cdp) {
       });
       return { available: true, runtime, release, partRoot, entries };
     })()`);
-    if (!catalog || !catalog.available) return catalog || { available: false, error: 'asset catalog unavailable' };
+    progress.catalogElapsedMs = roundedMs(elapsedMs());
+    if (!catalog || !catalog.available) {
+      progress.elapsedMs = roundedMs(elapsedMs());
+      return { ...(catalog || { error: 'asset catalog unavailable' }), available: false, progress };
+    }
+    progress.totalEntries = catalog.entries.length;
 
     const loaded = [];
     const wholeShipLoaded = [];
     const failures = [];
     const wholeShipFailures = [];
-    for (const entry of catalog.entries) {
+    for (let index = 0; index < catalog.entries.length; index++) {
+      const entry = catalog.entries[index];
       cdp.setStageLabel(`authored asset ${entry.url}`);
-      const result = await evalJson(cdp, `(async () => {
+      const assetStartedAtMs = now();
+      let result;
+      try {
+        result = await evalJson(cdp, `(async () => {
         const state = window.SF && window.SF.state || null;
         const renderer = state && state.render && state.render.renderer || null;
         if (!renderer) return { loaded: false, unavailable: 'renderer unavailable' };
@@ -1503,6 +1539,20 @@ export async function collectAuthoredLoaderDiagnostics(cdp) {
         return { loaded: false, name: diagnostic && diagnostic.name || 'LoadFailure',
           message: diagnostic && diagnostic.message || 'asset returned no authored blueprint' };
       })()`);
+      } catch (error) {
+        progress.failedEntryIndex = index + 1;
+        progress.failedUrl = entry.url;
+        progress.failedAssetMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
+        throw error;
+      }
+      const assetElapsedMs = roundedMs(Math.max(0, now() - assetStartedAtMs));
+      progress.completedEntries++;
+      progress.lastCompletedUrl = entry.url;
+      progress.lastCompletedMs = assetElapsedMs;
+      if (assetElapsedMs >= progress.maxCompletedMs) {
+        progress.maxCompletedUrl = entry.url;
+        progress.maxCompletedMs = assetElapsedMs;
+      }
       if (result.loaded) {
         (entry.wholeShip ? wholeShipLoaded : loaded).push({
           slot: entry.wholeShip ? 'wholeShip' : entry.slot,
@@ -1523,6 +1573,7 @@ export async function collectAuthoredLoaderDiagnostics(cdp) {
     }
     const declaredPartCount = catalog.entries.filter((entry) => !entry.wholeShip).length;
     const wholeShipDeclaredCount = catalog.entries.length - declaredPartCount;
+    progress.elapsedMs = roundedMs(elapsedMs());
     return {
       available: true,
       runtime: catalog.runtime,
@@ -1540,9 +1591,15 @@ export async function collectAuthoredLoaderDiagnostics(cdp) {
       wholeShipFailureCount: wholeShipFailures.length,
       failureCount: failures.length + wholeShipFailures.length,
       failures: [...failures, ...wholeShipFailures].slice(0, 12),
+      progress,
     };
   } catch (error) {
-    return { available: false, error: error && error.message ? error.message : String(error) };
+    progress.elapsedMs = roundedMs(elapsedMs());
+    return {
+      available: false,
+      error: error && error.message ? error.message : String(error),
+      progress,
+    };
   }
 }
 

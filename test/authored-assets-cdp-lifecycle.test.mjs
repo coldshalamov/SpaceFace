@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import {
+  collectAdmittedAuthoredReport,
   collectAuthoredLoaderDiagnostics,
   collectAuthoredReport,
   createAuthoredProbeCdpSession,
@@ -137,7 +138,7 @@ test('startup failure reporting does not import loaders or request any new asset
   assert.equal(report.shipCount, 0);
 });
 
-test('authored catalog diagnostics issue one labeled Runtime.evaluate per declared asset', async () => {
+test('authored catalog diagnostics aggregate successful and failed part and whole-ship entries', async () => {
   const entries = [
     { slot: 'hull', url: 'assets/ships/release/parts/hulls/first.glb', wholeShip: false },
     { slot: 'cockpit', url: 'assets/ships/release/parts/cockpits/missing.glb', wholeShip: false },
@@ -169,9 +170,7 @@ test('authored catalog diagnostics issue one labeled Runtime.evaluate per declar
     'authored asset catalog',
     ...entries.map((entry) => `authored asset ${entry.url}`),
   ]);
-  for (let i = 0; i < entries.length; i++) {
-    assert.ok(expressions[i + 1].includes(entries[i].url));
-  }
+  for (let i = 0; i < entries.length; i++) assert.ok(expressions[i + 1].includes(entries[i].url));
   assert.equal(report.available, true);
   assert.equal(report.declaredCount, 3);
   assert.equal(report.declaredPartCount, 2);
@@ -186,4 +185,101 @@ test('authored catalog diagnostics issue one labeled Runtime.evaluate per declar
     name: 'MissingAsset',
     message: 'not found',
   }]);
+  assert.equal(report.progress.totalEntries, 3);
+  assert.equal(report.progress.completedEntries, 3);
+  assert.equal(report.progress.lastCompletedUrl, entries[2].url);
+  assert.equal(report.progress.failedUrl, null);
+});
+
+test('a stalled catalog asset reports its URL, elapsed time and completed progress without a passive read', async () => {
+  const entries = [
+    ...Array.from({ length: 5 }, (_, index) => ({
+      slot: 'hull',
+      url: `assets/ships/release/parts/hulls/part-${index}.glb`,
+      wholeShip: false,
+    })),
+  ];
+  let time = 0;
+  let calls = 0;
+  const labels = [];
+  const expressions = [];
+  const cdp = {
+    setStageLabel(label) { labels.push(label); },
+    async send(method, params) {
+      assert.equal(method, 'Runtime.evaluate');
+      expressions.push(params.expression);
+      calls++;
+      if (calls === 1) {
+        time += 1;
+        return { result: { value: JSON.stringify({ available: true, runtime: { ready: true },
+          release: true, partRoot: 'assets/ships/release/parts/', entries }) } };
+      }
+      if (calls <= 5) {
+        time += 5;
+        return { result: { value: JSON.stringify({ loaded: true, assetId: `part-${calls}`, primitiveCount: 3, markerCount: 1 }) } };
+      }
+      time += 44_979;
+      throw new Error(`[authored-assets] authored asset ${entries[4].url} / Runtime.evaluate: no CDP reply within 44979 ms`);
+    },
+  };
+
+  await assert.rejects(collectAdmittedAuthoredReport(cdp, true, { now: () => time }), (error) => {
+    assert.match(error.message, new RegExp(entries[4].url.replaceAll('/', '\\/')));
+    const payload = JSON.parse(error.message.slice(error.message.indexOf('{')));
+    assert.equal(payload.error, `[authored-assets] authored asset ${entries[4].url} / Runtime.evaluate: no CDP reply within 44979 ms`);
+    assert.equal(payload.progress.totalEntries, 5);
+    assert.equal(payload.progress.completedEntries, 4);
+    assert.equal(payload.progress.failedEntryIndex, 5);
+    assert.equal(payload.progress.failedUrl, entries[4].url);
+    assert.equal(payload.progress.failedAssetMs, 44_979);
+    assert.equal(payload.progress.lastCompletedUrl, entries[3].url);
+    assert.equal(payload.progress.maxCompletedMs, 5);
+    return true;
+  });
+  assert.equal(expressions.length, 1 + entries.length);
+  assert.equal(calls, 1 + entries.length, 'no passive ship-report evaluation follows a catalog failure');
+  assert.equal(labels.at(-1), `authored asset ${entries[4].url}`);
+  for (let i = 0; i < entries.length; i++) assert.ok(expressions[i + 1].includes(entries[i].url));
+});
+
+test('aggregate report deadline exhaustion is distinct from one slow asset', async () => {
+  const entries = Array.from({ length: 4 }, (_, index) => ({
+    slot: 'hull', url: `assets/ships/release/parts/hulls/part-${index}.glb`, wholeShip: false,
+  }));
+  let time = 0;
+  let calls = 0;
+  const cdp = {
+    setStageLabel(label) {
+      if (label === `authored asset ${entries[3].url}`) time = 45_000;
+    },
+    async send(method) {
+      assert.equal(method, 'Runtime.evaluate');
+      calls++;
+      if (calls === 1) {
+        time += 1;
+        return { result: { value: JSON.stringify({ available: true, runtime: {}, release: true,
+          partRoot: 'assets/ships/release/parts/', entries }) } };
+      }
+      if (calls <= 4) {
+        const duration = calls + 1;
+        time += duration;
+        return { result: { value: JSON.stringify({ loaded: true, assetId: `part-${calls}` }) } };
+      }
+      throw new Error(`[authored-assets] authored asset ${entries[3].url} / Runtime.evaluate: stage deadline expired`);
+    },
+  };
+
+  await assert.rejects(collectAdmittedAuthoredReport(cdp, true, { now: () => time }), (error) => {
+    assert.match(error.message, /stage deadline expired/);
+    const payload = JSON.parse(error.message.slice(error.message.indexOf('{')));
+    assert.equal(payload.progress.totalEntries, 4);
+    assert.equal(payload.progress.completedEntries, 3);
+    assert.equal(payload.progress.failedEntryIndex, 4);
+    assert.equal(payload.progress.failedUrl, entries[3].url);
+    assert.equal(payload.progress.failedAssetMs, 0);
+    assert.equal(payload.progress.maxCompletedMs, 5);
+    assert.equal(payload.progress.elapsedMs, 45_000);
+    return true;
+  });
+  assert.equal(calls, 5, 'the expired request is the final operation; no passive report is sent');
 });
