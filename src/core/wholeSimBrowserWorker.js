@@ -52,18 +52,6 @@ let sabEnv = null;
 const LOCAL_FIXED_DT = 1 / 60;
 const LOCAL_MAX_STEPS = 4;
 const LOCAL_HITCH_CATCHUP_STEPS = 2;
-// Presentation-stall clamp. The main lane advances at most HITCH_CATCHUP_STEPS per presented
-// frame after a hitch (a frame longer than 6.5 fixed steps), so a long main-thread stall costs
-// the player ~2 steps of sim, not the stall's wall time. The worker timer is not stalled by the
-// main thread, so without this it kept simulating in real time through a multi-second stall
-// (e.g. the first post-reveal frames on software GL) that no one could see or steer. Once a
-// published reply has waited longer than LOCAL_PRESENT_STALL_MS for its ACK, stop accumulating; the
-// tick after the ACK then takes one clamped frame (localClampFrameSeconds + hitch cap + shed),
-// exactly the main lane's policy. Normal presentation ACKs within a frame and never trips it.
-// 250 ms, not the 6.5-step hitch window: on a slow host (software GL) ordinary main-thread tasks
-// of 110-200 ms are routine, and clamping those slowed steady gameplay to ~0.8x real time
-// (player-truth v18). Only a genuine stall — no ACK for a quarter second — is clamped.
-const LOCAL_PRESENT_STALL_MS = 250;
 const LOCAL_DURABLE_LIMIT = 4096;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_JOURNAL_SCALAR_STRIDE = 18;
@@ -90,7 +78,6 @@ const localClock = {
   pendingCommands: [],
   pendingAckJournalEnd: 0,
   sentAwaitingAck: false,
-  sentAtMs: 0,
   sentClockSequence: 0,
   sentJournalEnd: 0,
   latestReply: null,
@@ -130,24 +117,6 @@ export function nextLocalClockDeadline(deadlineMs, nowMs, intervalMs = LOCAL_TIM
     if (next <= now) next += interval;
   }
   return next;
-}
-
-// True while a published reply has waited past LOCAL_PRESENT_STALL_MS for the presentation ACK.
-export function localPresentStallHolds(clock, now, force = false, explicitSteps = 0) {
-  if (force || !clock || !clock.active || !clock.sentAwaitingAck || !(clock.sentAtMs > 0)) return false;
-  if (Number.isSafeInteger(explicitSteps) && explicitSteps > 0) return false;
-  return now - clock.sentAtMs > LOCAL_PRESENT_STALL_MS;
-}
-
-// Steps one clock tick takes for `elapsedMs` of wall time: the main lane's frame clamp, hitch
-// cap and shed policy (simulationRunner.advance), so a stall resumes with a bounded catch-up.
-export function localStepsForElapsed(elapsedMs, accumulator = 0, scale = 1) {
-  let acc = accumulator + localClampFrameSeconds(elapsedMs) * scale;
-  const hitch = elapsedMs > LOCAL_FIXED_DT * 1000 * 6.5;
-  const cap = hitch ? LOCAL_HITCH_CATCHUP_STEPS : LOCAL_MAX_STEPS;
-  let steps = 0;
-  while (acc >= LOCAL_FIXED_DT && steps < cap) { acc -= LOCAL_FIXED_DT; steps++; }
-  return steps;
 }
 
 function localClampFrameSeconds(elapsedMs) {
@@ -539,7 +508,6 @@ async function publishLocalReply(reply) {
   reply.clockSequence = localClock.replySequence;
   reply.seq = `clock-${localClock.replySequence}`;
   localClock.sentAwaitingAck = true;
-  localClock.sentAtMs = localNowMs();
   localClock.sentClockSequence = reply.clockSequence;
   localClock.sentJournalEnd = Number.isSafeInteger(reply.journalEnd) ? reply.journalEnd : 0;
   localClock.latestReply = null;
@@ -553,12 +521,6 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   const now = localNowMs();
   const elapsedMs = localClock.anchorMs > 0 ? Math.max(0, now - localClock.anchorMs) : 0;
   if (localClock.backpressured && localClock.sentAwaitingAck && !force) return;
-  // Leave anchorMs untouched, as for backpressure: the ACK's next tick sees the whole stall as
-  // one long frame and the clamp/hitch/shed policy below bounds it.
-  if (localPresentStallHolds(localClock, now, force, explicitSteps)) {
-    localClock.presentStallSkips = (localClock.presentStallSkips || 0) + 1;
-    return;
-  }
   // A timer that fires while the presentation side is backpressured must not
   // discard the wall interval it was unable to consume. Leave anchorMs at the
   // last completed authoritative call until an ACK releases the guard; that
@@ -636,7 +598,6 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     appliedCommandSequence: localClock.appliedCommandSequence,
     awaitingAck: localClock.sentAwaitingAck,
     backpressured: localClock.backpressured,
-    presentStallSkips: localClock.presentStallSkips || 0,
   };
   localStampCompletedMetadata(reply);
   if (coalescedForPublish) reply.journalFullRebuild = true;
