@@ -4,6 +4,7 @@
 // future economy/rep systems can consume; it never writes credits, cargo, rep, AI, or combat state.
 // Kill records retain only compact semantic causality; the richer presentation receipt remains
 // transient and never enters GameState.
+import { aftermathChoices, applyAftermathChoice } from '../combat/aftermathChoices.js';
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
@@ -105,6 +106,21 @@ function outcomeText(record) {
   }
 }
 
+function sectorWreckIds(state, sectorId) {
+  const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  const list = bag && sectorId ? bag[sectorId] : null;
+  if (!Array.isArray(list)) return [];
+  const ids = [];
+  for (const marker of list) {
+    // Same player-hull exclusion as aftermathWrecks.isPlayerWreckMarker. Inlined so this
+    // observer does not load the wreck spawner.
+    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
+    const id = marker.markerId != null ? marker.markerId : marker.id;
+    if (id != null) ids.push(id);
+  }
+  return ids;
+}
+
 function compactRecord(state, entity, payload, outcome, reason) {
   const data = entity && entity.data || {};
   const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
@@ -135,6 +151,7 @@ export const combatOutcome = {
     this.helpers = ctx.helpers || {};
     this._combatOutcomeQuiet = null;
     this._combatOutcomeWakeSeq = 0;
+    this._choiceSig = '';
     this._unsubs = [];
     ensureState(this.state);
 
@@ -154,6 +171,13 @@ export const combatOutcome = {
       this._wakeCombatOutcomeQuiet();
       this._surrendered(payload || {});
     };
+    this._onAftermathChoose = (payload) => {
+      const id = payload && (payload.choiceId != null ? payload.choiceId : payload.id);
+      const chosen = applyAftermathChoice(this.state, id);
+      if (!chosen) return;
+      this._speakChoice(chosen);
+      if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('combat:aftermathChosen', chosen);
+    };
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('ai:flee', this._onFlee);
@@ -169,15 +193,21 @@ export const combatOutcome = {
           if (this.state) {
             this.state.combatOutcome = { schemaVersion: STATE_VERSION, outcomes: [], byEntity: {} };
           }
+          this._choiceSig = '';
           this._wakeCombatOutcomeQuiet();
         }),
         this.bus.on('game:newGame', () => {
           if (this.state) {
             this.state.combatOutcome = { schemaVersion: STATE_VERSION, outcomes: [], byEntity: {} };
           }
+          this._choiceSig = '';
           this._wakeCombatOutcomeQuiet();
         }),
-        this.bus.on('sector:enter', () => this._wakeCombatOutcomeQuiet()),
+        this.bus.on('sector:enter', () => {
+          this._wakeCombatOutcomeQuiet();
+          this._publishAftermath();
+        }),
+        this.bus.on('combat:aftermathChoose', this._onAftermathChoose),
         // Flee stamps that land without an ai:flee emit (doctrine/fsm churn, surrender
         // escape, pacing pin release, pirate parley/disengage) — wake so the next 4-tick
         // scan records them on the same cadence as before.
@@ -292,7 +322,13 @@ export const combatOutcome = {
     const state = this.state;
     const own = ensureState(state);
     const id = entity && entity.id != null ? entity.id : payload && (payload.entityId || payload.id);
-    if (id == null || own.byEntity[id]) return null;
+    if (id == null) return null;
+    // One receipt per ship stays the rule. A later death still refreshes the field verbs,
+    // so a disabled hull that is now a corpse stops being offered as a rescue.
+    if (own.byEntity[id]) {
+      this._publishAftermath();
+      return null;
+    }
     const record = compactRecord(state, entity, payload, outcome, reason);
     own.byEntity[id] = record;
     own.outcomes.push(record);
@@ -310,7 +346,77 @@ export const combatOutcome = {
       });
     }
     this._speak(record);
+    this._publishAftermath();
     return record;
+  },
+
+  _publishAftermath() {
+    const state = this.state;
+    if (!state) return null;
+    const own = ensureState(state);
+    const sectorId = state.world && state.world.currentSectorId || null;
+    const outcomes = [];
+    for (const record of own.outcomes) {
+      if (!record || record.sectorId !== sectorId) continue;
+      const entity = entityFor(state, record.entityId);
+      outcomes.push({
+        outcome: record.outcome,
+        entityId: record.entityId,
+        sectorId: record.sectorId,
+        alive: !!(entity && entity.alive !== false),
+      });
+    }
+    const offer = aftermathChoices({
+      outcomes,
+      sectorId,
+      wreckIds: sectorWreckIds(state, sectorId),
+    });
+    // Before any fight or wreck in this sector there is nothing to choose. Escape-only is
+    // published once a fight receipt or a field wreck exists, not on an empty cruise.
+    const field = outcomes.length > 0 || offer.choices.some((choice) => choice.id === 'salvage');
+    if (!field) {
+      own.aftermath = null;
+      return null;
+    }
+    own.aftermath = offer;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('combat:aftermathChoices', {
+        sectorId,
+        paused: false,
+        choices: offer.choices.map((choice) => ({ id: choice.id, label: choice.label })),
+      });
+    }
+    const sig = offer.choices.map((choice) => choice.id).join(',');
+    if (sig !== this._choiceSig) {
+      this._choiceSig = sig;
+      if (offer.choices.length >= 2) this._speakChoices(offer);
+    }
+    return offer;
+  },
+
+  _speakChoices(offer) {
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const names = offer.choices.map((choice) => choice.label.replace(/\.$/, '')).join(', ');
+    return voice.say({
+      channel: 'info',
+      kind: 'combat',
+      id: 'aftermathChoices',
+      text: `${names}. The field stays live.`,
+      ttl: 3,
+    });
+  },
+
+  _speakChoice(chosen) {
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function' || !chosen) return false;
+    return voice.say({
+      channel: 'info',
+      kind: 'combat',
+      id: 'aftermathChoice',
+      text: `${chosen.label} The field stays live.`,
+      ttl: 2,
+    });
   },
 
   _speak(record) {
@@ -331,6 +437,7 @@ export const combatOutcome = {
       if (this._onFlee) this.bus.off('ai:flee', this._onFlee);
       if (this._onDisabled) this.bus.off('combat:subsystemDisabled', this._onDisabled);
       if (this._onSurrendered) this.bus.off('combat:surrendered', this._onSurrendered);
+      if (this._onAftermathChoose) this.bus.off('combat:aftermathChoose', this._onAftermathChoose);
     }
     for (const off of this._unsubs || []) {
       if (typeof off === 'function') off();
@@ -338,7 +445,8 @@ export const combatOutcome = {
     this._unsubs = [];
     this._combatOutcomeQuiet = null;
     this._combatOutcomeWakeSeq = 0;
-    this._onKilled = this._onFlee = this._onDisabled = this._onSurrendered = null;
+    this._choiceSig = '';
+    this._onKilled = this._onFlee = this._onDisabled = this._onSurrendered = this._onAftermathChoose = null;
   },
 };
 

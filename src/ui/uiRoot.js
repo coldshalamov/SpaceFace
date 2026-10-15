@@ -124,6 +124,7 @@ export function flightReticlePosition(state, width, height, visualPointer) {
 import { createHud } from './hud.js';
 import { createBandHud } from './bandHud.js';
 import { createWorldObjectInteraction } from './worldObjectInteraction.js';
+import { createAftermathChoicePrompt } from './aftermathChoicePrompt.js';
 import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
 import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createPromptDeck } from './promptDeck.js';
@@ -613,6 +614,10 @@ export const ui = {
     this.bandHud = null;
     if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
     this.promptDeck = null;
+    if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {
+      this.aftermathChoicePrompt.destroy();
+    }
+    this.aftermathChoicePrompt = null;
     destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
@@ -814,6 +819,7 @@ export const ui = {
     // parley/signal/recovery/customs adapters below subscribe to their events and render INTO it.
     this.promptDeck = createPromptDeck(ctx);
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
+    this.aftermathChoicePrompt = createAftermathChoicePrompt(ctx);
     this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
 
     // Wingman command radial (Micro-Loops) — a quick fleet-command wheel on the Z key.
@@ -1924,6 +1930,10 @@ export const ui = {
     this.bandHud = null;
     if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
     this.promptDeck = null;
+    if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {
+      this.aftermathChoicePrompt.destroy();
+    }
+    this.aftermathChoicePrompt = null;
     destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
     if (this.nemesisComms && typeof this.nemesisComms.dispose === 'function') this.nemesisComms.dispose();
