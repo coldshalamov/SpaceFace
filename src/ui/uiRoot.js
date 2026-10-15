@@ -257,10 +257,105 @@ export function isScreenRegistrationCycleSettled(owner) {
     && owner._screenRegistrationSettledGeneration === owner._screenRegistrationGeneration);
 }
 
+function hasStationId(stationId) {
+  return stationId != null
+    && (typeof stationId !== 'string' || stationId.trim().length > 0);
+}
+
+export function isDockedStationState(state) {
+  const uiState = state && state.ui;
+  return !!(uiState && uiState.docked === true && hasStationId(uiState.dockedStationId));
+}
+
+export function invalidateDockedStationPresentation(owner) {
+  if (!owner) return 0;
+  const pending = owner._pendingDockedStationPresentation;
+  if (pending && pending.timerId != null) clearTimeout(pending.timerId);
+  pending?.finish?.();
+  owner._pendingDockedStationPresentation = null;
+  if (owner._pendingScreenRetry && owner._pendingScreenRetry.id === 'station') {
+    owner._cancelPendingScreenRetry?.();
+  }
+  const token = (Number(owner._dockedStationPresentationToken) || 0) + 1;
+  owner._dockedStationPresentationToken = token;
+  return token;
+}
+
+export function isCurrentDockedStationPresentation(owner, token, stationId) {
+  const uiState = owner && owner.state && owner.state.ui;
+  return !!(owner
+    && owner._dockedStationPresentationToken === token
+    && owner.state
+    && owner.state.mode !== 'menu'
+    && owner.state.mode !== 'loading'
+    && uiState
+    && uiState.docked === true
+    && uiState.dockedStationId === stationId
+    && hasStationId(stationId));
+}
+
+export function scheduleDockedStationPresentation(owner, stationId, present, releaseFade) {
+  if (!owner) return 0;
+  const token = invalidateDockedStationPresentation(owner);
+  // Keep this record through the phase-3 hold so a lifecycle transition can release the
+  // phase-1 lease even after the 400ms screen-swap callback has started.
+  const pending = {
+    token,
+    timerId: null,
+    stationId,
+    releaseFade,
+    finished: false,
+    finish: null,
+  };
+  pending.finish = () => {
+    if (pending.finished) return;
+    pending.finished = true;
+    if (typeof pending.releaseFade === 'function') pending.releaseFade();
+    if (owner._pendingDockedStationPresentation === pending) {
+      owner._pendingDockedStationPresentation = null;
+    }
+  };
+  pending.timerId = setTimeout(() => {
+    pending.timerId = null;
+    if (!isCurrentDockedStationPresentation(owner, token, stationId)) {
+      pending.finish();
+      return;
+    }
+    let presented = false;
+    try {
+      if (typeof present === 'function') present(pending.finish);
+      presented = true;
+    } finally {
+      if (!presented || typeof pending.releaseFade !== 'function') pending.finish();
+    }
+  }, 400);
+  owner._pendingDockedStationPresentation = pending;
+  return token;
+}
+
+export function reconcileGameStartedScreens(owner) {
+  if (!owner) return false;
+  invalidateDockedStationPresentation(owner);
+  owner._cancelPendingScreenRetry?.();
+  const screenManager = owner.screenManager;
+  screenManager?.closeAll?.();
+  // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
+  // with every WebGL context their mount built. The New Game / Load stage hulls each hold a
+  // THREE.WebGLRenderer, its context and its hangar GLB — release them at this boundary.
+  screenManager?.releaseScreen?.('newGame');
+  screenManager?.releaseScreen?.('saveLoad');
+  screenManager?.syncVisibility?.();
+  if (!isDockedStationState(owner.state)) return false;
+  owner._pushScreenWhenRegistered?.('station', 200);
+  return true;
+}
+
 function screenPushRequestIsLive(owner, id) {
   switch (id) {
     case 'station':
-      return !!(owner && owner.state && owner.state.ui && owner.state.ui.docked === true);
+      return !!(owner && owner.state && owner.state.mode !== 'menu'
+        && owner.state.mode !== 'loading'
+        && isDockedStationState(owner.state));
     case 'drill':
       return !!(owner && owner.state && owner.state.ui
         && owner.state.ui.pendingDrillAsteroidId != null);
@@ -563,6 +658,7 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     invalidateScreenRegistrationCycle(this);
@@ -1422,6 +1518,8 @@ export const ui = {
       const { stationId } = payload;
       this.screenManager.syncVisibility();
 
+      // Release an older transition before acquiring this same named fade lease.
+      invalidateDockedStationPresentation(this);
       // Phase 1: fade to dark
       showDockFade('dock');
 
@@ -1440,7 +1538,7 @@ export const ui = {
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.25, 0.9);
 
-      setTimeout(() => {
+      scheduleDockedStationPresentation(this, stationId, (finish) => {
         // Phase 2: at peak darkness, do the screen swap. The station screen is a deferred-wave
         // import — if it has not registered yet, wait for it instead of dropping the push (a
         // dropped push while docked leaves the player staring at the fade with dead controls).
@@ -1449,9 +1547,9 @@ export const ui = {
 
         // Phase 3: fade back in
         setTimeout(() => {
-          hideDockFade('dock');
+          finish();
         }, 50); // brief hold at full dark before fading back
-      }, 400); // matches the CSS transition duration
+      }, () => hideDockFade('dock')); // matches the CSS transition duration
     });
     // Docked undock transition. Bare dock:undocked while docked is gated by installStationExitGate
     // (stationHub) into station:exitRequest; only committed undocks reach combat/save/this handler.
@@ -1466,6 +1564,8 @@ export const ui = {
         });
         return;
       }
+
+      invalidateDockedStationPresentation(this);
 
       // Phase 1: fade to dark
       showDockFade('dock');
@@ -1523,15 +1623,7 @@ export const ui = {
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
     this.bus.on('game:started', () => {
-      this._cancelPendingScreenRetry();
-      this.screenManager.closeAll();
-      // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
-      // with every WebGL context their mount() built. The New Game / Load stage hulls each hold a
-      // THREE.WebGLRenderer, its context and its hangar GLB — leaving them alive orphaned a second
-      // GL context for whole flights on Intel iGPUs (design/perf/PERF_ROOT_CAUSE_2026-09-10.md §4).
-      this.screenManager.releaseScreen('newGame');
-      this.screenManager.releaseScreen('saveLoad');
-      this.screenManager.syncVisibility();
+      reconcileGameStartedScreens(this);
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
     });
@@ -1572,9 +1664,14 @@ export const ui = {
       this._cancelPendingScreenRetry();
       this._gameOverShown = false;
     });
-    this.bus.on('game:exitToMenu', () => { this._cancelPendingScreenRetry(); });
+    this.bus.on('game:exitToMenu', () => {
+      invalidateDockedStationPresentation(this);
+      this._cancelPendingScreenRetry();
+    });
     this.bus.on('game:started', () => { this._gameOverShown = false; });
+    this.bus.on('save:restoring', () => { invalidateDockedStationPresentation(this); });
     this.bus.on('save:loaded', () => {
+      invalidateDockedStationPresentation(this);
       this._cancelPendingScreenRetry();
       // clear any stale modal restored from a save; HUD returns
       laneInputWrite(this.state, 'ui.docked', false);
@@ -1857,6 +1954,7 @@ export const ui = {
   },
 
   destroy() {
+    invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary

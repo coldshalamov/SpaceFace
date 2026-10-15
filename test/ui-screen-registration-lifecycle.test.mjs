@@ -11,6 +11,9 @@ import {
   isScreenRegistrationCycleSettled,
   replaceMarketNewsOwner,
   replaceCommsOwner,
+  invalidateDockedStationPresentation,
+  reconcileGameStartedScreens,
+  scheduleDockedStationPresentation,
   ui,
 } from '../src/ui/uiRoot.js';
 
@@ -60,6 +63,7 @@ function makeRetryOwner(id) {
   owner.state = {
     ui: {
       docked: id === 'station',
+      dockedStationId: id === 'station' ? 'station-test' : null,
       pendingDrillAsteroidId: id === 'drill' ? 'asteroid-1' : null,
     },
   };
@@ -190,6 +194,147 @@ test('a valid late initial registration opens exactly once after a retry delay',
     assert.equal(clock.runNext(), true);
     assert.deepEqual(pushes, ['gameOver']);
     assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a delayed game:start cleanup preserves a committed dock and restores station', () => {
+  const calls = [];
+  const owner = {
+    state: { mode: 'flight', ui: { docked: true, dockedStationId: 'station-helios' } },
+    _cancelPendingScreenRetry() { calls.push('cancel-retry'); },
+    _pushScreenWhenRegistered(id, attempts) { calls.push(`push:${id}:${attempts}`); },
+    screenManager: {
+      closeAll() { calls.push('close-all'); },
+      releaseScreen(id) { calls.push(`release:${id}`); },
+      syncVisibility() { calls.push('sync'); },
+    },
+  };
+
+  assert.equal(reconcileGameStartedScreens(owner), true);
+  assert.deepEqual(calls, [
+    'cancel-retry', 'close-all', 'release:newGame', 'release:saveLoad', 'sync', 'push:station:200',
+  ]);
+});
+
+test('a fresh game:start still closes stale screens without restoring station', () => {
+  const calls = [];
+  const owner = {
+    state: { mode: 'flight', ui: { docked: false, dockedStationId: null } },
+    _cancelPendingScreenRetry() { calls.push('cancel-retry'); },
+    _pushScreenWhenRegistered() { throw new Error('fresh start must not restore station'); },
+    screenManager: {
+      closeAll() { calls.push('close-all'); },
+      releaseScreen(id) { calls.push(`release:${id}`); },
+      syncVisibility() { calls.push('sync'); },
+    },
+  };
+
+  assert.equal(reconcileGameStartedScreens(owner), false);
+  assert.deepEqual(calls, [
+    'cancel-retry', 'close-all', 'release:newGame', 'release:saveLoad', 'sync',
+  ]);
+});
+
+test('delayed game:start releases the canceled dock fade lease before restoring station', () => {
+  const clock = installFakeTimers();
+  try {
+    const calls = [];
+    const releases = [];
+    const owner = {
+      state: { mode: 'flight', ui: { docked: true, dockedStationId: 'station-helios' } },
+      _cancelPendingScreenRetry() { calls.push('cancel-retry'); },
+      _pushScreenWhenRegistered(id, attempts) { calls.push(`push:${id}:${attempts}`); },
+      screenManager: {
+        closeAll() { calls.push('close-all'); },
+        releaseScreen(id) { calls.push(`release:${id}`); },
+        syncVisibility() { calls.push('sync'); },
+      },
+    };
+
+    scheduleDockedStationPresentation(
+      owner,
+      'station-helios',
+      () => { calls.push('stale-present'); },
+      () => { releases.push('dock'); },
+    );
+    assert.equal(clock.pending(), 1);
+
+    assert.equal(reconcileGameStartedScreens(owner), true);
+    assert.deepEqual(releases, ['dock'], 'the canceled presentation releases its own dock lease');
+    assert.equal(clock.pending(), 0, 'the canceled 400ms callback cannot run after restoration');
+    assert.equal(clock.runNext(), false);
+    assert.equal(calls.includes('stale-present'), false);
+    assert.equal(calls.at(-1), 'push:station:200');
+  } finally {
+    clock.restore();
+  }
+});
+
+test('replacing a dock transition releases only the old transition lease', () => {
+  const clock = installFakeTimers();
+  try {
+    const released = [];
+    const owner = {
+      state: { mode: 'flight', ui: { docked: true, dockedStationId: 'station-old' } },
+    };
+
+    scheduleDockedStationPresentation(owner, 'station-old', () => {}, () => released.push('old'));
+    owner.state.ui.dockedStationId = 'station-new';
+    scheduleDockedStationPresentation(owner, 'station-new', () => {}, () => released.push('new'));
+    assert.deepEqual(released, ['old']);
+
+    invalidateDockedStationPresentation(owner);
+    assert.deepEqual(released, ['old', 'new']);
+    assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a deferred dock presentation cannot reopen station after undock/menu invalidation', () => {
+  const clock = installFakeTimers();
+  try {
+    const pushes = [];
+    const owner = {
+      state: { mode: 'flight', ui: { docked: true, dockedStationId: 'station-helios' } },
+    };
+    scheduleDockedStationPresentation(owner, 'station-helios', () => pushes.push('station'));
+    owner.state.ui.docked = false;
+    owner.state.ui.dockedStationId = null;
+    invalidateDockedStationPresentation(owner);
+    assert.equal(clock.runNext(), false, 'invalidating the transition cancels its timer');
+    assert.deepEqual(pushes, []);
+
+    owner.state.mode = 'menu';
+    owner.state.ui.docked = true;
+    owner.state.ui.dockedStationId = 'station-helios';
+    scheduleDockedStationPresentation(owner, 'station-helios', () => pushes.push('stale-menu'));
+    owner.state.ui.docked = false;
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, [], 'the live-state guard rejects a menu/undocked callback');
+
+    let canceled = 0;
+    owner._pendingScreenRetry = { id: 'station' };
+    owner._cancelPendingScreenRetry = () => { canceled += 1; owner._pendingScreenRetry = null; };
+    invalidateDockedStationPresentation(owner);
+    assert.equal(canceled, 1, 'invalidating a dock also cancels a retry started by its callback');
+  } finally {
+    clock.restore();
+  }
+});
+
+test('station retry still waits for deferred registration after lifecycle restoration', () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('station');
+    owner._pushScreenWhenRegistered('station');
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, []);
+    owner._registeredScreens.add('station');
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, ['station']);
   } finally {
     clock.restore();
   }
