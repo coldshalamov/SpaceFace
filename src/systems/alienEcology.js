@@ -2101,6 +2101,7 @@ export function deserializeAlienEcologyState(state, data) {
   }
   const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
   if (heatDerivative) ae.heatDerivative = heatDerivative;
+  else delete ae.heatDerivative;
   const surveyCopy = copySurveySale(data && data.surveyCopy);
   if (surveyCopy) ae.surveyCopy = surveyCopy;
   else delete ae.surveyCopy;
