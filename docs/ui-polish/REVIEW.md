@@ -1347,3 +1347,17 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** DOM at 844×390 — stage 265→315, `is-off` → medals on-frame; kicker one line. Bench `achievements` 0 findings at 844/801×390, 900×420, 1024×440, 960×540, 1280×720, 1920×1080. Pixel Δ (>8): 844 20.4%, 1024 20.5%, 960/1280/1920 0%. Phone 390×844 pixel-identical. Quit stays web-hidden (`quitGame.js`). Automation conduct strip re-benched at 960×540 — labels sit under the beams (polish28w layout); no new tangle this pass. Shots: `/workspace/spaceface-scratch/ui-shots/polish53/{before,after}/`, `compare-achievements-{844x390,1024x440,960x540,1280x720,1920x1080}.png` (not committed).
 
 **Leftovers (not this pass):** Pause EXIT / Main Menu vs foot keycaps at 844×390 and 1024×440 (owned by open #415 — do not push `ui-polish-52`); Automation conduct-strip @960 (looks intentional under-beam layout; re-check if a live conducted state still tangles); Shipworks lower callouts below the fold @844×390 (berth scrolls by design); Codex STORY wrap @801×390 / ARCHIVE fade @844×390 if still open after #412 merge.
+
+## My Ship (flight host) on small frames — session notes (2026-10-16, ui-polish-57)
+
+**Before (master 72d47e7bf8):** Pause → My Ship (`ship`) kept fixed 230 / 1fr / 285 columns at every size. At 844×390 the hull had a 185px column, so the hull's sentence, the slot callouts (Cargo / OPEN) and the ship ran into each other (bench: 6 ON TOP OF). At 960×540 the sentence and callouts crowded a 300px stage. In a 390×844 desktop window the hull column was 0px wide and the screen showed only the fleet card and a clipped systems rail.
+
+**After (`styles/station.css`, CSS only, scoped to `#sf-ship` on non-mobile hosts):**
+- **641–1100 wide:** the fleet card stands over the systems column (`clamp(220px, 28vw, 285px)`) and the hull takes the rest of the frame. The sentence gets a dissolved pad behind it and its scroll box ends on a whole line (4 lines).
+- **≤460 tall:** frame margin 14/20px instead of 48px, hull name 26px, sentence 12.5px in a 3-line scroll box.
+- **≤640 wide desktop window:** the fleet card, hull and systems stack and the screen scrolls; 420px stage, sentence in a 4-line box.
+- Real phones (`data-sf-mobile="1"`) keep `mobileScreenLayouts`' own flow. Selectors and IDs are unchanged.
+
+**Checked:** bench `ship` 0 findings at 844×390, 960×540, 1024×440, 1280×720, 1920×1080 and 390×844 (6 → 0 at 844×390). 1280×720 and 1920×1080 are pixel-identical to master. Focused tests `pause-ship-fit` and `instrument-hierarchy-six-screens` pass; `station-field-hardware` has one failure (stylesheet order) that also fails on master. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish57/{before,after}/`, `compare-ship-*.png`.
+
+**Leftovers (not this pass):** at 1280×720 and up the hull still draws under the sentence (no pad there); the `orrery-flight` direction proof is cramped at 844×390 (preview, not the live HUD); Shipworks lower callouts @844×390 (berth scrolls by design).
