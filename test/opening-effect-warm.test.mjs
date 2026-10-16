@@ -3,7 +3,10 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 
-import { collectOpeningEffectSubjects } from '../src/render/openingEffectWarm.js';
+import {
+  collectOpeningEffectSubjects,
+  OPENING_EFFECT_PLUME_DRIVE_RE,
+} from '../src/render/openingEffectWarm.js';
 
 const mesh = (name, materialName) => {
   const m = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial());
@@ -12,7 +15,7 @@ const mesh = (name, materialName) => {
   return m;
 };
 
-test('one subject per effect family; plumes of one family dedupe; unrelated meshes are ignored', () => {
+test('one subject per measured effect family; families that do not link post-lift on master stay out', () => {
   const scene = new THREE.Scene();
   const plasma = new THREE.Group(); plasma.name = 'sf-liquid-plasma-root';
   plasma.add(mesh('strand', ''));
@@ -20,28 +23,51 @@ test('one subject per effect family; plumes of one family dedupe; unrelated mesh
   scene.add(plasma);
   scene.add(mesh('a', 'plume:family_industrial_main_plume:core'));
   scene.add(mesh('b', 'plume:family_industrial_main_plume:core'));
-  scene.add(mesh('c', 'plume:family_vector_main_plume:distortion'));
+  scene.add(mesh('c', 'plume:family_vector_main_plume:core'));
+  scene.add(mesh('c2', 'plume:family_industrial_main_plume:distortion'));
   scene.add(mesh('d', 'SF_ActionPrimitiveMatter'));
   scene.add(mesh('e', 'Forge_ore_barge_paint'));
+  scene.add(mesh('f', 'SF_FilteredForceParticleTransport'));
   scene.add(mesh('SF_TrailStreakInstances', ''));
+  scene.add(mesh('SF_RibbonTrail', ''));
+  const jets = new THREE.Group(); jets.name = 'sf-overflow-jets'; jets.add(mesh('jet', ''));
+  scene.add(jets);
   const seen = new Set();
   const keys = collectOpeningEffectSubjects(scene, seen).map((row) => row.key).sort();
   assert.deepEqual(keys, [
     'material:SF_ActionPrimitiveMatter',
     'material:plume:family_industrial_main_plume:core',
-    'material:plume:family_vector_main_plume:distortion',
-    'root:SF_TrailStreakInstances',
+    'root:SF_RibbonTrail',
     'root:sf-liquid-plasma-root',
+    'root:sf-overflow-jets',
   ]);
-  // A second sweep only returns families it has not touched yet.
-  scene.add(mesh('f', 'SF_FilteredForceParticleTransport'));
+  scene.add(mesh('g', 'SF_StructuralPlateMaterial'));
   assert.deepEqual(collectOpeningEffectSubjects(scene, seen).map((row) => row.key),
-    ['material:SF_FilteredForceParticleTransport']);
+    ['material:SF_StructuralPlateMaterial']);
+  assert.ok(OPENING_EFFECT_PLUME_DRIVE_RE.test('plume:family_industrial_main_plume:core'));
+  assert.ok(!OPENING_EFFECT_PLUME_DRIVE_RE.test('plume:hitch_kestrel_main_plume:core'));
 });
 
-test('the opening warm starts the effect sweep, guarded by loading and admission generation', async () => {
+test('the effect warm runs under loading only and builds the narrow subset, not the full live-flight warmup', async () => {
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(renderer, /if \(profile === 'opening'\) this\._touchOpeningEffectFamilyUnderShell\(\);/);
-  assert.match(renderer, /admissionRunGeneration : undefined\) === generation/);
-  assert.match(renderer, /if \(!veilUp\(\) \|\| Date\.now\(\) - startedAt > 90000\) return stop\('shell-released'\);/);
+  const a = renderer.indexOf('  _touchOpeningEffectFamilyUnderShell() {');
+  const body = renderer.slice(a, renderer.indexOf('  _parkBoundedWarmRoots() {', a));
+  assert.match(body, /admissionRunGeneration : undefined\) === generation/);
+  assert.match(body, /if \(!loading\(\) \|\| Date\.now\(\) - startedAt > 90000\) return stop\('shell-released'\);/);
+  assert.match(body, /warmupOpeningEffectSubset\(\{ plumeMaterialRe: OPENING_EFFECT_PLUME_DRIVE_RE \}\)/);
+  assert.doesNotMatch(body, /warmupLiveFlightEffects\(/);
+  assert.doesNotMatch(body, /boot-overlay/);
+  assert.match(body, /releaseOpeningEffectSubset\(\)/);
+});
+
+test('the subset warm drives no RCS, retro jets or per-NPC ribbons and never disposes the exemplar program', async () => {
+  const vfx = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+  const a = vfx.indexOf('  warmupOpeningEffectSubsetForLoading(options = {}) {');
+  const b = vfx.indexOf('  restLiveFlightEffectsAfterCook() {', a);
+  assert.ok(a > 0 && b > a);
+  const body = vfx.slice(a, b);
+  assert.doesNotMatch(body, /rcs|retroVolume|_ribbonTrails/i);
+  const release = body.slice(body.indexOf('  releaseOpeningEffectSubset() {'));
+  assert.doesNotMatch(release, /dispose\(/);
 });

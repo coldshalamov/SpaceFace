@@ -374,7 +374,7 @@ import {
   collectUncompiledSceneDrawables,
   collectUncompiledSceneDrawablesSteps,
 } from './latePipelineAdmission.js';
-import { collectOpeningEffectSubjects } from './openingEffectWarm.js';
+import { collectOpeningEffectSubjects, OPENING_EFFECT_PLUME_DRIVE_RE } from './openingEffectWarm.js';
 import {
   armAdmissionShadows,
   casterDepthMarkAnyCurrent,
@@ -24045,10 +24045,11 @@ export const render = {
    * still recompiles them and _releaseSurvivalRosterPrewarm still disposes them at run end.
    */
   /**
-   * Effect-family program warm (see openingEffectWarm.js). While the loading shell owns the
-   * picture, sweep the live scene every 250 ms and exact-target touch one instance of each
-   * effect program family not yet touched; stop for good when loading releases or the
-   * admission generation changes. Nothing is created, composed or added to the scene.
+   * Effect-family program warm (see openingEffectWarm.js). Loading shell only: once the player
+   * exists, build the narrow effect subset (vfx warmupOpeningEffectSubset: liquid plasma, the
+   * industrial plume, one ribbon-trail exemplar), then every 250 ms exact-target touch one
+   * instance of each effect family not yet touched. Stops for good when loading releases or the
+   * admission generation changes — no touches in flight, so nothing extends the flight veil.
    */
   _touchOpeningEffectFamilyUnderShell() {
     const state = this.state;
@@ -24056,23 +24057,19 @@ export const render = {
     this._openingEffectWarmActive = true;
     const generation = state.render ? state.render.admissionRunGeneration : undefined;
     const seen = new Set();
-    const receipt = { touched: [], failed: 0, sweeps: 0, reason: 'pending', at: null };
+    const clock = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const receipt = { touched: [], touchMs: {}, failed: 0, sweeps: 0, subset: null, reason: 'pending', at: null };
     const owned = () => state === this.state
       && (state.render ? state.render.admissionRunGeneration : undefined) === generation;
     const publish = (reason) => {
       receipt.reason = reason;
-      receipt.at = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : Date.now();
-      if (state.render) state.render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice() };
+      receipt.at = Math.round(clock());
+      if (state.render) {
+        state.render.openingEffectWarm = { ...receipt, touched: receipt.touched.slice(), touchMs: { ...receipt.touchMs } };
+      }
     };
-    // The player ship's engine effects (liquid-plasma strands, plume layers, overflow jets) only
-    // mount at the flight transition, so keep sweeping while the boot veil still covers the first
-    // flight frames — those links then land before the lift instead of inside played frames.
-    const veilUp = () => {
-      if (state.mode === 'loading') return true;
-      if (state.mode !== 'flight' || typeof document === 'undefined') return false;
-      const overlay = document.getElementById('boot-overlay');
-      return !!(overlay && !overlay.classList.contains('hidden'));
-    };
+    const loading = () => state.mode === 'loading';
     const startedAt = Date.now();
     const stop = (reason) => {
       this._openingEffectWarmActive = false;
@@ -24080,27 +24077,30 @@ export const render = {
     };
     const step = async () => {
       if (!owned()) return stop('superseded');
-      if (!veilUp() || Date.now() - startedAt > 90000) return stop('shell-released');
-      const touch = state.render && state.render.touchSubjectExactTarget;
+      if (!loading() || Date.now() - startedAt > 90000) return stop('shell-released');
+      const render = state.render;
+      const touch = render && render.touchSubjectExactTarget;
       receipt.sweeps += 1;
-      // The player's engine effects (liquid-plasma strands, retro jets, every fleet plume/RCS
-      // family, overflow jets) are created lazily on the first plume-relevant frame — in flight,
-      // after the lift. The full live cook builds them under the shell through vfx's
-      // warmupLiveFlightEffects, but software GL never runs that cook. Build them once here
-      // (loading only), touch them below, then rest them to the hidden idle state.
       let warmedNow = false;
-      if (!receipt.liveFx && state.mode === 'loading' && state.playerId != null
+      if (!receipt.subset && state.playerId != null
           && state.entities && typeof state.entities.get === 'function' && state.entities.get(state.playerId)
-          && typeof state.render.warmupLiveFlightEffects === 'function') {
-        receipt.liveFx = true;
+          && typeof render.warmupOpeningEffectSubset === 'function') {
         warmedNow = true;
-        try { state.render.warmupLiveFlightEffects(); } catch (error) {
-          laneWarn(this, 'openingEffectWarm', '[render] opening live flight effect warmup failed', error);
+        try {
+          const r = render.warmupOpeningEffectSubset({ plumeMaterialRe: OPENING_EFFECT_PLUME_DRIVE_RE });
+          receipt.subset = r && r.skipped !== true
+            ? { plasma: r.plasma === true, plumes: r.plumes | 0, ribbon: r.ribbon === true,
+              initMs: Math.round(r.initMs || 0), ms: Math.round(r.ms || 0) }
+            : { skipped: true, reason: (r && r.reason) || 'unknown' };
+        } catch (error) {
+          receipt.subset = { error: true };
+          laneWarn(this, 'openingEffectWarm', '[render] opening effect subset warmup failed', error);
         }
       }
       if (typeof touch === 'function' && this.scene) {
         for (const { key, subject } of collectOpeningEffectSubjects(this.scene, seen)) {
-          if (!owned() || !veilUp()) break;
+          if (!owned() || !loading()) break;
+          const touchStarted = clock();
           try {
             await touch(subject);
             receipt.touched.push(key);
@@ -24108,14 +24108,18 @@ export const render = {
             receipt.failed += 1;
             laneWarn(this, 'openingEffectWarm', '[render] opening effect family touch failed', key, error);
           }
+          receipt.touchMs[key] = Math.round(clock() - touchStarted);
         }
       }
-      if (warmedNow && typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
-        try { state.render.restLiveFlightEffectsAfterCook(); } catch (_) { /* best-effort */ }
+      if (warmedNow) {
+        try {
+          if (typeof render.restLiveFlightEffectsAfterCook === 'function') render.restLiveFlightEffectsAfterCook();
+          if (typeof render.releaseOpeningEffectSubset === 'function') render.releaseOpeningEffectSubset();
+        } catch (_) { /* best-effort */ }
       }
       publish('pending');
       if (!owned()) return stop('superseded');
-      if (!veilUp()) return stop('shell-released');
+      if (!loading()) return stop('shell-released');
       setTimeout(() => { void step(); }, 250);
       return null;
     };

@@ -6,18 +6,25 @@
 //     SF_StructuralPlateMaterial (arcade structural fx, 0.46 s in the fxs2 smoke)
 //   - thruster plume layers `plume:<family>:core|distortion` (0.8-1.9 s)
 //   - engine trail surfaces (`SF_TrailStreakInstances`, `SF_RibbonTrail`, unnamed ShaderMaterials)
+// fx2 (10v10 vs master) cut the set to what still links >250 ms after the lift on master:
+//   sf-overflow-jets (<=1.1 s), SF_ActionPrimitiveMatter (0.78 s), SF_StructuralPlateMaterial
+//   (0.39 s), plume:family_industrial_main_plume:core (0.71 s), liquid plasma (0.53 s) and
+//   SF_RibbonTrail (0.48 s on the fx2 arm). Driving every family through
+//   warmupLiveFlightEffects cost ~+2.8 s of load, so the rest stays lazy.
 // The opening warm touches one live instance of each through the exact-target pass while the
 // loading shell owns the picture, so the ANGLE link is paid behind the veil, not in a frame.
 
 export const OPENING_EFFECT_ROOT_NAMES = Object.freeze([
   'sf-liquid-plasma-root',
-  'SF_TrailStreakInstances',
   'SF_RibbonTrail',
-  'SF_VFX_explosion_rupture',
   'sf-overflow-jets',
 ]);
 
-export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ExplosionRupture_material-transport|SF_StructuralPlateMaterial|SF_ActionPrimitiveMatter|SF_FilteredForceParticleTransport|SF_ArcadePhysicalShardMaterial|plume:[^:]+:(core|distortion))$/;
+export const OPENING_EFFECT_MATERIAL_RE = /^(SF_ActionPrimitiveMatter|SF_StructuralPlateMaterial|plume:family_industrial_main_plume:core)$/;
+
+// Plume systems the loading warm drives (only these get real buffers); every other fleet family,
+// RCS family, the retro jets and per-NPC ribbons stay lazy, as on master.
+export const OPENING_EFFECT_PLUME_DRIVE_RE = /^plume:family_industrial_main_plume:core$/;
 
 function materialsOf(object) {
   if (!object || !object.material) return [];
