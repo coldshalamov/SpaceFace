@@ -707,6 +707,7 @@ function preflightFixture() {
   f.owner._simHelpers = null;
   Object.assign(f.values, {
     releaseOpeningGraphPublication() {}, survivalRunHoldsArena: () => false,
+    shouldAwaitOpeningGpuCook: () => true,
     resumeAuthoredUpgradeQueueAfterOpening() {},
     pipelineAdmissions: { resumeAutoFlush() {}, pendingCount: 0 },
     indexedShipLikeScan: () => [], indexedTypeScan: () => [],

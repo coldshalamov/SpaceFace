@@ -549,6 +549,18 @@ function* partitionGeometryWorkSteps(work, options = {}) {
   return batches;
 }
 
+function residencyProgramLinked(renderer, material) {
+  try {
+    const properties = renderer && renderer.properties && typeof renderer.properties.get === 'function'
+      ? renderer.properties.get(material) : null;
+    const programs = properties && properties.programs;
+    return !!(material && material.isRawShaderMaterial === true && programs
+      && typeof programs.size === 'number' && programs.size > 0 && properties.currentProgram);
+  } catch {
+    return false;
+  }
+}
+
 function createResidencyMaterial() {
   // WebGLObjects.update() uploads every BufferGeometry attribute before renderBufferDirect() binds
   // the program. The shader stays tiny and clips every vertex outside the 1x1 target.
@@ -789,7 +801,12 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
         for (const entry of proxyEntries) scene.add(entry.proxy);
         try {
-          if (typeof renderer.compileAsync === 'function') {
+          // The residency material is a RawShaderMaterial, whose program cache key is only its
+          // shader source and defines (no instancing/points/line/morph parameters), so every proxy
+          // in every batch shares one program. Once that program is linked on this renderer the
+          // compile unit is a pure serial-route round trip (a presented-frame wait + gl.finish per
+          // batch on SwiftShader); skip it. A miss is still safe: the draw links synchronously.
+          if (typeof renderer.compileAsync === 'function' && !residencyProgramLinked(renderer, material)) {
             const { compilePipelinesContextSafe } = await import('./bloom.js');
             const compile = () => {
               if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
