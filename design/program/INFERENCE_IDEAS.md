@@ -595,7 +595,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | MACH-09 | The packed presentation snapshot reports its bytes per frame in the witness | `src/render/snapshotFence.js`, `src/core/runtimeWitness.js` | A focused test proves the fence publishes bytes packed per present and the witness prints p50/p95; seed-4242 Ceres fight numbers are recorded in the test | Pack more. Start a worker | SHIPPED mach-09-fence-bytes-witness (5/5) — fence tracks bytes per commit (72 B/entity + 12 B/journal event) on a preallocated ring; the render mirror carries `bytes` and the witness prints p50/p95/last |
 | MACH-10 | The runtime witness prints live field, tether and traffic counts | `src/core/runtimeWitness.js`, `src/systems/fields.js`, `src/systems/tetherGameplay.js`, `src/systems/traffic.js` | A focused test proves the witness report carries the three counts and a seed-4242 busy scene shows non-zero values | Add per-frame logging. Change any cadence to move the numbers | OPEN |
 | MACH-11 | The save envelope has a byte budget that growing memories cannot silently cross | `src/save/saveSystem.js`, `src/chronicler/ledger.js` | A focused soak grows chronicler, fence and provenance memory to their caps and the serialized envelope stays under the named budget; the test pins the number | Prune live memories to pass. Change the save format | OPEN |
-| MACH-12 | Twenty sim-minutes of traffic name the same contacts on the same seed, twice | `src/systems/traffic.js`, `src/data/laneContacts.js` | A focused test runs two seed-4242 sessions for twenty sim-minutes and diffs the named-contact sequence identical | Freeze the rng. Change spawn odds | OPEN |
+| MACH-12 | Twenty sim-minutes of traffic name the same contacts on the same seed, twice | `src/systems/traffic.js`, `src/data/laneContacts.js` | A focused test runs two seed-4242 sessions for twenty sim-minutes and diffs the named-contact sequence identical | Freeze the rng. Change spawn odds | SHIPPED already true |
 
 ## PRO
 
@@ -649,7 +649,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| MACH-12 | 2026-10-16 | infer10-oct16 | `src/systems/traffic.js`, `src/data/laneContacts.js` |
+| TEACH-10 | 2026-10-16 | infer10-oct16 | `src/systems/lawSecurity.js`, `src/systems/onboarding.js` |
 ## SHIPPED
 
 | Id | Unit | Commit | Note |
@@ -664,6 +664,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | WORLD-43 | world-43-miner-worked-out | c6408c46d7 | Depleting an NPC-worked field speaks one miner-register line and retargets the job to a live seam; yield/depletion untouched; focused 2/2 (adopts unclaimed barkDirector hunk, disclosed in commit body) |
 | INST-35 | inst-35-earned-speed | 579203723e | HUD velocity model carries earnedSpeed (strictly above the catalog thruster cap) with an EARNED text mark; no flight-law change, no new gauge; focused 4/4 |
 | FIGHT-13 | fight-13-hot-debris | 8cfd5d6c64 | Fresh capital fragments deal decaying contact damage over the authored window, settled fragments none; counts/permanence untouched; focused 4/4 |
+| MACH-12 | mach-12-traffic-determinism | already true (no commit) | Double seed-4242 twenty-sim-minute sessions (6 sectors, 72k updates each) produce byte-identical named-contact sequences; kill/recovery paths deterministic too; no code change |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
