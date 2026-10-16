@@ -1201,7 +1201,7 @@ export function tickAlienEcology(world, dt) {
           if (next.text && world.bus && world.bus.emit) {
             world.bus.emit('comms:log', { from: site.name, kind: 'ecology', text: next.text });
           }
-        } else if (dSite > site.arrivalBands.close * 1.5) {
+        } else if (!close) {
           rec.wreckEdge = false;
         }
       }

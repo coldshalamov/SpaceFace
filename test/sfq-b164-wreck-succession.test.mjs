@@ -97,8 +97,14 @@ test('closing, leaving, and reloading keep one stage, and a scan can stop the se
   first.player.pos = inside;
   tickAlienEcology(first.world, 0.5);
   assert.equal(stageOf(first.state), 'warned');
-  first.player.pos = outside;
+  first.player.pos = { x: garden.center.x + CLOSE + 1, z: garden.center.z };
   tickAlienEcology(first.world, 0.5);
+  assert.equal(stageOf(first.state), 'warned');
+  const returned = worldAt(inside.x, inside.z);
+  deserializeAlienEcologyState(returned.state, serializeAlienEcologyState(first.state));
+  tickAlienEcology(returned.world, 0.5);
+  assert.equal(stageOf(returned.state), 'sealed');
+  assert.equal(logs(returned.events).at(-1).payload.text, WRECK_SEALED);
   first.player.pos = inside;
   tickAlienEcology(first.world, 0.5);
   assert.equal(stageOf(first.state), 'sealed');
