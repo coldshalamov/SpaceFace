@@ -1,4 +1,4 @@
-import { environmentMaterialOf, stampEnvironmentMaterial, environmentSurfaceData } from '../data/environmentMaterials.js';
+import { environmentMaterialOf, stampEnvironmentMaterial, environmentSurfaceData, CRYO_QUENCH } from '../data/environmentMaterials.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
 import { queryAsteroidField } from '../world/asteroidField.js';
@@ -24,6 +24,9 @@ function sameRef(entity, ref) {
 function threshold(entity, material) {
   if (material === 'crystal') return 48;
   if (material === 'volatile') return 36;
+  // RW-04: a cryo rock drained as a heat sink has no cold left to hold together — it cracks
+  // through the same fracture owner as crystal, only when the quench spent it.
+  if (material === 'cryo') return CRYO_QUENCH.fractureHeat;
   if (material === 'debris' && num(entity.data?.fuelVolatile ?? entity.fuelVolatile ?? 0.55) >= 0.12) return 36;
   return Infinity;
 }
