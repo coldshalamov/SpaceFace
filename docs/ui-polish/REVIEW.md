@@ -1518,6 +1518,24 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Leftovers (not this pass):** on very short split windows (≤460 tall, e.g. 1100×440 / 960×540) SAVE FIT / DOCK TO EXTEND still need a scroll — same class of leftover as Shipworks @844; Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional); station tabs / Crucible draft filter chips @844×390 (still open from #432 leftovers).
 
+## Crucible Armory on short desktops (2026-10-16, ui-polish-65)
+
+**Before (master e929771221 = #432):** at ≥761 wide and ≤500 tall (844×390, 801×390, 900×420, 1024×440, 1280×480, and phone landscape 844×390) the four-line title (~140 px) and a two-row foot (Launch and Rearrange wrapped) left the catalog and the reading a 24 px grid row. At 844×390 the filter chips, the offer cards and the whole reading below "RACK" were off the frame (bench 12 findings: filter chips CUT OFF / OFF FRAME); at 1024×440 only a sliver of the first card and no purchase key showed (bench 6); at 1280×480 one card was half visible and the purchase key was under the foot (bench 0, visual only).
+
+**After (`src/ui/orrery/cruciblePreparationLayouts.js` only, one additive `@media (min-width:761px) and (max-height:500px)` block under `${A}`):**
+- Title: h1 30 px, sub 13 px; the cradle line and the next-round preview share one row (cradle first, preview ellipsized; 12 px). Wallet numeral 30 px.
+- Columns go 1fr / 1fr so the filter chips wrap to two rows; the search joins the second row where 150 px fits (≥900 wide) and takes its own row at 801–844. Chips 32 px tall, search 32 px.
+- Offer cards 60 px (38 px glyph, 14 px name); dividers tighter.
+- Reading: one column, words first (name 22 px, blurb 13 px, tighter budget/buy margins, purchase key 40 px) so **Purchase** sits on first paint; the pip-spanner/jig follow below in the reading's own scroll.
+- Foot: one row — LAUNCH ROUND · ESC, REARRANGE LOADOUT and the 1 2 3 INSPECT · TAB BROWSE hints (words 14 px, 36 px tall).
+- Type floor 12 px kept. Selectors, IDs and the loadout catalog/data unchanged; heights >500 untouched.
+
+**Checked:** bench `crucible-draft` findings 12→0 at 844×390 (desktop and `--phone`), 12→0 at 900×420, 6→0 at 1024×440, 0→0 at 801×390 and 1280×480 (visual: filters, ≥1 full card and Purchase on-frame). 960×540, 1280×720, 1920×1080, 390×844 (desktop and `--phone`) are pixel-identical to master. `--walk` at 844×390: 0 findings across 24 controls (filters, cards); the only errors are pre-existing 404s for `assets/weapons/clips/*.mp4` missing from the local asset set. Focused tests pass: `crucible-visual-preparation`, `crucible-draft`, `inf-036-spare-contrast`; `arsenal-identity` fails 1 on master too (`wpn_saucer_death_ray has a custom glyph`, glyph data, not CSS). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish65/{before,after,after-walk}/`, `compare-crucible-draft-*.png`.
+
+**Leftovers (not this pass):** at 801–844×390 only one offer card shows above the fold (the list scrolls); Footprint dial rim text over the dial @844×390 (bench 7); tech-tree adjacent star hit boxes @844×390 (bench 5, nodes 17 px apart); station tabs @844×390; Shipworks lower callouts @844×390 (scroll by design).
+
+**Code Work review fixes:** (1) at 761–820 × ≤500 the one-row foot overflowed, and its right-packed verbs pushed LAUNCH ROUND 4 off the left edge (761×500; master keeps it on-frame). Under 821 wide the key hints take a second row and the verbs pack left. (2) The keycaps (ESC, 1 2 3, TAB) are 12px in the band (they were 11px). (3) The next-round preview takes two lines instead of one ellipsized line from 821 wide, and stays one line at 761–820, where the second foot row needs the height to keep PURCHASE on-frame; a touch phone at ≤400 tall (844×390 landscape, larger type) also keeps one line, or PURCHASE slid half under the foot. Bench crucible-draft: 0 findings at every band size (761×390–1920×480, phone landscape). 960×540, 1280×720, 1920×1080, 760×500, 761×501, 1280×501 and phone 390×844 are pixel-identical to master.
+
 ## Footprint dial hub clears the source band on short desktops (ui-polish-66)
 
 **Before (master bf4966038e / tip merged to 7ac10849f2):** at ≤460-tall desktops (844×390 / 900×420 / 1024×440) the dial stage is a ~300px square, so the 96px hub floor put the escape clock and hub lines through the source band. Bench: 7 / 6 / 4 tangled+overlap findings across wanted / marked / clean at 844×390; similar at 900×420. 960×540 and up were already clean.
@@ -1529,4 +1547,4 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 
 **Checked:** bench `footprint` / `footprint-marked` / `footprint-clean` findings **7→0 / 6→0 / 4→0** at 844×390; **0** at 900×420 and 1024×440; stay **0** at 960×540, 1280×720, 1920×1080 and 390×844. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish66/{before,after}/`.
 
-**Leftovers (not this pass):** tech-tree node overlap @844×390; station-tab rows under the tab bar @844×390; Shipworks lower callouts @844×390 (berth scrolls by design); My Ship SAVE FIT / DOCK on very short split windows (≤460 tall) still scroll by design. #435 (Crucible Armory short-desktop) still open — leave its files alone.
+**Leftovers (not this pass):** tech-tree node overlap @844×390; station-tab rows under the tab bar @844×390; Shipworks lower callouts @844×390 (berth scrolls by design); My Ship SAVE FIT / DOCK on very short split windows (≤460 tall) still scroll by design.
