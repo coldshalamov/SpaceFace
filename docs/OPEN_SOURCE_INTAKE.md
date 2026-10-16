@@ -72,6 +72,16 @@ is LGPL v2-or-later; it is a runner-only media dependency. Factory inspection pr
 not a functioning GL context or the cause of a boot hang. Stop the dependency experiment if
 the same hang remains; do not relaunch an unchanged candidate.
 
+Native-process postmortem intake, 2026-10-16: **[GNU GDB](https://sourceware.org/gdb/)**,
+[GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.html), is installed only in the
+Ubuntu24.04 WebKit CI job. It reads the first WPE/WebKit core from the same downloaded
+Playwright WebKit directory and writes bounded text diagnostics: ELF build ID, files and
+shared-library mappings, registers, instructions at `$pc`, and up to 24 frames per thread.
+The core remains in the runner's absolute `RUNNER_TEMP/cores` directory and is excluded from
+artifacts; no GDB library or runtime dependency enters the game or its bundle. The workflow
+follows [WebKit's core backtrace guidance](https://trac.webkit.org/wiki/WebKitGTK/Debugging#Gettingabacktracefromacoredump),
+and preserves the original probe/test exit when collection is unavailable.
+
 Inspect `package.json`, the current asset builders, and the release manifests before adding a tool.
 Extend the established glTF Transform, meshoptimizer, KTX2/Basis, Playwright, Three.js, Rapier, and
 Blender/export/validation paths when they already own the required transformation.

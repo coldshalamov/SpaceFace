@@ -1050,7 +1050,7 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
     top:auto !important; z-index:6; width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
     flex-direction:row !important; flex-wrap:wrap !important; gap:2px 12px !important;
     background:linear-gradient(0deg, rgb(7 8 10 / .92) 40%, rgb(7 8 10 / 0)) !important; }
-  ${W} .sx-sw-verb { font-size:11px !important; letter-spacing:.1em !important; }
+  ${W} .sx-sw-verb { font-size:12px !important; letter-spacing:.1em !important; }
 }
 /* ≤1100×≤640 desktop (960×540): the dock stage is ~162px tall and the left callout column shares
    it with the nameplate and the camera words, so long system names landed on "Name this hull" and
@@ -1106,14 +1106,14 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
     align-items: baseline !important;
     gap: 0 8px !important;
     margin: 0 !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
     letter-spacing: .12em !important;
     line-height: 1.2 !important;
     color: rgb(${BONE} / .78) !important;
     text-shadow: 0 1px 2px rgb(7 8 10 / .92);
   }
   ${W}.orr-sw--jig .sx-sw-circuit__sub {
-    font-size: 11px !important;
+    font-size: 12px !important;
     letter-spacing: .06em !important;
     color: rgb(${BONE} / .62) !important;
   }

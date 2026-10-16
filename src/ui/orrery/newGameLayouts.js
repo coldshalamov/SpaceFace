@@ -72,7 +72,7 @@ ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label {
 ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-size {
   display:inline-block !important; margin:0 !important; padding:0 !important;
   text-align:right !important; justify-self:end !important;
-  font-size:11px !important; letter-spacing:.06em !important;
+  font-size:12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .82) !important; font-variant-numeric:tabular-nums !important; }
 ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-size::before { content:none !important; display:none !important; }
 ${NG} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) > .orr-ng-label,
@@ -109,7 +109,7 @@ ${NG} > .sf-ng-footer .k-word.sf-back::before {
   font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${NG} > .sf-ng-footer .k-word.sf-back::after {
   all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important;
-  padding:3px 7px 4px !important; ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  padding:3px 7px 4px !important; ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important;
   border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${NG} > .sf-ng-footer .k-word.sf-back :is(.k-kbd, .dp-kbd, kbd) { display:none !important; }
@@ -140,7 +140,7 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none !important; }
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label {
-    display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:11.5px !important; }
+    display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:12px !important; }
   ${NGD} .orr-ng-caption > .sf-slot-card-title { float:left !important; margin:0 24px 0 0 !important; }
   ${NGD} .orr-ng-caption > .k-sentence { margin-top:0 !important; padding-top:2px !important; max-width:none !important; }
   ${NGD} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { clear:both !important; margin-top:0 !important; padding-top:14px !important; }
@@ -172,7 +172,7 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
     gap:4px 16px !important; max-height:70px !important; overflow-y:auto !important; overscroll-behavior:contain;
     scrollbar-width:thin; scrollbar-color:rgb(${BONE} / .45) transparent; }
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
-  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:10.5px !important; letter-spacing:.09em !important; }
+  ${NGD} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-label { font-size:12px !important; letter-spacing:.09em !important; }
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:25% !important; width:50% !important; top:51% !important; height:23% !important; }
   ${NGD} > .k-stage::before { left:25%; width:50%; top:72%; }

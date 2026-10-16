@@ -14033,8 +14033,8 @@ export const render = {
       state.render.firstPlayableOpeningProgramKeys = producerCensus.openingProgramKeys;
       state.render.firstPlayableResourceIdentitySets = producerCensus.resourceIdentitySets;
     };
-    state.render.prepareOpeningFirstPicture = (timeoutMs) => (
-      this.prepareOpeningFirstPicture(timeoutMs)
+    state.render.prepareOpeningFirstPicture = (timeoutMs, options) => (
+      this.prepareOpeningFirstPicture(timeoutMs, options)
     );
     const warmOpeningShadowPipelines = (subjects) => driveCompileShadowDepthPipelines({
       renderer,
@@ -28934,7 +28934,34 @@ export const render = {
    * producer census is frozen. Hidden, offscreen, unmounted, and deferred roots never enter this
    * wait set and remain on the normal streaming runway.
    */
-  async prepareOpeningFirstPicture(timeoutMs = 20000) {
+  async prepareOpeningFirstPicture(timeoutMs = 20000, options = {}) {
+    const ownerState = this.state;
+    const ownerRenderState = ownerState && ownerState.render;
+    const ownerWorld = ownerState && ownerState.world;
+    const ownerEnterSerial = ownerWorld && ownerWorld.enterSerial;
+    const ownerGeneration = ownerRenderState && ownerRenderState.admissionRunGeneration;
+    const ownerContextRestoreSeq = ownerState && ownerState.contextRestoreSeq;
+    const ownerRendererGeneration = this._rendererGeneration;
+    const ownerNativeRenderer = this.renderer || (ownerRenderState && ownerRenderState.renderer) || null;
+    const ownerContextRecoveryGeneration = this._contextRecovery && this._contextRecovery.generation;
+    const ownerIsCurrent = () => (
+      this.state === ownerState
+      && this.state && this.state.render === ownerRenderState
+      && this.state.world === ownerWorld
+      && ownerWorld && ownerWorld.enterSerial === ownerEnterSerial
+      && ownerRenderState && ownerRenderState.admissionRunGeneration === ownerGeneration
+      && this.state.contextRestoreSeq === ownerContextRestoreSeq
+      && this._rendererGeneration === ownerRendererGeneration
+      && (this.renderer || (ownerRenderState && ownerRenderState.renderer) || null) === ownerNativeRenderer
+      && (this._contextRecovery && this._contextRecovery.generation) === ownerContextRecoveryGeneration
+      && this._rendererResourcesDisposed !== true
+      && this._contextLost !== true
+      && (typeof options.isActive !== 'function' || options.isActive() === true)
+    );
+    const assertOwnerCurrent = () => {
+      if (!ownerIsCurrent()) throw new Error('opening first-picture owner became inactive');
+    };
+    assertOwnerCurrent();
     const waitMs = Math.max(1, Number(timeoutMs) || 20000);
     const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -28971,6 +28998,7 @@ export const render = {
       } finally {
         if (auxGrowthTimeout !== null) clearTimeout(auxGrowthTimeout);
       }
+      assertOwnerCurrent();
       // Each settle pass's leg chain (entity sync, forced compose, pool/shadow
       // band, second compose) runs one atomic span — drive the stepped twin so
       // the legs pace between browser beats like the upgrade-promises walk.
@@ -28978,6 +29006,7 @@ export const render = {
       // re-mint once (every leg is idempotent across the 8-pass envelope), then
       // degrade to the sync twin — degraded-but-alive over dead boot.
       const drivePublishFirstPicture = async () => {
+        assertOwnerCurrent();
         // Degrade memo per service epoch: a persistently sick publish leg used
         // to re-pay the stepped prefix + the atomic sync twin on every one of
         // the ≤8 settle passes. Once the twin has answered for this epoch,
@@ -28987,35 +29016,55 @@ export const render = {
           return this._openingPublishDegradeVerdict;
         }
         for (let attempt = 0; attempt < 2; attempt += 1) {
-          const iter = this._publishOpeningFirstPictureSteps();
-          for (;;) {
-            let publishStep;
-            try {
-              publishStep = iter.next();
-            } catch (publishError) {
-              closeCookStepsIter(iter);
-              noteLaneFault(this.state, 'openingFirstPicture', attempt > 0);
-              if (attempt === 0) {
+          assertOwnerCurrent();
+          let iter = this._publishOpeningFirstPictureSteps();
+          try {
+            for (;;) {
+              let publishStep;
+              try {
+                assertOwnerCurrent();
+                publishStep = iter.next();
+              } catch (publishError) {
+                closeCookStepsIter(iter);
+                iter = null;
+                assertOwnerCurrent();
+                noteLaneFault(this.state, 'openingFirstPicture', attempt > 0);
+                assertOwnerCurrent();
+                if (attempt === 0) {
+                  laneWarn(this, 'openingPublish',
+                    '[boot] opening first-picture publish step faulted; re-minting', publishError);
+                  break;
+                }
                 laneWarn(this, 'openingPublish',
-                  '[boot] opening first-picture publish step faulted; re-minting', publishError);
-                break;
+                  '[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
+                assertOwnerCurrent();
+                const degradedVerdict = runCookSyncTwin('opening-first-picture-publish',
+                  () => this._publishOpeningFirstPicture(), true);
+                assertOwnerCurrent();
+                this._openingPublishDegradeEpoch = serviceFaultEpoch(this.state);
+                this._openingPublishDegradeVerdict = degradedVerdict;
+                return degradedVerdict;
               }
-              laneWarn(this, 'openingPublish',
-                '[boot] opening first-picture publish step faulted twice; degrading to sync twin', publishError);
-              const degradedVerdict = runCookSyncTwin('opening-first-picture-publish',
-                () => this._publishOpeningFirstPicture(), true);
-              this._openingPublishDegradeEpoch = serviceFaultEpoch(this.state);
-              this._openingPublishDegradeVerdict = degradedVerdict;
-              return degradedVerdict;
+              if (publishStep.done) {
+                assertOwnerCurrent();
+                iter = null;
+                return publishStep.value;
+              }
+              await yieldToBrowser();
+              assertOwnerCurrent();
             }
-            if (publishStep.done) return publishStep.value;
-            await yieldToBrowser();
+          } finally {
+            closeCookStepsIter(iter);
+            iter = null;
           }
         }
+        assertOwnerCurrent();
         return false;
       };
       for (let pass = 0; pass < 8; pass++) {
-        if (!(await drivePublishFirstPicture())) {
+        const published = await drivePublishFirstPicture();
+        assertOwnerCurrent();
+        if (!published) {
           throw new Error('opening first-picture render publication unavailable');
         }
         // Each settle pass pays a shadow-candidate census + the _meshes wait-set
@@ -29024,28 +29073,46 @@ export const render = {
         // applies; a walk that faults twice skips the settle wait ([] answers
         // "no pending upgrades") instead of failing the boot.
         const driveUpgradePromises = async () => {
+          assertOwnerCurrent();
           for (let attempt = 0; attempt < 2; attempt += 1) {
-            const iter = this._openingFirstPictureUpgradePromisesSteps();
-            for (;;) {
-              let driveStep;
-              try {
-                driveStep = iter.next();
-              } catch (upgradeError) {
-                closeCookStepsIter(iter);
-                if (attempt === 0) {
-                  stormWarn('boot-upgrade-promise-walk', '[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
-                  break;
+            assertOwnerCurrent();
+            let iter = this._openingFirstPictureUpgradePromisesSteps();
+            try {
+              for (;;) {
+                let driveStep;
+                try {
+                  assertOwnerCurrent();
+                  driveStep = iter.next();
+                } catch (upgradeError) {
+                  closeCookStepsIter(iter);
+                  iter = null;
+                  assertOwnerCurrent();
+                  if (attempt === 0) {
+                    stormWarn('boot-upgrade-promise-walk', '[boot] opening upgrade-promise walk faulted; re-minting', upgradeError);
+                    break;
+                  }
+                  console.warn('[boot] opening upgrade-promise walk faulted twice; skipping the settle wait', upgradeError);
+                  assertOwnerCurrent();
+                  return [];
                 }
-                console.warn('[boot] opening upgrade-promise walk faulted twice; skipping the settle wait', upgradeError);
-                return [];
+                if (driveStep.done) {
+                  assertOwnerCurrent();
+                  iter = null;
+                  return driveStep.value;
+                }
+                await yieldToBrowser();
+                assertOwnerCurrent();
               }
-              if (driveStep.done) return driveStep.value;
-              await yieldToBrowser();
+            } finally {
+              closeCookStepsIter(iter);
+              iter = null;
             }
           }
+          assertOwnerCurrent();
           return [];
         };
         const pending = await driveUpgradePromises();
+        assertOwnerCurrent();
         if (pending === null) throw new Error('opening first-picture camera unavailable');
         if (pending.length === 0) {
           // Re-publish once after the final boundary settles so the exact census sees the committed
@@ -29053,11 +29120,15 @@ export const render = {
           // capture, not a settle retry: a degrade verdict memoized on an earlier transient fault
           // must not answer for it — the presented frame would freeze on the pre-swap children for
           // the epoch's lifetime.
+          assertOwnerCurrent();
           this._openingPublishDegradeVerdict = undefined;
-          if (!(await drivePublishFirstPicture())) {
+          const republished = await drivePublishFirstPicture();
+          assertOwnerCurrent();
+          if (!republished) {
             throw new Error('opening first-picture final publication unavailable');
           }
           const late = await driveUpgradePromises();
+          assertOwnerCurrent();
           if (late === null) throw new Error('opening first-picture camera unavailable');
           if (late.length === 0) {
             if (!preparedHandoffCohort) {
@@ -29081,6 +29152,7 @@ export const render = {
               } finally {
                 if (cohortTimeout !== null) clearTimeout(cohortTimeout);
               }
+              assertOwnerCurrent();
               if (cohort === null) throw new Error('opening authored boundary cohort timed out');
               if (this.state && this.state.render) {
                 this.state.render.openingAuthoredBoundaryCohort = cohort;
@@ -29108,6 +29180,7 @@ export const render = {
               } finally {
                 if (auxLateTimeout !== null) clearTimeout(auxLateTimeout);
               }
+              assertOwnerCurrent();
               if (!auxGrowthReady) throw new Error('opening ship auxiliary pool admission timed out');
               continue;
             }
@@ -29117,8 +29190,10 @@ export const render = {
             // gate-parked jobs, and the queued commits burst into the round as late mounts.
             // Keep only the VFX hold; the cook's boundary settle is the real barrier.
             if (survivalRunHoldsArena(this.state)) {
+              assertOwnerCurrent();
               if (this.state && this.state.render) this.state.render.openingVfxFrozen = true;
             } else {
+              assertOwnerCurrent();
               freezeOpeningGraphPublication(this);
             }
             // Same source-dirty gate: an already-baked env of the current source needs no
@@ -29127,6 +29202,7 @@ export const render = {
               foundryTexture: this._foundryEnvTexture,
               background: this.scene && this.scene.background,
             }) !== this._envMapSource) this._bakeEnv();
+            assertOwnerCurrent();
             this._openingEnvFrozen = true;
             succeeded = true;
             return true;
@@ -29142,11 +29218,12 @@ export const render = {
           Promise.all(pending),
           new Promise((resolve) => setTimeout(() => resolve(null), remaining)),
         ]);
+        assertOwnerCurrent();
         if (settled === null) throw new Error('opening first-picture preparation timed out');
       }
       throw new Error('opening first-picture boundary did not settle');
     } finally {
-      if (!succeeded) {
+      if (!succeeded && ownerIsCurrent()) {
         resumeAuthoredUpgradeQueueAfterOpening(this.scene);
         this._deferNoncriticalMeshStreaming = previousDefer;
         if (this.state && this.state.render) {

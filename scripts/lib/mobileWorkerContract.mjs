@@ -57,6 +57,21 @@ function capPush(list, value, limit) {
   if (list.length < limit) list.push(value);
 }
 
+function markResponseSequence(value, sequence) {
+  Object.defineProperty(value, '__mobileResponseSequence', {
+    value: sequence,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+  return value;
+}
+
+function responseSequence(value) {
+  return Number.isFinite(value?.__mobileResponseSequence)
+    ? value.__mobileResponseSequence : null;
+}
+
 function runtimeWorkerIdForUrl(url) {
   let pathname;
   try { pathname = new URL(url, 'http://spaceface.invalid/').pathname; }
@@ -86,10 +101,25 @@ export function createMobileResponseLedger({
     criticalRequestFailureCount: 0,
     workerResponseFailures: [],
     workerResponseFailureCount: 0,
+    workerResponseSuccesses: [],
+    workerResponseSuccessCount: 0,
     responseLimit,
     failureLimit,
     criticalLimit,
   };
+}
+
+function isValidWorkerResponse(response) {
+  return response?.status === 200 && isJavaScriptMime(response?.mime);
+}
+
+function hasEarlierValidWorkerResponse(successes, id, url, currentSequence = null) {
+  return (successes || []).some(success => {
+    if (success?.id !== id || !isValidWorkerResponse(success)
+        || !sameResourceUrl(success.url, url)) return false;
+    const successSequence = responseSequence(success);
+    return successSequence === null || currentSequence === null || successSequence < currentSequence;
+  });
 }
 
 export function recordMobileResponse(ledger, response) {
@@ -101,14 +131,27 @@ export function recordMobileResponse(ledger, response) {
     bytes: response?.bytes,
   };
   ledger.responseCount += 1;
+  markResponseSequence(entry, ledger.responseCount);
   const critical = entry.status >= 400 && isCriticalRuntimeAssetUrl(entry.url);
   if (critical) {
     ledger.criticalResponseCount += 1;
     capPush(ledger.criticalResponses, entry, ledger.criticalLimit);
   }
   const workerId = runtimeWorkerIdForUrl(entry.url);
-  const workerFailure = workerId && (entry.status !== 200
-    || (entry.status === 200 && !isJavaScriptMime(entry.mime)));
+  const validWorkerResponse = workerId && isValidWorkerResponse(entry);
+  if (validWorkerResponse) {
+    ledger.workerResponseSuccessCount += 1;
+    capPush(ledger.workerResponseSuccesses, markResponseSequence({
+      id: workerId,
+      status: entry.status,
+      mime: entry.mime,
+      url: entry.url,
+    }, ledger.responseCount), ledger.criticalLimit);
+  }
+  const passive304 = workerId && entry.status === 304
+    && hasEarlierValidWorkerResponse(ledger.workerResponseSuccesses, workerId, entry.url,
+      ledger.responseCount);
+  const workerFailure = workerId && !validWorkerResponse && !passive304;
   if (workerFailure) {
     ledger.workerResponseFailureCount += 1;
     capPush(ledger.workerResponseFailures, {
@@ -145,11 +188,11 @@ function sameResourceUrl(left, right) {
   try {
     const a = new URL(left);
     const b = new URL(right);
-    return a.origin === b.origin && a.pathname === b.pathname;
+    return a.href === b.href;
   } catch { return left === right; }
 }
 
-export function observedWorkerFailures(responses, workerUrls, priorFailures = []) {
+export function observedWorkerFailures(responses, workerUrls, priorFailures = [], priorSuccesses = []) {
   const failures = [...priorFailures];
   const seen = new Set(failures.map(failure => `${failure.id}|${failure.reason}|${failure.status}|${failure.url}`));
   const addFailure = failure => {
@@ -161,9 +204,17 @@ export function observedWorkerFailures(responses, workerUrls, priorFailures = []
   for (const id of CONTRACT_IDS) {
     const url = workerUrls?.[id];
     if (!url) continue;
+    const knownSuccesses = [...priorSuccesses];
     for (const response of responses || []) {
       if (!sameResourceUrl(response.url, url)) continue;
-      if (response.status !== 200) {
+      if (isValidWorkerResponse(response)) {
+        knownSuccesses.push({ id, status: response.status, mime: response.mime, url: response.url,
+          ...(responseSequence(response) === null ? {} : { __mobileResponseSequence: responseSequence(response) }) });
+      } else if (response.status === 304
+          && hasEarlierValidWorkerResponse(knownSuccesses, id, response.url, responseSequence(response))) {
+        // A passive cache revalidation is valid only after this exact URL was observed
+        // as a JavaScript worker response.  A different query/release URL is a miss.
+      } else if (response.status !== 200) {
         addFailure({ id, reason: 'http-status', status: response.status, url: response.url });
       } else if (!isJavaScriptMime(response.mime)) {
         addFailure({ id, reason: 'wrong-mime', mime: response.mime || '', status: response.status, url: response.url });

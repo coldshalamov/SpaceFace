@@ -310,11 +310,11 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
     column-gap:clamp(16px, 2vw, 24px) !important; }
   ${S} #sf-settings-pane { padding-right:10px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:10px !important; }
-  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:11.5px !important; letter-spacing:.07em !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size:12px !important; letter-spacing:.07em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:minmax(0, var(--orr-scale-w, 140px)) max-content !important; column-gap:8px !important; min-width:0 !important; }
   /* the scale gives way before the readout: a fixed 140px scale pushed '55%' past the pane's clip edge */
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
-  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:11.5px !important; letter-spacing:.1em !important; }
+  ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:12px !important; letter-spacing:.1em !important; }
   ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
 }
 
@@ -523,7 +523,7 @@ ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
@@ -608,29 +608,29 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${CD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important;
     column-gap:clamp(16px, 2.4vw, 40px) !important; }
   ${CD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
-  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:11px !important; letter-spacing:.2em !important; gap:10px; }
+  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:12px !important; letter-spacing:.2em !important; gap:10px; }
   ${CD} > .k-title > p::after { width:48px; }
   /* hang stays in its row: scroll if needed instead of painting through ‹ BACK */
   ${CD} > .k-hang { align-self:stretch !important; max-height:100% !important; min-height:0 !important;
     overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important; }
   ${CD} .k-hang > .k-words { padding:2px 0 !important; }
   ${CD} .k-hang > .k-words .k-word { min-height:26px !important; padding-top:3px !important; padding-bottom:3px !important;
-    font-size:11.5px !important; letter-spacing:.12em !important; line-height:1.25 !important; }
-  ${CD} .k-hang > .k-words > li::before { font-size:10.5px !important; }
+    font-size:12px !important; letter-spacing:.12em !important; line-height:1.25 !important; }
+  ${CD} .k-hang > .k-words > li::before { font-size:12px !important; }
   ${CD} .k-hang > .k-words .k-word:is([aria-current="true"])::before { height:9px !important; margin-top:-4.5px !important; }
   ${CD} .orr-cr-progress { display:none !important; }
   ${CD} .orr-cr-reel { padding:2vh 0 28vh !important; }
   ${CD} .orr-cr-sec { scroll-margin-top:2vh; }
   ${CD} .orr-cr-sec + .orr-cr-sec { margin-top:28px; }
-  ${CD} .orr-cr-head { margin-bottom:8px !important; gap:10px; font-size:11px !important; }
+  ${CD} .orr-cr-head { margin-bottom:8px !important; gap:10px; font-size:12px !important; }
   ${CD} .of-credits-name { font-size:clamp(28px, 9vh, 48px) !important; }
   ${CD} .of-credits-made { margin:0 0 10px !important; }
-  ${CD} .of-credits-ver, ${CD} .of-credits-made .k-row__sub { margin-top:6px !important; font-size:11px !important; }
+  ${CD} .of-credits-ver, ${CD} .of-credits-made .k-row__sub { margin-top:6px !important; font-size:12px !important; }
   ${CD} .orr-cr-sec > .k-sentence { font-size:13px !important; line-height:1.4 !important; }
   ${CD} .of-credits-rows .k-row { padding-top:6px !important; padding-bottom:6px !important; }
   ${CD} .of-credits-rows .k-row::before { top:14px !important; }
   ${CD} > .k-foot .sf-back { padding:4px 0 6px !important; min-height:32px !important; font-size:12px !important; }
-  ${CD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; font-size:10px !important; }
+  ${CD} > .k-foot .sf-back::after { padding:2px 6px 3px !important; font-size:12px !important; }
   /* park the orrery further right so its Hand/name cannot sit on the reel head */
   ${CD} > .orr-cr-orrery { --orr-cr-d:min(64vh, 30vw); width:var(--orr-cr-d); height:var(--orr-cr-d);
     margin-top:calc(var(--orr-cr-d) / -2); right:calc(var(--orr-cr-d) * -.52); }
@@ -640,7 +640,7 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
    reel does not print through ‹ BACK */
 @media (min-width:651px) and (max-width:900px) and (max-height:460px) {
   ${CD} .k-hang > .k-words .k-word { min-height:28px !important; padding:4px 8px !important;
-    font-size:11px !important; letter-spacing:.1em !important; }
+    font-size:12px !important; letter-spacing:.1em !important; }
   ${CD} .of-credits-name { font-size:clamp(26px, 8.5vh, 42px) !important; }
   ${CD} .orr-cr-reel { padding-top:1vh !important; padding-bottom:18vh !important; }
   ${CD} > .k-stage { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 4%, #000 86%, transparent 100%) !important;

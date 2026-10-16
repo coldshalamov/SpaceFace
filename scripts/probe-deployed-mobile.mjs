@@ -423,7 +423,8 @@ try {
   const workerUrls = resolveWorkerContractUrls({ moduleUrl: pageUrl.href, production: mode !== 'raw',
     documentBase: pageUrl.href, releaseBase: mode === 'pinned' ? releaseBase : '' });
   report.workerUrls = workerUrls;
-  report.workerObservedFailures = observedWorkerFailures(report.responses, workerUrls, report.workerResponseFailures);
+  report.workerObservedFailures = observedWorkerFailures(report.responses, workerUrls,
+    report.workerResponseFailures, report.workerResponseSuccesses);
   // A lazy worker may have no response entry at all.  The native contract is
   // authoritative in that case; observed bad status/MIME remains a failure.
   report.workerContract = await runMobileWorkerContract(page, { workerUrls });
@@ -496,7 +497,8 @@ try {
       if (!(await visible(page, selector))) throw new Error(`Continue is missing a visible touch control: ${selector}`);
     }
     assertContinuePageHealth(report.pageErrors, continuePageErrorsBefore);
-    report.workerObservedFailures = observedWorkerFailures(report.responses, report.workerUrls, report.workerResponseFailures);
+    report.workerObservedFailures = observedWorkerFailures(report.responses, report.workerUrls,
+      report.workerResponseFailures, report.workerResponseSuccesses);
     report.continueHttp = { responseCount: report.responseCount, criticalResponseCount: report.criticalResponseCount,
       criticalRequestFailureCount: report.criticalRequestFailureCount, workerResponseFailureCount: report.workerResponseFailureCount };
     if (report.workerObservedFailures.length) {

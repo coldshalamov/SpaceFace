@@ -74,9 +74,9 @@ ${W} .sf-wradial__hub { border:0 !important; background:radial-gradient(circle, 
 ${W} .sf-wradial__hub::before { content:""; position:absolute; inset:1px; border-radius:50%; pointer-events:none; border:1.6px solid rgb(${BONE} / .62); }
 ${W} .sf-wradial__hub:focus-visible { outline:none; }
 ${W} .sf-wradial__hub:focus-visible::before { border-color:var(--dp-hand, #f2b950); }
-${W} .sf-wradial__hub-title { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-size:11px; line-height:1.2; letter-spacing:.14em; color:rgb(${BONE} / .88); text-shadow:none; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+${W} .sf-wradial__hub-title { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-size:12px; line-height:1.2; letter-spacing:.14em; color:rgb(${BONE} / .88); text-shadow:none; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 ${W} .sf-wradial__hub-count { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 300; font-size:14px !important; line-height:1.15 !important; letter-spacing:.04em; color:var(--dp-phos, #dfeeff); text-shadow:none; max-width:100%; }
-${W} .sf-wradial__hub-scope { font-size:10px !important; line-height:1.1 !important; letter-spacing:.14em; margin-top:1px; }
+${W} .sf-wradial__hub-scope { font-size:12px !important; line-height:1.1 !important; letter-spacing:.14em; margin-top:1px; }
 ${W} .sf-wradial__hub-pips { min-height:6px; gap:4px; }
 ${W} .sf-wradial__hub-pips i { width:6px; height:6px; background:rgb(${BONE} / .3); box-shadow:none; }
 ${W} .sf-wradial__hub-pips i.is-on { background:rgb(248 244 234); box-shadow:0 0 6px rgb(255 240 214 / .5); }

@@ -457,7 +457,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   /* the 64px ring's open foot is narrower: the reading steps down the way the phone crown's does */
   ${D} .sxb-vital__value { top:9px; }
   ${D} .sxb-vital__value .orr-vnum { font-size:14px; }
-  ${D} .sxb-vital__value .orr-vden { font-size:9.5px !important; }
+  ${D} .sxb-vital__value .orr-vden { font-size:12px !important; }
   ${D} .sxb-vital__acts { margin-top:0 !important; gap:0 !important; line-height:1.15 !important; }
   ${D} .sxb-vital__act { min-height:0 !important; padding-block:1px !important; }
   ${D} .sxb-berth.dp-frame__head > .sxb-tape { margin-top:4px !important; }
@@ -468,7 +468,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-next__w { flex:1 1 auto !important; min-width:0 !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
   ${D} .sxb-ops { column-gap:6px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
-  ${D} .sxb-ops .sx-tile__label { font-size:10.5px !important; }
+  ${D} .sxb-ops .sx-tile__label { font-size:12px !important; }
   ${D} .sxb-ops .sx-comms { display:flex !important; flex-direction:column !important; align-items:flex-start !important; align-self:center !important; gap:0 !important; }
   ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { min-height:0 !important; padding-block:0 !important; line-height:18px !important; }
   ${D} .sxb-launch__label { font-size:16px !important; }
@@ -478,7 +478,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 @media (min-width:651px) and (max-width:699px) and (max-height:460px) {
   ${D} .sxb-ops { column-gap:6px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 3px !important; }
-  ${D} .sxb-ops .sx-tile__label { font-size:10px !important; }
+  ${D} .sxb-ops .sx-tile__label { font-size:12px !important; }
   ${D} .sxb-ops > .sxb-launch-seat { padding-left:0 !important; }
   ${D} .sxb-launch { padding-inline:0 !important; }
   ${D} .sxb-launch__label { font-size:15px !important; letter-spacing:.06em !important; }

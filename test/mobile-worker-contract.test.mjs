@@ -93,6 +93,46 @@ test('a capped worker wrong-MIME response remains a failure after a later good p
   assert.equal(failures[0].reason, 'wrong-mime');
 });
 
+test('a passive 304 is accepted only after the identical worker URL had a valid JavaScript 200', () => {
+  const url = 'https://game.test/_releases/phone-abc/workers/renderPackageDigestWorker.js?release=phone-abc';
+  const workerUrls = { digest: url };
+  const ledger = createMobileResponseLedger();
+  recordMobileResponse(ledger, { url, status: 200, type: 'script', mime: 'application/javascript; charset=utf-8' });
+  recordMobileResponse(ledger, { url, status: 304, type: 'script', mime: '' });
+  assert.equal(ledger.workerResponseFailureCount, 0);
+  assert.deepEqual(observedWorkerFailures(ledger.responses, workerUrls,
+    ledger.workerResponseFailures, ledger.workerResponseSuccesses), []);
+});
+
+test('orphan, wrong-MIME, different-release and future-200 cache responses remain failures', () => {
+  const base = 'https://game.test/_releases/phone-abc/workers/renderPackageDigestWorker.js';
+  const cases = [
+    ['orphan 304', [{ url: `${base}?release=phone-abc`, status: 304, mime: '' }]],
+    ['wrong MIME before 304', [
+      { url: `${base}?release=phone-abc`, status: 200, mime: 'text/html' },
+      { url: `${base}?release=phone-abc`, status: 304, mime: '' },
+    ]],
+    ['different release URL', [
+      { url: `${base}?release=phone-old`, status: 200, mime: 'application/javascript' },
+      { url: `${base}?release=phone-abc`, status: 304, mime: '' },
+    ]],
+    ['future 200', [
+      { url: `${base}?release=phone-abc`, status: 304, mime: '' },
+      { url: `${base}?release=phone-abc`, status: 200, mime: 'application/javascript' },
+    ]],
+    ['200 HTML', [{ url: `${base}?release=phone-abc`, status: 200, mime: 'text/html' }]],
+    ['404', [{ url: `${base}?release=phone-abc`, status: 404, mime: 'text/html' }]],
+  ];
+  for (const [label, responses] of cases) {
+    const ledger = createMobileResponseLedger();
+    for (const response of responses) recordMobileResponse(ledger, response);
+    const failures = observedWorkerFailures(ledger.responses, { digest: `${base}?release=phone-abc` },
+      ledger.workerResponseFailures, ledger.workerResponseSuccesses);
+    assert.ok(ledger.workerResponseFailureCount > 0, `${label}: ledger failure`);
+    assert.ok(failures.length > 0, `${label}: observed failure`);
+  }
+});
+
 test('HTTP, MIME, worker error, timeout, and bad replies fail closed', () => {
   const cases = [
     ['404', { assets: { ...validAssets(), digest: { status: 404, mime: 'text/html' } }, roundTrips: validRoundTrips() }],

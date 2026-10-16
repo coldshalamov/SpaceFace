@@ -120,7 +120,7 @@ ${RESULTS_PLATE(R)}
   ${R} > .k-foot .k-word.k-word--primary::after { content:none !important; display:none !important; }
   ${R} .sf-crres__stage { position:relative; z-index:2; gap:12px !important; padding:0 12px 16px 0 !important; }
   ${R} .orr-crres-figure__n { font-size:30px !important; }
-  ${R} .orr-crres-figure__w { font-size:11px !important; letter-spacing:.18em !important; margin-top:4px !important; }
+  ${R} .orr-crres-figure__w { font-size:12px !important; letter-spacing:.18em !important; margin-top:4px !important; }
   ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { margin:0 0 6px !important; }
   ${R} > .k-title .k-t-title { font-size:clamp(34px, 7.2vh, 48px) !important; }
   ${R} > .sf-crres-celebrate { margin:0 !important; }
