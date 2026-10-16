@@ -53,6 +53,9 @@ import { HEAT_SITE_ID, stepWasteHeat } from '../data/wasteHeat.js';
 import {
   LURE_FILAMENT, LURE_RESIN, LURE_SHOWN, LURE_SITE_ID, copyHeatDerivative, heatLureRecipe,
 } from '../data/heatLure.js';
+import {
+  COPY_POS, COPY_REACH, COPY_SECTOR_ID, copySurveySale, surveyCopyOffer,
+} from '../data/surveyCopy.js';
 import { suppressionFieldAt, MACHINE_SITES } from '../data/precursorMachines.js';
 import { shepherdFieldAt } from './precursorMachines.js';
 import { insertDressingRow } from '../world/dressingTable.js';
@@ -510,6 +513,34 @@ function noteHeatDerivative(world, sectorId) {
   }
 }
 
+function noteSurveyCopy(world, sectorId) {
+  if (sectorId !== COPY_SECTOR_ID || !world || !world.state) return;
+  const player = world.state.entities && world.state.entities.get(world.state.playerId);
+  if (!player || !player.pos) return;
+  const siteGlobal = world._toGlobal
+    ? world._toGlobal({ x: COPY_POS.x, z: COPY_POS.z }, sectorId)
+    : COPY_POS;
+  const dCopy = Math.hypot(player.pos.x - siteGlobal.x, player.pos.z - siteGlobal.z);
+  if (!(dCopy < COPY_REACH)) return;
+  const ae = ensureAlienEcologyState(world.state);
+  const note = ae.heatTrial && ae.heatTrial.note;
+  const soldNote = ae.surveyCopy && ae.surveyCopy.note;
+  const offer = surveyCopyOffer(note, soldNote);
+  if (!offer.text) return;
+  if (offer.pay > 0) {
+    if (!world.bus || !world.bus.emit) return;
+    world.bus.emit('economy:grantCredits', { amount: offer.pay, reason: 'survey-copy:heat-note' });
+    world.bus.emit('comms:log', { from: 'Ash Cache', kind: 'ecology', text: offer.text });
+    ae.surveyCopy = { note: offer.key, edge: true };
+    return;
+  }
+  if (!ae.surveyCopy || ae.surveyCopy.edge === true) return;
+  ae.surveyCopy.edge = true;
+  if (world.bus && world.bus.emit) {
+    world.bus.emit('comms:log', { from: 'Ash Cache', kind: 'ecology', text: offer.text });
+  }
+}
+
 function noteWreckCut(world, sectorId) {
   const site = ALIEN_SITES[WRECK_SITE_ID];
   if (!site || site.sectorId !== sectorId || !world || !world.state) return;
@@ -590,6 +621,7 @@ export function handleAlienEcologyEvent(world, type, payload) {
       noteCollarDivert(world, sectorId);
       noteWasteHeatCut(world, sectorId);
       noteHeatDerivative(world, sectorId);
+      noteSurveyCopy(world, sectorId);
       for (const s of alienSitesForSector(sectorId)) {
         const r = ae.sites[s.siteId];
         if (!r) continue;
@@ -1386,6 +1418,13 @@ export function tickAlienEcology(world, dt) {
         predatorAlive, weatherSlow, stealthM, fauna);
     }
   }
+  if (sectorId === COPY_SECTOR_ID && player && player.pos && ae.surveyCopy && ae.surveyCopy.edge === true) {
+    const copyGlobal = world._toGlobal
+      ? world._toGlobal({ x: COPY_POS.x, z: COPY_POS.z }, sectorId)
+      : COPY_POS;
+    const dCopy = Math.hypot(player.pos.x - copyGlobal.x, player.pos.z - copyGlobal.z);
+    if (!(dCopy < COPY_REACH)) ae.surveyCopy.edge = false;
+  }
 }
 
 // AE-123 (G11) — fitted Quiet Mask (mods.stealthBioMult) shrinks the hull's biological
@@ -2003,6 +2042,7 @@ export function recordEvidence(state, id, sectorId = null) {
 export function serializeAlienEcologyState(state) {
   const ae = ensureAlienEcologyState(state);
   const heatDerivative = copyHeatDerivative(ae.heatDerivative);
+  const surveyCopy = copySurveySale(ae.surveyCopy);
   return {
     schema: ae.schema,
     revelation: ae.revelation,
@@ -2020,6 +2060,7 @@ export function serializeAlienEcologyState(state) {
     echoLog: Array.isArray(ae.echoLog) ? ae.echoLog.slice(-32) : [],
     heatTrial: noteHeatTrial(ae.heatTrial, null),
     ...(heatDerivative ? { heatDerivative } : {}),
+    ...(surveyCopy ? { surveyCopy } : {}),
     chartFindings: ae.chartFindings && typeof ae.chartFindings === 'object'
       ? JSON.parse(JSON.stringify(ae.chartFindings)) : {},
     // AE-291 (P-table): machine-site records, the evidence ledger, and fired setpieces
@@ -2061,6 +2102,9 @@ export function deserializeAlienEcologyState(state, data) {
   const heatDerivative = copyHeatDerivative(data && data.heatDerivative);
   if (heatDerivative) ae.heatDerivative = heatDerivative;
   else delete ae.heatDerivative;
+  const surveyCopy = copySurveySale(data && data.surveyCopy);
+  if (surveyCopy) ae.surveyCopy = surveyCopy;
+  else delete ae.surveyCopy;
   if (data.chartFindings && typeof data.chartFindings === 'object') {
     ae.chartFindings = JSON.parse(JSON.stringify(data.chartFindings));
   }
