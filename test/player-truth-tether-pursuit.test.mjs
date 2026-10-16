@@ -29,7 +29,7 @@ for (const mode of ['latched', 'unlatched', 'phase-change', 'error']) {
       assert.notEqual(owned.input.turn, 1, 'holding pursuit keys cannot assume their heading owns an active line');
     }
     const grammar = createMasslineInputGrammar();
-    const held = new Set(), presses = [], chase = []; let cuts = 0;
+    const held = new Set(), presses = [], chase = [], turnTaps = []; let cuts = 0;
     const paintRadar = () => publishRadarHostileCourse(radar, { baseLabel: 'Local tactical radar.',
       courseText: radarHostileCourseText([{ x: 50, y: 10 }], 50), mode: state.mode, simTime: state.simTime });
     const tapTick = down => {
@@ -41,7 +41,14 @@ for (const mode of ['latched', 'unlatched', 'phase-change', 'error']) {
     const page = { evaluate: async (fn, arg) => fn(arg), waitForTimeout: async () => {
       state.simTime += .2; paintRadar();
     }, keyboard: {
-      press: async key => {
+      press: async (key, { delay = 0 } = {}) => {
+        // Since 59f555c22d the radar search yaws with bounded public taps (press with a delay) rather
+        // than a held A/D. Those taps are search steering: they may only follow a finished cut.
+        if (key === 'KeyA' || key === 'KeyD') {
+          assert.equal(tether.active, false, 'the public cut must finish before a search yaw tap');
+          assert.ok(delay > 0 && delay <= 80, 'every public yaw tap is bounded');
+          turnTaps.push(key); chase.push(key); return;
+        }
         presses.push(key); held.add(key);
         if (mode === 'error') throw new Error('public cut input failed');
         assert.equal(key, 'KeyL', 'the actor follows the current public tether rebind');
@@ -66,8 +73,11 @@ for (const mode of ['latched', 'unlatched', 'phase-change', 'error']) {
       assert.deepEqual(presses, mode === 'unlatched' ? [] : ['KeyL']);
       assert.equal(cuts, mode === 'latched' || mode === 'phase-change' ? 1 : 0);
       assert.equal(held.size, 0, 'tether and all search controls release after completion or interruption');
-      if (mode === 'phase-change' || mode === 'error') assert.deepEqual(chase, [], 'no chase leaks through a phase change or failed cut');
-      else { assert.ok(chase.includes('KeyW')); assert.ok(state.simTime < 14, 'cut plus sustained search stays bounded'); }
+      if (mode === 'phase-change' || mode === 'error') assert.deepEqual(chase, [], 'no chase or yaw tap leaks through a phase change or failed cut');
+      else {
+        assert.ok(chase.includes('KeyW')); assert.ok(state.simTime < 14, 'cut plus sustained search stays bounded');
+        assert.ok(turnTaps.length > 0 && turnTaps.every(k => k === 'KeyD'), 'the search yaws toward the painted radar bearing (right) with taps');
+      }
     } finally {
       for (const [key, value] of Object.entries(saved)) {
         if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
