@@ -24872,6 +24872,9 @@ export const render = {
     let firstTouchCharged = false;
     receipt.timedOut = [];
     receipt.skipped = [];
+    // Touches the exact-target port declined ({ skipped: true, reason }) did not touch anything:
+    // they go to receipt.skipped with their reason, not `touched`, so the receipt and the
+    // player-truth verdict line count only real touches.
     const timedTouch = async (touch, key, subject, { hideOnTimeout = false } = {}) => {
       const completion = (promise) => promise
         ? promise.then(() => true, () => true)
@@ -24893,7 +24896,8 @@ export const render = {
       try {
         settled = Promise.resolve(touch(subject));
         outcome = await Promise.race([
-          settled.then(() => 'done'),
+          settled.then((value) => (value && value.skipped === true
+            ? `port-skipped:${value.reason || 'unknown'}` : 'done')),
           new Promise((resolve) => {
             timer = setTimeout(() => {
               // The exact-target port reveals subjects only for its synchronous draw and restores
@@ -24920,7 +24924,9 @@ export const render = {
           } else if (didFail) {
             receipt.failed += 1;
             laneWarn(this, 'openingEffectWarm', '[render] opening warm touch failed', key, failure);
-          } else {
+          } else if (outcome.startsWith('port-skipped:')) {
+            receipt.skipped.push(`${key} (${outcome.slice('port-skipped:'.length)})`);
+          } else if (outcome === 'done') {
             receipt.touched.push(key);
           }
         }
