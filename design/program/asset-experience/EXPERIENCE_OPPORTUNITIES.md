@@ -2,7 +2,7 @@
 
 This is a companion to [the existing asset-experience program, §8](../asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md#8-luna-workflows-for-the-complete-player-moment), not a new queue or a claim that every described loop has already been accepted in live play. It names ordinary moments that can be made more legible by connecting assets already in the stocktake to their actual behavior, sound, motion and aftermath owners. The immediate new-mesh list remains empty. At dispatch, refresh the exact-path ownership and consumer before assigning a packet.
 
-## Six player moments with existing stock
+## Seven player moments with existing stock
 
 ### 1. Bring a distress capsule through the Wasp screen
 
@@ -44,6 +44,8 @@ This is a companion to [the existing asset-experience program, §8](../asset-exp
 
 **Variation and aftermath:** the player sees a working seam, a backed-up sorter, a powered recovery, or an exhausted face as different states of the same industrial chain. The remaining yield, jam and machine condition should survive the same save/residency path that owns the equipment. A recovery should be a real clearing, repair or return load, not a free reset.
 
+**Known limit:** the separate Ceres Second Measure production-factory fixture currently remains in `head_retract` at its normal 12,000-tick cutoff, including with PR419's payload-avoidance change removed. [D203 in the existing defect ledger](../DEMO_READINESS_2026-09-20.md) owns that repair. A Luna packet using that particular workfleet must repair its cutter-head return and complete the production job within the existing finite policy before advertising it as a finished industrial experience; a replacement mesh does not solve that state transition.
+
 ### 6. Notice the living thing a tool can disturb
 
 **Route and assets:** existing species `stone_lung`, `suture_mite` and `black_sail` use the ecological cast in `src/data/alienFauna.js`; `src/systems/alienEcology.js` owns their stimuli, drives and site state, `src/data/faunaMotionRead.js` supplies motion intent, and `src/render/faunaVisuals.js` builds their existing procedural bodies.
@@ -51,6 +53,14 @@ This is a companion to [the existing asset-experience program, §8](../asset-exp
 **Cause and feedback:** vibration, heat, scan, mass and weapon signals change the creature's actual drive—such as `suture_mite` repairing, defending or fleeing, or `stone_lung` venting on its authored period. `ecology:relayPulse` already has its own audio owner in `src/audio/audioSystem.js`; do not add an ambient animal cue that continues after the creature or cause is gone. The procedural body should follow the ecology state and keep its own simulation and render roles separate.
 
 **Variation and aftermath:** approach and tool choice change whether a creature ignores, approaches, repairs, warns or flees. Preserve the live/dead and site record on residency; a fled animal can be met again by returning to its habitat, while a dead one must not respawn from a cosmetic timer. No new mesh is needed to make these behaviors distinguishable.
+
+### 7. Trust the cover in a changing Foundry room
+
+**Route and assets:** Swarm's Ricochet Foundry uses the existing furnace, bank plates and gate furniture from `src/systems/survivalArena.js` and `src/render/visualFactory.js`. Room phase and lane direction change their purpose. The first arrival should leave a clear thrust path; the furnace remains an obstacle and the bank plates remain usable for reflection.
+
+**Cause and feedback:** a centered solid now clears aft of the pilot's travel or facing. Anonymous room solids retain their authored physical geometry instead of inheriting the generic trade-hub collision skin. The production input → FlightV3 → Rapier fixture drives a Hornet into the furnace and checks its actual radius-34 native ball, contact and separation; explicit plate manifests and identified stations keep their own skins.
+
+**Variation and aftermath:** changing a room must change the spatial problem without spawning an obstacle into the player's immediate travel path. Reuse the same furnace and plates with the phase's actual forces and reflection rules. A mesh, its visual identity and its collider must describe the same object; another decorative asset would not repair a wrong body mapping.
 
 ## Example Luna packets for §8 dispatch
 
