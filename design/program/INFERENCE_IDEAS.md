@@ -101,7 +101,7 @@ not to invent.
 | PIC-30 | The fielded tanker and cutter have job signatures like the other working craft | `src/render/npcJobSignatureVfx.js`, `src/data/occupationalTrafficCraft.js` | A focused test proves `NPC_JOB_SIGNATURE_PROFILES` resolves a profile for the tanker (heavy, clean burn) and the cutter (on the pin, scan sweep) and seed-4242 spawns carry them | Add a profile per hull. Change reaction kinds | SHIPPED PIC-30 |
 | PIC-29 | The swept swing ribbon fades in the colour of the release grade it earned | `src/render/masslineSwingTrace.js`, `src/systems/masslineThrow.js` | On seed 4242 a razor and a rough release colour the trace differently from `tether:releaseRated`; a focused test pins the band→colour map | Change the release rating law. Add particles | SHIPPED PIC-29 1eba973eb |
 | PIC-30 | The fielded tanker and cutter have job signatures like the other working craft | `src/render/npcJobSignatureVfx.js`, `src/data/occupationalTrafficCraft.js` | A focused test proves `NPC_JOB_SIGNATURE_PROFILES` resolves a profile for the tanker (heavy, clean burn) and the cutter (on the pin, scan sweep) and seed-4242 spawns carry them | Add a profile per hull. Change reaction kinds | SHIPPED PIC-30 abeb4e12a |
-| PIC-31 | A damaged hull vents where it is hurt, so "that ship is in trouble" reads at chase distance | `src/render/statusAttachedVfx.js`, `src/combat/damage.js` | On seed 4242 a hull crossing into the damaged band emits one vent record attached to the hit side and it stops on repair or death; a focused test pins start and stop | Add a health bar. Change the damage bands | OPEN |
+| PIC-31 | A damaged hull vents where it is hurt, so "that ship is in trouble" reads at chase distance | `src/render/statusAttachedVfx.js`, `src/combat/damage.js`, `src/render/vfx/statusMatterVfx.js` (draw wiring) | On seed 4242 a hull crossing into the damaged band emits one vent record attached to the hit side and it stops on repair or death; a focused test pins start and stop | Add a health bar. Change the damage bands | SHIPPED |
 | PIC-32 | A ship broadcasting distress pulses a lamp while its distress script is live | `src/render/vfx/worldCueRecipes.js`, `src/systems/encounterScripts.js` | On seed 4242 a live distress encounter produces one lamp record on the victim, cleared when the script resolves either way; a focused test pins both | Add a HUD marker. Change distress spawn odds | OPEN |
 | PIC-33 | The next race gate is lit ahead of the rest, so the line reads at racing speed | `src/render/racingCourseView.js`, `src/systems/racingGeometry.js` | On seed 4242 the upcoming gate carries a distinct lit state that advances on pass and never lights a passed gate; a focused test pins the sequence | Change course geometry. Add arrows to the HUD | OPEN |
 | PIC-34 | A returning nemesis hull wears the scars from its last defeat | `src/render/livingHullPresentation.js`, `src/systems/nemesis.js` | On seed 4242 a nemesis re-spawn carries the retained scar set from its defeat record on the new hull; a focused test pins the marks resolve | Author a new hull. Change nemesis rules | OPEN |
@@ -649,7 +649,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| PIC-31 | 2026-10-16 | infer10-oct16 | `src/render/statusAttachedVfx.js`, `src/combat/damage.js` |
 | WORLD-43 | 2026-10-16 | infer10-oct16 | `src/systems/fieldDepletion.js`, `src/systems/barkDirector.js`, `src/systems/npcJobsRuntime.js` |
 | INST-35 | 2026-10-16 | infer10-oct16 | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` |
 | FIGHT-13 | 2026-10-16 | infer10-oct16 | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` |
@@ -664,6 +663,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |
 | PRO-19 | pro-19-pause-seed | b708ff51b2 | Pause footer shows the session seed beside the build mark; seed-only, no rng internals, no restyle; focused 3/3 |
 | LAW-10 | law-10-scan-dump-suspicion | e3890eb692 | Mid-scan full dump of the scanned lot aborts to suspicion (toast + panel dismiss); completed scans keep the full finding; heat/scan-odds untouched; focused 5/5 |
+| PIC-31 | pic-31-damaged-hull-vent | 96af864a5e | Damaged-band entry vents at the hit side (one record, repair/death stops) through the status-attached loop to a pale matter draw; bands untouched, no health bar; focused 7/7 |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
