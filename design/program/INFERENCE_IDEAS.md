@@ -574,7 +574,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | LAW-08 | An incident nobody saw is recorded as unwitnessed in your footprint | `src/systems/lawSecurity.js`, `src/ui/screens/footprint.js` | On seed 4242 a kill with no witness inside 450 WU adds a footprint row marked unwitnessed and no warrant; a focused test pins both | Invent a witness (NXI-161). Change the witness radius | SHIPPED LAW-08 dfe87b17e — provenanceLedger truth cache + footprint mark |
 | LAW-09 | A claim defense can be ignored on purpose, which the claims owner already listens for | `src/systems/claims.js`, `src/ui/galaxyMap.js` | On seed 4242 the raid marker offers an ignore verb that emits `claim:defenseIgnore` and settles the defense as ignored; a focused test pins settlement (today the listener has no emitter) | Change raid odds. Add a claims panel | SHIPPED |
 | LAW-09 | A claim defense can be ignored on purpose, which the claims owner already listens for | `src/systems/claims.js`, `src/ui/galaxyMap.js` | On seed 4242 the raid marker offers an ignore verb that emits `claim:defenseIgnore` and settles the defense as ignored; a focused test pins settlement (today the listener has no emitter) | Change raid odds. Add a claims panel | SHIPPED LAW-09 dc02c1b32 |
-| LAW-10 | Dumping the scanned lot mid-scan downgrades the finding to suspicion | `src/ui/customsPrompt.js`, `src/systems/lawSecurity.js`, `src/systems/cargo.js` | On seed 4242 jettisoning the contraband before the scan completes resolves as an aborted scan with a suspicion note, while letting it finish keeps the full finding; a focused test pins both paths | Make dumping heat-free. Change scan odds | OPEN |
+| LAW-10 | Dumping the scanned lot mid-scan downgrades the finding to suspicion | `src/ui/customsPrompt.js`, `src/systems/lawSecurity.js`, `src/systems/cargo.js` | On seed 4242 jettisoning the contraband before the scan completes resolves as an aborted scan with a suspicion note, while letting it finish keeps the full finding; a focused test pins both paths | Make dumping heat-free. Change scan odds | SHIPPED |
 | LAW-11 | A paid toll lands in your footprint as settled | `src/systems/lawSecurity.js`, `src/ui/screens/footprint.js` | On seed 4242 `law:obligationPaid` for a toll adds one footprint row marked settled; a focused test pins the row and no duplicate on re-read | Change toll amounts. Re-list settled rows as open | OPEN |
 | LAW-12 | A clean customs pass is remembered at that station for a day | `src/systems/lawSecurity.js`, `src/ui/customsPrompt.js` | On seed 4242 a compliant scan stamps one trust mark and the next same-day scan offer at that station is waived with a line; a focused test pins both | Let contraband ride the waiver. Change heat math | OPEN |
 | LAW-13 | A pilot you rescued testifies: one delivered pod cools one warrant notch, once | `src/systems/survivorPod.js`, `src/systems/heat.js` | On seed 4242 delivering a pod while wanted applies the authored witness cooling once; a focused test pins the amount and the once-only guard | Clear warrants. Add a courtroom | OPEN |
@@ -654,7 +654,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | INST-35 | 2026-10-16 | infer10-oct16 | `src/ui/hud.js`, `src/core/flight/flightTelemetry.js` |
 | FIGHT-13 | 2026-10-16 | infer10-oct16 | `src/systems/hullFracture.js`, `src/systems/collisionConsequences.js` |
 | ECON-08 | 2026-10-16 | infer10-oct16 | `src/systems/lossLedger.js`, `src/systems/economyCycles.js`, `src/ui/marketNews.js` |
-| LAW-10 | 2026-10-16 | infer10-oct16 | `src/ui/customsPrompt.js`, `src/systems/lawSecurity.js`, `src/systems/cargo.js` |
 | MACH-12 | 2026-10-16 | infer10-oct16 | `src/systems/traffic.js`, `src/data/laneContacts.js` |
 ## SHIPPED
 
@@ -664,6 +663,7 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 | VERB-32 | verb-32-mine-keeps-velocity | 6dd3b0e5ce | Mine spawn inherits the deploying ship's velocity at the deploy tick (explicit opts.vel wins, else owner vel copy); fuse/cap/trigger untouched; seed-4242 focused test pins 90 WU/s inherit + rest ~zero |
 | STORY-08 | story-08-weekly-digest | 95e42831a1 | One cited weekly-digest line on dock after 7+ sim days with fresh chronicler facts (once per week, quiet weeks silent, no replays); seed-4242 focused 3/3 |
 | PRO-19 | pro-19-pause-seed | b708ff51b2 | Pause footer shows the session seed beside the build mark; seed-only, no rng internals, no restyle; focused 3/3 |
+| LAW-10 | law-10-scan-dump-suspicion | e3890eb692 | Mid-scan full dump of the scanned lot aborts to suspicion (toast + panel dismiss); completed scans keep the full finding; heat/scan-odds untouched; focused 5/5 |
 
 | Id | Unit | Commit | Note |
 |---|---|---|---|
