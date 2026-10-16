@@ -13,7 +13,8 @@ import { canQuit, requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { IS_DEMO } from '../../core/demoMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
-import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { saveErrorText } from '../saveFeedback.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
@@ -97,8 +98,10 @@ function readSaveIndex(ctx) {
         const k = localStorage.key(i);
         if (!k || !k.startsWith(LS_PREFIX) || k === LS_PREFIX + 'index') continue;
         const slot = k.slice(LS_PREFIX.length);
+        if (!isSaveSlotId(slot)) continue;
         try {
           const env = JSON.parse(localStorage.getItem(k));
+          if (!env || (env.fmt !== 'spaceface-save' && env.fmt !== 'spaceface-save-gz')) continue;
           const data = env && env.data;
           const player = data && data.player;
           const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
@@ -123,11 +126,37 @@ function normalizeSlots(idx) {
   if (!idx) return {};
   const out = {};
   if (Array.isArray(idx)) {
-    for (const item of idx) if (item && item.slot != null) out[String(item.slot)] = Object.assign({ slot: String(item.slot) }, item);
+    for (const item of idx) {
+      if (!item || item.slot == null) continue;
+      const slot = String(item.slot);
+      if (isSaveSlotId(slot)) out[slot] = Object.assign({ slot }, item);
+    }
     return out;
   }
-  for (const slot in idx) if (idx[slot]) out[slot] = Object.assign({ slot }, idx[slot]);
+  for (const slot in idx) if (isSaveSlotId(slot) && idx[slot]) out[slot] = Object.assign({ slot }, idx[slot]);
   return out;
+}
+
+export function presentTitleContinueLoadFailure(saveSummary, payload) {
+  if (!saveSummary || !payload || payload.reason !== 'load_failed') return false;
+  saveSummary.setAttribute('role', 'alert');
+  saveSummary.setAttribute('aria-live', 'assertive');
+  saveSummary.setAttribute('aria-atomic', 'true');
+  saveSummary.textContent = saveErrorText(payload);
+  return true;
+}
+
+export function clearTitleContinueLoadFailure(saveSummary) {
+  if (!saveSummary) return;
+  saveSummary.removeAttribute('role');
+  saveSummary.removeAttribute('aria-live');
+  saveSummary.removeAttribute('aria-atomic');
+}
+
+export function handleTitleContinueLoadFailure(ctx, currentRefs, payload) {
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr.top === 'function' && mgr.top() !== 'mainMenu') return false;
+  return presentTitleContinueLoadFailure(currentRefs && currentRefs.saveSummary, payload);
 }
 
 function latestSave(slots) {
@@ -564,6 +593,10 @@ export const mainMenuScreen = {
         const off = ctx.bus.on(evt, () => { if (refs) this._render(ctx); });
         if (typeof off === 'function') this._offBus.push(off);
       }
+      const offFailure = ctx.bus.on('save:error', (payload = {}) => {
+        if (refs) handleTitleContinueLoadFailure(ctx, refs, payload);
+      });
+      if (typeof offFailure === 'function') this._offBus.push(offFailure);
     }
 
     this._render(ctx);
@@ -581,6 +614,8 @@ export const mainMenuScreen = {
     }
     switch (action) {
       case 'continue': {
+        // A fresh click is the retry path: restore the ordinary save summary before loading again.
+        this._render(ctx);
         const latest = this._latestSave !== undefined
           ? this._latestSave
           : latestSave(readSaveIndex(ctx));
@@ -632,6 +667,7 @@ export const mainMenuScreen = {
 
   _render(ctx) {
     if (!refs) return;
+    clearTitleContinueLoadFailure(refs.saveSummary);
     this._menuSig = this._menuInputs(ctx);
     setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
