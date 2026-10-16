@@ -1517,3 +1517,16 @@ Shots: `/workspace/spaceface-scratch/ui-shots/polish43/{before,after}/`, `compar
 **Checked:** bench `ship` findings stay **0** at 901×700, 1024×600, 1024×768, 1100×720, 1101×720, 1120×700, 1200×720, 1240×700, 1100×440, 844×390, 960×540, 1280×720, 1920×1080 and 390×844 (visual: DOCK TO EXTEND + SAVE FIT clearly on-frame at 901–1240 × ≥600; short ≤460 still scrolls the plate/rail by design). Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish64/{before,after}/`, `compare-ship-*.png`.
 
 **Leftovers (not this pass):** on very short split windows (≤460 tall, e.g. 1100×440 / 960×540) SAVE FIT / DOCK TO EXTEND still need a scroll — same class of leftover as Shipworks @844; Shipworks lower callouts @844×390 (berth scrolls by design); Automation conduct-strip live conducted @960 (optional); station tabs / Crucible draft filter chips @844×390 (still open from #432 leftovers).
+
+## Footprint dial hub clears the source band on short desktops (ui-polish-66)
+
+**Before (master bf4966038e / tip merged to 7ac10849f2):** at ≤460-tall desktops (844×390 / 900×420 / 1024×440) the dial stage is a ~300px square, so the 96px hub floor put the escape clock and hub lines through the source band. Bench: 7 / 6 / 4 tangled+overlap findings across wanted / marked / clean at 844×390; similar at 900×420. 960×540 and up were already clean.
+
+**After (`src/ui/orrery/footprintDial.js` only):**
+- `dialGeometry` caps `hubR` so the hub sits inside the source band (`min(old floor, rS − SB/2 − clockW − 4)`, floor 48).
+- When `hubR < 80` the dial is `is-small`: hub keeps heat + wrapping tier; clears / bounty / top engrave / WANTED / drag hint step aside (title already says them); keys tighten to the settled-sliver pitch; clear-arc text prefers the short word when the arc is tight.
+- Selectors and IDs unchanged. Larger dials (`hubR ≥ 80`) keep prior geometry.
+
+**Checked:** bench `footprint` / `footprint-marked` / `footprint-clean` findings **7→0 / 6→0 / 4→0** at 844×390; **0** at 900×420 and 1024×440; stay **0** at 960×540, 1280×720, 1920×1080 and 390×844. Shots (not committed): `/workspace/spaceface-scratch/ui-shots/polish66/{before,after}/`.
+
+**Leftovers (not this pass):** tech-tree node overlap @844×390; station-tab rows under the tab bar @844×390; Shipworks lower callouts @844×390 (berth scrolls by design); My Ship SAVE FIT / DOCK on very short split windows (≤460 tall) still scroll by design. #435 (Crucible Armory short-desktop) still open — leave its files alone.
